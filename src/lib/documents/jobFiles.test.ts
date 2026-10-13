@@ -42,7 +42,7 @@ describe('jobFiles: the one list of a job’s files', () => {
 
   it('keeps an arrived file filed in the Plans half as one file with its page', () => {
     const files = jobFiles({
-      arrived: [{ id: 'att-9', name: 'Addendum 3.pdf', bytes: 500 * KB, kind: 'application/pdf', drive_file_id: 'drv-add-3', at: '2026-10-08T14:00:00Z' }],
+      arrived: [{ id: 'att-9', name: 'Addendum 3.pdf', bytes: 500 * KB, mime: 'application/pdf', drive_file_id: 'drv-add-3', at: '2026-10-08T14:00:00Z' }],
       drive: [{ id: 'drv-add-3', name: 'Addendum 3.pdf', bytes: 500 * KB, mime: 'application/pdf', half: 'plans', url: 'https://drive.google.com/file/d/drv-add-3', modified: '2026-10-08T15:00:00Z' }],
     })
     expect(files).toEqual([expect.objectContaining({ key: 'drive:drv-add-3', source: 'arrived', home: 'plans', portalPage: 'plans', driveUrl: 'https://drive.google.com/file/d/drv-add-3' })])
@@ -50,7 +50,7 @@ describe('jobFiles: the one list of a job’s files', () => {
 
   it('lists an arrived file not filed yet from our bucket, and the files on what we sent', () => {
     const files = jobFiles({
-      arrived: [{ id: 'att-1', name: 'IMG_2208.jpg', bytes: 3 * MB, kind: 'image/jpeg', drive_file_id: null, at: '2026-10-08T14:00:00Z' }],
+      arrived: [{ id: 'att-1', name: 'IMG_2208.jpg', bytes: 3 * MB, mime: 'image/jpeg', drive_file_id: null, at: '2026-10-08T14:00:00Z' }],
       sent: [{ sentId: 'sent-7', name: 'Pay application 3.pdf', path: 'sent/sent-7/pay-app-3.pdf', type: 'application/pdf', bytes: 180 * KB, sent_at: '2026-10-01T16:00:00Z' }],
     })
     expect(files.map((f) => [f.key, f.source, f.home, f.kind])).toEqual([

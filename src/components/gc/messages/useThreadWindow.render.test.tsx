@@ -8,7 +8,9 @@ import type { ThreadMessage } from '../../../lib/messages/thread'
 import { useThreadSlots } from './threadSlots'
 import { threadFromSearch, useThreadWindow, withoutThread, withThread } from './useThreadWindow'
 
-// Cut 4b's slots read the open thread through their own hook; here they are a marker, to see them reach the window.
+// Cut 2's slots (Follow up) and cut 4b's read the open thread through their own hooks; here they are markers, to see them reach the window.
+const cut2 = vi.hoisted(() => ({ headerRight: () => null, statusRow: () => null, menuRows: () => [] }))
+vi.mock('../../followUp/useFollowUpThreadSlots', () => ({ useFollowUpThreadSlots: () => cut2 }))
 vi.mock('../../changeOrders/useChangeOrderThreadSlots', () => ({
   useChangeOrderThreadSlots: () => ({ underLine: () => 'became CO 1', messageWindowFirst: () => 'Start a change order' }),
 }))
@@ -49,9 +51,12 @@ describe('opening a thread on /gc (the URL holds it)', () => {
     expect(result.current).toMatchObject({ contactId: 'c-elena', at: 'm-7' })
   })
 
-  it('hands the window each cut’s slots: cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line', () => {
+  it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows, cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line', () => {
     const { result } = renderHook(() => useThreadSlots())
-    expect(Object.keys(result.current).sort()).toEqual(['messageWindowFirst', 'side', 'underLine'])
+    expect(Object.keys(result.current).sort()).toEqual(['headerRight', 'menuRows', 'messageWindowFirst', 'side', 'statusRow', 'underLine'])
+    expect(result.current.headerRight).toBe(cut2.headerRight)
+    expect(result.current.statusRow).toBe(cut2.statusRow)
+    expect(result.current.menuRows?.({} as Contact)).toEqual([])
     const line = { id: 'm-1' } as ThreadMessage
     expect(result.current.underLine?.(line, {} as Contact)).toBe('became CO 1')
     expect(result.current.messageWindowFirst?.(line, '')).toBe('Start a change order')

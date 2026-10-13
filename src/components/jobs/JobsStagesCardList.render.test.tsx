@@ -4,7 +4,8 @@
  * the card footer carries a visible ⋯ button, tapping it opens a bottom
  * sheet with the labeled desktop-row actions (gated like the desktop), and
  * choosing an action runs its handler and closes the sheet. The old
- * tap-revealed toolbelt is gone.
+ * tap-revealed toolbelt is gone. A linked customer's name on a card opens
+ * their profile, as on the desktop rows (v2.5441).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -13,6 +14,12 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+
+const profile = vi.hoisted(() => ({ open: vi.fn() }))
+vi.mock('../../contexts/CustomerProfileModalContext', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../contexts/CustomerProfileModalContext')>()),
+  useCustomerProfileModal: () => ({ openCustomerProfile: profile.open }),
+}))
 
 import JobsStagesCardList from './JobsStagesCardList'
 import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
@@ -88,5 +95,16 @@ describe('JobsStagesCardList more-actions sheet', () => {
     fireEvent.click(screen.getByText('Cancel'))
     expect(openEdit).not.toHaveBeenCalled()
     expect(screen.queryByText('Edit job')).toBeNull()
+  })
+})
+
+describe('JobsStagesCardList customer name', () => {
+  it('a linked customer’s name opens their profile, as on the desktop rows', async () => {
+    profile.open.mockClear()
+    const job = makeJob({ job_name: 'Card Gamma', customer_id: 'cust-dana', customer_name: 'Dana Whitfield' })
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job] })} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Open customer profile for Dana Whitfield'))
+    expect(profile.open).toHaveBeenCalledWith('cust-dana')
   })
 })

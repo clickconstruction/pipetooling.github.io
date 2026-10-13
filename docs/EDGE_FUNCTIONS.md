@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 149 Supabase Edge Functions
+purpose: Complete API documentation for all 151 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-10-12
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 149
+total_functions: 151
 
 key_sections:
   - name: "Functions"
@@ -174,6 +174,8 @@ when_to_read:
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-bid-mark](#notify-bid-mark)
    - [notify-lien-approval](#notify-lien-approval)
+   - [mail-send-docsmit](#mail-send-docsmit)
+   - [mail-poll](#mail-poll)
    - [messages-notify](#messages-notify)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [send-scheduled-reminders](#send-scheduled-reminders)
@@ -1037,13 +1039,13 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **The open door**, no sign-in: the link is the key.
 - `GET ?t=<link>` answers `{ kind: 'drive', url, name }` for a file in the job's Plans half, which opens in Drive's own viewer since that half is open to anyone with its link. It answers `{ kind: 'stream', name, url }` for a Team only file, `url` being this function's public address (from `SUPABASE_URL`, never the request's) with `&raw=1`. It answers `{ kind: 'off', why }` for a link cut off, ended (30 days), unknown, or a Team only file over 50 MB. Each answer that opens counts one `public_page_views` row, surface `drive_link`. A staff look or a preview is stamped and not counted, as the portals do.
-- `GET ?t=<link>&raw=1` streams a Team only file's bytes from Drive (`alt=media`), passed through and never held whole, so Team only is never opened up. A Plans file asked for raw redirects to Drive's viewer.
+- `GET ?t=<link>&raw=1` streams a Team only file's bytes from Drive (`alt=media`), passed through and never held whole, so Team only is never opened up. A file grown past 50 MB since its link was made is refused by Drive's own length. A page, an SVG or a script is saved, never shown, so a file that came by email cannot run on the function's address. A Plans file asked for raw redirects to Drive's viewer.
 
 **The office's door**: `POST` with a staff JWT validated in-function, office roles (dev, master_technician, assistant, controller, estimator), never a digital twin, as [gc-drive-access](#gc-drive-access) checks. A training account lists and opens, and is refused the three asks that write (*A training account cannot change Drive.*).
 - `{ action: 'list', job }`: the job's folder in its two halves, three levels deep, at most 500 files, for the one list (`documents/jobFiles.ts`).
 - `{ action: 'put', job, name, mime, where, base64 }`: a file from this computer into Team only → Sent by us, or a photo into Team only → Photos, up to 10 MB, as the trade portal's files are.
 - `{ action: 'link', job, driveFileId, messageId }`: our link to a file whose parents reach the job's folder, half as found → `{ linkId, url }`. A plan set's folder in Plans opens as the folder. A Team only folder has no bytes to hand over, so it is refused (*Only a folder in Plans can go as our link.*).
-- `{ action: 'save', attachmentId, half }`: Save to Drive for a file that came in, from the `message-attachments` bucket into Team only → From email, or the top of Plans. The row keeps `drive_file_id`.
+- `{ action: 'save', attachmentId, half }`: Save to Drive for a file that came in, from the `message-attachments` bucket into Team only → From email, or the top of Plans. The row keeps `drive_file_id`, and a second save answers that one copy.
 - `{ action: 'open', job, driveFileId }`: Drive's own viewer for a file inside the job's folder, for the office's `/files/drive/<id>` page (cut 6's router).
 - A job is one of the spine's three. A GC project is `gc_projects.drive_folder_url`, with its Plans and Team only halves found by name. A bid is `bids.drive_link`, and a Pipeline job is `jobs_ledger.google_drive_link`; their folders have no halves, so every file in them is Team only.
 
@@ -1051,7 +1053,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [gc-drive-access](#gc-drive-access)), `APP_ORIGIN` (the link's page, else `https://clicktooling.com`).
 
-**Status**: v2.5383. `20261013110000_drive_links` is on prod (2026-10-13); deploy the function once this merges.
+**Status**: v2.5383, deployed 2026-10-13. v2.5433 saves a page or a script in place of showing it, checks Drive's own length against the cap, and keeps one copy on a second save; redeploy once it merges.
 
 ### gc-plan-question-email
 
@@ -1587,6 +1589,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.5303 — the customer's page on each GC job** (Messages cut 8b-i, shape B): after the schedule, each `gcJobs` entry gains `page` from [`_shared/gcPortalPage.ts`](../supabase/functions/_shared/gcPortalPage.ts) (`loadGcPortalPages`): our contract's sum before the changes (`gc_owner_contract_now` less the signed change orders), the change orders sent and signed with their Spanish, the pay applications with their customer line, certificate day and bill, the architect's record name and the days to pay, each job's newest customer line on the daily log, read one job at a time (its photos link only while `portal_photos_on`), the project manager and the superintendent by name and role (never a person's own phone: `users` is read for the name only), the schedule's moves since the first schedule letter by their reason (never the note), and the three switches. The payload gains `pageWords`, every `customer_page_words` row, which the page lays over its code words. A failed read leaves `page` off and `pageWords` empty, so the page reads as before. **`?paper=<kind>:<id>`** (kind `contract`, `change_order` or `pay_app`) answers `{ ok: true }` at once without building the statement, and, when the open counts (the same rule as a page load) and the paper is on one of the link's customer's GC jobs, writes one `public_page_views` row with surface `portal_paper` for the office's read-back. Deploy it after `20261012130000` and `20261012200000` are on prod.
+
 > **v2.5283 — `deno check` passes again**: the copy of the kernels resolved a type-only import from outside it as a path back at `src` with no `.ts`, so the check failed and every type through it read as `any` (the rule that fixes it is *The copy of the kernels* under `gc-trade-portal`); two job reads now cast through `unknown` instead of straight to `PortalJobRow[]`, and the client handed to `loadGcStageInputs` is cast to the loader's own `GcStageAdmin`. Nothing behaves differently. **Redeploy required**, with `gc-trade-portal`.
 
 > **v2.5229 — whose letterhead**: `company` is [`portalLetterhead`](../supabase/functions/_shared/portalLetterhead.ts)'s pick and gains `tagline`, the line under the CLICK. mark. A customer with a GC job we build (`gcJobs`) and no Pipeline job but its billing job (`jobs_ledger.billing_only`, now in the job select) reads *Click Construction*: the GC customer emails' name, the tagline *Construction*, the office phone, and no city, license or email line until the owner names the GC entity (call 12). Mixed, none, or a `gc` link reads the plumbing company with *Plumbing, Electrical, and HVAC*. The `sample-owner` answer picks by the same rule from its rows, whose one job is its billing job. The page draws `tagline`, and a payload without one draws the plumbing line, so the function and the page deploy in either order. **Redeploy required**, with the other eight importers of `_shared/customerSampleFixtures.ts` and `_shared/portalMergedBills.ts`.
@@ -1990,6 +1994,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **v2.3510 (What customers see PR 2):** the email's subject, text and HTML are built by `_shared/jobContractEmail.ts` → `buildJobContractSendEmail` (wording moved verbatim), which `src/lib/jobContractEmail.ts` re-exports so Settings → What customers see renders the same email over the sample. Send path unchanged.
 
 ### get-job-contract
+
+> **v2.5312 — the sample skips the flows' papers**: the sample's terms are the newest customer document in the Contract Book that is not a flow paper (`.is('flow_kind', null)`). A paper the flow editor adds (`flow_paper_create`, v2.5306) is filed under the customer audience and dated the day it is made, so it would otherwise be the newest. Deploy only after migration `20261013140000_flow_papers` is on prod, since the filter names its column. **Redeploy required.**
 
 > **v2.4474 — the sample agreement's wording date reads in the company zone**: on the What customers see sample, the Contract Book document's date is its `book_version_date`, else its `updated_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date — the Book's own rule (`effectiveBookVersionPlainDate` in `src/lib/contractBookVersionDate.ts`). Redeploy after merge.
 
@@ -5121,6 +5127,65 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ```
 
 **Used by**: Banking → [`ManualAccountsModal.tsx`](../src/components/banking/ManualAccountsModal.tsx).
+
+---
+
+### mail-send-docsmit
+
+**Purpose** (v2.5381, the Docsmit train PR 3 — `docs/DOCSMIT_LIEN_RUN_PLAN.md`): the office's door to Docsmit, the certified-mail provider, one `action` per call. The run window (PR 5) will call it to send a lien notice's envelopes as US-Letter PDFs and read back the USPS number, the acceptance scan and the delivery into `mail_pieces` (migration `20261013120000`, v2.5379). The HTTP lives in `_shared/docsmitClient.ts` (token, the three-call send, the reads); the pure rules in `_shared/mailSend.ts` (the status fold, which a vitest case holds equal to `src/lib/mail/mailPiece.ts`); the read-back shared with `mail-poll` in `_shared/mailDocsmitRefresh.ts`. The token Docsmit gives is never returned; the secrets never leave the function.
+
+**Endpoint**: `POST /functions/v1/mail-send-docsmit`
+
+**Required Role**: a signed-in `dev`, `master_technician`, `assistant` or `controller` who is not `read_only` (Bearer JWT → `getUser`, then the role from `users` with the service role). Anyone else gets 403.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DOCSMIT_EMAIL`, `DOCSMIT_PASSWORD_SHA512` (the lowercase SHA-512 hex of the password, all the API takes), `DOCSMIT_SOFTWARE_ID`, `DOCSMIT_BASE_URL` (unset = Tracksmit, the sandbox; the live site is `https://secure.docsmit.com/api/v1`). With any of the three Docsmit secrets missing it answers 500 naming them. `app_settings` `docsmit_paused` = `'true'` refuses everything but `ping` with 409.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+| action | fields | does |
+|---|---|---|
+| `ping` | — | one token and `GET /account/info`; answers `{ ok, env: tracksmit \| prod, account: { name, credit_balance } }`, nothing secret |
+| `prepare` | `piece` (`kind`, `source_ids[]`, `job_id`, `recipient`, `short_code?`, `name`, `organization`, `address1`, `address2`, `city`, `state`, `postal_code`, `send_type`, `envelope` `#10` \| `Flat`, `sheets`), `pdf_path`, `pdf_bucket?` (default `lien-release-documents`), `job_number?` | refuses a short envelope (400, naming what it lacks) or a PDF not in the bucket (400); `POST /utils/multiCASS` on the address and refuses a non-mailable one (422 with `correction`, no row made); inserts the `mail_pieces` row as `prepared`; `POST /messages/new` (title, `clientMsgID` = `<kind>:<piece id>`, the party) → `POST /messages/{id}/upload` (the PDF read from the bucket with the service role) → `GET /messages/{id}/priceCheck`; writes the provider id and the price; answers `{ ok, piece_id, provider_message_id, price, correction, credit_balance, env }`. A Docsmit failure after the row exists marks it `failed` with the reason (502). |
+| `send` | `piece_ids[]` (up to 40) | one at a time, in order. 201 marks the piece `sent`, reads `/parties` once (the USPS number, when Docsmit already has it, makes it `mailed`) and writes `via`, `piece_id` and the number into each source filing's `sends[]` for the piece's recipient. 402 stops the batch: `{ ok: false, sent[], skipped[], stopped_at, shortfall, error: "Docsmit credit is short by $X, nothing more was sent." }` (HTTP 402). A piece not `prepared` is skipped with its reason. |
+| `refresh` | `piece_ids?[]` (none = every open Docsmit piece) | `/parties` for each, the fold, the event log, the filing's `sends[]`, and the Certification PDF (`/documentation`) filed at `mail/<piece id>/certification.pdf` once a piece reads delivered; answers `{ ok, read, updated[], errors[], results[] }`. |
+
+#### Response
+
+200 with the action's answer; 400 a short request; 401 no user; 403 not office or read-only; 402 credit short; 409 paused; 422 non-mailable; 500 setup; 502 Docsmit refused.
+
+**Tests**: `src/lib/mail/mailSendDocsmit.run.test.ts` runs the handler itself with a recording fake database, a fake Docsmit and a fake bucket (`src/lib/mail/mailRunFakes.ts`); `src/lib/mail/mailSendShared.test.ts` holds the shared kernel.
+
+**Deploy**: `supabase functions deploy mail-send-docsmit`, then set the four Docsmit secrets (`supabase secrets set DOCSMIT_EMAIL=… DOCSMIT_PASSWORD_SHA512=… DOCSMIT_SOFTWARE_ID=…`; leave `DOCSMIT_BASE_URL` unset for Tracksmit). The Developer-settings PR moves the secrets to Vault.
+
+---
+
+### mail-poll
+
+**Purpose** (v2.5381, the Docsmit train PR 3): the hourly read-back. Every open Docsmit piece in `mail_pieces` (`sent`, `mailed`, `in_transit`, `notice_left`, `unknown`) gets one `/parties` read through the shared refresh (`_shared/mailDocsmitRefresh.ts`): tracking, status, the event log, the filing's `sends[]` (the number, `via`, `piece_id`, and `sent_on` as the Central day USPS accepted it), and the Certification PDF once delivered. Then, only while `app_settings` `docsmit_match_site` = `'true'`, `GET /messages/sent?turnOffSoftwareID=true` lists what the office sent by hand from Docsmit's own site, and a message we do not hold becomes a piece of kind `other` with a problem line (*Sent from Docsmit's own site (title). Match it to a job.*), so nothing mailed goes unrecorded; a message carrying one of our `clientMsgID`s never makes a second row.
+
+**Endpoint**: `POST /functions/v1/mail-poll`
+
+**Required Role**: none — the cron. `X-Cron-Secret` header (or `cron_secret` in the body) must equal `CRON_SECRET`; otherwise 401.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `DOCSMIT_EMAIL`, `DOCSMIT_PASSWORD_SHA512`, `DOCSMIT_SOFTWARE_ID`, `DOCSMIT_BASE_URL`. With Docsmit not set up it answers `{ ok, skipped: 'docsmit not set up' }`; paused (`docsmit_paused` = `'true'`) `{ ok, skipped: 'paused' }`.
+
+**Verify JWT**: `false` at the gateway.
+
+#### Request body
+
+`{ dry_run?: true }` — lists the open pieces and writes nothing.
+
+#### Response
+
+`{ ok, env, read, updated[], errors[{ id, error }], matched_from_site, match_errors[] }`. A provider error on one piece is logged on that piece (`poll_error` event) and the rest still read; `ok` is false when any erred.
+
+**Schedule**: the cron row comes with PR 6 of the train (`mail-poll` hourly, `X-Cron-Secret` from Vault, as `gmail-sync`'s is scheduled). Until then it is called by hand or by `mail-send-docsmit` `refresh`.
+
+**Tests**: `src/lib/mail/mailPoll.run.test.ts`.
+
+**Deploy**: `supabase functions deploy mail-poll`.
 
 ---
 

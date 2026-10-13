@@ -12,7 +12,9 @@
 # person by its key, and a new address makes one unknown contact however many emails arrive at once; the office reads
 # the lines' files, the reader's state and the bucket, answers a paper offer, stamped with who and when, and writes
 # nothing else; training mode and a digital twin answer nothing; nobody signed in reaches the reader's functions; the
-# switch ships off. It raises on its first failed assertion and ends with "messages_email PASSED". PGTEST_KEEP=1 leaves
+# switch ships off. It raises on its first failed assertion and ends with "messages_email PASSED". Then residential R6's
+# two boxes (*_messages_two_boxes), also applied twice: lines from before it (25_two_boxes_before.sql, run just before
+# it) take their box, and 30_two_boxes.sql ends with "messages_two_boxes PASSED". PGTEST_KEEP=1 leaves
 # the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a PR that touches a
 # migration. Never touches prod.
 set -euo pipefail
@@ -22,6 +24,7 @@ PORT="${PGTEST_PORT:-55491}"
 NAME="pgtest-messages-email"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 EMAIL="$(ls supabase/migrations/*_messages_email_in.sql)"
+BOXES="$(ls supabase/migrations/*_messages_two_boxes.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -39,15 +42,22 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
 for f in supabase/migrations/*.sql; do
+  # The lines from before two boxes, for R6's backfill.
+  if [ "$f" = "$BOXES" ]; then
+    psql_as postgres -f - < supabase/tests/messages_email/25_two_boxes_before.sql >/dev/null 2>"$ERR" || { echo "FAILED seeding before $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  fi
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
   # A second run must change nothing: the columns, the index, the constraints, the tables, the functions, the bucket,
   # the switch and the cron are there. It runs right after the first, as a retried push would: its grants start with a
   # REVOKE on its own tables, so a second run after a later cut's migration would take back what that cut granted.
-  if [ "$f" = "$EMAIL" ]; then
-    psql_as postgres -f - < "$EMAIL" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $EMAIL"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  if [ "$f" = "$EMAIL" ] || [ "$f" = "$BOXES" ]; then
+    psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
   fi
 done
 out="$(psql_as postgres -f - < supabase/tests/messages_email/20_scenario.sql 2>&1 || true)"
 if ! grep -q "messages_email PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/messages_email/30_two_boxes.sql 2>&1 || true)"
+if ! grep -q "messages_two_boxes PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "messages-email bed ok"

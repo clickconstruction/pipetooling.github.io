@@ -24,7 +24,7 @@ vi.mock('../../lib/supabase', () => {
   function makeBuilder(table: string): Record<string, unknown> {
     const rows = TABLE_ROWS[table] ?? []
     const builder: Record<string, unknown> = {}
-    for (const m of ['select', 'insert', 'upsert', 'delete', 'eq', 'in', 'order', 'range', 'limit']) builder[m] = () => builder
+    for (const m of ['select', 'insert', 'upsert', 'delete', 'eq', 'is', 'in', 'order', 'range', 'limit']) builder[m] = () => builder
     builder.update = (patch: unknown) => {
       writes.push({ table, patch })
       return builder

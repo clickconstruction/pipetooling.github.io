@@ -13,6 +13,7 @@ import {
   parseOfficeAsk,
   saveHalfFor,
   streamUrl,
+  streamsInline,
   tokenFromLink,
   type LinkRow,
 } from '../../../supabase/functions/_shared/driveLink'
@@ -101,6 +102,14 @@ describe('the link itself', () => {
     expect(contentDisposition('Rock clause, marked up.pdf')).toBe(`inline; filename="Rock clause, marked up.pdf"; filename*=UTF-8''Rock%20clause%2C%20marked%20up.pdf`)
     expect(contentDisposition('Cláusula "roca".pdf')).toBe(`inline; filename="Cl_usula _roca_.pdf"; filename*=UTF-8''Cl%C3%A1usula%20%22roca%22.pdf`)
     expect(driveViewUrl('1PlanSetRev2000000184')).toBe('https://drive.google.com/file/d/1PlanSetRev2000000184/view')
+  })
+
+  it('saves a page, a drawing that can carry a script or a script, and never shows it on the function’s address', () => {
+    for (const mime of ['application/pdf', 'image/jpeg', 'image/png', 'text/plain', 'application/octet-stream', null]) expect(streamsInline(mime)).toBe(true)
+    for (const mime of ['text/html', 'text/html; charset=utf-8', 'image/svg+xml', 'application/xhtml+xml', 'text/xml', 'application/xml', 'application/javascript', 'TEXT/HTML'])
+      expect(streamsInline(mime)).toBe(false)
+    expect(contentDisposition('Bid tab.html', 'text/html')).toBe(`attachment; filename="Bid tab.html"; filename*=UTF-8''Bid%20tab.html`)
+    expect(contentDisposition('Rock clause.pdf', 'application/pdf')).toMatch(/^inline; /)
   })
 })
 

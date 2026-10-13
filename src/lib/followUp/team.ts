@@ -5,6 +5,14 @@
  */
 import { GC_OFFICE_TEAM } from '../gc/access'
 
+/** Someone on the team a conversation can be handed to. */
+export interface Teammate {
+  id: string
+  name: string
+  /** What they do, on their picker row: "estimator". */
+  role: string
+}
+
 export function followUpTeamOf<T extends { id: string; name: string; role: string }>(team: readonly T[]): T[] {
   return team.filter((t) => t.name.trim() !== '' && (GC_OFFICE_TEAM as readonly string[]).includes(t.role)).sort((a, b) => a.name.localeCompare(b.name))
 }

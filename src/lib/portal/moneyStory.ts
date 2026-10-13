@@ -52,7 +52,13 @@ interface PayAppBase {
 export type PayAppIn = PayAppBase &
   (
     | { state: 'architect'; architect: string | null; withArchitectSince: string }
-    | { state: 'due'; certifiedBy: string | null; certifiedOn: string | null; dueOn: string }
+    | {
+        state: 'due'
+        certifiedBy: string | null
+        certifiedOn: string | null
+        /** Null when the job keeps no days to pay: the card says who certified it and no due day. */
+        dueOn: string | null
+      }
     | {
         state: 'paid'
         certifiedBy: string | null
@@ -208,7 +214,7 @@ function appCard(lang: PortalLang, input: MoneyStoryIn, a: PayAppIn, words: Page
   } else {
     if (a.certifiedBy && a.certifiedOn) checks.push({ mark: 'done', words: words.say(lang, 'certifiedBy', { name: a.certifiedBy, day: pDate(lang, a.certifiedOn) }) })
     if (a.state === 'due') {
-      checks.push({ mark: 'strong', words: words.say(lang, 'dueOnDay', { day: pDate(lang, a.dueOn) }) })
+      if (a.dueOn) checks.push({ mark: 'strong', words: words.say(lang, 'dueOnDay', { day: pDate(lang, a.dueOn) }) })
       buttons = [
         { label: words.say(lang, 'payIt'), primary: true, press: 'pay' },
         { label: words.say(lang, 'readApp'), primary: false, press: 'read' },
@@ -265,7 +271,7 @@ function history(lang: PortalLang, input: MoneyStoryIn, lines: MoneyLines, openA
     const sub =
       a.state === 'architect'
         ? [words.say(lang, 'withArchitectSince', { day: pWeekday(lang, a.withArchitectSince) }), ...(input.payDays != null ? [words.say(lang, 'dueDaysAfter', { days: input.payDays })] : [])]
-        : a.state === 'due'
+        : a.state === 'due' && a.dueOn
           ? [words.say(lang, 'dueOnDay', { day: pDate(lang, a.dueOn) })]
           : []
     events.push({ kind: 'open', title: words.say(lang, 'payAppN', { n: a.n }), amount: money(a.amount), sub })

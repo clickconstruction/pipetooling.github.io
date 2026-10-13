@@ -323,5 +323,28 @@ SELECT msp.same('the duplicate and its contact are gone; both lines are the dent
 SELECT msp.refused('the trade partner stays while its contacts do', $q$DELETE FROM public.gc_companies WHERE id = '00000000-0000-0000-0000-0000000005a1'$q$, 'violates foreign key constraint');
 SELECT msp.refused('a contact with a thread stays', $q$DELETE FROM public.contacts WHERE id = (SELECT greg FROM ids)$q$, 'violates foreign key constraint');
 
+-- 12 · A line on an estimate from a message (R8 · 8): two of Elena's lines feed one draft, made as postgres in place of
+-- the coming definer; the office cannot point a line at an estimate by hand; a deleted draft leaves both lines unlinked.
+INSERT INTO public.estimates (id, master_user_id, created_by, title)
+VALUES ('00000000-0000-0000-0000-000000000591', '00000000-0000-0000-0000-0000000005d2', '00000000-0000-0000-0000-0000000005d2', 'The clinic, from Elena''s lines');
+UPDATE public.messages SET estimate_id = '00000000-0000-0000-0000-000000000591' WHERE body IN ('The start date goes Monday.', 'Tell her Monday.');
+SELECT msp.same('two lines feed one draft (R8 · 8)',
+  (SELECT count(*)::text FROM public.messages WHERE estimate_id = '00000000-0000-0000-0000-000000000591'), '2');
+SELECT msp.same('an estimate''s lines have an index, and not a unique one (R8 · 8)',
+  (SELECT concat_ws('|', i.indisunique::text, pg_get_expr(i.indpred, i.indrelid)) FROM pg_index i WHERE i.indexrelid = 'public.messages_estimate'::regclass),
+  'false|(estimate_id IS NOT NULL)');
+SELECT msp.same('the office holds no write on the column (R8 · 8)',
+  concat_ws('|', has_column_privilege('authenticated', 'public.messages', 'estimate_id', 'UPDATE')::text,
+    has_column_privilege('authenticated', 'public.messages', 'estimate_id', 'INSERT')::text), 'false|false');
+SELECT msp.as_user('00000000-0000-0000-0000-0000000005d2');
+SET LOCAL ROLE authenticated;
+SELECT msp.refused('the office cannot point a line at an estimate by hand (R8 · 8)',
+  $q$UPDATE public.messages SET estimate_id = NULL WHERE body = 'Tell her Monday.'$q$, 'permission denied for table messages');
+RESET ROLE;
+DELETE FROM public.estimates WHERE id = '00000000-0000-0000-0000-000000000591';
+SELECT msp.same('a deleted draft leaves both lines on the thread, unlinked (R8 · 8)',
+  (SELECT concat_ws('|', count(*), count(estimate_id)) FROM public.messages WHERE body IN ('The start date goes Monday.', 'Tell her Monday.')),
+  '2|0');
+
 DO $$ BEGIN RAISE NOTICE 'messages_spine PASSED'; END $$;
 ROLLBACK;

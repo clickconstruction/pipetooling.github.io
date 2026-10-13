@@ -414,7 +414,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       )}
 
       {/* GC mode (O7c): the GC jobs we build for them, with the change orders waiting on them and the work to accept. Screen only. */}
-      <PortalGcJobs token={requestToken} jobs={payload.gcJobs} formatUsd={formatPortalUsd} />
+      <PortalGcJobs token={requestToken} jobs={payload.gcJobs} formatUsd={formatPortalUsd} payload={payload} />
 
       {groups.length > 0 && (
         <>

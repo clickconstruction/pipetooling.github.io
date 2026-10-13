@@ -53,7 +53,7 @@ A signed change order adds its price and its days. Pick how much of its work is 
 
 ## When the customer answers in their portal
 
-A change order waiting on the customer shows in their portal, under the job. The customer can sign it or decline it there. A decline can say why in one line, or say nothing.
+A change order waiting on the customer shows on their page for the job. It is their move on Home, with what it adds and its days. They sign it or decline it on the Papers tab. A decline can say why in one line, or say nothing.
 
 The answer shows here right away. The chip says {{chip:green|signed Oct 7 in their portal}} or {{chip:red|declined Oct 7 in their portal}}. A reason they gave shows beside a decline.
 

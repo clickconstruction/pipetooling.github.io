@@ -180,7 +180,8 @@ SELECT mem.same('the bucket is private and keeps a file up to 25 MB',
   (SELECT concat_ws('|', public::text, file_size_limit::text) FROM storage.buckets WHERE id = 'message-attachments'), 'false|26214400');
 SELECT mem.same('the reader has one row, with no place yet',
   (SELECT concat_ws('|', count(*), count(history_id), count(last_run_at)) FROM public.gmail_sync_state), '1|0|0');
-SELECT mem.refused('and only one', $q$INSERT INTO public.gmail_sync_state (id) VALUES (false)$q$, 'gmail_sync_state_one_row');
+-- One row a box since R6 (*_messages_two_boxes): today's is bids@'s.
+SELECT mem.refused('and only one for bids@', $q$INSERT INTO public.gmail_sync_state (mailbox) VALUES ('bids')$q$, 'gmail_sync_state_pkey');
 SELECT mem.same('the switch ships off', (SELECT value_text FROM public.app_settings WHERE key = 'gmail_sync_on_v1'), 'false');
 SELECT mem.same('the cron runs every 3 minutes, and only while the switch is on',
   (SELECT concat_ws('|', schedule, (position('gmail_sync_on_v1' IN command) > 0)::text, (position('/functions/v1/gmail-sync' IN command) > 0)::text) FROM cron.job WHERE jobname = 'gmail-sync'),

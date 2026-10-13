@@ -278,6 +278,13 @@ the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
 with *The dock* row — tap a slot there to swap it — every page, the mode switches and Help /
 Settings / Sign out); holding a slot on the bar swaps it too.
 
+### /portal · /p/:slug — A customer's portal (public)
+One no-password link per customer (`CustomerPortal.tsx`, read through `customer-portal`): their open bills and the
+statement, payments, waivers, their agreements and test reports. On a GC job we build it is the customer's page
+(v2.5303, shape B): Home with *Your move*, *This week* and *Your people*, then Money, Schedule and Papers, where they
+sign our contract, answer a change order and accept the work. `/portal?t=sample-owner` is the GC owner's sample.
+Roles: public.
+
 ### /t/:token — A trade partner's portal (public)
 One no-password link per trade partner company (v2.4920, `GcTradePortal.tsx`, read through `gc-trade-portal`): the
 company's asks, quotes, plans and questions on each project. Its home opens on **Where you are with Click
@@ -287,6 +294,14 @@ day, quotes, answers lines, passes, asks about the plans and picks who gets our 
 changes it asked for (v2.5044), and agrees with or disputes a charge and asks for a change (v2.5048). From its papers it sends its vetting form, signs its master agreement and W-9 (v2.5201) and sends its insurance certificate for the office to check first (v2.5225). On a job being built, its pay application's door says when the next one is due and the bill it goes on, from the trades' cut-off. `/t/sample`
 is the sample. A link is made by a dev in the company window's **Their portal**
 until the trade wave, and the first email to the company makes one (v2.4936).
+Roles: public.
+
+### /f/:link — A file our office sent as its own link (public)
+What a file's own link opens (v2.5447, `FileLinkPage.tsx`, Messages cut 7d), with no sign-in: it asks `drive-link`'s
+open door once, which counts the open, then forwards to the file. A file in the job's Plans half opens in Drive's own
+viewer, and a Team only file streams through the function. A link that was cut off or has ended says **This link was
+turned off.**, and an unknown or too-big link says so in plain words. A teammate signed in on the browser, or the
+office's `?preview=1`, is stamped and not counted. The office makes the link when a file goes on a message.
 Roles: public.
 
 ### /pay/:id — Pay a bill (public)

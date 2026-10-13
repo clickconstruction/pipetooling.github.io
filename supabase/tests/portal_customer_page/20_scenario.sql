@@ -1,12 +1,13 @@
 -- The customer's page (Messages, cut 8, migration *_portal_customer_page): nobody signed out reads its words or the
--- office's read-back; the words are seeded from the code; the office edits a sentence, keeps its blanks and is stamped
--- with who and when; nobody outside the office, in training mode or a digital twin edits one; the migration runs once
--- more at the -- @reseed line (the bed script streams it in there, as a later push would) and follows the code only for
--- sentences nobody edited; a paper view is read back per customer and paper, outside opens only, office only; a paper
--- row names its paper, and the usage readout still counts page loads only; the three switches per job start off and
--- the office turns one on. Presses run as each user through RLS; the fixture is made as postgres; everything rolls
--- back. Raises on the first failed assertion; ends with "portal_customer_page PASSED". See
--- scripts/pgtest-portal-customer-page.sh. Never against prod.
+-- office's read-back; the words are seeded from the code, as many as the newest seed holds (:seeded, from the bed);
+-- the office edits a sentence, keeps its blanks and is stamped with who and when; nobody outside the office, in
+-- training mode or a digital twin edits one; the migration and the newest seed run once more at the -- @reseed line
+-- (the bed script streams them in there, as a later push would) and follow the code only for sentences nobody edited;
+-- a paper view is read back per customer and paper, outside opens only, office only; a paper row names its paper, and
+-- the usage readout still counts page loads only; the three switches per job start off and the office turns one on.
+-- Presses run as each user through RLS; the fixture is made as postgres; everything rolls back. Raises on the first
+-- failed assertion; ends with "portal_customer_page PASSED". See scripts/pgtest-portal-customer-page.sh. Never against
+-- prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -85,7 +86,7 @@ SELECT pcp.refused('no sign-in reads no read-back', $q$SELECT count(*) FROM publ
 RESET ROLE;
 
 -- 1 · The words are seeded from the code (pageWords.ts), and nobody has edited one yet.
-SELECT pcp.same('every sentence of the customer''s page is seeded', (SELECT count(*)::text FROM public.customer_page_words), '144');
+SELECT pcp.same('every sentence of the customer''s page is seeded', (SELECT count(*)::text FROM public.customer_page_words), :'seeded');
 SELECT pcp.same('a sentence in both languages', (SELECT concat_ws('|', en, es) FROM public.customer_page_words WHERE key = 'nothingToday'),
   'Nothing from you today.|Hoy no necesitamos nada de usted.');
 SELECT pcp.same('a paper''s press in both languages', (SELECT concat_ws('|', en, es) FROM public.customer_page_words WHERE key = 'paper.contract.button'),
@@ -131,7 +132,7 @@ RESET ROLE;
 -- 4 · Training mode and a digital twin read, and edit nothing.
 SELECT pcp.as_user('00000000-0000-0000-0000-0000000008a6');
 SET LOCAL ROLE authenticated;
-SELECT pcp.same('a training account reads the words', (SELECT count(*)::text FROM public.customer_page_words), '144');
+SELECT pcp.same('a training account reads the words', (SELECT count(*)::text FROM public.customer_page_words), :'seeded');
 SELECT pcp.refused('a training account edits nothing', $q$UPDATE public.customer_page_words SET en = 'Practice.' WHERE key = 'fewer'$q$, 'Read-only (training) mode');
 RESET ROLE;
 SELECT pcp.as_user('00000000-0000-0000-0000-0000000008a7');
@@ -153,7 +154,7 @@ SELECT pcp.same('an edited sentence stays the office''s',
   (SELECT concat_ws('|', en, edited_by) FROM public.customer_page_words WHERE key = 'nothingToday'),
   'Nothing needed from you today.|00000000-0000-0000-0000-0000000008a2');
 SELECT pcp.same('the seed stamped nothing', (SELECT count(*)::text FROM public.customer_page_words WHERE edited_at IS NOT NULL), '2');
-SELECT pcp.same('still every sentence, once', (SELECT count(*)::text FROM public.customer_page_words), '144');
+SELECT pcp.same('still every sentence, once', (SELECT count(*)::text FROM public.customer_page_words), :'seeded');
 
 -- 6 · A view per paper. The customer-portal function writes these with the service role; here, as postgres. Two page
 -- loads, change order 2 opened twice, the contract once, a staff look at the contract (never counted), and another
