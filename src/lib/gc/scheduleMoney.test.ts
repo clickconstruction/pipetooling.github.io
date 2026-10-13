@@ -29,7 +29,7 @@ const money = (over: Partial<ScheduleMoney> = {}): ScheduleMoney => ({
 /** The chart's read: the board with the change orders through the office's view, their money hidden. */
 function chart(): GcState {
   return withOfficeChangeOrders(initialGcState(), [
-    { id: 'co-1', project_id: 'fairoaksd', number: 1, description: 'Thicker slab at grid C', reason: 'plans', schedule_words: '', package_id: 'fconc', status: 'signed', sent_on: '2026-09-24', answered_on: '2026-09-26', days: 2, days_on_chart: null },
+    { id: 'co-1', project_id: 'fairoaksd', number: 1, description: 'Thicker slab at grid C', reason: 'plans', schedule_words: '', package_id: 'fconc', status: 'signed', sent_on: '2026-09-24', answered_on: '2026-09-26', days: 2, days_on_chart: null, signer_contact_id: null, source_message_id: null },
   ])
 }
 const fairOaks = (s: GcState) => s.projects.find((p) => p.id === 'fairoaksd')!

@@ -22,6 +22,8 @@ function row(over: Partial<DailyLogRow> = {}): DailyLogRow {
     written_by: 'u1',
     created_at: '2026-10-02T14:00:00Z',
     updated_at: '2026-10-02T14:00:00Z',
+    customer_line: null,
+    customer_line_es: null,
     gc_daily_log_crews: [
       { log_id: 'log-1', package_id: 'fhvac', workers: 2 },
       { log_id: 'log-1', package_id: 'fsteel', workers: 4 },

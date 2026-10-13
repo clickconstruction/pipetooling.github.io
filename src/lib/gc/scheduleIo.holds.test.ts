@@ -31,6 +31,7 @@ function board(): GcState {
 const tuesday: DailyLogRow = {
   id: 'log-29', project_id: 'fairoaksd', log_date: '2026-09-29', sky: 'rain', high: 72, low: 61, weather_stop: false, done: 'Steel on the east bay.', visitors: '',
   photos_url: null, written_on: '2026-09-29', written_by: 'u1', created_at: '2026-09-29T22:00:00Z', updated_at: '2026-09-29T22:00:00Z',
+  customer_line: null, customer_line_es: null,
   gc_daily_log_crews: [{ log_id: 'log-29', package_id: 'fplumb', workers: 3 }, { log_id: 'log-29', package_id: 'fsteel', workers: 4 }],
   gc_daily_log_delays: [{ id: 'd1', log_id: 'log-29', position: 0, package_id: 'fsteel', reason: 'weather', note: 'Rain until noon' }],
 }
@@ -78,7 +79,7 @@ describe('scheduleHoldsState (the schedule’s PR 16a)', () => {
 
   it('lays the job’s change orders through the office’s view for every reader, their money hidden (16b-ii)', async () => {
     vi.mocked(loadGcChangeOrdersOffice).mockResolvedValue([
-      { id: 'co-1', project_id: 'fairoaksd', number: 1, description: 'Thicker slab', reason: 'plans', schedule_words: '', package_id: 'fconc', status: 'signed', sent_on: '2026-09-24', answered_on: '2026-09-26', days: 2, days_on_chart: null },
+      { id: 'co-1', project_id: 'fairoaksd', number: 1, description: 'Thicker slab', reason: 'plans', schedule_words: '', package_id: 'fconc', status: 'signed', sent_on: '2026-09-24', answered_on: '2026-09-26', days: 2, days_on_chart: null, signer_contact_id: null, source_message_id: null },
     ])
     const s = await scheduleHoldsState(board(), 'fairoaksd')
     expect(loadGcChangeOrdersOffice).toHaveBeenCalledWith(['fairoaksd'])
