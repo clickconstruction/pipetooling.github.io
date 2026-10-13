@@ -55,6 +55,14 @@ describe('a change order from its row', () => {
     expect([co.cost, co.price, co.daysOnChart]).toEqual([0, 0, ['move-1', 'move-2']])
   })
 
+  it('reads the customer message one was started from and who signs it, and neither on one drafted here (Messages cut 4b)', () => {
+    const fromMessage = changeOrderFromRow({ ...row({}), source_message_id: 'm-priya-sink', signer_contact_id: 'c-priya' } as ChangeOrderRow)
+    expect(fromMessage).toMatchObject({ sourceMessageId: 'm-priya-sink', signerContactId: 'c-priya' })
+    const drafted = changeOrderFromRow({ ...row({}), source_message_id: null, signer_contact_id: null } as ChangeOrderRow)
+    expect(drafted).not.toHaveProperty('sourceMessageId')
+    expect(drafted).not.toHaveProperty('signerContactId')
+  })
+
   it('reads an answer pressed in their portal and a decline’s reason, trimmed (O7c)', () => {
     const portal = changeOrderFromRow({ ...row({ status: 'declined', sent_on: '2026-10-08', answered_on: '2026-10-09', answered_how: 'portal' }), declined_note: ' Over our budget this year ' } as ChangeOrderRow)
     expect([portal.answeredInPortal, portal.declinedNote]).toEqual([true, 'Over our budget this year'])

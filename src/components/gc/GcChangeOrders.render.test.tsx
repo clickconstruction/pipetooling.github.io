@@ -37,6 +37,88 @@ function setup(emailed: Record<string, { to: string; on: string }[]> = {}) {
 }
 
 describe('GcChangeOrdersWindow', () => {
+  // Messages cut 4b: the office drafts one from a customer's message at 0, and the money team prices it here.
+  const fromMessageProject = () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+    const project = {
+      ...fairOaks,
+      changeOrders: [
+        { ...base, id: 'co-1', number: 1, status: 'draft' as const, sentOn: null, answeredOn: null },
+        {
+          ...base,
+          id: 'co-7',
+          number: 7,
+          description: 'Add a sink in exam 3',
+          status: 'draft' as const,
+          sentOn: null,
+          answeredOn: null,
+          cost: 0,
+          price: 0,
+          days: 0,
+          schedule: 'none',
+          sourceMessageId: 'm-priya-sink',
+          signerContactId: 'c-priya',
+        },
+      ],
+    }
+    return { state, project }
+  }
+  const LINE = 'From Dr. Raman’s text on Thu Oct 1.'
+
+  it('reads a change order from a customer’s message back to it, and prices a draft that came in at 0 (Messages cut 4b)', () => {
+    const { state, project } = fromMessageProject()
+    const writes = { onDraft: vi.fn(), onSend: vi.fn(), onAnswer: vi.fn(), onSetPct: vi.fn(), onDelete: vi.fn(), onDraftFromRequest: vi.fn(), onTurnDown: vi.fn(), onTell: vi.fn(), onPrice: vi.fn() }
+    const onOpenMessage = vi.fn()
+    render(
+      <GcChangeOrdersWindow
+        state={state}
+        project={project}
+        today="2026-10-02"
+        writes={writes}
+        fromMessages={{ 'co-7': { line: LINE, contactId: 'c-priya', messageId: 'm-priya-sink' } }}
+        onOpenMessage={onOpenMessage}
+        onClose={() => undefined}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: LINE }))
+    expect(onOpenMessage).toHaveBeenCalledWith('c-priya', 'm-priya-sink')
+    // The one at 0 reads Price it; one drafted here with its price reads Change the price.
+    expect(screen.getByRole('button', { name: 'Change the price' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Price it' }))
+    const save = screen.getByRole('button', { name: 'Save the price' }) as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('What it costs us'), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText('What it adds to their price'), { target: { value: '1500' } })
+    // A cost of nothing is not a price: the database refuses it, so the press waits.
+    expect(save.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('What it costs us'), { target: { value: '1200.4' } })
+    fireEvent.change(screen.getByLabelText('What it adds to their price'), { target: { value: '1500.6' } })
+    fireEvent.click(save)
+    expect(writes.onPrice).toHaveBeenCalledWith('co-7', 1200, 1501)
+    expect(screen.queryByRole('button', { name: 'Save the price' })).toBeNull()
+    cleanup()
+  })
+
+  it('draws the line back as words when nothing opens it, and no price press without the write', () => {
+    const { state, project } = fromMessageProject()
+    const writes = { onDraft: vi.fn(), onSend: vi.fn(), onAnswer: vi.fn(), onSetPct: vi.fn(), onDelete: vi.fn(), onDraftFromRequest: vi.fn(), onTurnDown: vi.fn(), onTell: vi.fn() }
+    render(
+      <GcChangeOrdersWindow
+        state={state}
+        project={project}
+        today="2026-10-02"
+        writes={writes}
+        fromMessages={{ 'co-7': { line: LINE, contactId: 'c-priya', messageId: 'm-priya-sink' } }}
+        onClose={() => undefined}
+      />,
+    )
+    expect(screen.getByText(LINE)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: LINE })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Price it' })).toBeNull()
+    cleanup()
+  })
+
   it('says an answer came from their portal, and a decline’s reason (O7c)', () => {
     const state = initialGcState()
     const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!

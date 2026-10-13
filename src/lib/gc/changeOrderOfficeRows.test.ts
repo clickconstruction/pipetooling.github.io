@@ -9,10 +9,14 @@ const row = (over: Partial<ChangeOrderOfficeRow> = {}): ChangeOrderOfficeRow => 
 })
 
 describe('the office’s view of a change order (the schedule’s PR 16b-ii)', () => {
-  it('never carries cost, price or pct_done: the row type has exactly the twelve, and so does the io’s select', () => {
+  it('never carries cost, price or pct_done: the row type has exactly the fourteen, and so does the io’s select', () => {
     type Keys = keyof ChangeOrderOfficeRow
-    expectTypeOf<Keys>().toEqualTypeOf<'id' | 'project_id' | 'number' | 'description' | 'reason' | 'schedule_words' | 'package_id' | 'status' | 'sent_on' | 'answered_on' | 'days' | 'days_on_chart'>()
-    expect(CHANGE_ORDER_OFFICE_COLUMNS.split(', ').sort()).toEqual(['answered_on', 'days', 'days_on_chart', 'description', 'id', 'number', 'package_id', 'project_id', 'reason', 'schedule_words', 'sent_on', 'status'])
+    expectTypeOf<Keys>().toEqualTypeOf<
+      'id' | 'project_id' | 'number' | 'description' | 'reason' | 'schedule_words' | 'package_id' | 'status' | 'sent_on' | 'answered_on' | 'days' | 'days_on_chart' | 'signer_contact_id' | 'source_message_id'
+    >()
+    expect(CHANGE_ORDER_OFFICE_COLUMNS.split(', ').sort()).toEqual([
+      'answered_on', 'days', 'days_on_chart', 'description', 'id', 'number', 'package_id', 'project_id', 'reason', 'schedule_words', 'sent_on', 'signer_contact_id', 'source_message_id', 'status',
+    ])
     for (const money of ['cost', 'price', 'pct_done']) expect(CHANGE_ORDER_OFFICE_COLUMNS).not.toContain(money)
   })
 
@@ -28,6 +32,9 @@ describe('the office’s view of a change order (the schedule’s PR 16b-ii)', (
       cost: 0, price: 0, pctDone: 0, status: 'signed', sentOn: '2026-09-24', answeredOn: '2026-09-26', days: 2,
     })
     expect(changeOrderFromOfficeRow(row({ days_on_chart: ['move-1'], days: 4 }))?.daysOnChart).toEqual(['move-1'])
+    // Started from a customer's message (Messages cut 4b): the message and who signs ride along; neither when unset.
+    expect(changeOrderFromOfficeRow(row({ source_message_id: 'm-priya-sink', signer_contact_id: 'c-priya' }))).toMatchObject({ sourceMessageId: 'm-priya-sink', signerContactId: 'c-priya' })
+    expect(changeOrderFromOfficeRow(row())).not.toHaveProperty('sourceMessageId')
     expect(changeOrderFromOfficeRow(row({ id: null }))).toBeNull()
     expect(() => changeOrderFromOfficeRow(row({ status: 'lost' }))).toThrow('A change order\'s status reads "lost", which the app does not know.')
   })

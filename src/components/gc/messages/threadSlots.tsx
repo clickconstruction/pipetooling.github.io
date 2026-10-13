@@ -10,6 +10,7 @@
  * status row.
  */
 import { createElement, Fragment, type ReactNode } from 'react'
+import { useChangeOrderThreadSlots } from '../../changeOrders/useChangeOrderThreadSlots'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
@@ -104,5 +105,7 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
 export function useThreadSlots(): ThreadSlots {
   // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
   const flow: ThreadSlots = { side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side /> }
-  return mergeThreadSlots(flow)
+  // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
+  const changeOrders = useChangeOrderThreadSlots()
+  return mergeThreadSlots(flow, changeOrders)
 }

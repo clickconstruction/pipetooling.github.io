@@ -10,13 +10,19 @@ import type { Database } from '../../types/database'
 import type { ChangeOrder, ChangeOrderReason, GcState } from './types'
 
 /**
- * One row of the view, as the regen after 20261010081000's push generated it. Every column is nullable, as a view's
- * are. Its keys are the view's twelve, never cost, price or pct_done (the test holds it).
+ * One row of the view, as the regen after 20261010081000's push generated it, with the two that Messages cut 4b adds
+ * (20261012180000): who signs it and the message it came from, optional until the types regenerate after that push.
+ * Every column is nullable, as a view's are. Its keys are the view's fourteen, never cost, price or pct_done (the test
+ * holds it).
  */
-export type ChangeOrderOfficeRow = Database['public']['Views']['gc_change_orders_office']['Row']
+export type ChangeOrderOfficeRow = Database['public']['Views']['gc_change_orders_office']['Row'] & {
+  signer_contact_id?: string | null
+  source_message_id?: string | null
+}
 
-/** The columns the io reads: the view's twelve, never a money one. */
-export const CHANGE_ORDER_OFFICE_COLUMNS = 'id, project_id, number, description, reason, schedule_words, package_id, status, sent_on, answered_on, days, days_on_chart'
+/** The columns the io reads: the view's fourteen, never a money one. */
+export const CHANGE_ORDER_OFFICE_COLUMNS =
+  'id, project_id, number, description, reason, schedule_words, package_id, status, sent_on, answered_on, days, days_on_chart, signer_contact_id, source_message_id'
 
 const REASONS: readonly ChangeOrderReason[] = ['owner', 'field', 'plans']
 const STATUSES: readonly ChangeOrder['status'][] = ['draft', 'sent', 'signed', 'declined']
@@ -45,6 +51,8 @@ export function changeOrderFromOfficeRow(row: ChangeOrderOfficeRow): ChangeOrder
     answeredOn: row.answered_on,
     ...(row.days !== null ? { days: row.days } : {}),
     ...(row.days_on_chart ? { daysOnChart: row.days_on_chart } : {}),
+    ...(row.source_message_id ? { sourceMessageId: row.source_message_id } : {}),
+    ...(row.signer_contact_id ? { signerContactId: row.signer_contact_id } : {}),
   }
 }
 

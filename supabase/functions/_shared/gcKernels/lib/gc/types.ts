@@ -1048,6 +1048,12 @@ export interface ChangeOrder {
    * is signed G-98 stops counting those moves as the customer's. Unset: an ordinary change order.
    */
   daysOnChart?: string[]
+  /**
+   * Messages cut 4b (migration 20261012180000): the customer message it was started from, and the contact who signs it.
+   * Absent on one drafted in the Change orders window.
+   */
+  sourceMessageId?: string
+  signerContactId?: string
 }
 
 /** What an RFI's answer changes: nothing, the plans (a new set follows from Plans), or cost and days. */
