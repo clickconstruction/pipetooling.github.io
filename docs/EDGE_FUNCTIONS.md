@@ -313,6 +313,8 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 ### create-user
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. `ensureLinkedRosterRow` catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, keeping `verify_jwt = false` from `config.toml`, so `check:edge-drift` stops naming it.
+
 **Purpose**: Create new users with specified roles (dev-only operation) `is_sample: true` (v2.3606, dev only like every call) makes a View-as sample account. **One door is not dev-only (v2.3627): `trial_prospect_id`** — Hiring → *Try out*. The caller must hold the Hiring board, or (v2.3798) hold a share on the card's column (`user_can_work_team_prospect(card)`, or be a dev); the function reads the card **as the caller** (RLS decides whether they may see it), refuses a card that is not on Screen / Interview, already has a `trial_user_id`, or has no well-formed email, and then **ignores `email`, `password`, `name`, `role`, `read_only` and `is_sample` from the body**: it makes a `helpers` login from the card's own name and email with a password nobody is told (the helper signs in by emailed link), sets `users.trial_prospect_id`, and moves the card to `status = 'trial'` with `trial_user_id` / `trial_started_at` — guarded on the status it read, so a second press loses with a 409 and its account is taken back out. Only `service_type_ids` is read from the body on this door.
 
 
@@ -674,6 +676,8 @@ const response = await supabase.functions.invoke('restore-user', {
 
 ### login-as-user
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Generate magic link for user impersonation (dev, master, and assistant access). The client (`lib/loginAsUser.ts`) passes `redirectTo` = the page the operator is on (v2.3606; was the role's home page) and stashes `returnTo` beside the tokens so Exit lands back there.
 
 **Endpoint**: `POST /functions/v1/login-as-user`
@@ -792,6 +796,8 @@ const response = await supabase.functions.invoke('login-as-user', {
 ---
 
 ### dev-login
+
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error?.message` off an `unknown`, which the optional chain narrows to `{}` (TS2339). It reads `(error as Error)?.message` now, as `merge-users` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Password-free sign-in when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials. **Frontend identity is fixed (v2.1517)**: `src/pages/DevLogin.tsx` always sends `robert@douglasmining.com` (`DEV_LOGIN_EMAIL` constant) — the `?as=` value and the old email input no longer pick the account; `as`'s presence just triggers the auto-login, but for `?as=twin:<role>[:<n>]`, which signs in as that twin's account (v2.2426, `twinAliasEmail`). It signs in once per URL (v2.4993, `signedInFor`): StrictMode's second run minted a second link, which cancelled the first. The function itself still accepts any existing user's email if invoked directly with the secret.
 
@@ -1431,6 +1437,8 @@ The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildG
 ---
 
 ### send-workflow-notification
+
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON, VAPID keys web-push refuses, or a `fetch` to Resend that fails (`TypeError`) or answers with something other than JSON. Each push send catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Send workflow stage email notifications via Resend; optionally send Web Push when **`recipient_user_id`** and VAPID keys are set.
 
@@ -2801,6 +2809,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-checklist-notification
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON, or VAPID keys web-push refuses. Each push send catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Send Web Push notifications for checklist events (completion, test)
 
 **Endpoint**: `POST /functions/v1/send-checklist-notification`
@@ -3211,6 +3221,8 @@ Skipped events return 200 with `skipped: true` (anything but a clock-out).
 
 ### send-scheduled-reminders
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error?.message` off an `unknown`, which the optional chain narrows to `{}` (TS2339). It reads `(error as Error)?.message` now, as `merge-users` does. What its `try` can throw is an `Error`: VAPID keys web-push refuses. The body read, each push and each email catch their own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Send reminders for incomplete checklist tasks at configured times (CST) — Web Push first, **email fallback via Resend** (v2.2096) for users with no push device, so a reminder never silently vanishes. Invoked by pg_cron every 15 minutes. Since v2.2351 the **day-before** and **escalate-after-N-days** buckets key on the *effective due date* (`checklist_items.due_date` when set, else the instance's `scheduled_date`) — for windowed tasks the nudge lands the day before the deadline and escalation means N days *late*; items without a due date behave exactly as before. Since v2.2371 escalated titles carry a **pushed-back rider** — "(pushed ×2, +5d)" from the `checklist_item_due_changes` ledger (inline mirror of `src/lib/checklistDuePushes.ts`; keep in sync) — so escalation can't be quietly dodged by nudging the due date. Since v2.2056 the 03:00 CST run also performs the **weekly materialization top-up**: every active `day_of_week` item is stocked with occurrence rows 35 days ahead (mirrors `src/lib/checklistMaterialize.ts` — keep the Deno copy in sync; upserts against the `(checklist_item_id, scheduled_date)` unique index; new instances copy the item's current assignees). Pass `{"materialize": true}` in the body (with the cron secret) to force the top-up outside the 03:00 slot — the response then carries a `materialized` count.
 
 **Endpoint**: `POST /functions/v1/send-scheduled-reminders`
@@ -3461,6 +3473,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### set-user-password
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Set password for any user (dev-only operation)
 
 **Endpoint**: `POST /functions/v1/set-user-password`
@@ -3581,6 +3595,8 @@ The address is checked by the shared rule [`_shared/signInEmailChange.ts`](../su
 - **500** `Nothing changed: <error>` when the app's copy failed and the login was put back.
 
 ### claim-dev
+
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: **Break-glass only (v2.706).** Promote the current user to dev *when no usable dev is available* — bootstrapping the first dev, or recovering when every dev is archived or read-only. It is **not** a general self-promotion path: if a usable dev exists, use **Settings → People & accounts** instead.
 
