@@ -102,6 +102,18 @@ export function contentDisposition(name: string, mime: string | null = null): st
   return `${streamsInline(mime) ? 'inline' : 'attachment'}; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}`
 }
 
+/** A file from this computer as the office's door and messages-email take it: base64, a data URL's head allowed. Null when it is not base64. */
+export function bytesOfBase64(b64: string): Uint8Array | null {
+  try {
+    const bin = atob(b64.replace(/^data:[^,]*,/, '').trim())
+    const out = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i)
+    return out
+  } catch {
+    return null
+  }
+}
+
 /** A job, as the spine ties a line: a bid, a GC project or a Pipeline job. */
 export type JobRef = { bid_id: string } | { project_id: string } | { jobs_ledger_id: string }
 

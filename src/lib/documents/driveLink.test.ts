@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DRIVE_FOLDER_MIME,
+  bytesOfBase64,
   LINK_DAYS,
   STREAM_CAP_BYTES,
   contentDisposition,
@@ -112,6 +113,14 @@ describe('the link itself', () => {
       expect(streamsInline(mime)).toBe(false)
     expect(contentDisposition('Bid tab.html', 'text/html')).toBe(`attachment; filename="Bid tab.html"; filename*=UTF-8''Bid%20tab.html`)
     expect(contentDisposition('Rock clause.pdf', 'application/pdf')).toMatch(/^inline; /)
+  })
+})
+
+describe('a file from this computer', () => {
+  it('reads base64 and a data URL into bytes, and anything else as nothing', () => {
+    expect(Array.from(bytesOfBase64('JVBERi0=') ?? [])).toEqual([37, 80, 68, 70, 45])
+    expect(Array.from(bytesOfBase64('data:application/pdf;base64,JVBERi0=') ?? [])).toEqual([37, 80, 68, 70, 45])
+    expect(bytesOfBase64('not base64 at all!')).toBeNull()
   })
 })
 
