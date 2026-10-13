@@ -22,6 +22,7 @@ import { jobTilesByKey, type BidTileRow, type GcProjectTileRow, type JobTile, ty
 import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { jobRefOf, threadMessagesFromRows, type MessageRow } from './load'
 import { sentLines } from './sentLines'
+import type { OwnLinkState } from './sentLineFiles'
 import type { ThreadMessage } from './thread'
 
 /** Everything the Messages view and a thread window draw. */
@@ -298,6 +299,45 @@ export async function saveToDrive(attachmentId: string, half: 'plans' | 'team_on
   const d = (r.data ?? {}) as { driveFileId?: string; url?: string }
   if (!d.driveFileId || !d.url) throw new Error('The file was not saved to Drive.')
   return { driveFileId: d.driveFileId, url: d.url }
+}
+
+/**
+ * Our own links' state for the message window (cut 7f): each `drive_links` row's cut and end, who cut it, and its opens
+ * read back through `drive_link_views` (outside opens only, never who). Keyed by the link's id.
+ */
+export async function loadOwnLinks(linkIds: readonly string[]): Promise<Record<string, OwnLinkState>> {
+  if (linkIds.length === 0) return {}
+  const ids = [...new Set(linkIds)]
+  const [links, views] = await Promise.all([
+    inSlices<{ id: string; cut_at: string | null; cut_by: string | null; ends_at: string }>(ids, (slice) => from('drive_links').select('id, cut_at, cut_by, ends_at').in('id', slice) as never, 'read our links'),
+    rpc('drive_link_views', { p_link_ids: ids }),
+  ])
+  const opens = taken(views as unknown as Result<{ link_id: string; opens: number; opened_at: string[] | null }[]>, 'read our links’ opens') ?? []
+  const cutBy = unique(links.map((l) => l.cut_by))
+  const names = cutBy.length
+    ? Object.fromEntries(
+        (await inSlices<{ id: string; name: string | null }>(cutBy, (slice) => supabase.from('users').select('id, name').in('id', slice), 'read who cut a link off')).map((u) => [u.id, u.name ?? '']),
+      )
+    : {}
+  const byLink = new Map(opens.map((o) => [o.link_id, o]))
+  return Object.fromEntries(
+    links.map((l) => {
+      const o = byLink.get(l.id)
+      const state: OwnLinkState = {
+        cutAt: l.cut_at,
+        cutByName: (l.cut_by && names[l.cut_by]?.trim()) || null,
+        endsAt: l.ends_at,
+        opens: o?.opens ?? 0,
+        openedAt: o?.opened_at ?? [],
+      }
+      return [l.id, state]
+    }),
+  )
+}
+
+/** Cut our own link off (cut 7f, `cut_drive_link`): it opens the turned-off words from now on. Refused in words. */
+export async function cutOwnLink(linkId: string): Promise<void> {
+  taken((await rpc('cut_drive_link', { p_link_id: linkId })) as unknown as Result<string>, 'cut the link off')
 }
 
 const jobArgs = (key: string | null) => {
