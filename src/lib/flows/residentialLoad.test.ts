@@ -8,8 +8,8 @@ import type {
   PipelineMessageRow,
   PipelinePaymentRow,
   ResidentialRows,
-} from './load'
-import { billedRounds, estimateStamps, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps } from './load'
+} from './residentialLoad'
+import { billedRounds, estimateStamps, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps } from './residentialLoad'
 import { SEED_FLOWS } from './seed'
 import type { FlowReading } from './state'
 import { readFlow } from './state'
