@@ -42,3 +42,4 @@ merge-customers
 contact-for-customer
 photo-saves
 running-late-move
+contacts-kinds
