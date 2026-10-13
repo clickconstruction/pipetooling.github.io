@@ -13,7 +13,7 @@
  * and its webhook stay for the try-out branch.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { trialVerdictPush } from '../_shared/trialVerdictPush.ts'
 
@@ -50,7 +50,7 @@ function verifyCaller(authHeader: string | null): boolean {
   return false
 }
 
-type AdminClient = ReturnType<typeof createClient>
+type AdminClient = SupabaseClient
 
 /** Web Push one payload to every subscription a person has; returns how many were delivered. */
 async function pushToUser(adminClient: AdminClient, userId: string, payload: string): Promise<number> {

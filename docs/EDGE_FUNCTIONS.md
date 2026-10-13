@@ -843,6 +843,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ### dev-mcp
 
+> **v2.5376 — `deno check` passes again**: `Admin` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `dev_mcp_credentials` touch and the `dev_mcp_calls` insert took `never`, and the service-role client could not be handed to `resolveDev`, `logCall`, `resolveViewAsTarget`, `sessionFor` or `priorApply` (8 errors). It is `SupabaseClient` now. The emitted JavaScript is byte-identical and the catalog does not change, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.5010 — `get_customer` and `get_job` read the one payment rule**: `customerProfileStats` (`customerMoneyStats`, `profileJobRowMoney`) nets each bill with `appliedByInvoiceUnderRule` — money put on the job with no bill picked pays the part of the job on no bill, then the sent bills oldest first — as the Customer Hub and the Pipeline board read it (the owner's call of 2026-10-09). The composite reads carry `sequence_order`. **Redeploy after merge.**
 
 > **v2.4624 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `legal-send-firm-link` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
@@ -2589,6 +2591,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-one
 
+> **v2.5376 — `deno check` passes again**: `upsertGeocode` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `address_geocodes` upsert took `never` and none of its four callers could hand it the caller's client (5 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4974 — the controller is admitted**: the role check named dev, master_technician, assistant and estimator, while the Edit Job *On the map* line (and `/map` itself) opened to the controller too, so a controller's form showed a line the function answered with a 403. The list is now the five `/map` roles — the client's `isPathAllowedForRole(role, '/map')`. **Redeploy required** (until then a controller's line reads *could not place it*).
 
 > **v2.4975 — only points in the lower 48 are kept**: a point outside lat 24–50, lng −125 to −66 ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)) from OpenStreetMap, Google or the Census is a miss. It is not written to `address_geocodes`, it is logged with the raw answer, `detail` names it (*OpenStreetMap placed it outside the lower 48 (26.7813, 91.9274)*), and the next geocoder is asked. A cached point outside the box is not a cache hit: the address is asked again and a good answer replaces the row. **Redeploy after merge.**
@@ -3046,6 +3050,8 @@ The editor's toast reads *Sent to Maria and Robert with a push and an email.* (o
 
 ### notify-dispatch-request
 
+> **v2.5376 — `deno check` passes again**: `notifyRequester` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so its `notification_history` insert took `never` and the service-role client could not be handed in (2 errors). It takes `SupabaseClient` now. The outer `catch` read `error.message` off an `unknown` (1 error) and reads `(error as Error).message` now, as `invite-user` does: what the `try` can throw is an `Error`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group). Since **v2.2880** the same function also carries the answer back: `mode: 'closed' | 'reopened'` pushes the **requester** (`from_user_id`) with the office's closing note and always logs them a `notification_history` row (journey-map Tier-2 #25 — "closing a field request tells the tech nothing").
 
 **Endpoint**: `POST /functions/v1/notify-dispatch-request`
@@ -3147,6 +3153,8 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 ---
 
 ### notify-team-lead-clock
+
+> **v2.5376 — `deno check` passes again**: `AdminClient` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `trial_helper_supervisors` arguments and the `notification_history` insert were refused, and the service-role client could not be handed to `notifyTrialHelperLeads` (3 errors). It is `SupabaseClient` now. The RPC takes `p_helper_user_id` and `p_work_date` as written. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: The try-out loop's push when a trial helper **clocks out** (`clocked_out_at` becomes non-null on UPDATE). Invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser; every other event is skipped. Until v2.5088 it also pushed *Team clock in / out* to leaders who opted in on the Team leads list (`team_leader_assignments` + `team_leader_clock_notify_prefs`); that flow went with the list (migration `20261010022000`), and the name stayed so the webhook needs no rewiring.
 
@@ -4380,6 +4388,8 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 ---
 
 ### get-stripe-invoice-details
+
+> **v2.5376 — `deno check` passes again**: the field path's `adminForSub` was typed `ReturnType<typeof createClient> | null`, which supabase-js 2.117 resolves to a client with no schema, so the bill, team and collect-flow rows it reads were `never` and its memo/footer backfill `.update` took `never` (7 errors). It is `SupabaseClient | null` now. Each column it reads and writes is on its table in `src/types/database.ts`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
