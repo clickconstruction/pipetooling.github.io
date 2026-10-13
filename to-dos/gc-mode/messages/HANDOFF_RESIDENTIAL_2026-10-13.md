@@ -8,7 +8,7 @@ The owner wants the plumbing company's own customers on the Messages spine so a 
 
 ## 2. The first thing to do
 
-0. **No stamp collision after all** (settled 22:55 CT): GitHub's ledger holds `refs/claims/migration-20261013200000` for #5586 (the sub flow) and `20261013210000` for helper 7's R3 SQL; `npm run claim` had already given helper 7 the next number. The push order is 170000, 180000, 190000, 200000, 210000. The tables below are corrected.
+0. **No stamp collision after all** (settled 22:55 CT): GitHub's ledger holds `refs/claims/migration-20261013200000` for #5586 (the sub flow) and `20261013210000` for helper 7's R3 SQL; `npm run claim` had already given helper 7 the next number. The push order is 170000, 180000, 190000, 200000, 210000, 220000. The tables below are corrected.
 1. **Announce yourself to the helpers.** They are Claude Desktop sessions named "Customer communication helper 1" through "9", reachable by name with `SendMessage` (run `ListAgents` to see them). Tell each: "I am the new lead. Send me your next report." They were told to finish their current piece, open its PR, and wait for the next lead.
 2. **Do not touch the merge queue.** Our PRs are queued behind a CI backlog of our own making (about 46 runs at 22:35). A queued PR shows no `autoMergeRequest`; read `mergeQueueEntry` by GraphQL instead. A re-arm on a queued PR does nothing; a dequeue costs its place.
 3. **Push migrations in stamp order after each merges**, with `supabase db push` from a checkout with `.env.local` (copy it from a sibling worktree; see the memory file "env-local-file-is-fine-to-use"). Review the landed file first. Run `npm run check:migration-drift` after. The order is in section 6.
@@ -53,6 +53,8 @@ State is GitHub's: queued = in the merge queue (position in parentheses); armed 
 | #5582 | R6 | two boxes, two numbers (`messages/boxes.ts`) | 7 | `claude/messages-two-boxes` | armed |
 | #5586 | R8 · 12 | the sub flow: six facts, `SEED_FLOWS.sub`, migration 20261013200000 re-creating `flow_fact_ids()` and `flows_seed()`, a `sub-flow` bed | 1 | `claude/sub-flow-facts-seed` | draft on #5568 |
 | #5588 | R3 | the SQL: `text_es`, `phone_order`, `phone_name`, the `es` and `phone` version kinds with from and to order, `edit_quick_reply` recreated (a LATER re-run in the bed), seven kinds widened, `messages.quick_reply_id`; migration 20261013210000 | 7 | `claude/quick-replies-phone-es-sql` | armed |
+| #5585 | R8 · 16 | `customers.language`, migration 20261013220000 | 6 | (see PR) | armed; push after merge, then a types PR from prod |
+| #5589 | R8 · 16 | the reads: `Contact.lang`, `customerLang`, `lineFor`, `languageWords` | 6 | (see PR) | draft on #5570; swaps in `wordsFor` once #5558 lands |
 
 Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contacts-seven-kinds-sql`, migration 20261013180000, v2.5410; opens when #5565 lands, since its ACCESS_CONTROL clause edits a line #5565 changes); helper 3's stepsByFlow kernel (branch `claude/r3-steps-by-flow`, v2.5411; opens after #5568 lands).
 
@@ -65,7 +67,7 @@ Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contact
 | 3 | stepsByFlow (`quickReplies/kernel.ts`: `stepsByFlow`, `qrStepName` across flows, the `es` and `phone` version words), committed | #5568 to land; #5558 for the one `textEs` field | arm it; delete the `PhoneLine.textEs` redeclaration if #5558 landed first |
 | 4 | nothing assigned since #5558 | | assign: see section 8 |
 | 5 | nothing assigned since #5561 | | assign: see section 8 |
-| 6 | R8 · 16 language on the customer: PR 1 the column (stamp from `npm run claim`), PR 2 the reads on #5570 (go given) | #5558 for `wordsFor` | |
+| 6 | done: #5585 and #5589 opened; waiting | #5565 → #5570, and #5558 | rebase #5583 onto #5570 so `addedToProspects` and `bookingRepoint` call `nameContact` (one home per rule; #5570 gained that logic after #5583 was built), arm #5583 and #5589 |
 | 7 | done: #5588 opened and armed; waiting | #5557 to land | #5559's rebase and arm |
 | 8 | R5 SQL, stamp 20261013190000 (go given) | | |
 | 9 | R7 SQL `messages.tied_by` (brief sent, no prepare note needed) | #5565 to land for #5584 | the Glossary consolidation PR (section 7) |
@@ -79,7 +81,8 @@ Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contact
 | 20261013190000 | R5: `messages_tech_team()`, the tech's door, `has_until`, `office_only`, hours and wait settings, `notification_history.message_id` | not open yet | 8 |
 | 20261013200000 | R8 · 12 PR 1: the sub flow's fact and seed lists | #5586 | 1 |
 | 20261013210000 | R3: `text_es`, `phone_order`, `phone_name`, `es` and `phone` version kinds, `edit_quick_reply` recreated, `messages.quick_reply_id`, `quick_replies_for_known` widened | #5588 | 7 |
-| next claimed | R8 · 16 (`customers.language`), R7 (`messages.tied_by`) | | 6, 9 |
+| 20261013220000 | R8 · 16: `customers.language` | #5585 | 6 |
+| next claimed | R7 (`messages.tied_by`) | | 9 |
 
 Main's newest migration is `20261013110000_drive_links.sql`. Beds run only in CI from this Mac. After each push, read the drift check; after the kinds push, one types PR from a prod regen.
 

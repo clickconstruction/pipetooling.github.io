@@ -54,7 +54,7 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 | 20261013190000 | R5 | building (helper 8) | `messages_tech_team()`, the tech's door, `has_until`, `office_only`, the hours and wait settings, `notification_history.message_id` |
 | 20261013200000 | R8 · 12 | #5586 (helper 1) | the sub flow's fact and seed lists, `SEED_FLOWS.sub` |
 | 20261013210000 | R3 | #5588 (helper 7) | `text_es`, `phone_order`, `phone_name`, the `es` and `phone` version kinds, `edit_quick_reply` recreated, `messages.quick_reply_id` |
-| next | R8 · 16 | PR 1 (helper 6) | `customers.language` |
+| 20261013220000 | R8 · 16 | #5585 (helper 6) | `customers.language` |
 
 ## 4. The build, in order
 
