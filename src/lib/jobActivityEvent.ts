@@ -46,6 +46,7 @@ export type JobActivityEventType =
   | 'discount_changed'
   | 'discount_removed'
   | 'payment_promise'
+  | 'running_late'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -139,6 +140,9 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   // A payment promise (v2.4103) — read-side: the thread hook maps the live rows of
   // job_payment_promises ("They said…", the GC's word on a statement round) into the feed; financial.
   payment_promise: { tag: 'They said', ...MONEY_GREEN, bucket: 'billing' },
+  // A tech's Running late move (v2.5431, residential R8 · 3) — written by running_late_move on the late
+  // block's job: the new window and the reason ("said to Dana, 9:02 AM"); not financial.
+  running_late: { tag: 'Running late', ...CREW_INDIGO, bucket: 'crew' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {
