@@ -1340,6 +1340,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "self_remove_schedule_block": [{"args":{"p_block_id":"string"},"returns":"undefined"}],
   "self_salary_clock_state": [{"args":{},"returns":"{ has_template: boolean is_salary: boolean record_hours_but_salary: boolean }[]"}],
   "self_schedule_add_block": [{"args":{"p_job_id":"string","p_join_crew?":"boolean","p_time_end":"string","p_time_start":"string","p_work_date":"string"},"returns":"string"}],
+  "sent_copy_stamps": [{"args":{"p_ids":"string[]"},"returns":"{ from_email: string id: string opened_at: string paid_how: string paid_on: string }[]"}],
   "service_apply_agreed_write_down_from_stripe": [{"args":{"p_actor_user_id":"string","p_invoice_id":"string","p_new_amount":"number","p_note":"string","p_stripe_credit_note_id":"string"},"returns":"Json"}],
   "set_back_day": [{"args":{"p_note_id":"string","p_on":"string","p_words?":"string"},"returns":"undefined"}],
   "set_cashapp_alias": [{"args":{"p_counterparty":"string","p_not_staff":"boolean","p_person":"string","p_reason":"string"},"returns":"Json"}],

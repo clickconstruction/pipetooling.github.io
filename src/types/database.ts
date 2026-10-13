@@ -36340,6 +36340,16 @@ export type Database = {
         }
         Returns: string
       }
+      sent_copy_stamps: {
+        Args: { p_ids: string[] }
+        Returns: {
+          from_email: string
+          id: string
+          opened_at: string
+          paid_how: string
+          paid_on: string
+        }[]
+      }
       service_apply_agreed_write_down_from_stripe: {
         Args: {
           p_actor_user_id: string
