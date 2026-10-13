@@ -42,7 +42,7 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 | R6 | `messages.mailbox` (`bids` · `team`), `contact_channels.from_number_id` per kind | two boxes, two numbers, the reply from the box they wrote to |
 | R8 · 16 | `customers.language` (`en` · `es`) | read by every contact of theirs |
 | R8 · 8 | `estimates.source_message_id`, the message that started the document (main keeps lines as `estimates.line_items_snapshot` JSON and has no estimate_lines table or save RPC; the Estimates page's write path takes the draft; helper 6's prepare note, 2026-10-13) | the add-on from a message |
-| R8 · 3 | `dispatch_move_reason` on the board's move RPC | a Running late press moves the board with a reason |
+| R8 · 3 | a reason and the job's event line on `self_move_schedule_block` (the tech's own move, one block per call; the office's board writes the table directly and there is no move RPC with a reason), and the dispatcher's note filed as a `dispatch_requests` row, since a tech cannot insert it; a slide past 23:59 moves nothing (helper 7's prepare note, 2026-10-13) | a Running late press moves the board with a reason |
 | R8 · 12 | the sub sheet's facts as stamps: `people_labor_jobs.asked_at`, `said_yes_at`, `on_site_at`, `done_at`; `paid` from the sheet's payments | the sub flow |
 
 ## 4. The build, in order
@@ -127,7 +127,7 @@ In the order that each unblocks the next. Numbers are the mockups' card numbers.
 |---|---|---|---|
 | 14 | The Dashboard's Customers line | 1 | `dashboardNeedsYou.ts` key `customer-messages`: need a reply · we owe · to sort, opening `/messages?kind=customer`; built real behind `CUSTOMER_MESSAGES_LINE_ON = false` until R2's route exists, `toSort` counting open unknown contacts until R7's lane replaces it (helper 8's prepare note, 2026-10-13) |
 | 1 | The app's own emails in the thread | 1 | `messages/sentCopies.ts` reads `sent_documents` by contact into folded **the app** lines with read and paid stamps; `sent_documents.contact_id` set by every sender (cut 7) |
-| 4 | Voicemails read | 1 | the transcript as the line; `messages/owed.ts` → `readDay` on it; **Keep the day** writes cut 2's day heard |
+| 4 | Voicemails read | 1 | the transcript as the line (`QuoLine.transcript` and `summary`, not yet on `ThreadMessage`); `heardDay` finds the phrase with `readDay` over short runs of words and a small time reader; **Keep the day** writes cut 2's `message_promises` offered row through `dayKept` (helper 9's prepare note, 2026-10-13) |
 | 6 | They owe us on Follow up | 1 | `followUp/queue.ts` → `theyOweUs(bills)` from the AR page's reads; the bill's reminder as the step's quick reply, sent by the morning run at the terms |
 | 2 | Reports and photos | 1 | the report as a source in `documents/jobFiles.ts`; **Attach from the report** on the send; a photo reply filed by cut 6 |
 | 7 | The Lien desk's sends | 1 | a `legal` line kind from the desk's sent rows, read-only, the box off under it, the reply to the office alone |
