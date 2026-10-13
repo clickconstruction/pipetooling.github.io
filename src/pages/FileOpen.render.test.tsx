@@ -61,8 +61,15 @@ describe('FileOpen', () => {
     expect(io.fileTarget).not.toHaveBeenCalled()
   })
 
+  it('asks for a file in a job’s Drive folder by its job and file', async () => {
+    io.fileTarget.mockResolvedValue({ url: 'https://drive.google.com/file/d/1AbC-dEf_GhIjKlMnOp/view' })
+    open('/files/drive/project%3A7d3c2a10-4b5e-4f60-9a7b-1c2d3e4f5a6b%3A1AbC-dEf_GhIjKlMnOp')
+    await waitFor(() => expect(io.goToFile).toHaveBeenCalledWith('https://drive.google.com/file/d/1AbC-dEf_GhIjKlMnOp/view'))
+    expect(io.fileTarget).toHaveBeenCalledWith({ source: 'drive', id: 'project:7d3c2a10-4b5e-4f60-9a7b-1c2d3e4f5a6b:1AbC-dEf_GhIjKlMnOp' })
+  })
+
   it('reads nothing for a source it does not know', async () => {
-    open('/files/drive/abc')
+    open('/files/photos/abc')
     expect(await screen.findByText('This file is not here.')).toBeTruthy()
     expect(io.fileTarget).not.toHaveBeenCalled()
   })
