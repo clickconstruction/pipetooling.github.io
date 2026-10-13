@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import {
   anyStripeApiKeyConfigured,
@@ -115,7 +115,7 @@ serve(async (req) => {
     }
 
     let invRow: InvRow
-    let adminForSub: ReturnType<typeof createClient> | null = null
+    let adminForSub: SupabaseClient | null = null
 
     if (isSubcontractor) {
       const sk = serviceKey?.trim()
