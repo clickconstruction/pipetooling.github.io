@@ -94,4 +94,25 @@ describe('the email they read', () => {
     expect(built.html).toContain('Click Plumbing and Electrical</div>')
     expect(built.text.startsWith('Bring <the> plans & the pad')).toBe(true)
   })
+
+  it('puts the files that went as links after the body, a line each, the link a link (cut 7e)', () => {
+    const built = buildMessagesEmail(words, undefined, [
+      { text: 'The plans are in your portal', url: 'https://clicktooling.com/t/7Hq2#plans' },
+      { text: 'Rock clause, marked up.pdf', url: 'https://clicktooling.com/f/k3Pw9xQaB2cD4eF6gH8iJ0' },
+      { text: 'Not a link', url: 'javascript:alert(1)' },
+    ])
+    expect(built.text.split('\n\n')).toEqual([
+      'Hello Greg,',
+      'Checking on the number. Still good for today?',
+      'The plans are in your portal: https://clicktooling.com/t/7Hq2#plans\nRock clause, marked up.pdf: https://clicktooling.com/f/k3Pw9xQaB2cD4eF6gH8iJ0',
+      'Robert · Project manager\ncell (210) 555-0142\nEmail back, text, or call.',
+      'Click Construction. About Stone Oak Pharmacy.',
+    ])
+    expect(built.html).toContain(
+      'The plans are in your portal: <a href="https://clicktooling.com/t/7Hq2#plans" style="color:inherit">clicktooling.com/t/7Hq2#plans</a><br>Rock clause, marked up.pdf: <a href="https://clicktooling.com/f/k3Pw9xQaB2cD4eF6gH8iJ0"',
+    )
+    expect(built.html).not.toContain('javascript:')
+    expect(built.html).not.toContain('[[messages-email links]]')
+    expect(buildMessagesEmail(words, undefined, []).text).not.toContain('portal')
+  })
 })

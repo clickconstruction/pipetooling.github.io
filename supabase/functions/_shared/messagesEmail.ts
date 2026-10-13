@@ -80,8 +80,33 @@ export function letterheadFor(column: MessagesEmailColumn | null): string {
   return column === 'jobs_ledger_id' ? PORTAL_COMPANY.name : GC_CUSTOMER_EMAIL_FROM_NAME
 }
 
-/** The email they read: our letterhead over the greeting, the body, the signature and the footer, each its own paragraph. */
-export function buildMessagesEmail(words: MessagesEmailWords, letterhead: string = GC_CUSTOMER_EMAIL_FROM_NAME): { subject: string; text: string; html: string } {
-  const lines = [words.greeting, words.body, words.signature.join('\n'), words.footer].map((l) => l.trim()).filter(Boolean)
-  return buildGcCustomerEmail({ subject: words.subject.trim(), lines, signer: '', gc: letterhead, framed: false })
+/** A line under the words for a file that went as a link (cut 7e, `messagesEmailFiles.emailLinkLines`). */
+export interface MessagesEmailLink {
+  text: string
+  url: string
+}
+
+/** Where the link lines go while the letterhead's builder draws the rest: one paragraph of its own, swapped after. */
+const LINKS_SLOT = '[[messages-email links]]'
+
+const escHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] ?? ch)
+
+/**
+ * The email they read: our letterhead over the greeting, the body, the signature and the footer, each its own paragraph.
+ * The files that went as links (cut 7e) are a paragraph after the body, a line each: *The plans are in your portal:* and
+ * the link, as a link.
+ */
+export function buildMessagesEmail(
+  words: MessagesEmailWords,
+  letterhead: string = GC_CUSTOMER_EMAIL_FROM_NAME,
+  links: readonly MessagesEmailLink[] = [],
+): { subject: string; text: string; html: string } {
+  const shown = links.filter((l) => /^https:\/\/\S+$/.test(l.url) && l.text.trim())
+  const lines = [words.greeting, words.body, shown.length ? LINKS_SLOT : '', words.signature.join('\n'), words.footer].map((l) => l.trim()).filter(Boolean)
+  const built = buildGcCustomerEmail({ subject: words.subject.trim(), lines, signer: '', gc: letterhead, framed: false })
+  if (!shown.length) return built
+  const text = built.text.replace(LINKS_SLOT, shown.map((l) => `${l.text.trim()}: ${l.url}`).join('\n'))
+  const linksHtml = shown.map((l) => `${escHtml(l.text.trim())}: <a href="${escHtml(l.url)}" style="color:inherit">${escHtml(l.url.replace(/^https:\/\//, ''))}</a>`).join('<br>')
+  const html = built.html.replace(escHtml(LINKS_SLOT), linksHtml)
+  return { subject: built.subject, text, html }
 }
