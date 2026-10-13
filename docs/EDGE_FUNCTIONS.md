@@ -101,6 +101,7 @@ when_to_read:
    - [submit-gc-trade-portal](#submit-gc-trade-portal)
    - [gc-trade-email](#gc-trade-email)
    - [gc-customer-email](#gc-customer-email)
+   - [messages-email](#messages-email)
    - [gc-card-bill](#gc-card-bill)
    - [gc-money-monday-email](#gc-money-monday-email)
    - [bridge-sheet-email](#bridge-sheet-email)
@@ -1311,6 +1312,24 @@ Each window does its own write first, then the email: the pay application (`gc_s
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN` (the portal link's address; clicktooling.com when unset). Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_customer_email`, or `gc_customer_email_test` for a test copy.
 
 ---
+
+### messages-email
+
+**Purpose**: Messages, cut 3: an email from the reply box in a person's thread, to one person at one of their addresses (`contact_channels`). The reply box (`src/components/gc/messages/reply/ReplyBox.tsx`) opens the send window, which shows the email as it will go; its **Send as email** calls this function through `replyIo.sendEmail` (`src/lib/messages/replyIo.ts`). In order:
+
+1. **The caller**: signed in, a real account (`REAL_ACCOUNT`: never a sample or a digital twin), not a training account, and on the office team (`gc_office_team()`, asked as the caller). Else `401 signIn`, `403 readOnly` or `403 officeOnly`.
+2. **The request** (`parseMessagesEmailBody` in `_shared/messagesEmail.ts`): `contactId` and `channelId` as ids, `tie` (`{ jobId, column }`, the column `bid_id`, `project_id` or `jobs_ledger_id`, or null for on the person), `subject` (1 to 200 characters), `greeting`, `body` (1 to 10,000), `signature` (up to 4 short lines) and `footer`. The words are the app's, from `compose.emailDraft` (`src/lib/messages/compose.ts`), so the send window and the email never differ. Else `400 badRequest`.
+3. **The address** must be one of that person's `contact_channels`, of kind `email` (`404 notFound`).
+4. **The line** is written in `messages` as the service role first: channel `email`, direction `out`, `who_user_id` the caller, the subject, the body, the address's `channel_id` and the tie's column. So the email has an id before it goes, and a later press can name it (cut 2's *this message gets it done*, `owed_sent_done`).
+5. **The email** goes through `sendEmailViaResend` under our letterhead (`buildMessagesEmail` over `buildGcCustomerEmail`, unframed, so the lines carry their own greeting and signature): from the company's name on `EMAIL_FROM`'s address (`mailboxWithName`), Click Construction, or the plumbing company on a Pipeline job (`letterheadFor`), with Reply-To the caller's own address. It is logged as `messages_email` (`EMAIL_CATALOG`).
+6. **The sent copy** is filed as kind `messages_email` with the line as its source (`source_table = 'messages'`), under the contact's customer, the bid, or the Pipeline job (a GC project's billing job). The thread's overlay of sent copies (`sentLines`) skips a copy whose source is a `messages` row, so the email shows once, with the office's words.
+7. **If Resend refuses it**, the line is deleted again and the answer is `502 resend` with Resend's words.
+
+**Endpoint**: `POST /functions/v1/messages-email` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { ok: true, messageId }`, or `{ ok: false, error, words }` where `words` is the office's sentence.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` and `RESEND_API_KEY`, all set already; `EMAIL_FROM` is the shared sending address.
+
+**Deploy**: by hand after merge (`supabase functions deploy messages-email`), at the lead's go with `quo-send`. Until it is deployed, **Send as email** says the email did not go, and nothing is written.
 
 ### gc-card-bill
 

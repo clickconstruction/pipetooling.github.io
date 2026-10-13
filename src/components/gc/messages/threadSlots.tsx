@@ -17,6 +17,7 @@ import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
 import { hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
+import { ReplyBox } from './reply/ReplyBox'
 
 /** A row of the header's ⋯ menu. The window's own rows (Show all text, Open their record) come first. */
 export interface ThreadMenuRow {
@@ -114,11 +115,15 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
 export function useThreadSlots(): ThreadSlots {
   // Cut 2 (Follow up): who has it, the back and snoozed pills, and ⋯'s state rows.
   const followUp = useFollowUpThreadSlots()
+  // Cut 3: the reply box, one per person, so a draft never crosses to the next thread. It reads the open thread itself
+  // (`useOpenThread`), under the window's provider.
+  const replyBox: ThreadSlots = { box: (c) => <ReplyBox key={c.id} contact={c} /> }
   // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
   const flow: ThreadSlots = { side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side /> }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
   // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it.
   const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
-  return mergeThreadSlots(followUp, flow, changeOrders, email)
+  // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, cut 6's paper offer.
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, email)
 }

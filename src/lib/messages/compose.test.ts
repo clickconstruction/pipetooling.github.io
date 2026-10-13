@@ -143,6 +143,13 @@ describe('the from line', () => {
     expect(fromLine('note', CLICK)).toEqual([])
     expect(fromHeader(CLICK)).toBe('Click Construction <bids@clickconstruction.example>')
   })
+
+  it('leaves out a number or a mailbox the app does not know, rather than drawing a gap', () => {
+    const blank = { ...CLICK, phone: '', mailbox: ' ' }
+    expect(fromLine('text', blank)).toEqual(['from the company number', 'Click Construction'])
+    expect(fromLine('email', blank)).toEqual(['from Click Construction'])
+    expect(fromHeader(blank)).toBe('Click Construction')
+  })
 })
 
 describe('the email', () => {
@@ -372,11 +379,11 @@ describe('the send window', () => {
   })
 
   it('warns in its order: STOP, no number, then a text past two pieces', () => {
-    expect(sendWarnings('email', TOM)).toEqual(['They have no email on file. Add one on the To line and the email can go.'])
+    expect(sendWarnings('email', TOM)).toEqual(['They have no email on file. Add one on their record, and the email can go.'])
     expect(sendWarnings('email', GREG)).toEqual([])
     expect(sendWarnings('text', { ...GREG_STOPPED, number: null })).toEqual([
       'They sent STOP. The app will not send this text.',
-      'They have no mobile number on file. Add one on the To line and the text can go.',
+      'They have no mobile number on file. Add one on their record, and the text can go.',
     ])
     const long = textToSend({ body: 'a'.repeat(300), reason: 'first', company: CLICK })
     expect(sendWarnings('text', GREG, long)).toEqual([

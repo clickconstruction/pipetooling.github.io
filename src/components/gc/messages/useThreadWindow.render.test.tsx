@@ -54,9 +54,9 @@ describe('opening a thread on /gc (the URL holds it)', () => {
     expect(result.current).toMatchObject({ contactId: 'c-elena', at: 'm-7' })
   })
 
-  it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows, cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line, then cut 6’s paper offer', () => {
+  it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows, cut 3’s reply box, cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line, then cut 6’s paper offer', () => {
     const { result } = renderHook(() => useThreadSlots())
-    expect(Object.keys(result.current).sort()).toEqual(['headerRight', 'menuRows', 'messageWindowFirst', 'side', 'statusRow', 'underLine'])
+    expect(Object.keys(result.current).sort()).toEqual(['box', 'headerRight', 'menuRows', 'messageWindowFirst', 'side', 'statusRow', 'underLine'])
     expect(result.current.headerRight).toBe(cut2.headerRight)
     expect(result.current.statusRow).toBe(cut2.statusRow)
     expect(result.current.menuRows?.({} as Contact)).toEqual([])
