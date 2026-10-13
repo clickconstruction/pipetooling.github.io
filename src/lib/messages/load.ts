@@ -66,6 +66,8 @@ export type MessageRow = Pick<
 > & {
   /** Cut 5's column (Quo's length of a call). Absent until its migration. */
   duration_seconds?: number | null
+  /** R6's column: the box the line came in on or went out from. Optional until the types regenerate. */
+  mailbox?: string | null
 }
 
 export interface MessageLoadContext {
@@ -78,6 +80,7 @@ export interface MessageLoadContext {
 const CHANNELS: ReadonlySet<string> = new Set<MessageChannel>(['call', 'voicemail', 'missed', 'text', 'email', 'note', 'event', 'portal'])
 const DIRECTIONS: ReadonlySet<string> = new Set<MessageDirection>(['in', 'out', 'team'])
 const OPTOUT_LINES: ReadonlySet<string> = new Set(['first', 'silence', 'held'])
+const MAILBOXES: ReadonlySet<string> = new Set(['team', 'bids'])
 
 /**
  * A row as the thread reads it. Its who is the row's own words, else the user's name, else, on a line from them, what we
@@ -107,6 +110,7 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     optoutLine: row.optout_line && OPTOUT_LINES.has(row.optout_line) ? (row.optout_line as ThreadMessage['optoutLine']) : null,
     backOn: row.back_on,
     backBy: row.back_by ? userName(row.back_by) || null : null,
+    mailbox: row.mailbox && MAILBOXES.has(row.mailbox) ? (row.mailbox as ThreadMessage['mailbox']) : null,
   }
 }
 

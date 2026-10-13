@@ -46,6 +46,13 @@ describe('the lines as the screens load them (rows shaped like the first lines)'
     expect(line('m-unknown-text').jobId).toBeNull()
   })
 
+  it('carries the box a line came in on, and reads a box this build does not know, or none, as none (R6)', () => {
+    expect(threadMessageFromRow({ ...row('m-greg-text-in'), mailbox: 'bids' })!.mailbox).toBe('bids')
+    expect(threadMessageFromRow({ ...row('m-greg-text-in'), mailbox: 'team' })!.mailbox).toBe('team')
+    expect(threadMessageFromRow({ ...row('m-greg-text-in'), mailbox: 'office' })!.mailbox).toBeNull()
+    expect(threadMessageFromRow(row('m-greg-text-in'))!.mailbox).toBeNull()
+  })
+
   it('reads a note’s day to come back and who set it, by name', () => {
     expect(line('m-elena-note')).toMatchObject({ channel: 'note', direction: 'team', who: 'Rosa', backOn: '2026-10-02', backBy: 'Rosa' })
     expect(threadMessageFromRow(row('m-elena-note'))!.backBy).toBeNull()

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import type { Contact, ContactKind } from '../../../lib/contacts/kernel'
+import { orderHitsByBox, type Mailbox } from '../../../lib/messages/boxes'
 import type { RecordHit } from '../../../lib/messages/messagesIo'
 import { PhoneSheet } from '../../PhoneSheet'
 import { Btn, input } from '../gcUi'
@@ -16,15 +17,20 @@ const KINDS: ReadonlyArray<{ kind: Exclude<ContactKind, 'unknown'>; label: strin
  * Messages, cut 1's screens: *Who is this?*, for a number nobody has named (the prototype's `whoIsThis`). Find who it
  * is among the records the office already has, say what they are to us, and give their own name when the record is a
  * company's. The number then points at that person and keeps its thread; when that person already has a thread, the
- * two become one. A sheet from the bottom on a phone, above the keyboard as it types (`PhoneSheet`, cut 10).
+ * two become one. A sheet from the bottom on a phone, above the keyboard as it types (`PhoneSheet`, cut 10). The box
+ * their newest line came in on (R6) puts its own kinds first: trade partners and supply houses on bids@, customers on
+ * the team line.
  */
 export function WhoIsThisWindow({
   contact,
+  box = null,
   writes,
   onNamed,
   onClose,
 }: {
   contact: Contact
+  /** The box their newest line came in on (`lastWroteTo`). Null: not known, and the records stay in the order they came. */
+  box?: Mailbox | null
   writes: Pick<MessagesWrites, 'nameContact' | 'searchRecords'>
   /** The contact that holds the thread now: this one, or the person it joined. */
   onNamed: (contactId: string) => void
@@ -47,14 +53,14 @@ export function WhoIsThisWindow({
     let live = true
     const t = window.setTimeout(() => {
       searchRecords(words)
-        .then((found) => live && setHits(found))
+        .then((found) => live && setHits(orderHitsByBox(found, box)))
         .catch((e: unknown) => live && setProblem(formatErrorMessage(e, 'The records did not load.')))
     }, 250)
     return () => {
       live = false
       window.clearTimeout(t)
     }
-  }, [words, searchRecords])
+  }, [words, searchRecords, box])
 
   const isCompanyRow = picked?.record.table === 'customers' || picked?.record.table === 'gc_companies'
   const save = async () => {

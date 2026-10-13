@@ -140,6 +140,8 @@ A thread for a number we do not know has a {{button:blue|Who is this?}} button. 
 
 The number joins that person. Every message from the number and the person stays in one thread.
 
+The list shows first the people who fit where their message came in. A message to our bids inbox shows trade partners and supply houses first. A message to the company number shows customers first.
+
 ## What shows in a thread today
 
 A thread holds the emails the office sent them from the app. A thread also holds the emails they send to our bids inbox. Calls and texts join it in a later update.

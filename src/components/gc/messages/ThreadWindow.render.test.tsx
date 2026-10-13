@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { ThreadWindow } from './ThreadWindow'
+import { WhoIsThisWindow } from './WhoIsThisWindow'
 import type { MessagesWrites } from './messagesWrites'
 import type { ThreadSlots } from './threadSlots'
 import { renderWithProviders } from '../../../test/renderSmokeMocks'
@@ -166,5 +167,24 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     fireEvent.click(within(who).getByRole('button', { name: 'This is who it is' }))
     await waitFor(() => expect(onShowContact).toHaveBeenCalledWith('c-dee'))
     expect(w.nameContact).toHaveBeenCalledWith('c-unknown', { record: { table: 'gc_companies', id: 'gc-alamo' }, kind: 'trade', name: 'Dee' })
+  })
+
+  it('Who is this?: the box their line came in on puts its own kinds first (R6)', async () => {
+    const dana: RecordHit = { record: { table: 'customers', id: 'cu-dana' }, label: 'Dana Whitfield', sub: 'Customer', kind: 'customer' }
+    const view = spineMessagesView()
+    const unknown = view.contacts.find((c) => c.id === 'c-unknown')!
+    const shown = async (box: 'team' | 'bids' | null) => {
+      const w = { ...writes(), searchRecords: vi.fn(() => Promise.resolve([ALAMO, dana])) }
+      const { unmount } = renderWithProviders(<WhoIsThisWindow contact={unknown} box={box} writes={w} onNamed={vi.fn()} onClose={vi.fn()} />)
+      const who = screen.getByRole('dialog', { name: /^Who is this\?/ })
+      fireEvent.change(within(who).getByRole('textbox', { name: 'Their name or their company' }), { target: { value: 'Whit' } })
+      await within(who).findByRole('option', { name: /Dana Whitfield/ })
+      const order = within(who).getAllByRole('option').map((o) => o.textContent ?? '')
+      unmount()
+      return order.map((t) => (t.startsWith('Dana') ? 'Dana' : 'Alamo'))
+    }
+    expect(await shown('team')).toEqual(['Dana', 'Alamo'])
+    expect(await shown('bids')).toEqual(['Alamo', 'Dana'])
+    expect(await shown(null)).toEqual(['Alamo', 'Dana'])
   })
 })

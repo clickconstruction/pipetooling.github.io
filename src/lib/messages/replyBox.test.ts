@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { JobTile } from './jobTiles'
-import { lastFromThem, lastOurTextAt, priorTexts, replyJob, tieWords } from './replyBox'
+import type { BoxSettings } from './boxes'
+import { fromLine } from './compose'
+import { lastFromThem, lastOurTextAt, priorTexts, replyCompany, replyJob, tieWords } from './replyBox'
 import type { ThreadMessage } from './thread'
 
 const tile = (key: string, num: string, name: string): JobTile => ({ key, kind: 'bid', num, name, day: { words: '', tone: '' } })
@@ -104,5 +106,40 @@ describe('the texts already on their phone', () => {
   it('are none with no number or a count of none', () => {
     expect(priorTexts(lines, null)).toEqual([])
     expect(priorTexts(lines, 'ch-cell', 0)).toEqual([])
+  })
+})
+
+describe('the company a reply goes as (replyCompany)', () => {
+  // Made-up settings: what `messages_boxes_v1` would hold once the owner types it.
+  const SETTINGS: BoxSettings = {
+    team: { address: 'team@clickplumbing.example', phone: '(512) 555-0144', numberId: 'PNteam0144' },
+    bids: { address: 'bids@clickconstruction.example', phone: '(512) 555-0199', numberId: 'PNbids0199' },
+  }
+
+  it('names the letterhead of the job, and no number or address until the sends go from the boxes', () => {
+    expect(replyCompany('pipeline:j1040')).toEqual({ name: 'Click Plumbing and Electrical', phone: '', mailbox: '', address: '' })
+    expect(replyCompany('bid:b482').name).toBe('Click Construction')
+    expect(fromLine('text', replyCompany(null))).toEqual(['from the company number', 'Click Construction'])
+  })
+
+  it('takes the number and the address of the customer’s box, or of bids@ for a trade partner', () => {
+    const dana = replyCompany('pipeline:j1040', { settings: SETTINGS, kind: 'customer', wroteTo: null })
+    expect(dana).toEqual({ name: 'Click Plumbing and Electrical', phone: '(512) 555-0144', mailbox: 'team@clickplumbing.example', address: '' })
+    const greg = replyCompany('bid:b482', { settings: SETTINGS, kind: 'trade', wroteTo: null })
+    expect(fromLine('email', greg)).toEqual(['from bids@clickconstruction.example', 'Click Construction'])
+  })
+
+  it('answers from the box they wrote to', () => {
+    const elena = replyCompany('bid:b482', { settings: SETTINGS, kind: 'customer', wroteTo: 'bids' })
+    expect(fromLine('text', elena)).toEqual(['from the company number (512) 555-0199', 'Click Construction'])
+  })
+
+  it('leaves the number and the address out while Settings has none', () => {
+    expect(replyCompany('pipeline:j1040', { settings: null, kind: 'customer', wroteTo: null })).toEqual({
+      name: 'Click Plumbing and Electrical',
+      phone: '',
+      mailbox: '',
+      address: '',
+    })
   })
 })

@@ -16,6 +16,7 @@ import { checkSupabaseError } from '../../utils/errorHandling'
 import { supabaseFollowUpIo, type FollowUpIo } from '../followUp/followUpIo'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { EmailFileAsk } from '../documents/emailFileAsks'
+import { BOXES_SETTINGS_KEY, parseBoxSettings, type BoxSettings } from './boxes'
 import type { ComposeSender, EmailDraft } from './compose'
 import type { DayKept } from './owed'
 import { jobRefOf } from './load'
@@ -26,6 +27,20 @@ export const TEXTS_ON = false
 
 /** The words a text says while the phone is not switched on. */
 export const TEXTS_WAIT = 'Texts wait until the phone is switched on. Send this as an email, or come back to it then.'
+
+/**
+ * Whether the sends go from the two boxes (R6): `messages-email` from the box's address and `quo-send` from its number,
+ * read from `messages_boxes_v1`. R6's edge PR switches both and flips this with them. Until then an email goes from the
+ * app's own sending address, so the reply box keeps today's from line rather than name a box the send does not use.
+ */
+export const SENDS_FROM_BOXES = false
+
+/** The two boxes as Settings keeps them (`messages_boxes_v1`, R6's SQL). Null while the row is missing or empty. */
+export async function loadBoxSettings(client: Pick<SupabaseClient, 'from'> = supabase): Promise<BoxSettings | null> {
+  const result = await client.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle()
+  checkSupabaseError(result, 'read the two boxes')
+  return parseBoxSettings((result.data as { value_text: string | null } | null)?.value_text)
+}
 
 export interface ReplyEmail {
   contactId: string

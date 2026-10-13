@@ -50,8 +50,9 @@ const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as ne
 const CONTACT_COLS = 'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by, off_since, off_why, off_by'
 const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
+/** `mailbox` is R6's column (20261014003000_messages_two_boxes.sql): the box a line came in on or went out from. */
 const MESSAGE_COLS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, mailbox'
 /**
  * A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql), a call's length, summary and words,
  * and R5's office-only mark on a team note (20261013190000_messages_tech_door.sql).

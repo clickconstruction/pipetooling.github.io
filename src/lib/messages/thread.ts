@@ -45,6 +45,11 @@ export interface ThreadMessage {
   backBy?: string | null
   /** The files and links it came or went with, in order (cut 6, `lineFiles.ts`; the type in `lineFileTypes.ts`). */
   files?: readonly LineFile[]
+  /**
+   * The box it came in on or went out from (R6, `messages.mailbox`): the team box or bids@. Null on a line from before
+   * R6, a note or an event. Written out here, not imported from `boxes.ts`, so the edge copy of this file stays light.
+   */
+  mailbox?: 'team' | 'bids' | null
 }
 
 const byTime = (a: { at: string }, b: { at: string }) => Date.parse(a.at) - Date.parse(b.at)

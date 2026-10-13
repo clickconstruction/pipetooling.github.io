@@ -4,6 +4,7 @@
  * Pure.
  */
 import { letterheadFor, type MessagesEmailColumn } from '../../../supabase/functions/_shared/messagesEmail'
+import { fromNumberFor, mailboxFor, NO_BOX_FALLBACK, type BoxSettings, type Mailbox } from './boxes'
 import type { ComposeCompany } from './compose'
 import type { JobTile } from './jobTiles'
 import { jobRefOf } from './load'
@@ -32,13 +33,29 @@ export function tieOf(jobKey: string | null): { jobId: string; column: MessagesE
   return { jobId: ref.id, column: ref.kind === 'bid' ? 'bid_id' : ref.kind === 'project' ? 'project_id' : 'jobs_ledger_id' }
 }
 
+/** Where a reply goes from (R6): the two boxes as Settings keeps them, who the person is, and the box they last wrote to. */
+export interface ReplyFrom {
+  settings: BoxSettings | null
+  kind: string
+  wroteTo: Mailbox | null
+}
+
 /**
  * Our company as the box and the send window name it for the job a reply is tied to: the letterhead `messages-email`
- * sends under (`letterheadFor`, one rule for both). The number waits on the phone being switched on, and the email's
- * address is the app's own sending address, so both stay blank and the words leave them out.
+ * sends under (`letterheadFor`, one rule for both). With `from`, the number and the address are the chosen box's, the
+ * one they wrote to on a reply and their kind's box otherwise (`mailboxFor`, `fromNumberFor`). Without it, or while
+ * Settings leaves a field empty, both stay blank and the words leave them out. The reply box passes `from` only once the
+ * sends go from the boxes (`SENDS_FROM_BOXES`): until then an email goes from the app's own sending address.
  */
-export function replyCompany(jobKey: string | null): ComposeCompany {
-  return { name: letterheadFor(tieOf(jobKey)?.column ?? null), phone: '', mailbox: '', address: '' }
+export function replyCompany(jobKey: string | null, from: ReplyFrom | null = null): ComposeCompany {
+  const name = letterheadFor(tieOf(jobKey)?.column ?? null)
+  if (!from) return { name, phone: '', mailbox: '', address: '' }
+  return {
+    name,
+    phone: fromNumberFor(from.kind, from.settings, NO_BOX_FALLBACK, from.wroteTo).phone,
+    mailbox: mailboxFor(from.kind, from.settings, NO_BOX_FALLBACK, from.wroteTo),
+    address: '',
+  }
 }
 
 /** The *Tie to* press: the job in words, and why it is that job when nobody chose it. */

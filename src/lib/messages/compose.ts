@@ -24,6 +24,19 @@ import {
 // The rules for a text going out live in `textOut.ts`, light enough to run on the edge. They are compose's too.
 export * from './textOut'
 
+// Which box a message goes from, and that box's address and number (R6): `boxes.ts`'s, so the edge can copy them.
+export {
+  boxSetting,
+  fromNumberFor,
+  mailboxFor,
+  NO_BOX_FALLBACK,
+  parseBoxSettings,
+  type BoxFallback,
+  type BoxSetting,
+  type BoxSettings,
+  type Mailbox,
+} from './boxes'
+
 // ---------- the kinds row ----------
 
 /** What the box writes: one of the thread's channels. */
