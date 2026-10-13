@@ -115,17 +115,27 @@ export function textBoxBlocked(kind: ReplyKind, to: ReplyRecipient): string | nu
   return kind === 'text' && to.numberOptedOut ? 'They sent STOP. The app will not text this number.' : null
 }
 
-/** The from line floating in the empty box: our one number or our one mailbox, never a person's own. Empty on a note. */
+/**
+ * The from line floating in the empty box: our one number or our one mailbox, never a person's own. Empty on a note.
+ * Before the phone is switched on the app has no number to name, and an email goes as our name on the app's sending
+ * address, so a blank number or mailbox leaves it out rather than drawing a gap.
+ */
 export function fromLine(kind: ReplyKind, company: ComposeCompany): string[] {
-  if (kind === 'text') return [`from the company number ${company.phone}`, company.name]
-  if (kind === 'email') return [`from ${company.mailbox}`, company.name]
+  const phone = company.phone.trim()
+  const mailbox = company.mailbox.trim()
+  if (kind === 'text') return [phone ? `from the company number ${phone}` : 'from the company number', company.name]
+  if (kind === 'email') return mailbox ? [`from ${mailbox}`, company.name] : [`from ${company.name}`]
   return []
 }
 
-/** An email's From: "Click Construction <bids@clickconstruction.example>". */
+/** An email's From: "Click Construction <bids@clickconstruction.example>", or our name alone when the app does not know the address. */
 export function fromHeader(company: ComposeCompany): string {
-  return `${company.name} <${company.mailbox}>`
+  const mailbox = company.mailbox.trim()
+  return mailbox ? `${company.name} <${mailbox}>` : company.name
 }
+
+/** Where an answer to the reply box's email goes, until the company mailbox is read into the thread. */
+export const EMAIL_REPLIES_NOTE = 'Their answer comes to your own inbox. Bring anything that matters back to this thread.'
 
 // ---------- the email ----------
 
@@ -427,10 +437,10 @@ export const TEXT_FROM_NOTE = 'Sent from the company number, so their reply land
 
 /** The send window's warnings, in its order. A text past two pieces says so, and says if the opt-out line made it longer. */
 export function sendWarnings(kind: 'text' | 'email', to: ReplyRecipient, text?: TextToSend): string[] {
-  if (kind === 'email') return to.email ? [] : ['They have no email on file. Add one on the To line and the email can go.']
+  if (kind === 'email') return to.email ? [] : ['They have no email on file. Add one on their record, and the email can go.']
   const out: string[] = []
   if (to.numberOptedOut) out.push('They sent STOP. The app will not send this text.')
-  if (!to.number) out.push('They have no mobile number on file. Add one on the To line and the text can go.')
+  if (!to.number) out.push('They have no mobile number on file. Add one on their record, and the text can go.')
   if (text && text.segments > 2) {
     out.push(
       `${text.characters} characters is ${text.segments} texts${text.withLine ? ', with the opt-out line' : ''}. ` +

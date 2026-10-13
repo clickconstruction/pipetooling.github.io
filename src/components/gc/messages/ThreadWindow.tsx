@@ -18,6 +18,7 @@ import { JobPickerWindow } from './JobPickerWindow'
 import { JobsRail } from './JobsRail'
 import { MessageWindow } from './MessageWindow'
 import type { MessagesWrites } from './messagesWrites'
+import { OpenThreadContext, type OpenThread } from './openThread'
 import { EventLine, ThreadLine } from './ThreadLine'
 import { useThreadSlots, type ThreadMenuRow, type ThreadSlots } from './threadSlots'
 import { WhoIsThisWindow } from './WhoIsThisWindow'
@@ -140,6 +141,15 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const court = contact ? courtOf(allLines, contact.id, nowIso, { optedOut: isOptedOut(contact) }) : null
   const stamps = contact ? stampSentence(contact, allLines, contact.id, nowIso) : null
   const openMessage = openMessageId ? allLines.find((m) => m.id === openMessageId) : undefined
+  // The open thread for a slot's component (cut 3's reply box): given around everything the panel draws.
+  const searchJobs = writes.searchJobs
+  const openThread = useMemo<OpenThread | null>(
+    () =>
+      contact && view
+        ? { contact, lines: allLines, jobFilter, rail: view.rails[contact.id] ?? [], tiles: view.tiles, userNames: view.userNames, nowIso, searchJobs }
+        : null,
+    [contact, view, allLines, jobFilter, nowIso, searchJobs],
+  )
 
   return (
     <div
@@ -173,6 +183,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
           border: phone ? 'none' : '1px solid var(--border-strong)',
         }}
       >
+        <OpenThreadContext.Provider value={openThread}>
         <div ref={columnRef} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           {!contact ? (
             <div style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -500,6 +511,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             onClose={() => setPicker(null)}
           />
         )}
+        </OpenThreadContext.Provider>
       </div>
     </div>
   )

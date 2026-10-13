@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -567,6 +567,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
         },
         {
+          id: 'gc-reply-email',
+          label: 'Messages: an email from their thread',
+          sublabel: 'GC projects → Messages → their thread → the reply box → Send email…',
+          when: 'Each time the office writes to them from their thread',
+          customerCan: 'Read our words under our letterhead, about the job named in the subject, and answer the person who signed it.',
+          guide: 'reply-to-a-person-from-their-thread',
+          reflects: ['The words the office wrote, with a subject from the job and the first line', 'The name they go by in the greeting', 'The sender’s name, title and cell in the signature'],
+          render: { kind: 'email', email: 'messages-reply' },
+        },
+        {
           id: 'owner-notice',
           label: 'Notice to the owner of record',
           sublabel: 'when it goes wrong · Lien desk → the § 53.056 notice',
@@ -632,6 +642,16 @@ export function customerJourneys(): Journey[] {
           guide: 'find-every-message-with-a-person-in-one-place',
           reflects: ['The file and which half of the job’s Drive folder it is in', 'Whether the office cut the link off, or it ended after 30 days'],
           render: { kind: 'external', note: 'The link opens the file itself, so there is no page of ours to show. A link turned off reads “This link was turned off.”' },
+        },
+        {
+          id: 'sub-reply-email',
+          label: 'Messages: an email from their thread',
+          sublabel: 'GC projects → Messages → their thread → the reply box → Send email…',
+          when: 'Each time the office writes to them from their thread',
+          customerCan: 'Read our words under our letterhead, about the job named in the subject, and answer the person who signed it.',
+          guide: 'reply-to-a-person-from-their-thread',
+          reflects: ['The words the office wrote, with a subject from the job and the first line', 'The name they go by in the greeting', 'The sender’s name, title and cell in the signature'],
+          render: { kind: 'email', email: 'messages-reply' },
         },
         {
           id: 'sub-contract-email',

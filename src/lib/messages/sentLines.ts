@@ -25,9 +25,14 @@ export function isSentLine(m: Pick<ThreadMessage, 'id'>): boolean {
 export type SentCopyWithJobs = Pick<SentCopy, 'id' | 'kind' | 'title' | 'how' | 'recipientEmails' | 'subject' | 'sentAt' | 'sentByName'> & {
   bidId?: string | null
   jobIds?: string[]
+  /** The record the copy was drawn from. A copy of a thread's own line (`messages`, cut 3's reply box) is that line already. */
+  sourceTable?: string
 }
 
-/** The emails among the copies, as thread lines on each person they went to, one per person per copy. */
+/**
+ * The emails among the copies, as thread lines on each person they went to, one per person per copy. A copy whose
+ * source is a `messages` row (an email from the reply box) is skipped: the row is in the thread with its own words.
+ */
 export function sentLines(copies: readonly SentCopyWithJobs[], contacts: readonly Contact[]): ThreadMessage[] {
   const byAddress = new Map<string, { contactId: string; channelId: string }[]>()
   for (const c of contacts) {
@@ -39,7 +44,7 @@ export function sentLines(copies: readonly SentCopyWithJobs[], contacts: readonl
   }
   const lines: ThreadMessage[] = []
   for (const copy of copies) {
-    if (copy.how !== 'email') continue
+    if (copy.how !== 'email' || copy.sourceTable === 'messages') continue
     const jobId = copy.bidId ? jobKey({ kind: 'bid', id: copy.bidId }) : copy.jobIds?.[0] ? jobKey({ kind: 'pipeline', id: copy.jobIds[0] }) : null
     const seen = new Set<string>()
     for (const address of copy.recipientEmails) {

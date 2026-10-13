@@ -206,6 +206,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Pay application 3 for Sample Retail Shell, $48,600',
   },
   {
+    id: 'messages_email',
+    name: 'Messages — an email from the reply box in a person’s thread (the office’s own words, under our letterhead)',
+    group: 'bids',
+    audience: 'customer',
+    builtWhere: 'client',
+    sender: 'messages-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Sample Retail Shell: Checking on the number. Still good for today?',
+  },
+  {
     id: 'gc_certify_reminder',
     name: 'GC mode — the architect’s reminder to certify a pay application (sent by the app at 3 days)',
     group: 'billing',
