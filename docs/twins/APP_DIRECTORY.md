@@ -319,7 +319,9 @@ Roles: public.
 ### /files/:source/:id — A kept file's lasting link
 What a file's **Open** goes to (Messages cut 6, `FileOpen.tsx`): `/files/messages/<attachment id>` is a file that came
 on an email's line. Signed in as the office team, it goes straight to the file through a link that lasts a minute; a
-link the email carried goes to its own address. Signed out, it asks for a sign-in and comes back. Anyone else reads
+link the email carried goes to its own address. `/files/drive/<job key>:<Drive file id>` (v2.5467, Messages cut 7d) is a
+file in a job's Drive folder: `drive-link`'s office door checks the file is in that job's folder and the page goes to
+Drive's own viewer. Signed out, it asks for a sign-in and comes back. Anyone else reads
 *This file is not one you can open.* No page of its own to work on.
 Roles: dev, master, assistant, controller, estimator.
 
