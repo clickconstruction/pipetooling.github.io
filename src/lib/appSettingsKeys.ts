@@ -385,3 +385,10 @@ export function parseJobContractFloorCents(value: number | string | null | undef
  * from Settings → Phone and texts; the office reads it. Parsed by `messages/assignRule.ts`.
  */
 export const APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1 = 'messages_assign_rule_v1' as const
+
+/**
+ * `value_text` — Quo's seats (Messages, cut 5's migration `20261013040000_quo_seats.sql`): which of Quo's workspace
+ * users is which of ours, `{"US…": "<users.id>"}`. The owner and a dev write it from Settings → Phone and texts;
+ * `quo-send` and `quo-webhook` read it as the service role. Parsed by `quo/seatsCard.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1 = 'messages_quo_seats_v1' as const
