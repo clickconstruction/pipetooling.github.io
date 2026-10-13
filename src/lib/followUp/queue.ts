@@ -589,27 +589,8 @@ export function holdCount(contacts: ReadonlyArray<QueueContact>, teammate: strin
   return contacts.filter((c) => c.has === teammate && stateToday(c, todayYmd) === 'waiting').length
 }
 
-/** The seats *Who gets a new message* reads (Settings → Phone and texts). */
-export interface AssignSeats {
-  /** The assistant's seat. */
-  customer: string | null
-  /** The estimator's seat, which an architect shares unless set. */
-  trade: string | null
-  arch?: string | null
-}
-
-/**
- * Who gets a new message, by the rule (proposed in the prototype, the owner's call): whoever answered this person
- * last, when they are here today; else the seat for who they are. A number nobody knows goes to nobody, so whoever
- * answers first takes it.
- */
-export function whoGetsIt(input: { kind: ContactKind; answeredLastBy: string | null; hereToday: ReadonlySet<string>; seats: AssignSeats }): string | null {
-  if (input.answeredLastBy && input.hereToday.has(input.answeredLastBy)) return input.answeredLastBy
-  if (input.kind === 'customer') return input.seats.customer
-  if (input.kind === 'trade') return input.seats.trade
-  if (input.kind === 'arch') return input.seats.arch ?? input.seats.trade
-  return null
-}
+// The rule and its seats live in `assignSeats.ts`, light enough for the edge copy (R5's push). They are the queue's too.
+export { whoGetsIt, type AssignSeats } from './assignSeats'
 
 /** The day *Remind me Monday* sets, as the thread's pill says it: "snoozed until Mon Oct 5". */
 export function snoozedWords(contact: Pick<QueueContact, 'state' | 'snoozedUntil'>): string | null {

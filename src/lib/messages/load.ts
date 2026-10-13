@@ -7,40 +7,12 @@
 import type { Tables } from '../../types/database'
 import { firstName, type Contact } from '../contacts/kernel'
 import type { MessageChannel, MessageDirection, ThreadMessage } from './thread'
+import { jobKeyOfRow } from './jobKeys'
 
 // ---------- a job, as one key ----------
 
-/** A bid, a GC project (`gc_projects.project_id`) or a Pipeline job (`jobs_ledger`): the functions' `p_job_kind`. */
-export type JobKind = 'bid' | 'project' | 'pipeline'
-
-export interface JobRef {
-  kind: JobKind
-  id: string
-}
-
-const JOB_KINDS: ReadonlySet<string> = new Set<JobKind>(['bid', 'project', 'pipeline'])
-
-/** The one string a line, a rail and the star name a job by: "project:<uuid>". */
-export function jobKey(ref: JobRef): string {
-  return `${ref.kind}:${ref.id}`
-}
-
-/** A key back to the kind and the id the functions take (`tie_message`, `set_default_job`). Null for a key that is not one. */
-export function jobRefOf(key: string | null | undefined): JobRef | null {
-  if (!key) return null
-  const at = key.indexOf(':')
-  const kind = key.slice(0, at)
-  const id = key.slice(at + 1)
-  return at > 0 && id && JOB_KINDS.has(kind) ? { kind: kind as JobKind, id } : null
-}
-
-/** The job a row is tied to: the one of its three columns that is set. Null: on the person. */
-export function jobKeyOfRow(row: { bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null }): string | null {
-  if (row.bid_id) return jobKey({ kind: 'bid', id: row.bid_id })
-  if (row.project_id) return jobKey({ kind: 'project', id: row.project_id })
-  if (row.jobs_ledger_id) return jobKey({ kind: 'pipeline', id: row.jobs_ledger_id })
-  return null
-}
+// The key lives in `jobKeys.ts`, light enough for the edge copy (R5's push). It is this file's too.
+export { jobKey, jobKeyOfRow, jobRefOf, type JobKind, type JobRef } from './jobKeys'
 
 // ---------- a line ----------
 
