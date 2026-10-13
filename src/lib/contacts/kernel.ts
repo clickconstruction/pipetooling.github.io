@@ -10,9 +10,10 @@
  * `customer_contacts` and `gc_customer_contacts` are logs of calls, not people, so nothing points at them.
  *
  * Seven kinds of contact (the owner's call of 2026-10-13, `RESIDENTIAL_BUILD_PLAN.md` R0): a customer, a trade
- * partner and an architect, and four more. A lead is a `prospects` row until they book; a supply house is a
- * `supply_houses` row; a candidate is a row on the Team hiring board, `team_prospects`; a sub is a `people` row whose
- * roster kind is `sub`, so a sub and a roster person point at the same table and `kindOf` tells them apart.
+ * partner and an architect, and four more. A lead is a `prospects` row until they book; a supply house is its
+ * `supply_houses` row, the counter, and a rep at it is a `supply_house_contacts` row; a candidate is a row on the Team
+ * hiring board, `team_prospects`; a sub is a `people` row whose roster kind is `sub`, so a sub and a roster person
+ * point at the same table and `kindOf` tells them apart.
  */
 import { normalizeCustomerEmail, normalizeCustomerPhone } from '../customerSimilarity'
 import type { ContactKind } from './names'
@@ -33,8 +34,10 @@ export type ContactRecord =
   | { table: 'people'; id: string }
   /** A lead on Prospects, until they book and become a customer. */
   | { table: 'prospects'; id: string }
-  /** A supply house. */
+  /** A supply house: its counter, or someone named on its row. */
   | { table: 'supply_houses'; id: string }
+  /** A rep at a supply house, as the RFQ desk keeps them. */
+  | { table: 'supply_house_contacts'; id: string }
   /** A candidate on the Team hiring board. */
   | { table: 'team_prospects'; id: string }
   | null
@@ -87,7 +90,7 @@ export const SUB_ROSTER_KIND = 'sub'
 /**
  * What a record makes them, the first answer *Who is this?* offers: a customer's row and a person at one are a
  * customer, since an architect is the office's pick; a trade partner and the people it named are a trade partner; a
- * prospect is a lead, a supply house a supply house, a hiring board row a candidate. On the roster, `rosterKind` is
+ * prospect is a lead, a supply house and its reps a supply house, a hiring board row a candidate. On the roster, `rosterKind` is
  * the `people.kind` column: `sub` is a sub, and anyone else on the roster is a trade partner, as the picker has said.
  */
 export function kindOf(record: NonNullable<ContactRecord>, rosterKind?: string | null): Exclude<ContactKind, 'unknown'> {
@@ -103,6 +106,7 @@ export function kindOf(record: NonNullable<ContactRecord>, rosterKind?: string |
     case 'prospects':
       return 'lead'
     case 'supply_houses':
+    case 'supply_house_contacts':
       return 'supply_house'
     case 'team_prospects':
       return 'candidate'

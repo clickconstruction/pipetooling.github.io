@@ -69,6 +69,7 @@ describe('seven kinds of contact: what a record makes them', () => {
     expect(kindOf(at('gc_company_people'))).toBe('trade')
     expect(kindOf(at('prospects'))).toBe('lead')
     expect(kindOf(at('supply_houses'))).toBe('supply_house')
+    expect(kindOf(at('supply_house_contacts'))).toBe('supply_house')
     expect(kindOf(at('team_prospects'))).toBe('candidate')
   })
 
