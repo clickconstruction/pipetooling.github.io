@@ -74,7 +74,7 @@ list (the Board's B3, guide `see-where-every-gc-project-stands`): the stages wit
 architect, and its price so far with the card behind it. Its switch opens **Trade partners** (guides `add-a-trade-partner`,
 `approve-a-company-new-to-us`): each trade's companies and the projects short of quotes, **Add a company**, and the
 **New to us** box to approve or decline a company, and **Follow up**: on top the people waiting on us (guide `see-who-is-waiting-on-us-and-what-we-owe-them`):
-**Needs you**, **Needs a reply** and **We owe them**, each row with who has it, and **Ask the architect** on a plans question;
+**Needs you**, **Needs a reply** and **We owe them**, each row with who has it, and **Ask the architect** on a plans question; **Nudges from the flow**, one row a person whose step went quiet past its nudge, with the nudge's own press, **Hold until Mon** and **Remind now**;
 then **We are waiting on them** (guide `follow-up-on-a-quote-from-a-trade-partner`): every company we wait on for a quote,
 the ones to call first at the top, with Log a contact and **Will not do it** / **Cannot do it**. **Messages** (guide `find-every-message-with-a-person-in-one-place`; `/gc?view=messages` opens it) lists every
 person the office works with, newest conversation first, and opens a person's thread as a window over any view

@@ -2,7 +2,7 @@
 title: see who is waiting on us and what we owe them
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, follow up, needs you, needs a reply, we owe them, waiting on us, who has it, take it, hand it to, our move, no reply needed, remind me monday, done with it, another day, ask the architect, plan question, voicemail, missed call, text, email, portal, unknown number, who is this
+keywords: gc mode, follow up, nudges from the flow, nudge, hold until monday, remind now, quiet, late on a step, needs you, needs a reply, we owe them, waiting on us, who has it, take it, hand it to, our move, no reply needed, remind me monday, done with it, another day, ask the architect, plan question, voicemail, missed call, text, email, portal, unknown number, who is this
 order: 96
 ---
 Follow up shows the people waiting on us for an answer. The same tab shows what we still owe each of them.
@@ -13,11 +13,12 @@ The Dashboard's **Needs you** card shows the same count on a **GC projects** lin
 
 ## The lists
 
-The tab has three lists at the top.
+The tab has four lists at the top.
 
 - **Needs you** holds notes whose day has come, and customers who wrote on their page.
 - **Needs a reply** holds everyone who wrote or called and has no answer yet.
 - **We owe them** holds what we still have to do for someone, with its day.
+- **Nudges from the flow** holds people who are slow on a step and need a reminder.
 
 Below them, **We are waiting on them** lists the quotes and papers we wait on from others. [Follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner) covers that list.
 
@@ -78,6 +79,18 @@ A controller or a dev also sees the contract clause changes waiting on their app
 Each row says what we owe and by when, like {{chip:blue|we owe the start date · by Mon Oct 5}}. The chip turns red once that day has passed. The line under the name says who marked it and when.
 
 Press the chip to open their thread at the reply box. What we owe stays our move until a note or a message marks it done.
+
+## Nudges from the flow
+
+Each person we work with goes through steps, like *Asked to quote* or *Papers in*. Each step has a number of quiet days. Once a step is theirs to finish and the thread is quiet that long, the person shows here. When they promised a day, the row waits for that day instead.
+
+You see one row for each person, with the worst at the top. The row names the steps its reminder is about. The line under it says why, like *late 2 days · waiting on their quote*. The {{chip:blue|Our move · a text}} chip says how the flow asks us to remind them.
+
+- Press {{button:blue|Text Greg}} to open their thread and remind them. The button says Call or Email when the flow asks for a call or an email.
+- Press {{button:outline|Hold until Mon}} to hide the row until Monday.
+- Press {{button:outline|Remind now}} when you already reminded them another way, like a call from your own phone. The app then sends no second reminder on top of yours.
+
+Their answer clears the row. So does the step getting done.
 
 ## What comes next
 
