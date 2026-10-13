@@ -56,6 +56,7 @@ export function useFlowPerson(at: FlowPersonAt) {
           notes: read.notes,
           lines: read.lines,
           portal: read.portal ?? null,
+          owed: read.owed ?? [],
         })
         setGot({ state: 'ready', person, read })
       } catch (e) {
