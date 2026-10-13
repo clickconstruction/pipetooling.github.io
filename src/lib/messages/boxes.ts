@@ -6,7 +6,8 @@
  * spike/gc-mode, `to-dos/gc-mode/messages/customer-messages-prototype.html` v0.8) and `RESIDENTIAL_BUILD_PLAN.md` → R6
  * and section 7, decision 5. Pure: the addresses and the numbers are Settings', never written here.
  *
- * `compose.ts` still sends from one company mailbox and number (`ComposeCompany`) until R6's compose PR reads these.
+ * `compose.ts` re-exports the reads a send needs (`mailboxFor`, `fromNumberFor`, `parseBoxSettings`), and the reply box
+ * names its from line with them once the sends go from the boxes (`SENDS_FROM_BOXES` in `replyIo.ts`).
  */
 import { normalizeChannel } from '../contacts/kernel'
 
@@ -58,6 +59,100 @@ export function boxForNew(contact: { kind: string }): Mailbox {
  */
 export function boxForReply(wroteTo: Mailbox | null, contact: { kind: string }): Mailbox {
   return wroteTo ?? boxForNew(contact)
+}
+
+/**
+ * Today's one mailbox and number, for a box whose fields Settings has not filled yet. The client knows neither, so its
+ * fallback is empty and the from line leaves them out (`fromLine`). The edge functions pass their secrets, as R6's
+ * migration says: the team box QUO_COMPANY_MAILBOX, QUO_COMPANY_PHONE and QUO_PHONE_NUMBER_ID, bids@
+ * GMAIL_IMPERSONATE_USER.
+ */
+export type BoxFallback = Readonly<Record<Mailbox, Partial<BoxSetting>>>
+
+/** The client's fallback: nothing, so an empty field stays empty. */
+export const NO_BOX_FALLBACK: BoxFallback = { team: {}, bids: {} }
+
+const EMPTY_BOX: BoxSetting = { address: '', phone: '', numberId: '' }
+
+/**
+ * Settings' row as `app_settings.value_text` holds it: JSON `{ team, bids }`. A field missing or not text reads empty,
+ * and a box missing reads all empty. Null when there is no row or it is not JSON, which reads the same as every field
+ * empty.
+ */
+export function parseBoxSettings(valueText: string | null | undefined): BoxSettings | null {
+  if (!valueText?.trim()) return null
+  let json: unknown
+  try {
+    json = JSON.parse(valueText)
+  } catch {
+    return null
+  }
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return null
+  const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+  const box = (v: unknown): BoxSetting => {
+    if (!v || typeof v !== 'object') return { ...EMPTY_BOX }
+    const o = v as Record<string, unknown>
+    return { address: text(o.address), phone: text(o.phone), numberId: text(o.numberId) }
+  }
+  const o = json as Record<string, unknown>
+  return { team: box(o.team), bids: box(o.bids) }
+}
+
+/** A box's fields as a send uses them: Settings' own, and each empty one from the fallback. */
+export function boxSetting(box: Mailbox, settings: BoxSettings | null, fallback: BoxFallback = NO_BOX_FALLBACK): BoxSetting {
+  const s = settings?.[box] ?? EMPTY_BOX
+  const f = fallback[box]
+  return {
+    address: s.address.trim() || f.address?.trim() || '',
+    phone: s.phone.trim() || f.phone?.trim() || '',
+    numberId: s.numberId.trim() || f.numberId?.trim() || '',
+  }
+}
+
+/**
+ * The address an email to this person goes from: the box they last wrote to, else their kind's box (`boxForReply`).
+ * Empty when neither Settings nor the fallback has one.
+ */
+export function mailboxFor(kind: string, settings: BoxSettings | null, fallback: BoxFallback = NO_BOX_FALLBACK, wroteTo: Mailbox | null = null): string {
+  return boxSetting(boxForReply(wroteTo, { kind }), settings, fallback).address
+}
+
+/**
+ * The number a text to this person goes from, as people read it and as Quo's id, by the same rule as `mailboxFor`.
+ * Written for the edge copy too, so `quo-send` can read it once R6's edge PR switches it from QUO_PHONE_NUMBER_ID.
+ */
+export function fromNumberFor(
+  kind: string,
+  settings: BoxSettings | null,
+  fallback: BoxFallback = NO_BOX_FALLBACK,
+  wroteTo: Mailbox | null = null,
+): { box: Mailbox; phone: string; numberId: string } {
+  const box = boxForReply(wroteTo, { kind })
+  const s = boxSetting(box, settings, fallback)
+  return { box, phone: s.phone, numberId: s.numberId }
+}
+
+/** The box they last wrote to: their newest line in that names one. Null when none does (a line from before R6). */
+export function lastWroteTo(lines: ReadonlyArray<{ direction: string; at: string; mailbox?: Mailbox | null }>): Mailbox | null {
+  let newest: { at: number; box: Mailbox } | null = null
+  for (const line of lines) {
+    if (line.direction !== 'in' || !line.mailbox) continue
+    const at = Date.parse(line.at)
+    const t = Number.isNaN(at) ? 0 : at
+    if (!newest || t >= newest.at) newest = { at: t, box: line.mailbox }
+  }
+  return newest?.box ?? null
+}
+
+/**
+ * *Who is this?*'s records in the box's order: the box's own kinds first, a trade partner and a supply house on a bids@
+ * line, a customer, a lead, a sub and a candidate on the team line, each group in the order it came. With no box the
+ * order stays as it came.
+ */
+export function orderHitsByBox<T extends { kind: string }>(hits: readonly T[], box: Mailbox | null): T[] {
+  if (!box) return [...hits]
+  const ours = BOXES[box].kinds
+  return [...hits.filter((h) => ours.includes(h.kind)), ...hits.filter((h) => !ours.includes(h.kind))]
 }
 
 /** A number in words, its area code out of parentheses so the line passes plain words: "(512) 555-0144" is "512-555-0144". */

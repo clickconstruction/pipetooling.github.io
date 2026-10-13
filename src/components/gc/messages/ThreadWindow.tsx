@@ -5,6 +5,7 @@ import { useToastContext } from '../../../contexts/ToastContext'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { useMeasuredWidth } from '../../../hooks/useMeasuredWidth'
 import { contactById, firstName, initials, isOptedOut, kindWord, type Contact } from '../../../lib/contacts/kernel'
+import { lastWroteTo } from '../../../lib/messages/boxes'
 import type { MessagesView } from '../../../lib/messages/messagesIo'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { stampSentence } from '../../../lib/messages/stamps'
@@ -470,6 +471,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
         {contact && naming && (
           <WhoIsThisWindow
             contact={contact}
+            box={lastWroteTo(allLines)}
             writes={writes}
             onNamed={(id) => {
               setNaming(false)

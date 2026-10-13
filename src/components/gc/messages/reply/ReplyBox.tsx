@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../../../contexts/ToastContext'
 import { useOptionalAuth } from '../../../../hooks/useAuth'
 import { openFlowStep, useFlowNow } from '../../../../hooks/useFlowNow'
@@ -25,8 +25,9 @@ import {
   type ComposeCompany,
   type ReplyKind,
 } from '../../../../lib/messages/compose'
+import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
-import { supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
+import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
 import { firstName, type Contact } from '../../../../lib/contacts/kernel'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn } from '../../gcUi'
@@ -121,7 +122,25 @@ export function ReplyBox({
   const jobKey = job ? job.key : replyJob(tie, jobFilter, contact.defaultJobId)
   const tiles = open?.tiles ?? {}
   const tieLabel = tieWords(tie, jobFilter, contact.defaultJobId, tiles)
-  const company: ComposeCompany = useMemo(() => replyCompany(jobKey), [jobKey])
+  // The box it goes from (R6): the one they last wrote to, else their kind's. Read only once the sends use the boxes.
+  const [boxes, setBoxes] = useState<BoxSettings | null>(null)
+  useEffect(() => {
+    if (!SENDS_FROM_BOXES) return
+    let live = true
+    loadBoxSettings()
+      .then((b) => live && setBoxes(b))
+      // Unread, the from line keeps today's words, which name no box.
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [])
+  const lines = open?.lines
+  const wroteTo = useMemo(() => lastWroteTo(lines ?? []), [lines])
+  const company: ComposeCompany = useMemo(
+    () => replyCompany(jobKey, SENDS_FROM_BOXES ? { settings: boxes, kind: contact.kind, wroteTo } : null),
+    [jobKey, boxes, contact.kind, wroteTo],
+  )
   const blocked = textBoxBlocked(shown, to)
   const count = goesOut(shown) ? countLine(shown, body) : null
   const sendLabel = settling.active ? OWED_DONE_SEND : (REPLY_KINDS.find((k) => k.kind === shown)?.send ?? 'Send')
