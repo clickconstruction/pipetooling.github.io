@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lineFilesFromRows, type MessageAttachmentRow } from './lineFiles'
-import { canCut, linkOff, openWhen, opensList, opensWords, sentChipWords, sentRowNote, sentWay, shortDay, type OwnLinkState } from './sentLineFiles'
+import { canCut, linkOff, openWhen, opensList, opensWords, portalOpensWords, sentChipWords, sentRowNote, sentWay, shortDay, type OwnLinkState } from './sentLineFiles'
 
 /**
  * Messages, cut 7f: the files on a line we sent (`files-out-mockups.html`, screen 6). Rosa's email to Greg with addendum
@@ -83,5 +83,20 @@ describe('our own link’s opens', () => {
     expect(canCut(bidTab, cut, NOW)).toBe(false)
     expect(canCut(bidTab, undefined, NOW)).toBe(false)
     expect(canCut(plans, open, NOW)).toBe(false)
+  })
+})
+
+describe('their portal’s opens since the line went', () => {
+  it('counts the portal’s opens, never the one file’s, with the day and time of the last', () => {
+    expect(portalOpensWords({ opens: 2, lastOpenedAt: TODAY_210 })).toBe('they opened their portal twice since, last Mon Oct 12 at 2:10 PM')
+    expect(portalOpensWords({ opens: 1, lastOpenedAt: FRI_442 })).toBe('they opened their portal once since, last Fri Oct 9 at 4:42 PM')
+    expect(portalOpensWords({ opens: 4, lastOpenedAt: FRI_442 })).toBe('they opened their portal 4 times since, last Fri Oct 9 at 4:42 PM')
+    expect(portalOpensWords({ opens: 0, lastOpenedAt: null })).toBe('they have not opened their portal since')
+  })
+
+  it('puts them beside a link to their portal, once read', () => {
+    expect(sentRowNote(plans, undefined, NOW, { opens: 2, lastOpenedAt: TODAY_210 })).toBe('sent as our link to their portal · they opened their portal twice since, last Mon Oct 12 at 2:10 PM')
+    expect(sentRowNote(plans, undefined, NOW, null)).toBe('sent as our link to their portal')
+    expect(sentRowNote(addendum, undefined, NOW, { opens: 2, lastOpenedAt: TODAY_210 })).toBe('412 KB · sent as the file · kept with the copy')
   })
 })

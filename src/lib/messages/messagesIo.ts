@@ -22,7 +22,7 @@ import { jobTilesByKey, type BidTileRow, type GcProjectTileRow, type JobTile, ty
 import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { jobRefOf, threadMessagesFromRows, type MessageRow } from './load'
 import { sentLines } from './sentLines'
-import type { OwnLinkState } from './sentLineFiles'
+import type { OwnLinkState, PortalOpens } from './sentLineFiles'
 import type { ThreadMessage } from './thread'
 
 /** Everything the Messages view and a thread window draw. */
@@ -333,6 +333,24 @@ export async function loadOwnLinks(linkIds: readonly string[]): Promise<Record<s
       return [l.id, state]
     }),
   )
+}
+
+/**
+ * Their portal's outside opens since a line we sent carried a link to it (`portal_opens_since`): a trade partner's
+ * portal by its company, a customer's by the customer. Null for anyone with no portal of either kind.
+ */
+export async function loadPortalOpensSince(
+  who: Pick<Contact, 'kind' | 'gcCompanyId' | 'customerId'>,
+  sinceIso: string,
+): Promise<PortalOpens | null> {
+  const target = who.kind === 'trade' && who.gcCompanyId ? { surface: 'gc_trade_portal', id: who.gcCompanyId } : who.kind === 'customer' && who.customerId ? { surface: 'portal', id: who.customerId } : null
+  if (!target) return null
+  const rows = taken(
+    (await rpc('portal_opens_since', { p_surface: target.surface, p_entity_id: target.id, p_since: sinceIso })) as unknown as Result<{ opens: number; last_opened_at: string | null }[]>,
+    'read their portal’s opens',
+  )
+  const row = rows?.[0]
+  return { opens: row?.opens ?? 0, lastOpenedAt: row?.last_opened_at ?? null }
 }
 
 /** Cut our own link off (cut 7f, `cut_drive_link`): it opens the turned-off words from now on. Refused in words. */

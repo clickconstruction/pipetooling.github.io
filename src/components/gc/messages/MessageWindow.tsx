@@ -105,7 +105,7 @@ export function MessageWindow({
             </>
           )}
         </dl>
-        {message.files && message.files.length > 0 && <MessageFiles files={message.files} jobKey={message.jobId} jobLabel={tile?.num ?? null} />}
+        {message.files && message.files.length > 0 && <MessageFiles files={message.files} jobKey={message.jobId} jobLabel={tile?.num ?? null} who={contact} sentAt={message.direction === 'out' ? message.at : null} />}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {first?.(message, selection)}
           <Btn onClick={() => void copy()} title="Copies the whole message.">

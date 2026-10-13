@@ -78,18 +78,34 @@ export function canCut(f: LineFile, state: OwnLinkState | null | undefined, nowI
   return sentWay(f) === 'own' && Boolean(state) && linkOff(state!, nowIso) === null
 }
 
+/** Their portal's opens since a line we sent carried a link to it (`portal_opens_since`): how many, and the last. */
+export interface PortalOpens {
+  opens: number
+  lastOpenedAt: string | null
+}
+
+/**
+ * "they opened their portal twice since, last Mon Oct 12 at 2:10 PM". A portal's views are the whole portal's, so this
+ * says how often they opened their portal since the line went, never that they opened the one file.
+ */
+export function portalOpensWords(p: PortalOpens): string {
+  if (!p.opens || !p.lastOpenedAt) return 'they have not opened their portal since'
+  const times = TIMES[p.opens] ?? `${p.opens} times`
+  return `they opened their portal ${times} since, last ${shortDay(p.lastOpenedAt)} at ${clockTime(p.lastOpenedAt)}`
+}
+
 /** A chip's words under a line we sent: its name and how it went. */
 export function sentChipWords(f: LineFile): string | null {
   const way = sentWay(f)
   return way ? SENT_WORDS[way] : null
 }
 
-/** The message window's words beside a file on a line we sent. */
-export function sentRowNote(f: LineFile, state: OwnLinkState | null | undefined, nowIso: string): string {
+/** The message window's words beside a file on a line we sent. A link to their portal says their opens since, once read. */
+export function sentRowNote(f: LineFile, state: OwnLinkState | null | undefined, nowIso: string, portal?: PortalOpens | null): string {
   const way = sentWay(f)
   if (!way) return ''
   if (way === 'file' || way === 'picture') return [sizeWords(f.size), SENT_WORDS[way], 'kept with the copy'].filter(Boolean).join(' · ')
-  if (way === 'portal') return SENT_WORDS.portal
+  if (way === 'portal') return portal ? `${SENT_WORDS.portal} · ${portalOpensWords(portal)}` : SENT_WORDS.portal
   if (!state) return SENT_WORDS.own
   const off = linkOff(state, nowIso)
   return off ?? `${SENT_WORDS.own} · ${opensWords(state, nowIso)}`
