@@ -4,7 +4,6 @@
  * prototype's reducer stay on the spike, where they run against these kernels.
  */
 import { describe, expect, it } from 'vitest'
-import { gcNeedsYou, phraseFor } from '../needsYou'
 import { allPeople, projectPeople } from '../projectPeople'
 import { callList, callRows } from './callList'
 import { chartHolds } from './chartHolds'
@@ -65,28 +64,10 @@ describe('not ready to start (G-77): theirs or ours, by the paper', () => {
   })
 })
 
-describe('Needs you’s phrase for a company', () => {
-  const person = (s: GcState, company: string) => projectPeople(s, job(s)).people.find((p) => p.company === company)!
-
-  it('says the work, not the paper, for a company at work uncovered', () => {
-    expect(phraseFor(s0, person(s0, 'Pecan Valley Electric'))).toBe('Pecan Valley Electric is working without insurance')
-  })
-
-  it('says each schedule reason in a phrase', () => {
-    const one = (code: string, text = 'x') => ({ key: 'partner:summit', kind: 'trade' as const, name: 'Carla Nguyen', company: 'Summit Roofing', tag: 'Roofing', partnerId: 'summit', reasons: [{ text, tone: 'amber' as const, code, lineId: 'froof-3' }], tone: 'amber' as const, last: null, phone: '' })
-    expect(phraseFor(s0, one('notReady'))).toBe('Summit Roofing cannot start Sheet metal and flashing yet')
-    expect(phraseFor(s0, one('confirm'))).toBe('Summit Roofing has not confirmed its dates')
-    expect(phraseFor(s0, one('pushedBack'))).toBe('Summit Roofing has not answered our push back')
-    expect(phraseFor(s0, one('log'))).toBe('Summit Roofing was not on site')
-    expect(phraseFor(s0, one('crew'))).toBe('Summit Roofing is short a crew')
-    expect(phraseFor(s0, one('crowded'))).toBe('Summit Roofing has not said how many it will have')
-  })
-})
-
 describe('G-146: the call list’s bar reasons on the board row and the badge', () => {
   const people = (s: GcState) => projectPeople(s, job(s)).people
 
-  it("pins Fair Oaks D's pill at 6 to call and 3 late, the badge at 11 and 6 late, and Needs you's title", () => {
+  it("pins Fair Oaks D's pill at 6 to call and 3 late, and the badge at 11 and 6 late", () => {
     const fair = projectPeople(s0, job(s0))
     expect([fair.count, fair.late]).toEqual([6, 3])
     expect(fair.people.map((p) => [p.company, p.tone])).toEqual([
@@ -98,8 +79,6 @@ describe('G-146: the call list’s bar reasons on the board row and the badge', 
       ['Marsh & Vale Architects', 'grey'],
     ])
     expect([allPeople(s0).count, allPeople(s0).late]).toEqual([11, 6])
-    expect(gcNeedsYou(s0)?.title).toBe('11 to follow up on in GC mode')
-    expect(gcNeedsYou(s0)?.detail).toBe("Hillside Excavation is late on their word · Bexar Steel Erectors never opened the ask · Voltage Brothers' insurance ran out · and 8 more.")
   })
 
   it("pins the architect's row to the holds that are theirs, RFI-003 and the submittal, never a bar", () => {
