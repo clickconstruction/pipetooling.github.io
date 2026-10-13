@@ -214,7 +214,7 @@ describe('envelopeAnswersWords', () => {
     expect(w.gcOkay).toBe('none')
   })
   it('folds the covered jobs\' clocks into one line when they agree and names each when they differ', () => {
-    const status = (state: 'due' | 'paid', day: number | null) => ({ state, day, firstItemId: 'x', firstSentAt: null, letterTwo: null, gcAuthorized: null, words: '' })
+    const status = (state: 'due' | 'paid', day: number | null) => ({ state, day, clock: null, firstItemId: 'x', firstSentAt: null, letterTwo: null, gcAuthorized: null, words: '' })
     const same = { ...base, letterTwo: [{ jobId: 'a', jobLabel: '273', status: status('due', 12) }, { jobId: 'b', jobLabel: '858', status: status('due', 12) }] }
     expect(envelopeAnswersWords(same, opts).letterTwo).toBe('day 12 · due, not sent')
     const differ = { ...base, letterTwo: [{ jobId: 'a', jobLabel: '273', status: status('due', 12) }, { jobId: 'b', jobLabel: '858', status: status('paid', 12) }] }
@@ -242,7 +242,7 @@ describe('an evening instant keeps its day on the packet (v2.4468)', () => {
     const w = envelopeAnswersWords({ ...base, ownerCall: { ...OWNER_CALL, at: '2026-10-02T00:30:00Z', owesGc: 'yes' as const, reserved: 'held' as const }, gcAuthorized: { at: '2026-12-02T00:30:00+00:00', name: 'Dana', note: '' } }, opts)
     expect(w.owner).toMatch(/^Oct 1, Taunya — /)
     expect(w.gcOkay).toBe('Dec 1 · Dana')
-    const sent = { state: 'sent' as const, day: 15, firstItemId: 'x', firstSentAt: null, letterTwo: { itemId: 't', kind: 'paid_out' as const, status: 'sent', sentAt: '2026-10-03T00:30:00Z' }, gcAuthorized: null, words: '' }
+    const sent = { state: 'sent' as const, day: 15, clock: null, firstItemId: 'x', firstSentAt: null, letterTwo: { itemId: 't', kind: 'paid_out' as const, status: 'sent', sentAt: '2026-10-03T00:30:00Z' }, gcAuthorized: null, words: '' }
     expect(envelopeAnswersWords({ ...base, letterTwo: [{ jobId: 'a', jobLabel: '273', status: sent }] }, opts).letterTwo).toBe('sent Oct 2 · paid-out')
     const noon = envelopeAnswersWords({ ...base, ownerCall: { ...OWNER_CALL, at: '2026-10-02T12:00:00Z', owesGc: 'yes' as const, reserved: 'held' as const } }, opts)
     expect(noon.owner).toMatch(/^Oct 2, Taunya — /)

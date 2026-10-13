@@ -16,7 +16,7 @@ function affidavit(jobId: string, pile: LienAffidavitPile, over: Partial<LienAff
 function retainage(jobId: string, pile: LienRetainagePile, over: Partial<LienRetainageEntry> = {}): LienRetainageEntry {
   return { jobId, retainageHeld: 500, contractEndedOn: '2026-09-20', contractEndedHow: 'complete', deadline: '2026-10-20', daysLeft: 15, severity: 'amber', noticed: false, inClaim: false, openBalance: 1000, customerId: 'c1', gcCustomerId: 'gc1', propertyKind: '', hasOwner: true, paymentBond: 'unknown', gates: [], ready: true, item: null, pile, ...over }
 }
-const two = (state: LetterTwoStatus['state'], words = ''): LetterTwoStatus => ({ state, day: 12, firstItemId: 'i1', firstSentAt: '2026-09-23T12:00:00Z', letterTwo: null, gcAuthorized: null, words })
+const two = (state: LetterTwoStatus['state'], words = ''): LetterTwoStatus => ({ state, day: 12, clock: null, firstItemId: 'i1', firstSentAt: '2026-09-23T12:00:00Z', letterTwo: null, gcAuthorized: null, words })
 
 function build(over: Partial<LienNextUpInput>) {
   return buildLienNextUp({ notices: [], affidavits: [], retainage: [], letterTwoByJob: {}, role: 'assistant', todayYmd: TODAY, jobTitle: (id) => `Job ${id}`, gcName: (id) => `GC ${id}`, ...over })
