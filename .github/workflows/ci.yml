@@ -9,6 +9,13 @@ on:
     branches:
       - main
 
+# A pull request's superseded run is cancelled when a newer push arrives; a merge-queue group's run and
+# main's run never are (cancel-in-progress is false for them). Without this, every force-pushed rebase left
+# the stale run holding a runner for its full 18 minutes while the queue waited (2026-10-13, 23 runs backed up).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   checks:
     runs-on: ubuntu-latest
