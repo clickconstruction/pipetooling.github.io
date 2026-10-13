@@ -77,7 +77,9 @@ The window shows the email the way their inbox opens it.
 - Your name, your title and your cell sign it.
 - The letterhead is the company the job is for.
 
-Their answer comes to your own inbox. Bring anything that matters back to the thread. A copy of every email is kept in Documents.
+The window's **Replies to** line names the inbox their answer comes to. Once that inbox is read, their answer lands back on the thread.
+
+With no **Replies to** line, their answer comes to your own inbox. Bring anything that matters back to the thread. A copy of every email is kept in Documents.
 
 ### After this sends
 

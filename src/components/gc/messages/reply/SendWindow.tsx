@@ -10,9 +10,10 @@ import {
   canSend,
   daysSinceOurLastText,
   emailDraft,
-  EMAIL_REPLIES_NOTE,
+  emailRepliesNote,
   EMAIL_SOURCES_NOTE,
   fromHeader,
+  replyToHeader,
   optoutBubble,
   optoutHoldNote,
   OPTOUT_HOLD_TIP,
@@ -260,6 +261,11 @@ export function SendWindow({
                 <div>
                   <strong>From:</strong> {fromHeader(company)}
                 </div>
+                {replyToHeader(company) && (
+                  <div data-send-reply-to>
+                    <strong>Replies to:</strong> {replyToHeader(company)}
+                  </div>
+                )}
                 <div>
                   <strong>To:</strong> {contact.name} {to.email ? `<${to.email}>` : <em style={{ color: 'var(--text-muted)' }}>no email on file</em>}
                 </div>
@@ -317,7 +323,7 @@ export function SendWindow({
                   {fileNote && <p data-send-file-note style={note}>{fileNote}</p>}
                 </div>
               )}
-              <p style={note}>{sentCopyNote(files.length)} {EMAIL_REPLIES_NOTE}</p>
+              <p style={note}>{sentCopyNote(files.length)} {emailRepliesNote(company)}</p>
             </>
           ) : (
             <>

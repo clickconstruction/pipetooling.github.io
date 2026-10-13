@@ -29,11 +29,12 @@ export const TEXTS_ON = false
 export const TEXTS_WAIT = 'Texts wait until the phone is switched on. Send this as an email, or come back to it then.'
 
 /**
- * Whether the sends go from the two boxes (R6): `messages-email` from the box's address and `quo-send` from its number,
- * read from `messages_boxes_v1`. R6's edge PR switches both and flips this with them. Until then an email goes from the
- * app's own sending address, so the reply box keeps today's from line rather than name a box the send does not use.
+ * Whether the sends go from the two boxes (R6): `messages-email` sets the box's address as its Reply-To and `quo-send`
+ * texts from the box's number (`sendBox`), each read from `messages_boxes_v1`. On since v2.5496, so the reply box names
+ * the box their answer goes to and the number a text goes from. While Settings holds no address or number, the words
+ * stay as before.
  */
-export const SENDS_FROM_BOXES = false
+export const SENDS_FROM_BOXES = true
 
 /** The two boxes as Settings keeps them (`messages_boxes_v1`, R6's SQL). Null while the row is missing or empty. */
 export async function loadBoxSettings(client: Pick<SupabaseClient, 'from'> = supabase): Promise<BoxSettings | null> {

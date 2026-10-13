@@ -14,8 +14,13 @@ export interface ComposeCompany {
   name: string
   /** The one number every text goes from, as people read it: "(210) 555-0100". */
   phone: string
-  /** The one mailbox every email goes from: "bids@clickconstruction.example". */
+  /**
+   * The box their answer comes back to: "bids@clickconstruction.example". An email goes from the app's own sending
+   * address under our name, with this as its Reply-To (R6), so the reader takes the answer into the thread.
+   */
   mailbox: string
+  /** How a text's from line names the number: "the bids number". The company number when left out (R6). */
+  numberWords?: string
   /** Where the footer says we are: "San Antonio, Texas". Empty leaves it off. */
   address?: string
 }

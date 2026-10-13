@@ -4,7 +4,7 @@
  * Pure.
  */
 import { letterheadFor, type MessagesEmailColumn } from '../../../supabase/functions/_shared/messagesEmail'
-import { fromNumberFor, mailboxFor, NO_BOX_FALLBACK, type BoxSettings, type Mailbox } from './boxes'
+import { boxForReply, boxSetting, mailboxFor, NO_BOX_FALLBACK, numberName, sendBox, type BoxSettings, type Mailbox } from './boxes'
 import type { ComposeCompany } from './compose'
 import type { JobTile } from './jobTiles'
 import { jobRefOf } from './load'
@@ -42,17 +42,23 @@ export interface ReplyFrom {
 
 /**
  * Our company as the box and the send window name it for the job a reply is tied to: the letterhead `messages-email`
- * sends under (`letterheadFor`, one rule for both). With `from`, the number and the address are the chosen box's, the
- * one they wrote to on a reply and their kind's box otherwise (`mailboxFor`, `fromNumberFor`). Without it, or while
- * Settings leaves a field empty, both stay blank and the words leave them out. The reply box passes `from` only once the
- * sends go from the boxes (`SENDS_FROM_BOXES`): until then an email goes from the app's own sending address.
+ * sends under (`letterheadFor`, one rule for both). With `from` (once the sends go from the boxes, `SENDS_FROM_BOXES`):
+ * - the email's box is the one they wrote to on a reply and their kind's otherwise (`mailboxFor`), Settings' address
+ *   alone, as `messages-email` sets its Reply-To;
+ * - a text goes from that box's number when it has one, else the team box's (`sendBox`, as `quo-send` sends it), and the
+ *   line names which number.
+ * Without it, or while Settings leaves a field empty, the number and the box stay blank and the words leave them out.
  */
 export function replyCompany(jobKey: string | null, from: ReplyFrom | null = null): ComposeCompany {
   const name = letterheadFor(tieOf(jobKey)?.column ?? null)
   if (!from) return { name, phone: '', mailbox: '', address: '' }
+  const wanted = boxForReply(from.wroteTo, { kind: from.kind })
+  // With no settings read, a text goes from the company number, as quo-send's fallback sends it.
+  const textBox: Mailbox = from.settings ? sendBox(wanted, from.settings) : 'team'
   return {
     name,
-    phone: fromNumberFor(from.kind, from.settings, NO_BOX_FALLBACK, from.wroteTo).phone,
+    phone: boxSetting(textBox, from.settings, NO_BOX_FALLBACK).phone,
+    numberWords: numberName(textBox),
     mailbox: mailboxFor(from.kind, from.settings, NO_BOX_FALLBACK, from.wroteTo),
     address: '',
   }

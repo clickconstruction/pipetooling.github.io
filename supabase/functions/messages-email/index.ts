@@ -4,6 +4,8 @@ import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { buildMessagesEmail, letterheadFor, MESSAGES_EMAIL_KIND, parseMessagesEmailBody } from '../_shared/messagesEmail.ts'
 import { emailLinkLines, parseEmailFiles } from '../_shared/messagesEmailFiles.ts'
+// The box their answer comes back to (R6), straight from the copy, not its index.
+import { BOXES_SETTINGS_KEY, boxForReply, mailboxFor, NO_BOX_FALLBACK, parseBoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { placeFiles, readFiles, takeBack } from './files.ts'
@@ -17,7 +19,9 @@ import { placeFiles, readFiles, takeBack } from './files.ts'
  *
  * In order: the line is written in `messages` as the service role (channel email, direction out, the job and the
  * address), so the email has an id before it goes; the email goes through Resend's existing send under our letterhead
- * (`buildMessagesEmail`), from the company's name on `EMAIL_FROM`'s address, its replies to the sender; its sent copy
+ * (`buildMessagesEmail`), from the company's name on `EMAIL_FROM`'s address, its replies to the box (R6, v2.5496: the box
+ * they last wrote to, else their kind's, Settings' address in `messages_boxes_v1`, as the reply box names it; with no
+ * address there, to the sender as before), and the line carries that box; its sent copy
  * is filed with the line as its source, so the thread's overlay of sent copies skips it. If Resend refuses it, the line
  * is taken back out and the refusal is said. The answer is the line's id, which a later press can name (cut 2's
  * *this message gets it done*).
@@ -89,6 +93,25 @@ serve(async (req) => {
       if (project?.billing_job_id) jobIds = [String(project.billing_job_id)]
     }
 
+    // The box their answer comes back to (R6): the one they last wrote to, else their kind's (boxForReply), at Settings'
+    // address alone, as the reply box names it (replyCompany). With none, the answer goes to the sender as before.
+    const [{ data: boxesRow }, { data: lastIn }] = await Promise.all([
+      admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle(),
+      admin
+        .from('messages')
+        .select('mailbox')
+        .eq('contact_id', input.contactId)
+        .eq('direction', 'in')
+        .not('mailbox', 'is', null)
+        .order('at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    const wroteTo: Mailbox | null = lastIn?.mailbox === 'team' || lastIn?.mailbox === 'bids' ? lastIn.mailbox : null
+    const kind = String(contact.kind ?? '')
+    const boxAddress = mailboxFor(kind, parseBoxSettings(boxesRow?.value_text), NO_BOX_FALLBACK, wroteTo)
+    const box = boxForReply(wroteTo, { kind })
+
     // The files, checked and read before anything is written: a send that cannot carry them stops here.
     const job = tie ? ({ [tie.column]: tie.jobId } as { bid_id: string } | { project_id: string } | { jobs_ledger_id: string }) : null
     const read = await readFiles(admin, asks, job)
@@ -104,6 +127,7 @@ serve(async (req) => {
         who_user_id: who.id,
         subject: input.subject,
         body: input.body,
+        ...(boxAddress ? { mailbox: box } : {}),
         ...(tie ? { [tie.column]: tie.jobId } : {}),
       })
       .select('id')
@@ -135,7 +159,7 @@ serve(async (req) => {
 
     const letterhead = letterheadFor(tie?.column ?? null)
     const built = buildMessagesEmail(input, letterhead, emailLinkLines(placed.links))
-    const replyTo = typeof who.email === 'string' && who.email.includes('@') ? who.email : undefined
+    const replyTo = boxAddress || (typeof who.email === 'string' && who.email.includes('@') ? who.email : undefined)
     // The sent copy (docs/SENT_COPIES.md): its source is the line, so the thread's overlay of sent copies skips it.
     const filed = {
       title: built.subject,

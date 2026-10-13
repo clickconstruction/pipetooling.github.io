@@ -97,6 +97,7 @@ export function ReplyBox({
   job,
   kinds,
   attachIo,
+  loadBoxes = loadBoxSettings,
 }: {
   contact: Contact
   io?: ReplyIo
@@ -107,6 +108,8 @@ export function ReplyBox({
   kinds?: readonly ReplyKind[]
   /** What Attach reads (cut 7f): the job's files, their portal, a file from this computer. */
   attachIo?: AttachIo
+  /** The two boxes as Settings keeps them (R6), for the from line; a smoke hands its own. */
+  loadBoxes?: () => Promise<BoxSettings | null>
 }) {
   const open = useOpenThread()
   const reread = useMessagesReread()
@@ -164,14 +167,14 @@ export function ReplyBox({
   useEffect(() => {
     if (!SENDS_FROM_BOXES) return
     let live = true
-    loadBoxSettings()
+    loadBoxes()
       .then((b) => live && setBoxes(b))
       // Unread, the from line keeps today's words, which name no box.
       .catch(() => undefined)
     return () => {
       live = false
     }
-  }, [])
+  }, [loadBoxes])
   const lines = open?.lines
   const wroteTo = useMemo(() => lastWroteTo(lines ?? []), [lines])
   const company: ComposeCompany = useMemo(
