@@ -624,6 +624,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'email', email: 'gc-trade-email' },
         },
         {
+          id: 'gc-file-link',
+          label: 'GC mode: a file sent as our own link',
+          sublabel: 'Messages → a person’s thread → a file on an email or a text, sent as our link',
+          when: 'Each time a file goes on a message as our link',
+          customerCan: 'Open the file from the link. A plan opens in Drive’s own viewer and anything else in the browser. A link we turned off says so.',
+          guide: 'find-every-message-with-a-person-in-one-place',
+          reflects: ['The file and which half of the job’s Drive folder it is in', 'Whether the office cut the link off, or it ended after 30 days'],
+          render: { kind: 'external', note: 'The link opens the file itself, so there is no page of ours to show. A link turned off reads “This link was turned off.”' },
+        },
+        {
           id: 'sub-contract-email',
           label: 'Contract email',
           sublabel: 'People → Contracts → Send for signature',
