@@ -343,6 +343,27 @@ describe('LienDeskModal', () => {
     expect(document.querySelector('[data-lien-next-up="list"]')).toBeNull()
   })
 
+  it('a Docsmit envelope that came back is a Do now row opening the notice under Sent, whose head has the Deliveries filter and whose footer has the cost (the Docsmit train, 6b-2)', async () => {
+    const sent = { id: 'r2', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'sent', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: 'f1', sent_at: '2026-09-14T16:00:00Z', printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T16:00:00Z', voided_at: null } as unknown as LienDeskItemRow
+    const d = data(J650.map((r) => ({ ...r, has_owner: true })), [sent], true)
+    d.filingsByJob = { j650: [{ id: 'f1', job_id: 'j650', kind: 'notice', sends: [], voided_at: null } as never] }
+    d.mailPiecesByFiling = { f1: [{ id: 'p2', kind: 'lien_notice_53_056', recipient: 'original_contractor', status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-09-15T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', source_ids: ['f1'], price: 9.85 }] }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const row = document.querySelector('[data-lien-next-up-row="mail:p2"]') as HTMLElement
+    expect(row.textContent).toContain('Docsmit · original contractor · returned to sender')
+    fireEvent.click(within(row).getByRole('button', { name: 'Open the notice' }))
+    await settle()
+    expect(screen.getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true')
+    const toggle = document.querySelector('[data-lien-pile-head="sent"] [data-lien-pile-deliveries]') as HTMLElement
+    expect(toggle.textContent).toBe('Deliveries · 1')
+    fireEvent.click(toggle)
+    await settle()
+    expect((document.querySelector('[data-lien-pile-deliveries]') as HTMLElement).getAttribute('data-lien-pile-deliveries')).toBe('on')
+    expect((document.querySelector('[data-lien-pile-rows="sent"]') as HTMLElement).textContent).toContain('mailed through Docsmit · returned to sender')
+    expect((document.querySelector('[data-lien-mail-cost]') as HTMLElement).textContent).toBe('Docsmit cost $9.85')
+  })
+
   it('a door re-aims an open desk at the same job when its aim key changes (v2.4612)', async () => {
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={1} />)
     await settle()

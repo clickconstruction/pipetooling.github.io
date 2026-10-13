@@ -100,3 +100,32 @@ export function filingMailCostWords(pieces: ReadonlyArray<LienMailPieceRow>): st
   const unread = pieces.length - read.length
   return `Docsmit cost ${mailCostDollars(Math.round(total * 100) / 100)}${unread > 0 ? ` · ${unread} not read yet` : ''}`
 }
+
+/**
+ * The Do now rows for the envelopes that want a person (6b, the Deliveries filter): one per piece the fold put in
+ * `mailPiecesNeedingYou`, keyed to its job through the filings it holds. `filingsByJob` is the desk's own read.
+ */
+export function mailNeedsYouRows(filingsByJob: Readonly<Record<string, ReadonlyArray<{ id: string }>>>, piecesByFiling: Readonly<Record<string, ReadonlyArray<LienMailPieceRow>>>, fmt: (ymd: string) => string = (d) => d): Array<{ jobId: string; pieceId: string; who: string; words: string }> {
+  const out: Array<{ jobId: string; pieceId: string; who: string; words: string }> = []
+  const seen = new Set<string>()
+  for (const [jobId, filings] of Object.entries(filingsByJob)) {
+    for (const f of filings) {
+      for (const p of mailPiecesNeedingYou(piecesByFiling[f.id] ?? [])) {
+        if (seen.has(p.id)) continue
+        seen.add(p.id)
+        out.push({ jobId, pieceId: p.id, who: RECIPIENT_WORDS[p.recipient] ?? p.recipient, words: mailPieceWords(p, fmt) })
+      }
+    }
+  }
+  return out
+}
+
+/** The sent notices mailed through the provider, for the Sent pile's Deliveries filter: the job ids with a piece behind the sent filing. */
+export function jobsWithMailPieces(entries: ReadonlyArray<{ jobId: string; item: { sent_filing_id?: string | null } | null }>, piecesByFiling: Readonly<Record<string, ReadonlyArray<LienMailPieceRow>>>): Set<string> {
+  const out = new Set<string>()
+  for (const e of entries) {
+    const id = e.item?.sent_filing_id
+    if (id && (piecesByFiling[id]?.length ?? 0) > 0) out.add(e.jobId)
+  }
+  return out
+}
