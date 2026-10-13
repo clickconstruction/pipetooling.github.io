@@ -13,15 +13,10 @@ import type { Owed } from '../messages/owed'
 import type { HeardLine, HeardPromiseKind, HeardPromiseState, QuestionState } from '../messages/promises'
 import type { PromiseKind } from '../gc/types'
 import type { ContactState, FollowUpInput, HasHow, OwedRecord, QueueContact, QueueMessage } from './queue'
+import type { ContactFollowUpRow } from './followUpTypes'
 
-/** The conversation's state and who has it: cut 2's columns on a `contacts` row. */
-export interface ContactFollowUpRow {
-  state: string
-  snoozed_until: string | null
-  has_user_id: string | null
-  has_since: string | null
-  has_how: string | null
-}
+/** The conversation's state and who has it: cut 2's columns on a `contacts` row, kept in `followUpTypes.ts` for the edge. */
+export type { ContactFollowUpRow }
 
 /** A `contacts` row as Follow up reads it: cut 1's columns and cut 2's. */
 export type FollowUpContactRow = ContactRow & ContactFollowUpRow
