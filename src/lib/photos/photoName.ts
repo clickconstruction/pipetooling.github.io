@@ -5,7 +5,9 @@
  * owner's lean, 2026-10-13): the file's own name when a person gave it one, else the words of the line it came on, else
  * *Photo* and its place on the line. Claude reading the picture comes later.
  */
-import { chicagoDay } from '../messages/thread'
+// The day straight from the date helper, not messages/thread.ts's chicagoDay: thread.ts imports types from a file that
+// runs code, which the edge copy refuses (scripts/edge-kernels.mjs), and photo-save runs this on the edge.
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** The longest caption a name carries, cut on a word. */
 export const PHOTO_CAPTION_MAX = 60
@@ -100,7 +102,7 @@ export function photoCaption(input: Pick<PhotoNameInput, 'fileName' | 'words' | 
  */
 export function photoDriveName(input: PhotoNameInput, taken: ReadonlySet<string> = new Set()): string {
   const sender = driveSafe(input.sender) || 'Someone'
-  const base = `${chicagoDay(input.at)} ${sender} · ${photoCaption(input)}`
+  const base = `${calendarYmdInAppTzFromIso(input.at)} ${sender} · ${photoCaption(input)}`
   const ext = extOf(input.mime, input.fileName)
   const withExt = (s: string) => (ext ? `${s}.${ext}` : s)
   const lower = new Set([...taken].map((t) => t.toLowerCase()))

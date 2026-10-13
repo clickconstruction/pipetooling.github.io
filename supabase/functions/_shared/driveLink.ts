@@ -168,8 +168,21 @@ export function landingPath(kind: 'sent' | 'photos' | 'saved', half: 'plans' | '
   return half === 'plans' ? ['Plans'] : ['Team only', 'From email']
 }
 
+/** A picture, by its type or its name's ending. */
+export function isImageFile(f: { mime: string | null; name: string }): boolean {
+  return (f.mime ?? '').startsWith('image/') || /\.(jpe?g|png|heic|heif|gif)$/i.test(f.name)
+}
+
 /** Save to Drive's pick for a file that came in: Team only for a quote or a photo, Plans for anything else (the lead, 2026-10-12). */
 export function saveHalfFor(f: { kind: string; mime: string | null; name: string; isQuote: boolean }): 'plans' | 'team_only' {
-  const image = (f.mime ?? '').startsWith('image/') || /\.(jpe?g|png|heic|heif|gif)$/i.test(f.name)
-  return f.isQuote || image ? 'team_only' : 'plans'
+  return f.isQuote || isImageFile(f) ? 'team_only' : 'plans'
+}
+
+/** Where a photo lands (Messages, cut 10): a Pipeline job's own Customer Pictures folder when its link is plainly a Drive folder, else the job's folder, Team only, Photos (the lead, 2026-10-13). */
+export type PhotoLanding = { kind: 'pictures'; folderId: string } | { kind: 'job'; path: readonly string[] }
+
+/** A photo's landing: `picturesFolderId` is the Drive folder a Pipeline job's Customer Pictures link names, or null. */
+export function photoLanding(job: JobRef, picturesFolderId: string | null): PhotoLanding {
+  if ('jobs_ledger_id' in job && picturesFolderId) return { kind: 'pictures', folderId: picturesFolderId }
+  return { kind: 'job', path: landingPath('photos') }
 }

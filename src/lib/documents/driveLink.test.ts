@@ -6,11 +6,13 @@ import {
   contentDisposition,
   driveViewUrl,
   fileLinkUrl,
+  isImageFile,
   landingPath,
   linkToken,
   linkTokenShape,
   openAnswer,
   parseOfficeAsk,
+  photoLanding,
   saveHalfFor,
   streamUrl,
   streamsInline,
@@ -158,5 +160,25 @@ describe('the office’s door', () => {
     expect(parseOfficeAsk({ action: 'open', job: { bid_id: PROJECT }, driveFileId: '1BidTabSitework000002' })).toEqual({ action: 'open', job: { bid_id: PROJECT }, driveFileId: '1BidTabSitework000002' })
     expect(parseOfficeAsk({ action: 'delete', job: { project_id: PROJECT } })).toBeNull()
     expect(parseOfficeAsk(null)).toBeNull()
+  })
+})
+
+describe('a photo’s landing (Messages, cut 10)', () => {
+  it('knows a picture by its type or its name’s ending', () => {
+    expect(isImageFile({ mime: 'image/jpeg', name: 'picture-1' })).toBe(true)
+    expect(isImageFile({ mime: null, name: 'IMG_2041.HEIC' })).toBe(true)
+    expect(isImageFile({ mime: 'application/pdf', name: 'Addendum 3.pdf' })).toBe(false)
+  })
+
+  it('puts a photo in the job’s Team only, Photos', () => {
+    expect(photoLanding({ project_id: PROJECT }, null)).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
+    expect(photoLanding({ bid_id: PROJECT }, null)).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
+    expect(photoLanding({ jobs_ledger_id: PROJECT }, null)).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
+  })
+
+  it('puts a Pipeline job’s photo in its own Customer Pictures folder when that link is a Drive folder', () => {
+    expect(photoLanding({ jobs_ledger_id: PROJECT }, '1CustomerPictures00000001')).toEqual({ kind: 'pictures', folderId: '1CustomerPictures00000001' })
+    // A GC project or a bid has no Customer Pictures link: the folder id is never read for them.
+    expect(photoLanding({ project_id: PROJECT }, '1CustomerPictures00000001')).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
   })
 })

@@ -978,3 +978,7 @@ verify_jwt = false
 # The dev's door to Docsmit's secrets in Vault (the Docsmit train, PR 9): status · set · ping. Bearer + getUser, role dev in-function; never returns a hash or a software id.
 [functions.mail-config]
 verify_jwt = false
+
+# Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
+[functions.photo-save]
+verify_jwt = false
