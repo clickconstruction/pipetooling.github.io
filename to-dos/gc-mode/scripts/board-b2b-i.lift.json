@@ -130,6 +130,6 @@
   "pin": {
     "main": "fd25d0f947b26ba7a9609fec6da6b9dadb186ceb",
     "spike": "02124aa90da49032084b9ec657425d3c851554fc",
-    "about": "#5331 merged; the spike before its follow-up (claude/board-b2b-i-follow)"
+    "about": "#5331 merged; the spike before its follow-up (claude/board-b2b-i-follow). Since main's needsYou drop (after B #5478, v2.5289) main keeps only the GcNeedsYou shape: gcNeedsYou and phraseFor live in the spike's gcNeedsYou.ts again (spike/h2-needsyou-bodies), word for word as at pin.spike, so this pinned pair still compares equal"
   }
 }
