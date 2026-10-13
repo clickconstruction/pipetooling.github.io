@@ -116,6 +116,8 @@ describe('loadJobMessages (cut 10, J2)', () => {
       ['neq', ['direction', 'team']],
       ['gte', ['at', '2026-10-01T12:00:00Z']],
     ])
+    // Each read takes the newest lines up to its cap, so a long job drops its oldest first. The feed sorts them back.
+    for (const read of reads) expect(read.ops.find(([op]) => op === 'order')).toEqual(['order', ['at', { ascending: false }]])
   })
 
   it('reads only the tied lines once the job is paid', async () => {

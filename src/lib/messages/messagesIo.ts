@@ -52,7 +52,7 @@ const MESSAGE_COLS =
   'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by'
 /** A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql): a call's length, summary and words. */
 const JOB_MESSAGE_COLS = `${MESSAGE_COLS}, duration_seconds, summary, transcript`
-/** The most lines one job's read brings, each way. */
+/** The most lines one job's read brings, each way: the newest, so a long job drops its oldest lines first. */
 const JOB_MESSAGES_MAX = 1000
 
 const unique = (ids: readonly (string | null | undefined)[]) => [...new Set(ids.filter((id): id is string => Boolean(id)))]
@@ -195,7 +195,7 @@ export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
  */
 export async function loadJobMessages(job: { id: string; status: string | null; createdAt: string | null }): Promise<JobActivityMessage[]> {
   const [tied, on] = await Promise.all([
-    from('messages').select(JOB_MESSAGE_COLS).eq('jobs_ledger_id', job.id).order('at').limit(JOB_MESSAGES_MAX) as unknown as PromiseLike<Result<JobMessageRow[]>>,
+    from('messages').select(JOB_MESSAGE_COLS).eq('jobs_ledger_id', job.id).order('at', { ascending: false }).limit(JOB_MESSAGES_MAX) as unknown as PromiseLike<Result<JobMessageRow[]>>,
     jobTakesUntiedLines(job.status)
       ? (from('contact_jobs').select('contact_id').eq('jobs_ledger_id', job.id) as unknown as PromiseLike<Result<{ contact_id: string }[]>>)
       : Promise.resolve({ data: [] as { contact_id: string }[], error: null }),
@@ -221,7 +221,7 @@ export async function loadJobMessages(job: { id: string; status: string | null; 
             .is('jobs_ledger_id', null)
             .neq('direction', 'team')
             .gte('at', job.createdAt ?? '1970-01-01T00:00:00Z')
-            .order('at')
+            .order('at', { ascending: false })
             .limit(JOB_MESSAGES_MAX) as never,
         'load the customer’s lines not tied to a job',
       )
