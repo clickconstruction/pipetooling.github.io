@@ -370,7 +370,7 @@ export async function nameContact(
  * team only, said in the function's words; a training account and a twin find one and never make one.
  */
 export async function contactForCustomer(customerId: string): Promise<string> {
-  return taken(await rpc('contact_for_customer', { p_customer_id: customerId }), 'open their messages') as unknown as string
+  return taken(await supabase.rpc('contact_for_customer', { p_customer_id: customerId }), 'open their messages')
 }
 
 /**

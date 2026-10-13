@@ -10,10 +10,11 @@ import type { ChannelKind, Contact, ContactChannel, ContactKind, ContactRecord }
 
 /**
  * The id columns of the four kinds of 2026-10-13: a lead, a supply house's counter, a rep at a supply house and a
- * candidate. R0's SQL PR adds them to `contacts`; until it is pushed and the types regenerate they are optional here,
- * and the fetchers select them only after that push, since a column the database lacks fails the whole read.
+ * candidate, as R0's SQL (`20261013180000_contacts_seven_kinds.sql`) added them and the generated types carry them.
+ * They stay optional here until the fetchers select them (`CONTACT_COLS` in `messages/messagesIo.ts`, `CONTACT_COLUMNS`
+ * in `followUp/followUpIo.ts`, R0's PR 4), since a row read without them has none of the four.
  */
-type NewRecordColumns = Partial<Record<'prospect_id' | 'supply_house_id' | 'supply_house_contact_id' | 'team_prospect_id', string | null>>
+type NewRecordColumns = Partial<Pick<Tables<'contacts'>, 'prospect_id' | 'supply_house_id' | 'supply_house_contact_id' | 'team_prospect_id'>>
 
 /** A `contacts` row as the client reads it. */
 export type ContactRow = Pick<
