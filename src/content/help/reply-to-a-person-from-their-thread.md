@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, find a reply, add a line
+keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back
 order: 117
 ---
 The reply box sits at the foot of every thread in Messages. Write a text, an email or a team note to the person there.
@@ -83,6 +83,17 @@ The window shows the email the way their inbox opens it.
 
 Their answer comes to your own inbox. Bring anything that matters back to the thread. A copy of every email is kept in Documents.
 
+### After this sends
+
+Under the message, **After this sends** says whose move it is once it goes.
+
+- Press **Their move** when this message leaves nothing on us.
+- Press **Our move** when something is still on us.
+
+When we owe them something, **Their move** marks it done by this message. **Our move** keeps it open.
+
+When nothing is owed yet, **Our move** opens two blanks. Write what we still owe and by when. The thread keeps it, and Follow up lists it under We owe them.
+
 ### A text
 
 Texts wait until the phone is switched on. Until then the **Text** tab shows the text, and its Send stays off. Send it as an email instead.
@@ -100,3 +111,14 @@ If they texted STOP, the box says so. The app will not text that number.
 3. Press {{button:blue|Add the note}}.
 
 The note goes straight into the thread. Only the team sees it.
+
+Press **↩ Bring it back on a day…** before you add the note. The row comes back to Follow up that morning. Pick a day, or type one. Press **No day ×** to take the day off.
+
+## Mark what we owe done with a note
+
+The strip above the box may say what we owe them. Its **Mark it done, with a team note** turns the box into that note.
+
+1. Write how it got done, or why nothing is owed.
+2. Press {{button:blue|Done, with this note}}.
+
+Press **Not done yet** to go back to the box as it was.

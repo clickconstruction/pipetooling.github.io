@@ -2,6 +2,12 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../../../contexts/ToastContext'
 import { useOptionalAuth } from '../../../../hooks/useAuth'
 import { SEED_FLOWS } from '../../../../lib/flows/seed'
+import { NOTE_BACK_PRESS, NOTE_BACK_TIP, noteBackToast } from '../../../../lib/followUp/queue'
+import { OWED_DONE_NEEDS_A_NOTE, OWED_DONE_PLACEHOLDER, OWED_DONE_SEND, OWED_DONE_TOAST, type DayKept } from '../../../../lib/messages/owed'
+import { todayYmdInAppTz } from '../../../../utils/dateUtils'
+import { NoteBackDay } from '../../../followUp/NoteBackDay'
+import { SettlingNote } from '../../../followUp/SettlingNote'
+import { useOwedSettling } from '../../../followUp/useOwedSettling'
 import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
@@ -89,25 +95,57 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
   const [picking, setPicking] = useState(false)
   const [sending, setSending] = useState<'text' | 'email' | null>(null)
   const [busy, setBusy] = useState(false)
+  // Cut 2: marking what we owe done with a team note (the owed strip's press), and a note's day to come back.
+  const settling = useOwedSettling(contact.id)
+  const [back, setBack] = useState<DayKept | null>(null)
+  const [backOpen, setBackOpen] = useState(false)
+  const [settleProblem, setSettleProblem] = useState<string | null>(null)
+  // While a settle is under way the box is a team note; the kind chosen comes back after it, untouched.
+  const shown: ReplyKind = settling.active ? 'note' : kind
 
   const jobFilter = open?.jobFilter ?? null
   const jobKey = replyJob(tie, jobFilter, contact.defaultJobId)
   const tiles = open?.tiles ?? {}
   const tieLabel = tieWords(tie, jobFilter, contact.defaultJobId, tiles)
   const company: ComposeCompany = useMemo(() => replyCompany(jobKey), [jobKey])
-  const blocked = textBoxBlocked(kind, to)
-  const count = goesOut(kind) ? countLine(kind, body) : null
-  const sendLabel = REPLY_KINDS.find((k) => k.kind === kind)?.send ?? 'Send'
+  const blocked = textBoxBlocked(shown, to)
+  const count = goesOut(shown) ? countLine(shown, body) : null
+  const sendLabel = settling.active ? OWED_DONE_SEND : (REPLY_KINDS.find((k) => k.kind === shown)?.send ?? 'Send')
 
-  const after = (sentKind: ReplyKind) => {
+  /** After a send or a note: the box empties and the page reads again, with one toast for all it did. */
+  const after = (sentKind: ReplyKind, more?: string | null) => {
     setBody('')
     setTie(undefined)
-    showToast(sentWords(sentKind, company), 'success')
+    showToast([sentWords(sentKind, company), more].filter(Boolean).join(' '), 'success')
     reread()
+  }
+
+  const settle = async (text: string) => {
+    if (!text) {
+      setSettleProblem(OWED_DONE_NEEDS_A_NOTE)
+      return
+    }
+    setSettleProblem(null)
+    setBusy(true)
+    try {
+      await settling.done(text, jobKey)
+      setBody('')
+      setTie(undefined)
+      showToast(OWED_DONE_TOAST, 'success')
+      reread()
+    } catch (e) {
+      setSettleProblem(formatErrorMessage(e, 'It was not marked done.'))
+    } finally {
+      setBusy(false)
+    }
   }
 
   const press = async () => {
     const text = body.trim()
+    if (settling.active) {
+      await settle(text)
+      return
+    }
     if (!text) {
       showToast(kind === 'note' ? 'Write the note first.' : 'Write the message first.', 'info')
       return
@@ -118,8 +156,10 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
     }
     setBusy(true)
     try {
-      await io.addNote(contact.id, text, jobKey)
-      after('note')
+      await io.addNote(contact.id, text, jobKey, back)
+      after('note', noteBackToast(back))
+      setBack(null)
+      setBackOpen(false)
     } catch (e) {
       showToast(formatErrorMessage(e, 'The note was not added.'), 'error')
     } finally {
@@ -161,17 +201,18 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
             key={k.kind}
             type="button"
             role="radio"
-            aria-checked={kind === k.kind}
-            onClick={() => setKind(k.kind)}
-            style={{ ...KIND_LOOK[k.kind], border: '1px solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', ...(kind === k.kind ? RING : null) }}
+            aria-checked={shown === k.kind}
+            aria-disabled={settling.active || undefined}
+            onClick={() => !settling.active && setKind(k.kind)}
+            style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: settling.active ? 'not-allowed' : 'pointer', ...(shown === k.kind ? RING : null) }}
           >
             {k.label}
           </button>
         ))}
-        {kind === 'note' && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{NOTE_ASIDE.join(' · ')}</span>}
+        {shown === 'note' && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{NOTE_ASIDE.join(' · ')}</span>}
       </div>
 
-      {goesOut(kind) && (
+      {goesOut(shown) && (
         <QuickRepliesStrip
           kind={contact.kind}
           lines={quick.lines}
@@ -191,21 +232,37 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
         />
       )}
 
+      {settling.active && settling.owed && <SettlingNote owed={settling.owed} onNotYet={settling.cancel} nowIso={open?.nowIso} />}
+      {shown === 'note' && !settling.active && (backOpen || back) && (
+        <NoteBackDay
+          value={back}
+          onChange={(day) => {
+            setBack(day)
+            // "No day ×" clears it, and the chips fold back to the press.
+            if (!day) setBackOpen(false)
+          }}
+          todayYmd={todayYmdInAppTz()}
+        />
+      )}
+
       <div style={{ position: 'relative' }}>
         <textarea
-          aria-label={kind === 'note' ? 'A note for the team' : `Write to ${contact.name}`}
+          aria-label={shown === 'note' ? 'A note for the team' : `Write to ${contact.name}`}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={boxPlaceholder(kind, contact.name)}
+          onChange={(e) => {
+            setBody(e.target.value)
+            if (settleProblem) setSettleProblem(null)
+          }}
+          placeholder={settling.active ? OWED_DONE_PLACEHOLDER : boxPlaceholder(shown, contact.name)}
           disabled={Boolean(blocked) || busy}
           rows={3}
           style={{
-            ...KIND_LOOK[kind],
+            ...KIND_LOOK[shown],
             width: '100%',
             minHeight: 64,
             resize: 'vertical',
             display: 'block',
-            border: '1px solid',
+            borderWidth: 1, borderStyle: 'solid',
             borderRadius: 8,
             padding: '0.5rem 0.6rem',
             font: 'inherit',
@@ -213,16 +270,22 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
             boxSizing: 'border-box',
           }}
         />
-        {goesOut(kind) && !body && (
+        {goesOut(shown) && !body && (
           <span
             data-reply-from
             aria-hidden="true"
             style={{ position: 'absolute', right: '0.6rem', bottom: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', pointerEvents: 'none' }}
           >
-            {fromLine(kind, company).join(' · ')}
+            {fromLine(shown, company).join(' · ')}
           </span>
         )}
       </div>
+
+      {settleProblem && (
+        <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>
+          {settleProblem}
+        </div>
+      )}
 
       {count && count.parts.length > 0 && (
         <div data-reply-count style={{ fontSize: '0.75rem', color: count.long ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
@@ -245,12 +308,29 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
           </button>
         </span>
         <span style={{ flex: 1 }} />
+        {shown === 'note' && !settling.active && !backOpen && !back && (
+          <button
+            type="button"
+            data-reply-back
+            title={NOTE_BACK_TIP}
+            onClick={() => setBackOpen(true)}
+            style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8rem' }}
+          >
+            {NOTE_BACK_PRESS}
+          </button>
+        )}
         {blocked && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{blocked}</span>}
         <Btn
           kind="primary"
           onClick={() => void press()}
           disabled={Boolean(blocked) || busy}
-          title={kind === 'note' ? 'Adds the note to the thread and closes the row. Only the team sees it.' : 'Shows it the way they will see it, before it goes. Nothing sends until you press Send there.'}
+          title={
+            settling.active
+              ? 'Marks what we owed done and keeps your words in the thread. The row closes as any note does.'
+              : shown === 'note'
+                ? 'Adds the note to the thread and closes the row. Only the team sees it.'
+                : 'Shows it the way they will see it, before it goes. Nothing sends until you press Send there.'
+          }
         >
           {sendLabel}
         </Btn>
@@ -313,10 +393,10 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
           io={io}
           onKind={setSending}
           onClose={() => setSending(null)}
-          onSent={(sentKind) => {
+          onSent={(sentKind, more) => {
             setSending(null)
             setKind(sentKind)
-            after(sentKind)
+            after(sentKind, more)
           }}
         />
       )}
