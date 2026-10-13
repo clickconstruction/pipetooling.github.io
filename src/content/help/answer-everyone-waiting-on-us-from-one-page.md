@@ -56,4 +56,4 @@ Only the office team and estimators see the speech bubble.
 
 ## From the Dashboard
 
-The Needs you card has a **Customers** line when customers wait on us. It counts customers who need a reply, what we owe them and senders to sort. Press {{button:outline|Messages}} on it to open this page with **Customers** picked.
+The Needs you card has a **Customers** line when customers wait on us. It counts customers who need a reply, what we owe them and customers in **New** to sort. Press {{button:outline|Messages}} on it to open this page with **Customers** picked.
