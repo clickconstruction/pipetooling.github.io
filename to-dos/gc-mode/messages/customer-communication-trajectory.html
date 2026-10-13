@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customer communication build</title>
+<meta name="description" content="Where the residential Messages build stands: every PR of the plan by cut, its state, its stack, who has it, and the count against the plan. Edit the DATA block at the foot to update.">
+<style>
+/* Layout: a headline row of counts, a lane map (one row per cut, one node per PR, stacks as arrows), a burn-up of opened and merged against the plan, then the table. One accent; the states read by shape and word, never color alone. */
+:root{
+  --bg:#f3f5f8;--surface:#ffffff;--text:#1b1f24;--muted:#5c6470;--border:#dde1e6;--chip:#eef1f5;--grid:#e9ecf0;
+  --accent:#1f5fbf;--accent-soft:#e8f0fc;--ok:#1a7f3c;--ok-soft:#e6f6ec;--warn:#b35c00;--warn-soft:#fff1e0;--cust:#d9731a;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;--grid:#262b33;
+  --accent:#6ea3f0;--accent-soft:#1d2d47;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--cust:#f0a05a;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;--grid:#262b33;
+  --accent:#6ea3f0;--accent-soft:#1d2d47;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--cust:#f0a05a;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--font)}
+.wrap{max-width:1100px;margin:0 auto;padding-block:16px 48px;padding-inline:16px}
+h1{font-size:22px;margin:0 0 2px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+h2{font-size:15px;margin:22px 0 8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;min-width:0}
+.tile .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.tile .v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:2px}
+.tile .v small{font-size:13px;font-weight:400;color:var(--muted);margin-left:4px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;overflow-x:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:0 0 8px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{width:18px;height:18px;flex:none}
+svg.lanes{display:block;min-width:720px;width:100%;height:auto;font:12px var(--font)}
+svg.lanes text{fill:var(--text)}
+svg.lanes .lane-label{font-weight:600;font-size:12px}
+svg.lanes .lane-sub{fill:var(--muted);font-size:11px}
+svg.lanes .grid{stroke:var(--grid)}
+svg.lanes .node{cursor:pointer}
+svg.lanes .node:focus-visible circle,svg.lanes .node:focus-visible rect{outline:2px solid var(--accent)}
+svg.lanes .nlabel{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+svg.lanes .arrow{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:3 3}
+svg.lanes .waits{fill:var(--muted);font-size:10.5px;font-style:italic}
+.tip{position:fixed;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.14);max-width:300px;z-index:10;opacity:0;transition:opacity .12s}
+.tip.show{opacity:1}
+.tip b{display:block}
+.tip .m{color:var(--muted);font-size:12px}
+svg.burn{display:block;width:100%;max-width:720px;height:auto;font:12px var(--font)}
+svg.burn text{fill:var(--muted)}
+svg.burn .ax{stroke:var(--border)}
+svg.burn .gl{stroke:var(--grid)}
+svg.burn .plan{stroke:var(--muted);stroke-dasharray:4 4;stroke-width:1.5;fill:none}
+svg.burn .opened{stroke:var(--accent);stroke-width:2;fill:none}
+svg.burn .merged{stroke:var(--ok);stroke-width:2;fill:none}
+svg.burn .area{fill:var(--accent);opacity:.08}
+.note{color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:6px;border-bottom:1px solid var(--border);font-weight:600}
+td{padding:6px;border-bottom:1px dashed var(--border);vertical-align:top}
+td.n{font-family:var(--mono);white-space:nowrap}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap}
+.st i{width:10px;height:10px;border-radius:50%;display:inline-block;border:2px solid var(--muted);background:transparent;flex:none}
+.st.planned i{border-color:var(--muted)}
+.st.building i{border-color:var(--accent);border-style:dashed}
+.st.draft i{border-color:var(--accent);background:linear-gradient(90deg,var(--accent) 50%,transparent 50%)}
+.st.open i{border-color:var(--accent);background:var(--accent)}
+.st.queued i{border-color:var(--accent);background:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.st.merged i{border-color:var(--ok);background:var(--ok);border-radius:2px}
+.st.held i{border-color:var(--warn);background:var(--warn-soft)}
+.foot{font-size:12px;color:var(--muted);margin-top:14px}
+code{font-family:var(--mono);font-size:.92em;background:var(--chip);padding:1px 5px;border-radius:5px}
+@media (max-width:640px){.tile .v{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Customer communication build</h1>
+<p class="sub" id="asof">The residential Messages build against <code>RESIDENTIAL_BUILD_PLAN.md</code> on <code>spike/gc-mode</code>.</p>
+
+<div class="tiles" id="tiles"></div>
+
+<h2>Where each cut stands</h2>
+<div class="card">
+  <div class="legend" id="legend"></div>
+  <svg class="lanes" id="lanes" role="img" aria-label="One row per cut, one node per PR, arrows between a PR and the one it stacks on"></svg>
+  <p class="note">Hover or press a node for the PR, the helper and what it waits on. A dashed arrow points from a PR to the one it stacks on. <em>waits on</em> names the wave 2 piece a cut cannot start before.</p>
+</div>
+
+<h2>Opened and merged against the plan</h2>
+<div class="card">
+  <svg class="burn" id="burn" role="img" aria-label="PRs opened and merged over time against the plan's total"></svg>
+  <p class="note" id="burnnote"></p>
+</div>
+
+<h2>Every PR</h2>
+<div class="card" style="padding:0 6px">
+  <table id="tbl"><thead><tr><th>Cut</th><th>Piece</th><th>PR</th><th>State</th><th>Helper</th><th>Stacks on · waits on</th></tr></thead><tbody></tbody></table>
+</div>
+<p class="foot">To update: edit the <code>DATA</code> block at the foot of this file. States: planned · building · draft · open · queued · held · merged. Times are Chicago. Made from the helpers' reports; PR states as of the stamp above.</p>
+</div>
+<div class="tip" id="tip" role="status"></div>
+
+<script>
+// ---- DATA: edit here ----
+const DATA = {
+  asOf: '2026-10-13 22:00 CT',
+  plan: { prs: 45, migrations: 10, edge: 2 },
+  // each cut: id, name, planned PR count, what it waits on in wave 2
+  cuts: [
+    { id:'R0', name:'Seven kinds of contact', planned:3, waits:'' },
+    { id:'R1', name:'One row model', planned:3, waits:'cut 10 in flight' },
+    { id:'R2', name:'The thread everywhere', planned:3, waits:'wave 2 cut 1' },
+    { id:'R3', name:'Quick replies: blanks, phone, Spanish', planned:4, waits:'wave 2 cut 3' },
+    { id:'R4', name:'The residential flow', planned:4, waits:'' },
+    { id:'R5', name:"The tech's door, Job Mode, push", planned:4, waits:'R2, R3' },
+    { id:'R6', name:'Two boxes, two numbers', planned:3, waits:'cuts 5, 6; team@' },
+    { id:'R7', name:'The New lane', planned:4, waits:'wave 2 cut 2' },
+    { id:'R8', name:'The sixteen integrations', planned:17, waits:'' },
+    { id:'R9', name:'The docs pass', planned:1, waits:'everything' },
+  ],
+  // each PR: cut, piece, number (0 = none yet), state, helper, stacksOn (PR number), openedAt (HH:MM CT) , mergedAt
+  prs: [
+    { cut:'R0', piece:'the kinds, kernel', n:5565, state:'queued', helper:'2', openedAt:'21:09' },
+    { cut:'R0', piece:'the loaders', n:5570, state:'draft', helper:'2', stacksOn:5565, openedAt:'21:40' },
+    { cut:'R0', piece:'the SQL: kind check, four id columns, backfill', n:0, state:'building', helper:'2' },
+    { cut:'R1', piece:'job activity inside a thread, kernel', n:5557, state:'queued', helper:'7', openedAt:'20:56', note:'queue position 8 at 21:16' },
+    { cut:'R1', piece:'five kinds in the activity registry', n:0, state:'planned', helper:'', note:'cut 10 J1 #5524 covers most of it' },
+    { cut:'R1', piece:"the job panel's Customer chip and move line", n:0, state:'planned', helper:'' },
+    { cut:'R2', piece:'/messages in the header', n:0, state:'planned' },
+    { cut:'R2', piece:"the job window's Text and Email", n:0, state:'planned' },
+    { cut:'R2', piece:'openers from a customer’s name', n:0, state:'planned' },
+    { cut:'R3', piece:'blanks and the phone’s lines, kernel', n:5558, state:'open', helper:'4', openedAt:'21:20' },
+    { cut:'R3', piece:'stepsByFlow and the es version', n:0, state:'building', helper:'3', note:'after #5565 lands' },
+    { cut:'R3', piece:'the SQL: text_es, phone_order, phone_name, quick_reply_id', n:0, state:'planned' },
+    { cut:'R3', piece:'the editor and the strip', n:0, state:'planned' },
+    { cut:'R4', piece:'facts, seed and SQL (20261013170000)', n:5568, state:'draft', helper:'3', stacksOn:5565, openedAt:'21:15' },
+    { cut:'R4', piece:'the loader', n:5560, state:'draft', helper:'1', stacksOn:5568, openedAt:'21:05' },
+    { cut:'R4', piece:'the stage sends and the board dot, kernel', n:5572, state:'draft', helper:'1', stacksOn:5560, openedAt:'21:58' },
+    { cut:'R4', piece:'the strip above the box', n:0, state:'building', helper:'1' },
+    { cut:'R5', piece:'who answers a reply, kernel', n:5561, state:'open', helper:'5', openedAt:'21:05' },
+    { cut:'R5', piece:'the SQL: the tech’s door, has_until, the settings', n:0, state:'planned' },
+    { cut:'R5', piece:'Job Mode: Message the customer', n:0, state:'planned' },
+    { cut:'R5', piece:'push: messages-notify', n:0, state:'planned' },
+    { cut:'R6', piece:'the SQL: mailbox, from number', n:0, state:'planned' },
+    { cut:'R6', piece:'the reader on two grants', n:0, state:'planned' },
+    { cut:'R6', piece:'compose and sort by box', n:0, state:'planned' },
+    { cut:'R7', piece:'the New lane, kernel', n:5562, state:'queued', helper:'6', openedAt:'21:05' },
+    { cut:'R7', piece:'the SQL: tied_by', n:0, state:'planned' },
+    { cut:'R7', piece:'the lane and the sort card', n:0, state:'planned' },
+    { cut:'R7', piece:'Sort all, the desk', n:0, state:'planned' },
+    { cut:'R8', piece:'14 · the Dashboard’s Customers line', n:5563, state:'queued', helper:'8', openedAt:'21:06' },
+    { cut:'R8', piece:'6 · They owe us, kernel', n:5566, state:'queued', helper:'9', openedAt:'21:09' },
+    { cut:'R8', piece:'1 · the app’s emails in the thread', n:5559, state:'held', helper:'7', openedAt:'21:05', note:'arms after #5557 lands; same Glossary line' },
+    { cut:'R8', piece:'7 · the Lien desk’s sends', n:0, state:'building', helper:'8' },
+    { cut:'R8', piece:'8 · a line on an estimate from a message', n:0, state:'building', helper:'6' },
+    { cut:'R8', piece:'3 · what slides on the board', n:5571, state:'open', helper:'7', openedAt:'21:55' },
+    { cut:'R8', piece:'4 · voicemails read', n:0, state:'building', helper:'9' },
+    { cut:'R8', piece:'2 · reports and photos', n:0, state:'building', helper:'7' },
+    { cut:'R8', piece:'3 · the ask on the send (screen)', n:0, state:'planned' },
+    { cut:'R8', piece:'8 · the SQL: estimates.source_message_id', n:0, state:'planned' },
+    { cut:'R8', piece:'9 · leads on Prospects', n:0, state:'planned' },
+    { cut:'R8', piece:'10 · supply houses to the RFQ', n:0, state:'planned' },
+    { cut:'R8', piece:'11 · candidates to the hiring board', n:0, state:'planned' },
+    { cut:'R8', piece:'12 · subs: the sheet’s facts (SQL)', n:0, state:'planned' },
+    { cut:'R8', piece:'12 · subs: the flow', n:0, state:'planned' },
+    { cut:'R8', piece:'12 · subs: lines on the sheet', n:0, state:'planned' },
+    { cut:'R8', piece:'15 · the board dot (screen)', n:0, state:'planned' },
+    { cut:'R8', piece:'16 · language on the customer', n:0, state:'planned' },
+    { cut:'R9', piece:'the docs pass', n:0, state:'planned' },
+  ],
+};
+// ---- end DATA ----
+
+(function(){
+  'use strict';
+  const $=(s,r)=>(r||document).querySelector(s);
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const STATES=['planned','building','draft','open','queued','held','merged'];
+  const WORD={planned:'planned',building:'building',draft:'draft, stacked',open:'open, armed',queued:'in the queue',held:'open, held',merged:'merged'};
+  const prs=DATA.prs, cuts=DATA.cuts;
+  $('#asof').insertAdjacentHTML('beforeend',` As of <b>${esc(DATA.asOf)}</b>.`);
+
+  // tiles
+  const count=st=>prs.filter(p=>p.state===st).length;
+  const opened=prs.filter(p=>p.n>0).length, merged=count('merged');
+  const inFlight=opened-merged, building=count('building');
+  const tiles=[['Planned PRs',DATA.plan.prs,''],['Opened',opened,`${Math.round(opened/DATA.plan.prs*100)}%`],['In the queue',count('queued'),''],['Stacked drafts',count('draft'),''],['Building now',building,''],['Merged',merged,'']];
+  $('#tiles').innerHTML=tiles.map(([k,v,s])=>`<div class="tile"><div class="k">${k}</div><div class="v">${v}${s?`<small>${s}</small>`:''}</div></div>`).join('');
+
+  // glyphs: shape per state, so the state never rides on color alone
+  function glyph(state,x,y,r){
+    r=r||7;
+    const c='var(--accent)', g='var(--muted)', ok='var(--ok)', w='var(--warn)';
+    switch(state){
+      case 'planned': return `<circle cx="${x}" cy="${y}" r="${r}" fill="var(--surface)" stroke="${g}" stroke-width="2"/>`;
+      case 'building': return `<circle cx="${x}" cy="${y}" r="${r}" fill="var(--surface)" stroke="${c}" stroke-width="2" stroke-dasharray="3 2.5"/>`;
+      case 'draft': return `<circle cx="${x}" cy="${y}" r="${r}" fill="var(--surface)" stroke="${c}" stroke-width="2"/><path d="M${x} ${y-r} A${r} ${r} 0 0 1 ${x} ${y+r} Z" fill="${c}"/>`;
+      case 'open': return `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="${c}" stroke-width="2"/>`;
+      case 'queued': return `<circle cx="${x}" cy="${y}" r="${r+3}" fill="none" stroke="${c}" stroke-width="1.5" opacity=".45"/><circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+      case 'held': return `<circle cx="${x}" cy="${y}" r="${r}" fill="var(--warn-soft)" stroke="${w}" stroke-width="2"/><line x1="${x-3}" y1="${y}" x2="${x+3}" y2="${y}" stroke="${w}" stroke-width="2"/>`;
+      case 'merged': return `<rect x="${x-r}" y="${y-r}" width="${2*r}" height="${2*r}" rx="2" fill="${ok}"/><path d="M${x-3.5} ${y} l2.5 2.5 l4.5 -5" stroke="#fff" stroke-width="2" fill="none"/>`;
+    }
+    return '';
+  }
+  $('#legend').innerHTML=STATES.map(s=>`<span><svg viewBox="0 0 20 20">${glyph(s,10,10,6)}</svg>${WORD[s]}</span>`).join('')+`<span><svg viewBox="0 0 24 20"><path d="M2 10 H18" class="arrow" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 3"/><path d="M14 6 L19 10 L14 14" fill="none" stroke="var(--muted)" stroke-width="1.5"/></svg>stacks on</span>`;
+
+  // lane map
+  const W=1040, left=262, rowH=50, top=14, colW=42, nodeR=7;
+  const H=top+rowH*cuts.length+10;
+  const svg=$('#lanes'); svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const pos={}; let h='';
+  cuts.forEach((c,i)=>{
+    const y=top+rowH*i+rowH/2; const rows=prs.filter(p=>p.cut===c.id);
+    h+=`<line x1="${left-10}" x2="${W-10}" y1="${y}" y2="${y}" class="grid"/>`;
+    h+=`<text x="10" y="${y-4}" class="lane-label">${esc(c.id)} · ${esc(c.name)}</text>`;
+    h+=`<text x="10" y="${y+12}" class="lane-sub">${rows.filter(p=>p.n>0).length} of ${c.planned} open${c.waits?' · waits on '+esc(c.waits):''}</text>`;
+    rows.forEach((p,j)=>{ const x=left+colW*j+colW/2; pos[p.n||`${c.id}-${j}`]={x,y}; p._x=x; p._y=y; });
+  });
+  // arrows first, under the nodes
+  prs.forEach(p=>{ if(!p.stacksOn) return; const to=pos[p.stacksOn]; if(!to) return; const x1=p._x, y1=p._y, x2=to.x, y2=to.y;
+    const mx=(x1+x2)/2; h+=`<path class="arrow" d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}"/>`; });
+  prs.forEach((p,i)=>{ const label=p.n?`#${p.n}`:''; h+=`<g class="node" tabindex="0" data-i="${i}">${glyph(p.state,p._x,p._y,nodeR)}<text x="${p._x}" y="${p._y+22}" text-anchor="middle" class="nlabel">${label}</text>${p.helper?`<text x="${p._x}" y="${p._y-14}" text-anchor="middle" class="nlabel">h${esc(p.helper)}</text>`:''}</g>`; });
+  svg.innerHTML=h;
+  const tip=$('#tip');
+  function showTip(p,ev){ tip.innerHTML=`<b>${p.n?'#'+p.n+' · ':''}${esc(p.cut)} · ${esc(p.piece)}</b><span class="m">${WORD[p.state]}${p.helper?' · helper '+esc(p.helper):''}${p.openedAt?' · opened '+esc(p.openedAt):''}${p.stacksOn?' · stacks on #'+p.stacksOn:''}</span>${p.note?`<span class="m">${esc(p.note)}</span>`:''}`; tip.classList.add('show'); moveTip(ev); }
+  function moveTip(ev){ const pad=12; let x=ev.clientX+pad, y=ev.clientY+pad; const r=tip.getBoundingClientRect(); if(x+r.width>window.innerWidth-8) x=ev.clientX-r.width-pad; if(y+r.height>window.innerHeight-8) y=ev.clientY-r.height-pad; tip.style.left=x+'px'; tip.style.top=y+'px'; }
+  svg.querySelectorAll('.node').forEach(g=>{ const p=prs[+g.dataset.i];
+    g.addEventListener('mouseenter',e=>showTip(p,e)); g.addEventListener('mousemove',moveTip); g.addEventListener('mouseleave',()=>tip.classList.remove('show'));
+    g.addEventListener('focus',()=>{ const b=g.getBoundingClientRect(); showTip(p,{clientX:b.left+b.width/2,clientY:b.bottom}); }); g.addEventListener('blur',()=>tip.classList.remove('show'));
+    g.addEventListener('click',()=>{ if(p.n) window.open(`https://github.com/clickconstruction/pipetooling.github.io/pull/${p.n}`,'_blank'); });
+  });
+
+  // burn-up: opened and merged by time against the plan line
+  const times=prs.filter(p=>p.openedAt).map(p=>p.openedAt).sort();
+  const toMin=t=>{ const [hh,mm]=t.split(':').map(Number); return hh*60+mm; };
+  const t0=toMin(times[0])-10, t1=Math.max(toMin(times[times.length-1])+30, toMin(DATA.asOf.slice(11,16))||0);
+  const bw=720, bh=220, bl=40, bb=28, br=16, bt=14;
+  const xs=t=>bl+(t-t0)/(t1-t0)*(bw-bl-br), ys=v=>bt+(1-v/DATA.plan.prs)*(bh-bt-bb);
+  let steps=[[t0,0]]; let n=0; times.forEach(t=>{ n++; steps.push([toMin(t),n]); }); steps.push([t1,n]);
+  const path=steps.map((s,i)=>`${i?'L':'M'}${xs(s[0])} ${ys(s[1])}`).join(' ');
+  const area=path+` L${xs(t1)} ${ys(0)} L${xs(t0)} ${ys(0)} Z`;
+  const mergedSteps=[[t0,0],[t1,merged]];
+  const fmt=m=>`${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+  let b=`<rect x="0" y="0" width="${bw}" height="${bh}" fill="var(--surface)"/>`;
+  [0,15,30,45].forEach(v=>{ b+=`<line x1="${bl}" x2="${bw-br}" y1="${ys(v)}" y2="${ys(v)}" class="gl"/><text x="${bl-6}" y="${ys(v)+4}" text-anchor="end">${v}</text>`; });
+  b+=`<line x1="${bl}" x2="${bw-br}" y1="${ys(DATA.plan.prs)}" y2="${ys(DATA.plan.prs)}" class="plan"/><text x="${bw-br}" y="${ys(DATA.plan.prs)-5}" text-anchor="end">the plan · ${DATA.plan.prs} PRs</text>`;
+  b+=`<path d="${area}" class="area"/><path d="${path}" class="opened"/>`;
+  b+=`<path d="M${xs(t0)} ${ys(0)} L${xs(t1)} ${ys(merged)}" class="merged"/>`;
+  b+=`<line x1="${bl}" x2="${bw-br}" y1="${ys(0)}" y2="${ys(0)}" class="ax"/>`;
+  for(let t=Math.ceil(t0/30)*30;t<=t1;t+=30) b+=`<text x="${xs(t)}" y="${bh-8}" text-anchor="middle">${fmt(t)}</text>`;
+  b+=`<circle cx="${xs(toMin(times[times.length-1]))}" cy="${ys(n)}" r="4" fill="var(--accent)"/><text x="${xs(toMin(times[times.length-1]))+8}" y="${ys(n)+4}" fill="var(--text)" font-weight="600">${n} opened</text>`;
+  b+=`<text x="${xs(t1)-4}" y="${ys(merged)-6}" text-anchor="end" fill="var(--ok)" font-weight="600">${merged} merged</text>`;
+  $('#burn').setAttribute('viewBox',`0 0 ${bw} ${bh}`); $('#burn').innerHTML=b;
+  $('#burnnote').textContent=`Blue is PRs opened, green is PRs merged, the dashed line is the plan's total. Wave 2's own PRs are not counted; the plan stands on about 18 of them. ${inFlight} PRs are in flight and ${building} more are being built.`;
+
+  // table
+  $('#tbl tbody').innerHTML=prs.map(p=>`<tr><td class="n">${esc(p.cut)}</td><td>${esc(p.piece)}</td><td class="n">${p.n?`<a href="https://github.com/clickconstruction/pipetooling.github.io/pull/${p.n}" target="_blank" rel="noopener">#${p.n}</a>`:'—'}</td><td><span class="st ${p.state}"><i></i>${WORD[p.state]}</span></td><td>${p.helper?'helper '+esc(p.helper):'—'}</td><td class="note">${p.stacksOn?'#'+p.stacksOn:''}${p.note?(p.stacksOn?' · ':'')+esc(p.note):''}${!p.stacksOn&&!p.note?(cuts.find(c=>c.id===p.cut).waits||'—'):''}</td></tr>`).join('');
+})();
+</script>
+</body>
+</html>
