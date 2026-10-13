@@ -2,15 +2,15 @@
 title: set up the steps a person goes through
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: flows, flow, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings
+keywords: flows, flow, residential customer, sub, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings
 order: 100
 ---
-Each customer, trade partner and architect goes through a flow of steps. The office sets up those steps in Settings. Every change is tried on everyone before you save it.
+Each customer, trade partner, architect, residential customer and sub goes through a flow of steps. The office sets up those steps in Settings. Every change is tried on everyone before you save it.
 
 ## Open the flows
 
 1. Open [Flows](/settings?tab=settings-flows) in Settings.
-2. Pick the flow you want: **Customer**, **Trade partner** or **Architect**.
+2. Pick the flow you want: **Customer**, **Trade partner**, **Architect**, **Residential customer** or **Sub**.
 
 A flow has three lanes. **Once** holds the steps a person goes through one time. **Per job** holds the steps for each job they are on. **Any time** holds the steps that can come up at any point.
 
@@ -72,6 +72,8 @@ The line above the flow says what the last morning run did. It counts the texts 
 ## Save or put it back
 
 Every change is tried on everyone on the flow before you save. The box *Before you save · who moves* lists each person. A name in bold would move to another step.
+
+The **Residential customer** and **Sub** flows do not show who is on them yet. Their box says so, and so does **How it is going**. **Save** still changes the flow for everyone on it.
 
 Press {{button:blue|Save}} to keep every change. Press {{button:outline|Put it back}} to drop them all.
 

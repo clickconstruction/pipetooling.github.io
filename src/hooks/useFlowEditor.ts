@@ -17,7 +17,7 @@ import {
   type WhoMovesLine,
 } from '../lib/flows/editor'
 import { flowSaveProblem, loadFlowForEditing, saveFlow, type FlowForEditing } from '../lib/flows/flowEditorIo'
-import type { FlowKind } from '../lib/flows/facts'
+import { readsPeopleOf, type EditorKind } from '../lib/flows/editorKinds'
 import { loadFlowRowsKind } from '../lib/flows/flowsIo'
 import { funnel, goingRows, usualByStep, type Funnel, type GoingRow } from '../lib/flows/going'
 import { goingInputs } from '../lib/flows/goingInputs'
@@ -27,7 +27,7 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage } from '../utils/errorHandling'
 
 /** The flows the office edits: a number nobody has named has its own, which is the app's. */
-export type EditorKind = Exclude<FlowKind, 'unknown'>
+export type { EditorKind }
 
 export interface FlowPerson {
   contactId: string
@@ -85,8 +85,10 @@ export function useFlowEditor(kind: EditorKind, opts: { enabled?: boolean; now?:
     if (!enabled) return
     setLoading(true)
     try {
-      // Who is on the flow only feeds the preview and How it is going: its read failing leaves the flow to edit.
-      const [flow, rows] = await Promise.all([loadFlowForEditing(kind), loadFlowRowsKind(kind).catch((): FlowRowsKindAnswer => ({}))])
+      // Who is on the flow only feeds the preview and How it is going: its read failing leaves the flow to edit. A
+      // residential customer's and a sub's people have no such read yet (`readsPeopleOf`), so theirs is not asked for.
+      const people = readsPeopleOf(kind) ? loadFlowRowsKind(kind).catch((): FlowRowsKindAnswer => ({})) : Promise.resolve<FlowRowsKindAnswer>({})
+      const [flow, rows] = await Promise.all([loadFlowForEditing(kind), people])
       if (!live.current) return
       setKept(flow)
       setDraft(draftFrom(flow.flow, flow.removed))
