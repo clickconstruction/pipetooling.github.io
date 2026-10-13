@@ -8,6 +8,7 @@ The owner wants the plumbing company's own customers on the Messages spine so a 
 
 ## 2. The first thing to do
 
+0. **Settle a migration stamp collision before anything merges.** Helper 1's sub-flow migration (#5586, draft) and helper 7's R3 SQL (being built) both name **20261013200000**. Whichever claimed later renumbers from a clean commit (`npm run claim -- --migration`, then move the file and its doc, never a hand-picked number), and `git ls-remote origin 'refs/claims/*'` is the arbiter. Both helpers were told at 22:50 CT. The "Migrations in flight" table in the plan still says 200000 for R3; fix it once settled.
 1. **Announce yourself to the helpers.** They are Claude Desktop sessions named "Customer communication helper 1" through "9", reachable by name with `SendMessage` (run `ListAgents` to see them). Tell each: "I am the new lead. Send me your next report." They were told to finish their current piece, open its PR, and wait for the next lead.
 2. **Do not touch the merge queue.** Our PRs are queued behind a CI backlog of our own making (about 46 runs at 22:35). A queued PR shows no `autoMergeRequest`; read `mergeQueueEntry` by GraphQL instead. A re-arm on a queued PR does nothing; a dequeue costs its place.
 3. **Push migrations in stamp order after each merges**, with `supabase db push` from a checkout with `.env.local` (copy it from a sibling worktree; see the memory file "env-local-file-is-fine-to-use"). Review the landed file first. Run `npm run check:migration-drift` after. The order is in section 6.
@@ -50,6 +51,7 @@ State is GitHub's: queued = in the merge queue (position in parentheses); armed 
 | #5579 | R8 · 10 | a supply house's email to the RFQ (`rfq/messageToRfq.ts`) | 7 | `claude/rfq-message-match` | armed |
 | #5581 | R5 | the push rule (`messages/notifyRule.ts`) | 8 | `claude/r5-notify-rule` | armed |
 | #5582 | R6 | two boxes, two numbers (`messages/boxes.ts`) | 7 | `claude/messages-two-boxes` | armed |
+| #5586 | R8 · 12 | the sub flow: six facts, `SEED_FLOWS.sub`, a migration re-creating `flow_fact_ids()` and `flows_seed()`, a `sub-flow` bed | 1 | `claude/sub-flow-facts-seed` | draft on #5568; **stamp collides with R3's, see §2 item 0** |
 
 Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contacts-seven-kinds-sql`, migration 20261013180000, v2.5410; opens when #5565 lands, since its ACCESS_CONTROL clause edits a line #5565 changes); helper 3's stepsByFlow kernel (branch `claude/r3-steps-by-flow`, v2.5411; opens after #5568 lands).
 
@@ -57,7 +59,7 @@ Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contact
 
 | Helper | Building now | Waiting on | Then |
 |---|---|---|---|
-| 1 | R8 · 12 PR 1: the sub flow's facts, seed and migration, stacked on #5568 (go given) | #5568 → #5560 → #5572/#5580 to rebase down | PR 2 the two sheet columns (`on_site_at`, `done_at`, one trigger, a backfill); PR 3 the loader `subStampsFor` and `subLinesOnSheet` |
+| 1 | done: #5586 opened; stopped and waiting | #5568 → #5560 → #5572/#5580/#5586 to rebase down | PR 2 the two sheet columns (`on_site_at`, `done_at`, one trigger, a backfill); PR 3 the loader `subStampsFor` and `subLinesOnSheet` |
 | 2 | R0 SQL, committed (see above) | #5565 to land | open and arm the SQL; then the fetchers' new columns after the push |
 | 3 | stepsByFlow (`quickReplies/kernel.ts`: `stepsByFlow`, `qrStepName` across flows, the `es` and `phone` version words), committed | #5568 to land; #5558 for the one `textEs` field | arm it; delete the `PhoneLine.textEs` redeclaration if #5558 landed first |
 | 4 | nothing assigned since #5558 | | assign: see section 8 |
@@ -75,7 +77,8 @@ Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contact
 | 20261013180000 | R0 kinds: `contacts_kind_known`, four id columns, `contacts_one_record`, `name_contact`, `contacts_subs_from_roster()`, `follow_up_count` | not open yet | 2 |
 | 20261013190000 | R5: `messages_tech_team()`, the tech's door, `has_until`, `office_only`, hours and wait settings, `notification_history.message_id` | not open yet | 8 |
 | 20261013200000 | R3: `text_es`, `phone_order`, `phone_name`, `es` and `phone` version kinds, `edit_quick_reply` recreated, `messages.quick_reply_id`, `quick_replies_for_known` widened | not open yet | 7 |
-| next claimed | R8 · 12 PR 1 (sub flow lists), R8 · 16 (`customers.language`), R7 (`messages.tied_by`) | | 1, 6, 9 |
+| 20261013200000 (**collides with R3's; one renumbers**) | R8 · 12 PR 1: the sub flow's fact and seed lists | #5586 | 1 |
+| next claimed | R8 · 16 (`customers.language`), R7 (`messages.tied_by`) | | 6, 9 |
 
 Main's newest migration is `20261013110000_drive_links.sql`. Beds run only in CI from this Mac. After each push, read the drift check; after the kinds push, one types PR from a prod regen.
 
@@ -86,6 +89,11 @@ The owner's: orange is the customer's in the job window; the quick replies are t
 The lead's, each reversible and recorded in the plan: a lead's home is Messages, not the Prospects deck, with **Add to Prospects** as a press (decision 8 for the owner); R8 · 2 reports and photos is **parked** because a field report keeps no photos on main (decision 9 for the owner); the office close stays 5 PM and is a setting; after hours a reply goes to nobody with the app's one answer and waits for the morning; the bill reminder's day stays stamped from the expected-pay model though the reminder is off; Billed and Paid loop one round per bill; the residential text steps are read from the words until `messages.quick_reply_id`; `FLOW_KINDS` follows the widened check with the test reading the newest defining migration; the "add-on" is a **line on an estimate** (add-on is Estimates' option kind); the push is a new body on the existing `messages-notify`, not a new function; late bills alone count on the badge; a STOP is per box.
 
 Still the owner's, listed in the plan's section 7: the tech's door (lean: dispatched or clocked on, this week and last), free text for techs (lean: quick replies only), who edits the phone's lines (lean: the office), who answers a reply (lean: the tech until 5 PM), team@ or office@, which reminders start on (lean: estimate and bill), the Job activity switch's default (lean: on for the office, off on the phone), leads' home, report photos.
+
+### Two notes from helper 5 for R5's later PRs
+
+- R5's SQL seeds `messages_office_hours_v1` as `{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00","techUntil":"17:00"}` with **no `emergency` key** until the owner sets a number (helper 8's brief said `emergency: null`; either reads the same in `parseOfficeHours`, but say which in the migration note). #5561's `write` expects `contacts.has_until` beside `has_how = 'rule'`.
+- R5's Job Mode or screens PR must **skip `whoHasReply` when `has_how` is `took` or `handed`**: the rule does not check whether someone took the conversation after the tech's text.
 
 ## 8. What is left to assign
 
