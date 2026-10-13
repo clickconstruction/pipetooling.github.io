@@ -39,9 +39,15 @@ export type ContactChannelRow = Pick<Tables<'contact_channels'>, 'id' | 'contact
 /** A `contact_jobs` row. */
 export type ContactJobRow = Pick<Tables<'contact_jobs'>, 'contact_id' | 'bid_id' | 'project_id' | 'jobs_ledger_id' | 'is_default' | 'created_at'>
 
-/** The records the contacts point at, as much of each as a name, a company and a trade need. */
+/**
+ * `customers.language` (R8 · 16, migration 20261013220000): optional here until it is pushed and the types regenerate,
+ * and the fetchers select it only after that push, as with the new record columns above.
+ */
+type CustomerLanguageColumn = { language?: string | null }
+
+/** The records the contacts point at, as much of each as a name, a company, a trade and a language need. */
 export interface ContactRecordRows {
-  customers?: readonly Pick<Tables<'customers'>, 'id' | 'name'>[]
+  customers?: readonly (Pick<Tables<'customers'>, 'id' | 'name'> & CustomerLanguageColumn)[]
   customerContactPersons?: readonly Pick<Tables<'customer_contact_persons'>, 'id' | 'customer_id' | 'name'>[]
   gcCompanies?: readonly Pick<Tables<'gc_companies'>, 'id' | 'name' | 'contact_name' | 'trades'>[]
   gcCompanyPeople?: readonly Pick<Tables<'gc_company_people'>, 'id' | 'company_id' | 'name'>[]
@@ -145,6 +151,8 @@ export function contactFromRows(
   const star = myJobs.find((j) => j.is_default)
   const customerId = row.customer_id ?? byId(records.customerContactPersons, row.customer_contact_person_id)?.customer_id ?? null
   const gcCompanyId = row.gc_company_id ?? byId(records.gcCompanyPeople, row.gc_company_person_id)?.company_id ?? null
+  // The customer's language, for them and each person at them; a row that says nothing leaves it unset, which is English.
+  const language = byId(records.customers, customerId)?.language
   return {
     id: row.id,
     kind: row.kind as ContactKind,
@@ -158,6 +166,7 @@ export function contactFromRows(
     defaultJobId: star ? jobKeyOfRow(star) : null,
     customerId,
     gcCompanyId,
+    ...(language === 'en' || language === 'es' ? { lang: language } : {}),
   }
 }
 
