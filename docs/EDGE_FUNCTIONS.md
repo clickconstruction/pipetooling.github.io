@@ -1991,7 +1991,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-job-contract
 
-> **v2.5312 — the sample skips the flows' papers**: the sample's terms are the newest customer document in the Contract Book that is not a flow paper (`.is('flow_kind', null)`). A paper the flow editor adds (`flow_paper_create`, v2.5306) is filed under the customer audience and dated the day it is made, so it would otherwise be the newest. Deploy only after migration `20261012220000_flow_papers` is on prod, since the filter names its column. **Redeploy required.**
+> **v2.5312 — the sample skips the flows' papers**: the sample's terms are the newest customer document in the Contract Book that is not a flow paper (`.is('flow_kind', null)`). A paper the flow editor adds (`flow_paper_create`, v2.5306) is filed under the customer audience and dated the day it is made, so it would otherwise be the newest. Deploy only after migration `20261013140000_flow_papers` is on prod, since the filter names its column. **Redeploy required.**
 
 > **v2.4474 — the sample agreement's wording date reads in the company zone**: on the What customers see sample, the Contract Book document's date is its `book_version_date`, else its `updated_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date — the Book's own rule (`effectiveBookVersionPlainDate` in `src/lib/contractBookVersionDate.ts`). Redeploy after merge.
 
