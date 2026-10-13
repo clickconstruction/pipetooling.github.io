@@ -11,7 +11,7 @@ Written by the "Punchlist" lead session for whoever picks the work up. Every fac
    2. `bash scripts/db-push.sh` (push + gen-types + dev-mcp catalog + drift check).
    3. The five verify steps in `docs/migrations/20261009130000_billing_only_jobs.md` (note: `gc_projects`' key is `project_id`).
    4. A types PR on a `claude/types-…` branch with `src/types/database.ts` and `supabase/functions/dev-mcp/catalog.ts`, `gh pr merge N --auto`; redeploy `dev-mcp` after it merges.
-   5. Message **Helper 5** "130000 applied, types PR #N" so BO-2 can cut. The GC lane's own hand-off is in `to-dos/gc-mode/PLAN_2026-10-07.md` → Status → "Handoff, evening 2026-10-08"; leave a Status line there only if you are the next GC lead, otherwise message whoever takes "GC spike".
+   5. Message **Helper 5** "130000 applied, types PR #N" so BO-2 can cut. The GC lane's own hand-off is in `to-dos/gc-mode/PLAN_2026-10-07.md` (on branch `spike/gc-mode`) → Status → "Handoff, evening 2026-10-08"; leave a Status line there only if you are the next GC lead, otherwise message whoever takes "GC spike".
    Then confirm with `npm run check:migration-drift` (expect fully applied).
 2. **After those are on prod:**
    - Tell **Helper 11** → it walks *Past values* and *Put back* live on ZZ Test, then cuts the types + dev-mcp catalog regen.
