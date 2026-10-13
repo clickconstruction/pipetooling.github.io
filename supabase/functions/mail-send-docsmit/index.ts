@@ -141,8 +141,9 @@ serve(async (req) => {
         const clientMsgId = mailClientMsgId(row.kind, row.id)
         const messageId = await client.newMessage({ title: mailMessageTitle(row, str(body.job_number, 20) || null), clientMsgID: clientMsgId, physicalParties: [mailPartyFromPiece(row)] })
         await client.upload(messageId, pdf, `${row.id}.pdf`)
-        const priced = await client.priceCheck(messageId)
-        const events = appendEvent(row.events, { at: nowIso, kind: 'message_made', provider_message_id: messageId, price: priced.price })
+        // The price is a nicety: a priceCheck that fails never holds the envelope (the send's 402 says when credit is short).
+        const priced = await client.priceCheck(messageId).catch((e: unknown) => ({ price: null, raw: { error: e instanceof Error ? e.message : String(e) } }))
+        const events = appendEvent(row.events, { at: nowIso, kind: 'message_made', provider_message_id: messageId, price: priced.price, price_raw: priced.price == null ? priced.raw : undefined })
         const { error: upErr } = await admin.from('mail_pieces').update({ provider_message_id: messageId, client_msg_id: clientMsgId, price: priced.price, events }).eq('id', row.id)
         if (upErr) throw new Error(`mail_pieces ${row.id}: ${upErr.message}`)
         const info = await client.accountInfo().catch(() => ({ creditBalance: null }))

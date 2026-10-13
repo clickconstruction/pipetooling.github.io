@@ -101,7 +101,7 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     docsmit.answers['POST /utils/multiCASS'] = { body: [{ nonMailable: false, coarseCorrectionMsg: 'ZIP+4: 78154-2011' }] }
     docsmit.answers['POST /messages/new'] = { body: { messageID: 'm-77' } }
     docsmit.answers['POST /messages/m-77/upload'] = { body: { ok: true } }
-    docsmit.answers['GET /messages/m-77/priceCheck'] = { body: { price: 9.85 } }
+    docsmit.answers['GET /messages/m-77/priceCheck'] = { body: { netPrice: 9.85, details: { total: '$ 9.85' } } }
     docsmit.answers['GET /account/info'] = { body: { creditBalance: 120 } }
     const res = await post({ action: 'prepare', piece, pdf_path: 'mail/env-1.pdf', job_number: '650' })
     expect(res.status).toBe(200)
@@ -114,6 +114,26 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     expect(made).toMatchObject({ title: 'Job 650 · lien notice 53 056 · owner · ATI Schertz Holdings LLC · id-1', clientMsgID: 'lien_notice_53_056:id-1' })
     expect((made.physicalParties as unknown[])[0]).toMatchObject({ organization: 'ATI Schertz Holdings LLC', postalCode: '78154', sendType: 'Certified, Electronic Return Receipt', envelope: '#10' })
     expect(docsmit.calls.find((c) => c.path === '/messages/m-77/upload')!.body).toEqual({ file: 'id-1.pdf' })
+  })
+
+  it('prepare: a priceCheck that answers 400, or fails outright, leaves the piece prepared with no price (the send’s 402 is the real word on credit)', async () => {
+    storage.files['lien-release-documents/mail/env-1.pdf'] = new TextEncoder().encode('%PDF')
+    docsmit.answers['POST /utils/multiCASS'] = { body: [{ nonMailable: false }] }
+    docsmit.answers['POST /messages/new'] = { body: { messageID: 'm-78' } }
+    docsmit.answers['POST /messages/m-78/upload'] = { body: { ok: true } }
+    docsmit.answers['GET /messages/m-78/priceCheck'] = { status: 400, body: { message: 'Invalid MessageID,certify,months,sendType parameters.' } }
+    docsmit.answers['GET /account/info'] = { body: { creditBalance: 50 } }
+    const res = await post({ action: 'prepare', piece, pdf_path: 'mail/env-1.pdf' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, piece_id: 'id-1', price: null, credit_balance: 50 })
+    expect(db.tables.mail_pieces![0]).toMatchObject({ status: 'prepared', provider_message_id: 'm-78', price: null })
+    const q = docsmit.calls.find((c) => c.path === '/messages/m-78/priceCheck')
+    expect(q).toBeTruthy()
+    docsmit.answers['GET /messages/m-78/priceCheck'] = { status: 500, body: { message: 'boom' } }
+    db.tables.mail_pieces = []
+    const again = await post({ action: 'prepare', piece, pdf_path: 'mail/env-1.pdf' })
+    expect(again.status).toBe(200)
+    expect(db.tables.mail_pieces![0]!.status).toBe('prepared')
   })
 
   it('prepare: an address CASS calls non-mailable is held with the correction, and no row is made', async () => {

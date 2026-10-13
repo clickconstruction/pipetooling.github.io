@@ -127,13 +127,21 @@ export class DocsmitClient {
     await this.call('POST', `/messages/${encodeURIComponent(messageId)}/upload`, { form })
   }
 
-  /** `GET /messages/{id}/priceCheck`: the cost, from whichever field Docsmit names (the docs have no table). */
+  /**
+   * `GET /messages/{id}/priceCheck`: the cost. The doc's only example is the e-delivery price and wants `certify`,
+   * `months` and `sendType` (SR | NSR) or it answers 400, so those ride along; the answer is `netPrice` or
+   * `details.total` ("$ 2.49"). A 400 or a shape the reader does not know gives null: the run says "not priced yet"
+   * and the send still goes (402 says when credit is short).
+   */
   async priceCheck(messageId: string): Promise<{ price: number | null; raw: unknown }> {
-    const { data } = await this.call('GET', `/messages/${encodeURIComponent(messageId)}/priceCheck`)
+    const { status, data } = await this.call('GET', `/messages/${encodeURIComponent(messageId)}/priceCheck`, { query: { certify: 'false', months: '12', sendType: 'SR' }, allow: [400] })
+    if (status === 400) return { price: null, raw: data }
     const d = (data ?? {}) as Record<string, unknown>
-    for (const k of ['price', 'cost', 'total', 'amount', 'totalPrice', 'totalCost']) {
-      const n = Number(d[k])
-      if (d[k] !== undefined && Number.isFinite(n)) return { price: n, raw: data }
+    const details = (d.details ?? {}) as Record<string, unknown>
+    for (const v of [d.netPrice, d.price, d.cost, d.total, d.amount, details.total, details.netPrice]) {
+      if (v === undefined || v === null) continue
+      const n = typeof v === 'number' ? v : Number(String(v).replace(/[^0-9.\-]/g, ''))
+      if (Number.isFinite(n)) return { price: n, raw: data }
     }
     return { price: null, raw: data }
   }
