@@ -384,7 +384,7 @@ its help guide passes the plain-words test; its release note and fragment are in
 `PROJECT_DOCUMENTATION.md`, `GLOSSARY.md` and `ACCESS_CONTROL.md` say what changed; and the owner
 has pressed on it on prod with a test row that matches nothing real.
 
-## 11. Wave 2 status, the lead's ledger (2026-10-13, 05:30 UTC)
+## 11. Wave 2 status, the lead's ledger (2026-10-13, 05:30 UTC; amended 06:30 UTC)
 
 *The lead is the session "GC MODE" on the owner's Mac since 2026-10-13 04:40 UTC, after "GC Review" (the first wave 2 lead, with "GC Reviews helper 1" to "9") went quiet about 03:00 UTC and left no hand-off. The residential customer-communication build (`RESIDENTIAL_BUILD_PLAN.md`, `HANDOFF_RESIDENTIAL_2026-10-13.md`) runs beside this one under the session "cc"; the two leads agreed that cc's #5560 goes second on `src/lib/flows/load.ts`, and that each takes its own one-line resolve on `docs/ACCESS_CONTROL.md` near the Messages cut 1 bullet and on the Glossary's thread entry. Amend this section as the state moves; it is the hand-off.*
 
@@ -396,14 +396,16 @@ has pressed on it on prod with a test row that matches nothing real.
 
 | Helper | Chain | PRs, in order |
 |---|---|---|
-| 1 | cut 3 screens | #5500 (R2) → #5502 (R3, ready only after C2) → #5515 (R4) |
-| 2 | cut 2 screens | #5489 (C1, on #5478) → C2 (`claude/messages-follow-up-owed`, v2.5319, PR to open) → the `gcNeedsYou` / `phraseFor` drop, with a spike patch the lead merges first |
+| 1 | cut 3 screens | #5500 (R2; the lit pill, the pill's count and the prototype's words restored in review) → #5502 (R3, ready only after C2 #5600) → #5515 (R4); each body carries a *Changed from the prototype* section |
+| 2 | cut 2 screens | #5489 (C1, on #5478) → #5600 (C2, draft) → the `gcNeedsYou` / `phraseFor` drop (prepared; the spike side comes as `spike/h2-needsyou-bodies`, which the lead merges first) |
 | 3 | cut 4 boards (cluster 6) | #5460 armed → #5463 → #5465 → #5466 → #5468 (the add/add on `flows/load.ts` was only the stale wave 2 base; replaying each child's own commit leaves main's file alone, so cc's #5560 does not wait). Rulings 05:25 UTC: the boards use main's `billDayHref` and write `?view=`; a row's press opens the company's or customer's window on its **Flow** tab through `findFlowContactId`, the step's own nudge stays the row's button (in B); E fixes the `GcJobPapersWindow` border warning. |
 | 4 | cut 4 editor | #5479 (migration 20261013140000) → #5484 → #5487 → #5476 → #5498 |
-| 5 | cut 5 Quo | #5452 (quo-send, quo-webhook) → #5523; then a prepare note for the texting switch (an `app_settings` key read by quo-send and by the client in place of `TEXTS_ON`) |
+| 5 | cut 5 Quo | #5452 (quo-send, quo-webhook; under review) → #5523; then the texting switch (an `app_settings` key read by quo-send and by the client in place of `TEXTS_ON`). **Helper 5's session dropped about 06:15 UTC with 4 and 6; their pushed work stands, the sessions need restarting.** |
 | 6 | cut 8 customer page | #5469 (migration 20261014000000, a seed) → #5492 → #5496 → #5501. The children failed only on stale pre-rebase copies of v2.5263 and v2.5303; replaying each child's own commit clears the bed-registry conflicts too. Rulings 05:30 UTC on #5469 before the children rebase: `payAppOf` reads paid against the bill's own amount (a short-certified application paid in full read *Due* forever), with a test; *Your people* shows name and role only, the phone is the office line's (a personal `users.phone` never goes on a public page by default; the owner may add one later); the daily-log read is one per job if small. 8e needs no migration (`messages_channel_known` already allows `portal`). |
 | 7 | cut 10 | #5522 armed (migration 20261014011000, two indexes, no table, no fences) → #5524, #5526; then #5527 → #5528 → #5531 and #5532 |
-| 8 | cuts 6 and 7 | #5537, #5552 (drive-link); then 7c the reads (`documents/jobFilesIo.ts`, a draft until drive-link is deployed), 7d beside it |
-| 9 | cut 4 small | #5525, #5521, #5517; then a prepare note for `messages-nudge-dispatch` |
+| 8 | cuts 6 and 7 | #5537 (rebased, arming on its typecheck), #5552 (queued, merges as written) → drive-link hardening (v2.5433: inline types as attachment + nosniff, Drive's Content-Length cap, no second Save to Drive copy, pageToken encoded) → #5606 (7c, draft until drive-link is deployed) → 7d; the 7c/7d work #5552's body claimed exists only on the previous helper's machine |
+| 9 | cut 4 small | #5525, #5521, #5517 queued; then `messages-nudge-dispatch`: A #5605 (the run's inputs kernel, armed; the per-step switch is `{"<kind>": {"<stepId>": true}}`, nested because step ids repeat across flows), B the switch seed + policy, C the function with its cron in its own migration pushed after the deploy; C waits on #5452 deployed |
+
+**Rules added in flight**: helpers run only the narrow typecheck locally and leave the full `tsc -b` to CI (the Mac killed six to eight parallel full builds, exit 144); nobody rewrites a PR in the other lead's lane without a word (#5497 was force-pushed at 04:58 UTC by the other build). The CI concurrency rule is #5604 (v2.5432), armed with the owner's approval. The board the owner reads is the artifact *Messages Wave 2 Board*, regenerated hourly from GitHub by the lead session.
 
 **The lead's own list**: push each migration with `supabase db push` as its PR merges, in stamp order across both builds (140000 before the residential 170000 to 230000, then 20261014000000 and 011000; the Docsmit train's 120000 and 130000 take `--include-all` if they land after); deploy `messages-email` and `dev-mcp` after #5497, `get-job-contract` after #5484, `quo-webhook` after #5452 (quo-send waits for the switch), `drive-link` after #5552, `customer-portal` after #5469; fold the helpers' held Glossary clauses into the Messages entry once; fold every prepare-note correction into the cut it belongs to above.
