@@ -135,7 +135,7 @@ Each cut lists its PRs. A PR is one change, kernel and test first, screens in th
 - **Kernel**: `followUp/newLane.ts` — `newLane(contacts, messages, activeJobIds, now)` gives the rows with their sort: **Who is this?** (a sender nobody has named; the guesses on the team line run a matched customer, a new lead on Prospects, a new customer, a candidate, someone else; on bids@ a trade partner on an open ask whose domain matches, a new trade partner, a supply house, a candidate, someone else), **Which job?** (two or more active jobs and the newest inbound line on the default job with `tiedByHand` false), **Who has it?** (nobody on it; the rule's pick passed in from R5); `newLaneCount` for the badge, wired into `queue.ts` by the lead. One PR (helper 6's prepare note, 2026-10-13).
 - **SQL**: `messages.tied_by` (null when the default job took the line, the user when someone tied it), written by `tie_message`; main cannot tell the two apart today. One small PR.
 - **The lane and the sort card**: the lane on Follow up (mockup A), the sort card above the thread, each press writing through `name_contact`, `tie_message`, the has rule. One PR with smokes.
-- **Sort all**: the desk (mockup C) behind the lane's header, one card at a time. One PR.
+- **Sort all**: the desk (mockup C) behind the lane's header, one card at a time. One PR: #5655 (v2.5485, helper 3), a draft on #5652; the record-making guesses still wait (§ 7, call 10).
 - **Guide**: `sort-new-messages` (new).
 
 ### R8 · The integrations (17 PRs)
@@ -212,6 +212,7 @@ From the prototype's screen 5, with the lean each cut builds to unless told othe
 7. **The Job activity switch's default** (R1): on for the office, off on the phone.
 8. **Leads' home** (R8 · 9): the pick said Prospects; the build keeps a texting homeowner on Messages until they book, with Add to Prospects as a press, because Prospects is the companies' cold-call deck and a homeowner would land in it as "never called". Object if you want them in the deck.
 9. **Photos on a field report** (R8 · 2): main keeps none. Adding a photo field to reports is its own small cut (the input type, a store, the upload from Job Mode) before the thread can offer them to a customer. Yes, later, or no?
+10. **Records made from the sort** (R7, Sort all, #5655): four *Who is this?* guesses need a record made first (a new customer, a new trade partner, a supply house, a candidate). The New lane (#5652) and the Sort all desk (#5655) leave them waiting, each saying where to make the record. Making the record from the card, then naming the number as it, is its own PR. Lean: not yet, until the office says the walk to Customers or Trade partners slows them. Yes, later, or no?
 
 ## 8. How a cut is done
 
