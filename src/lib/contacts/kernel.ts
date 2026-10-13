@@ -15,8 +15,10 @@
  * roster kind is `sub`, so a sub and a roster person point at the same table and `kindOf` tells them apart.
  */
 import { normalizeCustomerEmail, normalizeCustomerPhone } from '../customerSimilarity'
+import type { ContactKind } from './names'
 
-export type ContactKind = 'customer' | 'trade' | 'arch' | 'lead' | 'supply_house' | 'candidate' | 'sub' | 'unknown'
+// What a contact is called lives in `names.ts`, light enough to run on the edge. It is the kernel's too.
+export * from './names'
 
 /** The record a contact is. Null: a number nobody has named yet, the one contact with no record. */
 export type ContactRecord =
@@ -77,58 +79,6 @@ export interface Contact {
 
 export function contactById(contacts: readonly Contact[], id: string): Contact | undefined {
   return contacts.find((c) => c.id === id)
-}
-
-const TITLE = /^(Dr|Mr|Mrs|Ms)\.?$/i
-
-/**
- * What a greeting calls a full name: the first name, or a title with the last name ("Dr. Priya Raman" is "Dr. Raman",
- * the Board's rule). '' for no name. Owner Billing's `customerGreeting` reads the same rule.
- */
-export function greetingName(fullName: string): string {
-  const words = fullName.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return ''
-  const titled = words.length > 1 && TITLE.test(words[0]!)
-  return titled ? `${words[0]} ${words[words.length - 1]}` : words[0]!
-}
-
-/**
- * What we call them, in a greeting and in a sentence: what they go by, else `greetingName`, so a title on the record is
- * never dropped. '' for a number nobody has named; a sentence says "they" there.
- */
-export function firstName(c: { name: string; goesBy?: string | null; kind?: ContactKind }): string {
-  const goesBy = c.goesBy?.trim()
-  if (goesBy) return goesBy
-  if (c.kind === 'unknown') return ''
-  return greetingName(c.name)
-}
-
-/** The face's two letters, a title skipped: "PR" for Dr. Priya Raman. "?" for a number nobody has named. */
-export function initials(c: { name: string; kind?: ContactKind }): string {
-  if (c.kind === 'unknown') return '?'
-  return c.name
-    .split(/\s+/)
-    .filter((w) => w && !TITLE.test(w))
-    .map((w) => w[0]!)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-}
-
-const KIND_WORD: Record<ContactKind, string> = {
-  customer: 'customer',
-  trade: 'trade partner',
-  arch: 'architect',
-  lead: 'lead',
-  supply_house: 'supply house',
-  candidate: 'candidate',
-  sub: 'sub',
-  unknown: 'who is this?',
-}
-
-/** "trade partner": what they are to us, for the line under a name. */
-export function kindWord(kind: ContactKind): string {
-  return KIND_WORD[kind]
 }
 
 /** The roster kind that makes someone on `people` a sub (`people_kind_check`). */

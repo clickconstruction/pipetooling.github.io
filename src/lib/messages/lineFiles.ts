@@ -7,6 +7,11 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { PAPER_GUESS_WORDS, type PaperGuess } from '../emailIn/paperGuess'
 import { fileHref } from '../files/fileRoute'
+import type { FileIcon, FileKept, LineFile } from './lineFileTypes'
+
+// The types live in their own file, so the thread (and the edge copy that reads it for its types) takes them without
+// this file's code.
+export type { FileIcon, FileKept, LineFile } from './lineFileTypes'
 
 /** A `message_attachments` row as the client reads it, written out until the generated types carry the table. */
 export interface MessageAttachmentRow {
@@ -25,26 +30,6 @@ export interface MessageAttachmentRow {
   paper_answer: string | null
   paper_answered_by: string | null
   paper_answered_at: string | null
-}
-
-/** Our copy, a file left in Gmail (too big, or not copied), or a link. */
-export type FileKept = 'copy' | 'tooBig' | 'notCopied' | 'link'
-
-export type FileIcon = 'pdf' | 'image' | 'link' | 'file'
-
-export interface LineFile {
-  id: string
-  name: string
-  mime: string | null
-  size: number | null
-  kept: FileKept
-  /** A link's own address. */
-  url: string | null
-  icon: FileIcon
-  paper: PaperGuess | null
-  paperAnswer: 'filed' | 'not_it' | null
-  paperAnsweredBy: string | null
-  paperAnsweredAt: string | null
 }
 
 const keptOf = (r: MessageAttachmentRow): FileKept =>

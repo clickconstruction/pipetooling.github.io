@@ -18,6 +18,7 @@ import { JourneyHealthRow } from '../journeys/JourneyHealthRow'
 import type { PersonSubject } from '../../lib/journeys/personJourney'
 import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
 import { stepFrameProps, type SampleEmails } from '../../lib/journeys/stepFrame'
+import { sampleText, type SampleText } from '../../lib/journeys/sampleTexts'
 import { contractEntriesForStep, parseStepParam } from '../../lib/contracts/customerContractCatalog'
 
 /**
@@ -260,7 +261,7 @@ function JourneyStrip(props: {
 
 function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number; onSelect: () => void }) {
   const { step, selected } = props
-  const renderable = step.render.kind === 'page' || step.render.kind === 'email' || step.render.kind === 'paper'
+  const renderable = step.render.kind === 'page' || step.render.kind === 'email' || step.render.kind === 'paper' || step.render.kind === 'text'
   // v2.3507: every card opens — a Next-release or sent-elsewhere step expands to its note and what the person can do there.
   return (
     <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: '0.35rem', width: 188, flex: '0 0 auto', padding: '0 0.5rem', position: 'relative', borderLeft: props.first ? 'none' : '1px dashed var(--border)' }}>
@@ -285,7 +286,11 @@ function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean;
           minHeight: THUMB_H + 16,
         }}
       >
-        {renderable ? (
+        {step.render.kind === 'text' ? (
+          <div style={{ width: THUMB_W, height: THUMB_H, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+            <TextSample sample={sampleText(step.render.text)} compact />
+          </div>
+        ) : renderable ? (
           <StepThumb step={step} emails={props.emails} papers={props.papers} origin={props.origin} reloadNonce={props.reloadNonce} />
         ) : (
           <span style={{ ...MUTED, textAlign: 'left', fontSize: '0.72rem', lineHeight: 1.35 }}>
@@ -368,7 +373,9 @@ function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: 
         <div><span style={MUTED}>What they can do there</span><br /><span style={{ color: 'var(--text-strong)' }}>{step.customerCan}</span></div>
       </div>
       <div style={{ background: 'var(--bg-page)', borderRadius: 8, padding: '0.9rem', display: 'grid', placeItems: 'start center' }}>
-        {step.render.kind === 'soon' || step.render.kind === 'external' ? (
+        {step.render.kind === 'text' ? (
+          <TextSample sample={sampleText(step.render.text)} />
+        ) : step.render.kind === 'soon' || step.render.kind === 'external' ? (
           <div style={{ maxWidth: 560, fontSize: '0.85rem', lineHeight: 1.45 }}>
             <strong style={{ color: 'var(--text-strong)' }}>{step.render.kind === 'external' ? 'Sent by another system' : 'Next release'}</strong>
             <div style={{ color: 'var(--text-700)', marginTop: '0.3rem' }}>{step.render.note}</div>
@@ -390,6 +397,41 @@ function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: 
           <pre style={{ margin: '0.4rem 0 0', whiteSpace: 'pre-wrap', font: 'inherit', fontSize: '0.78rem', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem' }}>{email.text}</pre>
         </details>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * A text as the person's phone shows it (Messages cut 5): our bubbles from the company number and theirs, built from the
+ * kernels' own words. The office's notes sit under a bubble in the full view, never in the thumbnail.
+ */
+function TextSample(props: { sample: SampleText; compact?: boolean }) {
+  const { sample, compact } = props
+  return (
+    <div data-testid="wcs-text-sample" style={{ width: compact ? THUMB_W : Math.min(PHONE_WIDTH, 420), fontSize: compact ? '0.62rem' : '0.85rem', lineHeight: 1.35 }}>
+      <div style={{ ...MUTED, fontSize: compact ? '0.6rem' : '0.75rem', marginBottom: '0.35rem', textAlign: 'center' }}>
+        <strong style={{ color: 'var(--text-strong)' }}>{sample.from}</strong>
+        {compact ? null : <span> to {sample.to}</span>}
+      </div>
+      <div style={{ display: 'grid', gap: compact ? '0.25rem' : '0.45rem' }}>
+        {sample.bubbles.map((b, i) => (
+          <div key={i} style={{ justifySelf: b.side === 'ours' ? 'end' : 'start', maxWidth: '86%' }}>
+            <div
+              style={{
+                whiteSpace: 'pre-wrap',
+                padding: compact ? '0.3rem 0.45rem' : '0.5rem 0.7rem',
+                borderRadius: 14,
+                background: b.side === 'ours' ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                border: `1px solid ${b.side === 'ours' ? 'var(--border-blue)' : 'var(--border)'}`,
+                color: 'var(--text-strong)',
+              }}
+            >
+              {b.text}
+            </div>
+            {!compact && b.note ? <div style={{ ...MUTED, marginTop: '0.2rem', textAlign: b.side === 'ours' ? 'right' : 'left' }}>For the office: {b.note}</div> : null}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

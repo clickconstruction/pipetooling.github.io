@@ -19,7 +19,7 @@
  * line first or second; either way the event only fills what is missing and the send's fields win (`mergeSent` here,
  * `sendOver` in `send.ts`), so the race ends on the same line both ways.
  */
-import type { ComposeCompany, OptoutRecord } from '../messages/compose'
+import type { ComposeCompany, OptoutRecord } from '../messages/textOut'
 import type { MessageChannel, MessageDirection, ThreadMessage } from '../messages/thread'
 
 export const QUO_API_VERSION = '2026-03-30'

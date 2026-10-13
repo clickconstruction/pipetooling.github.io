@@ -24,9 +24,15 @@ export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'cont
 /** Every email the tab builds in the browser — the order it builds them in. */
 export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
 
+/** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
+export type SampleTextId = 'text-customer' | 'text-trade'
+
+export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade']
+
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
   | { kind: 'email'; email: SampleEmailId }
+  | { kind: 'text'; text: SampleTextId }
   | { kind: 'paper'; paper: PaperId }
   | { kind: 'external'; note: string }
   | { kind: 'soon'; note: string }
@@ -517,6 +523,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'email', email: 'gc-schedule' },
         },
         {
+          id: 'gc-text',
+          label: 'A text from the company number',
+          sublabel: 'Messages → their thread → Text (devs only until the phone service is connected)',
+          when: 'Any time the office texts them from their thread. The first text to a number carries the opt-out line.',
+          customerCan: 'Read it and text back to the same number. STOP stops our texts, and HELP answers with how to reach us.',
+          guide: 'know-what-a-text-from-the-company-number-says',
+          reflects: ['Our company name and the company number', 'Who at the office sent it, never their own cell'],
+          render: { kind: 'text', text: 'text-customer' },
+        },
+        {
           id: 'gc-portal-schedule',
           label: 'GC mode: their schedule in their portal',
           sublabel: 'Their portal, first under each GC job we are building',
@@ -652,6 +668,16 @@ export function customerJourneys(): Journey[] {
           guide: 'reply-to-a-person-from-their-thread',
           reflects: ['The words the office wrote, with a subject from the job and the first line', 'The name they go by in the greeting', 'The sender’s name, title and cell in the signature'],
           render: { kind: 'email', email: 'messages-reply' },
+        },
+        {
+          id: 'sub-text',
+          label: 'GC mode: a text to a trade partner',
+          sublabel: 'Messages → their thread → Text (devs only until the phone service is connected)',
+          when: 'Any time the office texts them from their thread. The first text to a number carries the opt-out line.',
+          customerCan: 'Read it and text back to the same number. Their reply lands in the thread, whoever at the office answers.',
+          guide: 'know-what-a-text-from-the-company-number-says',
+          reflects: ['Our company name and the company number', 'Who at the office sent it, never their own cell'],
+          render: { kind: 'text', text: 'text-trade' },
         },
         {
           id: 'sub-contract-email',

@@ -1,0 +1,178 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { planQuoEvent, readQuoEvent, sentKey, type QuoPlan, type QuoPlanContext, type QuoReading } from '../_shared/gcKernels/lib/quo/events.ts'
+import { verifySignature, webhookAnswer, type WebhookOutcome } from '../_shared/gcKernels/lib/quo/webhook.ts'
+import { loadSeats, placeNumber, quoCompany, sendText, writeLine, type Placed } from '../_shared/quoLines.ts'
+
+/**
+ * quo-webhook — Messages, cut 5: Quo's calls and texts land in a person's thread. Quo posts every event of the company
+ * number here (`message.received`, `message.delivered`, `message.failed`, `message.undelivered`, `call.completed`,
+ * `call.missed`, `call.voicemail.completed`, `call.recording.completed`, `call.transcript.completed`,
+ * `call.summary.completed`), signed with the webhook's `whsec_` key (QUO_WEBHOOK_SECRET). A thin wrapper over the
+ * kernels in src/lib/quo (webhook.ts, events.ts, send.ts, rows.ts), in their order:
+ *
+ * 1. verifySignature over the raw body. A refusal answers 401 and records nothing.
+ * 2. quo_webhook_claim with the delivery's webhook-id. A repeat answers 200 and does nothing.
+ * 3. readQuoEvent. An event the webhook does not take answers 200 with its reason.
+ * 4. For each number the event is about: quo_place_number (the contact, made when nobody has the number), then
+ *    planQuoEvent merged and written through quo_write_line over the revision read, then the number's STOP mirrored,
+ *    a team event, and the app's own answer through quo-send's path (HELP, or the one confirmation of a stop Quo did
+ *    not catch), the answer last.
+ * 5. 200. On a failure the claim is given back (quo_webhook_release) and the answer is 500, so Quo sends it again.
+ *
+ * verify_jwt is off in config.toml: Quo signs its deliveries, it holds no Supabase session.
+ */
+
+const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+/** An event this webhook can do nothing with, said as the reason Quo's delivery log shows. */
+class Ignored extends Error {}
+
+serve(async (req) => {
+  if (req.method !== 'POST') return json(405, { ok: false, error: 'POST only' })
+  const raw = await req.text()
+  const check = await verifySignature(req.headers, raw, Deno.env.get('QUO_WEBHOOK_SECRET') ?? '')
+  if (!check.ok) return answer({ kind: 'refused', why: check.why })
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceRoleKey) return answer({ kind: 'failed', why: 'SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set' })
+  const admin = createClient(supabaseUrl, serviceRoleKey)
+
+  const claim = await admin.rpc('quo_webhook_claim', { p_id: check.webhookId })
+  if (claim.error) return answer({ kind: 'failed', why: `quo_webhook_claim: ${claim.error.message}` })
+  if (claim.data !== true) return answer({ kind: 'repeat', webhookId: check.webhookId })
+
+  let body: unknown = null
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    return answer({ kind: 'ignored', why: 'not JSON' })
+  }
+  const read = readQuoEvent(body)
+  if (!read.ok) return answer({ kind: 'ignored', why: read.why })
+
+  try {
+    await handle(admin, read.reading)
+    await admin.rpc('quo_webhook_ids_forget')
+    return answer({ kind: 'handled', type: read.type, eventId: read.eventId })
+  } catch (e) {
+    if (e instanceof Ignored) return answer({ kind: 'ignored', why: e.message })
+    const released = await admin.rpc('quo_webhook_release', { p_id: check.webhookId })
+    if (released.error) console.error('[quo-webhook] the claim was not given back', released.error.message)
+    return answer({ kind: 'failed', why: e instanceof Error ? e.message : String(e) })
+  }
+})
+
+/** The answer for an ending, logged as `webhookAnswer` says. The claim is given back by the caller before a 500. */
+function answer(outcome: WebhookOutcome): Response {
+  const a = webhookAnswer(outcome)
+  if (a.log) (a.status >= 500 ? console.error : console.log)(`[quo-webhook] ${a.log}`)
+  return json(a.status, a.body)
+}
+
+// deno-lint-ignore no-explicit-any
+async function handle(admin: any, reading: QuoReading): Promise<void> {
+  const users = await loadSeats(admin)
+  const company = quoCompany()
+  if (reading.kind === 'sent') {
+    // A text of ours: one line a person it went to.
+    let placedAny = false
+    for (const number of reading.recipients) {
+      const placed = await placeNumber(admin, number)
+      if (!placed) continue
+      placedAny = true
+      await planAndWrite(admin, reading, placed, { users, company, recipient: number }, sentKey(reading, number))
+    }
+    if (!placedAny) throw new Ignored('none of its numbers is a phone number')
+    return
+  }
+  const placed = await placeEvent(admin, reading)
+  await planAndWrite(admin, reading, placed, { users, company }, reading.quoId)
+}
+
+/**
+ * Where an event lands: its number's contact. A call's later event that names no number finds it through the line its
+ * call already wrote; with no line yet it fails, and Quo's retry comes after the call's own event.
+ */
+// deno-lint-ignore no-explicit-any
+async function placeEvent(admin: any, reading: Exclude<QuoReading, { kind: 'sent' }>): Promise<Placed> {
+  if (reading.external) {
+    const placed = await placeNumber(admin, reading.external)
+    if (placed) return placed
+    if (reading.kind === 'text') throw new Ignored('the sender is not a phone number')
+  }
+  const { data: line, error } = await admin.from('messages').select('channel_id').eq('quo_id', reading.quoId).maybeSingle()
+  if (error) throw new Error(`messages: ${error.message}`)
+  const channelId = (line as { channel_id: string | null } | null)?.channel_id
+  if (!channelId) throw new Error(`no number and no line yet for ${reading.quoId}`)
+  const { data: channel, error: channelError } = await admin.from('contact_channels').select('value').eq('id', channelId).single()
+  if (channelError) throw new Error(`contact_channels: ${channelError.message}`)
+  const placed = await placeNumber(admin, (channel as { value: string }).value)
+  if (!placed) throw new Error(`the line for ${reading.quoId} has no phone number`)
+  return placed
+}
+
+/** Plans one event for one number, writes its line, then its STOP, its team event and the app's answer, the answer last. */
+async function planAndWrite(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  reading: QuoReading,
+  placed: Placed,
+  more: Pick<QuoPlanContext, 'users' | 'company'> & { recipient?: string },
+  key: string,
+): Promise<void> {
+  const ctx: Omit<QuoPlanContext, 'existing'> = {
+    contactId: placed.contactId,
+    contactWords: placed.words,
+    channelId: placed.channelId,
+    optedOut: placed.optedOut,
+    defaultJobId: placed.star?.jobId ?? null,
+    ...more,
+  }
+  const { then: plan } = await writeLine<QuoPlan>(admin, key, placed.star, (prev) => {
+    const p = planQuoEvent(reading, { ...ctx, existing: prev })
+    return { line: p.line, then: p }
+  })
+
+  if (plan.optout === 'out') {
+    const { error } = await admin.from('contact_channels').update({ opted_out_at: new Date().toISOString() }).eq('id', placed.channelId).is('opted_out_at', null)
+    if (error) throw new Error(`contact_channels: ${error.message}`)
+  } else if (plan.optout === 'in') {
+    const { error } = await admin.from('contact_channels').update({ opted_out_at: null }).eq('id', placed.channelId)
+    if (error) throw new Error(`contact_channels: ${error.message}`)
+  }
+
+  if (plan.event) {
+    // Keyed beside its line, so Quo's retry never writes it twice.
+    const { error } = await admin.from('messages').upsert(
+      { contact_id: placed.contactId, channel: 'event', direction: 'team', who_text: 'The app', body: plan.event, quo_id: `${key}:event` },
+      { onConflict: 'quo_id', ignoreDuplicates: true },
+    )
+    if (error) throw new Error(`messages: ${error.message}`)
+  }
+
+  if (plan.answer) {
+    const sent = await sendText(
+      admin,
+      {
+        purpose: plan.answer.purpose,
+        contactId: placed.contactId,
+        channelId: placed.channelId,
+        to: placed.number,
+        optedOut: placed.optedOut || plan.optout === 'out',
+        body: plan.answer.body,
+        lastOurTextAt: null,
+        now: Date.now(),
+        company: ctx.company,
+        sender: null,
+        jobId: placed.star?.jobId ?? null,
+      },
+      placed.star,
+    )
+    // Quo turning the text away is worth Quo's retry: the line, the STOP and the event above write the same again.
+    // A refusal of ours, or texts not set up yet, would only fail again.
+    if (!sent.ok && sent.refused === 'quo') throw new Error(sent.words)
+    if (!sent.ok) console.error(`[quo-webhook] the app's answer did not go: ${sent.words}`)
+  }
+}

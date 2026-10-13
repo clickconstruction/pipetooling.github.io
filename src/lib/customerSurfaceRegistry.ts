@@ -1,6 +1,6 @@
 /**
  * The registry of every outside-facing surface — each public route in `App.tsx` and each edge
- * function that sends email — and where it appears on Settings → What customers see (v2.3505).
+ * function that sends email or a text — and where it appears on Settings → What customers see (v2.3505).
  *
  * The tab drifted for a month because nothing asked "is it on What customers see?" when a room
  * or a sender shipped. `customerSurfaceRegistry.test.ts` reads the real route table and the real
@@ -102,6 +102,9 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email'), G('gc-reminder-email'), G('gc-interest-bill-email'), G('gc-weekly-report-email'), G('gc-schedule-email'), G('gc-contract-email')] },
   // Messages (cut 3): an email from the reply box in a person's thread, to a customer, an architect or a trade partner.
   { kind: 'sender', ref: 'messages-email', audience: 'owner', steps: [G('gc-reply-email'), S('sub-reply-email')] },
+  // Messages cut 5: a text from the company number, through Quo. The reply box's text and the webhook's answer to HELP.
+  { kind: 'sender', ref: 'quo-send', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
+  { kind: 'sender', ref: 'quo-webhook', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },
@@ -167,6 +170,17 @@ export function resendSendersFromSources(functions: ReadonlyArray<{ name: string
     .sort()
 }
 
+/**
+ * Functions that text someone from the company number (Messages cut 5): through the shared text path
+ * (`_shared/quoLines.ts`'s `sendText`), or straight to Quo's send endpoint.
+ */
+export function textSendersFromSources(functions: ReadonlyArray<{ name: string; source: string }>): string[] {
+  return functions
+    .filter((f) => (f.source.includes('quoLines.ts') && f.source.includes('sendText(')) || f.source.includes('api.quo.com/v1/messages'))
+    .map((f) => f.name)
+    .sort()
+}
+
 /** Every way the registry, the route table, the functions folder and the journeys can disagree. */
 export function surfaceRegistryProblems(input: {
   journeys: Journey[]
@@ -206,7 +220,7 @@ export function journeyCoverage(journeys: Journey[]): JourneyCoverage {
   return {
     audiences: journeys.length,
     steps: steps.length,
-    rendered: count('page') + count('email'),
+    rendered: count('page') + count('email') + count('text'),
     paper: count('paper'),
     soon: count('soon'),
     external: count('external'),
