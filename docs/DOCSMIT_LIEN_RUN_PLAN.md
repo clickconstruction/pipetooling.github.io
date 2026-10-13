@@ -3,9 +3,9 @@
 ---
 file: docs/DOCSMIT_LIEN_RUN_PLAN.md
 type: Engineering plan (draft, not yet agreed)
-purpose: Give the company one certified-mail door (a vendor-agnostic mail_pieces table, an edge function per provider, an hourly poll) and open it first on the Lien desk's run, so a notice's envelope goes out through the Docsmit API (US-Letter PDF in, USPS number and delivery status back) instead of being printed and walked to the post office; then let delivery drive the collections cadence (owner call on day 3, a per-piece short link that says when the owner read it, letter two from the later clock) and send standing-rule GCs by cron. Written 2026-10-12 from a read of the Docsmit API reference and the run's code, widened the same day after the "is this the best we can do" pass; mockups linked below; of the PR train only PR 1, the kernels (v2.5375, `src/lib/mail/`), is on main.
+purpose: Give the company one certified-mail door (a vendor-agnostic mail_pieces table, an edge function per provider, an hourly poll) and open it first on the Lien desk's run, so a notice's envelope goes out through the Docsmit API (US-Letter PDF in, USPS number and delivery status back) instead of being printed and walked to the post office; then let delivery drive the collections cadence (owner call on day 3, a per-piece short link that says when the owner read it, letter two from the later clock) and send standing-rule GCs by cron. Written 2026-10-12 from a read of the Docsmit API reference and the run's code, widened the same day after the "is this the best we can do" pass; mockups linked below; of the PR train PRs 1 to 5, 6a, the first slice of 6b, 8 and 9 are on main (2026-10-13; the list under *PR train*, below, carries each version).
 audience: Owner, Developers, AI Agents
-last_updated: 2026-10-12
+last_updated: 2026-10-13
 sections:
   - The thesis
   - What stays the same

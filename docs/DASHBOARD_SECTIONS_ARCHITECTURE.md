@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-12
+last_updated: 2026-10-13
 ---
 
 ## Overview
@@ -459,8 +459,9 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | v2.4700 (after `mapped_at`) | `vehicle-records-missing` | `vehicleRecordGapsEnabled` (dev, assistant, controller; `useVehicleRecordGapsNudge` over `lib/vehicleRecordGaps.ts`; both hosts) | gray |
 | 1364–1419 | `submittal-lead-time`, `-sent-back`, `-unopened`, `-not-started` | `submittalsEnabled`, `submittalNudge` | red, red, blue, amber |
 | 1421–1456 | `price-matrix-ready`, `price-requests-late` | each `…Enabled` | amber when a pick waits to settle, else blue; amber |
-| v2.4941 (after `mapped_at`) | `gc-follow-up` | `gcFollowUpEnabled` (the GC office team, `canOpenGcProjects`; `useGcFollowUpNeeds` over `lib/gc/needsYou.ts` since v2.5187: everyone we wait on, once a person, from the GC projects page's own loaders, our contract's sends for the money team only; the Dashboard host only) | red when anyone is late (a day passed, an ask never opened, a bill past due, insurance run out), else amber |
+| v2.4941 (after `mapped_at`) | `gc-follow-up` | `gcFollowUpEnabled` (the GC office team, `canOpenGcProjects`; `useGcFollowUpNeeds` over `lib/gc/needsYou.ts` since v2.5187: everyone we wait on, once a person, from the GC projects page's own loaders, our contract's sends for the money team only; since v2.5289 the count is Follow up's own, `follow_up_count` through `followUpNeedsWords` in `lib/gc/followUpNeedsIo.ts`, everyone waiting on us and what we owe, and v2.5452 dropped `gcNeedsYou` and `phraseFor`, leaving `needsYou.ts` the `GcNeedsYou` shape; the Dashboard host only) | red when anyone is late (a day passed, an ask never opened, a bill past due, insurance run out), else amber |
 | v2.5285 (after `mapped_at`) | `contract-clauses` | `contractClausesEnabled` (a dev or the controller, `canApproveClause`; `useClauseNeeds` over `contracts/approval.ts` → `clauseNeeds`, empty for anyone else; the Dashboard host only; kicker **Contracts**, **Review** opens the oldest change's paper on Settings → Contracts and clauses) | amber |
+| v2.5392 (after `mapped_at`) | `customer-messages` | `customerMessagesEnabled` (the GC office team, `canOpenGcProjects`, behind `CUSTOMER_MESSAGES_LINE_ON`, `false` on 2026-10-13 though the page landed with v2.5446; `useCustomerMessagesCounts` over `lib/followUp/customerCounts.ts`: each customer once on Needs a reply plus one who wrote on their page, the customers' rows on We owe them, the Who is this? numbers to sort, off Follow up's own queue, the file loading on demand while the line is on; the Dashboard host only; kicker **Messages**, title **Customers**, **Messages** opens `/messages?kind=customer`) | amber; rank 40 beside `job-followups` |
 | 1458–1493 | `legal-firm-activity`, `legal-review` | each `…Enabled` | amber or blue |
 | 1495–1521 | `robot-backlog` | `robotBacklogEnabled` | amber when stuck or a request is over a week old, else blue; snooze / dismiss secondaries |
 | 1523–1540 | `test-reports-ready` | `testReportsEnabled` | blue when one is ready, else gray |
