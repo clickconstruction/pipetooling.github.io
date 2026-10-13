@@ -33,7 +33,7 @@ The phone shows the lines for the job’s step first. The rest keep this order. 
 2. Write the same line in Spanish in the **Spanish** box.
 3. Press {{button:blue|Save}}.
 
-The app keeps the Spanish beside the English for customers who read Spanish. A line for customers with no Spanish shows {{chip:yellow|no es}} in the list. A line with its Spanish shows {{chip:gray|es}}.
+The app keeps the Spanish beside the English for customers who read Spanish. A customer who reads Spanish gets it once Spanish is switched on. The strip then says it shows the Spanish. A line for customers with no Spanish shows {{chip:yellow|no es}} in the list. A line with its Spanish shows {{chip:gray|es}}.
 
 ## Put blanks in a line
 

@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import type { ContactKind } from '../../../../lib/contacts/kernel'
 import { QR_PRESS_COUNTED, qrEmpty, qrGroups, qrLineCount, qrMarks, qrStripCount, qrTotal, showNarrow, type QuickReply, type StepRef } from '../../../../lib/quickReplies/kernel'
+import type { PortalLang } from '../../../../lib/gc/portalI18n'
 import type { BlankFills } from '../../../../lib/quickReplies/blanks'
+import { IN_SPANISH, lineWords } from '../../../../lib/quickReplies/spanish'
 import { input } from '../../gcUi'
 import { FilledLine } from './FilledLine'
 
@@ -34,7 +36,8 @@ export function Marked({ text, needle }: { text: string; needle: string }) {
  * and every word are `quickReplies/kernel.ts`'s.
  *
  * R3: each line reads as it would go, its blanks filled from `fills` (`FilledLine`), and a blank the app cannot fill
- * lit. The box waits for the person to fill it before it sends.
+ * lit. The box waits for the person to fill it before it sends. Each line reads in `lang`, the language the person gets
+ * (`customerLang`), and the count says so while that is Spanish.
  */
 export function QuickRepliesStrip({
   kind,
@@ -43,6 +46,7 @@ export function QuickRepliesStrip({
   nowStepId,
   steps,
   fills = {},
+  lang = 'en',
   open,
   problem,
   onOpen,
@@ -58,6 +62,8 @@ export function QuickRepliesStrip({
   steps: readonly StepRef[]
   /** What the box fills on a press (R3's `replyFills`); a blank it leaves is lit. */
   fills?: BlankFills
+  /** The language the person gets: their own once Spanish is on, English until then. */
+  lang?: PortalLang
   open: boolean
   problem: string | null
   onOpen: (open: boolean) => void
@@ -72,7 +78,7 @@ export function QuickRepliesStrip({
   const [lit, setLit] = useState(0)
   const box = useRef<HTMLDivElement>(null)
   const groups = qrGroups(lines ?? [], { kind, nowStepId, steps, me, filter, place: 'strip' })
-  const count = qrStripCount(groups, kind)
+  const count = `${qrStripCount(groups, kind)}${lang === 'es' ? ` · ${IN_SPANISH}` : ''}`
 
   if (!open) {
     return (
@@ -180,7 +186,7 @@ export function QuickRepliesStrip({
                 onClick={() => onUse(q)}
                 style={{ ...press, whiteSpace: 'nowrap', flex: 'none', borderStyle: q.scope === 'mine' ? 'dashed' : 'solid', fontSize: '0.78rem' }}
               >
-                <FilledLine text={q.text} fills={fills} needle={filter} />
+                <FilledLine text={lineWords(q, lang)} fills={fills} needle={filter} />
               </button>
             ))}
           </div>

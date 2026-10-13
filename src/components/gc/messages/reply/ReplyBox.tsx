@@ -11,6 +11,8 @@ import { SettlingNote } from '../../../followUp/SettlingNote'
 import { useOwedSettling } from '../../../followUp/useOwedSettling'
 import { fillLine } from '../../../../lib/quickReplies/blanks'
 import { replyFills, sendWaits } from '../../../../lib/quickReplies/filling'
+import { lineWords } from '../../../../lib/quickReplies/spanish'
+import { customerLang } from '../../../../lib/messages/customerLang'
 import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
@@ -83,7 +85,8 @@ const keepOpen = (open: boolean) => {
  *
  * R3: a quick reply goes into the box with its blanks filled from what the box knows (`replyFills`: their first name,
  * yours, the job's name in a job's window or the tied job's). A blank it cannot fill stays in the words, and a text or an email waits until the
- * person fills it (`sendWaits`).
+ * person fills it (`sendWaits`). A line goes in the language the person reads (`customerLang`), which stays English
+ * until the owner's one switch for Spanish, `PORTAL_SPANISH_ON`, is on.
  */
 export function ReplyBox({
   contact,
@@ -247,6 +250,7 @@ export function ReplyBox({
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
   const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null) })
   const waits = goesOut(shown) ? sendWaits(body) : null
+  const lang = customerLang(contact)
   const where =
     flowNow === undefined
       ? null
@@ -258,7 +262,7 @@ export function ReplyBox({
           off: false,
         })
   const use = (q: QuickReply) => {
-    setBody(fillLine(q.text, fills).text)
+    setBody(fillLine(lineWords(q, lang), fills).text)
     setFinding(false)
     setPeek(false)
     quick.press(q, contact.id)
@@ -302,6 +306,7 @@ export function ReplyBox({
           nowStepId={nowStepId}
           steps={kindSteps}
           fills={fills}
+          lang={lang}
           open={stripOpen && (!body.trim() || peek)}
           problem={quick.problem}
           onOpen={(o) => {
@@ -487,6 +492,7 @@ export function ReplyBox({
           nowStepId={nowStepId}
           steps={kindSteps}
           fills={fills}
+          lang={lang}
           where={where}
           onOpenStep={
             flowNow

@@ -6,7 +6,9 @@ import type { ThreadMessage } from '../../../../lib/messages/thread'
 import { FIND_NOTE, qrEmpty, qrGroups, qrTotal, type QuickReply, type StepRef } from '../../../../lib/quickReplies/kernel'
 import { calendarYmdInAppTzFromIso } from '../../../../utils/dateUtils'
 import { input } from '../../gcUi'
+import type { PortalLang } from '../../../../lib/gc/portalI18n'
 import type { BlankFills } from '../../../../lib/quickReplies/blanks'
+import { lineWords } from '../../../../lib/quickReplies/spanish'
 import { FilledLine } from './FilledLine'
 
 const CHANNEL_WORD: Partial<Record<ThreadMessage['channel'], string>> = { text: 'text', email: 'email', call: 'call', voicemail: 'voicemail', missed: 'missed call', portal: 'portal' }
@@ -25,6 +27,7 @@ export function FindReplyWindow({
   nowStepId,
   steps,
   fills = {},
+  lang = 'en',
   where,
   onOpenStep,
   onUse,
@@ -40,6 +43,8 @@ export function FindReplyWindow({
   steps: readonly StepRef[]
   /** What the box fills on a press (R3); a blank it leaves is lit, as on the strip. */
   fills?: BlankFills
+  /** The language the person gets, as on the strip. */
+  lang?: PortalLang
   /** Where they are in the flow (`findWhere`); null while the flow is still being read, so nothing is said yet. */
   where: { head: string[]; sentence: string } | null
   /** Opens the step's card in the thread window's side panel; absent when no step is on. */
@@ -158,7 +163,7 @@ export function FindReplyWindow({
                     style={{ textAlign: 'left', border: '1px solid var(--border)', borderStyle: q.scope === 'mine' ? 'dashed' : 'solid', borderRadius: 8, background: 'var(--surface)', padding: '0.4rem 0.6rem', cursor: 'pointer', display: 'grid', gap: '0.1rem' }}
                   >
                     <span>
-                      <FilledLine text={q.text} fills={fills} needle={filter} />
+                      <FilledLine text={lineWords(q, lang)} fills={fills} needle={filter} />
                     </span>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       {[stepOf(q), `used ${qrTotal(q)}`, q.scope === 'mine' ? 'mine' : null].filter(Boolean).join(' · ')}
