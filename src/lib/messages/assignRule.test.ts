@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1 } from '../appSettingsKeys'
+import { ASSIGN_RULE_KEY } from '../followUp/assignSeats'
 import { whoGetsIt } from '../followUp/queue'
 import { plainWordsFailures } from '../plainWords'
 import {
@@ -81,5 +83,11 @@ describe('Who gets a new message (cut 2, PR D)', () => {
   it('keeps its words plain', () => {
     const words = [ASSIGN_RULE_FIRST, ASSIGN_RULE_AFTER, SEATS_SAVED_TOAST, ...assignRuleRows(NO_SEATS, nameOf).map((r) => `${r.who} goes to ${r.goesTo}`)]
     for (const w of words) expect(plainWordsFailures(w)).toEqual([])
+  })
+})
+
+describe('the seats’ key, as the server reads it (R5’s push)', () => {
+  it('is the client’s key, so the two copies cannot drift', () => {
+    expect(ASSIGN_RULE_KEY).toBe(APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1)
   })
 })

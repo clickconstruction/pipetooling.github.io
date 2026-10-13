@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'photo-save', 'quo-send', 'quo-webhook']
+export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-notify', 'photo-save', 'quo-send', 'quo-webhook']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -82,14 +82,18 @@ export const ENTRIES = {
   // Residential R5's push (messages-notify): who has a reply, who gets a new message, a reply after a legal line, and
   // the pushes a line makes.
   'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },
-  'lib/followUp/assignSeats.ts': { values: ['parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
+  'lib/followUp/assignSeats.ts': { values: ['ASSIGN_RULE_KEY', 'parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
   'lib/messages/legalRoute.ts': {
     values: ['legalLines', 'legalSendsFromDemandLetters', 'legalSendsFromFilings', 'routeReply', 'standingLegalLine'],
     types: ['LegalLine', 'LegalRoute', 'LegalSend'],
   },
   'lib/messages/notifyRule.ts': {
-    values: ['OFFICE_WAIT_KEY', 'OFFICE_WAIT_MINUTES', 'answeredBefore', 'pushDue', 'pushSentRow', 'pushesFor'],
+    values: ['OFFICE_WAIT_KEY', 'OFFICE_WAIT_MINUTES', 'PUSH_CHANNELS', 'answeredBefore', 'pushDue', 'pushSentRow', 'pushesFor'],
     types: ['NotifySettings', 'Push', 'PushSentRow', 'ReplyHas', 'ReplyLine'],
+  },
+  'lib/messages/notifyPlan.ts': {
+    values: ['NOTIFY_LINES_MAX', 'PUSH_KINDS', 'REPLY_PUSH_ON_KEY', 'planReplyPushes', 'sweepSince'],
+    types: ['NotifyPlan', 'NotifyPlanInput', 'PlanContact', 'PlanLine', 'PlanOut', 'PlanUser'],
   },
 }
 

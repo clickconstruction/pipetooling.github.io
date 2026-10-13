@@ -3125,13 +3125,13 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ### messages-notify
 
-**Purpose** (v2.5317, Messages cut 4c): the people a change to a contract clause waits on hear of it. When the office sends a clause change for approval (`edit_clause` answered `proposed`), the approvers get a push on every device **and** an email with the change. When a controller or a dev decides one (`approve_clause_proposal`, `decline_clause_proposal`), the editor gets an email: it went out as the clause's next version, or the why. The editor's **text** by phone is a named follow-up: it comes with Quo (cut 5). The app calls it right after the RPC, best effort (`tellClauseApprovers` and `tellClauseEditor` in `src/lib/contracts/clausesIo.ts`): a call that fails never undoes the change, which still waits on the approvers' Needs you, and the toast then says nothing of a send.
+**Purpose** (v2.5317, Messages cut 4c): the people a change to a contract clause waits on hear of it. Since v2.5479 (residential R5) it also pushes a customer's, a lead's or a sub's reply to whoever has it ([A reply](#a-reply-r5-v25479) below). When the office sends a clause change for approval (`edit_clause` answered `proposed`), the approvers get a push on every device **and** an email with the change. When a controller or a dev decides one (`approve_clause_proposal`, `decline_clause_proposal`), the editor gets an email: it went out as the clause's next version, or the why. The editor's **text** by phone is a named follow-up: it comes with Quo (cut 5). The app calls it right after the RPC, best effort (`tellClauseApprovers` and `tellClauseEditor` in `src/lib/contracts/clausesIo.ts`): a call that fails never undoes the change, which still waits on the approvers' Needs you, and the toast then says nothing of a send.
 
 **Endpoint**: `POST /functions/v1/messages-notify`
 
-**Required Role**: any signed-in user, but only the change's **proposer** (`contract_clause_proposals.by_user_id`, for each id named) or its **decider** (`decided_by`); anyone else gets 403. Only a change made or decided in the last 15 minutes is told, so an old row can't be used to buzz the approvers again; an older one returns 200 with nothing sent.
+**Required Role**: a reply's push takes no user: the `X-Cron-Secret` header must match `CRON_SECRET`. A clause's: any signed-in user, but only the change's **proposer** (`contract_clause_proposals.by_user_id`, for each id named) or its **decider** (`decided_by`); anyone else gets 403. Only a change made or decided in the last 15 minutes is told, so an old row can't be used to buzz the approvers again; an older one returns 200 with nothing sent.
 
-**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (the push), `RESEND_API_KEY` (the emails), `APP_ORIGIN` (the links; defaults to the live site).
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (the push), `RESEND_API_KEY` (the emails), `APP_ORIGIN` (the links; defaults to the live site), `CRON_SECRET` (a reply's push, the same secret `gmail-sync` reads).
 
 **Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and the row with the service role.
 
@@ -3163,7 +3163,30 @@ The approvers are the users with role `dev` or `controller` (`gc_clause_approve_
 
 The editor's toast reads *Sent to Maria and Robert with a push and an email.* (or *by email*, or *with a push*, as reached); with nobody reached it reads *It waits for Maria or Robert to approve it.* The approver's reads *Approved by Maria. Rosa gets an email that it went out.* or *Declined. Rosa gets an email with your why.*, and without the email the words from before. The approvers' Needs you row states the rule: *Robert and Maria get a push and an email.*
 
-**Deploy**: `bash scripts/deploy-functions.sh messages-notify dev-mcp` (the catalog lists it).
+#### A reply (R5, v2.5479)
+
+Server to server, with `X-Cron-Secret` (no user, no JWT), one of:
+
+```json
+{ "message_ids": ["<messages.id>", "…"] }
+```
+
+```json
+{ "sweep": true }
+```
+
+Both send nothing, and answer `{ "success": true, "off": true, … }`, while the owner's switch `messages_reply_push_on_v1` (R5's PR 3, `'false'` as it ships) is off or not there yet. `message_ids` (1 to 50) is for a line's writer right after its insert; the writers (`quo-webhook`, `gmail-sync`) call it in a later PR. `sweep` is the cron (R5's PR 3, every minute behind a switch that ships off): the lines in from the last wait plus thirty minutes plus five (`sweepSince`), at most 200. The rule is [`src/lib/messages/notifyPlan.ts`](../src/lib/messages/notifyPlan.ts) through the edge copy; the reads, the sends and the record are [`_shared/messagesReplyPush.ts`](../supabase/functions/_shared/messagesReplyPush.ts).
+
+- **Whose lines**: a customer's, a lead's or a sub's (`PUSH_KINDS`), on a text, an email, a portal write, a voicemail or a missed call. An answered call does not push.
+- **Who has it**: after a legal line that still stands (`standingLegalLine` over the Lien desk's sends on the customer's Pipeline jobs, the owner's copies), the office alone (`routeReply`); else the teammate who took it or was handed it (`contacts.has_how`); else the rule (`whoHasReply`): the tech who last texted them while their hold stands, else the office's pick (`whoGetsIt` over `messages_assign_rule_v1`), else nobody while the office is closed (`messages_office_hours_v1`).
+- **Who hears, and when** (`pushesFor`): whoever has it at once; the office after `messages_office_wait_minutes` (15) unless someone answered first (`answeredBefore`); the office at once after hours, the push saying the line waits for the morning (no after-hours answer goes until `quo-send` sends one). The office is the Customers seat when one is picked, else the five office roles (`_shared/messagesTeams.ts`, held to `GC_OFFICE_TEAM` by `access.test.ts`). The tech's push carries no link until Job Mode's thread has one; the office's opens the thread at the line.
+- **Never twice, never late**: a push already in `notification_history.message_id` for that line is not sent again, and one more than thirty minutes past its time is never sent (`PUSH_LATE_MAX_MINUTES`). Each person reached gets one `notification_history` row, `template_type` `message_reply` or `message_reply_wait`, with the line in `message_id`. Nothing is written to `contacts`.
+
+```json
+{ "success": true, "lines": 3, "sent": 2, "reached": 3, "waiting": 1, "answered": 0, "late": 0 }
+```
+
+**Deploy**: `bash scripts/deploy-functions.sh messages-notify dev-mcp` (the catalog lists it). Since v2.5479 it imports the edge copy (`IMPORTERS`), so a change to a kernel it reads asks for its redeploy.
 
 ---
 
