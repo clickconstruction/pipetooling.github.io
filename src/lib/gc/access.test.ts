@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
-import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
+import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -41,6 +41,20 @@ describe('canMessageCustomersFromJobMode (Messages, R5)', () => {
 
   it('names the same roles as the database’s messages_tech_team(), so the two copies cannot drift', () => {
     expect([...MESSAGES_TECH_TEAM].sort()).toEqual(teamInSql('messages_tech_team').sort())
+  })
+})
+
+describe('canOpenMessages (residential R2)', () => {
+  it('opens /messages for the GC office team, the people the spine’s tables open to', () => {
+    for (const role of GC_OFFICE_TEAM) expect(canOpenMessages(role)).toBe(true)
+  })
+
+  it('keeps the field, the subs and a session with no role yet out, since the field’s door is Job Mode', () => {
+    for (const role of ['superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canOpenMessages(role)).toBe(false)
+    }
+    expect(canOpenMessages(null)).toBe(false)
+    expect(canOpenMessages(undefined)).toBe(false)
   })
 })
 

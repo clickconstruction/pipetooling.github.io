@@ -71,6 +71,8 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     '/bids',
     // GC projects (door 1, v2.4832): the office and estimators, as `canOpenGcProjects` says.
     '/gc',
+    // Messages in the header (residential R2): the same office team, as `canOpenMessages` says.
+    '/messages',
     '/customers',
     '/job-mode',
     ...(estimatorProspectsAccess ? ['/prospects'] : []),

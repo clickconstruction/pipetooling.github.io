@@ -44,6 +44,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Bank ledger, card sorting, accounting review → `/banking`
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`
 - Every message with a customer, trade partner or architect on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
+- Everyone waiting on us for an answer and what we owe them, for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
@@ -102,6 +103,13 @@ the manual as they stood at each set, what each set changed and took out, and th
 (`gc-plan-question-email`) and records the answer; the next set carries it. For a dev, a new set emails the companies asked to quote (**Who hears it**, v2.4940) and an answer reaches the companies on the trade (v2.4938), both through `gc-trade-email`. `?view=partners` and `?view=followUp` open those views (v2.4941).
 Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`, `/help?g=issue-a-new-set-of-plans`,
 `/help?g=read-the-plans-of-a-gc-project`, `/help?g=ask-the-architect-about-the-plans`.
+Roles: dev, master_technician, assistant, controller, estimator.
+
+### /messages — Messages
+Follow up for every kind of person, from **Messages** in the header: **Needs you**, **Needs a reply** and **We owe them**,
+with pills for Customers, Trade partners, Architects, Leads and Subs (`?kind=`), and **Supply houses and candidates**,
+which never count on Follow up and show as a people list. A row opens the person's thread over the page
+(`?thread=<contactId>&at=<messageId>`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
 Roles: dev, master_technician, assistant, controller, estimator.
 
 ### /bids — Bids (the estimating hub)
@@ -328,10 +336,10 @@ Roles: dev, master, assistant, controller, estimator.
 ## Nav skeletons by role (what you actually see)
 
 - **estimator**: Dashboard · Customers · Estimates · Documents · Bids · Materials · Map ·
-  Calendar · People · Checklist · Tally · Settings · Help (+ Prospects if granted).
+  Messages · Calendar · People · Checklist · Tally · Settings · Help (+ Prospects if granted).
   Everything else redirects to `/bids`.
 - **assistant / controller**: nearly everything above plus Jobs, Dispatch, Projects,
-  Banking, AR, Quickfill, Prospects; controller additionally Moneyfill + payroll surfaces.
+  Banking, AR, Quickfill, Prospects, Messages; controller additionally Moneyfill + payroll surfaces.
   No Templates (dev-only); no Partnerships (dev-only).
 - **subcontractor / helpers**: Dashboard · Calendar · Checklist · Tally · Settings · Help
   (+ Job/Dispatch modes from the header where dispatched). Everything else → `/dashboard`.

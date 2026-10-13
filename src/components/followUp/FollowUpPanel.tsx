@@ -9,7 +9,8 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { askArchitectToast, planQuestionOf, type AskArchitectEnd, type PlanQuestionInput } from '../../lib/followUp/askArchitect'
 import { pressProblem, supabaseFollowUpIo, type FollowUpIo } from '../../lib/followUp/followUpIo'
-import { anotherDay, BACK_CLEARED_TOAST, hasToast, stateToast, type OnPortal } from '../../lib/followUp/queue'
+import type { FollowUpContact } from '../../lib/followUp/followUpRows'
+import { anotherDay, BACK_CLEARED_TOAST, hasToast, stateToast, type FollowUpQueue, type OnPortal } from '../../lib/followUp/queue'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useFollowUpQueue } from '../../hooks/useFollowUpQueue'
 import { Card } from '../gc/gcUi'
@@ -46,13 +47,15 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
   planQuestions?: PlanQuestionWrites
   /** Hears the badge's count each time the queue is read, so the page's pill stays with it. */
   onCount?: (count: number) => void
+  /** The rows to draw out of the whole queue: `/messages`' kind pills (`messages/kindPills.ts`). The badge counts the whole. */
+  narrow?: (queue: FollowUpQueue<C, N>, contacts: readonly FollowUpContact[]) => FollowUpQueue<C, N>
   /** Today and now, for a smoke; the app's clock otherwise. */
   todayYmd?: string
   nowIso?: string
 }
 
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
-  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount } = props
+  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow } = props
   const todayYmd = props.todayYmd ?? todayYmdInAppTz()
   const nowIso = props.nowIso ?? new Date().toISOString()
   const userNames = useMemo(() => Object.fromEntries([...team, me].map((t) => [t.id, t.name])), [team, me])
@@ -119,7 +122,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
       )}
       {q.queue ? (
         <FollowUpSections<C, N>
-          queue={q.queue}
+          queue={narrow ? narrow(q.queue, q.contacts) : q.queue}
           contacts={q.contacts}
           lines={q.lines}
           me={me}
