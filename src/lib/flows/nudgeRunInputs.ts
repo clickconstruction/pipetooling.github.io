@@ -16,7 +16,7 @@
 import { firstName } from '../contacts/kernel'
 import type { QuickReply, QuickReplyFor, QuickReplyScope } from '../quickReplies/kernel'
 import { flowFromRows, type FlowStepRow } from './editor'
-import { FLOW_KINDS, type FlowKind } from './facts'
+import { FLOW_KINDS, flowContactKind, type FlowKind } from './facts'
 import type { FlowCard, FlowRows } from './load'
 import type { AppSends, NudgeRunInput, NudgeSent, TextNumber } from './nudgeDispatch'
 import type { NudgeOptions, PersonFlow } from './nudges'
@@ -131,7 +131,7 @@ export function flowsByKind(steps: readonly RunStepRow[]): Record<FlowKind, Flow
 
 /** What we call them on their flow: the name they go by, else their first name, else their company, else "them". */
 export function flowFirst(contact: Pick<RunContactRow, 'kind' | 'name' | 'goes_by'>, card: FlowCard | null | undefined): string {
-  const first = firstName({ name: contact.name ?? card?.name ?? '', goesBy: contact.goes_by ?? card?.goes_by ?? null, kind: contact.kind })
+  const first = firstName({ name: contact.name ?? card?.name ?? '', goesBy: contact.goes_by ?? card?.goes_by ?? null, kind: flowContactKind(contact.kind) })
   return first || card?.company || 'them'
 }
 

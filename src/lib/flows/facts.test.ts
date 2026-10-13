@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { FACT_GROUPS, FLOW_FACTS, FLOW_PAPERS, factById, factForPaper, factGroups, factsWords, isFactId, isPaperId } from './facts'
+import { stepsByKind } from '../quickReplies/kernel'
+import { FACT_GROUPS, FLOW_FACTS, FLOW_KINDS, FLOW_PAPERS, factById, factForPaper, factGroups, contactFlowKind, factsWords, flowContactKind, isFactId, isPaperId, type FlowKind } from './facts'
 import { SEED_FLOWS } from './seed'
 import { flat } from './state'
 
@@ -67,5 +68,26 @@ describe('flows/facts', () => {
         for (const p of s.papers) expect(isPaperId(p)).toBe(true)
       }
     }
+  })
+
+  it('has a residential flow and a sub flow with no steps yet (RESIDENTIAL_BUILD_PLAN.md R0)', () => {
+    const empty: FlowKind[] = ['residential', 'sub']
+    for (const kind of empty) expect(SEED_FLOWS[kind]).toEqual({ kind, lanes: [] })
+    expect(stepsByKind(SEED_FLOWS).sub).toEqual([])
+    // The flows tables allow them once a migration widens flows_kind_known; until then the list is the four.
+    expect(FLOW_KINDS).toEqual(['customer', 'trade', 'arch', 'unknown'])
+  })
+
+  it('reads a residential flow’s person as a customer, and every other flow’s as its own kind', () => {
+    const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown']
+    expect(all.map(flowContactKind)).toEqual(['customer', 'trade', 'arch', 'customer', 'sub', 'unknown'])
+  })
+
+  it('sends a lead, a supply house and a candidate to the unknown flow, and every other kind to its own', () => {
+    expect(contactFlowKind('lead')).toBe('unknown')
+    expect(contactFlowKind('supply_house')).toBe('unknown')
+    expect(contactFlowKind('candidate')).toBe('unknown')
+    expect(contactFlowKind('customer')).toBe('customer')
+    expect(contactFlowKind('sub')).toBe('sub')
   })
 })

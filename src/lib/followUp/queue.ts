@@ -11,6 +11,8 @@
  * Open · Snoozed · Done is the app's to set (v1.146): a message from them opens the row, our reply or a team note
  * closes it, and the thread's ⋯ holds the overrides. A snooze wakes on its own day, so the queue reads the state
  * through `stateToday`. Pure: the writes are cut 2's RPCs (`take_it`, `hand_to`, `set_state`).
+ *
+ * Supply houses and candidates are never on it (`OFF_FOLLOW_UP`): their threads live on the RFQ and the hiring board.
  */
 import { firstName, type ContactKind } from '../contacts/kernel'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, ymdDaysBetween } from '../../utils/dateUtils'
@@ -58,6 +60,17 @@ export interface CustomerPaper {
 
 /** A sent paper turns into a Needs you row once it has sat unanswered this many days. */
 export const PORTAL_PAPER_DAYS = 2
+
+/**
+ * The kinds Follow up never shows, in any section or on the badge: supply houses and candidates, the owner's call of
+ * 2026-10-13, off Follow up by default. `followUpQueue` drops their rows in one place.
+ */
+export const OFF_FOLLOW_UP: ReadonlySet<ContactKind> = new Set<ContactKind>(['supply_house', 'candidate'])
+
+/** Whether a person of this kind is on Follow up. */
+export function onFollowUp(kind: ContactKind): boolean {
+  return !OFF_FOLLOW_UP.has(kind)
+}
 
 /** The state as it stands today: a snooze whose day has come is open again. */
 export function stateToday(contact: Pick<QueueContact, 'state' | 'snoozedUntil'>, todayYmd: string): ContactState {
@@ -401,17 +414,39 @@ export interface FollowUpPassThrough<C, N extends { contactId: string }> {
   nudges?: (skip: OnPortal) => ReadonlyArray<N>
 }
 
+/**
+ * The input with everyone `OFF_FOLLOW_UP` left out: the people, and every message, record and paper of theirs, so no
+ * section and no count can reach them.
+ */
+function onlyOnFollowUp(input: FollowUpInput): { input: FollowUpInput; on: (row: { contactId: string }) => boolean } {
+  const off = new Set(input.contacts.filter((c) => !onFollowUp(c.kind)).map((c) => c.id))
+  const on = (row: { contactId: string }) => !off.has(row.contactId)
+  if (off.size === 0) return { input, on }
+  return {
+    input: {
+      ...input,
+      contacts: input.contacts.filter((c) => !off.has(c.id)),
+      messages: input.messages.filter(on),
+      heard: input.heard?.filter(on),
+      owed: input.owed?.filter(on),
+      portalPapers: input.portalPapers?.filter(on),
+    },
+    on,
+  }
+}
+
 export function followUpQueue<C = never, N extends { contactId: string } = never>(
-  input: FollowUpInput,
+  all: FollowUpInput,
   passThrough: FollowUpPassThrough<C, N> = {},
 ): FollowUpQueue<C, N> {
+  const { input, on } = onlyOnFollowUp(all)
   const portal = portalNeeds(input.contacts, input.messages, input.portalPapers ?? [], input.todayYmd)
   const needsYou: NeedsYouRow[] = [...backToday(input.messages, input.todayYmd), ...portal]
   const reply = needsReply(input.contacts, input.messages, input.heard ?? [], input.todayYmd)
   const owing = weOwe(input.owed ?? [], input.todayYmd)
   const clauses = [...(passThrough.clauses ?? [])]
   const shows = onPortal(portal)
-  const nudges = [...(passThrough.nudges?.(shows) ?? [])]
+  const nudges = (passThrough.nudges?.(shows) ?? []).filter(on)
   const people = new Set<string>([...needsYou, ...reply, ...owing].map((r) => r.contactId))
   return { needsYou, clauses, needsReply: reply, weOwe: owing, nudges, onPortal: shows, count: people.size }
 }

@@ -28,7 +28,7 @@ import {
   type FlowDraft,
 } from '../../../lib/flows/editor'
 import { APP_SENDS_LABEL, appSendOn, appSendSwitch, stepNudgeWords } from '../../../lib/flows/appSends'
-import { FLOW_PAPERS, isDocPaperId, isPaperId, stepFactById } from '../../../lib/flows/facts'
+import { FLOW_PAPERS, isDocPaperId, isPaperId, stepFactById, type FlowKind } from '../../../lib/flows/facts'
 import type { SavedPaper } from '../../../lib/flows/newPaper'
 import type { AppSends } from '../../../lib/flows/nudgeDispatch'
 import { LANE_WORDS, type FlowDef, type FlowNudge, type FlowStep, type Lane, type Who } from '../../../lib/flows/state'
@@ -38,7 +38,7 @@ import { docName } from './flowNames'
 import { FlowFactPicker, FlowPaperPicker } from './FlowPickers'
 import { flowChip, flowDanger, flowHead, flowInput, flowNote, flowQuiet, flowSelect, flowSmall, flowSwitch } from './flowStyles'
 
-type Kind = 'customer' | 'trade' | 'arch'
+type Kind = Exclude<FlowKind, 'unknown'>
 
 const LANES: readonly Lane[] = ['once', 'per_job', 'any_time']
 const NUDGE_DAYS: readonly (readonly [number, string])[] = [

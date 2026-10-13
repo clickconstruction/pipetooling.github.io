@@ -12,7 +12,7 @@
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { weekdayDate } from '../gc/words'
 import { stepLine, type QuickReply } from '../quickReplies/kernel'
-import { FLOW_PAPERS, factForPaper, type FlowKind, type PaperId } from './facts'
+import { FLOW_PAPERS, factForPaper, flowContactKind, type FlowKind, type PaperId } from './facts'
 import { daysSince, nudgeRows, type NudgeOptions, type NudgeStep, type PersonFlow } from './nudges'
 import { stampDay, stepById, type FlowStep, type NudgeHow } from './state'
 
@@ -146,7 +146,7 @@ const yours = (paper: PaperId): string => (FLOW_PAPERS[paper]?.name ?? paper).re
 export function nudgeLine(person: Pick<PersonFlow, 'first' | 'reading'>, def: FlowStep, quickReplies: readonly QuickReply[] = [], link: string | null = null): string {
   const paper = def.papers.find((p) => !factForPaper(p)?.ours) ?? null
   const upload = paper && link ? ` You can upload it here: ${link}` : ''
-  const team = stepLine(quickReplies, person.reading.kind, def.id, '')
+  const team = stepLine(quickReplies, flowContactKind(person.reading.kind), def.id, '')
   if (team) return upload && link && !team.text.includes(link) ? `${team.text}\n${upload.trim()}` : team.text
   const own = NUDGE_LINES[def.id]
   if (own) return `${person.first}, ${own(link)}`

@@ -9,11 +9,29 @@
  * `A_PAPER`), with each column checked against main's schema. `kept` says how well main keeps the
  * stamp today; `gap` names what cut 4's SQL adds where it does not.
  */
+import type { ContactKind } from '../contacts/kernel'
 
-/** The kind of person a flow is for. An unknown number has a one-step flow until someone names it. */
-export type FlowKind = 'customer' | 'trade' | 'arch' | 'unknown'
+/**
+ * The kind of person a flow is for. An unknown number has a one-step flow until someone names it. A residential
+ * customer and a sub have flows with no steps yet (`RESIDENTIAL_BUILD_PLAN.md` R0; their steps come in R4 and R8).
+ */
+export type FlowKind = 'customer' | 'trade' | 'arch' | 'residential' | 'sub' | 'unknown'
 
+/**
+ * The kinds the flows tables allow, pinned to the `flows_kind_known` check by `flowsSql.test.ts`. The type and the
+ * list part ways here: `residential` and `sub` join the list in the PR whose migration widens that check.
+ */
 export const FLOW_KINDS: readonly FlowKind[] = ['customer', 'trade', 'arch', 'unknown']
+
+/** Who a flow's person is as a contact: a residential customer is a customer; every other flow is its kind's own. */
+export function flowContactKind(kind: FlowKind): ContactKind {
+  return kind === 'residential' ? 'customer' : kind
+}
+
+/** The flow a contact of this kind goes through. A lead, a supply house or a candidate has no flow, so the unknown one. */
+export function contactFlowKind(kind: ContactKind): FlowKind {
+  return kind === 'lead' || kind === 'supply_house' || kind === 'candidate' ? 'unknown' : kind
+}
 
 export type FactId =
   | 'invite_sent'

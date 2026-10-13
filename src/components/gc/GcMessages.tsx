@@ -33,6 +33,10 @@ const FACE: Record<ContactKind, string> = {
   customer: 'var(--bg-green-100)',
   trade: 'var(--bg-blue-200)',
   arch: 'var(--bg-violet-100)',
+  lead: 'var(--bg-muted)',
+  supply_house: 'var(--bg-muted)',
+  candidate: 'var(--bg-muted)',
+  sub: 'var(--bg-muted)',
   unknown: 'var(--bg-muted)',
 }
 

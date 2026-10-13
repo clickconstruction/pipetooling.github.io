@@ -4,6 +4,7 @@
  * and ⋯'s rows with the state each one sets.
  */
 import type { ContactKind } from '../contacts/kernel'
+import { contactFlowKind } from '../flows/facts'
 import { SEED_FLOWS } from '../flows/seed'
 import { flat } from '../flows/state'
 import { dayLabel, owedWhatOptions, type OwedStep } from '../messages/owed'
@@ -36,7 +37,7 @@ export function threadStateRows(state: ContactState, todayYmd: string): ThreadSt
  * (`owedWhatOptions`). Read from the seeded flows (`SEED_FLOWS`, what cut 4's SQL seeds) until cut 4's flows are read live.
  */
 export function owedChoices(kind: ContactKind): { flow: string[]; usual: string[] } {
-  const steps: OwedStep[] = flat(SEED_FLOWS[kind])
+  const steps: OwedStep[] = flat(SEED_FLOWS[contactFlowKind(kind)])
     .filter((s) => s.who === 'us')
     .map((s) => ({ name: s.name, owedWords: s.owedWords }))
   return owedWhatOptions(kind, steps)
