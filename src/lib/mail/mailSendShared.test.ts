@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { mailStatusFromProvider as appFold, mailClientMsgId as appId } from './mailPiece'
 import { mailCassAddress, mailCassVerdict, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, mailStatusFromProvider, sendsWithPiece, ymdInZone } from '../../../supabase/functions/_shared/mailSend'
 
@@ -63,6 +64,6 @@ describe('the mail-send kernel the functions share (the Docsmit train, PR 3)', (
     expect(sendsWithPiece(sends, 'owner', { id: 'p1', provider: 'docsmit', usps_tracking: null })[0]).toEqual({ recipient: 'owner', method: 'certified_mail', tracking: '', sent_on: '2026-10-12', via: 'docsmit', piece_id: 'p1' })
     expect(sendsWithPiece('junk', 'owner', { id: 'p1', provider: 'docsmit', usps_tracking: null })).toEqual([])
     // 00:30 UTC on Oct 14 is 7:30 pm Central on Oct 13.
-    expect(ymdInZone('2026-10-14T00:30:00Z', 'America/Chicago')).toBe('2026-10-13')
+    expect(ymdInZone('2026-10-14T00:30:00Z', APP_CALENDAR_TZ)).toBe('2026-10-13')
   })
 })
