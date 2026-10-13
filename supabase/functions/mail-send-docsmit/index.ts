@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DocsmitClient, DocsmitError, docsmitConfigFromEnv } from '../_shared/docsmitClient.ts'
+import { DocsmitClient, DocsmitError } from '../_shared/docsmitClient.ts'
+import { loadDocsmitConfig } from '../_shared/mailConfig.ts'
 import { appendEvent, mailCassAddress, mailCassVerdict, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, type MailPiecePrepareInput, type MailPieceRow } from '../_shared/mailSend.ts'
 import { PIECE_COLUMNS, loadOpenPieces, loadPiecesByIds, refreshPieces, writeTrackingToFilings, type MailDb } from '../_shared/mailDocsmitRefresh.ts'
 
@@ -79,7 +80,8 @@ serve(async (req) => {
     const role = String((roleRow as { role?: string } | null)?.role ?? '')
     if (!OFFICE_ROLES.has(role) || (roleRow as { read_only?: boolean } | null)?.read_only) return jsonResponse({ error: 'Not authorized' }, 403)
 
-    const cfg = docsmitConfigFromEnv((k) => Deno.env.get(k))
+    // Vault first (set from Settings → Developer, PR 9), then the function's own environment.
+    const { config: cfg } = await loadDocsmitConfig(admin as unknown as Parameters<typeof loadDocsmitConfig>[0], (k) => Deno.env.get(k))
     if (!cfg) return jsonResponse({ error: 'Docsmit is not set up: DOCSMIT_EMAIL, DOCSMIT_PASSWORD_SHA512 and DOCSMIT_SOFTWARE_ID are missing.' }, 500)
     const client = new DocsmitClient(cfg)
     const nowIso = new Date().toISOString()

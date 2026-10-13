@@ -974,3 +974,7 @@ verify_jwt = false
 # The hourly read-back of every open Docsmit piece (the Docsmit train, PR 3): X-Cron-Secret, no JWT.
 [functions.mail-poll]
 verify_jwt = false
+
+# The dev's door to Docsmit's secrets in Vault (the Docsmit train, PR 9): status · set · ping. Bearer + getUser, role dev in-function; never returns a hash or a software id.
+[functions.mail-config]
+verify_jwt = false

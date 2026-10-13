@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DocsmitClient, docsmitConfigFromEnv } from '../_shared/docsmitClient.ts'
+import { DocsmitClient } from '../_shared/docsmitClient.ts'
+import { loadDocsmitConfig } from '../_shared/mailConfig.ts'
 import { appendEvent, mailStatusFromProvider, parseMailClientMsgId } from '../_shared/mailSend.ts'
 import { loadOpenPieces, refreshPieces, type MailDb } from '../_shared/mailDocsmitRefresh.ts'
 
@@ -53,7 +54,7 @@ serve(async (req) => {
     if (!supabaseUrl || !serviceKey) return jsonResponse({ error: 'Server misconfigured' }, 500)
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } }) as unknown as MailDb
 
-    const cfg = docsmitConfigFromEnv((k) => Deno.env.get(k))
+    const { config: cfg } = await loadDocsmitConfig(admin as unknown as Parameters<typeof loadDocsmitConfig>[0], (k) => Deno.env.get(k))
     if (!cfg) return jsonResponse({ ok: true, skipped: 'docsmit not set up' })
     if ((await setting(admin, 'docsmit_paused')) === 'true') return jsonResponse({ ok: true, skipped: 'paused' })
 
