@@ -17,6 +17,7 @@ const INK: Record<LedgerTone, string> = {
   green: 'var(--text-green-700)',
   amber: 'var(--text-amber-800)',
   red: 'var(--text-red-700)',
+  blue: 'var(--text-blue-800)',
 }
 const DOT: Record<LedgerTone, string> = {
   done: 'var(--border-strong)',
@@ -24,6 +25,7 @@ const DOT: Record<LedgerTone, string> = {
   green: '#16a34a',
   amber: '#d97706',
   red: '#dc2626',
+  blue: '#2563eb',
 }
 
 function Dot({ tone, dot }: { tone: LedgerTone; dot: LedgerRow['dot'] }) {
@@ -120,7 +122,15 @@ export default function BilledDatesLedger({
                 {body}
               </div>
             )}
-            {r.sub ? <div style={{ paddingLeft: 14, marginTop: -3, fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.sub}</div> : null}
+            {r.sub ? (
+              <div
+                data-testid={`ledger-sub-${r.key}`}
+                title={r.subTitle}
+                style={{ paddingLeft: 14, marginTop: -3, fontSize: '0.6875rem', color: r.subTone && r.subTone !== 'done' && r.subTone !== 'plain' ? INK[r.subTone] : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              >
+                {r.sub}
+              </div>
+            ) : null}
             {r.key === 'money' && evidence ? <div style={{ paddingLeft: 14, marginTop: -3, minWidth: 0 }}>{evidence}</div> : null}
           </Fragment>
         )

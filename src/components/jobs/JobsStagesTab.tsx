@@ -179,6 +179,9 @@ import {
 } from '../../lib/returnEditJobFromStages'
 import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
+import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
+import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
   invoiceNeedsStripeVoidForRevert,
@@ -1002,6 +1005,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     },
     [billedLienClocks, billedPaySpeeds, promisedPayDates],
   )
+  // The notice's state under the ledger's lien row (v2.5491): the AR chip kernel over the desk's light data, built
+  // below once the desk's reads are in (`lienStateFor`) and handed here as state, since the desk's hook sits later in
+  // this body than the renderer.
+  const [lienStateFn, setLienStateFn] = useState<(jobId: string) => LienArChip | null>(() => () => null)
   const billedLienRunwayRenderer = useCallback(
     (row: StageRow) => {
       // v2.4168 / v2.4193 / v2.4205: the bill's dates in one block under the
@@ -1023,6 +1030,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         runway,
         inCollections: jobInCollections(row.job),
         uncollectible: jobUncollectible(row.job),
+        lienState: (() => {
+          const chip = lienStateFn(row.job.id)
+          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence } : null
+        })(),
       })
       if (ledger.rows.length === 0) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
@@ -1046,7 +1057,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer],
+    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
@@ -1524,6 +1535,54 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The master's plain name for the desk's word row (v2.4856) — his name, not the signer line the letters print.
   const lienDeskLeaderFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
+  // The notice's state per job (v2.5491): Do now's rows once over the desk's data (light while the desk is closed: the
+  // queues and letter two, no filings or mail pieces — a sent notice reads from its desk item), then the AR chip kernel.
+  const lienStateFor = useMemo((): ((jobId: string) => LienArChip | null) => {
+    if (!lienDeskData) return () => null
+    const data = lienDeskData
+    const serveDue = Object.values(data.filingsByJob)
+      .flat()
+      .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
+      .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
+    const nextUp = buildLienNextUp({
+      notices: data.queue.entries,
+      affidavits: data.affidavits.entries,
+      retainage: data.retainage.entries,
+      letterTwoByJob: data.letterTwoByJob,
+      serveDue,
+      role: authRole,
+      todayYmd: forecastTodayYmd,
+      jobTitle: (jobId) => {
+        const j = data.jobsById[jobId]
+        if (!j) return jobId.slice(0, 8)
+        const number = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
+        const name = (j.job_name ?? '').trim()
+        return name ? `${number} · ${name}` : number
+      },
+      gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
+      leaderName: (jobId) => lienDeskLeaderFor(data.jobsById[jobId]?.master_user_id ?? null) || null,
+      userName: (userId) => lienDeskLeaderFor(userId) || null,
+    })
+    const entriesByJob = new Map(data.queue.entries.map((e) => [e.jobId, e] as const))
+    const affidavitsByJob = new Map(data.affidavits.entries.map((e) => [e.jobId, e] as const))
+    const cache = new Map<string, LienArChip | null>()
+    return (jobId: string) => {
+      const hit = cache.get(jobId)
+      if (hit !== undefined) return hit
+      const filings = data.filingsByJob[jobId] ?? []
+      const piecesByFiling: Record<string, ReadonlyArray<LienMailPieceRow>> = {}
+      for (const f of filings) {
+        const pieces = data.mailPiecesByFiling?.[f.id]
+        if (pieces) piecesByFiling[f.id] = pieces
+      }
+      const chip = lienArChipFor({ jobId, todayYmd: forecastTodayYmd, nextUp, entry: entriesByJob.get(jobId) ?? null, affidavit: affidavitsByJob.get(jobId) ?? null, filings, piecesByFiling, letterTwo: data.letterTwoByJob[jobId] ?? null })
+      cache.set(jobId, chip)
+      return chip
+    }
+  }, [lienDeskData, authRole, forecastTodayYmd, lienDeskLeaderFor])
+  useEffect(() => {
+    setLienStateFn(() => lienStateFor)
+  }, [lienStateFor])
   // The signer's own phone on the cover letters (v2.3753, counsel: the master is the callback); the letterhead's when he has none.
   const lienDeskSignerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, lienDeskIssuer?.phone ?? ''), [users, lienDeskIssuer?.phone])
 
