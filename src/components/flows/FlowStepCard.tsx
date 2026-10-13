@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CardPress, PressId, StepCard, Words } from '../../lib/flows/card'
 import { Btn, input } from '../gc/gcUi'
+import { PhoneSheet } from '../PhoneSheet'
 
 /**
  * A step's card (`flows/card.ts`'s `StepCard`, the prototype v1.125's words): its title, one sentence that says where
@@ -78,8 +79,10 @@ export function FlowStepCard({
 }) {
   const [words, setWords] = useState('')
   useEffect(() => setWords(''), [asking])
-  // Escape closes the card and not the window it is in: taken first, in the capture, and marked done.
+  // Escape closes the card and not the window it is in: taken first, in the capture, and marked done. As a sheet, the
+  // sheet takes it (`PhoneSheet`), the same way: the words asked for first, then the card.
   useEffect(() => {
+    if (sheet) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return
       e.preventDefault()
@@ -87,7 +90,7 @@ export function FlowStepCard({
     }
     document.addEventListener('keydown', onKey, true)
     return () => document.removeEventListener('keydown', onKey, true)
-  }, [asking, onCancelAsk, onClose])
+  }, [sheet, asking, onCancelAsk, onClose])
   const can = (p: CardPress) => handles.has(p.id)
 
   const frame = { display: 'grid', gap: '0.6rem', background: 'var(--surface)', color: 'inherit', border: '1px solid var(--border)', borderRadius: sheet ? '12px 12px 0 0' : 12, padding: '0.85rem', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', overflowY: 'auto' as const }
@@ -174,16 +177,10 @@ export function FlowStepCard({
         {body}
       </div>
     )
+  // On a phone the card is the shared sheet (cut 10): from the bottom, above the keyboard while a note is typed.
   return (
-    <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 760, display: 'flex', alignItems: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }}
-    >
-      <div role="dialog" aria-modal="true" aria-label={card.title} data-flow-card="" style={{ ...frame, width: '100%', maxHeight: 'min(80vh, 100%)' }}>
-        {body}
-      </div>
-    </div>
+    <PhoneSheet label={card.title} dataAttrs={{ 'data-flow-card': '' }} onClose={asking ? onCancelAsk : onClose}>
+      <div style={{ display: 'grid', gap: '0.6rem', padding: '0.4rem 0.85rem 0.85rem', overflowY: 'auto' }}>{body}</div>
+    </PhoneSheet>
   )
 }
