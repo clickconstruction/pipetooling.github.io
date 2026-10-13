@@ -12,7 +12,7 @@ export function stripeInvoiceToPreviewPayload(inv: Stripe.Invoice): {
   customer_name: string | null
   customer_email: string | null
 } {
-  const rawLines = stripeInvoiceLinesDataForFixtureOrderDisplay(inv.lines?.data ?? [])
+  const rawLines = stripeInvoiceLinesDataForFixtureOrderDisplay<Stripe.InvoiceLineItem>(inv.lines?.data ?? [])
   const lines = rawLines.map((li) => ({
     description: li.description ?? '',
     amount: typeof li.amount === 'number' ? li.amount : 0,

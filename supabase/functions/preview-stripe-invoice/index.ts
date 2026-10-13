@@ -324,7 +324,7 @@ serve(async (req) => {
               pipetooling_customer_id: customer_id,
             },
           })
-          ephemeralCustomerId = ep.id
+          ephemeralCustomerId = ep.id as string
           customerIdForPreview = ephemeralCustomerId
         }
       } else {
@@ -336,7 +336,7 @@ serve(async (req) => {
             pipetooling_customer_id: customer_id,
           },
         })
-        ephemeralCustomerId = ep.id
+        ephemeralCustomerId = ep.id as string
         customerIdForPreview = ephemeralCustomerId
       }
 
@@ -363,7 +363,7 @@ serve(async (req) => {
       }
     }
 
-    const rawLines = stripeInvoiceLinesDataForFixtureOrderDisplay(preview.lines?.data ?? [])
+    const rawLines = stripeInvoiceLinesDataForFixtureOrderDisplay<Stripe.InvoiceLineItem>(preview.lines?.data ?? [])
     const lines = rawLines.map((li, i) => ({
       description: li.description ?? '',
       amount: typeof li.amount === 'number' && !Number.isNaN(li.amount) ? li.amount : 0,
