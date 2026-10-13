@@ -260,7 +260,9 @@ A notice approved on your word reaches Ready to send unsigned. Open it and press
 
 Sometimes the paper prints first and the leader signs it with a pen. The app can record that too. The office presses {{button:outline|He signed the paper ▸}} on the held envelope in the run. The same door sits on a ready notice's footer. A pane opens. It names the leader. It fills in the day the paper printed. Change the day if he signed later. Pick how you know. You watched him sign, he told you, or the signed page is in front of you. Add a photo of the signed page when you have one. The record ID in the frame's corner ties the page to the notice. Tick the notices he signed. Press {{button:blue|Record N pen signatures ▸}}. The envelope goes back into the run.
 
-The record names him as the one who signed. It names you as the one who wrote it down. A reprinted copy's frame reads **Signed by pen**. He sees the record on his phone and can confirm it. Nothing waits on that.
+The record names him as the one who signed. It names you as the one who wrote it down. A reprinted copy's frame reads **Signed by pen**. The chip on the notice reads **signed by pen** with the day and your name.
+
+The leader's phone gets one line when a pen signature is recorded for him. On his desk the notice sits first, under **Signed by pen, as recorded**. He presses {{button:green|Yes, I signed it ▸}} on the notice. The record then carries his word too. Nothing waits on that. If the record is wrong, he presses **Not what I signed**. The signature clears. The approval stands. The run holds the notice until it is signed again.
 
 ## A discount if they pay before the lien
 

@@ -227,10 +227,17 @@ export const LIEN_DESK_SIGNATURE_CLEAR: LienDeskSignatureColumns = {
   signed_leader_confirmed_at: null,
 }
 
-/** The chip's word on a ready notice (v2.5082): signed, with the instant, or unsigned — stale counts as unsigned. */
-export function lienChipSigned(row: LienDeskSignatureColumns, fieldsHash: string): { at: string } | 'unsigned' {
+/** The chip's word on a ready notice (v2.5082): signed, with the instant (and, the pen train, how and whether the leader confirmed), or unsigned — stale counts as unsigned. */
+export function lienChipSigned(row: LienDeskSignatureColumns, fieldsHash: string): { at: string; mode: LienSignatureMode; recordedBy: string | null; confirmedAt: string | null } | 'unsigned' {
   if (!row.signed_at || !(row.signer_printed_name ?? '').trim() || lienSignatureStale(row, fieldsHash)) return 'unsigned'
-  return { at: row.signed_at }
+  const mode = lienSignatureModeOf(row.signer_signature_mode)
+  return { at: row.signed_at, mode, recordedBy: mode === 'pen' ? row.signed_recorded_by : null, confirmedAt: mode === 'pen' ? row.signed_leader_confirmed_at : null }
+}
+
+/** A pen record the leader has not yet confirmed from his own sign-in (the pen train, PR 3): his row on the desk, and nothing waits on it. */
+export function lienPenAwaitsConfirm(row: LienDeskSignatureColumns, fieldsHash: string): boolean {
+  const s = lienChipSigned(row, fieldsHash)
+  return s !== 'unsigned' && s.mode === 'pen' && !s.confirmedAt
 }
 
 /**

@@ -108,7 +108,18 @@ export type RecordLienPenSignatureArgs = {
   page: { blob: Blob; type: string } | null
 }
 
-export type RecordLienPenSignatureResult = { ok: true; signedAtIso: string; how: LienPenWitnessHow; pagePath: string | null } | { ok: false; message: string }
+/** Yes, I signed it (the pen train, PR 3): the leader's own confirmation of a pen record, from his own sign-in; the guard refuses anyone else's. */
+export async function confirmLienPenSignature(itemId: string): Promise<void> {
+  await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ signed_leader_confirmed_at: new Date().toISOString() } as never).eq('id', itemId), 'lien desk: confirm a pen signature')
+}
+
+/** Not what I signed (the pen train, PR 3): the leader disowns a pen record; the ten signature columns clear, the approval stands, and the run holds the notice until it is signed again. */
+export async function disownLienPenSignature(itemId: string): Promise<void> {
+  const { LIEN_DESK_SIGNATURE_CLEAR } = await import('./lienNoticeSignature')
+  await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ ...LIEN_DESK_SIGNATURE_CLEAR } as never).eq('id', itemId), 'lien desk: disown a pen signature')
+}
+
+export type RecordLienPenSignatureResult ={ ok: true; signedAtIso: string; how: LienPenWitnessHow; pagePath: string | null } | { ok: false; message: string }
 
 export async function recordLienPenSignature(args: RecordLienPenSignatureArgs): Promise<RecordLienPenSignatureResult> {
   const { itemId, fields, signer, recordedBy, signedAtIso } = args
@@ -145,6 +156,12 @@ export async function recordLienPenSignature(args: RecordLienPenSignatureArgs): 
     await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update(patch as never).eq('id', itemId), 'lien desk: record a pen signature')
   } catch (e) {
     return { ok: false, message: e instanceof Error && e.message ? e.message : 'Could not record the pen signature — nothing was saved. Try again.' }
+  }
+  // Tell the leader (the pen train, PR 3): his phone gets one line, or the same words by email. Best effort; the record stands either way.
+  try {
+    await supabase.functions.invoke('notify-lien-approval', { body: { item_id: itemId, kind: 'pen_recorded' } })
+  } catch {
+    /* the desk's Signed by pen, as recorded group tells him too */
   }
   return { ok: true, signedAtIso, how, pagePath }
 }

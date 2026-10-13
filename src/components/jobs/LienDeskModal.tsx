@@ -43,7 +43,7 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, lienFyiStrip, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
-import { signLienDeskItem, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
+import { confirmLienPenSignature, disownLienPenSignature, signLienDeskItem, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
 import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
 import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
@@ -644,6 +644,7 @@ export default function LienDeskModal({
       jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId),
       gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
       leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
+      userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
     })
   }, [data, authRole, todayYmd, leaderNameFor])
   // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
@@ -2893,11 +2894,23 @@ export default function LienDeskModal({
       ))
     } else if (state === 'ready') {
       const itemOffer = lienOfferFromItem(selected.item)
-      const readySigned = selected.item ? lienChipSigned(signatureColumnsOf(selected.item), lienFieldsHash(selected.item.fields)) : null
+      const readySignedRaw = selected.item ? lienChipSigned(signatureColumnsOf(selected.item), lienFieldsHash(selected.item.fields)) : null
+      const readySigned = readySignedRaw && readySignedRaw !== 'unsigned' ? { ...readySignedRaw, recordedByName: readySignedRaw.recordedBy ? (leaderNameFor?.(readySignedRaw.recordedBy) ?? null) : null } : readySignedRaw
+      const penAwaits = readySigned && readySigned !== 'unsigned' && readySigned.mode === 'pen' && !readySigned.confirmedAt
       footer = byHandPane ?? penPane ?? (
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         {leader && readySigned === 'unsigned' ? signLine() : null}
+        {leader && penAwaits && selected.item ? (
+          // The pen train, PR 3: the office wrote down his pen signature; his word strengthens the record, his No clears it.
+          <div data-lien-desk-pen-confirm role="group" aria-label="A pen signature recorded for you" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
+            <span style={{ flex: '1 1 16rem' }}>
+              <strong>{(readySigned.recordedByName ?? '').trim() || 'The office'} recorded your pen signature</strong> on this notice{readySigned.at ? ` · signed ${footShortDay(readySigned.at)}` : ''}. Nothing waits on your word; it makes the record stronger.
+            </span>
+            <button type="button" onClick={() => run('Confirm the pen signature', () => confirmLienPenSignature(selected.item!.id), 'Confirmed — the record carries your word too.')} disabled={busy} style={btn('green', busy)} data-lien-desk-pen-yes>Yes, I signed it ▸</button>
+            <button type="button" className="lienFootLink" onClick={() => run('Disown the pen signature', () => disownLienPenSignature(selected.item!.id), 'Cleared — the notice is unsigned again and the run holds it.')} disabled={busy} data-lien-desk-pen-no title="The record is wrong: it clears, the approval stands, and the run holds the notice until it is signed again">Not what I signed</button>
+          </div>
+        ) : null}
         <div className="lienFootRow" data-lien-desk-foot="ready">
           <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)), readySigned)} data-lien-desk-ready-words />
           {leader && selected.item?.approval_mode === 'word' ? (

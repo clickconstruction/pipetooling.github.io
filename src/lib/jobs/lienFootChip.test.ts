@@ -46,3 +46,17 @@ describe('the ready chip’s word on the signature (v2.5082)', () => {
     expect(unsigned.title).toContain('the run holds it until the leader signs')
   })
 })
+
+describe('the ready chip on a pen signature (the pen train, PR 3)', () => {
+  it('says signed by pen with the day and who wrote it down, and confirmed once the leader said so', () => {
+    const base = { approval_mode: 'leader', approved_at: '2026-10-09T18:00:00Z' }
+    const pen = readyChip(base, 'Brightline', null, null, null, { at: '2026-10-09T17:00:00Z', mode: 'pen', recordedByName: 'Taunya', confirmedAt: null })
+    expect(pen.words).toBe('Approved · Oct 9 · signed by pen Oct 9 · recorded by Taunya')
+    expect(pen.tone).toBe('green')
+    expect(pen.title).toContain('Signed by pen October 9, 2026, on the paper as printed; recorded by Taunya.')
+    expect(pen.title).toContain('has not confirmed it yet')
+    const confirmed = readyChip(base, 'Brightline', null, null, null, { at: '2026-10-09T17:00:00Z', mode: 'pen', recordedByName: null, confirmedAt: '2026-10-12T22:00:00Z' })
+    expect(confirmed.words).toBe('Approved · Oct 9 · signed by pen Oct 9 · recorded by the office · confirmed')
+    expect(confirmed.title).toContain('Confirmed by the leader October 12, 2026.')
+  })
+})
