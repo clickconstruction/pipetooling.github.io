@@ -29,6 +29,8 @@ describe('lineFilesFromRows', () => {
       row({ id: 'f1' }),
       row({ id: 'f2', sort_order: 1, name: 'site.jpg', mime: 'image/jpeg', bucket_path: null, left_in_gmail: 'too_big' }),
       row({ id: 'f4', message_id: 'm2', name: 'x.zip', mime: 'application/zip', bucket_path: null, left_in_gmail: 'not_copied' }),
+      // A text's picture the quo-webhook could not copy (cut 10): Quo's own history still holds it.
+      row({ id: 'f5', message_id: 'm4', name: 'IMG_2201.jpg', mime: 'image/jpeg', bucket_path: null, left_in_gmail: 'quo_not_copied' }),
     ])
     expect(files.get('m1')!.map((f) => [f.id, f.kept, f.icon, f.url])).toEqual([
       ['f1', 'copy', 'pdf', null],
@@ -36,6 +38,7 @@ describe('lineFilesFromRows', () => {
       ['f3', 'link', 'link', 'https://we.tl/t-AbC123'],
     ])
     expect(files.get('m2')!.map((f) => [f.kept, f.icon])).toEqual([['notCopied', 'file']])
+    expect(files.get('m4')!.map((f) => [f.kept, f.icon])).toEqual([['quoNotCopied', 'image']])
     const lines = withLineFiles([{ id: 'm1' }, { id: 'm3' }], files)
     expect(lines[0]!.files!.map((f) => f.id)).toEqual(['f1', 'f2', 'f3'])
     expect(lines[1]).toEqual({ id: 'm3' })
@@ -57,6 +60,7 @@ describe('the words beside a file', () => {
     expect(fileNote({ kept: 'link' })).toBe('a link, not a file')
     expect(fileNote({ kept: 'tooBig' })).toBe('too big to keep, it stays in Gmail')
     expect(fileNote({ kept: 'notCopied' })).toBe('not copied, it stays in Gmail')
+    expect(fileNote({ kept: 'quoNotCopied' })).toBe('not copied, Quo still has it')
   })
 
   it('opens our copy through the lasting link, a link at its address, and nothing left in Gmail', () => {
@@ -65,6 +69,7 @@ describe('the words beside a file', () => {
     expect(fileOpenHref({ id: 'f3', kept: 'link', url: 'javascript:alert(1)' })).toBeNull()
     expect(fileOpenHref({ id: 'f2', kept: 'tooBig', url: null })).toBeNull()
     expect(fileOpenHref({ id: 'f4', kept: 'notCopied', url: null })).toBeNull()
+    expect(fileOpenHref({ id: 'f5', kept: 'quoNotCopied', url: null })).toBeNull()
   })
 })
 

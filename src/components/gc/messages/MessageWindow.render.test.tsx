@@ -15,6 +15,8 @@ import type { ThreadMessage } from '../../../lib/messages/thread'
 
 vi.mock('../../../lib/jobsDocuments/printWindow', () => ({ openHtmlPrintWindow: vi.fn(() => true) }))
 vi.mock('../../../lib/jobShare', () => ({ runJobShare: vi.fn(() => Promise.resolve('copied')) }))
+// The job's tick under Attachments (cut 10) reads its own row; PhotoSaveTick.render.test covers it.
+vi.mock('../../../lib/photos/photoSavesIo', () => ({ loadPhotoSave: vi.fn(() => Promise.resolve(null)), setPhotoSave: vi.fn() }))
 
 const view = spineMessagesView()
 const greg = contactById(view.contacts, 'c-greg')!

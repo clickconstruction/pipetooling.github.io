@@ -56,7 +56,15 @@ export function driveOf(f: LineFile): LineFileDrive {
 }
 
 const keptOf = (r: MessageAttachmentRow): FileKept =>
-  r.kind === 'link' ? 'link' : r.bucket_path ? 'copy' : r.left_in_gmail === 'too_big' ? 'tooBig' : 'notCopied'
+  r.kind === 'link'
+    ? 'link'
+    : r.bucket_path
+      ? 'copy'
+      : r.left_in_gmail === 'too_big'
+        ? 'tooBig'
+        : r.left_in_gmail === 'quo_not_copied'
+          ? 'quoNotCopied'
+          : 'notCopied'
 
 const iconOf = (r: MessageAttachmentRow): FileIcon =>
   r.kind === 'link' ? 'link' : /pdf/i.test(r.mime ?? '') || /\.pdf$/i.test(r.name) ? 'pdf' : /^image\//i.test(r.mime ?? '') ? 'image' : 'file'
@@ -113,12 +121,14 @@ export function fileNote(file: Pick<LineFile, 'kept'>): string {
       return 'a link, not a file'
     case 'tooBig':
       return 'too big to keep, it stays in Gmail'
+    case 'quoNotCopied':
+      return 'not copied, Quo still has it'
     default:
       return 'not copied, it stays in Gmail'
   }
 }
 
-/** Where Open goes: our copy through the app's lasting link, a link to its own web address. Null for a file left in Gmail. */
+/** Where Open goes: our copy through the app's lasting link, a link to its own web address. Null for a file left elsewhere. */
 export function fileOpenHref(file: Pick<LineFile, 'id' | 'kept' | 'url'>): string | null {
   if (file.kept === 'copy') return fileHref('messages', file.id)
   if (file.kept === 'link') return file.url && /^https?:\/\//i.test(file.url) ? file.url : null

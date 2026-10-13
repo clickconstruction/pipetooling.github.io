@@ -5,6 +5,7 @@ import { runJobShare } from '../../../lib/jobShare'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
+import { photoTickJob } from '../../../lib/photos/photoTick'
 import { callLength, channelWord, fullWhen, type ThreadMessage } from '../../../lib/messages/thread'
 import { PhoneSheet } from '../../PhoneSheet'
 import { Btn } from '../gcUi'
@@ -14,7 +15,8 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&
 
 /**
  * Messages, cut 1's screens: one message in full, as a window over its thread (the prototype's `openMessage`, v1.159).
- * Its facts (who, when, through what, its job), an email's Attachments with Open (cut 6), its whole words, and its
+ * Its facts (who, when, through what, its job), an email's Attachments with Open (cut 6) and the job's tick to save
+ * every photo to Drive (cut 10), its whole words, and its
  * tools: a later cut's first slot (cut 2's
  * highlight, which reads Remove or Highlight by the selection), Copy, Print or save as PDF, and Share. It is drawn
  * inside the thread window's panel, so a press on its backdrop never reaches the thread's. A sheet from the bottom on a
@@ -105,7 +107,16 @@ export function MessageWindow({
             </>
           )}
         </dl>
-        {message.files && message.files.length > 0 && <MessageFiles files={message.files} jobKey={message.jobId} jobLabel={tile?.num ?? null} who={contact} sentAt={message.direction === 'out' ? message.at : null} />}
+        {message.files && message.files.length > 0 && (
+          <MessageFiles
+            files={message.files}
+            jobKey={message.jobId}
+            jobLabel={tile?.num ?? null}
+            who={contact}
+            sentAt={message.direction === 'out' ? message.at : null}
+            photoJob={isSentLine(message) ? null : photoTickJob(message)}
+          />
+        )}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {first?.(message, selection)}
           <Btn onClick={() => void copy()} title="Copies the whole message.">

@@ -74,6 +74,8 @@ The file opens in a new tab. Open shows our copy, kept when the email came. A li
 
 A file too big to keep stays in Gmail. That file's row says so and has no {{button:outline|Open}}.
 
+A picture on a text that the app could not copy says so too. Quo still has that picture.
+
 ## Save a file to the job's Drive
 
 A file that came with an email can go into the job's Drive folder. Then the job's files show it with the rest.
@@ -99,6 +101,19 @@ An email we sent lists its files under **Files**. Each one says how it went.
 Our own link says how often it was opened. Under it is the time of each open, newest first. It never says who opened it, since a link cannot know.
 
 To stop our link, press {{button:outline|Cut it off}}. From then on it opens nothing. The file stays where it is. Our link also stops by itself 30 days after it went.
+
+## Save a job's photos to Drive
+
+A message tied to a job may come with a picture. The message window then offers a tick under **Attachments**.
+
+1. Press the message.
+2. Under **Attachments**, tick **Save every photo on this job to Drive as it comes in**.
+
+The tick is for the whole job, not for one message. Every job starts with the tick off. Once the tick is on, the window says the day it went on.
+
+Photos that come in on the job after that day go to the job's photos in Drive. Photos that came in before that day are not copied. To stop, untick **Save every photo on this job to Drive as it comes in**.
+
+Only the office team can change the tick. A training account cannot change the tick.
 
 ## File a paper that came by email
 
