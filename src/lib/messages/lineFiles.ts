@@ -30,6 +30,29 @@ export interface MessageAttachmentRow {
   paper_answer: string | null
   paper_answered_by: string | null
   paper_answered_at: string | null
+  /** Cut 7a: the Drive file it is (Save to Drive put it there, or a line we sent carried it), how it went on a line we
+   * sent, and our link's row. Optional so a read from before the columns still reads. */
+  drive_file_id?: string | null
+  sent_as?: string | null
+  drive_link_id?: string | null
+}
+
+/**
+ * Where a file is in Drive and how it went (cut 7a's columns), kept beside the thread's `LineFile` so the shared types
+ * file, and the edge copy of it, stay as they are. `driveOf` reads it back from any line's file.
+ */
+export interface LineFileDrive {
+  driveFileId: string | null
+  sentAs: 'file' | 'link' | 'picture' | null
+  driveLinkId: string | null
+}
+
+export type KeptLineFile = LineFile & LineFileDrive
+
+/** A line's file's place in Drive and how it went, or none of either for a file read before cut 7a. */
+export function driveOf(f: LineFile): LineFileDrive {
+  const d = f as Partial<LineFileDrive>
+  return { driveFileId: d.driveFileId ?? null, sentAs: d.sentAs ?? null, driveLinkId: d.driveLinkId ?? null }
 }
 
 const keptOf = (r: MessageAttachmentRow): FileKept =>
@@ -39,11 +62,11 @@ const iconOf = (r: MessageAttachmentRow): FileIcon =>
   r.kind === 'link' ? 'link' : /pdf/i.test(r.mime ?? '') || /\.pdf$/i.test(r.name) ? 'pdf' : /^image\//i.test(r.mime ?? '') ? 'image' : 'file'
 
 /** The rows as each line's files, in their order. */
-export function lineFilesFromRows(rows: readonly MessageAttachmentRow[]): Map<string, LineFile[]> {
-  const out = new Map<string, LineFile[]>()
+export function lineFilesFromRows(rows: readonly MessageAttachmentRow[]): Map<string, KeptLineFile[]> {
+  const out = new Map<string, KeptLineFile[]>()
   const sorted = [...rows].sort((a, b) => a.sort_order - b.sort_order)
   for (const r of sorted) {
-    const file: LineFile = {
+    const file: KeptLineFile = {
       id: r.id,
       name: r.name,
       mime: r.mime,
@@ -55,6 +78,9 @@ export function lineFilesFromRows(rows: readonly MessageAttachmentRow[]): Map<st
       paperAnswer: r.paper_answer === 'filed' || r.paper_answer === 'not_it' ? r.paper_answer : null,
       paperAnsweredBy: r.paper_answered_by,
       paperAnsweredAt: r.paper_answered_at,
+      driveFileId: r.drive_file_id ?? null,
+      sentAs: r.sent_as === 'file' || r.sent_as === 'link' || r.sent_as === 'picture' ? r.sent_as : null,
+      driveLinkId: r.drive_link_id ?? null,
     }
     out.set(r.message_id, [...(out.get(r.message_id) ?? []), file])
   }
