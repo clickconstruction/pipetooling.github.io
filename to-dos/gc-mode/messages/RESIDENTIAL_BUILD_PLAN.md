@@ -41,7 +41,7 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 | R5 | `app_settings.messages_office_wait_minutes` (15); `app_settings.messages_office_hours_v1` as JSON `{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00","techUntil":"17:00","emergency":null}`, read by `parseOfficeHours` with the defaults as the fallback; `emergency` set adds one sentence to the after-hours answer naming the number (helper 5's prepare note, 2026-10-13) | push to the office after a wait; who answers, and when the office is closed |
 | R6 | `messages.mailbox` (`bids` · `team`), `contact_channels.from_number_id` per kind | two boxes, two numbers, the reply from the box they wrote to |
 | R8 · 16 | `customers.language` (`en` · `es`) | read by every contact of theirs |
-| R8 · 8 | `estimates.source_message_id`, the message that started the document (main keeps lines as `estimates.line_items_snapshot` JSON and has no estimate_lines table or save RPC; the Estimates page's write path takes the draft; helper 6's prepare note, 2026-10-13) | the add-on from a message |
+| R8 · 8 | `estimates.source_message_id`, the message that started the document or its line (main keeps lines as `estimates.line_items_snapshot` JSON and has no estimate_lines table or save RPC; the Estimates page's write path takes the draft; helper 6's prepare note, 2026-10-13) | a line on an estimate from a message |
 | R8 · 3 | a reason and the job's event line on `self_move_schedule_block` (the tech's own move, one block per call; the office's board writes the table directly and there is no move RPC with a reason), and the dispatcher's note filed as a `dispatch_requests` row, since a tech cannot insert it; a slide past 23:59 moves nothing (helper 7's prepare note, 2026-10-13) | a Running late press moves the board with a reason |
 | R8 · 12 | the sub sheet's facts as stamps: `people_labor_jobs.asked_at`, `said_yes_at`, `on_site_at`, `done_at`; `paid` from the sheet's payments | the sub flow |
 
@@ -131,7 +131,7 @@ In the order that each unblocks the next. Numbers are the mockups' card numbers.
 | 6 | They owe us on Follow up | 1 | `followUp/queue.ts` → `theyOweUs(bills)` from the AR page's reads; the bill's reminder as the step's quick reply, sent by the morning run at the terms |
 | 2 | Reports and photos | 1 | the report as a source in `documents/jobFiles.ts`; **Attach from the report** on the send; a photo reply filed by cut 6 |
 | 7 | The Lien desk's sends | 1 | a `legal` line kind from the desk's sent rows, read-only, the box off under it, the reply to the office alone |
-| 8 | An add-on from a message | 2 | the RPC and the column (SQL); the ⋯ press through `changeOrders/fromMessage.ts` with the estimate's form |
+| 8 | A line on an estimate from a message | 2 | the column (SQL); the ⋯ press through `estimates/lineFromMessage.ts`, cut 4b's kernel with the estimate's form; never called an add-on, which is Estimates' option kind (helper 6, 2026-10-13) |
 | 3 | Dispatch writes back | 2 | `dispatch/whatSlides.ts` (the stops that move and by how much); the ask on the send, the move RPC with its reason, the dispatcher told |
 | 9 | Leads on Prospects | 1 | Prospects shows the thread window on a lead's card; booking re-points the contact to the customer (the `name_contact` fold) |
 | 10 | Supply houses to the RFQ | 1 | an email from a supply house ties to the open RFQ; the RFQ page reads its lines |
