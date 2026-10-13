@@ -71,7 +71,25 @@ describe('mail-poll (the Docsmit train, PR 3)', () => {
     expect(db.tables.mail_pieces![0]).toMatchObject({ status: 'in_transit', usps_tracking: '9407 1118 9876 5432 1098', mailed_at: '2026-10-14T00:30:00Z' })
     // 00:30 UTC on Oct 14 is the evening of Oct 13 in Central: the filing's day is the 13th.
     expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toEqual({ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118 9876 5432 1098', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p1' })
+    // USPS has it now, so the charge is asked for once; Docsmit had no answer here, so the price stays unread and is asked again next hour.
+    expect(docsmit.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /token', 'GET /messages/m-1/parties', 'GET /messages/m-1/transactions'])
+    expect(db.tables.mail_pieces![0]!.price).toBeUndefined()
+  })
+
+  it('once USPS has a piece, one /transactions read writes what Docsmit charged, and the next poll does not ask again (6b, the cost line)', async () => {
+    db.tables.mail_pieces = [{ ...open, status: 'in_transit', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', price: null }]
+    db.tables.job_lien_filings = [{ id: 'f1', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p1' }] }]
+    docsmit.answers['GET /messages/m-1/parties'] = { body: [{ USPSTrackingID: '9407 1118', DeliveryStatus: 'In Transit to Next Facility', DStatusao: '2026-10-14T08:00:00Z' }] }
+    docsmit.answers['GET /messages/m-1/transactions'] = { body: [{ TransactionID: 1000002165, DateTime: '2026-10-13 15:59:10', CoR: 'C', discount: 0, price: 9.85, MsgID: 1, CertType: 'pre' }] }
+    expect((await post({})).status).toBe(200)
+    const row = db.tables.mail_pieces![0]!
+    expect(row.price).toBe(9.85)
+    expect((row.events as Array<{ kind: string; price?: number }>).filter((e) => e.kind === 'charged')).toEqual([expect.objectContaining({ price: 9.85 })])
+    docsmit.calls = []
+    docsmit.answers['GET /messages/m-1/parties'] = { body: [{ USPSTrackingID: '9407 1118', DeliveryStatus: 'In Transit to Next Facility', DStatusao: '2026-10-14T09:00:00Z' }] }
+    expect((await post({})).status).toBe(200)
     expect(docsmit.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /token', 'GET /messages/m-1/parties'])
+    expect(db.tables.mail_pieces![0]!.price).toBe(9.85)
   })
 
   it('a dry run lists the open pieces and writes nothing', async () => {

@@ -212,3 +212,32 @@ export function ymdInZone(iso: string, timeZone: string): string {
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
   return `${get('year')}-${get('month')}-${get('day')}`
 }
+
+/**
+ * The charge Docsmit made for a message, from `GET /messages/{id}/transactions` (the Docsmit train, 6b, the cost
+ * line): a list (or one object, or `{ transactions: [...] }`) of rows with `price` and `CoR` (C a charge, R a refund).
+ * The sum to the cent, or null when no row carries a price — the poll then asks again next hour. The doc shows a
+ * `discount` beside `price` and does not say whether `price` is net of it; `price` is taken as what the account paid.
+ */
+export function mailChargeFromTransactions(raw: unknown): number | null {
+  const holder = raw as { transactions?: unknown } | null
+  const list: unknown[] = Array.isArray(raw) ? raw : Array.isArray(holder?.transactions) ? (holder!.transactions as unknown[]) : raw && typeof raw === 'object' ? [raw] : []
+  let total = 0
+  let any = false
+  for (const t of list) {
+    if (!t || typeof t !== 'object') continue
+    const r = t as Record<string, unknown>
+    if (r.price === undefined || r.price === null || r.price === '') continue
+    const n = typeof r.price === 'number' ? r.price : Number(String(r.price).replace(/[^0-9.\-]/g, ''))
+    if (!Number.isFinite(n)) continue
+    const refund = String(r.CoR ?? r.cor ?? '').trim().toUpperCase() === 'R'
+    total += refund ? -Math.abs(n) : n
+    any = true
+  }
+  return any ? Math.round(total * 100) / 100 : null
+}
+
+/** Whether a piece's charge has been read (a `charged` event), so the poll reads it once and never again. */
+export function mailChargeRead(events: MailEvent[] | null | undefined): boolean {
+  return Array.isArray(events) && events.some((e) => e != null && typeof e === 'object' && e.kind === 'charged')
+}

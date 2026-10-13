@@ -19,6 +19,8 @@ export type LienMailPieceRow = {
   delivery_status: string | null
   source_ids: string[]
   problem?: string | null
+  /** What Docsmit charged, once the poll read it (6b, the cost line). */
+  price?: number | null
 }
 
 const RECIPIENT_WORDS: Record<string, string> = { owner: 'Owner of record', original_contractor: 'Original contractor' }
@@ -68,13 +70,14 @@ export function filingMailTail(pieces: ReadonlyArray<LienMailPieceRow>, fmt: (ym
   return ` · mailed through Docsmit · ${distinct.length === 1 ? distinct[0] : words.map((w) => `${w.who.toLowerCase()} ${w.words}`).join('; ')}`
 }
 
-/** The footer's lines, one per piece: the recipient, the state, the USPS number. */
-export function filingMailLines(pieces: ReadonlyArray<LienMailPieceRow>, fmt: (ymd: string) => string = (d) => d): Array<{ id: string; who: string; words: string; tracking: string; tone: 'green' | 'red' | 'amber' | 'muted' }> {
+/** The footer's lines, one per piece: the recipient, the state, the USPS number, the charge once read. */
+export function filingMailLines(pieces: ReadonlyArray<LienMailPieceRow>, fmt: (ymd: string) => string = (d) => d): Array<{ id: string; who: string; words: string; tracking: string; cost: string; tone: 'green' | 'red' | 'amber' | 'muted' }> {
   return pieces.map((p) => ({
     id: p.id,
     who: RECIPIENT_WORDS[p.recipient] ?? p.recipient,
     words: mailPieceWords(p, fmt),
     tracking: (p.usps_tracking ?? '').trim(),
+    cost: mailCostDollars(p.price),
     tone: p.status === 'delivered' ? 'green' : p.status === 'returned' || p.status === 'failed' ? 'red' : p.status === 'notice_left' || p.status === 'unknown' ? 'amber' : 'muted',
   }))
 }
@@ -82,4 +85,18 @@ export function filingMailLines(pieces: ReadonlyArray<LienMailPieceRow>, fmt: (y
 /** The pieces that want a person: returned, unclaimed, refused, or a status the fold had not seen. */
 export function mailPiecesNeedingYou(pieces: ReadonlyArray<LienMailPieceRow>): LienMailPieceRow[] {
   return pieces.filter((p) => p.status === 'returned' || p.status === 'notice_left' || p.status === 'failed' || p.status === 'unknown')
+}
+
+/** `$2.49`, or empty while the charge is not read. */
+export function mailCostDollars(price: number | null | undefined): string {
+  return typeof price === 'number' && Number.isFinite(price) ? `$${price.toFixed(2)}` : ''
+}
+
+/** The footer's cost line for a filing: *Docsmit cost $4.98* summing the pieces read so far, *· 1 not read yet* when one is not; empty with none read. */
+export function filingMailCostWords(pieces: ReadonlyArray<LienMailPieceRow>): string {
+  const read = pieces.filter((p) => typeof p.price === 'number' && Number.isFinite(p.price))
+  if (read.length === 0) return ''
+  const total = read.reduce((s, p) => s + (p.price as number), 0)
+  const unread = pieces.length - read.length
+  return `Docsmit cost ${mailCostDollars(Math.round(total * 100) / 100)}${unread > 0 ? ` · ${unread} not read yet` : ''}`
 }

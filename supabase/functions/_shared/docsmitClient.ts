@@ -4,6 +4,7 @@
  * globals, so a test can hand it a fake `fetch`. The base URL decides which Docsmit it talks to:
  * Tracksmit (the sandbox) unless DOCSMIT_BASE_URL says the live site.
  */
+import { mailChargeFromTransactions } from './mailSend.ts'
 
 export type DocsmitConfig = { baseUrl: string; email: string; passwordSha512: string; softwareId: string }
 
@@ -144,6 +145,16 @@ export class DocsmitClient {
       if (Number.isFinite(n)) return { price: n, raw: data }
     }
     return { price: null, raw: data }
+  }
+
+  /**
+   * `GET /messages/{id}/transactions`: what Docsmit charged for the message (the Docsmit train, 6b, the cost line),
+   * summed by `mailChargeFromTransactions`. A 400 or 404, or an answer with no priced row, gives null.
+   */
+  async transactions(messageId: string): Promise<{ charge: number | null; raw: unknown }> {
+    const { status, data } = await this.call('GET', `/messages/${encodeURIComponent(messageId)}/transactions`, { allow: [400, 404] })
+    if (status === 400 || status === 404) return { charge: null, raw: data }
+    return { charge: mailChargeFromTransactions(data), raw: data }
   }
 
   /** `POST /messages/{id}/send`: 201 sent; 402 credit short with `shortfall`; 403 no party or no PDF. */
