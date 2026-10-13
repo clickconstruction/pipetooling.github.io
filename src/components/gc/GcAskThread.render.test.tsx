@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { GcFollowUp, GcTradeAsks, type AskWrites } from './GcAskThread'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { GC_WAITING_ON_THEM_ID } from '../../lib/gc/links'
 import { allPeople } from '../../lib/gc/projectPeople'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -68,6 +69,11 @@ describe('GcFollowUp', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'too far' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save and take them off' }))
     await within(dialog).findByText('No ask with that id.')
+  })
+
+  it('carries the anchor a board’s Needs a hand today lands on', () => {
+    render(<GcFollowUp state={boardStateFromRows(clinicBoardRows())} writes={writes()} onWhoElse={() => undefined} />)
+    expect(screen.getByRole('region', { name: 'We are waiting on them' }).id).toBe(GC_WAITING_ON_THEM_ID)
   })
 
   it('says so when nobody is waited on', () => {

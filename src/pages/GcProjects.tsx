@@ -6,7 +6,7 @@
  * and the one write; the window and the kernels decide the rest.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
@@ -113,6 +113,11 @@ import { GcStageHealth } from '../components/gc/GcStageHealth'
 import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFlowBoard } from '../components/gc/flows/GcFlowBoard'
+import { GcJobPapersWindow } from '../components/gc/flows/GcJobPapersWindow'
+import { GcRoundWindow } from '../components/gc/flows/GcRoundWindow'
+import { GcRoundOpenerContext, type RoundOpener, type RoundSpec } from '../components/gc/flows/gcRoundOpener'
+import { companyAtForStep, customerAtForStep } from '../lib/flows/boardOpen'
+import { roundDetailFromProject } from '../lib/flows/roundDetail'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
@@ -241,7 +246,7 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
-import { billDayFromSearch, billDayHref, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, type BoardBy, type GcView } from '../lib/gc/links'
+import { billDayFromSearch, billDayHref, GC_WAITING_ON_THEM_ID, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, type BoardBy, type GcView } from '../lib/gc/links'
 import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useThreadWindow, withThread } from '../components/gc/messages/useThreadWindow'
@@ -834,6 +839,26 @@ export default function GcProjects() {
     if (view !== 'money') next.delete('billday')
     setParams(next, { replace: true })
   }
+  // A board's Needs a hand today: the late companies, on Follow up's We are waiting on them below the people waiting on
+  // us. The hash carries it, and the page scrolls there once the list is drawn. A pill's `?view=` drops the hash.
+  const boardNeedsAHand = () => {
+    setDevView('followUp')
+    const next = new URLSearchParams(params)
+    next.set('view', 'followUp')
+    next.delete('billday')
+    navigate({ search: `?${next.toString()}`, hash: GC_WAITING_ON_THEM_ID }, { replace: true })
+  }
+  const { hash } = useLocation()
+  const waitingScrolled = useRef(false)
+  useEffect(() => {
+    if (hash !== `#${GC_WAITING_ON_THEM_ID}`) {
+      waitingScrolled.current = false
+      return
+    }
+    if (waitingScrolled.current || devView !== 'followUp' || !board) return
+    waitingScrolled.current = true
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(GC_WAITING_ON_THEM_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+  }, [hash, devView, board])
   // A board's Open the compare: the project's card on the Board, where Compare quotes is (Messages cut 4).
   const boardOpenProject = (projectId: string) => {
     showView('board')
@@ -1621,6 +1646,17 @@ export default function GcProjects() {
     }
     return out
   }, [billOwn])
+  // Papers on this job (Messages cut 4): everyone on the job and each paper of their flow, opened at `papers=<projectId>`.
+  const papersProjectId = params.get('papers')
+  const setPapersWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('papers', projectId)
+    else next.delete('papers')
+    setParams(next, { replace: true })
+  }
+  // A round's window (Messages cut 4): the flow panel's round pills open it with the person's reading in hand.
+  const [roundSpec, setRoundSpec] = useState<RoundSpec | null>(null)
+  const roundOpener = useMemo<RoundOpener>(() => ({ openRound: setRoundSpec }), [])
   const setBillWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('bill', projectId)
@@ -1928,12 +1964,12 @@ export default function GcProjects() {
                 by={partnersBy}
                 onBy={setPartnersBy}
                 list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />}
-                onFollowUp={() => showView('followUp')}
+                onFollowUp={boardNeedsAHand}
                 onOpenProject={boardOpenProject}
                 onBillDay={boardBillDay}
               />
             ) : devView === 'customers' ? (
-              <GcFlowBoard kind="customer" by={customersBy} onBy={setCustomersBy} onFollowUp={() => showView('followUp')} onOpenProject={boardOpenProject} onBillDay={boardBillDay} />
+              <GcFlowBoard kind="customer" by={customersBy} onBy={setCustomersBy} onFollowUp={boardNeedsAHand} onOpenProject={boardOpenProject} onBillDay={boardBillDay} />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
@@ -2026,6 +2062,12 @@ export default function GcProjects() {
               <Btn kind="quiet" dataTour={tour('gc-plans')} onClick={() => setPlansWindow(p.id)}>
                 The plans
               </Btn>
+              {/* Papers on this job (Messages cut 4): the office team's, the flows' read's audience. */}
+              {canOpenGcProjects(role) && (
+                <Btn kind="quiet" onClick={() => setPapersWindow(p.id)}>
+                  Papers
+                </Btn>
+              )}
               <Btn kind="quiet" dataTour={tour('gc-questions')} onClick={() => setQuestionsWindow(p.id)}>
                 Questions about the plans{openQuestions(p).length > 0 ? ` · ${openQuestions(p).length} open` : ''}
               </Btn>
@@ -2420,6 +2462,43 @@ export default function GcProjects() {
             onShowContact={(id) => thread.openThread(id)}
           />
         </MessagesRereadContext.Provider>
+      )}
+      {papersProjectId &&
+        canOpenGcProjects(role) &&
+        board &&
+        (() => {
+          const proj = board.projects.find((x) => x.id === papersProjectId)
+          return proj ? (
+            <GcJobPapersWindow
+              projectId={proj.id}
+              project={{ name: proj.name, stage: proj.stage, bidDue: proj.bidDue, ourBidSentOn: proj.ourBidSentOn }}
+              onClose={() => setPapersWindow(null)}
+              onOpenProject={boardOpenProject}
+            />
+          ) : null
+        })()}
+      {roundSpec && (
+        <GcRoundWindow
+          // The panel opens a round with the reading only; the page fills the change order or the pay application it is about.
+          spec={
+            roundSpec.detail
+              ? roundSpec
+              : { ...roundSpec, detail: roundDetailFromProject((boardWithChanges ?? board)?.projects.find((x) => x.id === roundSpec.projectId), roundSpec.step, roundSpec.round, canSeeGcMoney(role)) }
+          }
+          onClose={() => setRoundSpec(null)}
+          onAction={(action, spec) => {
+            setRoundSpec(null)
+            const { partnerId, customerId } = spec.record
+            if (action === 'ask-again' || action === 'remind') {
+              if (partnerId) companyOpener?.openPartner(partnerId, companyAtForStep(spec.step, true))
+              else if (customerId) customerOpener?.openCustomer(customerId, customerAtForStep(spec.step, spec.projectId, true))
+            } else if (action === 'open' && spec.projectId && spec.step.facts.includes('co_answered')) setChangesWindow(spec.projectId)
+            else if (action === 'open' && spec.projectId && spec.step.facts.includes('payapp_paid')) setBillWindow(spec.projectId)
+            else if (action === 'open' && partnerId) companyOpener?.openPartner(partnerId, companyAtForStep(spec.step))
+            else if (action === 'open' && customerId) customerOpener?.openCustomer(customerId, customerAtForStep(spec.step, spec.projectId))
+            else if (action === 'the-trades' && spec.projectId) boardBillDay(spec.projectId)
+          }}
+        />
       )}
       {openCompany && board && (
         <GcCompanyWindow
@@ -3150,7 +3229,9 @@ export default function GcProjects() {
   // A company's name opens its window wherever it shows (the Board's B3-c), for a dev.
   return (
     <GcCompanyOpenerContext.Provider value={companyOpener}>
-      <GcCustomerOpenerContext.Provider value={customerOpener}>{page}</GcCustomerOpenerContext.Provider>
+      <GcCustomerOpenerContext.Provider value={customerOpener}>
+        <GcRoundOpenerContext.Provider value={roundOpener}>{page}</GcRoundOpenerContext.Provider>
+      </GcCustomerOpenerContext.Provider>
     </GcCompanyOpenerContext.Provider>
   )
 }

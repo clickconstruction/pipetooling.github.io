@@ -494,6 +494,19 @@ describe('GcProjects: the Project Board', () => {
     expect(screen.queryByRole('button', { name: 'List' })).toBeNull()
   })
 
+  it('a dev opens Papers on a project’s card, which reads everyone on the job (Messages cut 4)', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Papers' }))
+    const win = await screen.findByRole('dialog', { name: /^Papers on / })
+    expect(await within(win).findByText('Nobody on this job has papers yet.')).toBeTruthy()
+    fireEvent.click(within(win).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: /^Papers on / })).toBeNull()
+  })
+
   it('a dev sees the asks under each trade of a project, and Follow up with its count', async () => {
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)

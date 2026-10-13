@@ -31,6 +31,12 @@ export function messagesThreadHref(contactId: string, messageId?: string | null)
   return `${GC_MESSAGES_HREF}&thread=${encodeURIComponent(contactId)}${at}`
 }
 
+/**
+ * Follow up's **We are waiting on them**, below the people waiting on us: the late companies a board's **Needs a hand
+ * today** means. The id on its section, and the hash a board's press carries so the page scrolls there.
+ */
+export const GC_WAITING_ON_THEM_ID = 'gc-waiting-on-them'
+
 /** The GC projects page's views, one pill each. */
 export type GcView = 'board' | 'partners' | 'customers' | 'followUp' | 'money' | 'messages'
 

@@ -337,3 +337,8 @@ export function jobStrip(input: JobPapersInput, job: StripJob, bill?: { day: str
     lines: open.map(({ g, index }, i) => ({ tone: i === 0 ? 'r' : 'o', text: g.text, small: g.small, press: { kind: 'gate', index } })),
   }
 }
+
+/** What a kind of person is to the job, in words: the line under a name on the grid, and on the List tab (`jobPaperList.ts`). */
+export function kindWord(kind: FlowKind): string {
+  return KIND_WORDS[kind]
+}

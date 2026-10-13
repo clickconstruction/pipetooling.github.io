@@ -28,7 +28,7 @@ Over usual is only a watch. Over usual never counts toward **Needs a hand today*
 
 1. Press a tile to jump to its first step.
 2. Press a dot to open that company.
-3. Press **Needs a hand today** to open Follow up.
+3. Press **Needs a hand today** to open Follow up at **We are waiting on them**.
 
 :::example The tiles
 {{chip:gray|5 Getting set up}} {{chip:gray|5 Quoting on 2 bids}} {{chip:gray|4 Building}} {{chip:red|1 late}} {{chip:yellow|3 over usual}}
