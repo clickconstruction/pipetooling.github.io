@@ -6,12 +6,14 @@
  * until the generated types carry the tables; the lead's one types PR swaps them for `Tables<'…'>`.
  */
 import type { Contact } from '../contacts/kernel'
-import { contactsFromRows, type ContactChannelRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
+import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { threadMessageFromRow, type MessageLoadContext, type MessageRow } from '../messages/load'
 import type { ThreadMessage } from '../messages/thread'
 import type { Owed } from '../messages/owed'
 import type { HeardLine, HeardPromiseKind, HeardPromiseState, QuestionState } from '../messages/promises'
 import type { PromiseKind } from '../gc/types'
+import { newLane, type NewLaneMessage, type NewLaneRow } from './newLane'
+import { activeJobKeys, laneFacts, type LaneJobRows } from './newLaneRows'
 import type { ContactState, FollowUpInput, HasHow, OwedRecord, QueueContact, QueueMessage } from './queue'
 import type { ContactFollowUpRow } from './followUpTypes'
 
@@ -21,8 +23,16 @@ export type { ContactFollowUpRow }
 /** A `contacts` row as Follow up reads it: cut 1's columns and cut 2's. */
 export type FollowUpContactRow = ContactRow & ContactFollowUpRow
 
-/** A `messages` row as Follow up reads it: cut 1's columns and a note's day in words and Done with it. */
-export type FollowUpMessageRow = MessageRow & { back_words: string | null; back_done_at: string | null }
+/**
+ * A `messages` row as Follow up reads it: cut 1's columns, a note's day in words and Done with it, and the box it came
+ * through and who tied it (R6's `mailbox`, R7's `tied_by`, for the New lane; not in the generated types yet).
+ */
+export type FollowUpMessageRow = MessageRow & {
+  back_words: string | null
+  back_done_at: string | null
+  mailbox?: string | null
+  tied_by?: string | null
+}
 
 /** A `contact_owed` row. */
 export interface ContactOwedRow {
@@ -61,12 +71,15 @@ export interface MessageHighlightRow {
   highlighted_at: string
 }
 
-/** A person as Follow up draws them: the queue's reading, their trade, and who has it in full. */
+/** A person as Follow up draws them: the queue's reading, their trade, who has it in full, and their jobs (the New lane's). */
 export type FollowUpContact = QueueContact & {
   trade?: string
   hasUserId: string | null
   hasSince: string | null
   hasHow: HasHow | null
+  /** Their jobs, by key, in the rail's order, and the starred one. Empty when the read loaded none. */
+  jobIds?: string[]
+  defaultJobId?: string | null
 }
 
 /** A highlight as the thread draws it. */
@@ -88,6 +101,9 @@ export interface FollowUpRows {
   messages: readonly FollowUpMessageRow[]
   heard: readonly MessagePromiseRow[]
   owed: readonly ContactOwedRow[]
+  /** The open people's jobs, and those jobs' states, for the New lane's *Which job?* (R7). */
+  jobs?: readonly ContactJobRow[]
+  jobStates?: LaneJobRows
 }
 
 const STATES: ReadonlySet<string> = new Set<ContactState>(['waiting', 'snoozed', 'done'])
@@ -105,7 +121,7 @@ const nameOf = (userNames: Readonly<Record<string, string>>, id: string | null) 
  */
 export function followUpContactsFromRows(rows: FollowUpRows, userNames: Readonly<Record<string, string>>): FollowUpContact[] {
   const byId = new Map(rows.contacts.map((r) => [r.id, r]))
-  return contactsFromRows(rows.contacts, rows.channels, [], rows.records).map((c: Contact) => followUpContactOf(c, byId.get(c.id), userNames))
+  return contactsFromRows(rows.contacts, rows.channels, rows.jobs ?? [], rows.records).map((c: Contact) => followUpContactOf(c, byId.get(c.id), userNames))
 }
 
 /**
@@ -113,7 +129,7 @@ export function followUpContactsFromRows(rows: FollowUpRows, userNames: Readonly
  * or a state this build does not know, reads as done with nobody.
  */
 export function followUpContactOf(
-  c: Pick<Contact, 'id' | 'kind' | 'name' | 'goesBy' | 'company' | 'trade'>,
+  c: Pick<Contact, 'id' | 'kind' | 'name' | 'goesBy' | 'company' | 'trade'> & Partial<Pick<Contact, 'jobIds' | 'defaultJobId'>>,
   row: ContactFollowUpRow | null | undefined,
   userNames: Readonly<Record<string, string>>,
 ): FollowUpContact {
@@ -132,6 +148,7 @@ export function followUpContactOf(
     hasUserId,
     hasSince: hasUserId ? (row?.has_since ?? null) : null,
     hasHow: hasUserId && row?.has_how && HOWS.has(row.has_how) ? (row.has_how as HasHow) : null,
+    ...(c.jobIds ? { jobIds: c.jobIds, defaultJobId: c.defaultJobId ?? null } : {}),
   }
 }
 
@@ -151,17 +168,51 @@ export function holdersFromRows(rows: readonly HolderRow[], userNames: Readonly<
   })
 }
 
-/** A line as Follow up reads it: the queue's fields, what a row's snippet shows (an email's subject, who wrote it), and its job. */
-export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'>
+/**
+ * A line as Follow up reads it: the queue's fields, what a row's snippet shows (an email's subject, who wrote it), its
+ * job, and the box it came through and whether a person tied it (the New lane's).
+ */
+export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'> & Pick<NewLaneMessage, 'mailbox' | 'tiedByHand'>
 
 /** The lines as Follow up reads them, with a note's day in words and when it was dealt with. */
 export function followUpMessagesFromRows(rows: readonly FollowUpMessageRow[], ctx: MessageLoadContext = {}): FollowUpLine[] {
   const out: FollowUpLine[] = []
   for (const row of rows) {
     const m = threadMessageFromRow(row, ctx)
-    if (m) out.push({ ...m, backWords: row.back_words, backDoneAt: row.back_done_at })
+    if (m) out.push({ ...m, backWords: row.back_words, backDoneAt: row.back_done_at, ...laneFacts(row) })
   }
   return out
+}
+
+/**
+ * The New lane for the people Needs a reply holds (`FollowUpPassThrough.newLane`): their newest line in, its box and
+ * whether a person tied it, and their jobs still under way. Follow up reads only their lines in, since an open
+ * conversation has no reply of ours after its newest line.
+ */
+export function followUpNewLane(
+  input: { contacts: readonly FollowUpContact[]; messages: readonly FollowUpLine[] },
+  jobStates: LaneJobRows,
+  nowIso: string,
+): (people: ReadonlySet<string>) => NewLaneRow[] {
+  const active = activeJobKeys(jobStates)
+  return (people) =>
+    newLane(
+      input.contacts
+        .filter((c) => people.has(c.id))
+        .map((c) => ({
+          id: c.id,
+          kind: c.kind,
+          name: c.name,
+          goesBy: c.goesBy ?? null,
+          company: c.company ?? '',
+          jobIds: c.jobIds ?? [],
+          defaultJobId: c.defaultJobId ?? null,
+          has: c.has ?? null,
+        })),
+      input.messages.filter((m) => people.has(m.contactId)),
+      active,
+      nowIso,
+    )
 }
 
 /**

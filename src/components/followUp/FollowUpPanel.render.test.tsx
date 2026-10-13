@@ -96,11 +96,12 @@ const owed = (id: string, contactId: string, what: string, byDay: string): Conta
 
 /**
  * Greg's plans question on the Boerne job waiting longest, Priya's voicemail with Rosa holding her and the start date owed, Elena's note
- * back today and her write on her page, and a number nobody has named.
+ * back today and her write on her page, and a number nobody has named. Rosa holds Greg too: a conversation nobody holds
+ * waits in New (residential R7), as the number nobody has named does.
  */
 const ROWS: FollowUpRows = {
   contacts: [
-    person('greg', 'trade', { gc_company_id: 'hillside' }),
+    person('greg', 'trade', { gc_company_id: 'hillside', has_user_id: 'u-rosa', has_since: '2026-10-01T15:00:00.000Z', has_how: 'handed' }),
     person('priya', 'customer', { customer_contact_person_id: 'helotes-priya', has_user_id: 'u-rosa', has_since: '2026-09-26T19:30:00.000Z', has_how: 'took' }),
     person('elena', 'customer', { customer_contact_person_id: 'cibolo-elena' }),
     person('unk1', 'unknown'),
@@ -178,7 +179,7 @@ function renderPanel(over: Partial<FollowUpPanelProps<Clause, Nudge>> = {}, io: 
 /** A person's row in a section. */
 const rowIn = (section: string, contactId: string) => within(screen.getByRole('region', { name: section }).querySelector<HTMLElement>(`[data-follow-up-row="${contactId}"]`)!)
 
-const loaded = () => screen.findByRole('heading', { name: 'Needs a reply (3)' })
+const loaded = () => screen.findByRole('heading', { name: 'Needs a reply (2)' })
 
 /** GC mode's plan question writes: the question recorded, the email to the Boerne job's architect going. */
 function planWrites(over: Partial<PlanQuestionWrites> = {}): PlanQuestionWrites {
@@ -201,11 +202,13 @@ describe('FollowUpPanel', () => {
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(4))
 
     const reply = screen.getByRole('region', { name: 'Needs a reply' })
-    expect([...reply.querySelectorAll('[data-follow-up-row]')].map((r) => r.getAttribute('data-follow-up-row'))).toEqual(['greg', 'priya', 'unk1'])
-    expect(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Nobody has it · Take it' })).toBeTruthy()
+    expect([...reply.querySelectorAll('[data-follow-up-row]')].map((r) => r.getAttribute('data-follow-up-row'))).toEqual(['greg', 'priya'])
+    expect(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
     expect(rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
     expect((rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Call back in Quo' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(rowIn('Needs a reply', 'unk1').getByRole('button', { name: 'Who is this?' })).toBeTruthy()
+    // The number nobody has named waits in New, first, and not in Needs a reply.
+    expect(screen.getByRole('heading', { name: 'New (1)' })).toBeTruthy()
+    expect(rowIn('New', 'unk1').getByRole('button', { name: 'Who is this?' })).toBeTruthy()
 
     const needsYou = within(screen.getByRole('region', { name: 'Needs you' }))
     expect(needsYou.getByText('Call Elena about the gate code.')).toBeTruthy()
@@ -317,7 +320,7 @@ describe('FollowUpPanel', () => {
   it('the who-has-it picker takes a row, or puts one back', async () => {
     const { say, io } = renderPanel()
     await loaded()
-    fireEvent.click(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Nobody has it · Take it' }))
+    fireEvent.click(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Rosa has this' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: /^I'll take it/ }))
     await waitFor(() => expect(say).toHaveBeenLastCalledWith('You have Greg Paulk.', 'success'))
     expect(io.takeIt).toHaveBeenCalledWith('greg')
@@ -372,9 +375,38 @@ describe('FollowUpPanel', () => {
     expect(screen.queryByText(/A clause row/)).toBeNull()
   })
 
+  it('draws New first: each person who needs sorting once, with the sort as the press, and out of Needs a reply', async () => {
+    // Greg with nobody on him again, and Priya on two active Pipeline jobs, her voicemail on the default one, untied.
+    const sorting: FollowUpRows = {
+      ...ROWS,
+      contacts: ROWS.contacts.map((c) => (c.id === 'greg' ? { ...c, has_user_id: null, has_since: null, has_how: null } : c)),
+      messages: ROWS.messages.map((m) => (m.id === 'm-greg' ? { ...m, channel: 'email', subject: 'Detention pond', mailbox: 'bids' } : m.id === 'm-priya' ? { ...m, jobs_ledger_id: 'j-helotes', mailbox: 'team' } : m)),
+      jobs: [
+        { contact_id: 'priya', bid_id: null, project_id: null, jobs_ledger_id: 'j-helotes', is_default: true, created_at: '2026-09-01T00:00:00.000Z' },
+        { contact_id: 'priya', bid_id: null, project_id: null, jobs_ledger_id: 'j-helotes-2', is_default: false, created_at: '2026-09-20T00:00:00.000Z' },
+      ],
+      jobStates: { pipeline: [{ id: 'j-helotes', status: 'working' }, { id: 'j-helotes-2', status: 'waiting' }] },
+    }
+    const { onOpenThread, onCount } = renderPanel({}, fakeIo({}, sorting))
+    expect(await screen.findByRole('heading', { name: 'New (3)' })).toBeTruthy()
+    // The longest waiting first, each with the sort it needs.
+    const lane = screen.getByRole('region', { name: 'New' })
+    expect([...lane.querySelectorAll('[data-follow-up-row]')].map((r) => r.getAttribute('data-follow-up-row'))).toEqual(['greg', 'priya', 'unk1'])
+    expect(rowIn('New', 'greg').getByText('Email to bids@', { exact: false })).toBeTruthy()
+    expect(rowIn('New', 'priya').getByText('Voicemail on the team number', { exact: false })).toBeTruthy()
+    fireEvent.click(rowIn('New', 'priya').getByRole('button', { name: 'Which job?' }))
+    expect(onOpenThread).toHaveBeenLastCalledWith('priya', 'm-priya')
+    fireEvent.click(rowIn('New', 'greg').getByRole('button', { name: 'Who has it?' }))
+    expect(onOpenThread).toHaveBeenLastCalledWith('greg', 'm-greg')
+    // Nobody left in Needs a reply; the badge still counts each person once.
+    expect(screen.getByRole('heading', { name: 'Needs a reply (0)' })).toBeTruthy()
+    await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(4))
+  })
+
   it('says so when nobody is waiting and nothing is owed', async () => {
     const { onCount } = renderPanel({}, fakeIo({}, EMPTY))
     expect(await screen.findByText('Nobody is waiting on us.')).toBeTruthy()
+    expect(screen.getByText('Nothing to sort. Every line that came in has a person, a job and someone on it.')).toBeTruthy()
     expect(screen.getByText('Nothing we owe anyone.')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Needs you' })).toBeNull()
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))

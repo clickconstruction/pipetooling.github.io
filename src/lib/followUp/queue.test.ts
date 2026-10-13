@@ -1,3 +1,4 @@
+import type { NewLaneRow } from './newLane'
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import {
@@ -153,6 +154,24 @@ describe('followUpQueue on the prototype’s Friday', () => {
       ['elena', 'co2', false],
     ])
     expect([shown.onPortal('priya', 'co', 'co2'), queue.onPortal('greg', 'co', 'co2')]).toEqual([true, false])
+  })
+
+  it('draws New first from its builder, for the people Needs a reply holds, who then leave Needs a reply (residential R7)', () => {
+    const asked: string[][] = []
+    const row = (contactId: string) => ({ contactId, sort: 'who', head: 'Who is this?' }) as unknown as NewLaneRow
+    const sorted = followUpQueue(demo, {
+      newLane: (people) => {
+        asked.push([...people].sort())
+        // Tom is not waiting on us: the queue drops his row.
+        return [row('unk1'), row('tom')]
+      },
+    })
+    expect(asked).toEqual([['elena', 'greg', 'priya', 'unk1']])
+    expect(sorted.newLane.map((r) => r.contactId)).toEqual(['unk1'])
+    expect(sorted.needsReply.map((r) => r.contactId)).toEqual(['priya', 'elena', 'greg'])
+    // Each person once: New adds nobody to the badge.
+    expect(sorted.count).toBe(queue.count)
+    expect(queue.newLane).toEqual([])
   })
 
   it('leaves out the closed, the snoozed and anyone whose day has not come', () => {

@@ -19,6 +19,7 @@ import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type Cont
 import { loadSentEmailsTo } from '../sent/sentCopiesIo'
 import { factJobKeys, railJobKeys, type InviteJobRow, type ProjectRolesRow } from './factJobs'
 import { jobTilesByKey, type BidTileRow, type GcProjectTileRow, type JobTile, type PipelineTileRow } from './jobTiles'
+import { activeJobKeys } from '../followUp/newLaneRows'
 import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { jobRefOf, threadMessagesFromRows, type MessageRow } from './load'
 import { sentLines } from './sentLines'
@@ -154,6 +155,20 @@ async function loadFactRows(contacts: readonly Contact[]): Promise<{ projects: P
 
 /** Every job's tile, by key. */
 async function loadTiles(keys: readonly string[], todayYmd: string): Promise<Record<string, JobTile>> {
+  return jobTilesByKey(await loadTileRows(keys), todayYmd)
+}
+
+/**
+ * Every job's tile, by key, and the jobs still under way (`activeJobKeys`), from one read: the New lane's *Which job?*
+ * (residential R7).
+ */
+export async function loadJobTilesAndActive(keys: readonly string[], todayYmd: string): Promise<{ tiles: Record<string, JobTile>; active: Set<string> }> {
+  const rows = await loadTileRows(keys)
+  return { tiles: jobTilesByKey(rows, todayYmd), active: activeJobKeys(rows) }
+}
+
+/** The rows the tiles are drawn from: the bids, the GC projects with their names, the Pipeline jobs. */
+async function loadTileRows(keys: readonly string[]): Promise<{ bids: BidTileRow[]; projects: GcProjectTileRow[]; pipeline: PipelineTileRow[] }> {
   const refs = keys.map(jobRefOf).filter((r): r is NonNullable<ReturnType<typeof jobRefOf>> => r !== null)
   const ids = (kind: string) => unique(refs.filter((r) => r.kind === kind).map((r) => r.id))
   const [bids, gc, names, pipeline] = await Promise.all([
@@ -167,10 +182,7 @@ async function loadTiles(keys: readonly string[], todayYmd: string): Promise<Rec
     inSlices<PipelineTileRow>(ids('pipeline'), (s) => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, status').in('id', s), 'load the Pipeline jobs'),
   ])
   const named = new Map(names.map((n) => [n.id, n]))
-  return jobTilesByKey(
-    { bids, projects: gc.map((g) => ({ ...g, name: named.get(g.project_id)?.name ?? '', project_number: named.get(g.project_id)?.project_number ?? null })), pipeline },
-    todayYmd,
-  )
+  return { bids, projects: gc.map((g) => ({ ...g, name: named.get(g.project_id)?.name ?? '', project_number: named.get(g.project_id)?.project_number ?? null })), pipeline }
 }
 
 /**
@@ -315,6 +327,17 @@ export async function nameContact(
       p_name: target.name?.trim() || null,
       ...jobArgs(target.jobKey ?? null),
     }),
+    'name the number',
+  ) as unknown as string
+}
+
+/**
+ * Who is this?: a number becomes a lead with no record yet, under `name` (R0's `name_contact` with no record), until Add
+ * to Prospects or a booking points it at a record. Answers who holds the thread now.
+ */
+export async function nameAsLead(contactId: string, name: string | null): Promise<string> {
+  return taken(
+    await rpc('name_contact', { p_contact_id: contactId, p_record_table: null, p_record_id: null, p_kind: 'lead', p_name: name?.trim() || null, p_job_kind: null, p_job_id: null }),
     'name the number',
   ) as unknown as string
 }

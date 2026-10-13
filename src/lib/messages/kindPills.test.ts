@@ -1,3 +1,4 @@
+import type { NewLaneRow } from '../followUp/newLane'
 import { describe, expect, it } from 'vitest'
 import type { ContactKind } from '../contacts/kernel'
 import { DEMO_FOLLOW_UP_CONTACTS, DEMO_FOLLOW_UP_MESSAGES, DEMO_HEARD, DEMO_OWED, DEMO_PORTAL_PAPERS, DEMO_TODAY } from '../followUp/followUpDemo'
@@ -120,6 +121,16 @@ describe('queueForPill on the prototype’s Friday', () => {
     const q = queueForPill(followUpQueue({ ...demo, contacts }, { nudges: () => nudges }), contacts, 'more')
     expect([q.needsYou, q.needsReply, q.weOwe, q.nudges]).toEqual([[], [], [], []])
     expect(q.count).toBe(0)
+  })
+})
+
+describe('queueForPill and the New lane (residential R7)', () => {
+  it('keeps the New rows of the people the pill holds, and counts them once', () => {
+    const row = (contactId: string) => ({ contactId }) as unknown as NewLaneRow
+    const q = followUpQueue(demo, { newLane: () => [row('unk1'), row('greg')] })
+    expect(queueForPill(q, DEMO_FOLLOW_UP_CONTACTS, 'trade').newLane.map((r) => r.contactId)).toEqual(['greg'])
+    expect(queueForPill(q, DEMO_FOLLOW_UP_CONTACTS, 'customer').newLane).toEqual([])
+    expect(queueForPill(q, DEMO_FOLLOW_UP_CONTACTS, 'trade').count).toBe(1)
   })
 })
 

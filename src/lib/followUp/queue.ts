@@ -3,10 +3,12 @@
  * Messages prototype v1.178 (branch spike/gc-mode, `to-dos/gc-mode/messages/prototype.html`: `renderFollowup`'s
  * sections, `noteBack`, `setNoteBack`, `clearBack`, `pushBack`, `remind`, `setState`, `claim`, `whoPicker`,
  * `morePicker`'s state rows and `portalNeeds`; the why is `MESSAGES_PLAN.md` → *Follow up*, v1.12, v1.128, v1.146 and
- * v1.147). The sections, in order: Needs you (a note's day come back, a customer's portal), Needs a reply (longest
+ * v1.147). The sections, in order: New (residential R7: what came in and still needs sorting, `newLane.ts`, built by
+ * the screen and passed through), Needs you (a note's day come back, a customer's portal), Needs a reply (longest
  * waiting first), We owe them, then the nudges from the flow, which `flows/nudges.ts` builds one row per person and
- * orders (this file passes them through as they come). Each section has one row per person, never one per job. The
- * quote asks are `gc/followUp.ts`'s and the screen draws them last. Neither the nudges nor the asks count on the badge.
+ * orders (this file passes them through as they come). Each section has one row per person, never one per job. A person
+ * in New is not also in Needs a reply. The quote asks are `gc/followUp.ts`'s and the screen draws them last. Neither
+ * the nudges nor the asks count on the badge.
  *
  * Open · Snoozed · Done is the app's to set (v1.146): a message from them opens the row, our reply or a team note
  * closes it, and the thread's ⋯ holds the overrides. A snooze wakes on its own day, so the queue reads the state
@@ -20,6 +22,7 @@ import type { ThreadMessage } from '../messages/thread'
 import { dayLabel, nextMonday, nextWorkday, owedPill, type DayKept, type Owed } from '../messages/owed'
 import { rowOffers, type HeardLine, type RowOffer } from '../messages/promises'
 import type { PaperView } from '../portal/papers'
+import type { NewLaneRow } from './newLane'
 
 /** Open, Snoozed or Done, as `contacts.state` keeps it. */
 export type ContactState = 'waiting' | 'snoozed' | 'done'
@@ -387,6 +390,8 @@ export interface FollowUpInput {
  * nudge row (`flows/nudges.ts` → `NudgeRow`), already one per person and in its order.
  */
 export interface FollowUpQueue<C = never, N extends { contactId: string } = never> {
+  /** What came in and still needs sorting (residential R7), drawn first. Its people are not in Needs a reply. */
+  newLane: NewLaneRow[]
   needsYou: NeedsYouRow[]
   /** Clause edits waiting on this person's approval, drawn in Needs you after the notes. */
   clauses: C[]
@@ -397,8 +402,8 @@ export interface FollowUpQueue<C = never, N extends { contactId: string } = neve
   /** The papers the portal rows show, for the step card's options (`flows/card.ts`), so the card agrees with the queue. */
   onPortal: OnPortal
   /**
-   * The badge: each person once across Needs you, Needs a reply and We owe them, as `follow_up_count` and the Dashboard's
-   * line count them. A clause waiting on approval counts in Needs you's heading only, since the Dashboard gives the
+   * The badge: each person once across New, Needs you, Needs a reply and We owe them, as `follow_up_count` and the
+   * Dashboard's line count them. New holds only people Needs a reply would, so it adds nobody to the count. A clause waiting on approval counts in Needs you's heading only, since the Dashboard gives the
    * clauses a line of their own (the lead, 2026-10-12).
    */
   count: number
@@ -412,6 +417,11 @@ export interface FollowUpQueue<C = never, N extends { contactId: string } = neve
 export interface FollowUpPassThrough<C, N extends { contactId: string }> {
   clauses?: ReadonlyArray<C>
   nudges?: (skip: OnPortal) => ReadonlyArray<N>
+  /**
+   * The New lane's rows (`newLane.ts`), built for the people Needs a reply holds, since the lane sorts what came in
+   * before anyone answers it. A row for anyone else is dropped.
+   */
+  newLane?: (people: ReadonlySet<string>) => ReadonlyArray<NewLaneRow>
 }
 
 /**
@@ -442,13 +452,17 @@ export function followUpQueue<C = never, N extends { contactId: string } = never
   const { input, on } = onlyOnFollowUp(all)
   const portal = portalNeeds(input.contacts, input.messages, input.portalPapers ?? [], input.todayYmd)
   const needsYou: NeedsYouRow[] = [...backToday(input.messages, input.todayYmd), ...portal]
-  const reply = needsReply(input.contacts, input.messages, input.heard ?? [], input.todayYmd)
+  const waiting = needsReply(input.contacts, input.messages, input.heard ?? [], input.todayYmd)
+  const replying = new Set(waiting.map((r) => r.contactId))
+  const newLane = (passThrough.newLane?.(replying) ?? []).filter((r) => replying.has(r.contactId))
+  const sorting = new Set(newLane.map((r) => r.contactId))
+  const reply = waiting.filter((r) => !sorting.has(r.contactId))
   const owing = weOwe(input.owed ?? [], input.todayYmd)
   const clauses = [...(passThrough.clauses ?? [])]
   const shows = onPortal(portal)
   const nudges = (passThrough.nudges?.(shows) ?? []).filter(on)
-  const people = new Set<string>([...needsYou, ...reply, ...owing].map((r) => r.contactId))
-  return { needsYou, clauses, needsReply: reply, weOwe: owing, nudges, onPortal: shows, count: people.size }
+  const people = new Set<string>([...newLane, ...needsYou, ...reply, ...owing].map((r) => r.contactId))
+  return { newLane, needsYou, clauses, needsReply: reply, weOwe: owing, nudges, onPortal: shows, count: people.size }
 }
 
 /** The Needs you heading's count: every row, as the prototype counts them. */

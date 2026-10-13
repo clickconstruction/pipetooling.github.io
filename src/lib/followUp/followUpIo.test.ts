@@ -57,10 +57,28 @@ describe('loadQueue', () => {
       ['messages', ['channel=note', 'or back_on.not.is.null,back_words.not.is.null']],
       ['message_promises', ['or state.eq.offered,and(state.eq.written,day.gte.2026-10-02)']],
       ['contact_owed', ['done_at is null']],
+      ['contact_jobs', ['contact.state in waiting,snoozed']],
     ])
     expect(queries[0]!.select).toContain('state, snoozed_until, has_user_id, has_since, has_how')
     expect(queries[2]!.select).toContain('contact:contacts!inner(state)')
-    expect(rows).toMatchObject({ contacts: [], messages: [], heard: [], owed: [] })
+    // The New lane's: each line's box and who tied it, and the open people's jobs.
+    expect(queries[2]!.select).toContain('mailbox, tied_by')
+    expect(queries[6]!.select).toContain('contact:contacts!inner(state)')
+    expect(rows).toMatchObject({ contacts: [], messages: [], heard: [], owed: [], jobs: [], jobStates: { bids: [], projects: [], pipeline: [] } })
+  })
+
+  it('reads the open people’s jobs’ states, only for the jobs they have', async () => {
+    const jobs = [
+      { contact_id: 'c1', bid_id: null, project_id: 'p1', jobs_ledger_id: null, is_default: true, created_at: '2026-10-01T00:00:00.000Z' },
+      { contact_id: 'c1', bid_id: null, project_id: null, jobs_ledger_id: 'j1', is_default: false, created_at: '2026-10-02T00:00:00.000Z' },
+    ]
+    const { client, queries } = fakeClient({ contact_jobs: jobs, gc_projects: [{ project_id: 'p1', stage: 'building', lost_on: null }], jobs_ledger: [{ id: 'j1', status: 'paid' }] })
+    const rows = await supabaseFollowUpIo(client).loadQueue('2026-10-02')
+    expect(queries.slice(7).map((q) => [q.table, q.select, q.filters])).toEqual([
+      ['gc_projects', 'project_id, stage, lost_on', ['project_id in p1']],
+      ['jobs_ledger', 'id, status', ['id in j1']],
+    ])
+    expect(rows.jobStates).toEqual({ bids: [], projects: [{ project_id: 'p1', stage: 'building', lost_on: null }], pipeline: [{ id: 'j1', status: 'paid' }] })
   })
 
   it('keeps a line read by both queries once', async () => {

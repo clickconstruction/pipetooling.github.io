@@ -13,10 +13,11 @@ The Dashboard's **Needs you** card shows the same count on a **GC projects** lin
 
 ## The lists
 
-The tab has three lists at the top.
+The tab has four lists at the top.
 
+- **New** holds what came in and still needs sorting. [Sort new messages before anyone answers them](/help/sort-new-messages) shows how.
 - **Needs you** holds notes whose day has come, and customers who wrote on their page.
-- **Needs a reply** holds everyone who wrote or called and has no answer yet.
+- **Needs a reply** holds everyone who wrote or called and has no answer yet. Someone in **New** is not here too.
 - **We owe them** holds what we still have to do for someone, with its day.
 
 Below them, **We are waiting on them** lists the quotes and papers we wait on from others. [Follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner) covers that list.
