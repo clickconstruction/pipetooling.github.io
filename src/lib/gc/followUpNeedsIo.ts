@@ -1,17 +1,24 @@
 /**
- * GC mode, the Dashboard's Follow up line (the Board's B2b-ii-b, call E4): everyone the office waits on, once a person
- * across their jobs (`gcNeedsYou` over `allPeople`). It reads the GC projects page's own rows, `loadGcProjects` and then
- * `loadGcBoardRows` with our number's inputs only for the money team as the page passes them, so the line, Follow up's
- * badge and its By people say one number from the same reads (call E1). The hook imports this file on demand, after
- * first paint, so the Dashboard's own chunk does not carry the GC kernels.
+ * GC mode, the Dashboard's Follow up line: the people waiting on us in Follow up, each once, from cut 2's badge
+ * (`follow_up_count`, v2.5289), the number Follow up's pill on /gc says too (call E1: one number on both). Until v2.5289
+ * the line and the pill counted everyone the office waits on (`allPeople`); that count is now the heading of the asks
+ * list on the tab. One read, so the hook still imports this file on demand and the Dashboard's chunk stays small.
  */
-import { boardStateFromRows } from './boardRows'
-import { loadGcBoardRows, loadGcProjects } from './gcIo'
-import { gcNeedsYou, type GcNeedsYou } from './needsYou'
+import { supabaseFollowUpIo } from '../followUp/followUpIo'
+import type { GcNeedsYou } from './needsYou'
 
-/** The line for today, or null when nobody waits on us. `money`: the reader is on the money team (`canSeeGcMoney`). */
-export async function loadGcFollowUpNeeds(today: string, { money = false }: { money?: boolean } = {}): Promise<GcNeedsYou | null> {
-  const projects = await loadGcProjects()
-  if (projects.length === 0) return null
-  return gcNeedsYou(boardStateFromRows(await loadGcBoardRows(projects, today, { money })))
+/** The line's words for a count: null when nobody waits on us. */
+export function followUpNeedsWords(count: number): GcNeedsYou | null {
+  if (!Number.isFinite(count) || count <= 0) return null
+  return {
+    count,
+    late: false,
+    title: `${count} ${count === 1 ? 'person is' : 'people are'} waiting on us`,
+    detail: 'Answer them, or say what we owe them.',
+  }
+}
+
+/** The line for now, or null when nobody waits on us. */
+export async function loadGcFollowUpNeeds(): Promise<GcNeedsYou | null> {
+  return followUpNeedsWords(await supabaseFollowUpIo().count())
 }

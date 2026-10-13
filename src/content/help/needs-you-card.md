@@ -65,7 +65,7 @@ Estimators and devs see these.
 
 The office and estimators see this one.
 
-- **N to follow up on in GC mode**. This counts everyone we wait on in GC mode, each person once. A trade partner may owe us a quote, a paper or a day it gave. A customer may owe us a signature. Anyone late turns the card red. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there counts the same people, and so does **By people**. See [follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner).
+- **N people are waiting on us**. The line counts the people in GC mode waiting on an answer or on something we owe. Each person counts once. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there shows the same count. See [see who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them).
 
 **Contracts**
 

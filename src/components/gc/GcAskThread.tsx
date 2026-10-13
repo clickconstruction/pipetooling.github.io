@@ -18,7 +18,8 @@ import { Btn, Card, Chip, input, type Tone } from './gcUi'
  * first. A line can carry their word ("quote by Monday"). When that day passes with no quote, the
  * ask lands at the top of Follow up. Will not do it and Cannot do it take a company off the ask with
  * the reason kept. Since the Board's B2b-ii-b **By people · N** lists everyone we wait on, once a person across their jobs
- * (`allPeople`), the number Follow up's badge and the Dashboard's line say; each person has Call. Since B2b-viii-a, with
+ * (`allPeople`), the number on the list's heading, **We are waiting on them (N)** (until v2.5289 Follow up's badge said it
+ * too; the badge now counts the people waiting on us); each person has Call. Since B2b-viii-a, with
  * `onFollowUp`, **Work the list · N people** and each person's Follow up open the Follow up sheet, and By urgency ends with
  * **More to follow up on**: everyone we wait on for something other than a quote. Log a contact stays on each card.
  */
@@ -285,7 +286,8 @@ export function GcFollowUp({
   onFollowUp?: (partnerId?: string, calling?: boolean) => void
 }) {
   const all = followUps(state)
-  // Everyone we are waiting on, each once across every job: Follow up's badge and the Dashboard's count ("make them match").
+  // Everyone we are waiting on, each once across every job: the list's heading. Since v2.5289 Follow up's badge and the
+  // Dashboard's line count the people waiting on us instead, which the tab draws above this list.
   const everyone = allPeople(state)
   const listCount = everyone.count
   const [view, setView] = useState<'urgency' | 'people'>('urgency')
@@ -297,7 +299,8 @@ export function GcFollowUp({
   // A phone puts each person's buttons under their words. Read once: a test page may have no matchMedia.
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 480px)').matches
   return (
-    <section aria-label="Follow up" style={{ display: 'grid', gap: '0.9rem' }}>
+    <section aria-label="We are waiting on them" style={{ display: 'grid', gap: '0.9rem' }}>
+      <h3 style={{ margin: 0, fontSize: '1rem' }}>We are waiting on them ({listCount})</h3>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <span role="group" aria-label="Order Follow up" style={{ display: 'inline-flex', justifySelf: 'start', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
           {(
@@ -346,9 +349,9 @@ export function GcFollowUp({
         return (
           <section key={why}>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem' }}>
+              <h4 style={{ margin: 0, fontSize: '1rem' }}>
                 {words.title} ({rows.length})
-              </h3>
+              </h4>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{words.blurb}</span>
             </div>
             <div style={{ display: 'grid', gap: '0.5rem' }}>
@@ -363,7 +366,7 @@ export function GcFollowUp({
       {view === 'urgency' && more.length > 0 && (
         <section aria-label="More to follow up on">
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>More to follow up on ({more.length})</h3>
+            <h4 style={{ margin: 0, fontSize: '1rem' }}>More to follow up on ({more.length})</h4>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Papers, plans not opened, the schedule, the architect and customers, by job.</span>
           </div>
           <Card style={{ padding: '0.2rem 0.9rem' }}>

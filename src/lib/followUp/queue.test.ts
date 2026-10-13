@@ -118,10 +118,10 @@ describe('followUpQueue on the prototype’s Friday', () => {
     expect(queue.weOwe).toEqual([{ contactId: 'priya', owed: openOwed(DEMO_OWED, 'priya'), pill: 'we owe the start date · by Mon Oct 5', late: false }])
   })
 
-  it('counts each person once on the badge, and each clause waiting on approval (the lead, 2026-10-12)', () => {
+  it('counts each person once on the badge, and a clause waiting on approval in Needs you only (the lead, 2026-10-12)', () => {
     expect(queue.count).toBe(4)
     const withClause = followUpQueue(demo, { clauses: [{ id: 'p1' }] })
-    expect([withClause.count, needsYouCount(withClause), needsYouCount(queue)]).toEqual([5, 3, 2])
+    expect([withClause.count, needsYouCount(withClause), needsYouCount(queue)]).toEqual([4, 3, 2])
     expect(withClause.clauses).toEqual([{ id: 'p1' }])
   })
 

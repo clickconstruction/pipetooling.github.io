@@ -125,8 +125,8 @@ export function followUpContactsFromRows(rows: FollowUpRows, userNames: Readonly
   })
 }
 
-/** A line as Follow up reads it: the queue's fields, and what a row's snippet shows (an email's subject, who wrote it). */
-export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who'>
+/** A line as Follow up reads it: the queue's fields, what a row's snippet shows (an email's subject, who wrote it), and its job. */
+export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'>
 
 /** The lines as Follow up reads them, with a note's day in words and when it was dealt with. */
 export function followUpMessagesFromRows(rows: readonly FollowUpMessageRow[], ctx: MessageLoadContext = {}): FollowUpLine[] {

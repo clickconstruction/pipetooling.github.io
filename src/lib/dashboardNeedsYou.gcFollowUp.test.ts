@@ -3,7 +3,7 @@ import { NEEDS_YOU_RANK, buildNeedsYouItems, type NeedsYouInputs } from './dashb
 import type { GcNeedsYou } from './gc/needsYou'
 
 /**
- * GC mode's Follow up (v2.4941): everyone the office waits on since the Board's B2b-ii-b (`gcNeedsYou`), as one Needs you
+ * GC mode's Follow up (v2.4941): since v2.5289 the people waiting on us, each once (`follow_up_count`), as one Needs you
  * line. Its own file, as the owner records line has: two cards' tests at the shared file's end conflict.
  */
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
@@ -56,33 +56,33 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
 
 const three: GcNeedsYou = {
   count: 3,
-  late: true,
-  title: '3 to follow up on in GC mode',
-  detail: 'Alamo Concrete is late on their word · Pecan Valley Electric’s insurance ran out · Cibolo Creek Partners is late paying.',
+  late: false,
+  title: '3 people are waiting on us',
+  detail: 'Answer them, or say what we owe them.',
 }
 const card = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, ...over })).find((i) => i.key === 'gc-follow-up')
 
 describe('gc-follow-up (GC mode, v2.4941)', () => {
-  it('says the kernel’s words with the count as its figure, under GC projects', () => {
+  it('says the loader’s words with the count as its figure, under GC projects', () => {
     expect(card({ gcFollowUp: three })).toMatchObject({
-      severity: 'red',
+      severity: 'amber',
       kicker: 'GC projects',
-      title: '3 to follow up on in GC mode',
+      title: '3 people are waiting on us',
       detail: three.detail,
       figure: '3',
       actionLabel: 'Follow up',
     })
   })
 
-  it('is amber when nobody is late', () => {
-    expect(card({ gcFollowUp: { ...three, late: false } })?.severity).toBe('amber')
+  it('is red when the line says someone is late', () => {
+    expect(card({ gcFollowUp: { ...three, late: true } })?.severity).toBe('red')
   })
 
   it('sits in the revenue chasing tier', () => {
     expect(NEEDS_YOU_RANK['gc-follow-up']).toBe(NEEDS_YOU_RANK['bid-followups'])
   })
 
-  it('shows nothing when off, loading or with nobody to call', () => {
+  it('shows nothing when off, loading or with nobody waiting', () => {
     expect(card({ gcFollowUpEnabled: false, gcFollowUp: three })).toBeUndefined()
     expect(card({ gcFollowUp: null })).toBeUndefined()
     expect(card({ gcFollowUp: { ...three, count: 0 } })).toBeUndefined()

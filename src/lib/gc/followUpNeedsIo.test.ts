@@ -1,40 +1,32 @@
 /**
- * The Dashboard's Follow up line reads the GC projects page's own rows (the Board's B2b-ii-b, call E4): `loadGcProjects`,
- * then `loadGcBoardRows` with `money` as the reader's, so its count is Follow up's badge (`allPeople` on the same state).
+ * The Dashboard's Follow up line reads cut 2's badge (`follow_up_count`, v2.5289), the number Follow up's pill says
+ * (call E1), and says it in plain words.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { boardStateFromRows, type BoardRows } from './boardRows'
-import { awardedClinicBoardRows } from './boardTestRows'
-import { allPeople } from './projectPeople'
+import { plainWordsFailures } from '../plainWords'
 
-const loads = vi.hoisted(() => ({ projects: vi.fn(), board: vi.fn() }))
-vi.mock('./gcIo', () => ({ loadGcProjects: loads.projects, loadGcBoardRows: loads.board }))
+const io = vi.hoisted(() => ({ count: vi.fn() }))
+vi.mock('../followUp/followUpIo', () => ({ supabaseFollowUpIo: () => io }))
 
-import { loadGcFollowUpNeeds } from './followUpNeedsIo'
+import { followUpNeedsWords, loadGcFollowUpNeeds } from './followUpNeedsIo'
 
-let rows: BoardRows
-beforeEach(() => {
-  rows = awardedClinicBoardRows()
-  loads.projects.mockReset().mockResolvedValue(rows.projects)
-  loads.board.mockReset().mockResolvedValue(rows)
-})
+beforeEach(() => io.count.mockReset())
 
 describe('the Dashboard’s Follow up line', () => {
-  it('counts what Follow up’s badge counts, from the page’s own rows', async () => {
-    const needs = await loadGcFollowUpNeeds(rows.today)
-    expect(needs?.count).toBe(allPeople(boardStateFromRows(rows)).count)
-    expect(needs?.title).toBe(`${needs?.count} to follow up on in GC mode`)
-    expect(loads.board).toHaveBeenCalledWith(rows.projects, rows.today, { money: false })
+  it('reads the badge’s count, once a person', async () => {
+    io.count.mockResolvedValue(3)
+    expect(await loadGcFollowUpNeeds()).toEqual({ count: 3, late: false, title: '3 people are waiting on us', detail: 'Answer them, or say what we owe them.' })
+    expect(io.count).toHaveBeenCalledTimes(1)
   })
 
-  it('reads our contract’s sends only for the money team', async () => {
-    await loadGcFollowUpNeeds(rows.today, { money: true })
-    expect(loads.board).toHaveBeenCalledWith(rows.projects, rows.today, { money: true })
+  it('says one person as one, and nothing when nobody waits', async () => {
+    expect(followUpNeedsWords(1)?.title).toBe('1 person is waiting on us')
+    io.count.mockResolvedValue(0)
+    expect(await loadGcFollowUpNeeds()).toBeNull()
   })
 
-  it('reads nothing more with no GC project', async () => {
-    loads.projects.mockResolvedValue([])
-    expect(await loadGcFollowUpNeeds(rows.today)).toBeNull()
-    expect(loads.board).not.toHaveBeenCalled()
+  it('is in plain words', () => {
+    const w = followUpNeedsWords(3)!
+    expect([w.title, w.detail].flatMap(plainWordsFailures)).toEqual([])
   })
 })
