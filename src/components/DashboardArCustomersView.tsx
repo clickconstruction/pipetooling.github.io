@@ -22,6 +22,8 @@ import {
 import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
 import type { OpenBillTone } from '../lib/jobs/moneyWaiting'
 import type { CustomerSegment } from '../lib/jobs/billedExpectedPay'
+import { lienArCustomerChip, lienArLensCounts, lienArLensMatch, type LienArChip, type LienArLens } from '../lib/jobs/lienArChip'
+import { LienArChipLine, LienArCustomerChipTag } from './LienArChipTag'
 
 /** Bill-tone colors — same set as the Pipeline's Money waiting bars (saturated status colors stay literal). */
 const BILL_TONE: Record<OpenBillTone, { bar: string; bg: string; fg: string }> = {
@@ -83,6 +85,10 @@ export type ArCustomersViewProps = {
   rowBadge?: (row: ArCustomerRow) => ReactNode
   /** PR B slot: call-card content rendered inside the expansion, after the bills. */
   expansionFooter?: (row: ArCustomerRow) => ReactNode
+  /** Lien chips by job id (v2.5488): where each job's lien paper stands, from the Lien desk's own data; null while loading or for a role without the desk. */
+  lienChips?: ReadonlyMap<string, LienArChip | null> | null
+  /** A chip's press: the Lien desk on that job, or its Lien window. */
+  onOpenLien?: (chip: LienArChip) => void
 }
 
 export default function DashboardArCustomersView({
@@ -94,9 +100,14 @@ export default function DashboardArCustomersView({
   isMobile,
   rowBadge,
   expansionFooter,
+  lienChips = null,
+  onOpenLien,
 }: ArCustomersViewProps) {
   const [sort, setSort] = useState<ArCustomerSort>('slowest')
   const [paceFilter, setPaceFilter] = useState<'late' | 'ok' | null>(null)
+  // The lien lens (v2.5488): customers with a paper due, or with paper out.
+  const [lienLens, setLienLens] = useState<LienArLens | null>(null)
+  const chipsOf = (row: ArCustomerRow): Array<LienArChip | null> => row.bills.map((b) => (lienChips && b.item.jobId ? lienChips.get(b.item.jobId) ?? null : null))
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [onPaceOpen, setOnPaceOpen] = useState(false)
   const [collectionsOpen, setCollectionsOpen] = useState(false)
@@ -110,10 +121,13 @@ export default function DashboardArCustomersView({
 
   const searched = filterArCustomerRows(rollup.rows, query)
   const paceFiltered = paceFilter == null ? searched : searched.filter((r) => (paceFilter === 'late' ? r.pastPace : !r.pastPace))
-  const sorted = sortArCustomerRows(paceFiltered, sort)
+  const lienFiltered = lienLens == null || !lienChips ? paceFiltered : paceFiltered.filter((r) => lienArLensMatch(chipsOf(r), lienLens))
+  const sorted = sortArCustomerRows(lienFiltered, sort)
+  // The lens pair's counts read the whole list, as the pace pair's do.
+  const lienCounts = lienChips ? lienArLensCounts(rollup.rows.map((r) => ({ open: r.open, chips: chipsOf(r) }))) : null
   // The quiet on-pace group only forms in the default lens (slowest, no filter,
   // no search) — any filter or search flattens the list so nothing hides.
-  const grouping = rollup.hasPace && sort === 'slowest' && paceFilter == null && query.trim() === ''
+  const grouping = rollup.hasPace && sort === 'slowest' && paceFilter == null && lienLens == null && query.trim() === ''
   const mainRows = grouping ? sorted.filter((r) => r.pastPace) : sorted
   const onPaceRows = grouping ? sorted.filter((r) => !r.pastPace) : []
 
@@ -146,8 +160,44 @@ export default function DashboardArCustomersView({
     )
   }
 
+  /** The lien lens pair (v2.5488), in the pace pair's grammar: a paper due (red while one is inside a week), paper out. */
+  const lienLensChip = (kind: LienArLens, label: string, count: number, open: number, tone: 'red' | 'amber' | 'green'): ReactNode => {
+    const on = lienLens === kind
+    const colors = tone === 'red' ? { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' } : tone === 'amber' ? { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' } : { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)' }
+    return (
+      <button
+        type="button"
+        data-testid={`ar-lien-lens-${kind}`}
+        aria-pressed={on}
+        disabled={count === 0}
+        onClick={() => setLienLens((prev) => (prev === kind ? null : kind))}
+        title={
+          kind === 'due'
+            ? `${count} customer${count === 1 ? '' : 's'} with a lien paper due inside 30 days and not yet out, or a window that closed unnoted — click to ${on ? 'clear the filter' : 'show only these'}`
+            : `${count} customer${count === 1 ? '' : 's'} with lien paper out — a notice mailed, a lien filed — click to ${on ? 'clear the filter' : 'show only these'}`
+        }
+        style={{
+          padding: '0.3rem 0.7rem',
+          borderRadius: 999,
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+          cursor: count === 0 ? 'default' : 'pointer',
+          fontVariantNumeric: 'tabular-nums',
+          border: on ? '1px solid currentColor' : '1px solid transparent',
+          background: colors.bg,
+          color: colors.fg,
+          opacity: count === 0 ? 0.35 : lienLens != null && !on ? 0.45 : 1,
+        }}
+      >
+        {label} {formatMoneyShortK(open)} · {count}
+      </button>
+    )
+  }
+
   const billRow = (b: ArCustomerBill, idx: number) => {
     const tone = BILL_TONE[b.tone]
+    const lien = lienChips && b.item.jobId ? lienChips.get(b.item.jobId) ?? null : null
     const clickable = b.item.jobId != null && onOpenJob != null
     return (
       <div key={b.item.key} style={{ padding: '0.4rem 0', borderTop: idx > 0 ? '1px solid var(--border)' : 'none' }}>
@@ -179,6 +229,7 @@ export default function DashboardArCustomersView({
         {b.item.pctComplete != null ? (
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', margin: '0.1rem 0 0 2.2rem' }}>{b.item.pctComplete}% done</div>
         ) : null}
+        {lien && onOpenLien ? <LienArChipLine chip={lien} onOpen={onOpenLien} indent="2.2rem" /> : null}
         <div style={{ margin: '0 0 0 2.2rem' }}>{billExtras(b.item)}</div>
       </div>
     )
@@ -189,6 +240,8 @@ export default function DashboardArCustomersView({
     const isOpen = expanded.has(key)
     const seg = segTag(row.segment)
     const badge = rowBadge?.(row) ?? null
+    // The worst lien state among the customer's jobs (v2.5488), every job's words on hover.
+    const lienHead = lienChips ? lienArCustomerChip(row.bills.map((b) => ({ label: b.item.label, chip: b.item.jobId ? lienChips.get(b.item.jobId) ?? null : null }))) : null
     const worst = row.oldestWaitDays != null && row.baselineDays != null
       ? BILL_TONE[row.pastPace ? (row.oldestWaitDays >= row.baselineDays * 2 ? 'late' : 'warn') : 'ok']
       : BILL_TONE.undated
@@ -215,7 +268,7 @@ export default function DashboardArCustomersView({
           }}
           style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? 'auto minmax(0, 1fr) 52px 80px auto' : 'auto minmax(140px, 190px) 1fr 58px 88px auto',
+            gridTemplateColumns: isMobile ? 'auto minmax(0, 1fr) 52px 80px auto' : 'auto minmax(160px, 250px) 1fr 58px 88px auto',
             gap: '0.6rem',
             alignItems: 'center',
             padding: '0.5rem 0.45rem',
@@ -231,10 +284,11 @@ export default function DashboardArCustomersView({
             <span title={row.name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
               {row.name}
             </span>
-            {seg != null || badge != null ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+            {seg != null || badge != null || lienHead != null ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flexWrap: 'wrap' }}>
                 {seg}
                 {badge}
+                {lienHead ? <LienArCustomerChipTag chip={lienHead} /> : null}
               </span>
             ) : null}
           </span>
@@ -303,6 +357,13 @@ export default function DashboardArCustomersView({
         ) : (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Pay speeds unavailable — no pace lens</span>
         )}
+        {lienCounts && (lienCounts.due.count > 0 || lienCounts.out.count > 0) ? (
+          <>
+            <span aria-hidden style={{ width: 1, height: '1.25rem', background: 'var(--border)', margin: '0 0.2rem' }} />
+            {lienLensChip('due', 'Lien paper due', lienCounts.due.count, lienCounts.due.open, lienCounts.due.tone)}
+            {lienLensChip('out', 'Paper out', lienCounts.out.count, lienCounts.out.open, 'green')}
+          </>
+        ) : null}
         <span
           title="Bill colors read against each customer's own average pay speed (company average when they have no history)"
           style={{
