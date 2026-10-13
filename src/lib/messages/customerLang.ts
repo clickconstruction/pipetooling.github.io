@@ -10,27 +10,22 @@
  */
 import type { Contact } from '../contacts/kernel'
 import { PORTAL_SPANISH_ON, type PortalLang } from '../gc/portalI18n'
+import { wordsFor, type PhoneLine } from '../quickReplies/phone'
 
 /** The language a customer's lines go out in: theirs once Spanish is on, English until then. `tradeMailLang`'s rule. */
 export function customerLang(contact: Pick<Contact, 'lang'>, gate: boolean = PORTAL_SPANISH_ON): PortalLang {
   return contact.lang === 'es' && gate ? 'es' : 'en'
 }
 
-/**
- * A quick reply's words: `wordsFor`'s input (`Pick<PhoneLine, 'text' | 'textEs'>` in `quickReplies/phone.ts`, R3's
- * #5558), typed here until that PR lands.
- */
-export interface QuickLineWords {
-  text: string
-  textEs?: string | null
-}
+/** A quick reply's words: `wordsFor`'s input in `quickReplies/phone.ts`. */
+export type QuickLineWords = Pick<PhoneLine, 'text' | 'textEs'>
 
 /**
  * The quick reply in the customer's language: its Spanish when they read Spanish and the gate is open, else its English.
- * A line with no Spanish goes in English. The pick is `wordsFor`'s; once #5558 lands this calls it.
+ * A line with no Spanish goes in English. The pick is `wordsFor`'s.
  */
 export function lineFor(line: QuickLineWords, contact: Pick<Contact, 'lang'>, gate: boolean = PORTAL_SPANISH_ON): string {
-  return customerLang(contact, gate) === 'es' && line.textEs?.trim() ? line.textEs : line.text
+  return wordsFor(line, customerLang(contact, gate))
 }
 
 /** The customer card's field, as the record keeps it whatever the gate: "Reads Spanish", "Reads English". */
