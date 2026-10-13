@@ -966,3 +966,11 @@ verify_jwt = false
 
 [functions.statement-round-email-dispatch]
 verify_jwt = false
+
+# The office's door to Docsmit (the Docsmit train, PR 3): ping · prepare · send · refresh. Bearer + getUser, office roles from users in-function; the secrets never leave it.
+[functions.mail-send-docsmit]
+verify_jwt = false
+
+# The hourly read-back of every open Docsmit piece (the Docsmit train, PR 3): X-Cron-Secret, no JWT.
+[functions.mail-poll]
+verify_jwt = false
