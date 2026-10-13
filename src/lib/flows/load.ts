@@ -5,12 +5,19 @@
  *
  * One function per fact family, each reading the columns `facts.ts` names in `reads`, then `flowStampsFor`, which puts
  * them together for a kind of person with one `JobStamps` per job. A job is a GC project (`gc_projects.project_id`),
- * the spine's `project_id`: every Per job fact reads a project. The row types are written out until the types regen
+ * the spine's `project_id`: every Per job fact reads a project. A residential customer's job is a Pipeline job
+ * (`jobs_ledger.id`) instead, and `residentialStampsFor` reads its dispatch, clock-ins, reports, estimates, moves on the
+ * Jobs board, bills and texts. The row types are written out until the types regen
  * (Messages cut 4, `20261012120000_messages_flows.sql` adds `first_opened_at`, `lost_on`, `won_on` and `paid_on`, and
  * the spine's `20261012010000_messages_spine.sql` adds `contacts` and `contact_jobs`).
  */
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import type { CompanyPaperRow } from '../gc/companyPapers'
+import { isSettledRemainder, openRemainder } from '../billing/billTruth'
+import { billedExpectedPayModel, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay'
+import { paySpeedPayer } from '../jobs/billToParty'
+import { attributeJobPayments, isSentBill } from '../jobs/paymentAttribution'
+import { jobReportPreviewLine } from '../jobReportsTimeline'
 import type { FactId, FactMark, FlowKind } from './facts'
 import { docFactId } from './facts'
 import type { FactStamp, FlowStamps, JobStamps, LaneStamps, OffFlow, RoundStamp, StepSkip, StepWait } from './state'
@@ -178,7 +185,7 @@ const stamp = (fact: FactId, mark: FactMark, at: string | null | undefined, by: 
   by,
   until,
 })
-const nameOf = (rows: FlowRows, userId: string | null | undefined): string | null => (userId ? rows.userNames?.[userId] ?? null : null)
+const nameOf = (rows: Pick<FlowRows, 'userNames'>, userId: string | null | undefined): string | null => (userId ? rows.userNames?.[userId] ?? null : null)
 /** The same day a year on: "a year from closeout". */
 const aYearOn = (ymd: string): string => {
   const [y, m, d] = ymd.split('-').map(Number) as [number, number, number]
@@ -504,7 +511,7 @@ export function docStamps(rows: FlowRows, now: Date): FactStamp[] {
 }
 
 /** Off the flow: the office's word on the contact (the spine's `off_*`). */
-export function offOf(rows: FlowRows): OffFlow | null {
+export function offOf(rows: Pick<FlowRows, 'contact' | 'userNames'>): OffFlow | null {
   const c = rows.contact
   return c.off_since ? { since: c.off_since, why: c.off_why ?? '', by: nameOf(rows, c.off_by) } : null
 }
@@ -572,6 +579,261 @@ export function flowStampsFor(kind: FlowKind, rows: FlowRows, now: Date): FlowSt
     jobs: Object.fromEntries(jobIds.map((id) => [id, job(id)])),
     skips: skipsOf(rows),
     waits: kind === 'customer' ? waitsOf(rows) : [],
+    off: offOf(rows),
+  }
+}
+
+// ---------- a residential customer: their Pipeline jobs ----------
+
+/** `jobs_ledger`: one of the customer's Pipeline jobs, with what `paySpeedPayer` reads to find whom a bill went to. */
+export type PipelineJobRow = {
+  id: string
+  created_at: string | null
+  status: string
+  /** The job's price, which pays the part of the job on no sent bill first (`attributeJobPayments`). */
+  revenue: number | null
+  customer_id: string | null
+  gc_customer_id: string | null
+  bill_to_party: string | null
+  customer_name?: string | null
+}
+/** `contact_jobs` on a Pipeline job: the star. */
+export type PipelineContactJobRow = { jobs_ledger_id: string | null; is_default: boolean }
+/** `job_schedule_blocks`: dispatch's block for a job. */
+export type ScheduleBlockRow = { job_id: string | null; work_date: string; created_at: string; created_by: string | null }
+/** `clock_sessions`: a clock-in at a job. A revoked or rejected one never happened. */
+export type ClockSessionRow = { job_ledger_id: string | null; user_id: string; clocked_in_at: string; revoked_at: string | null; rejected_at: string | null }
+/** `reports`: a field report, its words in the template's answers. */
+export type FieldReportRow = { job_ledger_id: string | null; created_by_user_id: string; created_at: string | null; field_values: Record<string, string> | null }
+/** `estimates`. accept-estimate writes her yes on the row: `customer_accepted` and the time she consented. */
+export type EstimateRow = { job_ledger_id: string | null; doc_kind: string; status: string; sent_at: string | null; acceptor_consented_at: string | null }
+/** `job_status_events`: a move on the Jobs board. */
+export type JobStatusEventRow = { job_id: string; to_status: string; changed_at: string; changed_by_user_id: string | null }
+/** `jobs_ledger_invoices`: a bill. `ready_to_bill` is a draft; `billed` and `paid` went to them (`isSentBill`). */
+export type PipelineInvoiceRow = {
+  id: string
+  job_id: string
+  status: string
+  amount: number
+  sequence_order: number | null
+  billed_at: string | null
+  sent_to_customer_at: string | null
+  estimated_bill_date: string | null
+  created_at: string | null
+  sent_by_user_id: string | null
+  bill_to_party: string | null
+  bill_to_email: string | null
+}
+/** `jobs_ledger_payments`: money in, on a bill or on the job with no bill picked. */
+export type PipelinePaymentRow = { job_id: string; invoice_id: string | null; amount: number; paid_on: string | null; sequence_order: number | null }
+/** `messages` (the spine): a line to or from them, tied to a Pipeline job. */
+export type PipelineMessageRow = {
+  jobs_ledger_id: string | null
+  channel: string
+  direction: string
+  at: string
+  body: string
+  who_user_id: string | null
+  who_text: string
+}
+/** `contact_step_skips` on a Pipeline job. */
+export type PipelineStepSkipRow = { step_key: string; jobs_ledger_id: string | null; why: string; by_name: string; created_at: string; undone_at: string | null }
+
+/** One residential customer's rows. Every list is theirs already; a list left out is empty. */
+export type ResidentialRows = {
+  contact: ContactRow
+  /** Their first name, as our texts greet them ("Dana"). */
+  firstName: string
+  jobs: readonly PipelineJobRow[]
+  contactJobs?: readonly PipelineContactJobRow[]
+  /** A user id to the name the card says ("Luis"). */
+  userNames?: Readonly<Record<string, string>>
+  blocks?: readonly ScheduleBlockRow[]
+  clockSessions?: readonly ClockSessionRow[]
+  reports?: readonly FieldReportRow[]
+  estimates?: readonly EstimateRow[]
+  statusEvents?: readonly JobStatusEventRow[]
+  invoices?: readonly PipelineInvoiceRow[]
+  payments?: readonly PipelinePaymentRow[]
+  messages?: readonly PipelineMessageRow[]
+  skips?: readonly PipelineStepSkipRow[]
+  /** Pay speeds (`get_billed_customer_pay_speeds`), for a bill's expected pay day; null leaves the day unset. */
+  paySpeeds?: PaySpeedData | null
+  /** A promised pay day by job (`list_job_promised_pay_dates`), which wins over the pay speeds. */
+  promisedPay?: Readonly<Partial<Record<string, PromisedPayDate>>>
+}
+
+const oldest = <T>(rows: readonly T[], at: (r: T) => string | null | undefined): T | null =>
+  rows.reduce<T | null>((best, r) => (!best || (at(r) ?? '9999') < (at(best) ?? '9999') ? r : best), null)
+
+/**
+ * The words of an On our way text: their first name, "this is", and the way we put being on the road ("Dana, this is
+ * Luis with Click Plumbing. We are on our way…"). The Booked text greets the same way, so the road words are needed.
+ * This guess stands in for the quick reply the message was sent from, which main does not keep yet (R3's screens PR
+ * adds `messages.quick_reply_id`); swap it then for that line's step being `onway`.
+ */
+export function isOnOurWayText(body: string, firstName: string): boolean {
+  const words = body.trim().toLowerCase()
+  const first = firstName.trim().toLowerCase()
+  if (!first || !words.startsWith(first)) return false
+  return /^[\s,]*this is\b/.test(words.slice(first.length)) && /on our way|on the way|minutes out/.test(words)
+}
+
+/**
+ * The words of the review ask ("If you have a minute, a review helps us a lot"). The estimate text says "Review and
+ * approve it", so a bare "review" is not enough. Stands in for `messages.quick_reply_id` as `isOnOurWayText` does;
+ * swap it then for that line's step being `review`.
+ */
+export function isReviewAskText(body: string): boolean {
+  return /\ba review\b|\breview us\b/i.test(body)
+}
+
+const ourTexts = (rows: ResidentialRows, jobId: string) =>
+  (rows.messages ?? []).filter((m) => m.jobs_ledger_id === jobId && m.channel === 'text' && m.direction === 'out')
+const whoSent = (rows: ResidentialRows, m: PipelineMessageRow) => nameOf(rows, m.who_user_id) ?? (m.who_text.trim() || null)
+
+/** The job's status past waiting, and past working: the board's columns in order (`jobs_ledger_status_check`). */
+const WORKING_OR_PAST = new Set(['working', 'ready_to_bill', 'billed', 'paid'])
+const DONE_OR_PAST = new Set(['ready_to_bill', 'billed', 'paid'])
+
+/**
+ * The visit's facts on one Pipeline job: `booked` (dispatch's first block for it), `on_way` (the On our way text),
+ * `arrived` (the first clock-in there that stood), `found` (the first field report with words).
+ */
+export function visitStamps(rows: ResidentialRows, jobId: string): FactStamp[] {
+  const out: FactStamp[] = []
+  const block = oldest((rows.blocks ?? []).filter((b) => b.job_id === jobId), (b) => b.created_at)
+  if (block) out.push(stamp('booked', 'ok', block.created_at, nameOf(rows, block.created_by)))
+  const onWay = oldest(ourTexts(rows, jobId).filter((m) => isOnOurWayText(m.body, rows.firstName)), (m) => m.at)
+  if (onWay) out.push(stamp('on_way', 'ok', onWay.at, whoSent(rows, onWay)))
+  const clockIn = oldest((rows.clockSessions ?? []).filter((c) => c.job_ledger_id === jobId && !c.revoked_at && !c.rejected_at), (c) => c.clocked_in_at)
+  if (clockIn) out.push(stamp('arrived', 'ok', clockIn.clocked_in_at, nameOf(rows, clockIn.user_id)))
+  const report = oldest((rows.reports ?? []).filter((r) => r.job_ledger_id === jobId && jobReportPreviewLine(r.field_values)), (r) => r.created_at)
+  if (report) out.push(stamp('found', 'ok', report.created_at, nameOf(rows, report.created_by_user_id)))
+  return out
+}
+
+/** `estimate_sent` (the newest estimate that went; a change order or a bid proposal is not one) and `estimate_approved` (their yes on one). */
+export function estimateStamps(rows: ResidentialRows, jobId: string): FactStamp[] {
+  const estimates = (rows.estimates ?? []).filter((e) => e.job_ledger_id === jobId && e.doc_kind === 'estimate' && e.status !== 'draft')
+  const out: FactStamp[] = []
+  const sent = newest(estimates.filter((e) => e.sent_at), (e) => e.sent_at)
+  if (sent) out.push(stamp('estimate_sent', 'ok', sent.sent_at))
+  const yes = newest(estimates.filter((e) => e.status === 'customer_accepted'), (e) => e.acceptor_consented_at)
+  if (yes) out.push(stamp('estimate_approved', 'ok', yes.acceptor_consented_at))
+  return out
+}
+
+/**
+ * `working` and `done` from the Jobs board: working once the job first moved to Working; done while it stands at Ready
+ * to Bill or past, from its first move there after its last move back. A job whose moves were never kept reads working
+ * and done by where it stands, with no day, as `said_yes` reads a project past bidding.
+ */
+export function statusStamps(rows: ResidentialRows, jobId: string): FactStamp[] {
+  const job = rows.jobs.find((j) => j.id === jobId)
+  const events = [...(rows.statusEvents ?? [])].filter((e) => e.job_id === jobId).sort((a, b) => a.changed_at.localeCompare(b.changed_at))
+  const out: FactStamp[] = []
+  const toWorking = events.find((e) => e.to_status === 'working')
+  if (toWorking) out.push(stamp('working', 'ok', toWorking.changed_at, nameOf(rows, toWorking.changed_by_user_id)))
+  else if (job && WORKING_OR_PAST.has(job.status)) out.push(stamp('working', 'ok', null))
+  if (job && DONE_OR_PAST.has(job.status)) {
+    const back = events.reduce((last, e, i) => (DONE_OR_PAST.has(e.to_status) ? last : i), -1)
+    const toDone = events.slice(back + 1).find((e) => DONE_OR_PAST.has(e.to_status))
+    out.push(stamp('done', 'ok', toDone?.changed_at ?? null, toDone ? nameOf(rows, toDone.changed_by_user_id) : null))
+  }
+  return out
+}
+
+/** `review_asked`: the review text went. */
+export function reviewStamps(rows: ResidentialRows, jobId: string): FactStamp[] {
+  const ask = oldest(ourTexts(rows, jobId).filter((m) => isReviewAskText(m.body)), (m) => m.at)
+  return ask ? [stamp('review_asked', 'ok', ask.at, whoSent(rows, ask))] : []
+}
+
+const billOrder = (a: PipelineInvoiceRow, b: PipelineInvoiceRow) =>
+  (a.sequence_order ?? Infinity) - (b.sequence_order ?? Infinity) || (a.billed_at ?? '9999').localeCompare(b.billed_at ?? '9999') || a.id.localeCompare(b.id)
+const billsOn = (rows: ResidentialRows, jobId: string) => [...(rows.invoices ?? [])].filter((i) => i.job_id === jobId).sort(billOrder)
+const billName = (n: number) => `Bill ${n}`
+
+/** The bills on one job: one `billed` round each, a draft open until it goes to them. */
+export function billedRounds(rows: ResidentialRows, jobId: string): RoundStamp[] {
+  return billsOn(rows, jobId).map((inv, i) => ({
+    key: inv.id,
+    name: billName(i + 1),
+    opened: inv.created_at,
+    due: null,
+    stamps: isSentBill(inv.status) ? [stamp('billed', 'ok', inv.billed_at ?? inv.sent_to_customer_at, nameOf(rows, inv.sent_by_user_id))] : [],
+  }))
+}
+
+/**
+ * The sent bills on one job: one `paid` round each, keyed by the bill as the billed round is. Paid once main's one rule
+ * covers it (`attributeJobPayments`: its own payments, then the job's unlinked money oldest bill first) or it is marked
+ * paid, on the day of the last payment it took; else waiting on them since it went. Due the day the expected pay chip
+ * reads (their own pace, or their promise). No column keeps a customer's days to pay: `customers.payment_terms` is a
+ * policy, not a count of days, so the due day is a model, not their terms.
+ */
+export function paidRounds(rows: ResidentialRows, jobId: string, now: Date): RoundStamp[] {
+  const job = rows.jobs.find((j) => j.id === jobId)
+  const bills = billsOn(rows, jobId)
+  const paid = attributeJobPayments(bills, (rows.payments ?? []).filter((p) => p.job_id === jobId), job?.revenue ?? null)
+  const today = todayYmdInAppTz(now)
+  return bills.flatMap((inv, i) => {
+    if (!isSentBill(inv.status)) return []
+    const sentOn = inv.billed_at ?? inv.sent_to_customer_at
+    const share = paid.byBill.get(inv.id)
+    const covered = inv.status === 'paid' || isSettledRemainder(openRemainder(inv.amount, share?.applied ?? 0))
+    const lastPaid = newest(share?.slices ?? [], (s) => s.payment.paid_on)?.payment.paid_on ?? null
+    // The Stages tab's call (`JobsStagesTab`'s lien runway); `billDueDay` in `followUp/theyOweUs.ts` makes it once it lands.
+    const payer = job ? paySpeedPayer(job, inv) : null
+    const due =
+      job && payer
+        ? billedExpectedPayModel(
+            { billedAtIso: inv.billed_at, estBillYmd: inv.estimated_bill_date, customerId: payer.id, payerName: payer.name },
+            rows.paySpeeds ?? null,
+            today,
+            rows.promisedPay?.[jobId] ?? null,
+          )?.expectedYmd ?? null
+        : null
+    return [{ key: inv.id, name: billName(i + 1), opened: sentOn, due, stamps: [covered ? stamp('paid', 'ok', lastPaid) : stamp('paid', 'wait', sentOn)] }]
+  })
+}
+
+/** Their Pipeline jobs: the ones they are the customer on and the ones the office tied them to, the star first. */
+function pipelineJobsOf(rows: ResidentialRows): { jobIds: string[]; defaultJobId: string | null } {
+  const ids = new Set(rows.jobs.map((j) => j.id))
+  for (const j of rows.contactJobs ?? []) if (j.jobs_ledger_id) ids.add(j.jobs_ledger_id)
+  const created = (id: string) => rows.jobs.find((j) => j.id === id)?.created_at ?? ''
+  const star = (rows.contactJobs ?? []).find((j) => j.is_default && j.jobs_ledger_id && ids.has(j.jobs_ledger_id))?.jobs_ledger_id ?? null
+  const ordered = [...ids].sort((a, b) => created(a).localeCompare(created(b)) || a.localeCompare(b))
+  const defaultJobId = star ?? [...ordered].sort((a, b) => created(b).localeCompare(created(a)))[0] ?? null
+  return { jobIds: defaultJobId ? [defaultJobId, ...ordered.filter((id) => id !== defaultJobId)] : ordered, defaultJobId }
+}
+
+/**
+ * One residential customer's stamps, for `readFlow` with the residential flow: one `JobStamps` per Pipeline job. A job
+ * with nothing stamped has not started (`readFlow`'s rule for a Per job lane), so nobody stands on Booked: dispatch's
+ * block alone finishes Booked and puts them on On the way.
+ */
+export function residentialStampsFor(rows: ResidentialRows, now: Date): FlowStamps {
+  const { jobIds, defaultJobId } = pipelineJobsOf(rows)
+  const job = (jobId: string): JobStamps => ({
+    jobId,
+    ...lane([...visitStamps(rows, jobId), ...estimateStamps(rows, jobId), ...statusStamps(rows, jobId), ...reviewStamps(rows, jobId)], {
+      billed: billedRounds(rows, jobId),
+      paid: paidRounds(rows, jobId, now),
+    }),
+  })
+  return {
+    kind: 'residential',
+    jobIds,
+    defaultJobId,
+    person: lane([]),
+    jobs: Object.fromEntries(jobIds.map((id) => [id, job(id)])),
+    skips: (rows.skips ?? [])
+      .filter((k) => !k.undone_at)
+      .map((k) => ({ stepId: k.step_key, jobId: k.jobs_ledger_id, why: k.why, by: k.by_name || null, at: k.created_at })),
+    waits: [],
     off: offOf(rows),
   }
 }
