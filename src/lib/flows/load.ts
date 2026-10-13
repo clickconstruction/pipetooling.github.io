@@ -669,8 +669,8 @@ const oldest = <T>(rows: readonly T[], at: (r: T) => string | null | undefined):
 /**
  * The words of an On our way text: their first name, "this is", and the way we put being on the road ("Dana, this is
  * Luis with Click Plumbing. We are on our way…"). The Booked text greets the same way, so the road words are needed.
- * This guess stands in for the quick reply's step on the message, which main does not keep yet (R3's screens PR adds
- * it); swap the guess for `step === 'onway'` then.
+ * This guess stands in for the quick reply the message was sent from, which main does not keep yet (R3's screens PR
+ * adds `messages.quick_reply_id`); swap it then for that line's step being `onway`.
  */
 export function isOnOurWayText(body: string, firstName: string): boolean {
   const words = body.trim().toLowerCase()
@@ -681,8 +681,8 @@ export function isOnOurWayText(body: string, firstName: string): boolean {
 
 /**
  * The words of the review ask ("If you have a minute, a review helps us a lot"). The estimate text says "Review and
- * approve it", so a bare "review" is not enough. Stands in for the quick reply's step on the message, as
- * `isOnOurWayText` does; swap it for `step === 'review'` then.
+ * approve it", so a bare "review" is not enough. Stands in for `messages.quick_reply_id` as `isOnOurWayText` does;
+ * swap it then for that line's step being `review`.
  */
 export function isReviewAskText(body: string): boolean {
   return /\ba review\b|\breview us\b/i.test(body)
@@ -725,8 +725,9 @@ export function estimateStamps(rows: ResidentialRows, jobId: string): FactStamp[
 }
 
 /**
- * `working` and `done` from the Jobs board: working once the job first moved to Working (or stands past Waiting, with
- * no move kept); done while it stands at Ready to Bill or past, from its first move there after its last move back.
+ * `working` and `done` from the Jobs board: working once the job first moved to Working; done while it stands at Ready
+ * to Bill or past, from its first move there after its last move back. A job whose moves were never kept reads working
+ * and done by where it stands, with no day, as `said_yes` reads a project past bidding.
  */
 export function statusStamps(rows: ResidentialRows, jobId: string): FactStamp[] {
   const job = rows.jobs.find((j) => j.id === jobId)
@@ -809,7 +810,11 @@ function pipelineJobsOf(rows: ResidentialRows): { jobIds: string[]; defaultJobId
   return { jobIds: defaultJobId ? [defaultJobId, ...ordered.filter((id) => id !== defaultJobId)] : ordered, defaultJobId }
 }
 
-/** One residential customer's stamps, for `readFlow` with the residential flow: one `JobStamps` per Pipeline job. */
+/**
+ * One residential customer's stamps, for `readFlow` with the residential flow: one `JobStamps` per Pipeline job. A job
+ * with nothing stamped has not started (`readFlow`'s rule for a Per job lane), so nobody stands on Booked: dispatch's
+ * block alone finishes Booked and puts them on On the way.
+ */
 export function residentialStampsFor(rows: ResidentialRows, now: Date): FlowStamps {
   const { jobIds, defaultJobId } = pipelineJobsOf(rows)
   const job = (jobId: string): JobStamps => ({
