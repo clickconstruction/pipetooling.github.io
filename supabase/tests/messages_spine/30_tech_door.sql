@@ -131,7 +131,7 @@ BEGIN
   RETURN n::text;
 END $$;
 CREATE FUNCTION mtd.setting(p_key text) RETURNS text LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = public AS $$
-  SELECT coalesce((SELECT coalesce(value_text, value_num::text) FROM public.app_settings WHERE key = p_key), 'no row') $$;
+  SELECT coalesce((SELECT coalesce(value_text, to_char(value_num, 'FM9999990.##')) FROM public.app_settings WHERE key = p_key), 'no row') $$;
 GRANT USAGE ON SCHEMA mtd TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mtd TO anon, authenticated;
 
