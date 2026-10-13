@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
+import { MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from '../../../supabase/functions/_shared/messagesTeams'
 import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canReadJobMessages, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
@@ -142,6 +143,11 @@ describe('canSendGcTradeEmail', () => {
 
   it('names the money team as gc-customer-email does, so the two copies cannot drift', () => {
     expect([...GC_MONEY_TEAM].sort()).toEqual([...GC_CUSTOMER_EMAIL_ROLES].sort())
+  })
+
+  it('names the office and the techs as messages-notify’s push for a reply does (R5), so the copies cannot drift', () => {
+    expect([...GC_OFFICE_TEAM].sort()).toEqual([...MESSAGES_OFFICE_ROLES].sort())
+    expect([...MESSAGES_TECH_TEAM].sort()).toEqual([...MESSAGES_TECH_ROLES].sort())
   })
 
   it('names the money team as the office notices do, who hear the money only on it (O10a)', () => {

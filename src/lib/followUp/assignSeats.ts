@@ -7,6 +7,9 @@
  */
 import type { ContactKind } from '../contacts/names'
 
+/** The `app_settings` key that holds the seats. `APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1` is the client's copy. */
+export const ASSIGN_RULE_KEY = 'messages_assign_rule_v1'
+
 /** The seats *Who gets a new message* reads (Settings → Phone and texts). */
 export interface AssignSeats {
   /** The assistant's seat. */

@@ -10,12 +10,17 @@
 // change (or decided this one) in the last 15 minutes, so nobody can buzz the approvers with old rows or push words of
 // their own: it writes the words itself (_shared/clauseNotify.ts). Everyone it reaches is our own staff, so no sent copy.
 // Each person reached gets one notification_history row per channel.
+//
+// Since v2.5479 (residential R5): a customer's, a lead's or a sub's reply pushes whoever has it, server to server with
+// X-Cron-Secret, as gmail-sync is called: { message_ids: [...] } for a line's writer, { sweep: true } for the cron. The
+// rule is src/lib/messages/notifyPlan.ts through the edge copy; the reads and the record are _shared/messagesReplyPush.ts.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { clauseDecisionNote, clauseProposalNote, notifyScope, type NotifyChange, type NotifyClause } from '../_shared/clauseNotify.ts'
+import { readReplyPushBody, runReplyPushes } from '../_shared/messagesReplyPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,9 +74,39 @@ function emailHtml(text: string, link: string): string {
   return `${paras.join('')}<p><a href="${link}">Open Contracts and clauses</a></p>`
 }
 
+/** A customer's reply, pushed to whoever has it (R5): the cron's sweep, or the lines a writer names. */
+async function replyPushes(req: Request): Promise<Response> {
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  const headerSecret = req.headers.get('X-Cron-Secret') ?? req.headers.get('x-cron-secret')
+  if (!cronSecret || headerSecret !== cronSecret) return json({ error: 'Unauthorized' }, 401)
+  const body = readReplyPushBody(await req.json().catch(() => ({})))
+  if ('error' in body) return json(body, 400)
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+  const canPush = Boolean(vapidPublicKey && vapidPrivateKey)
+  if (canPush) webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey!, vapidPrivateKey!)
+  const sendTo = async (userId: string, payload: string): Promise<number> => {
+    if (!canPush) return 0
+    const { data: subscriptions } = await admin.from('push_subscriptions').select('endpoint, p256dh_key, auth_key').eq('user_id', userId)
+    let took = 0
+    for (const sub of subscriptions ?? []) {
+      try {
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } }, payload, { TTL: 3600 })
+        took++
+      } catch (pushErr) {
+        console.error('messages-notify reply push error', String(sub.endpoint ?? '').substring(0, 50), pushErr)
+      }
+    }
+    return took
+  }
+  return json({ success: true, ...(await runReplyPushes(admin, body, sendTo)) })
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   try {
+    if (req.headers.has('X-Cron-Secret')) return await replyPushes(req)
     const authHeader = req.headers.get('Authorization')
     const token = authHeader?.replace(/^Bearer\s+/i, '')
     if (!authHeader || !token) return json({ error: 'Unauthorized' }, 401)
