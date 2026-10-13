@@ -5,14 +5,17 @@ import {
   EMAIL_MESSAGE_LIMIT_BYTES,
   PAPER_PAGE,
   PORTAL_PAGE_LINES,
+  base64OfBytes,
   carryRefusal,
   carryWords,
   emailLinkLines,
   outCopyPath,
   paperRef,
   parseEmailFiles,
+  portalHasPage,
+  portalPageUrl,
 } from '../../../supabase/functions/_shared/messagesEmailFiles'
-import { PORTAL_PAGES } from './jobFiles'
+import { PORTAL_PAGES, portalHasPage as appPortalHasPage, type PortalPage } from './jobFiles'
 import { EMAIL_FILE_LIMIT_BYTES as APP_FILE_LIMIT, EMAIL_MESSAGE_LIMIT_BYTES as APP_MESSAGE_LIMIT } from './outgoing'
 
 /**
@@ -135,7 +138,29 @@ describe('the lines under the words', () => {
         { name: 'Addendum 2.pdf', url: 'https://clicktooling.com/t/7Hq2#plans', page: 'plans' },
         { name: 'Rock clause, marked up.pdf', url: 'https://clicktooling.com/f/k3Pw9xQaB2cD4eF6gH8iJ0', page: null },
       ]),
-    ).toEqual(['The plans are in your portal: https://clicktooling.com/t/7Hq2#plans', 'Rock clause, marked up.pdf: https://clicktooling.com/f/k3Pw9xQaB2cD4eF6gH8iJ0'])
+    ).toEqual([
+      { text: 'The plans are in your portal', url: 'https://clicktooling.com/t/7Hq2#plans' },
+      { text: 'Rock clause, marked up.pdf', url: 'https://clicktooling.com/f/k3Pw9xQaB2cD4eF6gH8iJ0' },
+    ])
+  })
+
+  it('opens their portal at the page, whatever anchor the address had', () => {
+    expect(portalPageUrl('https://clicktooling.com/t/7Hq2', 'plans')).toBe('https://clicktooling.com/t/7Hq2#plans')
+    expect(portalPageUrl('https://my.clickplumbing.com/raman#top', 'bills')).toBe('https://my.clickplumbing.com/raman#bills')
+  })
+
+  it('knows whose portal has each page, as jobFiles.ts does', () => {
+    for (const page of Object.keys(PORTAL_PAGES) as PortalPage[]) {
+      for (const who of ['trade', 'customer'] as const) expect(portalHasPage(who, page)).toBe(appPortalHasPage(who, page))
+    }
+  })
+})
+
+describe('base64OfBytes', () => {
+  it('writes bytes as base64 a slice at a time, the same as one go', () => {
+    expect(base64OfBytes(new Uint8Array([37, 80, 68, 70, 45]))).toBe('JVBERi0=')
+    const big = new Uint8Array(0x8000 * 2 + 5).map((_, i) => i % 251)
+    expect(base64OfBytes(big)).toBe(Buffer.from(big).toString('base64'))
   })
 })
 

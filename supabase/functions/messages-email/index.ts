@@ -3,8 +3,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { buildMessagesEmail, letterheadFor, MESSAGES_EMAIL_KIND, parseMessagesEmailBody } from '../_shared/messagesEmail.ts'
+import { emailLinkLines, parseEmailFiles } from '../_shared/messagesEmailFiles.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { placeFiles, readFiles, takeBack } from './files.ts'
 
 /**
  * messages-email — Messages, cut 3: an email from the reply box's send window, to one person at one of their
@@ -19,6 +21,12 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
  * is filed with the line as its source, so the thread's overlay of sent copies skips it. If Resend refuses it, the line
  * is taken back out and the refusal is said. The answer is the line's id, which a later press can name (cut 2's
  * *this message gets it done*).
+ *
+ * Its files (cut 7e, `files.ts`; the rules are `_shared/messagesEmailFiles.ts`): each the app asked to send is checked
+ * and, when it goes as the file, read before the line is written, and a file from this computer is put into the job's
+ * Team only first. Once the line has its id, each link is made (their portal at its page, or our link to the Drive
+ * file), each file that goes as the file is copied under `out/` and attached, and every file is written on the line as
+ * it went. The links go under the words. If the email does not go, the links and the copies are taken back too.
  *
  * verify_jwt is off in config.toml, as for quo-send: the caller's session is checked here.
  */
@@ -53,8 +61,11 @@ serve(async (req) => {
     const { data: office, error: officeError } = await caller.rpc('gc_office_team')
     if (officeError || office !== true) return refuse('officeOnly', 'Only the office sends from here.', 403)
 
-    const input = parseMessagesEmailBody(await req.json().catch(() => null))
+    const raw = (await req.json().catch(() => null)) as Record<string, unknown> | null
+    const input = parseMessagesEmailBody(raw)
     if (!input) return refuse('badRequest', 'The email is missing its person, address, subject or words.', 400)
+    const asks = parseEmailFiles(raw?.files)
+    if (!asks) return refuse('badRequest', 'One of the files is not one this email can take. Take it off and add it again.', 400)
 
     const { data: channel } = await admin.from('contact_channels').select('id, contact_id, kind, value').eq('id', input.channelId).maybeSingle()
     if (!channel || channel.contact_id !== input.contactId || channel.kind !== 'email') {
@@ -62,7 +73,11 @@ serve(async (req) => {
     }
     const to = String(channel.value ?? '').trim()
     if (!to.includes('@')) return refuse('notFound', 'That address cannot take an email.', 422)
-    const { data: contact } = await admin.from('contacts').select('id, name, customer_id').eq('id', input.contactId).maybeSingle()
+    const { data: contact } = await admin
+      .from('contacts')
+      .select('id, kind, name, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id')
+      .eq('id', input.contactId)
+      .maybeSingle()
     if (!contact) return refuse('notFound', 'That person is not in Messages.', 404)
 
     // The sent copy files under what the job is: a bid by its id, a Pipeline job by its id, a GC project by its billing job.
@@ -73,6 +88,11 @@ serve(async (req) => {
       const { data: project } = await admin.from('gc_projects').select('billing_job_id').eq('project_id', tie.jobId).maybeSingle()
       if (project?.billing_job_id) jobIds = [String(project.billing_job_id)]
     }
+
+    // The files, checked and read before anything is written: a send that cannot carry them stops here.
+    const job = tie ? ({ [tie.column]: tie.jobId } as { bid_id: string } | { project_id: string } | { jobs_ledger_id: string }) : null
+    const read = await readFiles(admin, asks, job)
+    if (!read.ok) return refuse(read.error, read.words, read.status)
 
     const { data: line, error: lineError } = await admin
       .from('messages')
@@ -93,8 +113,28 @@ serve(async (req) => {
       return refuse('failed', 'The email did not go: the thread could not keep it. Try again.', 500)
     }
 
+    const origin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
+    const placing = await placeFiles(read.ctx, read.files, {
+      lineId: line.id,
+      madeBy: who.id,
+      origin,
+      recipient: {
+        kind: String(contact.kind ?? ''),
+        customerId: contact.customer_id ?? null,
+        customerPersonId: contact.customer_contact_person_id ?? null,
+        companyId: contact.gc_company_id ?? null,
+        companyPersonId: contact.gc_company_person_id ?? null,
+      },
+    })
+    if (!placing.ok) {
+      await takeBack(admin, placing.placed)
+      await admin.from('messages').delete().eq('id', line.id)
+      return refuse(placing.error, placing.words, placing.status)
+    }
+    const placed = placing.placed
+
     const letterhead = letterheadFor(tie?.column ?? null)
-    const built = buildMessagesEmail(input, letterhead)
+    const built = buildMessagesEmail(input, letterhead, emailLinkLines(placed.links))
     const replyTo = typeof who.email === 'string' && who.email.includes('@') ? who.email : undefined
     // The sent copy (docs/SENT_COPIES.md): its source is the line, so the thread's overlay of sent copies skips it.
     const filed = {
@@ -109,12 +149,14 @@ serve(async (req) => {
     const sent = await sendEmailViaResend(to, built.subject, built.text, built.html, resendKey, {
       from: mailboxWithName(letterhead, EMAIL_FROM),
       replyTo,
+      ...(placed.attachments.length ? { attachments: placed.attachments } : {}),
       emailType: MESSAGES_EMAIL_KIND,
       file: { kind: 'messages_email', ...filed },
     }).catch((e: unknown) => ({ success: false as const, error: e instanceof Error ? e.message : String(e) }))
 
     if (!sent.success) {
-      // Nothing went, so nothing stays in the thread.
+      // Nothing went, so nothing stays in the thread: the line, its files' rows, our links and the copies.
+      await takeBack(admin, placed)
       await admin.from('messages').delete().eq('id', line.id)
       return refuse('resend', `The email did not go. ${sent.error ? `Resend answered: ${sent.error}` : 'Try again.'}`, 502)
     }

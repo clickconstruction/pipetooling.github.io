@@ -166,18 +166,42 @@ export interface SentLink {
   page: PortalPageKey | null
 }
 
+/** A line under the words: what it opens, and the link. The email shows `text: url`, the link a link. */
+export interface EmailLinkLine {
+  text: string
+  url: string
+}
+
 /** The lines under the words for the files that went as links: one a portal page, however many files share it, and one a file's own link. */
-export function emailLinkLines(links: readonly SentLink[]): string[] {
-  const out: string[] = []
+export function emailLinkLines(links: readonly SentLink[]): EmailLinkLine[] {
+  const out: EmailLinkLine[] = []
   const pages = new Set<PortalPageKey>()
   for (const l of links) {
     if (l.page) {
       if (pages.has(l.page)) continue
       pages.add(l.page)
-      out.push(`${PORTAL_PAGE_LINES[l.page].line}: ${l.url}`)
-    } else out.push(`${l.name}: ${l.url}`)
+      out.push({ text: PORTAL_PAGE_LINES[l.page].line, url: l.url })
+    } else out.push({ text: l.name, url: l.url })
   }
   return out
+}
+
+/** Their portal at a page: the page's anchor on their portal's address. */
+export function portalPageUrl(portal: string, page: PortalPageKey): string {
+  return `${portal.replace(/#.*$/, '')}#${page}`
+}
+
+/** Whose portal has the page (`jobFiles.ts`'s `portalHasPage`). */
+export function portalHasPage(audience: 'trade' | 'customer', page: PortalPageKey): boolean {
+  return PORTAL_PAGE_LINES[page].audiences.includes(audience)
+}
+
+/** Bytes as base64, for an email's attachment, a slice at a time so a 10 MB file never makes one huge string call. */
+export function base64OfBytes(bytes: Uint8Array): string {
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  return btoa(binary)
 }
 
 /** Where a file sent as the file is kept with the line, in `message-attachments`: under `out/`, by the line and its place. */

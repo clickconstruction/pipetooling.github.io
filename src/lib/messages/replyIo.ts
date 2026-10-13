@@ -6,7 +6,8 @@
  * - A note is cut 2's `add_note`, through Follow up's own io (`followUpIo.addNote`), so a note from the box and one from
  *   Follow up are the same write.
  * - An email goes through `messages-email`: Resend's existing send as the service role, the sent copy filed with the
- *   line as its source, and the line written in `messages` with its job and the address it went to.
+ *   line as its source, and the line written in `messages` with its job and the address it went to. Its files (cut 7e)
+ *   go as the function takes them (`documents/emailFileAsks.ts`), each kept on the line with how it went.
  * - A text goes through `quo-send` (cut 5), from the company number. Until the phone is switched on the box never calls
  *   it (`TEXTS_ON`).
  */
@@ -14,6 +15,7 @@ import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { supabaseFollowUpIo, type FollowUpIo } from '../followUp/followUpIo'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { EmailFileAsk } from '../documents/emailFileAsks'
 import type { ComposeSender, EmailDraft } from './compose'
 import { jobRefOf } from './load'
 import { tieOf } from './replyBox'
@@ -32,6 +34,8 @@ export interface ReplyEmail {
   jobKey: string | null
   /** The words as the send window showed them (`compose.emailDraft`), the subject typed there included. */
   draft: Pick<EmailDraft, 'subject' | 'greeting' | 'body' | 'signature' | 'footer'>
+  /** The files on it, each with how it goes (cut 7e). None: an email of words alone, as before. */
+  files?: readonly EmailFileAsk[]
 }
 
 export interface ReplyText {
@@ -90,9 +94,10 @@ export function supabaseReplyIo(followUp: Pick<FollowUpIo, 'addNote'> = supabase
     addNote: (contactId, body, jobKey) => followUp.addNote(contactId, body, jobRefOf(jobKey), null),
     sendEmail: (input) => {
       const { subject, greeting, body, signature, footer } = input.draft
+      const files = input.files?.length ? { files: input.files } : {}
       return invoke(
         'messages-email',
-        { contactId: input.contactId, channelId: input.channelId, tie: tieOf(input.jobKey), subject, greeting, body, signature, footer },
+        { contactId: input.contactId, channelId: input.channelId, tie: tieOf(input.jobKey), subject, greeting, body, signature, footer, ...files },
         'send the email',
       )
     },
