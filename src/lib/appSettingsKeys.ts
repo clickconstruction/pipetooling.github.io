@@ -392,3 +392,10 @@ export const APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1 = 'messages_assign_rule_v1
  * `quo-send` and `quo-webhook` read it as the service role. Parsed by `quo/seatsCard.ts`.
  */
 export const APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1 = 'messages_quo_seats_v1' as const
+
+/**
+ * `value_text` — Read bids@ (Messages, cut 6's migration `20261013080000_messages_email_in.sql`): 'true' lets the cron
+ * post to the `gmail-sync` reader, and anything else, 'false' as it ships, keeps it off. The owner and a dev set it from
+ * Settings → Phone and texts (its own UPDATE policy, `master_or_dev_update_gmail_sync_on`). Read by `messages/emailReader.ts`.
+ */
+export const APP_SETTINGS_KEY_GMAIL_SYNC_ON_V1 = 'gmail_sync_on_v1' as const

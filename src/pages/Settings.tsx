@@ -43,7 +43,9 @@ import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { canEditClause } from '../lib/gc/access'
 import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
+import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
 import { canSeePhoneAndTexts } from '../lib/messages/assignRule'
+import { canSwitchReader } from '../lib/messages/emailReader'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
@@ -1493,9 +1495,14 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-phone-texts" hidden={activeSettingsTab !== 'settings-phone-texts'} title={settingsGroupTitle('settings-phone-texts', 'Phone and texts')} description={settingsGroupHint('settings-phone-texts')}>
-        {/* Mounted while it is open, so it reads the seats again each time. Quo's rows (cut 5) join below the card. */}
-        {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && <PhoneAndTextsSettingsSection />}
-        {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && <QuoSeatsSettingsSection />}
+        {/* Mounted while it is open, so it reads the seats, Quo's seats and the bids@ reader again each time. */}
+        {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && (
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <PhoneAndTextsSettingsSection />
+            <QuoSeatsSettingsSection />
+            {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
+          </div>
+        )}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
