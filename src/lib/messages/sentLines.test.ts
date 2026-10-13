@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { APP_WHO } from './appLines'
 import { DEMO_CONTACTS } from './messagesDemo'
 import { isSentLine, sentLines, type SentCopyWithJobs } from './sentLines'
 
@@ -25,7 +26,7 @@ describe('the emails the app already sent, read into each thread', () => {
         channel: 'email',
         direction: 'out',
         at: '2026-09-21T15:15:00.000Z',
-        who: 'Rosa · the app',
+        who: 'Rosa',
         subject: 'Bell Family Dental: our bid',
         body: 'Our bid, Bell Family Dental',
         channelId: 'marcus-email',
@@ -53,5 +54,13 @@ describe('the emails the app already sent, read into each thread', () => {
   it('a copy with no subject reads its title, and with no sender reads the app', () => {
     const [line] = sentLines([copy({ subject: '', sentByName: '', recipientEmails: ['jonah@marshvale.example'] })], DEMO_CONTACTS)
     expect(line).toMatchObject({ subject: 'Our bid, Bell Family Dental', who: 'the app', jobId: null })
+  })
+
+  it('a pressed send reads its sender alone, and a blank name reads the app', () => {
+    const lines = sentLines(
+      [copy({ id: 'sd5', recipientEmails: ['jonah@marshvale.example'] }), copy({ id: 'sd6', sentByName: '  ', recipientEmails: ['jonah@marshvale.example'] })],
+      DEMO_CONTACTS,
+    )
+    expect(lines.map((l) => l.who)).toEqual(['Rosa', APP_WHO])
   })
 })
