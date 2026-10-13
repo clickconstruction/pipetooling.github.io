@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
+// @ts-expect-error esm.sh types fontkit with named exports only; the module it serves has just a default, the fontkit object.
 import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
 import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorage, validateFormValues, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
