@@ -39,7 +39,7 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 | R5 | `messages_tech_can_read(contact_id)` and the `messages_tech_read` / `contacts_tech_read` policies: a tech reads contacts on jobs they are dispatched to or clocked on, this week and last, and never a row whose kind is `billing` or whose `direction` is `team` with `office_only` | the tech's door |
 | R5 | `contacts.has_until` (timestamptz) beside `has_user_id` | the tech has it until 5 PM, then the office |
 | R5 | `app_settings.messages_office_wait_minutes` (15); `app_settings.messages_office_hours_v1` as JSON `{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00","techUntil":"17:00","emergency":null}`, read by `parseOfficeHours` with the defaults as the fallback; `emergency` set adds one sentence to the after-hours answer naming the number (helper 5's prepare note, 2026-10-13) | push to the office after a wait; who answers, and when the office is closed |
-| R6 | `messages.mailbox` (`bids` · `team`), `contact_channels.from_number_id` per kind | two boxes, two numbers, the reply from the box they wrote to |
+| R6 | `messages.mailbox` (`team` · `bids`); `app_settings.messages_boxes_v1`, JSON `{team, bids}` of `{address, phone, numberId}`, where today one secret holds one number and `gmail_sync_state` one grant; `contact_channels.opted_out_by_box` jsonb keyed by box, since a carrier's STOP is per number pair and one `opted_out_at` cannot say which of our numbers it stopped (helper 7's prepare note, 2026-10-13) | two boxes, two numbers, the reply from the box they wrote to; a STOP on one number leaves the other open |
 | R8 · 16 | `customers.language` (`en` · `es`) | read by every contact of theirs |
 | R8 · 8 | `estimates.source_message_id`, the message that started the document or its line (main keeps lines as `estimates.line_items_snapshot` JSON and has no estimate_lines table or save RPC; the Estimates page's write path takes the draft; helper 6's prepare note, 2026-10-13) | a line on an estimate from a message |
 | R8 · 3 | a reason and the job's event line on `self_move_schedule_block` (the tech's own move, one block per call; the office's board writes the table directly and there is no move RPC with a reason), and the dispatcher's note filed as a `dispatch_requests` row, since a tech cannot insert it; a slide past 23:59 moves nothing (helper 7's prepare note, 2026-10-13) | a Running late press moves the board with a reason |
@@ -105,7 +105,7 @@ Each cut lists its PRs. A PR is one change, kernel and test first, screens in th
 
 *Waits on wave 2 cut 5 and cut 6, and the owner's call on team@ against office@.*
 
-- **SQL**: `messages.mailbox`, `contact_channels.from_number_id`. One PR.
+- **SQL**: `messages.mailbox`, `messages_boxes_v1`, `contact_channels.opted_out_by_box`; `gmail_sync_state` one row per grant. One PR.
 - **The reader**: cut 6's `gmail-sync` takes two grants and stamps `mailbox`; the sender matched first, the box the first guess for an unknown sender; a reply goes from the box they wrote to, a new conversation from the box of their kind. One PR (edge, deployed by the lead).
 - **Compose and sort**: `compose.ts` → `mailboxFor(kind)` and `fromNumberFor(kind)`; Who is this? orders its guesses by the box; the letterhead, the lien reply-to and the website terms read the chosen customer address. One PR.
 
