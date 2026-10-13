@@ -399,3 +399,19 @@ export const APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1 = 'messages_quo_seats_v1' as
  * Settings → Phone and texts (its own UPDATE policy, `master_or_dev_update_gmail_sync_on`). Read by `messages/emailReader.ts`.
  */
 export const APP_SETTINGS_KEY_GMAIL_SYNC_ON_V1 = 'gmail_sync_on_v1' as const
+
+/**
+ * `value_text` — the reminders the app sends itself, the owner's switch (Messages, cut 5's migration
+ * `20261014012000_messages_nudge_settings.sql`): `{"<kind>": {"<step id>": true}}`, `{}` as it ships, so every step is
+ * off. The ids nest under their kind because a step id is unique only within its kind's flow. The owner and a dev write
+ * it (its own UPDATE policy, `master_or_dev_update_messages_nudge_app_sends`); `messages-nudge-dispatch` reads it as the
+ * service role. Parsed by `flows/nudgeRunInputs.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1 = 'messages_nudge_app_sends_v1' as const
+
+/**
+ * `value_text` — the newest morning's run of those reminders (the same migration): what went and what was kept back and
+ * why, `{}` until the first run. `messages-nudge-dispatch` writes it as the service role; it has no UPDATE policy of
+ * its own.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 = 'messages_nudge_last_run_v1' as const
