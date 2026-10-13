@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { planQuoEvent, readQuoEvent, sentKey, type QuoPlan, type QuoPlanContext, type QuoReading } from '../_shared/gcKernels/lib/quo/events.ts'
+import { keepTextMedia } from '../_shared/quoMedia.ts'
 import { verifySignature, webhookAnswer, type WebhookOutcome } from '../_shared/gcKernels/lib/quo/webhook.ts'
 import { loadSeats, notePauseRow, placeNumber, quoCompany, sendText, writeLine, type Placed } from '../_shared/quoLines.ts'
 
@@ -132,10 +133,12 @@ async function planAndWrite(
     defaultJobId: placed.star?.jobId ?? null,
     ...more,
   }
-  const { then: plan } = await writeLine<QuoPlan>(admin, key, placed.star, (prev) => {
+  const { id: lineId, then: plan } = await writeLine<QuoPlan>(admin, key, placed.star, (prev) => {
     const p = planQuoEvent(reading, { ...ctx, existing: prev })
     return { line: p.line, then: p }
   })
+  // A text's pictures and files: our copy now, since Quo's link to them does not last (Messages, cut 10).
+  if (reading.kind === 'text' && lineId) await keepTextMedia(admin, lineId, reading.quoId, reading.media)
 
   if (plan.optout === 'out') {
     const { error } = await admin.from('contact_channels').update({ opted_out_at: new Date().toISOString() }).eq('id', placed.channelId).is('opted_out_at', null)

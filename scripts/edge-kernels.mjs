@@ -70,6 +70,8 @@ export const ENTRIES = {
     values: ['planQuoEvent', 'phoneWords', 'readQuoEvent', 'sentKey', 'toE164', 'unknownContact'],
     types: ['QuoLine', 'QuoPlan', 'QuoPlanContext', 'QuoReading'],
   },
+  // Messages, cut 10: a text's pictures and files kept on arrival (quo-webhook through _shared/quoMedia.ts).
+  'lib/quo/mediaKeep.ts': { values: ['quoMediaPlans', 'quoMediaRow', 'mediaToKeep', 'keepsCopy', 'QUO_NOT_COPIED'], types: ['QuoMediaPlan', 'QuoMediaFetch', 'QuoMediaRow'] },
   'lib/quo/send.ts': { values: ['planSend', 'refusalWords', 'sendOver', 'sentQuoId'], types: ['QuoSendInput', 'QuoSendPlan', 'SendPurpose', 'SentLine'] },
   'lib/quo/rows.ts': {
     values: ['MESSAGE_ROW_COLUMNS', 'contactKindOf', 'contactWords', 'defaultJob', 'jobOf', 'lineFromRow', 'parseQuoSendBody', 'quoSeatUserIds', 'quoSeats', 'rowFromLine', 'seatOf', 'seatsSource'],

@@ -58,10 +58,24 @@ export function quoMediaPlans(quoId: string, media: readonly QuoMedia[]): QuoMed
   })
 }
 
+/**
+ * The files still to keep for a line: Quo sends a delivery again when the webhook answered 500, so a file the line already
+ * has a row for, by its place, is left alone and nothing is kept twice.
+ */
+export function mediaToKeep(plans: readonly QuoMediaPlan[], keptOrders: Iterable<number>): QuoMediaPlan[] {
+  const kept = new Set(keptOrders)
+  return plans.filter((p) => !kept.has(p.sort_order))
+}
+
+/** Whether a fetch gives us a copy to keep: it read, and it fits the cap an email's files have. */
+export function keepsCopy(fetched: QuoMediaFetch): boolean {
+  return fetched.ok && fetched.bytes <= KEEP_FILE_BYTES
+}
+
 /** The row to write once the fetch is done: our copy when it read and fits the cap an email's files have, else the mark. */
 export function quoMediaRow(messageId: string, plan: QuoMediaPlan, fetched: QuoMediaFetch): QuoMediaRow {
   const bytes = fetched.bytes ?? null
-  const kept = fetched.ok && fetched.bytes <= KEEP_FILE_BYTES
+  const kept = keepsCopy(fetched)
   return {
     message_id: messageId,
     sort_order: plan.sort_order,
