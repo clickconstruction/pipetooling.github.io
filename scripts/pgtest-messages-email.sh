@@ -14,8 +14,9 @@
 # nothing else; training mode and a digital twin answer nothing; nobody signed in reaches the reader's functions; the
 # switch ships off. It raises on its first failed assertion and ends with "messages_email PASSED". Then residential R6's
 # two boxes (*_messages_two_boxes), also applied twice: lines from before it (25_two_boxes_before.sql, run just before
-# it) take their box, and 30_two_boxes.sql ends with "messages_two_boxes PASSED". PGTEST_KEEP=1 leaves
-# the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a PR that touches a
+# it) take their box, and 30_two_boxes.sql ends with "messages_two_boxes PASSED". Then one email in both boxes
+# (*_messages_rfc_message_id), also applied twice: 40_message_id.sql ends with "messages_message_id PASSED". PGTEST_KEEP=1
+# leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a PR that touches a
 # migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -25,6 +26,7 @@ NAME="pgtest-messages-email"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 EMAIL="$(ls supabase/migrations/*_messages_email_in.sql)"
 BOXES="$(ls supabase/migrations/*_messages_two_boxes.sql)"
+MESSAGE_ID="$(ls supabase/migrations/*_messages_rfc_message_id.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -50,7 +52,7 @@ for f in supabase/migrations/*.sql; do
   # A second run must change nothing: the columns, the index, the constraints, the tables, the functions, the bucket,
   # the switch and the cron are there. It runs right after the first, as a retried push would: its grants start with a
   # REVOKE on its own tables, so a second run after a later cut's migration would take back what that cut granted.
-  if [ "$f" = "$EMAIL" ] || [ "$f" = "$BOXES" ]; then
+  if [ "$f" = "$EMAIL" ] || [ "$f" = "$BOXES" ] || [ "$f" = "$MESSAGE_ID" ]; then
     psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
   fi
 done
@@ -59,5 +61,8 @@ if ! grep -q "messages_email PASSED" <<<"$out"; then echo "$out" | tail -40; exi
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/messages_email/30_two_boxes.sql 2>&1 || true)"
 if ! grep -q "messages_two_boxes PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/messages_email/40_message_id.sql 2>&1 || true)"
+if ! grep -q "messages_message_id PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "messages-email bed ok"
