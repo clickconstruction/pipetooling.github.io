@@ -444,8 +444,9 @@ export default function GcProjects() {
   useEffect(() => {
     setDevView(gcViewFromSearch(new URLSearchParams(viewParam ? `view=${viewParam}` : '')))
   }, [viewParam])
-  // How Trade partners shows its companies (Messages cut 4): the list as it was, or by step. `?by=` opens on one.
+  // How Trade partners and Customers show their companies (Messages cut 4). `?by=` opens on one.
   const [partnersBy, setPartnersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'list')
+  const [customersBy, setCustomersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'step')
   /** Read the board again; answers what it read, for a press that emails from the rows as they are now (P5c-4). */
   const refreshBoard = async (): Promise<GcState | null> => {
     if (!loaded) return null
@@ -831,6 +832,18 @@ export default function GcProjects() {
     if (view === 'board') next.delete('view')
     else next.set('view', view)
     if (view !== 'money') next.delete('billday')
+    setParams(next, { replace: true })
+  }
+  // A board's Open the compare: the project's card on the Board, where Compare quotes is (Messages cut 4).
+  const boardOpenProject = (projectId: string) => {
+    showView('board')
+    requestAnimationFrame(() => requestAnimationFrame(() => openProjectCard(projectId)))
+  }
+  // A board's Bill day: Money → Bill day → From the trades for that job (`billDayHref`, cut 9). The view follows
+  // `?view=`, and anyone off the money team sees Follow up in Money's place.
+  const boardBillDay = (projectId: string) => {
+    const next = new URLSearchParams(params)
+    new URLSearchParams(billDayHref(projectId).split('?')[1]).forEach((v, k) => next.set(k, v))
     setParams(next, { replace: true })
   }
   const devPill = (view: GcView, label: string) => {
@@ -1883,10 +1896,11 @@ export default function GcProjects() {
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'messages' ? 'Messages' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
-            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Follow up, Messages or Money' : 'Project Board, Trade partners, Follow up or Messages'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'customers' ? 'Customers' : devView === 'messages' ? 'Messages' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
+            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Customers, Follow up, Messages or Money' : 'Project Board, Trade partners, Customers, Follow up or Messages'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
+              {devPill('customers', 'Customers')}
               {devPill('followUp', followUpCount > 0 ? `Follow up (${followUpCount})` : 'Follow up')}
               {devPill('messages', 'Messages')}
               {/* Money is the money team's (the Owner Billing door). */}
@@ -1915,18 +1929,11 @@ export default function GcProjects() {
                 onBy={setPartnersBy}
                 list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />}
                 onFollowUp={() => showView('followUp')}
-                onOpenProject={(projectId) => {
-                  showView('board')
-                  requestAnimationFrame(() => requestAnimationFrame(() => openProjectCard(projectId)))
-                }}
-                onBillDay={(projectId) => {
-                  // Money → Bill day → From the trades for that job (`billDayHref`, cut 9). The view follows `?view=`,
-                  // and anyone off the money team sees Follow up in Money's place.
-                  const next = new URLSearchParams(params)
-                  new URLSearchParams(billDayHref(projectId).split('?')[1]).forEach((v, k) => next.set(k, v))
-                  setParams(next, { replace: true })
-                }}
+                onOpenProject={boardOpenProject}
+                onBillDay={boardBillDay}
               />
+            ) : devView === 'customers' ? (
+              <GcFlowBoard kind="customer" by={customersBy} onBy={setCustomersBy} onFollowUp={() => showView('followUp')} onOpenProject={boardOpenProject} onBillDay={boardBillDay} />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { threadFromSearch } from '../../components/gc/messages/useThreadWindow'
-import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcBoardByFromSearch, gcFocusFromSearch, gcProjectHref, gcViewFromSearch, messagesThreadHref } from './links'
+import { billDayFromSearch, billDayHref, GC_CUSTOMERS_HREF, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcBoardByFromSearch, gcFocusFromSearch, gcProjectHref, gcViewFromSearch, messagesThreadHref } from './links'
 
 describe('GC project links', () => {
   it('opens a GC project on its card on the GC projects page', () => {
@@ -14,6 +14,7 @@ describe('GC project links', () => {
   it('opens the GC projects page on the view a link names', () => {
     expect(gcViewFromSearch(new URLSearchParams(GC_FOLLOW_UP_HREF.split('?')[1]))).toBe('followUp')
     expect(gcViewFromSearch(new URLSearchParams('view=partners'))).toBe('partners')
+    expect(gcViewFromSearch(new URLSearchParams(GC_CUSTOMERS_HREF.split('?')[1]))).toBe('customers')
     expect(gcViewFromSearch(new URLSearchParams(GC_MONEY_HREF.split('?')[1]))).toBe('money')
     expect(gcViewFromSearch(new URLSearchParams(GC_MESSAGES_HREF.split('?')[1]))).toBe('messages')
     expect(gcViewFromSearch(new URLSearchParams('focus=abc'))).toBe('board')

@@ -32,7 +32,7 @@ export function messagesThreadHref(contactId: string, messageId?: string | null)
 }
 
 /** The GC projects page's views, one pill each. */
-export type GcView = 'board' | 'partners' | 'followUp' | 'money' | 'messages'
+export type GcView = 'board' | 'partners' | 'customers' | 'followUp' | 'money' | 'messages'
 
 /**
  * Money → Bill day → From the trades for one job (Messages cut 9): the trades' draws against the bill day. Follow up's
@@ -54,8 +54,11 @@ export function billDayFromSearch(search: URLSearchParams): string | null {
  */
 export function gcViewFromSearch(search: URLSearchParams): GcView {
   const view = search.get('view')
-  return view === 'partners' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
+  return view === 'partners' || view === 'customers' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
 }
+
+/** Customers on the GC projects page (Messages cut 4): every customer by step, or one row each. */
+export const GC_CUSTOMERS_HREF = '/gc?view=customers'
 
 /** How Trade partners or Customers shows its companies (Messages cut 4): the list as it was, or a board. */
 export type BoardBy = 'list' | 'step' | 'company' | 'trade'

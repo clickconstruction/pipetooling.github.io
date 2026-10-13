@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boardCompanyOf, jobPaperCompanyOf, parseFlowRowsKind, portalCellWords, readBoard, type ContactCard, type FlowRowsKindAnswer } from './boardRead'
+import { boardCompanyOf, jobPaperCompanyOf, pageOpensByCustomer, parseFlowRowsKind, portalCellWords, readBoard, type ContactCard, type FlowRowsKindAnswer } from './boardRead'
 import { FLOW_FIXTURE_NOW as NOW, flowFixture } from './flowFixtures'
 import { SEED_FLOWS } from './seed'
 import { readFlow } from './state'
@@ -126,5 +126,22 @@ describe('portalCellWords', () => {
     // 02:00 UTC on Oct 2 is the evening of Oct 1 in Texas: one day, not today.
     expect(portalCellWords(SEED_FLOWS.customer, read('elena'), '2026-10-02T02:00:00Z', NOW)).toBe('1 d ago')
     expect(portalCellWords(SEED_FLOWS.customer, read('elena'), '2026-09-25T16:00:00Z', NOW)).toBe('7 d ago')
+  })
+})
+
+describe('pageOpensByCustomer', () => {
+  it('keeps each customer’s last outside open of their page, the row with no paper', () => {
+    expect(
+      pageOpensByCustomer([
+        { customer_id: 'cu-1', paper_kind: null, paper_id: null, first_opened_at: '2026-09-20T15:00:00Z', last_opened_at: '2026-10-01T15:00:00Z', opens: 4 },
+        { customer_id: 'cu-1', paper_kind: 'co', paper_id: 'co-2', first_opened_at: '2026-10-02T15:00:00Z', last_opened_at: '2026-10-02T15:00:00Z', opens: 1 },
+        { customer_id: 'cu-2', paper_kind: 'payapp', paper_id: 'pa-4', first_opened_at: '2026-09-28T15:00:00Z', last_opened_at: '2026-09-28T15:00:00Z', opens: 1 },
+      ]),
+    ).toEqual({ 'cu-1': '2026-10-01T15:00:00Z' })
+  })
+
+  it('reads anything but a list as nobody opening their page', () => {
+    expect(pageOpensByCustomer(null)).toEqual({})
+    expect(pageOpensByCustomer({ customer_id: 'cu-1' })).toEqual({})
   })
 })

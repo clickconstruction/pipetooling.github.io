@@ -32,6 +32,9 @@ const fromFixtures = (kind: 'trade' | 'customer'): FlowBoard => {
   }
 }
 vi.mock('../../../hooks/useFlowBoard', () => ({ useFlowBoard: () => board }))
+/** Each customer's last open of their page, as the test sets it, or a failed read. */
+let pageOpens: () => Promise<Record<string, string>> = () => Promise.resolve({})
+vi.mock('../../../lib/flows/flowsIo', () => ({ loadCustomerPageOpens: () => pageOpens() }))
 
 const { GcFlowBoard } = await import('./GcFlowBoard')
 
@@ -98,6 +101,19 @@ describe('GcFlowBoard', () => {
     withOpeners(<GcFlowBoard kind="trade" by="trade" list={<p>The list as it was</p>} {...page} />)
     fireEvent.click(within(document.querySelector('[data-board-trade="Structural steel"]') as HTMLElement).getByRole('button', { name: /Bexar Steel Erectors/ }))
     expect(openPartner).toHaveBeenLastCalledWith('co-tom', { tab: 'flow' })
+  })
+
+  it('reads a customer’s last open of their page in By company’s Portal column, and a failed read as unknown', async () => {
+    board = fromFixtures('customer')
+    pageOpens = () => Promise.resolve({ 'cu-elena': new Date().toISOString() })
+    const { unmount } = withOpeners(<GcFlowBoard kind="customer" by="company" {...page} />)
+    const cell = (id: string) => within(document.querySelector(`[data-board-company="${id}"]`) as HTMLElement)
+    expect(await cell('elena').findByText('today')).toBeTruthy()
+    expect(cell('priya').getByText('never')).toBeTruthy()
+    unmount()
+    pageOpens = () => Promise.reject(new Error('offline'))
+    withOpeners(<GcFlowBoard kind="customer" by="company" {...page} />)
+    expect(await cell('elena').findByText('—')).toBeTruthy()
   })
 
   it('says it is reading, and says what went wrong in words', () => {
