@@ -42,6 +42,28 @@ Each message shows how it came, who sent it and its job. A long message shows fo
 
 Press Escape or {{button:outline|×}} to close the thread.
 
+
+## See the emails the app sent on its own
+
+Some emails go out with nobody pressing Send. A reminder, a scheduled notice and a bill the app sends are like that. Each one shows as **the app** in the thread.
+
+Two or more of them in a row fold into one line. It says how many there are and the days they span. Then it lists each email's subject.
+
+:::example A run of the app's emails, folded
+the app &nbsp; {{button:outline|3 emails, Oct 8 to Oct 10 ▸}} &nbsp; Work scheduled &nbsp; Invoice 1312 &nbsp; Paid, thank you
+:::
+
+- Press the count to open the emails in place. Press it again to fold them.
+- A link to one of them opens the thread with its run already open.
+
+An email we sent shows small print under its words when the app knows it. It can say the address it went from. It can say when it was opened and when its bill was paid.
+
+:::example The small print under a bill
+opened Oct 10, 6:12 PM &nbsp; paid Oct 11 by card
+:::
+
+No small print means the app does not know. It does not mean nobody opened it.
+
 ## Read a thread on a phone
 
 On a phone or in a narrow window, the top of the thread folds to fit.
@@ -171,6 +193,6 @@ The list shows first the people who fit where their message came in. A message t
 
 ## What shows in a thread today
 
-A thread holds the emails the office sent them from the app. A thread also holds the emails they send to our bids inbox. Calls and texts join it in a later update.
+A thread holds the emails the office sent them from the app. It holds the ones the app sent on its own too. A thread also holds the emails they send to our bids inbox. Calls and texts join it in a later update.
 
 An estimator does not see the emails we sent in a thread.

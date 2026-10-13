@@ -9,7 +9,9 @@ import { lastWroteTo } from '../../../lib/messages/boxes'
 import type { MessagesView } from '../../../lib/messages/messagesIo'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { stampSentence } from '../../../lib/messages/stamps'
-import { courtOf, threadOf, threadRows } from '../../../lib/messages/thread'
+import { foldedThreadRows } from '../../../lib/messages/appLines'
+import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
+import { courtOf, threadOf } from '../../../lib/messages/thread'
 import { isThreadFolded, reachOpen } from '../../../lib/messages/threadFold'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -20,8 +22,9 @@ import { JobsRail } from './JobsRail'
 import { MessageWindow } from './MessageWindow'
 import type { MessagesWrites } from './messagesWrites'
 import { OpenThreadContext, type OpenThread } from './openThread'
-import { EventLine, ThreadLine } from './ThreadLine'
+import { AppFoldLine, EventLine, ThreadLine } from './ThreadLine'
 import { useThreadSlots, type ThreadMenuRow, type ThreadSlots } from './threadSlots'
+import { useSentLineFacts } from './useSentLineFacts'
 import { WhoIsThisWindow } from './WhoIsThisWindow'
 
 export interface ThreadWindowProps {
@@ -42,6 +45,8 @@ export interface ThreadWindowProps {
   onOpenRecord?: (c: Contact) => void
   /** Who is this? joined the number to a person who already had a thread: show theirs. */
   onShowContact?: (contactId: string) => void
+  /** The sent copies' small print (R8 · 1): `sent_copy_stamps`'s read unless a smoke hands it a fake. */
+  stampsIo?: SentStampsIo
 }
 
 const COURT_TONE: Record<'ours' | 'theirs' | 'none', Tone> = { ours: 'amber', theirs: 'green', none: 'grey' }
@@ -63,7 +68,7 @@ const ONE_LINE = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'no
  * header slot (as its narrow form), ☎ and ⋯, the numbers and addresses wait under the arrow, the status row scrolls
  * sideways, and the jobs run in one sideways strip.
  */
-export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven, view, problem = null, nowIso, writes, onOpenJob, onOpenRecord, onShowContact }: ThreadWindowProps) {
+export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven, view, problem = null, nowIso, writes, onOpenJob, onOpenRecord, onShowContact, stampsIo }: ThreadWindowProps) {
   // Every cut's slots, read here and not by the page: under the page's providers (`useMessagesReread`), and only while a
   // thread is open.
   const cutSlots = useThreadSlots()
@@ -89,7 +94,20 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const contact = view ? contactById(view.contacts, contactId) : undefined
   const lines = useMemo(() => (view && contact ? threadOf(view.messages, contact.id, jobFilter) : []), [view, contact, jobFilter])
   const allLines = useMemo(() => (view && contact ? threadOf(view.messages, contact.id) : []), [view, contact])
-  const rows = useMemo(() => threadRows(lines, nowIso), [lines, nowIso])
+  // The app's runs of lines fold to one row each (R8 · 1, card 1); a press opens one in place, for as long as the window is up.
+  const [openFolds, setOpenFolds] = useState<ReadonlySet<string>>(() => new Set())
+  const rows = useMemo(() => foldedThreadRows(lines, nowIso, { open: openFolds, at }), [lines, nowIso, openFolds, at])
+  const toggleFold = (id: string) =>
+    setOpenFolds((open) => {
+      const next = new Set(open)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const smallPrint = useSentLineFacts(
+    useMemo(() => lines.map((m) => m.id), [lines]),
+    stampsIo,
+  )
   const rail = (contact && view?.rails[contact.id]) || []
 
   const run = useCallback((press: Promise<unknown>, failed: string) => press.catch((e: unknown) => showToast(formatErrorMessage(e, failed), 'error')), [showToast])
@@ -423,6 +441,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                       </div>
                     ) : r.kind === 'event' ? (
                       <EventLine key={r.message.id} message={r.message} time={r.time} />
+                    ) : r.kind === 'fold' ? (
+                      <AppFoldLine key={r.id} row={r} onToggle={() => toggleFold(r.id)} />
                     ) : (
                       <ThreadLine
                         key={`${r.message.id}:${r.message.contactId}`}
@@ -434,6 +454,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                         tying={tying}
                         body={slots.lineBody?.(r.message, contact) ?? null}
                         under={slots.underLine?.(r.message, contact)}
+                        smallPrint={smallPrint.get(r.message.id)}
                         userNames={view?.userNames ?? {}}
                         onOpen={() => setOpenMessageId(r.message.id)}
                         onTie={() => {

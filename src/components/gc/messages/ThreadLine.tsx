@@ -4,6 +4,7 @@ import { LONG_PRESS_MS, useLongPress } from '../../../hooks/useLongPress'
 
 /** How far a finger may travel and still be a hold: `useLongPress`'s own tolerance. */
 const HOLD_TRAVEL_PX = 10
+import type { AppFoldThreadRow } from '../../../lib/messages/appLines'
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { callLength, channelWord, clockTime, isLong, type ThreadMessage } from '../../../lib/messages/thread'
@@ -27,6 +28,7 @@ export function ThreadLine({
   tying,
   body,
   under,
+  smallPrint,
   userNames = {},
   onOpen,
   onTie,
@@ -46,6 +48,8 @@ export function ThreadLine({
   body?: ReactNode | null
   /** What a later cut draws under the line (cut 2's offer for a heard day, cut 6's paper offer). */
   under?: ReactNode
+  /** A sent copy's small print, side by side (R8 · 1, `sentCopyFacts`): "from office@…", "opened Oct 10, 6:12 PM". */
+  smallPrint?: readonly string[]
   /** The team's names, for who filed a paper from the line. */
   userNames?: Readonly<Record<string, string>>
   onOpen: () => void
@@ -217,6 +221,16 @@ export function ThreadLine({
             <FiledLines files={files} userNames={userNames} />
           </>
         )}
+        {smallPrint && smallPrint.length > 0 && (
+          <div data-line-small-print style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.2rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            {smallPrint.map((fact, i) => (
+              <span key={fact}>
+                {i > 0 && <span aria-hidden="true">· </span>}
+                {fact}
+              </span>
+            ))}
+          </div>
+        )}
         {body == null && timeBelow && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>{time}</div>}
       </div>
       {under}
@@ -232,3 +246,36 @@ export function EventLine({ message, time }: { message: ThreadMessage; time: str
     </div>
   )
 }
+
+/**
+ * A run of the app's own lines, folded (R8 · 1, card 1 of the integrations mockups): "the app · 3 emails, Oct 8 to Oct 10
+ * ▸ · Work scheduled · Invoice 1312 · Paid, thank you". The words are the press: it opens the run in place, the lines
+ * drawing under it, and closes it again.
+ */
+export function AppFoldLine({ row, onToggle }: { row: AppFoldThreadRow; onToggle: () => void }) {
+  return (
+    <div
+      data-thread-fold={row.id}
+      style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'baseline', fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.2rem 0', borderBottom: '1px dashed var(--border)' }}
+    >
+      <span>{row.who}</span>
+      <span aria-hidden="true">·</span>
+      <button
+        type="button"
+        aria-expanded={row.open}
+        onClick={onToggle}
+        style={{ border: 'none', background: 'transparent', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-blue-700)', cursor: 'pointer' }}
+      >
+        {row.words} {row.open ? '▾' : '▸'}
+      </button>
+      {!row.open &&
+        row.titles.map((title, i) => (
+          <span key={`${i}:${title}`}>
+            <span aria-hidden="true">· </span>
+            {title}
+          </span>
+        ))}
+    </div>
+  )
+}
+
