@@ -8,13 +8,13 @@ describe('flows/facts', () => {
   it('lists each fact once, in a known group', () => {
     const ids = FLOW_FACTS.map((f) => f.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toHaveLength(33)
+    expect(ids).toHaveLength(44)
     for (const f of FLOW_FACTS) expect(FACT_GROUPS).toContain(f.group)
   })
 
   it('names what cut 4 adds wherever a fact is not kept in full', () => {
     const notFull = FLOW_FACTS.filter((f) => f.kept !== 'yes').map((f) => f.id)
-    expect(notFull).toEqual(['portal_opened', 'not_carried', 'asked_us', 'said_yes', 'payapp_paid', 'warranty_over', 'named'])
+    expect(notFull).toEqual(['portal_opened', 'not_carried', 'asked_us', 'said_yes', 'payapp_paid', 'warranty_over', 'named', 'on_way', 'review_asked'])
     for (const f of FLOW_FACTS) if (f.kept === 'not_yet') expect(f.gap).toBeTruthy()
     expect(factById('portal_opened')?.gap).toContain('first_opened_at')
     expect(factById('said_yes')?.gap).toContain('won_on')
@@ -22,6 +22,27 @@ describe('flows/facts', () => {
     expect(factById('asked_us')?.reads).toContain('gc_projects.created_at')
     // Warranty is computed from the acceptance, so nothing is added for it.
     expect(factById('warranty_over')?.gap).toBeNull()
+  })
+
+  it('lists the residential flow’s eleven facts once each, on the job or one bill, read from main’s columns', () => {
+    const ids = ['booked', 'on_way', 'arrived', 'found', 'estimate_sent', 'estimate_approved', 'working', 'done', 'billed', 'paid', 'review_asked']
+    for (const id of ids) expect(FLOW_FACTS.filter((f) => f.id === id)).toHaveLength(1)
+    expect(FLOW_FACTS.slice(-11).map((f) => f.id)).toEqual(ids)
+    expect(FLOW_FACTS.filter((f) => f.scope === 'round' && ids.includes(f.id)).map((f) => f.id)).toEqual(['billed', 'paid'])
+    expect(factGroups().find((g) => g.group === 'On the job')?.facts.map((f) => f.id)).toEqual(['booked', 'on_way', 'arrived', 'found', 'working', 'done'])
+    expect(factById('booked')?.reads).toContain('job_schedule_blocks')
+    expect(factById('arrived')?.reads).toContain('clock_sessions.clocked_in_at')
+    expect(factById('estimate_approved')?.reads).toContain("'customer_accepted'")
+    expect(factById('done')?.reads).toContain("'ready_to_bill'")
+    expect(factById('billed')?.reads).toContain('billed_at, else sent_to_customer_at')
+    // A sent text keeps no line of its own until R3 adds one, so the loader's word rules stand in.
+    expect(factById('on_way')?.reads).toContain('isOnOurWayText')
+    expect(factById('review_asked')?.reads).toContain('isReviewAskText')
+    expect(factById('on_way')?.gap).toContain('messages.quick_reply_id')
+    expect(factById('review_asked')?.gap).toContain('messages.quick_reply_id')
+    expect(factForPaper('estimate')?.id).toBe('estimate_sent')
+    expect(factForPaper('bill')?.id).toBe('billed')
+    expect(FLOW_PAPERS.estimate.aName).toBe('An estimate')
   })
 
   it('marks the ways out that end a job’s lane: their no to an ask, and the two forks’', () => {
@@ -70,12 +91,13 @@ describe('flows/facts', () => {
     }
   })
 
-  it('has a residential flow and a sub flow with no steps yet (RESIDENTIAL_BUILD_PLAN.md R0)', () => {
-    const empty: FlowKind[] = ['residential', 'sub']
-    for (const kind of empty) expect(SEED_FLOWS[kind]).toEqual({ kind, lanes: [] })
+  it('has a sub flow with no steps yet (RESIDENTIAL_BUILD_PLAN.md R8), and the flows tables allow every kind', () => {
+    expect(SEED_FLOWS.sub).toEqual({ kind: 'sub', lanes: [] })
     expect(stepsByKind(SEED_FLOWS).sub).toEqual([])
-    // The flows tables allow them once a migration widens flows_kind_known; until then the list is the four.
-    expect(FLOW_KINDS).toEqual(['customer', 'trade', 'arch', 'unknown'])
+    // The residential flow's migration widened flows_kind_known to the six; seed.test.ts reads its steps.
+    const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown']
+    expect([...FLOW_KINDS].sort()).toEqual([...all].sort())
+    expect(flat(SEED_FLOWS.residential)).toHaveLength(11)
   })
 
   it('reads a residential flow’s person as a customer, and every other flow’s as its own kind', () => {
