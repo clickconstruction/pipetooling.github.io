@@ -7,7 +7,7 @@
  * Every text goes from the company number, whoever sends it, so a reply lands back in the thread whoever answers. Quo's
  * API sends text only, up to 1,600 characters: a photo goes as a link line, which the caller adds before it asks.
  */
-import { type ComposeCompany, type LinkLine, type OptoutRecord, optoutReason, textToSend } from '../messages/compose'
+import { type ComposeCompany, type LinkLine, type OptoutRecord, optoutReason, textToSend } from '../messages/textOut'
 import type { ThreadMessage } from '../messages/thread'
 import { type QuoLine, toE164 } from './events'
 

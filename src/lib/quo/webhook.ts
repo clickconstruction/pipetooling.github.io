@@ -77,9 +77,16 @@ function signedBytes(id: string, timestamp: string, rawBody: string | Uint8Array
   return out
 }
 
+/** The bytes in a plain ArrayBuffer of their own, which WebCrypto takes under every TypeScript the app and Deno use. */
+function ownBuffer(bytes: Uint8Array): ArrayBuffer {
+  const out = new ArrayBuffer(bytes.length)
+  new Uint8Array(out).set(bytes)
+  return out
+}
+
 async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
-  const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  return new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, data))
+  const cryptoKey = await crypto.subtle.importKey('raw', ownBuffer(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  return new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, ownBuffer(data)))
 }
 
 /**

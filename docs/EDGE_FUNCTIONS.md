@@ -229,6 +229,8 @@ when_to_read:
    - [ar-returned-checks](#ar-returned-checks)
    - [sync-resend-emails](#sync-resend-emails)
    - [resend-webhook](#resend-webhook)
+   - [quo-webhook](#quo-webhook)
+   - [quo-send](#quo-send)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
    - [import-manual-transactions](#import-manual-transactions)
@@ -261,7 +263,7 @@ PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-si
 Not every function takes an `Authorization` header — each function authenticates in one of three ways (see the Overview note on `verify_jwt`):
 
 1. **In-handler user JWT** (the majority): the client sends `Authorization: Bearer <jwt_token>`; the handler calls `auth.getUser` and checks the caller's role from `public.users` before doing anything privileged.
-2. **Webhook signature**: `stripe-webhook`, `mercury-webhook`, and `resend-webhook` are called by the provider, not a signed-in user — they validate the provider's signature header instead of a JWT.
+2. **Webhook signature**: `stripe-webhook`, `mercury-webhook`, `resend-webhook` and `quo-webhook` are called by the provider, not a signed-in user — they validate the provider's signature header instead of a JWT.
 3. **Cron secret / public token**: scheduled functions (`send-scheduled-reminders`, `sync-salary-sessions`, `recurring-job-report-dispatch`, `schedule-day-email-dispatch`, …) require the `X-Cron-Secret` header; public-token functions (`accept-estimate`, `get-estimate-for-customer`, `get-contract-for-signer`, `dev-login`, …) authenticate by an exact token/code in the request rather than a session.
 
 ### Role-Based Access Control
@@ -5034,6 +5036,77 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 2. **Resend dashboard** → Webhooks → Add endpoint: URL `https://<project-ref>.supabase.co/functions/v1/resend-webhook`, subscribe to the **email.** events; copy the endpoint's **signing secret**.
 3. **Secret**: `supabase secrets set RESEND_WEBHOOK_SECRET=whsec_…`
 4. **Verify**: send any app email; Edge logs show `200 { ok: true }` and a row appears in `email_send_log` (visible on Settings → Notifications as dev).
+
+---
+
+### quo-webhook
+
+**Purpose**: Messages, cut 5 (v2.5281): every event of the company number on Quo lands in a person's thread. The rules are the kernels in `src/lib/quo/` (`webhook.ts`, `events.ts`, `send.ts`, `rows.ts`, copied to `_shared/gcKernels/`), and the function reads, writes and calls.
+- **Calls**: completed, missed, voicemail, recording, transcript and summary merge into one line per call, keyed by `messages.quo_id`. Quo promises no order, so every order ends on the same line.
+- **Texts**: a text in is a line. A text of ours that Quo reports (`message.delivered`, `message.failed`, `message.undelivered`) is a line per recipient. That covers a text sent from Quo's own phone app, and our own send's fields always win.
+- **STOP, START and HELP**: Quo stops a number on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT and answers it, and START and UNSTOP bring it back. The function mirrors that on `contact_channels.opted_out_at`. It answers only what Quo leaves: HELP and INFO, and the FCC's REVOKE and OPT OUT once, through `quo-send`'s path. A longer text that may ask to stop gets a team note instead.
+- **A number nobody has** becomes an unknown contact, the Who is this? row, through `quo_place_number`.
+
+**Endpoint**: `POST /functions/v1/quo-webhook`, called by Quo.
+
+**Authentication**: Quo's Standard Webhooks signature (`verifySignature`).
+- Headers: `webhook-id`, `webhook-timestamp` and `webhook-signature`.
+- HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the base64 after `whsec_`. Any `v1` entry passes.
+- Five minutes either way.
+- No Bearer JWT, so **`verify_jwt = false`**.
+
+**Order**:
+1. Verify the signature. A refusal is `401` and records nothing.
+2. `quo_webhook_claim` with the `webhook-id`. A repeat is `200`.
+3. `readQuoEvent`. Nothing to do is `200`, with the reason logged.
+4. For each number:
+   - `quo_place_number`;
+   - `planQuoEvent`, merged and written by `quo_write_line` over the revision read (a refused write is read and merged again, five tries);
+   - the STOP mirrored;
+   - a team event, keyed `<quo id>:event` so a retry never doubles it;
+   - the app's answer, last.
+5. `200`. A failure first gives the claim back (`quo_webhook_release`), then answers `500`, so Quo sends it again: eight tries over about 27 and a half hours.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `QUO_WEBHOOK_SECRET`. The HELP answer also needs `quo-send`'s: `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. The seats are read as `quo-send` reads them.
+
+**Tables**: `messages` (its Quo columns, `20261012170000_quo_messages.sql`), `contacts` and `contact_channels` (through `quo_place_number`), `contact_jobs` (the star) and `quo_webhook_ids`.
+
+**Not deployed yet**: it waits on the spine's and cut 5's migrations on prod and on the Quo account (`to-dos/gc-mode/HANDOFF.md` call 4). To enable it:
+1. `supabase functions deploy quo-webhook --no-verify-jwt`.
+2. Quo's `POST /v1/webhooks` (header `Quo-Api-Version: 2026-03-30`), with the company number's id and the ten events above. Keep the `whsec_` key it returns.
+3. `supabase secrets set QUO_WEBHOOK_SECRET=whsec_…`.
+4. Quo's Send Test Request: the log shows `200`.
+5. A text from Quo's phone app to a number we hold, to see `message.delivered` land in the thread.
+
+---
+
+### quo-send
+
+**Purpose**: Messages, cut 5 (v2.5281): a text from the reply box's send window goes out through Quo from the company number. `sendText` (`_shared/quoLines.ts`) is the path the webhook's HELP answer takes too:
+- `planSend` refuses an empty text, a missing or unreadable number, a number that sent STOP and a text past Quo's 1,600 characters.
+- It adds the opt-out line on the first text to a number, or after 30 days since our last text to it. A person may hold it once, on the silence reason.
+- The text is posted to `https://api.quo.com/v1/messages` as `{ content, from: QUO_PHONE_NUMBER_ID, to: [E.164], userId }`, the user being the sender's seat when they have one.
+- The line is written by `quo_write_line` under the id Quo answers with (`sendOver`), so Quo's delivery event, before or after, ends on the same line.
+
+**Endpoint**: `POST /functions/v1/quo-send` with `{ contactId, channelId, body, links?, held?, tie? }` (`parseQuoSendBody`). The number is one of the contact's `contact_channels`. `tie` is `{ jobId, column }` with the column `bid_id`, `project_id` or `jobs_ledger_id`.
+
+**Authentication**: `verify_jwt = false`. In the handler:
+- `getUser`;
+- a real account (`REAL_ACCOUNT`: never a sample or a digital twin), not `read_only`;
+- `gc_office_team()`, asked as the caller.
+
+**Responses**: `200 { ok: true, messageId, quoId, segments }`. A refusal is `{ ok: false, error, words }`, the words plain for the window:
+- `401 signIn`;
+- `403 readOnly` or `officeOnly`;
+- `400 badRequest`;
+- `404 notFound`;
+- `422` a refusal of `planSend`'s;
+- `502 quo` (Quo did not take it);
+- `503 not-set-up`.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. **The seats** (which of Quo's workspace users is which of ours) come from `app_settings` `messages_quo_seats_v1` (Settings → Phone and texts, migration `20261013040000_quo_seats`) once it names a seat; until then from the `QUO_SEATS` secret (`{"US…": "<user id>"}`), which can go once the row is filled (`seatsSource` in `quo/rows.ts`).
+
+**Not deployed yet**: it waits with `quo-webhook`. Quo's API sends no picture messages, so a photo goes as a link line.
 
 ---
 

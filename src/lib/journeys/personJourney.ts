@@ -478,6 +478,8 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
       : na('None')
     // GC mode (v2.4799): the question email goes to a GC project's architect; the GC projects' own record lands with the company record.
     steps['plan-question-email'] = na('GC mode: read on the GC project')
+    // Messages cut 5: a text from the company number is a line in their thread, read there.
+    steps['gc-text'] = na('Messages: read in their thread')
     steps['submittal-email'] = na('GC mode: read on the GC project')
     steps['rfi-email'] = na('GC mode: read on the GC project')
     // GC mode (O4b): our pay application and the ask to certify it go to a GC project's customer and architect.
@@ -525,6 +527,7 @@ export function subJourney(subject: Extract<PersonSubject, { kind: 'sub' }>, row
   steps['gc-trade-email'] = na('GC mode: read on the trade partner company')
   steps['gc-file-link'] = na('GC mode: read on the message that sent the file')
   steps['sub-reply-email'] = na('Messages: read in their thread')
+  steps['sub-text'] = na('Messages: read in their thread')
   const c = latestBy(rows.contracts, (x) => x.sent_at ?? x.signed_at) ?? rows.contracts[0] ?? null
   if (!c) {
     steps['sub-contract-email'] = never('No contract sent', { label: 'Open People → Contracts', to: '/people?tab=contracts' })

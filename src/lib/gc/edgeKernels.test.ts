@@ -53,7 +53,8 @@ describe('the copy of the kernels', () => {
     const bundle = walk(ROOT, `${g.OUT_DIR}/index.ts`, io)
     expect(bundle.unresolved).toEqual([])
     expect(bundle.files).toHaveLength(files.size - typeFiles.length)
-    expect(typeFiles).toEqual(['lib/gc/types.ts'])
+    // The thread's file type sits in its own types file, so the Quo kernels take it without lineFiles.ts's code.
+    expect(typeFiles).toEqual(['lib/gc/types.ts', 'lib/messages/lineFileTypes.ts'])
   })
 })
 

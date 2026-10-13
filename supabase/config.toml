@@ -987,3 +987,13 @@ verify_jwt = false
 # Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
 [functions.photo-save]
 verify_jwt = false
+
+# Messages, cut 5: Quo posts its events signed with the webhook's whsec_ key (webhook-id, webhook-timestamp,
+# webhook-signature), never with a Supabase session. The function checks the signature itself.
+[functions.quo-webhook]
+verify_jwt = false
+
+# Same as gc-customer-email: the caller's session is checked in the function (getUser, REAL_ACCOUNT, read_only,
+# gc_office_team()).
+[functions.quo-send]
+verify_jwt = false
