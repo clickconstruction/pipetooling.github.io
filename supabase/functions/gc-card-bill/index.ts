@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { stripeApiKeyForMode, type StripeBillingMode } from '../_shared/stripeSecrets.ts'
 import { clearCustomerStripeCustomerId, isMissingStripeCustomerError, stripeCustomerIdColumnForMode } from '../_shared/stripeStaleCustomer.ts'
@@ -70,7 +70,7 @@ async function sha256Hex(value: string): Promise<string> {
     .join('')
 }
 
-type Admin = ReturnType<typeof createClient>
+type Admin = SupabaseClient
 
 /** The Stripe customer the app keeps for this customer and mode (as create-stripe-invoice keeps it), made when none. */
 async function stripeCustomerFor(stripe: Stripe, admin: Admin, mode: StripeBillingMode, customer: Record<string, unknown>, email: string): Promise<string> {
@@ -89,7 +89,7 @@ async function stripeCustomerFor(stripe: Stripe, admin: Admin, mode: StripeBilli
   }
   if (!stripeCustomerId) {
     const created = await stripe.customers.create({ email, name, metadata: { pipetooling_customer_id: id } })
-    stripeCustomerId = created.id
+    stripeCustomerId = created.id as string
     await admin.from('customers').update({ [column]: stripeCustomerId }).eq('id', id)
   }
   return stripeCustomerId
