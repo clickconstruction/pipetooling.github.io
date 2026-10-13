@@ -42,6 +42,8 @@ import { SettingsContractsTab } from '../components/settings/SettingsContractsTa
 import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
 import { canEditClause, canEditFlows } from '../lib/gc/access'
+import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
+import { canSwitchReplyPush } from '../lib/messages/replyPushSwitch'
 import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
 import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
@@ -1505,6 +1507,7 @@ export default function Settings() {
             <QuoSeatsSettingsSection />
             <BoxesSettingsCard />
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
+            {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
           </div>
         )}
       </SettingsGroup>
