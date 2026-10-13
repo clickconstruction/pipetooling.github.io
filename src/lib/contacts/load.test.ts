@@ -131,6 +131,11 @@ describe('the four kinds of 2026-10-13 (rows as R0’s SQL PR shapes them)', () 
     ])
   })
 
+  it('a lead nobody has added to Prospects has no record, and reads by its own name, else its number', () => {
+    expect(contactFromRows({ ...base, id: 'c-walkin', kind: 'lead', name: 'Walk-in Lead' }, [], [], RECORDS)).toMatchObject({ kind: 'lead', record: null, name: 'Walk-in Lead', company: '' })
+    expect(contactFromRows({ ...base, id: 'c-unknown', kind: 'lead' }, SPINE_CHANNELS, [], RECORDS)).toMatchObject({ kind: 'lead', record: null, name: '(830) 555-0199' })
+  })
+
   it('a sub on the roster loads as the kind kindOf gives from the roster', () => {
     const tony = contactById(four, 'c-tony')!
     expect(kindOf(tony.record!, 'sub')).toBe(tony.kind)

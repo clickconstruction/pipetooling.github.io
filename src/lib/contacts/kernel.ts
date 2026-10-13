@@ -10,7 +10,8 @@
  * `customer_contacts` and `gc_customer_contacts` are logs of calls, not people, so nothing points at them.
  *
  * Seven kinds of contact (the owner's call of 2026-10-13, `RESIDENTIAL_BUILD_PLAN.md` R0): a customer, a trade
- * partner and an architect, and four more. A lead is a `prospects` row until they book; a supply house is its
+ * partner and an architect, and four more. A lead has no record until someone adds them to Prospects, then a
+ * `prospects` row until they book, when they become the customer; a supply house is its
  * `supply_houses` row, the counter, and a rep at it is a `supply_house_contacts` row; a candidate is a row on the Team
  * hiring board, `team_prospects`; a sub is a `people` row whose roster kind is `sub`, so a sub and a roster person
  * point at the same table and `kindOf` tells them apart.
@@ -21,7 +22,7 @@ import type { ContactKind } from './names'
 // What a contact is called lives in `names.ts`, light enough to run on the edge. It is the kernel's too.
 export * from './names'
 
-/** The record a contact is. Null: a number nobody has named yet, the one contact with no record. */
+/** The record a contact is. Null: a number nobody has named yet, or a lead nobody has added to Prospects. */
 export type ContactRecord =
   /** A customer who is one person. */
   | { table: 'customers'; id: string }
@@ -204,18 +205,20 @@ function samePerson(c: Contact, target: NameTarget): boolean {
 }
 
 /**
- * Who *Who is this?* may name: a number nobody has named, or a lead who booked, named once more as the customer they
- * became (the SQL's `name_contact` holds the same rule).
+ * Who *Who is this?* may name: a number nobody has named; a lead with no record, added to Prospects; and a lead who
+ * booked, named once more as the customer they became (the SQL's `name_contact` holds the same rule).
  */
 function nameable(c: Contact, target: NameTarget): boolean {
   if (c.kind === 'unknown') return true
-  return c.kind === 'lead' && target.kind === 'customer' && (target.record.table === 'customers' || target.record.table === 'customer_contact_persons')
+  if (c.kind !== 'lead') return false
+  if (target.kind === 'lead') return c.record === null && target.record.table === 'prospects'
+  return target.kind === 'customer' && (target.record.table === 'customers' || target.record.table === 'customer_contact_persons')
 }
 
 /**
  * *Who is this?*: re-points a contact at a record and keeps its thread. When someone already is that person, one person
- * keeps one contact, so the unknown one folds into theirs. A lead who booked re-points to the customer the same way,
- * keeping their jobs. Null when the contact is neither an unknown number nor a lead named as a customer.
+ * keeps one contact, so the unknown one folds into theirs. A lead added to Prospects, or who booked and is named as
+ * the customer, re-points the same way, keeping their jobs. Null for any other contact that is named already.
  */
 export function nameContact(contacts: readonly Contact[], unknownId: string, target: NameTarget): NamePlan | null {
   const unknown = contactById(contacts, unknownId)

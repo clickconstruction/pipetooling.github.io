@@ -229,6 +229,19 @@ describe('Who is this? re-points and keeps the thread', () => {
     expect(nameContact(contacts, 'unk1', { record: elena.record!, kind: 'customer', name: elena.name, company: elena.company })).toMatchObject({ way: 'merge', into: { id: elena.id }, dropId: 'unk1' })
   })
 
+  it('a lead with no record is added to Prospects, and folds into the lead already there', () => {
+    const lead: Contact = { ...who('unk1'), kind: 'lead', name: 'Kevin Alvarez', record: null }
+    const contacts = DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? lead : c))
+    expect(nameContact(contacts, 'unk1', { record: { table: 'prospects', id: 'pr-1' }, kind: 'lead', name: 'Kevin Alvarez', company: '' })).toMatchObject({
+      way: 'repoint',
+      contact: { id: 'unk1', kind: 'lead', record: { table: 'prospects', id: 'pr-1' } },
+    })
+    const onProspects: Contact = { ...who('greg'), id: 'kevin-pr', kind: 'lead', name: 'Kevin Alvarez', record: { table: 'prospects', id: 'pr-1' }, channels: [] }
+    expect(nameContact([...contacts, onProspects], 'unk1', { record: { table: 'prospects', id: 'pr-1' }, kind: 'lead', name: 'Kevin Alvarez', company: '' })).toMatchObject({ way: 'merge', into: { id: 'kevin-pr' } })
+    // A lead already on Prospects is not added again.
+    expect(nameContact([...contacts, onProspects], 'kevin-pr', { record: { table: 'prospects', id: 'pr-2' }, kind: 'lead', name: 'Kevin Alvarez', company: '' })).toBeNull()
+  })
+
   it('a lead is named again only as a customer, and nobody else is named again', () => {
     const lead: Contact = { ...who('unk1'), kind: 'lead', record: { table: 'prospects', id: 'pr-1' } }
     const contacts = DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? lead : c))
