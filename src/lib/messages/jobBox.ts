@@ -2,10 +2,11 @@
  * Messages, residential R2 PR 2: the box in a job's window, **Note · Text · Email** (`RESIDENTIAL_BUILD_PLAN.md` → R2
  * on branch spike/gc-mode). Pure. A note stays the crew's note on the job, the panel's own composer. A text or an
  * email goes to the job's customer through cut 3's reply box (`ReplyBox`), tied to the job, in the customer's orange.
- * The office team writes to a customer, as everywhere in Messages; a tech's door is R5's.
+ * The office team writes to a customer, as everywhere in Messages. A tech's door is R5's, on Job Mode, through
+ * `jobModeMessagesOffered` below: the one place who may message a customer from a job is said.
  */
 import type { UserRole } from '../../hooks/useAuth'
-import { GC_OFFICE_TEAM } from '../gc/access'
+import { canMessageCustomersFromJobMode, GC_OFFICE_TEAM } from '../gc/access'
 import { jobKey } from './load'
 
 export type JobBoxKind = 'note' | 'text' | 'email'
@@ -20,6 +21,17 @@ export const JOB_BOX_KINDS: ReadonlyArray<{ kind: JobBoxKind; label: string; tip
 /** Who sees Text and Email in a job's window: the office team, who read and write Messages. */
 export function jobBoxOffered(role: UserRole | null | undefined): boolean {
   return role != null && GC_OFFICE_TEAM.includes(role)
+}
+
+/**
+ * Job Mode's **Message the customer** (R5) is switched off until `quo-send` takes a tech's text: its tech path reads
+ * the customer's number from their record and holds their answer for the tech. Turn it on in that PR's deploy.
+ */
+export const JOB_MODE_MESSAGES_ON = false
+
+/** Who sees **Message the customer** on Job Mode: the tech's door (`MESSAGES_TECH_TEAM`), once the switch is on. */
+export function jobModeMessagesOffered(role: UserRole | null | undefined, on: boolean = JOB_MODE_MESSAGES_ON): boolean {
+  return on && canMessageCustomersFromJobMode(role)
 }
 
 /** What Text and Email say on a job with no customer on it. */

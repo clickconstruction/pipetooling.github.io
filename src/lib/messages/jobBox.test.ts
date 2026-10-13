@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { JOB_BOX_KINDS, jobBoxJobKey, jobBoxJobName, jobBoxOffered, NO_CUSTOMER_WORDS } from './jobBox'
+import { JOB_BOX_KINDS, JOB_MODE_MESSAGES_ON, jobBoxJobKey, jobBoxJobName, jobBoxOffered, jobModeMessagesOffered, NO_CUSTOMER_WORDS } from './jobBox'
 
 describe('the box in a job’s window', () => {
   it('offers Note, Text and Email in that order', () => {
@@ -11,6 +11,16 @@ describe('the box in a job’s window', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const) expect(jobBoxOffered(role)).toBe(true)
     for (const role of ['primary', 'helpers', 'superintendent', 'subcontractor'] as const) expect(jobBoxOffered(role)).toBe(false)
     expect(jobBoxOffered(null)).toBe(false)
+  })
+
+  it('offers Job Mode’s Message the customer to the tech’s door only, and only once it is switched on', () => {
+    expect(JOB_MODE_MESSAGES_ON).toBe(false)
+    for (const role of ['primary', 'helpers'] as const) {
+      expect(jobModeMessagesOffered(role)).toBe(false)
+      expect(jobModeMessagesOffered(role, true)).toBe(true)
+    }
+    for (const role of ['dev', 'master_technician', 'assistant', 'superintendent', 'subcontractor'] as const) expect(jobModeMessagesOffered(role, true)).toBe(false)
+    expect(jobModeMessagesOffered(null, true)).toBe(false)
   })
 
   it('ties a reply to the Pipeline job, as the thread keys it', () => {
