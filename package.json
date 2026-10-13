@@ -77,6 +77,7 @@
     "test:pg:portal-customer-page": "bash scripts/pgtest-portal-customer-page.sh",
     "test:pg:customer-portal-papers": "bash scripts/pgtest-customer-portal-papers.sh",
     "test:pg:merge-customers": "bash scripts/pgtest-merge-customers.sh",
+    "test:pg:running-late-move": "bash scripts/pgtest-running-late-move.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",

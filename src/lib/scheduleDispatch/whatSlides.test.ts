@@ -63,12 +63,15 @@ describe('whatSlides', () => {
     expect(whatSlides(MORNING, { ...RUNNING_LATE, timeEnd: '09:00' }, SENT_AT)).toBeNull()
   })
 
-  it('marks a slide that would run past midnight', () => {
-    const late = block('e1', '1500', 'Dana Whitfield', '21:00:00', '22:00:00')
-    const later = block('e2', '1501', 'Greg Hill', '22:00:00', '23:30:00')
-    const read = whatSlides([late, later], { blockId: 'e1', timeStart: '22:00', timeEnd: '23:00', saidTo: 'Dana' }, SENT_AT)!
-    expect(read.slides[0]!.toEnd).toBe(24 * 60 + 30)
+  it('marks a slide that would run past 8:00 PM, the board’s day end', () => {
+    const late = block('e1', '1500', 'Dana Whitfield', '17:30:00', '18:30:00')
+    const later = block('e2', '1501', 'Greg Hill', '18:30:00', '19:30:00')
+    const read = whatSlides([late, later], { blockId: 'e1', timeStart: '18:30', timeEnd: '19:30', saidTo: 'Dana' }, SENT_AT)!
+    expect(read.slides[0]!.toEnd).toBe(20 * 60 + 30)
     expect(read.pastDayEnd).toBe(true)
+    const toEight = whatSlides([late, later], { blockId: 'e1', timeStart: '18:00', timeEnd: '19:00', saidTo: 'Dana' }, SENT_AT)!
+    expect(toEight.slides[0]!.toEnd).toBe(20 * 60)
+    expect(toEight.pastDayEnd).toBe(false)
   })
 })
 
@@ -93,48 +96,47 @@ describe('moveAsk', () => {
     expect(none.lines[1]).toBe('Nothing else on Luis’s day moves.')
   })
 
-  it('offers only Leave the board past midnight', () => {
-    const late = block('e1', '1500', 'Dana Whitfield', '21:00:00', '22:00:00')
-    const later = block('e2', '1501', 'Greg Hill', '22:00:00', '23:30:00')
-    const ask = moveAsk(whatSlides([late, later], { blockId: 'e1', timeStart: '22:00', timeEnd: '23:00', saidTo: 'Dana' }, SENT_AT)!, 'Luis')
+  it('offers only Leave the board past 8:00 PM', () => {
+    const late = block('e1', '1500', 'Dana Whitfield', '17:30:00', '18:30:00')
+    const later = block('e2', '1501', 'Greg Hill', '18:30:00', '19:30:00')
+    const ask = moveAsk(whatSlides([late, later], { blockId: 'e1', timeStart: '18:30', timeEnd: '19:30', saidTo: 'Dana' }, SENT_AT)!, 'Luis')
     expect(ask.presses).toEqual([{ id: 'leave', label: 'Leave the board' }])
-    expect(ask.lines).toContain('That would run Luis’s day past midnight.')
+    expect(ask.lines).toContain('That would run Luis’s day past 8:00 PM.')
   })
 
   it('passes the plain words rules', () => {
     const tight = block('b3', '1340', 'Hillside Church', '11:15:00', '12:00:00', { groupId: 'crew-1' })
     const read = whatSlides([SEWER, { ...HEATER, groupId: 'crew-2' }, tight], RUNNING_LATE, SENT_AT)!
     const write = boardWrite(read, 'Luis')!
-    const words = [...moveAsk(read, 'Luis').lines, write.jobLine, write.dispatcherNote.reference_summary]
+    const words = [...moveAsk(read, 'Luis').lines, write.p_job_line, write.p_note_summary]
     expect(words.flatMap(plainWordsFailures)).toEqual([])
   })
 })
 
 describe('boardWrite', () => {
-  it('writes one self_move_schedule_block row per block, the last stop first, in the RPC’s own shape', () => {
+  it('moves one self_move_schedule_block row per block, the last stop first and the late block last', () => {
     const write = boardWrite(whatSlides(MORNING, RUNNING_LATE, SENT_AT)!, 'Luis')!
-    expect(write.rows).toEqual([
+    expect(write.p_moves).toEqual([
       { p_block_id: 'b2', p_work_date: '2026-10-12', p_time_start: '10:00:00', p_time_end: '11:30:00' },
       { p_block_id: 'b1', p_work_date: '2026-10-12', p_time_start: '09:30:00', p_time_end: '10:00:00' },
     ])
   })
 
-  it('words the job’s event line and the dispatcher’s note for R8’s SQL', () => {
+  it('carries the reason, the job’s event line and the dispatcher’s note in running_late_move’s own arguments', () => {
     const write = boardWrite(whatSlides(MORNING, RUNNING_LATE, SENT_AT)!, 'Luis')!
-    expect(write.jobLine).toBe('Running late. Moved from 8:00 AM to 9:30 AM, said to Dana, 9:02 AM.')
-    expect(write.dispatcherNote).toEqual({
-      title: 'Luis is running late on job 1312',
-      reference_summary: 'Job 1312 moves from 8:00 AM to 9:30 AM, said to Dana, 9:02 AM. Job 1298 for Marcus Ortiz slides 30 minutes.',
-      job_ledger_id: 'jl-1312',
-    })
+    expect(Object.keys(write).sort()).toEqual(['p_job_line', 'p_moves', 'p_note_summary', 'p_note_title', 'p_reason'])
+    expect(write.p_reason).toBe('said to Dana, 9:02 AM')
+    expect(write.p_job_line).toBe('Running late. Moved from 8:00 AM to 9:30 AM, said to Dana, 9:02 AM.')
+    expect(write.p_note_title).toBe('Luis is running late on job 1312')
+    expect(write.p_note_summary).toBe('Job 1312 moves from 8:00 AM to 9:30 AM, said to Dana, 9:02 AM. Job 1298 for Marcus Ortiz slides 30 minutes.')
   })
 
-  it('writes the moved block alone when nothing comes after it, and nothing past midnight', () => {
+  it('writes the moved block alone when nothing comes after it, and nothing past 8:00 PM', () => {
     const alone = boardWrite(whatSlides(MORNING, { blockId: 'b3', timeStart: '12:30', timeEnd: '14:30', saidTo: 'Hillside' }, SENT_AT)!, 'Luis')!
-    expect(alone.rows).toEqual([{ p_block_id: 'b3', p_work_date: '2026-10-12', p_time_start: '12:30:00', p_time_end: '14:30:00' }])
-    const late = block('e1', '1500', 'Dana Whitfield', '21:00:00', '22:00:00')
-    const later = block('e2', '1501', 'Greg Hill', '22:00:00', '23:30:00')
-    expect(boardWrite(whatSlides([late, later], { blockId: 'e1', timeStart: '22:00', timeEnd: '23:00', saidTo: 'Dana' }, SENT_AT)!, 'Luis')).toBeNull()
+    expect(alone.p_moves).toEqual([{ p_block_id: 'b3', p_work_date: '2026-10-12', p_time_start: '12:30:00', p_time_end: '14:30:00' }])
+    const late = block('e1', '1500', 'Dana Whitfield', '17:30:00', '18:30:00')
+    const later = block('e2', '1501', 'Greg Hill', '18:30:00', '19:30:00')
+    expect(boardWrite(whatSlides([late, later], { blockId: 'e1', timeStart: '18:30', timeEnd: '19:30', saidTo: 'Dana' }, SENT_AT)!, 'Luis')).toBeNull()
   })
 })
 
