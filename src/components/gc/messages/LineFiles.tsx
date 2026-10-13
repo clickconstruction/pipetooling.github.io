@@ -64,12 +64,16 @@ export function LineFileChips({ files, onOpen }: { files: readonly LineFile[]; o
 
 /** "✓ Filed as their certificate · Rosa, Oct 12", once for each paper the office filed from the line. */
 export function FiledLines({ files, userNames }: { files: readonly LineFile[]; userNames: Readonly<Record<string, string>> }) {
-  const words = files.map((f) => filedWords(f, userNames)).filter((w): w is string => Boolean(w))
+  // Keyed by the file: two certificates filed from one email by one person on one day read the same.
+  const filed = files.flatMap((f) => {
+    const words = filedWords(f, userNames)
+    return words ? [{ id: f.id, words }] : []
+  })
   return (
     <>
-      {words.map((w) => (
-        <div key={w} data-line-filed style={{ marginTop: '0.35rem', fontSize: '0.78rem', color: 'var(--text-green-700)' }}>
-          ✓ {w}
+      {filed.map(({ id, words }) => (
+        <div key={id} data-line-filed style={{ marginTop: '0.35rem', fontSize: '0.78rem', color: 'var(--text-green-700)' }}>
+          ✓ {words}
         </div>
       ))}
     </>
