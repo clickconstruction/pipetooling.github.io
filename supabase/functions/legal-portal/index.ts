@@ -262,7 +262,7 @@ serve(async (req) => {
 
     // Item 20's floor columns ride the named list once its migration (20261006140000) is pushed; until then the
     // read without them answers, and every matter reads no floor (item 23 names the columns, so '*' is gone).
-    const readMatters = (cols: string) => admin.from('legal_matters').select(cols).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
+    const readMatters = (cols: string) => admin.from('legal_matters').select<string, Row>(cols).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
     let matterRes = await readMatters(`${MATTER_COUNSEL_SELECT.matters}, settlement_floor_amount, settlement_floor_pct`)
     if (matterRes.error) matterRes = await readMatters(MATTER_COUNSEL_SELECT.matters)
     const matterRows = matterRes.data
@@ -298,16 +298,16 @@ serve(async (req) => {
     const customerIds = [...new Set(matters.map((m) => m.customer_id as string | null).filter((x): x is string => Boolean(x)))]
 
     const [jobsRes, invRes, payRes, custRes, personsRes, addrRes, contractsRes, estRes, demandRes, filingRes, deskItemRes, promRes, touchRes, contactRes, reportRes, tplRes, sessRes, noteRes, entryRes] = await Promise.all([
-      allJobIds.length ? admin.from('jobs_ledger').select(MATTER_COUNSEL_SELECT.jobs).in('id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_invoices').select(MATTER_COUNSEL_SELECT.invoices).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_payments').select(MATTER_COUNSEL_SELECT.payments).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customers').select(MATTER_COUNSEL_SELECT.customers).in('id', customerIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customer_contact_persons').select(MATTER_COUNSEL_SELECT.contactPersons).in('customer_id', customerIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customer_addresses').select(MATTER_COUNSEL_SELECT.addresses).in('customer_id', customerIds).order('sequence_order') : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_contracts').select(MATTER_COUNSEL_SELECT.contracts).in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('estimates').select(MATTER_COUNSEL_SELECT.estimates).in('job_ledger_id', allJobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_demand_letters').select(MATTER_COUNSEL_SELECT.demandLetters).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_lien_filings').select(MATTER_COUNSEL_SELECT.filings).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger').select<string, Row>(MATTER_COUNSEL_SELECT.jobs).in('id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger_invoices').select<string, Row>(MATTER_COUNSEL_SELECT.invoices).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger_payments').select<string, Row>(MATTER_COUNSEL_SELECT.payments).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customers').select<string, Row>(MATTER_COUNSEL_SELECT.customers).in('id', customerIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customer_contact_persons').select<string, Row>(MATTER_COUNSEL_SELECT.contactPersons).in('customer_id', customerIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customer_addresses').select<string, Row>(MATTER_COUNSEL_SELECT.addresses).in('customer_id', customerIds).order('sequence_order') : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_contracts').select<string, Row>(MATTER_COUNSEL_SELECT.contracts).in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('estimates').select<string, Row>(MATTER_COUNSEL_SELECT.estimates).in('job_ledger_id', allJobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_demand_letters').select<string, Row>(MATTER_COUNSEL_SELECT.demandLetters).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_lien_filings').select<string, Row>(MATTER_COUNSEL_SELECT.filings).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_lien_desk_items').select('id, job_id, kind, status, sent_at, sent_filing_id, fields, created_at, voided_at').in('job_id', allJobIds).eq('kind', 'notice_53_056').is('voided_at', null) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_payment_promises').select('id, job_id, customer_id, promised_date, said_by, heard_by, channel, source, note, created_at, voided_at').in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('job_payment_chase_touches').select('id, customer_id, job_id, outcome, note, promised_date, snooze_days, resolved_at, created_at, created_by').in('customer_id', customerIds) : Promise.resolve({ data: [] }),
@@ -356,8 +356,8 @@ serve(async (req) => {
     // owner's email. The packet kernel resolves one property per job and runs each job's lien clock from it.
     const jobAddressIds = [...new Set(jobs.map((j) => j.customer_address_id as string | null).filter((v): v is string => Boolean(v)))]
     const [jobAddrRes, ownerRes] = await Promise.all([
-      jobAddressIds.length ? admin.from('customer_addresses').select(MATTER_COUNSEL_SELECT.jobAddresses).in('id', jobAddressIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_property_owners').select(MATTER_COUNSEL_SELECT.jobOwners).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      jobAddressIds.length ? admin.from('customer_addresses').select<string, Row>(MATTER_COUNSEL_SELECT.jobAddresses).in('id', jobAddressIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_property_owners').select<string, Row>(MATTER_COUNSEL_SELECT.jobOwners).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
     ])
     const jobAddressRows = (jobAddrRes.data ?? []) as Row[]
     const ownerRows = (ownerRes.data ?? []) as Row[]
@@ -427,7 +427,7 @@ serve(async (req) => {
 
       const mInvoices = invoices.filter((i) => jobIdSet.has(i.job_id as string))
       const mPayments = payments.filter((p) => jobIdSet.has(p.job_id as string))
-      const jobsWithDetails = mJobs.map((j) => ({
+      const jobsWithDetails: Row[] = mJobs.map((j) => ({
         ...j,
         invoices: mInvoices.filter((i) => i.job_id === j.id),
         payments: mPayments.filter((p) => p.job_id === j.id),
