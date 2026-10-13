@@ -9,10 +9,15 @@
  * shows a thread only the lines for that kind of person: the step they are on first, then the rest of their kind,
  * then anyone's; your most used first in each, then the team's. Every change is a version with who and when, and a
  * removed line stays in the history and comes back from the Removed tab.
+ *
+ * Residential R3 (`RESIDENTIAL_BUILD_PLAN.md` → R3, the residential prototype v0.8's `FLOWS`, `stepName`,
+ * `stepOptions` and `grouped`): a kind of person may have more than one flow. A customer has the residential flow and
+ * the GC customer's, so the steps are kept per flow (`stepsByFlow`) and a step is named across the flows of its kind
+ * (`qrStepName`). A line keeps only its step's id (`quick_replies.step_key`), so no two flows of one kind share an id.
  */
 
 import type { ContactKind } from '../contacts/kernel'
-import type { FlowKind } from '../flows/facts'
+import { flowContactKind, type FlowKind } from '../flows/facts'
 import type { FlowDef, FlowStep } from '../flows/state'
 
 // ---------- the line ----------
@@ -40,20 +45,53 @@ export interface QuickReply {
   lastUsed: { at: number; by: string; contactId: string | null } | null
 }
 
-/** A step of a kind's flow as a line names it: the flow's own step, by its id and name. */
-export type StepRef = Pick<FlowStep, 'id' | 'name'>
+/** A step of a kind's flow as a line names it: the flow's own step, by its id and name, and the flow it is on. */
+export type StepRef = Pick<FlowStep, 'id' | 'name'> & { flow?: FlowKind }
 
-/** The flow's steps for each kind of person, in the flow's order. */
+/** The flow's steps for each kind of person, in the flow's order; a kind with two flows has both, one after the other. */
 export type StepsByKind = Partial<Record<QuickReplyFor, readonly StepRef[]>>
 
+/** A flow's name, where the editor says which flow a step is on. The residential prototype's words. */
+export const FLOW_NAMES: Readonly<Record<Exclude<FlowKind, 'unknown'>, string>> = {
+  residential: 'Residential customer',
+  customer: 'GC customer',
+  trade: 'Trade partner',
+  arch: 'Architect',
+  sub: 'Sub',
+}
+
+/** The flows a line can be on, in the editor's order: a customer's residential flow before the GC customer's. */
+const FLOW_ORDER: readonly (keyof typeof FLOW_NAMES)[] = ['residential', 'customer', 'trade', 'arch', 'sub']
+
+/** One flow's steps, as the step picker groups them under the flow's name. */
+export interface FlowSteps {
+  flow: FlowKind
+  name: string
+  steps: readonly StepRef[]
+}
+
+/** Each kind of person's flows, in the editor's order. A customer has two. */
+export type StepsByFlow = Partial<Record<QuickReplyFor, readonly FlowSteps[]>>
+
 /**
- * The steps a line can belong to, by who it is for, from the flows (the seed until the flows table is read). Anyone's
- * lines have none. A lead, a supply house and a candidate have no flow, and a sub's has no steps yet, so theirs are empty.
+ * The steps a line can belong to, per flow, by who the line is for, from the flows (the seed until the flows table is
+ * read). A residential customer is a customer, so a line for customers may be on either customer flow. Anyone's lines
+ * have none. A lead, a supply house and a candidate have no flow, so theirs are empty, and a flow with no steps is left out.
  */
+export function stepsByFlow(flows: Readonly<Partial<Record<FlowKind, FlowDef>>>): StepsByFlow {
+  const out: Record<Exclude<QuickReplyFor, 'any'>, FlowSteps[]> = { trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] }
+  for (const flow of FLOW_ORDER) {
+    const steps = (flows[flow]?.lanes ?? []).flatMap((lane) => lane.steps.map((step): StepRef => ({ id: step.id, name: step.name, flow })))
+    const kind = qrKindOf(flowContactKind(flow))
+    if (steps.length && kind !== 'any') out[kind].push({ flow, name: FLOW_NAMES[flow], steps })
+  }
+  return out
+}
+
+/** The steps a line can belong to, by who it is for: every flow of the kind in one list, `stepsByFlow` flattened. */
 export function stepsByKind(flows: Readonly<Partial<Record<FlowKind, FlowDef>>>): StepsByKind {
-  const of = (kind: Extract<QuickReplyFor, FlowKind>): StepRef[] =>
-    (flows[kind]?.lanes ?? []).flatMap((lane) => lane.steps.map((step) => ({ id: step.id, name: step.name })))
-  return { trade: of('trade'), customer: of('customer'), arch: of('arch'), lead: [], sub: of('sub'), supply_house: [], candidate: [] }
+  const byFlow = stepsByFlow(flows)
+  return Object.fromEntries(Object.entries(byFlow).map(([kind, list]) => [kind, list.flatMap((f) => f.steps)])) as StepsByKind
 }
 
 /** Who a line is for, as the strip and the editor name them. */
@@ -98,7 +136,8 @@ export function qrOrder(me: string): (a: QuickReply, b: QuickReply) => number {
   return (a, b) => qrMine(b, me) - qrMine(a, me) || qrTotal(b) - qrTotal(a) || a.addedAt - b.addedAt || a.id.localeCompare(b.id)
 }
 
-function stepName(steps: StepsByKind, kind: QuickReplyFor, id: string | null): string | null {
+/** A step's name, looked for on every flow of the line's kind. Null for no step, or a step no flow has now. */
+export function qrStepName(steps: StepsByKind, kind: QuickReplyFor, id: string | null): string | null {
   if (!id) return null
   return steps[kind]?.find((s) => s.id === id)?.name ?? null
 }
@@ -125,18 +164,26 @@ export interface QrGroupsInput {
   filter?: string
   /** The strip says "the step they are on"; Find a reply says "fits the step they are on". */
   place?: 'strip' | 'find'
+  /**
+   * The flow they are on, when their kind has two. The strip then leaves out a line on a step of the other flow, which
+   * `steps` names by its `flow`. Find a reply keeps it. Unset, every line for their kind shows.
+   */
+  flow?: FlowKind
 }
 
 /**
  * A thread's lines in their groups. A line fits when it is for their kind or for anyone and holds the narrowed words.
  * An unknown number's lines are all for anyone, so they show once, under Anyone; the prototype listed them twice, as
- * "Lines" and "Anyone", and counted them twice in the head.
+ * "Lines" and "Anyone", and counted them twice in the head. On the strip, a line on another flow of their kind stays in
+ * Find, as the residential prototype's strip leaves it.
  */
 export function qrGroups(lines: readonly QuickReply[], input: QrGroupsInput): QrGroup[] {
   const kind = qrKindOf(input.kind)
   const needle = (input.filter ?? '').trim().toLowerCase()
+  const flowOf = (q: QuickReply) => input.steps.find((s) => s.id === q.stepId)?.flow
+  const otherFlow = (q: QuickReply) => input.place !== 'find' && Boolean(input.flow) && Boolean(flowOf(q)) && flowOf(q) !== input.flow
   const rows = qrVisible(lines, input.me)
-    .filter((q) => (q.for === kind || q.for === 'any') && (!needle || q.text.toLowerCase().includes(needle)))
+    .filter((q) => (q.for === kind || q.for === 'any') && (!needle || q.text.toLowerCase().includes(needle)) && !otherFlow(q))
     .sort(qrOrder(input.me))
   const now = input.nowStepId
   const onStep = (q: QuickReply) => Boolean(now) && q.stepId === now
@@ -282,7 +329,7 @@ export function guessWords(text: string, setByYou: boolean): string {
 
 /** A line's tags as words, in parts: "for trade partners", "on Asked to quote". A step the flow no longer has reads as no step. */
 export function qrTagWords(tags: { for: QuickReplyFor; stepId: string | null }, steps: StepsByKind): string[] {
-  return [`for ${QR_KINDS[tags.for]}`, `on ${stepName(steps, tags.for, tags.stepId) ?? 'no step'}`]
+  return [`for ${QR_KINDS[tags.for]}`, `on ${qrStepName(steps, tags.for, tags.stepId) ?? 'no step'}`]
 }
 
 // ---------- the Edit quick replies window ----------
@@ -338,21 +385,31 @@ export function editorRows(lines: readonly QuickReply[], me: string, tab: QrEdit
 export interface QrEditorGroup {
   for: QuickReplyFor
   stepId: string | null
-  /** "Trade partners", then the step or "no step"; a line for anyone has no step part. */
+  /**
+   * "Trade partners", then the step or "no step"; a line for anyone has no step part. A kind with two flows names the
+   * flow before the step: "Customers", "Residential customer", "Booked".
+   */
   title: string[]
   rows: QuickReply[]
 }
 
 /**
  * The editor's groups (v1.73): by who the line is for, then by the flow's steps in their order, the lines on no step
- * last, each keeping the rows' order. A line on a step its flow no longer has sits with the lines on no step.
+ * last, each keeping the rows' order. A line on a step its flow no longer has sits with the lines on no step. A kind
+ * with two flows runs flow by flow, in `stepsByKind`'s order, and names the flow in each step's title.
  */
 export function editorGroups(rows: readonly QuickReply[], steps: StepsByKind): QrEditorGroup[] {
   const out: QrEditorGroup[] = []
   for (const kind of QR_KIND_ORDER) {
     const ofKind = rows.filter((q) => q.for === kind)
     if (!ofKind.length) continue
-    const order = (steps[kind] ?? []).map((s) => s.id)
+    const kindSteps = steps[kind] ?? []
+    const twoFlows = new Set(kindSteps.map((s) => s.flow).filter(Boolean)).size > 1
+    const flowName = (id: string) => {
+      const flow = kindSteps.find((s) => s.id === id)?.flow
+      return twoFlows && flow && flow !== 'unknown' ? [FLOW_NAMES[flow]] : []
+    }
+    const order = kindSteps.map((s) => s.id)
     const byStep = new Map<string, QuickReply[]>()
     for (const q of ofKind) {
       const key = q.stepId && order.includes(q.stepId) ? q.stepId : ''
@@ -361,11 +418,11 @@ export function editorGroups(rows: readonly QuickReply[], steps: StepsByKind): Q
     const keys = [...byStep.keys()].sort((a, b) => (a ? order.indexOf(a) : Infinity) - (b ? order.indexOf(b) : Infinity))
     for (const key of keys) {
       const label = QR_KINDS[kind].charAt(0).toUpperCase() + QR_KINDS[kind].slice(1)
-      const step = key ? stepName(steps, kind, key) : null
+      const step = key ? qrStepName(steps, kind, key) : null
       out.push({
         for: kind,
         stepId: key || null,
-        title: [label, ...(step ? [step] : kind === 'any' ? [] : ['no step'])],
+        title: [label, ...(step ? [...flowName(key), step] : kind === 'any' ? [] : ['no step'])],
         rows: byStep.get(key) ?? [],
       })
     }
@@ -381,7 +438,8 @@ export function editorFoot(count: number, search: string): string[] {
 
 // ---------- versions ----------
 
-export type QuickReplyChange = 'added' | 'words' | 'tags' | 'removed' | 'restored'
+/** What a version changed. `es` and `phone` are R3's: the Spanish, and the line's place or name on the tech's phone. */
+export type QuickReplyChange = 'added' | 'words' | 'tags' | 'es' | 'phone' | 'removed' | 'restored'
 
 export interface QuickReplyTags {
   for: QuickReplyFor
@@ -390,7 +448,9 @@ export interface QuickReplyTags {
 
 /**
  * One change to a line, with who and when (`quick_reply_versions`). Words keep the text before and after; tags keep
- * the tags themselves, not their words, so a renamed step reads by its name today.
+ * the tags themselves, not their words, so a renamed step reads by its name today. The Spanish keeps its words before
+ * and after in `fromText` and `toText`, either one left out when there was none or it was cleared. The phone keeps its
+ * place before and after only when the place changed, none for off the phone; a new name alone keeps neither.
  */
 export interface QuickReplyVersion {
   by: string
@@ -400,6 +460,8 @@ export interface QuickReplyVersion {
   toText?: string
   fromTags?: QuickReplyTags
   toTags?: QuickReplyTags
+  fromPhoneOrder?: number | null
+  toPhoneOrder?: number | null
 }
 
 /** A line for anyone has no step: the flows are per kind of person. */
@@ -488,6 +550,9 @@ export interface VersionWords {
   note: string | null
 }
 
+/** A place on the phone as the history says it: "place 2". */
+const placeWords = (order: number | null | undefined) => (order == null ? null : `place ${order}`)
+
 export function versionWords(v: QuickReplyVersion, steps: StepsByKind): VersionWords {
   const tags = (t: QuickReplyTags | undefined) => (t ? qrTagWords(t, steps).join(' · ') : null)
   switch (v.kind) {
@@ -497,6 +562,18 @@ export function versionWords(v: QuickReplyVersion, steps: StepsByKind): VersionW
       return { did: 'changed the words', struck: v.fromText ?? null, added: v.toText ?? null, note: null }
     case 'tags':
       return { did: 'tagged it', struck: tags(v.fromTags), added: tags(v.toTags), note: null }
+    case 'es': {
+      const from = v.fromText?.trim() ? v.fromText : null
+      const to = v.toText?.trim() ? v.toText : null
+      const did = !from && to ? 'wrote the Spanish' : from && !to ? 'cleared the Spanish' : 'changed the Spanish'
+      return { did, struck: from, added: to, note: null }
+    }
+    case 'phone': {
+      const from = placeWords(v.fromPhoneOrder)
+      const to = placeWords(v.toPhoneOrder)
+      const did = !from && !to ? 'renamed it on the phone' : !from ? 'put it on the phone' : !to ? 'took it off the phone' : 'moved it on the phone'
+      return { did, struck: from, added: to, note: null }
+    }
     case 'removed':
       return { did: 'removed it', struck: null, added: null, note: 'It stays here and can be brought back.' }
     case 'restored':

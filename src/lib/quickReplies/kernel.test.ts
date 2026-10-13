@@ -1,7 +1,9 @@
 /**
  * Quick replies over the Messages prototype's made-up lines and people (v1.178, branch spike/gc-mode): its nineteen
  * lines with their presses by Robert, Rosa and Wendi, its three flows' steps, and its people, Greg on Asked to quote,
- * Tom on Papers in, Dr. Priya Raman on Start date, Jonah on Addenda and an unknown number.
+ * Tom on Papers in, Dr. Priya Raman on Start date, Jonah on Addenda and an unknown number. R3's tests add the residential
+ * prototype's lines (v0.8, `customer-messages-prototype.html`) for Dana, a residential customer on Working, with Rosa
+ * and Luis's presses.
  */
 import { describe, expect, it } from 'vitest'
 import { SEED_FLOWS } from '../flows/seed'
@@ -9,6 +11,7 @@ import { plainWordsFailures } from '../plainWords'
 import {
   EDITOR_WORDS,
   FIND_NOTE,
+  FLOW_NAMES,
   QR_KIND_ORDER,
   QR_KINDS,
   QR_PRESS_COUNTED,
@@ -33,6 +36,7 @@ import {
   qrKindOf,
   qrLineCount,
   qrMarks,
+  qrStepName,
   qrStripCount,
   qrTagWords,
   qrTotal,
@@ -41,6 +45,7 @@ import {
   restoreQuickReply,
   showNarrow,
   stepLine,
+  stepsByFlow,
   stepsByKind,
   usedBy,
   versionWords,
@@ -238,7 +243,11 @@ describe('the line a step’s ask puts in the box', () => {
 describe('the steps a line can belong to', () => {
   it('reads them from the flows, by who the line is for, in the flow’s order', () => {
     expect(STEPS.trade?.map((s) => s.id)).toEqual(['invited', 'portal', 'papers', 'msa', 'ask', 'compare', 'sow', 'draws', 'closeout'])
-    expect(STEPS.customer?.map((s) => s.id)).toEqual(['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'])
+    // A customer's two flows, the residential one first.
+    expect(STEPS.customer?.map((s) => s.id)).toEqual([
+      ...['booked', 'onway', 'arrived', 'found', 'estimate', 'approved', 'working', 'done', 'billed', 'paid', 'review'],
+      ...['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'],
+    ])
     expect(STEPS.arch?.map((s) => s.name)).toEqual(['Plans in', 'Questions', 'Addenda', 'Submittals', 'Certify pay apps'])
     expect(STEPS.any).toBeUndefined()
     expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] })
@@ -268,6 +277,98 @@ describe('the steps a line can belong to', () => {
       expect(guess.stepId, text).not.toBeNull()
       expect(STEPS[guess.for]?.some((s) => s.id === guess.stepId), text).toBe(true)
     }
+  })
+})
+
+// The residential prototype's lines for customers (v0.8), ids r1 to r10, the user ids made up as rosa, luis and marco.
+const RES: QuickReply[] = [
+  line('r1', { scope: 'team', text: '{first}, this is Click Plumbing. We have you down for {day} between {window}. Reply here if that changes.', for: 'customer', stepId: 'booked', addedBy: 'rosa', addedAt: at(9, 30, 8, 10), uses: { rosa: 38 } }),
+  line('r2', { scope: 'team', text: '{first}, this is {me} with Click Plumbing. We are on our way to {address}, about {minutes} minutes out.', for: 'customer', stepId: 'onway', addedBy: 'rosa', addedAt: at(9, 30, 8, 12), uses: { luis: 41, rosa: 2, marco: 19 } }),
+  line('r6', { scope: 'team', text: '{first}, the water is off at the house while we work on the line. It is back on before we leave today.', for: 'customer', stepId: 'working', addedBy: 'rosa', addedAt: at(9, 30, 8, 20), uses: { luis: 9, marco: 3 } }),
+  line('r7', { scope: 'team', text: '{first}, we are done for today at {address}. We are back {back day} at {back time} to finish.', for: 'customer', stepId: 'working', addedBy: 'rosa', addedAt: at(9, 30, 8, 22), uses: { luis: 15, marco: 11, rosa: 1 } }),
+  line('r8', { scope: 'team', text: '{first}, your bill for {job} is ready. Pay it here: {link}. Thank you for your business.', for: 'customer', stepId: 'billed', addedBy: 'rosa', addedAt: at(9, 30, 8, 30), uses: { rosa: 31 } }),
+  line('r10', { scope: 'team', text: '{first}, could you send a photo of {thing}? Reply to this text with the picture.', for: 'customer', stepId: null, addedBy: 'rosa', addedAt: at(9, 30, 8, 40), uses: { luis: 4, rosa: 6 } }),
+]
+
+describe('the steps of each flow, a customer’s two among them (R3)', () => {
+  const BY_FLOW = stepsByFlow(SEED_FLOWS)
+
+  it('keeps a customer’s two flows apart, the residential one first, each under its name', () => {
+    expect(BY_FLOW.customer?.map((f) => [f.flow, f.name, f.steps.length])).toEqual([
+      ['residential', 'Residential customer', 11],
+      ['customer', 'GC customer', 11],
+    ])
+    expect(BY_FLOW.trade?.map((f) => f.name)).toEqual(['Trade partner'])
+    expect(BY_FLOW.customer?.[0]?.steps[1]).toEqual({ id: 'onway', name: 'On the way', flow: 'residential' })
+    expect(Object.keys(FLOW_NAMES)).not.toContain('unknown')
+  })
+
+  it('keeps every step id to one flow of its kind, since a line keeps only the id', () => {
+    for (const [kind, flows] of Object.entries(BY_FLOW)) {
+      const stepIds = (flows ?? []).flatMap((f) => f.steps.map((s) => s.id))
+      expect(new Set(stepIds).size, kind).toBe(stepIds.length)
+    }
+  })
+
+  it('leaves out a flow with no steps, and gives anyone none', () => {
+    expect(stepsByFlow({ sub: { kind: 'sub', lanes: [] } })).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] })
+    expect(BY_FLOW.any).toBeUndefined()
+  })
+
+  it('is what stepsByKind flattens, one list per kind', () => {
+    for (const [kind, flows] of Object.entries(BY_FLOW)) {
+      expect(STEPS[kind as keyof StepsByKind], kind).toEqual((flows ?? []).flatMap((f) => f.steps))
+    }
+  })
+
+  it('names a step on either flow of the line’s kind', () => {
+    expect(qrStepName(STEPS, 'customer', 'onway')).toBe('On the way')
+    expect(qrStepName(STEPS, 'customer', 'bid')).toBe('Our bid')
+    expect(qrStepName(STEPS, 'trade', 'onway')).toBeNull()
+    expect(qrStepName(STEPS, 'customer', null)).toBeNull()
+    expect(qrTagWords({ for: 'customer', stepId: 'booked' }, STEPS)).toEqual(['for customers', 'on Booked'])
+  })
+
+  it('leaves a line on the other flow off a customer’s strip, and keeps it in Find', () => {
+    const lines = [...LINES, ...RES]
+    const dana = { kind: 'customer' as const, nowStepId: 'working', steps: STEPS.customer ?? [], me: 'rosa' }
+    const strip = qrGroups(lines, { ...dana, flow: 'residential' })
+    expect(strip.map((g) => [g.title, ids(g.rows)])).toEqual([
+      ['Working', ['r7', 'r6']],
+      ['Other customers', ['r1', 'r8', 'r10', 'r2']],
+      ['Anyone', ['q14', 'q5']],
+    ])
+    const find = qrGroups(lines, { ...dana, flow: 'residential', place: 'find' })
+    expect(ids(find[1]?.rows ?? [])).toEqual(['r1', 'r8', 'q4', 'r10', 'q15', 'r2', 'q16', 'q9'])
+    // With no flow passed, the strip is as it was: every line for customers.
+    expect(ids(qrGroups(lines, dana)[1]?.rows ?? [])).toEqual(ids(find[1]?.rows ?? []))
+    const priya = qrGroups(lines, { kind: 'customer', nowStepId: 'start', steps: STEPS.customer ?? [], me: 'rosa', flow: 'customer' })
+    expect(priya.map((g) => [g.title, ids(g.rows)])).toEqual([
+      ['Start date', ['q16']],
+      ['Other customers', ['q4', 'r10', 'q15', 'q9']],
+      ['Anyone', ['q14', 'q5']],
+    ])
+  })
+
+  it('groups the editor’s customer lines flow by flow, naming the flow, no step last', () => {
+    const groups = editorGroups(editorRows([...LINES, ...RES], 'rosa', 'customer', ''), STEPS)
+    expect(groups.map((g) => [g.title.join(' · '), ids(g.rows)])).toEqual([
+      ['Customers · Residential customer · Booked', ['r1']],
+      ['Customers · Residential customer · On the way', ['r2']],
+      ['Customers · Residential customer · Working', ['r7', 'r6']],
+      ['Customers · Residential customer · Billed', ['r8']],
+      ['Customers · GC customer · Our bid', ['q4']],
+      ['Customers · GC customer · Start date', ['q16']],
+      ['Customers · GC customer · Pay application', ['q9']],
+      ['Customers · GC customer · Change orders', ['q15']],
+      ['Customers · no step', ['r10']],
+    ])
+  })
+
+  it('names no flow for a kind with one, or for steps passed in with no flow', () => {
+    const plain: StepsByKind = { customer: (STEPS.customer ?? []).map(({ id, name }) => ({ id, name })) }
+    expect(editorGroups([byId('q4'), RES[0]!], plain).map((g) => g.title.join(' · '))).toEqual(['Customers · Booked', 'Customers · Our bid'])
+    expect(editorGroups([byId('q2')], STEPS).map((g) => g.title.join(' · '))).toEqual(['Trade partners · Invited'])
   })
 })
 
@@ -355,10 +456,10 @@ describe('the Edit quick replies window', () => {
       ['Trade partners · Invited', ['q2', 'q6', 'q17']],
       ['Trade partners · Papers in', ['q13']],
       ['Trade partners · Asked to quote', ['q3', 'q10', 'q1', 'q7', 'q12']],
-      ['Customers · Our bid', ['q4']],
-      ['Customers · Start date', ['q16']],
-      ['Customers · Pay application', ['q9']],
-      ['Customers · Change orders', ['q15']],
+      ['Customers · GC customer · Our bid', ['q4']],
+      ['Customers · GC customer · Start date', ['q16']],
+      ['Customers · GC customer · Pay application', ['q9']],
+      ['Customers · GC customer · Change orders', ['q15']],
       ['Architects · Submittals', ['q18']],
       ['Architects · Certify pay apps', ['q19']],
       ['Anyone', ['q14', 'q5', 'q11']],
@@ -482,6 +583,19 @@ describe('a line’s versions', () => {
       note: 'It stays here and can be brought back.',
     })
     expect(versionWords({ by: 'robert', at: NOW, kind: 'restored' }, STEPS).did).toBe('brought it back')
+  })
+
+  it('reads the Spanish and the phone in the history (R3)', () => {
+    const words = (v: Omit<QuickReplyVersion, 'by' | 'at'>) => versionWords({ by: 'rosa', at: NOW, ...v }, STEPS)
+    const es = 'Vamos en camino a {address}, llegamos en unos {minutes} minutos.'
+    expect(words({ kind: 'es', toText: es })).toEqual({ did: 'wrote the Spanish', struck: null, added: es, note: null })
+    expect(words({ kind: 'es', fromText: 'Vamos en camino.', toText: es })).toEqual({ did: 'changed the Spanish', struck: 'Vamos en camino.', added: es, note: null })
+    expect(words({ kind: 'es', fromText: es, toText: ' ' })).toEqual({ did: 'cleared the Spanish', struck: es, added: null, note: null })
+    expect(words({ kind: 'phone', fromPhoneOrder: null, toPhoneOrder: 2 })).toEqual({ did: 'put it on the phone', struck: null, added: 'place 2', note: null })
+    expect(words({ kind: 'phone', fromPhoneOrder: 3, toPhoneOrder: 1 })).toEqual({ did: 'moved it on the phone', struck: 'place 3', added: 'place 1', note: null })
+    expect(words({ kind: 'phone', fromPhoneOrder: 3, toPhoneOrder: null })).toEqual({ did: 'took it off the phone', struck: 'place 3', added: null, note: null })
+    expect(words({ kind: 'phone' })).toEqual({ did: 'renamed it on the phone', struck: null, added: null, note: null })
+    expect(lastChange([{ by: 'rosa', at: NOW, kind: 'added', toText: 'x' }, { by: 'luis', at: NOW, kind: 'phone', toPhoneOrder: 1 }])?.by).toBe('luis')
   })
 })
 
