@@ -2,8 +2,9 @@
  * Messages, cut 6: Settings → Phone and texts → **Read bids@**, the switch for the `gmail-sync` reader and how it is
  * doing, in words. The switch is `app_settings.gmail_sync_on_v1` (`APP_SETTINGS_KEY_GMAIL_SYNC_ON_V1`): the cron posts to
  * the reader only while it reads 'true', and only the owner and a dev may change it. How it is doing is
- * `gmail_sync_state`'s one row: a run that ends well sets `last_ok_at` and clears `last_error`, and a run that stops
- * sets `last_error` and leaves `last_ok_at` as it was. Pure.
+ * `gmail_sync_state`'s row for each box (R6, by `mailbox`): a run that ends well sets `last_ok_at` and clears
+ * `last_error`, and a run that stops sets `last_error` and leaves `last_ok_at` as it was. The team box's row is there
+ * only once it has been read, after Settings holds its address. Pure.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { lineWhen } from './thread'
@@ -33,6 +34,11 @@ export function canSwitchReader(role: UserRole | null | undefined): boolean {
 /** Whether the switch reads on: only 'true' lets the cron post, as its statement reads it. */
 export function readerIsOn(valueText: string | null | undefined): boolean {
   return valueText === 'true'
+}
+
+/** The team box's line under bids@'s, once it has been read: "The team box: Last read today at 7:12 PM. Nothing wrong." */
+export function teamBoxHealthWords(health: ReaderHealth, nowIso: string): string {
+  return `The team box: ${readerHealthWords(health, nowIso)}`
 }
 
 /** "Last read today at 7:12 PM. Nothing wrong.", or the error's own words when the last run stopped on one. */

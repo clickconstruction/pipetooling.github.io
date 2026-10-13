@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canSwitchReader, readerHealthWords, readerIsOn } from './emailReader'
+import { canSwitchReader, readerHealthWords, readerIsOn, teamBoxHealthWords } from './emailReader'
 
 // Monday, October 12, 2026, 7:30 PM in Chicago.
 const NOW = '2026-10-13T00:30:00.000Z'
@@ -36,5 +36,15 @@ describe('Read bids@', () => {
   it('says it has not read yet before its first run, or before its row is there', () => {
     expect(readerHealthWords({ last_ok_at: null, last_error: null }, NOW)).toBe('Not read yet.')
     expect(readerHealthWords(null, NOW)).toBe('Not read yet.')
+  })
+})
+
+describe('the team box’s line (R6)', () => {
+  it('names the team box and says how its reader is doing, as bids@’s line does', () => {
+    const NOW_ = '2026-10-13T00:30:00.000Z'
+    expect(teamBoxHealthWords({ last_ok_at: null, last_error: null }, NOW_)).toBe('The team box: Not read yet.')
+    expect(teamBoxHealthWords({ last_ok_at: null, last_error: 'Gmail 403: Delegation denied.' }, NOW_)).toBe(
+      'The team box: Not read yet. The last run stopped: Gmail 403: Delegation denied.',
+    )
   })
 })
