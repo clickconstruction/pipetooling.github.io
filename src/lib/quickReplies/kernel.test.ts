@@ -41,6 +41,8 @@ import {
   qrTagWords,
   qrTotal,
   qrVisible,
+  PHONE_ONLY_CUSTOMERS,
+  onThePhone,
   removeQuickReply,
   restoreQuickReply,
   showNarrow,
@@ -425,7 +427,7 @@ describe('the Edit quick replies window', () => {
   const WITH = [...LINES.filter((q) => q.id !== 'q8'), removed, someoneElses]
 
   it('counts each tab over the team’s lines and the person’s own', () => {
-    expect(editorCounts(WITH, 'robert')).toEqual({ all: 18, trade: 9, customer: 4, arch: 2, lead: 0, sub: 0, supply_house: 0, candidate: 0, any: 3, mine: 3, removed: 1 })
+    expect(editorCounts(WITH, 'robert')).toEqual({ all: 18, trade: 9, customer: 4, arch: 2, lead: 0, sub: 0, supply_house: 0, candidate: 0, any: 3, mine: 3, phone: 0, removed: 1 })
     expect(editorCounts(WITH, 'rosa')).toMatchObject({ all: 16, mine: 1, any: 3 })
   })
 
@@ -495,6 +497,18 @@ describe('the Edit quick replies window', () => {
       ['Trade partners · Invited', 'invited', ['q2']],
       ['Trade partners · no step', null, ['q8', 'q21']],
     ])
+  })
+
+  it('gives the lines on the phone a Phone tab after Mine, once one is there, and finds a line by its Spanish (R3)', () => {
+    const phone = [{ ...RES[1]!, phoneOrder: 2 }, { ...RES[3]!, phoneOrder: 1, textEs: '{first}, terminamos por hoy en {address}.' }, { ...RES[0]!, phoneOrder: 3, removed: true }]
+    const rows = [...LINES, ...RES.filter((q) => !['r1', 'r2', 'r7'].includes(q.id)), ...phone]
+    const counts = editorCounts(rows, 'rosa')
+    expect(counts.phone).toBe(2)
+    expect(editorTabs(counts).map((t) => t.tab).slice(-3)).toEqual(['mine', 'phone', 'removed'])
+    expect(editorTabs(editorCounts(LINES, 'rosa')).map((t) => t.tab)).not.toContain('phone')
+    expect(ids(editorRows(rows, 'rosa', 'phone', ''))).toEqual(['r2', 'r7'])
+    expect(ids(editorRows(rows, 'rosa', 'all', 'terminamos'))).toEqual(['r7'])
+    expect(onThePhone({ ...byId('q10'), phoneOrder: 1 })).toBe(false)
   })
 
   it('says what the list holds at its foot', () => {
@@ -583,6 +597,36 @@ describe('a line’s versions', () => {
       note: 'It stays here and can be brought back.',
     })
     expect(versionWords({ by: 'robert', at: NOW, kind: 'restored' }, STEPS).did).toBe('brought it back')
+  })
+
+  it('saves the Spanish and the phone as their own versions, after the words and the tags (R3)', () => {
+    const onway = { ...RES[1]!, textEs: null, phoneOrder: null, phoneName: null }
+    const es = '{first}, le habla {me} de Click Plumbing. Vamos en camino a {address}.'
+    const saved = ok(editQuickReply(onway, { text: `${onway.text} `, tags: { for: 'customer', stepId: 'onway' }, textEs: ` ${es} `, phoneOrder: 1, phoneName: 'On our way' }, 'rosa', NOW))
+    expect(saved.versions).toEqual([
+      { by: 'rosa', at: NOW, kind: 'es', toText: es },
+      { by: 'rosa', at: NOW, kind: 'phone', fromPhoneOrder: null, toPhoneOrder: 1 },
+    ])
+    expect(saved.line).toMatchObject({ textEs: es, phoneOrder: 1, phoneName: 'On our way' })
+    // Words, then tags, then the Spanish cleared, then the phone moved; the name rides with the move.
+    const after = saved.line
+    const moved = ok(editQuickReply(after, { text: 'On our way, {first}.', tags: { for: 'customer', stepId: null }, textEs: '  ', phoneOrder: 3, phoneName: 'Leaving now' }, 'luis', NOW))
+    expect(moved.versions.map((v) => v.kind)).toEqual(['words', 'tags', 'es', 'phone'])
+    expect(moved.versions[2]).toEqual({ by: 'luis', at: NOW, kind: 'es', fromText: es })
+    expect(moved.versions[3]).toMatchObject({ fromPhoneOrder: 1, toPhoneOrder: 3 })
+    // A new name alone is a phone version with no places; a part left out keeps what the line has.
+    expect(ok(editQuickReply(after, { text: after.text, tags: { for: 'customer', stepId: 'onway' }, phoneName: 'Leaving now' }, 'rosa', NOW)).versions).toEqual([{ by: 'rosa', at: NOW, kind: 'phone' }])
+    expect(ok(editQuickReply(after, { text: after.text, tags: { for: 'customer', stepId: 'onway' } }, 'rosa', NOW))).toMatchObject({ versions: [], words: 'Nothing changed.' })
+    // Off the phone: 0 or null.
+    expect(ok(editQuickReply(after, { text: after.text, tags: { for: 'customer', stepId: 'onway' }, phoneOrder: 0 }, 'rosa', NOW)).versions).toEqual([{ by: 'rosa', at: NOW, kind: 'phone', fromPhoneOrder: 1, toPhoneOrder: null }])
+  })
+
+  it('refuses the phone for a line that is not the team’s for customers, and a long name (R3)', () => {
+    const onPhone = { ...RES[1]!, phoneOrder: 1 }
+    expect(editQuickReply(onPhone, { text: onPhone.text, tags: { for: 'trade', stepId: null } }, 'rosa', NOW)).toEqual({ error: PHONE_ONLY_CUSTOMERS })
+    expect(editQuickReply(onPhone, { text: onPhone.text, tags: { for: 'trade', stepId: null }, phoneOrder: 0 }, 'rosa', NOW)).not.toHaveProperty('error')
+    expect(editQuickReply(byId('q10'), { text: byId('q10').text, tags: { for: 'customer', stepId: null }, phoneOrder: 2 }, 'robert', NOW)).toEqual({ error: PHONE_ONLY_CUSTOMERS })
+    expect(editQuickReply(onPhone, { text: onPhone.text, tags: { for: 'customer', stepId: 'onway' }, phoneName: 'x'.repeat(61) }, 'rosa', NOW)).toEqual({ error: 'A name on the phone holds 60 characters at most.' })
   })
 
   it('reads the Spanish and the phone in the history (R3)', () => {

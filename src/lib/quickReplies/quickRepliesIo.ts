@@ -4,11 +4,15 @@
  * implementation on the app's client. The tables are not in the generated types until the lead's types PR, so the
  * client is read untyped here and every row is mapped through `rows.ts`. The tables are read only: every change goes
  * through a function, which keeps its version with who and when, and refuses in words (`pressProblem`).
+ *
+ * R3 reads the Spanish, the phone's place and its name with each line, and the phone's places with each version. They
+ * come with `20261013210000_quick_replies_phone_es.sql`, which is on prod before this reads them. A Save passes them
+ * to `edit_quick_reply` only when they changed, so a Save of words and tags alone stays the four named arguments.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
-import type { QuickReply, QuickReplyTags, QuickReplyVersion } from './kernel'
+import type { QuickReply, QuickReplyEdit, QuickReplyTags, QuickReplyVersion } from './kernel'
 import { quickRepliesFromRows, versionsFromRows, type QuickReplyRow, type QuickReplyUseRow, type QuickReplyVersionRow } from './rows'
 
 export interface QuickRepliesIo {
@@ -20,15 +24,31 @@ export interface QuickRepliesIo {
   press(id: string, contactId: string | null): Promise<void>
   /** Returns the new line. */
   add(text: string, tags: QuickReplyTags, mine: boolean): Promise<string>
-  /** Returns how many versions the save wrote: the words and the tags apart. */
-  edit(id: string, text: string, tags: QuickReplyTags): Promise<number>
+  /**
+   * Returns how many versions the save wrote: the words, the tags, the Spanish and the phone apart. R3's parts go only
+   * when given: a blank Spanish or name clears it, and a place of 0 or null takes the line off the phone.
+   */
+  edit(id: string, text: string, tags: QuickReplyTags, r3?: Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName'>): Promise<number>
   remove(id: string): Promise<void>
   restore(id: string): Promise<void>
 }
 
-const LINE_COLUMNS = 'id, text, for_kind, step_key, scope, added_by, added_at, removed_at'
+const LINE_COLUMNS = 'id, text, for_kind, step_key, scope, added_by, added_at, removed_at, text_es, phone_order, phone_name'
 const USE_COLUMNS = 'quick_reply_id, user_id, contact_id, at'
-const VERSION_COLUMNS = 'id, quick_reply_id, kind, from_text, to_text, from_for_kind, from_step_key, to_for_kind, to_step_key, by_user_id, at'
+const VERSION_COLUMNS = 'id, quick_reply_id, kind, from_text, to_text, from_for_kind, from_step_key, to_for_kind, to_step_key, by_user_id, at, from_phone_order, to_phone_order'
+
+/**
+ * R3's three arguments, each only when given: `edit_quick_reply` keeps a part whose argument is null, so a clear goes
+ * as blank and off the phone as 0.
+ */
+function r3Args(r3: Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName'> | undefined): Record<string, unknown> {
+  if (!r3) return {}
+  return {
+    ...(r3.textEs !== undefined ? { p_text_es: r3.textEs ?? '' } : {}),
+    ...(r3.phoneOrder !== undefined ? { p_phone_order: r3.phoneOrder ?? 0 } : {}),
+    ...(r3.phoneName !== undefined ? { p_phone_name: r3.phoneName ?? '' } : {}),
+  }
+}
 
 export function supabaseQuickRepliesIo(client: unknown = supabase): QuickRepliesIo {
   // Cut 3's tables join the generated types with the lead's types PR; until then the client is untyped.
@@ -57,8 +77,8 @@ export function supabaseQuickRepliesIo(client: unknown = supabase): QuickReplies
     async add(text, tags, mine) {
       return call<string>('add_quick_reply', { p_text: text, ...tagArgs(tags), p_mine: mine }, 'add a quick reply')
     },
-    async edit(id, text, tags) {
-      return call<number>('edit_quick_reply', { p_id: id, p_text: text, ...tagArgs(tags) }, 'change a quick reply')
+    async edit(id, text, tags, r3) {
+      return call<number>('edit_quick_reply', { p_id: id, p_text: text, ...tagArgs(tags), ...r3Args(r3) }, 'change a quick reply')
     },
     async remove(id) {
       await call('remove_quick_reply', { p_id: id }, 'remove a quick reply')

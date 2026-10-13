@@ -58,6 +58,19 @@ describe('the quick replies’ reads and presses', () => {
     ])
   })
 
+  it('passes R3’s parts only when given: a clear as blank, off the phone as 0', async () => {
+    const { client, calls } = fakeClient({}, () => ({ data: 1, error: null }))
+    const io = supabaseQuickRepliesIo(client)
+    await io.edit('r2', 'On our way.', { for: 'customer', stepId: 'onway' }, { textEs: 'Vamos en camino.', phoneOrder: 2, phoneName: 'On our way' })
+    await io.edit('r2', 'On our way.', { for: 'customer', stepId: 'onway' }, { textEs: null, phoneOrder: null, phoneName: null })
+    await io.edit('r2', 'On our way.', { for: 'customer', stepId: 'onway' }, { phoneOrder: 3 })
+    expect(calls.map((c) => c.args)).toEqual([
+      { p_id: 'r2', p_text: 'On our way.', p_for: 'customer', p_step: 'onway', p_text_es: 'Vamos en camino.', p_phone_order: 2, p_phone_name: 'On our way' },
+      { p_id: 'r2', p_text: 'On our way.', p_for: 'customer', p_step: 'onway', p_text_es: '', p_phone_order: 0, p_phone_name: '' },
+      { p_id: 'r2', p_text: 'On our way.', p_for: 'customer', p_step: 'onway', p_phone_order: 3 },
+    ])
+  })
+
   it('rejects a refusal with the function’s own words kept on the error', async () => {
     const { client } = fakeClient({}, () => ({ data: null, error: { message: 'Nothing changed.', code: 'P0001' } }))
     const failed = await supabaseQuickRepliesIo(client).edit('q3', 'Same words.', { for: 'trade', stepId: null }).catch((e: unknown) => e)

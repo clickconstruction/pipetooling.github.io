@@ -2,8 +2,11 @@
  * Messages, cut 3's screens: quick replies as the tables keep them (migration `20261012190000_quick_replies.sql`) read
  * into the kernel's shapes (`kernel.ts`). A line's presses count per person, newest first for *last used*; its
  * versions read oldest first, as the history window lists them. Pure.
+ *
+ * R3 (`20261013210000_quick_replies_phone_es.sql`): a line also reads its Spanish, its place on the tech's phone and its
+ * name there, a version its Spanish (`es`) and its phone places (`phone`), and a line may be for any of the seven kinds.
  */
-import type { QuickReply, QuickReplyChange, QuickReplyFor, QuickReplyScope, QuickReplyTags, QuickReplyVersion } from './kernel'
+import { QR_KIND_ORDER, type QuickReply, type QuickReplyChange, type QuickReplyFor, type QuickReplyScope, type QuickReplyTags, type QuickReplyVersion } from './kernel'
 
 export interface QuickReplyRow {
   id: string
@@ -14,6 +17,10 @@ export interface QuickReplyRow {
   added_by: string | null
   added_at: string
   removed_at: string | null
+  /** R3's columns; a row read without them leaves the line's three as null. */
+  text_es?: string | null
+  phone_order?: number | null
+  phone_name?: string | null
 }
 
 export interface QuickReplyUseRow {
@@ -35,10 +42,13 @@ export interface QuickReplyVersionRow {
   to_step_key: string | null
   by_user_id: string | null
   at: string
+  /** R3: a phone version's places before and after, null for off the phone. */
+  from_phone_order?: number | null
+  to_phone_order?: number | null
 }
 
-const FOR_KINDS: ReadonlySet<string> = new Set<QuickReplyFor>(['trade', 'customer', 'arch', 'any'])
-const CHANGES: ReadonlySet<string> = new Set<QuickReplyChange>(['added', 'words', 'tags', 'removed', 'restored'])
+const FOR_KINDS: ReadonlySet<string> = new Set<QuickReplyFor>(QR_KIND_ORDER)
+const CHANGES: ReadonlySet<string> = new Set<QuickReplyChange>(['added', 'words', 'tags', 'es', 'phone', 'removed', 'restored'])
 
 const forKind = (v: string | null): QuickReplyFor | null => (v && FOR_KINDS.has(v) ? (v as QuickReplyFor) : null)
 const ms = (iso: string): number => {
@@ -70,6 +80,9 @@ export function quickRepliesFromRows(lines: readonly QuickReplyRow[], uses: read
       removed: r.removed_at !== null,
       uses: counted,
       lastUsed: last ? { at: ms(last.at), by: last.user_id ?? '', contactId: last.contact_id } : null,
+      textEs: r.text_es ?? null,
+      phoneOrder: r.phone_order ?? null,
+      phoneName: r.phone_name ?? null,
     }
     return [line]
   })
@@ -93,6 +106,10 @@ export function versionsFromRows(rows: readonly QuickReplyVersionRow[]): Record<
     const to = tags(r.to_for_kind, r.to_step_key)
     if (from) v.fromTags = from
     if (to) v.toTags = to
+    if (r.kind === 'phone') {
+      v.fromPhoneOrder = r.from_phone_order ?? null
+      v.toPhoneOrder = r.to_phone_order ?? null
+    }
     ;(out[r.quick_reply_id] ??= []).push(v)
   }
   return out
