@@ -22,6 +22,7 @@ PORT="${PGTEST_PORT:-55475}"
 NAME="pgtest-messages-spine"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 SPINE="$(ls supabase/migrations/*_messages_spine.sql)"
+TECH="$(ls supabase/migrations/*_messages_tech_door.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -44,11 +45,16 @@ for f in supabase/migrations/*.sql; do
   # there, and the seed finds nobody new. It runs right after the first, as a retried push would. Its grants start with
   # a REVOKE on its tables, which also takes back the column grants a later cut gives on them (Follow up's on contacts
   # and messages), so a second run after every later migration would build a schema prod never has.
-  if [ "$f" = "$SPINE" ]; then
-    psql_as postgres -f - < "$SPINE" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $SPINE"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  if [ "$f" = "$SPINE" ] || [ "$f" = "$TECH" ]; then
+    psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
   fi
 done
 out="$(psql_as postgres -f - < supabase/tests/messages_spine/20_scenario.sql 2>&1 || true)"
 if ! grep -q "messages_spine PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# R5's tech door (*_messages_tech_door): who reads a customer's thread from Job Mode, the office's wait and hours, a
+# hold's end, an office-only note and a push named by its line. Its migration runs twice above, as the spine's does.
+out="$(psql_as postgres -f - < supabase/tests/messages_spine/30_tech_door.sql 2>&1 || true)"
+if ! grep -q "messages_tech_door PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "messages-spine bed ok"

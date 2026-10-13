@@ -91,3 +91,15 @@ export function canEditClause(role: UserRole | null | undefined): boolean {
 export function canApproveClause(role: UserRole | null | undefined): boolean {
   return role != null && GC_CLAUSE_APPROVE_TEAM.includes(role)
 }
+
+/**
+ * Messages, R5 (v2.5419): the field roles that message a customer from Job Mode, primary and helpers (`roleLabels.ts`);
+ * a subcontractor stays out until R8 · 12. The client's copy of the database's `messages_tech_team()`
+ * (`20261013190000_messages_tech_door.sql`), which with `messages_tech_can_read()` opens a customer's thread to a tech
+ * dispatched to or clocked on one of its jobs this week or last. `access.test.ts` fails when the two lists differ.
+ */
+export const MESSAGES_TECH_TEAM: readonly UserRole[] = ['primary', 'helpers']
+
+export function canMessageCustomersFromJobMode(role: UserRole | null | undefined): boolean {
+  return role != null && MESSAGES_TECH_TEAM.includes(role)
+}
