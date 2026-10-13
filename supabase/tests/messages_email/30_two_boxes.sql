@@ -44,13 +44,22 @@ BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
 END $$;
--- The box of the line a write answered with.
-CREATE FUNCTION mtb.quo_box(p_quo_id text, p_rev integer, p_row jsonb) RETURNS text LANGUAGE sql AS $$
-  SELECT coalesce(m.mailbox, '-') FROM public.quo_write_line(p_quo_id, p_rev, p_row) w JOIN public.messages m ON m.id = w.id
-$$;
-CREATE FUNCTION mtb.email_box(p_gmail_id text, p_row jsonb) RETURNS text LANGUAGE sql AS $$
-  SELECT coalesce(m.mailbox, '-') FROM public.email_write_line(p_gmail_id, p_row, '[]'::jsonb, NULL) w JOIN public.messages m ON m.id = w.id
-$$;
+-- The box of the line a write answered with. The line is read in a statement after the write: the write's own
+-- statement reads from a snapshot taken before it.
+CREATE FUNCTION mtb.quo_box(p_quo_id text, p_rev integer, p_row jsonb) RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  SELECT w.id INTO v_id FROM public.quo_write_line(p_quo_id, p_rev, p_row) w;
+  RETURN (SELECT coalesce(m.mailbox, '-') FROM public.messages m WHERE m.id = v_id);
+END $$;
+CREATE FUNCTION mtb.email_box(p_gmail_id text, p_row jsonb) RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  SELECT w.id INTO v_id FROM public.email_write_line(p_gmail_id, p_row, '[]'::jsonb, NULL) w;
+  RETURN (SELECT coalesce(m.mailbox, '-') FROM public.messages m WHERE m.id = v_id);
+END $$;
 -- A number's STOPs per box, and whether it carries the older stamp.
 CREATE FUNCTION mtb.stops(p_id uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
   SELECT concat_ws('|', ch.opted_out_by_box::text, (ch.opted_out_at IS NOT NULL)::text) FROM public.contact_channels ch WHERE ch.id = p_id
