@@ -86,7 +86,15 @@ describe('a message as a Job activity line (Messages cut 10)', () => {
   it('marks her line tied to no job yet, and links to her thread at the line', () => {
     expect(messageLineParts(byId('m-dana-11')).message.notTiedYet).toBe(true)
     expect(messageLineParts(byId('m-dana-2')).message.notTiedYet).toBe(false)
-    expect(messageLineParts(byId('m-dana-2')).message.threadHref).toBe('/gc?view=messages&thread=c-dana&at=m-dana-2')
+    expect(messageLineParts(byId('m-dana-2')).message.threadHref).toBe('/messages?thread=c-dana&at=m-dana-2')
+  })
+
+  it('opens a trade partner’s or an architect’s thread on GC projects’ Messages, and anyone else’s on the Messages page', () => {
+    const as = (kind: 'trade' | 'arch' | 'lead' | 'unknown') => messageLineParts({ ...byId('m-dana-2'), contactId: 'c-hector', contact: { name: 'Hector Ruiz', kind } }).message.threadHref
+    expect(as('trade')).toBe('/gc?view=messages&thread=c-hector&at=m-dana-2')
+    expect(as('arch')).toBe('/gc?view=messages&thread=c-hector&at=m-dana-2')
+    expect(as('lead')).toBe('/messages?thread=c-hector&at=m-dana-2')
+    expect(as('unknown')).toBe('/messages?thread=c-hector&at=m-dana-2')
   })
 
   it('says who reads a team note: the office alone when it is marked so, else the whole team, techs too', () => {

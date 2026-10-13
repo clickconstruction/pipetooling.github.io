@@ -57,7 +57,7 @@ describe('Job activity with a job’s messages (cut 10)', () => {
     const words = await screen.findByText(/^Asked if Thursday works/)
     fireEvent.click(words.closest('[role="button"]') as HTMLElement)
     const link = screen.getByRole('link', { name: 'Open the thread with Dana ›' })
-    expect(link.getAttribute('href')).toBe('/gc?view=messages&thread=c-dana&at=m-dana-4')
+    expect(link.getAttribute('href')).toBe('/messages?thread=c-dana&at=m-dana-4')
     expect(screen.getByText(/^Dana: Hi, can you do Thursday\?/)).toBeTruthy()
   })
 

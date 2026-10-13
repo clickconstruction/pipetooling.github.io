@@ -10,7 +10,7 @@
  * supplier or a trade, reads plain and shows under All only.
  */
 import { firstName, type ContactKind } from '../contacts/kernel'
-import { messagesThreadHref } from '../gc/links'
+import { threadHrefByKind } from '../messages/customerThread'
 import { threadMessageFromRow, type MessageRow } from '../messages/load'
 import { callLength, type MessageChannel, type MessageDirection } from '../messages/thread'
 import type { JobActivityDetailLine } from './jobActivityLine'
@@ -56,7 +56,7 @@ export interface JobActivityMessageFacts {
   notTiedYet: boolean
   /** Who reads a team note, in small words after it: the office alone, or the whole team, techs too. '' on other lines. */
   readersWord: string
-  /** The person's thread in Messages, opened at this line. */
+  /** The person's thread, opened at this line: the Messages page, or GC projects' Messages for a trade partner or an architect (`threadHrefByKind`). */
   threadHref: string
   /** Who the thread is with, as the link names them: "Dana". */
   withName: string
@@ -161,7 +161,7 @@ export function messageLineParts(m: JobActivityMessage): { who: string; body: st
       subject: m.channel === 'email' ? m.subject?.trim() || null : null,
       notTiedYet: !m.tied,
       readersWord: noteReaders(m),
-      threadHref: messagesThreadHref(m.contactId, m.id),
+      threadHref: threadHrefByKind(m.contact.kind, m.contactId, m.id),
       withName: firstName(m.contact) || m.contact.name.trim() || 'them',
     },
   }
