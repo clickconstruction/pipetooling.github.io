@@ -1,6 +1,7 @@
 /**
  * Messages, cut 4: Settings → Flows (the prototype's `flowsEditorHtml`, v1.178; `BUILD_PLAN.md` → Cut 4). One flow per
- * kind of person, Customer, Trade partner and Architect, each with The flow, History and How it is going. Every press
+ * kind of person, Customer, Trade partner, Architect, Residential customer and Sub (`EDITOR_KINDS`, the last two since
+ * v2.5498, whose people the editor cannot read yet), each with The flow, History and How it is going. Every press
  * is an edit to a draft (`flows/editor.ts`); Before you save · who moves tries the draft on everyone first; Save writes
  * it all at once (`flow_save`) and the boards read it next. The office edits (`canEditFlows`, `gc_office_team()`).
  * Above the flow, the newest morning run of the reminders the app sends itself; on each such step, the owner's switch
@@ -14,6 +15,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useFlowEditor, type EditorKind } from '../../hooks/useFlowEditor'
 import { canSetAppSends, lastRunLine, READ_THE_RUN } from '../../lib/flows/appSends'
 import { PUT_BACK_WORDS, restoreStep, WHO_MOVES_NOTE } from '../../lib/flows/editor'
+import { EDITOR_KINDS, PEOPLE_NOT_READ, readsPeopleOf } from '../../lib/flows/editorKinds'
 import { askForFact, loadDocNames, loadSeats, loadTradeNames } from '../../lib/flows/flowEditorIo'
 import { isDocPaperId } from '../../lib/flows/facts'
 import { flat, type FlowStep } from '../../lib/flows/state'
@@ -21,12 +23,6 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { FlowGoing, FlowHistory } from './flows/FlowHistoryAndGoing'
 import { FlowStepsTable } from './flows/FlowStepsTable'
 import { flowButton, flowNote, flowPrimary, flowQuiet, flowTab } from './flows/flowStyles'
-
-const KINDS: readonly (readonly [EditorKind, string])[] = [
-  ['customer', 'Customer'],
-  ['trade', 'Trade partner'],
-  ['arch', 'Architect'],
-]
 
 type View = 'flow' | 'history' | 'going'
 
@@ -150,7 +146,7 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
         )}
       </div>
       <div role="tablist" aria-label="Which flow" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        {KINDS.map(([k, label]) => (
+        {EDITOR_KINDS.map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => void pickKind(k)} style={flowTab(kind === k)}>
             {label}
           </button>
@@ -221,7 +217,14 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
           }}
         />
       )}
-      {view === 'going' && (editor.going ? <FlowGoing rows={editor.going.rows} funnel={editor.going.funnel} /> : <p style={flowNote}>Reading who is on the flow…</p>)}
+      {view === 'going' &&
+        (!readsPeopleOf(kind) ? (
+          <p style={flowNote}>{PEOPLE_NOT_READ}</p>
+        ) : editor.going ? (
+          <FlowGoing rows={editor.going.rows} funnel={editor.going.funnel} />
+        ) : (
+          <p style={flowNote}>Reading who is on the flow…</p>
+        ))}
 
       {changed && (
         <div
@@ -239,7 +242,7 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
               ))}
             </div>
           ) : (
-            <p style={flowNote}>Nobody is on this flow yet.</p>
+            <p style={flowNote}>{readsPeopleOf(kind) ? 'Nobody is on this flow yet.' : PEOPLE_NOT_READ}</p>
           )}
           {editor.preview?.changes && <p style={{ ...flowNote, color: 'var(--text-base)' }}>{editor.preview.changes}</p>}
           <div style={{ display: 'flex', gap: '0.5rem' }}>

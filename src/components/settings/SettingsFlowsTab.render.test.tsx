@@ -4,8 +4,8 @@
  * first, Tom moving on, and Save sending it all at once; a fork made from the join word; a library paper and its one
  * fact from the New paper window; Put it back; a refused Save saying why; History with its first line and Removed; and
  * How it is going. The reminders the app sends itself (cut 5): the newest morning run above the flow, and the owner's
- * switch on Portal opened, read only for the office. The reads and the Save are mocked at the loader; the people are the
- * flows' fixture, read on its day.
+ * switch on Portal opened, read only for the office. The residential customer's and the sub's flows (v2.5498), whose
+ * people are not read. The reads and the Save are mocked at the loader; the people are the flows' fixture, read on its day.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -58,6 +58,7 @@ vi.mock('../gc/flows/GcNewPaperWindow', () => ({
 }))
 
 import { APP_SENDS_NOT_SAVED, APP_SENDS_OWNER_ONLY, APP_SENDS_SAVE_FIRST, LAST_RUN_NONE } from '../../lib/flows/appSends'
+import { PEOPLE_NOT_READ } from '../../lib/flows/editorKinds'
 import { loadFlowForEditing, loadDocNames, loadSeats, loadTradeNames, saveFlow } from '../../lib/flows/flowEditorIo'
 import { FLOW_FIXTURE_NOW, FLOW_FIXTURE_PEOPLE } from '../../lib/flows/flowFixtures'
 import { loadFlowRowsKind } from '../../lib/flows/flowsIo'
@@ -244,5 +245,28 @@ describe('SettingsFlowsTab', () => {
     expect(portalSwitch().getAttribute('aria-checked')).toBe('true')
     fireEvent.click(within(line).getByRole('button', { name: 'Read the run' }))
     expect(within(screen.getByLabelText('The morning run')).getByText('Customers wait until the run can read their page.')).toBeTruthy()
+  })
+
+  it('edits the residential customer’s and the sub’s flows too, saying who is on them is not read here yet', async () => {
+    vi.mocked(loadFlowForEditing).mockImplementation(async (kind) =>
+      kind === 'sub'
+        ? { flow: SEED_FLOWS.sub, history: [], removed: [], basedOn: '2026-10-13T17:00:00.000Z', drawnAt: '2026-10-13T17:00:00.000Z', fromSeed: false }
+        : { flow: SEED_FLOWS.trade, history: [], removed: [], basedOn: '2026-09-28T14:05:00.000Z', drawnAt: '2026-09-01T13:00:00.000Z', fromSeed: false },
+    )
+    await open()
+    const tabs = screen.getByRole('tablist', { name: 'Which flow' })
+    expect(within(tabs).getAllByRole('tab').slice(0, 5).map((t) => t.textContent)).toEqual(['Customer', 'Trade partner', 'Architect', 'Residential customer', 'Sub'])
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'Sub' }))
+    await waitFor(() => expect(row('onsite')).toBeTruthy())
+    expect(vi.mocked(loadFlowForEditing)).toHaveBeenLastCalledWith('sub')
+    expect(vi.mocked(loadFlowRowsKind).mock.calls.map((c) => c[0])).not.toContain('sub')
+    const name = screen.getByLabelText('Asked: its name')
+    fireEvent.change(name, { target: { value: 'Offered' } })
+    fireEvent.blur(name)
+    expect(within(saveBox()).getByText(PEOPLE_NOT_READ)).toBeTruthy()
+    // How it is going says it too, with the unsaved change's box still open below.
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'How it is going' }))
+    expect(screen.getAllByText(PEOPLE_NOT_READ)).toHaveLength(2)
+    expect(document.querySelector('[data-flow-going]')).toBeNull()
   })
 })

@@ -58,7 +58,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Your profile, theme, release notes → `/settings`
 - Change a clause of a contract our trade partners sign, or approve one waiting on you → `/settings?tab=settings-clauses` (Contracts and clauses: the office edits, a dev or the controller approves; guide `change-a-contract-clause`)
 - See or set who gets a new text, call or email first → `/settings?tab=settings-phone-texts` (Phone and texts: the office reads the rule, the owner or a dev sets the seats; guide `choose-who-gets-a-new-message`), and which company phone seat is whose (Company phone seats, the owner or a dev; guide `match-each-company-phone-seat-to-a-person`)
-- Change the steps a customer, trade partner or architect goes through → `/settings?tab=settings-flows` (Flows: the office edits; guide `set-up-the-steps-a-person-goes-through`)
+- Change the steps a customer, trade partner, architect, residential customer or sub goes through → `/settings?tab=settings-flows` (Flows: the office edits; guide `set-up-the-steps-a-person-goes-through`)
 - Where the company stands this week, the weakest link, the Monday sheet → `/bridge` (dev only)
 - How-do-I articles → `/help` (search) or `/help?g=<slug>`
 - The public trade rule behind a count or check (hanger spacing, fill limit, drop, mount height) → `https://counttooling.com/rules/` — `https://counttooling.com/rules/rules.json` for software; derive from it and stamp `ruleId` (see the CountTooling bid guide)
