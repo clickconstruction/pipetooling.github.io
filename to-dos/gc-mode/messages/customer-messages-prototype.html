@@ -383,6 +383,64 @@ table.qrt tr.edit td{padding:10px 6px 14px;background:var(--bg);border-bottom:1p
 @media (max-width:900px){.mpage,.mpage.two{grid-template-columns:280px minmax(0,1fr)}.mpage .mcol.sidecol{display:none}}
 @media (max-width:640px){.mpage,.mpage.two{grid-template-columns:minmax(0,1fr)}.mpage .mcol.listcol{max-height:260px;overflow:auto;border-right:0;border-bottom:1px solid var(--border)}}
 
+/* ---- Screen 8: the two panels, one row model ---- */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media (max-width:860px){.cmp{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-width:0;display:flex;flex-direction:column}
+.panel .ph{padding:10px 12px 8px;border-bottom:1px solid var(--border)}
+.panel .ph .ttl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+.panel .ph h4{margin:0;font-size:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.panel .ph .facts{font-size:12px;color:var(--muted);margin-top:3px}
+.panel .ph .facts b{color:var(--text);font-weight:600}
+.panel .ph .move{font-size:12px;margin-top:4px;padding:3px 8px;border-radius:6px;background:var(--cust-soft);display:inline-block}
+.panel .ph .move.ghost{background:var(--chip);color:var(--muted);border:1px dashed var(--border)}
+.panel .pf{display:flex;gap:4px;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--border)}
+.panel .pf button{border-radius:999px;padding:2px 9px;font-size:12px}
+.panel .pf button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.panel .pf button .n{font-weight:700;margin-left:3px;opacity:.8}
+.panel .feed{padding:2px 12px 6px;max-height:420px}
+.cmp .row{grid-template-columns:24px 46px 96px minmax(0,1fr);gap:6px;font-size:13px;padding:6px 0}
+.cmp .row .n{width:20px;height:20px;font-size:10px}
+.cmp .row .t{font-size:11px;padding-top:2px}
+.cmp .row.cust{margin-left:-8px;padding-left:5px}
+.cmp .row.cust.in{padding-left:3px}
+.cmp .row.dim{opacity:.28}
+.cmp .row.lit{box-shadow:inset 0 0 0 2px var(--accent);border-radius:8px}
+.cmp .day{margin:10px 0 4px;font-size:11px}
+.cmp .ktag{display:inline-block;flex:none;font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:0 4px;line-height:14px;border:1px solid var(--border);color:var(--muted)}
+.cmp .ktag.cust{border-color:var(--cust);color:var(--cust-deep)}
+.cmp .row.cust.in .ktag.cust{background:var(--cust);color:#fff;border-color:var(--cust)}
+.cmp .ktag.sys{border-color:var(--accent);color:var(--accent)}
+.cmp .ktag.clock{border-color:#6b4fbb;color:var(--email-ch)}
+.cmp .ktag.bill{border-color:var(--ok);color:var(--ok)}
+.panel .pc{border-top:1px solid var(--border);padding:8px 12px 10px;display:flex;flex-direction:column;gap:6px}
+.panel .pc .kinds{margin:0}
+.panel .pc .kinds button{padding:3px 10px;font-size:13px}
+.panel .pc .fakebox{border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:13px;color:var(--muted)}
+.panel .pc.tocust .fakebox{border-color:var(--cust)}
+.panel .pc .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.panel .pc .acts button{font-size:13px;padding:4px 10px}
+.panel .pc .acts .cust{background:var(--cust);border-color:var(--cust);color:#fff}
+.reg{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.reg th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:6px;border-bottom:1px solid var(--border);letter-spacing:.04em;text-transform:uppercase}
+.reg td{padding:7px 6px;border-bottom:1px dashed var(--border);vertical-align:top}
+.reg tr.k{cursor:pointer}
+.reg tr.k:hover td{background:var(--bg)}
+.reg tr.k.on td{background:var(--accent-soft)}
+.reg tr.new td:first-child{position:relative}
+.reg .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid var(--border)}
+.reg .stt{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:0 5px}
+.reg .stt.have{background:var(--ok-soft);color:var(--ok)}
+.reg .stt.add{background:var(--warn-soft);color:var(--warn)}
+.reg td.c{text-align:center;font-variant-numeric:tabular-nums}
+.regnote{font-size:13px;color:var(--muted);margin:6px 0 0}
+.twogaps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+@media (max-width:760px){.twogaps{grid-template-columns:1fr}}
+.gap{border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;background:var(--surface)}
+.gap h4{margin:0 0 4px;font-size:14px}
+.gap ul{margin:0;padding-left:18px}
+.gap li{margin:3px 0}
+
 /* ---- Screen 5: decisions; 6: log ---- */
 ol.dec{padding-left:0;list-style:none;counter-reset:d;display:flex;flex-direction:column;gap:10px;max-width:76ch}
 ol.dec li{counter-increment:d;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px 12px 50px;position:relative}
@@ -408,7 +466,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Customer messages</h1><span class="ver" id="ver">v0.6 · 2026-10-13</span>
+  <h1>Customer messages</h1><span class="ver" id="ver">v0.7 · 2026-10-13</span>
   <span class="note">A prototype of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
 </header>
 
@@ -420,6 +478,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   <button data-s="s5"><b>5</b>Decisions</button>
   <button data-s="s6"><b>6</b>Log</button>
   <button data-s="s7"><b>7</b>The Messages page</button>
+  <button data-s="s8"><b>8</b>Two panels, one row</button>
 </nav>
 
 <!-- ===================== 1 ===================== -->
@@ -711,10 +770,43 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 </dl>
 </section>
 
+<!-- ===================== 8 ===================== -->
+<section class="screen" id="s8">
+<p class="lead">The <b>job activity panel</b>, the app's Job activity / notes on a Stages row, beside the <b>person's thread</b> from Messages, both drawn from <b>one list of rows</b>. The job panel shows the rows on job 1312, Dana's lines among them through their tie. Dana's thread shows every line with her, on either job. Press a kind in the registry below and it lights in both panels; the filters count from the same rows.</p>
+
+<div class="cmp" id="cmp"></div>
+
+<h2>The registry: one row model</h2>
+<p class="note" style="max-width:76ch">The activity panel already keeps a registry for its system events, one <code>event</code> kind with a tag, colors and a bucket per type (<code>jobActivityEvent.ts</code>). The person's lines are five more entries in it, not a second renderer. Press a row.</p>
+<table class="reg" id="reg"></table>
+<p class="regnote" id="regnote">Press a kind to see where it draws.</p>
+
+<h2>What each takes from the other</h2>
+<dl class="rules">
+  <dt>One row model, not two.</dt><dd>A text, an email, a call, a voicemail and a portal press are five entries in the activity registry. The orange becomes one more color there instead of a rule inside Messages, and the numbering, the filter counts and the day words come free to the thread.</dd>
+  <dt>The tie is the join.</dt><dd>The job panel shows the person's lines tied to that job. Nothing is stored twice. The Customer chip is a filter by source, as Billing and Crew are today.</dd>
+  <dt>Arrived at job and Leaving job are quick replies already.</dt><dd>Two fixed presses for the team's own notes. In the quick replies editor they are lines for the team on the job's steps, so the office adds a third without a release and the phone's lines come from one place.</dd>
+  <dt>The job panel takes the move line.</dt><dd>One line under the crew row, read from the person's thread: whose move it is and when the customer last wrote. Today the panel says nothing about the customer at all.</dd>
+  <dt>Sessions and Set % complete stay the job's.</dt><dd>The person's thread links to the job. It does not grow the job's controls.</dd>
+</dl>
+
+<h2>The gaps this shows</h2>
+<div class="twogaps">
+  <div class="gap"><h4>In the job activity panel</h4><ul><li>No state and no owner. A note can sit forever with nobody on it.</li><li>No word about the customer: not whose move it is, not when they last wrote, not what they were sent.</li><li>Its two quick presses are fixed in code.</li></ul></div>
+  <div class="gap"><h4>In the person's thread</h4><ul><li>No numbers on rows and no counts on filters. Both come free through the registry.</li><li>No read of the job's own facts beside a line: the percent, the crew on site, the bill's state.</li><li>Its day dividers do not say how long ago.</li></ul></div>
+</div>
+<p class="note" style="margin-top:10px;max-width:76ch">Whether a job wants state and an owner the way a person does is a separate question. I would not answer it in this build.</p>
+</section>
+
 <!-- ===================== 6 ===================== -->
 <section class="screen" id="s6">
 <p class="lead">What changed in this prototype, newest first. Open it from the repo: <code>to-dos/gc-mode/messages/customer-messages-prototype.html</code> on <code>spike/gc-mode</code>.</p>
 <div class="log">
+  <article><h4>v0.7<small>2026-10-13</small></h4>
+    <ul>
+      <li>Screen 8, <b>Two panels, one row</b>: the job activity panel and the person's thread side by side, drawn from one list of rows; the registry under them with the five kinds Messages adds; a press on a kind lights it in both panels; what each takes from the other, and the gaps this shows.</li>
+    </ul>
+  </article>
   <article><h4>v0.6<small>2026-10-13</small></h4>
     <ul>
       <li>The owner's picks on the seventeen integrations folded in: screen 4 gains <b>The sixteen, decided 2026-10-13</b>, each with the cut it joins; screen 5 records the decision and the two picks against the lean; screen 7's filters and Who is this? carry the seven kinds of contact.</li>
@@ -1150,6 +1242,75 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   }
   $$('#vars button').forEach(b=>b.onclick=()=>{ variant=b.dataset.v; paintPage(); });
   paintPage();
+
+  // ---------- screen 8: the two panels over one list of rows ----------
+  // The registry: every kind of row either panel draws. `have` is on main today; `add` is what Messages adds. `bucket` is the filter it counts under.
+  const REG=[
+    {k:'note',   tag:'note',    cls:'',      bucket:'Notes',    who:'the team',           have:true,  what:'a thread note on the job'},
+    {k:'report', tag:'report',  cls:'',      bucket:'Reports',  who:'the crew',           have:true,  what:'a field report with its percent and words'},
+    {k:'status', tag:'status',  cls:'sys',   bucket:'Status',   who:'the system',         have:true,  what:'Waiting → Working, a scheduled day, crew added'},
+    {k:'clock',  tag:'clock',   cls:'clock', bucket:'Crew',     who:'the clock',          have:true,  what:'in → out · duration, pending approval'},
+    {k:'bill',   tag:'billing', cls:'bill',  bucket:'Billing',  who:'the system',         have:true,  what:'invoice created, sent, paid; a Stripe email'},
+    {k:'text',   tag:'text',    cls:'cust',  bucket:'Customer', who:'the team, the customer, the app', have:false, what:'a text either way, with its opt-out line and job tie'},
+    {k:'email',  tag:'email',   cls:'cust',  bucket:'Customer', who:'the team, the customer, the app', have:false, what:'an email either way, its subject and files'},
+    {k:'call',   tag:'call',    cls:'cust',  bucket:'Customer', who:'the customer, the office', have:false, what:'a call or a missed call from Quo, its length'},
+    {k:'voicemail',tag:'voicemail',cls:'cust',bucket:'Customer',who:'the customer',       have:false, what:'the transcript, the day heard'},
+    {k:'portal', tag:'portal',  cls:'cust',  bucket:'Customer', who:'the customer',       have:false, what:'a press on their page: approved, paid, wrote'},
+  ];
+  // One list. `job` is the tie; a person's line with no tie sits on the person alone. `src` says which panel owns the row today.
+  const ROWS=[
+    {day:'Mon, Oct 5 · 7d ago', t:'9:02a',  k:'text',   dir:'out', who:'Luis', job:'1312', body:'Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 30 minutes out.'},
+    {day:'Mon, Oct 5 · 7d ago', t:'9:04a',  k:'text',   dir:'in',  who:'Dana', job:'1312', body:'Great. Gate code is 4471.'},
+    {day:'Mon, Oct 5 · 7d ago', t:'9:41a',  k:'clock',  dir:'team',who:'Luis', job:'1312', body:'Clocked in at the job'},
+    {day:'Mon, Oct 5 · 7d ago', t:'11:07a', k:'report', dir:'team',who:'Luis', job:'1312', body:'Status Report · 40% · Camera showed a break at 32 ft. Need to send estimate.'},
+    {day:'Mon, Oct 5 · 7d ago', t:'11:12a', k:'text',   dir:'out', who:'Luis', job:'1312', body:'Dana, here is what we found: a break in the line about 32 feet out. Rosa will send you the estimate today.'},
+    {day:'Mon, Oct 5 · 7d ago', t:'12:30p', k:'clock',  dir:'team',who:'Luis', job:'1312', body:'9:41a → 12:30p · 2h 49m'},
+    {day:'Tue, Oct 6 · 6d ago', t:'2:20p',  k:'email',  dir:'out', who:'Rosa', job:'1312', body:'Your estimate for Oakridge sewer line · Hello Dana, your estimate is ready…'},
+    {day:'Tue, Oct 6 · 6d ago', t:'4:05p',  k:'text',   dir:'in',  who:'Dana', job:'1312', also:'1298', body:'Can you do Thursday? Also is the water heater quote still good?'},
+    {day:'Tue, Oct 6 · 6d ago', t:'4:12p',  k:'note',   dir:'team',who:'Rosa', job:'1312', body:'Called Dana. Thursday works, and the water heater quote stands.'},
+    {day:'Tue, Oct 6 · 6d ago', t:'4:30p',  k:'email',  dir:'out', who:'Rosa', job:'1298', body:'Your quote for the water heater still stands · Hello Dana, the price holds through October…'},
+    {day:'Wed, Oct 7 · 5d ago', t:'8:00a',  k:'text',   dir:'app', who:'the app', job:'1312', body:'Dana, your estimate for Oakridge sewer line is waiting for your approval. Approve it here: click.co/e/8Kp4.'},
+    {day:'Wed, Oct 7 · 5d ago', t:'8:14a',  k:'portal', dir:'in',  who:'Dana', job:'1312', body:'Approved the estimate · $4,850 · signed on her phone'},
+    {day:'Wed, Oct 7 · 5d ago', t:'8:15a',  k:'status', dir:'team',who:'Rosa', job:'1312', body:'Waiting → Working'},
+    {day:'Wed, Oct 7 · 5d ago', t:'8:16a',  k:'status', dir:'team',who:'Rosa', job:'1312', body:'Scheduled Thu, Oct 8 · 8:00a · Luis'},
+    {day:'Wed, Oct 7 · 5d ago', t:'8:20a',  k:'note',   dir:'team',who:'Rosa', job:'1312', body:'Water heater (1298) goes on the same visit if the first day runs short.'},
+    {day:'Thu, Oct 8 · 4d ago', t:'2:14p',  k:'voicemail',dir:'in',who:'Dana', job:null,  body:'“Hi, it’s Dana. Thursday after two works, and can you bring the water heater quote?” · 0:41'},
+    {day:'Fri, Oct 9 · 3d ago', t:'10:02a', k:'bill',   dir:'team',who:'the system', job:'1312', body:'Invoice 1312 created · $4,850'},
+    {day:'Fri, Oct 9 · 3d ago', t:'10:03a', k:'email',  dir:'app', who:'the app', job:'1312', body:'Invoice 1312 · $4,850 · Pay it here: click.co/p/4m2Q'},
+  ];
+  const isCust=k=>['text','email','call','voicemail','portal'].includes(k);
+  const bucketOf=k=>REG.find(r=>r.k===k).bucket;
+  let litKind=null, jobFilter='All', personFilter='All';
+  function rowsHtml(rows, numbered){
+    let h='', day='', n=0;
+    for(const r of rows){ if(r.day!==day){ day=r.day; h+=`<div class="day">${esc(day)}</div>`; } n++;
+      const reg=REG.find(x=>x.k===r.k); const cls=(isCust(r.k)?'cust '+(r.dir==='in'?'in':''):(r.k==='note'?'team':''))+(litKind?(litKind===r.k?' lit':' dim'):'');
+      h+=`<div class="row ${cls}"><span class="n">${numbered?n:'·'}</span><span class="t">${esc(r.t)}</span><span class="w"><b>${esc(r.who)}</b><span class="ktag ${reg.cls}">${reg.tag}</span></span><div class="b">${esc(r.body)}${r.also?`<div class="tie"><span class="this">${r.job} · this job</span><span>also ${r.also}</span></div>`:''}${r.job&&!numbered?`<div class="dim" style="font-size:11px">on ${r.job}</div>`:(!r.job&&!numbered?`<div class="dim" style="font-size:11px">on Dana alone · no job tied yet</div>`:'')}</div></div>`; }
+    return h||'<div class="note" style="padding:8px 0">Nothing of this kind.</div>';
+  }
+  function counts(rows){ const c={}; for(const r of rows){ const b=bucketOf(r.k); c[b]=(c[b]||0)+1; } return c; }
+  function filtersHtml(rows, cur, names, id){ const c=counts(rows); return `<div class="pf">${['All',...names].map(nm=>`<button class="${cur===nm?'on':''}" data-pf="${id}" data-f="${nm}">${nm}${nm!=='All'&&c[nm]?`<span class="n">${c[nm]}</span>`:''}</button>`).join('')}</div>`; }
+  function paintCmp(){
+    const host=$('#cmp'); if(!host) return;
+    const jobRows=ROWS.filter(r=>r.job==='1312'); const personRows=ROWS.filter(r=>isCust(r.k));
+    const jf=jobFilter==='All'?jobRows:jobRows.filter(r=>bucketOf(r.k)===jobFilter);
+    const pf=personFilter==='All'?personRows:personFilter==='1312'||personFilter==='1298'?personRows.filter(r=>r.job===personFilter||r.also===personFilter):personRows.filter(r=>bucketOf(r.k)===personFilter);
+    host.innerHTML=`
+      <div class="panel"><div class="ph"><div class="ttl">Job activity panel · Jobs → Stages, the row's middle</div><h4><span class="tag" style="font-size:12px;padding:1px 8px">Job: 1312</span>Oakridge sewer line</h4><div class="facts"><b>Luis</b> · 40% complete · crew report Oct 5 · money story →</div><div class="move ghost">the move line it does not have: Dana’s move · she wrote Tue 4:05p · we wrote Fri 10:03a</div></div>
+        ${filtersHtml(jobRows, jobFilter, ['Notes','Reports','Status','Billing','Crew','Customer'], 'job')}
+        <div class="feed">${rowsHtml(jf,true)}</div>
+        <div class="pc"><div class="kinds"><button class="on note">Note</button><button>Arrived at job</button><button>Leaving job</button></div><div class="fakebox">Add a note to Oakridge sewer line…</div><div class="acts"><button>Set % complete</button><button class="primary">Post</button></div></div></div>
+      <div class="panel"><div class="ph"><div class="ttl">The person’s thread · Messages, a job, her name, Job Mode</div><h4>Dana Whitfield <span class="chip" style="margin-left:auto">Open · Luis until 5 PM</span></h4><div class="facts"><b>Customer</b> · (210) 555-0137 · dana.whitfield@example.com · 2 active jobs</div><div class="move">Her move · she wrote Tue 4:05p · we wrote Fri 10:03a · nothing owed</div></div>
+        ${filtersHtml(personRows, personFilter, ['Customer','1312','1298'], 'person').replace('>Customer<','>All channels<')}
+        <div class="feed">${rowsHtml(pf,false)}</div>
+        <div class="pc tocust"><div class="kinds"><button>Note</button><button class="on text" style="background:var(--cust);border-color:var(--cust);color:#fff">Text to Dana</button><button>Email to Dana</button></div><div class="fakebox">Quick replies ▸ · Pick a line, or write to Dana…</div><div class="acts"><button class="cust">Send text…</button></div></div></div>`;
+    $$('[data-pf]',host).forEach(b=>b.onclick=()=>{ if(b.dataset.pf==='job') jobFilter=b.dataset.f; else personFilter=b.dataset.f==='All channels'?'All':b.dataset.f; paintCmp(); });
+    const reg=$('#reg'); const jc=counts(jobRows), pc=counts(personRows);
+    reg.innerHTML=`<tr><th>Row kind</th><th>Who writes it</th><th>What it is</th><th>Filter bucket</th><th class="c">On job 1312</th><th class="c">In Dana’s thread</th><th>Today</th></tr>`+REG.map(r=>`<tr class="k ${litKind===r.k?'on':''} ${r.have?'':'new'}" data-k="${r.k}"><td><span class="sw" style="background:${r.cls==='cust'?'var(--cust)':r.cls==='sys'?'var(--accent)':r.cls==='clock'?'var(--email-ch)':r.cls==='bill'?'var(--ok)':'var(--chip)'}"></span>${r.tag}</td><td>${r.who}</td><td>${r.what}</td><td>${r.bucket}</td><td class="c">${ROWS.filter(x=>x.job==='1312'&&x.k===r.k).length||'·'}</td><td class="c">${ROWS.filter(x=>isCust(x.k)&&x.k===r.k).length||'·'}</td><td><span class="stt ${r.have?'have':'add'}">${r.have?'in the registry':'Messages adds'}</span></td></tr>`).join('');
+    $$('tr.k',reg).forEach(tr=>tr.onclick=()=>{ litKind=litKind===tr.dataset.k?null:tr.dataset.k; paintCmp(); });
+    $('#regnote').textContent = litKind ? `${REG.find(r=>r.k===litKind).tag}: ${ROWS.filter(x=>x.job==='1312'&&x.k===litKind).length} on the job, ${ROWS.filter(x=>isCust(x.k)&&x.k===litKind).length} in her thread. ${isCust(litKind)?'One row kind, drawn in both panels through the tie.':'The job’s own; the thread shows it only where a line of hers points at it.'}` : 'Press a kind to see where it draws.';
+  }
+  paintCmp();
 
   paintKind(); paintPhone();
 })();
