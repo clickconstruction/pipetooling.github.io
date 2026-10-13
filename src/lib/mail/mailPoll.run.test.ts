@@ -1,0 +1,105 @@
+/**
+ * mail-poll's own handler, run here (the Docsmit train, PR 3): the cron secret, the paused
+ * switch, the hourly read-back through the shared refresh, and a message sent by hand from
+ * Docsmit's site becoming a piece of kind `other` when the switch says to look.
+ */
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { FakeDb, FakeDocsmit, FakeStorage, routeFetch } from './mailRunFakes'
+
+type Handler = (req: Request) => Promise<Response>
+const box: { handler: Handler | null } = { handler: null }
+const db = new FakeDb()
+const docsmit = new FakeDocsmit()
+const storage = new FakeStorage()
+
+vi.mock('https://deno.land/std@0.168.0/http/server.ts', () => ({ serve: (h: Handler) => void (box.handler = h) }))
+vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({ createClient: () => ({ from: (name: string) => db.from(name) }) }))
+
+const ENV: Record<string, string> = {
+  SUPABASE_URL: 'http://127.0.0.1:9',
+  SUPABASE_SERVICE_ROLE_KEY: 'service',
+  CRON_SECRET: 'cron-1',
+  DOCSMIT_EMAIL: 'bids@example.test',
+  DOCSMIT_PASSWORD_SHA512: 'abc',
+  DOCSMIT_SOFTWARE_ID: 'soft-1',
+  DOCSMIT_BASE_URL: 'https://secure.docsmit.com/api/v1',
+}
+const FUNCTION_FILE = '../../../supabase/functions/mail-poll/index.ts'
+const realFetch = globalThis.fetch
+
+beforeAll(async () => {
+  ;(globalThis as unknown as { Deno: unknown }).Deno = { env: { get: (k: string) => ENV[k] } }
+  globalThis.fetch = routeFetch(docsmit, storage)
+  await import(/* @vite-ignore */ FUNCTION_FILE)
+})
+afterAll(() => {
+  globalThis.fetch = realFetch
+})
+beforeEach(() => {
+  db.tables = { app_settings: [], mail_pieces: [], job_lien_filings: [] }
+  db.writes = []
+  db.nextId = 1
+  docsmit.calls = []
+  docsmit.answers = {}
+  storage.files = {}
+})
+
+function post(body: unknown, secret: string | null = 'cron-1'): Promise<Response> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (secret) headers['x-cron-secret'] = secret
+  return box.handler!(new Request('http://fn/mail-poll', { method: 'POST', headers, body: JSON.stringify(body) }))
+}
+
+const open = { id: 'p1', kind: 'lien_notice_53_056', source_ids: ['f1'], provider: 'docsmit', recipient: 'owner', status: 'sent', provider_message_id: 'm-1', events: [], usps_tracking: null, mailed_at: null, delivered_at: null, signed_by: null, delivery_status: null, delivery_as_of: null, pdf_bucket: 'lien-release-documents', certification_path: null }
+
+describe('mail-poll (the Docsmit train, PR 3)', () => {
+  it('needs the cron secret, and sits out while paused', async () => {
+    expect((await post({}, null)).status).toBe(401)
+    expect((await post({}, 'wrong')).status).toBe(401)
+    db.tables.app_settings = [{ key: 'docsmit_paused', value_text: 'true' }]
+    expect(await (await post({})).json()).toEqual({ ok: true, skipped: 'paused' })
+    expect(docsmit.calls).toEqual([])
+  })
+
+  it('reads every open piece once, folds it, and writes the number and the mailed day into the filing', async () => {
+    db.tables.mail_pieces = [{ ...open }, { ...open, id: 'p2', provider_message_id: 'm-2', status: 'delivered' }]
+    db.tables.job_lien_filings = [{ id: 'f1', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', sent_on: '2026-10-12' }] }]
+    docsmit.answers['GET /messages/m-1/parties'] = { body: [{ USPSTrackingID: '9407 1118 9876 5432 1098', DeliveryStatus: 'Accepted at USPS Origin Facility', DStatusao: '2026-10-14T00:30:00Z' }] }
+    const res = await post({})
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, env: 'prod', read: 1, updated: ['p1'], errors: [], matched_from_site: 0 })
+    expect(db.tables.mail_pieces![0]).toMatchObject({ status: 'in_transit', usps_tracking: '9407 1118 9876 5432 1098', mailed_at: '2026-10-14T00:30:00Z' })
+    // 00:30 UTC on Oct 14 is the evening of Oct 13 in Central: the filing's day is the 13th.
+    expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toEqual({ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118 9876 5432 1098', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p1' })
+    expect(docsmit.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /token', 'GET /messages/m-1/parties'])
+  })
+
+  it('a dry run lists the open pieces and writes nothing', async () => {
+    db.tables.mail_pieces = [{ ...open }]
+    expect(await (await post({ dry_run: true })).json()).toEqual({ ok: true, dry_run: true, env: 'prod', open: [{ id: 'p1', status: 'sent' }] })
+    expect(db.writes).toEqual([])
+  })
+
+  it('a provider error on one piece is logged on it and the rest still read', async () => {
+    db.tables.mail_pieces = [{ ...open }, { ...open, id: 'p2', provider_message_id: 'm-2', source_ids: [] }]
+    docsmit.answers['GET /messages/m-1/parties'] = { status: 500, body: { message: 'down' } }
+    docsmit.answers['GET /messages/m-2/parties'] = { body: [{ USPSTrackingID: '1', DeliveryStatus: 'In Transit' }] }
+    const out = await (await post({})).json()
+    expect(out).toMatchObject({ ok: false, updated: ['p2'], errors: [{ id: 'p1', error: expect.stringMatching(/answered 500: down/) }] })
+    expect((db.tables.mail_pieces![0]!.events as Array<{ kind: string }>).map((e) => e.kind)).toEqual(['poll_error'])
+  })
+
+  it('with the site switch on, a message sent by hand from Docsmit’s site becomes a piece of kind other; ours never a second row', async () => {
+    db.tables.app_settings = [{ key: 'docsmit_match_site', value_text: 'true' }]
+    db.tables.mail_pieces = [{ ...open, provider_message_id: 'm-1', status: 'delivered' }]
+    docsmit.answers['GET /messages/sent'] = { body: { messages: [
+      { messageID: 'm-1', clientMsgID: 'lien_notice_53_056:p1', title: 'ours' },
+      { messageID: 'm-55', clientMsgID: 'lien_notice_53_056:gone', title: 'ours, reset' },
+      { messageID: 'm-88', clientMsgID: '', title: 'Demand to Harlan', physicalParties: [{ organization: 'Harlan Dental PLLC', address1: '2200 Bandera Rd', city: 'San Antonio', state: 'tx', postalCode: '78228', USPSTrackingID: '9407 0000', DeliveryStatus: 'Delivered' }] },
+    ] } }
+    const out = await (await post({})).json()
+    expect(out).toMatchObject({ ok: true, read: 0, matched_from_site: 1, match_errors: [] })
+    expect(db.tables.mail_pieces).toHaveLength(2)
+    expect(db.tables.mail_pieces![1]).toMatchObject({ kind: 'other', provider: 'docsmit', provider_message_id: 'm-88', recipient: 'unknown', organization: 'Harlan Dental PLLC', state: 'TX', status: 'delivered', usps_tracking: '9407 0000', problem: "Sent from Docsmit's own site (Demand to Harlan). Match it to a job." })
+  })
+})
