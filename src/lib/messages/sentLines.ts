@@ -5,10 +5,12 @@
  *
  * A copy lands on every contact with an address it went to, compared normalized. Its job is the copy's own: its bid,
  * else its first Pipeline job. Its id is `sent:<sent_documents.id>`, so the thread can tell an overlay line from a row
- * of its own (a tie, a highlight and a message window's tools act on rows only).
+ * of its own (a tie, a highlight and a message window's tools act on rows only). Its who is the person who pressed
+ * Send, or the app when nobody did (`appLines.ts` folds those and words their small print).
  */
 import { normalizeChannel, type Contact } from '../contacts/kernel'
 import type { SentCopy } from '../sent/sentCopies'
+import { APP_WHO, sentCopyFacts, type SentCopyStamps } from './appLines'
 import { jobKey } from './load'
 import type { ThreadMessage } from './thread'
 
@@ -51,7 +53,7 @@ export function sentLines(copies: readonly SentCopyWithJobs[], contacts: readonl
           channel: 'email',
           direction: 'out',
           at: copy.sentAt,
-          who: copy.sentByName ? `${copy.sentByName} · the app` : 'the app',
+          who: copy.sentByName.trim() || APP_WHO,
           subject: copy.subject || copy.title,
           body: copy.title,
           channelId: hit.channelId,
@@ -60,4 +62,14 @@ export function sentLines(copies: readonly SentCopyWithJobs[], contacts: readonl
     }
   }
   return lines
+}
+
+/** Each sent copy's small print, keyed by its line's id (`sent:<id>`), for the copies that have any. */
+export function sentLineFacts(rows: readonly SentCopyStamps[]): Map<string, string[]> {
+  const byLine = new Map<string, string[]>()
+  for (const row of rows) {
+    const facts = sentCopyFacts(row)
+    if (facts.length > 0) byLine.set(`${SENT_LINE_PREFIX}${row.id}`, facts)
+  }
+  return byLine
 }
