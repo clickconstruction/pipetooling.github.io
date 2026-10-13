@@ -70,6 +70,7 @@
     "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",
     "test:pg:flow-save": "bash scripts/pgtest-flow-save.sh",
     "test:pg:residential-flow": "bash scripts/pgtest-residential-flow.sh",
+    "test:pg:sub-flow": "bash scripts/pgtest-sub-flow.sh",
     "test:pg:quo-messages": "bash scripts/pgtest-quo-messages.sh",
     "test:pg:messages-email": "bash scripts/pgtest-messages-email.sh",
     "test:pg:drive-links": "bash scripts/pgtest-drive-links.sh",

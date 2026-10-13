@@ -1,5 +1,5 @@
--- The residential customer's flow (migration *_residential_flow, residential R4 · 1 of 4, after Messages cut 4): five
--- flows, the residential one with its eleven steps in one Per job lane as SEED_FLOWS.residential draws them
+-- The residential customer's flow (migration *_residential_flow, residential R4 · 1 of 4, after Messages cut 4): six
+-- flows (the sub's seeded by *_sub_flow), the residential one with its eleven steps in one Per job lane as SEED_FLOWS.residential draws them
 -- (src/lib/flows/seed.ts); Approved and Paid carry the app's reminders and no other step has one; the eleven facts come
 -- last in flow_fact_ids() and the estimate and the bill last in flow_paper_ids(); a sub flow is allowed and an unknown
 -- kind refused; the migration once more at the -- @rerun line (the bed script streams it in there, as a second push
@@ -45,9 +45,9 @@ CREATE FUNCTION rfl.steps() RETURNS text LANGUAGE sql AS $$
 $$;
 
 -- 1 · Five flows; the residential one in one Per job lane, Booked to Review asked.
-SELECT rfl.same('five flows, the residential one among them',
+SELECT rfl.same('six flows, the residential one among them',
   (SELECT string_agg(kind || ':' || name, ', ' ORDER BY kind COLLATE "C") FROM public.flows),
-  'arch:Architect flow, customer:Customer flow, residential:Residential customer flow, trade:Trade partner flow, unknown:The flow');
+  'arch:Architect flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
 SELECT rfl.same('eleven steps in one Per job lane', rfl.order(),
   'per_job.booked per_job.onway per_job.arrived per_job.found per_job.estimate per_job.approved per_job.working per_job.done per_job.billed per_job.paid per_job.review');
 SELECT rfl.same('Booked: ours, the day we come',
@@ -78,9 +78,8 @@ SELECT rfl.same('a step may pick them', concat_ws('|',
   public.flow_facts_ok(ARRAY['booked', 'review_asked'])::text, public.flow_papers_ok(ARRAY['estimate', 'bill'])::text), 'true|true');
 
 -- 3 · The kinds a flow is for.
-INSERT INTO public.flows (kind, name) VALUES ('sub', 'Sub flow');
+-- The sub flow's own migration (*_sub_flow) seeds it, so it is here already; its own bed reads it step by step.
 SELECT rfl.same('a sub flow is allowed', (SELECT count(*) FROM public.flows WHERE kind = 'sub')::text, '1');
-DELETE FROM public.flows WHERE kind = 'sub';
 SELECT rfl.refused('a kind the app does not know', $q$INSERT INTO public.flows (kind, name) VALUES ('vendor', 'Vendor flow')$q$, 'flows_kind_known');
 
 -- 4 · An office's edit stays the office's: the migration once more changes nothing.

@@ -13,7 +13,7 @@ import type { ContactKind } from '../contacts/kernel'
 
 /**
  * The kind of person a flow is for. An unknown number has a one-step flow until someone names it. A residential
- * customer's flow came in R4 (`RESIDENTIAL_BUILD_PLAN.md`). A sub's has no steps yet; they come in R8.
+ * customer's flow came in R4 (`RESIDENTIAL_BUILD_PLAN.md`), and a sub's in R8 · 12.
  */
 export type FlowKind = 'customer' | 'trade' | 'arch' | 'residential' | 'sub' | 'unknown'
 
@@ -78,6 +78,12 @@ export type FactId =
   | 'billed'
   | 'paid'
   | 'review_asked'
+  | 'sub_asked'
+  | 'sub_said_yes'
+  | 'sub_declined'
+  | 'sub_on_site'
+  | 'sub_done'
+  | 'sub_paid'
 
 export type PaperId =
   | 'invitation'
@@ -625,6 +631,69 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     scope: 'job',
     kept: 'half',
     gap: 'messages.quick_reply_id, so a sent text names its line (R3)',
+  },
+  // The sub's flow (R8 · 12, RESIDENTIAL_BUILD_PLAN.md): one labor job (`people_labor_jobs`, the sub sheet) from the
+  // work order offered to the sheet paid, each read from what the work order and the sheet already keep.
+  {
+    id: 'sub_asked',
+    text: 'we offered them the work',
+    small: 'the work order offered to them, on the sheet or on its job before the sheet exists',
+    group: 'On the job',
+    reads: 'step_commitments.offered_at on the order for this sheet (labor_job_id), else on its job. Withdraw clears it',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_said_yes',
+    text: 'they took the work',
+    small: 'their yes on the work order, signed in their portal, pressed in the app, or marked by the office',
+    group: 'On the job',
+    reads: 'step_commitments.accepted_at',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_declined',
+    text: 'they turned the work down',
+    small: 'their no on the work order, with its reason',
+    group: 'On the job',
+    reads: 'step_commitments.declined_at, with decline_reason',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    endsLane: true,
+  },
+  {
+    id: 'sub_on_site',
+    text: 'they are on site',
+    small: 'a progress report from their portal stands in for arriving. No clock in is tied to a sheet',
+    group: 'On the job',
+    reads: "people_labor_jobs.progress_at once set (progress_source 'portal'). It holds the newest report, so the first day is not kept",
+    scope: 'job',
+    kept: 'half',
+    gap: 'people_labor_jobs.on_site_at, the first progress report (R8 · 12, PR 2)',
+  },
+  {
+    id: 'sub_done',
+    text: 'their work is done',
+    small: 'the sheet moved past Working to the walkthrough',
+    group: 'On the job',
+    reads: "people_labor_jobs.stage past 'working', dated by stage_changed_at at the walkthrough. It keeps only the newest move",
+    scope: 'job',
+    kept: 'half',
+    gap: 'people_labor_jobs.done_at, the first move to the walkthrough (R8 · 12, PR 2)',
+  },
+  {
+    id: 'sub_paid',
+    text: 'we paid them',
+    small: 'the sheet paid in full: its payments cover its lines, less any back charge',
+    group: 'Money',
+    reads: 'subLaborJobBalance at 0 or less: people_labor_job_items less people_labor_job_payments, where a negative payment is a back charge. Dated by the newest payment_date. people_labor_jobs.paid_at is never written',
+    scope: 'job',
+    kept: 'half',
+    gap: null,
   },
 ]
 

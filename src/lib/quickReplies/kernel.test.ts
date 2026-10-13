@@ -244,9 +244,11 @@ describe('the steps a line can belong to', () => {
     expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] })
   })
 
-  it('has no steps for the four kinds of 2026-10-13: three have no flow, and a sub’s has no steps yet', () => {
-    expect([STEPS.lead, STEPS.sub, STEPS.supply_house, STEPS.candidate]).toEqual([[], [], [], []])
-    expect(qrTagWords({ for: 'sub', stepId: 'asked' }, STEPS)).toEqual(['for subs', 'on no step'])
+  it('has no steps for three of the four kinds of 2026-10-13, and the sub flow’s five since R8 · 12', () => {
+    expect([STEPS.lead, STEPS.supply_house, STEPS.candidate]).toEqual([[], [], []])
+    expect(STEPS.sub?.map((s) => s.id)).toEqual(['asked', 'yes', 'onsite', 'done', 'paid'])
+    expect(qrTagWords({ for: 'sub', stepId: 'asked' }, STEPS)).toEqual(['for subs', 'on Asked'])
+    expect(qrTagWords({ for: 'sub', stepId: 'gone' }, STEPS)).toEqual(['for subs', 'on no step'])
   })
 
   it('guesses only steps the flows have', () => {
