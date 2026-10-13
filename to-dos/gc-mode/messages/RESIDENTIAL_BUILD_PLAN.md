@@ -31,7 +31,7 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 
 | Cut | Change | Why |
 |---|---|---|
-| R0 | `contacts_kind_known` widened to `lead`, `supply_house`, `candidate`, `sub`; three id columns beside the five, `prospect_id` (a lead is a `prospects` row), `supply_house_id`, `team_prospect_id` (a candidate is a `team_prospects` row, Prospects → Team); a sub is a `people` row with `kind = 'sub'` through the `people_id` that exists; `contact_for_record` reads the three new tables (helper 2's read of main, 2026-10-13) | seven kinds of contact, one change |
+| R0 | `contacts_kind_known` widened to `lead`, `supply_house`, `candidate`, `sub`; four id columns beside the five, `prospect_id` (a lead is a `prospects` row), `supply_house_id` (the counter, no unique index: a second person named on it keeps their own contact), `supply_house_contact_id` (a rep, `supply_house_contacts`, unique like `gc_company_person_id`; `supply_houses.email` was retired 2026-09-08), `team_prospect_id` (a candidate is a `team_prospects` row, Prospects → Team); a sub is a `people` row with `kind = 'sub'` through the `people_id` that exists, and PR 2 backfills `contacts.kind = 'sub'` where `people.kind` is sub; `contact_for_record` copies each record's phone and email into `contact_channels`; `contact_for_record` reads the three new tables (helper 2's read of main, 2026-10-13) | seven kinds of contact, one change |
 | R0 | `contacts_kind_door` policies: supply house and candidate rows readable by the office, never counted by `followup_queue` | off Follow up by default |
 | R1 | none | the registry is code; the job panel reads `messages` by `job_id` |
 | R3 | `quick_replies.text_es`, `quick_replies.phone_order` (null = not on the phone), `quick_replies.phone_name`; `quick_reply_versions.kind` gains `es`; `messages.quick_reply_id`, the line a sent text came from, so the flow's `on_way` and `review_asked` read a column instead of the words (helper 3's gap, 2026-10-13) | blanks are text; the phone mark; Spanish; which line a text was |
@@ -41,7 +41,7 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 | R5 | `app_settings.messages_office_wait_minutes` (15); `app_settings.messages_office_hours_v1` as JSON `{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00","techUntil":"17:00","emergency":null}`, read by `parseOfficeHours` with the defaults as the fallback; `emergency` set adds one sentence to the after-hours answer naming the number (helper 5's prepare note, 2026-10-13) | push to the office after a wait; who answers, and when the office is closed |
 | R6 | `messages.mailbox` (`bids` · `team`), `contact_channels.from_number_id` per kind | two boxes, two numbers, the reply from the box they wrote to |
 | R8 · 16 | `customers.language` (`en` · `es`) | read by every contact of theirs |
-| R8 · 8 | `estimate_lines.source_message_id` and an `estimate_add_on_from_message` RPC | the add-on from a message |
+| R8 · 8 | `estimates.source_message_id`, the message that started the document (main keeps lines as `estimates.line_items_snapshot` JSON and has no estimate_lines table or save RPC; the Estimates page's write path takes the draft; helper 6's prepare note, 2026-10-13) | the add-on from a message |
 | R8 · 3 | `dispatch_move_reason` on the board's move RPC | a Running late press moves the board with a reason |
 | R8 · 12 | the sub sheet's facts as stamps: `people_labor_jobs.asked_at`, `said_yes_at`, `on_site_at`, `done_at`; `paid` from the sheet's payments | the sub flow |
 
