@@ -127,10 +127,10 @@ describe('our link: their portal page when they have it, else the file', () => {
 describe('the send window’s file notes', () => {
   it('says why each file goes as our link on an email, and what the link opens', () => {
     expect(emailFileNote(waysOut([addendum, planSet], 'email'), 'trade', GREG_LINKS)).toBe(
-      'Boerne Retail Shell plans, rev 2 goes as our link, the way a plan set always has. The link opens their portal at the plans. The link is ours, not Drive’s. We see who opened it, and we can cut it off.',
+      'Boerne Retail Shell plans, rev 2 goes as our link, the way a plan set always has. The link opens their portal at the plans. The link is ours, not Drive’s. We see when it is opened, never who, and we can cut it off.',
     )
     expect(emailFileNote(waysOut([big('Survey.pdf', 12 * MB), { ...bidTab, bytes: null }], 'email'), 'trade', GREG_LINKS)).toBe(
-      "Survey.pdf is over the email limit, so it goes as our link. We do not know how big Bid tab, Sitework.pdf is yet, so it goes as our link. Our link opens that one file in the job's Drive folder. The link is ours, not Drive’s. We see who opened it, and we can cut it off.",
+      "Survey.pdf is over the email limit, so it goes as our link. We do not know how big Bid tab, Sitework.pdf is yet, so it goes as our link. Our link opens that one file in the job's Drive folder. The link is ours, not Drive’s. We see when it is opened, never who, and we can cut it off.",
     )
     expect(emailFileNote(waysOut([big('A.pdf', 9 * MB), big('B.pdf', 9 * MB), big('C.pdf', 9 * MB)], 'email'), 'arch', NO_PORTAL)).toMatch(/^The files together are over the email limit, so A\.pdf goes as our link\./)
   })

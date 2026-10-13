@@ -28,12 +28,17 @@ import {
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
+import { supabaseAttachIo, type AttachIo } from '../../../../lib/messages/attachIo'
+import { addDraftFile, chipHover } from '../../../../lib/documents/outgoing'
+import { sizeWords } from '../../../../lib/documents/jobFiles'
+import { audienceOf, type ReplyFile } from '../../../../lib/messages/replyFiles'
 import { firstName, type Contact } from '../../../../lib/contacts/kernel'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn } from '../../gcUi'
 import { JobPickerWindow } from '../JobPickerWindow'
 import { useOpenThread } from '../openThread'
 import { useMessagesReread } from '../useMessagesReread'
+import { AttachPicker } from './AttachPicker'
 import { FindReplyWindow } from './FindReplyWindow'
 import { QuickRepliesEditor } from './QuickRepliesEditor'
 import { CUSTOMER_BAR, CUSTOMER_LOOK, KIND_LOOK, RING } from './kindLook'
@@ -80,6 +85,7 @@ export function ReplyBox({
   quickIo,
   job,
   kinds,
+  attachIo,
 }: {
   contact: Contact
   io?: ReplyIo
@@ -88,6 +94,8 @@ export function ReplyBox({
   job?: { key: string; name: string }
   /** The kinds it offers, in `REPLY_KINDS`' order. All three when left out. */
   kinds?: readonly ReplyKind[]
+  /** What Attach reads (cut 7f): the job's files, their portal, a file from this computer. */
+  attachIo?: AttachIo
 }) {
   const open = useOpenThread()
   const reread = useMessagesReread()
@@ -95,6 +103,7 @@ export function ReplyBox({
   const me = useOptionalAuth()?.user?.id ?? ''
   const io = useMemo(() => ioGiven ?? supabaseReplyIo(), [ioGiven])
   const qio = useMemo(() => quickIo ?? supabaseQuickRepliesIo(), [quickIo])
+  const aio = attachIo ?? supabaseAttachIo
   const to = useMemo(() => replyRecipient(contact), [contact])
   const offered = useMemo(() => REPLY_KINDS.filter((k) => !kinds || kinds.includes(k.kind)), [kinds])
   const [chosen, setKind] = useState<ReplyKind>(() => defaultReplyKind(to))
@@ -109,6 +118,23 @@ export function ReplyBox({
   const [tie, setTie] = useState<ReplyTie>(undefined)
   const [picking, setPicking] = useState(false)
   const [sending, setSending] = useState<'text' | 'email' | null>(null)
+  // Cut 7f: the files on the reply, Attach's picker, and whether a link to their portal is on.
+  const [files, setFiles] = useState<ReplyFile[]>([])
+  const [attaching, setAttaching] = useState(false)
+  const [hasPortal, setHasPortal] = useState(false)
+  const audience = audienceOf(contact.kind)
+  // Read by the person's parts, since the contact object is new on every read of the thread.
+  const { kind: whoKind, gcCompanyId, customerId } = contact
+  useEffect(() => {
+    let live = true
+    aio.hasPortal({ kind: whoKind, gcCompanyId, customerId }).then(
+      (on) => live && setHasPortal(on),
+      () => live && setHasPortal(false),
+    )
+    return () => {
+      live = false
+    }
+  }, [aio, whoKind, gcCompanyId, customerId])
   const [busy, setBusy] = useState(false)
   // Cut 2: marking what we owe done with a team note (the owed strip's press), and a note's day to come back.
   const settling = useOwedSettling(contact.id)
@@ -150,6 +176,7 @@ export function ReplyBox({
   const after = (sentKind: ReplyKind, more?: string | null) => {
     setBody('')
     setTie(undefined)
+    setFiles([])
     showToast([sentWords(sentKind, company), more].filter(Boolean).join(' '), 'success')
     reread()
   }
@@ -343,6 +370,32 @@ export function ReplyBox({
         </div>
       )}
 
+      {goesOut(shown) && !settling.active && files.length > 0 && (
+        <div data-reply-files style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {files.map((f) => (
+            <span
+              key={f.draft.key}
+              data-reply-file={f.draft.key}
+              title={chipHover(f.draft).join(' ')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 8, padding: '3px 4px 3px 8px', fontSize: '0.75rem', background: 'var(--surface)' }}
+            >
+              <span style={{ overflowWrap: 'anywhere' }}>
+                {f.draft.name}
+                {sizeWords(f.draft.bytes) && <span style={{ color: 'var(--text-muted)' }}> · {sizeWords(f.draft.bytes)}</span>}
+              </span>
+              <button
+                type="button"
+                aria-label={`Take ${f.draft.name} off the message`}
+                onClick={() => setFiles((all) => all.filter((x) => x.draft.key !== f.draft.key))}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1, padding: '0 0.2rem' }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {job ? (
           <span style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
@@ -376,6 +429,11 @@ export function ReplyBox({
           </button>
         )}
         {blocked && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{blocked}</span>}
+        {goesOut(shown) && !settling.active && (
+          <Btn onClick={() => setAttaching(true)} title="Adds a file from the job, this computer or a photo. The send window shows how each goes.">
+            Attach
+          </Btn>
+        )}
         <Btn
           kind="primary"
           onClick={() => void press()}
@@ -449,6 +507,26 @@ export function ReplyBox({
         />
       )}
 
+      {attaching && (
+        <AttachPicker
+          jobKey={jobKey}
+          jobName={jobKey && tiles[jobKey] ? `${tiles[jobKey]!.num} ${tiles[jobKey]!.name}` : job && job.key === jobKey ? job.name : null}
+          audience={audience}
+          hasPortal={hasPortal}
+          io={aio}
+          onPick={(f) => {
+            const added = addDraftFile(
+              files.map((x) => x.draft),
+              f.draft,
+            )
+            if (!added.ok) showToast(added.toast, 'info')
+            else setFiles((all) => [...all, f])
+            setAttaching(false)
+          }}
+          onClose={() => setAttaching(false)}
+        />
+      )}
+
       {sending && (
         <SendWindow
           contact={contact}
@@ -457,6 +535,10 @@ export function ReplyBox({
           jobKey={jobKey}
           company={company}
           io={io}
+          files={files}
+          audience={audience}
+          hasPortal={hasPortal}
+          attachIo={aio}
           onKind={setSending}
           onClose={() => setSending(null)}
           onSent={(sentKind, more) => {

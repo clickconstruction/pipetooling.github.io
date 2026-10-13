@@ -28,6 +28,10 @@ import {
 } from '../../../../lib/messages/compose'
 import { lastOurTextAt, priorTexts } from '../../../../lib/messages/replyBox'
 import { TEXTS_ON, TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
+import type { AttachIo } from '../../../../lib/messages/attachIo'
+import type { DeviceBytes } from '../../../../lib/documents/emailFileAsks'
+import { chipFacts, emailFileNote, textFileNote, type Audience } from '../../../../lib/documents/outgoing'
+import { replyFileAsks, replyWays, wordsMakers, type ReplyFile } from '../../../../lib/messages/replyFiles'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn, input } from '../../gcUi'
 import { useOpenThread } from '../openThread'
@@ -51,6 +55,10 @@ export function SendWindow({
   jobKey,
   company,
   io,
+  files = [],
+  audience = 'unknown',
+  hasPortal = false,
+  attachIo,
   onKind,
   onClose,
   onSent,
@@ -61,6 +69,13 @@ export function SendWindow({
   jobKey: string | null
   company: ComposeCompany
   io: ReplyIo
+  /** The files on it (cut 7f), each shown with how it goes. */
+  files?: readonly ReplyFile[]
+  audience?: Audience
+  /** A link to their portal is on: a file with a page there goes as their portal at it. */
+  hasPortal?: boolean
+  /** Reads a file from this computer for the send. */
+  attachIo?: Pick<AttachIo, 'readDevice'>
   onKind: (kind: Kind) => void
   onClose: () => void
   /** It went: the toast's second sentence, when what we owe changed with it. */
@@ -123,6 +138,9 @@ export function SendWindow({
   const hold = optoutHoldNote(reason, held, days, greetingName || contact.name)
   const prior = priorTexts(open?.lines ?? [], to.numberChannelId)
   const warnings = sendWarnings(kind, to, kind === 'text' ? text : undefined)
+  const ways = replyWays(files, kind)
+  const makers = wordsMakers(hasPortal)
+  const fileNote = kind === 'email' ? emailFileNote(ways, audience, makers) : textFileNote(ways)
   const waits = kind === 'text' && !TEXTS_ON
   const goes = canSend(kind, to) && !waits && (kind === 'text' || sender !== null)
 
@@ -133,7 +151,17 @@ export function SendWindow({
       let messageId: string
       if (kind === 'email') {
         if (!to.emailChannelId) return
-        messageId = await io.sendEmail({ contactId: contact.id, channelId: to.emailChannelId, jobKey, draft })
+        // A file from this computer is read now, for the function to put into the job's Team only on the way out.
+        const bytes = new Map<string, DeviceBytes>()
+        for (const f of files) {
+          if (f.device && attachIo) bytes.set(f.draft.key, await attachIo.readDevice(f.device))
+        }
+        const asks = replyFileAsks(files, audience, hasPortal, bytes)
+        if (!asks.ok) {
+          setProblem(asks.words)
+          return
+        }
+        messageId = await io.sendEmail({ contactId: contact.id, channelId: to.emailChannelId, jobKey, draft, ...(asks.asks.length ? { files: asks.asks } : {}) })
       } else {
         if (!to.numberChannelId) return
         messageId = await io.sendText({ contactId: contact.id, channelId: to.numberChannelId, jobKey, body, held })
@@ -276,7 +304,20 @@ export function SendWindow({
                 srcDoc={email.html}
                 style={{ width: '100%', height: 360, border: '1px solid var(--border)', borderRadius: 8 }}
               />
-              <p style={note}>{sentCopyNote(0)} {EMAIL_REPLIES_NOTE}</p>
+              {files.length > 0 && (
+                <div data-send-files style={{ display: 'grid', gap: '0.3rem' }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {ways.map((w) => (
+                      <span key={w.file.key} data-send-file={w.file.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '3px 8px', fontSize: '0.75rem', background: 'var(--surface)' }}>
+                        {w.file.name}
+                        {chipFacts(w, audience, makers).length > 0 && <span style={{ color: 'var(--text-muted)' }}> · {chipFacts(w, audience, makers).join(' · ')}</span>}
+                      </span>
+                    ))}
+                  </div>
+                  {fileNote && <p data-send-file-note style={note}>{fileNote}</p>}
+                </div>
+              )}
+              <p style={note}>{sentCopyNote(files.length)} {EMAIL_REPLIES_NOTE}</p>
             </>
           ) : (
             <>
@@ -332,6 +373,7 @@ export function SendWindow({
                   </button>
                 </div>
               )}
+              {fileNote && <p data-send-file-note style={note}>{fileNote}</p>}
               <p style={note}>
                 {text.characters} characters · {text.segments} text{text.segments === 1 ? '' : 's'}. {TEXT_FROM_NOTE}
               </p>

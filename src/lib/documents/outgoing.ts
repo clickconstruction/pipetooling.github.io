@@ -181,7 +181,7 @@ function linkOpens(targets: readonly LinkTarget[]): string {
   const parts: string[] = []
   if (pages.length) parts.push(`The link opens their portal at ${andNames(pages.map((p) => PORTAL_PAGES[p].page))}.`)
   if (files) parts.push("Our link opens that one file in the job's Drive folder.")
-  parts.push('The link is ours, not Drive’s. We see who opened it, and we can cut it off.')
+  parts.push('The link is ours, not Drive’s. We see when it is opened, never who, and we can cut it off.')
   return parts.join(' ')
 }
 
