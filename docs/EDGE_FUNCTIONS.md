@@ -1080,6 +1080,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### submit-gc-trade-portal
 
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.5329 — a statement of work built from clauses signs at the revision it showed** (Messages, cut 4c, cluster 9 PR 1): `sign_sow` may carry `paperRevision`, a whole number, and `paperLang` (`en` | `es`, anything else reads `en`). With a revision the call passes `p_paper_revision` and `p_paper_lang` to `gc_trade_sign_sow` (`20261013000000_gc_clause_papers`). Without one it passes neither, and the SQL's defaults sign a statement of work whose lines are the paper as before. A revision that is not a whole number answers `400 badRequest`. The verb's `paperChanged` maps to 409, and the page reads it as `errPaperChanged`, which comes off the words test's `WAITING`. **Redeploy required**, after the migration is on prod.
 
 **Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, asking about the plans, since P4b-i (v2.5044) answering a charge and asking for a change, and since P2c-ii (v2.5138) signing its statement of work. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The page's presses post to it since v2.4935 (P2b-ii, `gcTradePortalPress.ts`).
@@ -2347,6 +2349,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### accept-contract
 
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.5329 — the shared clause read, generalized**: `clausePaperFor` (`_shared/clausePaper.ts`) runs through the helpers the portals share, with the same reads and the same answer ([get-contract-for-signer](#get-contract-for-signer)). Redeployed so `check:edge-drift` reads clean.
 
 > **v2.5294 — a paper built from clauses signs as it read** (Messages, cut 4c): the body may carry `paperRevision` (the revision the page showed) and `paperLang` (`en` | `es`). Before anything is stored, the function puts the paper together again (`clausePaperFor`, `_shared/clausePaper.ts`) for the row's library document, company trades and language. A paper not built from clauses signs as before. One built from clauses signs only at the revision the page showed: else `409 { code: 'paper_changed', error: 'The paper changed since you opened it. Reload to read the new version.' }`, A library document with no clauses costs one small read of `contract_clauses` and nothing more. When the page showed clauses (it sent `paperRevision`), a read that fails answers 500 rather than signing without the freeze; a page that showed the body signs as before. The same update as the signature writes `paper_revision` and `clause_versions` (the paper with its `title`), which `contract_signed_clauses_frozen` keeps as signed. **Redeploy required.** No new secret.
@@ -2417,6 +2421,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### contract-form-paper-entry
 
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose** (v2.2801, Contract Forms PR 6 — *Enter from paper*): a staff member keys a sub's hand-filled form into the same boxes the signing page shows, attaches the scan, and files it as signed on paper. Two actions in one function.
 
 **Endpoint**: `POST /functions/v1/contract-form-paper-entry` (`verify_jwt = false`; JWT validated with `auth.getUser` in the body).
@@ -2431,6 +2437,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 
 ### complete-contract-form-office
+
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose** (v2.2802, Contract Forms PR 7 — two-party forms): the office's half of a form whose template has `party: 'office'` boxes (the I-9's Section 2). Such forms are filed by `accept-contract` / `contract-form-paper-entry` **unflattened** (signer fields read-only) so the office can still fill its fields; this function finishes them.
 
