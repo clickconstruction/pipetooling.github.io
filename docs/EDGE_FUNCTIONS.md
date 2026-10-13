@@ -1072,7 +1072,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)).
 
-**Status**: v2.5458, not yet deployed. Its `cron.schedule` (every 5 minutes) rides its own small migration after the deploy. Until then nothing calls it.
+**Status**: v2.5458, deployed 2026-10-13. Its cron, every 5 minutes while some job's tick is on, is `20261014090000_photo_save_cron.sql` (v2.5464).
 
 ### gc-plan-question-email
 
