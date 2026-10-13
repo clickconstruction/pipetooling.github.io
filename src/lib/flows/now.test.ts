@@ -8,6 +8,8 @@ describe('flowNowOf: where a person is on their flow, in a line', () => {
     const greg = demoPerson('greg')
     const now = flowNowOf(greg)
     expect(now).toMatchObject({ stepId: 'ask', jobId: greg.reading.nowJobId, stepName: 'Asked to quote', who: 'them', finishes: 'their quote is in the portal or they declined to quote' })
+    // The papers it turns on, for Attach's starred rows (cut 7f).
+    expect(now?.papers).toEqual(['quote'])
     expect(now?.sinceYmd).toMatch(/^2026-\d\d-\d\d$/)
   })
 

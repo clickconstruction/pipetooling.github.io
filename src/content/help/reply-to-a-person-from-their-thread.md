@@ -110,6 +110,8 @@ Each file shows under the box as a chip. Press its **×** to take it off. A file
 
 Press **Preview** beside a file to read its facts first. Then press **Open in a tab** to see it, or **Attach it** to add it.
 
+When they are on a step that waits on their papers, the list starts with the step's forms, starred. A W-9 or a master agreement is filled in on their portal. So it goes as our link to their portal, at their papers. The stars show only when they have a portal link.
+
 The send window shows how each file goes:
 
 - A small file goes with the email as the file.

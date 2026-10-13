@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../../../test/renderSmokeMocks'
 import { BOERNE } from '../../../../test/fixtures/jobFilesDemo'
 import { jobFiles } from '../../../../lib/documents/jobFiles'
@@ -13,6 +13,10 @@ import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { AttachPicker } from './AttachPicker'
 import { ReplyBox } from './ReplyBox'
+
+// The step they are on (cut 4's read): none unless a test puts them on one.
+const flow = vi.hoisted(() => ({ now: null as unknown }))
+vi.mock('../../../../hooks/useFlowNow', () => ({ useFlowNow: () => flow.now, openFlowStep: vi.fn() }))
 
 /**
  * Messages, cut 7f: Attach in the reply box, the picker, the chips and the send window's notes (`files-out-mockups.html`,
@@ -135,6 +139,55 @@ describe('Attach in the reply box (Messages, cut 7f)', () => {
     fireEvent.click(within(el).getByRole('button', { name: 'Send text…' }))
     const send = await screen.findByRole('dialog', { name: 'Before it goes, this is what they see' })
     expect(send.querySelector('[data-send-file-note]')!.textContent).toBe('A text cannot carry a file, so each goes as our link. It opens their portal when the file has a page there.')
+  })
+})
+
+describe('the step’s forms, starred at the top of Attach (cut 7f)', () => {
+  const papersIn = { stepId: 'papers', jobId: null, stepName: 'Papers in', who: 'them', sinceYmd: '2026-10-08', finishes: 'their W-9 is signed', papers: ['w9', 'coi'] }
+
+  it('stars the W-9 form and their portal link for a trade partner on Papers in, and sends them as their portal at the papers', async () => {
+    flow.now = papersIn
+    const { el, io } = box()
+    fireEvent.click(within(el).getByRole('radio', { name: 'Email' }))
+    fireEvent.click(within(el).getByRole('button', { name: 'Attach' }))
+    const win = await picker()
+    // Their portal link is read before the stars show.
+    await waitFor(() => expect(win.querySelector('[data-attach-starred]')).toBeTruthy())
+    const starred = win.querySelector('[data-attach-starred]') as HTMLElement
+    expect(starred.textContent).toContain('For Papers in · starred')
+    expect([...starred.querySelectorAll('[data-attach-row]')].map((r) => r.getAttribute('data-attach-row'))).toEqual(['form:w9', 'portal:papers'])
+    fireEvent.click(within(starred).getByRole('button', { name: /The W-9 form/ }))
+    expect(el.querySelector('[data-reply-file="form:w9"]')!.getAttribute('title')).toBe('A form on their portal. They fill it in there. It goes as our link to their portal, on an email or a text.')
+    fireEvent.change(within(el).getByRole('textbox'), { target: { value: 'Greg, your W-9 is in your portal.' } })
+    fireEvent.click(within(el).getByRole('button', { name: 'Send email…' }))
+    const send = await screen.findByRole('dialog', { name: 'Before it goes, this is what they see' })
+    expect([...send.querySelectorAll('[data-send-file]')].map((c) => c.textContent)).toEqual(['The W-9 form · our link to their portal'])
+    const go = within(send).getByRole('button', { name: 'Send as email' }) as HTMLButtonElement
+    await waitFor(() => expect(go.disabled).toBe(false))
+    fireEvent.click(go)
+    await waitFor(() => expect(io.sendEmail).toHaveBeenCalledTimes(1))
+    const sent = (io.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { files: unknown[] }
+    expect(sent.files).toEqual([{ key: 'form:w9', source: 'portal', ref: '', path: null, name: 'The W-9 form', mime: '', way: 'link', page: 'papers' }])
+    flow.now = null
+  })
+
+  it('stars nothing without their portal link, nor on a step with no form of ours', async () => {
+    flow.now = papersIn
+    box(fakeAttach({ hasPortal: vi.fn(() => Promise.resolve(false)) }))
+    fireEvent.click(within(document.querySelector('[data-reply-box]') as HTMLElement).getByRole('button', { name: 'Attach' }))
+    const win = await picker()
+    await waitFor(() => expect(win.querySelectorAll('[data-attach-row]').length).toBeGreaterThan(0))
+    expect(win.querySelector('[data-attach-starred]')).toBeNull()
+    cleanup()
+    // A quote is theirs to send, not a form of ours: nothing starred even with their portal on.
+    flow.now = { ...papersIn, stepId: 'ask', stepName: 'Asked to quote', papers: ['quote'] }
+    const { attachIo } = box()
+    fireEvent.click(within(document.querySelector('[data-reply-box]') as HTMLElement).getByRole('button', { name: 'Attach' }))
+    const again = await picker()
+    await waitFor(() => expect(attachIo.hasPortal).toHaveBeenCalled())
+    await waitFor(() => expect(again.querySelectorAll('[data-attach-row]').length).toBeGreaterThan(0))
+    expect(again.querySelector('[data-attach-starred]')).toBeNull()
+    flow.now = null
   })
 })
 

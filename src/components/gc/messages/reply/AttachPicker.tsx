@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import type { JobFile } from '../../../../lib/documents/jobFiles'
 import { attachPicker, previewFacts, type Audience } from '../../../../lib/documents/outgoing'
 import type { AttachIo } from '../../../../lib/messages/attachIo'
-import { fileTag, previewHref, replyFileFromDevice, replyFileFromJob, type ReplyFile } from '../../../../lib/messages/replyFiles'
+import { fileTag, previewHref, replyFileFromDevice, replyFileFromJob, replyFileFromPortal, type ReplyFile } from '../../../../lib/messages/replyFiles'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { PhoneSheet } from '../../../PhoneSheet'
 import { Btn } from '../../gcUi'
@@ -12,7 +12,8 @@ const tag = { fontSize: '0.7rem', color: 'var(--text-muted)', border: '1px solid
 
 /**
  * Messages, cut 7f: the Attach picker (the mock-up `files-out-mockups.html`, screens 2 and 3, on branch spike/gc-mode),
- * over `outgoing.attachPicker`. The job's one list, each file with its size, how it goes when it goes as our link, its
+ * over `outgoing.attachPicker`. The step's own forms first, starred, when their portal is on: each goes as their portal at
+ * its papers. Then the job's one list, each file with its size, how it goes when it goes as our link, its
  * page in their portal, and a small tag for where it lives; then a file from this computer and a photo. While Drive's
  * folder reads, its rows wait under the app's own; a folder that will not read says so and leaves the rest. Preview
  * shows a file's facts with Open in a tab and Attach it. A sheet from the bottom on a phone (`PhoneSheet`).
@@ -23,6 +24,8 @@ export function AttachPicker({
   audience,
   hasPortal,
   io,
+  starred = [],
+  stepName = null,
   onPick,
   onClose,
 }: {
@@ -33,6 +36,10 @@ export function AttachPicker({
   audience: Audience
   hasPortal: boolean
   io: AttachIo
+  /** The step's forms they fill in on their portal (the W-9, the MSA), starred at the top. */
+  starred?: readonly { paper: string; short: string }[]
+  /** The step they are on, for the starred head: *For Papers in*. */
+  stepName?: string | null
   onPick: (file: ReplyFile) => void
   onClose: () => void
 }) {
@@ -63,7 +70,7 @@ export function AttachPicker({
     }
   }, [io, jobKey])
 
-  const picker = attachPicker(jobName, files ?? [], audience, [], hasPortal)
+  const picker = attachPicker(jobName, files ?? [], audience, starred, hasPortal)
   const byKey = new Map((files ?? []).map((f) => [f.key, f]))
   const fromDevice = (from: 'computer' | 'photo') => (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -94,6 +101,25 @@ export function AttachPicker({
                 Attach it
               </Btn>
             </span>
+          </div>
+        )}
+        {picker.starred.length > 0 && (
+          <div data-attach-starred style={{ display: 'grid', gap: '0.3rem' }}>
+            <div style={{ fontWeight: 600 }}>
+              {stepName ? `For ${stepName}` : 'For the step they are on'} <span style={muted}>· starred</span>
+            </div>
+            {picker.starred.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                data-attach-row={r.key}
+                onClick={() => onPick(replyFileFromPortal(r.key, r.name))}
+                style={{ textAlign: 'left', border: '1px solid var(--border-amber-soft)', borderRadius: 8, background: 'var(--bg-orange-tint)', padding: '0.45rem 0.6rem', cursor: 'pointer', display: 'grid', gap: '0.1rem', color: 'var(--text-base)' }}
+              >
+                <span>★ {r.name}</span>
+                <span style={{ ...muted, fontSize: '0.8rem' }}>{r.facts.join(' · ')}</span>
+              </button>
+            ))}
           </div>
         )}
         <div style={{ fontWeight: 600 }}>{picker.jobHead}</div>

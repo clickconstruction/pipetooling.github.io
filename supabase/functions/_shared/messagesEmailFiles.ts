@@ -12,6 +12,8 @@
  *   go as their portal page (the lead, 2026-10-13), and their PDF writers come later.
  * - `device`: a file from this computer or a photo, as base64. It goes into the job's Team only first (Sent by us, or
  *   Photos), so nothing goes out that Documents does not hold.
+ * - `portal`: no file, their portal at a page (cut 7f's starred papers: the W-9 and the MSA are forms on their portal's
+ *   papers page, filled in there). Always a link, always with its page, `ref` empty.
  *
  * No imports, so the app's tests import it as the function does. The limits and the portal's lines are the app's own
  * (`outgoing.ts`, `jobFiles.ts`), copied here and held equal by `messagesEmailFiles.test.ts`.
@@ -26,7 +28,7 @@ export const EMAIL_MESSAGE_LIMIT_BYTES = 20 * 1024 * 1024
 /** How many files one email takes. */
 export const EMAIL_FILES_MAX = 20
 
-export type EmailFileSource = 'drive' | 'arrived' | 'sent' | 'paper' | 'device'
+export type EmailFileSource = 'drive' | 'arrived' | 'sent' | 'paper' | 'device' | 'portal'
 
 /** How a file goes: the file itself, our link (or their portal's), or a photo on the email. */
 export type EmailFileWay = 'file' | 'link' | 'picture'
@@ -69,7 +71,7 @@ export interface EmailFileAsk {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
-const SOURCES: ReadonlySet<string> = new Set<EmailFileSource>(['drive', 'arrived', 'sent', 'paper', 'device'])
+const SOURCES: ReadonlySet<string> = new Set<EmailFileSource>(['drive', 'arrived', 'sent', 'paper', 'device', 'portal'])
 const WAYS: ReadonlySet<string> = new Set<EmailFileWay>(['file', 'link', 'picture'])
 const PAPERS: ReadonlySet<string> = new Set<EmailPaper>(['contract', 'payapp', 'co', 'sow', 'schedule'])
 const PAGES: ReadonlySet<string> = new Set(Object.keys(PORTAL_PAGE_LINES))
@@ -89,6 +91,7 @@ function refFits(source: EmailFileSource, ref: string): boolean {
   if (source === 'drive') return DRIVE_ID.test(ref)
   if (source === 'arrived' || source === 'sent') return UUID.test(ref)
   if (source === 'paper') return paperRef(ref) !== null
+  // A file from this computer and their portal have no ref.
   return ref === ''
 }
 
@@ -105,14 +108,15 @@ export function parseEmailFiles(raw: unknown): EmailFileAsk[] | null {
     const o = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
     const key = typeof o.key === 'string' ? o.key.trim() : ''
     const source = typeof o.source === 'string' && SOURCES.has(o.source) ? (o.source as EmailFileSource) : null
-    const ref = typeof o.ref === 'string' ? o.ref.trim() : source === 'device' ? '' : null
+    const ref = typeof o.ref === 'string' ? o.ref.trim() : source === 'device' || source === 'portal' ? '' : null
     const name = typeof o.name === 'string' ? o.name.trim() : ''
     const mime = typeof o.mime === 'string' && o.mime.length <= 200 ? o.mime.trim() : ''
     const way = typeof o.way === 'string' && WAYS.has(o.way) ? (o.way as EmailFileWay) : null
     const page = o.page == null ? null : typeof o.page === 'string' && PAGES.has(o.page) ? (o.page as PortalPageKey) : undefined
     if (!key || key.length > 300 || keys.has(key) || !source || ref === null || !refFits(source, ref) || !name || name.length > 300 || !way || page === undefined) return null
-    // A page is where a link opens, so only a link names one.
+    // A page is where a link opens, so only a link names one. Their portal is only ever a link to a page.
     if (page && way !== 'link') return null
+    if (source === 'portal' && (way !== 'link' || !page)) return null
     let path: string | null = null
     if (source === 'sent') {
       if (!pathShape(o.path)) return null

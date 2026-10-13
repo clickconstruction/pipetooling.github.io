@@ -33,7 +33,9 @@ import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from
 import { supabaseAttachIo, type AttachIo } from '../../../../lib/messages/attachIo'
 import { addDraftFile, chipHover } from '../../../../lib/documents/outgoing'
 import { sizeWords } from '../../../../lib/documents/jobFiles'
-import { audienceOf, type ReplyFile } from '../../../../lib/messages/replyFiles'
+import { audienceOf, STARRED_FORMS, type ReplyFile } from '../../../../lib/messages/replyFiles'
+import { portalHasPage } from '../../../../lib/documents/jobFiles'
+import { FLOW_PAPERS } from '../../../../lib/flows/facts'
 import { firstName, type Contact } from '../../../../lib/contacts/kernel'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn } from '../../gcUi'
@@ -242,6 +244,15 @@ export function ReplyBox({
   // so nothing is said until it lands; null when nothing is on, they are off the flow, or the read failed.
   const flowNow = useFlowNow(contact.id)
   const nowStepId = flowNow?.stepId ?? null
+  // Cut 7f: the step's forms they fill in on their portal (the W-9, the MSA), starred at the top of Attach, only when a
+  // link to their portal is on and it has the papers page.
+  const starredForms = useMemo(
+    () =>
+      hasPortal && (audience === 'trade' || audience === 'customer') && portalHasPage(audience, 'papers')
+        ? (flowNow?.papers ?? []).filter((p) => STARRED_FORMS.has(p)).map((p) => ({ paper: p, short: FLOW_PAPERS[p].short }))
+        : [],
+    [hasPortal, audience, flowNow],
+  )
   // The live flow names the step; the seed names the rest of their kind's steps.
   const kindSteps = flowNow ? [{ id: flowNow.stepId, name: flowNow.stepName }, ...(STEPS[qrKindOf(contact.kind)] ?? [])] : (STEPS[qrKindOf(contact.kind)] ?? [])
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
@@ -527,6 +538,8 @@ export function ReplyBox({
       {attaching && (
         <AttachPicker
           jobKey={jobKey}
+          starred={starredForms}
+          stepName={flowNow?.stepName ?? null}
           jobName={jobKey && tiles[jobKey] ? `${tiles[jobKey]!.num} ${tiles[jobKey]!.name}` : job && job.key === jobKey ? job.name : null}
           audience={audience}
           hasPortal={hasPortal}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BOERNE, FAIR_OAKS } from '../../test/fixtures/jobFilesDemo'
 import { jobFiles } from '../documents/jobFiles'
-import { audienceOf, fileTag, previewHref, replyFileAsks, replyFileFromDevice, replyFileFromJob, replyWays, wordsMakers, type DeviceFile } from './replyFiles'
+import { audienceOf, fileTag, previewHref, replyFileAsks, replyFileFromDevice, replyFileFromJob, replyFileFromPortal, replyWays, STARRED_FORMS, wordsMakers, type DeviceFile } from './replyFiles'
 
 /** Messages, cut 7f: the files on a reply, over the prototype's B482 Boerne Retail Shell and J1077 Fair Oaks files. */
 
@@ -41,6 +41,17 @@ describe('a file on the reply', () => {
       ['device', 'file'],
     ])
     expect(replyFileAsks(files, 'trade', true, new Map())).toEqual({ ok: false, words: 'Rock clause, marked up.pdf cannot go from here. Take it off the message and add it again.' })
+  })
+})
+
+describe('a starred form on their portal', () => {
+  it('stars our forms they fill in there, and goes as their portal at the papers', () => {
+    expect([...STARRED_FORMS].sort()).toEqual(['msa', 'w9'])
+    const form = replyFileFromPortal('form:w9', 'The W-9 form')
+    expect(form.draft).toMatchObject({ key: 'form:w9', from: 'portal', portalPage: 'papers', bytes: null })
+    const asks = replyFileAsks([form], 'trade', true, new Map())
+    expect(asks.ok && asks.asks).toEqual([expect.objectContaining({ source: 'portal', way: 'link', page: 'papers' })])
+    expect(replyFileAsks([form], 'trade', false, new Map()).ok).toBe(false)
   })
 })
 

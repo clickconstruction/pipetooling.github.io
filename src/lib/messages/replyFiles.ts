@@ -8,7 +8,7 @@
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { emailFileAsk, type DeviceBytes, type EmailFileAsk } from '../documents/emailFileAsks'
 import { fileKindOf, type JobFile } from '../documents/jobFiles'
-import { draftFromDevice, draftFromJob, waysOut, type Audience, type Channel, type DraftFile, type FileWay, type LinkMakers } from '../documents/outgoing'
+import { draftFromDevice, draftFromJob, draftFromPortal, waysOut, type Audience, type Channel, type DraftFile, type FileWay, type LinkMakers } from '../documents/outgoing'
 import { driveFileRouteId, fileHref } from '../files/fileRoute'
 import { jobRefOf } from './load'
 
@@ -46,6 +46,14 @@ export function wordsMakers(hasPortal: boolean): LinkMakers {
 export function replyFileFromJob(f: JobFile): ReplyFile {
   return { draft: draftFromJob(f), job: f, device: null }
 }
+
+/** A starred form on their portal (`form:w9`) or their portal's link itself (`portal:papers`): their portal at the papers. */
+export function replyFileFromPortal(key: string, name: string): ReplyFile {
+  return { draft: draftFromPortal(key, name, 'papers'), job: null, device: null }
+}
+
+/** The step's papers starred at the top of Attach: the forms of ours they fill in on their portal (the W-9, the MSA). */
+export const STARRED_FORMS: ReadonlySet<string> = new Set(['w9', 'msa'])
 
 /** A file from this computer or a photo, keyed by what it is, so picking it twice says it is on already. */
 export function replyFileFromDevice(file: DeviceFile, from: 'computer' | 'photo'): ReplyFile {

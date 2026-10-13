@@ -9,7 +9,7 @@ import { driveLink } from '../gc/drive'
 import { portalHasPage, type JobFile, type PortalPage } from './jobFiles'
 import type { Audience, FileWay, WayOut } from './outgoing'
 
-export type EmailFileSource = 'drive' | 'arrived' | 'sent' | 'paper' | 'device'
+export type EmailFileSource = 'drive' | 'arrived' | 'sent' | 'paper' | 'device' | 'portal'
 
 export interface EmailFileAsk {
   key: string
@@ -41,6 +41,8 @@ export function emailFileAsk(w: FileWay, ctx: { audience: Audience; hasPortal: b
     w.way === 'link' && portalPage && ctx.hasPortal && (ctx.audience === 'trade' || ctx.audience === 'customer') && portalHasPage(ctx.audience, portalPage) ? portalPage : null
   const base = { key: f.key, name: f.name, way: w.way, page }
 
+  // A form on their portal (cut 7f's starred papers): no file, their portal at its page, only when they have one.
+  if (f.from === 'portal') return page ? { ...base, source: 'portal', ref: '', path: null, mime: '' } : null
   if (f.from !== 'job') {
     if (!ctx.device?.base64) return null
     return { ...base, source: 'device', ref: '', path: null, mime: ctx.device.mime, base64: ctx.device.base64, landing: f.from === 'photo' ? 'photos' : 'sent' }
