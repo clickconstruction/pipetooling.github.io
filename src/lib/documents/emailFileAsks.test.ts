@@ -3,7 +3,7 @@ import { parseEmailFiles } from '../../../supabase/functions/_shared/messagesEma
 import { BOERNE, FAIR_OAKS, HELOTES, IMG_2041, KB, ROCK_CLAUSE } from '../../test/fixtures/jobFilesDemo'
 import { emailFileAsk } from './emailFileAsks'
 import { jobFiles, type JobFile } from './jobFiles'
-import { draftFromDevice, draftFromJob, waysOut, type FileWay } from './outgoing'
+import { draftFromDevice, draftFromJob, draftFromPortal, waysOut, type FileWay } from './outgoing'
 
 /**
  * Messages, cut 7e: a file on the message as `messages-email` takes it, from the mock-up's screen 4 (Greg, a trade
@@ -65,6 +65,13 @@ describe('emailFileAsk', () => {
     })
     expect(emailFileAsk(photoWay!, { audience: 'trade', hasPortal: true, device: { base64: '/9j/', mime: 'image/jpeg' } })).toMatchObject({ way: 'picture', landing: 'photos' })
     expect(emailFileAsk(rockWay!, { audience: 'trade', hasPortal: true })).toBeNull()
+  })
+
+  it('sends a form on their portal as their portal at the papers, and nothing to someone with no portal', () => {
+    const [w] = waysOut([draftFromPortal('form:w9', 'The W-9 form', 'papers')], 'email')
+    expect(emailFileAsk(w!, { audience: 'trade', hasPortal: true })).toEqual({ key: 'form:w9', source: 'portal', ref: '', path: null, name: 'The W-9 form', mime: '', way: 'link', page: 'papers' })
+    expect(emailFileAsk(w!, { audience: 'trade', hasPortal: false })).toBeNull()
+    expect(emailFileAsk(w!, { audience: 'arch', hasPortal: true })).toBeNull()
   })
 
   it('makes asks the function’s parser takes, all of them in one list', () => {

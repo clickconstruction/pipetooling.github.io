@@ -112,6 +112,16 @@ describe('parseEmailFiles', () => {
   })
 })
 
+describe('their portal, with no file (cut 7f’s starred forms)', () => {
+  it('takes their portal at a page as a link, and nothing else', () => {
+    const portal = { key: 'form:w9', source: 'portal', name: 'The W-9 form', mime: '', way: 'link', page: 'papers' }
+    expect(parseEmailFiles([portal])).toEqual([{ ...portal, ref: '', path: null, base64: null, landing: null }])
+    expect(parseEmailFiles([{ ...portal, page: null }])).toBeNull()
+    expect(parseEmailFiles([{ ...portal, way: 'file', page: null }])).toBeNull()
+    expect(parseEmailFiles([{ ...portal, ref: 'drvAddendum2000' }])).toBeNull()
+  })
+})
+
 describe('carryRefusal', () => {
   it('lets the files go when each is up to 10 MB and together up to 20 MB', () => {
     expect(carryRefusal([{ name: 'Addendum 2.pdf', bytes: 412 * KB }, { name: 'Rock clause, marked up.pdf', bytes: 640 * KB }])).toBeNull()

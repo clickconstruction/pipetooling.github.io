@@ -159,6 +159,9 @@ export async function readFiles(
       }
       // A paper the app draws on demand goes as its page in their portal (the parser holds it to a link).
       if (!carries(a) && !a.page) return refusal('noPage', `${a.name} goes as their portal page. Pick the page to send it.`)
+    } else if (a.source === 'portal') {
+      // No file: their portal at its page (a W-9 or an MSA is a form there). The link is made once the line has its id.
+      mime = ''
     } else {
       // From this computer: into the job's Team only first, so Documents holds what goes out.
       const read = a.base64 ? bytesOfBase64(a.base64) : null
@@ -268,7 +271,7 @@ export async function placeFiles(
       }
       if (!url) return fail(refusal('noPortal', `${f.name} goes as their portal page, and they have no portal link on.`))
       placed.links.push({ name: f.name, url, page })
-      rows.push({ message_id: input.lineId, sort_order: i, kind: 'link', name: f.name, mime: f.mime, url, sent_as: 'link', drive_link_id: driveLinkId, drive_file_id: f.driveFileId })
+      rows.push({ message_id: input.lineId, sort_order: i, kind: 'link', name: f.name, mime: f.mime || null, url, sent_as: 'link', drive_link_id: driveLinkId, drive_file_id: f.driveFileId })
       continue
     }
     const bytes = f.bytes!

@@ -34,7 +34,7 @@ export type Channel = 'email' | 'text'
 export type Audience = PortalAudience | 'arch' | 'unknown'
 
 /** Where a file on the message came from. */
-export type DraftFrom = 'job' | 'computer' | 'photo'
+export type DraftFrom = 'job' | 'computer' | 'photo' | 'portal'
 
 /** A file on the message being written. */
 export interface DraftFile {
@@ -65,6 +65,14 @@ export function draftFromJob(f: JobFile): DraftFile {
   return { key: f.key, name: f.name, bytes: f.bytes, kind: f.kind, from: 'job', planSet: f.planSet, portalPage: f.portalPage }
 }
 
+/**
+ * A form on their portal, starred for the step (cut 7f: the W-9 and the MSA are filled in on their portal's papers
+ * page). It has no file: it always goes as their portal at that page.
+ */
+export function draftFromPortal(key: string, name: string, page: PortalPage): DraftFile {
+  return { key, name, bytes: null, kind: 'other', from: 'portal', planSet: false, portalPage: page }
+}
+
 /** A file picked from this computer, or a photo, as it goes on a message. */
 export function draftFromDevice(key: string, name: string, bytes: number, kind: JobFileKind, from: 'computer' | 'photo'): DraftFile {
   return { key, name, bytes, kind, from, planSet: false, portalPage: null }
@@ -72,6 +80,8 @@ export function draftFromDevice(key: string, name: string, bytes: number, kind: 
 
 /** How one file goes on its own, before the message's files are added up. */
 function wayAlone(f: DraftFile, channel: Channel): FileWay {
+  // A form on their portal has no file to carry: it is their portal at its page, on an email and on a text.
+  if (f.from === 'portal') return { file: f, way: 'link', why: null }
   // Quo sends no picture messages, so a text carries every file, a photo too, as our link.
   if (channel === 'text') return { file: f, way: 'link', why: null }
   if (f.from === 'photo' && f.kind === 'image' && f.bytes != null && f.bytes <= EMAIL_FILE_LIMIT_BYTES) return { file: f, way: 'picture', why: null }
@@ -153,6 +163,7 @@ export function chipFacts(w: FileWay, audience: Audience, make: LinkMakers): str
 
 /** The hover card on a chip under the box: where it came from, then how it goes on each channel. */
 export function chipHover(f: DraftFile): string[] {
+  if (f.from === 'portal') return ['A form on their portal. They fill it in there.', 'It goes as our link to their portal, on an email or a text.']
   const from = f.from === 'job' ? 'From the job.' : f.from === 'photo' ? 'A photo from this device.' : 'From this computer.'
   const alone = wayAlone(f, 'email')
   const now =
