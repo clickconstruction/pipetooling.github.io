@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { SEED_FLOWS } from '../flows/seed'
 import { plainWordsFailures } from '../plainWords'
 import {
+  EDITOR_WORDS,
   FIND_NOTE,
   QR_KIND_ORDER,
   QR_KINDS,
@@ -23,6 +24,8 @@ import {
   guessWords,
   historyHead,
   lastChange,
+  lastUsedWords,
+  nameOf,
   pressQuickReply,
   qrEmpty,
   qrGroups,
@@ -156,12 +159,23 @@ describe('the strip’s groups for a thread', () => {
 
   it('offers to add the words when no line has them', () => {
     expect(qrEmpty(' striping ')).toEqual({ words: 'No line has those words.', add: 'Add “striping” as a quick reply' })
-    expect(qrEmpty('')).toEqual({ words: 'No lines for this kind of person yet. Press Add a line to write one.', add: null })
+    expect(qrEmpty('')).toEqual({ words: 'No lines for this kind of person yet. Edit adds one.', add: null })
   })
 
   it('says Nothing matches. in Find a reply, as the prototype did', () => {
     expect(qrEmpty(' striping ', 'find')).toEqual({ words: 'Nothing matches.', add: 'Add “striping” as a quick reply' })
     expect(qrEmpty('', 'find').words).toBe(qrEmpty('').words)
+  })
+
+  it('says when a line was last used, naming the person only when the window knows them', () => {
+    expect(lastUsedWords('Oct 12, 8:02 AM', 'Greg Paulk')).toBe('last used Oct 12, 8:02 AM, on Greg Paulk')
+    expect(lastUsedWords('Oct 12, 8:02 AM', null)).toBe('last used Oct 12, 8:02 AM')
+  })
+
+  it('names a user for the editor, or says Someone', () => {
+    expect(nameOf({ 'u-rosa': 'Rosa' }, 'u-rosa')).toBe('Rosa')
+    expect(nameOf({ 'u-rosa': 'Rosa' }, 'u-gone')).toBe('Someone')
+    expect(nameOf({}, null)).toBe('Someone')
   })
 
   it('counts a group’s lines for its pill', () => {
@@ -495,6 +509,10 @@ describe('plain words', () => {
       qrEmpty('x').words,
       qrEmpty('x', 'find').words,
       QR_PRESS_COUNTED,
+      EDITOR_WORDS.saveNote,
+      EDITOR_WORDS.removedNote,
+      EDITOR_WORDS.empty(''),
+      EDITOR_WORDS.empty('x'),
       findWhere({ step: { name: 'Asked to quote', done: 'their quote is in the portal' }, who: 'them', firstName: 'Greg', daysOn: 10, off: false }).sentence,
       findWhere({ step: null, who: 'them', firstName: 'Marcus', daysOn: null, off: true }).sentence,
       findWhere({ step: null, who: 'them', firstName: 'Dee', daysOn: null, off: false }).sentence,

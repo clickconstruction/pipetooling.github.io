@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { pressQuickReply, type QuickReply, type QuickReplyTags } from '../../../../lib/quickReplies/kernel'
+import { pressQuickReply, type QuickReply } from '../../../../lib/quickReplies/kernel'
 import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 
@@ -7,8 +7,8 @@ import { formatErrorMessage } from '../../../../utils/errorHandling'
  * Messages, cut 3's screens: the quick replies the reply box offers, read the first time they are `wanted` (the strip
  * open, or *Find a reply*), so a thread that never uses them reads nothing. A press fills the box and nothing sends;
  * it is counted at once here, so the lines used most move up, and then in the table (`press_quick_reply`). A count the
- * table refuses (a training account, say) leaves the box filled: the count is the strip's order, never the message. A
- * line added from the box is read back with the rest.
+ * table refuses (a training account, say) leaves the box filled: the count is the strip's order, never the message.
+ * After the editor changes a line, `reload` reads them again.
  */
 export function useQuickReplies(io: QuickRepliesIo, me: string, wanted: boolean) {
   const [lines, setLines] = useState<QuickReply[] | null>(null)
@@ -38,11 +38,10 @@ export function useQuickReplies(io: QuickRepliesIo, me: string, wanted: boolean)
     void io.press(q.id, contactId).catch(() => {})
   }
 
-  const add = async (text: string, tags: QuickReplyTags, mine: boolean): Promise<string> => {
-    const id = await io.add(text, tags, mine)
-    await load()
-    return id
+  /** Reads the lines again once they were read at all; a strip never opened still reads nothing. */
+  const reload = () => {
+    if (asked) void load()
   }
 
-  return { lines, problem, press, add }
+  return { lines, problem, press, reload }
 }

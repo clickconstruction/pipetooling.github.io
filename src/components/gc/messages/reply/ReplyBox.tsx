@@ -32,8 +32,8 @@ import { Btn } from '../../gcUi'
 import { JobPickerWindow } from '../JobPickerWindow'
 import { useOpenThread } from '../openThread'
 import { useMessagesReread } from '../useMessagesReread'
-import { AddQuickReplyWindow } from './AddQuickReplyWindow'
 import { FindReplyWindow } from './FindReplyWindow'
+import { QuickRepliesEditor } from './QuickRepliesEditor'
 import { QuickRepliesStrip } from './QuickRepliesStrip'
 import { SendWindow } from './SendWindow'
 import { useQuickReplies } from './useQuickReplies'
@@ -88,6 +88,7 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
   const [kind, setKind] = useState<ReplyKind>(() => defaultReplyKind(to))
   const [stripOpen, setStripOpen] = useState(readOpen)
   const [finding, setFinding] = useState(false)
+  // The quick replies editor is open; its add row starts with these words when there are any (the prototype's editQuick).
   const [adding, setAdding] = useState<string | null>(null)
   const quick = useQuickReplies(qio, me, goesOut(kind) && (stripOpen || finding))
   const [body, setBody] = useState('')
@@ -228,6 +229,7 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
           }}
           onUse={use}
           onFind={() => setFinding(true)}
+          onEdit={() => setAdding('')}
           onAdd={(words) => setAdding(words)}
         />
       )}
@@ -364,22 +366,24 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
             setFinding(false)
             setAdding(words)
           }}
+          onEdit={() => {
+            setFinding(false)
+            setAdding('')
+          }}
           onClose={() => setFinding(false)}
         />
       )}
 
       {adding !== null && (
-        <AddQuickReplyWindow
-          initialText={adding}
+        <QuickRepliesEditor
+          io={qio}
           me={me}
           steps={STEPS}
-          onSave={async (text, tags, mine) => {
-            await quick.add(text, tags, mine)
-          }}
-          onClose={(words) => {
-            setAdding(null)
-            if (words) showToast(words, 'success')
-          }}
+          names={open?.userNames ?? {}}
+          contactNames={{ [contact.id]: contact.name }}
+          initialAdd={adding}
+          onChanged={quick.reload}
+          onClose={() => setAdding(null)}
         />
       )}
 

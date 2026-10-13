@@ -45,15 +45,11 @@ Press **⤢ Find** in the quick replies. A window opens with their last message 
 
 Every line shows with room to read. Type in the narrow box to find a line by its words. Press a line to fill the box.
 
-## Add a quick reply
+## Add or change a quick reply
 
-1. Press **Add a line** in the quick replies.
-2. Write the line.
-3. Choose who it is for, and its step if it has one. The app guesses both from the words until you choose.
-4. Tick **Just for me** to keep the line on your own strip.
-5. Press {{button:blue|Add the line}}.
+Press **Edit** in the quick replies. The quick replies window opens. There you add a line, change one, or take one off. The guide [edit the quick replies](/help/edit-the-quick-replies) walks through it.
 
-When the narrow box finds no line, a button offers to add your words as a quick reply.
+When the narrow box finds no line, a button offers to add your words as a quick reply. The window opens with your words in a new line.
 
 ## Tie it to a job
 

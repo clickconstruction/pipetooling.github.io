@@ -28,7 +28,7 @@ export function Marked({ text, needle }: { text: string; needle: string }) {
  * Messages, cut 3's screens: the quick replies strip above the reply box (v1.142 to v1.145). Folded to one press until
  * opened; open, the groups as pills that scroll the lines to their group, the pill for the group in view lit as the
  * lines scroll (the prototype's `qrSpy`), the narrow box once the team has more than ten
- * lines, *Add a line* and *Find*, then each group's lines. A press on a line fills the box and nothing sends. The groups
+ * lines, **Edit** (the quick replies editor) and *Find*, then each group's lines. A press on a line fills the box and nothing sends. The groups
  * and every word are `quickReplies/kernel.ts`'s.
  */
 export function QuickRepliesStrip({
@@ -42,6 +42,7 @@ export function QuickRepliesStrip({
   onOpen,
   onUse,
   onFind,
+  onEdit,
   onAdd,
 }: {
   kind: ContactKind
@@ -54,6 +55,9 @@ export function QuickRepliesStrip({
   onOpen: (open: boolean) => void
   onUse: (q: QuickReply) => void
   onFind: () => void
+  /** Opens the quick replies editor on its list. */
+  onEdit: () => void
+  /** Opens the editor on its add row, filled with the narrowed words. */
   onAdd: (words: string) => void
 }) {
   const [filter, setFilter] = useState('')
@@ -125,8 +129,13 @@ export function QuickRepliesStrip({
         {lines && showNarrow(lines, me) && (
           <input aria-label="Narrow the quick replies" placeholder="⌕ narrow" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ ...input, width: 140, padding: '0.15rem 0.4rem', fontSize: '0.78rem' }} />
         )}
-        <button type="button" title="Add a line. Opens a new line for the team or just for you, with who it is for and its step." onClick={() => onAdd(filter)} style={press}>
-          Add a line
+        <button
+          type="button"
+          title="Edit quick replies. Opens every line with who it is for, its step, how often it is used and its history. Anyone can add or change a line. Every change is kept with who and when."
+          onClick={onEdit}
+          style={press}
+        >
+          Edit
         </button>
         <button type="button" title="Find a reply. Opens their last message, where they are in the flow, and every line with room to read." onClick={onFind} style={press}>
           ⤢ Find
