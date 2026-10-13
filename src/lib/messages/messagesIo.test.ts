@@ -28,7 +28,7 @@ vi.mock('../supabase', () => {
   }
 })
 
-import { addContactJob, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
+import { addContactJob, contactForCustomer, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
 
 beforeEach(() => {
   calls.rpc.length = 0
@@ -61,6 +61,14 @@ describe('the presses (the spine’s functions)', () => {
       ['set_default_job', { p_contact_id: 'c-greg', p_job_kind: 'pipeline', p_job_id: 'j1077' }],
       ['set_default_job', { p_contact_id: 'c-greg', p_job_kind: null, p_job_id: null }],
     ])
+  })
+
+  it('opens a customer’s own thread by their id, and a refusal rejects', async () => {
+    calls.next = { data: 'c-dana', error: null }
+    await expect(contactForCustomer('cu-dana')).resolves.toBe('c-dana')
+    expect(calls.rpc).toEqual([['contact_for_customer', { p_customer_id: 'cu-dana' }]])
+    calls.next = { data: null, error: { code: '42501', message: 'Only the office opens a customer’s messages.' } }
+    await expect(contactForCustomer('cu-dana')).rejects.toThrow()
   })
 
   it('a refusal keeps its words', async () => {
