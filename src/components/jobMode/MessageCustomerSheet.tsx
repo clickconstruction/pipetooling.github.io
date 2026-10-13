@@ -58,18 +58,18 @@ const lineBtn: CSSProperties = {
   borderRadius: 10,
   border: '1px solid var(--border-strong)',
   background: 'var(--surface)',
-  color: 'var(--text-900)',
+  color: 'var(--text-strong)',
   cursor: 'pointer',
 }
 const lineName: CSSProperties = { display: 'block', fontWeight: 700, fontSize: '1rem' }
 const lineHint: CSSProperties = { display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }
 const bubble: CSSProperties = { ...CUSTOMER_LOOK, ...CUSTOMER_BAR, borderWidth: 1, borderStyle: 'solid', borderRadius: 10, padding: '0.75rem 0.9rem', whiteSpace: 'pre-wrap', fontSize: '1rem' }
-const theirBubble: CSSProperties = { border: '1px solid var(--border)', background: 'var(--surface-muted)', borderRadius: 10, padding: '0.6rem 0.8rem', margin: '0.25rem 0 1rem', whiteSpace: 'pre-wrap' }
+const theirBubble: CSSProperties = { border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 10, padding: '0.6rem 0.8rem', margin: '0.25rem 0 1rem', whiteSpace: 'pre-wrap' }
 const fieldLabel: CSSProperties = { display: 'block', fontSize: '0.875rem', fontWeight: 600, margin: '0.75rem 0 0.25rem' }
 const field: CSSProperties = { width: '100%', minHeight: 48, fontSize: '1rem', padding: '0.5rem 0.65rem', borderRadius: 8, border: '1px solid var(--border-strong)', boxSizing: 'border-box' }
 const footerRow: CSSProperties = { display: 'flex', gap: '0.5rem', justifyContent: 'space-between', width: '100%' }
 const primaryBtn: CSSProperties = { minHeight: 48, padding: '0 1.1rem', borderRadius: 10, border: 'none', background: '#c2410c', color: 'white', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }
-const secondaryBtn: CSSProperties = { minHeight: 48, padding: '0 1rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-900)', fontWeight: 600, cursor: 'pointer' }
+const secondaryBtn: CSSProperties = { minHeight: 48, padding: '0 1rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer' }
 
 const firstOf = (name: string | null) => name?.trim().split(/\s+/)[0] || null
 
@@ -185,7 +185,7 @@ export function MessageCustomerSheet({ jobId, jobName, jobAddress, userId, me, c
           <>
             {answer ? (
               <section aria-label="Their answer" data-testid="job-mode-message-answer">
-                <p style={{ ...muted, margin: 0, fontWeight: 600, color: 'var(--text-900)' }}>{SHEET_WORDS.answered(first)}</p>
+                <p style={{ ...muted, margin: 0, fontWeight: 600, color: 'var(--text-strong)' }}>{SHEET_WORDS.answered(first)}</p>
                 <p style={theirBubble}>{answer.body}</p>
               </section>
             ) : null}
