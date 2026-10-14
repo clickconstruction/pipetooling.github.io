@@ -165,25 +165,25 @@ describe('LienDeskCalendarTab', () => {
     // the bar names Oct 15, so the GC row says only what to send
     expect(rmc.textContent).toContain('send 2 notices')
     expect(rmc.textContent).not.toContain('by Oct 15')
-    expect(rmc.querySelector('[title="2 notices owed by Oct 15"]')).toBeTruthy()
+    expect(rmc.querySelector('[aria-label="2 notices owed by Oct 15"]')).toBeTruthy()
     // Umar Khan: the sent month's check, the owed month's hollow flag (a door), the kind bracket
     const tracks = screen.getAllByTestId('lien-cal-track')
     expect(tracks.length).toBe(4)
     const umar = rowOf('881 PLUM')
     expect(within(umar).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
-    expect(within(umar).getByTitle('The July 2026 notice is on file')).toBeTruthy()
+    expect(within(umar).getByLabelText('The July 2026 notice is on file')).toBeTruthy()
     // every flag names its month — Rizvi's August too, which used to say "the last work month"
     expect(within(rowOf('890 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
-    expect(screen.getByTitle(/Property kind not set: residential would be the first date, commercial Dec 15/)).toBeTruthy()
+    expect(screen.getByLabelText(/Property kind not set: residential would be the first date, commercial Dec 15/)).toBeTruthy()
     // Mike Holub: a pay dot and room
-    expect(screen.getByTitle(/Expected to pay Sep 30/)).toBeTruthy()
-    expect(screen.getByTitle('Room — the money is expected before the lien date')).toBeTruthy()
+    expect(screen.getByLabelText(/said they would pay: Sep 30/)).toBeTruthy()
+    expect(screen.getByLabelText('Room — the money is expected before the lien date')).toBeTruthy()
     expect(screen.queryByText('Knight')).toBeNull()
     fireEvent.click(overdueBar())
     expect(screen.getByText('Knight')).toBeTruthy()
     // Overdue's rows sit straight under its bar: no Lien gone row repeating it
     expect(screen.queryByTestId('lien-cal-group-gone')).toBeNull()
-    expect(screen.getByTitle(/The notice window closed May 15 unsent/)).toBeTruthy()
+    expect(screen.getByLabelText(/The notice window closed May 15 unsent/)).toBeTruthy()
   })
 
   it('every row starts at its work tick; a job dated from its creation day says so in amber (v2.4265)', () => {
@@ -193,7 +193,7 @@ describe('LienDeskCalendarTab', () => {
     expect(ticks.filter((t) => t.textContent === 'Aug 12').length).toBe(2)
     expect(screen.getByText('Aug 20')).toBeTruthy()
     expect(screen.getByText('Aug · no hours')).toBeTruthy()
-    expect(screen.getByTitle(/No approved hours — the board counts from the month the job was created \(Aug 3\)/)).toBeTruthy()
+    expect(screen.getByLabelText(/No approved hours — the board counts from the month the job was created \(Aug 3\)/)).toBeTruthy()
   })
 
   it('the work tick’s label is a door to the last day of work when the desk passes one; plain otherwise (v2.4735)', () => {
@@ -202,7 +202,8 @@ describe('LienDeskCalendarTab', () => {
     const doors = screen.getAllByTestId('lien-cal-work-door')
     expect(doors.length).toBe(4)
     const amber = doors.find((d) => d.textContent === 'Aug · no hours')!
-    expect(amber.getAttribute('title')).toMatch(/click to change the last day of work$/)
+    // v2.5531: the tooltip is gone; the door's name says what it does, the tick's card says the rest
+    expect(amber.getAttribute('aria-label')).toBe('Change the last day of work · 512 PLUM')
     fireEvent.click(amber)
     expect(onOpenLastWork).toHaveBeenCalledTimes(1)
     expect(onOpen).not.toHaveBeenCalled()
@@ -472,7 +473,7 @@ describe('the In the mail mark (v2.5522)', () => {
     render(<LienDeskCalendarTab rows={mailedRows} todayYmd={TODAY} onOpenJob={() => {}} onDraft={onDraft} onRecord={onRecord} canWrite />)
     const mark = screen.getByTestId('lien-cal-mailed')
     expect(mark.textContent).toBe('✉')
-    expect(mark.getAttribute('title')).toContain('printed and in the mail — record its tracking number by Oct 15')
+    expect(mark.getAttribute('aria-label')).toContain('printed and in the mail — record its tracking number by Oct 15')
     const key = screen.getByTestId('lien-cal-key')
     const shorts = within(key).getAllByRole('button').map((b) => b.textContent?.trim())
     expect(shorts.indexOf('✉In the mail')).toBe(shorts.indexOf('✓Notice on file') + 1)
