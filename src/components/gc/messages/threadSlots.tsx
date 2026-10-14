@@ -127,11 +127,13 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
 export function useThreadSlots(): ThreadSlots {
   // Cut 2 (Follow up): who has it, the back and snoozed pills, and ⋯'s state rows.
   const followUp = useFollowUpThreadSlots()
+  // Every slot keys on the person with its own prefix: the slots sit side by side in the thread column, and two bare
+  // `c.id` keys there (the New lane card above the lines and the box) logged a duplicate-key warning on every open.
   // Cut 3: the reply box, one per person, so a draft never crosses to the next thread. It reads the open thread itself
   // (`useOpenThread`), under the window's provider.
-  const replyBox: ThreadSlots = { box: (c) => <ReplyBox key={c.id} contact={c} /> }
+  const replyBox: ThreadSlots = { box: (c) => <ReplyBox key={`reply:${c.id}`} contact={c} /> }
   // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
-  const flow: ThreadSlots = { side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side /> }
+  const flow: ThreadSlots = { side: (c) => <FlowTab key={`flow:${c.id}`} at={{ contactId: c.id }} side /> }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
   // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it.

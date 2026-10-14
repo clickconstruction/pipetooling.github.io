@@ -30,7 +30,7 @@ export function useNewLaneThreadSlots(io: NewLaneCardIo = DEFAULT_IO): Pick<Thre
   return useMemo(
     () =>
       on
-        ? { aboveLines: (c: Contact, acts: AboveLinesActs) => <NewLaneSlot key={c.id} contact={c} acts={acts} io={io} say={say} reread={reread} me={{ id: meId, name: meName }} /> }
+        ? { aboveLines: (c: Contact, acts: AboveLinesActs) => <NewLaneSlot key={`new-lane:${c.id}`} contact={c} acts={acts} io={io} say={say} reread={reread} me={{ id: meId, name: meName }} /> }
         : {},
     [on, io, say, reread, meId, meName],
   )
