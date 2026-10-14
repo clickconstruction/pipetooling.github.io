@@ -1067,7 +1067,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### photo-save
 
-**Purpose**: Messages, cut 10 (v2.5458, `BUILD_PLAN.md` → *Cut 10*; the design is `quo-messages-mockup.html` drafts 8 and 9 on spike/gc-mode). The file agent's sweep: photos saved on arrival to the job's photos.
+**Purpose**: Messages, cut 10 (v2.5458, `MESSAGES_BUILD_PLAN.md` → *Cut 10*; the design is `quo-messages-mockup.html` drafts 8 and 9 on spike/gc-mode). The file agent's sweep: photos saved on arrival to the job's photos.
 - Every few minutes it reads the jobs whose office ticked *Save every photo on this job to Drive as it comes in* (`photo_saves`, v2.5457), the ones on.
 - It copies each photo that came in on a line tied to one of them since the tick went on (`photosToSave`), 20 a run, oldest first.
 - Each lands in Team only → Photos under the job's Drive folder, or in a Pipeline job's own Customer Pictures folder when that link is plainly a Drive folder (`photoFolderFor`, `_shared/driveJobFolder.ts`).
