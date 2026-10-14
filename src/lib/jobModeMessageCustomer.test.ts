@@ -4,6 +4,7 @@ import {
   jobModeFills,
   noteForOffice,
   onPhone,
+  ownContactId,
   phoneLinesFromRows,
   previewOf,
   replyWaiting,
@@ -142,6 +143,23 @@ describe('previewOf', () => {
     const found = previewOf(LINES.find((q) => q.id === 'q3')!, fills, { found: '  ' })
     expect(found.asks).toEqual([{ key: 'found', words: 'what you found' }])
     expect(found.stop).not.toBeNull()
+  })
+})
+
+describe('ownContactId', () => {
+  // The walk's customer (2026-10-14): a named person at the customer made first, the own thread with no name after.
+  const named = { id: 'contact-named', name: 'Dana Whitfield', created_at: '2026-10-14T03:51:22Z' }
+  const own = { id: 'contact-own', name: null, created_at: '2026-10-14T03:51:23Z' }
+
+  it('picks the customer’s own thread, never a named person at the customer, whatever the order', () => {
+    expect(ownContactId([named, own])).toBe('contact-own')
+    expect(ownContactId([own, named])).toBe('contact-own')
+  })
+
+  it('takes the newest contact when none is their own, and none when there is none', () => {
+    const tenant = { id: 'contact-tenant', name: 'Sam', created_at: '2026-10-15T09:00:00Z' }
+    expect(ownContactId([named, tenant])).toBe('contact-tenant')
+    expect(ownContactId([])).toBeNull()
   })
 })
 

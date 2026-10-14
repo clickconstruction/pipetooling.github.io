@@ -816,6 +816,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   /** Write up a change (v2.4057): a quiet link under the action row, on the clocked-in job or the one ready to start. */
   const writeUpChangeDoor = useQuickEstimateDoor(userId, role)
   const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
+  /** Counts what Message the customer sent, so Job updates reads the note or the text without a reload. */
+  const [jobUpdatesRev, setJobUpdatesRev] = useState(0)
   /** Hand the phone to the customer (v2.4159): on the clocked-in job, for the roles that speak for the company on site, until the job is signed. */
   const handPhoneJobId = leaveReportTarget?.id ?? null
   const [handPhone, setHandPhone] = useState<HandPhoneState | null>(null)
@@ -1060,6 +1062,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           userId={userId}
           me={profileName}
           style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          onDone={() => setJobUpdatesRev((n) => n + 1)}
         />
       ) : null}
       {writeUpChangeOpen && writeUpChangeJobId ? (
@@ -1091,6 +1094,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             key={detailsTarget.id}
             jobId={detailsTarget.id}
             jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
+            updatesRev={jobUpdatesRev}
           />
         ) : null
       })()}

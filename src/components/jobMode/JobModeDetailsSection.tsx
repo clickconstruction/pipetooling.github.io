@@ -53,9 +53,12 @@ function googleMapsSearchUrlForAddress(address: string): string {
 export default function JobModeDetailsSection({
   jobId,
   jobAddress,
+  updatesRev = 0,
 }: {
   jobId: string
   jobAddress: string
+  /** Goes up when the card wrote to the job (Message the customer's note or text): Job updates reads again. */
+  updatesRev?: number
 }) {
   const { user: authUser, profileName, role } = useAuth()
   const { showToast } = useToastContext()
@@ -154,6 +157,10 @@ export default function JobModeDetailsSection({
     showToast,
     authorDisplayName: authUser?.id ? profileName : undefined,
   })
+  const reloadUpdates = threadNotes.reload
+  useEffect(() => {
+    if (updatesRev > 0) reloadUpdates()
+  }, [updatesRev, reloadUpdates])
 
   const name = contact?.customer_name?.trim() ?? ''
   const phone = contact?.customer_phone?.trim() ?? ''

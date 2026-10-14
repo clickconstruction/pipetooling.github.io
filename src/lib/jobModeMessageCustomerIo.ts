@@ -12,7 +12,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { checkSupabaseError } from '../utils/errorHandling'
-import { phoneLinesFromRows, type JobModeBlock, type PhoneLineRow, type ThreadTail } from './jobModeMessageCustomer'
+import {
+  ownContactId,
+  phoneLinesFromRows,
+  type CustomerContactRow,
+  type JobModeBlock,
+  type PhoneLineRow,
+  type ThreadTail,
+} from './jobModeMessageCustomer'
 import type { PhoneLine } from './quickReplies/phone'
 import type { PortalLang } from './gc/portalI18n'
 import { customerLang } from './messages/customerLang'
@@ -68,14 +75,14 @@ export function supabaseJobModeMessageIo(client: unknown = supabase): JobModeMes
       if (!customerId) return { customerId: null, customerName: null, contactId: null, tail: [] }
       const [customer, contact] = await Promise.all([
         db.from('customers').select('name, language').eq('id', customerId).maybeSingle(),
-        db.from('contacts').select('id').eq('customer_id', customerId).eq('kind', 'customer').limit(1),
+        db.from('contacts').select('id, name, created_at').eq('customer_id', customerId).eq('kind', 'customer'),
       ])
       checkSupabaseError(customer, 'read the customer’s name')
       checkSupabaseError(contact, 'open their messages')
       const customerName = (customer.data as { name: string | null } | null)?.name ?? null
       const language = (customer.data as { language: string | null } | null)?.language
       const lang = customerLang({ lang: language === 'es' || language === 'en' ? language : undefined })
-      const contactId = ((contact.data ?? []) as Array<{ id: string }>)[0]?.id ?? null
+      const contactId = ownContactId((contact.data ?? []) as CustomerContactRow[])
       if (!contactId) return { customerId, customerName, contactId: null, tail: [], lang }
       const lines = await db.from('messages').select('direction, at, body').eq('contact_id', contactId).order('at', { ascending: false }).limit(TAIL)
       checkSupabaseError(lines, 'read their messages')
