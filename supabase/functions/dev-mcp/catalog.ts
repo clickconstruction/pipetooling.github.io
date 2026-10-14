@@ -1024,6 +1024,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "get_weekly_movement_email_payload": [{"args":{"p_week_monday?":"string"},"returns":"Json"}],
   "hand_to": [{"args":{"p_contact_id":"string","p_user_id":"string"},"returns":"undefined"}],
   "has_payroll_access": [{"args":{},"returns":"boolean"}],
+  "helper_on_job": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "highlight": [{"args":{"p_message_id":"string","p_text":"string"},"returns":"string"}],
   "holds_vehicle": [{"args":{"p_vehicle_id":"string"},"returns":"boolean"}],
   "hr_agent_write": [{"args":{"p":"Json"},"returns":"Json"}],

@@ -832,6 +832,57 @@ export type Database = {
           },
         ]
       }
+      bid_count_sources: {
+        Row: {
+          bid_id: string
+          first_imported_at: string
+          id: string
+          imported_by: string | null
+          last_imported_at: string
+          link: string
+          project_name: string | null
+          scope: string
+          token: string | null
+        }
+        Insert: {
+          bid_id: string
+          first_imported_at?: string
+          id?: string
+          imported_by?: string | null
+          last_imported_at?: string
+          link: string
+          project_name?: string | null
+          scope?: string
+          token?: string | null
+        }
+        Update: {
+          bid_id?: string
+          first_imported_at?: string
+          id?: string
+          imported_by?: string | null
+          last_imported_at?: string
+          link?: string
+          project_name?: string | null
+          scope?: string
+          token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_count_sources_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_sources_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_estimators_extra_users: {
         Row: {
           added_at: string
@@ -3920,57 +3971,6 @@ export type Database = {
           {
             foreignKeyName: "bids_working_board_archived_by_fkey"
             columns: ["working_board_archived_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bid_count_sources: {
-        Row: {
-          bid_id: string
-          first_imported_at: string
-          id: string
-          imported_by: string | null
-          last_imported_at: string
-          link: string
-          project_name: string | null
-          scope: string
-          token: string | null
-        }
-        Insert: {
-          bid_id: string
-          first_imported_at?: string
-          id?: string
-          imported_by?: string | null
-          last_imported_at?: string
-          link: string
-          project_name?: string | null
-          scope?: string
-          token?: string | null
-        }
-        Update: {
-          bid_id?: string
-          first_imported_at?: string
-          id?: string
-          imported_by?: string | null
-          last_imported_at?: string
-          link?: string
-          project_name?: string | null
-          scope?: string
-          token?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bid_count_sources_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bid_count_sources_imported_by_fkey"
-            columns: ["imported_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -34062,6 +34062,7 @@ export type Database = {
         Returns: undefined
       }
       has_payroll_access: { Args: never; Returns: boolean }
+      helper_on_job: { Args: { p_job_id: string }; Returns: boolean }
       highlight: {
         Args: { p_message_id: string; p_text: string }
         Returns: string
