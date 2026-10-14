@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  pageGate,
   isQuietRoleGateRole,
   isRoleRefusalError,
   roleGateLanding,
@@ -151,5 +152,22 @@ describe('roleGateRefusalMessage — RPC refusals render the classified copy, ne
     expect(roleGateRefusalMessage(new DatabaseError('x', undefined, undefined, { kind: 'network' }))).toBeNull()
     expect(roleGateRefusalMessage('not allowed')).toBeNull()
     expect(roleGateRefusalMessage(null)).toBeNull()
+  })
+})
+
+describe('pageGate — a role-gated page decides only once the role is known (a hard load of its link)', () => {
+  const office = (r: string) => r === 'assistant' || r === 'master_technician'
+  const signedIn = { id: 'u-rosa' }
+
+  it('waits while auth loads, and while a signed-in person’s role has not landed', () => {
+    expect(pageGate({ loading: true, user: null, role: null }, office)).toBe('wait')
+    expect(pageGate({ loading: true, user: signedIn, role: 'assistant' }, office)).toBe('wait')
+    expect(pageGate({ loading: false, user: signedIn, role: null }, office)).toBe('wait')
+  })
+
+  it('opens for a role it lets in, and sends away a role it does not, or anyone signed out', () => {
+    expect(pageGate({ loading: false, user: signedIn, role: 'master_technician' }, office)).toBe('open')
+    expect(pageGate({ loading: false, user: signedIn, role: 'primary' }, office)).toBe('away')
+    expect(pageGate({ loading: false, user: null, role: null }, office)).toBe('away')
   })
 })

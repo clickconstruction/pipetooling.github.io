@@ -17,6 +17,7 @@ import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import { canOpenMessages } from '../lib/gc/access'
+import { pageGate } from '../lib/roleGate'
 import { loadGcTeam, type GcTeamMember } from '../lib/gc/gcIo'
 import { followUpTeamOf } from '../lib/followUp/team'
 import { KIND_PILLS, peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
@@ -27,7 +28,9 @@ export default function Messages() {
   const [params, setParams] = useSearchParams()
   const pill = pillOf(params)
   const thread = useThreadWindow()
-  const canOpen = canOpenMessages(role)
+  // A hard load (a typed link, the reply push, a new tab) waits for the role before it decides (`pageGate`).
+  const gate = pageGate({ loading: authLoading, user, role }, canOpenMessages)
+  const canOpen = gate === 'open'
   const onFollowUp = pillOnFollowUp(pill)
   const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null), closeThread: thread.closeThread })
 
@@ -49,8 +52,8 @@ export default function Messages() {
   const narrow = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['narrow']>>((queue, contacts) => queueForPill(queue, contacts, pill), [pill])
   const listView = useMemo(() => (host.view ? { ...host.view, contacts: peopleForPill(host.view.contacts, pill) } : null), [host.view, pill])
 
-  if (authLoading) return null
-  if (!canOpen) return <Navigate to="/dashboard" replace />
+  if (gate === 'wait') return <div data-messages-loading style={{ padding: '1rem', color: 'var(--text-muted)' }}>Loading…</div>
+  if (gate === 'away') return <Navigate to="/dashboard" replace />
 
   return (
     <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
