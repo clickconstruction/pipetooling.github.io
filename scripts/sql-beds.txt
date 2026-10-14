@@ -48,3 +48,4 @@ contacts-kinds
 portal-opens-since
 messages-notify-cron
 sent-copy-stamps
+messages-tech-send

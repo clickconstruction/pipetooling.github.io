@@ -4,6 +4,8 @@ import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { parseQuoSendBody, seatOf } from '../_shared/gcKernels/lib/quo/rows.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { lastOurTextAt, loadBoxes, loadSeats, quoCompany, sendText } from '../_shared/quoLines.ts'
+import { isJobModeSend } from '../_shared/gcKernels/lib/quo/techSend.ts'
+import { jobModeSend } from '../_shared/quoTechSend.ts'
 
 /**
  * quo-send — Messages, cut 5: a text from the reply box's send window, out through Quo from its box's number. The
@@ -24,6 +26,12 @@ import { lastOurTextAt, loadBoxes, loadSeats, quoCompany, sendText } from '../_s
  *
  * While Settings → Phone and texts → Send texts is off (`app_settings` `messages_texts_on_v1`), `sendText` refuses with
  * 503 `textsOff` before anything reaches Quo (`quo/textsSwitch.ts`). The send window reads the same row first.
+ *
+ * Job Mode (R5): a body with `from: 'job_mode'` takes the tech path (`_shared/quoTechSend.ts`) before the office check.
+ * A tech on the job, or the office, presses one of the phone's lines with only the blanks they typed. The text is made
+ * from the line and the record, the contact found or made through `contact_for_job` (`contact_for_customer` for the
+ * office), the number picked from their channels, the line tied to the job with `quick_reply_id`, and a tech's hold
+ * on the answer written. Job Mode's door stays off until this is deployed (`JOB_MODE_MESSAGES_ON`).
  *
  * verify_jwt is off in config.toml, as for gc-customer-email: the caller's session is checked here.
  */
@@ -54,10 +62,16 @@ serve(async (req) => {
     if (!u?.user) return refuse('signIn', 'Sign in to send a text.', 401)
     const { data: who } = await admin.from('users').select('id, name, read_only').match(REAL_ACCOUNT).eq('id', u.user.id).maybeSingle()
     if (!who || who.read_only) return refuse('readOnly', 'This account cannot send texts.', 403)
+    const raw = await req.json().catch(() => null)
+    if (isJobModeSend(raw)) {
+      const answer = await jobModeSend(admin, caller, { id: who.id, name: who.name ?? null }, raw)
+      return json(answer.body, answer.status)
+    }
+
     const { data: office, error: officeError } = await caller.rpc('gc_office_team')
     if (officeError || office !== true) return refuse('officeOnly', 'Only the office sends texts.', 403)
 
-    const input = parseQuoSendBody(await req.json().catch(() => null))
+    const input = parseQuoSendBody(raw)
     if (!input) return refuse('badRequest', 'The text is missing its person, number or words.', 400)
 
     const { data: channel } = await admin

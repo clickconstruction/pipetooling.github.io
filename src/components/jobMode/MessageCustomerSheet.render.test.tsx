@@ -90,7 +90,8 @@ describe('MessageCustomerSheet at 375 px', () => {
       contactId: 'contact-dana',
       jobId: JOB,
       quickReplyId: 'q1',
-      body: 'Dana, this is Luis with Click Plumbing. I am on my way, about 15 minutes out.',
+      // Only the typed blank travels; quo-send makes the words from the line and the record.
+      fills: { minutes: '15' },
     })
     await waitFor(() => expect(onClose).toHaveBeenCalled())
     expect(onDone).toHaveBeenCalled()
