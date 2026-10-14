@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DOCSMIT_SETTINGS_DEFAULT, DOCSMIT_SETTING_KEY_LIST, docsmitSettingRows, docsmitSettingsFrom } from './docsmitSettings'
+import { DOCSMIT_READ_KEY_LIST, DOCSMIT_SETTINGS_DEFAULT, DOCSMIT_SETTING_KEY_LIST, docsmitCreditFrom, docsmitCreditLine, docsmitSettingRows, docsmitSettingsFrom } from './docsmitSettings'
 
 describe('Docsmit’s switches and numbers from app_settings', () => {
   it('no rows: every default; a row sets its field; a blank or malformed row keeps the default', () => {
@@ -27,5 +27,18 @@ describe('Docsmit’s switches and numbers from app_settings', () => {
     expect(rows.find((r) => r.key === 'docsmit_return_receipt')!.value_text).toBe('err'.replace('err', 'card'))
     expect(docsmitSettingsFrom(rows)).toEqual(s)
     expect(docsmitSettingsFrom(docsmitSettingRows(DOCSMIT_SETTINGS_DEFAULT))).toEqual(DOCSMIT_SETTINGS_DEFAULT)
+  })
+
+  it('the credit line (6b): the poll’s balance from its rows, and the words against the warn line', () => {
+    expect(DOCSMIT_READ_KEY_LIST).toEqual([...DOCSMIT_SETTING_KEY_LIST, 'docsmit_credit_balance', 'docsmit_credit_as_of'])
+    expect(docsmitCreditFrom([])).toEqual({ balance: null, asOf: null })
+    expect(docsmitCreditFrom([{ key: 'docsmit_credit_balance', value_text: '12.4' }, { key: 'docsmit_credit_as_of', value_text: '2026-10-14T14:17:00Z' }])).toEqual({ balance: 12.4, asOf: '2026-10-14T14:17:00Z' })
+    expect(docsmitCreditFrom([{ key: 'docsmit_credit_balance', value_text: '' }])).toEqual({ balance: null, asOf: null })
+    const now = '2026-10-14T16:20:00Z'
+    expect(docsmitCreditLine({ balance: null, asOf: null }, 25, now)).toEqual({ state: 'none', words: '', ago: '' })
+    expect(docsmitCreditLine({ balance: 12.4, asOf: '2026-10-14T14:17:00Z' }, 25, now)).toEqual({ state: 'low', words: 'Docsmit credit $12.40, under your $25 line · read 2 h ago', ago: '2 h ago' })
+    expect(docsmitCreditLine({ balance: 0, asOf: '2026-10-14T16:19:30Z' }, 25, now)).toEqual({ state: 'out', words: 'Docsmit credit is out ($0.00) · read just now', ago: 'just now' })
+    expect(docsmitCreditLine({ balance: 120, asOf: null }, 25, now)).toEqual({ state: 'ok', words: 'Docsmit credit $120.00', ago: '' })
+    expect(docsmitCreditLine({ balance: 30, asOf: '2026-10-11T16:20:00Z' }, 12.5, now).words).toBe('Docsmit credit $30.00 · read 3 days ago')
   })
 })

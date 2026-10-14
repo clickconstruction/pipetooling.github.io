@@ -67,12 +67,12 @@ describe('mail-poll (the Docsmit train, PR 3)', () => {
     docsmit.answers['GET /messages/m-1/parties'] = { body: [{ USPSTrackingID: '9407 1118 9876 5432 1098', DeliveryStatus: 'Accepted at USPS Origin Facility', DStatusao: '2026-10-14T00:30:00Z' }] }
     const res = await post({})
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ ok: true, env: 'prod', read: 1, updated: ['p1'], errors: [], matched_from_site: 0 })
+    expect(await res.json()).toMatchObject({ ok: true, env: 'prod', read: 1, updated: ['p1'], errors: [], matched_from_site: 0, credit_balance: null })
     expect(db.tables.mail_pieces![0]).toMatchObject({ status: 'in_transit', usps_tracking: '9407 1118 9876 5432 1098', mailed_at: '2026-10-14T00:30:00Z' })
     // 00:30 UTC on Oct 14 is the evening of Oct 13 in Central: the filing's day is the 13th.
     expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toEqual({ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118 9876 5432 1098', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p1' })
     // USPS has it now, so the charge is asked for once; Docsmit had no answer here, so the price stays unread and is asked again next hour.
-    expect(docsmit.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /token', 'GET /messages/m-1/parties', 'GET /messages/m-1/transactions'])
+    expect(docsmit.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /token', 'GET /messages/m-1/parties', 'GET /messages/m-1/transactions', 'GET /account/info'])
     expect(db.tables.mail_pieces![0]!.price).toBeUndefined()
   })
 
@@ -88,7 +88,7 @@ describe('mail-poll (the Docsmit train, PR 3)', () => {
     docsmit.calls = []
     docsmit.answers['GET /messages/m-1/parties'] = { body: [{ USPSTrackingID: '9407 1118', DeliveryStatus: 'In Transit to Next Facility', DStatusao: '2026-10-14T09:00:00Z' }] }
     expect((await post({})).status).toBe(200)
-    expect(docsmit.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /token', 'GET /messages/m-1/parties'])
+    expect(docsmit.calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /token', 'GET /messages/m-1/parties', 'GET /account/info'])
     expect(db.tables.mail_pieces![0]!.price).toBe(9.85)
   })
 
@@ -133,5 +133,20 @@ describe('mail-poll (the Docsmit train, PR 3)', () => {
     expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toMatchObject({ tracking: '9407 5555', via: 'docsmit', piece_id: 'p5', sent_on: '2026-10-13' })
     expect(db.tables.job_lien_filings![1]!.served_at).toBe('2026-10-01')
   })
-})
 
+  it('the credit line (6b): the poll keeps the account’s balance and its as-of in app_settings, made on the first read and updated after; a refusal is reported, not fatal', async () => {
+    docsmit.answers['GET /account/info'] = { body: { creditBalance: 12.4 } }
+    const first = await (await post({})).json()
+    expect(first).toMatchObject({ ok: true, credit_balance: 12.4, credit_error: null })
+    expect(db.tables.app_settings).toEqual([{ id: 'id-1', key: 'docsmit_credit_balance', value_text: '12.4' }, expect.objectContaining({ key: 'docsmit_credit_as_of' })])
+    docsmit.answers['GET /account/info'] = { body: { creditBalance: 9 } }
+    await post({})
+    expect(db.tables.app_settings!.filter((r) => r.key === 'docsmit_credit_balance')).toEqual([{ id: 'id-1', key: 'docsmit_credit_balance', value_text: '9' }])
+    docsmit.answers['GET /account/info'] = { status: 500, body: { message: 'down' } }
+    const third = await (await post({})).json()
+    expect(third.ok).toBe(true)
+    expect(third.credit_balance).toBeNull()
+    expect(third.credit_error).toMatch(/500|down/)
+    expect(db.tables.app_settings!.find((r) => r.key === 'docsmit_credit_balance')!.value_text).toBe('9')
+  })
+})
