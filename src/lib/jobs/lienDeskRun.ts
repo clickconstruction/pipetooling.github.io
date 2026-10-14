@@ -329,7 +329,8 @@ export function runNoticeProblems(n: RunNotice): string[] {
   const out: string[] = []
   if (n.ownerUnconfirmed) out.push(RUN_OWNER_UNCONFIRMED_PROBLEM)
   // v2.5086: a builder said the leader has not signed it; a notice the builder said nothing about (undefined) is not held for it.
-  if (n.signature === null) out.push(RUN_UNSIGNED_PROBLEM)
+  // v2.5533: nor is one already printed — the paper went out as it was; the run records it as it went, and the row keeps the doors to record a pen signature first.
+  if (n.signature === null && !n.printedAt) out.push(RUN_UNSIGNED_PROBLEM)
   for (const r of n.recipients) {
     if (!r.name && !r.address) out.push(`${r.label}: nobody to send to`)
     else if (r.method === 'email' && !r.email) out.push(`${r.label}: no email on file`)
@@ -594,10 +595,51 @@ export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking' | 'v
  * envelope carries a number the run records whole, as it always did — an
  * office that does not track is not stopped.
  */
-export function runRecordSplit<T extends RunNotice>(notices: ReadonlyArray<T>): { mailed: T[]; waiting: T[]; partial: boolean } {
-  const mailed = notices.filter((n) => n.recipients.some(recipientMailed))
-  if (mailed.length === 0 || mailed.length === notices.length) return { mailed: [...notices], waiting: [], partial: false }
-  return { mailed, waiting: notices.filter((n) => !n.recipients.some(recipientMailed)), partial: true }
+export type RunRecordSplit<T> = {
+  /** What records now. */
+  mailed: T[]
+  /** What stays in the pile: the unnumbered, then the held. */
+  waiting: T[]
+  /** Held for a problem in red (v2.5533): unsigned, an owner nobody confirmed, no address. They wait whatever their numbers say. */
+  held: T[]
+  /** Clean, but with no number yet while others have theirs (v2.4119). */
+  unnumbered: T[]
+  /** Something records and something waits. */
+  partial: boolean
+}
+
+/**
+ * Back from the post office (v2.4119): the clean notices with a number record now, the rest wait; with no number
+ * anywhere every clean notice records (the numbers are typed later). Since v2.5533 a notice with a problem
+ * (`problems[i]`, as `runNoticeProblems` lists them) is held: it waits in the pile with its reason whatever its
+ * numbers say, and the ready ones record now — the run is never all or nothing.
+ */
+export function runRecordSplit<T extends RunNotice>(notices: ReadonlyArray<T>, problems?: ReadonlyArray<ReadonlyArray<string>>): RunRecordSplit<T> {
+  const held: T[] = []
+  const clean: T[] = []
+  notices.forEach((n, i) => ((problems?.[i]?.length ?? 0) > 0 ? held : clean).push(n))
+  const numbered = clean.filter((n) => n.recipients.some(recipientMailed))
+  const mailed = numbered.length === 0 || numbered.length === clean.length ? clean : numbered
+  const unnumbered = clean.filter((n) => !mailed.includes(n))
+  const waiting = [...unnumbered, ...held]
+  return { mailed, waiting, held, unnumbered, partial: mailed.length > 0 && waiting.length > 0 }
+}
+
+/** The foot's words and the button's label for a split that waits on something (v2.5533); null when everything records. */
+export function runRecordWords(split: Pick<RunRecordSplit<unknown>, 'mailed' | 'waiting' | 'held' | 'unnumbered'>): { line1: string; line2: string; button: string } | null {
+  const m = split.mailed.length
+  const h = split.held.length
+  const u = split.unnumbered.length
+  const w = split.waiting.length
+  if (m === 0 && h > 0) return { line1: 'Nothing is ready to record', line2: 'Sign or fix what is marked in red, then record.', button: 'Record the run ▸' }
+  if (w === 0) return null
+  const stays = w === 1 ? 'stays' : 'stay'
+  const line1 = h && u ? `${h} held · ${u} with no number yet` : h ? `${h} ${h === 1 ? 'notice is' : 'notices are'} held` : `${u} ${u === 1 ? 'envelope has' : 'envelopes have'} no number yet`
+  const line2 = h
+    ? `${w === 1 ? 'It stays' : 'They stay'} in the pile with the reason in red. The ${m} ready ${m === 1 ? 'one records' : 'ones record'} now.`
+    : `${w === 1 ? 'It stays' : 'They stay'} in the mail pile; the numbered ones record now.`
+  const button = u ? `Record ${m} mailed · ${w} ${stays} in the pile ▸` : `Record ${m} · ${w} held ${stays} in the pile ▸`
+  return { line1, line2, button }
 }
 
 function esc(s: string): string {
