@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
+import { pageGate } from '../lib/roleGate'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -1800,8 +1801,10 @@ export default function GcProjects() {
     )
   }
 
-  if (authLoading) return null
-  if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
+  // A hard load waits for the role before it decides (`pageGate`), so a typed or pushed link lands here.
+  const gate = pageGate({ loading: authLoading, user, role }, canOpenGcProjects)
+  if (gate === 'wait') return null
+  if (gate === 'away') return <Navigate to="/dashboard" replace />
 
   const setWindow = (open: boolean) => {
     const next = new URLSearchParams(params)

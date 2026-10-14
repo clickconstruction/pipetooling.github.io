@@ -19,14 +19,18 @@ vi.mock('../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-/** The signed-in role: someone in the office unless a test says otherwise. */
-const auth = vi.hoisted(() => ({ role: 'assistant' }))
+/**
+ * The signed-in role: someone in the office unless a test says otherwise. `loading` and a null role stand for a hard
+ * load, before auth settles and before the users row lands.
+ */
+const auth = vi.hoisted(() => ({ role: 'assistant' as string | null, loading: false }))
 vi.mock('../hooks/useAuth', async () => {
   const { makeUseAuthValue, useAuthModuleMock } = await import('../test/renderSmokeMocks')
-  const byRole = new Map<string, ReturnType<typeof makeUseAuthValue>>()
+  const byState = new Map<string, ReturnType<typeof makeUseAuthValue>>()
   const value = () => {
-    if (!byRole.has(auth.role)) byRole.set(auth.role, makeUseAuthValue({ role: auth.role }))
-    return byRole.get(auth.role)!
+    const key = `${auth.role}|${auth.loading}`
+    if (!byState.has(key)) byState.set(key, makeUseAuthValue({ role: auth.role, loading: auth.loading }))
+    return byState.get(key)!
   }
   return { ...useAuthModuleMock(), useAuth: value, useOptionalAuth: value }
 })
@@ -130,6 +134,7 @@ const where = () => screen.getByTestId('where').textContent
 
 beforeEach(() => {
   auth.role = 'assistant'
+  auth.loading = false
   vi.mocked(loadMessagesView).mockClear()
 })
 afterEach(cleanup)
@@ -198,5 +203,36 @@ describe('/messages: Follow up with the kind pills', () => {
     at('/messages')
     expect(await screen.findByText('The Dashboard')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Messages' })).toBeNull()
+  })
+})
+
+describe('/messages from a link: it waits for the role before it decides (a hard load)', () => {
+  it('stays on Messages while auth loads', async () => {
+    auth.loading = true
+    at('/messages?thread=c-elena&at=m-1')
+    expect(await screen.findByText('Loading…')).toBeTruthy()
+    expect(screen.queryByText('The Dashboard')).toBeNull()
+    expect(where()).toBe('/messages?thread=c-elena&at=m-1')
+  })
+
+  it('stays while a signed-in person’s role has not landed, the cold load that sent the owner to the Dashboard', async () => {
+    auth.role = null
+    at('/messages?thread=c-elena&at=m-1')
+    expect(await screen.findByText('Loading…')).toBeTruthy()
+    expect(screen.queryByText('The Dashboard')).toBeNull()
+    expect(where()).toBe('/messages?thread=c-elena&at=m-1')
+  })
+
+  it('sends a primary to the Dashboard once the role lands', async () => {
+    auth.role = 'primary'
+    at('/messages?thread=c-elena&at=m-1')
+    expect(await screen.findByText('The Dashboard')).toBeTruthy()
+  })
+
+  it('opens for the owner, keeping the link', async () => {
+    auth.role = 'master_technician'
+    at('/messages?thread=c-elena&at=m-1')
+    expect(await screen.findByRole('heading', { name: 'Messages' })).toBeTruthy()
+    expect(where()).toContain('thread=c-elena')
   })
 })
