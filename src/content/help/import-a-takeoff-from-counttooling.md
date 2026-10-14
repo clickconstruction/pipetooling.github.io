@@ -48,6 +48,16 @@ Click {{button:green|Apply 9 changes}} when the piles read right. The toast says
 The toast reads *All 31 rows match this bid exactly. Nothing to import.* and the sheet is untouched.
 :::
 
+## Combine two counts on one bid
+
+Two people can count parts of one plan in separate CountTooling projects. Each copies their own count to the same bid. The first copy fills the sheet as usual. The second copy opens the review in **Combine**. The header names both projects, like *SpaceX BA · Robert* and *SpaceX BA · Taunya*. A row both people counted sits under **Both counted**. Its line shows the math, like *1,489.04 + 338.41 = 1,827.45 ft*. Its pages join. {{button:green|Add to it}} is the default. {{button:outline|Replace}} on a row takes the copy's count instead. {{button:outline|Leave as is}} keeps the bid's count. New rows add as usual. The other person's rows sit under **Only on the bid**. They stay. A second copy never removes the first person's rows. The footer reads like *Will add to 6, add 4. 30 untouched.* The copy's link joins the bid's CountTooling links.
+
+The review knows a project by the token in its link. A copy from a project the bid already has opens as a **re-copy**. It moves only that project's share of each row. A row both people counted keeps the other person's part. A row that project alone had can be removed. The other project's rows are untouched. The switch at the top offers {{button:outline|Combine with the bid}} and {{button:outline|Replace what matches}} when a new project arrives. Use Replace for a fresh count of the same drawings from a new project.
+
+:::example Two counters, one bid
+Taunya counts the fixtures and copies 36 rows. Robert counts the pipe and copies 10 rows. His review opens in Combine. Six rows are on both counts, so they add up. Four are new. Her 30 rows stay. Apply writes 10 changes. Both links sit on the bid.
+:::
+
 ## Then price the materials
 
 You price the counts on **Takeoffs**. Each fixture gets its parts there, and each part gets a price. See [cost a takeoff one fixture at a time](?g=cost-a-takeoff-one-fixture-at-a-time).
