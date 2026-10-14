@@ -5187,7 +5187,7 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (a dev's dry run), `CRON_SECRET`, `APP_ORIGIN` (clicktooling.com when unset), and `sendText`'s `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. Nothing new beyond `quo-send`'s.
 
-**Deploy**: `supabase functions deploy messages-nudge-dispatch`, after `quo-send` and `quo-webhook`. The cron is a migration of its own (`cron.schedule` with `vault` `PROJECT_URL` and `CRON_SECRET`), pushed only after the deploy, so the cron never posts to a function that is not there. Until then, try it with a dry run.
+**Deploy**: `supabase functions deploy messages-nudge-dispatch`, after `quo-send` and `quo-webhook`. The cron is a migration of its own, `20261014190000_messages_nudge_cron.sql` (v2.5506, `cron.schedule` at `0 14,15 * * *` with `vault` `PROJECT_URL` and `CRON_SECRET`), pushed only after the deploy, so the cron never posts to a function that is not there. A dry run tries it at any hour.
 
 ---
 
