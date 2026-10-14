@@ -61,7 +61,7 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
         newest('in'),
         newest('out'),
         db.from('app_settings').select('value_text').eq('key', APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1).maybeSingle(),
-        db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null),
+        db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false),
         loadJobTilesAndActive(jobKeys, calendarYmdInAppTzFromIso(nowIso)),
       ])
       checkSupabaseError(contact, 'load who has the conversation')

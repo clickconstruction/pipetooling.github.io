@@ -62,7 +62,7 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
       }
     },
     async loadTeam() {
-      const result = await db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null)
+      const result = await db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false)
       checkSupabaseError(result, 'load the office team')
       const rows = (result.data ?? []) as Array<{ id: string; name: string | null; role: string | null }>
       return followUpTeamOf(rows.map((r) => ({ id: r.id, name: r.name ?? '', role: r.role ?? '' })))
