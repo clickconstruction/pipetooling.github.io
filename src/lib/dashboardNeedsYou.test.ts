@@ -185,10 +185,11 @@ describe('jobs stale open (v2.2825)', () => {
   it('names the pile, the money, and how many are the reader’s own; quiet while loading or off', () => {
     const on = buildNeedsYouItems(inputs({ staleOpenEnabled: true, staleOpen: { count: 25, total: 343162, mine: 3, minIdleDays: 21 } }))
     const item = on.find((i) => i.key === 'jobs-stale-open')
-    expect(item).toMatchObject({ severity: 'amber', kicker: 'Jobs', figure: '25', actionLabel: 'See them' })
+    expect(item).toMatchObject({ severity: 'amber', kicker: 'Jobs', figure: '25', actionLabel: 'Review them' })
     expect(item?.title).toBe('25 open jobs have sat idle 21+ days')
     expect(item?.detail).toContain('$343,162 of contract')
     expect(item?.detail).toContain('3 are yours')
+    expect(item?.detail).toContain('Each card says what the job needs')
     expect(buildNeedsYouItems(inputs({ staleOpenEnabled: true, staleOpen: { count: 1, total: 900, mine: 1, minIdleDays: 21 } })).find((i) => i.key === 'jobs-stale-open')?.title).toBe('An open job has sat idle 21+ days')
     expect(buildNeedsYouItems(inputs({ staleOpenEnabled: true, staleOpen: null })).some((i) => i.key === 'jobs-stale-open')).toBe(false)
     expect(buildNeedsYouItems(inputs({ staleOpenEnabled: false, staleOpen: { count: 5, total: 1, mine: 0, minIdleDays: 21 } })).some((i) => i.key === 'jobs-stale-open')).toBe(false)

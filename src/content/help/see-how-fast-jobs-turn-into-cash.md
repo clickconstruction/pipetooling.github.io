@@ -35,7 +35,7 @@ Click a row and the Jobs view opens on that job. Most stale jobs need one of thr
 
 ## The Dashboard card
 
-You do not have to open the tab to know. When open jobs have sat idle **21+ days**, a **Needs you** card appears on the Dashboard. It says how many, how much contract is behind them and how many are yours. {{button:blue|See them}} opens this view with the list. The card counts started jobs only. A job still waiting to begin is queued, not stale.
+You do not have to open the tab to know. When open jobs have sat idle **21+ days**, a **Needs you** card appears on the Dashboard. It says how many, how much contract is behind them and how many are yours. {{button:blue|Review them}} opens the Follow-ups deck on its Idle lens, one card per job. Each card says what the job needs and has a door for it. See *follow up on quiet jobs*. The card counts started jobs only. A job still waiting to begin is queued, not stale. A job with a visit already on the schedule stays off the card. This view's list keeps every idle job, booked or not.
 
 ## Compare to
 

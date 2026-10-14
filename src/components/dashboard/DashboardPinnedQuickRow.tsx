@@ -12,6 +12,7 @@ import {
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
 import { useJobFollowupNudge } from '../../hooks/useJobFollowupNudge'
+import { JOB_FOLLOWUP_IDLE_DAYS } from '../../lib/jobs/jobFollowupQueue'
 import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
@@ -39,7 +40,6 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
-import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
@@ -396,9 +396,6 @@ export function DashboardPinnedQuickRow({
   })
 
   const officeEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
-  const { count: jobFollowupCount, stageCounts: jobFollowupStageCounts } = useJobFollowupNudge(
-    !hideBanners && officeEligible,
-  )
   const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(
     hideBanners ? undefined : authUserId,
   )
@@ -492,9 +489,14 @@ export function DashboardPinnedQuickRow({
   // Work Orders tab PR 3: drafts waiting for a price — the master's queue.
   const unpricedWorkOrdersEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
-  // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
+  // The quiet jobs (v2.2487) and, since v2.5512, the idle ones (v2.2825's card, now the Follow-ups deck's own
+  // count): one fetch, the deck's kernel, so the two cards and the deck say the same numbers.
+  const { count: jobFollowupCount, stageCounts: jobFollowupStageCounts, idle: jobFollowupIdle } = useJobFollowupNudge(
+    !hideBanners && officeEligible,
+    { userId: authUserId, hideZzTestJobs },
+  )
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId, hideZzTestJobs)
+  const staleOpen = jobFollowupIdle ? { ...jobFollowupIdle, minIdleDays: JOB_FOLLOWUP_IDLE_DAYS } : null
   // Field capacity under 60% three complete weeks running (Job Summary follow-up 3) — the roles that see Job Summary.
   const capacityUnderEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { streak: capacityUnder } = useCapacityUnderNudge(capacityUnderEnabled, authUserId)
@@ -771,7 +773,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'work-orders-unpriced') {
               navigate('/jobs?tab=subs&wof=drafts')
             } else if (item.key === 'jobs-stale-open') {
-              navigate('/jobs?tab=job-summary&view=cycle')
+              // v2.5512: the Follow-ups deck on its Idle lens — the same cards the figure counts.
+              navigate('/jobs?tab=stages&followups=idle')
             } else if (item.key === 'capacity-under') {
               navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-missing') {

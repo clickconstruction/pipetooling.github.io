@@ -336,8 +336,9 @@ export type NeedsYouInputs = {
    */
   jobFollowupsEnabled: boolean
   /**
-   * Open jobs idle 21+ days (v2.2825) — the Job Summary Cycle view's stale-open
-   * list. `mine` = jobs whose lead tech is the signed-in user, so the card
+   * Open jobs idle 21+ days (v2.2825; since v2.5512 the Follow-ups deck's idle
+   * cards, `useJobFollowupNudge().idle`, so the card and the deck's Idle lens say
+   * one number). `mine` = jobs whose lead tech is the signed-in user, so the card
    * names a person. Null while loading; the hook reports zero on error.
    */
   staleOpenEnabled?: boolean
@@ -864,10 +865,10 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       kicker: 'Jobs',
       title: n === 1 ? `An open job has sat idle ${minIdleDays}+ days` : `${n} open jobs have sat idle ${minIdleDays}+ days`,
       detail:
-        `${money} of contract with no field work in ${minIdleDays} days${mine > 0 ? ` — ${mine} ${mine === 1 ? 'is' : 'are'} yours` : ''}. ` +
-        'Each one needs a bill, an inspection, or to be closed. The Cycle view lists them longest-idle first.',
+        `${money} of contract with no crew on site in ${minIdleDays} days${mine > 0 ? ` — ${mine} ${mine === 1 ? 'is' : 'are'} yours` : ''}. ` +
+        'Each card says what the job needs: a bill, a visit, or to be closed. Review them one at a time; Looks fine and Snooze remember your call.',
       figure: String(n),
-      actionLabel: 'See them',
+      actionLabel: 'Review them',
     })
   }
 
