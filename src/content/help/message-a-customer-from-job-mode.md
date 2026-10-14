@@ -14,7 +14,7 @@ You can text the customer from Job Mode in two presses. You pick a line the offi
 
 An orange dot on **Message the customer** means the customer wrote back. Their answer shows at the top when you open it.
 
-If you do not see **Message the customer**, the office has not switched it on yet.
+If you do not see **Message the customer**, clock in on the job first. If a text says texts are off, ask the office to turn them on.
 
 ## Pick a line
 

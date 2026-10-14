@@ -13,11 +13,11 @@ describe('the box in a job’s window', () => {
     expect(jobBoxOffered(null)).toBe(false)
   })
 
-  it('offers Job Mode’s Message the customer to the tech’s door only, and only once it is switched on', () => {
-    expect(JOB_MODE_MESSAGES_ON).toBe(false)
+  it('offers Job Mode’s Message the customer to the tech’s door only, and only while it is switched on', () => {
+    expect(JOB_MODE_MESSAGES_ON).toBe(true)
     for (const role of ['primary', 'helpers'] as const) {
-      expect(jobModeMessagesOffered(role)).toBe(false)
-      expect(jobModeMessagesOffered(role, true)).toBe(true)
+      expect(jobModeMessagesOffered(role)).toBe(true)
+      expect(jobModeMessagesOffered(role, false)).toBe(false)
     }
     for (const role of ['dev', 'master_technician', 'assistant', 'superintendent', 'subcontractor'] as const) expect(jobModeMessagesOffered(role, true)).toBe(false)
     expect(jobModeMessagesOffered(null, true)).toBe(false)

@@ -24,10 +24,11 @@ export function jobBoxOffered(role: UserRole | null | undefined): boolean {
 }
 
 /**
- * Job Mode's **Message the customer** (R5) is switched off until `quo-send` takes a tech's text: its tech path reads
- * the customer's number from their record and holds their answer for the tech. Turn it on in that PR's deploy.
+ * Job Mode's **Message the customer** (R5), on since v2.5505: `quo-send`'s tech path (v2.5499) makes the text from the
+ * phone's line and the record, reads the customer's number from their record, and holds their answer for the tech.
+ * Texts themselves still wait on Settings → Phone and texts → Send texts.
  */
-export const JOB_MODE_MESSAGES_ON = false
+export const JOB_MODE_MESSAGES_ON = true
 
 /** Who sees **Message the customer** on Job Mode: the tech's door (`MESSAGES_TECH_TEAM`), once the switch is on. */
 export function jobModeMessagesOffered(role: UserRole | null | undefined, on: boolean = JOB_MODE_MESSAGES_ON): boolean {
