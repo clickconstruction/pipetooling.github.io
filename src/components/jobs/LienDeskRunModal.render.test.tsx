@@ -6,7 +6,7 @@
  * address on file.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
@@ -981,3 +981,264 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
   })
 })
 
+
+describe('Esc in the run window (v2.5530)', () => {
+  it('closes a run with nothing typed; folds More first; holds over a typed number; leaves the preview its own Esc', async () => {
+    const onClose = vi.fn()
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    // More ▾ open: the first Esc folds it and the run stays.
+    ensureMore()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('run-more-panel')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    // The preview keeps Esc for itself: it closes and the run stays.
+    fireEvent.click(screen.getByTestId('run-preview-j650-original_contractor'))
+    expect(screen.getByTestId('lien-run-preview')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-run-preview')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    // A number typed: Esc holds the run open and says how to close it.
+    const box = screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking')
+    fireEvent.change(box, { target: { value: '9407 1118 9922' } })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(await screen.findByText(/The run stays open over the numbers you typed/)).toBeTruthy()
+    expect((box as HTMLInputElement).value).toBe('9407 1118 9922')
+    // A click outside holds the same way.
+    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    expect(onClose).not.toHaveBeenCalled()
+    // Cleared again: nothing changed since it opened, so Esc closes.
+    fireEvent.change(box, { target: { value: '' } })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a changed send method or Mailed on day holds too; a click outside a run with nothing changed closes it', async () => {
+    const onClose = vi.fn()
+    const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    const method = screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — method') as HTMLSelectElement
+    fireEvent.change(method, { target: { value: 'hand' } })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(await screen.findByText(/The run stays open over your changes/)).toBeTruthy()
+    fireEvent.change(method, { target: { value: 'certified_mail' } })
+    ensureMore()
+    fireEvent.change(screen.getByLabelText('Mailed on'), { target: { value: '2026-09-12' } })
+    fireEvent.keyDown(window, { key: 'Escape' }) // folds More
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    view.unmount()
+    const onClose2 = vi.fn()
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose2} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    expect(onClose2).toHaveBeenCalledTimes(1)
+  })
+
+  it('the take-back question closes on Esc before the run does', async () => {
+    const onClose = vi.fn()
+    const printed = [notice({ printedAt: '2026-10-07T16:00:00Z' })]
+    renderWithProviders(<LienDeskRunModal notices={printed} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} />)
+    await settle()
+    ensureMore()
+    fireEvent.click(screen.getByTestId('run-take-back'))
+    expect(screen.getByTestId('run-take-back-confirm')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('run-take-back-confirm')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    if (screen.queryByTestId('run-more-panel')) {
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByTestId('run-more-panel')).toBeNull()
+    }
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a signature pane on screen makes Esc wait; once it is gone, even with its twin pane left open on the other envelope, Esc closes', async () => {
+    signMock.mockClear()
+    const onClose = vi.fn()
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
+        issuer={null}
+        todayYmd="2026-10-09"
+        userId="u-taunya"
+        viewer={{ userId: 'u-taunya', name: 'Taunya' }}
+        onClose={onClose}
+        onRecorded={() => {}}
+      />,
+    )
+    await settle()
+    fireEvent.click(screen.getByTestId('run-leader-here-sign-1'))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByTestId('run-sign-here-1')).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(await screen.findByText('Finish the signature first, or close its pane.')).toBeTruthy()
+    // The pen pane on the other envelope of the same notice, then the drawing signs both envelopes free.
+    fireEvent.click(screen.getByTestId('run-pen-sign-2'))
+    fireEvent.click(screen.getByTestId('run-sign-here-go-1'))
+    await waitFor(() => expect(screen.queryByTestId('run-held-1')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('run-held-2')).toBeNull())
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Esc and a click outside after review round 2 (v2.5530)', () => {
+  const docsmitNotice = () =>
+    notice({ recipients: [
+      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+    ] })
+
+  it('a Docsmit send holds the run on Esc and on a click outside, with words that say to record it', async () => {
+    docsmitState.setUp = true
+    const onClose = vi.fn()
+    renderWithProviders(<LienDeskRunModal notices={[docsmitNotice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-docsmit'))
+    await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('dsm-mail'))
+    await waitFor(() => expect(screen.getByTestId('dsm-outcome').textContent).toBe('1 envelope mailed through Docsmit.'))
+    // The review's own Esc closes it; the run stays.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(await screen.findByText(/Envelopes went through Docsmit in this run\. Record the run so the desk keeps them/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    expect(onClose).not.toHaveBeenCalled()
+    docsmitState.setUp = false
+  })
+
+  it('the Docsmit review closed while it mails does not leave Esc dead in the run', async () => {
+    docsmitState.setUp = true
+    let release: () => void = () => {}
+    sendMock.mockImplementationOnce(() => new Promise((resolve) => { release = () => resolve({ ok: true, sent: [] }) }))
+    const onClose = vi.fn()
+    renderWithProviders(<LienDeskRunModal notices={[docsmitNotice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-docsmit'))
+    await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('dsm-mail'))
+    // Mailing…: Esc closes the review (its own key); the run, mid-write, lets it be.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
+    await act(async () => { release() })
+    await settle()
+    // The review stays closed and its door works again.
+    expect(screen.queryByTestId('dsm-review')).toBeNull()
+    prepareMock.mockClear()
+    fireEvent.click(screen.getByTestId('run-docsmit'))
+    await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
+    expect(prepareMock).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
+    // Nothing went (sent: []), so nothing holds: More folds, then the run closes.
+    ensureMore()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('run-more-panel')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    docsmitState.setUp = false
+  })
+
+  it('a click outside waits on a signature pane on screen, as Esc does', async () => {
+    const onClose = vi.fn()
+    renderWithProviders(
+      <LienDeskRunModal notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' } })]} issuer={null} todayYmd="2026-10-09" userId="u-taunya" viewer={{ userId: 'u-taunya', name: 'Taunya' }} onClose={onClose} onRecorded={() => {}} />,
+    )
+    await settle()
+    fireEvent.click(screen.getByTestId('run-leader-here-sign-1'))
+    fireEvent.click(screen.getByRole('dialog', { name: 'Send the run' }))
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByTestId('run-sign-here-1')).toBeTruthy()
+    expect(await screen.findByText('Finish the signature first, or close its pane.')).toBeTruthy()
+  })
+
+  it('a run left open past midnight is not changed by it: Mailed on is measured against the day it opened', async () => {
+    const onClose = vi.fn()
+    const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    view.rerender(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-15" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('after a partial record, the recorded envelope’s ticks neither show on the envelopes left nor hold the run', async () => {
+    recordMock.mockClear()
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [], courtesySent: [], courtesyFailed: [] }))
+    const onClose = vi.fn()
+    const two = [
+      notice({ printedAt: '2026-10-07T16:00:00Z' }),
+      notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: '2026-10-07T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Zed Holdings', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }, { key: 'original_contractor', label: 'Original contractor', name: 'Yarrow Builders', address: '1 GC Rd', email: '', method: 'certified_mail', tracking: '' }] }),
+    ]
+    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    // 650's two envelopes: ticked at the counter and numbered.
+    fireEvent.click(screen.getByLabelText('Envelope 1 — stuffed'))
+    fireEvent.click(screen.getByLabelText('Envelope 2 — stuffed'))
+    fireEvent.change(screen.getByLabelText('Envelope 1 — number (checklist)'), { target: { value: '9407 1118 9876 5432 1098' } })
+    fireEvent.change(screen.getByLabelText('Envelope 2 — number (checklist)'), { target: { value: '9407 1118 9876 5432 1099' } })
+    ensureMore()
+    fireEvent.click(screen.getByRole('button', { name: /Record 1 mailed/ }))
+    await settle()
+    expect(recordMock).toHaveBeenCalledTimes(1)
+    // 651 is left, renumbered from 1, with boxes of its own.
+    expect(screen.getByTestId('run-checklist-1').textContent).toContain('651 owner')
+    expect((screen.getByLabelText('Envelope 1 — stuffed') as HTMLInputElement).checked).toBe(false)
+    if (screen.queryByTestId('run-more-panel')) fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('Combine holds only while it still joins something: a partial record that takes the pair out lets the run close', async () => {
+    recordMock.mockClear()
+    const onClose = vi.fn()
+    const at = '2026-10-07T16:00:00Z'
+    const n650 = notice({ printedAt: at })
+    const n652 = notice({ itemId: 'it652', jobId: 'j652', label: '652 · ATI Schertz annex', jobNumber: '652', amount: 4_500, months: ['2026-08'], printedAt: at })
+    const n653 = notice({
+      itemId: 'it653', jobId: 'j653', label: '653 · Zed Shop', jobNumber: '653', printedAt: at,
+      fields: { ...notice().fields, originalContractorName: 'Yarrow Builders' },
+      recipients: [
+        { key: 'owner', label: 'Owner of record', name: 'Zed Holdings', address: '9 Other Rd, Austin, TX', email: '', method: 'certified_mail', tracking: '' },
+        { key: 'original_contractor', label: 'Original contractor', name: 'Yarrow Builders', address: '77 Third St', email: '', method: 'certified_mail', tracking: '' },
+      ],
+    })
+    renderWithProviders(<LienDeskRunModal notices={[n650, n652, n653]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Combine the jobs at one property into one notice'))
+    // With the pair joined, Combine holds.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    // Number the joined notice's envelopes and record it; 653 is left alone.
+    for (let n = 1; n <= 6; n++) {
+      const row = screen.queryByTestId(`run-checklist-${n}`)
+      if (row && /650/.test(row.textContent ?? '')) fireEvent.change(screen.getByLabelText(`Envelope ${n} — number (checklist)`), { target: { value: `9407 1118 9922 1111 2222 0${n}` } })
+    }
+    const rec = screen.getAllByRole('button').find((b) => /Record .* mailed/.test(b.textContent ?? ''))!
+    fireEvent.click(rec)
+    await settle()
+    expect(recordMock).toHaveBeenCalledTimes(1)
+    expect(screen.queryByLabelText('Combine the jobs at one property into one notice')).toBeNull()
+    if (screen.queryByTestId('run-more-panel')) fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a run opened on its take-back question with nothing printed closes on the first Esc', async () => {
+    const onClose = vi.fn()
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={onClose} onRecorded={() => {}} onTakeBack={async (ids) => ids.length} openOnTakeBack />)
+    await settle()
+    expect(screen.queryByTestId('run-take-back-confirm')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})

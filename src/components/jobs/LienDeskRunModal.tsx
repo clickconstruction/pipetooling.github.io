@@ -40,6 +40,8 @@ import { useDocsmitSettings } from '../../hooks/useDocsmitSettings'
 import { docsmitCandidates, docsmitPriceWords, docsmitRunDoor, docsmitSendByStrip, docsmitSendOutcome } from '../../lib/mail/runDocsmit'
 import { docsmitHeldWords, docsmitRecipientPatches, prepareDocsmitRun, sendDocsmitRun, type DocsmitPrepareOutcome } from '../../lib/mail/runDocsmitIo'
 import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
+import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -92,6 +94,10 @@ export default function LienDeskRunModal({
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
+  // What the run opened with (v2.5530): Esc holds the run open over anything typed since; the desk rebuilds `initial` on every render.
+  const openedWith = useRef(initial).current
+  const openedYmd = useRef(todayYmd).current
+  const isTopmostModal = useModalStackEntry(true)
   const [busy, setBusy] = useState(false)
   // Leader here, sign ▸ (v2.5086): the held envelope whose sign sheet is open, and the line he draws on.
   const [signOpen, setSignOpen] = useState<string | null>(null)
@@ -104,7 +110,8 @@ export default function LienDeskRunModal({
   const docsmit = useDocsmitSettings()
   const [dsm, setDsm] = useState<{ stage: 'idle' | 'preparing' | 'review' | 'sending'; outcome: DocsmitPrepareOutcome | null; sent: string | null }>({ stage: 'idle', outcome: null, sent: null })
   // The checklist, live (Run-5): the printed sheet's three boxes per envelope, ticked here at the counter; the window's own state.
-  const [ticks, setTicks] = useState<Record<number, [boolean, boolean, boolean]>>({})
+  // Keyed by the envelope's own key (v2.5530), not its number: a partial record renumbers the envelopes left.
+  const [ticks, setTicks] = useState<Record<string, [boolean, boolean, boolean]>>({})
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
@@ -351,7 +358,9 @@ export default function LienDeskRunModal({
         const patch = patches.get(env.key)
         if (patch) setEnvelope(env, patch)
       }
-      setDsm((d) => ({ ...d, stage: 'review', sent: result.words }))
+      // A review closed while it mailed (its own Esc, ×, Close or backdrop) stays closed: back to idle, so the door
+      // works again (v2.5530). The toast below still says what went.
+      setDsm((d) => (d.outcome == null ? { stage: 'idle', outcome: null, sent: null } : { ...d, stage: 'review', sent: result.words }))
       showToast(result.words, answer.ok ? 'success' : 'warning')
       // Kept the moment it goes (v2.5532), not at Record the run: a notice with every copy out is stamped printed as a print
       // stamps it, and the desk re-reads, so the pieces (which name their desk items) are on every later run. It re-reads
@@ -508,6 +517,7 @@ export default function LienDeskRunModal({
       setPrintedCopies(new Set())
       setPrintedNow([])
       setPrintedAt(null)
+      setTicks({})
       setTakeBackOpen(false)
       setTakenBack({ count, printedAt: lastPrintedAt })
     } catch (e) {
@@ -539,6 +549,49 @@ export default function LienDeskRunModal({
     }
   }
 
+  // Esc and a click outside (v2.5530): one layer at a time, and never over work closing would lose. The preview and
+  // the Docsmit review close on Esc by themselves (both listen on window too, so the run stands aside rather than count
+  // on their preventDefault); a sign pad or pen pane that is on screen makes Esc wait; the take-back question and More ▾
+  // close first; then the run closes only while nothing in it changed since it opened (runHoldSinceOpen).
+  const signingOnScreen = envelopes.some((env) => (env.key === signOpen || env.key === penOpen) && heldWhy.has(env.key) && !!viewer && !!unsignedIn(env)[0]?.leader)
+  // Only the boxes of envelopes still on the checklist count; Mailed on is measured against the day the run opened.
+  const holdNow = () => {
+    const visibleTicks = checklist.map((row) => ticks[envelopes.find((e) => e.n === row.n)?.key ?? String(row.n)] ?? [false, false, false])
+    // Combine counts only while it still joins something: a partial record can take every pair out and the box with it.
+    return runHoldSinceOpen(openedWith, notices, { mailedOn, openedYmd, combine: combine && combinable.combined > 0, docUrl, docNote, ticks: visibleTicks })
+  }
+  // A write in flight, Docsmit's own included; the review counts as open only while it is drawn (its outcome is set),
+  // so a review closed mid-send, which mailDocsmit puts back to idle when the send lands, never keeps the run's Esc.
+  const working = busy || dsm.stage === 'preparing' || dsm.stage === 'sending'
+  const reviewOpen = dsm.stage === 'review' && dsm.outcome != null
+  const SIGNING_WORDS = 'Finish the signature first, or close its pane.'
+  const closeUnlessHeld = () => {
+    if (working) return
+    if (signingOnScreen) {
+      showToast(SIGNING_WORDS, 'info')
+      return
+    }
+    const hold = holdNow()
+    if (hold) showToast(runHoldWords(hold), hold === 'docsmit' ? 'warning' : 'info')
+    else onClose()
+  }
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented || !isTopmostModal()) return
+      const hold = holdNow()
+      const action = runEscapeAction({ busy: working, overlayOpen: preview != null || reviewOpen, signing: signingOnScreen, takeBackOpen: takeBackOpen && printedIds.length > 0, moreOpen, hold })
+      if (action === 'ignore') return
+      ev.preventDefault()
+      if (action === 'wait-signing') showToast(SIGNING_WORDS, 'info')
+      else if (action === 'close-take-back') setTakeBackOpen(false)
+      else if (action === 'close-more') setMoreOpen(false)
+      else if (action === 'hold' && hold) showToast(runHoldWords(hold), hold === 'docsmit' ? 'warning' : 'info')
+      else onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   return (
     <div
       role="dialog"
@@ -547,9 +600,10 @@ export default function LienDeskRunModal({
       style={{ position: 'fixed', inset: 0, paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 790 }}
       onClick={(e) => {
         // The Lien desk and Put a GC on notice draw the run inside their own backdrop: a click
-        // outside closes the run only, not the window behind it (v2.4352).
+        // outside closes the run only, not the window behind it (v2.4352) — and, like Esc, only
+        // while nothing in it would be lost (v2.5530).
         e.stopPropagation()
-        onClose()
+        closeUnlessHeld()
       }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(960px, calc(100vw - 2rem))', maxHeight: 'min(90vh, calc(100dvh - 2rem - var(--app-top-chrome, 0px)))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
@@ -647,7 +701,8 @@ export default function LienDeskRunModal({
             <div className="lienRunChecklist" data-testid="run-checklist">
               <h3>At the counter · the checklist, live <span>{runChecklistWords(checklist)}</span></h3>
               {checklist.map((row) => {
-                const t = ticks[row.n] ?? [false, false, false]
+                const tickKey = envelopes.find((e) => e.n === row.n)?.key ?? String(row.n)
+                const t = ticks[tickKey] ?? [false, false, false]
                 const env = envelopes.find((e) => e.n === row.n)!
                 return (
                   <div key={row.n} className="lienRunChecklistRow" data-testid={`run-checklist-${row.n}`} data-done={row.done ? 'yes' : 'no'}>
@@ -658,7 +713,7 @@ export default function LienDeskRunModal({
                       <div className="lienRunChecklistBoxes">
                         {row.boxes.map((label, i) => (
                           <label key={label}>
-                            <input type="checkbox" checked={t[i]} onChange={(ev) => setTicks((prev) => { const next: [boolean, boolean, boolean] = [...(prev[row.n] ?? [false, false, false])] as [boolean, boolean, boolean]; next[i] = ev.target.checked; return { ...prev, [row.n]: next } })} aria-label={`Envelope ${row.n} — ${label}`} />
+                            <input type="checkbox" checked={t[i]} onChange={(ev) => setTicks((prev) => { const next: [boolean, boolean, boolean] = [...(prev[tickKey] ?? [false, false, false])] as [boolean, boolean, boolean]; next[i] = ev.target.checked; return { ...prev, [tickKey]: next } })} aria-label={`Envelope ${row.n} — ${label}`} />
                             {label}
                           </label>
                         ))}
