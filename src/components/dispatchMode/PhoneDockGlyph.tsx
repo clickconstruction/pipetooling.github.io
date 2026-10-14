@@ -19,6 +19,7 @@ const SHAPES: Record<PhoneDockIcon | 'more', ReactNode> = {
     </>
   ),
   bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="currentColor" stroke="none" />,
+  chat: <path d="M4 5h16v11H10l-5 4v-4H4z" />,
   inbox: (
     <>
       <path d="M3 13h5l2 3h4l2-3h5" />

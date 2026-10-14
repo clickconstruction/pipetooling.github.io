@@ -9,6 +9,8 @@ Messages is the office's one page for everyone who writes to us. It shows who is
 
 The office team and estimators see **Messages** in the header. Its count is everyone waiting on us. Press it to open the page.
 
+On a phone with the dock at the bottom, press **More** and then **Messages**.
+
 ## The page
 
 The page is Follow up for every kind of person. It has the same four lists.
