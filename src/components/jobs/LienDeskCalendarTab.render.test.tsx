@@ -492,3 +492,21 @@ describe('the In the mail mark (v2.5522)', () => {
     expect(onRecord).toHaveBeenCalledTimes(3)
   })
 })
+
+describe('a notice in the mail whose date has passed (v2.5529)', () => {
+  it('its mark says the date has passed, with no "by" a day gone by, and still opens Record the mailing', () => {
+    const onRecord = vi.fn()
+    // Today Sep 28: June's date (Aug 17) has passed; July is on file.
+    const rows: LienCalendarJob[] = [
+      { jobId: 'p', number: '258 PLUM', name: 'Dudley Mason', customer: 'RMC', gcId: 'gc7', gcName: 'RMC- Dudley Mason', address: '628 Terrell Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-07-12', isSub: true, workMonths: ['2026-06', '2026-07'], noticedMonths: ['2026-07'], mailedMonths: ['2026-06'] }) },
+    ]
+    render(<LienDeskCalendarTab rows={rows} todayYmd={TODAY} onOpenJob={() => {}} onRecord={onRecord} canWrite />)
+    const mark = screen.getByTestId('lien-cal-mailed')
+    expect(mark.getAttribute('title')).toBe('The June 2026 notice is printed and in the mail; its date, Aug 17, has passed — record its tracking number and the day it went out, and it is on file')
+    fireEvent.click(mark)
+    expect(onRecord).toHaveBeenCalledWith(['p'])
+    // The GC row's folded envelope says the same: no "by" a day gone by.
+    expect(screen.getByTitle('1 in the mail · its date, Aug 17, has passed')).toBeTruthy()
+    expect(screen.queryByTitle(/in the mail by Aug 17/)).toBeNull()
+  })
+})
