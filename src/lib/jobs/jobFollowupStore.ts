@@ -185,7 +185,7 @@ async function fetchJobFollowupCandidatesUncached(todayYmd: string): Promise<Job
       async () =>
         supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, job_name, job_address, status, customer_name, pct_complete, revenue, payments_made')
+          .select('id, hcp_number, job_name, job_address, status, customer_name, pct_complete, revenue, payments_made, last_work_date, created_at, master_user_id')
           .in('status', JOB_FOLLOWUP_STAGES)
           // A GC job's billing job has no crew to follow up on (v2.4958).
           .eq('billing_only', false),
@@ -219,6 +219,9 @@ async function fetchJobFollowupCandidatesUncached(todayYmd: string): Promise<Job
     pct_complete: number | null
     revenue: number | null
     payments_made: number | null
+    last_work_date: string | null
+    created_at: string | null
+    master_user_id: string | null
   }[]).map((j) => {
     const activity = activityByJob.get(j.id)
     return {
@@ -235,6 +238,10 @@ async function fetchJobFollowupCandidatesUncached(todayYmd: string): Promise<Job
       // job as active today so it never shows a bogus "quiet forever".
       latestActivityAt: activity?.latest_activity_at ?? new Date().toISOString(),
       nextScheduledOn: activity?.next_scheduled_on ?? null,
+      // The idle rule (v2.5510): the last approved field day, else the day the job was made.
+      lastWorkYmd: j.last_work_date,
+      createdYmd: j.created_at ? j.created_at.slice(0, 10) : null,
+      masterUserId: j.master_user_id,
     }
   })
 }
