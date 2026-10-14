@@ -7,8 +7,8 @@
 # The same bed as scripts/pgtest-messages-tech-send.sh: the Supabase Postgres image with every file in
 # supabase/migrations applied in order, then this migration a second time, which must change nothing. The scenario,
 # inside one transaction that rolls back: a helper on the crew alone, who sees no crew row of their own, leaves a note
-# and reads it with the office's; a helper on no job does neither; a sub dispatched three weeks ago keeps what the
-# branch's own dispatch check gave; the office reads both; nobody signed out asks helper_on_job. It raises on its first
+# and reads it with the office's; a helper on no job does neither; a sub dispatched three weeks ago and taken off the
+# crew since keeps what the branch's own dispatch check gave; the office reads both; nobody signed out asks helper_on_job. It raises on its first
 # failed assertion and ends with "helper_on_job PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL
 # beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail

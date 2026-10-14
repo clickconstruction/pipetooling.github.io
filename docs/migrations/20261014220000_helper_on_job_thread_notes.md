@@ -30,7 +30,7 @@ The SQL bed `helper-on-job` (`npm run test:pg:helper-on-job`) runs every migrati
 - Hector, a helper on the crew alone, sees no crew row of his own, and `helper_on_job` says he is on the job.
 - Hector leaves a note and reads it with the office's. He cannot write a note as someone else.
 - Hana, a helper on no job, can neither leave a note nor read one.
-- Sam, a sub dispatched three weeks ago, is outside `helper_on_job`'s span and still reads the job's notes through the branch's own dispatch check.
+- Dispatch puts the assignee on the crew (`job_schedule_blocks_ensure_job_team_member_tr`), so Sam, a sub dispatched three weeks ago, is taken off the crew in the bed. He is then outside `helper_on_job` and still reads the job's notes through the branch's own dispatch check.
 - Rosa, the office, reads both notes. Nobody signed out may call `helper_on_job`.
 
 ## Verify after the push

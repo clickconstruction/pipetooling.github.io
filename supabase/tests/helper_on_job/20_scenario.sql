@@ -7,7 +7,7 @@
 BEGIN;
 
 -- Hector (helpers) is on the Oakridge job's crew and nowhere on its schedule; Hana (helpers) is on no job; Sam
--- (subcontractor) was dispatched to Oakridge three weeks ago and is not on its crew; Rosa is the office.
+-- (subcontractor) was dispatched to Oakridge three weeks ago and taken off its crew since; Rosa is the office.
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000086d1', 'hector@helperonjob.test'),
   ('00000000-0000-0000-0000-0000000086d2', 'hana@helperonjob.test'),
@@ -29,6 +29,14 @@ INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES
   ('00000000-0000-0000-0000-0000000086b1', '00000000-0000-0000-0000-0000000086d1');
 INSERT INTO public.job_schedule_blocks (job_id, assignee_user_id, work_date, time_start, time_end) VALUES
   ('00000000-0000-0000-0000-0000000086b1', '00000000-0000-0000-0000-0000000086d3', (now() AT TIME ZONE 'America/Chicago')::date - 21, '08:00', '12:00');
+-- Dispatch puts the assignee on the crew (job_schedule_blocks_ensure_job_team_member_tr); the office took Sam off it since.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.jobs_ledger_team_members WHERE job_id = '00000000-0000-0000-0000-0000000086b1' AND user_id = '00000000-0000-0000-0000-0000000086d3') THEN
+    RAISE EXCEPTION 'dispatch did not put Sam on the crew';
+  END IF;
+  RAISE NOTICE 'ok: dispatch puts Sam on the crew';
+END $$;
+DELETE FROM public.jobs_ledger_team_members WHERE job_id = '00000000-0000-0000-0000-0000000086b1' AND user_id = '00000000-0000-0000-0000-0000000086d3';
 INSERT INTO public.jobs_ledger_thread_notes (job_id, author_user_id, body) VALUES
   ('00000000-0000-0000-0000-0000000086b1', '00000000-0000-0000-0000-0000000086d4', 'Office: the customer asked for a morning visit.');
 
@@ -80,7 +88,8 @@ SELECT hoj.refused('Hana''s note', $q$INSERT INTO public.jobs_ledger_thread_note
 SELECT hoj.same('Hana reads none', (SELECT count(*) FROM public.jobs_ledger_thread_notes WHERE job_id = '00000000-0000-0000-0000-0000000086b1')::text, '0');
 RESET ROLE;
 
--- 4 · Sam, dispatched three weeks ago: outside helper_on_job's span, and the branch's own dispatch check keeps what he had.
+-- 4 · Sam, dispatched three weeks ago and off the crew: outside helper_on_job, and the branch's own dispatch check keeps
+-- what he had.
 SELECT hoj.as_user('00000000-0000-0000-0000-0000000086d3');
 SET LOCAL ROLE authenticated;
 SELECT hoj.same('helper_on_job leaves out a block three weeks old', public.helper_on_job('00000000-0000-0000-0000-0000000086b1')::text, 'false');
