@@ -10,7 +10,7 @@ import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
-import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runRecordWords, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -199,7 +199,11 @@ export default function LienDeskRunModal({
   )
   const payCodes = shown.reduce((s, n) => s + ((partsOf(n) ?? [{ jobId: n.jobId }]).reduce((t, x) => t + (payByJob[x.jobId]?.rows.filter((r) => r.payable).length ?? 0), 0)), 0)
   const problems = useMemo(() => shown.map((n) => runNoticeProblems(n)), [shown])
-  const blocked = problems.some((p) => p.length > 0)
+  // Record what is ready (v2.5533): a notice with a problem in red is held and stays in the pile with its reason and
+  // its doors; the ready ones record now. The button is dead only when nothing is ready.
+  const split = useMemo(() => runRecordSplit(shown, problems), [shown, problems])
+  const nothingReady = split.mailed.length === 0
+  const footWords = runRecordWords(split)
   // The run on paper (v2.4971): an envelope with no mailing address or nothing to claim is held — listed, numbered after
   // the ones that go out, never printed. The window lists them in the paper's order so the numbers agree.
   const mailing = useMemo(() => runMailing(runEnvelopes(shown)), [shown])
@@ -503,11 +507,8 @@ export default function LienDeskRunModal({
       setBusy(false)
     }
   }
-  // Back from the post office (v2.4119): the envelopes with a number record now; the rest stay printed.
-  const split = useMemo(() => runRecordSplit(shown), [shown])
-
   const record = async () => {
-    if (busy || blocked || notices.length === 0) return
+    if (busy || nothingReady || notices.length === 0) return
     setBusy(true)
     try {
       const result = await recordLienDeskRun(split.mailed, { userId, todayYmd, mailedOn, invoiceDocsByJob: invoiceDocsShown, payBlocksByJob, document: { url: docUrl, note: docNote } })
@@ -697,6 +698,11 @@ export default function LienDeskRunModal({
                         <div className="lienRunCardHeld" data-testid={`run-held-${env.n}`}>
                           Held · {heldWhy.get(env.key)}
                         </div>
+                      ) : unsignedIn(env).length ? (
+                        // v2.5533: printed and in the mail unsigned — not held, it records as it went; the doors below record a signature first.
+                        <div data-testid={`run-unsigned-${env.n}`} style={{ color: 'var(--text-amber-800)', fontSize: '0.72rem', fontWeight: 600 }}>
+                          In the mail unsigned · it records as it went. If {unsignedIn(env)[0]?.leader?.name ?? leaderName ?? 'the leader'} signed the paper, record that first.
+                        </div>
                       ) : null}
                       <div className="lienRunSteps" aria-label="This envelope's steps">
                         {st.stages.map((s, i) => (
@@ -709,7 +715,7 @@ export default function LienDeskRunModal({
                           </span>
                         ))}
                       </div>
-                      {heldWhy.has(env.key) && viewer && unsignedIn(env)[0]?.leader ? (
+                      {viewer && unsignedIn(env)[0]?.leader ? (
                         signOpen === env.key ? (
                           <div data-testid={`run-sign-here-${env.n}`} style={{ marginTop: '0.45rem', display: 'grid', gap: '0.4rem', maxWidth: 480 }}>
                             <LienNoticeSignLine ref={signRef} printedName={unsignedIn(env)[0]!.leader!.name} under={[unsignedIn(env)[0]!.fields.contactPerson, unsignedIn(env)[0]!.fields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} allowPress={false} compact disabled={busy} />
@@ -829,24 +835,16 @@ export default function LienDeskRunModal({
         </div>
         <div className="lienRunFoot2" data-testid="run-foot">
           <div className="lienRunFootStatus" data-testid="run-foot-status">
-            <b>{blocked ? 'Something is marked in red' : split.partial ? `${split.waiting.length} ${split.waiting.length === 1 ? 'envelope has' : 'envelopes have'} no number yet` : foot.line1}</b>
-            <span>
-              {blocked
-                ? 'Fix the recipients marked in red before recording.'
-                : split.partial
-                  ? `${split.waiting.length === 1 ? 'It stays' : 'They stay'} in the mail pile; the numbered ones record now.`
-                  : printedAt
-                    ? 'Back from the post office? Type each envelope’s number below — an envelope without one stays in the mail pile.'
-                    : foot.line2}
-            </span>
+            <b>{footWords ? footWords.line1 : foot.line1}</b>
+            <span>{footWords ? footWords.line2 : printedAt ? 'Back from the post office? Type each envelope’s number below — an envelope without one stays in the mail pile.' : foot.line2}</span>
           </div>
           <button type="button" onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} data-testid="run-more" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
             More {moreOpen ? '▴' : '▾'}
           </button>
           {printedAt ? (
             <>
-          <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
-            {busy ? 'Recording…' : split.partial ? `Record ${split.mailed.length} mailed · ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the pile ▸` : 'Record the run ▸'}
+          <button type="button" onClick={() => void record()} disabled={busy || nothingReady || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || nothingReady ? 'default' : 'pointer', opacity: busy || nothingReady || notices.length === 0 ? 0.55 : 1 }}>
+            {busy ? 'Recording…' : (footWords?.button ?? 'Record the run ▸')}
           </button>
             </>
           ) : (
@@ -883,8 +881,8 @@ export default function LienDeskRunModal({
             {printedAt ? 'Print it again' : 'Print the packet'} · {paperMailed.length} {paperMailed.length === 1 ? 'envelope' : 'envelopes'}
                 </button>
               ) : (
-                <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
-            {busy ? 'Recording…' : split.partial ? `Record ${split.mailed.length} mailed · ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the pile ▸` : 'Record the run ▸'}
+                <button type="button" onClick={() => void record()} disabled={busy || nothingReady || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || nothingReady ? 'default' : 'pointer', opacity: busy || nothingReady || notices.length === 0 ? 0.55 : 1 }}>
+            {busy ? 'Recording…' : (footWords?.button ?? 'Record the run ▸')}
                 </button>
               )}
               {onTakeBack && printedIds.length > 0 && !takeBackOpen ? (
