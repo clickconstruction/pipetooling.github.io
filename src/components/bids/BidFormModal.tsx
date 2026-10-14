@@ -18,6 +18,7 @@ import {
 } from '../../lib/bidDateSentDisplay'
 import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import { itbLinkLabel } from '../../lib/itbLinks'
+import { BidCountSourcesField } from './BidCountSourcesField'
 import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { RobotReadinessLine } from './RobotReadinessLine'
 import { BidPlansFolderSteps } from './BidPlansFolderSteps'
@@ -1164,6 +1165,8 @@ export function BidFormModal(props: BidFormModalProps) {
                       <input id="bid-form-count-tooling-link" type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                       <PasteButton onPaste={setCountToolingPlansLink} label="Paste CountTooling link" />
                     </div>
+                    {/* v2.5520: every CountTooling project behind the counts; the first keeps this field in step. */}
+                    {editingBid?.id ? <BidCountSourcesField bidId={editingBid.id} onFirstLinkChange={setCountToolingPlansLink} /> : null}
                   </div>
                 </div>
                 {/* v2.3175: price requests on this bid — the app's own and the ones sent by hand,

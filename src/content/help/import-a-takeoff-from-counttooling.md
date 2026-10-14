@@ -54,6 +54,8 @@ Two people can count parts of one plan in separate CountTooling projects. Each c
 
 The review knows a project by the token in its link. A copy from a project the bid already has opens as a **re-copy**. It moves only that project's share of each row. A row both people counted keeps the other person's part. A row that project alone had can be removed. The other project's rows are untouched. The switch at the top offers {{button:outline|Combine with the bid}} and {{button:outline|Replace what matches}} when a new project arrives. Use Replace for a fresh count of the same drawings from a new project.
 
+Every project behind the bid is listed on **Edit Bid** under **CountTooling projects**. Each line names the project and who imported it. It says the day, what the copy covered, and how many rows are its. {{button:outline|Open ↗}} opens the project. The × removes the link. The rows stay on the bid and only lose their project. {{button:outline|+ Add a CountTooling link}} takes a link typed by hand. The first project is the bid's own CountTooling link. The Bid Board draws one more link icon per further project. On the Count sheet a **From** tile sits with the totals. Its pills narrow the sheet to one project's rows, or to the rows typed here. Each row's From column names its project. A row both people counted reads *both*. Hover it for each share.
+
 :::example Two counters, one bid
 Taunya counts the fixtures and copies 36 rows. Robert counts the pipe and copies 10 rows. His review opens in Combine. Six rows are on both counts, so they add up. Four are new. Her 30 rows stay. Apply writes 10 changes. Both links sit on the bid.
 :::
