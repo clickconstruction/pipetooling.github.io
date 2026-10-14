@@ -134,7 +134,7 @@ Docsmit mails in a double-window #10 or a flat. The owner's page 1 is counsel's 
 
 ### The run window
 
-Step 1 grows one button beside the print button, **Mail through Docsmit · N envelopes**. It is enabled when at least one envelope is on `certified_mail` and has no problems. Pressing it:
+Step 1 grows one button beside the print button, **Mail through Docsmit · N envelopes**. It is enabled when at least one envelope that goes out is on `certified_mail` and has no problems; an envelope the run holds back (unsigned, a $0 claim, no address) is never offered, counted or prepared (v2.5535). Pressing it:
 
 1. Builds each certified envelope's PDF: `buildRunNoticePdf` per copy, merged in envelope order with `mergePdfBlobs` for an envelope holding several copies. Counts pages; picks `#10` for 5 sheets or fewer, `Flat` up to 47, and holds the envelope with a red line past that.
 2. Writes the PDF to the sent-copies bucket (one filed copy per envelope, `how: 'docsmit'`), then calls `prepare` for each. The window lists each envelope with its price and any address correction, and shows the total against the balance. A `nonMailable` address shows as a held row, like a missing address does today.

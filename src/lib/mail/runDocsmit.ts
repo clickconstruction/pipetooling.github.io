@@ -66,13 +66,20 @@ export function docsmitCandidates(envelopes: ReadonlyArray<DocsmitEnvelopeLike>)
   return out
 }
 
-/** The run's door: shown unless paused; enabled when at least one envelope can go. */
-export function docsmitRunDoor(settings: Pick<DocsmitSettings, 'paused'>, candidates: ReadonlyArray<Pick<DocsmitCandidate, 'problems'>>): { show: boolean; enabled: boolean; label: string; why: string } {
+/**
+ * The run's door: shown unless paused; enabled when at least one envelope can go. The candidates are the envelopes
+ * that go out (v2.5535): one the run holds back (unsigned, $0, no address) is never among them. `held` counts the
+ * certified ones it holds, so the door's reason names them instead of saying nothing is certified.
+ */
+export function docsmitRunDoor(settings: Pick<DocsmitSettings, 'paused'>, candidates: ReadonlyArray<Pick<DocsmitCandidate, 'problems'>>, opts: { held?: number } = {}): { show: boolean; enabled: boolean; label: string; why: string } {
   const ready = candidates.filter((c) => c.problems.length === 0).length
+  const held = opts.held ?? 0
+  const heldWords = held > 0 ? `${held} held ${held === 1 ? 'envelope waits' : 'envelopes wait'} in the run.` : ''
   if (settings.paused) return { show: false, enabled: false, label: '', why: 'Docsmit is paused in Developer settings.' }
-  if (candidates.length === 0) return { show: true, enabled: false, label: 'Mail through Docsmit', why: 'No envelope in this run is on certified mail.' }
-  if (ready === 0) return { show: true, enabled: false, label: 'Mail through Docsmit', why: `Every certified envelope needs ${candidates[0]!.problems.join(', ')} first.` }
-  return { show: true, enabled: true, label: `Mail through Docsmit · ${ready} envelope${ready === 1 ? '' : 's'}`, why: ready < candidates.length ? `${candidates.length - ready} envelope${candidates.length - ready === 1 ? '' : 's'} with a problem stay on paper.` : '' }
+  if (candidates.length === 0) return { show: true, enabled: false, label: 'Mail through Docsmit', why: held > 0 ? 'Every certified envelope is held. Its card says why.' : 'No envelope in this run is on certified mail.' }
+  if (ready === 0) return { show: true, enabled: false, label: 'Mail through Docsmit', why: [`Every certified envelope${held > 0 ? ' that goes out' : ''} needs ${candidates[0]!.problems.join(', ')} first.`, heldWords].filter(Boolean).join(' ') }
+  const problems = candidates.length - ready
+  return { show: true, enabled: true, label: `Mail through Docsmit · ${ready} envelope${ready === 1 ? '' : 's'}`, why: [problems > 0 ? `${problems} ${problems === 1 ? 'envelope with a problem stays' : 'envelopes with a problem stay'} on paper.` : '', heldWords].filter(Boolean).join(' ') }
 }
 
 /**

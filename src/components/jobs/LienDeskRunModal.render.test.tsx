@@ -720,6 +720,66 @@ describe('an unsigned notice at the run (v2.5086)', () => {
   })
 })
 
+describe('Mail through Docsmit offers only the envelopes that go out (v2.5535)', () => {
+  // Full addresses, so Docsmit could take every one: only the run's own hold keeps an envelope back.
+  const mailable = (owner: [string, string], gc: [string, string]): RunNotice['recipients'] => [
+    { key: 'owner', label: 'Owner of record', name: owner[0], address: owner[1], email: '', method: 'certified_mail', tracking: '' },
+    { key: 'original_contractor', label: 'Original contractor', name: gc[0], address: gc[1], email: '', method: 'certified_mail', tracking: '' },
+  ]
+  const ELBEL: [string, string] = ['Elbel Holdings LLC', '17300 IH 35 N, Schertz, TX 78154']
+  const LOBERG: [string, string] = ['Loberg Contracting', '2904 Corporate Cr, San Antonio, TX 78230']
+
+  it.each([
+    ['an unsigned', { signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' } }, /^Held · Unsigned: /],
+    ['a $0', { amount: 0, fields: { ...notice().fields, claimAmount: '0.00' } }, /^Held · Nothing to send: the claim is \$0\./],
+  ] as Array<[string, Partial<RunNotice>, RegExp]>)('%s notice offers no Docsmit envelope: its envelopes are held, the door is dim and says why, and prepare is never asked', async (_kind, partial, held) => {
+    docsmitState.setUp = true
+    prepareMock.mockClear()
+    renderWithProviders(<LienDeskRunModal notices={[notice({ ...partial, recipients: mailable(ELBEL, LOBERG) })]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-held-1').textContent).toMatch(held)
+    expect(screen.getByTestId('run-held-2').textContent).toMatch(held)
+    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    expect(door.textContent).toBe('Mail through Docsmit ▸')
+    expect(door.disabled).toBe(true)
+    expect(door.title).toBe('Every certified envelope is held. Its card says why.')
+    fireEvent.click(door)
+    await settle()
+    expect(prepareMock).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('dsm-review')).toBeNull()
+    docsmitState.setUp = false
+  })
+
+  it('a mixed run offers only the clean envelopes, the same ones the packet prints, and prepare is asked for those alone', async () => {
+    docsmitState.setUp = true
+    prepareMock.mockClear()
+    const clean = notice({ recipients: mailable(ELBEL, LOBERG) })
+    const unsigned = notice({ itemId: 'it2', jobId: 'j712', label: '712 · ATI B', jobNumber: '712', signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, recipients: mailable(['Bandera Holdings', '2200 Bandera Rd, San Antonio, TX 78228'], ['Harlan Builders', '100 Main St, Seguin, TX 78155']) })
+    const nothing = notice({ itemId: 'it3', jobId: 'j688', label: '688 · Cibolo', jobNumber: '688', amount: 0, recipients: mailable(['Cibolo Partners LLC', '5 Oak St, Cibolo, TX 78108'], ['Medina Contracting', '9 Elm St, Castroville, TX 78009']) })
+    renderWithProviders(<LienDeskRunModal notices={[clean, unsigned, nothing]} issuer={null} todayYmd="2026-10-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    // Envelopes 1 and 2 go out; 3 to 6 are held, each with its reason on its card.
+    expect(screen.queryByTestId('run-held-1')).toBeNull()
+    expect(screen.queryByTestId('run-held-2')).toBeNull()
+    expect(screen.getByTestId('run-held-3').textContent).toMatch(/^Held · Unsigned: /)
+    expect(screen.getByTestId('run-held-4').textContent).toMatch(/^Held · Unsigned: /)
+    expect(screen.getByTestId('run-held-5').textContent).toMatch(/^Held · Nothing to send/)
+    expect(screen.getByTestId('run-held-6').textContent).toMatch(/^Held · Nothing to send/)
+    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    expect(door.textContent).toBe('Mail through Docsmit · 2 envelopes ▸')
+    expect(door.title).toBe('4 held envelopes wait in the run.')
+    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes$/ })).toBeTruthy()
+    fireEvent.click(door)
+    await waitFor(() => expect(prepareMock).toHaveBeenCalledTimes(1))
+    const asked = prepareMock.mock.calls[0]![0] as unknown as Array<{ n: number; name: string; contents: Array<{ notice: { itemId: string } }> }>
+    expect(asked.map((e) => [e.n, e.name, e.contents.map((c) => c.notice.itemId)])).toEqual([
+      [1, 'Elbel Holdings LLC', ['it1']],
+      [2, 'Loberg Contracting', ['it1']],
+    ])
+    docsmitState.setUp = false
+  })
+})
+
 describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () => {
   it('once the packet printed, one checklist row per paper envelope with its boxes and its number box, and a lane per way the envelopes travel', async () => {
     const two = [

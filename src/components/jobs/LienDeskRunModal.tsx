@@ -306,14 +306,16 @@ export default function LienDeskRunModal({
   // Mail through Docsmit (PR 5b): the door shows once a dev saved the connection and while not paused, before anything printed;
   // an envelope already mailed through Docsmit leaves the paper paths and its card says so.
   const envelopeViaDocsmit = (env: RunEnvelope) => env.contents.some((c) => recipientViaDocsmit(c.recipient))
-  // What still goes on paper: the mailed envelopes less the ones Docsmit carries, and the notices with a copy among them.
+  // What is still to go: the mailed envelopes less the ones Docsmit carries, and the notices with a copy among them.
+  // The packet prints these and the Docsmit door offers these (v2.5535), so an envelope the run holds back reaches neither.
   const paperMailed = useMemo(() => mailing.mailed.filter((e) => !envelopeViaDocsmit(e)), [mailing])
   const paperShown = useMemo(() => shown.map((n) => ({ ...n, recipients: n.recipients.filter((r) => !recipientViaDocsmit(r)) })).filter((n) => n.recipients.length > 0), [shown])
   const docsmitDoor = useMemo(() => {
-    const cands = docsmitCandidates(envelopes.filter((e) => !envelopeViaDocsmit(e)))
-    return { cands, door: docsmitRunDoor(docsmit.settings, cands) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [envelopes, docsmit.settings])
+    const cands = docsmitCandidates(paperMailed)
+    // The certified envelopes the run holds back are never candidates; they only name the door's reason.
+    const held = docsmitCandidates(mailing.held.map((h) => h.env).filter((e) => !envelopeViaDocsmit(e))).length
+    return { cands, door: docsmitRunDoor(docsmit.settings, cands, { held }) }
+  }, [paperMailed, mailing, docsmit.settings])
   const showDocsmit = docsmit.loaded && docsmit.setUp && docsmitDoor.door.show && printedAt == null && !recording
   // The send-by strip: the tightest window in the run (the earliest month's deadline on the residential clock), less the buffer, at Docsmit's cutoff.
   const windowLastYmd = useMemo(() => notices.flatMap((n) => n.months.map((m) => noticeDeadlineForMonth(`${m}-01`, ''))).filter(Boolean).sort()[0] ?? null, [notices])
@@ -327,7 +329,7 @@ export default function LienDeskRunModal({
     setBusy(true)
     setDsm({ stage: 'preparing', outcome: null, sent: null })
     try {
-      const outcome = await prepareDocsmitRun(envelopes.filter((e) => !envelopeViaDocsmit(e)), {
+      const outcome = await prepareDocsmitRun(paperMailed, {
         receipt: docsmit.settings.returnReceipt,
         invoiceDocsByJob: invoiceDocsShown,
         payBlocksByJob,
@@ -372,7 +374,7 @@ export default function LienDeskRunModal({
       if (out.length) void Promise.resolve(onPrinted?.(out)).catch(() => undefined)
       if (result.mailedKeys.length > 0 || (!answer.ok && !answer.stopped_at)) onRecorded()
       // Every envelope that goes on paper is already through Docsmit, or every notice is out: the foot moves to recording.
-      const paperLeft = mailing.mailed.filter((e) => !result.mailedKeys.includes(e.key) && !envelopeViaDocsmit(e))
+      const paperLeft = paperMailed.filter((e) => !result.mailedKeys.includes(e.key))
       if (result.mailedKeys.length > 0 && (paperLeft.length === 0 || outNow.length === notices.length)) setPrintedAt((v) => v ?? new Date().toISOString())
     } finally {
       setBusy(false)
