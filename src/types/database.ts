@@ -22643,6 +22643,7 @@ export type Database = {
           quo_id: string | null
           quo_rev: number
           recording_url: string | null
+          rfc_message_id: string | null
           step_key: string | null
           subject: string | null
           summary: string | null
@@ -22679,6 +22680,7 @@ export type Database = {
           quo_id?: string | null
           quo_rev?: number
           recording_url?: string | null
+          rfc_message_id?: string | null
           step_key?: string | null
           subject?: string | null
           summary?: string | null
@@ -22715,6 +22717,7 @@ export type Database = {
           quo_id?: string | null
           quo_rev?: number
           recording_url?: string | null
+          rfc_message_id?: string | null
           step_key?: string | null
           subject?: string | null
           summary?: string | null
