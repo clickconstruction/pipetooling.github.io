@@ -10,7 +10,6 @@
  * a person who reads Spanish gets it when it is written.
  */
 
-import type { PortalLang } from '../gc/portalI18n'
 import { blanksIn, fillLine, type BlankFills } from './blanks'
 import type { QuickReply } from './kernel'
 
@@ -84,10 +83,5 @@ export function hintFor(text: string, fills: BlankFills = {}): string {
   return 'ready to go'
 }
 
-/**
- * The words a person reads: the Spanish when they read Spanish and the line has it, else the English. The caller
- * passes the language shown (`portalShownLang`), so Spanish waits behind the portal's gate.
- */
-export function wordsFor(line: Pick<PhoneLine, 'text' | 'textEs'>, lang: PortalLang): string {
-  return lang === 'es' && line.textEs?.trim() ? line.textEs : line.text
-}
+/** The words a person reads in their language: `language.ts`'s rule, kept here for the phone's callers. */
+export { wordsFor } from './language'

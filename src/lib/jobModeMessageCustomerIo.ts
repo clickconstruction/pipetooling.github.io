@@ -14,6 +14,8 @@ import { supabase } from './supabase'
 import { checkSupabaseError } from '../utils/errorHandling'
 import { phoneLinesFromRows, type JobModeBlock, type PhoneLineRow, type ThreadTail } from './jobModeMessageCustomer'
 import type { PhoneLine } from './quickReplies/phone'
+import type { PortalLang } from './gc/portalI18n'
+import { customerLang } from './messages/customerLang'
 
 /** The job's customer as the sheet reads them. */
 export interface JobModeCustomer {
@@ -24,11 +26,14 @@ export interface JobModeCustomer {
   contactId: string | null
   /** Their thread's newest lines, the office's notes left out by the tech's door. */
   tail: ThreadTail[]
+  /** The language their lines go in (`customerLang`): theirs once Spanish is on, English until then. */
+  lang?: PortalLang
 }
 
 /**
- * What **Send** asks `quo-send` for: the tech's path, which takes the customer's number from their record, ties the
- * line to the job, keeps which phone line it came from, and holds their answer for the tech.
+ * What **Send** asks `quo-send` for: the tech's path, which makes the text itself from the phone line and the record,
+ * takes the customer's number from their record, ties the line to the job, keeps which phone line it came from, and
+ * holds their answer for the tech. Only the blanks the tech typed go; no words of the line travel from the phone.
  */
 export interface PhoneSend {
   from: 'job_mode'
@@ -36,7 +41,8 @@ export interface PhoneSend {
   contactId: string | null
   jobId: string
   quickReplyId: string
-  body: string
+  /** The blanks the tech typed, by blank: `{ minutes: '15' }`. Forty characters each at most, on one line. */
+  fills: Record<string, string>
 }
 
 export interface JobModeMessageIo {
@@ -61,17 +67,19 @@ export function supabaseJobModeMessageIo(client: unknown = supabase): JobModeMes
       const customerId = (job.data as { customer_id: string | null } | null)?.customer_id ?? null
       if (!customerId) return { customerId: null, customerName: null, contactId: null, tail: [] }
       const [customer, contact] = await Promise.all([
-        db.from('customers').select('name').eq('id', customerId).maybeSingle(),
+        db.from('customers').select('name, language').eq('id', customerId).maybeSingle(),
         db.from('contacts').select('id').eq('customer_id', customerId).eq('kind', 'customer').limit(1),
       ])
       checkSupabaseError(customer, 'read the customer’s name')
       checkSupabaseError(contact, 'open their messages')
       const customerName = (customer.data as { name: string | null } | null)?.name ?? null
+      const language = (customer.data as { language: string | null } | null)?.language
+      const lang = customerLang({ lang: language === 'es' || language === 'en' ? language : undefined })
       const contactId = ((contact.data ?? []) as Array<{ id: string }>)[0]?.id ?? null
-      if (!contactId) return { customerId, customerName, contactId: null, tail: [] }
+      if (!contactId) return { customerId, customerName, contactId: null, tail: [], lang }
       const lines = await db.from('messages').select('direction, at, body').eq('contact_id', contactId).order('at', { ascending: false }).limit(TAIL)
       checkSupabaseError(lines, 'read their messages')
-      return { customerId, customerName, contactId, tail: (lines.data ?? []) as ThreadTail[] }
+      return { customerId, customerName, contactId, tail: (lines.data ?? []) as ThreadTail[], lang }
     },
     async loadLines() {
       const result = await db.from('quick_replies').select(LINE_COLUMNS)

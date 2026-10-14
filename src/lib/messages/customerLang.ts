@@ -8,27 +8,32 @@
  * until a native speaker reads the words, so the strip, the phone and the morning run pass `customerLang(contact)` to a
  * quick reply's words. The gate is a parameter so a test can open it.
  */
-import type { Contact } from '../contacts/kernel'
 import { PORTAL_SPANISH_ON, type PortalLang } from '../gc/portalI18n'
-import { wordsFor, type PhoneLine } from '../quickReplies/phone'
+import { wordsFor, type LineWords } from '../quickReplies/language'
+
+/**
+ * A contact's language as `contacts/load.ts` fills it (`Contact.lang`). The shape alone, so `quo-send`'s copy of the
+ * kernels holds this file without the spine's.
+ */
+type HasLang = { lang?: 'en' | 'es' }
 
 /** The language a customer's lines go out in: theirs once Spanish is on, English until then. `tradeMailLang`'s rule. */
-export function customerLang(contact: Pick<Contact, 'lang'>, gate: boolean = PORTAL_SPANISH_ON): PortalLang {
+export function customerLang(contact: HasLang, gate: boolean = PORTAL_SPANISH_ON): PortalLang {
   return contact.lang === 'es' && gate ? 'es' : 'en'
 }
 
-/** A quick reply's words: `wordsFor`'s input in `quickReplies/phone.ts`. */
-export type QuickLineWords = Pick<PhoneLine, 'text' | 'textEs'>
+/** A quick reply's words: `wordsFor`'s input in `quickReplies/language.ts`. */
+export type QuickLineWords = LineWords
 
 /**
  * The quick reply in the customer's language: its Spanish when they read Spanish and the gate is open, else its English.
  * A line with no Spanish goes in English. The pick is `wordsFor`'s.
  */
-export function lineFor(line: QuickLineWords, contact: Pick<Contact, 'lang'>, gate: boolean = PORTAL_SPANISH_ON): string {
+export function lineFor(line: QuickLineWords, contact: HasLang, gate: boolean = PORTAL_SPANISH_ON): string {
   return wordsFor(line, customerLang(contact, gate))
 }
 
 /** The customer card's field, as the record keeps it whatever the gate: "Reads Spanish", "Reads English". */
-export function languageWords(contact: Pick<Contact, 'lang'>): string {
+export function languageWords(contact: HasLang): string {
   return contact.lang === 'es' ? 'Reads Spanish' : 'Reads English'
 }

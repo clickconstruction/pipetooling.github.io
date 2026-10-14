@@ -105,7 +105,7 @@ export function MessageCustomerSheet({ jobId, jobName, jobAddress, userId, me, c
   )
   const rows = useMemo(() => (lines ? sheetRows(lines, null, fills) : []), [lines, fills])
   const answer = waitingAnswer(customer.tail)
-  const preview = view.kind === 'preview' ? previewOf(view.line, fills, typed) : null
+  const preview = view.kind === 'preview' ? previewOf(view.line, fills, typed, customer.lang ?? 'en') : null
 
   const pick = (line: PhoneLine) => {
     setTyped({})
@@ -116,7 +116,10 @@ export function MessageCustomerSheet({ jobId, jobName, jobAddress, userId, me, c
     if (view.kind !== 'preview' || !preview || preview.stop || !customer.customerId || busy) return
     setBusy(true)
     try {
-      await io.send({ from: 'job_mode', customerId: customer.customerId, contactId: customer.contactId, jobId, quickReplyId: view.line.id, body: preview.text })
+      // quo-send makes the text from the line and the record; only the blanks typed here travel.
+      const asked = new Set(preview.asks.map((a) => a.key))
+      const typedFills = Object.fromEntries(Object.entries(typed).filter(([key]) => asked.has(key)).map(([key, value]) => [key, value.trim()]))
+      await io.send({ from: 'job_mode', customerId: customer.customerId, contactId: customer.contactId, jobId, quickReplyId: view.line.id, fills: typedFills })
       showToast(SHEET_WORDS.sent(first), 'success')
       onDone()
       onClose()

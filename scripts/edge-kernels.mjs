@@ -88,7 +88,14 @@ export const ENTRIES = {
   'lib/quo/paused.ts': { values: ['QUO_PAUSED_KEY', 'notePause', 'readQuoRefusal'], types: ['PauseChange', 'PauseStore', 'QuoRefusal'] },
   // Residential R5's push (messages-notify): who has a reply, who gets a new message, a reply after a legal line, and
   // the pushes a line makes.
-  'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },
+  'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'techHoldUntil', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },
+  // R5: quo-send's tech path. The text is made from the line and the record with the sheet's own kernel.
+  'lib/quo/techSend.ts': {
+    values: ['TECH_SEND_WORDS', 'TYPED_MAX', 'composeTechText', 'isJobModeSend', 'parseTechSendBody', 'pickPhone'],
+    types: ['PhoneChannel', 'PhoneLineRecord', 'TechSendBody', 'TechSendText'],
+  },
+  'lib/jobModeText.ts': { values: ['jobModeFills'], types: ['JobModeBlock', 'JobModeFillInput'] },
+  'lib/messages/customerLang.ts': { values: ['customerLang'], types: [] },
   'lib/followUp/assignSeats.ts': { values: ['ASSIGN_RULE_KEY', 'parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
   'lib/messages/legalRoute.ts': {
     values: ['legalLines', 'legalSendsFromDemandLetters', 'legalSendsFromFilings', 'routeReply', 'standingLegalLine'],

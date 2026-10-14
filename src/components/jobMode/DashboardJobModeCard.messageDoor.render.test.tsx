@@ -67,7 +67,9 @@ async function mount() {
   )
 }
 
-describe('DashboardJobModeCard — Message the customer', () => {
+// The whole Job Mode card mounts in each case: 4.8 s alone on the office Mac, slower on a merge-queue runner, so each
+// case has 15 s rather than the default 5.
+describe('DashboardJobModeCard — Message the customer', { timeout: 15_000 }, () => {
   it('stays hidden while the switch is off, even for a primary on the job', async () => {
     Object.assign(scenario, { openSession: { id: 'sess-1', job_ledger_id: JOB_C, bid_id: null }, role: 'primary', on: false, tail: [] })
     await mount()
