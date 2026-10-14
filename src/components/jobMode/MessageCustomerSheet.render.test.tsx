@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { phoneLinesFromRows, type PhoneLineRow } from '../../lib/jobModeMessageCustomer'
 import type { JobModeCustomer, JobModeMessageIo } from '../../lib/jobModeMessageCustomerIo'
+import { MessageCustomerDoor } from './MessageCustomerDoor'
 import { MessageCustomerSheet } from './MessageCustomerSheet'
 
 const JOB = 'job-whitfield'
@@ -117,5 +118,21 @@ describe('MessageCustomerSheet at 375 px', () => {
     expect(screen.queryAllByTestId('job-mode-message-line')).toHaveLength(0)
     expect(screen.getByTestId('job-mode-message-else')).toBeTruthy()
     expect(screen.getByRole('dialog', { name: 'Message the customer' })).toBeTruthy()
+  })
+})
+
+describe('MessageCustomerDoor', () => {
+  it('tells the card once the note went, so Job updates reads it without a reload, and reads their thread again', async () => {
+    const io = fakeIo()
+    const onDone = vi.fn()
+    renderWithProviders(<MessageCustomerDoor jobId={JOB} jobName="Whitfield water heater" jobAddress="1208 Mesquite Ln" userId="luis" me="Luis Ortega" io={io} today="2026-10-13" onDone={onDone} />)
+    const door = (await screen.findByTestId('job-mode-message-door')) as HTMLButtonElement
+    await waitFor(() => expect(door.disabled).toBe(false))
+    fireEvent.click(door)
+    fireEvent.click(await screen.findByTestId('job-mode-message-else'))
+    fireEvent.change(screen.getByTestId('job-mode-message-note'), { target: { value: 'the part comes Thursday.' } })
+    fireEvent.click(screen.getByTestId('job-mode-message-note-send'))
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(io.loadCustomer).toHaveBeenCalledTimes(2))
   })
 })

@@ -58,6 +58,28 @@ export function sheetRows(lines: readonly PhoneLine[], stepId: string | null, fi
   return phoneLines(lines.filter(onPhone), stepId).map((line) => ({ line, name: shortName(line, fills), hint: hintFor(line.text, fills) }))
 }
 
+// ---------- whose thread ----------
+
+/** A contact at the job's customer, as the sheet reads them to find the customer's own thread. */
+export interface CustomerContactRow {
+  id: string
+  name?: string | null
+  created_at?: string | null
+}
+
+const atOf = (at: string | null | undefined) => Date.parse(at ?? '') || 0
+
+/**
+ * The customer's own thread among the contacts at the customer: the one with no name, as `contact_find_or_make` picks
+ * it for `quo-send`. A named person at the customer, a tenant or a spouse, is never it while the own one is there; with
+ * no own one, the newest contact. Null when the customer has no contact yet.
+ */
+export function ownContactId(rows: readonly CustomerContactRow[]): string | null {
+  const own = rows.find((r) => r.name == null)
+  if (own) return own.id
+  return [...rows].sort((a, b) => atOf(b.created_at) - atOf(a.created_at))[0]?.id ?? null
+}
+
 // ---------- their answer ----------
 
 /** A line in their thread as the sheet reads it. */

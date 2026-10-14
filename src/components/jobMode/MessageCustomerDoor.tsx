@@ -18,6 +18,8 @@ export interface MessageCustomerDoorProps {
   me: string | null
   /** The card's quiet door look, so it sits beside Write up a change. */
   style?: CSSProperties
+  /** After a text or a note went, so the card's Job updates reads it without a reload. */
+  onDone?: () => void
   /** For a smoke. */
   io?: JobModeMessageIo
   today?: string
@@ -25,7 +27,7 @@ export interface MessageCustomerDoorProps {
 
 const dot: CSSProperties = { display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: 'var(--border-orange)' }
 
-export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, style, io: ioProp, today }: MessageCustomerDoorProps) {
+export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, style, onDone, io: ioProp, today }: MessageCustomerDoorProps) {
   const io = useMemo(() => ioProp ?? supabaseJobModeMessageIo(), [ioProp])
   const [read, setRead] = useState<{ jobId: string; customer: JobModeCustomer | null; problem: string | null } | null>(null)
   const [open, setOpen] = useState(false)
@@ -70,7 +72,10 @@ export function MessageCustomerDoor({ jobId, jobName, jobAddress, userId, me, st
           customer={got.customer}
           io={io}
           today={today}
-          onDone={() => setAgain((n) => n + 1)}
+          onDone={() => {
+            setAgain((n) => n + 1)
+            onDone?.()
+          }}
           onClose={() => setOpen(false)}
         />
       ) : null}
