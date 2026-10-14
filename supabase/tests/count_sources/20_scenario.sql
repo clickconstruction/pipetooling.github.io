@@ -50,8 +50,9 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA cst TO anon, authenticated, service_rol
 -- The estimator who made the bid registers Taunya's project, then Robert's, and stamps the shares.
 SET LOCAL ROLE authenticated;
 SELECT cst.as_user('00000000-0000-0000-0000-0000000000e1');
-INSERT INTO public.bid_count_sources (id, bid_id, link, token, project_name, scope, imported_by)
-VALUES ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-00000000b1d1', 'https://counttooling.com/app/?t=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'SpaceX BA', 'all', '00000000-0000-0000-0000-0000000000e1');
+-- Taunya's project came first: an explicit earlier day, since both inserts share this transaction's now().
+INSERT INTO public.bid_count_sources (id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at)
+VALUES ('00000000-0000-0000-0000-00000000d001', '00000000-0000-0000-0000-00000000b1d1', 'https://counttooling.com/app/?t=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'SpaceX BA', 'all', '00000000-0000-0000-0000-0000000000e1', now() - interval '4 days', now() - interval '4 days');
 INSERT INTO public.bid_count_sources (id, bid_id, link, token, project_name, scope, imported_by)
 VALUES ('00000000-0000-0000-0000-00000000d002', '00000000-0000-0000-0000-00000000b1d1', 'https://counttooling.com/app/?t=11111111-2222-3333-4444-555555555555', '11111111-2222-3333-4444-555555555555', 'SpaceX BA', 'all', '00000000-0000-0000-0000-0000000000e1');
 UPDATE public.bids_count_rows SET count = 1827.45, source_shares = '{"00000000-0000-0000-0000-00000000d001": 1489.04, "00000000-0000-0000-0000-00000000d002": 338.41}'::jsonb
