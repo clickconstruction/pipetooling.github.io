@@ -49,3 +49,4 @@ portal-opens-since
 messages-notify-cron
 sent-copy-stamps
 messages-tech-send
+salary-sync-open-punch
