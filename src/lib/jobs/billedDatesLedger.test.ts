@@ -138,6 +138,17 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     expect(lf.verdict).toBeNull()
   })
 
+  it('the notice’s state (v2.5491) is the line under the lien row, in its tone, with the sentence as its hover; without one the old “notice sent” line stands', () => {
+    const state = { words: 'Waiting on Robert · by Oct 15 · 2d', tone: 'red' as const, title: 'August’s § 53.056 notice · Waiting on Robert · since Oct 7' }
+    const l = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway(runwayInput()), inCollections: false, lienState: state })
+    expect(l.rows[2]).toMatchObject({ key: 'notice', sub: 'Waiting on Robert · by Oct 15 · 2d', subTone: 'red', subTitle: 'August’s § 53.056 notice · Waiting on Robert · since Oct 7' })
+    const filed = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway(runwayInput({ filedYmd: '2026-09-25' })), inCollections: false, lienState: { words: 'Lien filed Sep 25 · served Sep 29', tone: 'green' } })
+    expect(filed.rows[2]).toMatchObject({ key: 'filed', sub: 'Lien filed Sep 25 · served Sep 29', subTone: 'green', subTitle: 'Lien filed Sep 25 · served Sep 29' })
+    const plain = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway: buildLienPayRunway(runwayInput({ filedYmd: '2026-09-25' })), inCollections: false })
+    expect(plain.rows[2]?.sub).toBe('')
+    expect(plain.rows[2]?.subTone).toBeUndefined()
+  })
+
   it('a shell row (no bill line) has only the deadline, bold since no money is named; no dates at all → nothing', () => {
     const shell = buildBilledDatesLedger({ todayYmd: today, row: null, data, promise: null, runway: buildLienPayRunway(runwayInput()), inCollections: false })
     expect(shell.rows.map((r) => r.key)).toEqual(['notice'])

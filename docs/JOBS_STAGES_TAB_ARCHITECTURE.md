@@ -18,6 +18,8 @@ last_updated: 2026-10-09
 
 ## What this surface is
 
+> **v2.5491 (after `mapped_at`) — the notice's state under the ledger's lien row:** `lienStateFor`, one memo after the desk's hook (`useLienDeskData`, light while the desk is closed), runs Do now's rows once (`buildLienNextUp`, the leader by `lienDeskLeaderFor`) and the AR chip kernel (`lib/jobs/lienArChip.ts`) per job, cached; `billedLienRunwayRenderer` sits earlier in the body, so it reads the function through `lienStateRef` and re-renders on `lienStateTick`, and hands `buildBilledDatesLedger` a `lienState` (the words, a tone, the sentence) that `BilledDatesLedger` draws as the toned sub-line. The same words the Accounts Receivable window's chips show (v2.5488).
+
 The Pipeline board (tab label "Pipeline"; the `stages` key, URL slug and `JobsStages*` filenames are unchanged): Waiting → Working → Ready to Bill → Billed Awaiting Payment → Collections → Paid in Full, rendered by [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx).
 
 **Billing-only jobs** (`jobs_ledger.billing_only`, GC mode's billing job for a GC project we build): `buildJobsStagesBoardLists` leaves them out of **Working**, where one would sit for good with no work to do (the owner's default). Their bills still show under Ready to Bill and Billed.

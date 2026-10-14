@@ -77,4 +77,17 @@ describe('BilledDatesLedger (v2.4205)', () => {
     const { container } = render(<BilledDatesLedger ledger={{ rows: [], verdict: null, full: '' }} />)
     expect(container.innerHTML).toBe('')
   })
+
+  it('the notice’s state (v2.5491) sits under the lien row in its tone, the sentence as its hover', () => {
+    const withState = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway, inCollections: false, lienState: { words: 'Waiting on Robert · by Oct 15 · 2d', tone: 'red', title: 'August’s § 53.056 notice · Waiting on Robert · since Oct 7' } })
+    render(<BilledDatesLedger ledger={withState} />)
+    const sub = screen.getByTestId('ledger-sub-notice')
+    expect(sub.textContent).toBe('Waiting on Robert · by Oct 15 · 2d')
+    expect(sub.getAttribute('title')).toBe('August’s § 53.056 notice · Waiting on Robert · since Oct 7')
+    expect(sub.style.color).toBe('var(--text-red-700)')
+    document.body.innerHTML = ''
+    const blue = buildBilledDatesLedger({ todayYmd: today, row, data, promise: null, runway, inCollections: false, lienState: { words: 'In the mail · tracking owed', tone: 'blue' } })
+    render(<BilledDatesLedger ledger={blue} />)
+    expect(screen.getByTestId('ledger-sub-notice').style.color).toBe('var(--text-blue-800)')
+  })
 })

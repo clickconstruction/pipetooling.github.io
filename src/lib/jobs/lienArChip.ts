@@ -26,6 +26,7 @@ import type { LienNextUpAction, LienNextUpRow } from './lienNextUp'
 import { parseLienSends, sendsTrackingComing, sendsTrackingOwed } from './lienSendTracking'
 import { lienWindowHref, type StagesLienWindowTab } from './stagesDeepLinks'
 import { formatYmdMonthDay } from './billedExpectedPay'
+import type { LedgerTone } from './billedDatesLedger'
 import { workMonthLabel } from './forecastWorkMonths'
 import { filingMailTail, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -446,6 +447,11 @@ export function lienArLensCounts(rows: ReadonlyArray<{ open: number; chips: Read
 
 export function lienArLensMatch(chips: ReadonlyArray<LienArChip | null>, lens: LienArLens): boolean {
   return chips.some((c) => c != null && (lens === 'due' ? c.state === 'due' || (c.state === 'gone' && c.tone === 'red') : c.state === 'out'))
+}
+
+/** The chip's tone as the Billed row's dates ledger inks it (v2.5491): muted reads plain. */
+export function lienArLedgerTone(tone: LienArTone): LedgerTone {
+  return tone === 'muted' ? 'plain' : tone
 }
 
 /** Where the chip goes: the Lien desk on the job's pane and pile, or the job's Lien window on a tab. */

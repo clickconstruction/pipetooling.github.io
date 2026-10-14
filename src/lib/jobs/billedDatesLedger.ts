@@ -31,7 +31,7 @@
 import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 
-export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red'
+export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red' | 'blue'
 export type LedgerAction = 'they-said' | 'new-date' | 'lien-desk'
 /** A filled dot is a fact behind us, the money, or the row that asks; a ring is a deadline still ahead. */
 export type LedgerDot = 'filled' | 'ring'
@@ -54,9 +54,16 @@ export type LedgerRow = {
   dot: LedgerDot
   action: LedgerAction | null
   title: string
-  /** A quiet line under the row: the estimate a promise displaced, or "notice sent" under the lien date. */
+  /** A quiet line under the row: the estimate a promise displaced, or "notice sent" under the lien date — or, since v2.5491, the notice's state in the desk's words. */
   sub: string
+  /** The sub-line's ink when it carries a state (v2.5491); muted when absent. */
+  subTone?: LedgerTone
+  /** The sub-line's hover: the whole sentence behind a few words (v2.5491). */
+  subTitle?: string
 }
+
+/** The notice's state under the ledger's lien row (v2.5491): the AR chip's words and tone, from `lienArChipFor`. */
+export type LedgerLienState = { words: string; tone: LedgerTone; title?: string }
 
 export type LedgerVerdict = {
   /** "Can run late" · "Notice first" · "File the lien first" · "Ask for a date" · "Lien gone". */
@@ -87,6 +94,8 @@ export type BilledDatesLedgerInput = {
   inCollections: boolean
   /** Given up on (Uncollectible, punch list #94): no money row — nobody expects the money, and a promise line would contradict "not owed". */
   uncollectible?: boolean
+  /** Where the job's lien paper stands, in the desk's words (v2.5491): the line under the lien row. Null or absent: the old "notice sent" line, when the runway knows one. */
+  lienState?: LedgerLienState | null
 }
 
 const dWord = (n: number) => `${n}d`
@@ -99,8 +108,10 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
   return ahead === 'in' ? `in ${dWord(days)}` : dWord(days)
 }
 
-export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, inCollections, uncollectible = false }: BilledDatesLedgerInput): BilledDatesLedger {
+export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, inCollections, uncollectible = false, lienState = null }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
+  /** The state line under a lien row (v2.5491), when the desk has one. */
+  const state = lienState ? { sub: lienState.words, subTone: lienState.tone, subTitle: lienState.title ?? lienState.words } : null
 
   // The bill
   const billedYmd = row ? billedReferenceYmd(row) : null
@@ -139,7 +150,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
   let verdict: LedgerVerdict | null = null
   if (runway && runway.state !== 'none') {
     if (runway.state === 'filed') {
-      rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? '', far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
+      rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? '', far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '', ...state })
     } else if (runway.state === 'closed') {
       const noticeClosed = /^notice/i.test(runway.lines[1] ?? '')
       const closedYmd = noticeClosed ? runway.noticeByYmd : runway.lienByYmd
@@ -172,6 +183,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
           action: 'lien-desk',
           title: runway.title,
           sub: !noticeFirst && runway.noticeSent ? 'notice sent' : '',
+          ...state,
         })
         if (short && slack != null) {
           verdict = { label: noticeFirst ? 'Notice first' : 'File the lien first', value: `${dWord(-slack)} short`, tone: 'red', action: 'lien-desk', title: runway.title }
