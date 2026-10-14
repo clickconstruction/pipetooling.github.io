@@ -685,6 +685,8 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Dashboard Assigned Jobs**: **Send to Billing** (Working → Ready to Bill) is **hidden** on the dashboard card; **`update_job_status`** rejects that transition on the plain team-member path for **`helpers`** (same UX intent as subcontractors not billing from this surface — **`RECENT_FEATURES.md`** v2.411, migration **`20270506120000_update_job_status_disallow_helpers_send_to_billing.sql`**).
 
+**Job thread notes** (v2.5526, `20261014220000_helper_on_job_thread_notes.sql`): a helper or a subcontractor on a job's crew (`jobs_ledger_team_members`) reads and posts its `jobs_ledger_thread_notes`, Job Mode's **Something else** note among them, and so does one with a schedule block on it this week or last. The field branch of both policies asks the SECURITY DEFINER `helper_on_job(job)`, since `jobs_ledger_team_members`' SELECT policy hides a helper's own crew row and the old in-policy check never saw it. The branch's own dispatch check (a block on any day) stays as it was.
+
 ---
 
 ### estimator (Estimator)
