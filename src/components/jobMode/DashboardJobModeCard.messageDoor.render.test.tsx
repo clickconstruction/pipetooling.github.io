@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Job Mode's Message the customer (residential R5): on the clocked-in job, the door shows only through
- * jobModeMessagesOffered, which is switched off until quo-send takes a tech's text. Switched on, a primary sees it,
+ * jobModeMessagesOffered and its switch (on since v2.5505; each case sets it here). Switched on, a primary sees it,
  * with the orange dot when the customer answered; a master never does.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
