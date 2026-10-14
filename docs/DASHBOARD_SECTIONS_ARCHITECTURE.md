@@ -434,7 +434,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | 697–712 | `lien-file-window` | `lienWatchEnabled`, `lienWatch.filingDue` | amber |
 | 714–741 | `contract-missing`, `contract-stale` | `contractNudgeEnabled` | amber |
 | 743–755 | `work-orders-unpriced` | `unpricedWorkOrdersEnabled` | amber |
-| 757–771 | `jobs-stale-open` | `staleOpenEnabled` | amber |
+| 757–771 | `jobs-stale-open` | `staleOpenEnabled`, `staleOpen` (`useJobFollowupNudge().idle`, the Follow-ups deck's idle cards, v2.5512; opens `?followups=idle`) | amber |
 | 773–792 | `capacity-under` | `capacityUnderEnabled` | amber |
 | 794–809 | `demand-deadline` | `demandDeadlineEnabled` | red |
 | 811–828 | `lien-unconditional` | `lienUnconditionalEnabled` | blue |
