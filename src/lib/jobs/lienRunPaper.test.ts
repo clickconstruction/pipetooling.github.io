@@ -118,5 +118,9 @@ describe('an unsigned notice is held (v2.5086)', () => {
     expect(runMailing(runEnvelopes([notice()])).held).toHaveLength(0)
     const noAddress = runMailing(runEnvelopes([notice({ signature: null, recipients: [owner({ address: '' }), gc()] })]))
     expect(noAddress.held[0]!.why).toMatch(/^No mailing address/)
+    // v2.5533: a notice already printed is not held for its signature — the paper went out as it was
+    const printed = runMailing(runEnvelopes([notice({ signature: null, printedAt: '2026-10-08T15:00:00Z' })]))
+    expect(printed.held).toHaveLength(0)
+    expect(printed.mailed).toHaveLength(2)
   })
 })

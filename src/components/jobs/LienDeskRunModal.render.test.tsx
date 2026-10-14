@@ -130,7 +130,7 @@ describe('LienDeskRunModal', () => {
     expect(onUndo).toHaveBeenCalledTimes(1)
   })
 
-  it('a recipient with no mailing address blocks the run and says so', async () => {
+  it('a recipient with no mailing address holds the notice; alone in the run, nothing is ready and the button says so', async () => {
     const n = notice()
     n.recipients[0] = { ...n.recipients[0]!, name: '', address: '' }
     renderWithProviders(<LienDeskRunModal notices={[n]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
@@ -138,7 +138,31 @@ describe('LienDeskRunModal', () => {
     expect(screen.getByText(/Owner of record: nobody to send to/)).toBeTruthy()
     ensureMore()
     expect((screen.getByRole('button', { name: /Record the run/ }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText(/Fix the recipients marked in red/)).toBeTruthy()
+    expect(screen.getByText('Nothing is ready to record')).toBeTruthy()
+    expect(screen.getByText('Sign or fix what is marked in red, then record.')).toBeTruthy()
+  })
+
+  it('a held notice stays in the pile while the ready one records (v2.5533): the button says so, the record carries only the ready one, and the held one keeps its row', async () => {
+    recordMock.mockClear()
+    const held = notice({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651' })
+    held.recipients[0] = { ...held.recipients[0]!, name: '', address: '' }
+    const onClose = vi.fn()
+    renderWithProviders(<LienDeskRunModal notices={[notice(), held]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    ensureMore()
+    const button = screen.getByRole('button', { name: 'Record 1 · 1 held stays in the pile ▸' }) as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+    expect(screen.getByText('1 notice is held')).toBeTruthy()
+    expect(screen.getByText('It stays in the pile with the reason in red. The 1 ready one records now.')).toBeTruthy()
+    fireEvent.click(button)
+    await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    const [sent] = recordMock.mock.calls[0] as unknown as [RunNotice[]]
+    expect(sent.map((x) => x.itemId)).toEqual(['it1'])
+    // the held one stays, the window stays open on it
+    await settle()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByText(/Owner of record: nobody to send to/)).toBeTruthy()
+    expect(screen.queryByText('650 · ATI Schertz')).toBeNull()
   })
 
   it('two notices to one owner at one address share an envelope, and the GC gets one envelope with both inside — one tracking number each', async () => {
@@ -619,6 +643,35 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
       urlApi.createObjectURL = hadCreate
       urlApi.revokeObjectURL = hadRevoke
     }
+  })
+})
+
+describe('a printed notice is not held for its signature (v2.5533)', () => {
+  it('in the mail unsigned: no red hold, the amber line says it records as it went, both signing doors stay, and Record is live', async () => {
+    recordMock.mockClear()
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ signature: null, printedAt: '2026-10-08T15:00:00Z', leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
+        issuer={null}
+        todayYmd="2026-10-14"
+        userId="u-taunya"
+        viewer={{ userId: 'u-taunya', name: 'Taunya' }}
+        onClose={() => {}}
+        onRecorded={() => {}}
+      />,
+    )
+    await settle()
+    expect(screen.queryByTestId('run-held-1')).toBeNull()
+    expect(screen.getByTestId('run-unsigned-1').textContent).toBe('In the mail unsigned · it records as it went. If Robert Douglas signed the paper, record that first.')
+    expect(screen.getByTestId('run-leader-here-sign-1')).toBeTruthy()
+    expect(screen.getByTestId('run-pen-sign-1')).toBeTruthy()
+    const button = screen.getByRole('button', { name: 'Record the run ▸' }) as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+    expect(screen.queryByText('Nothing is ready to record')).toBeNull()
+    fireEvent.click(button)
+    await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    const [sent] = recordMock.mock.calls[0] as unknown as [RunNotice[]]
+    expect(sent.map((x) => x.itemId)).toEqual(['it1'])
   })
 })
 

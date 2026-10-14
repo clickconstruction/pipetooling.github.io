@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runDoorPill, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runDoorPill, runRecordWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
@@ -347,6 +347,35 @@ describe('the mailing (v2.4119): the number\u2019s shape, what records, the enve
     expect(all.partial).toBe(false)
     expect(all.mailed).toHaveLength(1)
   })
+  it('runRecordSplit with problems (v2.5533): a held notice waits whatever its numbers say, the ready ones record; nothing ready when every one is held', () => {
+    const a = n('a', [r('certified_mail', '9407 1118 9876 5432 1098'), r('certified_mail', '9407 1118 9876 5432 1099')])
+    const b = n('b', [r('certified_mail', '9407 1118 9876 5432 1100'), r('certified_mail')])
+    const c = n('c', [r('certified_mail'), r('certified_mail')])
+    const split = runRecordSplit([a, b, c], [[], [RUN_UNSIGNED_PROBLEM], []])
+    expect(split.mailed.map((x) => x.itemId)).toEqual(['a'])
+    expect(split.unnumbered.map((x) => x.itemId)).toEqual(['c'])
+    expect(split.held.map((x) => x.itemId)).toEqual(['b'])
+    expect(split.waiting.map((x) => x.itemId)).toEqual(['c', 'b'])
+    expect(split.partial).toBe(true)
+    expect(runRecordWords(split)).toEqual({ line1: '1 held · 1 with no number yet', line2: 'They stay in the pile with the reason in red. The 1 ready one records now.', button: 'Record 1 mailed · 2 stay in the pile ▸' })
+    // held only: no number split, so the button counts the held
+    const heldOnly = runRecordSplit([a, b], [[], [RUN_UNSIGNED_PROBLEM]])
+    expect(heldOnly.mailed.map((x) => x.itemId)).toEqual(['a'])
+    expect(runRecordWords(heldOnly)).toEqual({ line1: '1 notice is held', line2: 'It stays in the pile with the reason in red. The 1 ready one records now.', button: 'Record 1 · 1 held stays in the pile ▸' })
+    // with no number anywhere the clean ones still record whole, the held one waits
+    const whole = runRecordSplit([c, b], [[], ['Owner of record: no mailing address']])
+    expect(whole.mailed.map((x) => x.itemId)).toEqual(['c'])
+    expect(whole.waiting.map((x) => x.itemId)).toEqual(['b'])
+    // every one held: nothing is ready
+    const none = runRecordSplit([b], [[RUN_UNSIGNED_PROBLEM]])
+    expect(none.mailed).toEqual([])
+    expect(none.partial).toBe(false)
+    expect(runRecordWords(none)).toEqual({ line1: 'Nothing is ready to record', line2: 'Sign or fix what is marked in red, then record.', button: 'Record the run ▸' })
+    // nothing waits: no words of its own
+    expect(runRecordWords(runRecordSplit([a], [[]]))).toBeNull()
+    // the numbers' own split reads as before
+    expect(runRecordWords(runRecordSplit([a, c]))).toEqual({ line1: '1 envelope has no number yet', line2: 'It stays in the mail pile; the numbered ones record now.', button: 'Record 1 mailed · 1 stays in the pile ▸' })
+  })
   it('envelope faces: one page per envelope, the certified line only when certified, no page for an email', () => {
     const html = runEnvelopeFacesHtml(
       [
@@ -623,6 +652,8 @@ describe('the run and an unsigned notice (v2.5086)', () => {
     expect(run[0]!.signature).toBeNull()
     expect(runNoticeProblems(run[0]!)).toContain(RUN_UNSIGNED_PROBLEM)
     expect(runNoticeProblems({ ...run[0]!, signature: undefined })).not.toContain(RUN_UNSIGNED_PROBLEM)
+    // v2.5533: a notice already printed is not held for its signature
+    expect(runNoticeProblems({ ...run[0]!, printedAt: '2026-10-08T15:00:00Z' })).not.toContain(RUN_UNSIGNED_PROBLEM)
   })
 })
 
