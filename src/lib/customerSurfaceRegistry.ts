@@ -105,6 +105,9 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // Messages cut 5: a text from the company number, through Quo. The reply box's text and the webhook's answer to HELP.
   { kind: 'sender', ref: 'quo-send', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
   { kind: 'sender', ref: 'quo-webhook', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
+  // Messages cut 5: the morning reminders the app sends itself from the company number, one step at a time, off until the
+  // owner turns a step on. The same text, opt-out line and thread as the office's own.
+  { kind: 'sender', ref: 'messages-nudge-dispatch', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },

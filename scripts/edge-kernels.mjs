@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-email', 'messages-notify', 'photo-save', 'quo-send', 'quo-webhook']
+export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -111,6 +111,14 @@ export const ENTRIES = {
   },
   // The texts switch, Settings → Phone and texts → Send texts (v2.5440).
   'lib/quo/textsSwitch.ts': { values: ['TEXTS_OFF', 'TEXTS_SWITCH_KEY', 'switchGates', 'textsAreOn'], types: [] },
+  // Messages, cut 5: the morning run of the reminders the app sends itself (messages-nudge-dispatch): everyone's flow
+  // from the run's rows, the planner, the 9 AM gate and the summary.
+  'lib/flows/nudgeRunInputs.ts': {
+    values: ['APP_SENDS_SETTING_KEY', 'nudgeRunReads'],
+    types: ['NudgeRunReads', 'NudgeRunRows', 'RunChannelRow', 'RunContactRow', 'RunHoldRow', 'RunLineRow', 'RunNoteRow', 'RunQuickReplyRow', 'RunQuickReplyUseRow', 'RunSentRow', 'RunStepRow'],
+  },
+  'lib/flows/nudgeDispatch.ts': { values: ['planNudgeRun'], types: ['NudgeRun', 'NudgeText'] },
+  'lib/flows/nudgeRunLog.ts': { values: ['runHourNow', 'runSummary'], types: ['RunRefused', 'RunSummary'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

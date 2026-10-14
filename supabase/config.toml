@@ -997,3 +997,8 @@ verify_jwt = false
 # gc_office_team()).
 [functions.quo-send]
 verify_jwt = false
+
+# Messages, cut 5: the morning run of the reminders the app sends itself. The cron sends no JWT (X-Cron-Secret);
+# a dev's dry run is checked in the function.
+[functions.messages-nudge-dispatch]
+verify_jwt = false

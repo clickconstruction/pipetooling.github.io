@@ -16,7 +16,7 @@
  * (`qrStepName`). A line keeps only its step's id (`quick_replies.step_key`), so no two flows of one kind share an id.
  */
 
-import type { ContactKind } from '../contacts/kernel'
+import type { ContactKind } from '../contacts/names'
 import { flowContactKind, type FlowKind } from '../flows/facts'
 import type { FlowDef, FlowStep } from '../flows/state'
 

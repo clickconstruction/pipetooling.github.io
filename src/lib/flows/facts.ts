@@ -9,7 +9,7 @@
  * `A_PAPER`), with each column checked against main's schema. `kept` says how well main keeps the
  * stamp today; `gap` names what cut 4's SQL adds where it does not.
  */
-import type { ContactKind } from '../contacts/kernel'
+import type { ContactKind } from '../contacts/names'
 
 /**
  * The kind of person a flow is for. An unknown number has a one-step flow until someone names it. A residential

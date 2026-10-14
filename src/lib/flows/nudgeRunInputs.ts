@@ -13,7 +13,8 @@
  * every step is off until the owner turns one on (`BUILD_PLAN.md` section 7, decision 3). The kinds nest because a step
  * id is unique only within its kind's flow: the sub flow brings `asked`, `onsite` and `yes` again.
  */
-import { firstName } from '../contacts/kernel'
+import { APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1 } from '../appSettingsKeys'
+import { firstName } from '../contacts/names'
 import type { QuickReply, QuickReplyFor, QuickReplyScope } from '../quickReplies/kernel'
 import { flowFromRows, type FlowStepRow } from './editor'
 import { FLOW_KINDS, flowContactKind, type FlowKind } from './facts'
@@ -24,8 +25,8 @@ import { personFlowFrom, type HoldRow, type OwedRow, type PortalReadBackRow, typ
 import { SEED_FLOWS } from './seed'
 import type { FlowDef, NudgeHow } from './state'
 
-/** The `app_settings` key of the owner's switch. */
-export const APP_SENDS_SETTING_KEY = 'messages_nudge_app_sends_v1'
+/** The `app_settings` key of the owner's switch (`20261014012000_messages_nudge_settings.sql`). */
+export const APP_SENDS_SETTING_KEY = APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1
 
 /** How many of a person's newest thread lines their panel reads (`flowPersonIo`), so the run reads the same. */
 export const PERSON_LINES = 50
