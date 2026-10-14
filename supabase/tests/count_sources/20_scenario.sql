@@ -10,11 +10,11 @@ BEGIN;
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000000e1', 'estimator@cs.test'),
   ('00000000-0000-0000-0000-0000000000a1', 'assistant@cs.test'),
-  ('00000000-0000-0000-0000-0000000000s1', 'super@cs.test');
+  ('00000000-0000-0000-0000-0000000000c1', 'super@cs.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-0000000000e1', 'estimator@cs.test', 'Taunya', 'estimator', false, false),
   ('00000000-0000-0000-0000-0000000000a1', 'assistant@cs.test', 'Wendi', 'assistant', false, false),
-  ('00000000-0000-0000-0000-0000000000s1', 'super@cs.test', 'Outside Super', 'superintendent', false, false)
+  ('00000000-0000-0000-0000-0000000000c1', 'super@cs.test', 'Outside Super', 'superintendent', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-00000000a001', 'Bed Plumbing');
 INSERT INTO public.bids (id, created_by, service_type_id, project_name, materials_model)
@@ -81,7 +81,7 @@ SELECT cst.same('hand links without a token may repeat', (SELECT count(*)::text 
 -- The office reads them; a superintendent outside the bid reads none and writes nothing.
 SELECT cst.as_user('00000000-0000-0000-0000-0000000000a1');
 SELECT cst.same('the office reads the bid''s sources', (SELECT count(*)::text FROM public.bid_count_sources WHERE bid_id = '00000000-0000-0000-0000-00000000b1d1'), '4');
-SELECT cst.as_user('00000000-0000-0000-0000-0000000000s1');
+SELECT cst.as_user('00000000-0000-0000-0000-0000000000c1');
 SELECT cst.same('a superintendent outside the bid reads none', (SELECT count(*)::text FROM public.bid_count_sources WHERE bid_id = '00000000-0000-0000-0000-00000000b1d1'), '0');
 SELECT cst.same('and cannot write one (the policy hides the bid)',
   (SELECT count(*)::text FROM (SELECT 1 FROM public.bid_count_sources WHERE false) x), '0');
