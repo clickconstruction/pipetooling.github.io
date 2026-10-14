@@ -1248,6 +1248,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Focus ring for the unified command bar (v2.1187) — the input inside is borderless. */
   /** Job Follow-Up Mode deck (v2.1718). */
   const [followupOpen, setFollowupOpen] = useState(false)
+  /** The lens the deck opens on (v2.5511): `idle` from the Dashboard's idle card (`?followups=idle`), null from the button. */
+  const [followupLens, setFollowupLens] = useState<'idle' | null>(null)
   // Bumped when the deck closes so the button badge recounts (v2.2307).
   const [followupCountRefresh, setFollowupCountRefresh] = useState(0)
   const followupQueueCount = useJobFollowupQueueCount(followupCountRefresh)
@@ -1273,7 +1275,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // the doors are built once.
   const stagesDeepLinkDoors = useMemo<StagesDeepLinkDoors>(
     () => ({
-      followups: () => setFollowupOpen(true),
+      followups: (lens) => {
+        setFollowupLens(lens)
+        setFollowupOpen(true)
+      },
       gcReview: () => setGcReviewModalOpen(true),
       gcNotice: (gcId) => setGcNotice({ gcId }),
       lienDesk: (link) => setLienDesk(link),
@@ -3127,7 +3132,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             onNewJob={openNew}
             shortNewJobButtonLabel={shortNewJobButtonLabel}
             followupQueueCount={followupQueueCount}
-            onOpenFollowups={() => setFollowupOpen(true)}
+            onOpenFollowups={() => {
+              setFollowupLens(null)
+              setFollowupOpen(true)
+            }}
             canSeeForecast={canSeeBilledExpectedPay}
             onOpenForecast={() => setBilledPaymentForecastOpen(true)}
             onShowMap={!phoneBoard && jobsMapHidden ? toggleJobsMapHidden : null}
@@ -3192,6 +3200,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   setFollowupOpen(false)
                   setFollowupCountRefresh((n) => n + 1)
                 }}
+                initialLens={followupLens}
                 renderStageRow={renderFollowupStageRow}
                 onOpenBoardRow={openFollowupBoardRow}
                 onOpenActivity={openFollowupActivity}

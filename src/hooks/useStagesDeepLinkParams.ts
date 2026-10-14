@@ -12,8 +12,8 @@ import { stagesSectionElementId } from '../lib/jobs/stagesSectionPrefs'
 
 /** What each modal door opens — the tab's setters. Pass a stable object (memoized once). */
 export type StagesDeepLinkDoors = {
-  /** `?followups=1` (v2.1720): the follow-up deck. */
-  followups: () => void
+  /** `?followups=1` (v2.1720): the follow-up deck; `?followups=idle` (v2.5511) on its Idle lens. */
+  followups: (lens: 'idle' | null) => void
   /** `?gcReview=1` (v2.1984): GC Review. */
   gcReview: () => void
   /** `?gcnotice=<customer id>` (v2.3470): Put a GC on notice. */
@@ -42,7 +42,7 @@ function openDoor(key: ModalDoorKey, links: StagesDeepLinks, doors: StagesDeepLi
   switch (key) {
     case 'followups':
       if (!links.followups) return false
-      doors.followups()
+      doors.followups(links.followupsLens)
       return true
     case 'gcReview':
       if (!links.gcReview) return false

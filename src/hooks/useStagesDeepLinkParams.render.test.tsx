@@ -48,7 +48,9 @@ describe('useStagesDeepLinkParams — the modal doors', () => {
   })
 
   it.each([
-    ['followups=1', 'followups', []],
+    ['followups=1', 'followups', [null]],
+    // v2.5511: the deck on its Idle lens.
+    ['followups=idle', 'followups', ['idle']],
     ['gcReview=1', 'gcReview', []],
     ['gcnotice=cust-9', 'gcNotice', ['cust-9']],
     ['liendesk=1&liendeskJob=j-4&kind=affidavit&liendeskPile=missed', 'lienDesk', [{ jobId: 'j-4', kind: 'affidavit', pile: 'missed' }]],
