@@ -131,3 +131,12 @@ export function canMessageCustomersFromJobMode(role: UserRole | null | undefined
 export function canReadJobMessages(role: UserRole | null | undefined): boolean {
   return role != null && (GC_OFFICE_TEAM.includes(role) || MESSAGES_TECH_TEAM.includes(role))
 }
+
+/**
+ * The tech's door to a job's customer lines (v2.5527): the Customer pill in Job Mode's Job updates and the Job detail
+ * window. The field roles among `canReadJobMessages`; the policies keep the read to a job they are on this week or last.
+ * The office reads the same lines on Pipeline's Job activity and in Messages, so its Job detail stays as it was.
+ */
+export function readsCustomerLinesInJobUpdates(role: UserRole | null | undefined): boolean {
+  return canReadJobMessages(role) && role != null && MESSAGES_TECH_TEAM.includes(role)
+}

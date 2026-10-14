@@ -81,6 +81,9 @@ import { JOB_STEPPER_LABELS, type JobStepperStatus } from '../../lib/jobs/jobSta
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { jobWindowTiles, viewerOnCrew } from '../../lib/jobs/jobWindowBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
+import { useJobMessages } from '../../hooks/useJobMessages'
+import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
 import { JobCustomerBox } from './JobCustomerBox'
 import JobReportsModal from '../JobReportsModal'
@@ -1188,6 +1191,16 @@ export default function DetailJobModal({
     showToast,
     authorDisplayName: authUser?.id ? profileName : undefined,
   })
+  // The tech's door to the customer (v2.5527): the job's lines with them beside the notes, under a Customer pill.
+  const readsCustomerLines = open && readsCustomerLinesInJobUpdates(viewerAuthRole)
+  const jobForLines = fullJob ?? limitedJob
+  const jobMessages = useJobMessages(
+    readsCustomerLines && jobId && jobForLines ? { id: jobId, status: jobForLines.status ?? null, createdAt: fullJob?.created_at ?? null } : null,
+  )
+  const customerLines = useMemo(
+    () => (!readsCustomerLines ? undefined : jobForLines && jobMessages ? customerLinesForJobUpdates(jobMessages) : null),
+    [readsCustomerLines, jobForLines, jobMessages],
+  )
   const { requestOpenUpdateFocus } = useUpdateFocusOpenerBridge()
 
   // Stages "% complete" flow, transplanted from the Jobs Stages activity panel:
@@ -2079,6 +2092,7 @@ export default function DetailJobModal({
             onCommitPct={(value, note) => void commitPctWithNote(value, note)}
             showSectionTitle={false}
             showEmptyPlaceholder={false}
+            customerLines={customerLines}
             showComposerLabel={false}
             viewerRole={authRole as UserRole | null}
             customerBox={
