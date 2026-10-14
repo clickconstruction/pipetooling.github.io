@@ -32262,11 +32262,13 @@ export type Database = {
         Returns: undefined
       }
       contact_display_name: { Args: { p_contact_id: string }; Returns: string }
+      contact_find_or_make: { Args: { p_customer_id: string }; Returns: string }
       contact_for_channel: {
         Args: { p_kind: string; p_value: string }
         Returns: string
       }
       contact_for_customer: { Args: { p_customer_id: string }; Returns: string }
+      contact_for_job: { Args: { p_job_id: string }; Returns: string }
       contact_job_check: {
         Args: { p_job_id: string; p_job_kind: string }
         Returns: undefined
@@ -35612,6 +35614,7 @@ export type Database = {
         Args: { p_contact_id: string }
         Returns: boolean
       }
+      messages_tech_on_job: { Args: { p_job_id: string }; Returns: boolean }
       messages_tech_team: { Args: never; Returns: boolean }
       migrate_job_ledger_costs_and_delete: {
         Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
