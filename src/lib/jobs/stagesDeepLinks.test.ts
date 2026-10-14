@@ -7,6 +7,7 @@ describe('parseStagesDeepLinks', () => {
   it('nothing open on a plain board URL', () => {
     expect(parseStagesDeepLinks(sp('tab=stages'))).toEqual({
       followups: false,
+      followupsLens: null,
       gcReview: false,
       gcNoticeGcId: null,
       lienDesk: null,
@@ -87,5 +88,15 @@ describe('stripStagesDeepLink', () => {
     expect(href).toBe('/jobs?tab=stages&ownerrecords=j%20273')
     expect(parseStagesDeepLinks(sp(href.split('?')[1]!)).ownerRecordsJobId).toBe('j 273')
     expect(stripStagesDeepLink(sp('tab=stages&ownerrecords=j273&scope=all'), 'ownerRecords')).toBe('tab=stages&scope=all')
+  })
+})
+
+describe('the deck’s Idle lens (v2.5511)', () => {
+  it('followups=idle opens the deck on its Idle lens; followups=1 opens the whole queue; the strip takes the whole param', () => {
+    const sp = (q: string) => new URLSearchParams(q)
+    expect(parseStagesDeepLinks(sp('followups=idle'))).toMatchObject({ followups: true, followupsLens: 'idle' })
+    expect(parseStagesDeepLinks(sp('followups=1'))).toMatchObject({ followups: true, followupsLens: null })
+    expect(parseStagesDeepLinks(sp('followups=stale'))).toMatchObject({ followups: false, followupsLens: null })
+    expect(stripStagesDeepLink(sp('followups=idle&tab=stages'), 'followups')).toBe('tab=stages')
   })
 })

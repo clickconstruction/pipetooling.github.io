@@ -46,8 +46,10 @@ export function ownerRecordsHref(jobId: string): string {
 }
 
 export type StagesDeepLinks = {
-  /** `?followups=1` (v2.1720): the follow-up deck. */
+  /** `?followups=1` (v2.1720): the follow-up deck; `?followups=idle` (v2.5511) opens it on its Idle lens. */
   followups: boolean
+  /** The lens the deck opens on: `idle` for the cards with no crew on site in 21+ days; null for the whole queue. */
+  followupsLens: 'idle' | null
   /** `?gcReview=1` (v2.1984): GC Review. */
   gcReview: boolean
   /** `?gcnotice=<customer id>` (v2.3470): Put a GC on notice for that GC. */
@@ -73,7 +75,8 @@ export function parseStagesDeepLinks(search: URLSearchParams): StagesDeepLinks {
   const kindParam = search.get('kind')
   const lienWindowJobId = search.get('lienwindow')
   return {
-    followups: flag('followups'),
+    followups: flag('followups') || search.get('followups') === 'idle',
+    followupsLens: search.get('followups') === 'idle' ? 'idle' : null,
     gcReview: flag('gcReview'),
     gcNoticeGcId: search.get('gcnotice') || null,
     lienDesk: flag('liendesk')
