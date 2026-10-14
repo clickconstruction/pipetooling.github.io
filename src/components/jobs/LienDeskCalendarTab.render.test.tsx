@@ -458,3 +458,37 @@ describe('the pen (v2.4153)', () => {
     })
   })
 })
+
+describe('the In the mail mark (v2.5522)', () => {
+  it('a printed notice draws the amber circle, sits beside Notice on file in the key, counts on the bar, and its doors open Record the mailing', () => {
+    const onRecord = vi.fn()
+    const onDraft = vi.fn()
+    const mailedRows: LienCalendarJob[] = [
+      // August's notice printed and in the mail (Oct 15), July's on file (Sep 15): one circle of each colour on the row.
+      { jobId: 'm', number: '878 PLUM', name: 'Take 5- Seguin', customer: 'Southern Post', gcId: 'gc9', gcName: 'Southern Post Construction', address: '380 TX-123', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 38625, lastWorkYmd: '2026-08-20', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] }) },
+      // A plain owed notice on the same date, another GC: the bar keeps Draft the one beside Record the mailing.
+      { jobId: 'o', number: '891 PLUM', name: 'Take 5- Liberty Hill', customer: 'Burd', gcId: 'gc8', gcName: 'Burd & Assoc.', address: '11730 TX-29', openBalance: 6258, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 6258, lastWorkYmd: '2026-08-20', isSub: true }) },
+    ]
+    render(<LienDeskCalendarTab rows={mailedRows} todayYmd={TODAY} onOpenJob={() => {}} onDraft={onDraft} onRecord={onRecord} canWrite />)
+    const mark = screen.getByTestId('lien-cal-mailed')
+    expect(mark.textContent).toBe('✉')
+    expect(mark.getAttribute('title')).toContain('printed and in the mail — record its tracking number by Oct 15')
+    const key = screen.getByTestId('lien-cal-key')
+    const shorts = within(key).getAllByRole('button').map((b) => b.textContent?.trim())
+    expect(shorts.indexOf('✉In the mail')).toBe(shorts.indexOf('✓Notice on file') + 1)
+    // Today is Sep 28, so Oct 15 is next month's bar.
+    const bar = screen.getByTestId('lien-cal-bucket-next_month')
+    expect(bar.textContent).toContain('2 notices across 2 GCs · 1 in the mail')
+    expect(bar.textContent).toContain('1 notice owed')
+    expect(bar.textContent).toContain('1 in the mail')
+    fireEvent.click(within(bar).getByTestId('lien-cal-record'))
+    expect(onRecord).toHaveBeenCalledWith(['m'])
+    fireEvent.click(mark)
+    expect(onRecord).toHaveBeenCalledTimes(2)
+    expect(within(bar).getByRole('button', { name: 'Draft the one ›' })).toBeTruthy()
+    // The key's own door for the mark.
+    fireEvent.click(within(key).getByRole('button', { name: /In the mail/ }))
+    fireEvent.click(within(screen.getByTestId('lien-cal-key-panel')).getByRole('button', { name: 'Record the mailing ›' }))
+    expect(onRecord).toHaveBeenCalledTimes(3)
+  })
+})

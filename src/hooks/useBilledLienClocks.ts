@@ -22,6 +22,8 @@ export type BilledLienClock = {
   noticedMonths: string[]
   /** A live § 53.056 notice exists on the job, whatever months it lists. */
   noticeOnFile: boolean
+  /** 'YYYY-MM' months on a § 53.056 notice printed and in the mail whose mailing is not recorded yet (v2.5522): the desk's In the mail pile. */
+  mailedMonths: string[]
   /** 'YYYY-MM' months with approved hours on a sub job (v2.4308) — a notice is owed for each; [] on a direct job; null when the read failed (the runway then counts the last month alone). */
   workMonths: string[] | null
 }
@@ -80,6 +82,33 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
         const releasedByJob = new Map<string, string>()
         const noticedByJob = new Map<string, Set<string>>()
         const noticeOnFile = new Set<string>()
+        // v2.5522: the notices printed and in the mail (the desk's In the mail pile): approved, printed, not yet recorded.
+        const mailedByJob = new Map<string, Set<string>>()
+        for (const chunk of chunkIds(jobIds)) {
+          if (chunk.length === 0) continue
+          try {
+            const items = await withSupabaseRetry(
+              () =>
+                supabase
+                  .from('job_lien_desk_items')
+                  .select('job_id, kind, months, status, printed_at, sent_at, voided_at')
+                  .in('job_id', chunk)
+                  .in('status', ['approved'])
+                  .not('printed_at', 'is', null)
+                  .is('sent_at', null)
+                  .is('voided_at', null),
+              'lien runway: notices in the mail',
+            )
+            for (const it of (items ?? []) as { job_id: string; kind: string; months: string[] | null }[]) {
+              if (it.kind !== 'notice_53_056') continue
+              const set = mailedByJob.get(it.job_id) ?? new Set<string>()
+              for (const m of it.months ?? []) set.add(m.slice(0, 7))
+              mailedByJob.set(it.job_id, set)
+            }
+          } catch {
+            /* the mark is a courtesy: with the read down the months read as owed, as before */
+          }
+        }
         for (const chunk of chunkIds(jobIds)) {
           if (chunk.length === 0) continue
           const rows = await withSupabaseRetry(
@@ -152,6 +181,7 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
             releasedYmd: releasedByJob.get(j.id) ?? null,
             noticedMonths: [...(noticedByJob.get(j.id) ?? [])].sort(),
             noticeOnFile: noticeOnFile.has(j.id),
+            mailedMonths: [...(mailedByJob.get(j.id) ?? [])].filter((m) => !(noticedByJob.get(j.id)?.has(m))).sort(),
             workMonths: workedByJob ? [...(workedByJob.get(j.id) ?? [])].sort() : null,
           }
         }

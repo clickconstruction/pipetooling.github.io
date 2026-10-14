@@ -1000,6 +1000,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         isSub: Boolean(job.gc_customer_id),
         noticedMonths: clock.noticedMonths,
         anyNoticeOnFile: clock.noticeOnFile,
+        // v2.5522: the months printed and in the mail draw the In the mail mark instead of a hollow flag.
+        mailedMonths: clock.mailedMonths,
         workMonths: clock.workMonths,
       })
     },
