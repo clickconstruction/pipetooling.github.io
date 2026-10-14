@@ -1,7 +1,9 @@
 /**
  * Pure queue kernel for Job Follow-Up Mode (v2.1718): which open jobs are
  * "quiet too long for their stage", why, and in what order the office should
- * review them. IO lives in `jobFollowupStore.ts`; this file is data → data.
+ * review them. Since v2.5510 a Working or Waiting job with no approved field
+ * day in 21+ days joins too (the idle rule), with a Next line saying what it
+ * needs. IO lives in `jobFollowupStore.ts`; this file is data → data.
  */
 
 import type { JobsBoardScope } from './boardScopes'
@@ -58,6 +60,31 @@ export type JobFollowupCandidate = {
   latestActivityAt: string
   /** Next scheduled visit (YYYY-MM-DD), if any, from job_schedule_blocks. */
   nextScheduledOn: string | null
+  /**
+   * The last approved field day (`jobs_ledger.last_work_date`, kept by the clock-session trigger),
+   * for the idle rule (v2.5510); null when no crew day was ever approved.
+   */
+  lastWorkYmd?: string | null
+  /** The day the job was made: the idle clock's start on a Working job with no field day yet. */
+  createdYmd?: string | null
+  /** The lead tech, so the Dashboard card can say how many idle jobs are the reader's own. */
+  masterUserId?: string | null
+}
+
+/**
+ * The idle rule (v2.5510, the owner's 2026-10-13 ask for Taunya): a Working or Waiting job with no approved
+ * field day in this many days joins the deck whatever its notes say. Notes do not reset this clock — only a
+ * Looks fine rest, a snooze, or a visit on the schedule keeps the job out.
+ */
+export const JOB_FOLLOWUP_IDLE_DAYS = 21
+
+/** Why a card is in the deck: quiet too long for its stage, or idle (no field work) past the idle rule. */
+export type JobFollowupWhy = 'quiet' | 'idle'
+
+/** What the job needs next, from the facts the card carries — the deck's "Next" line and the Dashboard's words. */
+export type JobFollowupNeed = {
+  kind: 'bill' | 'schedule_or_close' | 'schedule' | 'nudge' | 'collect'
+  words: string
 }
 
 export type JobFollowupReview = {
@@ -85,6 +112,12 @@ export type JobFollowupQueueEntry = {
   quietDays: number
   /** Human sentence for the "Why it's here" band. */
   reason: string
+  /** Quiet for its stage, or idle past the field-day rule (v2.5510). Idle wins when both hold. */
+  why: JobFollowupWhy
+  /** Whole days since the last approved field day (else the job's first day); null off the idle rule's stages. */
+  idleDays: number | null
+  /** What the job needs next; null when the facts do not say. */
+  need: JobFollowupNeed | null
 }
 
 const DAY_MS = 86400000
@@ -144,6 +177,55 @@ function reasonFor(entry: { stage: JobFollowupStage; quietDays: number; nextSche
  * or Working with a FUTURE scheduled visit are exempt — the crew is coming,
  * nothing is forgotten.
  */
+/** Whole days from a wall date to today, floored at 0; null when either date is off. */
+function ymdDaysUntil(fromYmd: string, todayYmd: string): number | null {
+  const a = ymdToUtcMs(fromYmd)
+  const b = ymdToUtcMs(todayYmd)
+  if (Number.isNaN(a) || Number.isNaN(b)) return null
+  return Math.max(0, Math.floor((b - a) / DAY_MS))
+}
+
+/**
+ * Days since the job's last approved field day — the Cycle view's idle clock (`staleOpenJobs`): the last
+ * work date, else the day the job was made. Only Working and Waiting jobs have one, and a Waiting job only
+ * once a crew has been on site (a job still waiting to begin is queued, not idle). Null otherwise.
+ */
+export function jobFollowupIdleDays(job: Pick<JobFollowupCandidate, 'stage' | 'lastWorkYmd' | 'createdYmd'>, todayYmd: string): number | null {
+  if (job.stage !== 'working' && job.stage !== 'waiting') return null
+  const lastWork = (job.lastWorkYmd ?? '').slice(0, 10)
+  if (job.stage === 'waiting' && !lastWork) return null
+  const from = lastWork || (job.createdYmd ?? '').slice(0, 10)
+  if (!from) return null
+  return ymdDaysUntil(from, todayYmd)
+}
+
+/** What the job needs next, from its stage and % done; the deck's Next line and the Dashboard card's words. */
+export function jobFollowupNeed(job: Pick<JobFollowupCandidate, 'stage' | 'pctComplete'>): JobFollowupNeed | null {
+  switch (job.stage) {
+    case 'ready_to_bill':
+      return { kind: 'bill', words: 'Bill it' }
+    case 'working':
+      return job.pctComplete != null && job.pctComplete >= 100
+        ? { kind: 'bill', words: 'Bill it, the work is done' }
+        : { kind: 'schedule_or_close', words: 'Schedule the next visit or close it' }
+    case 'waiting':
+      return { kind: 'schedule', words: 'Put the next visit on the schedule' }
+    case 'billed':
+      return { kind: 'nudge', words: 'Nudge the customer for payment' }
+    case 'collections':
+      return { kind: 'collect', words: 'Work the account' }
+  }
+}
+
+/** "No field work in 140 days · 70% done · $41,550 bid" — the idle card's Why it's here line. */
+function idleReasonFor(job: Pick<JobFollowupCandidate, 'stage' | 'pctComplete' | 'revenue'>, idleDays: number): string {
+  const head = `No field work in ${idleDays} day${idleDays === 1 ? '' : 's'}`
+  if (job.stage === 'waiting') return `${head} · nothing on the schedule`
+  const pct = job.pctComplete != null ? ` · ${job.pctComplete}% done` : ''
+  const bid = job.revenue != null && job.revenue > 0 ? ` · $${Math.round(job.revenue).toLocaleString()} bid` : ''
+  return `${head}${pct}${bid}`
+}
+
 export function computeJobFollowupQueue(
   candidates: JobFollowupCandidate[],
   reviews: JobFollowupReview[],
@@ -175,23 +257,52 @@ export function computeJobFollowupQueue(
     const latest =
       review && review.reviewedAt > job.latestActivityAt ? review.reviewedAt : job.latestActivityAt
     const quietDays = jobFollowupQuietDays(latest, todayYmd)
-    if (quietDays <= jobFollowupThresholdDays(job.stage, settings)) continue
+    // The idle rule (v2.5510): no approved field day in 21+ days, whatever the notes say.
+    const idleDays = jobFollowupIdleDays(job, todayYmd)
+    const idle = idleDays != null && idleDays >= JOB_FOLLOWUP_IDLE_DAYS
+    if (!idle && quietDays <= jobFollowupThresholdDays(job.stage, settings)) continue
 
     entries.push({
       job,
       quietDays,
-      reason: reasonFor({
-        stage: job.stage,
-        quietDays,
-        nextScheduledOn: job.nextScheduledOn,
-        pctComplete: job.pctComplete,
-        revenue: job.revenue,
-      }),
+      reason: idle
+        ? idleReasonFor(job, idleDays)
+        : reasonFor({
+            stage: job.stage,
+            quietDays,
+            nextScheduledOn: job.nextScheduledOn,
+            pctComplete: job.pctComplete,
+            revenue: job.revenue,
+          }),
+      why: idle ? 'idle' : 'quiet',
+      idleDays,
+      need: jobFollowupNeed(job),
     })
   }
 
-  entries.sort((a, b) => b.quietDays - a.quietDays || a.job.hcpNumber.localeCompare(b.job.hcpNumber))
+  // Stalest first: an idle card ranks by its field-day gap, a quiet card by its quiet days.
+  const rank = (e: JobFollowupQueueEntry) => (e.why === 'idle' ? Math.max(e.idleDays ?? 0, e.quietDays) : e.quietDays)
+  entries.sort((a, b) => rank(b) - rank(a) || a.job.hcpNumber.localeCompare(b.job.hcpNumber))
   return entries
+}
+
+/** The idle cards' figures for the Dashboard card (v2.5510): how many, the contract behind them, how many are the reader's. */
+export function jobFollowupIdleSummary(entries: readonly JobFollowupQueueEntry[], userId: string | null | undefined): { count: number; total: number; mine: number } {
+  let count = 0
+  let total = 0
+  let mine = 0
+  for (const e of entries) {
+    if (e.why !== 'idle') continue
+    count += 1
+    total += e.job.revenue ?? 0
+    if (userId && e.job.masterUserId === userId) mine += 1
+  }
+  return { count, total, mine }
+}
+
+/** The quiet cards alone — the "waiting on a follow-up" card counts these, so an idle job is never counted twice. */
+export function jobFollowupQuietEntries(entries: readonly JobFollowupQueueEntry[]): JobFollowupQueueEntry[] {
+  return entries.filter((e) => e.why === 'quiet')
 }
 
 /** Quiet-days badge severity for the queue list view (v2.1721). */

@@ -8,6 +8,8 @@ You review quiet jobs one card at a time from the Follow-ups button on Jobs → 
 
 Jobs stop falling through the cracks when the app builds the list for you. The **Follow-ups** button on Jobs → Pipeline deals you every open job that's been **quiet too long for its stage**. That means no notes, no work and no billing movement. You get one card at a time, stalest first.
 
+A job can also be **idle**. That is a Working or Waiting job with no approved field day in 21 days or more. An idle job joins the deck even when someone wrote a note last week. Notes do not clear it. Its *Why it's here* line reads like *No field work in 46 days · 70% done · $41,550 bid*. A visit already on the schedule keeps it out. {{button:outline|✓ Looks fine}} rests it a few days and {{button:outline|Snooze ▾}} parks it to a date. The job with the longest gap deals first.
+
 The **Dashboard** keeps score too. When jobs are waiting, an amber card counts them. It reads *37 billed with no nudge · 11 working with no recent notes*. {{button:blue|Start review →}} drops you straight into the deck. When the queue is empty, the card disappears.
 
 Prefer to see everything at once? The **Deck | List** toggle at the top switches to the whole queue as a table. It is quietest first. Each row has a color-coded days badge, the reason it needs eyes, and its stage. {{chip:red|21d}} means two weeks or more. Click {{button:outline|Review →}} on any row and the deck opens on exactly that job. Triage the list, then work the cards.

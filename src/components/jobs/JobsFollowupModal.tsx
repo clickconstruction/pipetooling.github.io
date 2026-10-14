@@ -14,6 +14,8 @@ import {
   JOB_FOLLOWUP_STAGE_LABELS,
   computeJobFollowupQueue,
   dropDeletedFollowupCandidates,
+  jobFollowupIdleDays,
+  jobFollowupNeed,
   jobFollowupQuietDays,
   jobFollowupQuietSeverity,
   jobFollowupReviewActionLabel,
@@ -319,7 +321,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   const revisitCandidate = revisitEntry ? candidates.find((c) => c.id === revisitEntry.jobId) ?? null : null
   const revisitCard =
     revisitEntry && revisitCandidate
-      ? { job: revisitCandidate, quietDays: jobFollowupQuietDays(revisitCandidate.latestActivityAt, todayYmd), reason: '' }
+      ? { job: revisitCandidate, quietDays: jobFollowupQuietDays(revisitCandidate.latestActivityAt, todayYmd), reason: '', why: 'quiet' as const, idleDays: jobFollowupIdleDays(revisitCandidate, todayYmd), need: jobFollowupNeed(revisitCandidate) }
       : null
   const revisitCardMissing = revisitCard == null
   useEffect(() => {

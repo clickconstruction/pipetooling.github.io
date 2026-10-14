@@ -171,8 +171,8 @@ describe('reviews and history', () => {
 
 describe('candidates (uncached)', () => {
   const jobs = [
-    { id: 'j1', hcp_number: '1842', job_name: 'Riverside', job_address: '1 Main', status: 'working', customer_name: 'Acme', pct_complete: 40, revenue: 1000, payments_made: 250 },
-    { id: 'j2', hcp_number: '1843', job_name: 'Elm', job_address: '2 Elm', status: 'billed', customer_name: null, pct_complete: null, revenue: null, payments_made: null },
+    { id: 'j1', hcp_number: '1842', job_name: 'Riverside', job_address: '1 Main', status: 'working', customer_name: 'Acme', pct_complete: 40, revenue: 1000, payments_made: 250, last_work_date: '2026-08-20', created_at: '2026-07-01T15:00:00Z', master_user_id: 'u-m' },
+    { id: 'j2', hcp_number: '1843', job_name: 'Elm', job_address: '2 Elm', status: 'billed', customer_name: null, pct_complete: null, revenue: null, payments_made: null, last_work_date: null, created_at: null, master_user_id: null },
   ]
   it('reads the open-stage jobs and the activity RPC for today, and merges activity onto each job', async () => {
     route = (kind) => (kind === 'rpc' ? [{ job_id: 'j1', latest_activity_at: '2026-09-01T10:00:00Z', next_scheduled_on: '2026-09-12' }] : jobs)
@@ -182,9 +182,10 @@ describe('candidates (uncached)', () => {
     expect(rpc.name).toBe('list_job_followup_activity')
     expect(rpc.args).toEqual([{ p_today: '2026-09-07' }])
     expect(out).toEqual([
-      { id: 'j1', stage: 'working', hcpNumber: '1842', jobName: 'Riverside', address: '1 Main', customerName: 'Acme', pctComplete: 40, revenue: 1000, paymentsMade: 250, latestActivityAt: '2026-09-01T10:00:00Z', nextScheduledOn: '2026-09-12' },
+      // The idle rule's facts ride along (v2.5510): the last approved field day, the day the job was made, the lead tech.
+      { id: 'j1', stage: 'working', hcpNumber: '1842', jobName: 'Riverside', address: '1 Main', customerName: 'Acme', pctComplete: 40, revenue: 1000, paymentsMade: 250, latestActivityAt: '2026-09-01T10:00:00Z', nextScheduledOn: '2026-09-12', lastWorkYmd: '2026-08-20', createdYmd: '2026-07-01', masterUserId: 'u-m' },
       // No activity row: treated as active right now so it never reads "quiet forever".
-      { id: 'j2', stage: 'billed', hcpNumber: '1843', jobName: 'Elm', address: '2 Elm', customerName: null, pctComplete: null, revenue: null, paymentsMade: null, latestActivityAt: '2026-09-07T18:00:00.000Z', nextScheduledOn: null },
+      { id: 'j2', stage: 'billed', hcpNumber: '1843', jobName: 'Elm', address: '2 Elm', customerName: null, pctComplete: null, revenue: null, paymentsMade: null, latestActivityAt: '2026-09-07T18:00:00.000Z', nextScheduledOn: null, lastWorkYmd: null, createdYmd: null, masterUserId: null },
     ])
   })
   it('a failed activity RPC (migration not applied yet) still yields the jobs, all active now; a failed jobs read throws', async () => {

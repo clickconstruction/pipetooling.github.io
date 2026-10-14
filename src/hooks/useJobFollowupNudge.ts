@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import {
   computeJobFollowupQueue,
+  jobFollowupQuietEntries,
   jobFollowupStageCounts,
   type JobFollowupStage,
 } from '../lib/jobs/jobFollowupQueue'
@@ -41,7 +42,8 @@ export function useJobFollowupNudge(enabled: boolean): {
           fetchJobFollowupSettings(),
         ])
         if (cancelled) return
-        const queue = computeJobFollowupQueue(cands, revs, sets, todayYmd)
+        // The quiet cards alone (v2.5510): the idle cards have their own Dashboard card.
+        const queue = jobFollowupQuietEntries(computeJobFollowupQueue(cands, revs, sets, todayYmd))
         setCount(queue.length)
         setCounts(jobFollowupStageCounts(queue))
       } catch {
