@@ -2,7 +2,7 @@
 title: message a customer from job mode
 category: Field Work
 roles: primary, helpers
-keywords: job mode, message the customer, text, customer, on my way, running late, phone, quick replies, something else, note, office, reply
+keywords: job mode, message the customer, text, customer, on my way, running late, phone, quick replies, something else, note, office, reply, job updates, customer pill, job detail
 order: 23
 ---
 You can text the customer from Job Mode in two presses. You pick a line the office wrote, and the app fills it in for this job.
@@ -37,6 +37,12 @@ Dana, this is Luis with Click Plumbing. I am on my way, about 15 minutes out.
 :::
 
 Their answer comes back to you. The office sees it too.
+
+## See what they said
+
+**Job updates** on the Job Mode card lists the texts and emails with the customer. They are orange, beside the notes. Press {{button:outline|Customer}} to see only those.
+
+The job's **Job detail** window shows them the same way. You see the lines of a job you worked this week or last.
 
 ## Say something else
 

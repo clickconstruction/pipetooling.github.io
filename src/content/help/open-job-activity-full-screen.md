@@ -29,7 +29,7 @@ The job's identity sits at the top. That is the {{chip:blue|Job: 4821}} number b
 - **Schedule lines name their scheduler** in the who column. The people assigned to go are part of the line itself, same as the green **Next** strip.
 - **Filter pills** narrow the feed. The pills are All, Notes, Reports, Status, Billing and Crew. The office and the techs also get **Customer**, which shows only the customer's lines. Each pill shows its count.
 - **Click a call, a text or an email** to read all of it. A call shows its summary and what was said. The office can press **Open the thread with** and the name to see the whole conversation on [Messages](/messages). A trade partner's or an architect's thread opens on [GC projects' Messages](/help/find-every-message-with-a-person-in-one-place) instead.
-- **A tech sees a customer's lines on a job they worked this week or last.** A tech sees only the lines tied to that job. A tech never sees a note kept for the office.
+- **A tech sees a customer's lines on a job they worked this week or last.** A tech sees them in **Job updates** on the Job Mode card, under the **Customer** pill. The job's **Job detail** window shows them the same way. A tech sees only the lines tied to that job. A tech never sees a note kept for the office.
 - The people on the job and the **% complete** share the top line, with the manage-people button for editors. The green **Next** appointment stays pinned above the feed.
 - The note bar stays at the bottom. Type and press Enter to post. Editors also get {{button:outline-blue|Set % complete}}. Pick the percent and add a note. The note is required below 100%. Both land on the job.
 
