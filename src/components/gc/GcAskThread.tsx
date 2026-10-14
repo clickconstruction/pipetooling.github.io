@@ -386,8 +386,9 @@ function FollowUpCard({ state, followUp, writes, onWhoElse }: { state: GcState; 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-gc-follow-up={invite.id}>
         <PartnerName partnerId={partner.id} company={partner.company} />
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
-        {/* The bid date sits with the job, once, not as a sentence on every card. */}
-        <Chip tone="grey">
+        {/* The bid date sits with the job, once, not as a sentence on every card. The chip wraps: a long job name with its trade
+            and bid day forced the page past a phone's edge (the live walk of 2026-10-14). */}
+        <Chip tone="grey" wrap>
           {project.name} · {pkg.trade}
           {project.bidDue ? ` · bid ${weekdayDate(project.bidDue)}` : ''}
         </Chip>
