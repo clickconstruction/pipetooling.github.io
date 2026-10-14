@@ -14,6 +14,9 @@ import { messagesButtonLabel, messagesThreadHref } from '../../lib/messages/cust
 import { contactForCustomer } from '../../lib/messages/messagesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
+/** The smallest box a press may have, each way (WCAG 2.5.8): the bubble's own 15 px plus its padding is 19. */
+export const MESSAGES_BUTTON_MIN_HIT = 24
+
 export interface MessagesButtonProps {
   customerId: string
   customerName: string | null | undefined
@@ -36,6 +39,9 @@ function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, styl
   const { showToast } = useToastContext()
   const [busy, setBusy] = useState(false)
   const label = messagesButtonLabel(customerName)
+  // On a list the box grows to the minimum and a negative margin gives the room back, so the row keeps its height and
+  // the bubble keeps its place. A caller's own look (the phone row's tile) sizes itself.
+  const slack = style ? 0 : Math.max(0, MESSAGES_BUTTON_MIN_HIT - (size + 4)) / 2
 
   const open = async (e: MouseEvent) => {
     // The button sits inside rows and names that have presses of their own.
@@ -67,6 +73,10 @@ function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, styl
         alignItems: 'center',
         justifyContent: 'center',
         padding: 2,
+        boxSizing: 'border-box',
+        minWidth: MESSAGES_BUTTON_MIN_HIT,
+        minHeight: MESSAGES_BUTTON_MIN_HIT,
+        ...(slack ? { margin: -slack } : {}),
         border: 'none',
         background: 'none',
         color: 'var(--text-link)',
