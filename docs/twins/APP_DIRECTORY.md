@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-12
+last_updated: 2026-10-13
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -43,7 +43,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Company transactions, payroll marks, spending → `/tally`
 - Bank ledger, card sorting, accounting review → `/banking`
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`
-- Every message with a customer, trade partner or architect on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
+- Every message with every person we work with on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
 - Everyone waiting on us for an answer and what we owe them, for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
 - New-builder pipeline / hiring pipeline → `/prospects`
@@ -69,7 +69,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 ### /dashboard — Dashboard
 Landing page for every role: pinned pages, role-relevant cards (recent reports, my bids,
-Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses). Start here to orient; do work elsewhere.
+Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses; for the office team the **Customers** line, opening `/messages?kind=customer`, v2.5451; and on Job Mode's card **Message the customer** for primary and helpers, built and switched off, v2.5449, guide `message-a-customer-from-job-mode`). Start here to orient; do work elsewhere.
 Roles: all.
 
 ### /gc — GC projects
@@ -79,13 +79,13 @@ list (the Board's B3, guide `see-where-every-gc-project-stands`): the stages wit
 architect, and its price so far with the card behind it. Its switch opens **Trade partners** (guides `add-a-trade-partner`,
 `approve-a-company-new-to-us`): each trade's companies and the projects short of quotes, **Add a company**, and the
 **New to us** box to approve or decline a company, with **By step** beside that list (`/gc?view=partners&by=step`, guide `see-where-every-company-stands-and-who-is-late`): every trade partner on the step of its flow, the tiles with a dot per company and **Needs a hand today**, a row per step with each company's day, and each step's own press; **By company** (`by=company`), one row per company with the Once lane as a track, the step on now, a line per job and the Portal column; **By trade** (`by=trade`), one row per trade with its companies; **Customers** (`/gc?view=customers`, the same guide), every customer **By step** and **By company**, its Portal column the last time the customer opened their page; and **Follow up**: on top the people waiting on us (guide `see-who-is-waiting-on-us-and-what-we-owe-them`):
-**Needs you**, **Needs a reply** and **We owe them**, each row with who has it, and **Ask the architect** on a plans question;
+**New** (what came in and still needs sorting), **Needs you**, **Needs a reply** and **We owe them**, each row with who has it, and **Ask the architect** on a plans question;
 then **We are waiting on them** (guide `follow-up-on-a-quote-from-a-trade-partner`): every company we wait on for a quote,
 the ones to call first at the top, with Log a contact and **Will not do it** / **Cannot do it**. **Messages** (guide `find-every-message-with-a-person-in-one-place`; `/gc?view=messages` opens it) lists every
 person the office works with, newest conversation first, and opens a person's thread as a window over any view
 (`?thread=<contact id>&at=<message id>`): their jobs with the star, each line's job, one message in full with an email's
 **Attachments** and **Open**, the offer to file a trade partner's certificate or W-9 that came by email, and **Who is this?** for a
-number nobody named. At its right side sits the person's flow, a rail that opens to the panel (guide `see-where-a-person-stands-and-what-comes-next`). A customer's own message has **Start a change order** for the office (guide `start-a-change-order-from-a-customers-message`), and a line that became one shows *became CO 2*. A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language, **Flow** (guide `see-where-a-person-stands-and-what-comes-next`: where they stand on their flow, each step's card with its notes, skips and holds, and their page), and **Their portal** (guide `share-a-trade-partner-its-portal`), its portal link,
+number nobody named. At its right side sits the person's flow, a rail that opens to the panel (guide `see-where-a-person-stands-and-what-comes-next`). A customer's own message has **Start a change order** for the office (guide `start-a-change-order-from-a-customers-message`), and a line that became one shows *became CO 2*; on a Pipeline job's line the press is **Line on the estimate** instead, and the line shows *a line on estimate 1044* (guide `put-a-customers-message-on-their-estimate`). A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language, **Flow** (guide `see-where-a-person-stands-and-what-comes-next`: where they stand on their flow, each step's card with its notes, skips and holds, and their page), and **Their portal** (guide `share-a-trade-partner-its-portal`), its portal link,
 made, copied, remade or turned off, and whether they opened it (a dev's only, until the trade wave). Each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, saves the asks and, for a dev, emails each company its invitation.
 Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number.
@@ -114,7 +114,7 @@ Follow up for every kind of person, from **Messages** in the header (its count i
 with the sort card at its top; guide `/help?g=sort-new-messages`), then **Needs you**, **Needs a reply** and **We owe them**,
 with pills for Customers, Trade partners, Architects, Leads and Subs (`?kind=`), and **Supply houses and candidates**,
 which never count on Follow up and show as a people list. A row opens the person's thread over the page
-(`?thread=<contactId>&at=<messageId>`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
+(`?thread=<contactId>&at=<messageId>`), the thread window described under `/gc`. Other doors to a customer's thread: the speech bubble beside a customer's name on `/customers`, the customer's page, `/jobs`, the job window and `/estimates` (`/messages?thread=<contact>`), and the Dashboard's **Customers** line (`?kind=customer`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
 Roles: dev, master_technician, assistant, controller, estimator.
 
 ### /bids — Bids (the estimating hub)
@@ -223,6 +223,7 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
   Awaiting Payment / Collections. Job rows: activity thread, % complete, dispatch, Edit Job,
   Bill Customer on RTB. New Job button (imports from a bid — multi-GC bids ask which GC won).
 - `?tab=reports` — field job reports (create/review); dispatch items (e.g. site-not-ready).
+- The job window, for the office team: **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens their thread on `/messages`.
 - `?tab=billing` — invoices, payments, billing flows per job.
 - `?tab=job-summary` — one job's charges-vs-payments timeline chart + % complete.
 - `?tab=teams-summary` — Crew P&L (hours-weighted billing credit per crew).
@@ -286,7 +287,7 @@ Geocoded work map. Roles: dev, master, assistant, controller, estimator.
 All roles. Settings holds profile, theme, release notes; dev/master see admin sections.
 
 ### Header (any page)
-Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, Task dispatch/add,
+Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count for the office team (`/messages`), Task dispatch/add,
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
