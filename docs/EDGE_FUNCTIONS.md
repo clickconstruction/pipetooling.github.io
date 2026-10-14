@@ -5082,9 +5082,9 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Endpoint**: `POST /functions/v1/quo-webhook`, called by Quo.
 
-**Authentication**: Quo's Standard Webhooks signature (`verifySignature`).
-- Headers: `webhook-id`, `webhook-timestamp` and `webhook-signature`.
-- HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the base64 after `whsec_`. Any `v1` entry passes.
+**Authentication**: Quo's signature, either of its two schemes (`verifySignature`). A webhook made through Quo's versioned API signs the Standard Webhooks way. One made in Quo's own settings (Settings → Webhooks) signs the older OpenPhone way (v2.5536).
+- Standard Webhooks: headers `webhook-id`, `webhook-timestamp` and `webhook-signature`. HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the base64 after `whsec_`. Any `v1` entry passes.
+- Older: one `openphone-signature` header, `hmac;1;<timestamp in ms>;<base64>` entries. HMAC-SHA256 over `<timestamp>.<body>`, the raw body or the JSON written out with no spaces, keyed by the decoded base64 secret. The settings page shows that key with no `whsec_` prefix. The delivery's id is the event's own `id`. Such a webhook sends Quo's older v3 events, which the reader answers 200 and sets aside (`API version v3, not 2026-03-30`), so the live subscription is one made with Quo's API; its key comes from `POST https://api.quo.com/webhooks/{id}/rotate`.
 - Five minutes either way.
 - No Bearer JWT, so **`verify_jwt = false`**.
 
