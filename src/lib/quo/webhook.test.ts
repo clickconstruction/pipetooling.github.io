@@ -95,6 +95,53 @@ describe('the signature', () => {
   })
 })
 
+describe('the older signature, from a webhook made in Quo’s own settings', () => {
+  // That webhook's key is plain base64, no `whsec_`; the app keeps whatever was pasted, with or without the prefix.
+  const PLAIN_SECRET = KEY.toString('base64')
+  const MS = String(NOW)
+  const PRETTY = JSON.stringify({ id: 'EVlegacy0001', object: 'event', type: 'message.received', data: { object: { body: 'Hi' } } }, null, 2)
+  const signLegacy = (key: Buffer, stamp: string, body: string) => createHmac('sha256', key).update(`${stamp}.${body}`).digest('base64')
+  const legacyHeaders = (stamp = MS, body = PRETTY, key = KEY) => ({ 'openphone-signature': `hmac;1;${stamp};${signLegacy(key, stamp, body)}` })
+
+  it('takes a delivery signed over the raw body, keyed with or without whsec_, its event id as the delivery id', async () => {
+    expect(await verifySignature(legacyHeaders(), PRETTY, PLAIN_SECRET, NOW)).toEqual({ ok: true, webhookId: 'EVlegacy0001', timestamp: Math.floor(NOW / 1000) })
+    expect((await verifySignature(legacyHeaders(), PRETTY, `whsec_${PLAIN_SECRET}`, NOW)).ok).toBe(true)
+    expect((await verifySignature(new Headers(legacyHeaders()), new TextEncoder().encode(PRETTY), PLAIN_SECRET, NOW)).ok).toBe(true)
+  })
+
+  it('takes one signed over the JSON written out with no spaces, as Quo’s Node sample signs it', async () => {
+    const compact = JSON.stringify(JSON.parse(PRETTY))
+    expect((await verifySignature({ 'openphone-signature': `hmac;1;${MS};${signLegacy(KEY, MS, compact)}` }, PRETTY, PLAIN_SECRET, NOW)).ok).toBe(true)
+  })
+
+  it('takes any matching entry of several, and seconds as well as milliseconds', async () => {
+    const good = signLegacy(KEY, MS, PRETTY)
+    const old = signLegacy(keyOf('the key before'), MS, PRETTY)
+    expect((await verifySignature({ 'openphone-signature': `hmac;1;${MS};${old},hmac;1;${MS};${good}` }, PRETTY, PLAIN_SECRET, NOW)).ok).toBe(true)
+    expect((await verifySignature(legacyHeaders(STAMP), PRETTY, PLAIN_SECRET, NOW)).ok).toBe(true)
+  })
+
+  it('refuses another key, a changed body, another scheme or version, and a delivery more than five minutes away', async () => {
+    expect(await verifySignature(legacyHeaders(MS, PRETTY, keyOf('another made-up key')), PRETTY, PLAIN_SECRET, NOW)).toEqual({ ok: false, why: 'bad signature' })
+    expect(await verifySignature(legacyHeaders(), PRETTY.replace('Hi', 'Ho'), PLAIN_SECRET, NOW)).toEqual({ ok: false, why: 'bad signature' })
+    const sig = signLegacy(KEY, MS, PRETTY)
+    expect(await verifySignature({ 'openphone-signature': `hmac;2;${MS};${sig}` }, PRETTY, PLAIN_SECRET, NOW)).toEqual({ ok: false, why: 'missing headers' })
+    expect(await verifySignature({ 'openphone-signature': `sha;1;${MS};${sig}` }, PRETTY, PLAIN_SECRET, NOW)).toEqual({ ok: false, why: 'missing headers' })
+    expect(await verifySignature({ 'openphone-signature': `hmac;1;soon;${sig}` }, PRETTY, PLAIN_SECRET, NOW)).toEqual({ ok: false, why: 'bad timestamp' })
+    expect(await verifySignature(legacyHeaders(String(NOW - 301_000)), PRETTY, PLAIN_SECRET, NOW)).toEqual({ ok: false, why: 'too old' })
+    expect(await verifySignature(legacyHeaders(String(NOW + 301_000)), PRETTY, PLAIN_SECRET, NOW)).toEqual({ ok: false, why: 'too new' })
+  })
+
+  it('reads the newer headers first when a delivery carries both', async () => {
+    expect(await verifySignature({ ...headersFor(), ...legacyHeaders(MS, BODY) }, BODY, SECRET, NOW)).toEqual({ ok: true, webhookId: 'msg_made_up_0001', timestamp: Number(STAMP) })
+  })
+
+  it('falls back to the timestamp for the delivery id when the body has no event id', async () => {
+    const body = JSON.stringify({ type: 'message.received' })
+    expect(await verifySignature(legacyHeaders(MS, body), body, PLAIN_SECRET, NOW)).toEqual({ ok: true, webhookId: `legacy:${MS}`, timestamp: Math.floor(NOW / 1000) })
+  })
+})
+
 describe('a delivery seen before', () => {
   const HOUR = 3_600_000
 
