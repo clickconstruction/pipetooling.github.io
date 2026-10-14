@@ -75,6 +75,98 @@ BEGIN
 END $$;
 ALTER TABLE public.bids_count_rows VALIDATE CONSTRAINT bids_count_rows_source_shares_object;
 
+-- 3) A new version of the bid clones its count rows (20261002130000's body, unchanged but for the new column): the
+--    clone carries each row's shares, since a version lives on the same bid and the shares name the bid's own projects.
+--    A duplicate to another service type (duplicate_bid_to_service_type) leaves source_shares behind on purpose: it is a
+--    new bid, and the shares would name projects that bid does not have (src/lib/bids/bidCopySql.test.ts lists it).
+CREATE OR REPLACE FUNCTION public.clone_count_rows_to_bid_version(
+  p_bid_id uuid,
+  p_source_bid_version_id uuid,   -- NULL = the unsplit rows
+  p_target_bid_version_id uuid
+) RETURNS integer LANGUAGE plpgsql AS $$
+DECLARE
+  v_map jsonb := '{}'::jsonb;
+  r record;
+  v_new_id uuid;
+  v_n integer := 0;
+BEGIN
+  IF p_bid_id IS NULL OR p_target_bid_version_id IS NULL THEN
+    RAISE EXCEPTION 'clone_count_rows_to_bid_version: bid and target version required';
+  END IF;
+
+  FOR r IN
+    SELECT * FROM public.bids_count_rows
+     WHERE bid_id = p_bid_id AND bid_version_id IS NOT DISTINCT FROM p_source_bid_version_id
+     ORDER BY sequence_order, id
+  LOOP
+    INSERT INTO public.bids_count_rows (bid_id, bid_version_id, fixture, count, group_tag, page, sequence_order, unit, source_shares)
+    VALUES (p_bid_id, p_target_bid_version_id, r.fixture, r.count, r.group_tag, r.page, r.sequence_order, r.unit, r.source_shares)
+    RETURNING id INTO v_new_id;
+    v_map := v_map || jsonb_build_object(r.id::text, v_new_id::text);
+    v_n := v_n + 1;
+  END LOOP;
+
+  IF v_n = 0 THEN RETURN 0; END IF;
+
+  -- Version-scoped children: takeoff mappings + rough-in lines of the TARGET version.
+  UPDATE public.bids_takeoff_template_mappings m
+     SET count_row_id = (v_map->>m.count_row_id::text)::uuid
+   WHERE m.bid_id = p_bid_id AND m.bid_version_id = p_target_bid_version_id
+     AND v_map ? m.count_row_id::text;
+  UPDATE public.bids_takeoff_rough_part_lines l
+     SET count_row_id = (v_map->>l.count_row_id::text)::uuid
+   WHERE l.bid_id = p_bid_id AND l.bid_version_id = p_target_bid_version_id
+     AND v_map ? l.count_row_id::text;
+
+  -- Pricing-scoped children: the TARGET version's price scenarios' custom prices / hides / assignments.
+  UPDATE public.bid_count_row_custom_prices c
+     SET count_row_id = (v_map->>c.count_row_id::text)::uuid
+   WHERE c.bid_id = p_bid_id
+     AND c.price_book_version_id IN (SELECT id FROM public.price_book_versions WHERE bid_id = p_bid_id AND bid_version_id = p_target_bid_version_id)
+     AND v_map ? c.count_row_id::text;
+  UPDATE public.bid_count_row_submission_hides h
+     SET count_row_id = (v_map->>h.count_row_id::text)::uuid
+   WHERE h.bid_id = p_bid_id
+     AND h.price_book_version_id IN (SELECT id FROM public.price_book_versions WHERE bid_id = p_bid_id AND bid_version_id = p_target_bid_version_id)
+     AND v_map ? h.count_row_id::text;
+  UPDATE public.bid_pricing_assignments a
+     SET count_row_id = (v_map->>a.count_row_id::text)::uuid
+   WHERE a.bid_id = p_bid_id
+     AND a.price_book_version_id IN (SELECT id FROM public.price_book_versions WHERE bid_id = p_bid_id AND bid_version_id = p_target_bid_version_id)
+     AND v_map ? a.count_row_id::text;
+
+  -- Stage boxes on a fixture (v2.4388): each clone carries its source row's box. A box on a line,
+  -- or on a part inside a bundle line, follows its line in create_bid_version, which holds the
+  -- line map.
+  INSERT INTO public.bid_takeoff_stage_splits (bid_id, count_row_id, line_id, part_id, rough_in, top_out, trim_set, source)
+  SELECT p_bid_id, m.value::uuid, NULL, NULL, s.rough_in, s.top_out, s.trim_set, s.source
+    FROM jsonb_each_text(v_map) m
+    JOIN public.bid_takeoff_stage_splits s ON s.count_row_id = m.key::uuid AND s.line_id IS NULL;
+
+  -- Quoted fixture costs (v2.4413): each clone carries its source row's cost. A package (lot) gets
+  -- an id of its own in the copy, because the app reverts a package by lot_group_id: with a shared
+  -- id, reverting it in one version would take it from the other. The table's own policy lets
+  -- fewer roles write than may make a version (no primary, no superintendent), so the copy is made
+  -- only for a caller who may write a quoted cost; for the others the version is made without.
+  IF public.can_write_bid_custom_costs() THEN
+    WITH lots AS MATERIALIZED (
+      SELECT d.lot_group_id AS old_id, gen_random_uuid() AS new_id
+        FROM (SELECT DISTINCT c.lot_group_id
+                FROM jsonb_each_text(v_map) m
+                JOIN public.bid_count_row_custom_costs c ON c.count_row_id = m.key::uuid
+               WHERE c.lot_group_id IS NOT NULL) d
+    )
+    INSERT INTO public.bid_count_row_custom_costs (bid_id, count_row_id, unit_materials_cents, source, quote_line_id, lot_group_id, house_name, applied_by, applied_at)
+    SELECT p_bid_id, m.value::uuid, c.unit_materials_cents, c.source, c.quote_line_id, lots.new_id, c.house_name, c.applied_by, c.applied_at
+      FROM jsonb_each_text(v_map) m
+      JOIN public.bid_count_row_custom_costs c ON c.count_row_id = m.key::uuid
+      LEFT JOIN lots ON lots.old_id = c.lot_group_id;
+  END IF;
+
+  RETURN v_n;
+END;
+$$;
+
 SELECT public.apply_read_only_write_blocks();
 SELECT public.apply_read_only_stmt_blocks();
 SELECT public.apply_digital_twin_write_blocks();
