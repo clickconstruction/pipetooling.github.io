@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-13
+last_updated: 2026-10-14
 ---
 
 ## Overview
@@ -427,6 +427,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | 557–576 | `lien-suit-year` | `lienWatchEnabled`, `lienWatch.suitDue` | red when run out or ≤ 30 days, else amber |
 | 578–591 | `lien-serve-copy` | `lienWatchEnabled`, `lienWatch.serveDue` | red |
 | 593–606 | `lien-tracking-owed` | `lienWatchEnabled`, `lienWatch.trackingOwed` | amber |
+| v2.5521 | `docsmit-credit` | `docsmitCreditEnabled`, `docsmitCredit` (`useDocsmitSettings().credit` → `docsmitCreditLine`: the balance `mail-poll` writes to `app_settings` `docsmit_credit_balance` / `docsmit_credit_as_of` against the warn line; the lien-eligible roles; opens the Lien desk on Ready to send) | amber under the line, red at or under zero |
 | v2.4702 | `owner-records-signed` | `ownerRecordsSignedEnabled`, `ownerRecordsSigned.count` (`useOwnerRecordsSignedNudge` → `ownerRecordsSignedWaiting`) | amber |
 | 610–659 | `lien-notice-draft` (two shapes) or `lien-window-missed` | `lienDeskEnabled`, `lienDesk.office` / `.missed` | next deadline: red ≤ 7 days, amber ≤ 14, else gray · letter two: red when any is past day 14, else amber · missed: gray |
 | 662–679 | `lien-notice-batch` | `lienDeskEnabled`, `lienDeskLeader`, `lienDesk.leader.batches` | red ≤ 7 days, else blue |

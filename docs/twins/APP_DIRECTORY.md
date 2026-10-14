@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-13
+last_updated: 2026-10-14
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -30,6 +30,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 **Jobs / operations**
 - Job pipeline by stage (Waiting → Working → RTB → Billed → Collections) → `/jobs?tab=stages`
+- Open jobs with no crew on site in 21+ days, reviewed one card at a time (the Follow-ups deck's Idle lens) → `/jobs?tab=stages&followups=idle`
 - Bill a customer for a finished job → `/jobs?tab=billing` (or the Bill Customer button on an RTB job in Stages)
 - Field/tech job reports → `/jobs?tab=reports`
 - Crew profitability / labor rollups → `/jobs?tab=teams-summary`, `/jobs?tab=combined-labor`

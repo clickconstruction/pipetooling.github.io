@@ -5,13 +5,13 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 160 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-13
+last_updated: 2026-10-14
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 152
+total_functions: 160
 
 key_sections:
   - name: "Functions"
