@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-10-13
+last_updated: 2026-10-14
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -90,7 +90,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 One real user per imitable role (every role but dev), flagged `users.is_sample` (v2.3606):
 `sample-<role>@samples.pipetooling.local`, no phone, no pay config, no schedule. Hidden from
 every roster, picker, Person rail, review deck and notification fan-out exactly as digital twins
-are (`isActiveRosterPerson` / `activeUsersQuery` drop the flag; the email dispatch functions
+are (`isActiveRosterPerson` / `activeUsersQuery` drop the flag, and since v2.5515 the thread's **Hand it to** list and the New lane card's team read add the same two predicates; the email dispatch functions
 filter `is_sample = false`; the pay lists take the `roster_people` view's verdict — see
 *The roster view* below); their home is Settings → System → *Digital twins & samples* (v2.3705;
 `SampleAccountsCard`, `lib/sampleAccounts.ts`), where a dev makes the missing ones (`create-user`
@@ -260,6 +260,10 @@ The tech's send (v2.5499, `20261014180000_messages_tech_send.sql`): `quo-send` t
 
 - **`bid_takeoff_stage_splits`** (one stage split per scope: a fixture, a part line / bundle line, or a part inside a bundle — three weights + `source`) and **`bids.include_materials_by_stage`** / **`bids.sov_material_factor`**. RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run. The company factor is the `app_settings` row `bid_sov_material_factor_v1` (dev writes from Settings; all authenticated read).
 - **`bid_sov_stage_overrides`** (a typed labor figure and a note per stage) and **`bid_sov_lines`** (the estimator's own schedule lines), with **`bids.sov_shape`** / **`sov_split_labor_material`** / **`sov_letter_total_only`** (v2.4075, `20260928191629_bid_sov_labor_material.sql`): the same RLS as `bid_takeoff_stage_splits` above — the bid-pricing role list **and** `can_access_bid_for_pricing(bid_id)`; both read-only appliers and the twin write fence run. The company labor share is `app_settings` `bid_sov_labor_share_pct_v1` (dev writes from Settings).
+
+### Count sources — two CountTooling counts on one bid (v2.5517, `20261014210000_bid_count_sources.sql`)
+
+- **`bid_count_sources`** (one row per CountTooling project on a bid: link, token, project name, scope, importer, first and last import) and **`bids_count_rows.source_shares`** (each project's share of a row's count, null = no project). All four policies on the table are `can_access_bid_for_pricing(bid_id)`, the count rows' own door; the SQL bed `count-sources` holds the writes, the refusals and the three readers. A duplicate to another service type carries the shares across. PR 1 of 3; the review modal's combine face and the tab's writes are v2.5519 (PR 2), Edit Bid's project list PR 3.
 
 ### Quoted fixture costs on a copy (v2.4413, `20261002130000_bid_copies_carry_costs_prices_one_version.sql`)
 
@@ -962,6 +966,7 @@ The route guard above bounces silently by design for sub-like roles (J24-F8). Ev
 2. **Say it once, then land.** `useRoleGate(role, userId).bounce(surface, from)` toasts `"<subject> is for <audience> — you're on <landing>."` (e.g. *Crew P&L is for the owner — you're on Reports.*), records `ui_nav_clicks` `control = 'role_gate_redirect'` / `target = <refused link>`, and hands back the decision; the caller applies its own navigation. `quiet` (subcontractor, helpers) lands with no toast — keep it that way.
 3. **Refusals from the server read as refusals.** A gated report that still reaches an RPC the role can't call renders `roleGateRefusalMessage(error)` → *You don't have access to this report.* for `42501` or a `P0001 … not allowed`, never the PostgREST message.
 4. **Gate after access resolves.** Flags loaded async (`usePeopleAccess().accessResolved`) start false — a URL gate that reads them on mount bounces a dev's cold deep link. Set the tab, let the flag-gated render site wait, gate once resolved.
+5. **A page waits for the role before it decides** (v2.5507, `pageGate` in `roleGate.ts`). `useAuth`'s `loading` can end before the users row lands (its 4 s watchdog lets a slow role read go), and a null role read as a refusal bounced every hard load of Messages to the Dashboard: a typed link, the reply push's link, the bubble's new tab. `pageGate` waits while auth loads and while a signed-in person's role has not landed, opens for a role the page lets in and sends any other away; Messages shows *Loading…* while it waits, GC projects and Bridge render nothing, and Map has waited on a null role since v2.833.
 
 Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superintendent), Jobs `?stagesMoney=1` + the Weekly money movement modal's load error, People Payroll / Employment / Offsets / Hours, Bids office tabs (superintendent). The dead `primary` branch in the Accounts Receivable gate is gone (primaries never reach the Pipeline board). Imitate lands on `roleHomePath(role)`.
 
