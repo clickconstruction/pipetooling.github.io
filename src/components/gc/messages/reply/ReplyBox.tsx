@@ -31,7 +31,7 @@ import {
 } from '../../../../lib/messages/compose'
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
-import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
+import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
 import { supabaseAttachIo, type AttachIo } from '../../../../lib/messages/attachIo'
 import { addDraftFile, chipHover } from '../../../../lib/documents/outgoing'
 import { sizeWords } from '../../../../lib/documents/jobFiles'
@@ -51,9 +51,13 @@ import { CUSTOMER_BAR, CUSTOMER_LOOK, KIND_LOOK, RING } from './kindLook'
 import { QuickRepliesStrip } from './QuickRepliesStrip'
 import { SendWindow } from './SendWindow'
 import { useQuickReplies } from './useQuickReplies'
+import { useTextsOn } from './useTextsOn'
 
 /** The flows' steps for each kind of person, to name a line's step. The seed until the flows table is read here. */
 const STEPS = stepsByKind(SEED_FLOWS)
+
+/** The Text tab's words while Send texts is off, in the send window's amber. */
+const WAIT_LOOK = { margin: 0, fontSize: '0.85rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.45rem 0.6rem' } as const
 
 /** The strip's fold is kept on this computer, as the prototype kept it. */
 const QR_OPEN_KEY = 'msgQrOpen'
@@ -89,6 +93,9 @@ const keepOpen = (open: boolean) => {
  * yours, the job's name in a job's window or the tied job's). A blank it cannot fill stays in the words, and a text or an email waits until the
  * person fills it (`sendWaits`). A line goes in the language the person reads (`customerLang`), which stays English
  * until the owner's one switch for Spanish, `PORTAL_SPANISH_ON`, is on.
+ *
+ * Cut 5's switch: while Send texts reads off (`useTextsOn`), the Text tab draws `TEXTS_WAIT` in place of the strip, the
+ * box and the send row, so nobody writes a text the server would refuse. The kinds row stays, to choose an email.
  */
 export function ReplyBox({
   contact,
@@ -157,6 +164,9 @@ export function ReplyBox({
   const [settleProblem, setSettleProblem] = useState<string | null>(null)
   // While a settle is under way the box is a team note; the kind chosen comes back after it, untouched.
   const shown: ReplyKind = settling.active ? 'note' : kind
+  // Until the switch is read the box draws as before; the send window holds the text until it reads on.
+  const textsOn = useTextsOn()
+  const textWaits = shown === 'text' && textsOn === false
 
   const jobFilter = open?.jobFilter ?? null
   const jobKey = job ? job.key : replyJob(tie, jobFilter, contact.defaultJobId)
@@ -312,7 +322,13 @@ export function ReplyBox({
         </div>
       )}
 
-      {goesOut(shown) && (
+      {textWaits && (
+        <p data-reply-texts-wait role="status" style={WAIT_LOOK}>
+          {TEXTS_WAIT}
+        </p>
+      )}
+
+      {goesOut(shown) && !textWaits && (
         <QuickRepliesStrip
           kind={contact.kind}
           lines={quick.lines}
@@ -348,43 +364,45 @@ export function ReplyBox({
         />
       )}
 
-      <div style={{ position: 'relative' }}>
-        <textarea
-          aria-label={shown === 'note' ? 'A note for the team' : `Write to ${contact.name}`}
-          value={body}
-          onChange={(e) => {
-            setBody(e.target.value)
-            if (settleProblem) setSettleProblem(null)
-          }}
-          placeholder={settling.active ? OWED_DONE_PLACEHOLDER : boxPlaceholder(shown, contact.name)}
-          disabled={Boolean(blocked) || busy}
-          rows={3}
-          data-reply-look={orange ? 'customer' : shown}
-          style={{
-            ...(orange ? CUSTOMER_LOOK : KIND_LOOK[shown]),
-            width: '100%',
-            minHeight: 64,
-            resize: 'vertical',
-            display: 'block',
-            borderWidth: 1, borderStyle: 'solid',
-            ...(orange ? CUSTOMER_BAR : null),
-            borderRadius: 8,
-            padding: '0.5rem 0.6rem',
-            font: 'inherit',
-            fontSize: '0.9rem',
-            boxSizing: 'border-box',
-          }}
-        />
-        {goesOut(shown) && !body && (
-          <span
-            data-reply-from
-            aria-hidden="true"
-            style={{ position: 'absolute', right: '0.6rem', bottom: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', pointerEvents: 'none' }}
-          >
-            {fromLine(shown, company).join(' · ')}
-          </span>
-        )}
-      </div>
+      {!textWaits && (
+        <div style={{ position: 'relative' }}>
+          <textarea
+            aria-label={shown === 'note' ? 'A note for the team' : `Write to ${contact.name}`}
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value)
+              if (settleProblem) setSettleProblem(null)
+            }}
+            placeholder={settling.active ? OWED_DONE_PLACEHOLDER : boxPlaceholder(shown, contact.name)}
+            disabled={Boolean(blocked) || busy}
+            rows={3}
+            data-reply-look={orange ? 'customer' : shown}
+            style={{
+              ...(orange ? CUSTOMER_LOOK : KIND_LOOK[shown]),
+              width: '100%',
+              minHeight: 64,
+              resize: 'vertical',
+              display: 'block',
+              borderWidth: 1, borderStyle: 'solid',
+              ...(orange ? CUSTOMER_BAR : null),
+              borderRadius: 8,
+              padding: '0.5rem 0.6rem',
+              font: 'inherit',
+              fontSize: '0.9rem',
+              boxSizing: 'border-box',
+            }}
+          />
+          {goesOut(shown) && !body && (
+            <span
+              data-reply-from
+              aria-hidden="true"
+              style={{ position: 'absolute', right: '0.6rem', bottom: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', pointerEvents: 'none' }}
+            >
+              {fromLine(shown, company).join(' · ')}
+            </span>
+          )}
+        </div>
+      )}
 
       {settleProblem && (
         <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>
@@ -392,13 +410,13 @@ export function ReplyBox({
         </div>
       )}
 
-      {count && count.parts.length > 0 && (
+      {!textWaits && count && count.parts.length > 0 && (
         <div data-reply-count style={{ fontSize: '0.75rem', color: count.long ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
           {count.parts.join(' · ')}
         </div>
       )}
 
-      {goesOut(shown) && !settling.active && files.length > 0 && (
+      {goesOut(shown) && !textWaits && !settling.active && files.length > 0 && (
         <div data-reply-files style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {files.map((f) => (
             <span
@@ -424,64 +442,66 @@ export function ReplyBox({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        {job ? (
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
-            Tie to: <span data-reply-tie>{job.name}</span>
-          </span>
-        ) : (
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
-            Tie to:{' '}
+      {!textWaits && (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {job ? (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
+              Tie to: <span data-reply-tie>{job.name}</span>
+            </span>
+          ) : (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
+              Tie to:{' '}
+              <button
+                type="button"
+                data-reply-tie
+                title={`${TIE_TIP.title}. ${TIE_TIP.does} ${TIE_TIP.changes}`}
+                onClick={() => setPicking(true)}
+                style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.15rem 0.5rem', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                {tieLabel.job}
+                {tieLabel.aside && <span style={{ color: 'var(--text-muted)' }}> · {tieLabel.aside}</span>} ▾
+              </button>
+            </span>
+          )}
+          <span style={{ flex: 1 }} />
+          {shown === 'note' && !settling.active && !backOpen && !back && (
             <button
               type="button"
-              data-reply-tie
-              title={`${TIE_TIP.title}. ${TIE_TIP.does} ${TIE_TIP.changes}`}
-              onClick={() => setPicking(true)}
-              style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.15rem 0.5rem', cursor: 'pointer', fontSize: '0.8rem' }}
+              data-reply-back
+              title={NOTE_BACK_TIP}
+              onClick={() => setBackOpen(true)}
+              style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8rem' }}
             >
-              {tieLabel.job}
-              {tieLabel.aside && <span style={{ color: 'var(--text-muted)' }}> · {tieLabel.aside}</span>} ▾
+              {NOTE_BACK_PRESS}
             </button>
-          </span>
-        )}
-        <span style={{ flex: 1 }} />
-        {shown === 'note' && !settling.active && !backOpen && !back && (
-          <button
-            type="button"
-            data-reply-back
-            title={NOTE_BACK_TIP}
-            onClick={() => setBackOpen(true)}
-            style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8rem' }}
+          )}
+          {blocked && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{blocked}</span>}
+          {!blocked && waits && (
+            <span data-reply-waits style={{ fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
+              {waits}
+            </span>
+          )}
+          {goesOut(shown) && !settling.active && (
+            <Btn onClick={() => setAttaching(true)} title="Adds a file from the job, this computer or a photo. The send window shows how each goes.">
+              Attach
+            </Btn>
+          )}
+          <Btn
+            kind="primary"
+            onClick={() => void press()}
+            disabled={Boolean(blocked) || Boolean(waits) || busy}
+            title={
+              settling.active
+                ? 'Marks what we owed done and keeps your words in the thread. The row closes as any note does.'
+                : shown === 'note'
+                  ? 'Adds the note to the thread and closes the row. Only the team sees it.'
+                  : 'Shows it the way they will see it, before it goes. Nothing sends until you press Send there.'
+            }
           >
-            {NOTE_BACK_PRESS}
-          </button>
-        )}
-        {blocked && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{blocked}</span>}
-        {!blocked && waits && (
-          <span data-reply-waits style={{ fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
-            {waits}
-          </span>
-        )}
-        {goesOut(shown) && !settling.active && (
-          <Btn onClick={() => setAttaching(true)} title="Adds a file from the job, this computer or a photo. The send window shows how each goes.">
-            Attach
+            {sendLabel}
           </Btn>
-        )}
-        <Btn
-          kind="primary"
-          onClick={() => void press()}
-          disabled={Boolean(blocked) || Boolean(waits) || busy}
-          title={
-            settling.active
-              ? 'Marks what we owed done and keeps your words in the thread. The row closes as any note does.'
-              : shown === 'note'
-                ? 'Adds the note to the thread and closes the row. Only the team sees it.'
-                : 'Shows it the way they will see it, before it goes. Nothing sends until you press Send there.'
-          }
-        >
-          {sendLabel}
-        </Btn>
-      </div>
+        </div>
+      )}
 
       {picking && (
         <JobPickerWindow

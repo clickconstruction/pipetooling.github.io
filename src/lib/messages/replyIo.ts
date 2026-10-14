@@ -22,8 +22,8 @@ import type { DayKept } from './owed'
 import { jobRefOf } from './load'
 import { tieOf } from './replyBox'
 
-/** The words a text says while the phone is not switched on. */
-export const TEXTS_WAIT = 'Texts wait until the phone is switched on. Send this as an email, or come back to it then.'
+/** The words a text says while Send texts is off: the reply box's Text tab draws them in place of the box, and the send window under a text. */
+export const TEXTS_WAIT = 'Texts wait until Send texts is switched on in Settings → Phone and texts. Send this as an email, or come back to it then.'
 
 /**
  * Whether the sends go from the two boxes (R6): `messages-email` sets the box's address as its Reply-To and `quo-send`

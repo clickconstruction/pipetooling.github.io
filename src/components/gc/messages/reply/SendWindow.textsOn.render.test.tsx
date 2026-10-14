@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
  * Messages, cut 5: the send window over the texts switch (Settings → Phone and texts → Send texts). While the switch
- * reads off a text waits and its Send stays off; once it reads on the text goes through the reply io.
+ * reads off the box offers no text (`ReplyBox.textsOn`), so an email's window moved to Text says the text waits and its
+ * Send stays off; once it reads on the text goes through the reply io.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -26,7 +27,7 @@ function fakeIo(): ReplyIo {
   }
 }
 
-function openTextWindow() {
+function openTextWindow(from: 'text' | 'email' = 'text') {
   const view = spineMessagesView()
   const contact = view.contacts.find((c) => c.id === 'c-greg')
   if (!contact) throw new Error('no c-greg in the demo')
@@ -49,17 +50,19 @@ function openTextWindow() {
     </MessagesRereadContext.Provider>,
   )
   const el = document.querySelector('[data-reply-box]') as HTMLElement
+  if (from === 'email') fireEvent.click(within(el).getByRole('radio', { name: 'Email' }))
   fireEvent.change(within(el).getByRole('textbox'), { target: { value: 'Checking on the number.' } })
-  fireEvent.click(within(el).getByRole('button', { name: 'Send text…' }))
+  fireEvent.click(within(el).getByRole('button', { name: from === 'email' ? 'Send email…' : 'Send text…' }))
   return { io }
 }
 
 describe('SendWindow over the texts switch (Messages, cut 5)', () => {
   it('holds a text while the switch reads off', async () => {
     switchRead.on = false
-    const { io } = openTextWindow()
+    const { io } = openTextWindow('email')
     const win = await screen.findByRole('dialog', { name: 'Before it goes, this is what they see' })
-    expect(win.querySelector('[data-send-waits]')).not.toBeNull()
+    fireEvent.click(within(win).getByRole('tab', { name: 'Text' }))
+    expect(win.querySelector('[data-send-waits]')?.textContent).toBe('Texts wait until Send texts is switched on in Settings → Phone and texts. Send this as an email, or come back to it then.')
     expect((within(win).getByRole('button', { name: 'Send as text' }) as HTMLButtonElement).disabled).toBe(true)
     expect(io.sendText).not.toHaveBeenCalled()
   })

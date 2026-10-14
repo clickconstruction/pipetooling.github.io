@@ -3,7 +3,7 @@
  * **Email** pills of the panel's kinds row, `JobThreadNotesPanel`'s `customerBox`). It opens the customer's own thread
  * (`contact_for_customer`, made when there is none) and draws cut 3's reply box (`ReplyBox`) tied to the job, offering
  * only the kind the row chose, in the customer's orange. Everything after is the box's: the quick replies, the count,
- * the send window, `messages-email` for an email, and the text's wait until the phone is switched on. A send asks the
+ * the send window, `messages-email` for an email, and the text's wait while Send texts is off. A send asks the
  * job's window to read its activity again (`onSent`).
  */
 import { useEffect, useState } from 'react'

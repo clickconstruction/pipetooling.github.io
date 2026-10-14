@@ -11,6 +11,9 @@ import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { ReplyBox } from './ReplyBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
+
 // The step a person is on is cut 4's read (R4). This strip's smokes hold it at nothing on, so Find a reply's Where line
 // is said at once and no read waits on the suite's load.
 vi.mock('../../../../hooks/useFlowNow', () => ({ useFlowNow: () => null, openFlowStep: vi.fn() }))

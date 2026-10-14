@@ -48,7 +48,7 @@ const warn = { fontSize: '0.8rem', color: 'var(--text-amber-800)', background: '
  * message the way they will see it: an email as their inbox opens it, under our letterhead (the email `messages-email`
  * sends, built by the same `buildMessagesEmail`), or a text on their phone under the texts already there, with the
  * opt-out line as the app's own bubble when a rule puts it on. The subject can be changed for this one email. Email and
- * Text switch here too. Nothing goes until *Send as …*; until the phone is switched on, a text says it waits.
+ * Text switch here too. Nothing goes until *Send as …*; while Send texts is off, a text says it waits.
  */
 export function SendWindow({
   contact,

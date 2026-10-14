@@ -11,6 +11,9 @@ import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { ReplyBox } from './ReplyBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
+
 /**
  * R3: the strip in the language the person reads. Greg, the demo's trade partner, is kept here as reading Spanish, with
  * the residential prototype's line in both languages and one in English only. The owner's switch for Spanish
