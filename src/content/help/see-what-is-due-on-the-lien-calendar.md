@@ -2,7 +2,7 @@
 title: see what is due on the lien calendar
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien calendar, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search
+keywords: lien calendar, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search, hover, card, mark
 ---
 The Deadlines tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
 
@@ -51,6 +51,14 @@ Type in the search box at the left of that row. A job number, a name, a customer
 A property with no kind is read as a house. Its lien date could be a month later. The bar of pills then shows a button like {{button:outline-amber|6 kinds not set ›}}. Press it to set each kind, biggest balance first.
 
 Office users on a computer can press it. Everyone else sees the count.
+
+## Read a mark
+
+Rest the pointer on any mark and a card opens under it. The card says what the mark is, its date and how many days away that is. It says the money owed on the job. It ends on a button for the next move, such as {{button:amber|Draft the notice ›}} or {{button:amber|Record the mailing ›}}.
+
+Marks that touch share one card, with a column for each mark in the same order. Rest on a GC row's flag to see every job behind its count. Each job shows its month and its money. The card's button acts on exactly those jobs. A card wider than the board scrolls sideways.
+
+Press Esc to close a card, or move the pointer away. Pressing a mark still does what it did before.
 
 ## Read the key
 
