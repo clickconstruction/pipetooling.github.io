@@ -202,19 +202,22 @@ export function lienMarkCard(m: LienCalendarMark, job: LienCalendarJob, todayYmd
           door: lienWindowDoor(),
           pct: m.pct,
         }
-      if (m.mailed)
+      if (m.mailed) {
+        // v2.5529: a date gone by is not something to record "by"; the record says when it went out.
+        const passed = m.ymd < todayYmd
         return {
           key: `mailed:${m.ymd}:${m.monthKey ?? ''}`,
           glyph: 'mailed',
           tone: 'amber',
           title: `In the mail · ${month}`,
-          when: dated('Record the number by', m.ymd, todayYmd),
-          whenTone: deadlineTone(todayYmd, m.ymd),
-          facts: [`${month}’s notice was printed from the desk and is on its way.`, 'Its certified number is not on record yet, so it is not on file.', moneyFact(job)],
+          when: dated(passed ? 'Its date was' : 'Record the number by', m.ymd, todayYmd),
+          whenTone: passed ? 'amber' : deadlineTone(todayYmd, m.ymd),
+          facts: [`${month}’s notice was printed from the desk and is on its way.`, passed ? 'Record its tracking number and the day it went out, and it is on file.' : 'Its certified number is not on record yet, so it is not on file.', moneyFact(job)],
           jobs: [],
           door: doors.record ? { kind: 'record', label: 'Record the mailing ›', jobIds: [job.jobId] } : lienWindowDoor(),
           pct: m.pct,
         }
+      }
       return {
         key: `notice:${m.ymd}:${m.monthKey ?? ''}`,
         glyph: 'notice',
@@ -364,9 +367,10 @@ export function lienGroupFlagCards(f: LienCalendarGroupFlag, group: Pick<LienCal
       glyph: 'mailed',
       tone: 'amber',
       title: `${mailed.length} in the mail`,
-      when: dated(mailed.length === 1 ? 'Record the number by' : 'Record the numbers by', f.ymd, todayYmd),
-      whenTone: deadlineTone(todayYmd, f.ymd),
-      facts: ['Printed from the desk and on the way. The certified numbers are not on record yet.'],
+      // v2.5529: a date gone by is not something to record "by".
+      when: dated(f.ymd < todayYmd ? 'Their date was' : mailed.length === 1 ? 'Record the number by' : 'Record the numbers by', f.ymd, todayYmd),
+      whenTone: f.ymd < todayYmd ? 'amber' : deadlineTone(todayYmd, f.ymd),
+      facts: [f.ymd < todayYmd ? 'Printed from the desk and on the way. Record the tracking numbers and the day they went out.' : 'Printed from the desk and on the way. The certified numbers are not on record yet.'],
       jobs: mailed,
       door: doors.record ? { kind: 'record', label: mailed.length === 1 ? 'Record the mailing ›' : `Record the ${mailed.length} mailings ›`, jobIds: mailed.map((j) => j.jobId) } : null,
       pct: f.pct,

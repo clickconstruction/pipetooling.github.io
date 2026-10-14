@@ -62,7 +62,7 @@ Press Esc to close a card, or move the pointer away. Pressing a mark still does 
 
 ## Read the key
 
-The key runs along the bottom of the Deadlines tab. Press a mark to read what it means. Press it again or press Esc to close it. Three marks tell a month's notice apart. A hollow flag is a notice still owed. An amber circle with an envelope is a notice printed and in the mail, its tracking number still owed. A green check is a notice on file. The envelope sits right after the check in the key. Press the envelope on a row to open Record the mailing.
+The key runs along the bottom of the Deadlines tab. Press a mark to read what it means. Press it again or press Esc to close it. Three marks tell a month's notice apart. A hollow flag is a notice still owed. An amber circle with an envelope is a notice printed and in the mail, its tracking number still owed. A green check is a notice on file. The envelope sits right after the check in the key. Press the envelope on a row to open Record the mailing. An envelope whose date has passed stays on the row. When no other notice is owed, the row then reads its lien date.
 
 ## On a phone
 

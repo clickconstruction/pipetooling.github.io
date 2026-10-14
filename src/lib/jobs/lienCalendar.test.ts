@@ -363,3 +363,18 @@ describe('the In the mail mark (v2.5522)', () => {
     expect(LIEN_CALENDAR_KEY.find((k) => k.glyph === 'mailed')).toMatchObject({ short: 'In the mail', door: 'record' })
   })
 })
+
+describe('a notice in the mail whose date has passed (v2.5529)', () => {
+  it('still draws the amber mark, but the job is not counted as a notice due', () => {
+    // Today Sep 28: June's residential date (Aug 17) has passed and its notice is in the mail; July is on file.
+    const j = job({ jobId: 'p', ...RMC, isSub: true, lastWorkYmd: '2026-07-12', r: { lastWorkYmd: '2026-07-12', workMonths: ['2026-06', '2026-07'], noticedMonths: ['2026-07'], mailedMonths: ['2026-06'] } })
+    expect(noticeFlagsFor(j).map((f) => [f.monthKey, f.done, f.mailed])).toEqual([
+      ['2026-06', false, true],
+      ['2026-07', true, false],
+    ])
+    expect(j.runway.state).not.toBe('notice_due')
+    const axis = lienCalendarAxis([j], TODAY)
+    expect(lienCalendarMarks(j, axis).filter((m) => m.kind === 'notice').map((m) => [m.mailed, m.tone])).toEqual([[true, 'amber'], [false, 'green']])
+    expect(buildLienCalendar([j], '').totals).toMatchObject({ noticesOwed: 0, inTheMail: 0 })
+  })
+})

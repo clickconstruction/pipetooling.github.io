@@ -72,6 +72,12 @@ describe('lienMarkCard', () => {
     expect(mailed.when).toBe('Record the number by Oct 15 · in 17 days')
     expect(mailed.door).toEqual({ kind: 'record', label: 'Record the mailing ›', jobIds: ['j'] })
     expect(lienMarkCard(mark(j, 'notice', (m) => m.kind === 'notice' && m.mailed), j, TODAY, NO_DOORS).door?.kind).toBe('lien_window')
+    // v2.5529: a mailed notice whose date has passed is not to record "by" a day gone by
+    const late = job({ ...RMC, r: { lastWorkYmd: '2026-07-20', workMonths: ['2026-07'], mailedMonths: ['2026-07'] } })
+    const lateCard = lienMarkCard(mark(late, 'notice', (m) => m.kind === 'notice' && m.mailed), late, TODAY, ALL)
+    expect(lateCard.when).toBe('Its date was Sep 15 · 13 days ago')
+    expect(lateCard.whenTone).toBe('amber')
+    expect(lateCard.facts[1]).toBe('Record its tracking number and the day it went out, and it is on file.')
   })
   it('the lien flag: file by with the days, counted from the work month on the property’s kind, the money', () => {
     const house = job({ openBalance: 5724 })
