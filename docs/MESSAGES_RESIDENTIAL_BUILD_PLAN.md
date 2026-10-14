@@ -248,7 +248,7 @@ The first useful day is the end of R5: a tech can text the customer from Job Mod
 
 ### Still open for the owner
 
-1. **When the Quo switch goes on**: Settings → Phone and texts → **Send texts** (`messages_texts_on_v1`, #5646, `20261014160000`), off as it ships. Every person's text and the app's reminders wait on it.
+1. **When the Quo switch goes on**: Settings → Phone and texts → **Send texts** (`messages_texts_on_v1`, #5646, `20261014160000`), off as it ships. Every person's text and the app's reminders wait on it. As of 2026-10-14, 4 PM CT: Quo's carrier registration cleared, texts in are live, the switch is still off; the order to turn things on is `MESSAGES_SWITCH_ON_HANDOFF_2026-10-14.md`.
 2. **team@ or office@** (R6): which address the team box is. office@ is on the letterhead, the lien reply-to and the website terms today, and whichever is chosen goes everywhere (§9). It is typed on **Inboxes** (#5668), not migrated. With it: whether office@ is a real Workspace user, since a group or an alias cannot be read through the delegation.
 3. **The second Quo number**, to buy for the bids box.
 4. **Counsel on the STOP scope**: whether a STOP to one of our numbers silences the other. The build keeps a STOP per box (`opted_out_by_box`).
