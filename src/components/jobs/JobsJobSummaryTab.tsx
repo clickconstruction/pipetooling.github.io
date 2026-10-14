@@ -597,10 +597,7 @@ export default function JobsJobSummaryTab({
               compare={view.compare}
               compareLabel={view.prefs.compareTo === 'lastYear' ? 'last year' : 'prior period'}
               showMoney={showTeamLaborAndProfit}
-              onOpenJob={(jobNumber) => {
-                setJobSummarySearch(jobNumber)
-                view.setPrefs({ view: 'jobs', status: 'all' })
-              }}
+              onOpenJobDetail={onOpenJobDetail}
             />
           ) : view.prefs.view === 'months' ? (
             <JobSummaryMonthsView
