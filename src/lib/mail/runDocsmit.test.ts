@@ -19,6 +19,9 @@ describe('a run that mails through Docsmit, the pure side (the Docsmit train, PR
     expect(c[0]!.party.organization).toBe('ATI Schertz Holdings LLC')
     expect(c[1]).toMatchObject({ recipient: 'original_contractor', jobId: null, itemIds: ['it1', 'it2'] })
     expect(c[2]!.problems).toEqual(['a city', 'a two-letter state', 'a ZIP or ZIP+4'])
+    // A combined notice (#35 PR 3) stands for every job at the property: each job's desk item is inside (v2.5532).
+    const combined = { ...envelopes[0]!, contents: [{ ...owner, notice: { ...owner.notice, parts: [{ itemId: 'it1' }, { itemId: 'it9' }] } }] }
+    expect(docsmitCandidates([combined])[0]!.itemIds).toEqual(['it1', 'it9'])
     expect(mailKindOf('retainage_53_057')).toBe('lien_retainage_53_057')
     expect(mailKindOf('affidavit_53_054')).toBe('other')
   })
@@ -40,6 +43,8 @@ describe('a run that mails through Docsmit, the pure side (the Docsmit train, PR
     expect(d.envelope).toEqual({ envelope: 'Flat', sheets: 7, problem: null })
     expect(d.piece).toEqual({ kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', recipient: 'owner', short_code: d.shortCode, name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Return Receipt', envelope: 'Flat', sheets: 7 })
     expect(docsmitPrepareDraft(c, 60, { receipt: 'electronic', shortCode: 'KX7M2QRT' }).envelope.problem).toMatch(/more than a flat holds/)
+    // With no filings yet, the piece names the desk items inside (v2.5532), so the desk knows the send before the record.
+    expect(docsmitPrepareDraft(docsmitCandidates(envelopes)[1]!, 4, { receipt: 'electronic', shortCode: 'KX7M2QRT' }).piece.source_ids).toEqual(['it1', 'it2'])
     const w = docsmitCoverWindow(c, 'https://clicktooling.com/pay/abc', 'KX7M2QRT', { png: 'data:png', svg: null })
     expect(w).toEqual({ lines: c.windowLines, qr: { png: 'data:png', svg: null, display: 'clicktooling.com/pay/abc?m=KX7M2QRT', caption: 'Scan to see and pay the bills this notice is about.' } })
     expect(docsmitCoverWindow(c, null, 'KX7M2QRT', { png: null, svg: null }).qr).toBeNull()

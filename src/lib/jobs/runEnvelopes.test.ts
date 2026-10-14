@@ -60,6 +60,25 @@ describe('runEnvelopes', () => {
   })
 })
 
+describe('a copy that already went through Docsmit keeps its own envelope (v2.5532)', () => {
+  const went = (n: RunNotice, key: 'owner' | 'original_contractor', pieceId: string): RunNotice => ({ ...n, recipients: n.recipients.map((r) => (r.key === key ? { ...r, via: 'docsmit', pieceId, pieceStatus: 'mailed' } : r)) })
+  it('a new copy to the same party gets an envelope of its own, so it is never taken for mailed', () => {
+    const a = went(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl, San Antonio, TX 78230' }), 'original_contractor', 'p2')
+    const b = notice('i2', 'j1017', '1017 · Dudley (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd, San Antonio, TX 78228' })
+    const envs = runEnvelopes([a, b])
+    const gc = envs.filter((e) => e.name === 'RMC- Dudley Mason')
+    expect(gc.map((e) => e.key)).toEqual(['docsmit:p2', envelopeKey('RMC- Dudley Mason', '100 Builder Way, San Antonio, TX 78230')])
+    expect(gc.map((e) => e.contents.map((c) => c.notice.itemId))).toEqual([['i1'], ['i2']])
+  })
+  it('the copies that went in one piece stay one envelope; a copy Docsmit refused rejoins its party', () => {
+    const a = went(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl' }), 'original_contractor', 'p2')
+    const b = went(notice('i2', 'j1017', '1017 · Dudley (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd' }), 'original_contractor', 'p2')
+    expect(runEnvelopes([a, b]).filter((e) => e.key === 'docsmit:p2').map((e) => e.contents.length)).toEqual([2])
+    const refused = { ...a, recipients: a.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, pieceStatus: 'failed' as const } : r)) }
+    expect(runEnvelopes([refused, notice('i2', 'j1017', '1017 · Dudley (Bandera)', { name: 'Bandera Holdings', address: '2200 Bandera Rd' })]).filter((e) => e.name === 'RMC- Dudley Mason')).toHaveLength(1)
+  })
+})
+
 describe('envelopeCourtesy (punch list #87 B)', () => {
   const ticked = (n: RunNotice): RunNotice => ({ ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: true } : r)) })
   it('offers the tick on the original contractor\u2019s envelope only, on while every copy inside is ticked, one email per notice', () => {

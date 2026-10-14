@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runDoorPill, runRecordWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runDoorPill, runRecordWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords, runRecipientWithPiece } from './lienDeskRun'
+import type { LienMailPieceRow } from '../mail/lienMailPieces'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
@@ -606,6 +607,44 @@ describe('print one item out of the run (v2.4853)', () => {
     expect(noticesFullyPrinted([n, m], new Set([runCopyKey('it1', 'owner'), runCopyKey('it1', 'original_contractor')])).map((x) => x.itemId)).toEqual(['it1'])
     expect(noticesFullyPrinted([n, m], new Set([runCopyKey('it2', 'owner')])).map((x) => x.itemId)).toEqual(['it2'])
     expect(noticesFullyPrinted([{ itemId: 'it3', recipients: [] } as unknown as typeof n], new Set())).toEqual([])
+    // A copy mailed through Docsmit is out too (v2.5532): the owner's by Docsmit and the GC's printed is the whole notice.
+    const viaDocsmit = { itemId: 'it1', recipients: [{ key: 'owner', via: 'docsmit', pieceId: 'p1', pieceStatus: 'sent' }, { key: 'original_contractor' }] } as unknown as typeof n
+    expect(noticesFullyPrinted([viaDocsmit], new Set())).toEqual([])
+    expect(noticesFullyPrinted([viaDocsmit], new Set([runCopyKey('it1', 'original_contractor')])).map((x) => x.itemId)).toEqual(['it1'])
+  })
+})
+
+describe('a copy already mailed through Docsmit is built as mailed (v2.5532)', () => {
+  const piece = (over: Partial<LienMailPieceRow> = {}): LienMailPieceRow => ({ id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'sent', usps_tracking: null, mailed_at: null, delivered_at: null, signed_by: null, delivery_status: null, source_ids: ['it1'], ...over })
+
+  it('the run reads the pieces behind each desk item: the copy that went carries its piece and number, the other stays on paper', () => {
+    // USPS took it at 9:30 pm Central on the 13th: the day the notice was given is the 13th.
+    const d = { ...data([approved]), mailPiecesByItem: { it1: [piece({ status: 'mailed', usps_tracking: ' 9407 1118 9922 0000 0000 01 ', mailed_at: '2026-10-14T02:30:00Z' })] } }
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(n.recipients[0]).toMatchObject({ key: 'owner', method: 'certified_mail', via: 'docsmit', pieceId: 'p1', pieceStatus: 'mailed', pieceProblem: null, tracking: '9407 1118 9922 0000 0000 01', pieceMailedOn: '2026-10-13' })
+    expect(n.recipients[1]!.via).toBeUndefined()
+    // So the next run's Docsmit door and packet skip it, and the record writes its piece.
+    expect(recipientMailed(n.recipients[0]!)).toBe(true)
+    expect(runRecordSplit([n]).mailed).toHaveLength(1)
+  })
+
+  it('a piece still prepared, one Docsmit refused, a plain copy or another recipient’s leaves the copy on paper', () => {
+    const owner = { key: 'owner' as const, label: 'Owner of record', name: 'Elbel Holdings LLC', address: '4 Example Way, Schertz, TX', email: '', method: 'certified_mail' as const, tracking: '' }
+    expect(runRecipientWithPiece(owner, undefined)).toBe(owner)
+    expect(runRecipientWithPiece(owner, [piece({ status: 'prepared' })])).toBe(owner)
+    expect(runRecipientWithPiece(owner, [piece({ status: 'failed' })])).toBe(owner)
+    expect(runRecipientWithPiece(owner, [piece({ recipient: 'original_contractor' })])).toBe(owner)
+    expect(runRecipientWithPiece(owner, [piece({ status: 'mailed', resend_of: 'p0', send_type: 'First Class' })])).toBe(owner)
+    // Sent but not yet accepted by USPS: on its way, with the number to come.
+    expect(runRecipientWithPiece(owner, [piece({ status: 'prepared', id: 'p0' }), piece()])).toMatchObject({ via: 'docsmit', pieceId: 'p1', pieceStatus: 'sent', tracking: '', pieceMailedOn: null })
+  })
+
+  it('the retainage run reads them the same way', () => {
+    const retItem = { ...approved, id: 'ret1', kind: 'retainage_53_057', months: [] } as LienDeskItemRow
+    const entry: LienRetainageEntry = { jobId: 'j650', retainageHeld: 1_760, contractEndedOn: '2026-09-03', contractEndedHow: 'complete', deadline: '2026-10-05', daysLeft: 21, severity: 'amber', noticed: false, inClaim: false, openBalance: 33_500, customerId: 'ati', gcCustomerId: 'loberg', propertyKind: 'non_residential', hasOwner: true, paymentBond: 'unknown', gates: [], ready: true, item: retItem, pile: 'ready' }
+    const d = { ...data([]), mailPiecesByItem: { ret1: [piece({ id: 'p7', kind: 'lien_retainage_53_057', recipient: 'original_contractor', source_ids: ['ret1'] })] } }
+    const n = buildLienRetainageRun([entry], d, null, () => 'Robert', TODAY)[0]!
+    expect(n.recipients.map((r) => r.pieceId ?? null)).toEqual([null, 'p7'])
   })
 })
 

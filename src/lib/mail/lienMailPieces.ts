@@ -94,6 +94,15 @@ export function mailPiecesNeedingYou(pieces: ReadonlyArray<LienMailPieceRow>): L
   return pieces.filter((p) => !p.resolved_at && (p.status === 'returned' || p.status === 'notice_left' || p.status === 'failed' || p.status === 'unknown'))
 }
 
+/**
+ * The piece one copy of a notice not yet recorded already went out as (v2.5532): behind the desk item (prepare puts the
+ * envelope's items in `source_ids`), to that recipient, and taken by Docsmit, so neither still prepared nor refused. A plain
+ * copy never stands for the certified one. Null when the copy has not gone.
+ */
+export function mailPieceForCopy(pieces: ReadonlyArray<LienMailPieceRow>, recipient: string): LienMailPieceRow | null {
+  return pieces.find((p) => p.recipient === recipient && p.status !== 'prepared' && p.status !== 'failed' && !mailPieceIsPlainCopy(p)) ?? null
+}
+
 /** A plain First Class copy sent through a door, riding beside the certified envelope it answers. */
 export function mailPieceIsPlainCopy(p: Pick<LienMailPieceRow, 'send_type' | 'resend_of'>): boolean {
   return !!p.resend_of && /^first class$/i.test((p.send_type ?? '').trim())

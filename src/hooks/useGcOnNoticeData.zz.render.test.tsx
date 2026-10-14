@@ -29,7 +29,7 @@ vi.mock('../lib/supabase', () => ({
     from: (table: string) => {
       tablesRead.push(table)
       const chain: Record<string, unknown> = {}
-      for (const m of ['select', 'is', 'order', 'in', 'eq']) chain[m] = () => chain
+      for (const m of ['select', 'is', 'order', 'in', 'eq', 'overlaps']) chain[m] = () => chain
       const data = table === 'customers' ? (TABLES.customers as object[]).map((c) => ({ ...c, name: gcName })) : TABLES[table] ?? []
       chain.then = (resolve: (v: unknown) => void) => resolve({ data, error: null })
       return chain
@@ -84,5 +84,17 @@ describe('useGcOnNoticeData · ZZ test jobs', () => {
     gcName = 'ZZ Test GC'
     const data = await read(false)
     expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+  })
+
+  it('the run’s desk carries the pieces an approved notice already went out as, by its desk item (v2.5532)', async () => {
+    TABLES.job_lien_desk_items = [{ id: 'dA', job_id: 'A', kind: 'notice_53_056', status: 'approved', months: ['2026-08'], fields: {}, created_at: '2026-10-01', voided_at: null }]
+    TABLES.mail_pieces = [{ id: 'p1', kind: 'lien_notice_53_056', recipient: 'original_contractor', status: 'sent', source_ids: ['dA'] }]
+    try {
+      const data = await read(false)
+      expect(data.desk.mailPiecesByItem).toEqual({ dA: TABLES.mail_pieces })
+    } finally {
+      delete TABLES.job_lien_desk_items
+      delete TABLES.mail_pieces
+    }
   })
 })

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 
-vi.mock('../supabase', () => ({ supabase: {} }))
+// The real door to the function, for the answers that come back with an error status (v2.5532).
+const fn = vi.hoisted(() => ({ invoke: null as null | (() => Promise<{ data: unknown; error: unknown }>) }))
+vi.mock('../supabase', () => ({ supabase: { functions: { invoke: () => fn.invoke!() } } }))
 vi.mock('../jobs/lienDeskRunIo', () => ({ buildRunNoticePdf: vi.fn() }))
 
 import { docsmitHeldWords, docsmitPayUrl, docsmitRecipientPatches, prepareDocsmitRun, sendDocsmitRun, type DocsmitIo } from './runDocsmitIo'
@@ -50,6 +53,15 @@ describe('a run that mails through Docsmit, the doing side (the Docsmit train, P
     expect(p).toMatchObject({ n: 1, who: 'ATI Schertz Holdings LLC', windowLines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'KX7M2QRT', pieceId: 'p1', price: 9.85, correction: 'ZIP+4: 78154-2011', sheets: 4, envelope: '#10', pdfUrl: 'blob:x', pdfPath: 'mail/KX7M2QRT.pdf' })
     expect(uploads).toEqual(['mail/KX7M2QRT.pdf'])
     expect(calls[0]).toMatchObject({ action: 'prepare', pdf_path: 'mail/KX7M2QRT.pdf', job_number: '650', piece: { kind: 'lien_notice_53_056', recipient: 'owner', short_code: 'KX7M2QRT', organization: 'ATI Schertz Holdings LLC', postal_code: '78154', envelope: '#10', sheets: 4 } })
+    // The piece carries its desk items from the start (v2.5532): a send is the desk's the moment it goes, recorded or not.
+    expect((calls[0]!.piece as { source_ids: string[] }).source_ids).toEqual(['it1'])
+  })
+
+  it('a combined notice’s piece carries every job’s desk item inside the envelope (v2.5532)', async () => {
+    const { io, calls } = fakeIo()
+    const combined = { ...envelopes[0]!, contents: [{ ...owner, notice: { ...owner.notice, parts: [{ itemId: 'it1', jobId: 'j650' }, { itemId: 'it9', jobId: 'j651' }] } }] } as unknown as RunEnvelope
+    await prepareDocsmitRun([combined], { receipt: 'electronic', invoiceDocsByJob: {}, payBlocksByJob: {}, payRowsByJob: {}, io })
+    expect((calls[0]!.piece as { source_ids: string[] }).source_ids).toEqual(['it1', 'it9'])
   })
 
   it('the owner’s copy gets the code only when the job has a payable bill; a refusal, a bucket failure or too many pages hold the envelope with the reason', async () => {
@@ -78,5 +90,18 @@ describe('a run that mails through Docsmit, the doing side (the Docsmit train, P
     expect(patches.get('e4')).toEqual({ via: 'docsmit', pieceId: 'p4', pieceStatus: 'prepared', pieceProblem: 'Not sent: the batch stopped before it.' })
     expect(docsmitHeldWords([{ key: 'e2', n: 2, label: 'x', why: 'The address needs a city.' }])).toBe('1 envelope stays on paper: envelope 2 (The address needs a city).')
     expect(docsmitHeldWords([])).toBe('')
+  })
+
+  it('an answer with an error status is still read (v2.5532): a send stopped short says which envelopes went, a refused address says why', async () => {
+    const stopped = { ok: false, sent: ['p1'], skipped: [], stopped_at: 'p2', shortfall: 7.25, error: 'Docsmit credit is short by $7.25, nothing more was sent.' }
+    fn.invoke = async () => ({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify(stopped), { status: 402 })) })
+    expect(await sendDocsmitRun(['p1', 'p2'])).toMatchObject({ ok: false, sent: ['p1'], stopped_at: 'p2', shortfall: 7.25 })
+    // A body that is not the function's answer leaves the plain refusal: nothing is taken as mailed.
+    fn.invoke = async () => ({ data: null, error: new FunctionsHttpError(new Response('<html>bad gateway</html>', { status: 502 })) })
+    expect(await sendDocsmitRun(['p1'])).toMatchObject({ ok: false, sent: [] })
+    const { invoke: _real, ...rest } = fakeIo().io
+    fn.invoke = async () => ({ data: null, error: new FunctionsHttpError(new Response(JSON.stringify({ error: 'Docsmit says this address will not mail.', correction: 'No such street number', non_mailable: true }), { status: 422 })) })
+    const out = await prepareDocsmitRun([envelopes[0]!], { receipt: 'electronic', invoiceDocsByJob: {}, payBlocksByJob: {}, payRowsByJob: {}, io: rest })
+    expect(out.held[0]!.why).toBe('Docsmit says this address will not mail. No such street number')
   })
 })

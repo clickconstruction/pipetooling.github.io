@@ -13,12 +13,14 @@ import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWordFor, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
 import { lienSupplierLetterParagraphFor, type LienSupplierJob } from './lienJobSuppliers'
 import { conditionalReleaseParagraph, noticeReleaseEnclosureWords, noticeReleaseLabel, noticeReleasePageHtml, type NoticeRelease } from './lienNoticeRelease'
-import { runEnvelopes, type RunEnvelope } from './runEnvelopes'
+import { recipientViaDocsmit, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 import { RUN_PAPER_CSS, runDividerHtml, runMailing, runPageFoot, runSheetHtml } from './lienRunPaper'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature, type LienNoticeSignature } from './lienNoticeSignature'
+import { mailPieceForCopy, type LienMailPieceRow } from '../mail/lienMailPieces'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -59,11 +61,20 @@ export type RunRecipient = {
   pieceStatus?: 'prepared' | 'sent' | 'mailed' | 'failed'
   /** Why the provider held it, in words for the card; null when it went. */
   pieceProblem?: string | null
+  /** The day USPS accepted this copy (v2.5532), from the piece once the poll has it: the day the notice was given, so the record writes it as sent. */
+  pieceMailedOn?: string | null
 }
 
-/** The envelope's copies all went through a provider: the provider and the piece ride on the first recipient inside. */
-export function recipientViaDocsmit(r: Pick<RunRecipient, 'via' | 'pieceId' | 'pieceStatus'>): boolean {
-  return r.via === 'docsmit' && !!r.pieceId && (r.pieceStatus === 'sent' || r.pieceStatus === 'mailed')
+export { recipientViaDocsmit }
+
+/**
+ * A copy that already went through Docsmit, built as mailed (v2.5532): the piece names its desk item from prepare, so a
+ * run opened after the send knows it, though the window closed before Record the run. The run never offers it to Docsmit
+ * or the packet again, and records it with its piece, the USPS number and the day USPS took it once the poll has them.
+ */
+export function runRecipientWithPiece(r: RunRecipient, pieces: ReadonlyArray<LienMailPieceRow> | undefined): RunRecipient {
+  const p = pieces ? mailPieceForCopy(pieces, r.key) : null
+  return p ? { ...r, via: 'docsmit', pieceId: p.id, pieceStatus: p.status === 'sent' ? 'sent' : 'mailed', pieceProblem: null, tracking: (p.usps_tracking ?? '').trim(), pieceMailedOn: p.mailed_at ? calendarYmdInAppTzFromIso(p.mailed_at) || null : null } : r
 }
 
 export type RunNotice = {
@@ -221,10 +232,12 @@ export function buildLienDeskRun(
       offer: lienOfferFromItem(item),
       release,
       ...(draft?.payLines ? { payLines: draft.payLines } : {}),
-      recipients: [
-        { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
-        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
-      ],
+      recipients: (
+        [
+          { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
+          { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
+        ] satisfies RunRecipient[]
+      ).map((r) => runRecipientWithPiece(r, data.mailPiecesByItem?.[item.id])),
     })
   }
   return out
@@ -294,10 +307,12 @@ export function buildLienRetainageRun(
       coverNote: null,
       coverLetter: item.cover_note ? lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: e.inClaim, endedHow: e.contractEndedHow, endedOn: e.contractEndedOn ? demandDate(e.contractEndedOn) : '', paymentBond: e.paymentBond, kind: coverLetterKindFor(property), contact: fields.contactPerson, phone: retPhone, trade: job?.service_type?.name }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
-      recipients: [
-        { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
-        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
-      ],
+      recipients: (
+        [
+          { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
+          { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
+        ] satisfies RunRecipient[]
+      ).map((r) => runRecipientWithPiece(r, data.mailPiecesByItem?.[item.id])),
     })
   }
   return out
@@ -518,10 +533,11 @@ export function runCopyKey(itemId: string, recipientKey: string): string {
 /**
  * Which notices have every copy printed (v2.4853): printing one copy at a time stamps an item
  * printed — into In the mail · tracking owed — only once each of its recipients has a copy, so a
- * notice whose GC copy is still unprinted does not read as in the mail.
+ * notice whose GC copy is still unprinted does not read as in the mail. A copy mailed through
+ * Docsmit is out as well (v2.5532), so a notice that went part by Docsmit and part on paper is stamped too.
  */
 export function noticesFullyPrinted<T extends Pick<RunNotice, 'itemId' | 'recipients'>>(notices: ReadonlyArray<T>, printed: ReadonlySet<string>): T[] {
-  return notices.filter((n) => n.recipients.length > 0 && n.recipients.every((r) => printed.has(runCopyKey(n.itemId, r.key))))
+  return notices.filter((n) => n.recipients.length > 0 && n.recipients.every((r) => printed.has(runCopyKey(n.itemId, r.key)) || recipientViaDocsmit(r)))
 }
 
 export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string; via?: string; piece_id?: string }

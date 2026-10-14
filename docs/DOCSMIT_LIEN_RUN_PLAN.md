@@ -5,7 +5,7 @@ file: docs/DOCSMIT_LIEN_RUN_PLAN.md
 type: Engineering plan (draft, not yet agreed)
 purpose: Give the company one certified-mail door (a vendor-agnostic mail_pieces table, an edge function per provider, an hourly poll) and open it first on the Lien desk's run, so a notice's envelope goes out through the Docsmit API (US-Letter PDF in, USPS number and delivery status back) instead of being printed and walked to the post office; then let delivery drive the collections cadence (owner call on day 3, a per-piece short link that says when the owner read it, letter two from the later clock) and send standing-rule GCs by cron. Written 2026-10-12 from a read of the Docsmit API reference and the run's code, widened the same day after the "is this the best we can do" pass; mockups linked below; of the PR train PRs 1 to 5, 6a, the first slice of 6b, 8 and 9 are on main (2026-10-13; the list under *PR train*, below, carries each version).
 audience: Owner, Developers, AI Agents
-last_updated: 2026-10-13
+last_updated: 2026-10-14
 sections:
   - The thesis
   - What stays the same
@@ -77,7 +77,7 @@ One new table, `mail_pieces`: one row per envelope the company sends certified, 
 |---|---|
 | `id` uuid | |
 | `kind` text | what the envelope is: `lien_notice_53_056`, `lien_retainage_53_057`, `lien_affidavit_copy`, `demand_31_04`, `lien_release`, `collections_demand`, `hazmat_notice`, `hr_letter`, … (check-constrained; each kind names where its facts land when they come back) |
-| `source_ids` uuid[] | the rows behind it: every `job_lien_filings` row inside a lien envelope (one, or N for the GC's envelope, or the packet's rows for a combined notice); a demand letter id; a release id |
+| `source_ids` uuid[] | the rows behind it: a lien envelope's desk items (`job_lien_desk_items`) from prepare on (v2.5532), then every `job_lien_filings` row inside it once the run records (one, or N for the GC's envelope, or the packet's rows for a combined notice); a demand letter id; a release id |
 | `job_id` uuid null | the job, when there is one, so the piece's cost and its papers land on it |
 | `provider` text | `docsmit` today; `lob`, `postgrid`, `labels_api` if ever; the edge function is chosen by this |
 | `recipient` text | `owner`, `original_contractor`, `customer`, `person`, … |
@@ -151,7 +151,7 @@ Nothing goes to Docsmit until the office has seen it the way Docsmit will mail i
 - **The footer**: *Back* and *Mail these N envelopes · $21.86 ▸*, with *Docsmit mails today's batch at 3:00 pm* beside it. A review of a held or problem envelope shows the problem on the face and has no Mail.
 
 The review is the same component the Sent row's *The mailed copy ›* opens later, read-only, so what was reviewed and what was mailed are one thing.
-4. **Record the mailing** runs `recordLienDeskRun` as today. For a Docsmit envelope the send record carries `via`, `piece_id` and whatever tracking is known. The function's `prepare` already knew the filing ids are not minted until this moment, so after the insert the client patches `mail_pieces.source_ids` (one small update per piece).
+4. **Record the mailing** runs `recordLienDeskRun` as today. For a Docsmit envelope the send record carries `via`, `piece_id` and whatever tracking is known. The filing ids are not minted until this moment, so after the insert the client adds them to `mail_pieces.source_ids` (one small update per piece). The desk items are there from `prepare` (v2.5532): the send itself stamps a notice with every copy out printed and re-reads the desk, so a run closed before this step loses nothing, and a later run builds those copies as mailed.
 
 Envelopes on other methods keep their print and type path in the same run. A run can mix.
 

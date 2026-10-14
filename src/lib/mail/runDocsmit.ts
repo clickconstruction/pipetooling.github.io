@@ -12,9 +12,9 @@ import type { DocsmitSettings } from './docsmitSettings'
 
 export type DocsmitRecipientKey = 'owner' | 'original_contractor'
 
-/** The slice of a run envelope the rules read; the real `RunEnvelope` fits it. */
+/** The slice of a run envelope the rules read; the real `RunEnvelope` fits it. A combined notice (#35 PR 3) names each job's desk item in `parts`. */
 export type DocsmitEnvelopeLike = Pick<RunEnvelope, 'key' | 'n' | 'label' | 'name' | 'address' | 'method' | 'tracking'> & {
-  contents: ReadonlyArray<{ recipient: { key: DocsmitRecipientKey }; notice: { itemId: string; jobId: string; jobNumber: string; kind: string; label: string } }>
+  contents: ReadonlyArray<{ recipient: { key: DocsmitRecipientKey }; notice: { itemId: string; jobId: string; jobNumber: string; kind: string; label: string; parts?: ReadonlyArray<{ itemId: string }> } }>
 }
 
 /** The lien desk's instrument as a mail piece's kind. */
@@ -36,6 +36,7 @@ export type DocsmitCandidate = {
   /** The one job inside, or null when the envelope holds several (a GC's envelope, a combined notice). */
   jobId: string | null
   jobNumber: string
+  /** Every desk item inside, a combined notice's jobs each by its own. */
   itemIds: string[]
   windowLines: string[]
 }
@@ -58,7 +59,7 @@ export function docsmitCandidates(envelopes: ReadonlyArray<DocsmitEnvelopeLike>)
       kind: mailKindOf(first.notice.kind),
       jobId: jobs.size === 1 ? first.notice.jobId : null,
       jobNumber: first.notice.jobNumber,
-      itemIds: [...new Set(e.contents.map((c) => c.notice.itemId))],
+      itemIds: [...new Set(e.contents.flatMap((c) => (c.notice.parts?.length ? c.notice.parts.map((p) => p.itemId) : [c.notice.itemId])))],
       windowLines: windowAddressLines({ name: party.firstName ? `${party.firstName} ${party.lastName}`.trim() : '', organization: party.organization, address1: party.address1, address2: party.address2, city: party.city, state: party.state, postalCode: party.postalCode }),
     })
   }
@@ -74,7 +75,11 @@ export function docsmitRunDoor(settings: Pick<DocsmitSettings, 'paused'>, candid
   return { show: true, enabled: true, label: `Mail through Docsmit · ${ready} envelope${ready === 1 ? '' : 's'}`, why: ready < candidates.length ? `${candidates.length - ready} envelope${candidates.length - ready === 1 ? '' : 's'} with a problem stay on paper.` : '' }
 }
 
-/** What `prepare` is asked for one envelope, with the code the owner's QR carries and the envelope the page count takes. */
+/**
+ * What `prepare` is asked for one envelope, with the code the owner's QR carries and the envelope the page count takes.
+ * `source_ids` are the envelope's desk items unless filings are given (v2.5532): a run's piece names its notices from
+ * the start, so a send is the desk's the moment it goes, and the run's record adds the filings beside them.
+ */
 export type DocsmitPrepareDraft = {
   key: string
   shortCode: string
@@ -107,7 +112,7 @@ export function docsmitPrepareDraft(c: DocsmitCandidate, pages: number, opts: { 
     envelope,
     piece: {
       kind: c.kind,
-      source_ids: opts.filingIds ?? [],
+      source_ids: opts.filingIds ?? c.itemIds,
       job_id: c.jobId,
       recipient: c.recipient,
       short_code: shortCode,

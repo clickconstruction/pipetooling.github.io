@@ -1,5 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { mailPiecesByFiling as foldMailPieces, type LienMailPieceRow } from '../lib/mail/lienMailPieces'
+import type { LienMailPieceRow } from '../lib/mail/lienMailPieces'
+import { readMailPiecesBySource } from '../lib/mail/lienMailPiecesIo'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -133,6 +133,8 @@ export type LienDeskData = {
   demandLettersByJob?: Record<string, JobDemandLetterRow[]>
   /** The mail pieces behind the filings (the Docsmit train, 6b), by filing id; absent in light mode, and empty until a notice mails through Docsmit. */
   mailPiecesByFiling?: Record<string, LienMailPieceRow[]>
+  /** The pieces behind each approved desk item (v2.5532), from prepare on: the run builds a copy that already went through Docsmit as mailed. Absent in light mode. */
+  mailPiecesByItem?: Record<string, LienMailPieceRow[]>
 }
 
 const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
@@ -282,6 +284,7 @@ export function useLienDeskData(
         let claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
         let filingsByJob: Record<string, JobLienFilingRow[]> = {}
         let mailPiecesByFiling: Record<string, LienMailPieceRow[]> = {}
+        let mailPiecesByItem: Record<string, LienMailPieceRow[]> = {}
         let demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
         if (!light) {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
@@ -316,18 +319,14 @@ export function useLienDeskData(
             ).catch(() => [])
             for (const f of (part ?? []) as JobLienFilingRow[]) (filingsByJob[f.job_id] ??= []).push(f)
           }
-          // The mail pieces behind the filings (the Docsmit train, 6b): the provider's word on each envelope, by filing. The
-          // table is read loosely until the generated types carry it; a read that fails (no table yet) leaves the map empty.
-          mailPiecesByFiling = {}
-          const filingIds = Object.values(filingsByJob).flat().map((f) => f.id)
-          for (const chunk of chunkIds(filingIds)) {
-            if (chunk.length === 0) continue
-            const part = await withSupabaseRetry(
-              () => (supabase as unknown as SupabaseClient).from('mail_pieces').select('id, kind, recipient, status, usps_tracking, mailed_at, delivered_at, signed_by, delivery_status, source_ids, problem, price, name, organization, send_type, resend_of, resolved_at, resolved_note').overlaps('source_ids', chunk),
-              'lien desk: mail pieces',
-            ).catch(() => [])
-            for (const [id, pieces] of Object.entries(foldMailPieces((part ?? []) as LienMailPieceRow[]))) mailPiecesByFiling[id] = [...(mailPiecesByFiling[id] ?? []), ...pieces.filter((p) => !(mailPiecesByFiling[id] ?? []).some((q) => q.id === p.id))]
-          }
+          // The mail pieces (the Docsmit train, 6b): the provider's word on each envelope, by filing; and (v2.5532) the
+          // pieces a notice not yet recorded already went out as, by desk item, so the run never offers them again.
+          const [byFiling, byItem] = await Promise.all([
+            readMailPiecesBySource(Object.values(filingsByJob).flat().map((f) => f.id), 'lien desk: mail pieces'),
+            readMailPiecesBySource(allItems.filter((i) => i.status === 'approved').map((i) => i.id), 'lien desk: pieces in the run'),
+          ])
+          mailPiecesByFiling = byFiling
+          mailPiecesByItem = byItem
           // The demand letters on the desk's jobs (v2.3880): one read, so every pane's strip carries the letter the Lien window draws.
           demandLettersByJob = {}
           for (const chunk of chunkIds(jobIds)) {
@@ -385,6 +384,7 @@ export function useLienDeskData(
           filingsByJob,
           demandLettersByJob,
           mailPiecesByFiling,
+          mailPiecesByItem,
         })
       } catch {
         if (!cancelled)
