@@ -144,7 +144,7 @@ fired 2026-10-14 with nothing switched on: *no text went, none kept back*.
 **Texts, through Quo.** `quo-webhook` takes every event of our numbers (signature checked, `quo_webhook_ids` keeps a
 replay out) and lands it in the sender's thread as a line, keeps a picture that came with it (`mediaKeep.ts`, then the
 `photo-save` sweep every five minutes files it to the job's photos), and answers HELP and STOP itself. `quo-send` is a
-text going out: from the reply box's send window, from a job's box, and from Job Mode (`techSend.ts`, R5). Both are
+text going out: from the reply box's send window, from a job's box, and from Job Mode (`techSend.ts`, R5). The events come from Quo webhook 43696, made through Quo's API (version 2026-03-30), which Quo's settings page does not list; its key and how to rotate it are in `MESSAGES_SWITCH_ON_HANDOFF_2026-10-14.md`. Both are
 gated by **Send texts** (`messages_texts_on_v1`, Settings → Phone and texts; the owner or a dev), paused while Quo will
 not take one (`paused.ts`), and read the company phone seats (`messages_quo_seats_v1`) and the two boxes
 (`messages_boxes_v1`, R6: the team's number and bids@'s, one inbox). The pure parts are `src/lib/quo/`; the edge
@@ -234,15 +234,14 @@ touch the copy's index or the dev-mcp catalog, land them one after the other and
 ## Deploying and operating it
 
 The four tracks of `CLAUDE.md` apply: the client by CI; `supabase db push` for a migration, after its PR is on main;
-the functions by hand; the Cloudflare Workers unchanged by this build. What the owner operates by hand: the Quo
-dashboard's webhook URL and the A2P registration; the switches above; the secrets `CRON_SECRET` and `PROJECT_URL` in the
+the functions by hand; the Cloudflare Workers unchanged by this build. What the owner operates by hand: Quo's
+webhook 43696 (through Quo's API, never its settings page) and the A2P registration; the switches above; the secrets `CRON_SECRET` and `PROJECT_URL` in the
 vault for the crons; and the morning run's dry run with the secret before a step is switched on.
 
 ## What is still open (as of 2026-10-14)
 
-- **A tech's door to Job activity's message lines**: the gate is built and tested (v2.5471), but a primary's Jobs page is
-  Reports only and Job Mode's panel draws no message lines, so no tech reaches a Job activity that shows them. A build
-  item for the owner: the lines in Job Mode's job panel, or a tech's Job activity on the Reports card.
+- **The switch-on**: texts in are live since 2026-10-14; the switches, in order, are in
+  `MESSAGES_SWITCH_ON_HANDOFF_2026-10-14.md`.
 - The morning run's follow-ups: `textNumberOf` picks a number by the older `opted_out_at`; the portal tables'
   grants widen to the service role before any customer reminder step is switched on; the What customers see wording
   for the reminders.
