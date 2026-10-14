@@ -170,7 +170,8 @@ export default function JobModeDetailsSection({
 
   // The tech's door to the customer (v2.5527): the job's lines with them, in Job updates under a Customer pill.
   const readsLines = readsCustomerLinesInJobUpdates(role)
-  const messages = useJobMessages(readsLines && contact ? { id: jobId, status: contact.status ?? null, createdAt: contact.created_at ?? null } : null)
+  // A text from Message the customer bumps `updatesRev` too, so its line shows without a reopen (v2.5528).
+  const messages = useJobMessages(readsLines && contact ? { id: jobId, status: contact.status ?? null, createdAt: contact.created_at ?? null } : null, updatesRev)
   const customerLines = useMemo(
     () => (!readsLines ? undefined : contact && messages ? customerLinesForJobUpdates(messages) : null),
     [readsLines, contact, messages],
