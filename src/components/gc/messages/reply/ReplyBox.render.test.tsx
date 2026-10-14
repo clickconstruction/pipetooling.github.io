@@ -12,6 +12,9 @@ import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
+
 function fakeIo(): ReplyIo {
   return {
     loadSender: vi.fn(() => Promise.resolve({ name: 'Robert', title: 'Project manager', cell: '(210) 555-0142' })),
@@ -87,14 +90,14 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
     expect((within(el).getByRole('textbox') as HTMLTextAreaElement).value).toBe('')
   })
 
-  it('opens the send window for a text, where a text waits until the phone is switched on', async () => {
+  it('opens the send window for a text, its words on their phone, and nothing goes until its Send', async () => {
     const { el, io } = box()
     fireEvent.change(within(el).getByRole('textbox'), { target: { value: 'Checking on the number.' } })
     fireEvent.click(within(el).getByRole('button', { name: 'Send text…' }))
     const win = await screen.findByRole('dialog', { name: 'Before it goes, this is what they see' })
     expect(win.querySelector('[data-send-bubble]')?.textContent).toBe('Checking on the number.')
-    expect(win.querySelector('[data-send-waits]')?.textContent).toContain('Texts wait until the phone is switched on.')
-    expect((within(win).getByRole('button', { name: 'Send as text' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(win.querySelector('[data-send-waits]')).toBeNull()
+    expect((within(win).getByRole('button', { name: 'Send as text' }) as HTMLButtonElement).disabled).toBe(false)
     expect(io.sendText).not.toHaveBeenCalled()
   })
 

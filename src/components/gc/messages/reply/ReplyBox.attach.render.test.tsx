@@ -14,6 +14,9 @@ import { MessagesRereadContext } from '../useMessagesReread'
 import { AttachPicker } from './AttachPicker'
 import { ReplyBox } from './ReplyBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
+
 // The step they are on (cut 4's read): none unless a test puts them on one.
 const flow = vi.hoisted(() => ({ now: null as unknown }))
 vi.mock('../../../../hooks/useFlowNow', () => ({ useFlowNow: () => flow.now, openFlowStep: vi.fn() }))

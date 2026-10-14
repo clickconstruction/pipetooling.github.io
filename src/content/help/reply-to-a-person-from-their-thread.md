@@ -94,9 +94,9 @@ When nothing is owed yet, **Our move** opens two blanks. Write what we still owe
 
 ### A text
 
-Texts wait until the phone is switched on. Until then the **Text** tab shows the text, and its Send stays off. Send it as an email instead. The owner or a dev turns texts on with **Send texts** in Settings. [Turn on texts from the company number](/help/turn-on-texts-from-the-company-number) shows how.
+Texts wait until **Send texts** is switched on in Settings. Until then the **Text** tab says so in place of the box. Send it as an email instead. The owner or a dev turns texts on. [Turn on texts from the company number](/help/turn-on-texts-from-the-company-number) shows how.
 
-Once the phone is on, the window shows their phone with our last texts to them. A first text carries the opt-out line the carriers require. So does a text after 30 quiet days. The line shows as its own grey bubble, so it never reads as your words.
+Once texts are on, the window shows their phone with our last texts to them. A first text carries the opt-out line the carriers require. So does a text after 30 quiet days. The line shows as its own grey bubble, so it never reads as your words.
 
 After a quiet spell, press **Leave it off this time** to hold the line back on that one text.
 

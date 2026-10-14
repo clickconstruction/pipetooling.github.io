@@ -13,6 +13,9 @@ import { OpenThreadContext, type OpenThread } from '../openThread'
 import { QuickRepliesEditor } from './QuickRepliesEditor'
 import { ReplyBox } from './ReplyBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
+
 /**
  * R3's screens over the residential prototype's lines (v0.8, branch spike/gc-mode): the editor's Phone tab and marks,
  * a customer line's Spanish and phone fields, and the strip and box with a blank the app cannot fill. Rosa is signed

@@ -12,6 +12,9 @@ import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
+
 // Cut 2's hooks read Follow up's store; here they are held still, so the smoke checks the box's wiring.
 const cut2 = vi.hoisted(() => ({
   settling: { active: false, owed: null as unknown, cancel: () => {}, done: (_note: string, _job: string | null) => Promise.resolve() },

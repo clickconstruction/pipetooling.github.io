@@ -13,6 +13,9 @@ import type { ReplyIo } from '../../lib/messages/replyIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { JobCustomerBox } from './JobCustomerBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('../gc/messages/reply/useTextsOn', () => ({ useTextsOn: () => true }))
+
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }

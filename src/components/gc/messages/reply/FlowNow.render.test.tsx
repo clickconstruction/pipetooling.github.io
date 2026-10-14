@@ -12,6 +12,9 @@ import { todayYmdInAppTz, ymdDaysBetween } from '../../../../utils/dateUtils'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { ReplyBox } from './ReplyBox'
 
+// Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
+vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
+
 // Cut 4's read of the step a person is on, held still here: the smoke checks what the box does with it.
 const flow = vi.hoisted(() => ({ now: undefined as unknown, open: vi.fn() }))
 vi.mock('../../../../hooks/useFlowNow', () => ({ useFlowNow: () => flow.now, openFlowStep: (...a: unknown[]) => flow.open(...a) }))

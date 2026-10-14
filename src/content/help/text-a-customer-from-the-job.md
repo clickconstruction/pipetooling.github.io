@@ -25,7 +25,7 @@ The row shows for the office team only. The crew's view of the job keeps the not
 
 **Tie to** under the box names the job. A message from the job window always lands on that job.
 
-Texts wait until the phone is switched on. Until then the window shows the text, and its Send stays off. Send it as an email instead.
+Texts wait until **Send texts** is switched on in Settings. Until then **Text** says so in place of the box. Press {{button:outline|Email}} to send it as an email instead. The owner or a dev turns texts on. [Turn on texts from the company number](/help/turn-on-texts-from-the-company-number) shows how.
 
 An email goes under the plumbing company's letterhead. Its copy is kept in Documents.
 
