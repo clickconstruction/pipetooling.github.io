@@ -78,6 +78,8 @@ export type LienDeskCalendarTabProps = {
   canWrite?: boolean
   /** Draft the N: the desk narrows its notice list to these jobs. */
   onDraft?: (ymd: string, jobIds: string[]) => void
+  /** Record the mailing (v2.5522): the desk opens the run on recording for these printed notices. */
+  onRecord?: (jobIds: string[]) => void
   /** Set property kind on a job with no linked property record — Edit Job on the Property record row. */
   onOpenEditJob?: (jobId: string) => void
   /** The pen wrote something: a promise, or a property kind. */
@@ -102,6 +104,8 @@ const NOTICE_INK = '#d97706'
 const LIEN_INK = 'var(--text-700)'
 const RED_INK = '#b91c1c'
 const GREEN_INK = '#15803d'
+/** v2.5522: the in-the-mail circle — amber, the colour of a notice still owed. */
+const MAILED_INK = '#d97706'
 function noticeInk(tone: LienRunwayTone): string {
   return tone === 'red' ? RED_INK : tone === 'green' ? GREEN_INK : NOTICE_INK
 }
@@ -146,6 +150,9 @@ function Glyph({ kind, tone = 'amber', count }: { kind: LienCalendarKeyGlyph | '
     case 'check':
     case 'notice_done':
       return <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: '#15803d', color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 700 }}>✓</span>
+    case 'mailed':
+      // v2.5522: the same circle as Notice on file, amber, with an envelope — printed and in the mail, the number owed.
+      return <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: MAILED_INK, color: '#fff', fontSize: 8, lineHeight: '12px', textAlign: 'center', fontWeight: 700 }}>✉</span>
     case 'lien':
       return (
         <span style={{ position: 'relative', display: 'inline-block', width: 12, height: 16 }}>
@@ -181,7 +188,11 @@ function markTitle(m: LienCalendarMark, j: LienCalendarJob): string {
     case 'pay_missing':
       return 'No pay date yet — click to record what they said'
     case 'notice':
-      return m.done ? `The ${monthWords(m.monthKey)} notice is on file` : `A § 53.056 notice is owed for ${monthWords(m.monthKey)} — send it by ${labelOf(m.ymd)}`
+      return m.done
+        ? `The ${monthWords(m.monthKey)} notice is on file`
+        : m.mailed
+          ? `The ${monthWords(m.monthKey)} notice is printed and in the mail — record its tracking number by ${labelOf(m.ymd)} and it is on file`
+          : `A § 53.056 notice is owed for ${monthWords(m.monthKey)} — send it by ${labelOf(m.ymd)}`
     case 'lien':
       return m.closed ? (j.runway.closedBy === 'notice' ? `The notice window closed ${labelOf(m.ymd)} unsent — the lien is gone, the money still owed` : `The lien window closed ${labelOf(m.ymd)} — money still owed`) : `Last day to file the lien affidavit: ${labelOf(m.ymd)} (§ 53.052)`
     case 'run':
@@ -199,7 +210,7 @@ function monthWords(key: string | null): string {
 }
 
 /** One row's marks laid on the shared axis. */
-function Track({ marks, j, onOpen, onPen, onLastWork }: { marks: LienCalendarMark[]; j: LienCalendarJob; onOpen: () => void; onPen?: (pct: number) => void; /** The last-day label is a door (v2.4735). */ onLastWork?: () => void }) {
+function Track({ marks, j, onOpen, onPen, onLastWork, onRecord }: { marks: LienCalendarMark[]; j: LienCalendarJob; onOpen: () => void; onRecord?: (jobIds: string[]) => void; onPen?: (pct: number) => void; /** The last-day label is a door (v2.4735). */ onLastWork?: () => void }) {
   const gone = marks.find((m): m is Extract<LienCalendarMark, { kind: 'gone' }> => m.kind === 'gone') ?? null
   return (
     <div style={{ position: 'relative', height: TRACK_H }} data-testid="lien-cal-track">
@@ -241,6 +252,9 @@ function Track({ marks, j, onOpen, onPen, onLastWork }: { marks: LienCalendarMar
         if (m.kind === 'notice')
           return m.done ? (
             <div key={i} title={title} style={{ position: 'absolute', left: `calc(${m.pct}% - 6px)`, top: LINE_Y - 6, width: 12, height: 12, borderRadius: '50%', background: GREEN_INK, color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 700 }}>✓</div>
+          ) : m.mailed ? (
+            // v2.5522: printed and in the mail — the circle Notice on file wears, amber, with an envelope; it opens the Record the mailing door.
+            <button key={i} type="button" title={title} aria-label={title} data-testid="lien-cal-mailed" onClick={() => (onRecord ? onRecord([j.jobId]) : onOpen())} style={{ position: 'absolute', left: `calc(${m.pct}% - 6px)`, top: LINE_Y - 6, width: 12, height: 12, padding: 0, border: 'none', borderRadius: '50%', background: MAILED_INK, color: '#fff', fontSize: 8, lineHeight: '12px', textAlign: 'center', fontWeight: 700, cursor: 'pointer' }}>✉</button>
           ) : (
             <button key={i} type="button" title={title} aria-label={title} onClick={onOpen} style={{ position: 'absolute', left: `calc(${m.pct}% - 1px)`, top: LINE_Y - FLAG_H, width: 14, height: FLAG_H, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
               <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: FLAG_H, background: noticeInk(m.tone) }} />
@@ -277,17 +291,29 @@ function GroupTrack({ g, axis, onPen }: { g: LienCalendarGroup; axis: LienCalend
       ) : null}
       {flags.map((f) => {
         // One date, two inks: the notices' hollow amber flag, then the liens' slate flag beside it, each with its count.
-        const title = `${f.notices ? `${f.notices} ${f.notices === 1 ? 'notice' : 'notices'} owed` : ''}${f.notices && f.liens ? ' · ' : ''}${f.liens ? `${f.liens} ${f.liens === 1 ? 'lien' : 'liens'} to file` : ''} by ${labelOf(f.ymd)}`
-        const parts: Array<{ kind: 'notice' | 'lien'; n: number; ink: string }> = []
+        const bits = [
+          f.notices ? `${f.notices} ${f.notices === 1 ? 'notice' : 'notices'} owed` : '',
+          f.mailed ? `${f.mailed} in the mail` : '',
+          f.liens ? `${f.liens} ${f.liens === 1 ? 'lien' : 'liens'} to file` : '',
+        ].filter(Boolean)
+        const title = `${bits.join(' · ')} by ${labelOf(f.ymd)}`
+        const parts: Array<{ kind: 'notice' | 'lien' | 'mailed'; n: number; ink: string }> = []
         if (f.notices) parts.push({ kind: 'notice', n: f.notices, ink: noticeInk(f.tone) })
+        if (f.mailed) parts.push({ kind: 'mailed', n: f.mailed, ink: MAILED_INK })
         if (f.liens) parts.push({ kind: 'lien', n: f.liens, ink: g.kind === 'gone' ? RED_INK : lienInk(f.tone) })
         return (
           <div key={f.ymd} title={title} style={{ position: 'absolute', left: `calc(${f.pct}% - 1px)`, top: LINE_Y - FLAG_H, width: 14 * parts.length + 12, height: FLAG_H + 14 }}>
             {parts.map((p, i) => (
               <span key={p.kind} style={{ position: 'absolute', left: i * 14, top: 0, width: 14, height: FLAG_H }}>
-                <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: FLAG_H, background: p.ink }} />
-                <span style={{ position: 'absolute', left: 2, top: 0, width: 10, height: 8, background: p.ink, clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
-                {p.kind === 'notice' ? <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 6, height: 5, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} /> : null}
+                {p.kind === 'mailed' ? (
+                  <span style={{ position: 'absolute', left: 0, top: FLAG_H - 12, width: 12, height: 12, borderRadius: '50%', background: p.ink, color: '#fff', fontSize: 8, lineHeight: '12px', textAlign: 'center', fontWeight: 700 }}>✉</span>
+                ) : (
+                  <>
+                    <span style={{ position: 'absolute', left: 0, top: 0, width: 2, height: FLAG_H, background: p.ink }} />
+                    <span style={{ position: 'absolute', left: 2, top: 0, width: 10, height: 8, background: p.ink, clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} />
+                    {p.kind === 'notice' ? <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 6, height: 5, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} /> : null}
+                  </>
+                )}
                 {p.n > 1 ? <span style={{ position: 'absolute', left: 4, top: FLAG_H + 2, fontSize: 10, lineHeight: 1, fontWeight: 700, color: p.ink }}>{p.n}</span> : null}
               </span>
             ))}
@@ -468,7 +494,7 @@ function PropertyLabel({ label, phone }: { label: string; phone?: boolean }) {
   )
 }
 
-function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere, onLastWork }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; /** The number's own door: the Job window. */ onOpenJob?: () => void; onLastWork?: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
+function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere, onLastWork, onRecord }: { j: LienCalendarJob; g: LienCalendarGroup; index: number; axis: LienCalendarAxis | null; onOpen: () => void; onRecord?: (jobIds: string[]) => void; /** The number's own door: the Job window. */ onOpenJob?: () => void; onLastWork?: () => void; onPen?: (pct: number) => void; mark?: LienSupplierMark; /** An overdue job listed with its property: greyed. */ closedHere?: boolean }) {
   // Under a GC row its one dot speaks for every job; a job draws the dashed dot only on its own.
   const marks = axis ? lienCalendarMarks(j, axis, { payMissingDot: g.kind !== 'gc' }) : []
   const word = rowWord(j, g)
@@ -493,7 +519,7 @@ function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere,
           {j.address ? ` · ${j.address}` : ''}
         </span>
       </div>
-      {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} onLastWork={onLastWork} /> : <div />}
+      {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} onLastWork={onLastWork} onRecord={onRecord} /> : <div />}
       <div style={{ padding: '0 14px', textAlign: 'right' }} data-testid="lien-cal-row-money">
         <div style={{ fontSize: '0.8125rem', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
         {word ? (
@@ -623,12 +649,13 @@ function DateRow({ axis, counts, query, onQuery, lens }: { axis: LienCalendarAxi
 }
 
 /** A bucket's bar: the fold, the title and its facts, Draft the N where the desk lists them, and the money. */
-function BucketBar({ b, open, onToggle, onDraft, top, phone }: { b: LienCalendarBucket; open: boolean; onToggle: () => void; onDraft?: (ymd: string, jobIds: string[]) => void; top: number; phone?: boolean }) {
+function BucketBar({ b, open, onToggle, onDraft, onRecord, top, phone }: { b: LienCalendarBucket; open: boolean; onToggle: () => void; onDraft?: (ymd: string, jobIds: string[]) => void; onRecord?: (jobIds: string[]) => void; top: number; phone?: boolean }) {
   const tone = BUCKET_TONE[b.key]
   const caret = <span aria-hidden style={{ color: 'var(--text-muted)', width: 10, flex: 'none' }}>{open ? '▾' : '▸'}</span>
   const title = <strong style={{ fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: tone.ink, whiteSpace: 'nowrap' }}>{b.title}</strong>
   const money = <strong style={{ fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: tone.ink, whiteSpace: 'nowrap' }}>{formatUsdNoCents(b.total)}</strong>
   const draft = b.draft && onDraft ? b.draft : null
+  const record = b.record && onRecord ? b.record : null
   if (phone) {
     return (
       <div style={{ position: 'sticky', top, zIndex: 3 }}>
@@ -640,11 +667,18 @@ function BucketBar({ b, open, onToggle, onDraft, top, phone }: { b: LienCalendar
           {money}
           {b.facts ? <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-700)', paddingLeft: 16 }}>{b.facts}</span> : null}
         </button>
-        {open && draft ? (
-          <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-            <button type="button" className="lienCalDraft lienCalDraftPhone" onClick={() => onDraft?.(draft.ymd, draft.jobIds)}>
-              {draft.label} ›
-            </button>
+        {open && (draft || record) ? (
+          <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {draft ? (
+              <button type="button" className="lienCalDraft lienCalDraftPhone" onClick={() => onDraft?.(draft.ymd, draft.jobIds)}>
+                {draft.label} ›
+              </button>
+            ) : null}
+            {record ? (
+              <button type="button" className="lienCalDraft lienCalDraftPhone" data-testid="lien-cal-record" onClick={() => onRecord?.(record.jobIds)}>
+                {record.label} ›
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -657,10 +691,19 @@ function BucketBar({ b, open, onToggle, onDraft, top, phone }: { b: LienCalendar
         {title}
         <span style={{ fontSize: '0.78rem', color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{b.facts}</span>
       </button>
-      {draft ? (
-        <button type="button" className="lienCalDraft" onClick={() => onDraft?.(draft.ymd, draft.jobIds)} title="Open the Notices tab on these jobs, ready to draft">
-          {draft.label} ›
-        </button>
+      {draft || record ? (
+        <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+          {record ? (
+            <button type="button" className="lienCalDraft" data-testid="lien-cal-record" onClick={() => onRecord?.(record.jobIds)} title="Open the run on Record the mailing: these notices are printed and in the mail, their numbers owed">
+              {record.label} ›
+            </button>
+          ) : null}
+          {draft ? (
+            <button type="button" className="lienCalDraft" onClick={() => onDraft?.(draft.ymd, draft.jobIds)} title="Open the Notices tab on these jobs, ready to draft">
+              {draft.label} ›
+            </button>
+          ) : null}
+        </span>
       ) : (
         <span />
       )}
@@ -688,7 +731,7 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
             <div style={{ fontSize: '0.75rem', lineHeight: 1.45, color: 'var(--text-700)' }}>{open.long}</div>
             {open.door && doors.has(open.door) ? (
               <button type="button" onClick={() => onDoor(open.door!)} style={{ marginTop: 6, font: 'inherit', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-                {open.door === 'kinds' ? 'Set kinds, biggest first ›' : 'Draft the notices ›'}
+                {open.door === 'kinds' ? 'Set kinds, biggest first ›' : open.door === 'record' ? 'Record the mailing ›' : 'Draft the notices ›'}
               </button>
             ) : null}
           </div>
@@ -716,14 +759,14 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
 }
 
 /** Phone: the buckets as sections of two-line sentences — no axis. */
-function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, onOpenJobWindow, query, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; marks?: ReadonlyMap<string, LienSupplierMark> }) {
+function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpenJobWindow, query, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onRecord?: (jobIds: string[]) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; marks?: ReadonlyMap<string, LienSupplierMark> }) {
   return (
     <div data-testid="lien-cal-phone">
       {shown.map((b) => {
         const open = !folded.has(b.key)
         return (
           <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`} style={BUCKET_SECTION}>
-            <BucketBar b={b} open={open} onToggle={() => onFold(b.key)} onDraft={onDraft} top={0} phone />
+            <BucketBar b={b} open={open} onToggle={() => onFold(b.key)} onDraft={onDraft} onRecord={onRecord} top={0} phone />
             {open && b.jobs.length === 0 ? <div style={{ padding: '0.9rem 12px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : b.empty}</div> : null}
             {open
               ? b.groups.map((g) => (
@@ -765,7 +808,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, onOpenJobWindow
   )
 }
 
-export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onRecord, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
   const [query, setQuery] = useState('')
   const [pen, setPen] = useState<PenTarget | null>(null)
   const [kindsOpen, setKindsOpen] = useState(false)
@@ -837,6 +880,8 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
   const doors = new Set<NonNullable<LienCalendarKeyEntry['door']>>()
   if (penOn) doors.add('kinds')
   if (firstDraft && onDraft) doors.add('draft')
+  const firstRecord = board?.buckets.find((b) => b.record)?.record ?? null
+  if (firstRecord && onRecord) doors.add('record')
 
   return (
     <div className="lienDeskCalendar" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -876,7 +921,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
           board.count === 0 ? (
             <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No billed job matches that.</div>
           ) : (
-            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} marks={supplierMarks} />
+            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} marks={supplierMarks} />
           )
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
@@ -887,7 +932,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                   const open = !folded.has(b.key)
                   return (
                     <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`} style={BUCKET_SECTION}>
-                      <BucketBar b={b} open={open} onToggle={() => fold(b.key)} onDraft={onDraft} top={0} />
+                      <BucketBar b={b} open={open} onToggle={() => fold(b.key)} onDraft={onDraft} onRecord={onRecord} top={0} />
                       {open && b.jobs.length === 0 ? <div style={{ ...ABOVE_LINES, padding: '1rem 14px 1rem 30px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : b.empty}</div> : null}
                       {open
                         ? b.groups.map((g) => {
@@ -913,7 +958,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                                       const j = row.job
                                       return (
                                       <div key={j.jobId} style={{ position: 'relative' }}>
-                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} onLastWork={onOpenLastWork ? () => onOpenLastWork(j.jobId) : undefined} />
+                                        <JobRow j={j} g={g} index={index} closedHere={row.closed} axis={axis} onRecord={onRecord} onOpen={() => onOpenJob(j.jobId)} onOpenJob={onOpenJobWindow ? () => onOpenJobWindow(j.jobId) : undefined} onPen={penOn ? (pct) => setPen({ kind: 'job', job: j, pct }) : undefined} mark={supplierMarks?.get(j.jobId)} onLastWork={onOpenLastWork ? () => onOpenLastWork(j.jobId) : undefined} />
                                         {pen && pen.kind === 'job' && pen.job.jobId === j.jobId ? (
                                           <div style={{ ...GRID, position: 'absolute', left: 0, right: 0, top: 0, pointerEvents: 'none' }}>
                                             <div />
@@ -960,6 +1005,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
             setKeyGlyph(null)
             if (door === 'kinds' && penOn) setKindsOpen(true)
             if (door === 'draft' && firstDraft) onDraft?.(firstDraft.ymd, firstDraft.jobIds)
+            if (door === 'record' && firstRecord) onRecord?.(firstRecord.jobIds)
           }}
         />
       ) : null}

@@ -3367,6 +3367,8 @@ export default function LienDeskModal({
                 onChanged()
                 onCalendarChanged?.(what)
               }}
+              // Record the mailing (v2.5522): the run opens on recording for the printed notices.
+              onRecord={office ? () => setRunOpen(true) : undefined}
               onDraft={(ymd, jobIds) => {
                 // Draft the N (v2.4153): the notice list, To draft, narrowed to the column's jobs.
                 setCalendarJobFilter({ ymd, jobIds: new Set(jobIds) })

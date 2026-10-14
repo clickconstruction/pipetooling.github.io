@@ -89,6 +89,8 @@ export type LienCalendarBucket = {
   empty: string
   /** Draft the N: the bucket's notices the desk already lists (inside its 30-day lead). */
   draft: { ymd: string; jobIds: string[]; label: string } | null
+  /** Record the mailing · N (v2.5522): the bucket's notices printed and in the mail, their numbers owed. */
+  record: { jobIds: string[]; label: string } | null
   /** The stretch of the axis the bucket covers, [fromYmd, toYmd); a null end runs to the axis's edge. */
   span: { fromYmd: string | null; toYmd: string | null }
   /** Overdue only: how many of its jobs are listed with their property under a later bucket (`groups` leaves them out). */
@@ -127,9 +129,14 @@ function draftLabel(n: number): string {
  */
 function wordUnderBar(g: LienCalendarGroup, ymd: string | null): LienCalendarGroup {
   if (!ymd || g.kind !== 'gc') return g
-  const owed = g.jobs.filter((j) => j.runway.state === 'notice_due')
-  if (!owed.length || owed.some((j) => j.runway.noticeByYmd !== ymd)) return g
-  return { ...g, word: owed.length === 1 ? 'send the notice' : `send ${owed.length} notices` }
+  const due = g.jobs.filter((j) => j.runway.state === 'notice_due')
+  if (!due.length || due.some((j) => j.runway.noticeByYmd !== ymd)) return g
+  const owed = due.filter((j) => !j.runway.noticeMailed)
+  const mailed = due.length - owed.length
+  // v2.5522: the printed ones say so — "send 2 notices · 10 in the mail", or just "record 10 mailings".
+  if (owed.length === 0) return { ...g, word: mailed === 1 ? 'record the mailing' : `record ${mailed} mailings` }
+  const send = owed.length === 1 ? 'send the notice' : `send ${owed.length} notices`
+  return { ...g, word: mailed ? `${send} · ${mailed} in the mail` : send }
 }
 
 function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd: string): LienCalendarBucket {
@@ -155,6 +162,9 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
     if (noticeJobs.length) {
       const to = gcs.size === 1 ? ` to ${[...gcs.values()][0]}` : gcs.size > 1 ? ` across ${gcs.size} GCs` : ''
       facts.push(`${plural(noticeJobs.length, 'notice', 'notices')}${to}`)
+      // v2.5522: how many of them are printed and in the mail, their numbers still owed.
+      const mailed = noticeJobs.filter((j) => j.runway.noticeMailed).length
+      if (mailed) facts.push(`${mailed} in the mail`)
     }
     if (liens) facts.push(`${plural(liens, 'lien', 'liens')} to file`)
     if (filed) facts.push(`${plural(filed, 'lien', 'liens')} filed`)
@@ -171,9 +181,12 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
           : `Nothing falls due after ${monthName(next)}.`
 
   // The desk's notice list reaches 30 days ahead: a door to notices further out would open on an empty list.
-  const draftable = noticeJobs.filter((j) => j.runway.daysToNotice != null && j.runway.daysToNotice <= LIEN_DESK_LEAD_DAYS)
+  // A notice printed and in the mail (v2.5522) is not drafted again: its door is Record the mailing.
+  const draftable = noticeJobs.filter((j) => !j.runway.noticeMailed && j.runway.daysToNotice != null && j.runway.daysToNotice <= LIEN_DESK_LEAD_DAYS)
   const draftYmd = draftable.map((j) => j.runway.noticeByYmd).sort()[0]
   const draft = key !== 'overdue' && draftable.length && draftYmd ? { ymd: draftYmd, jobIds: draftable.map((j) => j.jobId), label: draftLabel(draftable.length) } : null
+  const mailedJobs = noticeJobs.filter((j) => j.runway.noticeMailed)
+  const record = key !== 'overdue' && mailedJobs.length ? { jobIds: mailedJobs.map((j) => j.jobId), label: `Record the mailing${mailedJobs.length > 1 ? ` · ${mailedJobs.length}` : ''}` } : null
 
   const span =
     key === 'overdue'
@@ -198,6 +211,7 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
     facts: facts.join(' · '),
     empty,
     draft,
+    record,
     span,
     away: 0,
     whole: null,
