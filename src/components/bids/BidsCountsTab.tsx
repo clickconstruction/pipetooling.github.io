@@ -19,7 +19,7 @@ import type { BidCountRow } from '../../types/bids'
 import { bidDisplayName, countsConfirmLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { countSourceTokenOf, parseCountsImportText, type CountsImportScope } from '../../lib/bids/parseCountsImportText'
-import { countSourceLabel, decideCountsImportMode, legacyAdoptionPatches, parseSourceShares, resolveShareKeys, type CountSourceShares, type CountsImportMode, type CountsImportModeDecision } from '../../lib/bids/countSources'
+import { countRowFrom, countSourceLabel, countSourceShortLabel, decideCountsImportMode, legacyAdoptionPatches, parseSourceShares, resolveShareKeys, type CountSourceShares, type CountsImportMode, type CountsImportModeDecision } from '../../lib/bids/countSources'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { loadCountRowTalliesByBid } from '../../lib/bids/countRowTallies'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
@@ -252,6 +252,8 @@ export function BidsCountsTab({
     await onCountSourceLinkSaved?.(bid.id)
   }
   const [sheetNoPageOnly, setSheetNoPageOnly] = useState(false)
+  /** v2.5520: the sheet's From lens — one project's rows, the rows with no project, or all. */
+  const [sheetFromFilter, setSheetFromFilter] = useState<string | null>(null)
   const [qaOpen, setQaOpen] = useState(false)
   const [qaCount, setQaCount] = useState('1')
   const [qaFixture, setQaFixture] = useState('')
@@ -319,6 +321,7 @@ export function BidsCountsTab({
   useEffect(() => {
     setSheetPendingDeleteId(null)
     setSheetNoPageOnly(false)
+    setSheetFromFilter(null)
     setQaFixture('')
     setQaCount('1')
     setQaPage('')
@@ -1143,7 +1146,12 @@ export function BidsCountsTab({
             const summary = countSheetSummary(countRows, altTags)
             const groups = buildCountSheetPageGroups(countRows)
             const showGroupTag = summary.withGroupTag > 0
-            const visibleRows = sheetNoPageOnly ? countRows.filter((r) => parsePlanPageTokens(r.page).length === 0) : countRows
+            const fromRows = sheetFromFilter == null ? countRows : countRows.filter((r) => (sheetFromFilter === '' ? Object.keys(parseSourceShares(r.source_shares)).length === 0 : (parseSourceShares(r.source_shares)[sheetFromFilter] ?? 0) > 0))
+            const visibleRows = sheetNoPageOnly ? fromRows.filter((r) => parsePlanPageTokens(r.page).length === 0) : fromRows
+            // v2.5520: who each row came from, by the bid's projects (short names when the label carries an importer).
+            const sourceLabelById: Record<string, string> = Object.fromEntries(countSources.map((src) => [src.id, countSourceShortLabel(countSourceLabel(src, src.imported_by ? countSourceImporterNames[src.imported_by] : null))]))
+            const fromCounts = countSources.map((src) => ({ id: src.id, label: sourceLabelById[src.id] ?? '?', n: countRows.filter((r) => (parseSourceShares(r.source_shares)[src.id] ?? 0) > 0).length }))
+            const typedHereCount = countSources.length > 0 ? countRows.filter((r) => Object.keys(parseSourceShares(r.source_shares)).length === 0).length : 0
             // v2.4188: the By group view and the base / + alternate foot.
             const altTotals = countSheetAlternateTotals(countRows, altTags)
             const groupGroups = buildCountSheetGroupGroups(visibleRows, altTags)
@@ -1210,6 +1218,14 @@ export function BidsCountsTab({
                 <td style={{ ...sheetCell, width: '9rem' }}>
                   {sheetEditCell(r, 'page', r.page ?? '', { nopage: parsePlanPageTokens(r.page).length === 0, ariaLabel: `Plan page for ${r.fixture}` })}
                 </td>
+                {countSources.length > 0 ? (() => {
+                  const from = countRowFrom(r.source_shares, sourceLabelById, (n) => formatUnitTotal(n, effectiveCountUnit(r)))
+                  return (
+                    <td style={{ ...sheetCell, width: '6.5rem', whiteSpace: 'nowrap' }} data-testid="count-row-from" title={from.title}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 999, border: '1px solid var(--border)', background: from.kind === 'both' ? 'var(--bg-green-100)' : 'var(--bg-subtle)', color: from.kind === 'none' ? 'var(--text-muted)' : from.kind === 'both' ? 'var(--text-green-700)' : 'var(--text-700)' }}>{from.words}</span>
+                    </td>
+                  )
+                })() : null}
                 <td style={{ ...sheetCell, textAlign: 'right', width: '7rem', whiteSpace: 'nowrap' }}>
                   {sheetPendingDeleteId === r.id ? (
                     <>
@@ -1362,6 +1378,21 @@ export function BidsCountsTab({
                     <div style={{ padding: '0.55rem 1rem', borderLeft: '1px solid var(--border)', minWidth: '7rem' }} title="Groups the customer wants priced with and without — from CountTooling's alternate heading, or the Alternate switch on a group's heading in By group">
                       <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-amber-700)' }}>Alternates</div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{altTotals.alternates.length}</div>
+                    </div>
+                  ) : null}
+                  {countSources.length > 0 ? (
+                    <div data-testid="count-sheet-from" style={{ padding: '0.55rem 1rem', borderLeft: '1px solid var(--border)', minWidth: '10rem' }} title="Which CountTooling project each row came from — a row both counted shows each share on hover">
+                      <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>From</div>
+                      <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                        {[{ id: null as string | null, label: 'All', n: countRows.length }, ...fromCounts.map((f) => ({ id: f.id as string | null, label: f.label, n: f.n })), ...(typedHereCount > 0 ? [{ id: '' as string | null, label: 'typed here', n: typedHereCount }] : [])].map((pill) => {
+                          const on = sheetFromFilter === pill.id
+                          return (
+                            <button key={pill.id ?? 'all'} type="button" aria-pressed={on} onClick={() => setSheetFromFilter(on ? null : pill.id)} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: on ? 700 : 500, padding: '0.1rem 0.5rem', borderRadius: 999, border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              {pill.label} · {pill.n}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -1551,6 +1582,7 @@ export function BidsCountsTab({
                         <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Fixture or tie-in</th>
                         {showGroupTag ? <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Group/Tag</th> : null}
                         <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Plan page</th>
+                        {countSources.length > 0 ? <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>From</th> : null}
                         <th style={{ borderBottom: '1px solid var(--border)' }} aria-label="Actions"></th>
                       </tr>
                     </thead>

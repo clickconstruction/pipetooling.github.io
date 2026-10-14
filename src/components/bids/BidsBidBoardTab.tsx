@@ -87,6 +87,8 @@ type BidsBidBoardTabProps = {
   jobsByBidId?: Map<string, BidBoardJobLink>
   /** Won-row chips (v2.3302): the unlinked job matching the bid's value, and the estimate's state. */
   budgetChips?: ReadonlyMap<string, BidBoardBudgetChip>
+  /** v2.5520: the CountTooling projects behind each bid, first import first — one chip per link beyond the bid's own. */
+  countSourcesByBid?: ReadonlyMap<string, ReadonlyArray<{ id: string; link: string; project_name: string | null }>>
   /** Link a value-matched job to its bid and snapshot the estimate (`snapshot_job_budget_from_bid`); resolves true when it landed. */
   onLinkJobToBid?: (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }) => Promise<boolean>
   /** PR 1b: the page's one `list_bid_job_account_strip` read, when the page owns it — the board then skips its own. */
@@ -217,6 +219,7 @@ export function BidsBidBoardTab({
   showMap = true,
   jobsByBidId,
   budgetChips,
+  countSourcesByBid,
   onLinkJobToBid,
   jobAccountStrips: pageJobAccountStrips,
   onOpenJobAccountsLens,
@@ -810,6 +813,11 @@ export function BidsBidBoardTab({
     if (bid.drive_link) links.push({ href: bid.drive_link, title: 'Project folder', d: BID_BOARD_ICON_PATHS.folder })
     if (bid.plans_link) links.push({ href: bid.plans_link, title: 'Job plans', d: BID_BOARD_ICON_PATHS.plans })
     if (bid.count_tooling_plans_link) links.push({ href: bid.count_tooling_plans_link, title: 'CountTooling plans', d: BID_BOARD_ICON_PATHS.countTool })
+    // v2.5520: a second counter's project rides beside the bid's own link, named by its project.
+    for (const src of countSourcesByBid?.get(bid.id) ?? []) {
+      if (src.link === bid.count_tooling_plans_link || links.some((l) => l.href === src.link)) continue
+      links.push({ href: src.link, title: `CountTooling plans · ${src.project_name ?? 'another project'}`, d: BID_BOARD_ICON_PATHS.countTool })
+    }
     if (bid.bid_submission_link) links.push({ href: bid.bid_submission_link, title: 'Bid submission', d: BID_BOARD_ICON_PATHS.bidSend })
     const job = jobsByBidId?.get(bid.id) ?? null
     const budgetChip = isWonOutcome(bid.outcome) ? (budgetChips?.get(bid.id) ?? null) : null
@@ -875,7 +883,7 @@ export function BidsBidBoardTab({
         ) : null}
         {links.map((l) => (
           <a
-            key={l.title}
+            key={l.href}
             href={l.href}
             target="_blank"
             rel="noopener noreferrer"

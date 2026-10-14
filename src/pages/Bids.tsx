@@ -331,6 +331,7 @@ export default function Bids() {
     lostBidsNeedingReasonCount,
     jobsByBidId,
     bidBoardBudgetChips,
+    bidBoardCountSources,
     jobAccountStrips,
     jobAccountsMissingCount,
     linkJobToBidFromBoard,
@@ -1860,6 +1861,7 @@ export default function Bids() {
           showEstimatingHealth={myRole !== 'primary' && myRole !== 'superintendent'}
           jobsByBidId={jobsByBidId}
           budgetChips={bidBoardBudgetChips}
+          countSourcesByBid={bidBoardCountSources}
           onLinkJobToBid={canSeeBidBoardJobLinks(myRole) ? linkJobToBidFromBoard : undefined}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}

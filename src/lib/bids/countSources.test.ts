@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import {
   INCOMING_SOURCE_KEY,
+  countRowFrom,
   countSourceLabel,
+  countSourceShortLabel,
+  rowsCarryingKey,
+  sharesWithoutKey,
   decideCountsImportMode,
   isWhollyOf,
   legacyAdoptionPatches,
@@ -68,5 +72,24 @@ describe('the share arithmetic', () => {
     expect(countSourceLabel({ project_name: 'SpaceX BA', link: 'https://counttooling.com/app/?t=x' }, 'Robert')).toBe('SpaceX BA · Robert')
     expect(countSourceLabel({ project_name: null, link: 'https://counttooling.com/app/?t=x' }, null)).toBe('counttooling.com')
     expect(countSourceLabel({ project_name: '', link: 'not a url' }, 'Taunya')).toBe('CountTooling · Taunya')
+  })
+})
+
+describe('removing a project and the From pill (v2.5520)', () => {
+  it('a removal drops the key and leaves the count; the rows carrying the key are the ones to re-stamp', () => {
+    expect(sharesWithoutKey({ t1: 1489.04, r2: 338.41 }, 'r2')).toEqual({ t1: 1489.04 })
+    expect(sharesWithoutKey({ r2: 10 }, 'r2')).toBeNull()
+    expect(sharesWithoutKey({ t1: 5 }, 'r2')).toEqual({ t1: 5 })
+    expect(rowsCarryingKey([{ id: 'a', source_shares: { t1: 1, r2: 2 } }, { id: 'b', source_shares: { t1: 1 } }, { id: 'c' }], 'r2')).toEqual(['a'])
+  })
+
+  it('names who a row came from, by the bid’s labels, with the shares in the hover', () => {
+    const labels = { t1: 'Taunya', r2: 'Robert' }
+    expect(countRowFrom(null, labels)).toEqual({ kind: 'none', words: 'typed here', title: 'typed here · no project', keys: [] })
+    expect(countRowFrom({ t1: 5 }, labels)).toEqual({ kind: 'one', words: 'Taunya', title: 'Taunya’s count', keys: ['t1'] })
+    expect(countRowFrom({ t1: 1489.04, r2: 338.41 }, labels, (n) => n.toLocaleString('en-US'))).toEqual({ kind: 'both', words: 'both', title: 'both · Taunya 1,489.04 · Robert 338.41', keys: ['t1', 'r2'] })
+    expect(countRowFrom({ gone: 3 }, labels).words).toBe('?')
+    expect(countSourceShortLabel('SpaceX BA · Robert')).toBe('Robert')
+    expect(countSourceShortLabel('counttooling.com')).toBe('counttooling.com')
   })
 })

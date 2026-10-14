@@ -50,6 +50,8 @@ vi.mock('./useBidBoardBudgetChips', () => ({
     return new Map()
   },
 }))
+// v2.5520: the CountTooling projects behind the board's bids are their own read; this test counts the job index's.
+vi.mock('./useBidCountSourcesByBid', () => ({ useBidCountSourcesByBid: () => new Map() }))
 vi.mock('./useBidBoardJobAccountStrips', () => ({
   useBidBoardJobAccountStrips: (ids: string[], enabled: boolean) => {
     db.stripArgs.push({ ids: [...ids], enabled })

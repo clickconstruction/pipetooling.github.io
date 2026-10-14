@@ -147,3 +147,53 @@ export function countSourceLabel(source: { project_name: string | null; link: st
   const who = (importerName ?? '').trim()
   return who ? `${name} · ${who}` : name
 }
+
+/** The shares with one project's key gone, the count untouched: what removing a project from Edit Bid leaves (v2.5520). */
+export function sharesWithoutKey(shares: CountSourceShares, key: string): CountSourceShares | null {
+  if (!(key in shares)) return sharesOrNull(shares)
+  const next: CountSourceShares = { ...shares }
+  delete next[key]
+  return sharesOrNull(next)
+}
+
+/** The row ids whose shares carry a project's key — the rows a removal has to re-stamp. */
+export function rowsCarryingKey(rows: ReadonlyArray<{ id: string; source_shares?: unknown }>, key: string): string[] {
+  return rows.filter((r) => key in parseSourceShares(r.source_shares)).map((r) => r.id)
+}
+
+export type CountRowFrom = {
+  /** 'none' = typed here (no project); 'one' = one project's; 'both' = more than one project's. */
+  kind: 'none' | 'one' | 'both'
+  /** The pill: "Taunya" · "both" · "typed here". */
+  words: string
+  /** The hover: "both · Taunya 1,489.04 · Robert 338.41" · "Taunya's count" · "typed here · no project". */
+  title: string
+  /** The project ids the row carries, in share order. */
+  keys: string[]
+}
+
+/**
+ * The Counts sheet's From pill for a row (v2.5520): which project(s) the row's shares name, by the bid's source
+ * labels. A share whose project the bid no longer lists reads "?" and still counts as a project.
+ */
+export function countRowFrom(
+  shares: unknown,
+  labelById: Readonly<Record<string, string>>,
+  fmt: (n: number) => string = (n) => String(n),
+): CountRowFrom {
+  const parsed = parseSourceShares(shares)
+  const keys = Object.keys(parsed)
+  if (keys.length === 0) return { kind: 'none', words: 'typed here', title: 'typed here · no project', keys }
+  const name = (k: string) => labelById[k] ?? '?'
+  if (keys.length === 1) {
+    const k = keys[0]!
+    return { kind: 'one', words: name(k), title: `${name(k)}’s count`, keys }
+  }
+  return { kind: 'both', words: 'both', title: `both · ${keys.map((k) => `${name(k)} ${fmt(parsed[k] ?? 0)}`).join(' · ')}`, keys }
+}
+
+/** The short name a pill wears: the importer's name when the label carries one (*SpaceX BA · Robert* → *Robert*), else the label. */
+export function countSourceShortLabel(label: string): string {
+  const i = label.lastIndexOf(' · ')
+  return i >= 0 ? label.slice(i + 3) : label
+}
