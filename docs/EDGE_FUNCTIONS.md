@@ -1402,7 +1402,7 @@ The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildG
 
 ### gmail-sync
 
-**Purpose**: Messages, cut 6 (email in), the bids@ reader (v2.5354; `to-dos/gc-mode/messages/BUILD_PLAN.md` → Cut 6 and the mock-up `email-in-mockups.html` on branch `spike/gc-mode`). Every email that reaches bids@ lands in its sender's thread. It reads Gmail as the bids@ mailbox under the service account's domain-wide delegation, takes each email once by its Gmail id (`email_write_line`), and marks it with the label **In ClickTooling**. Nothing in Gmail is deleted, archived, moved or marked read.
+**Purpose**: Messages, cut 6 (email in), the bids@ reader (v2.5354; `MESSAGES_BUILD_PLAN.md` → Cut 6 and the mock-up `email-in-mockups.html` on branch `spike/gc-mode`). Every email that reaches bids@ lands in its sender's thread. It reads Gmail as the bids@ mailbox under the service account's domain-wide delegation, takes each email once by its Gmail id (`email_write_line`), and marks it with the label **In ClickTooling**. Nothing in Gmail is deleted, archived, moved or marked read.
 
 **Endpoint**: `POST /functions/v1/gmail-sync` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret` only.
 
@@ -5165,7 +5165,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### messages-nudge-dispatch
 
-**Purpose**: Messages, cut 5: the morning run of the reminders the app sends itself (`to-dos/gc-mode/messages/BUILD_PLAN.md` → Cut 5 and section 6; section 7's decision 3: per step, off until the owner turns it on). Every decision is a kernel's, from the copy (`_shared/gcKernels/`):
+**Purpose**: Messages, cut 5: the morning run of the reminders the app sends itself (`MESSAGES_BUILD_PLAN.md` → Cut 5 and section 6; section 7's decision 3: per step, off until the owner turns it on). Every decision is a kernel's, from the copy (`_shared/gcKernels/`):
 - `nudgeRunReads` (`src/lib/flows/nudgeRunInputs.ts`) puts everyone's flow together the way each person's panel does;
 - `planNudgeRun` (`nudgeDispatch.ts`) picks the morning's texts: what Follow up shows as due, of the steps the app sends and the owner turned on, one text a person;
 - `runSummary` and `runHourNow` (`nudgeRunLog.ts`) word the morning and pick the cron's tick.
@@ -5339,6 +5339,8 @@ Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` a
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DOCSMIT_EMAIL`, `DOCSMIT_PASSWORD_SHA512` (the lowercase SHA-512 hex of the password, all the API takes), `DOCSMIT_SOFTWARE_ID`, `DOCSMIT_BASE_URL` (unset = Tracksmit, the sandbox; the live site is `https://secure.docsmit.com/api/v1`). With any of the three Docsmit secrets missing it answers 500 naming them. `app_settings` `docsmit_paused` = `'true'` refuses everything but `ping` with 409.
 
 **Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+**The client reads a refusal's body** (v2.5532): `supabase.functions.invoke` hands a non-2xx back as `data: null` with a `FunctionsHttpError`, and until then `runDocsmitIo.ts` read none of it — a send that mailed envelope 1 and stopped on envelope 2 read as *Nothing mailed*, and a refused address was held as *Edge Function returned a non-2xx status code*. The body now comes from `error.context`, so a 402 (credit short), a 422 (an address that will not mail) and a 502 reach the run window with `sent`, `stopped_at`, the shortfall and the correction. The function's own answers are unchanged.
 
 #### Request body
 
