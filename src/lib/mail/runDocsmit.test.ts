@@ -31,8 +31,14 @@ describe('a run that mails through Docsmit, the pure side (the Docsmit train, PR
     expect(docsmitRunDoor({ paused: true }, c)).toMatchObject({ show: false })
     expect(docsmitRunDoor({ paused: false }, [])).toMatchObject({ show: true, enabled: false, why: 'No envelope in this run is on certified mail.' })
     expect(docsmitRunDoor({ paused: false }, [c[2]!])).toMatchObject({ enabled: false, why: 'Every certified envelope needs a city, a two-letter state, a ZIP or ZIP+4 first.' })
-    expect(docsmitRunDoor({ paused: false }, c)).toEqual({ show: true, enabled: true, label: 'Mail through Docsmit · 2 envelopes', why: '1 envelope with a problem stay on paper.' })
+    expect(docsmitRunDoor({ paused: false }, c)).toEqual({ show: true, enabled: true, label: 'Mail through Docsmit · 2 envelopes', why: '1 envelope with a problem stays on paper.' })
     expect(docsmitRunDoor({ paused: false }, [c[0]!]).label).toBe('Mail through Docsmit · 1 envelope')
+    // The certified envelopes the run holds back (v2.5535) are never candidates: they name the door's reason, never its count.
+    expect(docsmitRunDoor({ paused: false }, [], { held: 2 })).toEqual({ show: true, enabled: false, label: 'Mail through Docsmit', why: 'Every certified envelope is held. Its card says why.' })
+    expect(docsmitRunDoor({ paused: false }, [c[2]!], { held: 1 }).why).toBe('Every certified envelope that goes out needs a city, a two-letter state, a ZIP or ZIP+4 first. 1 held envelope waits in the run.')
+    expect(docsmitRunDoor({ paused: false }, c, { held: 2 })).toEqual({ show: true, enabled: true, label: 'Mail through Docsmit · 2 envelopes', why: '1 envelope with a problem stays on paper. 2 held envelopes wait in the run.' })
+    expect(docsmitRunDoor({ paused: false }, [c[0]!], { held: 1 })).toMatchObject({ enabled: true, label: 'Mail through Docsmit · 1 envelope', why: '1 held envelope waits in the run.' })
+    expect(docsmitRunDoor({ paused: true }, [], { held: 3 })).toMatchObject({ show: false })
   })
 
   it('the prepare draft carries the code, the envelope by pages, the send type and the party as the function takes it; the cover window follows', () => {
