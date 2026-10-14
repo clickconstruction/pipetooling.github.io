@@ -16,7 +16,7 @@
   2. **Bids** — estimation: 26 tabs (`BIDS_TABS` in `src/lib/bids/bidsTabAccess.ts`) from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
   3. **Materials** — supply houses, price book, templates, purchase orders, PO Generator ledger
   4. **Checklist** — recurring tasks: Today / History / Review / Manage / Roadmap
-- **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (leads + Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally, GC mode (`/gc`: we are the general contractor and trades quote to us; PROJECT_DOCUMENTATION §20, every GC table's door in `src/lib/gc/doors.ts`; the Messages build's kernels and tables are the Glossary's **Messages** entry)
+- **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (leads + Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally, GC mode (`/gc`: we are the general contractor and trades quote to us; PROJECT_DOCUMENTATION §20, every GC table's door in `src/lib/gc/doors.ts`; the Messages build's kernels and tables are the Glossary's **Messages** entry), Messages for the company's own customers (`/messages`: Follow up's lanes for every kind of person, the thread window, the job box, Job Mode's door, the two inboxes and the reply push — the plan is `to-dos/gc-mode/messages/RESIDENTIAL_BUILD_PLAN.md` on branch `spike/gc-mode`, its row in `docs/README.md` → Plans)
 
 ---
 
@@ -263,7 +263,7 @@ type Customer = Database['public']['Tables']['customers']['Row']
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~150): email (Resend), Stripe,    │
+│  Edge Functions (Deno, ~160): email (Resend), Stripe,    │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```
