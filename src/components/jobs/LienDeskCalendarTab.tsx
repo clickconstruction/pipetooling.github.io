@@ -177,7 +177,7 @@ function Glyph({ kind, tone = 'amber', count }: { kind: LienCalendarKeyGlyph | '
   }
 }
 
-function markTitle(m: LienCalendarMark, j: LienCalendarJob): string {
+function markTitle(m: LienCalendarMark, j: LienCalendarJob, todayYmd?: string): string {
   switch (m.kind) {
     case 'work':
       return m.fromCreation ? `No approved hours — the board counts from the month the job was created (${labelOf(m.ymd)}). Approve the hours or check the month before a notice goes out.` : `Last day worked: ${labelOf(m.ymd)} — the lien date counts from its month, each notice from its own month`
@@ -191,7 +191,10 @@ function markTitle(m: LienCalendarMark, j: LienCalendarJob): string {
       return m.done
         ? `The ${monthWords(m.monthKey)} notice is on file`
         : m.mailed
-          ? `The ${monthWords(m.monthKey)} notice is printed and in the mail — record its tracking number by ${labelOf(m.ymd)} and it is on file`
+          ? todayYmd && m.ymd < todayYmd
+            ? // v2.5529: its date has passed — no "by" a day gone by; the record says when it went out.
+              `The ${monthWords(m.monthKey)} notice is printed and in the mail; its date, ${labelOf(m.ymd)}, has passed — record its tracking number and the day it went out, and it is on file`
+            : `The ${monthWords(m.monthKey)} notice is printed and in the mail — record its tracking number by ${labelOf(m.ymd)} and it is on file`
           : `A § 53.056 notice is owed for ${monthWords(m.monthKey)} — send it by ${labelOf(m.ymd)}`
     case 'lien':
       return m.closed ? (j.runway.closedBy === 'notice' ? `The notice window closed ${labelOf(m.ymd)} unsent — the lien is gone, the money still owed` : `The lien window closed ${labelOf(m.ymd)} — money still owed`) : `Last day to file the lien affidavit: ${labelOf(m.ymd)} (§ 53.052)`
@@ -210,7 +213,7 @@ function monthWords(key: string | null): string {
 }
 
 /** One row's marks laid on the shared axis. */
-function Track({ marks, j, onOpen, onPen, onLastWork, onRecord }: { marks: LienCalendarMark[]; j: LienCalendarJob; onOpen: () => void; onRecord?: (jobIds: string[]) => void; onPen?: (pct: number) => void; /** The last-day label is a door (v2.4735). */ onLastWork?: () => void }) {
+function Track({ marks, j, todayYmd, onOpen, onPen, onLastWork, onRecord }: { marks: LienCalendarMark[]; j: LienCalendarJob; /** v2.5529: a mailed mark whose date passed words its title without the day. */ todayYmd?: string; onOpen: () => void; onRecord?: (jobIds: string[]) => void; onPen?: (pct: number) => void; /** The last-day label is a door (v2.4735). */ onLastWork?: () => void }) {
   const gone = marks.find((m): m is Extract<LienCalendarMark, { kind: 'gone' }> => m.kind === 'gone') ?? null
   return (
     <div style={{ position: 'relative', height: TRACK_H }} data-testid="lien-cal-track">
@@ -222,7 +225,7 @@ function Track({ marks, j, onOpen, onPen, onLastWork, onRecord }: { marks: LienC
         </div>
       ) : null}
       {marks.map((m, i) => {
-        const title = markTitle(m, j)
+        const title = markTitle(m, j, todayYmd)
         if (m.kind === 'gone') return null
         if (m.kind === 'work') {
           // On a dead row the reason sits under the red flag; the tick keeps its date only when there is room before the wash.
@@ -296,7 +299,8 @@ function GroupTrack({ g, axis, onPen }: { g: LienCalendarGroup; axis: LienCalend
           f.mailed ? `${f.mailed} in the mail` : '',
           f.liens ? `${f.liens} ${f.liens === 1 ? 'lien' : 'liens'} to file` : '',
         ].filter(Boolean)
-        const title = `${bits.join(' · ')} by ${labelOf(f.ymd)}`
+        // v2.5529: an envelope whose date has passed is not due "by" a day gone by.
+        const title = f.mailed && f.ymd < axis.todayYmd ? `${bits.join(' · ')} · its date, ${labelOf(f.ymd)}, has passed` : `${bits.join(' · ')} by ${labelOf(f.ymd)}`
         const parts: Array<{ kind: 'notice' | 'lien' | 'mailed'; n: number; ink: string }> = []
         if (f.notices) parts.push({ kind: 'notice', n: f.notices, ink: noticeInk(f.tone) })
         if (f.mailed) parts.push({ kind: 'mailed', n: f.mailed, ink: MAILED_INK })
@@ -519,7 +523,7 @@ function JobRow({ j, g, index, axis, onOpen, onOpenJob, onPen, mark, closedHere,
           {j.address ? ` · ${j.address}` : ''}
         </span>
       </div>
-      {axis ? <Track marks={marks} j={j} onOpen={onOpen} onPen={onPen} onLastWork={onLastWork} onRecord={onRecord} /> : <div />}
+      {axis ? <Track marks={marks} j={j} todayYmd={axis.todayYmd} onOpen={onOpen} onPen={onPen} onLastWork={onLastWork} onRecord={onRecord} /> : <div />}
       <div style={{ padding: '0 14px', textAlign: 'right' }} data-testid="lien-cal-row-money">
         <div style={{ fontSize: '0.8125rem', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: dead ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(j.openBalance)}</div>
         {word ? (

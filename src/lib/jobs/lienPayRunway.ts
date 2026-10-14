@@ -303,16 +303,23 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     : []
   const lastNotice = noticeMonths[noticeMonths.length - 1] ?? null
   // The months still owed set the date; the months in the mail step up only when nothing else is owed, since
-  // recording a number is not a statutory deadline.
+  // recording a number is not a statutory deadline. A month in the mail whose date has passed (v2.5529) keeps
+  // its mark but sets no date: the runway cannot tell from a print whether it went out in time, so it reads
+  // on to the lien date, as a month on file does, rather than counting days past a notice date.
   const stillOwed = noticeMonths.filter((m) => m.state === 'owed')
-  const inTheMail = noticeMonths.filter((m) => m.state === 'mailed')
+  const inTheMail = noticeMonths.filter((m) => m.state === 'mailed' && (daysBetweenYmd(today, m.ymd) ?? -1) >= 0)
   const owedMonths = stillOwed.length > 0 ? stillOwed : inTheMail
   const noticeMailed = stillOwed.length === 0 && inTheMail.length > 0
   const noticeBy = owedMonths[0]?.ymd ?? lastNotice?.ymd ?? ''
   const daysToNotice = noticeBy ? daysBetweenYmd(today, noticeBy) : null
   const noticeOwed = owedMonths.length > 0 && daysToNotice != null
   const noticeWords = noticeBy ? formatYmdMonthDay(noticeBy) : ''
-  const noticeNote = isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : ''
+  // v2.5529: a month in the mail whose date has passed sets no date, so the runway's words say what is still to do.
+  const passedMailed = noticeMonths.filter((m) => m.state === 'mailed' && (daysBetweenYmd(today, m.ymd) ?? -1) < 0).map((m) => monthWords(m.key, true))
+  const passedMailedWords = passedMailed.length > 1 ? `${passedMailed.slice(0, -1).join(', ')} and ${passedMailed[passedMailed.length - 1]}` : passedMailed[0] ?? ''
+  const noticeNote =
+    (isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : '') +
+    (passedMailedWords ? ` The § 53.056 ${passedMailed.length > 1 ? 'notices' : 'notice'} for ${passedMailedWords} ${passedMailed.length > 1 ? 'are' : 'is'} printed and in the mail but not recorded; record the mailing on the Lien desk before the lien is filed.` : '')
 
   // The last month's window closed unsent: every earlier window closed before it.
   if (lastNotice?.state === 'closed' && daysToNotice != null) {
