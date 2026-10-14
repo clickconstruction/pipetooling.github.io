@@ -31,7 +31,7 @@ Work → bill at 6 days and bill → paid at 32 days means the office bills fast
 
 The panel on the right lists **every open job** with no field work for a while. Open means not billed and not paid. The wait is {{chip:blue|14 d}}, {{chip:blue|21 d}} or {{chip:blue|30 d}} or more. Longest idle goes first. Each shows the GC, the lead tech and the contract. It runs on all jobs whatever **Show** says. This is the list behind the Timeline's "open then and still open" number.
 
-Click a row and the Jobs view opens on that job. Most stale jobs need one of three things: a bill, an inspection, or to be closed.
+Click a row and the job's own window opens. Most stale jobs need one of three things: a bill, a visit, or to be closed. {{button:outline|Review them in Follow-ups →}} opens the Follow-ups deck on its Idle lens. It deals the idle jobs with nothing booked, one card at a time. Each card says what the job needs and has a door for it.
 
 ## The Dashboard card
 
