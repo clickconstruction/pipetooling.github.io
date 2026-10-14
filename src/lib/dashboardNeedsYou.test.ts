@@ -644,6 +644,19 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.actionLabel).toBe('Issue releases')
   })
 
+  it('docsmit-credit (6b): amber under the warn line, red at zero, quiet above it, before the first read, or disabled', () => {
+    const credit = (balance: number | null, warn = 25) => ({ balance, asOf: '2026-10-14T14:17:00Z', warn, nowIso: '2026-10-14T16:20:00Z' })
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(120) }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(null) }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: false, docsmitCredit: credit(3) }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: null }))).toEqual([])
+    const low = buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(12.4) }))
+    expect(low.map((i) => [i.key, i.severity, i.title, i.figure, i.actionLabel])).toEqual([['docsmit-credit', 'amber', 'Docsmit credit is low: $12.40', '$12', 'Open the Lien desk']])
+    expect(low[0]!.detail).toMatch(/^Docsmit credit \$12\.40, under your \$25 line · read 2 h ago\. /)
+    const out = buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(0) }))
+    expect(out.map((i) => [i.key, i.severity, i.title])).toEqual([['docsmit-credit', 'red', 'Docsmit credit is out']])
+  })
+
   it('lien watches (v2.2645): serve-copy red, notice/file windows amber, quiet at empty/disabled/loading', () => {
     expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [] } }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ lienWatchEnabled: false, lienWatch: { noticeDue: [], filingDue: [], serveDue: [{ serveDue: '2026-09-09' }] } }))).toEqual([])

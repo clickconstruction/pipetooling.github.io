@@ -61,6 +61,7 @@ import { useSubmittalsNudge } from '../../hooks/useSubmittalsNudge'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
+import { useDocsmitSettings } from '../../hooks/useDocsmitSettings'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
@@ -456,6 +457,8 @@ export function DashboardPinnedQuickRow({
   const [lienWaiversToSignOpen, setLienWaiversToSignOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled, hideZzTestJobs, authUserId)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled, hideZzTestJobs)
+  // Docsmit's prepaid credit (the Docsmit train, 6b, the credit line): the balance the poll last read, against the warn line.
+  const docsmit = useDocsmitSettings()
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
   const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
@@ -621,6 +624,8 @@ export function DashboardPinnedQuickRow({
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
     lienWatch,
+    docsmitCreditEnabled: lienUnconditionalEnabled && docsmit.setUp,
+    docsmitCredit: docsmit.loaded ? { ...docsmit.credit, warn: docsmit.settings.creditWarn, nowIso: new Date().toISOString() } : null,
     lienDeskEnabled: lienUnconditionalEnabled,
     lienDesk: lienDeskData?.summary ?? null,
     lienDeskLeader: role === 'dev' || role === 'master_technician',
@@ -873,6 +878,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
             } else if (item.key === 'lien-tracking-owed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
+            } else if (item.key === 'docsmit-credit') {
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=ready')
             } else if (item.key === 'owner-records-signed') {
               // Records for an owner on the request that has waited longest (punch list #86); the desk's own door without a job.
               const jobId = ownerRecordsSigned?.first.jobId

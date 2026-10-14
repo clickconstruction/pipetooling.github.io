@@ -17,7 +17,8 @@ import { loadOpenPieces, refreshPieces, type MailDb } from '../_shared/mailDocsm
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, DOCSMIT_EMAIL,
  * DOCSMIT_PASSWORD_SHA512, DOCSMIT_SOFTWARE_ID, DOCSMIT_BASE_URL. Gateway verify_jwt = false.
- * app_settings docsmit_paused = 'true' skips the run.
+ * app_settings docsmit_paused = 'true' skips the run. Last, the account's balance is written to app_settings
+ * docsmit_credit_balance / docsmit_credit_as_of (the credit line, 6b).
  */
 
 const corsHeaders = {
@@ -35,6 +36,13 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 async function setting(admin: MailDb, key: string): Promise<string> {
   const { data } = await admin.from('app_settings').select('value_text').eq('key', key).maybeSingle()
   return String((data as { value_text?: unknown } | null)?.value_text ?? '').trim().toLowerCase()
+}
+
+/** One `app_settings` row written (the credit line, 6b): the poll's own keys, made on first write. */
+async function writeSetting(admin: MailDb, key: string, value: string): Promise<void> {
+  const { data } = await admin.from('app_settings').select('key').eq('key', key).maybeSingle()
+  const { error } = data ? await admin.from('app_settings').update({ value_text: value }).eq('key', key) : await admin.from('app_settings').insert({ key, value_text: value })
+  if (error) throw new Error(`app_settings ${key}: ${error.message}`)
 }
 
 serve(async (req) => {
@@ -109,7 +117,20 @@ serve(async (req) => {
       }
     }
 
-    return jsonResponse({ ok: result.errors.length === 0 && matchErrors.length === 0, env: client.env(), read: pieces.length, updated: result.updated, errors: result.errors, matched_from_site: matched, match_errors: matchErrors })
+    // The credit line (6b): the account's balance, kept where the Dashboard's Needs you and the run's strip read it.
+    let creditBalance: number | null = null
+    let creditError: string | null = null
+    try {
+      creditBalance = (await client.accountInfo()).creditBalance
+      if (creditBalance != null) {
+        await writeSetting(admin, 'docsmit_credit_balance', String(creditBalance))
+        await writeSetting(admin, 'docsmit_credit_as_of', nowIso)
+      }
+    } catch (e) {
+      creditError = e instanceof Error ? e.message : String(e)
+    }
+
+    return jsonResponse({ ok: result.errors.length === 0 && matchErrors.length === 0, env: client.env(), read: pieces.length, updated: result.updated, errors: result.errors, matched_from_site: matched, match_errors: matchErrors, credit_balance: creditBalance, credit_error: creditError })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     console.error('mail-poll', message)

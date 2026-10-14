@@ -35,6 +35,7 @@ import { arReturnCaseView, type ArReturnCaseRow } from './jobs/arReturnCase'
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 import type { LienDeskNeedsYou } from './jobs/lienDesk'
+import { docsmitCreditLine } from './mail/docsmitSettings'
 import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
@@ -111,6 +112,7 @@ export type NeedsYouItem = {
     | 'demand-deadline'
     | 'lien-serve-copy'
   | 'lien-tracking-owed'
+    | 'docsmit-credit'
     | 'lien-suit-year'
     | 'lien-window-missed'
     | 'lien-notice-draft'
@@ -200,6 +202,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'demand-deadline': 40,
   'lien-serve-copy': 10,
   'lien-tracking-owed': 10,
+  // The mail service's prepaid credit under the line (6b): the next run's envelopes would stop at a 402.
+  'docsmit-credit': 10,
   'lien-suit-year': 20,
   'lien-window-missed': 40,
   'lien-notice-draft': 40,
@@ -468,6 +472,12 @@ export type NeedsYouInputs = {
    */
   ownerRecordsSignedEnabled?: boolean
   ownerRecordsSigned?: import('./jobs/ownerRecords').OwnerRecordsSigned | null
+  /**
+   * Docsmit's prepaid credit (the Docsmit train, 6b, the credit line): the balance the hourly poll last read
+   * and the warn line from Developer settings; null while loading or before a dev set the service up.
+   */
+  docsmitCreditEnabled?: boolean
+  docsmitCredit?: { balance: number | null; asOf: string | null; warn: number; nowIso: string } | null
   lienWatchEnabled: boolean
   lienWatch: {
     noticeDue: { deadline: string; openBalance: number }[]
@@ -672,6 +682,23 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       figure: String(n),
       actionLabel: 'Open the Lien desk',
     })
+  }
+
+  // The credit line (6b): the mail service's balance under the line in Developer settings — a run's certified envelopes would stop at a 402.
+  if (inputs.docsmitCreditEnabled && inputs.docsmitCredit && inputs.docsmitCredit.balance != null) {
+    const c = inputs.docsmitCredit
+    const line = docsmitCreditLine({ balance: c.balance, asOf: c.asOf }, c.warn, c.nowIso)
+    if (line.state === 'low' || line.state === 'out') {
+      items.push({
+        key: 'docsmit-credit',
+        severity: line.state === 'out' ? 'red' : 'amber',
+        kicker: 'Lien notices',
+        title: line.state === 'out' ? 'Docsmit credit is out' : `Docsmit credit is low: $${(c.balance as number).toFixed(2)}`,
+        detail: `${line.words}. A certified envelope with the return receipt costs about $10, and a run with no credit stops at the first one. Add credit on Docsmit's site (Account → Increase credit balance); the poll reads the balance every hour.`,
+        figure: `$${Math.round(c.balance as number)}`,
+        actionLabel: 'Open the Lien desk',
+      })
+    }
   }
 
   // Records for an owner (punch list #86): the owner did their part on the portal; the packet is ours to send.

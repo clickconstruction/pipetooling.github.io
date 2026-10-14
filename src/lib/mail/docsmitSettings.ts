@@ -130,3 +130,55 @@ export function docsmitSettingRows(s: DocsmitSettings): Array<{ key: string; val
     { key: DOCSMIT_SETTING_KEYS.matchSite, value_text: String(s.matchSite) },
   ]
 }
+
+/** The poll's own rows (6b, the credit line): the balance Docsmit reported and when; never written by the Developer block. */
+export const DOCSMIT_CREDIT_KEYS = { balance: 'docsmit_credit_balance', asOf: 'docsmit_credit_as_of' } as const
+
+/** Every `docsmit_*` row the app reads: the switches and the poll's balance. */
+export const DOCSMIT_READ_KEY_LIST: string[] = [...DOCSMIT_SETTING_KEY_LIST, DOCSMIT_CREDIT_KEYS.balance, DOCSMIT_CREDIT_KEYS.asOf]
+
+export type DocsmitCredit = { balance: number | null; asOf: string | null }
+
+export const DOCSMIT_CREDIT_NONE: DocsmitCredit = { balance: null, asOf: null }
+
+/** The balance from the rows, or none while the poll has never read it. */
+export function docsmitCreditFrom(rows: ReadonlyArray<SettingRowLike>): DocsmitCredit {
+  let balance: number | null = null
+  let asOf: string | null = null
+  for (const r of rows) {
+    if (r.key === DOCSMIT_CREDIT_KEYS.balance) {
+      const n = typeof r.value_num === 'number' ? r.value_num : Number(String(r.value_text ?? '').replace(/[^0-9.\-]/g, ''))
+      if (Number.isFinite(n) && String(r.value_text ?? r.value_num ?? '').trim() !== '') balance = n
+    } else if (r.key === DOCSMIT_CREDIT_KEYS.asOf && typeof r.value_text === 'string' && r.value_text.trim()) asOf = r.value_text.trim()
+  }
+  return { balance, asOf }
+}
+
+export type DocsmitCreditState = 'none' | 'ok' | 'low' | 'out'
+
+/**
+ * The credit line (6b): where the balance stands against the warn line, and the words a card or a strip says —
+ * *Docsmit credit $12.40, under your $25 line · read 2 h ago*. `none` while the poll has never read it; `out` at or
+ * under zero; `low` under the line; `ok` otherwise (words still given, for the strip).
+ */
+export function docsmitCreditLine(credit: DocsmitCredit, warn: number, nowIso: string): { state: DocsmitCreditState; words: string; ago: string } {
+  if (credit.balance == null) return { state: 'none', words: '', ago: '' }
+  const ago = creditAgoWords(credit.asOf, nowIso)
+  const dollars = `$${credit.balance.toFixed(2)}`
+  const line = `$${Number.isInteger(warn) ? warn : warn.toFixed(2)}`
+  if (credit.balance <= 0) return { state: 'out', words: `Docsmit credit is out (${dollars})${ago ? ` · read ${ago}` : ''}`, ago }
+  if (credit.balance < warn) return { state: 'low', words: `Docsmit credit ${dollars}, under your ${line} line${ago ? ` · read ${ago}` : ''}`, ago }
+  return { state: 'ok', words: `Docsmit credit ${dollars}${ago ? ` · read ${ago}` : ''}`, ago }
+}
+
+function creditAgoWords(asOf: string | null, nowIso: string): string {
+  if (!asOf) return ''
+  const ms = new Date(nowIso).getTime() - new Date(asOf).getTime()
+  if (!Number.isFinite(ms) || ms < 0) return ''
+  const min = Math.round(ms / 60_000)
+  if (min < 2) return 'just now'
+  if (min < 60) return `${min} min ago`
+  const h = Math.round(min / 60)
+  if (h < 36) return `${h} h ago`
+  return `${Math.round(h / 24)} days ago`
+}
