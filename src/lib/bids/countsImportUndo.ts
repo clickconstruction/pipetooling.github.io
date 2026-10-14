@@ -20,6 +20,8 @@ export type ImportUndoReinsertRow = {
   page: string | null
   unit: string | null
   sequence_order: number | null
+  /** v2.5517: the row's shares, so a removed row comes back with its projects. */
+  source_shares?: Record<string, number> | null
 }
 
 export type ImportUndoPlan = {
@@ -31,6 +33,8 @@ export type ImportUndoPlan = {
   restoreRows: ImportUndoRestoreRow[]
   /** Removed rows, whole, re-inserted under their old ids. */
   reinsertRows: ImportUndoReinsertRow[]
+  /** v2.5517: the `bid_count_sources` row this import created (a project new to the bid); null when it reused one. */
+  deleteSourceId: string | null
 }
 
 export function importUndoPlan(args: {
@@ -41,6 +45,8 @@ export function importUndoPlan(args: {
   sourceLinkWritten: string | null
   restoreRows?: ReadonlyArray<ImportUndoRestoreRow>
   reinsertRows?: ReadonlyArray<ImportUndoReinsertRow>
+  /** v2.5517: the source row the import created, to delete on undo. */
+  sourceCreatedId?: string | null
 }): ImportUndoPlan {
   const seen = new Set<string>()
   const deleteRowIds: string[] = []
@@ -53,11 +59,12 @@ export function importUndoPlan(args: {
   const restoreSourceLink = args.sourceLinkWritten != null && args.sourceLinkWritten !== before ? { to: before } : null
   const restoreRows = (args.restoreRows ?? []).filter((r) => r.id && Object.keys(r.before).length > 0)
   const reinsertRows = [...(args.reinsertRows ?? [])]
-  return { deleteRowIds, restoreSourceLink, restoreRows, reinsertRows }
+  const deleteSourceId = args.sourceCreatedId || null
+  return { deleteRowIds, restoreSourceLink, restoreRows, reinsertRows, deleteSourceId }
 }
 
 export function importUndoIsEmpty(plan: ImportUndoPlan): boolean {
-  return plan.deleteRowIds.length === 0 && plan.restoreSourceLink == null && plan.restoreRows.length === 0 && plan.reinsertRows.length === 0
+  return plan.deleteRowIds.length === 0 && plan.restoreSourceLink == null && plan.restoreRows.length === 0 && plan.reinsertRows.length === 0 && plan.deleteSourceId == null
 }
 
 /** "Import undone — 2 rows removed, 5 put back, 2 restored." */

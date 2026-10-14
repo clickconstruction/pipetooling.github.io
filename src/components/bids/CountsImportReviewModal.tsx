@@ -86,7 +86,7 @@ export function CountsImportReviewModal({ review, existingCount, attached, busy,
 
   const set = (fn: (c: CountsImportChoices) => void) =>
     setChoices((prev) => {
-      const next: CountsImportChoices = { update: new Set(prev.update), add: new Set(prev.add), remove: new Set(prev.remove), pair: new Set(prev.pair) }
+      const next: CountsImportChoices = { update: new Set(prev.update), add: new Set(prev.add), remove: new Set(prev.remove), pair: new Set(prev.pair), replaceInstead: new Set(prev.replaceInstead ?? []) }
       fn(next)
       return next
     })

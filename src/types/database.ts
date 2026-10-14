@@ -3926,6 +3926,57 @@ export type Database = {
           },
         ]
       }
+      bid_count_sources: {
+        Row: {
+          bid_id: string
+          first_imported_at: string
+          id: string
+          imported_by: string | null
+          last_imported_at: string
+          link: string
+          project_name: string | null
+          scope: string
+          token: string | null
+        }
+        Insert: {
+          bid_id: string
+          first_imported_at?: string
+          id?: string
+          imported_by?: string | null
+          last_imported_at?: string
+          link: string
+          project_name?: string | null
+          scope?: string
+          token?: string | null
+        }
+        Update: {
+          bid_id?: string
+          first_imported_at?: string
+          id?: string
+          imported_by?: string | null
+          last_imported_at?: string
+          link?: string
+          project_name?: string | null
+          scope?: string
+          token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_count_sources_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_sources_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bids_count_rows: {
         Row: {
           bid_id: string
@@ -3937,6 +3988,7 @@ export type Database = {
           id: string
           page: string | null
           sequence_order: number
+          source_shares: Json | null
           unit: string | null
         }
         Insert: {
@@ -3949,6 +4001,7 @@ export type Database = {
           id?: string
           page?: string | null
           sequence_order?: number
+          source_shares?: Json | null
           unit?: string | null
         }
         Update: {
@@ -3961,6 +4014,7 @@ export type Database = {
           id?: string
           page?: string | null
           sequence_order?: number
+          source_shares?: Json | null
           unit?: string | null
         }
         Relationships: [

@@ -51,3 +51,14 @@ describe('importUndoPlan — a reviewed import (v2.4699)', () => {
     expect(describeImportUndo(plan)).toBe('Import undone — 1 put back.')
   })
 })
+
+describe('the project the import registered (v2.5517)', () => {
+  it('a source the import created is deleted on undo; one it reused is left; a removed row keeps its shares', () => {
+    const made = importUndoPlan({ insertedIds: [], sourceLinkBefore: null, sourceLinkWritten: null, sourceCreatedId: 'src-1' })
+    expect(made.deleteSourceId).toBe('src-1')
+    expect(importUndoIsEmpty(made)).toBe(false)
+    expect(importUndoPlan({ insertedIds: [], sourceLinkBefore: null, sourceLinkWritten: null, sourceCreatedId: null }).deleteSourceId).toBeNull()
+    const row = { id: 'r', bid_id: 'b', bid_version_id: null, fixture: 'WC', count: 4, group_tag: null, page: '2', unit: null, sequence_order: 3, source_shares: { 's1': 4 } }
+    expect(importUndoPlan({ insertedIds: [], sourceLinkBefore: null, sourceLinkWritten: null, reinsertRows: [row] }).reinsertRows[0]?.source_shares).toEqual({ s1: 4 })
+  })
+})
