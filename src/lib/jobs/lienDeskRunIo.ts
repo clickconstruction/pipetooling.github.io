@@ -145,7 +145,8 @@ export async function recordLienDeskRun(
           tracking = `resend:${id} → ${r.email}`
         }
         // A copy that went through Docsmit (PR 5b): the provider and the piece ride with the send; the poll fills the number.
-        sends.push({ recipient: r.key, method: r.method, tracking, sent_on: opts.mailedOn || opts.todayYmd, ...(recipientViaDocsmit(r) ? { via: r.via, piece_id: r.pieceId } : {}) })
+        // Recorded in a later sitting (v2.5532), it carries the day USPS took it, as the poll would write it.
+        sends.push({ recipient: r.key, method: r.method, tracking, sent_on: (recipientViaDocsmit(r) && r.pieceMailedOn) || opts.mailedOn || opts.todayYmd, ...(recipientViaDocsmit(r) ? { via: r.via, piece_id: r.pieceId } : {}) })
       }
       if (n.parts && n.parts.length > 1) {
         // One notice for the jobs at a property (#35 PR 3): one filing per job on one packet, each item sent.

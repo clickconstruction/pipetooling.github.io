@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailCostDollars, mailNeedsYouRows, mailPieceWords, mailPiecesByFiling, mailPiecesNeedingYou, type LienMailPieceRow } from './lienMailPieces'
+import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailCostDollars, mailNeedsYouRows, mailPieceForCopy, mailPieceWords, mailPiecesByFiling, mailPiecesNeedingYou, type LienMailPieceRow } from './lienMailPieces'
 
 const base: LienMailPieceRow = { id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'in_transit', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'In Transit', source_ids: ['f1'] }
 const fmt = (d: string) => d
@@ -66,5 +66,15 @@ describe('the desk reads the mail pieces behind a sent notice (the Docsmit train
     expect(lines[0]).toMatchObject({ who: 'Owner of record', words: 'returned to sender · a plain First Class copy sent', tone: 'muted' })
     expect(lines[1]).toMatchObject({ who: 'Owner of record (plain copy)', words: 'mailed 2026-10-13', tone: 'muted' })
     expect(mailNeedsYouRows({ j1: [{ id: 'f1' }] }, { f1: [answered, copy] })).toEqual([])
+  })
+
+  it('the piece a copy of a notice not yet recorded went out as: by recipient, once Docsmit took it, never a plain copy (v2.5532)', () => {
+    const item = { ...base, source_ids: ['it1'] }
+    expect(mailPieceForCopy([item], 'owner')?.id).toBe('p1')
+    expect(mailPieceForCopy([item], 'original_contractor')).toBeNull()
+    expect(mailPieceForCopy([{ ...item, status: 'prepared' }, { ...item, id: 'p2', status: 'failed' }], 'owner')).toBeNull()
+    expect(mailPieceForCopy([{ ...item, status: 'sent' }], 'owner')?.id).toBe('p1')
+    expect(mailPieceForCopy([{ ...item, status: 'returned' }], 'owner')?.id).toBe('p1')
+    expect(mailPieceForCopy([{ ...item, id: 'p9', status: 'mailed', send_type: 'First Class', resend_of: 'p1' }], 'owner')).toBeNull()
   })
 })

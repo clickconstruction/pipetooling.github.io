@@ -69,9 +69,9 @@ export default function LienDeskRunModal({
   todayYmd: string
   userId: string | null
   onClose: () => void
-  /** After a record — the desk re-reads. */
+  /** After a record, a signature or a mailing through Docsmit (v2.5532) — the desk re-reads. */
   onRecorded: () => void
-  /** The packet printed (v2.4119): the desk stamps these items printed so they sit in "In the mail · tracking owed" until recorded. */
+  /** The packet printed (v2.4119), or the copies went through Docsmit (v2.5532): the desk stamps these items printed so they sit in "In the mail · tracking owed" until recorded. */
   onPrinted?: (itemIds: string[]) => Promise<void> | void
   /**
    * Take back what printed (punch list #101): nothing was mailed, so these items go back to Ready
@@ -353,9 +353,18 @@ export default function LienDeskRunModal({
       }
       setDsm((d) => ({ ...d, stage: 'review', sent: result.words }))
       showToast(result.words, answer.ok ? 'success' : 'warning')
-      // Every envelope that goes on paper is already through Docsmit: the run is sealed and postmarked, and the foot moves to recording.
+      // Kept the moment it goes (v2.5532), not at Record the run: a notice with every copy out is stamped printed as a print
+      // stamps it, and the desk re-reads, so the pieces (which name their desk items) are on every later run. It re-reads
+      // too when the answer cannot say what went (it never came back), and the next run asks the pieces.
+      const mailedCopies = envelopes.filter((e) => result.mailedKeys.includes(e.key)).flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key))))
+      const before = new Set(noticesFullyPrinted(notices, printedCopies).map((n) => n.itemId))
+      const outNow = noticesFullyPrinted(notices, new Set([...printedCopies, ...mailedCopies]))
+      const out = outNow.map((n) => n.itemId).filter((id) => !before.has(id))
+      if (out.length) void Promise.resolve(onPrinted?.(out)).catch(() => undefined)
+      if (result.mailedKeys.length > 0 || (!answer.ok && !answer.stopped_at)) onRecorded()
+      // Every envelope that goes on paper is already through Docsmit, or every notice is out: the foot moves to recording.
       const paperLeft = mailing.mailed.filter((e) => !result.mailedKeys.includes(e.key) && !envelopeViaDocsmit(e))
-      if (result.mailedKeys.length > 0 && paperLeft.length === 0) setPrintedAt((v) => v ?? new Date().toISOString())
+      if (result.mailedKeys.length > 0 && (paperLeft.length === 0 || outNow.length === notices.length)) setPrintedAt((v) => v ?? new Date().toISOString())
     } finally {
       setBusy(false)
     }

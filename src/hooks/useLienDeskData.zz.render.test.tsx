@@ -34,7 +34,7 @@ vi.mock('../lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
       const chain: Record<string, unknown> = {}
-      for (const m of ['select', 'is', 'order', 'in', 'eq']) chain[m] = () => chain
+      for (const m of ['select', 'is', 'order', 'in', 'eq', 'overlaps']) chain[m] = () => chain
       chain.then = (resolve: (v: unknown) => void) => resolve({ data: TABLES[table] ?? [], error: null })
       return chain
     },
@@ -72,5 +72,19 @@ describe('useLienDeskData · ZZ test jobs', () => {
     expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
     expect(data.affidavitRows.map((r) => r.job_id)).toEqual(['Y'])
     expect(Object.keys(data.jobsById).sort()).toEqual(['A', 'Y', 'Z'])
+  })
+
+  it('in full, reads the pieces an approved notice already went out as, by its desk item (v2.5532)', async () => {
+    const items = TABLES.job_lien_desk_items!
+    TABLES.job_lien_desk_items = [{ ...(items[0] as object), status: 'approved' }, items[1]!]
+    TABLES.mail_pieces = [{ id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'mailed', source_ids: ['iA'] }]
+    try {
+      const { result } = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: false }))
+      await waitFor(() => expect(result.current.data).not.toBeNull())
+      expect(result.current.data!.mailPiecesByItem).toEqual({ iA: TABLES.mail_pieces })
+    } finally {
+      TABLES.job_lien_desk_items = items
+      delete TABLES.mail_pieces
+    }
   })
 })

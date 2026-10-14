@@ -5,6 +5,7 @@
  * are `runDocsmit.ts`; this file is the only one that reaches the bucket and the function, and it never throws:
  * an envelope that cannot go is held with its reason and the rest carry on.
  */
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import type { RunEnvelope } from '../jobs/runEnvelopes'
 import type { CombinedRunNotice } from '../jobs/lienNoticeCombine'
@@ -78,6 +79,12 @@ const realIo: DocsmitIo = {
   },
   invoke: async (body) => {
     const { data, error } = await supabase.functions.invoke('mail-send-docsmit', { body })
+    // A refusal comes back as an error (402 credit short, 422 an address that will not mail, 502 Docsmit's no) whose body
+    // is the function's own answer (v2.5532): read it, so a send that stopped part way still says which envelopes went.
+    if (data == null && error instanceof FunctionsHttpError && typeof error.context?.json === 'function') {
+      const answer: unknown = await error.context.json().catch(() => null)
+      if (answer && typeof answer === 'object') return { data: answer, error }
+    }
     return { data, error }
   },
   objectUrl: (blob) => URL.createObjectURL(blob),
