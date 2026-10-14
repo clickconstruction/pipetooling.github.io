@@ -660,7 +660,7 @@ export function JobThreadNotesPanel({
                   aria-checked={boxKind === k.kind}
                   title={k.tip}
                   onClick={() => setBoxKind(k.kind)}
-                  style={{ ...KIND_LOOK[k.kind], border: '1px solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', ...(boxKind === k.kind ? RING : null) }}
+                  style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', ...(boxKind === k.kind ? RING : null) }}
                 >
                   {k.label}
                 </button>
