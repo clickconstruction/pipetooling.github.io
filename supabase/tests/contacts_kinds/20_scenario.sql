@@ -1,4 +1,4 @@
--- Messages, residential R0's SQL (migration *_contacts_seven_kinds): seven kinds of contact. The seeds give the roster's
+-- Messages, residential R0's SQL (migration *_contacts_seven_kinds, and *_contacts_team_kind since v2.5546): eight kinds of contact. The seeds give the roster's
 -- subs, the supply houses' counters and their reps a contact each, once; a row says one kind on its own record; Who is
 -- this? names a lead with no record, points a lead at its Prospects row and re-points a lead who books to the customer,
 -- names a candidate, a sub, a rep and a second person at a supply house, and refuses a record of another kind;
@@ -31,7 +31,8 @@ INSERT INTO public.customers (id, name, master_user_id) VALUES
   ('00000000-0000-0000-0000-0000000007c1', 'Kins Ramos', '00000000-0000-0000-0000-0000000007d1');
 INSERT INTO public.people (id, master_user_id, kind, name, phone, email) VALUES
   ('00000000-0000-0000-0000-0000000007b1', '00000000-0000-0000-0000-0000000007d1', 'sub', 'Kins Sub', '(210) 555-0701', 'sub@kins.example'),
-  ('00000000-0000-0000-0000-0000000007b2', '00000000-0000-0000-0000-0000000007d1', 'helper', 'Kins Helper', '(210) 555-0702', NULL);
+  ('00000000-0000-0000-0000-0000000007b2', '00000000-0000-0000-0000-0000000007d1', 'helper', 'Kins Helper', '(210) 555-0702', NULL),
+  ('00000000-0000-0000-0000-0000000007b3', '00000000-0000-0000-0000-0000000007d1', 'assistant', 'Kins Office', NULL, NULL);
 INSERT INTO public.prospects (id, master_user_id, created_by, contact_name, company_name) VALUES
   ('00000000-0000-0000-0000-0000000007e1', '00000000-0000-0000-0000-0000000007d1', '00000000-0000-0000-0000-0000000007d1', 'Kevin Lead', NULL),
   ('00000000-0000-0000-0000-0000000007e2', '00000000-0000-0000-0000-0000000007d1', '00000000-0000-0000-0000-0000000007d1', 'Lena Lead', NULL);
@@ -105,21 +106,23 @@ END $$;
 GRANT USAGE ON SCHEMA mk TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mk TO anon, authenticated;
 
--- 1 · The seeds: the roster's one sub, the supply house's counter and its two reps, each once; the helper, the insurer,
--- the archived rep and the shortlist row get none.
-SELECT mk.same('the roster gives its one sub a contact', public.contacts_subs_from_roster()::text, '1');
+-- 1 · The seeds: the roster's sub and its two teammates (v2.5546; the helper got none before), the supply house's counter
+-- and its two reps, each once; the insurer, the archived rep and the shortlist row get none.
+SELECT mk.same('the roster gives its sub and its two teammates a contact', public.contacts_subs_from_roster()::text, '3');
 SELECT mk.same('and nobody the second time', public.contacts_subs_from_roster()::text, '0');
 SELECT mk.same('the supply house gives its counter and two reps a contact', public.contacts_from_supply_houses()::text, '3');
 SELECT mk.same('and nobody the second time', public.contacts_from_supply_houses()::text, '0');
 SELECT mk.same('who each one is',
   (SELECT string_agg(mk.who(id), ', ' ORDER BY mk.who(id)) FROM public.contacts),
-  'sub|roster 7b1|-, supply_house|house 7a1|-, supply_house|rep 7a3|-, supply_house|rep 7a4|-');
+  'sub|roster 7b1|-, supply_house|house 7a1|-, supply_house|rep 7a3|-, supply_house|rep 7a4|-, team|roster 7b2|-, team|roster 7b3|-');
 SELECT mk.same('their numbers and addresses, as the roster and the RFQ desk hold them',
   (SELECT string_agg(mk.who(contact_id) || ' ' || kind || ' ' || key, ', ' ORDER BY mk.who(contact_id), kind, key) FROM public.contact_channels),
-  'sub|roster 7b1|- email sub@kins.example, sub|roster 7b1|- phone 2105550701, supply_house|house 7a1|- phone 2105550704, supply_house|rep 7a3|- email ray@kinssupply.example, supply_house|rep 7a3|- phone 2105550706, supply_house|rep 7a4|- email rita@kinssupply.example');
+  'sub|roster 7b1|- email sub@kins.example, sub|roster 7b1|- phone 2105550701, supply_house|house 7a1|- phone 2105550704, supply_house|rep 7a3|- email ray@kinssupply.example, supply_house|rep 7a3|- phone 2105550706, supply_house|rep 7a4|- email rita@kinssupply.example, team|roster 7b2|- phone 2105550702');
 
 CREATE TEMP TABLE ids AS SELECT
   mk.on('person_id', '00000000-0000-0000-0000-0000000007b1') AS sub,
+  mk.on('person_id', '00000000-0000-0000-0000-0000000007b2') AS helper,
+  mk.on('person_id', '00000000-0000-0000-0000-0000000007b3') AS office,
   mk.on('supply_house_id', '00000000-0000-0000-0000-0000000007a1') AS counter,
   mk.on('supply_house_contact_id', '00000000-0000-0000-0000-0000000007a3') AS ray,
   mk.on('supply_house_contact_id', '00000000-0000-0000-0000-0000000007a4') AS rita;
@@ -134,6 +137,8 @@ SELECT mk.refused('a supply house is a supply house', $q$INSERT INTO public.cont
 SELECT mk.refused('a hiring board row is a candidate', $q$INSERT INTO public.contacts (kind, team_prospect_id) VALUES ('trade', '00000000-0000-0000-0000-0000000007f1')$q$, 'contacts_kind_record');
 SELECT mk.refused('a candidate is on the hiring board', $q$INSERT INTO public.contacts (kind, person_id) VALUES ('candidate', '00000000-0000-0000-0000-0000000007b2')$q$, 'contacts_kind_record');
 SELECT mk.refused('a sub is on the roster', $q$INSERT INTO public.contacts (kind, customer_id) VALUES ('sub', '00000000-0000-0000-0000-0000000007c1')$q$, 'contacts_kind_record');
+SELECT mk.refused('a teammate is on the roster', $q$INSERT INTO public.contacts (kind) VALUES ('team')$q$, 'contacts_kind_record');
+SELECT mk.refused('a roster row is a sub or a teammate, never a trade partner', $q$INSERT INTO public.contacts (kind, person_id) VALUES ('trade', '00000000-0000-0000-0000-0000000007b2')$q$, 'contacts_kind_record');
 SELECT mk.refused('a rep is one contact', $q$INSERT INTO public.contacts (kind, supply_house_contact_id) VALUES ('supply_house', '00000000-0000-0000-0000-0000000007a3')$q$, 'contacts_supply_house_contact_once');
 SELECT mk.refused('a supply house''s counter is one contact', $q$INSERT INTO public.contacts (kind, supply_house_id) VALUES ('supply_house', '00000000-0000-0000-0000-0000000007a1')$q$, 'contacts_supply_house_once');
 
@@ -149,7 +154,8 @@ INSERT INTO public.contacts (id, kind) VALUES
   ('00000000-0000-0000-0000-000000007019', 'unknown'),
   ('00000000-0000-0000-0000-00000000701a', 'unknown'),
   ('00000000-0000-0000-0000-00000000701b', 'unknown'),
-  ('00000000-0000-0000-0000-00000000701c', 'unknown');
+  ('00000000-0000-0000-0000-00000000701c', 'unknown'),
+  ('00000000-0000-0000-0000-00000000701d', 'unknown');
 INSERT INTO public.contact_channels (contact_id, kind, value) VALUES
   ('00000000-0000-0000-0000-000000007011', 'phone', '(210) 555-0711'),
   ('00000000-0000-0000-0000-000000007013', 'phone', '210-555-0703'),
@@ -157,7 +163,8 @@ INSERT INTO public.contact_channels (contact_id, kind, value) VALUES
   ('00000000-0000-0000-0000-000000007015', 'phone', '(210) 555-0715'),
   ('00000000-0000-0000-0000-000000007016', 'phone', '(210) 555-0716'),
   ('00000000-0000-0000-0000-000000007017', 'phone', '(210) 555-0717'),
-  ('00000000-0000-0000-0000-000000007018', 'phone', '(210) 555-0718');
+  ('00000000-0000-0000-0000-000000007018', 'phone', '(210) 555-0718'),
+  ('00000000-0000-0000-0000-00000000701d', 'phone', '(210) 555-0790');
 INSERT INTO public.messages (contact_id, channel_id, channel, direction, at, body)
 SELECT ch.contact_id, ch.id, 'text', 'in', now() - v.ago, v.body
 FROM (VALUES
@@ -218,8 +225,14 @@ SELECT mk.same('the sub''s other number folds into the sub', (SELECT public.name
 SELECT mk.same('the sub''s line is the sub''s', (SELECT mk.thread(sub) FROM ids), 'On my way.');
 SELECT mk.refused('a helper on the roster is not a sub', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000007019', 'people', '00000000-0000-0000-0000-0000000007b2', 'sub')$q$, 'kindDoesNotFit');
 SELECT mk.refused('a customer is not a lead', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000007019', 'customers', '00000000-0000-0000-0000-0000000007c1', 'lead')$q$, 'kindDoesNotFit');
-SELECT public.name_contact('00000000-0000-0000-0000-00000000701b', 'people', '00000000-0000-0000-0000-0000000007b2', 'trade');
-SELECT mk.same('the helper is a trade partner on the roster', mk.who('00000000-0000-0000-0000-00000000701b'), 'trade|roster 7b2|-');
+SELECT mk.refused('a helper on the roster is not a trade partner (v2.5546)', $q$SELECT public.name_contact('00000000-0000-0000-0000-00000000701b', 'people', '00000000-0000-0000-0000-0000000007b2', 'trade')$q$, 'kindDoesNotFit');
+SELECT mk.refused('nor a customer', $q$SELECT public.name_contact('00000000-0000-0000-0000-00000000701b', 'people', '00000000-0000-0000-0000-0000000007b2', 'customer')$q$, 'kindDoesNotFit');
+SELECT mk.refused('a sub is not a teammate', $q$SELECT public.name_contact('00000000-0000-0000-0000-00000000701b', 'people', '00000000-0000-0000-0000-0000000007b1', 'team')$q$, 'kindDoesNotFit');
+SELECT mk.same('the helper''s other number folds into the helper, one of our own team', (SELECT public.name_contact('00000000-0000-0000-0000-00000000701b', 'people', '00000000-0000-0000-0000-0000000007b2', 'team') = helper FROM ids)::text, 'true');
+SELECT mk.same('the helper is one of our own team, and the roster keeps the number it had',
+  (SELECT concat_ws('|', mk.who(helper), (SELECT phone FROM public.people WHERE id = '00000000-0000-0000-0000-0000000007b2')) FROM ids), 'team|roster 7b2|-|(210) 555-0702');
+SELECT mk.same('the office person''s number folds into them too', (SELECT public.name_contact('00000000-0000-0000-0000-00000000701d', 'people', '00000000-0000-0000-0000-0000000007b3', 'team') = office FROM ids)::text, 'true');
+SELECT mk.same('and the roster, which had none, learned it', (SELECT phone FROM public.people WHERE id = '00000000-0000-0000-0000-0000000007b3'), '(210) 555-0790');
 SELECT mk.same('Kevin books: the lead is the customer now, his thread whole',
   (SELECT public.name_contact('00000000-0000-0000-0000-000000007011', 'customers', '00000000-0000-0000-0000-0000000007c1', 'customer'))::text, '00000000-0000-0000-0000-000000007011');
 SELECT mk.same('who Kevin is when he books', concat_ws('|', mk.who('00000000-0000-0000-0000-000000007011'), mk.thread('00000000-0000-0000-0000-000000007011')),
@@ -314,10 +327,10 @@ SELECT mk.same('the house goes, and its reps with it: each of the five is a numb
 UPDATE public.people SET kind = 'sub' WHERE id = '00000000-0000-0000-0000-0000000007b2';
 UPDATE public.people SET kind = 'helper' WHERE id = '00000000-0000-0000-0000-0000000007b1';
 SELECT mk.same('two contacts change kind', public.contacts_subs_from_roster()::text, '2');
-SELECT mk.same('the new sub is a sub with the roster''s number, the old one a trade partner',
-  (SELECT concat_ws(', ', mk.who('00000000-0000-0000-0000-00000000701b'),
-     (SELECT string_agg(key, ',') FROM public.contact_channels WHERE contact_id = '00000000-0000-0000-0000-00000000701b'), mk.who(sub)) FROM ids),
-  'sub|roster 7b2|-, 2105550702, trade|roster 7b1|-');
+SELECT mk.same('the new sub is a sub with the roster''s number, the old one a teammate (v2.5546)',
+  (SELECT concat_ws(', ', mk.who(helper),
+     (SELECT string_agg(key, ',' ORDER BY key) FROM public.contact_channels WHERE contact_id = helper), mk.who(sub)) FROM ids),
+  'sub|roster 7b2|-, 2105550702, team|roster 7b1|-');
 
 DO $$ BEGIN RAISE NOTICE 'contacts_kinds PASSED'; END $$;
 ROLLBACK;

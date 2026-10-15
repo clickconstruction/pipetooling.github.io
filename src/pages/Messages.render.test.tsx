@@ -145,7 +145,7 @@ describe('/messages: Follow up with the kind pills', () => {
     expect(await screen.findByText(GREG)).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Messages' })).toBeTruthy()
     const pills = within(screen.getByRole('group', { name: 'Which people to show' })).getAllByRole('button')
-    expect(pills.map((b) => b.textContent)).toEqual(['All', 'Customers', 'Trade partners', 'Architects', 'Leads', 'Subs', 'Supply houses and candidates'])
+    expect(pills.map((b) => b.textContent)).toEqual(['All', 'Customers', 'Trade partners', 'Architects', 'Leads', 'Subs', 'Our team', 'Supply houses and candidates'])
     expect(pill('All').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText(ELENA)).toBeTruthy()
     expect(screen.getByText(UNKNOWN)).toBeTruthy()

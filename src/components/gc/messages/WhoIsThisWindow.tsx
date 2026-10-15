@@ -113,7 +113,10 @@ export function WhoIsThisWindow({
             })}
           </div>
         )}
-        {picked && (
+        {picked && picked.record.table === 'people' && (
+          <div style={{ color: 'var(--text-muted)' }}>On the roster, so {kind === 'sub' ? 'a sub' : 'one of our own team'}. The kind follows the roster.</div>
+        )}
+        {picked && picked.record.table !== 'people' && (
           <>
             <label style={{ display: 'grid', gap: '0.25rem' }}>
               <span>What they are to us</span>

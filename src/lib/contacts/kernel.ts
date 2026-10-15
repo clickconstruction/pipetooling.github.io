@@ -31,7 +31,7 @@ export type ContactRecord =
   /** A trade partner's main contact. */
   | { table: 'gc_companies'; id: string }
   | { table: 'gc_company_people'; id: string }
-  /** Someone on the roster: a sub when their roster kind is `sub`. */
+  /** Someone on the roster: a sub when their roster kind is `sub`, else one of our own team (v2.5546). */
   | { table: 'people'; id: string }
   /** A lead on Prospects, until they book and become a customer. */
   | { table: 'prospects'; id: string }
@@ -97,7 +97,8 @@ export const SUB_ROSTER_KIND = 'sub'
  * What a record makes them, the first answer *Who is this?* offers: a customer's row and a person at one are a
  * customer, since an architect is the office's pick; a trade partner and the people it named are a trade partner; a
  * prospect is a lead, a supply house and its reps a supply house, a hiring board row a candidate. On the roster, `rosterKind` is
- * the `people.kind` column: `sub` is a sub, and anyone else on the roster is a trade partner, as the picker has said.
+ * the `people.kind` column: `sub` is a sub, and anyone else on the roster is one of our own team (v2.5546; a trade
+ * partner before, which a roster row never is now).
  */
 export function kindOf(record: NonNullable<ContactRecord>, rosterKind?: string | null): Exclude<ContactKind, 'unknown'> {
   switch (record.table) {
@@ -108,7 +109,7 @@ export function kindOf(record: NonNullable<ContactRecord>, rosterKind?: string |
     case 'gc_company_people':
       return 'trade'
     case 'people':
-      return rosterKind === SUB_ROSTER_KIND ? 'sub' : 'trade'
+      return rosterKind === SUB_ROSTER_KIND ? 'sub' : 'team'
     case 'prospects':
       return 'lead'
     case 'supply_houses':

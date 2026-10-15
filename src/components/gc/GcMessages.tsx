@@ -37,6 +37,7 @@ const FACE: Record<ContactKind, string> = {
   supply_house: 'var(--bg-muted)',
   candidate: 'var(--bg-muted)',
   sub: 'var(--bg-muted)',
+  team: 'var(--bg-muted)',
   unknown: 'var(--bg-muted)',
 }
 

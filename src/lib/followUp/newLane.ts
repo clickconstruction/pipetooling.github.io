@@ -18,6 +18,7 @@
  * `newLaneCount`.
  */
 import { firstName, normalizeChannel, type Contact, type ContactKind } from '../contacts/kernel'
+import { HIRE_ROSTER_KINDS } from '../prospects/hireRosterKinds'
 import { snippetOf, whenWords, type MessageChannel, type ThreadMessage } from '../messages/thread'
 
 /** Which sort a row needs. */
@@ -202,11 +203,11 @@ export function newLaneCount(rows: readonly NewLaneRow[]): number {
 
 // ---------- Who is this? ----------
 
-/** What a guess names the sender as. Supply house and candidate are R0's kinds. */
-export type GuessKind = 'customer' | 'lead' | 'trade' | 'supply_house' | 'candidate' | 'someone_else'
+/** What a guess names the sender as. Supply house and candidate are R0's kinds; team (one of our own) is v2.5546's. */
+export type GuessKind = 'customer' | 'lead' | 'trade' | 'supply_house' | 'candidate' | 'team' | 'someone_else'
 
 /** A record a guess points at. */
-export type GuessRecord = { table: 'customers'; id: string } | { table: 'gc_companies'; id: string }
+export type GuessRecord = { table: 'customers'; id: string } | { table: 'gc_companies'; id: string } | { table: 'people'; id: string }
 
 /** One guess on the *Who is this?* card. */
 export interface WhoGuess {
@@ -229,6 +230,40 @@ export interface WhoKnown {
   customers?: ReadonlyArray<{ id: string; name: string; phones?: readonly string[] }>
   /** Trade partners, with the addresses we have for them and the open ask they are on, by its name. */
   trades?: ReadonlyArray<{ id: string; company: string; contactName: string | null; emails: readonly string[]; openAsk: string | null }>
+  /** The roster, subs left out and nobody archived, for *One of our own team* (v2.5546). */
+  roster?: readonly RosterPerson[]
+}
+
+/** Someone on the roster who is not a sub, as *Which of ours?* lists them. */
+export interface RosterPerson {
+  id: string
+  name: string
+  /** The roster's kind: helper, assistant, estimator, superintendent, primary, master_technician. */
+  kind: string
+  phone: string | null
+}
+
+/** One row on *Which of ours?*: the name, and under it their role and whether the roster has a number for them. */
+export interface RosterChoice {
+  id: string
+  name: string
+  words: string
+}
+
+/** The roster as *Which of ours?* lists it: by name, each with their role and whether a number is on file. */
+export function rosterChoices(roster: readonly RosterPerson[]): RosterChoice[] {
+  return [...roster]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      words: `${HIRE_ROSTER_KINDS.find((k) => k.kind === p.kind)?.label ?? 'On the roster'} · ${p.phone?.trim() ? 'a number on file' : 'no number on file'}`,
+    }))
+}
+
+/** The guess a pick on *Which of ours?* names the number as: this person, one of our own team. */
+export function teamGuess(person: Pick<RosterChoice, 'id' | 'name'>): WhoGuess {
+  return { kind: 'team', label: person.name, words: 'One of our own team. The number goes on their People record.', record: { table: 'people', id: person.id }, newPerson: false, name: person.name }
 }
 
 /** Mail services anyone can sign up for: a shared domain there says nothing about the company. */
@@ -300,6 +335,15 @@ const CANDIDATE: Omit<WhoGuess, 'name'> = {
   kind: 'candidate',
   label: 'A candidate, to the hiring board',
   words: 'The line moves to the hiring board and leaves Messages.',
+  record: null,
+  newPerson: false,
+}
+
+/** One of our own team (v2.5546): the press opens *Which of ours?*, the roster, in the card. */
+const TEAM: Omit<WhoGuess, 'name'> = {
+  kind: 'team',
+  label: 'One of our own team',
+  words: 'Pick them from the roster. The number goes on their People record, and the app can text them from now on.',
   record: null,
   newPerson: false,
 }
@@ -384,6 +428,7 @@ export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'>, box: Mailbox |
   const name = nameInText(row.body)
   const end: WhoGuess[] = [
     { ...CANDIDATE, name },
+    { ...TEAM, name },
     { ...SOMEONE_ELSE, name },
   ]
   if (box === 'bids') {
