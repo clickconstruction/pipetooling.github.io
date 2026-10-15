@@ -78,10 +78,19 @@ describe('GcFlowBoard', () => {
     expect(page.onOpenProject).toHaveBeenCalledWith('boerne')
     fireEvent.click(within(row('draws')).getByRole('button', { name: 'Bill day' }))
     expect(page.onBillDay).toHaveBeenCalledWith('stoneoak')
-    fireEvent.click(screen.getByText('Needs a hand today'))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Follow up →' }))
     expect(page.onFollowUp).toHaveBeenCalled()
     fireEvent.click(within(row('invited')).getByRole('button', { name: 'Invite a company' }))
     expect(page.onBy).toHaveBeenCalledWith('list')
+  })
+
+  it('v2.5555 · the pickers sit in the views row and narrow By step to one job', () => {
+    withOpeners(<GcFlowBoard kind="trade" by="step" list={<p>The list as it was</p>} {...page} />)
+    const pickers = screen.getByRole('group', { name: 'Narrow the board' })
+    expect(within(pickers).getByRole('combobox', { name: 'Whose seat' })).toBeTruthy()
+    fireEvent.change(within(pickers).getByRole('combobox', { name: 'Which job' }), { target: { value: 'padb' } })
+    expect(within(row('ask')).queryByText('Boerne Retail Shell · due Thu')).toBeNull()
+    expect(within(row('ask')).getByText('Boerne Retail Pad B · due Oct 22')).toBeTruthy()
   })
 
   it('opens a customer’s own window on its Flow tab, and has no list view for customers', () => {

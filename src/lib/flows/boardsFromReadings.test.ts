@@ -4,7 +4,7 @@
  * reading's places, its Once lane's done steps and its ended jobs, under the company's name and trade.
  */
 import { describe, expect, it } from 'vitest'
-import { boardLines, boardRows, boardSummary, byTrade, lineDayWords, type BoardCompany, type BoardContext } from './board'
+import { boardBands, boardLines, boardSummary, byTrade, lineDayWords, type BoardCompany, type BoardContext } from './board'
 import { FIRST_NAMES, USUAL } from './boardFixtures'
 import type { FlowKind } from './facts'
 import { FLOW_FIXTURE_JOBS, FLOW_FIXTURE_NOW, FLOW_FIXTURE_PEOPLE, type FlowFixturePerson } from './flowFixtures'
@@ -56,12 +56,12 @@ describe('the boards over the read', () => {
   })
 
   it('groups the asks by job with the day they share, and reminds the one late', () => {
-    const ask = boardRows(trade, trades).lanes[1]?.rows.find((r) => r.kind === 'step' && r.step.id === 'ask')
-    expect(ask?.kind === 'step' && ask.groups.map((g) => [g.label, g.sharedDue, g.chips.map((c) => `${c.line.contactId}:${c.words}`)])).toEqual([
+    const ask = boardBands(trade, trades).flatMap((b) => b.rows).find((r) => r.step.id === 'ask')
+    expect(ask?.groups.map((g) => [g.label, g.sharedDue, g.chips.map((c) => `${c.line.contactId}:${c.words}`)])).toEqual([
       ['Boerne Retail Shell', '2026-10-08', ['greg:late 2 days', 'g3:', 'g5:', 'tom:']],
       ['Boerne Retail Pad B', '2026-10-22', ['g4:', 'greg:']],
     ])
-    expect(ask?.kind === 'step' && ask.press).toEqual({ kind: 'nudge', label: 'Remind the 1 late', contactIds: ['greg'], late: true })
+    expect(ask?.press).toEqual({ kind: 'nudge', label: 'Remind the 1 late', contactIds: ['greg'], late: true })
   })
 
   it('counts the hand by company, and over usual and waiting as watches', () => {

@@ -3,9 +3,11 @@ import { plainWordsFailures } from '../plainWords'
 import {
   NO_FILTER,
   boardFilterOptions,
+  bandCountWords,
+  bandLaneWords,
+  boardBands,
   boardLines,
   boardPasses,
-  boardRows,
   boardSummary,
   byTrade,
   companyJobLines,
@@ -17,7 +19,9 @@ import {
   onStep,
   rowHeadParts,
   rowPress,
+  stepSubParts,
   tileJobWords,
+  todayWords,
   type BoardCompany,
   type BoardRow,
 } from './board'
@@ -34,11 +38,11 @@ const stepOf = (flow: FlowDef, id: string): FlowStep => {
   return s
 }
 const stepRow = (rows: BoardRow[], id: string) => {
-  const r = rows.find((x) => x.kind === 'step' && x.step.id === id)
-  if (!r || r.kind !== 'step') throw new Error(`no row for ${id}`)
+  const r = rows.find((x) => x.step.id === id)
+  if (!r) throw new Error(`no row for ${id}`)
   return r
 }
-const rowsOf = (ctx: typeof trade, companies: BoardCompany[], f = NO_FILTER) => boardRows(ctx, companies, f).lanes.flatMap((l) => l.rows)
+const rowsOf = (ctx: typeof trade, companies: BoardCompany[], f = NO_FILTER) => boardBands(ctx, companies, f).flatMap((b) => b.rows)
 
 describe('boardLines', () => {
   it('lists everyone on a step, the longest on it first, and leaves out a company off the flow', () => {
@@ -172,17 +176,39 @@ describe('boardSummary', () => {
   })
 })
 
-describe('boardRows', () => {
-  it('folds a run of empty steps to one row with what lands there and the run’s first press', () => {
-    const [once] = boardRows(trade, TRADES).lanes
-    expect(once?.words).toBe('Once')
-    expect(once?.rows[0]).toEqual({ kind: 'folded', steps: [stepOf(TRADE_FLOW, 'invited'), stepOf(TRADE_FLOW, 'portal')], lands: 'A new invitation lands here.', press: { kind: 'invite', label: 'Invite a company' } })
+describe('boardBands', () => {
+  it('v2.5555 · reads one band per phase in the flow’s order, with the tile’s counts, the lanes its steps sit in, and every step its own row', () => {
+    const bands = boardBands(trade, TRADES)
+    expect(bands.map((b) => [b.phase, b.words, b.companies, b.lanes, b.rows.map((r) => r.step.id)])).toEqual([
+      ['setup', 'Getting set up', 5, ['once'], ['invited', 'portal', 'papers', 'msa']],
+      ['pricing', 'Quoting', 5, ['per_job'], ['ask', 'compare']],
+      ['building', 'Building', 4, ['per_job'], ['sow', 'draws', 'closeout']],
+    ])
+    expect(bands.map((b) => [b.late, b.lapsed])).toEqual([
+      [0, 1],
+      [1, 0],
+      [0, 0],
+    ])
+    // The tiles are the bands minus their rows, so the two never disagree.
+    expect(boardSummary(trade, TRADES).tiles.map((t) => [t.phase, t.companies, t.dots.length])).toEqual(bands.map((b) => [b.phase, b.companies, b.dots.length]))
   })
 
-  it('keeps a lane’s last step on its own row when nobody is on it', () => {
-    const closeout = stepRow(rowsOf(trade, TRADES), 'closeout')
-    expect(closeout).toMatchObject({ groups: [], press: null, lands: "A trade's final waiver lands here." })
-    expect(rowHeadParts(closeout.head)).toEqual(['nobody'])
+  it('keeps an empty step on its own row with what lands there and its press, never folding a run', () => {
+    const rows = rowsOf(trade, TRADES)
+    expect(stepRow(rows, 'invited')).toMatchObject({ groups: [], lands: 'A new invitation lands here.', press: { kind: 'invite', label: 'Invite a company' } })
+    // A company that opens its link lands on portal, and an empty portal row offers the same door as invited.
+    expect(stepRow(rows, 'portal')).toMatchObject({ groups: [], lands: 'A company that opens its link lands here.', press: { kind: 'invite', label: 'Invite a company' } })
+    expect(stepRow(rows, 'closeout')).toMatchObject({ groups: [], press: null, lands: "A trade's final waiver lands here." })
+    expect(rowHeadParts(stepRow(rows, 'closeout').head)).toEqual(['nobody'])
+  })
+
+  it('names the bands by what the board counts, and captions each by its lanes', () => {
+    const bands = boardBands(trade, TRADES)
+    expect(bands.map((b) => bandCountWords(trade, b))).toEqual(['5 companies', '5 companies', '4 companies'])
+    expect(bands.map((b) => bandLaneWords(trade, b))).toEqual(['the steps a company goes through once', 'once per job', 'once per job'])
+    const customers = boardBands(customer, CUSTOMERS)
+    expect(customers.map((b) => bandCountWords(customer, b))).toEqual(['0 customers', '2 customers', '2 customers'])
+    expect(customers.map((b) => bandLaneWords(customer, b))).toEqual(['the steps a customer goes through once', 'once per job', 'once per job'])
   })
 
   it('heads a row with the count, late, lapsed, over usual and waiting, and the step’s usual', () => {
@@ -190,6 +216,15 @@ describe('boardRows', () => {
     expect(rowHeadParts(stepRow(rows, 'papers').head)).toEqual(['4', '1 lapsed', '2 over usual', 'usually 3 d'])
     expect(rowHeadParts(stepRow(rows, 'ask').head)).toEqual(['5 asks', '1 late', 'usually 6 d'])
     expect(rowHeadParts(stepRow(rows, 'compare').head)).toEqual(['1', 'ours', '1 over usual', 'usually 2 d'])
+  })
+
+  it('v2.5555 · under the step’s name: whose move, a count that names a thing, the watches and the usual', () => {
+    const rows = rowsOf(trade, TRADES)
+    expect(stepSubParts(stepRow(rows, 'papers').step, stepRow(rows, 'papers').head)).toEqual(['their move', '1 lapsed', '2 over usual', 'usually 3 d'])
+    expect(stepSubParts(stepRow(rows, 'ask').step, stepRow(rows, 'ask').head)).toEqual(['their move', '5 asks', '1 late', 'usually 6 d'])
+    expect(stepSubParts(stepRow(rows, 'compare').step, stepRow(rows, 'compare').head)).toEqual(['our move', '1 over usual', 'usually 2 d'])
+    const payapp = stepRow(rowsOf(customer, CUSTOMERS), 'payapp')
+    expect(stepSubParts(payapp.step, payapp.head)).toEqual(['both of us', '1 waiting', 'usually 21 d'])
   })
 
   it('counts a loop by its thing, never by the calendar', () => {
@@ -230,18 +265,29 @@ describe('boardRows', () => {
     expect(rowPress(stepOf(CUSTOMER_FLOW, 'yes'), boardLines(customer, CUSTOMERS, stepOf(CUSTOMER_FLOW, 'yes')))).toMatchObject({ label: 'Remind Leon Valley Bakery' })
   })
 
-  it('reads the customer flow’s lanes: a lone empty step keeps its row, and the end of the job folds', () => {
+  it('reads the customer flow’s steps, every one its own row, in the flow’s order', () => {
     const rows = rowsOf(customer, CUSTOMERS)
-    expect(rows.map((r) => (r.kind === 'folded' ? r.steps.map((s) => s.id).join('+') : r.step.id))).toEqual(['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close+warranty', 'co'])
+    expect(rows.map((r) => r.step.id)).toEqual(['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'])
     expect(stepRow(rows, 'contract').lands).toBe('A yes lands here.')
-    expect(rows.find((r) => r.kind === 'folded')).toMatchObject({ lands: 'A finished job lands here.', press: null })
+    expect(stepRow(rows, 'close').lands).toBe('A finished job lands here.')
+    expect(stepRow(rows, 'warranty').lands).toBe('A closed job lands here for its year.')
   })
 
   it('lists the companies off the flow apart', () => {
-    expect(boardRows(customer, CUSTOMERS).off).toEqual([
+    expect(boardSummary(customer, CUSTOMERS).off).toEqual([
       { contactId: 'marcus', name: 'Bell Family Dental', since: '2026-09-29', why: 'Declined our bid, went with another plumber.' },
       { contactId: 'g10', name: 'Castle Hills HOA', since: '2026-09-18', why: 'Declined: price.' },
     ])
+  })
+
+  it('v2.5555 · the today line: who needs a hand, the first of them named with their day and step, then the watches and the off', () => {
+    const t = todayWords(trade, boardSummary(trade, TRADES))
+    expect(t.hand).toBe('Hillside Excavation needs a hand today: late 2 days on Asked to quote.')
+    expect(t.watch).toEqual(['3 over usual.', '2 off the flow.'])
+    const c = todayWords(customer, boardSummary(customer, CUSTOMERS))
+    expect(c.hand).toBe('Nobody needs a hand today.')
+    expect(c.watch).toEqual(['1 waiting on someone else.', '2 over usual.', '2 off the flow.'])
+    for (const words of [t.hand, ...t.watch, c.hand, ...c.watch]) expect(plainWordsFailures(words)).toEqual([])
   })
 })
 
@@ -388,7 +434,7 @@ describe('onStep', () => {
 describe('the words', () => {
   it('writes every sentence of what lands on an empty step in plain words', () => {
     const ids = [TRADE_FLOW, CUSTOMER_FLOW, ARCH_FLOW].flatMap(flat).map((s) => s.id)
-    const sentences = [...ids.map((id) => landsWords(id)), landsWords('x1'), landsWords('x1', true)]
+    const sentences = [...ids.map((id) => landsWords(id)), landsWords('x1')]
     expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
   })
 })
