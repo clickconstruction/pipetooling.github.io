@@ -26057,94 +26057,87 @@ export type Database = {
       }
       prospects: {
         Row: {
-          company_role: string | null
-          converted_customer_id: string | null
-          converted_gc_company_id: string | null
-          customer_id: string | null
-          kind: string
-          lang: string | null
-          max_miles: number | null
-          source: string | null
-          trades: string[]
           address: string | null
           company_name: string | null
+          company_role: string | null
           contact_name: string | null
+          converted_customer_id: string | null
+          converted_gc_company_id: string | null
           created_at: string | null
           created_by: string
+          customer_id: string | null
           email: string | null
           id: string
+          kind: string
+          lang: string | null
           last_contact: string | null
           links_to_website: string | null
           master_user_id: string
+          max_miles: number | null
           notes: string | null
           phone_number: string | null
           prospect_fit_status: string | null
+          source: string | null
+          trades: string[]
           updated_at: string | null
           warmth_count: number | null
           warmth_value: string | null
         }
         Insert: {
-          company_role?: string | null
-          converted_customer_id?: string | null
-          converted_gc_company_id?: string | null
-          customer_id?: string | null
-          kind?: string
-          lang?: string | null
-          max_miles?: number | null
-          source?: string | null
-          trades?: string[]
           address?: string | null
           company_name?: string | null
+          company_role?: string | null
           contact_name?: string | null
+          converted_customer_id?: string | null
+          converted_gc_company_id?: string | null
           created_at?: string | null
           created_by: string
+          customer_id?: string | null
           email?: string | null
           id?: string
+          kind?: string
+          lang?: string | null
           last_contact?: string | null
           links_to_website?: string | null
           master_user_id: string
+          max_miles?: number | null
           notes?: string | null
           phone_number?: string | null
           prospect_fit_status?: string | null
+          source?: string | null
+          trades?: string[]
           updated_at?: string | null
           warmth_count?: number | null
           warmth_value?: string | null
         }
         Update: {
-          company_role?: string | null
-          converted_customer_id?: string | null
-          converted_gc_company_id?: string | null
-          customer_id?: string | null
-          kind?: string
-          lang?: string | null
-          max_miles?: number | null
-          source?: string | null
-          trades?: string[]
           address?: string | null
           company_name?: string | null
+          company_role?: string | null
           contact_name?: string | null
+          converted_customer_id?: string | null
+          converted_gc_company_id?: string | null
           created_at?: string | null
           created_by?: string
+          customer_id?: string | null
           email?: string | null
           id?: string
+          kind?: string
+          lang?: string | null
           last_contact?: string | null
           links_to_website?: string | null
           master_user_id?: string
+          max_miles?: number | null
           notes?: string | null
           phone_number?: string | null
           prospect_fit_status?: string | null
+          source?: string | null
+          trades?: string[]
           updated_at?: string | null
           warmth_count?: number | null
           warmth_value?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "prospects_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "prospects_converted_customer_id_fkey"
             columns: ["converted_customer_id"]
@@ -26157,6 +26150,13 @@ export type Database = {
             columns: ["converted_gc_company_id"]
             isOneToOne: false
             referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {

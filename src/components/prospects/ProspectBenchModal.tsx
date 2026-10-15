@@ -82,7 +82,7 @@ export function ProspectBenchModal({
           padding: '1.5rem',
           maxWidth: 440,
           width: '90%',
-          maxHeight: '90vh',
+          maxHeight: 'min(90vh, 100%)',
           overflowY: 'auto',
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
         }}
