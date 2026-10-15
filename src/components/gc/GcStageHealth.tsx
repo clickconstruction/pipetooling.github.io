@@ -5,9 +5,7 @@ import {
   type CalendarWeek,
   type StageCalendar,
   type HealthTab,
-  type HealthTile,
   type StageHealth,
-  type TileDot,
   type TileState,
   weekIsQuiet,
   weekWorkingDays,
@@ -37,9 +35,6 @@ const VERDICT: Record<StageHealth['verdict'], { words: string; bg: string; fg: s
 
 /** The tile colors: saturated on purpose, like the ring's, since they are status marks. */
 const TILE: Record<TileState, string> = { good: '#22c55e', warn: '#f59e0b', bad: '#ef4444', ours: '#8b5cf6' }
-const DOT: Record<TileDot, string> = { on: '#22c55e', wait: '#f59e0b', us: '#ef4444', off: 'transparent' }
-
-const BUYOUT_STEPS = 'award · master agreement · insurance · W-9 · statement of work'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -68,9 +63,8 @@ export function GcStageHealth({
   const health = useMemo(() => stageHealth(state, project), [state, project])
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(900)
-  // The two keys (the calendar's squares, the tiles' colours) stay behind their Key links: a first-month aid.
+  // The calendar's key stays behind its Key link: a first-month aid. The trades' is the page's (PR 3).
   const [calKey, setCalKey] = useState(false)
-  const [tileKey, setTileKey] = useState(false)
   useEffect(() => {
     const el = box.current
     if (!el || typeof ResizeObserver === 'undefined') return
@@ -83,8 +77,6 @@ export function GcStageHealth({
   // The money's bars and numbers are Our number's readers' alone (the owner's: finances stay the money team's).
   const bars = health.bars.filter((b) => moneyShown || !b.money)
   const numbers = health.numbers.filter((n) => moneyShown || !n.money)
-  const ours = health.tiles.filter((t) => t.state === 'ours').length
-  const tradesWords = `${health.tiles.length}${ours === 0 ? '' : ours === 1 ? ', one ours' : `, ${ours} ours`}`
   return (
     <div ref={box} data-tour="gc-stage-health" style={{ marginTop: '0.25rem', display: 'grid', gap: '0.75rem', minWidth: 0 }}>
       {/* The verdict band (to-do #108, shape D, PR 2): the verdict and why, the one thing to do next, the numbers and the
@@ -174,28 +166,10 @@ export function GcStageHealth({
 
       {health.askStartDate && onSetStartDate && <SetStart onSet={onSetStartDate} today={state.today} projectId={project.id} />}
 
-      <Band title="The clock" keyOn={calKey} onKey={() => setCalKey((on) => !on)}>
+      <GcBand title="The clock" keyOn={calKey} onKey={() => setCalKey((on) => !on)}>
         <Calendar calendar={health.calendar} width={width} stage={project.stage} showKey={calKey} />
-      </Band>
+      </GcBand>
 
-      <Band title="The trades" words={tradesWords} keyOn={tileKey} onKey={() => setTileKey((on) => !on)}>
-        {/* One tile a trade */}
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${width < 420 ? 130 : 150}px, 1fr))`, gap: '0.5rem' }}>
-          {health.tiles.map((t) => (
-            <Tile key={t.packageId} tile={t} />
-          ))}
-        </div>
-        {tileKey && (
-          <div data-gc-tile-key style={{ display: 'flex', gap: '0.3rem 1rem', flexWrap: 'wrap', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-            <Key color={TILE.good} words="done for this stage" />
-            <Key color={TILE.warn} words="under way, or waiting on a company" />
-            <Key color={TILE.bad} words="a hole, a problem, or waiting on us" />
-            <Key color={TILE.ours} words="our own crew" />
-            {project.stage === 'buyout' && <span>Dots, in order: {BUYOUT_STEPS}</span>}
-            {project.stage === 'pursuing' && <span>Dots: quotes in, amber on old plans</span>}
-          </div>
-        )}
-      </Band>
     </div>
   )
 }
@@ -205,7 +179,7 @@ export function GcStageHealth({
  * legend. The legend is a first-month aid, so it stays behind the link; the squares' hovers and the tiles' words say
  * the same things.
  */
-function Band({ title, words, keyOn, onKey, children }: { title: string; words?: string; keyOn: boolean; onKey: () => void; children: ReactNode }) {
+export function GcBand({ title, words, keyOn, onKey, children }: { title: string; words?: string; keyOn: boolean; onKey: () => void; children: ReactNode }) {
   return (
     <section data-gc-band={title} aria-label={title} style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.55rem', minWidth: 0 }}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -222,59 +196,6 @@ function Band({ title, words, keyOn, onKey, children }: { title: string; words?:
       </div>
       {children}
     </section>
-  )
-}
-
-function Key({ color, words }: { color: string; words: string }) {
-  return (
-    <span style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
-      <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block' }} />
-      {words}
-    </span>
-  )
-}
-
-function Tile({ tile }: { tile: HealthTile }) {
-  const color = TILE[tile.state]
-  return (
-    <div
-      style={{
-        border: `1px solid ${color}`,
-        borderRadius: 8,
-        padding: '0.45rem 0.6rem',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr)',
-        gap: '0.2rem',
-        background: tile.state === 'bad' ? 'var(--bg-red-tint)' : 'var(--bg-subtle)',
-        minWidth: 0,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'flex-start', fontWeight: 700, fontSize: '0.84rem', minWidth: 0 }}>
-        {/* A long trade name wraps rather than losing its words. */}
-        <span style={{ minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.25 }}>
-          {tile.trade}
-        </span>
-        {tile.dots ? (
-          <span style={{ display: 'inline-flex', gap: 3, flexShrink: 0, marginTop: 3 }} aria-label={tile.dots.join(', ')}>
-            {tile.dots.map((d, i) => (
-              <span key={i} style={{ width: 9, height: 9, borderRadius: '50%', display: 'inline-block', background: DOT[d], border: `1.5px solid ${d === 'off' ? 'var(--border-strong)' : DOT[d]}` }} />
-            ))}
-          </span>
-        ) : tile.pct !== undefined ? (
-          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{tile.main}</span>
-        ) : (
-          <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
-        )}
-      </div>
-      {tile.pct !== undefined ? (
-        <span style={{ height: 6, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
-          <span style={{ display: 'block', height: '100%', width: `${Math.min(100, tile.pct)}%`, background: tile.state === 'good' ? TILE.good : tile.state === 'ours' ? TILE.ours : TILE.warn, borderRadius: 999 }} />
-        </span>
-      ) : (
-        <span style={{ fontSize: '0.82rem', fontVariantNumeric: 'tabular-nums' }}>{tile.main}</span>
-      )}
-      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{tile.note}</span>
-    </div>
   )
 }
 

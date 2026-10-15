@@ -110,7 +110,8 @@ import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
 import { useRingLayers } from '../components/gc/useRingLayers'
-import { GcStageHealth } from '../components/gc/GcStageHealth'
+import { GcBand, GcStageHealth } from '../components/gc/GcStageHealth'
+import { GcTradeRows, GcTradeRowsKey } from '../components/gc/GcTradeRows'
 import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFlowBoard } from '../components/gc/flows/GcFlowBoard'
@@ -122,6 +123,8 @@ import { roundDetailFromProject } from '../lib/flows/roundDetail'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcCardHead } from '../components/gc/GcCardHead'
 import { cardStageOf, type DoorKey } from '../lib/gc/cardHead'
+import { stageHealth, type StageHealth } from '../lib/gc/stageHealth'
+import { tradeRow, tradesWords } from '../lib/gc/tradeRows'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { ClauseNeedRows } from '../components/contracts/ClauseNeedRows'
@@ -278,10 +281,6 @@ interface Loaded {
   projects: GcProjectView[]
   store: ScopeBookStore
   team: GcTeamMember[]
-}
-
-function money(n: number): string {
-  return `$${Math.round(n).toLocaleString('en-US')}`
 }
 
 /** The Monday money email's reads and writes (O7b), gcIo's, one object for the page's life; each is read when called. */
@@ -583,6 +582,8 @@ export default function GcProjects() {
   }
   // Bid tabs (the Board's B5-d), opened on a project's card for a dev; sharing reloads the board.
   const [tabsOpen, setTabsOpen] = useState<string | null>(null)
+  /** Which card's trades key is on (to-do #108, PR 3): the stripes' colours. */
+  const [tradeKeyOn, setTradeKeyOn] = useState<string | null>(null)
   const shareTab = async (packageId: string, showNames: boolean) => {
     await shareGcBidTab(packageId, showNames)
     await refreshBoard()
@@ -1048,6 +1049,17 @@ export default function GcProjects() {
   // paints and only for the stages this reader may see (`ringStages`). One state, so the ring on each row and How the stage
   // is going under a project's title (B2b-vii) never give two answers.
   const ringState = useRingLayers(board, role, crewLinks, today)
+  // Each project's stage health on the ring's own state, the same read the strip makes, for the trade rows' tiles (PR 3).
+  const healthByProject = useMemo(() => {
+    const map = new Map<string, StageHealth>()
+    if (!ringState) return map
+    for (const project of ringState.state.projects) {
+      if (!ringState.ready.has(project.stage)) continue
+      const h = stageHealth(ringState.state, project)
+      if (h) map.set(project.id, h)
+    }
+    return map
+  }, [ringState])
   const changeEmailed = useMemo(() => {
     const out: Record<string, { to: string; on: string }[]> = {}
     for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
@@ -2264,40 +2276,60 @@ export default function GcProjects() {
                 )}
               </div>
             )}
-            <div style={{ display: 'grid', gap: '0.4rem' }}>
-              {p.trades.map((t) => (
-                <div key={t.id} style={{ display: 'grid', gap: '0.15rem', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <strong>{t.trade}</strong>
-                    {t.ours && <Chip tone="blue">ours</Chip>}
-                    {t.budget > 0 && <span style={{ color: 'var(--text-muted)' }}>{money(t.budget)}</span>}
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {t.scope.length} scope {t.scope.length === 1 ? 'line' : 'lines'}
-                      {t.excludes.length > 0 ? `, leaves out ${t.excludes.length}` : ''}
-                    </span>
-                    {t.scope.length > 0 && (
-                      <Btn kind="quiet" onClick={() => setBook({ trade: t.trade, projectId: p.id })}>
-                        Save as a set
-                      </Btn>
-                    )}
-                  </div>
-                  <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)' }}>
-                    {t.scope.map((s) => (
-                      <li key={s.id}>
-                        {s.label}
-                        {s.sheets && s.sheets.length > 0 ? ` · ${s.sheets.join(', ')}` : ''}
-                        {s.specs && s.specs.length > 0 ? ` · ${s.specs.join(', ')}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                  {/* The trade's statement of work once it is awarded (B6-a-ii): a dev and, since O9, the money team read one. Only
-                      a dev sends it until the award door. */}
-                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canSend={canUseGcBoardWrites(role)} canEmail={canSendGcTradeEmail(role)} />}
-                  {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
-                  {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
-                </div>
-              ))}
-            </div>
+            {/* The trades (to-do #108, shape D, PR 3): one row a trade from `tradeRows.ts`, the tile's colour as its stripe,
+                with the scope lines, the statement of work and the asks under it, open by default and folded by a press. */}
+            {(() => {
+              const stage = cardStageOf(p.stage)
+              const health = healthByProject.get(p.id) ?? null
+              const rows = p.trades.map((t) =>
+                tradeRow({
+                  stage,
+                  trade: t,
+                  pkg: boardProject?.packages.find((k) => k.id === t.id) ?? null,
+                  tile: health?.tiles.find((x) => x.packageId === t.id) ?? null,
+                  partners: board?.partners ?? [],
+                }),
+              )
+              return (
+                <GcBand title="The trades" words={tradesWords(rows)} keyOn={tradeKeyOn === p.id} onKey={() => setTradeKeyOn(tradeKeyOn === p.id ? null : p.id)}>
+                  {tradeKeyOn === p.id && <GcTradeRowsKey stage={stage} />}
+                  <GcTradeRows
+                    stage={stage}
+                    rows={rows}
+                    onNext={(row) => (row.next?.key === 'compare' ? setComparing({ projectId: p.id, packageId: row.id }) : openAsk(p.id, row.id))}
+                    details={(row) => {
+                      const t = p.trades.find((x) => x.id === row.id)
+                      if (!t) return null
+                      return (
+                        <>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)', flex: '1 1 16rem' }}>
+                              {t.scope.map((s) => (
+                                <li key={s.id}>
+                                  {s.label}
+                                  {s.sheets && s.sheets.length > 0 ? ` · ${s.sheets.join(', ')}` : ''}
+                                  {s.specs && s.specs.length > 0 ? ` · ${s.specs.join(', ')}` : ''}
+                                </li>
+                              ))}
+                            </ul>
+                            {t.scope.length > 0 && (
+                              <Btn kind="quiet" onClick={() => setBook({ trade: t.trade, projectId: p.id })}>
+                                Save as a set
+                              </Btn>
+                            )}
+                          </div>
+                          {/* The trade's statement of work once it is awarded (B6-a-ii): a dev and, since O9, the money team read one. Only
+                              a dev sends it until the award door. */}
+                          {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canSend={canUseGcBoardWrites(role)} canEmail={canSendGcTradeEmail(role)} />}
+                          {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
+                          {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
+                        </>
+                      )
+                    }}
+                  />
+                </GcBand>
+              )
+            })()}
             {gaps.length > 0 && (
               <div data-tour={tour('gc-gaps')} style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
                 {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}: {gaps.map((g) => `${g.trade} leaves out ${g.label} for ${g.by}`).join('. ')}.

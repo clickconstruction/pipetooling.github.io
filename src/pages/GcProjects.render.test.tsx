@@ -1445,3 +1445,30 @@ describe("the card's head (to-do #108, PR 1)", () => {
     vi.mocked(loadGcBoardRows).mockReset()
   })
 })
+
+describe('the trades as rows (to-do #108, PR 3)', () => {
+  // v2.5547: one row a trade under The trades, open by default with the scope, the statement of work and the asks under it.
+  it('a dev reads a row per trade with its words, folds one shut and opens it again', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const band = within(card).getByRole('region', { name: 'The trades' })
+    const row = band.querySelector('[data-gc-trade-row="k1"]') as HTMLElement
+    expect(row).toBeTruthy()
+    expect(row.textContent).toContain('Sitework')
+    expect(row.textContent).toMatch(/\d lines?/)
+    // The details are open: the asks are where they were.
+    expect(row.querySelector('[data-gc-trade-details="k1"] [data-gc-trade-asks="k1"]')).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Fold Sitework' }))
+    expect(row.querySelector('[data-gc-trade-details="k1"]')).toBeNull()
+    fireEvent.click(within(row).getByRole('button', { name: 'Open Sitework' }))
+    expect(row.querySelector('[data-gc-trade-details="k1"]')).toBeTruthy()
+    // The colours' key is behind the band's link.
+    expect(within(band).queryByText('done for this stage')).toBeNull()
+    fireEvent.click(within(band).getByRole('button', { name: 'Key' }))
+    expect(within(band).getByText('done for this stage')).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+})
