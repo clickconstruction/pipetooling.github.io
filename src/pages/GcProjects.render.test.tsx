@@ -1472,3 +1472,27 @@ describe('the trades as rows (to-do #108, PR 3)', () => {
     vi.mocked(loadGcBoardRows).mockReset()
   })
 })
+
+describe('the plans band and the foot (to-do #108, PR 4)', () => {
+  // v2.5550: The plans under The trades with the set's link and the Drive folder; the bid's end at the foot as plain buttons.
+  it("a dev reads the plans under the trades, and the bid's end at the foot", async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const trades = within(card).getByRole('region', { name: 'The trades' })
+    const plans = within(card).getByRole('region', { name: 'The plans' })
+    expect(plans.textContent).toMatch(/sheets?|no set yet/)
+    expect(within(plans).queryByRole('link', { name: 'The job folder in Drive' }) ?? within(plans).getByRole('button', { name: 'Make the Drive folder' })).toBeTruthy()
+    expect(plans.querySelector('[data-tour="gc-drive"]')).toBeTruthy()
+    const foot = card.querySelector('[data-gc-card-foot]') as HTMLElement
+    expect(foot.textContent).toContain('When the bid ends')
+    expect(within(foot).getByRole('button', { name: 'We sent our bid' })).toBeTruthy()
+    expect(within(foot).getByRole('button', { name: 'We won this. Start buyout' })).toBeTruthy()
+    // The order: the trades, then the plans, then the foot.
+    expect(trades.compareDocumentPosition(plans) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(plans.compareDocumentPosition(foot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+})

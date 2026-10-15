@@ -179,12 +179,13 @@ export function GcStageHealth({
  * legend. The legend is a first-month aid, so it stays behind the link; the squares' hovers and the tiles' words say
  * the same things.
  */
-export function GcBand({ title, words, keyOn, onKey, children }: { title: string; words?: string; keyOn: boolean; onKey: () => void; children: ReactNode }) {
+export function GcBand({ title, words, keyOn = false, onKey, children }: { title: string; words?: string; keyOn?: boolean; /** Unset: the band has no key. */ onKey?: () => void; children: ReactNode }) {
   return (
     <section data-gc-band={title} aria-label={title} style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.55rem', minWidth: 0 }}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
         <b style={{ fontSize: '0.85rem' }}>{title}</b>
         {words && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{words}</span>}
+        {onKey && (
         <button
           type="button"
           aria-expanded={keyOn}
@@ -193,6 +194,7 @@ export function GcBand({ title, words, keyOn, onKey, children }: { title: string
         >
           {keyOn ? 'Hide the key' : 'Key'}
         </button>
+        )}
       </div>
       {children}
     </section>

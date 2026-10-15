@@ -166,3 +166,15 @@ export function doorWords(d: CardDoor): string {
 export function cardStageOf(stage: string): CardStage {
   return stage === 'buyout' || stage === 'building' || stage === 'closed' ? stage : 'bidding'
 }
+
+/** The plans band's words beside its heading (PR 4): "Set 0 of Oct 8 · 46 sheets, 3 sections · 2 sets in all", or "no set yet". */
+export function plansWords(p: { planSets: { label: string; issuedOn: string }[]; sheets: unknown[]; specs: unknown[] }): string {
+  const newest = p.planSets[p.planSets.length - 1]
+  if (!newest) return 'no set yet'
+  const parts = [
+    `${newest.label} of ${shortDate(newest.issuedOn)}`,
+    `${p.sheets.length} ${p.sheets.length === 1 ? 'sheet' : 'sheets'}${p.specs.length > 0 ? `, ${p.specs.length} ${p.specs.length === 1 ? 'section' : 'sections'}` : ''}`,
+  ]
+  if (p.planSets.length > 1) parts.push(`${p.planSets.length} sets in all`)
+  return parts.join(' · ')
+}
