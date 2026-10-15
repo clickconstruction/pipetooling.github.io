@@ -29719,6 +29719,143 @@ export type Database = {
           },
         ]
       }
+      training_courses: {
+        Row: {
+          created_at: string
+          due_soon_days: number
+          enabled: boolean
+          good_for_months: number
+          required_roles: string[]
+          retake_from: string | null
+          slug: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          due_soon_days?: number
+          enabled?: boolean
+          good_for_months?: number
+          required_roles?: string[]
+          retake_from?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          due_soon_days?: number
+          enabled?: boolean
+          good_for_months?: number
+          required_roles?: string[]
+          retake_from?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_courses_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_lesson_passes: {
+        Row: {
+          course_slug: string
+          lesson_key: string
+          passed_at: string
+          tries: number
+          user_id: string
+        }
+        Insert: {
+          course_slug: string
+          lesson_key: string
+          passed_at?: string
+          tries?: number
+          user_id: string
+        }
+        Update: {
+          course_slug?: string
+          lesson_key?: string
+          passed_at?: string
+          tries?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_lesson_passes_course_slug_fkey"
+            columns: ["course_slug"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "training_lesson_passes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_passes: {
+        Row: {
+          answers: Json
+          content_version: string
+          course_slug: string
+          id: string
+          passed_at: string
+          passed_on: string
+          score: number
+          total: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          content_version: string
+          course_slug: string
+          id?: string
+          passed_at?: string
+          passed_on?: string
+          score: number
+          total: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          content_version?: string
+          course_slug?: string
+          id?: string
+          passed_at?: string
+          passed_on?: string
+          score?: number
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_passes_course_slug_fkey"
+            columns: ["course_slug"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "training_passes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       twin_credentials: {
         Row: {
           created_at: string
@@ -36919,6 +37056,45 @@ export type Database = {
       tie_message: {
         Args: { p_job_id: string; p_job_kind: string; p_message_id: string }
         Returns: undefined
+      }
+      training_finish_course: {
+        Args: {
+          p_answers?: Json
+          p_content_version: string
+          p_course_slug: string
+          p_pass: number
+          p_score: number
+          p_total: number
+        }
+        Returns: string
+      }
+      training_office: { Args: never; Returns: boolean }
+      training_pass_lesson: {
+        Args: { p_course_slug: string; p_lesson_key: string; p_tries?: number }
+        Returns: undefined
+      }
+      training_standings: {
+        Args: { p_course_slug: string }
+        Returns: {
+          colour: string
+          days_to_due: number
+          due_on: string
+          name: string
+          passed_on: string
+          role: string
+          user_id: string
+        }[]
+      }
+      training_state_for: {
+        Args: { p_user: string }
+        Returns: {
+          colour: string
+          course_slug: string
+          days_to_due: number
+          due_on: string
+          passed_on: string
+          title: string
+        }[]
       }
       trial_helper_supervisors: {
         Args: { p_helper_user_id: string; p_work_date: string }
