@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { boardSectionElementId, type BoardSection } from '../../lib/gc/boardGroups'
 import type { Tone } from './gcUi'
@@ -159,7 +159,18 @@ export function GcBoardStrip({
   )
 }
 
-/** A section's heading: its stage's color bar, number, name, count and worth, with what it is for under it. */
+/** The band's color, read by `.stagesSectionBand` for its bar and its tint and by `.stagesBandCount` for the pill. */
+function bandColor(bar: string): CSSProperties {
+  return { '--stage-color': bar } as CSSProperties
+}
+
+/**
+ * A section's heading: the Jobs pipeline's band (`.stagesSectionBand`, since v2.5543; the owner, 2026-10-14: "in jobs
+ * pipeline it is super easy to distinguish where stages stop and end") — its stage's color on the bar and mixed into
+ * the ground, its number, its name, its count in a pill and its worth, with what it is for under it. Flat, no border
+ * and no corners, so it is not one more card among the rows; more room above it than under it, so it belongs to the
+ * rows that follow.
+ */
 export function GcStageHeading({
   item,
   worth,
@@ -179,27 +190,26 @@ export function GcStageHeading({
   return (
     <div
       id={boardSectionElementId(item.key)}
+      className="stagesSectionBand"
+      data-gc-stage-band={item.key}
       style={{
+        ...bandColor(c.bar),
         // Clears the sticky strip when the strip jumps here.
         scrollMarginTop: '3.5rem',
         display: 'flex',
         alignItems: 'center',
         gap: '0.4rem 0.75rem',
         flexWrap: 'wrap',
-        padding: '0.55rem 0.75rem',
-        marginBottom: '0.5rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderLeft: `5px solid ${c.bar}`,
-        borderRadius: 8,
+        // With the section's 0.5rem gap under it and the board's 1rem over it: 1.5rem above a band, 0.5rem below.
+        marginTop: '0.5rem',
       }}
     >
       {item.number ? <NumberBadge n={item.number} tone={item.tone} size={26} /> : null}
       <div style={{ display: 'grid', gap: '0.05rem', minWidth: 0, flex: '1 1 16rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem 0.6rem', flexWrap: 'wrap' }}>
-          <h3 data-tour={titleTour} style={{ margin: 0, fontSize: '1.1rem' }}>
+          <h3 data-tour={titleTour} className="stagesBandTitle" style={{ margin: 0 }}>
             {item.label}{' '}
-            <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({item.count})</span>
+            <span className="stagesBandCount" style={{ color: c.fg }}>{item.count}</span>
           </h3>
           {worth && <span style={{ color: c.fg, fontWeight: 600, fontSize: '0.88rem', fontVariantNumeric: 'tabular-nums' }}>{worth}</span>}
         </div>
@@ -222,7 +232,7 @@ export function GcStageSubheading({ item }: { item: StageStripItem }) {
   )
 }
 
-/** A customer's heading on By customer (the Board's B2b-iii, from the design spike): the same band as a stage's, with their name, contact and money. */
+/** A customer's heading on By customer (the Board's B2b-iii, from the design spike): the same band as a stage's (the pipeline's, blue, since v2.5543), with their name, contact and money. */
 export function GcCustomerHeading({
   id,
   name,
@@ -245,22 +255,20 @@ export function GcCustomerHeading({
   return (
     <div
       id={id}
+      className="stagesSectionBand"
+      data-gc-customer-band={id}
       style={{
+        ...bandColor('var(--text-blue-500)'),
         scrollMarginTop: '3.5rem',
         display: 'flex',
         alignItems: 'center',
         gap: '0.25rem 0.75rem',
         flexWrap: 'wrap',
-        padding: '0.55rem 0.75rem',
-        marginBottom: '0.5rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderLeft: '5px solid var(--text-blue-500)',
-        borderRadius: 8,
+        marginTop: '0.5rem',
       }}
     >
       <div style={{ display: 'grid', gap: '0.05rem', minWidth: 0, flex: '1 1 16rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
+        <h3 className="stagesBandTitle" style={{ margin: 0 }}>
           <button
             type="button"
             onClick={onName}
@@ -269,7 +277,7 @@ export function GcCustomerHeading({
           >
             {name}
           </button>{' '}
-          <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({count})</span>
+          <span className="stagesBandCount" style={{ color: 'var(--text-blue-800)' }}>{count}</span>
         </h3>
         {sub && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{sub}</span>}
       </div>
