@@ -43,7 +43,8 @@ the design is the plans named at the end of this page.
 A **contact** is a view over the people the app already has, never a fifth list. `contacts` points at one record —
 `customer_contact_id`, `gc_company_person_id`, `person_id`, `prospect_id`, `supply_house_id`, `supply_house_contact_id`
 or `team_prospect_id` — and carries `kind` (`ContactKind` in `src/lib/contacts/names.ts`: customer, trade, arch, lead,
-supply_house, candidate, sub, unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
+supply_house, candidate, sub, team since v2.5546 (a roster row that is not a sub; the seed gives every roster person a
+contact with the roster's number, and *Who is this?* names a number the roster lacks and writes it back), unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
 `has_until`, `has_since`, `has_how`) and the off-the-list columns. A number nobody knows is a contact of kind `unknown`
 with one channel until **Who is this?** names it (`name_contact`), which re-points the contact and keeps its thread.
 

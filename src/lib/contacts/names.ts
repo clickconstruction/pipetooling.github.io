@@ -4,7 +4,7 @@
  * it whole. Lifted from the Messages prototype v1.178 (`firstName`, `initials`, `kindWord`).
  */
 
-export type ContactKind = 'customer' | 'trade' | 'arch' | 'lead' | 'supply_house' | 'candidate' | 'sub' | 'unknown'
+export type ContactKind = 'customer' | 'trade' | 'arch' | 'lead' | 'supply_house' | 'candidate' | 'sub' | 'team' | 'unknown'
 
 const TITLE = /^(Dr|Mr|Mrs|Ms)\.?$/i
 
@@ -50,6 +50,7 @@ const KIND_WORD: Record<ContactKind, string> = {
   supply_house: 'supply house',
   candidate: 'candidate',
   sub: 'sub',
+  team: 'teammate',
   unknown: 'who is this?',
 }
 

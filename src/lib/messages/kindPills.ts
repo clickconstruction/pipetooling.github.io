@@ -1,8 +1,8 @@
 /**
  * Messages in the header (residential R2, `RESIDENTIAL_BUILD_PLAN.md` on branch spike/gc-mode): the kind pills over
  * Follow up on `/messages`. Lifted from the residential prototype (`customer-messages-prototype.html` v0.8, the
- * Messages page's `kf` row and `fitsKind`): Customers, Trade partners, Architects, Leads and Subs filter one list, and
- * Supply houses and candidates sit under one more pill. Follow up never holds those two kinds (`OFF_FOLLOW_UP`), so
+ * Messages page's `kf` row and `fitsKind`): Customers, Trade partners, Architects, Leads, Subs and Our team (v2.5546) filter
+ * one list, and Supply houses and candidates sit under one more pill. Follow up never holds those two kinds (`OFF_FOLLOW_UP`), so
  * that pill shows the people themselves, newest conversation first, and never counts. *New* is R7's lane, not here.
  *
  * The pill lives in the URL (`?kind=customer`), so the Dashboard's Customers line and a link land filtered. Pure.
@@ -10,7 +10,7 @@
 import type { ContactKind } from '../contacts/kernel'
 import { onFollowUp, type FollowUpQueue } from '../followUp/queue'
 
-export type KindPill = 'all' | 'customer' | 'trade' | 'arch' | 'lead' | 'sub' | 'more'
+export type KindPill = 'all' | 'customer' | 'trade' | 'arch' | 'lead' | 'sub' | 'team' | 'more'
 
 export const KIND_PARAM = 'kind'
 
@@ -22,6 +22,7 @@ export const KIND_PILLS: ReadonlyArray<{ key: KindPill; label: string; title: st
   { key: 'arch', label: 'Architects', title: 'The architects on our jobs.' },
   { key: 'lead', label: 'Leads', title: 'People who wrote to us and have not booked yet.' },
   { key: 'sub', label: 'Subs', title: 'The subs on our roster.' },
+  { key: 'team', label: 'Our team', title: 'The people on our roster who are not subs. Their lines count on Follow up like anyone’s.' },
   {
     key: 'more',
     label: 'Supply houses and candidates',
@@ -35,6 +36,7 @@ const PILL_KINDS: Record<Exclude<KindPill, 'all'>, ReadonlySet<ContactKind>> = {
   arch: new Set<ContactKind>(['arch']),
   lead: new Set<ContactKind>(['lead']),
   sub: new Set<ContactKind>(['sub']),
+  team: new Set<ContactKind>(['team']),
   more: new Set<ContactKind>(['supply_house', 'candidate']),
 }
 

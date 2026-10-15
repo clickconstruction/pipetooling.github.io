@@ -94,6 +94,7 @@ const KIND_WORDS: Readonly<Record<MessageContact['kind'], string>> = {
   supply_house: 'a supply house',
   candidate: 'a candidate',
   sub: 'a sub',
+  team: 'one of our own team',
   unknown: 'a number nobody has named yet',
 }
 
