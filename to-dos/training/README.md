@@ -1,8 +1,8 @@
 ---
 name: "Training: courses the crew takes at their own pace, with a clock on each"
 number: 111
-group: gated
-status: mock-up drawn 2026-10-15 (mockup.html, one cut after the critique below); nothing built; waits on the owner's look at the mock-up and the calls at its foot
+group: ready
+status: the owner said "I love it, build it" 2026-10-15; building on branches claude/training-* (PR 1 content + kernel first, PR 2 the tables, then the four screens); the calls at the mock-up's foot are built to the drawn leans until he says otherwise
 summary: >
   A Training section at the bottom of the Dashboard, under My Time, where each person sees the
   courses their role must take, in one of three states: not done (red), done but lapsed or
@@ -14,7 +14,7 @@ summary: >
   built from the owner's capture of the ClickSafety course.
 next: The owner reads the mock-up and answers the calls at its foot; then PR 1 (the course content and its kernel) and PR 2 (the tables) go first, since every screen reads them.
 size: L (six PRs, each S or M; the lesson rewrite into plain words is the biggest single piece)
-blocker: The owner's yes on the shape, and his calls (who must take it, the clock, the pass rule).
+blocker: none; the seven calls are built to the drawn leans and each is one constant or one Settings number.
 opinion: build it as drawn; the Dashboard section and the course page are the feature, the rest is wiring the three states into places that already show paperwork state.
 mockup: to-dos/training/mockup.html
 ---
