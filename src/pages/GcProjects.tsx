@@ -1940,10 +1940,6 @@ export default function GcProjects() {
           </Btn>
         </div>
       </div>
-      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-        Each project as the window left it: its sets of plans, its sheets, its trades with their scope lines and the gaps. Who to ask comes with the company record.
-      </div>
-
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
       {/* Door 2: the Board for the GC office. Each company's portal link is in its window (Their portal), a dev's until the trade wave. */}
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
