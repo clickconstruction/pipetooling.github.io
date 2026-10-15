@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cardDoors, cardFactParts, doorWords, stageWhen, type CardFacts, type DoorFacts } from './cardHead'
+import { cardDoors, cardFactParts, doorWords, plansWords, stageWhen, type CardFacts, type DoorFacts } from './cardHead'
 
 const facts = (over: Partial<CardFacts> = {}): CardFacts => ({
   address: '4400 Fair Oaks Pkwy, San Antonio',
@@ -145,5 +145,14 @@ describe("a project's card: the doors", () => {
     expect(f.find((d) => d.key === 'newSet')?.tour).toBe('gc-new-set')
     expect(f.find((d) => d.key === 'questions')?.tour).toBe('gc-questions')
     expect(f.find((d) => d.key === 'schedule')?.tour).toBeUndefined()
+  })
+})
+
+describe("a project's card: the plans band's words", () => {
+  it('names the newest set and its day, the sheets and sections, and the count of sets past one', () => {
+    const sheets = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `s${i}` }))
+    expect(plansWords({ planSets: [{ label: 'Set 0', issuedOn: '2026-10-08' }], sheets: sheets(46), specs: sheets(3) })).toBe('Set 0 of Oct 8 · 46 sheets, 3 sections')
+    expect(plansWords({ planSets: [{ label: 'Set 0', issuedOn: '2026-10-01' }, { label: 'Permit set', issuedOn: '2026-10-07' }], sheets: sheets(1), specs: [] })).toBe('Permit set of Oct 7 · 1 sheet · 2 sets in all')
+    expect(plansWords({ planSets: [], sheets: [], specs: [] })).toBe('no set yet')
   })
 })

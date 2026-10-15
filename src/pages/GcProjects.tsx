@@ -122,7 +122,7 @@ import { companyAtForStep, customerAtForStep } from '../lib/flows/boardOpen'
 import { roundDetailFromProject } from '../lib/flows/roundDetail'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcCardHead } from '../components/gc/GcCardHead'
-import { cardStageOf, type DoorKey } from '../lib/gc/cardHead'
+import { cardStageOf, plansWords, type DoorKey } from '../lib/gc/cardHead'
 import { stageHealth, type StageHealth } from '../lib/gc/stageHealth'
 import { tradeRow, tradesWords } from '../lib/gc/tradeRows'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
@@ -2193,7 +2193,6 @@ export default function GcProjects() {
                 />
               )
             })()}
-            {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
             {roughKeepLines[p.id] && (
               <div role="status" data-rough-not-kept style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
                 {roughKeepLines[p.id]}
@@ -2213,69 +2212,6 @@ export default function GcProjects() {
               />
             )}
             {boardProject && board && tabs > 0 && tabsOpen === p.id && <GcBidTabs state={board} project={boardProject} share={shareTab} />}
-            <div style={{ fontSize: '0.85rem' }}>
-              {p.planSets.length} {p.planSets.length === 1 ? 'set' : 'sets'} of plans
-              {newest ? `, newest ${newest.label} of ${newest.issuedOn}` : ''}. {p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}
-              {p.specs.length > 0 ? `, ${p.specs.length} ${p.specs.length === 1 ? 'section' : 'sections'}` : ''}.
-            </div>
-            {(
-              <div data-tour={tour('gc-drive')} style={{ fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {p.driveFolderUrl ? (
-                  <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
-                    The job folder in Drive
-                  </a>
-                ) : (
-                  <Btn
-                    kind="quiet"
-                    disabled={checking === `${p.id}:folders`}
-                    onClick={() => {
-                      setChecking(`${p.id}:folders`)
-                      void makeDriveFolders(p.id)
-                        .then(async (folders) => {
-                          await load()
-                          if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
-                        })
-                        .catch((e) => showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error'))
-                        .finally(() => setChecking(null))
-                    }}
-                  >
-                    {checking === `${p.id}:folders` ? 'Making the folder…' : 'Make the Drive folder'}
-                  </Btn>
-                )}
-                {newest?.drive.url && (
-                  <>
-                    <a href={newest.drive.url} target="_blank" rel="noreferrer">
-                      {newest.label}'s plans
-                    </a>
-                    <span style={{ color: newest.drive.access === 'anyone' ? 'var(--text-green-700)' : newest.drive.access === 'restricted' || newest.drive.checkedOn ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-                      {newest.drive.access === 'anyone'
-                        ? `Anyone with the link can open it, checked ${newest.drive.checkedOn ?? ''}.`
-                        : newest.drive.access === 'restricted'
-                          ? `Only some people can open it, checked ${newest.drive.checkedOn ?? ''}. Please correct. ${DRIVE_RESTRICTED_WORDS}`
-                          : newest.drive.checkedOn
-                            ? `Our helper could not see this link on ${newest.drive.checkedOn}. Share it with the intake service account, or move the plans into the job folder.`
-                            : 'Who can open it is not checked yet.'}
-                    </span>
-                    <Btn
-                      kind="quiet"
-                      disabled={checking === `${p.id}:${newest.rev}`}
-                      onClick={() => {
-                        setChecking(`${p.id}:${newest.rev}`)
-                        void checkDriveAccess(newest.drive.url, { projectId: p.id, rev: newest.rev })
-                          .then(async (v) => {
-                            await load()
-                            if (!v.seen && v.note) showToast(v.note, 'error')
-                          })
-                          .catch((e) => showToast(formatErrorMessage(e, 'The link was not checked.'), 'error'))
-                          .finally(() => setChecking(null))
-                      }}
-                    >
-                      {checking === `${p.id}:${newest.rev}` ? 'Checking…' : newest.drive.access === null ? 'Check the link' : 'Check again'}
-                    </Btn>
-                  </>
-                )}
-              </div>
-            )}
             {/* The trades (to-do #108, shape D, PR 3): one row a trade from `tradeRows.ts`, the tile's colour as its stripe,
                 with the scope lines, the statement of work and the asks under it, open by default and folded by a press. */}
             {(() => {
@@ -2333,6 +2269,79 @@ export default function GcProjects() {
             {gaps.length > 0 && (
               <div data-tour={tour('gc-gaps')} style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
                 {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}: {gaps.map((g) => `${g.trade} leaves out ${g.label} for ${g.by}`).join('. ')}.
+              </div>
+            )}
+            {/* The plans (to-do #108, shape D, PR 4): the newest set with its link and who can open it, and the job's Drive folder,
+                in one band under the trades. The walkthrough's Drive stop points at the band's rows. */}
+            <GcBand title="The plans" words={plansWords(p)}>
+              <div data-tour={tour('gc-drive')} style={{ display: 'grid', gridTemplateColumns: 'max-content minmax(0, 1fr)', gap: '0.3rem 0.9rem', fontSize: '0.85rem', alignItems: 'baseline' }}>
+                {newest?.drive.url && (
+                  <>
+                    <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Newest set</span>
+                    <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      <a href={newest.drive.url} target="_blank" rel="noreferrer">
+                        {newest.label}'s plans
+                      </a>
+                      <span style={{ color: newest.drive.access === 'anyone' ? 'var(--text-green-700)' : newest.drive.access === 'restricted' || newest.drive.checkedOn ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                        {newest.drive.access === 'anyone'
+                          ? `Anyone with the link can open it, checked ${newest.drive.checkedOn ?? ''}.`
+                          : newest.drive.access === 'restricted'
+                            ? `Only some people can open it, checked ${newest.drive.checkedOn ?? ''}. Please correct. ${DRIVE_RESTRICTED_WORDS}`
+                            : newest.drive.checkedOn
+                              ? `Our helper could not see this link on ${newest.drive.checkedOn}. Share it with the intake service account, or move the plans into the job folder.`
+                              : 'Who can open it is not checked yet.'}
+                      </span>
+                      <Btn
+                        kind="quiet"
+                        disabled={checking === `${p.id}:${newest.rev}`}
+                        onClick={() => {
+                          setChecking(`${p.id}:${newest.rev}`)
+                          void checkDriveAccess(newest.drive.url, { projectId: p.id, rev: newest.rev })
+                            .then(async (v) => {
+                              await load()
+                              if (!v.seen && v.note) showToast(v.note, 'error')
+                            })
+                            .catch((e) => showToast(formatErrorMessage(e, 'The link was not checked.'), 'error'))
+                            .finally(() => setChecking(null))
+                        }}
+                      >
+                        {checking === `${p.id}:${newest.rev}` ? 'Checking…' : newest.drive.access === null ? 'Check the link' : 'Check again'}
+                      </Btn>
+                    </span>
+                  </>
+                )}
+                <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Drive</span>
+                <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  {p.driveFolderUrl ? (
+                    <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
+                      The job folder in Drive
+                    </a>
+                  ) : (
+                    <Btn
+                      kind="quiet"
+                      disabled={checking === `${p.id}:folders`}
+                      onClick={() => {
+                        setChecking(`${p.id}:folders`)
+                        void makeDriveFolders(p.id)
+                          .then(async (folders) => {
+                            await load()
+                            if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
+                          })
+                          .catch((e) => showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error'))
+                          .finally(() => setChecking(null))
+                      }}
+                    >
+                      {checking === `${p.id}:folders` ? 'Making the folder…' : 'Make the Drive folder'}
+                    </Btn>
+                  )}
+                </span>
+              </div>
+            </GcBand>
+            {/* The stage's end (PR 4): the outcome as the card's foot, plain buttons under its caption; only Next is blue on the card. */}
+            {boardProject?.stage === 'pursuing' && (
+              <div data-gc-card-foot style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'flex', gap: '0.5rem 1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>When the bid ends</span>
+                <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />
               </div>
             )}
           </div>
