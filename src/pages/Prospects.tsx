@@ -47,8 +47,28 @@ import {
   customerDraftFromProspect,
   markProspectConverted,
   recordProspectConverted,
+  markProspectOnBench,
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
+import {
+  PROSPECT_COMPANY_ROLES,
+  PROSPECT_KINDS,
+  PROSPECT_KIND_WORDS,
+  PROSPECT_LANGS,
+  PROSPECT_SOURCES,
+  benchDraftFromProspect,
+  isProspectCompanyRole,
+  kindFromUrlKey,
+  parseTradesText,
+  prospectKindFacts,
+  prospectLandedToast,
+  tradesText,
+  urlKeyForKind,
+  type BenchDraft,
+  type ProspectKind,
+} from '../lib/prospects/prospectKinds'
+import { addGcCompany } from '../lib/gc/gcIo'
+import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { localCalendarDayKey } from '../utils/dateUtils'
@@ -113,7 +133,21 @@ type Prospect = {
   last_contact: string | null
   created_at: string | null
   updated_at: string | null
+  /** v2.5559: customer · gc_lead · sub, and each kind's facts. */
+  kind: ProspectKind
+  source: string | null
+  trades: string[] | null
+  max_miles: number | null
+  lang: string | null
+  company_role: string | null
+  customer_id: string | null
+  converted_customer_id: string | null
+  converted_gc_company_id: string | null
 }
+
+/** Every column the deck reads (v2.5559 added the kind and its facts). */
+const PROSPECT_COLUMNS =
+  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id'
 
 type ProspectComment = {
   id: string
@@ -261,6 +295,78 @@ function substituteCopyPlaceholders(
   return text
 }
 
+
+/** The boxes a kind adds to New Prospect and Edit prospect (v2.5559): where we found them for every kind; a sub's trades, range and language; a GC lead's role. */
+function renderKindFields(
+  k: ProspectKind,
+  f: {
+    source: string
+    setSource: (v: string) => void
+    trades: string
+    setTrades: (v: string) => void
+    maxMiles: string
+    setMaxMiles: (v: string) => void
+    lang: 'en' | 'es' | ''
+    setLang: (v: 'en' | 'es' | '') => void
+    role: string
+    setRole: (v: string) => void
+  },
+) {
+  const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
+  const labelStyle = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
+  return (
+    <>
+      {k === 'gc_lead' && (
+        <div>
+          <span style={labelStyle}>Who they are</span>
+          <div style={{ display: 'flex', gap: '0.5rem 0.9rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+            {PROSPECT_COMPANY_ROLES.map((r) => (
+              <label key={r.role} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                <input type="radio" name="prospect-company-role" checked={f.role === r.role} onChange={() => f.setRole(r.role)} />
+                {r.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {k === 'sub' && (
+        <>
+          <label>
+            <span style={labelStyle}>
+              Trades <span style={{ color: 'var(--text-muted)' }}>— the bench's names, a comma between two</span>
+            </span>
+            <input type="text" value={f.trades} onChange={(e) => f.setTrades(e.target.value)} style={inputStyle} placeholder="Concrete, Fire sprinkler" />
+          </label>
+          <label>
+            <span style={labelStyle}>Goes up to (miles)</span>
+            <input type="number" min={1} value={f.maxMiles} onChange={(e) => f.setMaxMiles(e.target.value)} style={inputStyle} placeholder="not said" />
+          </label>
+          <div>
+            <span style={labelStyle}>Language</span>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem' }}>
+              {PROSPECT_LANGS.map((l) => (
+                <label key={l.lang} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                  <input type="radio" name="prospect-lang" checked={f.lang === l.lang} onChange={() => f.setLang(l.lang)} />
+                  {l.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+      <label>
+        <span style={labelStyle}>Where we found them</span>
+        <input type="text" list="prospect-sources" value={f.source} onChange={(e) => f.setSource(e.target.value)} style={inputStyle} placeholder={PROSPECT_SOURCES[0]} />
+        <datalist id="prospect-sources">
+          {PROSPECT_SOURCES.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      </label>
+    </>
+  )
+}
+
 export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -275,6 +381,13 @@ export default function Prospects() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
+  // Which kind of company the deck is finding (v2.5559): customers, jobs to GC or subs. `?kind=`.
+  const [kind, setKind] = useState<ProspectKind>('customer')
+  const kindWords = PROSPECT_KIND_WORDS[kind]
+  // Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company.
+  const [benchDraft, setBenchDraft] = useState<BenchDraft | null>(null)
+  const [benchSaving, setBenchSaving] = useState(false)
+  const [benchError, setBenchError] = useState<string | null>(null)
 
   // Follow Up state
   const [followUpProspects, setFollowUpProspects] = useState<Prospect[]>([])
@@ -304,6 +417,11 @@ export default function Prospects() {
   const [editEmail, setEditEmail] = useState('')
   const [editAddress, setEditAddress] = useState('')
   const [editLinksToWebsite, setEditLinksToWebsite] = useState('')
+  const [editSource, setEditSource] = useState('')
+  const [editTrades, setEditTrades] = useState('')
+  const [editMaxMiles, setEditMaxMiles] = useState('')
+  const [editLang, setEditLang] = useState<'en' | 'es' | ''>('')
+  const [editRole, setEditRole] = useState('')
 
   // Callback form state
   const [callbackDate, setCallbackDate] = useState('')
@@ -374,6 +492,12 @@ export default function Prospects() {
   const [newAddress, setNewAddress] = useState('')
   const [newLinksToWebsite, setNewLinksToWebsite] = useState('')
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
+  const [newKind, setNewKind] = useState<ProspectKind>('customer')
+  const [newSource, setNewSource] = useState('')
+  const [newTrades, setNewTrades] = useState('')
+  const [newMaxMiles, setNewMaxMiles] = useState('')
+  const [newLang, setNewLang] = useState<'en' | 'es' | ''>('')
+  const [newRole, setNewRole] = useState('')
 
   // Copy templates (defaults from app_settings, overrides from user_prospect_copy_templates)
   const [copyDefaults, setCopyDefaults] = useState<Record<CopyTemplateKey, string>>({
@@ -421,6 +545,19 @@ export default function Prospects() {
     if (authLoading || hiringSharesLoading) return
     const params = new URLSearchParams(location.search)
     const tab = params.get('tab')
+    // A door from elsewhere (the bench's Find N more, v2.5559): `?tab=subs` or `?tab=gc-leads` names the kind.
+    const aliasKind: ProspectKind | null = tab === 'subs' ? 'sub' : tab === 'gc-leads' ? 'gc_lead' : null
+    if (aliasKind) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'follow-up')
+        next.set('kind', urlKeyForKind(aliasKind))
+        return next
+      }, { replace: true })
+      return
+    }
+    const urlKind = kindFromUrlKey(params.get('kind'))
+    if (urlKind !== kind) setKind(urlKind)
     if (tab === 'team') {
       // Top-level Team tab: the prospective-hires board (per-user users.team_prospects_access, or a column share)
       if (canOpenHiring) {
@@ -435,7 +572,7 @@ export default function Prospects() {
         setActiveTab('follow-up')
       }
     } else if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
-      if (tab === 'activity' && !canAccessActivityTab) {
+      if ((tab === 'activity' && !canAccessActivityTab) || (tab === 'convert' && urlKind !== 'customer')) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'follow-up')
@@ -462,7 +599,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring])
+  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring, kind])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -486,6 +623,23 @@ export default function Prospects() {
       next.set('tab', tab)
       next.delete('prospect_id')
       return next
+    })
+  }
+
+  /** The three kind pills (v2.5559): the same deck, finding a different kind of company. */
+  const setKindTab = (next: ProspectKind) => {
+    rememberProspectsTopTab('follow-up')
+    setTopTab('customers')
+    setKind(next)
+    const tab: ProspectsTab = activeTab === 'convert' && next !== 'customer' ? 'follow-up' : activeTab
+    setActiveTab(tab)
+    setSearchParams((p) => {
+      const params = new URLSearchParams(p)
+      params.set('tab', tab)
+      if (next === 'customer') params.delete('kind')
+      else params.set('kind', urlKeyForKind(next))
+      params.delete('prospect_id')
+      return params
     })
   }
 
@@ -518,7 +672,8 @@ export default function Prospects() {
     const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
     let query = supabase
       .from('prospects')
-      .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
+      .select(PROSPECT_COLUMNS)
+      .eq('kind', kind)
       .or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
     if (lockedByOthers.length > 0) {
       query = query.not('id', 'in', `(${lockedByOthers.join(',')})`)
@@ -545,7 +700,7 @@ export default function Prospects() {
     if (prospectId && idx < 0) {
       const { data: single } = await supabase
         .from('prospects')
-        .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
+        .select(PROSPECT_COLUMNS)
         .eq('id', prospectId)
         .maybeSingle()
       if (single) {
@@ -648,7 +803,8 @@ export default function Prospects() {
     const [{ data, error }, { data: callRows }] = await Promise.all([
       supabase
         .from('prospects')
-        .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at'),
+        .select(PROSPECT_COLUMNS)
+        .eq('kind', kind),
       supabase
         .from('prospect_comments')
         .select('prospect_id, interaction_type, created_at')
@@ -767,13 +923,13 @@ export default function Prospects() {
       loadFollowUpProspects()
       loadMyTimeToday()
     }
-  }, [topTab, activeTab, authUser?.id, searchParams])
+  }, [topTab, activeTab, authUser?.id, searchParams, kind])
 
   useEffect(() => {
     if ((activeTab === 'prospect-list' || activeTab === 'convert') && authUser?.id) {
       loadProspectListProspects()
     }
-  }, [activeTab, authUser?.id])
+  }, [activeTab, authUser?.id, kind])
 
   // When on Prospect List with prospect_id in URL (e.g. from Quickfill Edit), select that prospect
   useEffect(() => {
@@ -1111,20 +1267,24 @@ export default function Prospects() {
           .select('id, name, email, role')
           // Same audience as loadProspectTeamActivity: office roles + estimators with Prospects access.
           .or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)'),
+        // Each read joins the prospect for its kind (v2.5559), so the report is one kind's week.
         supabase
           .from('prospect_comments')
-          .select('created_by, interaction_type, created_at')
+          .select('created_by, interaction_type, created_at, prospect:prospects!inner(kind)')
           .in('interaction_type', ['didnt_answer', 'answered', 'converted'])
+          .eq('prospect.kind', kind)
           .gte('created_at', startIso)
           .lt('created_at', endIso),
         (supabase as any)
           .from('prospect_timer_events')
-          .select('user_id, timer_seconds, created_at')
+          .select('user_id, timer_seconds, created_at, prospect:prospects!inner(kind)')
+          .eq('prospect.kind', kind)
           .gte('created_at', startIso)
           .lt('created_at', endIso),
         supabase
           .from('prospect_callbacks')
-          .select('user_id, created_at')
+          .select('user_id, created_at, prospect:prospects!inner(kind)')
+          .eq('prospect.kind', kind)
           .gte('created_at', startIso)
           .lt('created_at', endIso),
       ])
@@ -1145,7 +1305,7 @@ export default function Prospects() {
     } finally {
       setWeekLoading(false)
     }
-  }, [canAccessActivityTab])
+  }, [canAccessActivityTab, kind])
 
   useEffect(() => {
     if (activeTab === 'activity' && canAccessActivityTab) {
@@ -1435,7 +1595,28 @@ export default function Prospects() {
     setEditEmail(currentProspect.email ?? '')
     setEditAddress(currentProspect.address ?? '')
     setEditLinksToWebsite(currentProspect.links_to_website ?? '')
+    setEditKindFields(currentProspect)
     setEditModalOpen(true)
+  }
+
+  function setEditKindFields(p: Prospect) {
+    setEditSource(p.source ?? '')
+    setEditTrades(tradesText(p.trades))
+    setEditMaxMiles(p.max_miles == null ? '' : String(p.max_miles))
+    setEditLang(p.lang === 'en' || p.lang === 'es' ? p.lang : '')
+    setEditRole(p.company_role ?? '')
+  }
+
+  /** The kind's facts as the row holds them (v2.5559), from the Edit and New windows' boxes. */
+  function kindFieldsPayload(k: ProspectKind, f: { source: string; trades: string; maxMiles: string; lang: 'en' | 'es' | ''; role: string }) {
+    const miles = Number(f.maxMiles)
+    return {
+      source: f.source.trim() || null,
+      trades: k === 'sub' ? parseTradesText(f.trades) : [],
+      max_miles: k === 'sub' && Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
+      lang: k === 'sub' && f.lang ? f.lang : null,
+      company_role: k === 'gc_lead' && isProspectCompanyRole(f.role) ? f.role : null,
+    }
   }
 
   function openEditModalForProspect(p: Prospect) {
@@ -1446,6 +1627,7 @@ export default function Prospects() {
     setEditEmail(p.email ?? '')
     setEditAddress(p.address ?? '')
     setEditLinksToWebsite(p.links_to_website ?? '')
+    setEditKindFields(p)
     setEditModalOpen(true)
   }
 
@@ -1482,26 +1664,20 @@ export default function Prospects() {
     const prospectToEdit = editingProspect ?? currentProspect
     if (!prospectToEdit || saving) return
     setSaving(true)
+    const updated = {
+      company_name: editCompanyName.trim() || null,
+      contact_name: editContactName.trim() || null,
+      phone_number: editPhoneNumber.trim() || null,
+      email: editEmail.trim() || null,
+      address: editAddress.trim() || null,
+      links_to_website: editLinksToWebsite.trim() || null,
+      ...kindFieldsPayload(prospectToEdit.kind, { source: editSource, trades: editTrades, maxMiles: editMaxMiles, lang: editLang, role: editRole }),
+    }
     const { error } = await supabase
       .from('prospects')
-      .update({
-        company_name: editCompanyName.trim() || null,
-        contact_name: editContactName.trim() || null,
-        phone_number: editPhoneNumber.trim() || null,
-        email: editEmail.trim() || null,
-        address: editAddress.trim() || null,
-        links_to_website: editLinksToWebsite.trim() || null,
-      })
+      .update(updated)
       .eq('id', prospectToEdit.id)
     if (!error) {
-      const updated = {
-        company_name: editCompanyName.trim() || null,
-        contact_name: editContactName.trim() || null,
-        phone_number: editPhoneNumber.trim() || null,
-        email: editEmail.trim() || null,
-        address: editAddress.trim() || null,
-        links_to_website: editLinksToWebsite.trim() || null,
-      }
       setFollowUpProspects((prev) =>
         prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
       )
@@ -1652,9 +1828,50 @@ export default function Prospects() {
         setCurrentProspectIndex(nextIdx)
         setFollowUpTimerSeconds(0)
         updateUrlProspectId(nextList[nextIdx]?.id ?? null)
-        showToast(`${prospect.company_name || 'Prospect'} converted → ${customer.name || 'customer'}`, 'success')
+        showToast(prospectLandedToast(prospect.kind, prospect.company_name || '', customer.name || ''), 'success')
       },
     })
+  }
+
+  /** Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company, filled in. */
+  function openBenchModal() {
+    if (!currentProspect || !authUser?.id || saving) return
+    setBenchError(null)
+    setBenchDraft(benchDraftFromProspect(currentProspect))
+  }
+
+  async function handleBenchSave(draft: BenchDraft) {
+    const prospect = currentProspect
+    if (!prospect || !authUser?.id || benchSaving) return
+    setBenchSaving(true)
+    setBenchError(null)
+    try {
+      const companyId = await addGcCompany(draft)
+      const marked = await markProspectOnBench(prospect.id, companyId, draft.name, authUser.id)
+      if (!marked.ok) {
+        // The company is on the bench; the prospect stays in the queue — say so and stop.
+        showToast(`${draft.name} is on the bench — ${prospect.company_name || 'the prospect'} is still in the calling queue`, 'info')
+        setBenchDraft(null)
+        return
+      }
+      void saveTimerEvent('converted')
+      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+      loadMyTimeToday()
+      const updated = { ...prospect, prospect_fit_status: 'converted' as const, converted_gc_company_id: companyId }
+      setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
+      const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
+      setFollowUpProspects(nextList)
+      const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+      setCurrentProspectIndex(nextIdx)
+      setFollowUpTimerSeconds(0)
+      updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+      setBenchDraft(null)
+      showToast(prospectLandedToast('sub', draft.name, ''), 'success')
+    } catch (err) {
+      setBenchError(err instanceof Error ? err.message : 'That did not save.')
+    } finally {
+      setBenchSaving(false)
+    }
   }
 
   async function handleSendBack(p: Prospect) {
@@ -1905,6 +2122,8 @@ export default function Prospects() {
       email: newEmail.trim() || null,
       address: newAddress.trim() || null,
       links_to_website: newLinksToWebsite.trim() || null,
+      kind: newKind,
+      ...kindFieldsPayload(newKind, { source: newSource, trades: newTrades, maxMiles: newMaxMiles, lang: newLang, role: newRole }),
     }
     const { error } = await supabase.from('prospects').insert(payload)
     setSaving(false)
@@ -1919,6 +2138,16 @@ export default function Prospects() {
     setNewEmail('')
     setNewAddress('')
     setNewLinksToWebsite('')
+    setNewSource('')
+    setNewTrades('')
+    setNewMaxMiles('')
+    setNewLang('')
+    setNewRole('')
+    if (newKind !== kind) {
+      // The new row lives on another lane: go there, and its loaders run on the kind change.
+      setKindTab(newKind)
+      return
+    }
     await loadFollowUpProspects()
     await loadProspectListProspects()
   }
@@ -2007,9 +2236,11 @@ export default function Prospects() {
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'max-content' }}>
-            <button type="button" onClick={() => setTab(activeTab)} style={pageTabStyle(topTab === 'customers')}>
-              Customers
-            </button>
+            {PROSPECT_KINDS.map((k) => (
+              <button key={k} type="button" onClick={() => setKindTab(k)} style={pageTabStyle(topTab === 'customers' && kind === k)}>
+                {PROSPECT_KIND_WORDS[k].tab}
+              </button>
+            ))}
             {canOpenHiring && (
               <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
                 Hiring
@@ -2037,14 +2268,18 @@ export default function Prospects() {
         >
           Prospect List
         </button>
-        <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-        <button
-          type="button"
-          onClick={() => setTab('convert')}
-          style={tabStyle(activeTab === 'convert')}
-        >
-          Convert
-        </button>
+        {kind === 'customer' && (
+          <>
+            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button
+              type="button"
+              onClick={() => setTab('convert')}
+              style={tabStyle(activeTab === 'convert')}
+            >
+              Convert
+            </button>
+          </>
+        )}
         {canAccessActivityTab && (
           <>
             <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
@@ -2067,6 +2302,12 @@ export default function Prospects() {
               setNewEmail('')
               setNewAddress('')
               setNewLinksToWebsite('')
+              setNewSource('')
+              setNewTrades('')
+              setNewMaxMiles('')
+              setNewLang('')
+              setNewRole('')
+              setNewKind(kind)
               setNewProspectError(null)
               setNewProspectModalOpen(true)
             }}
@@ -2136,6 +2377,23 @@ export default function Prospects() {
                             </>
                           ) : null}
                         </div>
+                        {(currentProspect.kind !== 'customer' || currentProspect.source) && (
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.25rem' }}>
+                            {currentProspect.kind === 'sub' &&
+                              (currentProspect.trades ?? []).map((trade) => (
+                                <span key={trade} style={{ padding: '0 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
+                                  {trade}
+                                </span>
+                              ))}
+                            {currentProspect.kind === 'sub' && (currentProspect.trades ?? []).length === 0 && <span>no trade named yet</span>}
+                            {(() => {
+                              const facts = prospectKindFacts(currentProspect)
+                              if (facts.length === 0) return null
+                              const lead = currentProspect.kind === 'sub' ? '· ' : ''
+                              return <span>{lead}{facts.join(' · ')}</span>
+                            })()}
+                          </div>
+                        )}
                       </div>
                       <div style={{ flex: 1 }} />
                       {formatDueBadge(currentProspect.last_contact) && (
@@ -2188,18 +2446,18 @@ export default function Prospects() {
                         onClick={handleNoLongerFit}
                         disabled={saving}
                         style={saving ? btnDisabled(btnSecondary) : btnSecondary}
-                        title="Not a plumbing fit — leaves the calling queue (find it under No longer a fit on the Prospect List)"
+                        title={kindWords.notAFitTitle}
                       >
                         Not a fit
                       </button>
                       <button
                         type="button"
-                        onClick={handleConverted}
+                        onClick={kind === 'sub' ? openBenchModal : handleConverted}
                         disabled={saving}
                         style={saving ? btnDisabled(btnConverted) : btnConverted}
-                        title="They became a customer — opens Add customer prefilled from this prospect; Save creates the customer and takes the prospect out of the calling queue"
+                        title={kindWords.lastPressTitle}
                       >
-                        Converted ✓
+                        {kindWords.lastPress}
                       </button>
                     </div>
                     {/* Utility row */}
@@ -2655,7 +2913,7 @@ export default function Prospects() {
                           borderColor: palette ? 'transparent' : 'var(--border)',
                         }}
                       >
-                        {LIST_SECTION_CHIP_LABELS[key]} {n}
+                        {key === 'converted' ? kindWords.landedChip : LIST_SECTION_CHIP_LABELS[key]} {n}
                       </button>
                     )
                   })}
@@ -2673,7 +2931,7 @@ export default function Prospects() {
                         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                       >
                         <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                        {`${LIST_SECTION_LABELS[sectionKey]} (${prospects.length})`}
+                        {`${sectionKey === 'converted' ? kindWords.landed : LIST_SECTION_LABELS[sectionKey]} (${prospects.length})`}
                         {sectionKey === 'never_called' && (
                           <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>\u2014 oldest first, matches the calling queue</span>
                         )}
@@ -3166,6 +3424,7 @@ export default function Prospects() {
           <section style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>
+                {kind === 'customer' ? '' : `${kindWords.activity} · `}
                 {weekOffset === 0 ? 'This week' : 'Week of'} — {weekRange(Date.now(), weekOffset).label}
               </h2>
               <div style={{ display: 'flex', gap: '0.375rem' }}>
@@ -3408,6 +3667,13 @@ export default function Prospects() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
+              {renderKindFields((editingProspect ?? currentProspect)?.kind ?? kind, {
+                source: editSource, setSource: setEditSource,
+                trades: editTrades, setTrades: setEditTrades,
+                maxMiles: editMaxMiles, setMaxMiles: setEditMaxMiles,
+                lang: editLang, setLang: setEditLang,
+                role: editRole, setRole: setEditRole,
+              })}
               {(!editingProspect || editingProspect.id === currentProspect?.id) && currentProspect && (
                 <div>
                   <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
@@ -3859,6 +4125,10 @@ export default function Prospects() {
         </div>
       )}
 
+      {benchDraft && (
+        <ProspectBenchModal draft={benchDraft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} />
+      )}
+
       {/* New Prospect modal */}
       {newProspectModalOpen && (
         <div
@@ -3885,7 +4155,31 @@ export default function Prospects() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 1rem 0' }}>New Prospect</h3>
+            <h3 style={{ margin: '0 0 0.25rem 0' }}>New Prospect</h3>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Who are we looking for?</p>
+            <div role="radiogroup" aria-label="What kind of prospect" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
+              {PROSPECT_KINDS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={newKind === k}
+                  onClick={() => setNewKind(k)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '0.5rem 0.6rem',
+                    borderRadius: 8,
+                    border: newKind === k ? '2px solid #3b82f6' : '1px solid var(--border)',
+                    background: newKind === k ? 'var(--bg-blue-200)' : 'var(--surface)',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                  }}
+                >
+                  <span style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem' }}>{PROSPECT_KIND_WORDS[k].tab === 'Customers' ? 'A customer' : PROSPECT_KIND_WORDS[k].tab === 'Subs' ? 'A sub' : 'A job to GC'}</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-700)' }}>{PROSPECT_KIND_WORDS[k].card}</span>
+                </button>
+              ))}
+            </div>
             {newProspectError && (
               <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{newProspectError}</p>
             )}
@@ -3944,6 +4238,13 @@ export default function Prospects() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
+              {renderKindFields(newKind, {
+                source: newSource, setSource: setNewSource,
+                trades: newTrades, setTrades: setNewTrades,
+                maxMiles: newMaxMiles, setMaxMiles: setNewMaxMiles,
+                lang: newLang, setLang: setNewLang,
+                role: newRole, setRole: setNewRole,
+              })}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button

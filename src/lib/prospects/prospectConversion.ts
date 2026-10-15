@@ -11,14 +11,15 @@
  * the new customer — used to live twice in `Prospects.tsx` and nowhere in the
  * Add-customer form, which is where customers are actually minted (0 rows ever
  * carried either mark). `markProspectConverted` is the one copy now. The
- * `prospects` table has no customer-id column, so the comment text carries the
- * `/customers/<id>` path — that is the link the Prospect List can render.
+ * comment text carries the `/customers/<id>` path — the link the Prospect List renders —
+ * and, since v2.5559, `converted_customer_id` keeps the link as a column too.
  *
  * Everything but `markProspectConverted` is pure.
  */
 
 import { supabase } from '../supabase'
 import { recordNavClick } from '../navClickTelemetry'
+import { prospectBenchCommentText } from './prospectKinds'
 
 export type ProspectConversionLane = 'add-customer' | 'convert-tab' | 'follow-up'
 
@@ -158,13 +159,44 @@ export async function markProspectConverted(
   try {
     const { error: markErr } = await client
       .from('prospects')
-      .update({ prospect_fit_status: 'converted' })
+      .update({ prospect_fit_status: 'converted', converted_customer_id: customerId })
       .eq('id', prospectId)
     if (markErr) return { ok: false, error: markErr.message }
     const { error: noteErr } = await client.from('prospect_comments').insert({
       prospect_id: prospectId,
       created_by: userId,
       comment_text: prospectConvertedCommentText(customerName, customerId),
+      interaction_type: 'converted',
+    })
+    if (noteErr) return { ok: false, error: noteErr.message }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
+ * A sub landing on the bench (v2.5559): the same flip out of the queue, the company it became
+ * kept in `converted_gc_company_id`, and a `converted` interaction naming it (Activity counts
+ * it with the others). Never throws, as `markProspectConverted` never does.
+ */
+export async function markProspectOnBench(
+  prospectId: string,
+  companyId: string,
+  companyName: string,
+  userId: string,
+  client: ProspectConversionClient = supabase as unknown as ProspectConversionClient,
+): Promise<MarkProspectConvertedResult> {
+  try {
+    const { error: markErr } = await client
+      .from('prospects')
+      .update({ prospect_fit_status: 'converted', converted_gc_company_id: companyId })
+      .eq('id', prospectId)
+    if (markErr) return { ok: false, error: markErr.message }
+    const { error: noteErr } = await client.from('prospect_comments').insert({
+      prospect_id: prospectId,
+      created_by: userId,
+      comment_text: prospectBenchCommentText(companyName),
       interaction_type: 'converted',
     })
     if (noteErr) return { ok: false, error: noteErr.message }

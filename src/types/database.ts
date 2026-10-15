@@ -25947,6 +25947,72 @@ export type Database = {
           },
         ]
       }
+      prospect_jobs: {
+        Row: {
+          address: string | null
+          bid_due: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          note: string | null
+          plans_link: string | null
+          prospect_id: string
+          size_note: string | null
+          sq_ft: number | null
+          status: string
+          updated_at: string
+          won_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          bid_due?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          note?: string | null
+          plans_link?: string | null
+          prospect_id: string
+          size_note?: string | null
+          sq_ft?: number | null
+          status?: string
+          updated_at?: string
+          won_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          bid_due?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          plans_link?: string | null
+          prospect_id?: string
+          size_note?: string | null
+          sq_ft?: number | null
+          status?: string
+          updated_at?: string
+          won_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_jobs_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prospect_timer_events: {
         Row: {
           button_name: string
@@ -25991,6 +26057,15 @@ export type Database = {
       }
       prospects: {
         Row: {
+          company_role: string | null
+          converted_customer_id: string | null
+          converted_gc_company_id: string | null
+          customer_id: string | null
+          kind: string
+          lang: string | null
+          max_miles: number | null
+          source: string | null
+          trades: string[]
           address: string | null
           company_name: string | null
           contact_name: string | null
@@ -26009,6 +26084,15 @@ export type Database = {
           warmth_value: string | null
         }
         Insert: {
+          company_role?: string | null
+          converted_customer_id?: string | null
+          converted_gc_company_id?: string | null
+          customer_id?: string | null
+          kind?: string
+          lang?: string | null
+          max_miles?: number | null
+          source?: string | null
+          trades?: string[]
           address?: string | null
           company_name?: string | null
           contact_name?: string | null
@@ -26027,6 +26111,15 @@ export type Database = {
           warmth_value?: string | null
         }
         Update: {
+          company_role?: string | null
+          converted_customer_id?: string | null
+          converted_gc_company_id?: string | null
+          customer_id?: string | null
+          kind?: string
+          lang?: string | null
+          max_miles?: number | null
+          source?: string | null
+          trades?: string[]
           address?: string | null
           company_name?: string | null
           contact_name?: string | null
@@ -26050,6 +26143,27 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_converted_customer_id_fkey"
+            columns: ["converted_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_converted_gc_company_id_fkey"
+            columns: ["converted_gc_company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
