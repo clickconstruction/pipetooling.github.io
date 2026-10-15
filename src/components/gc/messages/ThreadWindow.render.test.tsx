@@ -157,6 +157,9 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     const onShowContact = vi.fn()
     const w = writes('c-dee')
     const { win } = open('c-unknown', { w, onShowContact })
+    const header = win.querySelector('[data-thread-header]') as HTMLElement
+    expect(within(header).getByText('A number nobody has named')).toBeTruthy()
+    expect(within(header).getAllByText('Who is this?')).toHaveLength(1)
     fireEvent.click(within(win).getByRole('button', { name: 'Who is this?' }))
     const who = await screen.findByRole('dialog', { name: /^Who is this\?/ })
     fireEvent.change(within(who).getByRole('textbox', { name: 'Their name or their company' }), { target: { value: 'Alamo' } })

@@ -178,7 +178,7 @@ To change a message's job, open the message and press **change** beside **Tied t
 
 ## Name a number nobody knows
 
-A thread for a number we do not know has a {{button:blue|Who is this?}} button. The number shows in place of a name.
+A thread for a number we do not know has a {{button:blue|Who is this?}} button. The number shows in place of a name. Under the number, the line says nobody has named it.
 
 1. Press {{button:blue|Who is this?}}.
 2. Type three letters of their name or their company.
