@@ -47,6 +47,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Every message with every person we work with on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
 - Everyone waiting on us for an answer and what we owe them, for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
+- A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
@@ -117,6 +118,11 @@ with pills for Customers, Trade partners, Architects, Leads and Subs (`?kind=`),
 which never count on Follow up and show as a people list. A row opens the person's thread over the page
 (`?thread=<contactId>&at=<messageId>`), the thread window described under `/gc`. Other doors to a customer's thread: the speech bubble beside a customer's name on `/customers`, the customer's page, `/jobs`, the job window and `/estimates` (`/messages?thread=<contact>`), and the Dashboard's **Customers** line (`?kind=customer`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
 Roles: dev, master_technician, assistant, controller, estimator.
+
+
+### /training/osha-30-refresher — Training: a course
+
+A course read at the person's own pace (punch list #111, v2.5566): the rail of parts and lessons on the left with a tick on each one done (a **Lessons** button on a phone), the lesson on the right (Why it matters, Must know, Traps, Numbers to remember, Check yourself), and the Final check at the foot of the rail once every lesson is done. Pick one answer per question; a wrong pick says why and offers **Try again**; the lesson records itself when all four are right; **Next lesson ›** goes on. `?lesson=<key>` opens a lesson, `?final=1` the final check. Anyone signed in may read a course that is on; a dev reads one that is off as a preview. The first course is the OSHA 30 refresher, thirty lessons and a final check of twenty, fourteen right passes. Guide `take-a-training-course`.
 
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick
