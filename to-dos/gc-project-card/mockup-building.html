@@ -105,8 +105,8 @@
   .wsq .m { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; }
   .wsq .m i { width: 5px; height: 5px; border-radius: 50%; background: #16a34a; display: block; }
   .wsq .m i.bad { background: var(--red); }
-  .wlab { font-size: 10px; font-weight: 700; color: var(--muted); text-align: center; height: 24px; line-height: 1.15; width: 30px; margin-top: 2px; }
-  .wlab.late { color: var(--red); } .wlab.next { color: var(--amber-mid); } .wlab.now { color: var(--blue); } .wlab.end { color: var(--ink); }
+  .wlab { font-size: 9.5px; font-weight: 700; color: var(--muted); text-align: center; height: 30px; line-height: 1.15; width: 30px; margin-top: 2px; white-space: nowrap; display: flex; justify-content: center; }
+  .wlab.late { color: var(--red); } .wlab.next { color: var(--amber-mid); align-items: flex-end; } .wlab.now { color: var(--blue); } .wlab.end { color: var(--ink); }
   .key { display: flex; gap: 4px 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); align-items: center; }
   .key[hidden] { display: none; }
   .key i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid #cbd5e1; margin-right: 4px; vertical-align: -2px; }
@@ -285,10 +285,10 @@
   // The weeks from the start (Sep 14) to the finish (Jan 29), a space between months; milestones as marks and labels.
   const MONTHS = [
     ['SEP', [[14, 'past'], [21, 'past'], [28, 'past met']]],
-    ['OCT', [[5, 'past'], [12, 'now late', 'Rough-in inspection · 3 days late'], [19, 'next', 'Roof dry-in due'], [26, '']]],
+    ['OCT', [[5, 'past'], [12, 'now late', 'Inspection late'], [19, 'next', 'Dry-in due'], [26, '']]],
     ['NOV', [[2, ''], [9, ''], [16, ''], [23, ''], [30, '']]],
     ['DEC', [[7, ''], [14, ''], [21, ''], [28, '']]],
-    ['JAN', [[4, ''], [11, ''], [18, ''], [25, 'end', 'The finish · Jan 29']]],
+    ['JAN', [[4, ''], [11, ''], [18, ''], [25, 'end', 'The finish']]],
   ]
   const el = document.querySelector('[data-wcal]')
   el.innerHTML = MONTHS.map(([m, weeks]) => {
