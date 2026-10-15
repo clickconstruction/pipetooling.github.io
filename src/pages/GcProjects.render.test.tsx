@@ -648,7 +648,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
-    fireEvent.click(within(card).getByRole('button', { name: 'Bid tabs (1)' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Bid tabs · 1' }))
     expect(card.querySelector('[data-gc-bid-tab="k1"]')).toBeTruthy()
     fireEvent.click(within(card).getByRole('button', { name: 'Hide the bid tabs' }))
     expect(card.querySelector('[data-gc-bid-tabs]')).toBeNull()
@@ -1108,8 +1108,10 @@ describe('GcProjects: Closeout (Building)', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, loaded)
     const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    // Closeout comes after Draws: since v2.5544 Draws is in the work set and Closeout ends the money team's.
     const names = within(card).getAllByRole('button').map((b) => b.textContent)
-    expect(names.indexOf('Closeout')).toBe(names.indexOf('Draws') + 1)
+    expect(names.indexOf('Closeout')).toBeGreaterThan(names.indexOf('Draws'))
+    expect(within(within(card).getByRole('group', { name: 'Money' })).getByRole('button', { name: 'Closeout' })).toBeTruthy()
     expect(loadGcPunch).not.toHaveBeenCalled()
     fireEvent.click(within(card).getByRole('button', { name: 'Closeout' }))
     const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Closeout' })
@@ -1415,5 +1417,28 @@ describe('GcProjects: the page sits in the middle of a wide screen', () => {
     expect(page.style.width).toBe('100%')
     expect(page.style.marginLeft).toBe('auto')
     expect(page.style.marginRight).toBe('auto')
+describe("the card's head (to-do #108, PR 1)", () => {
+  // v2.5544: the name and the stage, then the facts line, then the doors as grouped sets with the fact that says whether to open each.
+  it('a dev reads the facts line and the three sets, and a set holds the doors in order', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const project = rows.projects.find((p) => p.id === 'p1')
+    const facts = card.querySelector('[data-gc-card-facts]') as HTMLElement
+    expect(facts.textContent).toContain(project?.address ?? '')
+    expect(facts.textContent).toMatch(/bid due |no bid due day yet/)
+    const job = within(card).getByRole('group', { name: 'The job' })
+    expect(within(job).getAllByRole('button').map((b) => b.textContent)).toEqual(['The plans', 'Papers', 'Questions about the plans', 'A new set of plans came in', 'Schedule'])
+    const money = within(card).getByRole('group', { name: 'Money' })
+    expect(within(money).getAllByRole('button').map((b) => b.textContent)).toContain('Our number')
+    // A bidding job has no work set yet.
+    expect(within(card).queryByRole('group', { name: 'The work' })).toBeNull()
+    // The first card carries the walkthrough's anchors; its doors still open what they opened.
+    expect(within(job).getByRole('button', { name: 'The plans' }).getAttribute('data-tour')).toBe('gc-plans')
+    fireEvent.click(within(job).getByRole('button', { name: 'The plans' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
   })
 })
