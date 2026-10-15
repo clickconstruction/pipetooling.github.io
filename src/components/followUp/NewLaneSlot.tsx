@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
 import { pressProblem } from '../../lib/followUp/followUpIo'
-import { jobChoices, whoGuesses, type WhoGuess, type WhoKnown } from '../../lib/followUp/newLane'
+import { jobChoices, rosterChoices, whoGuesses, type WhoGuess, type WhoKnown } from '../../lib/followUp/newLane'
 import type { NewLaneCardIo, NewLaneCardRows } from '../../lib/followUp/newLaneCardIo'
 import { hasTargets, laneJobs, laneRowFor, namedWords, rulePick, tiedWords } from '../../lib/followUp/newLaneRows'
 import { hasToast } from '../../lib/followUp/queue'
@@ -107,6 +107,7 @@ export function NewLaneSlot({
       key={`${row.messageId}:${jobs.map((j) => j.id).join(',')}`}
       row={row}
       guesses={row.sort === 'who' ? (known ? whoGuesses(row, row.mailbox, known) : null) : undefined}
+      roster={rosterChoices(known?.roster ?? [])}
       jobs={jobs}
       people={row.sort === 'has' ? hasTargets(row, read.team, pick) : []}
       busy={busy}

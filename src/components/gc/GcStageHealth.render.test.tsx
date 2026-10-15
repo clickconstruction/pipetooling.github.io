@@ -6,7 +6,7 @@
  * is words alone, the start date is Get started's own press, and the money's rows are Our number's readers' only.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcStageHealth } from './GcStageHealth'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import type { HealthTab } from '../../lib/gc/stageHealth'
@@ -87,5 +87,31 @@ describe('the stage-health strip', () => {
     render(<GcStageHealth state={state} project={project('boerne')} canOpen={() => false} onTab={onTab} moneyShown />)
     expect(screen.queryByRole('button', { name: /^Next:/ })).toBeNull()
     expect(screen.getByText(/Next: Ask more companies for Structural steel/)).toBeTruthy()
+  })
+})
+
+describe('the strip in shape D (to-do #108, PR 2): the verdict band, the clock, the trades', () => {
+  // v2.5545: the verdict, Next and the numbers in one block tinted by the verdict; the stage rail gone; each key behind its link.
+  it('puts the numbers in the verdict band, drops the rail, and keeps each key behind its Key link', () => {
+    render(<GcStageHealth state={state} project={project('boerne')} canOpen={any} onTab={() => undefined} moneyShown foot={<span>Bill day Sun Oct 25</span>} />)
+    const band = document.querySelector('[data-gc-verdict="behind"]') as HTMLElement
+    expect(band).toBeTruthy()
+    expect(band.querySelector('[data-gc-health-numbers]')).toBeTruthy()
+    expect(band.textContent).toContain('Bill day Sun Oct 25')
+    expect(screen.queryByLabelText('Where the job is')).toBeNull()
+    expect(screen.queryByText('Buying out')).toBeNull()
+    // The clock band: the calendar's key shows on Key and goes on Hide the key.
+    const clock = screen.getByRole('region', { name: 'The clock' })
+    expect(within(clock).queryByText('gone by')).toBeNull()
+    fireEvent.click(within(clock).getByRole('button', { name: 'Key' }))
+    expect(within(clock).getByText('gone by')).toBeTruthy()
+    fireEvent.click(within(clock).getByRole('button', { name: 'Hide the key' }))
+    expect(within(clock).queryByText('gone by')).toBeNull()
+    // The trades band: the tiles, their count, and the colours' key behind its own link.
+    const trades = screen.getByRole('region', { name: 'The trades' })
+    expect(within(trades).getByText('Fire sprinkler')).toBeTruthy()
+    expect(within(trades).queryByText('done for this stage')).toBeNull()
+    fireEvent.click(within(trades).getByRole('button', { name: 'Key' }))
+    expect(within(trades).getByText('done for this stage')).toBeTruthy()
   })
 })

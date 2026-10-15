@@ -140,9 +140,9 @@ export function rowFromLine(line: QuoLine, jobs: readonly JobAt[]): { ok: true; 
 }
 
 /** Every kind a contact can be, so a kind added to `ContactKind` fails the typecheck here until it is read. */
-const CONTACT_KINDS: Record<ContactKind, true> = { customer: true, trade: true, arch: true, lead: true, supply_house: true, candidate: true, sub: true, unknown: true }
+const CONTACT_KINDS: Record<ContactKind, true> = { customer: true, trade: true, arch: true, lead: true, supply_house: true, candidate: true, sub: true, team: true, unknown: true }
 
-/** A contact's kind as `quo_place_number` answers it: any of the seven kinds, else a number nobody has named. */
+/** A contact's kind as `quo_place_number` answers it: any of the eight kinds, else a number nobody has named. */
 export function contactKindOf(raw: string | null | undefined): ContactKind {
   return raw && Object.prototype.hasOwnProperty.call(CONTACT_KINDS, raw) ? (raw as ContactKind) : 'unknown'
 }

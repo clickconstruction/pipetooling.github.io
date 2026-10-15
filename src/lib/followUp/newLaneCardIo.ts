@@ -37,7 +37,7 @@ export interface NewLaneCardRows {
 
 export interface NewLaneCardIo {
   loadCard(contactId: string, jobKeys: readonly string[], nowIso: string): Promise<NewLaneCardRows>
-  /** The records *Who is this?*'s guesses may be: customers with the line's last name, trade partners on its domain. */
+  /** The records *Who is this?*'s guesses may be: customers with the line's last name, trade partners on its domain, and the roster for *One of our own team*. */
   loadKnown(row: { who: string; body: string }): Promise<WhoKnown>
   /** Names the number as a guess says. Answers who holds the thread now. */
   name(contactId: string, guess: WhoGuess): Promise<string>
@@ -83,13 +83,22 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
       const last = nameInText(row.body)?.split(' ')[1] ?? ''
       const domain = companyDomain(row.who)
       const none = { data: [], error: null }
-      const [customers, trades] = await Promise.all([
+      const [customers, trades, roster] = await Promise.all([
         last.length >= 3 ? db.from('customers').select('id, name, contact_info').ilike('name', `%${last}%`).limit(8) : none,
         domain ? db.from('gc_companies').select('id, name, contact_name, email').ilike('email', `%@${domain}`).limit(8) : none,
+        // Everyone on the roster but the subs, for *One of our own team* (v2.5546).
+        db.from('people').select('id, name, kind, phone').neq('kind', 'sub').is('archived_at', null).order('name').limit(80),
       ])
       checkSupabaseError(customers, 'look for the customer')
       checkSupabaseError(trades, 'look for the trade partner')
+      checkSupabaseError(roster, 'load the roster')
       return {
+        roster: ((roster.data ?? []) as Array<{ id: string; name: string | null; kind: string | null; phone: string | null }>).map((p) => ({
+          id: p.id,
+          name: p.name ?? '',
+          kind: p.kind ?? '',
+          phone: p.phone,
+        })),
         customers: ((customers.data ?? []) as Array<{ id: string; name: string | null; contact_info: { phone?: string | null } | null }>).map((c) => ({
           id: c.id,
           name: c.name ?? '',
@@ -110,6 +119,8 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
       if (guess.record && (guess.kind === 'customer' || guess.kind === 'trade')) {
         return nameContact(contactId, { record: guess.record, kind: guess.kind, name: guess.newPerson ? guess.name : null })
       }
+      // One of our own team: the roster row *Which of ours?* picked; the roster learns the number on the server.
+      if (guess.record && guess.kind === 'team') return nameContact(contactId, { record: guess.record, kind: 'team', name: null })
       throw new Error('That one needs its record made first.')
     },
     async tie(messageId, jobKey) {
