@@ -17,7 +17,10 @@ import {
   type NewLaneMessage,
   type NewLaneRow,
   type WhoKnown,
+  rosterChoices,
+  teamGuess,
 } from './newLane'
+import { guessWait, namedWords } from './newLaneRows'
 
 // The four made-up lines on screen 7 of the customer Messages prototype (v0.8, mockup A), on Tue Oct 13 2026 at
 // 10:00 AM in Chicago, with three people who must stay off the lane. Nothing here is a real row.
@@ -198,6 +201,7 @@ describe('whoGuesses', () => {
       ['lead', 'Kevin Alvarez, a new lead on Prospects'],
       ['customer', 'Kevin Alvarez, a new customer'],
       ['candidate', 'A candidate, to the hiring board'],
+      ['team', 'One of our own team'],
       ['someone_else', 'Someone else'],
     ])
     expect(g[0]).toMatchObject({ record: { table: 'customers', id: 'c-dental' }, newPerson: true, words: 'A customer with this last name and no cell on file.' })
@@ -220,17 +224,19 @@ describe('whoGuesses', () => {
       ['trade', 'A new trade partner'],
       ['supply_house', 'A supply house'],
       ['candidate', 'A candidate, to the hiring board'],
+      ['team', 'One of our own team'],
       ['someone_else', 'Someone else'],
     ])
     expect(g[0]).toMatchObject({ record: { table: 'gc_companies', id: 'g-bexar' }, newPerson: false, words: 'The trade partner asked on Boerne. This address goes on their record.' })
   })
 
   it('orders the guesses by the box, not by the sender', () => {
-    expect(whoGuesses(row('kevin'), 'bids', KNOWN).map((x) => x.kind)).toEqual(['trade', 'supply_house', 'candidate', 'someone_else'])
+    expect(whoGuesses(row('kevin'), 'bids', KNOWN).map((x) => x.kind)).toEqual(['trade', 'supply_house', 'candidate', 'team', 'someone_else'])
     expect(whoGuesses(row('bexar'), 'team', KNOWN).map((x) => x.label)).toEqual([
       'A new lead on Prospects',
       'A new customer',
       'A candidate, to the hiring board',
+      'One of our own team',
       'Someone else',
     ])
     expect(whoGuesses(row('kevin'), null, KNOWN)).toEqual(whoGuesses(row('kevin'), 'team', KNOWN))
@@ -311,5 +317,29 @@ describe('plain words', () => {
       ...(['call', 'voicemail', 'missed', 'text', 'email', 'portal'] as const).flatMap((ch) => [viaWords(ch, 'team'), viaWords(ch, 'bids'), viaWords(ch, null)]),
     ]
     expect(texts.flatMap(plainWordsFailures)).toEqual([])
+  })
+})
+
+describe('One of our own team (v2.5546)', () => {
+  it('lists the roster by name with the role and whether a number is on file, subs already left out by the read', () => {
+    const roster = [
+      { id: 'p-will', name: 'Will Park', kind: 'helper', phone: '(737) 555-0102' },
+      { id: 'p-marcus', name: 'Marcus Bell', kind: 'master_technician', phone: null },
+      { id: 'p-taunya', name: 'Taunya Reed', kind: 'assistant', phone: '  ' },
+    ]
+    expect(rosterChoices(roster)).toEqual([
+      { id: 'p-marcus', name: 'Marcus Bell', words: 'Master technician · no number on file' },
+      { id: 'p-taunya', name: 'Taunya Reed', words: 'Office / assistant · no number on file' },
+      { id: 'p-will', name: 'Will Park', words: 'Helper · a number on file' },
+    ])
+    expect(rosterChoices([{ id: 'p-x', name: 'Someone', kind: 'odd', phone: null }])[0]!.words).toBe('On the roster · no number on file')
+  })
+
+  it('a pick names the number as that roster row, one of our own team, and says so', () => {
+    const g = teamGuess({ id: 'p-marcus', name: 'Marcus Bell' })
+    expect(g).toEqual({ kind: 'team', label: 'Marcus Bell', words: 'One of our own team. The number goes on their People record.', record: { table: 'people', id: 'p-marcus' }, newPerson: false, name: 'Marcus Bell' })
+    expect(namedWords(g)).toBe('Marcus Bell is one of our own team now. The thread stays with them.')
+    expect(guessWait(g)).toBeNull()
+    expect(guessWait({ kind: 'team', record: null })).toBeNull()
   })
 })

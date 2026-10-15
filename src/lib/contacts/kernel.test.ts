@@ -75,10 +75,10 @@ describe('seven kinds of contact: what a record makes them', () => {
 
   it('tells a sub from anyone else on the roster by the roster kind', () => {
     expect(kindOf(at('people'), 'sub')).toBe('sub')
-    expect(kindOf(at('people'), 'helper')).toBe('trade')
-    expect(kindOf(at('people'), 'master_technician')).toBe('trade')
-    expect(kindOf(at('people'), null)).toBe('trade')
-    expect(kindOf(at('people'))).toBe('trade')
+    expect(kindOf(at('people'), 'helper')).toBe('team')
+    expect(kindOf(at('people'), 'master_technician')).toBe('team')
+    expect(kindOf(at('people'), null)).toBe('team')
+    expect(kindOf(at('people'))).toBe('team')
   })
 })
 

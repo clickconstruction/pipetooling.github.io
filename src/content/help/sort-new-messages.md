@@ -2,7 +2,7 @@
 title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count
+keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster
 order: 119
 ---
 New messages that need sorting wait at the top of Follow up. Sort each one so the right person answers it on the right job.
@@ -24,7 +24,7 @@ The count on **Messages** in the header is everyone waiting on us. A person in *
 Press the person's row in **New**. Their thread opens with the sort card at the top.
 
 :::example The sort card for a number nobody has named
-{{chip:blue|Who is this?}} {{button:outline|A new lead on Prospects}} {{button:outline|Someone else}}
+{{chip:blue|Who is this?}} {{button:outline|A new lead on Prospects}} {{button:outline|One of our own team}} {{button:outline|Someone else}}
 :::
 
 ## Who is this?
@@ -33,9 +33,12 @@ The card lists who the sender may be. A text to the team number guesses a custom
 
 - Press a customer or a trade partner to name the number as them. The thread stays with them.
 - Press the new lead to keep them as a lead until they book.
+- Press **One of our own team** when the number is a teammate's. The card lists the roster. Press their name.
 - Press **Someone else** to find them yourself in **Who is this?**.
 
 Some choices wait for a record of their own. The card says where to make it.
+
+A teammate's number goes on their People record. Next time the app knows them without asking. Their thread sits under **Our team** on Messages.
 
 - A new customer waits until you add them on [Customers](/customers).
 - A new trade partner waits until you add the company under Trade partners in GC mode.

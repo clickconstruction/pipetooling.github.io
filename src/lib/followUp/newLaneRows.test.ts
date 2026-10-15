@@ -132,6 +132,7 @@ describe('a guess that needs its record first', () => {
       ['Kevin Alvarez, a new lead on Prospects', null],
       ['Kevin Alvarez, a new customer', 'Add them on Customers first. Then name the number here.'],
       ['A candidate, to the hiring board', 'Add them on Prospects under Team first. Then name the number here.'],
+      ['One of our own team', null],
       ['Someone else', null],
     ])
     const bids = whoGuesses(bexar, 'bids', { trades: [{ id: 'bexar', company: 'Bexar Steel Erectors', contactName: 'Tom Riddle', emails: ['tom@bexarsteel.example'], openAsk: null }] })
@@ -141,6 +142,7 @@ describe('a guess that needs its record first', () => {
       'Add the company under Trade partners in GC mode first. Then name the number here.',
       'Add the supply house on Materials first. Then name the number here.',
       'Add them on Prospects under Team first. Then name the number here.',
+      null,
       null,
     ])
   })

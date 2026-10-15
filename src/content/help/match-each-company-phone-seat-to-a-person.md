@@ -30,6 +30,14 @@ Each seat is one Quo user id. Each person has one seat.
 - A call or a text that comes in names the seat it rang.
 - With no seats, texts go from the company number with no one's seat.
 
+## One seat for the whole office
+
+One Quo login can be signed in on several phones. Pick **Shared by the office** as who answers on that seat.
+
+- A call it takes reads *the office answered*. The thread does not say who picked up.
+- A text from the reply box still carries your own name. It goes out from the shared seat when you have no seat of your own.
+- A text typed in Quo's own app reads *the office*. Text from the app instead, so the line carries your name.
+
 ## Change or remove a seat
 
 Change the id or the person, then press {{button:blue|Save the seats}}. Press **×** to remove a seat. Press **Put them back** to undo what you have not saved.

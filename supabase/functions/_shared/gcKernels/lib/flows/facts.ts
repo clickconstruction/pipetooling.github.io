@@ -30,9 +30,9 @@ export function flowContactKind(kind: FlowKind): ContactKind {
   return kind === 'residential' ? 'customer' : kind
 }
 
-/** The flow a contact of this kind goes through. A lead, a supply house or a candidate has no flow, so the unknown one. */
+/** The flow a contact of this kind goes through. A lead, a supply house, a candidate or a teammate has no flow, so the unknown one. */
 export function contactFlowKind(kind: ContactKind): FlowKind {
-  return kind === 'lead' || kind === 'supply_house' || kind === 'candidate' ? 'unknown' : kind
+  return kind === 'lead' || kind === 'supply_house' || kind === 'candidate' || kind === 'team' ? 'unknown' : kind
 }
 
 export type FactId =

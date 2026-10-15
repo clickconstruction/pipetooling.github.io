@@ -43,7 +43,8 @@ the design is the plans named at the end of this page.
 A **contact** is a view over the people the app already has, never a fifth list. `contacts` points at one record —
 `customer_contact_id`, `gc_company_person_id`, `person_id`, `prospect_id`, `supply_house_id`, `supply_house_contact_id`
 or `team_prospect_id` — and carries `kind` (`ContactKind` in `src/lib/contacts/names.ts`: customer, trade, arch, lead,
-supply_house, candidate, sub, unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
+supply_house, candidate, sub, team since v2.5546 (a roster row that is not a sub; the seed gives every roster person a
+contact with the roster's number, and *Who is this?* names a number the roster lacks and writes it back), unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
 `has_until`, `has_since`, `has_how`) and the off-the-list columns. A number nobody knows is a contact of kind `unknown`
 with one channel until **Who is this?** names it (`name_contact`), which re-points the contact and keeps its thread.
 
@@ -188,7 +189,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | What | Where | Key or job |
 |---|---|---|
 | Send texts (the office texts from the company number) | Settings → Phone and texts | `messages_texts_on_v1` |
-| Company phone seats (a Quo seat to a person) | Settings → Phone and texts | `messages_quo_seats_v1` |
+| Company phone seats (a Quo seat to a person, or one shared by the office since v2.5548) | Settings → Phone and texts | `messages_quo_seats_v1` |
 | Who gets a new message (the rule and its seats) | Settings → Phone and texts | `messages_assign_rule_v1` |
 | Inboxes (the two boxes: address, number, number id) | Settings → Phone and texts | `messages_boxes_v1` |
 | Office hours and the wait before the office takes a reply | `app_settings`, set by a dev (no card yet) | `messages_office_hours_v1`, `messages_office_wait_minutes` |
