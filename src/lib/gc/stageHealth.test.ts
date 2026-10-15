@@ -34,11 +34,11 @@ describe('how the stage is going: bidding', () => {
       'Fire sprinkler:bad',
     ])
     expect(h?.tiles.find((t) => t.trade === 'HVAC')?.dots).toEqual(['wait', 'on'])
-    // The calendar: a square a day from the bid set to the bid date, Monday to Sunday.
+    // The calendar: a square a day from the bid set to the bid date, Sunday to Saturday (v2.5558).
     const days = h?.calendar.weeks.flat() ?? []
     expect(h?.calendar.mode).toBe('days')
-    expect(days[0]?.on).toBe('2026-09-14')
-    expect(days[days.length - 1]?.on).toBe('2026-10-11')
+    expect(days[0]?.on).toBe('2026-09-13')
+    expect(days[days.length - 1]?.on).toBe('2026-10-10')
     expect(days.filter((d) => d.label).map((d) => `${d.on} ${d.label}`)).toEqual([
       '2026-09-18 Bid set',
       '2026-09-29 Addendum 1',
@@ -104,9 +104,9 @@ describe('how the stage is going: building', () => {
     // Building is a square a week: the dry-in week late, the finish week marked, this week ringed.
     expect(h?.calendar.mode).toBe('weeks')
     const weeks = h?.calendar.squares ?? []
-    expect(weeks.find((w) => w.start === '2026-09-21')?.kind).toBe('late')
-    expect(weeks.find((w) => w.start === '2026-12-07')?.kind).toBe('end')
-    expect(weeks.find((w) => w.current)?.start).toBe('2026-09-28')
+    expect(weeks.find((w) => w.start === '2026-09-20')?.kind).toBe('late')
+    expect(weeks.find((w) => w.start === '2026-12-06')?.kind).toBe('end')
+    expect(weeks.find((w) => w.current)?.start).toBe('2026-09-27')
     expect(h?.bars.map((b) => `${b.label} ${b.value}`)).toEqual(['Work done 72% · plan 76%', 'Time used 93 of 163 days', 'Billed the customer 64% · work 74%', 'Paid us 38% of the price'])
     expect(h?.numbers.find((n) => n.label === 'Not billed yet')?.value).toBe('about $149,000')
     expect(h?.numbers.find((n) => n.label === 'Waiting on us')?.value).toBe('6')
