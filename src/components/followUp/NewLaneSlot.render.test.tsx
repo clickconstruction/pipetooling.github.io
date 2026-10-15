@@ -190,7 +190,6 @@ describe('One of our own team (v2.5546)', () => {
     })
     const { say, acts } = renderSlot(KEVIN, io)
     const team = (await screen.findByRole('button', { name: /One of our own team/ })) as HTMLButtonElement
-    const who = card('Who is this?')
     expect(team.disabled).toBe(false)
     expect(within(team).getByText('Pick them from the roster. The number goes on their People record, and the app can text them from now on.')).toBeTruthy()
     fireEvent.click(team)

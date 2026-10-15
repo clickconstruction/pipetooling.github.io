@@ -147,7 +147,7 @@ FROM public.contact_channels ch WHERE ch.contact_id = (SELECT bell FROM ids) AND
 -- 3 · What a row may say.
 SELECT msp.refused('a known kind needs its record', $q$INSERT INTO public.contacts (kind) VALUES ('trade')$q$, 'contacts_one_record');
 SELECT msp.refused('an unknown number has no record', $q$INSERT INTO public.contacts (kind, gc_company_id) VALUES ('unknown', '00000000-0000-0000-0000-0000000005a1')$q$, 'contacts_one_record');
-SELECT msp.refused('one record, not two', $q$INSERT INTO public.contacts (kind, customer_id, person_id) VALUES ('customer', '00000000-0000-0000-0000-0000000005c4', '00000000-0000-0000-0000-0000000005b1')$q$, 'contacts_one_record');
+SELECT msp.refused('one record, not two', $q$INSERT INTO public.contacts (kind, customer_id, customer_contact_person_id) VALUES ('customer', '00000000-0000-0000-0000-0000000005c4', '00000000-0000-0000-0000-0000000005e1')$q$, 'contacts_one_record');
 SELECT msp.refused('a person''s row is one contact', $q$INSERT INTO public.contacts (kind, customer_contact_person_id) VALUES ('customer', '00000000-0000-0000-0000-0000000005e1')$q$, 'contacts_customer_person_once');
 SELECT msp.refused('a company''s own person is one contact', $q$INSERT INTO public.contacts (kind, gc_company_id) VALUES ('trade', '00000000-0000-0000-0000-0000000005a1')$q$, 'contacts_gc_company_once');
 SELECT msp.refused('an address never says STOP', $q$INSERT INTO public.contact_channels (contact_id, kind, value, opted_out_at) SELECT greg, 'email', 'x@hillside.example', now() FROM ids$q$, 'contact_channels_stop_is_a_number');
