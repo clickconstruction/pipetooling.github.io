@@ -18,7 +18,7 @@ The office and estimators see the board on [GC projects](/gc), above the list of
 The pill of the stage on screen stays lit as you scroll. The three stages are numbered in the order a job goes through them. Closed and Lost come after them.
 
 :::example A stage's heading
-{{chip:yellow|1 Bidding to the customer}} {{chip:gray|$824,733 priced so far}}
+{{chip:yellow|1 Bidding to the customer}} {{chip:yellow|2}} {{chip:gray|$824,733 priced so far}}
 :::
 
 ## See the board by customer
