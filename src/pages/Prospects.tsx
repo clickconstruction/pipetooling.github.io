@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, Fragment } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -67,11 +67,16 @@ import {
   type BenchDraft,
   type ProspectKind,
 } from '../lib/prospects/prospectKinds'
-import { addGcCompany } from '../lib/gc/gcIo'
+import { addGcCompany, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
+import { boardStateFromRows } from '../lib/gc/boardRows'
+import { tradeBenches } from '../lib/gc/bench'
+import { BY_NEED_NOTE, benchDouble, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
+import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
+import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
-import { localCalendarDayKey } from '../utils/dateUtils'
+import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
@@ -310,6 +315,8 @@ function renderKindFields(
     setLang: (v: 'en' | 'es' | '') => void
     role: string
     setRole: (v: string) => void
+    /** The bench's trade names (v2.5560), offered as picks under Trades. */
+    tradeChoices?: readonly string[]
   },
 ) {
   const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
@@ -337,6 +344,25 @@ function renderKindFields(
             </span>
             <input type="text" value={f.trades} onChange={(e) => f.setTrades(e.target.value)} style={inputStyle} placeholder="Concrete, Fire sprinkler" />
           </label>
+          {(() => {
+            const left = tradesLeftToPick(f.tradeChoices ?? [], f.trades)
+            if (left.length === 0) return null
+            return (
+              <div role="group" aria-label="The bench's trades" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '-0.4rem', fontSize: '0.75rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>On the bench:</span>
+                {left.map((trade) => (
+                  <button
+                    key={trade}
+                    type="button"
+                    onClick={() => f.setTrades(withTrade(f.trades, trade))}
+                    style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                  >
+                    + {trade}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
           <label>
             <span style={labelStyle}>Goes up to (miles)</span>
             <input type="number" min={1} value={f.maxMiles} onChange={(e) => f.setMaxMiles(e.target.value)} style={inputStyle} placeholder="not said" />
@@ -388,6 +414,14 @@ export default function Prospects() {
   const [benchDraft, setBenchDraft] = useState<BenchDraft | null>(null)
   const [benchSaving, setBenchSaving] = useState(false)
   const [benchError, setBenchError] = useState<string | null>(null)
+  // The Subs lane (v2.5560): the bench's trades and how many each can count on (null: not read, or
+  // refused), the bench's companies for the double check, the lane's whole queue for the counts,
+  // and the call script's window.
+  const [benchTrades, setBenchTrades] = useState<{ trade: string; dependable: number }[] | null>(null)
+  const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null }[]>([])
+  const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
+  const [scriptOpen, setScriptOpen] = useState(false)
+  const tradeFilter = searchParams.get('trade')
 
   // Follow Up state
   const [followUpProspects, setFollowUpProspects] = useState<Prospect[]>([])
@@ -614,6 +648,41 @@ export default function Prospects() {
     }
   }, [location.search, setSearchParams])
 
+  // The bench (v2.5560): read the way GC projects reads it, so the strip says what the bench's own
+  // rule says. Fail-soft: a role the GC tables refuse sees the lane without the strip.
+  useEffect(() => {
+    if (kind !== 'sub' && newKind !== 'sub') return
+    if (!authUser?.id) return
+    let live = true
+    ;(async () => {
+      try {
+        const projects = await loadGcProjects()
+        const rows = await loadGcBoardRows(projects, todayYmdInAppTz(), { money: false })
+        if (!live) return
+        const state = boardStateFromRows(rows)
+        setBenchTrades(tradeBenches(state).map((b) => ({ trade: b.trade, dependable: b.dependable })))
+        setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null })))
+      } catch {
+        if (live) setBenchTrades(null)
+      }
+    })()
+    return () => {
+      live = false
+    }
+  }, [kind, newKind, authUser?.id])
+
+  const benchNeedsNow: BenchNeed[] = kind === 'sub' ? benchNeeds(benchTrades ?? [], laneQueueAll) : []
+
+  const setTradeFilter = (trade: string | null) => {
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      if (trade) next.set('trade', trade)
+      else next.delete('trade')
+      next.delete('prospect_id')
+      return next
+    })
+  }
+
   const setTab = (tab: ProspectsTab) => {
     rememberProspectsTopTab('follow-up')
     setTopTab('customers')
@@ -639,6 +708,8 @@ export default function Prospects() {
       if (next === 'customer') params.delete('kind')
       else params.set('kind', urlKeyForKind(next))
       params.delete('prospect_id')
+      // The Subs lane's trade filter (v2.5560) is the lane's own; another lane never carries it.
+      if (next !== 'sub') params.delete('trade')
       return params
     })
   }
@@ -687,11 +758,19 @@ export default function Prospects() {
       return
     }
     const raw = (data ?? []) as Prospect[]
-    const prospects = orderFollowUpProspects(
+    let prospects = orderFollowUpProspects(
       raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach' && p.prospect_fit_status !== 'converted'),
       called,
       callingOrderModeRef.current,
     )
+    if (kind === 'sub') {
+      // The Subs lane (v2.5560): the whole queue feeds the strip's counts; the deck shows one trade
+      // when the URL names it, and By need puts the biggest gap first.
+      setLaneQueueAll(prospects)
+      const needsNow = benchNeeds(benchTrades ?? [], prospects)
+      prospects = subsForTrade(prospects, searchParams.get('trade'))
+      if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
+    }
 
     const prospectId = searchParams.get('prospect_id')
     let finalProspects = prospects
@@ -923,12 +1002,20 @@ export default function Prospects() {
       loadFollowUpProspects()
       loadMyTimeToday()
     }
-  }, [topTab, activeTab, authUser?.id, searchParams, kind])
+  }, [topTab, activeTab, authUser?.id, searchParams, kind, benchTrades])
 
   useEffect(() => {
     if ((activeTab === 'prospect-list' || activeTab === 'convert') && authUser?.id) {
       loadProspectListProspects()
     }
+  }, [activeTab, authUser?.id, kind])
+
+  // Source success (v2.5560): the Activity tab of a new kind reads the lane's rows by where we found them.
+  useEffect(() => {
+    if (activeTab === 'activity' && kind !== 'customer' && authUser?.id) {
+      loadProspectListProspects()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, authUser?.id, kind])
 
   // When on Prospect List with prospect_id in URL (e.g. from Quickfill Edit), select that prospect
@@ -1477,7 +1564,8 @@ export default function Prospects() {
           [
             ['coldest', 'Coldest', 'Longest since any contact first (the original order)'],
             ['never_called_first', 'Never called', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
-          ] as const
+            ...(kind === 'sub' ? ([['by_need', 'By need', BY_NEED_NOTE]] as const) : []),
+          ] as readonly (readonly [CallingOrderMode, string, string])[]
         ).map(([mode, label, hint]) => (
           <button
             key={mode}
@@ -2325,6 +2413,55 @@ export default function Prospects() {
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <>
+          {kind === 'sub' && canAccessFollowUp && (
+            <div
+              role="group"
+              aria-label="What the bench needs"
+              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
+            >
+              <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>The bench needs</span>
+              {benchNeedsNow.length === 0 && (
+                <span style={{ color: 'var(--text-muted)' }}>{benchTrades === null ? 'the bench could not be read' : 'nothing yet — no trade is on the bench'}</span>
+              )}
+              {benchNeedsNow.map((need) => {
+                const words = benchNeedWords(need)
+                const on = (tradeFilter ?? '').trim().toLowerCase() === need.trade.trim().toLowerCase()
+                return (
+                  <button
+                    key={need.trade}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setTradeFilter(on ? null : need.trade)}
+                    title={need.onBench ? `${need.dependable} on the bench · the bench wants 3` : 'No project asks for this trade yet'}
+                    style={{
+                      font: 'inherit',
+                      fontSize: '0.8125rem',
+                      display: 'inline-flex',
+                      gap: '0.35rem',
+                      alignItems: 'baseline',
+                      border: `1px solid ${on ? '#3b82f6' : 'var(--border)'}`,
+                      background: on ? 'var(--bg-blue-200)' : 'var(--surface)',
+                      color: need.onBench && need.short === 0 && !on ? 'var(--text-muted)' : 'var(--text-strong)',
+                      borderRadius: 999,
+                      padding: '0.1rem 0.6rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <b>{need.trade}</b> {words.head} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>· {words.tail}</span>
+                  </button>
+                )
+              })}
+              <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.75rem', display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+                3 a trade is the bench's rule
+                {tradeFilter && (
+                  <button type="button" onClick={() => setTradeFilter(null)} style={{ font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    All subs
+                  </button>
+                )}
+              </span>
+            </div>
+          )}
           {!canAccessFollowUp ? (
             <p style={{ color: 'var(--text-muted)' }}>You do not have access to Follow Up.</p>
           ) : followUpLoading ? (
@@ -2427,6 +2564,16 @@ export default function Prospects() {
                         </a>
                       ) : (
                         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>no phone number</span>
+                      )}
+                      {kind === 'sub' && (
+                        <button
+                          type="button"
+                          onClick={() => setScriptOpen(true)}
+                          title="What to say when phoning a company new to us, your name already in it"
+                          style={{ ...btnSecondary, whiteSpace: 'nowrap' }}
+                        >
+                          {CALL_SCRIPT_BUTTON}
+                        </button>
                       )}
                     </div>
                     {/* Outcome row */}
@@ -2801,7 +2948,7 @@ export default function Prospects() {
               <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Queue</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{kind === 'sub' && tradeFilter ? tradeFilter : 'Queue'}</span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                       {currentProspectIndex + 1} of {followUpProspects.length}
                     </span>
@@ -3505,6 +3652,26 @@ export default function Prospects() {
               </>
             )}
           </section>
+          {kind !== 'customer' && (
+            <section style={{ marginBottom: '2rem' }}>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Source success — {kindWords.tab}, every row of the lane</h3>
+              {sourceSuccess(prospectListProspects).length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing added yet.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 12rem) minmax(0, 1fr) 5rem', gap: '0.375rem 0.75rem', alignItems: 'center', fontSize: '0.875rem', maxWidth: 560 }}>
+                  {sourceSuccess(prospectListProspects).map((s) => (
+                    <Fragment key={s.source}>
+                      <span>{s.source}</span>
+                      <span style={{ height: 8, borderRadius: 999, background: 'var(--bg-muted)', position: 'relative', overflow: 'hidden' }}>
+                        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${s.total ? Math.round((s.landed / s.total) * 100) : 0}%`, background: '#16a34a', borderRadius: 999 }} />
+                      </span>
+                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{s.landed} of {s.total}</span>
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
           <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Marked / Updated by day — last 30 days</h3>
           {teamLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
@@ -3673,6 +3840,7 @@ export default function Prospects() {
                 maxMiles: editMaxMiles, setMaxMiles: setEditMaxMiles,
                 lang: editLang, setLang: setEditLang,
                 role: editRole, setRole: setEditRole,
+                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
               })}
               {(!editingProspect || editingProspect.id === currentProspect?.id) && currentProspect && (
                 <div>
@@ -4125,6 +4293,7 @@ export default function Prospects() {
         </div>
       )}
 
+      {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} />}
       {benchDraft && (
         <ProspectBenchModal draft={benchDraft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} />
       )}
@@ -4193,6 +4362,20 @@ export default function Prospects() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
+              {newKind === 'sub' &&
+                (() => {
+                  const twin = benchDouble(newCompanyName, newPhoneNumber, benchCompanies)
+                  if (!twin) return null
+                  return (
+                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
+                      {twin.name} is already on the bench.{' '}
+                      <Link to="/gc?view=partners" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                        Open it
+                      </Link>{' '}
+                      instead of a second record.
+                    </p>
+                  )
+                })()}
               <label>
                 <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Contact Name</span>
                 <input
@@ -4244,6 +4427,7 @@ export default function Prospects() {
                 maxMiles: newMaxMiles, setMaxMiles: setNewMaxMiles,
                 lang: newLang, setLang: setNewLang,
                 role: newRole, setRole: setNewRole,
+                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
               })}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>

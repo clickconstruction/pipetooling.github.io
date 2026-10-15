@@ -16,6 +16,7 @@ import { CALL_SCRIPT_BUTTON } from '../../lib/gc/callScript'
 import { useJumpStrip } from './useJumpStrip'
 import { PartnerName } from './GcPartnerName'
 import { benchAnchor } from '../../lib/gc/tradeViews'
+import { subsLaneHref } from '../../lib/prospects/subsLane'
 
 /**
  * GC mode, the real build (the Board's B3-b): Trade partners on real data, from the design spike's
@@ -58,6 +59,7 @@ export function GcTradePartners({
   onAsk,
   trades = [],
   scriptOpenAtStart = false,
+  onFind,
 }: {
   state: GcState
   writes: TradePartnerWrites
@@ -68,6 +70,8 @@ export function GcTradePartners({
   trades?: string[]
   /** Open with the call script showing (v2.5556): the page passes `?script=1`, the window's own Open in a new tab. */
   scriptOpenAtStart?: boolean
+  /** Prospects → Subs on one trade (v2.5560): the bench's Find N more opens the lane of companies we have not called. Missing: a plain link. */
+  onFind?: (trade: string) => void
 }) {
   const [addingTrade, setAddingTrade] = useState<string | null>(null)
   const [scriptOpen, setScriptOpen] = useState(scriptOpenAtStart)
@@ -128,8 +132,7 @@ export function GcTradePartners({
           onAdd={(trade) => {
             setAddingTrade(trade)
             document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }}
-        />
+          }} onFind={onFind} />
       )}
       {benches.map((bench) => (
         <BenchCard
@@ -292,7 +295,7 @@ function VetRow({ partner, writes }: { partner: Partner; writes: TradePartnerWri
 }
 
 /** Each standard the office holds itself to: the ideal, where we are, and what closes the gap. Read only here but for adding a company. */
-function AssistantActions({ rules, onAdd, onAsk }: { rules: AssistantRule[]; onAdd: (trade: string) => void; onAsk?: AskFor }) {
+function AssistantActions({ rules, onAdd, onAsk, onFind }: { rules: AssistantRule[]; onAdd: (trade: string) => void; onAsk?: AskFor; onFind?: (trade: string) => void }) {
   const [folded, setFolded] = useState(false)
   const [open, setOpen] = useState<AssistantRule['key'] | null>('bench')
   const todo = rules.reduce((n, r) => n + r.items.length, 0)
@@ -401,9 +404,21 @@ function AssistantActions({ rules, onAdd, onAsk }: { rules: AssistantRule[]; onA
                           <span style={{ flex: '1 1 20rem' }}>{item.text}</span>
                           {item.doneNote && <Chip tone="blue">{item.doneNote}</Chip>}
                           {item.action?.kind === 'add' && !item.doneNote && (
-                            <Btn kind="quiet" onClick={() => item.action?.kind === 'add' && onAdd(item.action.trade)}>
-                              {item.actionLabel}
-                            </Btn>
+                            <>
+                              {/* The door into Prospects → Subs on this trade (v2.5560): the companies we have not called yet. */}
+                              {onFind ? (
+                                <Btn kind="quiet" onClick={() => item.action?.kind === 'add' && onFind(item.action.trade)}>
+                                  Find on Prospects →
+                                </Btn>
+                              ) : (
+                                <a href={subsLaneHref(item.action.trade)} style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.85rem' }}>
+                                  Find on Prospects →
+                                </a>
+                              )}
+                              <Btn kind="quiet" onClick={() => item.action?.kind === 'add' && onAdd(item.action.trade)}>
+                                {item.actionLabel}
+                              </Btn>
+                            </>
                           )}
                           {item.action?.kind === 'ask' && !item.doneNote && onAsk && (
                             <Btn kind="quiet" onClick={() => item.action?.kind === 'ask' && onAsk(item.action.projectId, item.action.packageId, item.action.partnerIds)}>

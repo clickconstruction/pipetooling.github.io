@@ -264,6 +264,7 @@ import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import type { Contact } from '../lib/contacts/kernel'
 import { jobRefOf } from '../lib/messages/load'
+import { subsLaneHref } from '../lib/prospects/subsLane'
 import {
   addContactJob,
   answerPaper,
@@ -1979,7 +1980,7 @@ export default function GcProjects() {
                 kind="trade"
                 by={partnersBy}
                 onBy={setPartnersBy}
-                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} scriptOpenAtStart={scriptAtStart} />}
+                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} onFind={(trade) => navigate(subsLaneHref(trade))} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} scriptOpenAtStart={scriptAtStart} />}
                 onFollowUp={boardNeedsAHand}
                 onOpenProject={boardOpenProject}
                 onBillDay={boardBillDay}

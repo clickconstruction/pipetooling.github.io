@@ -2,7 +2,7 @@
 title: find subs for the bench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode
+keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects
 order: 71
 ---
 **Prospects → Subs** is the calling deck for trade companies we have not hired yet. A sub is a company that does a trade we buy out on a GC project. You call them, log how it ended, and press {{button:purple|Add to the bench ✓}} when they will quote for us.
@@ -43,8 +43,16 @@ Tick **We have worked with them before** only when we have. A company we know sk
 
 ## Where the bench needs help
 
-The bench wants three companies in every trade. On Trade partners, each trade short of that says how many to find. Come to Subs and call for that trade first. Edit a prospect's trades on {{button:outline|Edit prospect}} if the first call changed what they do.
+The bench wants three companies in every trade. The strip over the deck is **The bench needs**. It reads each trade with how many more it wants and how many subs wait. Press a trade to call for it alone. Press **All subs** to widen the queue again.
+
+The queue has a third order on Subs, **By need**. It puts the trade with the biggest gap first, then never called, then coldest.
+
+On Trade partners, each "Find 2 more" line has {{button:outline|Find on Prospects →}}. It opens this lane on that trade. Edit a prospect's trades on {{button:outline|Edit prospect}} if the first call changed what they do.
+
+## The call script
+
+{{button:outline|Call script}} sits beside the phone number on the card. It is the same script Trade partners has, with your name in it. Open it in a new tab to keep it beside the app while you call.
 
 ## Keep it tidy
 
-A sub stays a prospect until the bench has them. Do not type the same company on Trade partners as well. If they are already on the bench, press **Not a fit** here and open them there instead. Read [work the prospect calling queue](/help/work-the-prospect-calling-queue) for the queue, callbacks and the timer.
+A sub stays a prospect until the bench has them. Do not type the same company on Trade partners as well. New Prospect warns when the company is already on the bench, by name or phone. Press **Open it** there instead of saving a second record. Read [work the prospect calling queue](/help/work-the-prospect-calling-queue) for the queue, callbacks and the timer.
