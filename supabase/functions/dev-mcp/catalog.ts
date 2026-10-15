@@ -1251,6 +1251,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "pay_staff_clear_salary_schedule_by_person_name": [{"args":{"p_person_name":"string"},"returns":"Json"}],
   "pay_staff_remove_not_coming_in_for_user_day": [{"args":{"p_user_id":"string","p_work_date":"string"},"returns":"Json"}],
   "people_hours_subtract_approved_hours": [{"args":{"p_entered_by":"string","p_hours":"number","p_person_name":"string","p_user_id":"string","p_work_date":"string"},"returns":"undefined"}],
+  "people_phones_from_accounts": [{"args":{},"returns":"number"}],
   "person_file_summary_counts": [{"args":{"p_person_id":"string"},"returns":"{ entries: number has_summary: boolean updated_at: string }[]"}],
   "plan_job_names_from_work": [{"args":{"p_apply?":"boolean"},"returns":"{ hcp_number: string job_id: string new_name: string old_name: string work: string }[]"}],
   "portal_opens_since": [{"args":{"p_entity_id":"string","p_since":"string","p_surface":"string"},"returns":"{ last_opened_at: string opens: number }[]"}],
