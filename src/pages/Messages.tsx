@@ -56,7 +56,7 @@ export default function Messages() {
   if (gate === 'away') return <Navigate to="/dashboard" replace />
 
   return (
-    <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
+    <div data-messages-page style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100, width: '100%', boxSizing: 'border-box', margin: '0 auto' }}>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Messages</h1>
         <div role="group" aria-label="Which people to show" data-messages-pills style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>

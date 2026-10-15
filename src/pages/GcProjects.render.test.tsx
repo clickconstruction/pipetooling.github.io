@@ -1403,3 +1403,17 @@ describe('GcProjects: our contract built from clauses (Messages, cut 4c, v2.5334
     expect(await within(dialog).findByText('On record, and sent to Pat Oak. The paper did not save, so it goes on our contract file alone: Only the money team picks the paper for our contract.')).toBeTruthy()
   })
 })
+
+describe('GcProjects: the page sits in the middle of a wide screen', () => {
+  // v2.5537: the Bids board centers its column; this page hugged the left edge beside it.
+  it('caps the page at 1100px and centers it with auto margins, full width inside the cap', async () => {
+    window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1')
+    await renderSettled(<GcProjects />, loadedEmpty)
+    const page = screen.getByRole('heading', { name: 'GC projects' }).closest('[data-gc-page]') as HTMLElement
+    expect(page).toBeTruthy()
+    expect(page.style.maxWidth).toBe('1100px')
+    expect(page.style.width).toBe('100%')
+    expect(page.style.marginLeft).toBe('auto')
+    expect(page.style.marginRight).toBe('auto')
+  })
+})
