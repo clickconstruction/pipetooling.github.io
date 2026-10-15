@@ -26,14 +26,23 @@ INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000009a2', 'without@phone.test'),
   ('00000000-0000-0000-0000-0000000009a3', 'gone@phone.test'),
   ('00000000-0000-0000-0000-0000000009a4', 'sample@phone.test'),
-  ('00000000-0000-0000-0000-0000000009a5', 'twin@phone.test');
+  ('00000000-0000-0000-0000-0000000009a5', 'twin@phone.test'),
+  ('00000000-0000-0000-0000-0000000009a6', 'own@phone.test'),
+  ('00000000-0000-0000-0000-0000000009a7', 'hire@phone.test'),
+  ('00000000-0000-0000-0000-0000000009a8', 'typed@phone.test'),
+  ('00000000-0000-0000-0000-0000000009a9', 'gains@phone.test');
 INSERT INTO public.users (id, email, name, role, phone, archived_at, is_sample, is_digital_twin, read_only) VALUES
   ('00000000-0000-0000-0000-0000000009d1', 'dev@phone.test', 'Phone Dev', 'dev', NULL, NULL, false, false, false),
   ('00000000-0000-0000-0000-0000000009a1', 'with@phone.test', 'Will With', 'helpers', ' (512) 555-0147 ', NULL, false, false, false),
   ('00000000-0000-0000-0000-0000000009a2', 'without@phone.test', 'Nat Without', 'helpers', NULL, NULL, false, false, false),
   ('00000000-0000-0000-0000-0000000009a3', 'gone@phone.test', 'Gus Gone', 'subcontractor', '(512) 555-0148', now(), false, false, false),
   ('00000000-0000-0000-0000-0000000009a4', 'sample@phone.test', 'Sam Sample', 'helpers', '(512) 555-0149', NULL, true, false, false),
-  ('00000000-0000-0000-0000-0000000009a5', 'twin@phone.test', 'Tim Twin', 'helpers', '(512) 555-0150', NULL, false, true, false)
+  ('00000000-0000-0000-0000-0000000009a5', 'twin@phone.test', 'Tim Twin', 'helpers', '(512) 555-0150', NULL, false, true, false),
+  -- One roster row per account (people_account_user_id_uniq), so each case below has an account of its own.
+  ('00000000-0000-0000-0000-0000000009a6', 'own@phone.test', 'Own Number', 'helpers', '(512) 555-0151', NULL, false, false, false),
+  ('00000000-0000-0000-0000-0000000009a7', 'hire@phone.test', 'New Hire', 'helpers', '(737) 555-0106', NULL, false, false, false),
+  ('00000000-0000-0000-0000-0000000009a8', 'typed@phone.test', 'New Typed', 'helpers', '(737) 555-0107', NULL, false, false, false),
+  ('00000000-0000-0000-0000-0000000009a9', 'gains@phone.test', 'Gains One', 'helpers', '(737) 555-0108', NULL, false, false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, phone = EXCLUDED.phone, archived_at = EXCLUDED.archived_at,
     is_sample = EXCLUDED.is_sample, is_digital_twin = EXCLUDED.is_digital_twin, read_only = EXCLUDED.read_only;
 
@@ -46,7 +55,7 @@ INSERT INTO public.people (id, master_user_id, kind, name, phone, account_user_i
   ('00000000-0000-0000-0000-0000000009b3', '00000000-0000-0000-0000-0000000009d1', 'sub', 'Gus Gone', '  ', '00000000-0000-0000-0000-0000000009a3'),
   ('00000000-0000-0000-0000-0000000009b4', '00000000-0000-0000-0000-0000000009d1', 'helper', 'Sam Sample', NULL, '00000000-0000-0000-0000-0000000009a4'),
   ('00000000-0000-0000-0000-0000000009b5', '00000000-0000-0000-0000-0000000009d1', 'helper', 'Tim Twin', NULL, '00000000-0000-0000-0000-0000000009a5'),
-  ('00000000-0000-0000-0000-0000000009b6', '00000000-0000-0000-0000-0000000009d1', 'helper', 'Own Number', '(830) 555-0101', '00000000-0000-0000-0000-0000000009a1'),
+  ('00000000-0000-0000-0000-0000000009b6', '00000000-0000-0000-0000-0000000009d1', 'helper', 'Own Number', '(830) 555-0101', '00000000-0000-0000-0000-0000000009a6'),
   ('00000000-0000-0000-0000-0000000009b7', '00000000-0000-0000-0000-0000000009d1', 'sub', 'No Account', NULL, NULL);
 ALTER TABLE public.people ENABLE TRIGGER people_phone_from_account;
 SELECT pph.same('before: nothing filled', pph.phones(), 'Gus Gone=  , Nat Without=-, No Account=-, Own Number=(830) 555-0101, Sam Sample=-, Tim Twin=-, Will With=-');
@@ -66,13 +75,13 @@ SELECT pph.same('a sample''s phone fills nothing', (SELECT coalesce(phone, '-') 
 
 -- 3 · A roster row that gains an account takes the account's phone when it has none; one made with its own keeps it;
 -- clearing a phone on the roster is left alone.
-UPDATE public.people SET account_user_id = '00000000-0000-0000-0000-0000000009a2' WHERE id = '00000000-0000-0000-0000-0000000009b7';
-SELECT pph.same('a row that gains an account takes its phone', (SELECT phone FROM public.people WHERE id = '00000000-0000-0000-0000-0000000009b7'), '(737) 555-0102');
+UPDATE public.people SET account_user_id = '00000000-0000-0000-0000-0000000009a9' WHERE id = '00000000-0000-0000-0000-0000000009b7';
+SELECT pph.same('a row that gains an account takes its phone', (SELECT phone FROM public.people WHERE id = '00000000-0000-0000-0000-0000000009b7'), '(737) 555-0108');
 INSERT INTO public.people (id, master_user_id, kind, name, phone, account_user_id) VALUES
-  ('00000000-0000-0000-0000-0000000009b8', '00000000-0000-0000-0000-0000000009d1', 'helper', 'New Hire', NULL, '00000000-0000-0000-0000-0000000009a1'),
-  ('00000000-0000-0000-0000-0000000009b9', '00000000-0000-0000-0000-0000000009d1', 'helper', 'New Typed', '(830) 555-0105', '00000000-0000-0000-0000-0000000009a1');
+  ('00000000-0000-0000-0000-0000000009b8', '00000000-0000-0000-0000-0000000009d1', 'helper', 'New Hire', NULL, '00000000-0000-0000-0000-0000000009a7'),
+  ('00000000-0000-0000-0000-0000000009b9', '00000000-0000-0000-0000-0000000009d1', 'helper', 'New Typed', '(830) 555-0105', '00000000-0000-0000-0000-0000000009a8');
 SELECT pph.same('a new row with an account takes its phone; one made with its own keeps it',
-  (SELECT string_agg(name || '=' || phone, ', ' ORDER BY name) FROM public.people WHERE name IN ('New Hire', 'New Typed')), 'New Hire=(737) 555-0103, New Typed=(830) 555-0105');
+  (SELECT string_agg(name || '=' || phone, ', ' ORDER BY name) FROM public.people WHERE name IN ('New Hire', 'New Typed')), 'New Hire=(737) 555-0106, New Typed=(830) 555-0105');
 UPDATE public.people SET phone = NULL WHERE id = '00000000-0000-0000-0000-0000000009b1';
 SELECT pph.same('a phone cleared on the roster stays cleared', (SELECT coalesce(phone, '-') FROM public.people WHERE id = '00000000-0000-0000-0000-0000000009b1'), '-');
 
