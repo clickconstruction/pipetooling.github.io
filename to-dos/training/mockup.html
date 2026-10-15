@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Training courses</title>
+<style>
+  /* Layout: one column of four app spots in the order a person meets them, each in a page frame. Light only, like every to-do mock-up. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --green: #15803d; --green-tint: #dcfce7; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #fff; --page: #f3f4f6; --font: -apple-system, "Segoe UI", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--line-2); color: var(--ink-2); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.amber { background: var(--amber-tint); color: var(--amber); }
+  .cap.green { background: var(--green-tint); color: var(--green); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; overflow-x: auto; min-width: 0; }
+  .three { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .page { background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; font-size: 13px; min-width: 0; }
+
+  /* shared app bits */
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 11.5px; line-height: 18px; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.green { background: var(--green-tint); color: var(--green); }
+  .chip.amber { background: var(--amber-tint); color: var(--amber); }
+  .chip.red { background: var(--red-tint); color: var(--red-ink); }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .btn { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 4px 12px; font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; cursor: default; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); padding: 4px 4px; }
+  .btn.dim { opacity: .45; }
+  .btn.danger { color: var(--red-ink); border-color: #fca5a5; }
+  .muted { color: var(--muted); }
+  .ink2 { color: var(--ink-2); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: 1px; }
+  .dot.r { background: var(--red); } .dot.a { background: var(--amber-mid); } .dot.g { background: #16a34a; }
+  .switch { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; }
+  .switch i { width: 30px; height: 16px; border-radius: 999px; background: #16a34a; position: relative; display: inline-block; }
+  .switch i::after { content: ""; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+  .bar { height: 6px; border-radius: 999px; background: var(--line-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--blue); }
+
+  /* 1 · the dashboard card */
+  .dash { padding: 12px 14px 14px; }
+  .dash h3 { margin: 0; font-size: 15px; display: flex; align-items: baseline; gap: 10px; }
+  .dash h3 small { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .verdict { margin: 10px 0 0; padding: 7px 10px; border-radius: 7px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .verdict.red { background: var(--red-tint); color: var(--red-ink); }
+  .verdict.amber { background: var(--amber-tint); color: var(--amber); }
+  .verdict.green { background: var(--green-tint); color: var(--green); }
+  .course { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; padding: 10px 0 0; }
+  .course .name { font-weight: 700; }
+  .course .sub { color: var(--ink-2); font-size: 12.5px; grid-column: 1; }
+  .course .act { grid-row: 1 / span 2; grid-column: 2; }
+  .course .prog { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; font-size: 12px; color: var(--ink-2); }
+
+  /* 2 · the course page */
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line-2); flex-wrap: wrap; }
+  .topbar .title { font-weight: 700; font-size: 15px; }
+  .topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cols { display: grid; grid-template-columns: 250px minmax(0, 1fr); }
+  .rail { border-right: 1px solid var(--line-2); padding: 10px 0; font-size: 12.5px; }
+  .rail .part { padding: 8px 14px 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .rail .les { display: flex; gap: 8px; align-items: baseline; padding: 3px 14px; color: var(--ink-2); }
+  .rail .les .n { width: 18px; flex: none; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rail .les .t { min-width: 0; }
+  .rail .les.done { color: var(--muted); }
+  .rail .les.done .t::before { content: "✓ "; color: var(--green); font-weight: 700; }
+  .rail .les.now { background: var(--blue-tint); color: var(--blue-ink); font-weight: 700; }
+  .rail .final { margin: 10px 14px 0; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 7px; color: var(--muted); }
+  .lesson { padding: 14px 18px 18px; max-width: 72ch; }
+  .lesson .eye { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .lesson h4 { margin: 2px 0 10px; font-size: 20px; line-height: 1.2; }
+  .lesson h5 { margin: 16px 0 4px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); }
+  .lesson p { margin: 0 0 6px; }
+  .lesson ul { margin: 0; padding-left: 18px; }
+  .lesson li { margin: 3px 0; }
+  .numbers { display: flex; flex-wrap: wrap; gap: 6px; }
+  .numbers span { border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; font-size: 12px; background: var(--page); }
+  .q { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 8px; }
+  .q .ask { font-weight: 600; margin: 0 0 6px; }
+  .q label { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; }
+  .q label i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line); flex: none; position: relative; top: 2px; }
+  .q label.pick i { border-color: var(--blue); background: radial-gradient(circle, var(--blue) 45%, #fff 50%); }
+  .q.right { border-color: #86efac; background: #f0fdf4; }
+  .q.wrong { border-color: #fca5a5; background: #fef2f2; }
+  .q .why { margin: 6px 0 0; font-size: 12.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .q.right .why { color: var(--green); font-weight: 600; }
+  .q.wrong .why { color: var(--red-ink); font-weight: 600; }
+  .foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-2); flex-wrap: wrap; }
+  .foot .right { margin-left: auto; display: flex; gap: 8px; }
+
+  /* 3 · people */
+  .row { display: grid; grid-template-columns: 1.3fr 1fr 1.6fr auto; gap: 12px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--line-2); }
+  .row.head { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-top: 0; }
+  .fold { margin: 0 14px 12px; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--page); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+
+  /* 4 · settings */
+  .set { padding: 14px; }
+  .set h4 { margin: 0; font-size: 15px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .set .line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .set .lab { width: 110px; color: var(--muted); font-size: 12px; flex: none; }
+  .box { display: inline-block; border: 1px solid var(--line); border-radius: 5px; padding: 1px 8px; background: var(--surface); font-variant-numeric: tabular-nums; }
+  .tick { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+  .tick.on { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-ink); font-weight: 600; }
+
+  ul.calls { margin: 8px 0 0; padding-left: 20px; max-width: 100ch; }
+  ul.calls li { margin: 5px 0; }
+  ul.calls b { color: var(--ink); }
+  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } .rail { border-right: 0; border-bottom: 1px solid var(--line-2); } .row { grid-template-columns: 1fr; gap: 4px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #111 · mock-up · made-up names and dates</p>
+  <h1>Training</h1>
+  <p>A person meets it in four places, in this order: the Dashboard card under My Time says where they stand in one colour; the course is a page of five-minute lessons, each ending in a check they must get right; the People rail and the Users row carry the same colour for the office; a dev sets each course's policy in Settings. One kernel decides the colour everywhere.</p>
+</header>
+
+<h2><span class="num">1</span> Dashboard → Training, under My Time</h2>
+<p class="lede">One card, one verdict line in the state's colour, then one row per course the person's role must take, with one press. The same card in its three states.</p>
+<div class="three">
+  <div>
+    <div class="cap red">Not done <span class="muted" style="margin-left:auto;font-weight:500;text-transform:none;letter-spacing:0">red</span></div>
+    <div class="fit"><div class="page dash">
+      <h3>Training <small>at your own pace</small></h3>
+      <div class="verdict red"><span class="dot r"></span> 1 course to do</div>
+      <div class="course">
+        <div class="name">OSHA 30 refresher</div>
+        <div class="act"><span class="btn p">Continue</span></div>
+        <div class="sub">Required for your role · 30 lessons and a final check · about 2½ hours</div>
+        <div class="prog"><div class="bar"><i style="width:39%"></i></div><div>12 of 31 · next: Trenches, soil and protection</div></div>
+      </div>
+    </div></div>
+    <p class="note">Before the first lesson the row reads <b>Not started</b> with <b>Start</b>. Red is for a course never passed, started or not.</p>
+  </div>
+  <div>
+    <div class="cap amber">Lapsed <span class="muted" style="margin-left:auto;font-weight:500;text-transform:none;letter-spacing:0">amber</span></div>
+    <div class="fit"><div class="page dash">
+      <h3>Training <small>at your own pace</small></h3>
+      <div class="verdict amber"><span class="dot a"></span> 1 course to take again</div>
+      <div class="course">
+        <div class="name">OSHA 30 refresher</div>
+        <div class="act"><span class="btn p">Take it again</span></div>
+        <div class="sub">Done Oct 3, 2025 · was due Oct 3, 2026, 12 days ago</div>
+        <div class="prog"><div class="bar"><i style="width:0%"></i></div><div>A fresh pass starts the clock again</div></div>
+      </div>
+    </div></div>
+    <p class="note">Amber also from <b>30 days before</b> the day: <i>done Nov 7, 2025 · due again Nov 7, in 23 days</i>. One colour, the day in words.</p>
+  </div>
+  <div>
+    <div class="cap green">Caught up <span class="muted" style="margin-left:auto;font-weight:500;text-transform:none;letter-spacing:0">green</span></div>
+    <div class="fit"><div class="page dash">
+      <h3>Training <small>at your own pace</small></h3>
+      <div class="verdict green"><span class="dot g"></span> You are caught up</div>
+      <div class="course">
+        <div class="name">OSHA 30 refresher</div>
+        <div class="act"><span class="btn q">Read it again</span></div>
+        <div class="sub">Done Mar 3, 2026 · due again Mar 3, 2027</div>
+      </div>
+    </div></div>
+    <p class="note">Green stays one quiet line. The card is not drawn at all when no course is on for the role.</p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> The course page</h2>
+<p class="lede">Its own page at <span class="ink2">/training/osha-30-refresher</span>, so a two-hour read works on a phone in the truck and resumes where it stopped. Lessons open in any order. The final check opens once every lesson is done. Lesson 19 drawn whole, in plain words.</p>
+<div class="cap">OSHA 30 refresher · lesson 19 of 30 <span class="muted" style="margin-left:auto;font-weight:500;text-transform:none;letter-spacing:0">desktop; on a phone the rail is a Lessons sheet from the top bar</span></div>
+<div class="fit"><div class="page">
+  <div class="topbar">
+    <span class="btn q">‹ Dashboard</span>
+    <span class="title">OSHA 30 refresher</span>
+    <span class="chip blue">12 of 31</span>
+    <div class="right"><span class="muted">A refresher, not an OSHA card. The card comes from the 30-hour course.</span></div>
+  </div>
+  <div class="cols">
+    <div class="rail">
+      <div class="part">Start here</div>
+      <div class="les done"><span class="n">1</span><span class="t">How safety works on a site</span></div>
+      <div class="les done"><span class="n">2</span><span class="t">Every day on the job</span></div>
+      <div class="part">1 · Foundations</div>
+      <div class="les done"><span class="n">3</span><span class="t">OSHA and your rights</span></div>
+      <div class="les done"><span class="n">4</span><span class="t">Safety programs and leading a crew</span></div>
+      <div class="les done"><span class="n">5</span><span class="t">Finding and fixing hazards</span></div>
+      <div class="les done"><span class="n">6</span><span class="t">Mental health on the crew</span></div>
+      <div class="part">2 · The Focus Four</div>
+      <div class="les done"><span class="n">7</span><span class="t">Falls: the hazard</span></div>
+      <div class="les done"><span class="n">8</span><span class="t">Falls: the gear</span></div>
+      <div class="les done"><span class="n">9</span><span class="t">Electrocution</span></div>
+      <div class="les done"><span class="n">10</span><span class="t">Caught in or between</span></div>
+      <div class="les done"><span class="n">11</span><span class="t">Struck by</span></div>
+      <div class="part">3 · PPE and health</div>
+      <div class="les done"><span class="n">12</span><span class="t">PPE</span></div>
+      <div class="les"><span class="n">13</span><span class="t">Respirators</span></div>
+      <div class="les"><span class="n">14</span><span class="t">Chemicals, HazCom and biological hazards</span></div>
+      <div class="les"><span class="n">15</span><span class="t">Noise, heat and cold</span></div>
+      <div class="les"><span class="n">16</span><span class="t">Silica and asbestos</span></div>
+      <div class="part">4 · Ladders, scaffolds, trenches</div>
+      <div class="les"><span class="n">17</span><span class="t">Ladders and stairs</span></div>
+      <div class="les"><span class="n">18</span><span class="t">Scaffolds</span></div>
+      <div class="les now"><span class="n">19</span><span class="t">Trenches: soil and protection</span></div>
+      <div class="les"><span class="n">20</span><span class="t">Trenches: getting out, air, water and rescue</span></div>
+      <div class="part">5 · Materials and other trades</div>
+      <div class="les"><span class="n">21</span><span class="t">Lifting, handling and storing materials</span></div>
+      <div class="les"><span class="n">22</span><span class="t">Cranes, concrete and steel on someone else's site</span></div>
+      <div class="part">6 · Tools and vehicles</div>
+      <div class="les"><span class="n">23</span><span class="t">Hand and power tools</span></div>
+      <div class="les"><span class="n">24</span><span class="t">Vehicles and forklifts</span></div>
+      <div class="part">7 · Special hazards</div>
+      <div class="les"><span class="n">25</span><span class="t">Fire, hot work and torches</span></div>
+      <div class="les"><span class="n">26</span><span class="t">Confined spaces</span></div>
+      <div class="les"><span class="n">27</span><span class="t">Ergonomics</span></div>
+      <div class="les"><span class="n">28</span><span class="t">Electrical safety and NFPA 70E</span></div>
+      <div class="part">8 · People and culture</div>
+      <div class="les"><span class="n">29</span><span class="t">Correcting unsafe behavior and leading the culture</span></div>
+      <div class="les"><span class="n">30</span><span class="t">The capstone case: the excavator</span></div>
+      <div class="final">Final check · 20 questions, 14 right passes · opens when every lesson is done</div>
+    </div>
+    <div class="lesson">
+      <div class="eye">Part 4 · Lesson 19 of 30 · about 6 minutes</div>
+      <h4>Trenches: soil and protection</h4>
+      <h5>Why it matters</h5>
+      <p>Trench collapses kill about <b>40</b> workers a year. Most happen in trenches only <b>5 to 15 feet</b> deep. The right protection depends on reading the soil right.</p>
+      <h5>Must know</h5>
+      <ul>
+        <li>A trench is deeper than it is wide, and no more than <b>15 feet</b> wide at the bottom.</li>
+        <li>The competent person classifies the soil and inspects the trench <b>daily</b>, before anyone enters.</li>
+        <li>They inspect again after rain, vibration or any other event. They can stop the work.</li>
+        <li>Under <b>5 feet</b>, a protective system is needed only if the competent person sees cave-in potential.</li>
+        <li>From <b>5 to 20 feet</b>, the system is built to OSHA's tables, to a maker's data, or to an engineer's design.</li>
+        <li>Deeper than <b>20 feet</b>, only a registered professional engineer may design the system.</li>
+        <li>Type A is cohesive clay at <b>1.5 tsf</b> or more. Type B sits between <b>0.5 and 1.5 tsf</b>. Type C is <b>0.5 tsf</b> or less, sand, gravel or wet soil.</li>
+        <li>Fissured, vibrated, disturbed or layered soil can never be Type A. Use the least stable class you find.</li>
+        <li>Slopes: Type A at <b>¾ to 1</b>, Type B at <b>1 to 1</b>, Type C at <b>1½ to 1</b>. Benching is allowed in A and B, never in C.</li>
+        <li>The system reaches <b>18 inches</b> above the top of the trench. Spoil and tools stay at least <b>2 feet</b> back from the edge.</li>
+        <li>A trench box protects the people inside it. It does not stop the soil from moving.</li>
+      </ul>
+      <h5>Traps</h5>
+      <ul>
+        <li>Clumpy clay beside a busy road is Type B. The vibration rules out Type A.</li>
+        <li>Keep the depths apart. Egress and air testing at 4 feet, a system at 5, edge fall protection at 6, an engineer past 20.</li>
+      </ul>
+      <h5>Numbers to remember</h5>
+      <div class="numbers"><span>5 ft · a system</span><span>20 ft · an engineer</span><span>18 in · above the top</span><span>2 ft · spoil back</span><span>15 ft · widest trench</span><span>1.5 tsf · Type A</span><span>0.5 tsf · Type C</span><span>daily · inspection</span></div>
+      <h5>Check yourself</h5>
+      <div class="q right">
+        <p class="ask">1. Starting at what depth does a trench need a protective system?</p>
+        <label><i></i>4 feet</label>
+        <label class="pick"><i></i>5 feet</label>
+        <label><i></i>6 feet</label>
+        <label><i></i>10 feet</label>
+        <p class="why">Right. Under 5 feet it is the competent person's call.</p>
+      </div>
+      <div class="q wrong">
+        <p class="ask">2. When must a registered professional engineer design the protection?</p>
+        <label><i></i>Any trench in Type C soil</label>
+        <label class="pick"><i></i>Deeper than 15 feet</label>
+        <label><i></i>Deeper than 20 feet</label>
+        <label><i></i>Whenever a trench box is used</label>
+        <p class="why">Not this one. 15 feet is the widest a trench can be, not the engineer's line. <span class="btn" style="margin-left:4px">Try again</span></p>
+      </div>
+      <div class="q">
+        <p class="ask">3. Which soil type is dangerous to bench?</p>
+        <label><i></i>Type A</label>
+        <label><i></i>Type B</label>
+        <label><i></i>Type C</label>
+        <label><i></i>Stable rock</label>
+      </div>
+      <div class="q">
+        <p class="ask">4. How high must the protective system reach?</p>
+        <label><i></i>Level with the top of the trench</label>
+        <label><i></i>12 inches above the trench</label>
+        <label><i></i>18 inches above the trench</label>
+        <label><i></i>24 inches above the trench</label>
+      </div>
+      <div class="foot">
+        <span class="ink2">Done when all four are right · <b>1 of 4</b></span>
+        <div class="right"><span class="btn">‹ Scaffolds</span><span class="btn p dim">Next lesson ›</span></div>
+      </div>
+    </div>
+  </div>
+</div></div>
+<p class="note">A wrong pick says why in one line and reshuffles the options for <b>Try again</b>. The lesson ticks in the rail the moment all four are right, and the card on the Dashboard reads <b>13 of 31</b> on the next visit. Questions use the course's own wording; the wrong options come from the captured quizzes, never invented, and none is built on a place where the course's key contradicts its lesson.</p>
+
+<h2><span class="num">3</span> People → Users, and the rail</h2>
+<p class="lede">Training joins Hours, Paperwork and Account as a fourth subject on the row and the rail, in the same colours the paperwork chips already use. The fold-out names the course and opens the person's Training line on their Desk.</p>
+<div class="cap">People → Users · the needs column</div>
+<div class="fit"><div class="page">
+  <div class="row head"><div>Person</div><div>Kind</div><div>Needs attention</div><div></div></div>
+  <div class="row"><div><span class="dot r"></span>&nbsp; Dana R.</div><div>Helper</div><div><span class="chip red">training due</span> <span class="chip amber">1 expiring</span></div><div><span class="btn q">Desk</span></div></div>
+  <div class="fold"><span class="dot r"></span><b>OSHA 30 refresher</b> not done · required for helpers since Oct 1 <span class="btn q" style="margin-left:auto">Open Training</span></div>
+  <div class="row"><div><span class="dot a"></span>&nbsp; Luis M.</div><div>Primary</div><div><span class="chip amber">training lapsed</span></div><div><span class="btn q">Desk</span></div></div>
+  <div class="row"><div><span class="dot g"></span>&nbsp; Priya K.</div><div>Subcontractor</div><div><span class="muted">caught up</span></div><div><span class="btn q">Desk</span></div></div>
+</div></div>
+<p class="note">Same rule as papers: red moves the dot, amber moves it when nothing red is there, green never counts. A benched sub's training nag pauses with their paperwork nags.</p>
+
+<h2><span class="num">4</span> Settings → Training, for a dev</h2>
+<p class="lede">Every course the app ships, each with its policy and its counts. The lessons themselves live in the app like help guides; a dev adds a course by adding its lessons, and it shows here switched off.</p>
+<div class="cap">Settings → Company → Training</div>
+<div class="fit"><div class="page set">
+  <h4>OSHA 30 refresher <span class="switch"><i></i> On</span> <span class="muted" style="font-weight:400;font-size:12px">content v3 · 30 lessons and a final check · ships with the app</span></h4>
+  <div class="line"><span class="lab">Required for</span><span class="tick on">✓ Helpers</span><span class="tick on">✓ Subcontractors</span><span class="tick on">✓ Primaries</span><span class="tick on">✓ Masters</span><span class="tick on">✓ Superintendents</span><span class="tick">Office</span><span class="tick">Estimators</span></div>
+  <div class="line"><span class="lab">Good for</span><span class="box">12</span> months · amber from <span class="box">30</span> days before the day</div>
+  <div class="line"><span class="lab">Where everyone stands</span><span class="chip green">14 current</span><span class="chip amber">3 lapsed</span><span class="chip red">5 not done</span><span class="btn q">See who</span></div>
+  <div class="line"><span class="lab">Pass rule</span><span class="ink2">Every lesson's four checks right, then 14 of 20 on the final check</span></div>
+  <div class="line" style="margin-top:14px"><span class="btn">Preview the course</span><span class="btn danger">Everyone takes it again…</span><span class="muted">stamps today; 14 current people turn red, and the confirm says so first</span></div>
+</div></div>
+<p class="note">Changing a lesson's words never voids a pass; a pass records the content version it was taken on. <b>Everyone takes it again…</b> is the one press that does, on purpose.</p>
+
+<h2><span class="num">5</span> Your calls</h2>
+<ul class="calls">
+  <li><b>Who must take it.</b> Drawn: helpers, subcontractors, primaries, masters and superintendents; the office optional. Subs are another employer's workers, so requiring it of them is a company rule, not OSHA's.</li>
+  <li><b>The clock.</b> Drawn: good for 12 months, amber from 30 days before the day. Six months is one number away.</li>
+  <li><b>The pass rule.</b> Drawn: every lesson check right, with retries, and 14 of 20 on the final check, the real exam's bar. Or a read-through with the final check alone.</li>
+  <li><b>The record.</b> Who, course, version, day and score. Enough for the insurer and a GC's prequalification, or export a CSV from day one.</li>
+  <li><b>The word training.</b> The read-only account flag is called <i>training mode</i> on + Hire and the Account lens. Rename it <i>practice mode</i> so Training means courses, or leave both.</li>
+  <li><b>Spanish.</b> A second content folder behind the one Spanish switch. Now, or after the English course has been through a crew.</li>
+  <li><b>Blocking.</b> Drawn: a lapsed course never blocks the clock or a job. Keep it that way, or tie it to the clock after a grace period.</li>
+</ul>
+<p class="note">The plan, the data and the six PRs are in <span class="ink2">to-dos/training/README.md</span>.</p>
+</div>
+</body>
+</html>
