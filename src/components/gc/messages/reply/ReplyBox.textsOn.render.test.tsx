@@ -13,7 +13,7 @@ import { DEMO_NOW } from '../../../../lib/messages/messagesDemo'
 import { spineMessagesView } from '../../../../lib/messages/spineRows'
 import type { JobTile } from '../../../../lib/messages/jobTiles'
 import type { ReplyKind } from '../../../../lib/messages/compose'
-import type { ReplyIo } from '../../../../lib/messages/replyIo'
+import { TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
@@ -21,8 +21,13 @@ import { ReplyBox } from './ReplyBox'
 const switchRead = vi.hoisted(() => ({ on: false as boolean | null }))
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => switchRead.on }))
 vi.mock('../../../../hooks/useFlowNow', () => ({ useFlowNow: () => null, openFlowStep: vi.fn() }))
+// The smoke's dev can flip the switch, so the wait line carries the link (`TextsWaitLine.render.test.tsx` has the other words).
+vi.mock('../../../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 
-const WAIT = 'Texts wait until Send texts is switched on in Settings → Phone and texts. Send this as an email, or come back to it then.'
+const WAIT = TEXTS_WAIT
 
 function fakeIo(): ReplyIo {
   return {

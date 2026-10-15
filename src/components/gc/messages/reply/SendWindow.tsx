@@ -28,7 +28,8 @@ import {
   type ComposeSender,
 } from '../../../../lib/messages/compose'
 import { lastOurTextAt, priorTexts } from '../../../../lib/messages/replyBox'
-import { TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
+import type { ReplyIo } from '../../../../lib/messages/replyIo'
+import { TextsWaitLine } from './TextsWaitLine'
 import type { AttachIo } from '../../../../lib/messages/attachIo'
 import type { DeviceBytes } from '../../../../lib/documents/emailFileAsks'
 import { chipFacts, emailFileNote, textFileNote, type Audience } from '../../../../lib/documents/outgoing'
@@ -395,7 +396,7 @@ export function SendWindow({
           ))}
           {waits && (
             <div data-send-waits role="status" style={warn}>
-              {TEXTS_WAIT}
+              <TextsWaitLine />
             </div>
           )}
           {problem && (

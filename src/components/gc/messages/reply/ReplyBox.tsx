@@ -31,7 +31,8 @@ import {
 } from '../../../../lib/messages/compose'
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
-import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
+import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
+import { TextsWaitLine } from './TextsWaitLine'
 import { supabaseAttachIo, type AttachIo } from '../../../../lib/messages/attachIo'
 import { addDraftFile, chipHover } from '../../../../lib/documents/outgoing'
 import { sizeWords } from '../../../../lib/documents/jobFiles'
@@ -94,7 +95,7 @@ const keepOpen = (open: boolean) => {
  * person fills it (`sendWaits`). A line goes in the language the person reads (`customerLang`), which stays English
  * until the owner's one switch for Spanish, `PORTAL_SPANISH_ON`, is on.
  *
- * Cut 5's switch: while Send texts reads off (`useTextsOn`), the Text tab draws `TEXTS_WAIT` in place of the strip, the
+ * Cut 5's switch: while Send texts reads off (`useTextsOn`), the Text tab draws `TextsWaitLine` in place of the strip, the
  * box and the send row, so nobody writes a text the server would refuse. The kinds row stays, to choose an email.
  */
 export function ReplyBox({
@@ -324,7 +325,7 @@ export function ReplyBox({
 
       {textWaits && (
         <p data-reply-texts-wait role="status" style={WAIT_LOOK}>
-          {TEXTS_WAIT}
+          <TextsWaitLine />
         </p>
       )}
 

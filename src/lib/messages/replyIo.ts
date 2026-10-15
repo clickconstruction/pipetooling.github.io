@@ -23,7 +23,19 @@ import { jobRefOf } from './load'
 import { tieOf } from './replyBox'
 
 /** The words a text says while Send texts is off: the reply box's Text tab draws them in place of the box, and the send window under a text. */
-export const TEXTS_WAIT = 'Texts wait until Send texts is switched on in Settings → Phone and texts. Send this as an email, or come back to it then.'
+/**
+ * The wait line while Send texts reads off (v2.5538, `TextsWaitLine.tsx` draws it): the words before the link, the
+ * link's words (the switch's page, `TEXTS_WAIT_HREF`) and the words after; `TEXTS_WAIT` is the whole line as it reads
+ * to the owner or a dev, who can flip the switch. Anyone else reads `TEXTS_WAIT_OTHERS`, which says who turns it on.
+ */
+export const TEXTS_WAIT_HREF = '/settings?tab=settings-phone-texts'
+export const TEXTS_WAIT_PARTS = {
+  before: 'Texts wait until Send texts is switched on. It is the first card on ',
+  link: 'Settings → Phone and texts',
+  after: '. Nothing else there is needed first. Send this as an email, or come back to it then.',
+} as const
+export const TEXTS_WAIT = `${TEXTS_WAIT_PARTS.before}${TEXTS_WAIT_PARTS.link}${TEXTS_WAIT_PARTS.after}`
+export const TEXTS_WAIT_OTHERS = 'Texts wait until the owner or a dev switches on Send texts. Send this as an email, or come back to it then.'
 
 /**
  * Whether the sends go from the two boxes (R6): `messages-email` sets the box's address as its Reply-To and `quo-send`

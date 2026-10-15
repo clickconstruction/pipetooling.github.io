@@ -7,6 +7,7 @@ import {
   TEXTS_ON_TOAST,
   TEXTS_SWITCH_ALWAYS,
   TEXTS_SWITCH_CONFIRM,
+  TEXTS_SWITCH_FIRST,
   TEXTS_SWITCH_KEY,
   TEXTS_SWITCH_TITLE,
   TEXTS_SWITCH_WHAT,
@@ -40,7 +41,7 @@ describe('the texts switch', () => {
   })
 
   it('says each thing in plain words', () => {
-    const words = [TEXTS_OFF, TEXTS_SWITCH_TITLE, TEXTS_SWITCH_WHAT, TEXTS_SWITCH_ALWAYS, TEXTS_SWITCH_CONFIRM.title, TEXTS_SWITCH_CONFIRM.message, TEXTS_ON_TOAST, TEXTS_OFF_TOAST, TEXTS_NOT_SAVED]
+    const words = [TEXTS_OFF, TEXTS_SWITCH_TITLE, TEXTS_SWITCH_WHAT, TEXTS_SWITCH_ALWAYS, TEXTS_SWITCH_FIRST, TEXTS_SWITCH_CONFIRM.title, TEXTS_SWITCH_CONFIRM.message, TEXTS_ON_TOAST, TEXTS_OFF_TOAST, TEXTS_NOT_SAVED]
     for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 })
