@@ -440,7 +440,7 @@ function Calendar({ calendar, width, stage, showKey }: { calendar: StageCalendar
           <div style={{ display: 'flex', gap: 10, width: 'max-content' }}>
             {months.map((m) => (
               <div key={`${m.month}-${m.weeks[0]?.start}`} style={{ display: 'grid', gap: 4 }}>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'center' }}>{MONTHS[m.month]}</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'center', paddingBottom: 3, borderBottom: '1px solid var(--border-strong)' }}>{MONTHS[m.month]}</span>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {m.weeks.map((w) => {
                     const title = [`Week of ${shortDate(w.start)}`, ...w.events, ...(w.current ? ['This week.'] : [])].join('. ').replace(/\.\./g, '.')
@@ -584,9 +584,11 @@ function Calendar({ calendar, width, stage, showKey }: { calendar: StageCalendar
       <div ref={scroller} style={{ overflowX: 'auto', paddingBottom: 4, paddingTop: 8 }}>
         <div style={{ display: 'flex', gap: sz.week, width: 'max-content', alignItems: 'flex-start' }}>
           {calendar.weeks.map((week) => {
-            // The week's dates sit centred over its squares, like the labels under them (the owner, 2026-10-15).
+            // The week's dates sit centred over its squares, like the labels under them, on a hairline the width of the
+            // week: where one hairline ends and the next begins is where one week becomes the next (the owner, 2026-10-15).
+            // A quiet week keeps the hairline under its empty heading, so the rhythm holds.
             const head = (
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', height: 14, textAlign: 'center' }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', height: 18, boxSizing: 'border-box', textAlign: 'center', paddingBottom: 3, borderBottom: '1px solid var(--border-strong)' }}>
                 {weekIsQuiet(week) ? '' : weekRange(week)}
               </span>
             )
