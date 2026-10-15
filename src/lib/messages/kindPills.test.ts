@@ -21,11 +21,11 @@ const nudges = [
 ]
 const clauses = [{ id: 'clause-1' }]
 const kinds = (patch: Record<string, QueueContact['kind']>) => DEMO_FOLLOW_UP_CONTACTS.map((c) => (patch[c.id] ? { ...c, kind: patch[c.id]! } : c))
-const ALL_KINDS: ContactKind[] = ['customer', 'trade', 'arch', 'lead', 'supply_house', 'candidate', 'sub', 'unknown']
+const ALL_KINDS: ContactKind[] = ['customer', 'trade', 'arch', 'lead', 'supply_house', 'candidate', 'sub', 'team', 'unknown']
 
 describe('the pill row (the residential prototype v0.8, the Messages page)', () => {
   it('runs in the prototype’s order, with New left to R7’s lane', () => {
-    expect(KIND_PILLS.map((p) => p.label)).toEqual(['All', 'Customers', 'Trade partners', 'Architects', 'Leads', 'Subs', 'Supply houses and candidates'])
+    expect(KIND_PILLS.map((p) => p.label)).toEqual(['All', 'Customers', 'Trade partners', 'Architects', 'Leads', 'Subs', 'Our team', 'Supply houses and candidates'])
   })
 
   it('puts every named kind under exactly one pill, and a number nobody named under All alone', () => {

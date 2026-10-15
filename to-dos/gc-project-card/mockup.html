@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GC projects: a project's card, five ways</title>
+<style>
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --red: #dc2626; --red-tint: #fee2e2; --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --green: #15803d; --green-tint: #dcfce7; --purple: #7c3aed; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #fff; --page: #f3f4f6; --bg-muted: #f3f4f6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1560px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  h2 .num.pick { background: var(--blue); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 105ch; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; }
+  .cap.old { background: var(--line-2); color: var(--ink-2); }
+  .cap.new { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .w { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; overflow-x: auto; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  .note b { color: var(--ink); }
+  ul.moves { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  ul.moves li { margin: 2px 0; }
+  ul.moves b { color: var(--ink); }
+
+  /* the page column the card sits in */
+  .page { width: 1040px; margin: 0 auto; }
+  .card { background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; font-size: 13px; }
+
+  /* shared bits */
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 11.5px; line-height: 18px; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.green { background: var(--green-tint); color: var(--green); }
+  .chip.amber { background: var(--amber-tint); color: var(--amber); }
+  .chip.red { background: var(--red-tint); color: #991b1b; }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .btn { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; cursor: default; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); padding: 3px 4px; }
+  .btn.s { padding: 1px 8px; font-size: 12px; }
+  button.btn { cursor: pointer; }
+  .muted { color: var(--muted); }
+  .ink2 { color: var(--ink-2); }
+  .red { color: var(--red); }
+  .green { color: var(--green); }
+  .amber { color: var(--amber-mid); }
+  .r { text-align: right; }
+  .nowrap { white-space: nowrap; }
+  .hr { border-top: 1px solid var(--line-2); margin: 0; }
+  .pill { display: inline-block; padding: 1px 10px; border-radius: 999px; font-weight: 800; font-size: 11.5px; }
+  .pill.watch { background: var(--amber-tint); color: var(--amber); }
+  .pill.ok { background: var(--green-tint); color: var(--green); }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+  .dot.g { background: #16a34a; } .dot.a { background: #d97706; } .dot.r { background: #dc2626; } .dot.p { background: #7c3aed; } .dot.b { background: #2563eb; }
+  .dot.o { background: none; border: 1.5px solid #9ca3af; }
+
+  /* the stage rail */
+  .rail { display: flex; align-items: center; gap: 0; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .rail i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--line); margin-right: 5px; vertical-align: -1px; }
+  .rail i.on { border-color: var(--blue); background: var(--blue); }
+  .rail b { color: var(--ink); }
+  .rail .ln { display: inline-block; width: 20px; height: 2px; background: var(--line); margin: 0 7px; }
+
+  /* the calendar */
+  .cal { display: flex; gap: 22px; align-items: flex-start; }
+  .wk { display: grid; gap: 2px; }
+  .wk .wl { font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--muted); margin-bottom: 2px; }
+  .wk .days { display: flex; gap: 4px; align-items: flex-end; }
+  .wk .dn { display: flex; gap: 4px; }
+  .dn span { width: 34px; text-align: center; font-size: 9.5px; font-weight: 700; color: var(--muted); }
+  .dn span.we { width: 16px; }
+  .dn span.td { color: var(--blue); }
+  .sq { width: 34px; height: 34px; border-radius: 6px; border: 1.5px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12.5px; color: var(--ink-2); position: relative; }
+  .sq.we { width: 16px; font-size: 0; }
+  .sq.gone { border-style: dashed; color: #c4c9d2; }
+  .sq.past { background: #e5ebf3; border-color: #cbd5e1; }
+  .sq.today { border-color: var(--blue); color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
+  .sq.q { background: var(--amber-tint); border-color: var(--amber-mid); color: var(--amber); }
+  .sq.due { background: #fca5a5; border-color: var(--red); color: #7f1d1d; }
+  .sq .mk { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 1px; background: var(--amber-mid); }
+  .lab { display: flex; gap: 4px; height: 30px; position: relative; }
+  .lab span { position: absolute; top: 2px; font-size: 10px; font-weight: 700; text-align: center; line-height: 1.15; width: 72px; margin-left: -19px; }
+  .lab .td { color: var(--blue); } .lab .q { color: var(--amber-mid); } .lab .due { color: var(--red); } .lab .set { color: var(--ink-2); }
+  .key { display: flex; gap: 4px 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); align-items: center; }
+  .key[hidden] { display: none; }
+  .key i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid #cbd5e1; margin-right: 4px; vertical-align: -2px; }
+  .key i.gone { border-style: dashed; } .key i.today { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); } .key i.q { background: var(--amber-tint); border-color: var(--amber-mid); } .key i.due { background: #fca5a5; border-color: var(--red); }
+  .key i.d { width: 7px; height: 7px; border-radius: 50%; border: 0; }
+
+  /* tiles (today's) */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .tile { border: 1.5px solid; border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+  .tile b { display: block; font-size: 13px; }
+  .tile.bad { border-color: #dc2626; background: #fee2e2; } .tile.warn { border-color: #d97706; background: #fef3c7; } .tile.good { border-color: #16a34a; background: #dcfce7; } .tile.ours { border-color: #7c3aed; background: #ede9fe; }
+  .tile .ds { float: right; }
+
+  /* the numbers */
+  .nums { display: flex; gap: 8px 28px; flex-wrap: wrap; }
+  .num { display: grid; gap: 0; }
+  .num .l { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .num .v { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .num .n { font-size: 11.5px; color: var(--muted); }
+  .num .v.red { color: var(--red); } .num .v.amber { color: var(--amber-mid); } .num .v.green { color: var(--green); }
+
+  /* today's layout */
+  .t-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 12px 16px 10px; }
+  .t-body { display: grid; gap: 10px; padding: 0 16px 12px; }
+  .t-strip { border-top: 1px solid var(--line-2); padding-top: 12px; display: grid; gap: 12px; }
+  .t-verdict { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .t-trade { font-size: 12.5px; }
+  .t-trade ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  .thread { border-left: 2px solid var(--line-2); padding-left: 10px; margin-top: 4px; display: grid; gap: 4px; }
+
+  /* the new shapes */
+  .head { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; justify-content: space-between; flex-wrap: wrap; }
+  .head .id { display: grid; gap: 2px; }
+  .head .nm { font-size: 17px; font-weight: 700; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .head .meta { color: var(--muted); font-size: 12.5px; }
+  .head .meta b { color: var(--ink); font-weight: 600; }
+  .doors { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+  .doors .grp { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .doors .grp span, .doors .grp button { padding: 3px 10px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); background: var(--surface); border: 0; border-left: 1px solid var(--line); white-space: nowrap; cursor: default; }
+  .doors .grp > :first-child { border-left: 0; }
+  .doors .grp .c { color: var(--muted); font-weight: 500; }
+  .doors .grp .warn { color: var(--amber-mid); }
+  .menu { position: relative; }
+  .menu .list { display: none; position: absolute; right: 0; top: 30px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px; z-index: 5; min-width: 200px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+  .menu.open .list { display: grid; }
+  .menu .list span { padding: 4px 8px; font-size: 12.5px; }
+  .menu .list .h { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding-top: 6px; }
+  .menu .list .dim { color: var(--muted); }
+  .verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 10px 16px 10px 14px; border-top: 1px solid var(--line-2); border-left: 3px solid var(--amber-mid); background: #fffbeb; }
+  .verdict .why { display: flex; gap: 10px; align-items: baseline; }
+  .verdict .why b { font-size: 14px; }
+  .verdict .nums { grid-column: 1 / -1; }
+  .band { padding: 12px 16px; border-top: 1px solid var(--line-2); display: grid; gap: 10px; }
+  .band .bh { display: flex; gap: 10px; align-items: baseline; }
+  .band .bh b { font-size: 12.5px; }
+  .band .bh .muted { font-size: 12px; }
+  .band .bh .right { margin-left: auto; }
+  a.k { color: var(--blue-ink); font-weight: 600; font-size: 12px; cursor: pointer; }
+
+  /* trade rows */
+  .tt { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .tt .th, .tt .tr { display: grid; grid-template-columns: 6px 150px 118px 90px 120px minmax(0, 1fr) 170px 22px; gap: 10px; align-items: center; }
+  .tt .th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 5px 10px 5px 0; background: #f9fafb; border-bottom: 1px solid var(--line-2); }
+  .tt .tr { padding: 7px 10px 7px 0; border-top: 1px solid var(--line-2); }
+  .tt .tr:first-of-type { border-top: 0; }
+  .tt .st { align-self: stretch; }
+  .tt .st.bad { background: #dc2626; } .tt .st.warn { background: #d97706; } .tt .st.good { background: #16a34a; } .tt .st.ours { background: #7c3aed; }
+  .tt .nm { font-weight: 700; }
+  .tt .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 11.5px; }
+  .tt .who { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tt .who .chip { font-weight: 500; }
+  .tt .ex { color: var(--muted); font-weight: 700; cursor: pointer; text-align: center; }
+  .tt .open { display: none; grid-column: 1 / -1; padding: 8px 12px 10px 16px; background: #f9fafb; border-top: 1px dashed var(--line-2); gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+  .tt .tr.is-open + .open { display: grid; }
+  .tt .open h5 { margin: 0 0 4px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tt .open ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 12.5px; }
+  .co { display: grid; gap: 3px; font-size: 12.5px; padding: 6px 0; border-top: 1px solid var(--line-2); }
+  .co:first-of-type { border-top: 0; padding-top: 0; }
+  .co .l1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .co .l1 b { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: #9ca3af; }
+  .co .log { color: var(--muted); font-size: 12px; }
+  .gap { color: var(--red); font-size: 12.5px; }
+
+  /* the record */
+  .rec { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 14px; font-size: 12.5px; align-items: baseline; }
+  .rec .k { color: var(--muted); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; }
+  .rec .v { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .foot { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line-2); background: #f9fafb; border-radius: 0 0 10px 10px; flex-wrap: wrap; }
+  .foot .cap2 { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-right: auto; }
+
+  /* B: the rail */
+  .two-col { display: grid; grid-template-columns: minmax(0, 1fr) 280px; }
+  .two-col .main { min-width: 0; }
+  .side { border-left: 1px solid var(--line-2); padding: 12px 14px; display: grid; gap: 12px; align-content: start; background: #fafafa; }
+  .side h5 { margin: 0; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .side .ls { display: grid; gap: 4px; font-size: 12.5px; }
+  .side .ls span { display: flex; justify-content: space-between; gap: 8px; }
+  .side .ls span .c { color: var(--muted); }
+  .side .ls .door { color: var(--blue-ink); font-weight: 600; }
+
+  /* C: tabs */
+  .tabs { display: flex; gap: 2px; padding: 0 16px; border-top: 1px solid var(--line-2); background: #f9fafb; }
+  .tabs button { font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 12px; border: 0; background: none; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; margin-bottom: -1px; }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--blue); }
+  .tabs button .c { color: var(--muted); font-weight: 500; }
+  .pane { display: none; }
+  .pane.on { display: grid; gap: 10px; }
+
+  /* the critique */
+  .crit { margin-top: 44px; border-top: 2px solid var(--ink); padding-top: 14px; max-width: 110ch; }
+  .crit h3 { font-size: 15px; margin: 18px 0 4px; }
+  .crit p, .crit li { font-size: 13.5px; color: var(--ink-2); }
+  .crit b { color: var(--ink); }
+  table.wt { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+  table.wt th, table.wt td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
+  table.wt th { background: #f9fafb; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .q { background: var(--amber-tint); border-left: 3px solid var(--amber-mid); padding: 8px 12px; border-radius: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">GC projects · Each project · mock-up 2026-10-14</p>
+  <h1>A project's card: today, three other shapes, and the one to build</h1>
+  <p>The owner's screenshot of the bidding project's card: "very chaotic and not very intuitive". Every mock-up below holds the same job with made-up names, so the shapes compare. Nothing here is built. Press a trade's <b>›</b>, a <b>Key</b>, a <b>More ▾</b> or a tab to try the parts that move.</p>
+</header>
+
+<!-- ============================ 0 · TODAY ============================ -->
+<h2><span class="num">0</span> Today, as the screenshot shows it</h2>
+<p class="lede">One column, everything at the same size, no headings. The parts are numbered here so the other mock-ups can say where each one went.</p>
+<div class="cap old"><span>Today</span><span class="w">one column, 9 parts</span></div>
+<div class="fit"><div class="page"><div class="card">
+  <div class="t-head">
+    <strong style="font-size:15px">Fair Oaks Shops, Building D</strong> <span class="chip">bidding</span>
+    <span class="muted">4400 Fair Oaks Pkwy, San Antonio</span> <span>bid due 2026-10-24</span>
+    <span class="btn q">The plans</span><span class="btn q">Papers</span><span class="btn q">Questions about the plans · 1 open</span>
+    <span class="btn q">A new set of plans came in</span><span class="btn q">Schedule</span>
+    <span>12,400 sq ft retail shell</span><span class="btn q">Our number</span><span class="btn q">Bid tabs (2)</span>
+    <span class="chip" style="margin-left:auto">① head</span>
+  </div>
+  <div class="t-body">
+    <div class="t-strip">
+      <div class="rail"><span><i class="on"></i><b>Bidding</b></span><span class="ln"></span><span><i></i>Buying out</span><span class="ln"></span><span><i></i>Building</span><span class="ln"></span><span><i></i>Closed</span><span class="chip" style="margin-left:auto">② rail</span></div>
+      <div class="t-verdict">
+        <span><span class="pill watch">Watch</span> &nbsp;<b>10 days left. 2 of 3 trades have a number, and Concrete has no quote.</b></span>
+        <span class="btn p">Next: Ask more companies for Concrete →</span>
+      </div>
+      <div><b>8</b> working days left, counting today &nbsp;&nbsp; <span class="amber"><b>1 of 2</b> quotes in</span> <span class="chip" style="float:right">③ verdict · clock</span></div>
+      <div class="cal" data-cal></div>
+      <div class="key" data-calkey></div>
+      <div class="tiles">
+        <div class="tile bad"><span class="ds"><span class="dot o"></span> <span class="dot o"></span></span><b>Concrete</b>No quote<br><span class="muted">2 asked, none in</span></div>
+        <div class="tile warn"><span class="ds"><span class="dot g"></span> <span class="dot o"></span></span><b>Electrical</b>1 quote<br><span class="muted">1 to call</span></div>
+        <div class="tile good"><span class="ds"><span class="dot g"></span> <span class="dot g"></span></span><b>Roofing</b>2 quotes<br><span class="muted">lowest $71,900 + ?</span></div>
+        <div class="tile ours"><b>Plumbing</b>ours<br><span class="muted">$62,300 so far</span></div>
+      </div>
+      <div class="key"><span><i class="d" style="background:#16a34a"></i>done for this stage</span><span><i class="d" style="background:#d97706"></i>under way, or waiting on a company</span><span><i class="d" style="background:#dc2626"></i>a hole, a problem, or waiting on us</span><span><i class="d" style="background:#7c3aed"></i>our own crew</span><span>Dots: quotes in, amber on old plans</span><span class="chip" style="margin-left:auto">④ calendar · tiles · two keys</span></div>
+      <div class="nums">
+        <div class="num"><span class="l">Trades with a number</span><span class="v amber">2 of 3</span><span class="n">1 with no quote</span></div>
+        <div class="num"><span class="l">Our bid</span><span class="v">Not sent</span><span class="n">due Sat Oct 24</span></div>
+        <div class="num"><span class="l">People to call</span><span class="v red">2</span><span class="n">1 late</span></div>
+        <span class="chip" style="margin-left:auto;align-self:center">⑤ numbers</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="btn">We sent our bid</span><span class="btn p">We won this. Start buyout</span><span class="btn">We lost this</span><span class="chip" style="margin-left:auto">⑥ outcome</span></div>
+    <div style="font-size:12.5px">1 set of plans, newest Set 0 of 2026-10-08. 46 sheets, 3 sections. <span class="chip" style="float:right">⑦ plans</span></div>
+    <div style="font-size:12.5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><a href="#" onclick="return false">The job folder in Drive</a> <a href="#" onclick="return false">Set 0's plans</a> <span class="green">Anyone with the link can open it, checked 2026-10-14.</span> <span class="btn q">Check again</span><span class="chip" style="margin-left:auto">⑧ Drive</span></div>
+    <div class="t-trade" style="display:grid;gap:8px">
+      <div>
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><strong>Concrete</strong> <span class="muted">$148,000</span> <span class="muted">1 scope line</span> <span class="btn q">Save as a set</span><span class="chip" style="margin-left:auto">⑨ trades · scope · asks · log</span></div>
+        <ul><li>Footings, slab on grade and site concrete · S-1, S-2, C-3</li></ul>
+        <div class="thread">
+          <div><b>Hillside Excavation</b> <span class="chip red">late on their word</span> asked Oct 8 · said by Mon Oct 12 <span class="btn s">Will not do it</span> <span class="btn s">Cannot do it</span></div>
+          <div class="muted">kept 0 of 1 promises &nbsp; <span class="btn q s">Log a contact</span></div>
+          <div class="muted">Oct 9 · Rosa · call: They have the plans, quote by Monday.</div>
+          <div class="muted">Oct 8 · Robert · email: Invitation emailed.</div>
+        </div>
+        <div class="thread">
+          <div><b>Alamo Flatwork</b> <span class="chip blue">waiting on their word</span> asked Oct 8 · said by Fri Oct 16 <span class="btn s">Will not do it</span> <span class="btn s">Cannot do it</span></div>
+          <div class="muted">kept 1 of 1 promises &nbsp; <span class="btn q s">Log a contact</span></div>
+          <div class="muted">Oct 8 · Robert · email: Invitation emailed.</div>
+        </div>
+        <div style="margin-top:4px"><span class="btn">Ask for quotes</span></div>
+      </div>
+      <div>
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><strong>Electrical</strong> <span class="muted">$96,500</span> <span class="muted">3 scope lines, leaves out 1</span> <span class="btn q">Save as a set</span></div>
+        <ul><li>Service and distribution · E-1</li><li>Branch wiring, devices and fixtures · E-2, E-3</li><li>Fire alarm rough-in · E-4</li></ul>
+        <div class="thread"><div><b>Tejas Power</b> <span class="chip green">quote in · $91,200</span> asked Oct 8 <span class="btn s">Will not do it</span> <span class="btn s">Cannot do it</span></div><div class="muted">kept 1 of 1 promises &nbsp; <span class="btn q s">Log a contact</span></div></div>
+        <div class="thread"><div><b>Lone Star Electric</b> <span class="chip amber">never opened it</span> asked Oct 8 <span class="btn s">Will not do it</span> <span class="btn s">Cannot do it</span></div><div class="muted">kept 0 of 0 promises &nbsp; <span class="btn q s">Log a contact</span></div></div>
+        <div style="margin-top:4px"><span class="btn">Ask for quotes</span> <span class="btn">Compare quotes (1)</span></div>
+      </div>
+      <div class="muted">… Roofing and Plumbing go on the same way, another screen down.</div>
+      <div class="red">1 gap: Electrical leaves out low-voltage rough-in for the Fire alarm.</div>
+    </div>
+  </div>
+</div></div></div>
+<p class="note"><b>What makes it chaotic, said plainly.</b> ① The head mixes who-and-where with every door to a window, as blue words in one wrap; on a job being built it is fifteen. ③ The verdict and the one thing to do next, the most important line, come third, and the summary numbers ⑤ come after the detail they sum up. ④ Two keys explain the colours in as much space as the colours take; the owner's own rule is that explanation leaves the page. ⑥ The stage's end sits in the middle of the card with a blue button that fights the Next button. ⑦⑧ Plans are two sentences with links inside them. ⑨ Each trade is said three times: a tile, a heading, then its companies, with nothing tying them. Everything is 13px, left-aligned, in one column with no headings, so the eye has nowhere to land.</p>
+
+<!-- ============================ A · ONE COLUMN, IN BANDS ============================ -->
+<h2><span class="num">A</span> One column, in bands</h2>
+<p class="lede">The smallest change: keep the order the owner approved, but put each part in its own band with a heading, group the doors, fold the two keys behind one <b>Key</b>, make each trade one row, and move the stage's end to the foot.</p>
+<div class="cap new"><span>A · bands</span><span class="w">same order, five bands, trade rows</span></div>
+<div class="fit"><div class="page"><div class="card">
+  <div class="head">
+    <div class="id">
+      <div class="nm">Fair Oaks Shops, Building D <span class="chip">bidding</span></div>
+      <div class="meta">4400 Fair Oaks Pkwy, San Antonio · 12,400 sq ft retail shell · <b>bid due Sat Oct 24</b>, 10 days</div>
+    </div>
+    <div class="doors">
+      <span class="grp"><span>The plans</span><span>Papers</span><span>Questions <span class="c warn">1 open</span></span><span>Schedule</span></span>
+      <span class="grp"><span>Our number</span><span>Bid tabs <span class="c">2</span></span></span>
+    </div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>How the bid is going</b><span class="muted">Bidding → Buying out → Building → Closed</span></div>
+    <div class="t-verdict">
+      <span><span class="pill watch">Watch</span> &nbsp;<b>10 days left. 2 of 3 trades have a number, and Concrete has no quote.</b></span>
+      <span class="btn p">Next: Ask more companies for Concrete →</span>
+    </div>
+    <div class="nums">
+      <div class="num"><span class="l">Trades with a number</span><span class="v amber">2 of 3</span><span class="n">Concrete has none</span></div>
+      <div class="num"><span class="l">Our bid</span><span class="v">Not sent</span><span class="n">due Sat Oct 24</span></div>
+      <div class="num" title="Hillside Excavation · late on their word (said Mon Oct 12)&#10;Lone Star Electric · never opened it"><span class="l">People to call</span><span class="v red">2</span><span class="n">1 late · hover lists them</span></div>
+    </div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The clock</b><span class="muted"><b>8</b> working days left, counting today · questions close Wed Oct 21 · bid due Sat Oct 24</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+    <div class="cal" data-cal></div>
+    <div class="key" data-calkey hidden></div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The trades</b><span class="muted">4, one ours · 1 of 2 quotes in on Concrete</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+    <div class="key" data-tilekey hidden></div>
+    <div class="tt" data-trades="A"></div>
+    <div class="gap">1 gap: Electrical leaves out low-voltage rough-in for the Fire alarm.</div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The plans and the folder</b></div>
+    <div class="rec">
+      <span class="k">Plans</span><span class="v"><b>Set 0</b> of Oct 8, 46 sheets, 3 sections <a href="#" onclick="return false">open Set 0 ↗</a> <span class="green">anyone with the link can open it, checked Oct 14</span> <span class="btn q s">Check again</span> <span class="btn s">A new set came in</span></span>
+      <span class="k">Drive</span><span class="v"><a href="#" onclick="return false">The job folder ↗</a></span>
+      <span class="k">Questions</span><span class="v">1 open: the detention pond, asked by Hillside Oct 9 <span class="btn q s">Answer it</span></span>
+    </div>
+  </div>
+  <div class="foot"><span class="cap2">When the bid ends</span><span class="btn">We sent our bid</span><span class="btn">We won this. Start buyout</span><span class="btn">We lost this</span></div>
+</div></div></div>
+<ul class="moves">
+  <li><b>Head:</b> name and stage on the first line, the facts (address, size, due day with the days left) on the second; the doors are two grouped button sets on the right, the windows and then the money team's. The head is the only place a door lives.</li>
+  <li><b>One band each:</b> how it is going (verdict, Next, the three numbers), the clock (the calendar), the trades, the plans. Each has a heading in bold and its facts in grey beside it, so the eye can skip.</li>
+  <li><b>Keys out:</b> each band's <b>Key</b> link shows its legend. The tile colours still show as the row's stripe, and the words on the row say the same thing, so the key is for a first week.</li>
+  <li><b>Trade rows:</b> one row a trade: stripe, name and budget, scope, quotes, who is asked with their state, the next action. <b>›</b> opens the scope lines and the companies' threads, where Will not do it, Log a contact and the log live as they do today.</li>
+  <li><b>The stage's end</b> is the foot, plain buttons, under <i>When the bid ends</i>. Only Next is blue.</li>
+</ul>
+
+<!-- ============================ B · A RAIL ON THE RIGHT ============================ -->
+<h2><span class="num">B</span> A rail on the right</h2>
+<p class="lede">Use the width the page now has: the stage on the left, and a narrow rail on the right that holds everything that is not the stage, the doors, the plans, the folder, the questions, the outcome. On a phone the rail drops under.</p>
+<div class="cap new"><span>B · rail</span><span class="w">two columns at 1,040px; one under 760px</span></div>
+<div class="fit"><div class="page"><div class="card">
+  <div class="head" style="border-bottom:1px solid var(--line-2)">
+    <div class="id">
+      <div class="nm">Fair Oaks Shops, Building D <span class="chip">bidding</span></div>
+      <div class="meta">4400 Fair Oaks Pkwy, San Antonio · 12,400 sq ft retail shell · <b>bid due Sat Oct 24</b>, 10 days</div>
+    </div>
+    <div class="t-verdict" style="flex:1 1 auto;justify-content:flex-end"><span class="btn p">Next: Ask more companies for Concrete →</span></div>
+  </div>
+  <div class="two-col">
+    <div class="main">
+      <div class="verdict" style="border-top:0">
+        <span class="why"><span class="pill watch">Watch</span> <b>10 days left. 2 of 3 trades have a number, and Concrete has no quote.</b></span>
+        <span class="muted nowrap"><b class="ink2">8</b> working days left</span>
+        <div class="nums">
+          <div class="num"><span class="l">Trades with a number</span><span class="v amber">2 of 3</span><span class="n">Concrete has none</span></div>
+          <div class="num"><span class="l">Our bid</span><span class="v">Not sent</span><span class="n">due Sat Oct 24</span></div>
+          <div class="num"><span class="l">People to call</span><span class="v red">2</span><span class="n">1 late</span></div>
+        </div>
+      </div>
+      <div class="band" style="border-top:0">
+        <div class="cal" data-cal data-compact></div>
+      </div>
+      <div class="band">
+        <div class="bh"><b>The trades</b><span class="muted">4, one ours</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+        <div class="key" data-tilekey hidden></div>
+        <div class="tt" data-trades="B" data-narrow></div>
+        <div class="gap">1 gap: Electrical leaves out low-voltage rough-in for the Fire alarm.</div>
+      </div>
+    </div>
+    <aside class="side">
+      <div><h5>Open</h5><div class="ls"><span><span class="door">The plans</span><span class="c">Set 0 · 46 sheets</span></span><span><span class="door">Papers</span><span class="c">3</span></span><span><span class="door">Questions</span><span class="c amber">1 open</span></span><span><span class="door">Schedule</span><span class="c">no draft yet</span></span><span><span class="door">Our number</span><span class="c">$225,400 so far</span></span><span><span class="door">Bid tabs</span><span class="c">2</span></span></div></div>
+      <div><h5>The plans</h5><div class="ls"><span><span>Set 0 of Oct 8</span><span class="door">open ↗</span></span><span class="green" style="display:block">Anyone with the link can open it, checked Oct 14.</span><span><span class="door">Check again</span><span class="door">A new set came in</span></span></div></div>
+      <div><h5>Drive</h5><div class="ls"><span><span class="door">The job folder ↗</span></span></div></div>
+      <div><h5>When the bid ends</h5><div class="ls" style="gap:6px"><span class="btn" style="justify-content:center">We sent our bid</span><span class="btn" style="justify-content:center">We won this. Start buyout</span><span class="btn" style="justify-content:center">We lost this</span></div></div>
+    </aside>
+  </div>
+</div></div></div>
+<ul class="moves">
+  <li><b>Left is the stage</b> and nothing else: the verdict with its numbers, the calendar, the trades. <b>Right is the record and the doors</b>: each door with a fact beside it (Papers 3, Questions 1 open, Our number $225,400 so far), so the rail is a summary too.</li>
+  <li><b>Next</b> moves to the head, right of the name, where the eye lands first; the verdict's band below says why.</li>
+  <li>The calendar takes the strip's compact size (the code has one, before it scrolls); at 1,040px the stage column is 760px, enough for three weeks.</li>
+  <li>On a building job the rail is where Daily log, Punch list, Submittals, RFIs, Draws and Closeout go, each with its count (<i>Daily log · 2 missed</i>). That is the day this shape earns its keep.</li>
+</ul>
+
+<!-- ============================ C · TABS ON THE CARD ============================ -->
+<h2><span class="num">C</span> Tabs on the card</h2>
+<p class="lede">The shortest card: the head, the verdict and the numbers always in view, and one thing at a time below them. The design spike's <i>Walk me through this job</i> already walks a project's tabs in this order.</p>
+<div class="cap new"><span>C · tabs</span><span class="w">four tabs; the head and the verdict stay</span></div>
+<div class="fit"><div class="page"><div class="card" id="tabcard">
+  <div class="head">
+    <div class="id">
+      <div class="nm">Fair Oaks Shops, Building D <span class="chip">bidding</span></div>
+      <div class="meta">4400 Fair Oaks Pkwy, San Antonio · 12,400 sq ft retail shell · <b>bid due Sat Oct 24</b>, 10 days</div>
+    </div>
+    <div class="doors"><span class="grp"><span>Our number</span><span>Bid tabs <span class="c">2</span></span></span></div>
+  </div>
+  <div class="verdict">
+    <span class="why"><span class="pill watch">Watch</span> <b>10 days left. 2 of 3 trades have a number, and Concrete has no quote.</b></span>
+    <span class="btn p">Next: Ask more companies for Concrete →</span>
+    <div class="nums">
+      <div class="num"><span class="l">Trades with a number</span><span class="v amber">2 of 3</span><span class="n">Concrete has none</span></div>
+      <div class="num"><span class="l">Our bid</span><span class="v">Not sent</span><span class="n">due Sat Oct 24</span></div>
+      <div class="num"><span class="l">People to call</span><span class="v red">2</span><span class="n">1 late</span></div>
+      <div class="num"><span class="l">Working days left</span><span class="v">8</span><span class="n">questions close Oct 21</span></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="on" onclick="tab(this,'t1')">Trades <span class="c">4</span></button>
+    <button onclick="tab(this,'t2')">The clock</button>
+    <button onclick="tab(this,'t3')">Plans and papers <span class="c">1 open</span></button>
+    <button onclick="tab(this,'t4')">Schedule</button>
+    <button onclick="tab(this,'t5')">Finish</button>
+  </div>
+  <div class="band pane on" id="t1" style="border-top:0">
+    <div class="tt" data-trades="C"></div>
+    <div class="gap">1 gap: Electrical leaves out low-voltage rough-in for the Fire alarm.</div>
+  </div>
+  <div class="band pane" id="t2" style="border-top:0">
+    <div class="bh"><span class="muted"><b class="ink2">8</b> working days left, counting today</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+    <div class="cal" data-cal></div>
+    <div class="key" data-calkey hidden></div>
+  </div>
+  <div class="band pane" id="t3" style="border-top:0">
+    <div class="rec">
+      <span class="k">Plans</span><span class="v"><b>Set 0</b> of Oct 8, 46 sheets, 3 sections <a href="#" onclick="return false">open Set 0 ↗</a> <span class="green">anyone with the link can open it, checked Oct 14</span> <span class="btn q s">Check again</span> <span class="btn s">A new set came in</span> <span class="btn s">The plans window</span></span>
+      <span class="k">Drive</span><span class="v"><a href="#" onclick="return false">The job folder ↗</a></span>
+      <span class="k">Papers</span><span class="v">3 on this job <span class="btn q s">Open Papers</span></span>
+      <span class="k">Questions</span><span class="v">1 open: the detention pond, asked by Hillside Oct 9 <span class="btn q s">Answer it</span></span>
+    </div>
+  </div>
+  <div class="band pane" id="t4" style="border-top:0"><span class="muted">No draft yet. <span class="btn s">Draw a first draft</span></span></div>
+  <div class="band pane" id="t5" style="border-top:0"><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn">We sent our bid</span><span class="btn">We won this. Start buyout</span><span class="btn">We lost this</span></div></div>
+</div></div></div>
+<ul class="moves">
+  <li><b>Always in view:</b> the head, the verdict, Next and four numbers (the working days join them, since the calendar is now a tab).</li>
+  <li><b>Tabs:</b> Trades, The clock, Plans and papers, Schedule, Finish; on a building job Daily log, Punch list, Submittals, RFIs, Draws and Closeout become tabs too, each with its count.</li>
+  <li>Every door that is a window today becomes a tab, so the head has only the money team's two.</li>
+</ul>
+
+<!-- ============================ D · THE REFINED CUT ============================ -->
+<h2><span class="num pick">D</span> The refined cut: A's bands in the order of the questions, with B's doors</h2>
+<p class="lede">What came out of asking "is this the best we can do?" of A, B and C (the critique is at the foot of this page). The card answers the owner's questions in the order he asks them: <b>Is it on track? What do I do next? How long do I have? Which trades are covered, and who do I call? Where are the plans?</b> The stage's end waits at the foot.</p>
+<div class="cap new"><span>D · refined</span><span class="w">the one to build, if it is a yes</span></div>
+<div class="fit"><div class="page"><div class="card">
+  <div class="head">
+    <div class="id">
+      <div class="nm">Fair Oaks Shops, Building D <span class="chip">bidding</span></div>
+      <div class="meta">4400 Fair Oaks Pkwy, San Antonio · 12,400 sq ft retail shell · for Alamo Heights Holdings, drawn by Studio Bexar</div>
+    </div>
+    <div class="doors">
+      <span class="grp"><span>The plans</span><span>Papers <span class="c">3</span></span><span>Questions <span class="c warn">1 open</span></span><span>Schedule</span></span>
+      <span class="grp"><span>Our number <span class="c">$225,400 so far</span></span><span>Bid tabs <span class="c">2</span></span></span>
+      <span class="menu" id="moreD"><button class="btn" onclick="document.getElementById('moreD').classList.toggle('open')">More ▾</button><span class="list"><span class="h">On this job</span><span>A new set of plans came in</span><span>Save a trade's scope as a set</span><span class="h">When it is being built</span><span class="dim">Daily log · Punch list · Submittals · RFIs · Draws · Closeout, each with its count</span></span></span>
+    </div>
+  </div>
+  <div class="verdict">
+    <span class="why"><span class="pill watch">Watch</span> <b>10 days left. 2 of 3 trades have a number, and Concrete has no quote.</b></span>
+    <span class="btn p">Next: Ask more companies for Concrete →</span>
+    <div class="nums">
+      <div class="num"><span class="l">Bid due</span><span class="v">Sat Oct 24</span><span class="n"><b class="ink2">8</b> working days left</span></div>
+      <div class="num"><span class="l">Trades with a number</span><span class="v amber">2 of 3</span><span class="n">Concrete has none</span></div>
+      <div class="num"><span class="l">Our bid</span><span class="v">Not sent</span><span class="n">Plumbing $62,300 so far</span></div>
+      <div class="num" title="Hillside Excavation · late on their word (said Mon Oct 12)&#10;Lone Star Electric · never opened it"><span class="l">People to call</span><span class="v red">2</span><span class="n">1 late · hover lists them</span></div>
+    </div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The clock</b><span class="muted">questions close Wed Oct 21 · quotes wanted by then · bid due Sat Oct 24</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+    <div class="cal" data-cal></div>
+    <div class="key" data-calkey hidden></div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The trades</b><span class="muted">4, one ours · the stripe is the tile's colour</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+    <div class="key" data-tilekey hidden></div>
+    <div class="tt" data-trades="D"></div>
+    <div class="gap">1 gap: Electrical leaves out low-voltage rough-in for the Fire alarm. <span class="btn q s">Give it to a trade</span></div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The plans</b><span class="muted">Set 0 of Oct 8 · 46 sheets, 3 sections</span></div>
+    <div class="rec">
+      <span class="k">Newest set</span><span class="v"><a href="#" onclick="return false">open Set 0 ↗</a> <span class="green">anyone with the link can open it, checked Oct 14</span> <span class="btn q s">Check again</span></span>
+      <span class="k">Drive</span><span class="v"><a href="#" onclick="return false">The job folder ↗</a></span>
+    </div>
+  </div>
+  <div class="foot"><span class="cap2">When the bid ends</span><span class="btn">We sent our bid</span><span class="btn">We won this. Start buyout</span><span class="btn">We lost this</span></div>
+</div></div></div>
+<ul class="moves">
+  <li><b>The verdict band is first and tinted</b> by the verdict (amber for Watch, green for On track, red for Behind), with Next on its right and the four numbers under it. The days left is a number here, so the clock band can be the calendar alone. The stage rail (Bidding → Buying out → Building → Closed) is gone from the card: the stage is the chip by the name and the Board's section the card sits under; it said the same thing a third time.</li>
+  <li><b>The head's facts are a sentence</b>, with the customer and the architect (today they are on the Board row, not the card). The doors are B's grouped sets with a fact on each (Papers 3, Questions 1 open, Our number $225,400 so far, money team only), and <b>More ▾</b> holds the rare presses and the building-stage windows, so the head stays one line on every job.</li>
+  <li><b>The trades are one table</b>, each row a trade: its colour as a stripe, name and budget, scope (<i>3 lines, leaves out 1</i>), quotes (<i>1 of 2 in</i>), the companies asked with their state as chips, the next action. <b>›</b> opens the scope and the threads. The three places a trade was said become one.</li>
+  <li><b>Keys</b> live behind each band's <b>Key</b> link. The rows say in words what the colours say, so the key is a first-week aid.</li>
+  <li><b>The plans</b> are one band: the set, its sheets, the link check, the folder. Their doors (The plans, Papers, Questions) are in the head.</li>
+  <li><b>The stage's end</b> is the foot, plain buttons. Only Next is blue on the whole card.</li>
+</ul>
+
+<!-- ============================ THE CRITIQUE ============================ -->
+<section class="crit">
+  <h2 style="margin-top:0">Is this the best we can do?</h2>
+  <h3>What the card is for</h3>
+  <p>The Board row above it already answers "which jobs need me": the ring, the days left, who to call, the price. The card is where the office <b>works one job</b>: sees why it is on Watch, does the next thing, calls the people, reads a scope, opens the plans. So the card should read top to bottom in the order those questions come, and every repeat of what the row said is noise.</p>
+
+  <h3>Weighing A, B and C</h3>
+  <table class="wt">
+    <tr><th>Shape</th><th>What it wins</th><th>Why it lost, or did not</th></tr>
+    <tr><td><b>A · bands</b></td><td>Keeps the owner's approved order and every part in view; a heading a band; trade rows end the triple-say; keys fold. Smallest build.</td><td>It kept the stage rail and the clock caption as their own bands, so the top of the card is still three lines before the calendar. It did not fix the head's facts being a run-on. It is most of the answer.</td></tr>
+    <tr><td><b>B · rail</b></td><td>The doors finally have a home, with a fact on each; on a building job that is the only shape that holds ten windows without a wrap of blue words. The stage column is pure.</td><td>Two columns are two reading orders, and the calendar has to take its compact size to fit 760px. On a laptop (under 760px of card) it collapses to A anyway. The rail's facts duplicate the bands they summarize. The doors-with-a-fact idea is worth keeping; the column is not.</td></tr>
+    <tr><td><b>C · tabs</b></td><td>The shortest card; nothing scrolls; the walkthrough already goes tab by tab.</td><td>It hides the calendar, which the owner asked for as the visual at the top (2026-10-04), and hides the trades' holes behind a tab. A tab you have to press is a hole you did not see. The owner removes hidden state; he does not add it.</td></tr>
+  </table>
+
+  <h3>What D takes from each, and what it changes on its own</h3>
+  <ul>
+    <li>From A: the bands, the trade rows, the keys behind a link, the foot.</li>
+    <li>From B: the doors as grouped sets with a fact on each, and <b>More ▾</b> for the rare and the building-stage windows, so the head is one line on every job.</li>
+    <li>From C: the numbers up with the verdict, and the days left as one of them.</li>
+    <li>On its own: the verdict band is <b>first and tinted</b>, so a Watch job looks different from an On track job before a word is read; the stage rail goes (said three times: the chip, the Board's section, the rail); the head's facts become one sentence with the customer and the architect, which the card never named.</li>
+  </ul>
+
+  <h3>What I am not sure of (the owner's calls)</h3>
+  <div class="q">
+    <ol style="margin:0;padding-left:18px">
+      <li><b>The stage rail.</b> D drops it. If the rail is how a new assistant learns the four stages, keep it as the first band's grey caption (A shows that), one line, no dots.</li>
+      <li><b>Where the stage's end lives.</b> Call D (2026-10-03) put <i>We sent our bid · We won this · We lost this</i> "on the project's head" so the office can press them once the door opens. D moves them to the foot, plain. If they must stay high, they go into <b>More ▾</b> under <i>When the bid ends</i>, never as a blue button beside Next.</li>
+      <li><b>The keys.</b> Behind a <b>Key</b> link (D), or gone for good once the rows say the words. I lean to the link for the first month, then take it out.</li>
+      <li><b>The trade table's columns.</b> Scope · Budget · Quotes · Asked · Next is my pick. Budget is the money team's (Our number's gate); for an assistant the column reads <i>—</i>. Say if Budget should not be on the row at all.</li>
+      <li><b>The customer and the architect in the head.</b> New on the card. They open the customer window, as on the Board row.</li>
+      <li><b>The building stage.</b> This mock-up is a bidding job. On a building job the verdict band carries the work and money bars the code already draws, and the trades' rows carry each trade's buyout dots. I would mock that card next, before any build, since it is the busiest.</li>
+    </ol>
+  </div>
+
+  <h3>The build, if D is a yes</h3>
+  <p>Four small PRs, each shippable alone, oldest first: <b>1</b> the head (the facts line, the grouped doors, More ▾), <b>2</b> the verdict band (tinted, Next, the numbers moved up, the rail folded) inside <code>GcStageHealth</code>, <b>3</b> the trade table (one row a trade, the tile and the asks folded in, keys behind the link), <b>4</b> the plans band and the foot. Every number and word comes from kernels that exist (<code>stageHealth</code>, <code>priceStanding</code>, <code>followUp</code>); nothing new is computed. Then the building-stage mock-up.</p>
+</section>
+</div>
+
+<script>
+  // The three weeks, as the strip draws them: squares a day, weekends narrow, labels under the days that carry one.
+  const WEEKS = [
+    { label: 'OCT 5 – 11', days: [['M',5,'gone'],['T',6,'gone'],['W',7,'gone'],['T',8,'past set'],['F',9,'past'],['S',10,'we past'],['S',11,'we past']] },
+    { label: 'OCT 12 – 18', days: [['M',12,'past'],['T',13,'past'],['W',14,'today'],['T',15,''],['F',16,''],['S',17,'we'],['S',18,'we']] },
+    { label: 'OCT 19 – 25', days: [['M',19,''],['T',20,''],['W',21,'q'],['T',22,''],['F',23,''],['S',24,'due'],['S',25,'we gone']] },
+  ]
+  const LABELS = { 8: ['set', 'Set 0'], 14: ['td', 'Today'], 21: ['q', 'Questions close · quotes wanted'], 24: ['due', 'Bid due'] }
+  function drawCal(el) {
+    const compact = el.hasAttribute('data-compact')
+    el.innerHTML = WEEKS.map((w) => {
+      const dn = w.days.map(([d, n, cls]) => `<span class="${cls.includes('we') ? 'we' : ''} ${cls.includes('today') ? 'td' : ''}">${cls.includes('we') ? '' : d}</span>`).join('')
+      const sq = w.days.map(([d, n, cls]) => `<span class="sq ${cls}" title="${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][['M','T','W','T','F','S','S'].indexOf(d)] || ''} Oct ${n}">${n}${cls.includes('set') ? '<i class="mk"></i>' : ''}</span>`).join('')
+      let left = 0
+      const labs = w.days.map(([d, n, cls]) => {
+        const wdt = cls.includes('we') ? 16 : 34
+        const l = LABELS[n] ? `<span class="${LABELS[n][0]}" style="left:${left + wdt / 2}px">${LABELS[n][1]}</span>` : ''
+        left += wdt + 4
+        return l
+      }).join('')
+      return `<div class="wk" style="${compact ? 'transform:scale(.88);transform-origin:left top' : ''}"><div class="wl">${w.label}</div><div class="dn">${dn}</div><div class="days">${sq}</div><div class="lab">${labs}</div></div>`
+    }).join('')
+  }
+  document.querySelectorAll('[data-cal]').forEach(drawCal)
+  document.querySelectorAll('[data-calkey]').forEach((el) => {
+    el.innerHTML = '<span><i class="gone"></i>gone by</span><span><i class="today"></i>today</span><span><i class="q"></i>questions close · quotes wanted</span><span><i class="due"></i>bid due</span><span><i class="d" style="background:#16a34a"></i>a quote came in</span><span><i class="d" style="background:#d97706;border-radius:1px"></i>a question was asked</span><span><i class="d" style="border:1.5px solid #16a34a"></i>a quote promised by</span><span><i class="gone" style="width:22px"></i>a week with nothing in it</span>'
+  })
+  document.querySelectorAll('[data-tilekey]').forEach((el) => {
+    el.innerHTML = '<span><i class="d" style="background:#16a34a"></i>done for this stage</span><span><i class="d" style="background:#d97706"></i>under way, or waiting on a company</span><span><i class="d" style="background:#dc2626"></i>a hole, a problem, or waiting on us</span><span><i class="d" style="background:#7c3aed"></i>our own crew</span><span>Dots on a row: quotes in, amber on old plans</span>'
+  })
+  function toggleKey(a) {
+    const band = a.closest('.band')
+    band.querySelectorAll('.key').forEach((k) => { k.hidden = !k.hidden })
+    a.textContent = a.textContent === 'Key' ? 'Hide the key' : 'Key'
+  }
+  function tab(btn, id) {
+    const card = btn.closest('.card')
+    card.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b === btn))
+    card.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === id))
+  }
+
+  // The trades, one row each; › opens the scope lines and the companies' threads.
+  const TRADES = [
+    { st: 'bad', name: 'Concrete', budget: '$148,000', scope: '1 line', quotes: '<b class="red">0 of 2</b> in', who: [['Hillside Excavation', 'red', 'late on their word'], ['Alamo Flatwork', 'blue', 'said by Fri']], next: 'Ask more companies',
+      lines: ['Footings, slab on grade and site concrete · S-1, S-2, C-3'],
+      cos: [['Hillside Excavation', 'red', 'late on their word', 'asked Oct 8 · said by Mon Oct 12', 'kept 0 of 1 promises', ['Oct 9 · Rosa · call: They have the plans, quote by Monday.', 'Oct 8 · Robert · email: Invitation emailed.']], ['Alamo Flatwork', 'blue', 'waiting on their word', 'asked Oct 8 · said by Fri Oct 16', 'kept 1 of 1 promises', ['Oct 8 · Robert · email: Invitation emailed.']]] },
+    { st: 'warn', name: 'Electrical', budget: '$96,500', scope: '3 lines, leaves out 1', quotes: '<b>1 of 2</b> in', who: [['Tejas Power', 'green', '$91,200'], ['Lone Star Electric', 'amber', 'never opened it']], next: 'Compare quotes (1)',
+      lines: ['Service and distribution · E-1', 'Branch wiring, devices and fixtures · E-2, E-3', 'Fire alarm rough-in · E-4', '<span class="red">leaves out low-voltage rough-in</span>'],
+      cos: [['Tejas Power', 'green', 'quote in · $91,200', 'asked Oct 8 · quoted Oct 13', 'kept 1 of 1 promises', ['Oct 13 · portal · quote: $91,200, good for 30 days.']], ['Lone Star Electric', 'amber', 'never opened it', 'asked Oct 8', 'no promise yet', ['Oct 8 · Robert · email: Invitation emailed.']]] },
+    { st: 'good', name: 'Roofing', budget: '$74,000', scope: '2 lines', quotes: '<b class="green">2 of 2</b> in', who: [['Summit Roofing', 'green', '$71,900 + ?'], ['Bexar Roof Co', 'green', '$78,400']], next: 'Compare quotes (2)',
+      lines: ['TPO membrane, insulation and flashings · A-5', 'Gutters and downspouts · A-6'],
+      cos: [['Summit Roofing', 'green', 'quote in · $71,900 + ?', 'asked Oct 8 · quoted Oct 12 · 1 line has no cost yet', 'kept 1 of 1 promises', []], ['Bexar Roof Co', 'green', 'quote in · $78,400', 'asked Oct 8 · quoted Oct 13', 'kept 1 of 1 promises', []]] },
+    { st: 'ours', name: 'Plumbing', budget: '—', scope: '4 lines', quotes: '<span class="chip blue">ours</span>', who: [], next: 'Our bid · $62,300 so far', lines: ['Underground and rough-in · P-1', 'Fixtures and trim · P-2', 'Gas · P-3', 'Water heater and backflow · P-4'], cos: [] },
+  ]
+  function drawTrades(el) {
+    const narrow = el.hasAttribute('data-narrow')
+    const head = `<div class="th"><span></span><span>Trade</span><span>Scope</span><span>Budget</span><span>Quotes</span><span>Asked</span><span>Next</span><span></span></div>`
+    const rows = TRADES.map((t, i) => {
+      const who = t.who.map(([n, tone, w]) => `<span class="chip ${tone}" title="${n} · ${w}">${n.split(' ')[0]} · ${w}</span>`).join('') || '<span class="muted">our own crew</span>'
+      const cos = t.cos.map(([n, tone, st, when, kept, log]) => `<div class="co"><div class="l1"><b>${n}</b> <span class="chip ${tone}">${st}</span> <span class="muted">${when}</span> <span class="btn s">Will not do it</span> <span class="btn s">Cannot do it</span></div><div class="log">${kept} · <a class="k">Log a contact</a></div>${log.map((l) => `<div class="log">${l}</div>`).join('')}</div>`).join('')
+      const open = `<div class="open"><div><h5>Scope</h5><ul>${t.lines.map((l) => `<li>${l}</li>`).join('')}</ul><div style="margin-top:6px"><span class="btn q s">Save as a set</span></div></div><div><h5>${t.cos.length ? 'Asked' : 'Our bid'}</h5>${cos || '<span class="muted" style="font-size:12.5px">Plumbing is our own crew: the Trades-mode bid is on its Pricing tab.</span>'}</div></div>`
+      return `<div class="tr ${i === 0 ? 'is-open' : ''}" onclick="this.classList.toggle('is-open')"><span class="st ${t.st}"></span><span class="nm">${t.name}${narrow ? `<small>${t.budget}</small>` : ''}</span><span class="muted">${t.scope}</span><span class="muted">${narrow ? '' : t.budget}</span><span>${t.quotes}</span><span class="who">${who}</span><span><span class="btn s">${t.next}</span></span><span class="ex">›</span></div>${open}`
+    }).join('')
+    el.innerHTML = head + rows
+    if (narrow) el.querySelectorAll('.th, .tr').forEach((r) => { r.style.gridTemplateColumns = '6px 130px 110px 0 96px minmax(0,1fr) 150px 22px' })
+  }
+  document.querySelectorAll('[data-trades]').forEach(drawTrades)
+</script>
+</body>
+</html>

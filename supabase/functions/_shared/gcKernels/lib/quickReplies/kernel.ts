@@ -89,7 +89,7 @@ export type StepsByFlow = Partial<Record<QuickReplyFor, readonly FlowSteps[]>>
  * have none. A lead, a supply house and a candidate have no flow, so theirs are empty, and a flow with no steps is left out.
  */
 export function stepsByFlow(flows: Readonly<Partial<Record<FlowKind, FlowDef>>>): StepsByFlow {
-  const out: Record<Exclude<QuickReplyFor, 'any'>, FlowSteps[]> = { trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] }
+  const out: Record<Exclude<QuickReplyFor, 'any'>, FlowSteps[]> = { trade: [], customer: [], arch: [], lead: [], sub: [], team: [], supply_house: [], candidate: [] }
   for (const flow of FLOW_ORDER) {
     const steps = (flows[flow]?.lanes ?? []).flatMap((lane) => lane.steps.map((step): StepRef => ({ id: step.id, name: step.name, flow })))
     const kind = qrKindOf(flowContactKind(flow))
@@ -113,6 +113,7 @@ export const QR_KINDS: Readonly<Record<QuickReplyFor, string>> = {
   supply_house: 'supply houses',
   candidate: 'candidates',
   sub: 'subs',
+  team: 'our team',
   any: 'anyone',
 }
 

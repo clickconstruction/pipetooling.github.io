@@ -145,7 +145,7 @@ describe('/messages: Follow up with the kind pills', () => {
     expect(await screen.findByText(GREG)).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Messages' })).toBeTruthy()
     const pills = within(screen.getByRole('group', { name: 'Which people to show' })).getAllByRole('button')
-    expect(pills.map((b) => b.textContent)).toEqual(['All', 'Customers', 'Trade partners', 'Architects', 'Leads', 'Subs', 'Supply houses and candidates'])
+    expect(pills.map((b) => b.textContent)).toEqual(['All', 'Customers', 'Trade partners', 'Architects', 'Leads', 'Subs', 'Our team', 'Supply houses and candidates'])
     expect(pill('All').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText(ELENA)).toBeTruthy()
     expect(screen.getByText(UNKNOWN)).toBeTruthy()
@@ -234,5 +234,19 @@ describe('/messages from a link: it waits for the role before it decides (a hard
     at('/messages?thread=c-elena&at=m-1')
     expect(await screen.findByRole('heading', { name: 'Messages' })).toBeTruthy()
     expect(where()).toContain('thread=c-elena')
+  })
+})
+
+describe('/messages: the page sits in the middle of a wide screen', () => {
+  // v2.5537: the same container as GC projects, centered the same way.
+  it('caps the page at 1100px and centers it with auto margins, full width inside the cap', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    const page = screen.getByRole('heading', { name: 'Messages' }).closest('[data-messages-page]') as HTMLElement
+    expect(page).toBeTruthy()
+    expect(page.style.maxWidth).toBe('1100px')
+    expect(page.style.width).toBe('100%')
+    expect(page.style.marginLeft).toBe('auto')
+    expect(page.style.marginRight).toBe('auto')
   })
 })

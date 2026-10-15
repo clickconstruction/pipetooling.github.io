@@ -252,7 +252,7 @@ describe('the steps a line can belong to', () => {
     ])
     expect(STEPS.arch?.map((s) => s.name)).toEqual(['Plans in', 'Questions', 'Addenda', 'Submittals', 'Certify pay apps'])
     expect(STEPS.any).toBeUndefined()
-    expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] })
+    expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], team: [], supply_house: [], candidate: [] })
   })
 
   it('has no steps for three of the four kinds of 2026-10-13, and the sub flow’s five since R8 · 12', () => {
@@ -315,7 +315,7 @@ describe('the steps of each flow, a customer’s two among them (R3)', () => {
   })
 
   it('leaves out a flow with no steps, and gives anyone none', () => {
-    expect(stepsByFlow({ sub: { kind: 'sub', lanes: [] } })).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] })
+    expect(stepsByFlow({ sub: { kind: 'sub', lanes: [] } })).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], team: [], supply_house: [], candidate: [] })
     expect(BY_FLOW.any).toBeUndefined()
   })
 

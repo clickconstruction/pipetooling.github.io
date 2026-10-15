@@ -5,7 +5,7 @@
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { REPLY_PUSH_CONFIRM, REPLY_PUSH_NOT_SAVED, REPLY_PUSH_OFF_TOAST, REPLY_PUSH_ON_TOAST } from '../../lib/messages/replyPushSwitch'
+import { OFFICE_WAIT_BAD, OFFICE_WAIT_NOT_SAVED, OFFICE_WAIT_SAVED_TOAST, REPLY_PUSH_CONFIRM, REPLY_PUSH_NOT_SAVED, REPLY_PUSH_OFF_TOAST, REPLY_PUSH_ON_TOAST } from '../../lib/messages/replyPushSwitch'
 import type { ReplyPushSwitchIo } from '../../lib/messages/replyPushSwitchIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { ReplyPushSettingsCard } from './ReplyPushSettingsCard'
@@ -15,8 +15,8 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-function fakeIo(on: boolean, over: Partial<ReplyPushSwitchIo> = {}): ReplyPushSwitchIo {
-  return { load: vi.fn(async () => ({ on })), setOn: vi.fn(async () => undefined), ...over }
+function fakeIo(on: boolean, over: Partial<ReplyPushSwitchIo> = {}, waitMinutes = 15): ReplyPushSwitchIo {
+  return { load: vi.fn(async () => ({ on, waitMinutes })), setOn: vi.fn(async () => undefined), setWait: vi.fn(async () => undefined), ...over }
 }
 
 const card = () => within(document.querySelector<HTMLElement>('[data-settings-reply-push]')!)
@@ -71,6 +71,48 @@ describe('ReplyPushSettingsCard', () => {
     fireEvent.click(await screen.findByRole('switch', { name: 'Reply push' }))
     expect((await screen.findByRole('alert')).textContent).toContain(REPLY_PUSH_NOT_SAVED)
     expect(screen.getByRole('switch', { name: 'Reply push' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('reads the office’s wait and says what it means (v2.5540)', async () => {
+    renderWithProviders(<ReplyPushSettingsCard io={fakeIo(true)} />)
+    const field = (await screen.findByRole('spinbutton', { name: 'Minutes before the office hears' })) as HTMLInputElement
+    expect(field.value).toBe('15')
+    expect(card().getByText('The office hears after 15 minutes when nobody writes back.')).toBeTruthy()
+    expect((card().getByRole('button', { name: 'Save the wait' }) as HTMLButtonElement).disabled).toBe(true)
+    cleanup()
+    renderWithProviders(<ReplyPushSettingsCard io={fakeIo(true, {}, 0)} />)
+    expect(await screen.findByText('The office hears at once, with whoever has it.')).toBeTruthy()
+  })
+
+  it('saves a typed wait, 0 for at once, and refuses a number that is not one', async () => {
+    const io = fakeIo(true)
+    renderWithProviders(<ReplyPushSettingsCard io={io} />)
+    const field = await screen.findByRole('spinbutton', { name: 'Minutes before the office hears' })
+    const save = card().getByRole('button', { name: 'Save the wait' }) as HTMLButtonElement
+
+    fireEvent.change(field, { target: { value: '0' } })
+    expect(card().getByText('The office hears at once, with whoever has it.')).toBeTruthy()
+    expect(save.disabled).toBe(false)
+    fireEvent.click(save)
+    await waitFor(() => expect(io.setWait).toHaveBeenCalledWith(0))
+    expect(await screen.findByText(OFFICE_WAIT_SAVED_TOAST)).toBeTruthy()
+    await waitFor(() => expect((card().getByRole('button', { name: 'Save the wait' }) as HTMLButtonElement).disabled).toBe(true))
+
+    fireEvent.change(field, { target: { value: '-3' } })
+    expect(card().getByText(OFFICE_WAIT_BAD)).toBeTruthy()
+    expect((card().getByRole('button', { name: 'Save the wait' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(field, { target: { value: '500' } })
+    expect(card().getByText(OFFICE_WAIT_BAD)).toBeTruthy()
+    expect(io.setWait).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the wait and says why when its change is refused', async () => {
+    const io = fakeIo(true, { setWait: vi.fn(async () => Promise.reject(new Error(OFFICE_WAIT_NOT_SAVED))) })
+    renderWithProviders(<ReplyPushSettingsCard io={io} />)
+    fireEvent.change(await screen.findByRole('spinbutton', { name: 'Minutes before the office hears' }), { target: { value: '30' } })
+    fireEvent.click(card().getByRole('button', { name: 'Save the wait' }))
+    expect((await screen.findByRole('alert')).textContent).toContain(OFFICE_WAIT_NOT_SAVED)
+    expect((card().getByRole('button', { name: 'Save the wait' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('says why when the switch cannot be read', async () => {

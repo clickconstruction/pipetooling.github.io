@@ -105,6 +105,8 @@ serve(async (req) => {
       sent_to_customer_at?: string
       external_send_note?: string | null
       customer_email?: string
+      /** v2.940: copies to the customer contact persons picked in Bill Customer, on the same email (at most 10). */
+      additional_emails?: string[]
       subject?: string
       pdf_base64?: string
       pdf_filename?: string

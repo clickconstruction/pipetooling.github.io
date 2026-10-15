@@ -175,3 +175,47 @@ describe('the sort card above the thread', () => {
     await waitFor(() => expect(say).toHaveBeenCalledWith(expect.stringContaining('Only the office hands a conversation on.'), 'error'))
   })
 })
+
+describe('One of our own team (v2.5546)', () => {
+  it('opens the roster in the card, filters it by name, and a pick names the number as that person', async () => {
+    const io = fakeIo({
+      loadKnown: vi.fn(async () => ({
+        customers: [],
+        roster: [
+          { id: 'p-will', name: 'Will Park', kind: 'helper', phone: '(737) 555-0102' },
+          { id: 'p-marcus', name: 'Marcus Bell', kind: 'master_technician', phone: null },
+        ],
+      })),
+      name: vi.fn(async () => 'kevin'),
+    })
+    const { say, acts } = renderSlot(KEVIN, io)
+    const team = (await screen.findByRole('button', { name: /One of our own team/ })) as HTMLButtonElement
+    expect(team.disabled).toBe(false)
+    expect(within(team).getByText('Pick them from the roster. The number goes on their People record, and the app can text them from now on.')).toBeTruthy()
+    fireEvent.click(team)
+
+    const ours = card('Which of ours?')
+    expect(ours.getByText('The number goes on their People record. Next time the app knows them without asking.')).toBeTruthy()
+    expect(within(ours.getByRole('group', { name: 'Our team' })).getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Marcus BellMaster technician · no number on file',
+      'Will ParkHelper · a number on file',
+    ])
+    fireEvent.change(ours.getByLabelText('Find a name'), { target: { value: 'marc' } })
+    expect(within(ours.getByRole('group', { name: 'Our team' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Marcus BellMaster technician · no number on file'])
+    fireEvent.change(ours.getByLabelText('Find a name'), { target: { value: 'zed' } })
+    expect(ours.getByText('Nobody on the roster goes by that.')).toBeTruthy()
+    fireEvent.change(ours.getByLabelText('Find a name'), { target: { value: '' } })
+
+    fireEvent.click(ours.getByRole('button', { name: /Marcus Bell/ }))
+    await waitFor(() => expect(say).toHaveBeenCalledWith('Marcus Bell is one of our own team now. The thread stays with them.', 'success'))
+    expect(io.name).toHaveBeenCalledWith('kevin', expect.objectContaining({ kind: 'team', record: { table: 'people', id: 'p-marcus' }, name: 'Marcus Bell' }))
+    expect(acts.openWho).not.toHaveBeenCalled()
+  })
+
+  it('Back leaves the roster and shows the guesses again', async () => {
+    renderSlot(KEVIN, fakeIo({ loadKnown: vi.fn(async () => ({ customers: [], roster: [{ id: 'p-will', name: 'Will Park', kind: 'helper', phone: null }] })) }))
+    fireEvent.click(await screen.findByRole('button', { name: /One of our own team/ }))
+    fireEvent.click(card('Which of ours?').getByRole('button', { name: 'Back' }))
+    expect(card('Who is this?').getByRole('button', { name: /a new lead on Prospects/i })).toBeTruthy()
+  })
+})

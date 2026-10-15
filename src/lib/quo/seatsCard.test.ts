@@ -62,6 +62,22 @@ describe('what stops a save', () => {
       ]),
     ).toBe('A person is on two seats. Each person has one seat.')
   })
+
+  it('lets the shared office seat sit on more than one login, and still holds a person to one (v2.5548)', () => {
+    expect(
+      quoSeatsProblem([
+        { quoUserId: 'USoffice1', userId: 'office' },
+        { quoUserId: 'USoffice2', userId: 'office' },
+      ]),
+    ).toBeNull()
+    expect(
+      quoSeatsProblem([
+        { quoUserId: 'USoffice1', userId: 'office' },
+        { quoUserId: 'USrobert1', userId: 'u-robert' },
+        { quoUserId: 'USrobert2', userId: 'u-robert' },
+      ]),
+    ).toBe('A person is on two seats. Each person has one seat.')
+  })
 })
 
 describe('the card’s words', () => {

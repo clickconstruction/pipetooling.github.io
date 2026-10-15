@@ -26,7 +26,7 @@ Each step is the owner's or a dev's press. The order was checked by the GC lead 
 
 1. **Name the test number.** Messages → New → its row → Who is this? → Someone else, with the owner's own name. That
    thread is the test bed for everything below.
-2. **Company phone seats** (Settings → Phone and texts): one Quo user id per person who answers. A text then goes out
+2. **Company phone seats** (Settings → Phone and texts): one Quo user id per person who answers, or the one login the office shares marked **Shared by the office** (v2.5548). A text then goes out
    carrying the sender's seat, and a call names whose seat rang. The guide is `match-each-company-phone-seat-to-a-person`.
 3. **Send texts → Turn it on** (Settings → Phone and texts). From that moment anyone in the office can text any contact
    from a thread or a job's window, and a primary or helper can text a job's customer from Job Mode. The guide is

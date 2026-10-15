@@ -33,6 +33,8 @@ const MAX_HOUSES_PER_BLAST = 10
 const APP_ORIGIN = 'https://clicktooling.com'
 
 type ScopeLine = { fixture: string; count: number; unit?: string | null }
+/** `bid_rfqs.scope`: a send has stored `plansLink` since v2.2642; a row saved any other way has none. */
+type StoredScope = { lines?: ScopeLine[]; text?: string; plansLink?: string | null }
 
 
 
@@ -109,7 +111,7 @@ serve(async (req) => {
           .eq('id', body.rfqId)
           .maybeSingle()
         if (!rfq) return json({ error: 'Request not found' }, 404)
-        const scope = (rfq.scope ?? {}) as { lines?: ScopeLine[]; text?: string }
+        const scope = (rfq.scope ?? {}) as StoredScope
         const mail = buildEmail({
           kind: 'reminder',
           viewed: rfq.viewed_at != null,
@@ -235,7 +237,7 @@ serve(async (req) => {
       .maybeSingle()
     if (!rfq) return json({ error: 'Request not found' }, 404)
     if (rfq.status === 'closed') return json({ error: 'This request is closed.' }, 400)
-    const scope = (rfq.scope ?? {}) as { lines?: ScopeLine[]; text?: string }
+    const scope = (rfq.scope ?? {}) as StoredScope
     const listText = scope.text ?? ''
     const itemCount = Array.isArray(scope.lines) ? scope.lines.length : 0
     const bidLabel = await bidLabelFor(rfq.bid_id)

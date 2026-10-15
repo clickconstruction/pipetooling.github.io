@@ -1,13 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   stageHealth,
   type CalendarDay,
   type CalendarWeek,
   type StageCalendar,
   type HealthTab,
-  type HealthTile,
   type StageHealth,
-  type TileDot,
   type TileState,
   weekIsQuiet,
   weekWorkingDays,
@@ -37,16 +35,6 @@ const VERDICT: Record<StageHealth['verdict'], { words: string; bg: string; fg: s
 
 /** The tile colors: saturated on purpose, like the ring's, since they are status marks. */
 const TILE: Record<TileState, string> = { good: '#22c55e', warn: '#f59e0b', bad: '#ef4444', ours: '#8b5cf6' }
-const DOT: Record<TileDot, string> = { on: '#22c55e', wait: '#f59e0b', us: '#ef4444', off: 'transparent' }
-
-const PATH: { key: string; label: string }[] = [
-  { key: 'pursuing', label: 'Bidding' },
-  { key: 'buyout', label: 'Buying out' },
-  { key: 'building', label: 'Building' },
-  { key: 'closed', label: 'Closed' },
-]
-
-const BUYOUT_STEPS = 'award · master agreement · insurance · W-9 · statement of work'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -58,6 +46,7 @@ export function GcStageHealth({
   onTab,
   onSetStartDate,
   moneyShown,
+  foot,
 }: {
   state: GcState
   project: GcProject
@@ -68,10 +57,14 @@ export function GcStageHealth({
   onSetStartDate?: (date: string) => Promise<void>
   /** The reader sees Our number: the money's bars and numbers show. */
   moneyShown: boolean
+  /** The page's own line for the verdict band's foot: Bill day's, the money team's. */
+  foot?: ReactNode
 }) {
   const health = useMemo(() => stageHealth(state, project), [state, project])
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(900)
+  // The calendar's key stays behind its Key link: a first-month aid. The trades' is the page's (PR 3).
+  const [calKey, setCalKey] = useState(false)
   useEffect(() => {
     const el = box.current
     if (!el || typeof ResizeObserver === 'undefined') return
@@ -84,173 +77,125 @@ export function GcStageHealth({
   // The money's bars and numbers are Our number's readers' alone (the owner's: finances stay the money team's).
   const bars = health.bars.filter((b) => moneyShown || !b.money)
   const numbers = health.numbers.filter((n) => moneyShown || !n.money)
-  const stageAt = PATH.findIndex((p) => p.key === project.stage)
   return (
-    <div ref={box} data-tour="gc-stage-health" style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.75rem', display: 'grid', gap: '0.75rem', minWidth: 0 }}>
-      {/* Where the job is in its life */}
-      <div aria-label="Where the job is" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.2rem 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-        {PATH.map((p, i) => (
-          <span key={p.key} style={{ display: 'inline-flex', alignItems: 'center' }}>
-            {i > 0 && <span aria-hidden style={{ display: 'inline-block', width: 20, height: 2, background: 'var(--border)', margin: '0 0.4rem' }} />}
-            <span
-              aria-hidden
-              style={{
-                width: 9,
-                height: 9,
-                borderRadius: '50%',
-                marginRight: '0.35rem',
-                border: `2px solid ${i < stageAt ? TILE.good : i === stageAt ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-                background: i < stageAt ? TILE.good : i === stageAt ? 'var(--text-blue-500)' : 'transparent',
-              }}
-            />
-            <span style={i === stageAt ? { color: 'var(--text-base)', fontWeight: 700 } : undefined}>{p.label}</span>
-          </span>
-        ))}
-      </div>
-
-      {/* The verdict and the one thing to do next */}
-      <div style={{ display: 'flex', gap: '0.6rem 1rem', alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flex: '1 1 24rem', minWidth: 0 }}>
-          <span style={{ padding: '0.15rem 0.65rem', borderRadius: 999, background: v.bg, color: v.fg, fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{v.words}</span>
-          <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{health.why}</span>
+    <div ref={box} data-tour="gc-stage-health" style={{ marginTop: '0.25rem', display: 'grid', gap: '0.75rem', minWidth: 0 }}>
+      {/* The verdict band (to-do #108, shape D, PR 2): the verdict and why, the one thing to do next, the numbers and the
+          stage's bars in one block tinted by the verdict, so a Watch job looks different from an On track job before a
+          word is read. The stage rail that stood above it is gone: the chip by the name and the Board's section say the stage. */}
+      <div
+        data-gc-verdict={health.verdict}
+        style={{ borderLeft: `3px solid ${v.fg}`, background: v.bg, borderRadius: 8, padding: '0.6rem 0.85rem 0.7rem', display: 'grid', gap: '0.6rem', minWidth: 0 }}
+      >
+        <div style={{ display: 'flex', gap: '0.6rem 1rem', alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flex: '1 1 24rem', minWidth: 0 }}>
+            <span style={{ padding: '0.15rem 0.65rem', borderRadius: 999, background: v.fg, color: '#fff', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{v.words}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{health.why}</span>
+          </div>
+          {health.next &&
+            (canOpen(health.next.tab) ? (
+              <Btn kind="primary" onClick={() => onTab(health.next?.tab ?? 'packages')} wrap>
+                Next: {health.next.words} →
+              </Btn>
+            ) : (
+              <span data-gc-health-next style={{ fontSize: '0.88rem', fontWeight: 600 }}>
+                Next: {health.next.words}
+              </span>
+            ))}
         </div>
-        {health.next &&
-          (canOpen(health.next.tab) ? (
-            <Btn kind="primary" onClick={() => onTab(health.next?.tab ?? 'packages')} wrap>
-              Next: {health.next.words} →
-            </Btn>
-          ) : (
-            <span data-gc-health-next style={{ fontSize: '0.88rem', fontWeight: 600 }}>
-              Next: {health.next.words}
-            </span>
-          ))}
-      </div>
 
-      <Calendar calendar={health.calendar} width={width} stage={project.stage} />
-      {health.askStartDate && onSetStartDate && <SetStart onSet={onSetStartDate} today={state.today} projectId={project.id} />}
-
-      {bars.length > 0 && (
-        <div style={{ display: 'grid', gap: '0.45rem' }}>
-          {bars.map((b) => (
-            <div
-              key={b.kind}
-              style={{ display: 'grid', gridTemplateColumns: width < 560 ? '6.5rem minmax(0, 1fr) 6.5rem' : '9.5rem minmax(0, 1fr) 8.5rem', gap: '0.6rem', alignItems: 'center', fontSize: '0.82rem' }}
-            >
-              <span style={{ color: 'var(--text-muted)' }}>{b.label}</span>
-              <span style={{ position: 'relative', height: 10, borderRadius: 999, background: 'var(--bg-muted)' }}>
+        {/* A few numbers, up with the verdict they explain */}
+        {numbers.length > 0 && (
+          <div data-gc-health-numbers style={{ display: 'flex', gap: '0.6rem 1.75rem', flexWrap: 'wrap' }}>
+            {numbers.map((n) => (
+              <div key={n.label} style={{ display: 'grid', gap: '0.05rem', minWidth: 0 }}>
+                <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>{n.label}</span>
                 <span
                   style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: `${Math.min(100, Math.max(0, b.pct))}%`,
-                    borderRadius: 999,
-                    background: b.kind === 'work' || b.kind === 'paid' ? TILE.good : 'var(--text-blue-500)',
-                    opacity: b.kind === 'time' ? 0.55 : 1,
+                    fontSize: '1.05rem',
+                    fontWeight: 800,
+                    fontVariantNumeric: 'tabular-nums',
+                    color: n.tone === 'bad' ? 'var(--text-red-700)' : n.tone === 'warn' ? 'var(--text-amber-700)' : n.tone === 'good' ? 'var(--text-green-700)' : 'var(--text-base)',
                   }}
-                />
-                {b.mark !== undefined && (
-                  <span
-                    title={b.kind === 'work' ? `Planned for today: ${b.mark}%` : `Work in place: ${b.mark}%`}
-                    style={{ position: 'absolute', top: -4, bottom: -4, width: 2, left: `${Math.min(100, Math.max(0, b.mark))}%`, background: 'var(--text-base)' }}
-                  />
-                )}
-              </span>
-              <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{b.value}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* One tile a trade */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${width < 420 ? 130 : 150}px, 1fr))`, gap: '0.5rem' }}>
-        {health.tiles.map((t) => (
-          <Tile key={t.packageId} tile={t} />
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: '0.3rem 1rem', flexWrap: 'wrap', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-        <Key color={TILE.good} words="done for this stage" />
-        <Key color={TILE.warn} words="under way, or waiting on a company" />
-        <Key color={TILE.bad} words="a hole, a problem, or waiting on us" />
-        <Key color={TILE.ours} words="our own crew" />
-        {project.stage === 'buyout' && <span>Dots, in order: {BUYOUT_STEPS}</span>}
-        {project.stage === 'pursuing' && <span>Dots: quotes in, amber on old plans</span>}
-      </div>
-
-      {/* A few numbers */}
-      <div style={{ display: 'flex', gap: '0.6rem 1.75rem', flexWrap: 'wrap' }}>
-        {numbers.map((n) => (
-          <div key={n.label} style={{ display: 'grid', gap: '0.05rem', minWidth: 0 }}>
-            <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>{n.label}</span>
-            <span
-              style={{
-                fontSize: '1.05rem',
-                fontWeight: 800,
-                fontVariantNumeric: 'tabular-nums',
-                color: n.tone === 'bad' ? 'var(--text-red-700)' : n.tone === 'warn' ? 'var(--text-amber-700)' : n.tone === 'good' ? 'var(--text-green-700)' : 'var(--text-base)',
-              }}
-            >
-              {n.value}
-            </span>
-            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{n.note}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Key({ color, words }: { color: string; words: string }) {
-  return (
-    <span style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
-      <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block' }} />
-      {words}
-    </span>
-  )
-}
-
-function Tile({ tile }: { tile: HealthTile }) {
-  const color = TILE[tile.state]
-  return (
-    <div
-      style={{
-        border: `1px solid ${color}`,
-        borderRadius: 8,
-        padding: '0.45rem 0.6rem',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr)',
-        gap: '0.2rem',
-        background: tile.state === 'bad' ? 'var(--bg-red-tint)' : 'var(--bg-subtle)',
-        minWidth: 0,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'flex-start', fontWeight: 700, fontSize: '0.84rem', minWidth: 0 }}>
-        {/* A long trade name wraps rather than losing its words. */}
-        <span style={{ minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.25 }}>
-          {tile.trade}
-        </span>
-        {tile.dots ? (
-          <span style={{ display: 'inline-flex', gap: 3, flexShrink: 0, marginTop: 3 }} aria-label={tile.dots.join(', ')}>
-            {tile.dots.map((d, i) => (
-              <span key={i} style={{ width: 9, height: 9, borderRadius: '50%', display: 'inline-block', background: DOT[d], border: `1.5px solid ${d === 'off' ? 'var(--border-strong)' : DOT[d]}` }} />
+                >
+                  {n.value}
+                </span>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{n.note}</span>
+              </div>
             ))}
-          </span>
-        ) : tile.pct !== undefined ? (
-          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{tile.main}</span>
-        ) : (
-          <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
+          </div>
         )}
+
+        {/* Work against time, money against work: the building stage's bars, the verdict's evidence */}
+        {bars.length > 0 && (
+          <div style={{ display: 'grid', gap: '0.45rem' }}>
+            {bars.map((b) => (
+              <div
+                key={b.kind}
+                style={{ display: 'grid', gridTemplateColumns: width < 560 ? '6.5rem minmax(0, 1fr) 6.5rem' : '9.5rem minmax(0, 1fr) 8.5rem', gap: '0.6rem', alignItems: 'center', fontSize: '0.82rem' }}
+              >
+                <span style={{ color: 'var(--text-muted)' }}>{b.label}</span>
+                <span style={{ position: 'relative', height: 10, borderRadius: 999, background: 'var(--bg-muted)' }}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: `${Math.min(100, Math.max(0, b.pct))}%`,
+                      borderRadius: 999,
+                      background: b.kind === 'work' || b.kind === 'paid' ? TILE.good : 'var(--text-blue-500)',
+                      opacity: b.kind === 'time' ? 0.55 : 1,
+                    }}
+                  />
+                  {b.mark !== undefined && (
+                    <span
+                      title={b.kind === 'work' ? `Planned for today: ${b.mark}%` : `Work in place: ${b.mark}%`}
+                      style={{ position: 'absolute', top: -4, bottom: -4, width: 2, left: `${Math.min(100, Math.max(0, b.mark))}%`, background: 'var(--text-base)' }}
+                    />
+                  )}
+                </span>
+                <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{b.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* The page's own line for the band's foot: Bill day's, for the money team. */}
+        {foot}
       </div>
-      {tile.pct !== undefined ? (
-        <span style={{ height: 6, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
-          <span style={{ display: 'block', height: '100%', width: `${Math.min(100, tile.pct)}%`, background: tile.state === 'good' ? TILE.good : tile.state === 'ours' ? TILE.ours : TILE.warn, borderRadius: 999 }} />
-        </span>
-      ) : (
-        <span style={{ fontSize: '0.82rem', fontVariantNumeric: 'tabular-nums' }}>{tile.main}</span>
-      )}
-      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{tile.note}</span>
+
+      {health.askStartDate && onSetStartDate && <SetStart onSet={onSetStartDate} today={state.today} projectId={project.id} />}
+
+      <GcBand title="The clock" keyOn={calKey} onKey={() => setCalKey((on) => !on)}>
+        <Calendar calendar={health.calendar} width={width} stage={project.stage} showKey={calKey} />
+      </GcBand>
+
     </div>
+  )
+}
+
+/**
+ * A band of the strip (shape D): a heading, a few words beside it, and a Key link at the right that shows the band's
+ * legend. The legend is a first-month aid, so it stays behind the link; the squares' hovers and the tiles' words say
+ * the same things.
+ */
+export function GcBand({ title, words, keyOn, onKey, children }: { title: string; words?: string; keyOn: boolean; onKey: () => void; children: ReactNode }) {
+  return (
+    <section data-gc-band={title} aria-label={title} style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.55rem', minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <b style={{ fontSize: '0.85rem' }}>{title}</b>
+        {words && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{words}</span>}
+        <button
+          type="button"
+          aria-expanded={keyOn}
+          onClick={onKey}
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}
+        >
+          {keyOn ? 'Hide the key' : 'Key'}
+        </button>
+      </div>
+      {children}
+    </section>
   )
 }
 
@@ -453,7 +398,7 @@ function rangesTouch(rowA: number, linesA: number, rowB: number, linesB: number)
  * becomes the next, weekends narrow; building is a square a week with a space between months. On a
  * phone the weeks stack as rows of a small calendar. Every square's hover lists its day.
  */
-function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: number; stage: GcProject['stage'] }) {
+function Calendar({ calendar, width, stage, showKey }: { calendar: StageCalendar; width: number; stage: GcProject['stage']; showKey: boolean }) {
   const scroller = useRef<HTMLDivElement>(null)
   // A calendar wider than the strip opens with today in view.
   useEffect(() => {
@@ -533,6 +478,7 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
             ))}
           </div>
         </div>
+        {showKey && (
         <div style={{ display: 'flex', gap: '0.3rem 1rem', flexWrap: 'wrap', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
           <span>A square a week, the months apart.</span>
           {legendDot({ width: 12, height: 12, borderRadius: 3, background: 'var(--bg-blue-tint)', border: '1.5px solid var(--border)' }, 'gone by')}
@@ -542,6 +488,7 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
           {legendDot({ width: 12, height: 12, borderRadius: 3, border: `3px solid ${SQUARE_DUE}` }, 'the finish')}
           {legendDot({ width: 6, height: 6, borderRadius: '50%', background: TILE.good }, 'milestone met')}
         </div>
+        )}
       </div>
     )
   }
@@ -625,7 +572,7 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
           ))}
           {openEnd && <span style={{ color: 'var(--text-red-700)', fontWeight: 700 }}>{openEnd}</span>}
         </div>
-        {legend}
+        {showKey && legend}
       </div>
     )
   }
@@ -693,7 +640,7 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
           })}
         </div>
       </div>
-      {legend}
+      {showKey && legend}
     </div>
   )
 }
