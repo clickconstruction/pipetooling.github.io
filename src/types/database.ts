@@ -32331,6 +32331,10 @@ export type Database = {
         Args: { p_name: string; p_record_id: string; p_record_table: string }
         Returns: string
       }
+      contact_phone_to_roster: {
+        Args: { p_contact_id: string; p_person_id: string }
+        Returns: boolean
+      }
       contact_put_back_on: { Args: { p_contact: string }; Returns: undefined }
       contact_set_off: {
         Args: { p_contact: string; p_why: string }
