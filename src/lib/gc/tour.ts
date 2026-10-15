@@ -52,10 +52,25 @@ export const GC_NEW_HERE_STEPS: SpotlightTourStep[] = [
     missingBody: "No GC project yet. Questions open from a project's card.",
   },
   {
+    // The stop shows a gap instead of describing one (v2.5553, the owner's ask of 2026-10-15): the
+    // card's own red line, taken apart. Its words are the kernel's: Plumbing's usual leave-out Gas
+    // piping, left to HVAC (`usualExcludes` in `plans.ts`), in the page's `leaves out … for …` shape.
     anchor: 'gc-gaps',
     title: 'Gaps',
-    body: "Red words name a gap. One trade leaves some work out for another trade. That other trade's scope does not cover it yet. Settle it before our bid goes out.",
-    missingBody: 'No gap on this project. Red words show here when one trade leaves work out that no other trade covers.',
+    body: 'A gap is work one trade leaves out that no other trade on the job covers. The card says it in red:',
+    example: {
+      caption: "On a project's card",
+      tone: 'red',
+      parts: [
+        { words: 'Plumbing', means: 'leaves it out' },
+        { words: 'leaves out' },
+        { words: 'Gas piping', means: 'the work' },
+        { words: 'for' },
+        { words: 'HVAC.', means: 'it is left to' },
+      ],
+      after: "HVAC's scope does not list gas piping yet. Settle it before our bid goes out.",
+    },
+    missingBody: 'This project has none.',
   },
   {
     anchor: 'gc-scope-book',
