@@ -115,6 +115,7 @@ import { GcTradeRows, GcTradeRowsKey } from '../components/gc/GcTradeRows'
 import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFlowBoard } from '../components/gc/flows/GcFlowBoard'
+import { GcCustomersList } from '../components/gc/GcCustomersList'
 import { GcJobPapersWindow } from '../components/gc/flows/GcJobPapersWindow'
 import { GcRoundWindow } from '../components/gc/flows/GcRoundWindow'
 import { GcRoundOpenerContext, type RoundOpener, type RoundSpec } from '../components/gc/flows/gcRoundOpener'
@@ -455,7 +456,7 @@ export default function GcProjects() {
   }, [viewParam])
   // How Trade partners and Customers show their companies (Messages cut 4). `?by=` opens on one.
   const [partnersBy, setPartnersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'list')
-  const [customersBy, setCustomersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'step')
+  const [customersBy, setCustomersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'list')
   /** Read the board again; answers what it read, for a press that emails from the rows as they are now (P5c-4). */
   const refreshBoard = async (): Promise<GcState | null> => {
     if (!loaded) return null
@@ -1984,7 +1985,15 @@ export default function GcProjects() {
                 onBillDay={boardBillDay}
               />
             ) : devView === 'customers' ? (
-              <GcFlowBoard kind="customer" by={customersBy} onBy={setCustomersBy} onFollowUp={boardNeedsAHand} onOpenProject={boardOpenProject} onBillDay={boardBillDay} />
+              <GcFlowBoard
+                kind="customer"
+                by={customersBy}
+                onBy={setCustomersBy}
+                list={<GcCustomersList customers={board.customers} projects={board.projects} onOpenProject={boardOpenProject} onBillDay={boardBillDay} />}
+                onFollowUp={boardNeedsAHand}
+                onOpenProject={boardOpenProject}
+                onBillDay={boardBillDay}
+              />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>

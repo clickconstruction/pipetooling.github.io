@@ -643,6 +643,22 @@ export interface CompanyJobLine {
 /** How a lane that ended at a fork reads on its job's line. */
 const ENDED_WORDS: Readonly<Partial<Record<FactId, string>>> = { declined: 'declined', not_carried: 'not carried' }
 
+/**
+ * The line of a company's job on the step it is on now, else the step it lapsed on, with the step (v2.5557, the
+ * Customers list's Next): null while the job has no place on the flow.
+ */
+export function companyJobLine(ctx: BoardContext, c: BoardCompany, jobId: string): { line: BoardLine; step: FlowStep } | null {
+  // A job can be on two steps at once (a change order while building): the row stands on the late one, else the furthest along.
+  const order = flat(ctx.flow).map((s) => s.id)
+  const mine = c.places.filter((x) => x.jobId === jobId)
+  const now = mine.filter((x) => x.state === 'now')
+  const pool = [...(now.length ? now : mine)].sort((a, b) => (b.lateDays ?? 0) - (a.lateDays ?? 0) || order.indexOf(b.stepId) - order.indexOf(a.stepId))
+  const p = pool[0]
+  const step = p ? flat(ctx.flow).find((s) => s.id === p.stepId) : undefined
+  if (!p || !step) return null
+  return { line: lineOf(ctx, c, p, step, 'per_job'), step }
+}
+
 /** A company's jobs, one line each: the step on it, else how its lane ended, else done or not started. */
 export function companyJobLines(ctx: BoardContext, c: BoardCompany): CompanyJobLine[] {
   const steps = flat(ctx.flow)
