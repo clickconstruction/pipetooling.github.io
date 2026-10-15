@@ -191,7 +191,8 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | Company phone seats (a Quo seat to a person) | Settings → Phone and texts | `messages_quo_seats_v1` |
 | Who gets a new message (the rule and its seats) | Settings → Phone and texts | `messages_assign_rule_v1` |
 | Inboxes (the two boxes: address, number, number id) | Settings → Phone and texts | `messages_boxes_v1` |
-| Office hours and the wait before the office takes a reply | `app_settings`, set by a dev (no card yet) | `messages_office_hours_v1`, `messages_office_wait_minutes` |
+| The office's wait before it hears a reply nobody answered (0 is at once) | Settings → Phone and texts → Reply push, under the switch (v2.5540) | `messages_office_wait_minutes` |
+| Office hours | `app_settings`, set by a dev (no card yet) | `messages_office_hours_v1` |
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
 | Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every three minutes |
 | The reminders the app sends itself, per step | Settings → Flows | `messages_nudge_app_sends_v1`; the cron `messages-nudge-dispatch`, 14:00 and 15:00 UTC; the summary `messages_nudge_last_run_v1` |
