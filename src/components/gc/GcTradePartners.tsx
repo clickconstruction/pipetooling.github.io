@@ -11,6 +11,8 @@ import { partnersToVet, vettingOf, vettingWords } from '../../lib/gc/vetting'
 import { shortDate } from '../../lib/gc/words'
 import { GcBoardStrip, type BoardStripItem } from './GcBoardStages'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
+import { GcCallScriptWindow } from './GcCallScriptWindow'
+import { CALL_SCRIPT_BUTTON } from '../../lib/gc/callScript'
 import { useJumpStrip } from './useJumpStrip'
 import { PartnerName } from './GcPartnerName'
 import { benchAnchor } from '../../lib/gc/tradeViews'
@@ -55,6 +57,7 @@ export function GcTradePartners({
   onOpenProject,
   onAsk,
   trades = [],
+  scriptOpenAtStart = false,
 }: {
   state: GcState
   writes: TradePartnerWrites
@@ -63,8 +66,11 @@ export function GcTradePartners({
   onAsk?: AskFor
   /** Trades on our projects that no company does yet, so each still gets a card to add one to. */
   trades?: string[]
+  /** Open with the call script showing (v2.5556): the page passes `?script=1`, the window's own Open in a new tab. */
+  scriptOpenAtStart?: boolean
 }) {
   const [addingTrade, setAddingTrade] = useState<string | null>(null)
+  const [scriptOpen, setScriptOpen] = useState(scriptOpenAtStart)
   const known = tradeBenches(state)
   // A trade on a project with no company yet still needs a card, so the first company can be added.
   const benches: TradeBench[] = [
@@ -101,11 +107,20 @@ export function GcTradePartners({
   return (
     <section aria-label="Trade partners" style={{ display: 'grid', gap: '0.9rem' }}>
       <VetQueue state={state} writes={writes} />
-      {benches.length > 0 ? (
-        <GcBoardStrip items={tradeItems} active={active} onJump={jumpTo} label="Jump to a trade" />
-      ) : (
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No trade yet. A trade shows here once a project has it.</span>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          {benches.length > 0 ? (
+            <GcBoardStrip items={tradeItems} active={active} onJump={jumpTo} label="Jump to a trade" />
+          ) : (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No trade yet. A trade shows here once a project has it.</span>
+          )}
+        </div>
+        {/* The call script (v2.5556): what to say when phoning a company new to us, the caller's name set in. */}
+        <Btn kind="quiet" onClick={() => setScriptOpen(true)} title="What to say when you phone a company new to us">
+          {CALL_SCRIPT_BUTTON}
+        </Btn>
+      </div>
+      {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} />}
       {rules.length > 0 && benches.length > 0 && (
         <AssistantActions
           rules={rules}

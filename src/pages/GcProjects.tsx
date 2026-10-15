@@ -308,6 +308,8 @@ export default function GcProjects() {
   const tourFurthest = useRef(0)
   const { showToast } = useToastContext()
   const [params, setParams] = useSearchParams()
+  // The call script's new tab (v2.5556): `?script=1` is read once on mount, before any write to the URL drops it.
+  const [scriptAtStart] = useState(() => params.get('script') === '1')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [loadProblem, setLoadProblem] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -1976,7 +1978,7 @@ export default function GcProjects() {
                 kind="trade"
                 by={partnersBy}
                 onBy={setPartnersBy}
-                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />}
+                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} scriptOpenAtStart={scriptAtStart} />}
                 onFollowUp={boardNeedsAHand}
                 onOpenProject={boardOpenProject}
                 onBillDay={boardBillDay}
