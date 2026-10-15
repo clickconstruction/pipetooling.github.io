@@ -391,8 +391,11 @@ export interface QuoPlanContext {
   optedOut: boolean
   /** The contact's default job (★), where a new line lands; null puts it on the person. */
   defaultJobId: string | null
-  /** Quo's workspace users mapped to ours (Settings → Phone and texts): our user id and the name a line shows. */
-  users: Readonly<Record<string, { userId: string; name: string }>>
+  /**
+   * Quo's workspace users mapped to ours (Settings → Phone and texts): our user id and the name a line shows. A seat
+   * shared by the office (v2.5548) has no user of ours and the name "the office".
+   */
+  users: Readonly<Record<string, { userId: string | null; name: string }>>
   company: ComposeCompany
   /** The line as already written under this event's key, when the event adds to one. */
   existing: QuoLine | null
