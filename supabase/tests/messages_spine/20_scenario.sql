@@ -235,8 +235,8 @@ SELECT msp.same('her number says STOP, once, and carries the STOP line',
    FROM ids),
   'true|1');
 -- A roster person and the duplicate customer.
-SELECT msp.same('Sam is the roster person', (SELECT public.name_contact('00000000-0000-0000-0000-000000005013', 'people', '00000000-0000-0000-0000-0000000005b1', 'trade', 'ignored on a person''s row'))::text, '00000000-0000-0000-0000-000000005013');
-SELECT msp.same('a person''s row holds the name, so the contact carries none', msp.who('00000000-0000-0000-0000-000000005013'), 'trade|roster 00000000-0000-0000-0000-0000000005b1|-');
+SELECT msp.same('Sam is the roster person', (SELECT public.name_contact('00000000-0000-0000-0000-000000005013', 'people', '00000000-0000-0000-0000-0000000005b1', 'sub', 'ignored on a person''s row'))::text, '00000000-0000-0000-0000-000000005013');
+SELECT msp.same('a person''s row holds the name, so the contact carries none', msp.who('00000000-0000-0000-0000-000000005013'), 'sub|roster 00000000-0000-0000-0000-0000000005b1|-');
 SELECT msp.same('the dental office''s other number is the duplicate customer', (SELECT public.name_contact('00000000-0000-0000-0000-000000005014', 'customers', '00000000-0000-0000-0000-0000000005c4', 'customer'))::text, '00000000-0000-0000-0000-000000005014');
 -- What is refused.
 SELECT msp.refused('a contact already named', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005011', 'gc_companies', '00000000-0000-0000-0000-0000000005a1', 'trade')$q$, 'namedAlready');
@@ -244,8 +244,8 @@ SELECT msp.refused('no contact', $q$SELECT public.name_contact(gen_random_uuid()
 SELECT msp.refused('a kind we do not have', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'gc_companies', '00000000-0000-0000-0000-0000000005a1', 'boss')$q$, 'kindNeeded');
 SELECT msp.refused('a table that holds no people', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'users', '00000000-0000-0000-0000-0000000005d1', 'trade')$q$, 'recordNeeded');
 SELECT msp.refused('nobody with that id', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'people', gen_random_uuid(), 'trade')$q$, 'recordNotFound');
-SELECT msp.refused('a job that is not there', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'people', '00000000-0000-0000-0000-0000000005b1', 'trade', NULL, 'bid', gen_random_uuid())$q$, 'jobNotFound');
-SELECT msp.refused('a kind of job we do not have', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'people', '00000000-0000-0000-0000-0000000005b1', 'trade', NULL, 'ticket', gen_random_uuid())$q$, 'jobUnknown');
+SELECT msp.refused('a job that is not there', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'people', '00000000-0000-0000-0000-0000000005b1', 'sub', NULL, 'bid', gen_random_uuid())$q$, 'jobNotFound');
+SELECT msp.refused('a kind of job we do not have', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'people', '00000000-0000-0000-0000-0000000005b1', 'sub', NULL, 'ticket', gen_random_uuid())$q$, 'jobUnknown');
 RESET ROLE;
 
 -- 7 · A line's job and the star: an estimator ties Elena's email to the clinic, stars it, takes the star away, unties it.
@@ -287,7 +287,7 @@ SELECT msp.same('the office team may write the one column, for tie_message (R7)'
 SELECT msp.as_user('00000000-0000-0000-0000-0000000005d6');
 SET LOCAL ROLE authenticated;
 SELECT msp.refused('training mode ties no line', $q$SELECT public.tie_message((SELECT id FROM public.messages WHERE body = 'Greg here.'), 'project', '00000000-0000-0000-0000-0000000005f1')$q$, 'notFound');
-SELECT msp.refused('training mode names nobody', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'people', '00000000-0000-0000-0000-0000000005b1', 'trade')$q$, 'notFound');
+SELECT msp.refused('training mode names nobody', $q$SELECT public.name_contact('00000000-0000-0000-0000-000000005017', 'people', '00000000-0000-0000-0000-0000000005b1', 'sub')$q$, 'notFound');
 RESET ROLE;
 SELECT msp.as_user('00000000-0000-0000-0000-0000000005d7');
 SET LOCAL ROLE authenticated;
