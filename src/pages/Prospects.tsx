@@ -837,6 +837,19 @@ export default function Prospects() {
         .select(PROSPECT_COLUMNS)
         .eq('id', prospectId)
         .maybeSingle()
+      const otherKind = single ? (single as Prospect).kind : null
+      if (otherKind && otherKind !== kind) {
+        // A link from elsewhere (Calendar's callbacks, v2.5563) to a prospect of another kind: its own lane opens it,
+        // so the card's last press is that kind's.
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          if (otherKind === 'customer') next.delete('kind')
+          else next.set('kind', urlKeyForKind(otherKind))
+          return next
+        }, { replace: true })
+        setFollowUpLoading(false)
+        return
+      }
       if (single) {
         finalProspects = [single as Prospect, ...prospects]
         idx = 0
@@ -1382,14 +1395,15 @@ export default function Prospects() {
     if (!canAccessActivityTab) return
     setTeamLoading(true)
     try {
-      const result = await loadProspectTeamActivity(supabase)
+      // The lane's own 30 days (v2.5563); Quickfill's team chart keeps every kind.
+      const result = await loadProspectTeamActivity(supabase, kind)
       setTeamDataByDate(result)
     } catch {
       setTeamDataByDate({})
     } finally {
       setTeamLoading(false)
     }
-  }, [canAccessActivityTab])
+  }, [canAccessActivityTab, kind])
 
   useEffect(() => {
     if (activeTab === 'activity' && canAccessActivityTab) {
@@ -3069,7 +3083,8 @@ export default function Prospects() {
                       Cancel
                     </button>
                   </div>
-                  {/* Copy templates */}
+                  {/* Copy templates: the customer deck's words (v2.5563); a sub's or an owner's email waits on the owner's own words. */}
+                  {kind === 'customer' && (
                   <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -3124,6 +3139,7 @@ export default function Prospects() {
                       ))}
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
               {/* The advance bar: the last thing you hit after logging the outcome and notes. */}

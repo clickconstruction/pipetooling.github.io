@@ -116,6 +116,7 @@ describe('Add to Prospects', () => {
 
   it('writes his name, his number and his first words, led by how he came in', () => {
     expect(prospectRowFor(KEVIN_LEAD(), MESSAGES, BY)).toEqual({
+      kind: 'customer',
       contact_name: 'Kevin Alvarez',
       company_name: null,
       phone_number: '(210) 555-0188',
@@ -133,6 +134,8 @@ describe('Add to Prospects', () => {
     expect(prospectRowFor(nameless, MESSAGES, BY).contact_name).toBeNull()
     const emailed = MESSAGES.map((m) => (m.id === 'm1' ? { ...m, channel: 'email' as const, subject: 'Water heater leak' } : m))
     expect(prospectRowFor(KEVIN_LEAD(), emailed, BY).notes).toBe('Emailed the office: Water heater leak')
+    // v2.5563: the office picks the lane; a homeowner asking about a build is a job to GC.
+    expect(prospectRowFor(KEVIN_LEAD(), MESSAGES, BY, 'gc_lead').kind).toBe('gc_lead')
   })
 
   it('points the lead at the row, still a lead, through nameContact', () => {

@@ -45,6 +45,8 @@ export function useQuickfillCantReachProspects(): {
               'id, company_name, contact_name, phone_number, email, address, links_to_website, last_contact, prospect_fit_status',
             )
             .eq('prospect_fit_status', 'cant_reach')
+            // The customer deck's (v2.5563): a sub or a job to GC is retried on its own lane.
+            .eq('kind', 'customer')
             .order('last_contact', { ascending: false, nullsFirst: false }),
         'quickfill cant-reach prospects',
       )
