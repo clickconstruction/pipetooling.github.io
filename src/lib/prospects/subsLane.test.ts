@@ -8,6 +8,7 @@ import {
   sourceSuccess,
   subGap,
   subsForTrade,
+  stillQueued,
   subsLaneHref,
   tradeKey,
   tradesLeftToPick,
@@ -119,5 +120,22 @@ describe('subsLane: the bench names as picks', () => {
     expect(withTrade('', 'Concrete')).toBe('Concrete')
     expect(withTrade('Roofing,HVAC', 'Fire sprinkler')).toBe('Roofing, HVAC, Fire sprinkler')
     expect(withTrade('concrete', 'Concrete')).toBe('concrete')
+  })
+})
+
+describe('subsLane: the strip counts the lane as it stands', () => {
+  const lane = [
+    { id: 'c1', trades: ['Concrete'] },
+    { id: 'c2', trades: ['Concrete', 'HVAC'] },
+    { id: 'h1', trades: ['HVAC'] },
+  ]
+
+  it('drops a sub the deck took off, with no filter', () => {
+    expect(stillQueued(lane, new Set(['c1', 'h1']), null).map((s) => s.id)).toEqual(['c1', 'h1'])
+  })
+
+  it('keeps the subs outside the filter, which were never on the deck', () => {
+    expect(stillQueued(lane, new Set(['c2']), 'Concrete').map((s) => s.id)).toEqual(['c2', 'h1'])
+    expect(stillQueued(lane, new Set(), 'concrete').map((s) => s.id)).toEqual(['h1'])
   })
 })

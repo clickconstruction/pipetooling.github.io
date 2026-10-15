@@ -85,6 +85,19 @@ export function subsForTrade<T extends { trades: string[] | null }>(subs: readon
   return subs.filter((s) => (s.trades ?? []).some((t) => tradeKey(t) === key))
 }
 
+/**
+ * The lane as it stands now, for the strip's counts: the deck holds the lane's queue filtered by
+ * `?trade=`, so a sub that matches the filter and is no longer on the deck was taken off by an
+ * outcome or a delete; one outside the filter was never on the deck and stays counted.
+ */
+export function stillQueued<T extends { id: string; trades: string[] | null }>(
+  lane: readonly T[],
+  deckIds: ReadonlySet<string>,
+  trade: string | null | undefined,
+): T[] {
+  return lane.filter((s) => deckIds.has(s.id) || subsForTrade([s], trade).length === 0)
+}
+
 /** The biggest gap among a sub's trades; zero when none of them is short. */
 export function subGap(sub: { trades: string[] | null }, needs: readonly BenchNeed[]): number {
   let gap = 0

@@ -70,7 +70,7 @@ import {
 import { addGcCompany, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
-import { BY_NEED_NOTE, benchDouble, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
+import { BY_NEED_NOTE, benchDouble, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
@@ -671,7 +671,9 @@ export default function Prospects() {
     }
   }, [kind, newKind, authUser?.id])
 
-  const benchNeedsNow: BenchNeed[] = kind === 'sub' ? benchNeeds(benchTrades ?? [], laneQueueAll) : []
+  // The strip counts the lane as it stands: a sub the deck took off (an outcome, a delete) leaves the count with it.
+  const deckIds = new Set(followUpProspects.map((p) => p.id))
+  const benchNeedsNow: BenchNeed[] = kind === 'sub' ? benchNeeds(benchTrades ?? [], stillQueued(laneQueueAll, deckIds, tradeFilter)) : []
 
   const setTradeFilter = (trade: string | null) => {
     setSearchParams((p) => {
