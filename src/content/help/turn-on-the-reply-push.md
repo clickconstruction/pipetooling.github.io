@@ -18,11 +18,19 @@ The switch now reads {{button:green|On}}. The line under it says *Pushes go out 
 ## Who gets the push
 
 - Whoever has the conversation gets it right away. [Who gets a new message](/help/choose-who-gets-a-new-message) says how the app picks them.
-- The office hears too when nobody on the team writes back during its wait. The wait starts at 15 minutes.
+- The office hears too when nobody on the team writes back during its wait. The wait starts at 15 minutes. [Change the wait](#change-the-wait) says how to set it.
 - After the office closes, the office hears first. The reply waits for the morning.
 - A reply to one of the Lien desk's letters goes to the office alone.
 
 A person gets the push only on a phone where they turned on push notifications. [Settings basics](/help/settings-basics#push-notifications) shows how.
+
+## Change the wait
+
+1. Under **Reply push**, find **The office hears after**.
+2. Type the minutes. 0 means the office hears at once, with whoever has it.
+3. Press {{button:blue|Save the wait}}.
+
+The line under the number says what it means. The wait can be 0 to 240 minutes.
 
 ## Turn it off
 
