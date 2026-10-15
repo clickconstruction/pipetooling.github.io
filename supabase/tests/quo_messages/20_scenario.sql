@@ -26,6 +26,13 @@ INSERT INTO public.contacts (id, kind, gc_company_id, goes_by) VALUES
 INSERT INTO public.contact_channels (id, contact_id, kind, value) VALUES
   ('00000000-0000-0000-0000-0000000006e2', '00000000-0000-0000-0000-0000000006c2', 'phone', '(210) 555-0113');
 
+-- The roster (v2.5549): a helper and a sub with their numbers on their People records and no contact yet, and an
+-- archived helper whose number the app no longer knows.
+INSERT INTO public.people (id, master_user_id, kind, name, phone, archived_at) VALUES
+  ('00000000-0000-0000-0000-0000000006b1', '00000000-0000-0000-0000-0000000006d1', 'helper', 'Quo Helper', '(512) 555-0147', NULL),
+  ('00000000-0000-0000-0000-0000000006b2', '00000000-0000-0000-0000-0000000006d1', 'sub', 'Quo Sub', '512.555.0148', NULL),
+  ('00000000-0000-0000-0000-0000000006b3', '00000000-0000-0000-0000-0000000006d1', 'helper', 'Quo Gone', '(512) 555-0149', now());
+
 -- A number nobody knew, as the webhook makes one: an unknown contact with its phone.
 INSERT INTO public.contacts (id, kind, name) VALUES
   ('00000000-0000-0000-0000-0000000006c1', 'unknown', '(830) 555-0172');
@@ -164,6 +171,28 @@ UPDATE public.contacts SET goes_by = 'Gregory' WHERE id = '00000000-0000-0000-00
 SELECT mqo.same('and what he goes by',
   (SELECT p.placed_goes_by FROM public.quo_place_number('+12105550113', 'ignored') p), 'Gregory');
 SELECT mqo.refused('a word is not a number', $q$SELECT * FROM public.quo_place_number('call me', 'x')$q$, 'not a phone number');
+-- 4b · The roster's own numbers (v2.5549): a teammate's and a sub's land on them, made now with the roster's kind;
+-- an archived person's is nobody's.
+CREATE TEMP TABLE mqo_roster AS SELECT * FROM public.quo_place_number('+15125550147', '(512) 555-0147');
+SELECT mqo.same('a number on the roster lands on that teammate, made now, with the roster''s name',
+  (SELECT concat_ws('|', p.made::text, c.kind, (c.person_id = '00000000-0000-0000-0000-0000000006b1')::text, ch.value, coalesce(p.stopped_at::text, '-'), p.placed_kind, p.placed_name)
+   FROM mqo_roster p
+   JOIN public.contacts c ON c.id = p.placed_contact
+   JOIN public.contact_channels ch ON ch.id = p.placed_channel),
+  'true|team|true|+15125550147|-|team|Quo Helper');
+SELECT mqo.same('the same number again lands on them, made no more',
+  (SELECT concat_ws('|', p.made::text, (p.placed_contact = c.id)::text, p.placed_kind)
+   FROM public.quo_place_number('512-555-0147', 'ignored') p, public.contacts c WHERE c.person_id = '00000000-0000-0000-0000-0000000006b1'),
+  'false|true|team');
+SELECT mqo.same('one contact holds that number', (SELECT count(*)::text FROM public.contact_channels WHERE key = '5125550147'), '1');
+CREATE TEMP TABLE mqo_sub AS SELECT * FROM public.quo_place_number('+15125550148', '(512) 555-0148');
+SELECT mqo.same('a sub''s number lands on the sub',
+  (SELECT concat_ws('|', p.made::text, c.kind, (c.person_id = '00000000-0000-0000-0000-0000000006b2')::text, p.placed_name) FROM mqo_sub p JOIN public.contacts c ON c.id = p.placed_contact),
+  'true|sub|true|Quo Sub');
+CREATE TEMP TABLE mqo_gone AS SELECT * FROM public.quo_place_number('+15125550149', '(512) 555-0149');
+SELECT mqo.same('an archived roster person''s number is nobody''s: an unknown contact',
+  (SELECT concat_ws('|', p.made::text, c.kind, coalesce(c.person_id::text, '-'), p.placed_name) FROM mqo_gone p JOIN public.contacts c ON c.id = p.placed_contact),
+  'true|unknown|-|(512) 555-0149');
 
 -- 5 · The deliveries the webhook took.
 SELECT mqo.same('a new delivery is taken', public.quo_webhook_claim('msg_quo_1')::text, 'true');
