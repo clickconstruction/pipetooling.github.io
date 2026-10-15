@@ -1417,6 +1417,9 @@ describe('GcProjects: the page sits in the middle of a wide screen', () => {
     expect(page.style.width).toBe('100%')
     expect(page.style.marginLeft).toBe('auto')
     expect(page.style.marginRight).toBe('auto')
+  })
+})
+
 describe("the card's head (to-do #108, PR 1)", () => {
   // v2.5544: the name and the stage, then the facts line, then the doors as grouped sets with the fact that says whether to open each.
   it('a dev reads the facts line and the three sets, and a set holds the doors in order', async () => {
