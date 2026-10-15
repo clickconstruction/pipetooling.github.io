@@ -3,7 +3,7 @@
  * Boerne, a text to Dee's unknown number, Robert and Rosa's seats.
  */
 import { describe, expect, it } from 'vitest'
-import { MESSAGE_ROW_COLUMNS, contactKindOf, contactWords, defaultJob, jobOf, lineFromRow, parseQuoSendBody, quoSeatUserIds, quoSeats, rowFromLine, seatOf, seatsSource, type MessageRow } from './rows'
+import { MESSAGE_ROW_COLUMNS, contactKindOf, contactWords, defaultJob, isSharedSeat, jobOf, lineFromRow, parseQuoSendBody, quoSeatUserIds, quoSeats, rowFromLine, seatOf, seatsSource, type MessageRow } from './rows'
 
 const ROW: MessageRow = {
   id: 'm-1',
@@ -157,6 +157,18 @@ describe('who', () => {
     expect(quoSeats(undefined, users)).toEqual({})
     expect(quoSeats('not json', users)).toEqual({})
     expect(quoSeats('["US-robert"]', users)).toEqual({})
+  })
+
+  it('reads a seat shared by the office as the office, texts as it for a sender with no seat, and names no user for it (v2.5548)', () => {
+    const users = [{ id: 'u-rosa', name: 'Rosa' }]
+    const seats = quoSeats('{"US-rosa": "u-rosa", "US-office": "office"}', users)
+    expect(seats).toEqual({ 'US-rosa': { userId: 'u-rosa', name: 'Rosa' }, 'US-office': { userId: null, name: 'the office' } })
+    expect(seatOf('u-rosa', seats)).toBe('US-rosa')
+    expect(seatOf('u-wendi', seats)).toBe('US-office')
+    expect(quoSeatUserIds('{"US-rosa": "u-rosa", "US-office": "office"}')).toEqual(['u-rosa'])
+    expect(isSharedSeat('office')).toBe(true)
+    expect(isSharedSeat('u-rosa')).toBe(false)
+    expect(isSharedSeat(null)).toBe(false)
   })
 
   it('names the users to read once', () => {

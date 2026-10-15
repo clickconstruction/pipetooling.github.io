@@ -188,7 +188,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | What | Where | Key or job |
 |---|---|---|
 | Send texts (the office texts from the company number) | Settings → Phone and texts | `messages_texts_on_v1` |
-| Company phone seats (a Quo seat to a person) | Settings → Phone and texts | `messages_quo_seats_v1` |
+| Company phone seats (a Quo seat to a person, or one shared by the office since v2.5548) | Settings → Phone and texts | `messages_quo_seats_v1` |
 | Who gets a new message (the rule and its seats) | Settings → Phone and texts | `messages_assign_rule_v1` |
 | Inboxes (the two boxes: address, number, number id) | Settings → Phone and texts | `messages_boxes_v1` |
 | Office hours and the wait before the office takes a reply | `app_settings`, set by a dev (no card yet) | `messages_office_hours_v1`, `messages_office_wait_minutes` |
