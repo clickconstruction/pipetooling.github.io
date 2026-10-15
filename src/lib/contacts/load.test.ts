@@ -92,6 +92,8 @@ describe('the four kinds of 2026-10-13 (rows as R0’s SQL PR shapes them)', () 
     { ...base, id: 'c-maria', kind: 'supply_house', supply_house_contact_id: 'shc-maria' },
     { ...base, id: 'c-luis', kind: 'candidate', team_prospect_id: 'tp-luis' },
     { ...base, id: 'c-tony', kind: 'sub', person_id: 'p-tony' },
+    // The eighth kind (v2.5546): a teammate on the roster, read the same way (v2.5552 found the loader left it out).
+    { ...base, id: 'c-robert', kind: 'team', person_id: 'p-robert' },
   ]
   const RECORDS: ContactRecordRows = {
     prospects: [
@@ -101,7 +103,10 @@ describe('the four kinds of 2026-10-13 (rows as R0’s SQL PR shapes them)', () 
     supplyHouses: [{ id: 'sh-hill', name: 'Hill Country Pipe Supply' }],
     supplyHouseContacts: [{ id: 'shc-maria', supply_house_id: 'sh-hill', name: 'Maria Soto' }],
     teamProspects: [{ id: 'tp-luis', name: 'Luis Ortega' }],
-    people: [{ id: 'p-tony', name: 'Tony Reyes' }],
+    people: [
+      { id: 'p-tony', name: 'Tony Reyes' },
+      { id: 'p-robert', name: 'Robert Douglas' },
+    ],
   }
   const four = contactsFromRows(ROWS, [], [], RECORDS)
 
@@ -114,6 +119,7 @@ describe('the four kinds of 2026-10-13 (rows as R0’s SQL PR shapes them)', () 
       { table: 'supply_house_contacts', id: 'shc-maria' },
       { table: 'team_prospects', id: 'tp-luis' },
       { table: 'people', id: 'p-tony' },
+      { table: 'people', id: 'p-robert' },
     ])
   })
 
@@ -128,6 +134,7 @@ describe('the four kinds of 2026-10-13 (rows as R0’s SQL PR shapes them)', () 
       ['c-maria', 'supply_house', 'Maria Soto', 'Hill Country Pipe Supply'],
       ['c-luis', 'candidate', 'Luis Ortega', ''],
       ['c-tony', 'sub', 'Tony Reyes', ''],
+      ['c-robert', 'team', 'Robert Douglas', ''],
     ])
   })
 
@@ -136,10 +143,14 @@ describe('the four kinds of 2026-10-13 (rows as R0’s SQL PR shapes them)', () 
     expect(contactFromRows({ ...base, id: 'c-unknown', kind: 'lead' }, SPINE_CHANNELS, [], RECORDS)).toMatchObject({ kind: 'lead', record: null, name: '(830) 555-0199' })
   })
 
-  it('a sub on the roster loads as the kind kindOf gives from the roster', () => {
+  it('a sub on the roster loads as the kind kindOf gives from the roster, and so does a teammate', () => {
     const tony = contactById(four, 'c-tony')!
     expect(kindOf(tony.record!, 'sub')).toBe(tony.kind)
     expect(firstName(tony)).toBe('Tony')
+    const robert = contactById(four, 'c-robert')!
+    expect(robert.kind).toBe('team')
+    expect(kindOf(robert.record!, 'dev')).toBe('team')
+    expect(firstName(robert)).toBe('Robert')
   })
 
   it('Who is this? finds Ray by his name on the house’s row, and Maria as her own rep', () => {
