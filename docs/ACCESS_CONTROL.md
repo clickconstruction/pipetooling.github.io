@@ -90,7 +90,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 One real user per imitable role (every role but dev), flagged `users.is_sample` (v2.3606):
 `sample-<role>@samples.pipetooling.local`, no phone, no pay config, no schedule. Hidden from
 every roster, picker, Person rail, review deck and notification fan-out exactly as digital twins
-are (`isActiveRosterPerson` / `activeUsersQuery` drop the flag, and since v2.5515 the thread's **Hand it to** list and the New lane card's team read add the same two predicates; the email dispatch functions
+are (`isActiveRosterPerson` / `activeUsersQuery` drop the flag, and since v2.5515 the thread's **Hand it to** list and the New lane card's team read, and since v2.5539 the two pickers on Settings → Phone and texts, add the same two predicates; the email dispatch functions
 filter `is_sample = false`; the pay lists take the `roster_people` view's verdict — see
 *The roster view* below); their home is Settings → System → *Digital twins & samples* (v2.3705;
 `SampleAccountsCard`, `lib/sampleAccounts.ts`), where a dev makes the missing ones (`create-user`

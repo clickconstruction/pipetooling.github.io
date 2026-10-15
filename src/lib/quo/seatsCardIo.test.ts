@@ -20,7 +20,7 @@ function fakeClient(results: { setting?: Result; users?: Result; update?: Result
       let updating = false
       const result = (): Result => (updating ? results.update : table === 'users' ? results.users : results.setting) ?? { data: null, error: null }
       const chain: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'in', 'order']) {
+      for (const m of ['select', 'eq', 'in', 'is', 'order']) {
         chain[m] = (...args: unknown[]) => {
           calls.push([m, ...args])
           return chain
@@ -52,6 +52,15 @@ describe('the company phone seats’ read and write', () => {
     expect(read.seats).toEqual([{ quoUserId: 'USrosa2', userId: ROSA }])
     expect(read.team).toEqual([{ id: ROSA, name: 'Rosa', role: 'assistant' }])
     expect(calls).toContainEqual(['eq', 'key', 'messages_quo_seats_v1'])
+  })
+
+  it('lists only the active office team: no archived person, twin or sample account (v2.5539)', async () => {
+    const { client, calls } = fakeClient({ setting: { data: null, error: null }, users: { data: [], error: null } })
+    await supabaseQuoSeatsIo(client).load()
+    expect(calls).toContainEqual(['in', 'role', ['dev', 'master_technician', 'assistant', 'controller', 'estimator']])
+    expect(calls).toContainEqual(['is', 'archived_at', null])
+    expect(calls).toContainEqual(['eq', 'is_digital_twin', false])
+    expect(calls).toContainEqual(['eq', 'is_sample', false])
   })
 
   it('reads no seats from a row not there yet', async () => {

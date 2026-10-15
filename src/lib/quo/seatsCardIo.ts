@@ -2,7 +2,8 @@
  * Messages, cut 5's screens: Company phone seats' read and its one write, beside cut 2's Who gets a new message
  * (`messages/assignRuleIo.ts`) in Settings → Phone and texts, and written the same way. The seats are `app_settings`'s
  * `messages_quo_seats_v1`: cut 5's migration made the row, and its policy lets the owner and a dev update it and
- * nothing else, so a save that comes back with no row was refused. The people are the GC office team, from `users`.
+ * nothing else, so a save that comes back with no row was refused. The people are the active GC office team, from
+ * `users`: not archived, not a digital twin, not a sample account, the predicates `activeUsersQuery` reads with (v2.5539).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
@@ -27,7 +28,7 @@ export function supabaseQuoSeatsIo(client: SupabaseClient<Database> = supabase):
     async load() {
       const [setting, users] = await Promise.all([
         client.from('app_settings').select('value_text').eq('key', APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1).maybeSingle(),
-        client.from('users').select('id, name, role').in('role', OFFICE_ROLES).order('name'),
+        client.from('users').select('id, name, role').in('role', OFFICE_ROLES).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false).order('name'),
       ])
       checkSupabaseError(setting, 'read the company phone seats')
       checkSupabaseError(users, 'read the office team')
