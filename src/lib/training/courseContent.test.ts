@@ -119,9 +119,9 @@ describe('parseLesson', () => {
     expect(l.mustKnow).toHaveLength(4)
     expect(l.numbers[0]).toEqual({ value: '5 ft', label: 'a system' })
     expect(l.questions).toHaveLength(4)
-    expect(l.questions[1].id).toBe('03-a-fixture#2')
-    expect(l.questions[1].options.findIndex((o) => o.right)).toBe(1)
-    expect(l.questions[0].rightWhy).toBe('Yes.')
+    expect(l.questions[1]?.id).toBe('03-a-fixture#2')
+    expect(l.questions[1]?.options.findIndex((o) => o.right)).toBe(1)
+    expect(l.questions[0]?.rightWhy).toBe('Yes.')
   })
 
   it('refuses a question with two right options, five options, a missing why, or an unknown line', () => {
@@ -152,7 +152,7 @@ describe('plain words over a lesson', () => {
     const l = parseLesson(FIXTURE, '03-a-fixture')
     const long = { ...l, mustKnow: ['one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone.'] }
     expect(lessonPlainWordsFailures(long)[0]).toMatch(/^03-a-fixture must know 1: 21 words/)
-    const glued = { ...l, questions: [{ ...l.questions[0], ask: 'Which (of these) is right?' }, ...l.questions.slice(1)] }
+    const glued = { ...l, questions: l.questions.map((q, i) => (i === 0 ? { ...q, ask: 'Which (of these) is right?' } : q)) }
     expect(lessonPlainWordsFailures(glued)[0]).toMatch(/^03-a-fixture question 1: glued/)
     const numberGlue = { ...l, numbers: [{ value: '5 ft', label: 'a system · a box' }] }
     expect(lessonPlainWordsFailures(numberGlue)[0]).toMatch(/number 1: glued label/)
@@ -187,7 +187,7 @@ describe('the final check', () => {
     for (const q of drawn) allRight[q.id] = q.options.findIndex((o) => o.right)
     expect(gradeFinalCheck(drawn, allRight, 6)).toEqual({ right: 8, total: 8, passed: true, missed: [] })
     const picks = { ...allRight }
-    for (const q of drawn.slice(0, 3)) picks[q.id] = (allRight[q.id] + 1) % 4
+    for (const q of drawn.slice(0, 3)) picks[q.id] = ((allRight[q.id] ?? 0) + 1) % 4
     const r = gradeFinalCheck(drawn, picks, 6)
     expect(r.right).toBe(5)
     expect(r.passed).toBe(false)
@@ -196,7 +196,7 @@ describe('the final check', () => {
   })
 
   it('shuffleOptions keeps the one right option and seededRandom is stable', () => {
-    const q = parseLesson(FIXTURE, '01-a').questions[0]
+    const q = parseLesson(FIXTURE, '01-a').questions[0]!
     const s = shuffleOptions(q, 3)
     expect(s.options.filter((o) => o.right)).toHaveLength(1)
     expect(s.options.map((o) => o.text).sort()).toEqual(q.options.map((o) => o.text).sort())

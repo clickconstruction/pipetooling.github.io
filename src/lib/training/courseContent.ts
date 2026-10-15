@@ -135,7 +135,7 @@ function parseNumbers(items: string[], where: string): CourseNumber[] {
   return items.map((item) => {
     const m = NUMBER_ITEM.exec(item)
     if (!m) fail(where, `a Numbers item is not "**value** label": ${item}`)
-    return { value: m[1].trim(), label: m[2].trim() }
+    return { value: (m[1] ?? '').trim(), label: (m[2] ?? '').trim() }
   })
 }
 
@@ -163,21 +163,21 @@ export function parseQuestions(lines: string[], where: string, idPrefix: string,
     const q = QUESTION_START.exec(line)
     if (q) {
       close()
-      const n = Number.parseInt(q[1], 10)
+      const n = Number.parseInt(q[1] ?? '', 10)
       if (n !== out.length + 1) fail(where, `question numbers must run 1, 2, 3… (found ${n} after ${out.length})`)
-      cur = { n, ask: q[2].trim(), options: [], rightWhy: '', wrongWhy: '' }
+      cur = { n, ask: (q[2] ?? '').trim(), options: [], rightWhy: '', wrongWhy: '' }
       continue
     }
     if (!cur) fail(where, `a line before the first question: ${line}`)
     const o = OPTION_LINE.exec(line)
     if (o) {
-      cur.options.push({ text: o[2].trim(), right: o[1] !== ' ' })
+      cur.options.push({ text: (o[2] ?? '').trim(), right: (o[1] ?? ' ') !== ' ' })
       continue
     }
     const w = WHY_LINE.exec(line)
     if (w) {
-      if (w[1] === 'right') cur.rightWhy = w[2].trim()
-      else cur.wrongWhy = w[2].trim()
+      if (w[1] === 'right') cur.rightWhy = (w[2] ?? '').trim()
+      else cur.wrongWhy = (w[2] ?? '').trim()
       continue
     }
     fail(where, `question ${cur.n} holds a line that is not an option or a why: ${line}`)
@@ -199,7 +199,8 @@ export function bodySections(body: string): Array<{ heading: string; lines: stri
       if (raw.trim()) throw new Error(`text before the first ## heading: ${raw}`)
       continue
     }
-    sections[sections.length - 1].lines.push(raw)
+    const last = sections[sections.length - 1]
+    if (last) last.lines.push(raw)
   }
   return sections
 }
@@ -209,7 +210,7 @@ const LESSON_FILE = /^(\d{2})-([a-z0-9-]+)$/
 export function parseLesson(source: string, key: string): CourseLesson {
   const m = LESSON_FILE.exec(key)
   if (!m) fail(key, 'a lesson file is named NN-<slug>.md')
-  const order = Number.parseInt(m[1], 10)
+  const order = Number.parseInt(m[1] ?? '', 10)
   const { fields, body } = parseHelpGuideFrontmatter(source)
   const title = (fields.title ?? '').trim()
   if (!title) fail(key, 'missing frontmatter "title"')
@@ -230,6 +231,7 @@ export function parseLesson(source: string, key: string): CourseLesson {
     fail(key, `sections must be exactly: ${LESSON_SECTIONS.map((s) => `## ${s}`).join(', ')} (found: ${headings.map((h) => `## ${h}`).join(', ') || 'none'})`)
   }
   const [why, mustKnow, traps, numbers, check] = sections
+  if (!why || !mustKnow || !traps || !numbers || !check) fail(key, 'the five sections are missing')
   const lesson: CourseLesson = {
     key,
     order,
@@ -274,9 +276,9 @@ function parseCourseMeta(source: string, slug: string): Omit<Course, 'lessons' |
     if (!l) continue
     const m = PART_LINE.exec(l)
     if (!m) fail(`${slug}/course.md`, `a Parts line is "N. Name": ${l}`)
-    const n = Number.parseInt(m[1], 10)
+    const n = Number.parseInt(m[1] ?? '', 10)
     if (n !== parts.length) fail(`${slug}/course.md`, `parts run 0, 1, 2… (found ${n} after ${parts.length - 1})`)
-    parts.push({ n, name: m[2].trim() })
+    parts.push({ n, name: (m[2] ?? '').trim() })
   }
   if (parts.length < 2) fail(`${slug}/course.md`, 'a course has at least two parts')
   return { slug, title, summary, line, finalDraw, finalPass, parts }
@@ -310,7 +312,7 @@ export function contentVersionOf(sources: string[]): string {
 export function courseFileFromGlobPath(path: string): { slug: string; file: string } | null {
   const m = /([a-z0-9-]+)\/([A-Za-z0-9-]+)\.md$/.exec(path)
   if (!m) return null
-  return { slug: m[1], file: m[2] }
+  return { slug: m[1] ?? '', file: m[2] ?? '' }
 }
 
 /**
@@ -413,7 +415,9 @@ export function shuffled<T>(items: readonly T[], rnd: () => number): T[] {
   const out = [...items]
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1))
-    ;[out[i], out[j]] = [out[j], out[i]]
+    const a = out[i] as T
+    out[i] = out[j] as T
+    out[j] = a
   }
   return out
 }
@@ -472,5 +476,7 @@ export function courseProgress(course: Course, passedLessonKeys: ReadonlySet<str
 
 /** The lesson a course opens on: the first not yet passed, else the first. */
 export function lessonToOpen(course: Course, passedLessonKeys: ReadonlySet<string>): CourseLesson {
-  return course.lessons.find((l) => !passedLessonKeys.has(l.key)) ?? course.lessons[0]
+  const first = course.lessons[0]
+  if (!first) throw new Error(`Training content "${course.slug}": has no lessons`)
+  return course.lessons.find((l) => !passedLessonKeys.has(l.key)) ?? first
 }

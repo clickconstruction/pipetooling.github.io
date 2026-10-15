@@ -119,6 +119,6 @@ describe('the words', () => {
       ['trench-tailgate', 'green'],
     ])
     expect(worstColour(standings)).toBe('red')
-    expect(standingCounts([standings[0], standings[1], null, courseStanding(osha, [{ slug: osha.slug, passedOn: '2025-10-03', contentVersion: 'a' }], 'helpers', TODAY)])).toEqual({ current: 1, lapsed: 1, notDone: 1 })
+    expect(standingCounts([standings[0] ?? null, standings[1] ?? null, null, courseStanding(osha, [{ slug: osha.slug, passedOn: '2025-10-03', contentVersion: 'a' }], 'helpers', TODAY)])).toEqual({ current: 1, lapsed: 1, notDone: 1 })
   })
 })
