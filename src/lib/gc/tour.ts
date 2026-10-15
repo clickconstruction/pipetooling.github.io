@@ -73,9 +73,12 @@ export const GC_NEW_HERE_STEPS: SpotlightTourStep[] = [
     missingBody: 'This project has none.',
   },
   {
+    // The stop names only the control inside its hole (v2.5554, the owner's words of 2026-10-15): the
+    // two doors it used to name, step 4 of New project and Save as a set on a trade, are not on
+    // screen while the walk is open, and the guide the last stop links to has both.
     anchor: 'gc-scope-book',
     title: 'The scope book',
-    body: 'The scope book keeps the scope lines we use for each trade. Step 4 of New project pulls lines from it. Press Save as a set on a trade to keep its lines for the next job.',
+    body: 'The scope book keeps every scope line we use, trade by trade. Press Open the scope book to read or change them. Projects can have many different scopes covered by many different trades.',
   },
   {
     anchor: 'gc-new-here',

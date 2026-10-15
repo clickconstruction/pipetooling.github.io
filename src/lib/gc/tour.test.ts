@@ -63,7 +63,6 @@ describe('New here? on the GC projects page', () => {
       'Make the Drive folder',
       'Check again',
       'Open the scope book',
-      'Save as a set',
       'New here?',
       'Trades',
     ]
