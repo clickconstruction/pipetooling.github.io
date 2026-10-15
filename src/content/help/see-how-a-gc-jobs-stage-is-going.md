@@ -13,7 +13,7 @@ The strip shows once the job's ring on the board has read the job. Today the off
 
 - The chip says **On track**, **Watch** or **Behind**. The words beside it say why. The block takes the chip's colour.
 - The numbers sit under the chip. They say how far the stage has come.
-- **The clock** shows each day of the stage. Its deadlines sit under their days.
+- **The clock** shows each day of the stage. Each week runs Sunday to Saturday. Its deadlines sit under their days.
 - Under **The trades**, each trade is a row. Its left edge is green when done, amber when it needs a look, and red when late. Violet is our own crew.
 - The row says who is asked, where the trade stands and the one thing to press. Its scope lines, its statement of work and its asks sit under it.
 - Press the arrow at the end of a row to fold it. Press it again to open it.

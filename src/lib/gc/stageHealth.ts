@@ -66,7 +66,7 @@ export interface CalendarDay {
   events: string[]
 }
 
-/** One week of a long stage: building is drawn a square a week. */
+/** One week of a long stage, Sunday to Saturday: building is drawn a square a week. */
 export interface CalendarWeek {
   start: string
   month: number
@@ -81,7 +81,7 @@ export interface CalendarWeek {
 
 export interface StageCalendar {
   mode: 'days' | 'weeks'
-  /** Days mode: the stage's weeks, Monday to Sunday. */
+  /** Days mode: the stage's weeks, Sunday to Saturday (v2.5558; Monday to Sunday before). */
   weeks: CalendarDay[][]
   /** Weeks mode: one square a week. */
   squares: CalendarWeek[]
@@ -493,7 +493,8 @@ function weekday(on: string): number {
   return (new Date(`${on}T12:00:00Z`).getUTCDay() + 6) % 7
 }
 
-const mondayOfDay = (on: string) => addDay(on, -weekday(on))
+/** The Sunday a day's week starts on: the clock's weeks run Sunday to Saturday (the owner, 2026-10-15, v2.5558). */
+const sundayOfDay = (on: string) => addDay(on, -new Date(`${on}T12:00:00Z`).getUTCDay())
 
 /** Working days from today to the day, counting both (a weekend today counts from Monday). */
 export function workingDaysLeft(today: string, until: string): number {
@@ -502,14 +503,14 @@ export function workingDaysLeft(today: string, until: string): number {
   return n
 }
 
-/** The days from one Monday to the Sunday after the last day, each set out as a blank. */
+/** The days from one Sunday to the Saturday after the last day, each set out as a blank. */
 function blankWeeks(from: string, to: string, today: string): CalendarDay[][] {
   const weeks: CalendarDay[][] = []
-  for (let monday = mondayOfDay(from); monday <= to; monday = addDay(monday, 7)) {
+  for (let sunday = sundayOfDay(from); sunday <= to; sunday = addDay(sunday, 7)) {
     weeks.push(
       Array.from({ length: 7 }, (_, i) => {
-        const on = addDay(monday, i)
-        return { on, inStage: on >= from && on <= to, weekend: i >= 5, past: on < today, today: on === today, came: [], questions: 0, promised: [], events: [] }
+        const on = addDay(sunday, i)
+        return { on, inStage: on >= from && on <= to, weekend: i === 0 || i === 6, past: on < today, today: on === today, came: [], questions: 0, promised: [], events: [] }
       }),
     )
   }
@@ -631,10 +632,10 @@ const BUYOUT_WEEKS_BACK = 3
 function buyoutCalendar(state: GcState, project: GcProject): StageCalendar {
   const today = state.today
   const won = project.ownerContractSignedOn ?? project.ourBidSentOn ?? today
-  const from = won < addDay(mondayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) ? addDay(mondayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) : won
+  const from = won < addDay(sundayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) ? addDay(sundayOfDay(today), -7 * (BUYOUT_WEEKS_BACK - 1)) : won
   const start = project.startDate
   // With no start date, two weeks past this one, to their Sunday, drawn open.
-  const to = start ?? addDay(mondayOfDay(addDay(today, 13)), 6)
+  const to = start ?? addDay(sundayOfDay(addDay(today, 13)), 6)
   const weeks = blankWeeks(from, to, today)
   const at = (on: string) => dayOf(weeks, on)
   if (project.ownerContractSignedOn) {
@@ -695,19 +696,19 @@ function buildingCalendar(state: GcState, project: GcProject, startOn: string, e
   const rows = milestoneRows(state, project)
   const lastOn = endOn ?? addDay(today, 28)
   const squares: CalendarWeek[] = []
-  const thisMonday = mondayOfDay(today)
-  for (let monday = mondayOfDay(startOn); monday <= lastOn; monday = addDay(monday, 7)) {
+  const thisSunday = sundayOfDay(today)
+  for (let sunday = sundayOfDay(startOn); sunday <= lastOn; sunday = addDay(sunday, 7)) {
     squares.push({
-      start: monday,
-      month: new Date(`${monday}T12:00:00Z`).getUTCMonth(),
-      past: monday < thisMonday,
-      current: monday === thisMonday,
+      start: sunday,
+      month: new Date(`${sunday}T12:00:00Z`).getUTCMonth(),
+      past: sunday < thisSunday,
+      current: sunday === thisSunday,
       inStage: true,
       marks: [],
       events: [],
     })
   }
-  const week = (on: string) => squares.find((w) => w.start === mondayOfDay(on))
+  const week = (on: string) => squares.find((w) => w.start === sundayOfDay(on))
   const nextDue = rows.filter((r) => r.state === 'due').sort((a, b) => (a.due < b.due ? -1 : 1))[0]
   for (const r of rows) {
     const isFinish = /substantial/i.test(r.milestone.label)

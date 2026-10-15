@@ -2,7 +2,7 @@
 title: see where every company stands and who is late
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: trade partners, customers, by step, by company, by trade, board, flow, steps, late, lapsed, over usual, waiting, needs a hand, tiles, papers, quote, remind, ask for papers, off the flow, portal
+keywords: trade partners, customers, by step, by company, by trade, board, flow, steps, late, lapsed, over usual, waiting, needs a hand, bands, papers, quote, remind, ask for papers, off the flow, portal
 order: 95
 ---
 By step shows every trade partner and customer on the step of the flow they are on. The late ones come first, in red. One look tells you who needs a call today.
@@ -15,28 +15,28 @@ By step shows every trade partner and customer on the step of the flow they are 
 
 The steps come in the order of the flow. The first group is the steps a company goes through once. The second group repeats for each job.
 
-## Read the tiles
+## Read the bands
 
-The tiles at the top add up the whole board. Each tile counts companies, so a company asked on two jobs counts once.
+The board is three bands, in the order of the flow. Each band is one part of the flow, in the Project Board's colour for that part.
 
-- **Getting set up**, **Quoting** and **Building** each show how many companies are in that part of the flow.
-- Each company is a dot on its tile. A gray dot is fine. An orange dot is over the usual time, or a paper ran out. A red dot is late.
-- **Off the flow** counts the companies that passed, went elsewhere or were let go.
-- **Needs a hand today** counts the late ones and the lapsed ones. The late and the lapsed are the calls to make today.
+- **Getting set up**, **Quoting** and **Building** each count the companies in that part of the flow. A company asked on two jobs counts once.
+- Each company is a dot on its band. A gray dot is fine. An orange dot is over the usual time, or a paper ran out. A red dot is late.
+- The band also says how many are late or lapsed, and which jobs it covers.
 
-Over usual is only a watch. Over usual never counts toward **Needs a hand today**, and it never reaches Follow up.
+Above the bands, one line says who needs a hand today. The late and the lapsed are the calls to make today. The line also counts who waits on someone else, who is over usual, and who is off the flow.
 
-1. Press a tile to jump to its first step.
-2. Press a dot to open that company.
-3. Press **Needs a hand today** to open Follow up at **We are waiting on them**.
+Over usual is only a watch. Over usual never counts toward needing a hand, and it never reaches Follow up.
 
-:::example The tiles
-{{chip:gray|5 Getting set up}} {{chip:gray|5 Quoting on 2 bids}} {{chip:gray|4 Building}} {{chip:red|1 late}} {{chip:yellow|3 over usual}}
+1. Press a dot to open that company.
+2. Press **Open Follow up →** on the line to open Follow up at **We are waiting on them**.
+
+:::example The bands
+{{chip:gray|Getting set up · 5 companies}} {{chip:gray|Quoting · 5 companies · on 2 bids}} {{chip:gray|Building · 4 companies}} {{chip:red|1 late}} {{chip:yellow|3 over usual}}
 :::
 
 ## Read a step
 
-Each step has a row. The counts for the step sit under the step's name. You see how many are on it, how many are late and how many are lapsed. You also see the step's usual time.
+Each step has a row inside its band. Under the step's name you see whose move it is. You also see how many are late or lapsed, and the step's usual time.
 
 Each company on the step is a chip with its day.
 
@@ -46,9 +46,9 @@ Each company on the step is a chip with its day.
 - {{chip:yellow|insurance expired}} finished the step once, and a paper has run out since.
 - {{chip:blue|waiting on Jonah}} waits on someone else's step, so there is nothing to ask them.
 
-Asked to quote shows one chip for each job. The chips of a job sit together under the job's name. The job's due day shows once when they share it.
+Asked to quote shows one chip for each job. Each job has its own line, named once, with the due day when they share it.
 
-Steps nobody is on fold into one line. The line says what lands there next.
+A step nobody is on keeps its row. The row says what lands there next.
 
 ## Act from a row
 
@@ -67,7 +67,7 @@ Nothing goes to a company until you press Send.
 
 ## Narrow the board
 
-1. Pick a job in the list that starts on All jobs. Every row and tile keeps that job only.
+1. Pick a job in the list that starts on All jobs. Every row and band keeps that job only.
 2. Pick a seat in the list that starts on Everyone's seat. You see the steps in that person's seat, and every step that is theirs to move.
 3. Pick All jobs and Everyone's seat again to see everyone.
 
@@ -97,7 +97,7 @@ The late ones come first, in red. The companies off the flow come last. A compan
 1. Open [Customers](/gc?view=customers).
 2. Press {{button:outline|By step}} or {{button:outline|By company}}.
 
-The steps follow the customer's flow. The tiles read **Setting up**, **Bidding** and **Building**. A change order counts under Building.
+The steps follow the customer's flow. The bands read **Setting up**, **Bidding** and **Building**. A change order counts under Building.
 
 In By company, the **Portal** column says when the customer last opened their page. The column reads today, 3 d ago or never. Opens by our own office never count.
 
