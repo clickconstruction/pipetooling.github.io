@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { GC_NEW_HERE_STEPS, gcNewHereTarget } from './tour'
 
-/** The page and its windows, as source: every anchor and every label a stop names must be in it. */
+/** The page, its windows and the card head's kernel (v2.5544: the head's doors and their anchors are named in `cardHead.ts`), as source: every anchor and every label a stop names must be in it. */
 const ROOT = join(__dirname, '..', '..')
 const SOURCE = [
   readFileSync(join(ROOT, 'pages', 'GcProjects.tsx'), 'utf8'),
+  readFileSync(join(ROOT, 'lib', 'gc', 'cardHead.ts'), 'utf8'),
   ...readdirSync(join(ROOT, 'components', 'gc'))
     .filter((f) => f.endsWith('.tsx') && !f.includes('.test.'))
     .map((f) => readFileSync(join(ROOT, 'components', 'gc', f), 'utf8')),
@@ -29,8 +30,8 @@ describe('New here? on the GC projects page', () => {
   })
 
   it('finds every anchor on the page, so moving a button keeps its name', () => {
-    // As written: `data-tour="…"`, `dataTour="…"`, or the page's first-card helper `tour('…')`.
-    const forms = (anchor: string) => [`data-tour="${anchor}"`, `dataTour="${anchor}"`, `tour('${anchor}')`]
+    // As written: `data-tour="…"`, `dataTour="…"`, the page's first-card helper `tour('…')`, or a head door's `tour: '…'`.
+    const forms = (anchor: string) => [`data-tour="${anchor}"`, `dataTour="${anchor}"`, `tour('${anchor}')`, `tour: '${anchor}'`]
     for (const { anchor } of GC_NEW_HERE_STEPS) {
       expect(forms(anchor).some((f) => SOURCE.includes(f)), anchor).toBe(true)
     }

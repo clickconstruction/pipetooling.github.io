@@ -120,6 +120,8 @@ import { GcRoundOpenerContext, type RoundOpener, type RoundSpec } from '../compo
 import { companyAtForStep, customerAtForStep } from '../lib/flows/boardOpen'
 import { roundDetailFromProject } from '../lib/flows/roundDetail'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
+import { GcCardHead } from '../components/gc/GcCardHead'
+import { cardStageOf, type DoorKey } from '../lib/gc/cardHead'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { ClauseNeedRows } from '../components/contracts/ClauseNeedRows'
@@ -2057,112 +2059,87 @@ export default function GcProjects() {
         const tabs = boardProject ? boardProject.packages.filter(packageHasTab).length : 0
         return (
           <div key={p.id} data-gc-project={p.id} data-tour={tour('gc-project-card')} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }}>
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: '1.02rem' }}>{p.name}</strong>
-              <Chip tone={justMade === p.id ? 'green' : 'grey'}>{p.stage}</Chip>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.address}</span>
-              {p.bidDue && <span style={{ fontSize: '0.85rem' }}>bid due {p.bidDue}</span>}
-              <Btn kind="quiet" dataTour={tour('gc-plans')} onClick={() => setPlansWindow(p.id)}>
-                The plans
-              </Btn>
-              {/* Papers on this job (Messages cut 4): the office team's, the flows' read's audience. */}
-              {canOpenGcProjects(role) && (
-                <Btn kind="quiet" onClick={() => setPapersWindow(p.id)}>
-                  Papers
-                </Btn>
-              )}
-              <Btn kind="quiet" dataTour={tour('gc-questions')} onClick={() => setQuestionsWindow(p.id)}>
-                Questions about the plans{openQuestions(p).length > 0 ? ` · ${openQuestions(p).length} open` : ''}
-              </Btn>
-              {!p.lostOn && (
-                <Btn kind="quiet" dataTour={tour('gc-new-set')} onClick={() => setSetWindow(p.id)}>
-                  A new set of plans came in
-                </Btn>
-              )}
-              {role === 'dev' && board && (
-                <Btn kind="quiet" onClick={() => setScheduleWindow(p.id)}>
-                  Schedule
-                </Btn>
-              )}
-              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
-                  {(() => {
-                    const count = changeOrderRows.filter((r) => r.project_id === p.id).length
-                    return count > 0 ? `Change orders · ${count}` : 'Change orders'
-                  })()}
-                </Btn>
-              )}
-              {/* The daily log (Building's U3a-ii): a dev's, on a job being built (the view's own stage, so a closed job has none). */}
-              {canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setLogWindow(p.id)}>
-                  {(() => {
-                    const project = boardWithLogs.projects.find((x) => x.id === p.id)
-                    const missed = project ? missingLogs(project, today).length : 0
-                    return missed > 0 ? `Daily log · ${missed} missed` : 'Daily log'
-                  })()}
-                </Btn>
-              )}
-              {/* The punch list (Building's U3b-ii): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setPunchWindow(p.id)}>
-                  Punch list
-                </Btn>
-              )}
-              {/* The submittal register (Building's U4b): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setSubmittalsWindow(p.id)}>
-                  Submittals
-                </Btn>
-              )}
-              {/* RFIs (Building's U5b): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setRfisWindow(p.id)}>
-                  RFIs
-                </Btn>
-              )}
-              {/* Draws (Building's U6b): a dev's on the money team, on a job being built. */}
-              {canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setDrawsWindow(p.id)}>
-                  Draws
-                </Btn>
-              )}
-              {/* Closeout (Building's U6d): a dev's on the money team, on a job being built or closed. */}
-              {canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && (p.stage === 'building' || p.stage === 'closed') && (
-                <Btn kind="quiet" onClick={() => setCloseoutWindow(p.id)}>
-                  Closeout
-                </Btn>
-              )}
-              {/* Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is. */}
-              {role === 'dev' && board && (p.stage === 'buyout' || p.stage === 'building') && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setStartWindow(p.id)}>
-                  Get started
-                </Btn>
-              )}
-              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
-                  Bill the customer
-                </Btn>
-              )}
-              {/* Bill day (Messages cut 9): the money team's, on a job being built with a signed trade. */}
-              {canSeeGcMoney(role) && billDayCards.get(p.id) && (
-                <Btn kind="quiet" onClick={() => openBillDay(p.id)} title="Opens Money → Bill day → From the trades on this job.">
-                  {`Bill day · ${billDayCards.get(p.id)?.ok ?? 0} of ${billDayCards.get(p.id)?.gates ?? 7}`}
-                </Btn>
-              )}
-              {(p.sqFt || p.sizeNote) && (
-                <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
-              )}
-              {showNumber && (
-                <Btn kind="quiet" onClick={() => setNumberOpen(numberOpen === p.id ? null : p.id)}>
-                  {numberOpen === p.id ? 'Hide our number' : 'Our number'}
-                </Btn>
-              )}
-              {tabs > 0 && (
-                <Btn kind="quiet" onClick={() => setTabsOpen(tabsOpen === p.id ? null : p.id)}>
-                  {tabsOpen === p.id ? 'Hide the bid tabs' : `Bid tabs (${tabs})`}
-                </Btn>
-              )}
-            </div>
+            {/* The head in shape D (to-do #108, PR 1): the name and the stage, the facts line, and the doors as grouped sets,
+                each with the fact that says whether to open it. The words are `cardHead.ts`'s; the gates are the page's. */}
+            <GcCardHead
+              name={p.name}
+              stageWords={p.stage}
+              stageTone={justMade === p.id ? 'green' : 'grey'}
+              facts={{
+                address: p.address,
+                sqFt: p.sqFt,
+                sizeNote: p.sizeNote,
+                owner: boardProject?.owner ?? null,
+                architect: boardProject?.architect ?? null,
+                stage: cardStageOf(p.stage),
+                bidDue: p.bidDue,
+                startDate: boardProject?.startDate ?? null,
+                startedOn: boardProject?.startedOn ?? null,
+                lostOn: p.lostOn,
+                closedOn: boardProject?.closedOn ?? null,
+                today,
+              }}
+              doors={{
+                stage: cardStageOf(p.stage),
+                lost: Boolean(p.lostOn),
+                can: {
+                  // Papers on this job (Messages cut 4): the office team's, the flows' read's audience.
+                  papers: canOpenGcProjects(role),
+                  schedule: role === 'dev' && Boolean(board),
+                  // Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is.
+                  start: role === 'dev' && Boolean(board),
+                  // The daily log (Building's U3a-ii), the punch list (U3b-ii), the submittals (U4b) and RFIs (U5b): a dev's
+                  // on a job being built; Draws (U6b) and Closeout (U6d) a dev's on the money team.
+                  log: canUseGcBuilding(role) && Boolean(boardWithLogs),
+                  punch: canUseGcBuilding(role) && Boolean(board),
+                  submittals: canUseGcBuilding(role) && Boolean(board),
+                  rfis: canUseGcBuilding(role) && Boolean(board),
+                  draws: canUseGcBuilding(role) && canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  changes: canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  bill: canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  // Bill day (Messages cut 9): the money team's, on a job being built with a signed trade.
+                  billDay: canSeeGcMoney(role) && Boolean(billDayCards.get(p.id)),
+                  closeout: canUseGcBuilding(role) && canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  number: Boolean(showNumber),
+                  tabs: tabs > 0,
+                },
+                counts: {
+                  questionsOpen: openQuestions(p).length,
+                  logMissed: (() => {
+                    const project = boardWithLogs?.projects.find((x) => x.id === p.id)
+                    return project ? missingLogs(project, today).length : 0
+                  })(),
+                  changeOrders: changeOrderRows.filter((r) => r.project_id === p.id).length,
+                  billDayOk: billDayCards.get(p.id)?.ok ?? 0,
+                  billDayGates: billDayCards.get(p.id)?.gates ?? 7,
+                  tabs,
+                },
+                open: { number: numberOpen === p.id, tabs: tabsOpen === p.id },
+              }}
+              tourOn={cardIndex === 0}
+              onDoor={(key) => {
+                const press: Record<DoorKey, () => void> = {
+                  plans: () => setPlansWindow(p.id),
+                  papers: () => setPapersWindow(p.id),
+                  questions: () => setQuestionsWindow(p.id),
+                  newSet: () => setSetWindow(p.id),
+                  schedule: () => setScheduleWindow(p.id),
+                  start: () => setStartWindow(p.id),
+                  log: () => setLogWindow(p.id),
+                  punch: () => setPunchWindow(p.id),
+                  submittals: () => setSubmittalsWindow(p.id),
+                  rfis: () => setRfisWindow(p.id),
+                  draws: () => setDrawsWindow(p.id),
+                  changes: () => setChangesWindow(p.id),
+                  bill: () => setBillWindow(p.id),
+                  billDay: () => openBillDay(p.id),
+                  closeout: () => setCloseoutWindow(p.id),
+                  number: () => setNumberOpen(numberOpen === p.id ? null : p.id),
+                  tabs: () => setTabsOpen(tabsOpen === p.id ? null : p.id),
+                }
+                press[key]()
+              }}
+            />
             {/* How the stage is going (the Board's B2b-vii), under the title: the ring's own state (B2b-vi-c), drawn
                 only for a stage whose every layer this reader has read, so the strip and the ring give one answer. */}
             {(() => {
