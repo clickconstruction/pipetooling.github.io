@@ -53,3 +53,4 @@ salary-sync-open-punch
 count-sources
 helper-on-job
 people-phone
+training
