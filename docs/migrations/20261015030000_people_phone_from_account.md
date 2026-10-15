@@ -1,0 +1,5 @@
+# 20261015030000_people_phone_from_account.sql (2026-10-15, v2.5551)
+
+People: a roster row (`people`) whose phone is blank takes the phone on the account it is linked to (`account_user_id` → `users.phone`, trimmed), an archived account's too, never a sample's or a twin's. Adds `people_phones_from_accounts()` (the once-over, re-runnable, the database's own) and runs it once; adds two `SECURITY DEFINER` trigger functions and the triggers `people_phone_from_account` on `users` (after insert or update of `phone`: fills the linked rows' blank phone) and on `people` (before insert or update of `account_user_id`: a row that gains an account takes its phone when it has none). A phone typed on the roster is never written over; clearing one is left alone. No new table, so no fence calls.
+
+Shipped with v2.5551, after v2.5546 (the teammate kind and its seed) and v2.5549 (`quo_place_number` reads the roster): apply in that order, so a teammate's text from the account's number lands on them. Bed: `npm run test:pg:people-phone`.

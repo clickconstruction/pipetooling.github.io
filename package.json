@@ -95,6 +95,7 @@
     "test:pg:sent-copy-stamps": "bash scripts/pgtest-sent-copy-stamps.sh",
     "test:pg:salary-sync-open-punch": "bash scripts/pgtest-salary-sync-open-punch.sh",
     "test:pg:count-sources": "bash scripts/pgtest-count-sources.sh",
+    "test:pg:people-phone": "bash scripts/pgtest-people-phone.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",
