@@ -56,7 +56,13 @@ export interface ContactRecordRows {
   teamProspects?: readonly Pick<Tables<'team_prospects'>, 'id' | 'name'>[]
 }
 
-const KINDS: ReadonlySet<string> = new Set<ContactKind>(['customer', 'trade', 'arch', 'lead', 'supply_house', 'candidate', 'sub', 'unknown'])
+/**
+ * Every kind this build reads, as a record so a kind added to `ContactKind` fails the typecheck here until the loader
+ * knows it (v2.5552: `team` was missing, and a teammate's thread read as not in Messages while Follow up's lanes held
+ * their lines). `CONTACT_KINDS` in `quo/rows.ts` keeps the webhook the same way.
+ */
+const KNOWN: Record<ContactKind, true> = { customer: true, trade: true, arch: true, lead: true, supply_house: true, candidate: true, sub: true, team: true, unknown: true }
+const KINDS: ReadonlySet<string> = new Set(Object.keys(KNOWN))
 const CHANNEL_KINDS: ReadonlySet<string> = new Set<ChannelKind>(['phone', 'email'])
 
 /** The record a row points at: the one of its nine columns that is set. Null: a number nobody has named. */
@@ -101,7 +107,7 @@ function fromRecord(record: ContactRecord, named: boolean, records: ContactRecor
       const c = byId(records.gcCompanies, p?.company_id)
       return { name: trimmed(p?.name), company: trimmed(c?.name), trade: tradesOf(c) }
     }
-    // Someone on the roster, a sub among them: the kind is the contact's own, and `kindOf` gives it from the roster.
+    // Someone on the roster, a sub or a teammate: the kind is the contact's own, and `kindOf` gives it from the roster.
     case 'people':
       return { ...none, name: trimmed(byId(records.people, record.id)?.name) }
     case 'prospects': {
