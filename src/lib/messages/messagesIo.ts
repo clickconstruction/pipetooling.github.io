@@ -14,7 +14,7 @@ import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import { jobActivityMessagesFromRows, jobTakesUntiedLines, type JobActivityMessage, type JobMessageContact, type JobMessageRow } from '../jobs/jobActivityMessages'
-import type { Contact, ContactKind, ContactRecord } from '../contacts/kernel'
+import { kindOf, type Contact, type ContactKind, type ContactRecord } from '../contacts/kernel'
 import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { loadSentEmailsTo } from '../sent/sentCopiesIo'
 import { factJobKeys, railJobKeys, type InviteJobRow, type ProjectRolesRow } from './factJobs'
@@ -531,7 +531,7 @@ export async function searchContactRecords(words: string): Promise<RecordHit[]> 
     supabase.from('customer_contact_persons').select('id, name, customer_id, customers(name)').ilike('name', like).limit(8),
     supabase.from('gc_companies').select('id, name, contact_name').or(`name.ilike.${like},contact_name.ilike.${like}`).limit(8),
     supabase.from('gc_company_people').select('id, name, gc_companies(name)').ilike('name', like).is('removed_at', null).limit(8),
-    supabase.from('people').select('id, name').ilike('name', like).is('archived_at', null).limit(8),
+    supabase.from('people').select('id, name, kind').ilike('name', like).is('archived_at', null).limit(8),
   ])
   const embedded = (v: unknown) => (Array.isArray(v) ? (v[0] as { name?: string } | undefined)?.name : (v as { name?: string } | null)?.name) ?? ''
   return [
@@ -547,8 +547,9 @@ export async function searchContactRecords(words: string): Promise<RecordHit[]> 
     ...taken(customers as Result<{ id: string; name: string }[]>, 'find the customers').map(
       (c): RecordHit => ({ record: { table: 'customers', id: c.id }, label: c.name, sub: 'Customer', kind: 'customer' }),
     ),
-    ...taken(people as Result<{ id: string; name: string }[]>, 'find the roster').map(
-      (p): RecordHit => ({ record: { table: 'people', id: p.id }, label: p.name, sub: 'On the roster', kind: 'trade' }),
+    // A roster row is a sub or one of our own team, as the roster says (v2.5546); the window shows the kind, it is not picked.
+    ...taken(people as Result<{ id: string; name: string; kind: string | null }[]>, 'find the roster').map(
+      (p): RecordHit => ({ record: { table: 'people', id: p.id }, label: p.name, sub: p.kind === 'sub' ? 'On the roster · a sub' : 'On the roster · one of our own team', kind: kindOf({ table: 'people', id: p.id }, p.kind) }),
     ),
   ]
 }

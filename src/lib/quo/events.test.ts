@@ -378,6 +378,17 @@ describe('a text into the thread', () => {
 })
 
 describe('a call, merged from its events', () => {
+  it('names a call the shared office seat took as the office, with no user of ours (v2.5548)', () => {
+    const office = ctx({ users: { 'US-robert': { userId: null, name: 'the office' } } })
+    const line = fold([ANSWERED.completed, ANSWERED.recording, ANSWERED.transcript, ANSWERED.summary], office)
+    expect(line).toMatchObject({
+      who: 'the office answered',
+      whoUserId: null,
+      transcript: 'Greg: I will price the Boerne sitework by Wednesday.\nthe office: Striping is listed under Sitework.',
+    })
+    expect(quoSentWho('US-robert', office.users)).toBe('the office · from the company number')
+  })
+
   it('writes Robert’s answered call with its summary, transcript and recording', () => {
     const line = fold([ANSWERED.completed, ANSWERED.recording, ANSWERED.transcript, ANSWERED.summary], ctx())
     expect(line).toEqual({

@@ -138,9 +138,9 @@ export function rowFromLine(line: QuoLine, jobs: readonly JobAt[]): { ok: true; 
 }
 
 /** Every kind a contact can be, so a kind added to `ContactKind` fails the typecheck here until it is read. */
-const CONTACT_KINDS: Record<ContactKind, true> = { customer: true, trade: true, arch: true, lead: true, supply_house: true, candidate: true, sub: true, unknown: true }
+const CONTACT_KINDS: Record<ContactKind, true> = { customer: true, trade: true, arch: true, lead: true, supply_house: true, candidate: true, sub: true, team: true, unknown: true }
 
-/** A contact's kind as `quo_place_number` answers it: any of the seven kinds, else a number nobody has named. */
+/** A contact's kind as `quo_place_number` answers it: any of the eight kinds, else a number nobody has named. */
 export function contactKindOf(raw: string | null | undefined): ContactKind {
   return raw && Object.prototype.hasOwnProperty.call(CONTACT_KINDS, raw) ? (raw as ContactKind) : 'unknown'
 }
@@ -160,21 +160,38 @@ export function seatsSource(row: string | null | undefined, secret: string | und
 }
 
 /**
- * Quo's seats (`{"US…": "<user id>"}`, from `seatsSource`) with the users' names. A seat whose user is not found, or
- * words that are not JSON, give nothing.
+ * A seat shared by the office (v2.5548): the row's value in place of a user id when one Quo login is signed in on
+ * several phones. Its lines name `SHARED_SEAT_NAME` and carry no user of ours, and a sender with no seat of their own
+ * texts as it (`seatOf`).
+ */
+export const SEAT_SHARED = 'office'
+export const SHARED_SEAT_NAME = 'the office'
+
+/** Whether a seat's value is the office's shared seat rather than a person. */
+export function isSharedSeat(userId: string | null | undefined): boolean {
+  return userId === SEAT_SHARED
+}
+
+/**
+ * Quo's seats (`{"US…": "<user id>"}`, from `seatsSource`) with the users' names; `SEAT_SHARED` reads as the office,
+ * with no user of ours. A seat whose user is not found, or words that are not JSON, give nothing.
  */
 export function quoSeats(raw: string | undefined, users: readonly { id: string; name: string | null }[]): QuoPlanContext['users'] {
-  const out: Record<string, { userId: string; name: string }> = {}
+  const out: Record<string, { userId: string | null; name: string }> = {}
   for (const [quoUserId, userId] of seatPairs(raw)) {
+    if (isSharedSeat(userId)) {
+      out[quoUserId] = { userId: null, name: SHARED_SEAT_NAME }
+      continue
+    }
     const user = users.find((u) => u.id === userId)
     if (user) out[quoUserId] = { userId: user.id, name: user.name?.trim() || 'Someone' }
   }
   return out
 }
 
-/** The user ids the seats name, for the one read of their names. */
+/** The user ids the seats name, for the one read of their names; the shared seat names nobody. */
 export function quoSeatUserIds(raw: string | undefined): string[] {
-  return [...new Set(seatPairs(raw).map(([, userId]) => userId))]
+  return [...new Set(seatPairs(raw).map(([, userId]) => userId).filter((id) => !isSharedSeat(id)))]
 }
 
 function seatPairs(raw: string | undefined): Array<[string, string]> {
@@ -188,9 +205,13 @@ function seatPairs(raw: string | undefined): Array<[string, string]> {
   return Object.entries(parsed as Record<string, unknown>).filter((pair): pair is [string, string] => typeof pair[1] === 'string' && pair[1].trim() !== '')
 }
 
-/** The Quo user one of ours sends as, or null when they have no seat (Quo sends as the number's owner). */
+/**
+ * The Quo user one of ours sends as: their own seat, else the seat shared by the office (v2.5548), else null (Quo
+ * sends as the number's owner).
+ */
 export function seatOf(userId: string, seats: QuoPlanContext['users']): string | null {
-  return Object.entries(seats).find(([, s]) => s.userId === userId)?.[0] ?? null
+  const pairs = Object.entries(seats)
+  return pairs.find(([, s]) => s.userId === userId)?.[0] ?? pairs.find(([, s]) => s.userId === null)?.[0] ?? null
 }
 
 /** What the send window asks `quo-send` for: whose number, the words, the files as link lines, the hold, the tie. */

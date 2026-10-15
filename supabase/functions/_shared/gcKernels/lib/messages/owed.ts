@@ -282,6 +282,7 @@ export const OWED_USUAL: Readonly<Record<ContactKind, readonly string[]>> = {
   supply_house: ['a call back'],
   candidate: ['a call back'],
   sub: ['a call back'],
+  team: ['a call back'],
   unknown: ['a call back'],
 }
 

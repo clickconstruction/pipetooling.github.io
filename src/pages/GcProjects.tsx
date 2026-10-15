@@ -110,7 +110,8 @@ import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
 import { useRingLayers } from '../components/gc/useRingLayers'
-import { GcStageHealth } from '../components/gc/GcStageHealth'
+import { GcBand, GcStageHealth } from '../components/gc/GcStageHealth'
+import { GcTradeRows, GcTradeRowsKey } from '../components/gc/GcTradeRows'
 import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFlowBoard } from '../components/gc/flows/GcFlowBoard'
@@ -120,6 +121,10 @@ import { GcRoundOpenerContext, type RoundOpener, type RoundSpec } from '../compo
 import { companyAtForStep, customerAtForStep } from '../lib/flows/boardOpen'
 import { roundDetailFromProject } from '../lib/flows/roundDetail'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
+import { GcCardHead } from '../components/gc/GcCardHead'
+import { cardStageOf, plansWords, type DoorKey } from '../lib/gc/cardHead'
+import { stageHealth, type StageHealth } from '../lib/gc/stageHealth'
+import { tradeRow, tradesWords } from '../lib/gc/tradeRows'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { ClauseNeedRows } from '../components/contracts/ClauseNeedRows'
@@ -276,10 +281,6 @@ interface Loaded {
   projects: GcProjectView[]
   store: ScopeBookStore
   team: GcTeamMember[]
-}
-
-function money(n: number): string {
-  return `$${Math.round(n).toLocaleString('en-US')}`
 }
 
 /** The Monday money email's reads and writes (O7b), gcIo's, one object for the page's life; each is read when called. */
@@ -581,6 +582,8 @@ export default function GcProjects() {
   }
   // Bid tabs (the Board's B5-d), opened on a project's card for a dev; sharing reloads the board.
   const [tabsOpen, setTabsOpen] = useState<string | null>(null)
+  /** Which card's trades key is on (to-do #108, PR 3): the stripes' colours. */
+  const [tradeKeyOn, setTradeKeyOn] = useState<string | null>(null)
   const shareTab = async (packageId: string, showNames: boolean) => {
     await shareGcBidTab(packageId, showNames)
     await refreshBoard()
@@ -1046,6 +1049,17 @@ export default function GcProjects() {
   // paints and only for the stages this reader may see (`ringStages`). One state, so the ring on each row and How the stage
   // is going under a project's title (B2b-vii) never give two answers.
   const ringState = useRingLayers(board, role, crewLinks, today)
+  // Each project's stage health on the ring's own state, the same read the strip makes, for the trade rows' tiles (PR 3).
+  const healthByProject = useMemo(() => {
+    const map = new Map<string, StageHealth>()
+    if (!ringState) return map
+    for (const project of ringState.state.projects) {
+      if (!ringState.ready.has(project.stage)) continue
+      const h = stageHealth(ringState.state, project)
+      if (h) map.set(project.id, h)
+    }
+    return map
+  }, [ringState])
   const changeEmailed = useMemo(() => {
     const out: Record<string, { to: string; on: string }[]> = {}
     for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
@@ -2057,117 +2071,94 @@ export default function GcProjects() {
         const tabs = boardProject ? boardProject.packages.filter(packageHasTab).length : 0
         return (
           <div key={p.id} data-gc-project={p.id} data-tour={tour('gc-project-card')} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }}>
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: '1.02rem' }}>{p.name}</strong>
-              <Chip tone={justMade === p.id ? 'green' : 'grey'}>{p.stage}</Chip>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.address}</span>
-              {p.bidDue && <span style={{ fontSize: '0.85rem' }}>bid due {p.bidDue}</span>}
-              <Btn kind="quiet" dataTour={tour('gc-plans')} onClick={() => setPlansWindow(p.id)}>
-                The plans
-              </Btn>
-              {/* Papers on this job (Messages cut 4): the office team's, the flows' read's audience. */}
-              {canOpenGcProjects(role) && (
-                <Btn kind="quiet" onClick={() => setPapersWindow(p.id)}>
-                  Papers
-                </Btn>
-              )}
-              <Btn kind="quiet" dataTour={tour('gc-questions')} onClick={() => setQuestionsWindow(p.id)}>
-                Questions about the plans{openQuestions(p).length > 0 ? ` · ${openQuestions(p).length} open` : ''}
-              </Btn>
-              {!p.lostOn && (
-                <Btn kind="quiet" dataTour={tour('gc-new-set')} onClick={() => setSetWindow(p.id)}>
-                  A new set of plans came in
-                </Btn>
-              )}
-              {role === 'dev' && board && (
-                <Btn kind="quiet" onClick={() => setScheduleWindow(p.id)}>
-                  Schedule
-                </Btn>
-              )}
-              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
-                  {(() => {
-                    const count = changeOrderRows.filter((r) => r.project_id === p.id).length
-                    return count > 0 ? `Change orders · ${count}` : 'Change orders'
-                  })()}
-                </Btn>
-              )}
-              {/* The daily log (Building's U3a-ii): a dev's, on a job being built (the view's own stage, so a closed job has none). */}
-              {canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setLogWindow(p.id)}>
-                  {(() => {
-                    const project = boardWithLogs.projects.find((x) => x.id === p.id)
-                    const missed = project ? missingLogs(project, today).length : 0
-                    return missed > 0 ? `Daily log · ${missed} missed` : 'Daily log'
-                  })()}
-                </Btn>
-              )}
-              {/* The punch list (Building's U3b-ii): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setPunchWindow(p.id)}>
-                  Punch list
-                </Btn>
-              )}
-              {/* The submittal register (Building's U4b): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setSubmittalsWindow(p.id)}>
-                  Submittals
-                </Btn>
-              )}
-              {/* RFIs (Building's U5b): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setRfisWindow(p.id)}>
-                  RFIs
-                </Btn>
-              )}
-              {/* Draws (Building's U6b): a dev's on the money team, on a job being built. */}
-              {canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setDrawsWindow(p.id)}>
-                  Draws
-                </Btn>
-              )}
-              {/* Closeout (Building's U6d): a dev's on the money team, on a job being built or closed. */}
-              {canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && (p.stage === 'building' || p.stage === 'closed') && (
-                <Btn kind="quiet" onClick={() => setCloseoutWindow(p.id)}>
-                  Closeout
-                </Btn>
-              )}
-              {/* Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is. */}
-              {role === 'dev' && board && (p.stage === 'buyout' || p.stage === 'building') && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setStartWindow(p.id)}>
-                  Get started
-                </Btn>
-              )}
-              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
-                  Bill the customer
-                </Btn>
-              )}
-              {/* Bill day (Messages cut 9): the money team's, on a job being built with a signed trade. */}
-              {canSeeGcMoney(role) && billDayCards.get(p.id) && (
-                <Btn kind="quiet" onClick={() => openBillDay(p.id)} title="Opens Money → Bill day → From the trades on this job.">
-                  {`Bill day · ${billDayCards.get(p.id)?.ok ?? 0} of ${billDayCards.get(p.id)?.gates ?? 7}`}
-                </Btn>
-              )}
-              {(p.sqFt || p.sizeNote) && (
-                <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
-              )}
-              {showNumber && (
-                <Btn kind="quiet" onClick={() => setNumberOpen(numberOpen === p.id ? null : p.id)}>
-                  {numberOpen === p.id ? 'Hide our number' : 'Our number'}
-                </Btn>
-              )}
-              {tabs > 0 && (
-                <Btn kind="quiet" onClick={() => setTabsOpen(tabsOpen === p.id ? null : p.id)}>
-                  {tabsOpen === p.id ? 'Hide the bid tabs' : `Bid tabs (${tabs})`}
-                </Btn>
-              )}
-            </div>
+            {/* The head in shape D (to-do #108, PR 1): the name and the stage, the facts line, and the doors as grouped sets,
+                each with the fact that says whether to open it. The words are `cardHead.ts`'s; the gates are the page's. */}
+            <GcCardHead
+              name={p.name}
+              stageWords={p.stage}
+              stageTone={justMade === p.id ? 'green' : 'grey'}
+              facts={{
+                address: p.address,
+                sqFt: p.sqFt,
+                sizeNote: p.sizeNote,
+                owner: boardProject?.owner ?? null,
+                architect: boardProject?.architect ?? null,
+                stage: cardStageOf(p.stage),
+                bidDue: p.bidDue,
+                startDate: boardProject?.startDate ?? null,
+                startedOn: boardProject?.startedOn ?? null,
+                lostOn: p.lostOn,
+                closedOn: boardProject?.closedOn ?? null,
+                today,
+              }}
+              doors={{
+                stage: cardStageOf(p.stage),
+                lost: Boolean(p.lostOn),
+                can: {
+                  // Papers on this job (Messages cut 4): the office team's, the flows' read's audience.
+                  papers: canOpenGcProjects(role),
+                  schedule: role === 'dev' && Boolean(board),
+                  // Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is.
+                  start: role === 'dev' && Boolean(board),
+                  // The daily log (Building's U3a-ii), the punch list (U3b-ii), the submittals (U4b) and RFIs (U5b): a dev's
+                  // on a job being built; Draws (U6b) and Closeout (U6d) a dev's on the money team.
+                  log: canUseGcBuilding(role) && Boolean(boardWithLogs),
+                  punch: canUseGcBuilding(role) && Boolean(board),
+                  submittals: canUseGcBuilding(role) && Boolean(board),
+                  rfis: canUseGcBuilding(role) && Boolean(board),
+                  draws: canUseGcBuilding(role) && canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  changes: canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  bill: canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  // Bill day (Messages cut 9): the money team's, on a job being built with a signed trade.
+                  billDay: canSeeGcMoney(role) && Boolean(billDayCards.get(p.id)),
+                  closeout: canUseGcBuilding(role) && canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  number: Boolean(showNumber),
+                  tabs: tabs > 0,
+                },
+                counts: {
+                  questionsOpen: openQuestions(p).length,
+                  logMissed: (() => {
+                    const project = boardWithLogs?.projects.find((x) => x.id === p.id)
+                    return project ? missingLogs(project, today).length : 0
+                  })(),
+                  changeOrders: changeOrderRows.filter((r) => r.project_id === p.id).length,
+                  billDayOk: billDayCards.get(p.id)?.ok ?? 0,
+                  billDayGates: billDayCards.get(p.id)?.gates ?? 7,
+                  tabs,
+                },
+                open: { number: numberOpen === p.id, tabs: tabsOpen === p.id },
+              }}
+              tourOn={cardIndex === 0}
+              onDoor={(key) => {
+                const press: Record<DoorKey, () => void> = {
+                  plans: () => setPlansWindow(p.id),
+                  papers: () => setPapersWindow(p.id),
+                  questions: () => setQuestionsWindow(p.id),
+                  newSet: () => setSetWindow(p.id),
+                  schedule: () => setScheduleWindow(p.id),
+                  start: () => setStartWindow(p.id),
+                  log: () => setLogWindow(p.id),
+                  punch: () => setPunchWindow(p.id),
+                  submittals: () => setSubmittalsWindow(p.id),
+                  rfis: () => setRfisWindow(p.id),
+                  draws: () => setDrawsWindow(p.id),
+                  changes: () => setChangesWindow(p.id),
+                  bill: () => setBillWindow(p.id),
+                  billDay: () => openBillDay(p.id),
+                  closeout: () => setCloseoutWindow(p.id),
+                  number: () => setNumberOpen(numberOpen === p.id ? null : p.id),
+                  tabs: () => setTabsOpen(tabsOpen === p.id ? null : p.id),
+                }
+                press[key]()
+              }}
+            />
             {/* How the stage is going (the Board's B2b-vii), under the title: the ring's own state (B2b-vi-c), drawn
                 only for a stage whose every layer this reader has read, so the strip and the ring give one answer. */}
             {(() => {
               const ringProject = ringState?.state.projects.find((x) => x.id === p.id)
-              if (!ringState || !ringProject || !ringState.ready.has(ringProject.stage)) return null
+              // Bill day's line (Messages cut 9), the money team's: the verdict band's foot, or on its own while the strip is not drawn.
+              const billDay = canSeeGcMoney(role) && billDayCards.get(p.id) ? <BillDayCardLine facts={billDayCards.get(p.id)!} onOpen={() => openBillDay(p.id)} /> : null
+              if (!ringState || !ringProject || !ringState.ready.has(ringProject.stage)) return billDay
               // Each next step opens what the card's own buttons open, behind the same doors; words alone otherwise.
               const opens: Partial<Record<HealthTarget, () => void>> = {
                 trades: () => document.querySelector(`[data-gc-project="${CSS.escape(p.id)}"] [data-gc-trade-asks]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
@@ -2198,13 +2189,10 @@ export default function GcProjects() {
                       }
                     : {})}
                   moneyShown={canSeeGcMoney(role) && moneyShown}
+                  foot={billDay ?? undefined}
                 />
               )
             })()}
-            {canSeeGcMoney(role) && billDayCards.get(p.id) && (
-              <BillDayCardLine facts={billDayCards.get(p.id)!} onOpen={() => openBillDay(p.id)} />
-            )}
-            {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
             {roughKeepLines[p.id] && (
               <div role="status" data-rough-not-kept style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
                 {roughKeepLines[p.id]}
@@ -2224,106 +2212,136 @@ export default function GcProjects() {
               />
             )}
             {boardProject && board && tabs > 0 && tabsOpen === p.id && <GcBidTabs state={board} project={boardProject} share={shareTab} />}
-            <div style={{ fontSize: '0.85rem' }}>
-              {p.planSets.length} {p.planSets.length === 1 ? 'set' : 'sets'} of plans
-              {newest ? `, newest ${newest.label} of ${newest.issuedOn}` : ''}. {p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}
-              {p.specs.length > 0 ? `, ${p.specs.length} ${p.specs.length === 1 ? 'section' : 'sections'}` : ''}.
-            </div>
-            {(
-              <div data-tour={tour('gc-drive')} style={{ fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {p.driveFolderUrl ? (
-                  <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
-                    The job folder in Drive
-                  </a>
-                ) : (
-                  <Btn
-                    kind="quiet"
-                    disabled={checking === `${p.id}:folders`}
-                    onClick={() => {
-                      setChecking(`${p.id}:folders`)
-                      void makeDriveFolders(p.id)
-                        .then(async (folders) => {
-                          await load()
-                          if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
-                        })
-                        .catch((e) => showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error'))
-                        .finally(() => setChecking(null))
+            {/* The trades (to-do #108, shape D, PR 3): one row a trade from `tradeRows.ts`, the tile's colour as its stripe,
+                with the scope lines, the statement of work and the asks under it, open by default and folded by a press. */}
+            {(() => {
+              const stage = cardStageOf(p.stage)
+              const health = healthByProject.get(p.id) ?? null
+              const rows = p.trades.map((t) =>
+                tradeRow({
+                  stage,
+                  trade: t,
+                  pkg: boardProject?.packages.find((k) => k.id === t.id) ?? null,
+                  tile: health?.tiles.find((x) => x.packageId === t.id) ?? null,
+                  partners: board?.partners ?? [],
+                }),
+              )
+              return (
+                <GcBand title="The trades" words={tradesWords(rows)} keyOn={tradeKeyOn === p.id} onKey={() => setTradeKeyOn(tradeKeyOn === p.id ? null : p.id)}>
+                  {tradeKeyOn === p.id && <GcTradeRowsKey stage={stage} />}
+                  <GcTradeRows
+                    stage={stage}
+                    rows={rows}
+                    onNext={(row) => (row.next?.key === 'compare' ? setComparing({ projectId: p.id, packageId: row.id }) : openAsk(p.id, row.id))}
+                    details={(row) => {
+                      const t = p.trades.find((x) => x.id === row.id)
+                      if (!t) return null
+                      return (
+                        <>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)', flex: '1 1 16rem' }}>
+                              {t.scope.map((s) => (
+                                <li key={s.id}>
+                                  {s.label}
+                                  {s.sheets && s.sheets.length > 0 ? ` · ${s.sheets.join(', ')}` : ''}
+                                  {s.specs && s.specs.length > 0 ? ` · ${s.specs.join(', ')}` : ''}
+                                </li>
+                              ))}
+                            </ul>
+                            {t.scope.length > 0 && (
+                              <Btn kind="quiet" onClick={() => setBook({ trade: t.trade, projectId: p.id })}>
+                                Save as a set
+                              </Btn>
+                            )}
+                          </div>
+                          {/* The trade's statement of work once it is awarded (B6-a-ii): a dev and, since O9, the money team read one. Only
+                              a dev sends it until the award door. */}
+                          {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canSend={canUseGcBoardWrites(role)} canEmail={canSendGcTradeEmail(role)} />}
+                          {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
+                          {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
+                        </>
+                      )
                     }}
-                  >
-                    {checking === `${p.id}:folders` ? 'Making the folder…' : 'Make the Drive folder'}
-                  </Btn>
-                )}
-                {newest?.drive.url && (
-                  <>
-                    <a href={newest.drive.url} target="_blank" rel="noreferrer">
-                      {newest.label}'s plans
-                    </a>
-                    <span style={{ color: newest.drive.access === 'anyone' ? 'var(--text-green-700)' : newest.drive.access === 'restricted' || newest.drive.checkedOn ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-                      {newest.drive.access === 'anyone'
-                        ? `Anyone with the link can open it, checked ${newest.drive.checkedOn ?? ''}.`
-                        : newest.drive.access === 'restricted'
-                          ? `Only some people can open it, checked ${newest.drive.checkedOn ?? ''}. Please correct. ${DRIVE_RESTRICTED_WORDS}`
-                          : newest.drive.checkedOn
-                            ? `Our helper could not see this link on ${newest.drive.checkedOn}. Share it with the intake service account, or move the plans into the job folder.`
-                            : 'Who can open it is not checked yet.'}
-                    </span>
-                    <Btn
-                      kind="quiet"
-                      disabled={checking === `${p.id}:${newest.rev}`}
-                      onClick={() => {
-                        setChecking(`${p.id}:${newest.rev}`)
-                        void checkDriveAccess(newest.drive.url, { projectId: p.id, rev: newest.rev })
-                          .then(async (v) => {
-                            await load()
-                            if (!v.seen && v.note) showToast(v.note, 'error')
-                          })
-                          .catch((e) => showToast(formatErrorMessage(e, 'The link was not checked.'), 'error'))
-                          .finally(() => setChecking(null))
-                      }}
-                    >
-                      {checking === `${p.id}:${newest.rev}` ? 'Checking…' : newest.drive.access === null ? 'Check the link' : 'Check again'}
-                    </Btn>
-                  </>
-                )}
-              </div>
-            )}
-            <div style={{ display: 'grid', gap: '0.4rem' }}>
-              {p.trades.map((t) => (
-                <div key={t.id} style={{ display: 'grid', gap: '0.15rem', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <strong>{t.trade}</strong>
-                    {t.ours && <Chip tone="blue">ours</Chip>}
-                    {t.budget > 0 && <span style={{ color: 'var(--text-muted)' }}>{money(t.budget)}</span>}
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {t.scope.length} scope {t.scope.length === 1 ? 'line' : 'lines'}
-                      {t.excludes.length > 0 ? `, leaves out ${t.excludes.length}` : ''}
-                    </span>
-                    {t.scope.length > 0 && (
-                      <Btn kind="quiet" onClick={() => setBook({ trade: t.trade, projectId: p.id })}>
-                        Save as a set
-                      </Btn>
-                    )}
-                  </div>
-                  <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)' }}>
-                    {t.scope.map((s) => (
-                      <li key={s.id}>
-                        {s.label}
-                        {s.sheets && s.sheets.length > 0 ? ` · ${s.sheets.join(', ')}` : ''}
-                        {s.specs && s.specs.length > 0 ? ` · ${s.specs.join(', ')}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                  {/* The trade's statement of work once it is awarded (B6-a-ii): a dev and, since O9, the money team read one. Only
-                      a dev sends it until the award door. */}
-                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canSend={canUseGcBoardWrites(role)} canEmail={canSendGcTradeEmail(role)} />}
-                  {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
-                  {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
-                </div>
-              ))}
-            </div>
+                  />
+                </GcBand>
+              )
+            })()}
             {gaps.length > 0 && (
               <div data-tour={tour('gc-gaps')} style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
                 {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}: {gaps.map((g) => `${g.trade} leaves out ${g.label} for ${g.by}`).join('. ')}.
+              </div>
+            )}
+            {/* The plans (to-do #108, shape D, PR 4): the newest set with its link and who can open it, and the job's Drive folder,
+                in one band under the trades. The walkthrough's Drive stop points at the band's rows. */}
+            <GcBand title="The plans" words={plansWords(p)}>
+              <div data-tour={tour('gc-drive')} style={{ display: 'grid', gridTemplateColumns: 'max-content minmax(0, 1fr)', gap: '0.3rem 0.9rem', fontSize: '0.85rem', alignItems: 'baseline' }}>
+                {newest?.drive.url && (
+                  <>
+                    <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Newest set</span>
+                    <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      <a href={newest.drive.url} target="_blank" rel="noreferrer">
+                        {newest.label}'s plans
+                      </a>
+                      <span style={{ color: newest.drive.access === 'anyone' ? 'var(--text-green-700)' : newest.drive.access === 'restricted' || newest.drive.checkedOn ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                        {newest.drive.access === 'anyone'
+                          ? `Anyone with the link can open it, checked ${newest.drive.checkedOn ?? ''}.`
+                          : newest.drive.access === 'restricted'
+                            ? `Only some people can open it, checked ${newest.drive.checkedOn ?? ''}. Please correct. ${DRIVE_RESTRICTED_WORDS}`
+                            : newest.drive.checkedOn
+                              ? `Our helper could not see this link on ${newest.drive.checkedOn}. Share it with the intake service account, or move the plans into the job folder.`
+                              : 'Who can open it is not checked yet.'}
+                      </span>
+                      <Btn
+                        kind="quiet"
+                        disabled={checking === `${p.id}:${newest.rev}`}
+                        onClick={() => {
+                          setChecking(`${p.id}:${newest.rev}`)
+                          void checkDriveAccess(newest.drive.url, { projectId: p.id, rev: newest.rev })
+                            .then(async (v) => {
+                              await load()
+                              if (!v.seen && v.note) showToast(v.note, 'error')
+                            })
+                            .catch((e) => showToast(formatErrorMessage(e, 'The link was not checked.'), 'error'))
+                            .finally(() => setChecking(null))
+                        }}
+                      >
+                        {checking === `${p.id}:${newest.rev}` ? 'Checking…' : newest.drive.access === null ? 'Check the link' : 'Check again'}
+                      </Btn>
+                    </span>
+                  </>
+                )}
+                <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Drive</span>
+                <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  {p.driveFolderUrl ? (
+                    <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
+                      The job folder in Drive
+                    </a>
+                  ) : (
+                    <Btn
+                      kind="quiet"
+                      disabled={checking === `${p.id}:folders`}
+                      onClick={() => {
+                        setChecking(`${p.id}:folders`)
+                        void makeDriveFolders(p.id)
+                          .then(async (folders) => {
+                            await load()
+                            if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
+                          })
+                          .catch((e) => showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error'))
+                          .finally(() => setChecking(null))
+                      }}
+                    >
+                      {checking === `${p.id}:folders` ? 'Making the folder…' : 'Make the Drive folder'}
+                    </Btn>
+                  )}
+                </span>
+              </div>
+            </GcBand>
+            {/* The stage's end (PR 4): the outcome as the card's foot, plain buttons under its caption; only Next is blue on the card. */}
+            {boardProject?.stage === 'pursuing' && (
+              <div data-gc-card-foot style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'flex', gap: '0.5rem 1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>When the bid ends</span>
+                <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />
               </div>
             )}
           </div>

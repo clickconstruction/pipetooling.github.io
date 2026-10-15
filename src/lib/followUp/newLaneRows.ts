@@ -109,6 +109,7 @@ export function guessWait(guess: Pick<WhoGuess, 'kind' | 'record'>): string | nu
 /** What a *Who is this?* press says once it lands. */
 export function namedWords(guess: Pick<WhoGuess, 'kind' | 'label' | 'name'>): string {
   if (guess.kind === 'lead') return `${guess.name ?? 'They'} ${guess.name ? 'is' : 'are'} a lead now. The thread stays with them.`
+  if (guess.kind === 'team') return `${guess.label} is one of our own team now. The thread stays with them.`
   return `The number is ${guess.label} now. The thread stays with them.`
 }
 
