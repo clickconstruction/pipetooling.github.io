@@ -35886,6 +35886,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      people_phones_from_accounts: { Args: never; Returns: number }
       person_file_summary_counts: {
         Args: { p_person_id: string }
         Returns: {
