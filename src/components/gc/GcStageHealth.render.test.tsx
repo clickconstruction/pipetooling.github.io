@@ -40,8 +40,10 @@ describe('the stage-health strip', () => {
     expect(screen.getByLabelText('Oct 5 – 9: 5 working days')).toBeTruthy()
     expect(screen.getByLabelText('Oct 12 – 16: 5 working days')).toBeTruthy()
     expect(screen.getByLabelText('Sat Oct 10')).toBeTruthy()
-    expect(screen.getByLabelText('Sun Oct 18')).toBeTruthy()
-    expect(screen.getByText('Sep 28 – Oct 4')).toBeTruthy()
+    expect(screen.getByLabelText('Sun Oct 11')).toBeTruthy()
+    expect(screen.getByLabelText('Sat Oct 17')).toBeTruthy()
+    // Weeks run Sunday to Saturday (v2.5558).
+    expect(screen.getByText('Sep 27 – Oct 3')).toBeTruthy()
     expect(screen.getByText('Pricing set')).toBeTruthy()
     expect(screen.getByText('Today')).toBeTruthy()
   })
@@ -70,7 +72,7 @@ describe('the stage-health strip', () => {
     expect(screen.getByText('72% · plan 76%')).toBeTruthy()
     expect(screen.getByText('64% · work 74%')).toBeTruthy()
     expect(screen.getByText('about $149,000')).toBeTruthy()
-    expect(screen.getByLabelText(/^Week of Sep 21\. Dry-in was due Sep 25/)).toBeTruthy()
+    expect(screen.getByLabelText(/^Week of Sep 20\. Dry-in was due Sep 25/)).toBeTruthy()
   })
 
   it('building, outside the money team: the work against the plan, and no money row or number', () => {

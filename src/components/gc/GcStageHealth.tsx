@@ -324,7 +324,7 @@ function quietWeekWidth(sz: CalendarSizes): number {
   return sz.quiet + 2 * (sz.weekend + sz.gap)
 }
 
-/** Monday to Friday of a week: "Sep 14 – 18". The rectangle of a quiet week says these, its weekend stands beside it (the owner, 2026-10-05). */
+/** Monday to Friday of a week: "Sep 14 – 18". The rectangle of a quiet week says these, its Sunday and Saturday stand either side (the owner, 2026-10-05; v2.5558). */
 function workWeekRange(week: CalendarDay[]): string {
   return weekRange(week.filter((d) => !d.weekend))
 }
@@ -350,7 +350,7 @@ function QuietWeekend({ d, sz, full }: { d: CalendarDay; sz: CalendarSizes; full
   )
 }
 
-/** A week's two ends: "Sep 28 – Oct 4", or "Oct 5 – 11" inside one month. */
+/** A week's two ends, Sunday to Saturday: "Sep 27 – Oct 3", or "Oct 4 – 10" inside one month. */
 function weekRange(week: CalendarDay[]): string {
   const first = week[0]?.on ?? ''
   const last = week[week.length - 1]?.on ?? ''
@@ -546,19 +546,19 @@ function Calendar({ calendar, width, stage, showKey }: { calendar: StageCalendar
     return (
       <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0 }}>
         {summary}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, 0.55fr))', gap: 4 }}>
-          {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((h) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.55fr) repeat(5, minmax(0, 1fr)) minmax(0, 0.55fr)', gap: 4 }}>
+          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((h) => (
             <span key={h} style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 700 }}>{h}</span>
           ))}
           {calendar.weeks.map((week) =>
             weekIsQuiet(week) ? (
               <Fragment key={week[0]?.on}>
-                <div style={{ gridColumn: '1 / 6', ...quietBox(week, true) }} title={`${workWeekRange(week)}: ${quietWords(week).words}`}>
+                {/* Sunday, then the working week as one rectangle, then Saturday (weeks run Sunday to Saturday, v2.5558). */}
+                {week[0] && <QuietWeekend d={week[0]} sz={sz} full />}
+                <div style={{ gridColumn: '2 / 7', ...quietBox(week, true) }} title={`${workWeekRange(week)}: ${quietWords(week).words}`}>
                   {workWeekRange(week)} · {quietWords(week).words}
                 </div>
-                {week.filter((d) => d.weekend).map((d) => (
-                  <QuietWeekend key={d.on} d={d} sz={sz} full />
-                ))}
+                {week[6] && <QuietWeekend d={week[6]} sz={sz} full />}
               </Fragment>
             ) : (
               week.map((d) => <DaySquare key={d.on} d={d} openEnd={Boolean(openEnd) && d.inStage && !d.past && !d.today} narrow />)
@@ -595,14 +595,13 @@ function Calendar({ calendar, width, stage, showKey }: { calendar: StageCalendar
                 <div key={week[0]?.on} style={{ display: 'grid', gap: 3, width: quietWeekWidth(sz) }}>
                   {head}
                   <span style={{ height: 12 }} />
-                  {/* The rectangle is Monday to Friday; the weekend stands beside it as it does in a busy week (the owner, 2026-10-05). */}
+                  {/* The rectangle is Monday to Friday; the weekend stands either side of it as it does in a busy week (the owner, 2026-10-05; Sunday first since v2.5558). */}
                   <div style={{ display: 'flex', gap: sz.gap }}>
+                    {week[0] && <QuietWeekend d={week[0]} sz={sz} full={false} />}
                     <div style={quietBox(week, false)} title={`${workWeekRange(week)}: ${q.words}`} aria-label={`${workWeekRange(week)}: ${q.words}`}>
                       {workWeekRange(week)}
                     </div>
-                    {week.filter((d) => d.weekend).map((d) => (
-                      <QuietWeekend key={d.on} d={d} sz={sz} full={false} />
-                    ))}
+                    {week[6] && <QuietWeekend d={week[6]} sz={sz} full={false} />}
                   </div>
                   <span style={{ height: LANE_HEIGHT, fontSize: '0.66rem', textAlign: 'center', fontWeight: q.isOpen ? 700 : 500, color: q.isOpen ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{q.words}</span>
                 </div>
@@ -616,7 +615,7 @@ function Calendar({ calendar, width, stage, showKey }: { calendar: StageCalendar
                 <div style={{ display: 'flex', gap: sz.gap }} aria-hidden>
                   {week.map((d, i) => (
                     <span key={d.on} style={{ width: d.weekend ? sz.weekend : sz.day, textAlign: 'center', fontSize: '0.62rem', fontWeight: 700, color: d.today ? 'var(--text-blue-500)' : 'var(--text-muted)' }}>
-                      {'MTWTFSS'[i]}
+                      {'SMTWTFS'[i]}
                     </span>
                   ))}
                 </div>
