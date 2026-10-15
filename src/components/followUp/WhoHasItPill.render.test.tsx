@@ -85,4 +85,16 @@ describe('WhoHasItPill', () => {
     renderPill(greg(), { busy: true })
     expect((screen.getByRole('button', { name: 'Nobody has it · Take it' }) as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('bare, in the thread header (v2.5542): the header control class in place of the border; a row keeps its border', () => {
+    renderPill(greg(), { bare: true })
+    const bare = screen.getByRole('button', { name: 'Nobody has it · Take it' })
+    expect(bare.className).toBe('thread-head-control')
+    expect(bare.style.border).toBe('')
+    cleanup()
+    renderPill(greg())
+    const row = screen.getByRole('button', { name: 'Nobody has it · Take it' })
+    expect(row.className).toBe('')
+    expect(row.style.border).toContain('1px solid')
+  })
 })

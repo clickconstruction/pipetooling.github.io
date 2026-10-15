@@ -5396,3 +5396,28 @@ tr[data-stages-row-stamped] {
 .lienRulesBody table tr[data-lit="yes"] td { background: var(--bg-blue-tint); font-weight: 650; }
 .lienRulesBody table[data-live-dates] + p { font-size: 0.84rem; color: var(--text-muted); }
 @media (max-width: 640px) { .lienRulesBody h3[data-rule] { grid-template-columns: 0.9rem minmax(0, 1fr); } .lienRulesBody h3[data-rule] [data-rule-cite] { grid-column: 2; justify-self: start; margin-top: 0.15rem; white-space: normal; line-height: 1.3; } .lienRulesBody [data-rule-of], .lienRulesBody [data-rule-counsel] { padding-left: 0.7rem; margin-left: 0; } }
+
+/* The thread window's header controls (☎, ⋯, the who-has-it pill; v2.5542): one 28px row with no border and a quiet
+   hover, so a link, a button and a pill with an avatar inside stand the same height. */
+.thread-head-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 0.45rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-base);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.thread-head-control:is(a, button):hover {
+  background: var(--bg-subtle);
+  text-decoration: none;
+}

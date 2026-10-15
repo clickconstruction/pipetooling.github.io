@@ -162,7 +162,8 @@ afterEach(() => {
 describe('Follow up in the thread window', () => {
   it('draws who has it, the back pill and ⋯’s rows for the open thread', async () => {
     renderThread(fakeIo())
-    expect(await header().findByRole('button', { name: 'Rosa has this' })).toBeTruthy()
+    const pill = await header().findByRole('button', { name: 'Rosa has this' })
+    expect(pill.className).toBe('thread-head-control') // bare in the header (v2.5542)
     const back = screen.getByText('↩ back Fri Oct 2').closest('[data-follow-up-back]') as HTMLElement
     expect(back.getAttribute('title')).toMatch(/^Comes back Fri Oct 2\. A note by Rosa brings this row back/)
     expect(more().getAllByRole('button').map((b) => b.textContent)).toEqual(['No reply needed', 'Remind me Monday'])
