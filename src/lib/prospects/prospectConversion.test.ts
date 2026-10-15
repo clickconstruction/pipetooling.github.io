@@ -9,6 +9,7 @@ import {
   searchProspectsForCustomerForm,
   type ConvertibleProspect,
   type ProspectConversionClient,
+  markProspectOnBench,
 } from './prospectConversion'
 
 function prospect(overrides: Partial<ConvertibleProspect> = {}): ConvertibleProspect {
@@ -153,7 +154,7 @@ describe('markProspectConverted', () => {
     const res = await markProspectConverted('p-1', 'c-7', 'Acme', 'u-1', client)
     expect(res).toEqual({ ok: true })
     expect(calls).toEqual([
-      { table: 'prospects', op: 'update', values: { prospect_fit_status: 'converted' }, eq: ['id', 'p-1'] },
+      { table: 'prospects', op: 'update', values: { prospect_fit_status: 'converted', converted_customer_id: 'c-7' }, eq: ['id', 'p-1'] },
       {
         table: 'prospect_comments',
         op: 'insert',
@@ -182,5 +183,32 @@ describe('markProspectConverted', () => {
   it('never throws even when the client does', async () => {
     const client = { from: () => { throw new Error('boom') } } as unknown as ProspectConversionClient
     await expect(markProspectConverted('p-1', 'c-7', 'Acme', 'u-1', client)).resolves.toEqual({ ok: false, error: 'boom' })
+  })
+})
+
+describe('markProspectOnBench (v2.5559)', () => {
+  it('flips the status, keeps the company it became, and leaves a converted interaction naming the bench', async () => {
+    const { client, calls } = fakeClient()
+    const res = await markProspectOnBench('p-2', 'co-3', 'Bexar Fire Protection', 'u-1', client)
+    expect(res).toEqual({ ok: true })
+    expect(calls).toEqual([
+      { table: 'prospects', op: 'update', values: { prospect_fit_status: 'converted', converted_gc_company_id: 'co-3' }, eq: ['id', 'p-2'] },
+      {
+        table: 'prospect_comments',
+        op: 'insert',
+        values: {
+          prospect_id: 'p-2',
+          created_by: 'u-1',
+          comment_text: 'Added to the bench: Bexar Fire Protection (/gc?view=partners)',
+          interaction_type: 'converted',
+        },
+      },
+    ])
+  })
+
+  it('reports a refused update without throwing', async () => {
+    const { client, calls } = fakeClient({ updateError: 'RLS says no' })
+    await expect(markProspectOnBench('p-2', 'co-3', 'Bexar', 'u-1', client)).resolves.toEqual({ ok: false, error: 'RLS says no' })
+    expect(calls.map((c) => c.op)).toEqual(['update'])
   })
 })
