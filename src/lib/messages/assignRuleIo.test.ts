@@ -20,7 +20,7 @@ function fakeClient(results: { setting?: Result; users?: Result; update?: Result
       let updating = false
       const result = (): Result => (updating ? results.update : table === 'users' ? results.users : results.setting) ?? { data: null, error: null }
       const chain: Record<string, unknown> = {}
-      for (const m of ['select', 'eq', 'in', 'order']) {
+      for (const m of ['select', 'eq', 'in', 'is', 'order']) {
         chain[m] = (...args: unknown[]) => {
           calls.push([m, ...args])
           return chain
@@ -57,6 +57,10 @@ describe('supabaseAssignRuleIo', () => {
     })
     expect(calls).toContainEqual(['eq', 'key', 'messages_assign_rule_v1'])
     expect(calls).toContainEqual(['in', 'role', ['dev', 'master_technician', 'assistant', 'controller', 'estimator']])
+    // v2.5539: the picker lists the active office team, as every other picker does (`activeUsersQuery`).
+    expect(calls).toContainEqual(['is', 'archived_at', null])
+    expect(calls).toContainEqual(['eq', 'is_digital_twin', false])
+    expect(calls).toContainEqual(['eq', 'is_sample', false])
   })
 
   it('reads empty seats when the setting is not there yet', async () => {
