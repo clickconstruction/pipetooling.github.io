@@ -689,6 +689,13 @@ Per-user flag (`users.read_only`) set from People → Users → Account or the p
 
 **See**: `ACCESS_CONTROL.md` → Read-only (training) mode; `MIGRATIONS.md` → `20260713090000`, `20260717000000`
 
+### Training · course · pass
+Courses the crew takes at their own pace, each with a clock (**v2.5564**–, punch list #111). A **course** is a folder of markdown lessons bundled with the app (`src/content/training/<slug>/`: `course.md`, `NN-<slug>.md` lessons of five sections, `final-bank.md`), read by the course page `/training/<slug>`; the first is the **OSHA 30 refresher**, thirty five-minute lessons in eight parts built from the owner's capture of the 30-hour course. A lesson is **done** when its four checks are all right; the course's **pass** is the **final check** (20 questions drawn one part at a time, 14 right passes), recorded in `training_passes` with the day, the score and the **content version** (a hash of the course's words, so a changed word never voids a pass). The **policy** (`training_courses`: on, who must take it, how long a pass is good for, the amber window, the **Everyone takes it again…** stamp `retake_from`) is a dev's in Settings → Training. Where a person stands is read, never stored, by one rule (`trainingState.ts` on the client, `training_state_for()` in SQL): **red** not done, **amber** lapsed or due within 30 days, **green** caught up, on the Dashboard card under My Time, the People rail, the Users row and Settings' counts. Not an OSHA card: the card comes from the 30-hour course; outside credentials stay on People → Licenses. Distinct from *Read-only (training) mode* above, the account flag.
+
+**Database**: `training_courses`, `training_lesson_passes`, `training_passes`, `training_office()`, `training_pass_lesson()`, `training_finish_course()`, `training_state_for()`, `training_standings()` (`20261015060000`)
+
+**See**: `to-dos/training/README.md` (the plan), `ACCESS_CONTROL.md` → Training
+
 ### Deleted-records archive & restore
 Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_deleted_record()`, `SECURITY DEFINER`) snapshots deleted rows from high-value tables (jobs, bids, reports, customers→projects trees, people roster + cascades) into **`public.deleted_records_archive`**, grouped by the top-level record with `deleted_by`/`deleted_at`; rows auto-purge after 90 days. Two dev-only RPCs drive restore: `list_deleted_records(p_limit)` and `restore_deleted_records(p_group_key, p_dry_run)` — all-or-nothing with a dry-run preview (dangling nullable FKs are nulled + warned; dangling NOT NULL FKs block the restore). Surfaced in **Settings → Data & recovery → Recently deleted (dev)**.
 
