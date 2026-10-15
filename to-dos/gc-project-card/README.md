@@ -1,8 +1,8 @@
 ---
 name: "GC projects: a project's card that reads in the order the questions come"
 number: 108
-group: ready
-status: the owner said "Build D, and mock up the building-stage card first" 2026-10-14; the building card is drawn in mockup-building.html (its four calls at its foot); the four-PR train is being built in the same order
+group: close
+status: the owner said "Build D, and mock up the building-stage card first" 2026-10-14; the building card is drawn in mockup-building.html (its four calls at its foot); all four PRs are built and in the merge queue, stacked in order: PR 1 v2.5544 (#5733), PR 2 v2.5545 (#5734), PR 3 v2.5547 (#5737), PR 4 v2.5550 (#5738); his calls at both mock-ups' feet are still his
 summary: >
   The owner's screenshot of a bidding project's card on GC projects: "very chaotic and not very
   intuitive". The card is nine parts in one column at one size with no headings, the doors to
@@ -11,10 +11,10 @@ summary: >
   column in bands, a rail on the right, tabs) and a refined cut (D) that reads in the order the
   office asks its questions: on track? next? how long? which trades, who to call? where are the
   plans? The critique weighs the three and lists the owner's calls.
-next: The owner reads mockup.html and answers the six calls at its foot. On a yes, the building-stage card gets its own mock-up before any build, then the four-PR train.
+next: Once the four merge, use the card for a week from 2026-10-15 and answer the calls at both mock-ups' feet (the price as signed on the facts line, Bill day's home, the Billed column, the head's three sets on one line); delete this folder once nothing comes up.
 size: M (four PRs, each S or M; the building-stage mock-up first)
 blocker: The owner's yes, and his six calls.
-opinion: build D — A, B and C each lost on one thing D keeps (the calendar in view, one reading order, nothing hidden), and every word and number on D comes from kernels that exist.
+opinion: built as D; the four open calls are small, take them one at a time after a week of use.
 mockup: to-dos/gc-project-card/mockup.html
 ---
 
