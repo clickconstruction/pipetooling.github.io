@@ -1,8 +1,8 @@
 ---
 name: "GC projects: a project's card that reads in the order the questions come"
 number: 108
-group: gated
-status: mock-up drawn 2026-10-14, waiting on the owner's yes (and his six calls under *Is this the best we can do?*); no branch, no claim, nothing built
+group: ready
+status: the owner said "Build D, and mock up the building-stage card first" 2026-10-14; the building card is drawn in mockup-building.html (its four calls at its foot); the four-PR train is being built in the same order
 summary: >
   The owner's screenshot of a bidding project's card on GC projects: "very chaotic and not very
   intuitive". The card is nine parts in one column at one size with no headings, the doors to

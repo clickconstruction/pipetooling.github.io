@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GC projects: the building-stage card in shape D</title>
+<style>
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --red: #dc2626; --red-tint: #fee2e2; --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --green: #15803d; --green-tint: #dcfce7; --purple: #7c3aed; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #fff; --page: #f3f4f6; --bg-muted: #f3f4f6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1560px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 13px; flex: none; }
+  h2 .num.grey { background: var(--ink); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 105ch; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--blue-tint); color: var(--blue-ink); }
+  .cap.old { background: var(--line-2); color: var(--ink-2); }
+  .cap .w { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; overflow-x: auto; }
+  ul.moves { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  ul.moves li { margin: 2px 0; }
+  ul.moves b { color: var(--ink); }
+  .page { width: 1040px; margin: 0 auto; }
+  .card { background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; font-size: 13px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 11.5px; line-height: 18px; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.green { background: var(--green-tint); color: var(--green); }
+  .chip.amber { background: var(--amber-tint); color: var(--amber); }
+  .chip.red { background: var(--red-tint); color: #991b1b; }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .chip.purple { background: #ede9fe; color: #5b21b6; }
+  .btn { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; cursor: default; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); padding: 3px 4px; }
+  .btn.s { padding: 1px 8px; font-size: 12px; }
+  button.btn { cursor: pointer; }
+  .muted { color: var(--muted); } .ink2 { color: var(--ink-2); } .red { color: var(--red); } .green { color: var(--green); } .amber { color: var(--amber-mid); }
+  .nowrap { white-space: nowrap; }
+  .pill { display: inline-block; padding: 1px 10px; border-radius: 999px; font-weight: 800; font-size: 11.5px; }
+  .pill.watch { background: var(--amber-tint); color: var(--amber); } .pill.ok { background: var(--green-tint); color: var(--green); } .pill.behind { background: var(--red-tint); color: #991b1b; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #9ca3af; }
+  .dot.on { background: #16a34a; border-color: #16a34a; } .dot.wait { background: #d97706; border-color: #d97706; } .dot.us { background: #dc2626; border-color: #dc2626; }
+
+  /* head, verdict, bands (shape D) */
+  .head { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; justify-content: space-between; flex-wrap: wrap; }
+  .head .id { display: grid; gap: 2px; }
+  .head .nm { font-size: 17px; font-weight: 700; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .head .meta { color: var(--muted); font-size: 12.5px; }
+  .head .meta b { color: var(--ink); font-weight: 600; }
+  .doors { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; max-width: 560px; }
+  .doors .grp { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .doors .grp.money { border-color: #c7d2fe; }
+  .doors .grp span, .doors .grp button { padding: 3px 10px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); background: var(--surface); border: 0; border-left: 1px solid var(--line); white-space: nowrap; cursor: default; }
+  .doors .grp > :first-child { border-left: 0; }
+  .doors .grp .c { color: var(--muted); font-weight: 500; }
+  .doors .grp .warn { color: var(--amber-mid); } .doors .grp .bad { color: var(--red); }
+  .menu { position: relative; }
+  .menu .list { display: none; position: absolute; right: 0; top: 30px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px; z-index: 5; min-width: 220px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+  .menu.open .list { display: grid; }
+  .menu .list span { padding: 4px 8px; font-size: 12.5px; }
+  .menu .list .h { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding-top: 6px; }
+  .verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; align-items: center; padding: 10px 16px 12px 14px; border-top: 1px solid var(--line-2); border-left: 3px solid var(--amber-mid); background: #fffbeb; }
+  .verdict.ok { border-left-color: #16a34a; background: #f0fdf4; } .verdict.behind { border-left-color: var(--red); background: #fef2f2; }
+  .verdict .why { display: flex; gap: 10px; align-items: baseline; }
+  .verdict .why b { font-size: 14px; }
+  .verdict .full { grid-column: 1 / -1; }
+  .nums { display: flex; gap: 8px 28px; flex-wrap: wrap; }
+  .num { display: grid; gap: 0; }
+  .num .l { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .num .v { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .num .n { font-size: 11.5px; color: var(--muted); }
+  .num .v.red { color: var(--red); } .num .v.amber { color: var(--amber-mid); } .num .v.green { color: var(--green); }
+  .bars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; }
+  .bar { display: grid; grid-template-columns: 128px minmax(0, 1fr) 118px; gap: 8px; align-items: center; font-size: 12px; }
+  .bar .l { color: var(--muted); }
+  .bar .t { position: relative; height: 9px; border-radius: 999px; background: #e5e7eb; }
+  .bar .t i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--blue); }
+  .bar .t i.g { background: #16a34a; } .bar .t i.dim { opacity: .5; }
+  .bar .t em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+  .bar .v { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .billday { grid-column: 1 / -1; font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .billday b { color: var(--ink); }
+  .band { padding: 12px 16px; border-top: 1px solid var(--line-2); display: grid; gap: 10px; }
+  .band .bh { display: flex; gap: 10px; align-items: baseline; }
+  .band .bh b { font-size: 12.5px; }
+  .band .bh .muted { font-size: 12px; }
+  .band .bh .right { margin-left: auto; }
+  a.k { color: var(--blue-ink); font-weight: 600; font-size: 12px; cursor: pointer; }
+
+  /* the weeks calendar */
+  .wcal { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .mo { display: grid; gap: 3px; }
+  .mo .ml { font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--muted); }
+  .mo .ws { display: flex; gap: 4px; align-items: flex-end; }
+  .wsq { width: 30px; height: 30px; border-radius: 6px; border: 1.5px solid #cbd5e1; position: relative; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--ink-2); }
+  .wsq.past { background: #e5ebf3; }
+  .wsq.now { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); color: var(--blue); }
+  .wsq.next { background: var(--amber-tint); border-color: var(--amber-mid); color: var(--amber); }
+  .wsq.late { background: #fca5a5; border-color: var(--red); color: #7f1d1d; }
+  .wsq.met { border-color: #16a34a; }
+  .wsq.end { border: 2px solid var(--ink); }
+  .wsq .m { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; }
+  .wsq .m i { width: 5px; height: 5px; border-radius: 50%; background: #16a34a; display: block; }
+  .wsq .m i.bad { background: var(--red); }
+  .wlab { font-size: 10px; font-weight: 700; color: var(--muted); text-align: center; height: 24px; line-height: 1.15; width: 30px; margin-top: 2px; }
+  .wlab.late { color: var(--red); } .wlab.next { color: var(--amber-mid); } .wlab.now { color: var(--blue); } .wlab.end { color: var(--ink); }
+  .key { display: flex; gap: 4px 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); align-items: center; }
+  .key[hidden] { display: none; }
+  .key i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid #cbd5e1; margin-right: 4px; vertical-align: -2px; }
+  .key i.past { background: #e5ebf3; } .key i.now { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); } .key i.next { background: var(--amber-tint); border-color: var(--amber-mid); } .key i.late { background: #fca5a5; border-color: var(--red); } .key i.end { border: 2px solid var(--ink); }
+  .key i.d { width: 7px; height: 7px; border-radius: 50%; border: 0; }
+
+  /* trade rows, building */
+  .tt { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .tt .th, .tt .tr { display: grid; grid-template-columns: 6px 190px 86px 150px 92px minmax(0, 1fr) 160px 22px; gap: 10px; align-items: center; }
+  .tt .th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 5px 10px 5px 0; background: #f9fafb; border-bottom: 1px solid var(--line-2); }
+  .tt .tr { padding: 7px 10px 7px 0; border-top: 1px solid var(--line-2); cursor: pointer; }
+  .tt .tr:first-of-type { border-top: 0; }
+  .tt .st { align-self: stretch; }
+  .tt .st.bad { background: #dc2626; } .tt .st.warn { background: #d97706; } .tt .st.good { background: #16a34a; } .tt .st.ours { background: #7c3aed; }
+  .tt .nm { font-weight: 700; }
+  .tt .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 11.5px; }
+  .tt .pb { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; align-items: center; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12.5px; }
+  .tt .pb i { height: 7px; border-radius: 999px; background: #e5e7eb; position: relative; display: block; }
+  .tt .pb i b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: #d97706; }
+  .tt .pb i b.g { background: #16a34a; } .tt .pb i b.p { background: #7c3aed; }
+  .tt .ex { color: var(--muted); font-weight: 700; text-align: center; }
+  .tt .open { display: none; grid-column: 1 / -1; padding: 8px 12px 10px 16px; background: #f9fafb; border-top: 1px dashed var(--line-2); gap: 12px; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .tt .tr.is-open + .open { display: grid; }
+  .tt .open h5 { margin: 0 0 4px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .sov { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .sov th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 2px 6px; border-bottom: 1px solid var(--line-2); }
+  .sov td { padding: 2px 6px; border-bottom: 1px solid var(--line-2); }
+  .sov td.r, .sov th.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .ls { display: grid; gap: 3px; font-size: 12.5px; }
+  .ls .row { display: flex; justify-content: space-between; gap: 8px; }
+  .rec { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 14px; font-size: 12.5px; align-items: baseline; }
+  .rec .k { color: var(--muted); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; }
+  .rec .v { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .foot { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line-2); background: #f9fafb; border-radius: 0 0 10px 10px; flex-wrap: wrap; }
+  .foot .cap2 { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-right: auto; }
+
+  /* today's building card, as a reminder */
+  .t-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 12px 16px 10px; font-size: 12.5px; }
+  .t-body { display: grid; gap: 10px; padding: 0 16px 12px; font-size: 12.5px; }
+
+  .crit { margin-top: 44px; border-top: 2px solid var(--ink); padding-top: 14px; max-width: 110ch; }
+  .crit h3 { font-size: 15px; margin: 18px 0 4px; }
+  .crit p, .crit li { font-size: 13.5px; color: var(--ink-2); }
+  .crit b { color: var(--ink); }
+  table.wt { border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+  table.wt th, table.wt td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
+  table.wt th { background: #f9fafb; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .q { background: var(--amber-tint); border-left: 3px solid var(--amber-mid); padding: 8px 12px; border-radius: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">GC projects · Each project · mock-up 2026-10-14 · the second page of #108</p>
+  <h1>The building-stage card, in shape D</h1>
+  <p>The owner said build D and mock the building card first. This is the same job four months on: awarded, started Sep 14, finishing Jan 29. The words and numbers are the ones <code>stageHealth</code> already writes for a building job (the verdict, the bars, the finish, what waits on us, each trade's share done); the names are made up. Press a trade's <b>›</b>, a <b>Key</b> or <b>More ▾</b>.</p>
+</header>
+
+<h2><span class="num grey">0</span> Today's building card, for the record</h2>
+<p class="lede">What the live test job shows now, in shape only: fifteen doors on the head, the strip with the week squares and two keys, the plans and Drive sentences, then each trade's scope lines, its statement of work card and its asks, one under the other.</p>
+<div class="cap old"><span>Today</span><span class="w">the live card, 1,430px tall on a job with four trades and no schedule</span></div>
+<div class="fit"><div class="page"><div class="card">
+  <div class="t-head"><strong style="font-size:15px">Fair Oaks Shops, Building D</strong> <span class="chip">building</span> <span class="muted">4400 Fair Oaks Pkwy, San Antonio</span>
+    <span class="btn q">The plans</span><span class="btn q">Papers</span><span class="btn q">Questions about the plans · 2 open</span><span class="btn q">A new set of plans came in</span><span class="btn q">Schedule</span><span class="btn q">Change orders · 2</span><span class="btn q">Daily log · 2 missed</span><span class="btn q">Punch list</span><span class="btn q">Submittals</span><span class="btn q">RFIs</span><span class="btn q">Draws</span><span class="btn q">Closeout</span><span class="btn q">Get started</span><span class="btn q">Bill the customer</span><span class="btn q">Bill day · 5 of 7</span><span>12,400 sq ft</span><span class="btn q">Our number</span></div>
+  <div class="t-body">
+    <div style="border-top:1px solid var(--line-2);padding-top:10px;display:grid;gap:8px">
+      <div class="muted">● Bidding — ● Buying out — <b class="ink2">● Building</b> — ○ Closed</div>
+      <div><span class="pill watch">Watch</span> &nbsp;<b>2 days behind the plan. Rough-in inspection is 3 days late. The finish holds at Jan 29.</b> <span class="btn p" style="float:right">Next: Approve draw 2 for Tejas Power →</span></div>
+      <div class="muted">[ the week squares, Sep to Jan, five months ] &nbsp; key: gone by · this week · next milestone · a late milestone · the finish · milestone met</div>
+      <div class="muted">[ four bars: Work done · Time used · Billed the customer · Paid us ]</div>
+      <div class="muted">[ five tiles, one a trade, each with its share done ] &nbsp; key: done for this stage · under way · a hole · our own crew</div>
+      <div class="muted">[ four numbers: Finish · Not billed yet · Billed, not paid · Waiting on us ]</div>
+    </div>
+    <div class="muted">Bill day Oct 25 · pay application 3 · trades by Tue Oct 20 · 2 of 4 in · gates 5 of 7 · From the trades ›</div>
+    <div>2 sets of plans, newest Permit set of 2026-10-07. 46 sheets, 3 sections.</div>
+    <div><a href="#" onclick="return false">The job folder in Drive</a> <a href="#" onclick="return false">Permit set's plans</a> <span class="red">Only some people can open it, checked 2026-10-07. Please correct. …</span> <span class="btn q">Check again</span></div>
+    <div class="muted">[ five trades, each: name · budget · N scope lines · Save as a set, the scope bullets, the statement of work card with its two schedules of values and what they will not do, then the companies asked with their logs ]</div>
+  </div>
+</div></div></div>
+
+<h2><span class="num">D</span> The building card in shape D</h2>
+<p class="lede">The same five bands as the bidding card, each answering its question for a job being built: <b>is it on the plan, and what do I do next</b> (the verdict, with the work and money bars under it); <b>how long</b> (the weeks to the finish); <b>which trades, and what waits on whom</b> (one row a trade, with its share done and what it waits on); <b>where are the plans</b>; and the foot, <b>when the work is done</b>.</p>
+<div class="cap"><span>D · building</span><span class="w">the money team's parts are marked; an assistant sees the card without them</span></div>
+<div class="fit"><div class="page"><div class="card">
+  <div class="head">
+    <div class="id">
+      <div class="nm">Fair Oaks Shops, Building D <span class="chip green">building</span></div>
+      <div class="meta">4400 Fair Oaks Pkwy, San Antonio · 12,400 sq ft retail shell · for Alamo Heights Holdings, drawn by Studio Bexar · started Mon Sep 14 · <b>$1,484,900 as signed</b> + 2 change orders <span class="chip" title="The money team's">money</span></div>
+    </div>
+    <div class="doors">
+      <span class="grp"><span>The plans</span><span>Papers <span class="c">5</span></span><span>Questions <span class="c warn">2 open</span></span><span>Schedule <span class="c">2 days behind</span></span></span>
+      <span class="grp"><span>Daily log <span class="c bad">2 missed</span></span><span>Punch list <span class="c">3</span></span><span>Submittals <span class="c bad">1 on us</span></span><span>RFIs <span class="c">2</span></span><span>Draws <span class="c bad">1 to approve</span></span></span>
+      <span class="grp money" title="The money team's"><span>Bill the customer</span><span>Bill day <span class="c">5 of 7</span></span><span>Change orders <span class="c">2</span></span><span>Closeout</span></span>
+      <span class="menu" id="moreB"><button class="btn" onclick="document.getElementById('moreB').classList.toggle('open')">More ▾</button><span class="list"><span class="h">On this job</span><span>A new set of plans came in</span><span>Get started (the start checklist)</span><span>Our number · Bid tabs</span><span>Save a trade's scope as a set</span></span></span>
+    </div>
+  </div>
+  <div class="verdict">
+    <span class="why"><span class="pill watch">Watch</span> <b>2 days behind the plan. Rough-in inspection is 3 days late. The finish holds at Jan 29.</b></span>
+    <span class="btn p">Next: Approve draw 2 for Tejas Power →</span>
+    <div class="nums full">
+      <div class="num"><span class="l">Finish</span><span class="v amber">Fri Jan 29</span><span class="n">107 days left, 4 added by change orders</span></div>
+      <div class="num" title="1 draw to approve (Tejas Power, draw 2) · Summit Roofing's submittal, needed today · the daily log for Tue Oct 13"><span class="l">Waiting on us</span><span class="v red">3</span><span class="n">1 draw, 1 submittal, a daily log · hover lists them</span></div>
+      <div class="num"><span class="l">Not billed yet <span class="chip" style="font-size:9.5px;line-height:14px">money</span></span><span class="v amber">about $62,000</span><span class="n">work in place past our last bill</span></div>
+      <div class="num"><span class="l">Billed, not paid <span class="chip" style="font-size:9.5px;line-height:14px">money</span></span><span class="v">$148,200</span><span class="n">retainage held $71,400</span></div>
+    </div>
+    <div class="bars full">
+      <div class="bar"><span class="l">Work done</span><span class="t"><i class="g" style="width:38%"></i><em style="left:42%" title="Planned for today: 42%"></em></span><span class="v">38% · plan 42%</span></div>
+      <div class="bar"><span class="l">Time used</span><span class="t"><i class="dim" style="width:31%"></i></span><span class="v">43 of 138 days</span></div>
+      <div class="bar" title="The money team's"><span class="l">Billed the customer</span><span class="t"><i style="width:34%"></i><em style="left:38%" title="Work in place: 38%"></em></span><span class="v">34% · work 38%</span></div>
+      <div class="bar" title="The money team's"><span class="l">Paid us</span><span class="t"><i class="g" style="width:24%"></i></span><span class="v">24% of the price</span></div>
+    </div>
+    <div class="billday" title="The money team's"><b>Bill day Sun Oct 25</b> pay application 3 · trades by Tue Oct 20 · 2 of 4 in · gates 5 of 7 <a class="k">From the trades ›</a> <span class="chip" style="font-size:9.5px;line-height:14px">money</span></div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The clock</b><span class="muted"><b class="ink2">16</b> weeks to the finish · <b class="ink2">3</b> of 4 milestones on time · a square a week, a space between months</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+    <div class="wcal" data-wcal></div>
+    <div class="key" data-wkey hidden></div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The trades</b><span class="muted">5, one ours · the stripe is the tile's colour · a red row waits on us</span><a class="k right" onclick="toggleKey(this)">Key</a></div>
+    <div class="key" data-tkey hidden></div>
+    <div class="tt" data-trades></div>
+  </div>
+  <div class="band">
+    <div class="bh"><b>The plans</b><span class="muted">Permit set of Oct 7 · 46 sheets, 3 sections · 2 sets in all</span></div>
+    <div class="rec">
+      <span class="k">Newest set</span><span class="v"><a href="#" onclick="return false">open the Permit set ↗</a> <span class="red">only some people can open it, checked Oct 7</span> <span class="btn q s">How to fix it</span> <span class="btn q s">Check again</span></span>
+      <span class="k">Drive</span><span class="v"><a href="#" onclick="return false">The job folder ↗</a> <span class="muted">· photos, daily logs and the trades' files land here</span></span>
+    </div>
+  </div>
+  <div class="foot"><span class="cap2">When the work is done</span><span class="muted" style="font-size:12px">38% reported · closeout opens when every trade reports 100%</span><span class="btn" title="The money team's">Closeout ›</span></div>
+</div></div></div>
+<ul class="moves">
+  <li><b>The head</b> on a building job is three grouped sets, not one wrap: the job's (The plans, Papers, Questions, Schedule), the work's (Daily log, Punch list, Submittals, RFIs, Draws) and the money team's (Bill the customer, Bill day, Change orders, Closeout), each door with the fact that says whether to open it (<i>Daily log · 2 missed</i>, <i>Draws · 1 to approve</i>, in red when it waits on us). <b>More ▾</b> holds the four rare presses. The price as signed joins the facts line for the money team.</li>
+  <li><b>The verdict band</b> holds everything the strip's top did, in one tinted block: the verdict and why, Next, the four numbers, the four bars (work against time, money against work), and Bill day's line. An assistant sees the band without the two money numbers, the two money bars and the Bill day line, and nothing moves.</li>
+  <li><b>The clock</b> is the strip's week squares as they are, with the month gaps, the finish as the last square and the milestones as marks; its summary (weeks to the finish, milestones on time) is the band's caption. The key is behind the link.</li>
+  <li><b>The trades</b> are one table: stripe, trade and company, contract (money), done as a bar with its share, billed (money), what it waits on, next. A row that waits on us is red and says what (<i>Draw 2 waits on our approval</i>, <i>Their submittal waits on us, needed today</i>); › opens the statement of work's facts (price, retainage, the plan set it was based on, the two schedules of values, what they will not do) and the trade's open items. The tile, the heading, the scope, the statement-of-work card and the asks are one row.</li>
+  <li><b>The plans</b> band says the Drive problem in one red clause with a <i>How to fix it</i> door, where today it is a three-line sentence.</li>
+  <li><b>The foot</b> is the stage's end: how much is reported and the Closeout door, the money team's.</li>
+</ul>
+
+<section class="crit">
+  <h2 style="margin-top:0">What changes by stage</h2>
+  <p>One shape, five bands; the kernel already answers each band per stage. What differs:</p>
+  <table class="wt">
+    <tr><th>Band</th><th>Bidding</th><th>Buying out</th><th>Building</th></tr>
+    <tr><td><b>Head doors</b></td><td>the job's set · Our number, Bid tabs</td><td>the job's set · Get started (the checklist) · the money team's Bill the customer, Change orders</td><td>the job's set · the work's set · the money team's set</td></tr>
+    <tr><td><b>Verdict band</b></td><td>numbers: bid due, trades with a number, our bid, people to call</td><td>numbers: our side, trades ready, start; <i>Set the start date</i> inline when there is none</td><td>numbers: finish, waiting on us, not billed yet, billed not paid; the four bars; Bill day's line</td></tr>
+    <tr><td><b>The clock</b></td><td>a square a day, three weeks</td><td>a square a day, three weeks back to the start</td><td>a square a week to the finish, a space between months</td></tr>
+    <tr><td><b>Trade rows</b></td><td>scope · budget · quotes · asked · next</td><td>company · contract · the five dots (awarded, master agreement, insurance, W-9, statement of work) · what waits on whom · next (<i>Send the master agreement</i>)</td><td>company · contract · done · billed · waiting on · next</td></tr>
+    <tr><td><b>Foot</b></td><td>We sent our bid · We won this · We lost this</td><td>Start the job (Get started)</td><td>Closeout</td></tr>
+  </table>
+
+  <h3>Is this the best we can do?</h3>
+  <ul>
+    <li><b>Fifteen doors became three sets and a menu</b>, and each door carries the fact that says whether to open it. I weighed folding the work's set (Daily log … Draws) into the verdict band's <i>Waiting on us</i> number alone, since Next already names the most urgent one; it lost, because the office opens Daily log and Punch list every day whether or not they wait on us. A door is a place, a number is a state; both belong.</li>
+    <li><b>The bars live in the verdict band</b>, not their own band, because they are the verdict's evidence (38% done where 42% was planned is why it reads Watch). A reader who sees no money sees two bars; the band does not reflow.</li>
+    <li><b>The trade row's Done bar replaces the tile's bar</b>, and the statement-of-work card, today a block as tall as the row's whole table, opens under the row. On a job with twelve trades that is the difference between one screen and four.</li>
+    <li><b>Two keys stay, behind links.</b> The week squares' key names six kinds; the rows' stripes name four. The words on each square's hover and on each row say the same, so the key is a first-month aid, as on the bidding card.</li>
+  </ul>
+
+  <h3>Your calls on this one</h3>
+  <div class="q">
+    <ol style="margin:0;padding-left:18px">
+      <li><b>The head's three sets wrap to two lines</b> at 1,040px on a building job. Fine, or should the money team's set move into More ▾ to hold one line?</li>
+      <li><b>The price as signed in the facts line</b> (money team only). It is on the Board row today; here it is new on the card.</li>
+      <li><b>Bill day's line</b> in the verdict band, or its own thin band under the trades. I put it in the band because it is the money's clock.</li>
+      <li><b>The trade table's Billed column</b> for the money team: keep, or let › show it. I kept it because <i>billed 30% where 45% is done</i> is what the money team scans for.</li>
+    </ol>
+  </div>
+  <p>Nothing here changes the four-PR train in the to-do card: PR 1 the head, PR 2 the verdict band, PR 3 the trade rows, PR 4 the plans band and the foot. Each is stage-aware from the start, with the bidding and the building words both in its smoke.</p>
+</section>
+</div>
+
+<script>
+  // The weeks from the start (Sep 14) to the finish (Jan 29), a space between months; milestones as marks and labels.
+  const MONTHS = [
+    ['SEP', [[14, 'past'], [21, 'past'], [28, 'past met']]],
+    ['OCT', [[5, 'past'], [12, 'now late', 'Rough-in inspection · 3 days late'], [19, 'next', 'Roof dry-in due'], [26, '']]],
+    ['NOV', [[2, ''], [9, ''], [16, ''], [23, ''], [30, '']]],
+    ['DEC', [[7, ''], [14, ''], [21, ''], [28, '']]],
+    ['JAN', [[4, ''], [11, ''], [18, ''], [25, 'end', 'The finish · Jan 29']]],
+  ]
+  const el = document.querySelector('[data-wcal]')
+  el.innerHTML = MONTHS.map(([m, weeks]) => {
+    const sq = weeks.map(([d, cls]) => {
+      const marks = cls.includes('met') ? '<span class="m"><i></i></span>' : cls.includes('late') ? '<span class="m"><i class="bad"></i></span>' : ''
+      return `<span class="wsq ${cls}" title="Week of ${m} ${d}">${d}${marks}</span>`
+    }).join('')
+    const labs = weeks.map(([d, cls, words]) => {
+      const kind = cls.includes('late') ? 'late' : cls.includes('next') ? 'next' : cls.includes('end') ? 'end' : cls.includes('now') ? 'now' : ''
+      return `<span class="wlab ${kind}">${words ? words.split(' · ')[0] : cls.includes('now') ? 'This week' : ''}</span>`
+    }).join('')
+    return `<div class="mo"><div class="ml">${m}</div><div class="ws">${sq}</div><div class="ws" style="align-items:flex-start">${labs}</div></div>`
+  }).join('')
+  document.querySelector('[data-wkey]').innerHTML = '<span><i class="past"></i>gone by</span><span><i class="now"></i>this week</span><span><i class="next"></i>next milestone</span><span><i class="late"></i>a late milestone</span><span><i class="end"></i>the finish</span><span><i class="d" style="background:#16a34a"></i>milestone met</span><span><i class="d" style="background:#dc2626"></i>an inspection failed</span>'
+  document.querySelector('[data-tkey]').innerHTML = '<span><i class="d" style="background:#16a34a"></i>done for this stage</span><span><i class="d" style="background:#d97706"></i>under way, or waiting on a company</span><span><i class="d" style="background:#dc2626"></i>a hole, a problem, or waiting on us</span><span><i class="d" style="background:#7c3aed"></i>our own crew</span>'
+  function toggleKey(a) {
+    const band = a.closest('.band')
+    band.querySelectorAll('.key').forEach((k) => { k.hidden = !k.hidden })
+    a.textContent = a.textContent === 'Key' ? 'Hide the key' : 'Key'
+  }
+
+  const TRADES = [
+    { st: 'good', name: 'Concrete', co: 'Alamo Flatwork', contract: '$142,500', pct: 100, billed: '90%', wait: '<span class="muted">nothing · final bill with closeout</span>', next: 'Close out the trade',
+      sow: ['signed Sep 2', 'retainage 10%', 'based on the Permit set'], sov: [['Footings', '$38,000', '100%'], ['Slab on grade', '$64,500', '100%'], ['Site concrete', '$40,000', '70%']], excl: 'nothing listed', items: ['Final lien waiver not in yet.'] },
+    { st: 'bad', name: 'Electrical', co: 'Tejas Power', contract: '$91,200', pct: 45, billed: '30%', wait: '<span class="red">Draw 2 waits on our approval · $18,400</span>', next: 'Approve draw 2',
+      sow: ['signed Sep 9', 'retainage 10%', 'based on the Permit set'], sov: [['Service and distribution', '$32,000', '80%'], ['Branch wiring, devices, fixtures', '$47,200', '20%'], ['Fire alarm rough-in', '$12,000', '0%']], excl: 'low-voltage rough-in (Comfort Air does it)', items: ['Draw 2 requested Oct 12, $18,400, pay by Oct 22.', 'RFI 4, panel location, answered Oct 9.'] },
+    { st: 'bad', name: 'Roofing', co: 'Summit Roofing', contract: '$71,900', pct: 0, billed: '0%', wait: '<span class="red">Their submittal waits on us, needed today</span>', next: 'Answer the submittal',
+      sow: ['signed Sep 30', 'retainage 10%', 'based on the Permit set'], sov: [['TPO membrane, insulation, flashings', '$58,900', '0%'], ['Gutters and downspouts', '$13,000', '0%']], excl: 'nothing listed', items: ['Submittal: TPO membrane data sheet, needed today for the dry-in.', 'Roof dry-in due the week of Oct 19.'] },
+    { st: 'warn', name: 'HVAC', co: 'Comfort Air', contract: '$118,000', pct: 10, billed: '0%', wait: '<span class="muted">nothing · on the plan</span>', next: 'Look-ahead marks ›',
+      sow: ['signed Sep 22', 'retainage 10%', 'based on the Permit set'], sov: [['Equipment', '$61,000', '0%'], ['Ductwork', '$34,000', '30%'], ['Controls, test and balance', '$23,000', '0%']], excl: 'roof curbs (Summit Roofing does it)', items: ['Low-voltage rough-in carried from Electrical\'s exclusion.'] },
+    { st: 'ours', name: 'Plumbing', co: 'our own crew', contract: '—', pct: 52, billed: '—', wait: '<span class="muted">our own crew · 3 on site today</span>', next: 'The crew\'s job ›',
+      sow: null, sov: [], excl: '', items: ['Our Trades-mode bid, $62,300; the Pipeline job J1042 carries the hours.'] },
+  ]
+  const tt = document.querySelector('[data-trades]')
+  tt.innerHTML = `<div class="th"><span></span><span>Trade · company</span><span>Contract <span style="font-weight:500;text-transform:none;letter-spacing:0">money</span></span><span>Done</span><span>Billed <span style="font-weight:500;text-transform:none;letter-spacing:0">money</span></span><span>Waiting on</span><span>Next</span><span></span></div>` + TRADES.map((t, i) => {
+    const bar = `<span class="pb">${t.pct}%<i><b class="${t.st === 'good' ? 'g' : t.st === 'ours' ? 'p' : ''}" style="width:${t.pct}%"></b></i></span>`
+    const open = `<div class="open"><div>${t.sow ? `<h5>Statement of work · ${t.sow.join(' · ')}</h5><table class="sov"><tr><th>Our schedule of values</th><th class="r">Amount</th><th class="r">Billed</th></tr>${t.sov.map(([l, a, b]) => `<tr><td>${l}</td><td class="r">${a}</td><td class="r">${b}</td></tr>`).join('')}</table><div class="muted" style="font-size:12px;margin-top:4px">What they will not do: ${t.excl}.</div>` : `<h5>Our own crew</h5><div class="muted" style="font-size:12.5px">${t.items[0]}</div>`}</div><div><h5>Open on this trade</h5><div class="ls">${(t.sow ? t.items : []).map((x) => `<span>${x}</span>`).join('') || '<span class="muted">nothing</span>'}</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="btn s">Their portal</span><span class="btn s">The company</span><span class="btn s">Log a contact</span></div></div></div>`
+    return `<div class="tr ${i === 1 ? 'is-open' : ''}" onclick="this.classList.toggle('is-open')"><span class="st ${t.st}"></span><span class="nm">${t.name}<small>${t.co}</small></span><span class="muted">${t.contract}</span>${bar}<span class="muted">${t.billed}</span><span>${t.wait}</span><span><span class="btn s">${t.next}</span></span><span class="ex">›</span></div>${open}`
+  }).join('')
+</script>
+</body>
+</html>
