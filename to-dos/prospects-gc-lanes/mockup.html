@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospects Finding Lanes</title>
+<style>
+  /* layout: one column of framed app drawings, each under a caption; the app's own light look, system font */
+  :root { color-scheme: light; --page: #f6f7f9; --surface: #ffffff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb;
+    --blue: #3b82f6; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --violet: #7c3aed; --violet-tint: #ede9fe; --green: #15803d; --green-mid: #16a34a; --green-tint: #dcfce7;
+    --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --red: #dc2626; --red-tint: #fee2e2; --app: #f0f2f5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 13px; flex: none; }
+  h2 .num.grey { background: var(--ink); }
+  h2 .num.green { background: var(--green-mid); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 105ch; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--blue-tint); color: var(--blue-ink); margin-top: 14px; flex-wrap: wrap; }
+  .cap.old { background: var(--line-2); color: var(--ink-2); }
+  .cap.good { background: var(--green-tint); color: var(--green); }
+  .cap .w { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: var(--app); padding: 14px; overflow-x: auto; }
+  .page { width: 1040px; margin: 0 auto; }
+  .page.narrow { width: 720px; }
+  ul.moves { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  ul.moves li { margin: 2px 0; }
+  ul.moves b, .crit b { color: var(--ink); }
+
+  /* the app's chrome */
+  .ph { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs { display: inline-flex; gap: 4px; background: #e5e7eb; border-radius: 10px; padding: 4px; }
+  .tabs span { padding: 6px 18px; border-radius: 6px; color: var(--muted); font-size: 14px; font-weight: 400; }
+  .tabs span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .tabs span.new { outline: 2px dashed var(--amber-mid); outline-offset: -2px; }
+  .ptitle { font-size: 20px; font-weight: 800; margin-left: auto; }
+  .sub { display: flex; gap: 6px; align-items: center; margin: 4px 0 12px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .sub span { padding: 4px 10px; border-radius: 6px; }
+  .sub span.on { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; }
+  .sub .sep { color: var(--line); padding: 0; }
+  .sub .btn { margin-left: auto; }
+  .btn { display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); white-space: nowrap; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.g { background: var(--green-mid); color: #fff; border-color: var(--green-mid); }
+  .btn.a { background: var(--amber-tint); color: var(--amber); border-color: #f5d58a; }
+  .btn.v { background: var(--violet); color: #fff; border-color: var(--violet); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); padding: 3px 4px; }
+  .btn.s { padding: 2px 8px; font-size: 12px; }
+  .btn.dash { outline: 2px dashed var(--amber-mid); outline-offset: 2px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 11.5px; line-height: 18px; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.green { background: var(--green-tint); color: var(--green); }
+  .chip.amber { background: var(--amber-tint); color: var(--amber); }
+  .chip.red { background: var(--red-tint); color: #991b1b; }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .chip.purple { background: var(--violet-tint); color: #5b21b6; }
+  .chip.outline { background: var(--surface); border: 1px solid var(--line); }
+  .muted { color: var(--muted); } .ink2 { color: var(--ink-2); } .red { color: var(--red); } .green { color: var(--green); } .amber { color: var(--amber-mid); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); font-size: 13px; min-width: 0; }
+  .deck { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .co { font-size: 18px; font-weight: 800; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .co small { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .facts { display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; margin: 6px 0 10px; color: var(--ink-2); font-size: 12.5px; }
+  .tel { display: inline-flex; align-items: center; gap: 6px; background: var(--blue); color: #fff; border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 13px; }
+  .outcome { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 8px; }
+  .outcome .l { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+  .util { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--blue-ink); margin-top: 8px; }
+  .util .t { margin-left: auto; color: var(--muted); }
+  .rail { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; }
+  .rail .h { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 6px; }
+  .rail .ord { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+  .rail .ord span { padding: 2px 8px; font-size: 11.5px; color: var(--muted); }
+  .rail .ord span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .rail .row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; padding: 3px 0; border-top: 1px solid var(--line-2); align-items: baseline; }
+  .rail .row.on { background: var(--blue-tint); margin: 0 -6px; padding: 3px 6px; border-radius: 6px; border-top: 0; }
+  .rail .row .n { color: var(--muted); font-size: 11px; }
+  .rail .row .w { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail .row .s { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .strip { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; font-size: 12.5px; }
+  .strip .l { font-weight: 700; color: var(--ink-2); margin-right: 4px; }
+  .strip .need { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--surface); }
+  .strip .need b { color: var(--ink); }
+  .strip .need .q { color: var(--muted); font-size: 11.5px; }
+  .strip .need.on { border-color: var(--blue); background: var(--blue-tint); }
+  .strip .need.ok { color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); }
+  .jobs { border: 1px solid var(--line-2); border-radius: 8px; margin: 8px 0; }
+  .jobs .jh { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 10px; background: #f9fafb; border-bottom: 1px solid var(--line-2); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--muted); border-radius: 8px 8px 0 0; }
+  .jobs .jr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 7px 10px; border-top: 1px solid var(--line-2); align-items: baseline; }
+  .jobs .jr:first-of-type { border-top: 0; }
+  .jobs .jr b { font-size: 13px; }
+  .jobs .jr .m { color: var(--muted); font-size: 12px; }
+  .jobs .jr .due { font-weight: 700; white-space: nowrap; text-align: right; }
+  .jobs .jr .due small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 13px; }
+  .modal h4 { margin: 0 0 2px; font-size: 16px; }
+  .modal .why { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+  .kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .kind { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .kind.on { border: 2px solid var(--blue); background: var(--blue-tint); }
+  .kind b { display: block; font-size: 13px; }
+  .kind span { font-size: 11.5px; color: var(--ink-2); }
+  .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+  .f { display: grid; gap: 2px; min-width: 0; }
+  .f.wide { grid-column: 1 / -1; }
+  .f label { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .f .in { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--surface); min-height: 30px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .f .in.empty { color: #9ca3af; }
+  .f .hint { font-size: 11px; color: var(--muted); }
+  .radios { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .radios span::before { content: "○ "; color: var(--muted); } .radios span.on::before { content: "● "; color: var(--blue); }
+  .warn { border-left: 3px solid var(--amber-mid); background: var(--amber-tint); padding: 6px 10px; border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--amber); }
+  .mfoot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+  table.list { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); }
+  table.list th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); background: #f9fafb; }
+  table.list td { padding: 7px 8px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .sec { font-weight: 700; margin: 10px 0 4px; font-size: 13px; }
+  .sec small { color: var(--muted); font-weight: 500; }
+  .jump { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ideal { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; }
+  .ideal b { font-size: 13px; }
+  .ideal .bar { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; background: #f9fafb; border-top: 1px dashed var(--line-2); margin: 4px -14px -10px; padding: 8px 14px; border-radius: 0 0 10px 10px; flex-wrap: wrap; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  .lane { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 10px 12px; font-size: 12.5px; }
+  .lane .lh { font-weight: 800; display: flex; gap: 8px; align-items: center; }
+  .lane .lh .cnt { background: var(--blue); color: #fff; border-radius: 999px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+  .act { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+  .act .t { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .act .t .v { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .act .t .l { font-size: 11px; color: var(--muted); }
+  .src { display: grid; grid-template-columns: 160px minmax(0, 1fr) 90px; gap: 6px 10px; font-size: 12.5px; align-items: center; }
+  .src .b { height: 8px; border-radius: 999px; background: var(--line-2); position: relative; }
+  .src .b i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--green-mid); }
+  .src .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+  .crit { margin-top: 44px; border-top: 2px solid var(--ink); padding-top: 14px; max-width: 120ch; }
+  .crit h3 { font-size: 15px; margin: 18px 0 4px; }
+  .crit p, .crit li { font-size: 13.5px; color: var(--ink-2); }
+  table.wt { border-collapse: collapse; font-size: 13px; margin: 8px 0; width: 100%; }
+  table.wt th, table.wt td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.wt th { background: #f9fafb; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  table.wt td:first-child { font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .q { background: var(--amber-tint); border-left: 3px solid var(--amber-mid); padding: 8px 12px; border-radius: 0 6px 6px 0; }
+  ol.calls li { margin: 6px 0; }
+  .tbl { overflow-x: auto; }
+  @media (max-width: 720px) { .two, .kinds, .form, .act { grid-template-columns: 1fr; } .deck { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Prospects · mock-up 2026-10-15 · #110</p>
+  <h1>Prospects finds three kinds of company</h1>
+  <p>The owner, 2026-10-15: "Right now we use Prospects to find general contractors for our trades to bid, but now that we have the option to be a GC thanks to Bids, GC mode, I think we should also add tabs for finding jobs that we could GC and finding subs (another form of a trade partner) to fill our jobs." This page draws today, a first cut, the critique of it, and the revised cut. Every name, street and number on it is made up.</p>
+</header>
+
+<h2><span class="num grey">0</span> Today: one deck, and two pages with nowhere to look</h2>
+<p class="lede">Prospects is the company's cold-call deck for <b>customers</b> (a GC or an owner who could send us plans for our trades) and the <b>Hiring</b> board. GC mode already keeps the two things the owner wants to find more of, but each page starts after the finding is done.</p>
+
+<div class="cap old"><span>Today · Prospects → Customers → Follow Up</span><span class="w">the deck: one company at a time, the queue beside it</span></div>
+<div class="fit"><div class="page">
+  <div class="ph"><div class="tabs"><span class="on">Customers</span><span>Hiring</span></div><div class="ptitle">Prospects</div></div>
+  <div class="sub"><span class="on">Follow Up</span><span class="sep">|</span><span>Prospect List</span><span class="sep">|</span><span>Convert</span><span class="sep">|</span><span>Activity</span><span class="btn p">New Prospect</span></div>
+  <div class="deck">
+    <div class="card">
+      <div class="co">Ridgeway Builders <span class="chip amber">Due 61 days</span></div>
+      <div class="facts"><span>Marisol Vega · estimating@ridgewaybuilders.example</span></div>
+      <div class="facts"><span class="tel">📞 (512) 555-0142</span></div>
+      <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v">Converted ✓</span></div>
+      <div class="util"><span>Set callback</span><span>·</span><span>Edit prospect</span><span>·</span><span class="chip amber">🔥 2</span><span class="t">this call 00:00 · my day —</span></div>
+    </div>
+    <div class="rail"><div class="h"><span>Queue</span><span class="muted">1 of 268</span></div><div class="ord"><span class="on">Coldest</span><span>Never called</span></div>
+      <div class="row on"><span class="n">1</span><span class="w">Ridgeway Builders</span><span class="s">called 230d ago</span></div>
+      <div class="row"><span class="n">2</span><span class="w">Sabinal Commercial</span><span class="s">never called</span></div>
+      <div class="row"><span class="n">3</span><span class="w">G. Morrow Custom Homes</span><span class="s">noted 230d ago</span></div>
+    </div>
+  </div>
+</div></div>
+
+<div class="cap old"><span>Today · GC projects → Trade partners</span><span class="w">the bench knows its gap and has nowhere to send the caller</span></div>
+<div class="fit"><div class="page narrow">
+  <div class="ideal"><div><b>A deep bench in every trade</b><div class="muted">The ideal: every trade has 3 companies we can count on. A company counts until it has stayed silent on most of our asks.</div><div>Where we are: <span class="chip amber">1 of 5 trades have 3</span></div></div><span class="btn q">Hide</span>
+    <div class="bar"><span class="chip">CONCRETE (1)</span><b>Concrete has 1. Find 2 more.</b><span class="btn s" style="margin-left:auto">Add a company</span></div></div>
+  <p class="note" style="margin:8px 0 0">"Add a company" is the only intake: the office types a company after a phone call. There is no list of companies to call, no outcomes, no queue, and the call script (v2.5556) opens from this page with no one to use it on.</p>
+</div></div>
+
+<div class="cap old"><span>Today · GC projects → Customers and Project Board</span><span class="w">both start after the owner has asked us</span></div>
+<div class="fit"><div class="page narrow two">
+  <div class="lane"><div class="lh">Customers → per job</div><div style="margin-top:6px"><b>Asked us</b> <span class="muted">· nobody</span><div class="muted">A new ask lands here.</div></div><div style="margin-top:6px"><b>Our bid</b> <span class="muted">· 2 · usually 9 d</span></div></div>
+  <div class="lane"><div class="lh"><span class="cnt">1</span> Bidding to the customer</div><div class="muted">Collect a number for every trade, then give the customer a price.</div><div style="margin-top:8px"><b>Lost</b> <span class="muted">· 0 · Bids the customer gave to another builder. Kept so we learn why.</span></div></div>
+</div></div>
+<ul class="moves">
+  <li><b>What exists and is reused, never rebuilt:</b> the deck's machine (queue order, the 30-minute calling lock, the five outcomes, warmth, callbacks, timers, copy templates, quick notes, the Activity report); the bench (<code>gc_companies</code> with trades, range and vetting; the "find N more" rule; the call script); a GC project (<code>gc_projects</code> with its customer's role: the owner, another GC, an owner's rep; the architect); Messages' contact kinds (customer, trade partner, architect, lead, sub).</li>
+  <li><b>What is missing:</b> a prospect has no kind; nothing holds a GC job before it is a project; nothing holds a trade company before it is on the bench.</li>
+</ul>
+
+<h2><span class="num">A</span> First cut: two more tabs, the same deck</h2>
+<p class="lede">Prospects gets four top tabs, in the order the company finds things: <b>Customers · Jobs to GC · Subs · Hiring</b>. Each new tab carries the four sub-tabs the Customers tab has, the same card, the same queue, the same outcomes. New Prospect asks what kind first.</p>
+
+<div class="cap"><span>A · Subs → Follow Up</span><span class="w">the same card; what makes a sub a sub is in the notes</span></div>
+<div class="fit"><div class="page">
+  <div class="ph"><div class="tabs"><span>Customers</span><span class="new">Jobs to GC</span><span class="on new">Subs</span><span>Hiring</span></div><div class="ptitle">Prospects</div></div>
+  <div class="sub"><span class="on">Follow Up</span><span class="sep">|</span><span>Prospect List</span><span class="sep">|</span><span>Convert</span><span class="sep">|</span><span>Activity</span><span class="btn p">New Prospect</span></div>
+  <div class="deck">
+    <div class="card">
+      <div class="co">Bexar Fire Protection <span class="chip green">never called</span></div>
+      <div class="facts"><span>Tomás Reyna · bids@bexarfire.example</span></div>
+      <div class="facts"><span class="tel">📞 (210) 555-0188</span></div>
+      <div class="note">Notes: does fire sprinkler and some HVAC, goes up to about 40 mi from Boerne, found on a GC's sub list.</div>
+      <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v">Converted ✓</span></div>
+      <div class="util"><span>Set callback</span><span>·</span><span>Edit prospect</span><span class="t">this call 00:00</span></div>
+    </div>
+    <div class="rail"><div class="h"><span>Queue</span><span class="muted">1 of 23</span></div><div class="ord"><span class="on">Coldest</span><span>Never called</span></div>
+      <div class="row on"><span class="n">1</span><span class="w">Bexar Fire Protection</span><span class="s">never called</span></div>
+      <div class="row"><span class="n">2</span><span class="w">Comal Concrete Works</span><span class="s">never called</span></div>
+      <div class="row"><span class="n">3</span><span class="w">Lone Star Sprinkler</span><span class="s">called 12d ago</span></div>
+    </div>
+  </div>
+</div></div>
+
+<div class="cap"><span>A · Jobs to GC → Follow Up</span><span class="w">the owner is the card; the job is a sentence in the notes</span></div>
+<div class="fit"><div class="page">
+  <div class="deck">
+    <div class="card">
+      <div class="co">Hill Country Developers <span class="chip">owner</span></div>
+      <div class="facts"><span>Dana Whitlock · dwhitlock@hcdev.example</span></div>
+      <div class="facts"><span class="tel">📞 (512) 555-0177</span></div>
+      <div class="note">Notes: retail shell on FM 1431 in Cedar Park, about 12,000 sq ft, plans on PlanHub, bids due Nov 3. Also an office TI next spring.</div>
+      <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v">Converted ✓</span></div>
+      <div class="util"><span>Set callback</span><span>·</span><span>Edit prospect</span><span class="t">this call 00:00</span></div>
+    </div>
+    <div class="rail"><div class="h"><span>Queue</span><span class="muted">1 of 14</span></div><div class="ord"><span class="on">Coldest</span><span>Never called</span></div>
+      <div class="row on"><span class="n">1</span><span class="w">Hill Country Developers</span><span class="s">never called</span></div>
+      <div class="row"><span class="n">2</span><span class="w">Studio Bexar (architect)</span><span class="s">called 9d ago</span></div>
+      <div class="row"><span class="n">3</span><span class="w">Lantana Property Group</span><span class="s">never called</span></div>
+    </div>
+  </div>
+</div></div>
+
+<div class="cap"><span>A · New Prospect</span><span class="w">what kind, then the seven fields every kind has today</span></div>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>New prospect</h4><p class="why">Who are we looking for?</p>
+  <div class="radios" style="margin-bottom:12px"><span>Customer</span><span>Job to GC</span><span class="on">Sub</span></div>
+  <div class="form">
+    <div class="f"><label>Company</label><div class="in">Bexar Fire Protection</div></div>
+    <div class="f"><label>Contact</label><div class="in">Tomás Reyna</div></div>
+    <div class="f"><label>Phone</label><div class="in">(210) 555-0188</div></div>
+    <div class="f"><label>Email</label><div class="in">bids@bexarfire.example</div></div>
+    <div class="f wide"><label>Address</label><div class="in">1800 Cibolo Trail, Boerne</div></div>
+    <div class="f wide"><label>Website</label><div class="in empty">https://</div></div>
+    <div class="f wide"><label>Notes</label><div class="in">fire sprinkler, some HVAC, up to 40 mi</div></div>
+  </div>
+  <div class="mfoot"><span class="btn">Cancel</span><span class="btn p">Save</span></div>
+</div></div></div>
+<ul class="moves">
+  <li><b>One change under it all:</b> a <code>kind</code> on <code>prospects</code> (customer, gc_lead, sub), default customer, so nothing moves for the Customers tab or for Hiring.</li>
+  <li><b>Converted ✓</b> opens Add customer for every kind, as today.</li>
+</ul>
+
+<section class="crit">
+<h3>Is this the best we can do? Is it intuitive and robust?</h3>
+<p>A is the honest minimum, and it answers the ask. Walked through as the assistant making the calls, and as the data under it, it has eleven weak spots. B fixes each.</p>
+<div class="tbl"><table class="wt">
+<tr><th>Weak spot in A</th><th>Why it matters</th><th>What B does instead</th></tr>
+<tr><td>Four tabs × four sub-tabs</td><td>Sixteen screens. Convert is a backfill tool for customers added from the Customers page; Activity would be three reports nobody compares.</td><td>The new lanes get <b>Follow Up</b> and <b>List</b>. Activity is one report with kind chips. Convert stays where it is, Customers only.</td></tr>
+<tr><td>A job is a sentence in the notes</td><td>An owner has several jobs over the years. The date that orders the queue is the job's bid day, and a sentence cannot be sorted, counted or handed to New project.</td><td>A GC lead carries a <b>jobs list</b> (name, address, size, plans link, bid due). The queue has a <b>Soonest bid</b> order. Asked us ✓ hands the chosen job to New project filled in.</td></tr>
+<tr><td>The demand is on another page</td><td>The caller on Subs cannot see that Concrete needs 2 and Fire sprinkler needs 3. The bench's "Find 2 more" still has nowhere to look.</td><td>A <b>What the bench needs</b> strip heads the Subs lane, from the bench's own rule (3 per trade), each trade a filter with its queue count. "Find 2 more" on the bench opens the Subs deck on that trade.</td></tr>
+<tr><td>Converted ✓ on a sub</td><td>The word means nothing there, and the press opens Add customer, the wrong record.</td><td>Each kind's last press is named for what happens: <b>Add to the bench ✓</b> opens Add a company filled in (vetting: new, as the bench expects); <b>Asked us ✓</b> makes the customer and opens New project. The GC Customers tab's first step is already called Asked us.</td></tr>
+<tr><td>Trades and range as notes</td><td>They cannot filter the queue, match a trade package, or fill the bench's fields on conversion.</td><td>A sub carries <b>trades</b> (the bench's own trade names), <b>range</b> in miles and <b>language</b>, on the card as chips, in the list as columns, and straight into Add a company.</td></tr>
+<tr><td>Nothing stops a double</td><td>A company already on the bench typed again; an owner who is already a customer.</td><td>Typing a name or phone checks <code>gc_companies</code> and <code>customers</code>: "Bexar Fire Protection is already on the bench · Open it". A GC lead may link to an existing customer (a trade customer who could hire us as GC) instead of making a new one.</td></tr>
+<tr><td>The call script is a page away</td><td>v2.5556 wrote the script for exactly this call, and the deck does not show it.</td><td>A <b>Call script</b> door on the sub's card, the company's facts filled in.</td></tr>
+<tr><td>No source</td><td>Hiring learned which sources convert; the new lanes would start blind.</td><td><b>Source</b> on every new-kind card (a GC's sub list, PlanHub, a permit, a referral, the architect, drove by), and Source success per kind on Activity.</td></tr>
+<tr><td>Conversion keeps no link</td><td>Today the customer is named in a comment's text, not a column. Add to the bench would be the same.</td><td><code>converted_customer_id</code> and <code>converted_gc_company_id</code> on the prospect, so the card and the list can open what it became.</td></tr>
+<tr><td>A lead who texts has no kind</td><td>Messages' Add to Prospects writes a customer prospect; a homeowner asking about a build is a GC lead.</td><td>The sort card's Add to Prospects offers the kind. Default stays customer.</td></tr>
+<tr><td>Lost bids go cold</td><td>An owner who gave the job to another builder is the warmest GC lead there is, and the Lost lane only keeps the record.</td><td><b>Send the owner back to Prospects</b> on a lost project's card: a GC lead with the job marked lost and a note of who won.</td></tr>
+</table></div>
+<p><b>What A got right and B keeps:</b> one page for all finding; one deck, one machine; four top tabs in the order the company finds things; the kind picked first; nothing changes for Customers or Hiring; one gate (prospects staff) for v1.</p>
+<p><b>What B says no to:</b> a Finding fold on the GC pages (two decks would drift, and the assistant who calls works one page); a kind filter instead of tabs (the caller works one kind at a time, with its own script and its own last press); one card per job (the person called is the owner, and two jobs would collide on the contact, the notes and the lock).</p>
+</section>
+
+<h2><span class="num green">B</span> Revised cut: the same deck, with each kind's own facts and its own last press</h2>
+<p class="lede">The top row is still four tabs. What changes is what each new lane knows: Subs knows what the bench needs and where a company ends up; Jobs to GC knows the jobs and their bid days. The last press of the outcome row lands the company where it already lives in the app.</p>
+
+<div class="cap good"><span>B · Subs → Follow Up</span><span class="w">the bench's needs head the lane; the card carries trades, range, language, source and the call script</span></div>
+<div class="fit"><div class="page">
+  <div class="ph"><div class="tabs"><span>Customers</span><span>Jobs to GC</span><span class="on">Subs</span><span>Hiring</span></div><div class="ptitle">Prospects</div></div>
+  <div class="sub"><span class="on">Follow Up</span><span class="sep">|</span><span>List</span><span class="btn p">New Prospect</span></div>
+  <div class="strip"><span class="l">The bench needs</span>
+    <span class="need"><b>Concrete</b> 2 more <span class="q">· 4 to call</span></span>
+    <span class="need on"><b>Fire sprinkler</b> 3 more <span class="q">· 7 to call</span></span>
+    <span class="need"><b>HVAC</b> 3 more <span class="q">· 5 to call</span></span>
+    <span class="need"><b>Electrical</b> 3 more <span class="q">· 6 to call</span></span>
+    <span class="need"><b>Roofing</b> 1 more <span class="q">· 1 to call</span></span>
+    <span class="need ok"><b>Plumbing</b> ours</span>
+    <span class="note" style="margin-left:auto">3 per trade is the bench's rule · <span class="btn q s">All subs</span></span></div>
+  <div class="deck">
+    <div class="card">
+      <div class="co">Bexar Fire Protection <span class="chip blue">Fire sprinkler</span><span class="chip blue">HVAC</span><span class="chip green">never called</span></div>
+      <div class="facts"><span>Tomás Reyna · bids@bexarfire.example</span><span>·</span><span>Boerne · goes up to 40 mi</span><span>·</span><span>English</span><span>·</span><span class="muted">from a GC's sub list</span></div>
+      <div class="facts"><span class="tel">📞 (210) 555-0188</span><span class="btn s">Call script</span><span class="note">Intro · Point of contact · Collecting info · Closing, with their name and ours filled in</span></div>
+      <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v dash">Add to the bench ✓</span></div>
+      <div class="util"><span>Set callback</span><span>·</span><span>Edit prospect</span><span>·</span><span class="chip amber">🔥 0</span><span class="t">this call 00:00 · my day 00:41</span></div>
+    </div>
+    <div class="rail"><div class="h"><span>Fire sprinkler</span><span class="muted">1 of 7</span></div><div class="ord"><span>Coldest</span><span>Never called</span><span class="on">By need</span></div>
+      <div class="row on"><span class="n">1</span><span class="w">Bexar Fire Protection</span><span class="s">never called</span></div>
+      <div class="row"><span class="n">2</span><span class="w">Lone Star Sprinkler</span><span class="s">called 12d ago</span></div>
+      <div class="row"><span class="n">3</span><span class="w">Guadalupe Fire Systems</span><span class="s">callback Fri</span></div>
+      <div class="row"><span class="n">4</span><span class="w">Medina Valley Fire</span><span class="s">never called</span></div>
+      <div class="note" style="margin-top:6px">By need: the trade with the biggest gap first, then never called, then coldest.</div>
+    </div>
+  </div>
+</div></div>
+
+<div class="cap good"><span>B · Add to the bench ✓</span><span class="w">the bench's own Add a company window, filled from the card; vetting starts at new, as the bench expects</span></div>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>Add a company</h4><p class="why">From the prospect Bexar Fire Protection. They can quote at once; an award waits for vetting.</p>
+  <div class="form">
+    <div class="f"><label>Company</label><div class="in">Bexar Fire Protection</div></div>
+    <div class="f"><label>Contact</label><div class="in">Tomás Reyna</div></div>
+    <div class="f"><label>Phone</label><div class="in">(210) 555-0188</div></div>
+    <div class="f"><label>Email</label><div class="in">bids@bexarfire.example</div></div>
+    <div class="f wide"><label>Address</label><div class="in">1800 Cibolo Trail, Boerne</div></div>
+    <div class="f"><label>Trades</label><div class="in"><span class="chip blue">Fire sprinkler</span><span class="chip blue">HVAC</span><span class="muted">+ add</span></div></div>
+    <div class="f"><label>Goes up to</label><div class="in">40 mi</div></div>
+    <div class="f"><label>Language</label><div class="in">English</div></div>
+    <div class="f"><label>Who gets our emails</label><div class="in">Tomás Reyna · asks, papers</div></div>
+  </div>
+  <div class="mfoot"><span class="btn">Cancel</span><span class="btn p">Save to the bench</span></div>
+  <p class="note" style="margin:10px 0 0">After Save: the prospect reads <span class="chip purple">on the bench</span> with a door to the company, the comment "Added to the bench" is logged as today's Converted is, and the lane offers <b>Ask them for a quote</b> when a trade package is out for that trade.</p>
+</div></div></div>
+
+<div class="cap good"><span>B · Jobs to GC → Follow Up</span><span class="w">the owner is the card; the jobs are rows with bid days; the queue runs on the soonest</span></div>
+<div class="fit"><div class="page">
+  <div class="ph"><div class="tabs"><span>Customers</span><span class="on">Jobs to GC</span><span>Subs</span><span>Hiring</span></div><div class="ptitle">Prospects</div></div>
+  <div class="sub"><span class="on">Follow Up</span><span class="sep">|</span><span>List</span><span class="btn p">New Prospect</span></div>
+  <div class="strip"><span class="l">GC work in flight</span><span class="need"><b>Bidding</b> 1</span><span class="need"><b>Buying out</b> 0</span><span class="need"><b>Building</b> 1</span><span class="need"><b>Lost</b> 2 <span class="q">· both owners in this queue</span></span><span class="note" style="margin-left:auto">from the Project Board</span></div>
+  <div class="deck">
+    <div class="card">
+      <div class="co">Hill Country Developers <span class="chip">Owner</span><span class="chip green">never called</span></div>
+      <div class="facts"><span>Dana Whitlock · dwhitlock@hcdev.example</span><span>·</span><span>Cedar Park</span><span>·</span><span class="muted">from PlanHub</span></div>
+      <div class="facts"><span class="tel">📞 (512) 555-0177</span></div>
+      <div class="jobs"><div class="jh"><span>Jobs (2)</span><span class="btn q s">+ Add a job</span></div>
+        <div class="jr"><div><b>Retail shell, 4400 FM 1431, Cedar Park</b><div class="m">12,000 sq ft · plans on PlanHub · drawn by Studio Bexar</div></div><div class="due">Nov 3<small>bids due · 19 days</small></div></div>
+        <div class="jr"><div><b>Office TI, 210 Lantana Dr, Cedar Park</b><div class="m">6,500 sq ft · no plans yet</div></div><div class="due muted">spring<small>when they say</small></div></div>
+      </div>
+      <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v dash">Asked us ✓</span></div>
+      <div class="util"><span>Set callback</span><span>·</span><span>Edit prospect</span><span>·</span><span class="chip amber">🔥 0</span><span class="t">this call 00:00</span></div>
+    </div>
+    <div class="rail"><div class="h"><span>Queue</span><span class="muted">1 of 14</span></div><div class="ord"><span>Coldest</span><span>Never called</span><span class="on">Soonest bid</span></div>
+      <div class="row on"><span class="n">1</span><span class="w">Hill Country Developers</span><span class="s">bids Nov 3</span></div>
+      <div class="row"><span class="n">2</span><span class="w">Lantana Property Group</span><span class="s">bids Nov 10</span></div>
+      <div class="row"><span class="n">3</span><span class="w">Studio Bexar <span class="chip" style="line-height:15px">Architect</span></span><span class="s">called 9d ago</span></div>
+      <div class="row"><span class="n">4</span><span class="w">Comal ISD facilities</span><span class="s">lost to Keller Build</span></div>
+    </div>
+  </div>
+</div></div>
+
+<div class="cap good"><span>B · Asked us ✓</span><span class="w">the customer is made, then New project opens with the job filled in</span></div>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>A new project</h4><p class="why">It starts under Bidding to the customer. Nobody is asked to quote until you ask them.</p>
+  <div class="form">
+    <div class="f wide"><label>Project name</label><div class="in">Retail shell, 4400 FM 1431</div></div>
+    <div class="f wide"><label>Address</label><div class="in">4400 FM 1431, Cedar Park</div></div>
+    <div class="f wide"><label>We work for</label><div class="radios"><span class="on">The owner</span><span>Another general contractor</span><span>An owner's rep</span></div></div>
+    <div class="f"><label>Customer</label><div class="in">Hill Country Developers <span class="chip green">new, made now</span></div></div>
+    <div class="f"><label>Architect</label><div class="in">Studio Bexar <span class="chip">on the customer list</span></div></div>
+    <div class="f"><label>Our bid is due</label><div class="in">Tue Nov 3</div></div>
+    <div class="f"><label>Size</label><div class="in">12,000 sq ft</div></div>
+    <div class="f wide"><label>The plans</label><div class="in">PlanHub link from the job · 0 sheets until the set is filed</div></div>
+  </div>
+  <div class="mfoot"><span class="btn">Cancel</span><span class="btn p">Next →</span></div>
+  <p class="note" style="margin:10px 0 0">The prospect reads <span class="chip purple">asked us</span> with doors to the customer and the project; the other job stays on the card, so the owner stays in the queue for it. An owner who is already a customer skips the first step and links to that record.</p>
+</div></div></div>
+
+<div class="cap good"><span>B · New Prospect</span><span class="w">the kind as three plain cards, then only that kind's fields; a double is caught while typing</span></div>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>New prospect</h4><p class="why">Who are we looking for?</p>
+  <div class="kinds">
+    <div class="kind"><b>A customer</b><span>A GC or an owner who could send us plans for our trades.</span></div>
+    <div class="kind"><b>A job to GC</b><span>An owner, developer, architect or owner's rep with a job we could build as the GC.</span></div>
+    <div class="kind on"><b>A sub</b><span>A company that does a trade we buy out.</span></div>
+  </div>
+  <div class="form">
+    <div class="f"><label>Company</label><div class="in">Bexar Fire Protection</div></div>
+    <div class="f"><label>Contact</label><div class="in">Tomás Reyna</div></div>
+    <div class="f wide"><div class="warn">Bexar Fire Protection is already on the bench, added Sep 2 by Taunya. <b>Open it</b> instead of a second record.</div></div>
+    <div class="f"><label>Phone</label><div class="in">(210) 555-0188</div></div>
+    <div class="f"><label>Email</label><div class="in">bids@bexarfire.example</div></div>
+    <div class="f wide"><label>Town or address</label><div class="in">Boerne</div></div>
+    <div class="f"><label>Trades</label><div class="in"><span class="chip blue">Fire sprinkler</span><span class="chip blue">HVAC</span><span class="muted">+ Concrete · Electrical · Roofing · …</span></div><div class="hint">The bench's trade names; type a new one to add it.</div></div>
+    <div class="f"><label>Goes up to</label><div class="in">40 mi</div></div>
+    <div class="f"><label>Language</label><div class="radios"><span class="on">English</span><span>Spanish</span></div></div>
+    <div class="f"><label>Where we found them</label><div class="in">A GC's sub list</div><div class="hint">PlanHub · a permit · a referral · the architect · a supply house · drove by · other</div></div>
+    <div class="f wide"><label>Notes</label><div class="in empty">What they said, what to ask next time.</div></div>
+  </div>
+  <div class="mfoot"><span class="btn">Cancel</span><span class="btn p">Save</span></div>
+  <p class="note" style="margin:10px 0 0">A job to GC asks instead: who they are (owner · developer · architect · owner's rep · another GC), then the first job (name, address, size, plans link, bid due) and where we found it. A customer asks what it asks today.</p>
+</div></div></div>
+
+<div class="cap good"><span>B · Subs → List · Activity</span><span class="w">the list's columns are the kind's facts; Activity is one report with kind chips and source success</span></div>
+<div class="fit"><div class="page">
+  <div class="two">
+    <div>
+      <div class="jump"><span class="chip green">Never called 11</span><span class="chip">Recent 6</span><span class="chip amber">Going cold 3</span><span class="chip">Cold 1</span><span class="chip purple">On the bench 9</span></div>
+      <div class="sec">▾ Never called <small>(11)</small></div>
+      <div class="tbl"><table class="list"><tr><th>Company</th><th>Trades</th><th>Range</th><th>Source</th><th>Last touch</th><th></th></tr>
+        <tr><td>Bexar Fire Protection<br><span class="muted">Tomás Reyna</span></td><td><span class="chip blue">Fire sprinkler</span> <span class="chip blue">HVAC</span></td><td>40 mi</td><td>GC's sub list</td><td class="muted">noted 2d ago</td><td><span class="btn q s">Call now →</span></td></tr>
+        <tr><td>Comal Concrete Works<br><span class="muted">—</span></td><td><span class="chip blue">Concrete</span></td><td>60 mi</td><td>PlanHub</td><td class="muted">—</td><td><span class="btn q s">Call now →</span></td></tr>
+      </table></div>
+      <div class="sec">▾ On the bench <small>(9) · opens the company on GC projects</small></div>
+      <div class="tbl"><table class="list"><tr><td>Lone Star Sprinkler</td><td><span class="chip blue">Fire sprinkler</span></td><td>50 mi</td><td>referral</td><td class="muted">bench since Oct 2</td><td><span class="btn q s">Open on the bench →</span></td></tr></table></div>
+    </div>
+    <div>
+      <div class="jump"><span class="chip outline">All</span><span class="chip">Customers</span><span class="chip">Jobs to GC</span><span class="chip blue">Subs</span></div>
+      <div class="act"><div class="t"><div class="v">41</div><div class="l">calls this week</div></div><div class="t"><div class="v">18</div><div class="l">answered</div></div><div class="t"><div class="v">3</div><div class="l">added to the bench</div></div><div class="t"><div class="v">2h 10m</div><div class="l">on the phone</div></div></div>
+      <div class="sec">Source success <small>· subs, since the lane opened</small></div>
+      <div class="src"><span>A GC's sub list</span><span class="b"><i style="width:60%"></i></span><span class="n">3 of 5</span><span>PlanHub</span><span class="b"><i style="width:25%"></i></span><span class="n">1 of 4</span><span>Referral</span><span class="b"><i style="width:100%"></i></span><span class="n">2 of 2</span><span>Drove by</span><span class="b"><i style="width:0%"></i></span><span class="n">0 of 3</span></div>
+      <p class="note" style="margin-top:10px">The same report the Customers tab has, per person and per day, with the kind as a chip. Hiring's Source success is the pattern.</p>
+    </div>
+  </div>
+</div></div>
+
+<div class="cap good"><span>B · The doors back</span><span class="w">the bench's gap and the Lost lane point at Prospects</span></div>
+<div class="fit"><div class="page narrow two">
+  <div class="ideal" style="grid-column:1 / -1"><div><b>A deep bench in every trade</b><div class="muted">The ideal: every trade has 3 companies we can count on.</div><div>Where we are: <span class="chip amber">1 of 5 trades have 3</span></div></div><span class="btn q">Hide</span>
+    <div class="bar"><span class="chip">CONCRETE (1)</span><b>Concrete has 1. Find 2 more.</b><span class="btn s dash" style="margin-left:auto">4 to call on Prospects →</span><span class="btn s">Add a company</span></div></div>
+  <div class="lane"><div class="lh">Lost <span class="muted" style="font-weight:500">· 2</span></div><div class="muted">Bids the customer gave to another builder. Kept so we learn why.</div><div style="margin-top:8px"><b>Comal ISD field house</b> <span class="muted">· Comal ISD facilities · lost Oct 9 to Keller Build</span></div><div style="margin-top:6px"><span class="btn s dash">Send the owner back to Prospects</span> <span class="note">a GC lead, the job marked lost, who won in the note</span></div></div>
+  <div class="lane"><div class="lh">Messages · Who is this?</div><div class="muted">A texting homeowner asking about a build.</div><div style="margin-top:8px"><span class="btn s">Add to Prospects ▾</span> <span class="note">as a customer · <b>as a job to GC</b> · as a sub</span></div></div>
+</div></div>
+
+<section class="crit">
+<h3>The owner's calls</h3>
+<ol class="calls">
+  <li><b>The tab names.</b> Drawn as <i>Jobs to GC</i> and <i>Subs</i>, the owner's words. The cards say who the person is (Owner, Architect; Fire sprinkler). The other candidates were <i>Owners</i> and <i>Trade companies</i>; say so to swap.</li>
+  <li><b>Who sees the new lanes.</b> Drawn behind the one Prospects gate (dev, master, assistant, controller, an estimator with the flag). The GC team's own people may need Subs without the rest of Prospects; that would be a second flag.</li>
+  <li><b>What Asked us ✓ does.</b> Drawn as: make the customer, then open New project filled in. The lighter version makes the customer only and leaves the project for the day the plans come in, which is what the GC guide says today.</li>
+  <li><b>The job list from day one.</b> PR 3 is the biggest piece. For the first month a job could stay a sentence in the notes and the queue run on Coldest; the owner decides whether the bid-day order is wanted from the start.</li>
+  <li><b>Lost owners back to Prospects.</b> Drawn as a press on the Lost lane. It could be automatic the day a project is marked lost.</li>
+  <li><b>By need on the Subs queue.</b> Drawn as a third order beside Coldest and Never called. If the trade filter is enough, the third order can wait.</li>
+  <li><b>The trade names.</b> Drawn as the bench's own list with free typing. A fixed list is tidier and needs an owner to keep it.</li>
+</ol>
+<div class="q">Nothing here changes the Customers tab or Hiring. Every piece reuses a thing that exists: the deck, the bench, New project, the contact kinds. The one new table is the job list; the rest is columns on <code>prospects</code>.</div>
+</section>
+</div>
+</body>
+</html>
