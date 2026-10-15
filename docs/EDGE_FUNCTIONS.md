@@ -1958,6 +1958,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-rfq-email
 
+> **v2.5360 — `deno check` passes again**: a saved request's preview, the reminder and the resend read `plansLink` off the stored `bid_rfqs.scope`, where a send has put it since v2.2642, but cast the scope to a type without it (3 errors, TS2339). Both casts use `StoredScope` now, which declares it. A row saved without one (a copied quote link, an outside request) still reads as no link through `cleanPlansLink`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4574 — the request is kept as it went**: each email to a supply house is filed in `sent_documents` through `sendEmailViaResend`'s `file` option — `rfq`, `rfq_reminder` or `rfq_resent` — keyed to the bid, with the request (`bid_rfqs`) as its source. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
@@ -3813,6 +3815,8 @@ const response = await supabase.functions.invoke('claim-dev', {
 
 ### test-email
 
+> **v2.5360 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `change-user-email`, `invite-user` and `send-sign-in-email` do; what its `try` can throw (a body that is not JSON, a failed `fetch`, a `body` that is not a string) is an `Error`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4557 — a self-test for sent copies**: `file_copy_only: true` (with the usual `to`, `subject`, `body`) sends **nothing** and files the message as a `sent_documents` row of `kind` `self_test`, with one small attachment, through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — the way to prove the helper against the live bucket and table after a deploy. The row names no job, so no list shows it; a dev deletes it afterwards. Answers `{ success: true, sent: false, filed: 'attempted' }`. **Redeploy required.**
 
 **Purpose**: Test email templates with Resend API integration
@@ -4119,6 +4123,8 @@ Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, 
 Body: `{ mode: 'send' | 'test', payload, recipient_user_ids?, subject?, note? }`. `send`: 1–5 user ids, each a desk role with an email, not archived, not a sample or digital twin (else 400 naming the person); one email per person, worded *Waiting for your approval* for a master technician. `test`: one copy to the sender with `[TEST]` on the subject. `subject` (≤ 200, line breaks removed) defaults to `lienStatusSubject`; `note` (≤ 280) prints on top as *<sender> wrote:*. Success: `{ sent_to: string[], failed: { name, error }[] }`; 502 when nobody got it. Every send logs `email_send_log` as `lien_desk_summary` through `sendEmailViaResend`; the function writes nothing else.
 
 ### send-physical-invoice-email
+
+> **v2.5360 — `deno check` passes again**: the request body's type never declared `additional_emails`, which Bill Customer has sent since v2.940 (the contact persons picked for copies) and which the function already checks (at most 10, each an email, the customer's own address and repeats dropped). So reading it failed the check twice (TS2339). The body type declares it now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4557 — the bill is kept as it went**: after a successful send the function files the email and its attachments (the invoice PDF, any companion PDFs) through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row (`kind` `bill`, or `bill_resent` for `resend: true`) keyed to the job, the payer and the invoice (`source_table` `jobs_ledger_invoices`), with the files in the private `sent-documents` bucket. Best effort: a copy that cannot be kept never fails the send. A re-email, which wrote nothing before, now leaves this row. The plan: [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
@@ -4868,6 +4874,8 @@ interface Body {
 ---
 
 ### stripe-webhook
+
+> **v2.5360 — `deno check` passes again**: the arguments built for `mark_invoice_paid_from_stripe` were typed without `p_recorded_by`, which the code has set since v2.4289 and the RPC has taken since `20261001153000` (`p_recorded_by uuid default null`, applied on prod). So setting it failed the check (TS2339). The type declares it now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4950 — a card dispute or a failed bank debit is a case** (punch list #76 piece 1, migration `20261009080000`). Each event goes to `record_ar_stripe_case` (`_shared/stripeArCase.ts` builds the arguments). `charge.dispute.created` / `updated` / `closed` / `funds_withdrawn` / `funds_reinstated` retrieve the charge in the event's mode to find its invoice. `payment_intent.payment_failed` counts only a bank debit (`us_bank_account`) on an invoice; a card fails on the pay page in front of the customer. A dispute opens a case on the bill. `won` / `warning_closed` closes it, and `lost` leaves it open for Accounts Receivable's **Put the bill back** (`put_back_lost_dispute_bill`). The office is told once when it opens and once more when a dispute is lost, through the same `sendReturnCaseNotice` as the checks; the hourly **ar-returned-checks** catches a miss. Responses add `{ case_id, opened, lost_now, closed }` or `{ skipped }` (`unknown_invoice`, `mode_mismatch`, `already_paid`, `already_won`, *not a bank debit on a bill*). New secrets: none (it reuses `RESEND_API_KEY`, `VAPID_*` and `APP_ORIGIN`). **Subscribe the endpoint** (test and live) to `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `payment_intent.payment_failed`. Redeploy required.
 
