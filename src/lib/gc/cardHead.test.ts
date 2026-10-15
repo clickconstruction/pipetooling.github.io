@@ -156,3 +156,18 @@ describe("a project's card: the plans band's words", () => {
     expect(plansWords({ planSets: [], sheets: [], specs: [] })).toBe('no set yet')
   })
 })
+
+describe("a lost project's card: the owner back to Prospects (v2.5561)", () => {
+  it('offers Send the owner back to Prospects on a lost card, to a reader with the prospects deck', () => {
+    const lost = cardDoors(doors({ lost: true }, { prospects: true }))
+    const door = lost.find((d) => d.key === 'prospects')
+    expect(door).toMatchObject({ group: 'job', label: 'Send the owner back to Prospects' })
+    expect(door?.title).toContain('Jobs to GC')
+  })
+
+  it('never offers it on a live card, or to a reader without the deck', () => {
+    expect(cardDoors(doors({ lost: false }, { prospects: true })).some((d) => d.key === 'prospects')).toBe(false)
+    expect(cardDoors(doors({ lost: true }, { prospects: false })).some((d) => d.key === 'prospects')).toBe(false)
+    expect(cardDoors(doors({ lost: true })).some((d) => d.key === 'prospects')).toBe(false)
+  })
+})

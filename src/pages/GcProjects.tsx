@@ -265,6 +265,11 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import type { Contact } from '../lib/contacts/kernel'
 import { jobRefOf } from '../lib/messages/load'
 import { subsLaneHref } from '../lib/prospects/subsLane'
+import type { NewProjectSeed } from '../lib/prospects/gcLeadLane'
+import { sendLostOwnerToProspects } from '../lib/prospects/gcLeadLaneIo'
+import { canAccessProspectPipeline } from '../lib/prospects/prospectConversion'
+import { supabase } from '../lib/supabase'
+import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
 import {
   addContactJob,
   answerPaper,
@@ -321,6 +326,31 @@ export default function GcProjects() {
   const [checking, setChecking] = useState<string | null>(null)
   const today = todayYmdInAppTz()
   const windowOpen = params.get('new') === '1'
+  // Asked us ✓ on Prospects → Jobs to GC (v2.5561) opens the window with the lead's job filled in, through the router's state.
+  const newProjectSeed = (useLocation().state as { newProjectSeed?: NewProjectSeed } | null)?.newProjectSeed
+  /** Send the owner back to Prospects (v2.5561): a GC lead linked to the customer, the lost job on it, then the deck. */
+  const sendOwnerBack = async (p: GcProjectView) => {
+    const { data: who } = await supabase.auth.getUser()
+    const userId = who.user?.id
+    if (!userId) {
+      showToast('Your sign-in could not be read. Reload and try again.', 'error')
+      return
+    }
+    const masterUserId = (await resolveCompanyOwnerUserId(supabase, userId)) ?? userId
+    try {
+      const sent = await sendLostOwnerToProspects(p.id, { userId, masterUserId })
+      showToast(
+        sent.added
+          ? `${sent.customerName} is on Prospects → Jobs to GC, with ${p.name} marked lost.`
+          : `${sent.customerName} was already on Jobs to GC. ${p.name} is on that lead, marked lost.`,
+        'success',
+      )
+      navigate(`/prospects?tab=gc-leads&prospect_id=${sent.prospectId}`)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The owner was not sent to Prospects.'), 'error')
+    }
+  }
+
   /** The scope book's window: `book=1`, and `trade=<trade>&project=<id>` to save that scope as a set. */
   const bookOpen = params.get('book') === '1'
   const bookTrade = params.get('trade')
@@ -2105,6 +2135,8 @@ export default function GcProjects() {
                 can: {
                   // Papers on this job (Messages cut 4): the office team's, the flows' read's audience.
                   papers: canOpenGcProjects(role),
+                  // Send the owner back to Prospects (v2.5561): the prospects staff, on a lost job.
+                  prospects: Boolean(p.lostOn) && canAccessProspectPipeline(role, false),
                   schedule: role === 'dev' && Boolean(board),
                   // Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is.
                   start: role === 'dev' && Boolean(board),
@@ -2156,6 +2188,7 @@ export default function GcProjects() {
                   closeout: () => setCloseoutWindow(p.id),
                   number: () => setNumberOpen(numberOpen === p.id ? null : p.id),
                   tabs: () => setTabsOpen(tabsOpen === p.id ? null : p.id),
+                  prospects: () => void sendOwnerBack(p),
                 }
                 press[key]()
               }}
@@ -3218,6 +3251,7 @@ export default function GcProjects() {
 
       {windowOpen && loaded && bookInput && (
         <GcNewProjectWindow
+          initial={newProjectSeed}
           customers={loaded.customers}
           book={book}
           setsFor={(trade) => scopeSetsFor(bookInput, trade)}
