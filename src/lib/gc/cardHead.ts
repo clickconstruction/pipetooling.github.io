@@ -74,7 +74,7 @@ export const DOOR_GROUP_WORDS: Record<DoorGroup, string> = {
   money: 'Money',
 }
 
-export type DoorKey = 'plans' | 'papers' | 'questions' | 'newSet' | 'schedule' | 'start' | 'log' | 'punch' | 'submittals' | 'rfis' | 'draws' | 'changes' | 'bill' | 'billDay' | 'closeout' | 'number' | 'tabs'
+export type DoorKey = 'plans' | 'papers' | 'questions' | 'newSet' | 'schedule' | 'start' | 'log' | 'punch' | 'submittals' | 'rfis' | 'draws' | 'changes' | 'bill' | 'billDay' | 'closeout' | 'number' | 'tabs' | 'prospects'
 
 export interface CardDoor {
   key: DoorKey
@@ -107,6 +107,8 @@ export interface DoorFacts {
     closeout: boolean
     number: boolean
     tabs: boolean
+    /** Send the owner back to Prospects (v2.5561): the prospects staff, on a lost job. */
+    prospects?: boolean
   }
   counts: {
     questionsOpen: number
@@ -151,6 +153,7 @@ export function cardDoors(f: DoorFacts): CardDoor[] {
   if (f.can.billDay)
     doors.push({ key: 'billDay', group: 'money', label: 'Bill day', count: `${f.counts.billDayOk} of ${f.counts.billDayGates}`, title: 'Opens Money → Bill day → From the trades on this job.' })
   if (f.can.closeout && (building || f.stage === 'closed')) doors.push({ key: 'closeout', group: 'money', label: 'Closeout' })
+  if (f.lost && f.can.prospects) doors.push({ key: 'prospects', group: 'job', label: 'Send the owner back to Prospects', title: 'A GC lead on Prospects → Jobs to GC, this job marked lost, so the next call is on the deck' })
   if (f.can.number) doors.push({ key: 'number', group: 'money', label: f.open.number ? 'Hide our number' : 'Our number' })
   if (f.can.tabs && f.counts.tabs > 0)
     doors.push({ key: 'tabs', group: 'money', label: f.open.tabs ? 'Hide the bid tabs' : 'Bid tabs', ...(f.open.tabs ? {} : { count: String(f.counts.tabs) }) })

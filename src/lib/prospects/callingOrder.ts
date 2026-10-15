@@ -12,7 +12,7 @@
  */
 
 /** `by_need` (v2.5560) is the Subs lane's third order; the deck orders it itself (`orderSubsByNeed`), so here it reads as coldest. */
-export type CallingOrderMode = 'coldest' | 'never_called_first' | 'by_need'
+export type CallingOrderMode = 'coldest' | 'never_called_first' | 'by_need' | 'soonest_bid'
 
 export const CALLING_ORDER_STORAGE_KEY = 'prospects_calling_order_v1'
 
@@ -21,6 +21,7 @@ export const CALL_INTERACTION_TYPES = ['didnt_answer', 'answered'] as const
 export function readCallingOrderMode(raw: string | null | undefined): CallingOrderMode {
   if (raw === 'never_called_first') return 'never_called_first'
   if (raw === 'by_need') return 'by_need'
+  if (raw === 'soonest_bid') return 'soonest_bid'
   return 'coldest'
 }
 

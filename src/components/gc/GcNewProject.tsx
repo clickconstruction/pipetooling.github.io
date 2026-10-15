@@ -74,6 +74,7 @@ import { SheetIndexTable } from './GcNewProjectSheetIndex'
 import { BookLineSearch, OftenMissed, StartFromBook } from './GcNewProjectScopeBook'
 import { SetKindsInfo } from './GcNewProjectSetKinds'
 import { DriveLinkField } from './GcNewProjectDriveLink'
+import type { NewProjectSeed } from '../../lib/prospects/gcLeadLane'
 
 /**
  * GC mode, the real build, step 4: New project, moved from the prototype (branch spike/gc-mode,
@@ -214,6 +215,8 @@ function sheetsWords(ids: string[]): string {
 }
 
 interface WindowProps {
+  /** Asked us ✓ on Prospects → Jobs to GC (v2.5561): the first step filled from the lead and its job. */
+  initial?: NewProjectSeed
   /** The customer list: owners, general contractors, owner's reps and architects alike. */
   customers: PickerCustomer[]
   /** The scope book, read from our GC projects and the office's changes. */
@@ -231,7 +234,7 @@ interface WindowProps {
   onSaveToBook?: (trade: string, words: string, spec?: string) => void
 }
 
-export function GcNewProjectWindow({ customers: customerList, book, setsFor, today, onClose, onCreate, creating, problem, onSaveToBook }: WindowProps) {
+export function GcNewProjectWindow({ customers: customerList, book, setsFor, today, onClose, onCreate, creating, problem, onSaveToBook, initial }: WindowProps) {
   const [step, setStep] = useState(0)
   const roomy = useMatchMedia('(min-width: 900px)')
   // On a phone the five steps are a row of numbers, with the open step's name beside them.
@@ -241,24 +244,24 @@ export function GcNewProjectWindow({ customers: customerList, book, setsFor, tod
     body.current?.scrollTo({ top: 0 })
   }, [step])
 
-  const [name, setName] = useState('')
-  const [address, setAddress] = useState('')
-  const [ownerPick, setOwnerPick] = useState('')
-  const [ownerNew, setOwnerNew] = useState('')
+  const [name, setName] = useState(initial?.name ?? '')
+  const [address, setAddress] = useState(initial?.address ?? '')
+  const [ownerPick, setOwnerPick] = useState(initial?.customerId ?? (initial?.ownerName ? NEW : ''))
+  const [ownerNew, setOwnerNew] = useState(initial?.ownerName ?? '')
   /** The owner of the property when it is not the customer (the owner, 2026-10-04): opened by a button under Customer. */
   const [landlordOpen, setLandlordOpen] = useState(false)
   /** Who we work for (the owner, 2026-10-04, Round 6): the owner, another general contractor, or an owner's rep. */
-  const [customerRole, setCustomerRole] = useState<CustomerRole>('owner')
+  const [customerRole, setCustomerRole] = useState<CustomerRole>(initial?.customerRole ?? 'owner')
   /** Not the owner: the owner of the property shows on its own. */
   const landlordShown = customerRole !== 'owner' || landlordOpen
   const [landlordPick, setLandlordPick] = useState('')
   const [landlordNew, setLandlordNew] = useState('')
-  const [archPick, setArchPick] = useState('')
-  const [archNew, setArchNew] = useState('')
-  const [bidDue, setBidDue] = useState('')
+  const [archPick, setArchPick] = useState(initial?.architectId ?? (initial?.architectName ? NEW : ''))
+  const [archNew, setArchNew] = useState(initial?.architectName ?? '')
+  const [bidDue, setBidDue] = useState(initial?.bidDue ?? '')
   /** The size in square feet only, and any words about it in their own box (the owner, 2026-10-04). */
-  const [sqFtText, setSqFtText] = useState('')
-  const [sizeWords, setSizeWords] = useState('')
+  const [sqFtText, setSqFtText] = useState(initial?.sqFt ? String(initial.sqFt) : '')
+  const [sizeWords, setSizeWords] = useState(initial?.sizeNote ?? '')
   const sqFtNumber = Number(sqFtText.replace(/[^0-9]/g, '')) || 0
 
   const [setLabel, setSetLabel] = useState('Bid set')

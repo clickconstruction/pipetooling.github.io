@@ -72,8 +72,11 @@ import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
 import { BY_NEED_NOTE, benchDouble, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
+import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
+import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
+import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
@@ -422,6 +425,12 @@ export default function Prospects() {
   const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
   const [scriptOpen, setScriptOpen] = useState(false)
   const tradeFilter = searchParams.get('trade')
+  // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
+  // refused), the customers for the double check, and the customer a new lead is linked to.
+  const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
+  const [gcWork, setGcWork] = useState<GcWorkCounts | null>(null)
+  const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null }[]>([])
+  const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
 
   // Follow Up state
   const [followUpProspects, setFollowUpProspects] = useState<Prospect[]>([])
@@ -675,6 +684,45 @@ export default function Prospects() {
   const deckIds = new Set(followUpProspects.map((p) => p.id))
   const benchNeedsNow: BenchNeed[] = kind === 'sub' ? benchNeeds(benchTrades ?? [], stillQueued(laneQueueAll, deckIds, tradeFilter)) : []
 
+  // The Jobs to GC lane (v2.5561): the Project Board's counts and the customers, both fail-soft.
+  useEffect(() => {
+    if (kind !== 'gc_lead' && newKind !== 'gc_lead') return
+    if (!authUser?.id) return
+    let live = true
+    loadGcProjects()
+      .then((projects) => {
+        if (live) setGcWork(gcWorkCounts(projects))
+      })
+      .catch(() => {
+        if (live) setGcWork(null)
+      })
+    loadCustomerDoubles()
+      .then((rows) => {
+        if (live) setCustomerDoubles(rows)
+      })
+      .catch(() => {
+        if (live) setCustomerDoubles([])
+      })
+    return () => {
+      live = false
+    }
+  }, [kind, newKind, authUser?.id])
+
+  async function mergeJobs(ids: string[]) {
+    if (ids.length === 0) return {}
+    try {
+      const jobs = await loadProspectJobs(ids)
+      setJobsByProspect((prev) => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = jobs[id] ?? []
+        return next
+      })
+      return jobs
+    } catch {
+      return {}
+    }
+  }
+
   const setTradeFilter = (trade: string | null) => {
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
@@ -772,6 +820,11 @@ export default function Prospects() {
       const needsNow = benchNeeds(benchTrades ?? [], prospects)
       prospects = subsForTrade(prospects, searchParams.get('trade'))
       if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
+    }
+    if (kind === 'gc_lead') {
+      // The Jobs to GC lane (v2.5561): each lead's jobs ride along, and Soonest bid orders on them.
+      const jobs = await mergeJobs(prospects.map((p) => p.id))
+      if (callingOrderModeRef.current === 'soonest_bid') prospects = orderLeadsBySoonestBid(prospects, jobs, called)
     }
 
     const prospectId = searchParams.get('prospect_id')
@@ -905,6 +958,7 @@ export default function Prospects() {
     setProspectLastCallMap(lastCalls)
     setProspectListProspects((data ?? []) as Prospect[])
     setProspectListLoading(false)
+    if (kind === 'gc_lead') void mergeJobs(((data ?? []) as Prospect[]).map((p) => p.id))
   }
 
   async function loadCopyTemplates() {
@@ -1567,6 +1621,7 @@ export default function Prospects() {
             ['coldest', 'Coldest', 'Longest since any contact first (the original order)'],
             ['never_called_first', 'Never called', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
             ...(kind === 'sub' ? ([['by_need', 'By need', BY_NEED_NOTE]] as const) : []),
+            ...(kind === 'gc_lead' ? ([['soonest_bid', 'Soonest bid', SOONEST_BID_NOTE]] as const) : []),
           ] as readonly (readonly [CallingOrderMode, string, string])[]
         ).map(([mode, label, hint]) => (
           <button
@@ -1964,6 +2019,118 @@ export default function Prospects() {
     }
   }
 
+  /** The lead's deck after a landing (v2.5561): out of the queue, the caches patched, the next card up. */
+  function leaveQueueAsLanded(prospect: Prospect, patch: Partial<Prospect>) {
+    if (!authUser?.id) return
+    void saveTimerEvent('converted')
+    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+    loadMyTimeToday()
+    const updated = { ...prospect, prospect_fit_status: 'converted' as const, ...patch }
+    setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
+    const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
+    setFollowUpProspects(nextList)
+    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+    setCurrentProspectIndex(nextIdx)
+    setFollowUpTimerSeconds(0)
+    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+  }
+
+  /**
+   * Asked us ✓ (v2.5561): the lead becomes a customer (the one on file when linked, else Add customer),
+   * the job with the soonest bid is marked asked, and New project opens with it filled in.
+   */
+  function handleAskedUs() {
+    if (!currentProspect || !authUser?.id || saving) return
+    const prospect = currentProspect
+    const landed = async (customer: { id: string; name: string | null }) => {
+      const job = jobToHandOn(jobsByProspect[prospect.id] ?? [])
+      if (job) {
+        try {
+          await setProspectJobStatus(job.id, 'asked')
+        } catch {
+          /* the job keeps reading open; the project still opens */
+        }
+      }
+      leaveQueueAsLanded(prospect, { converted_customer_id: customer.id })
+      showToast(prospectLandedToast('gc_lead', prospect.company_name || '', customer.name || ''), 'success')
+      navigate('/gc?new=1', { state: { newProjectSeed: newProjectSeedFromLead(prospect, job, customer.id) } })
+    }
+    if (prospect.customer_id) {
+      // Already a customer: no second record. Mark the prospect and go.
+      void markProspectConverted(prospect.id, prospect.customer_id, prospect.company_name || '', authUser.id).then((res) => {
+        if (!res.ok) {
+          showToast(`${prospect.company_name || 'The prospect'} could not be marked: ${res.error}`, 'error')
+          return
+        }
+        void landed({ id: prospect.customer_id as string, name: prospect.company_name })
+      })
+      return
+    }
+    if (!newCustomerModal) return
+    newCustomerModal.openNewCustomerModal({
+      initialValues: customerDraftFromProspect(prospect),
+      sourceProspect: {
+        id: prospect.id,
+        company_name: prospect.company_name,
+        contact_name: prospect.contact_name,
+        phone_number: prospect.phone_number,
+        email: prospect.email,
+        address: prospect.address,
+        prospect_fit_status: prospect.prospect_fit_status,
+      },
+      conversionLane: 'follow-up',
+      onCreated: (customer, meta) => {
+        if ((meta?.convertedProspectId ?? null) !== prospect.id) {
+          showToast(`Customer ${customer.name || ''} created — ${prospect.company_name || 'the prospect'} is still in the calling queue`, 'info')
+          return
+        }
+        void landed({ id: customer.id, name: customer.name })
+      },
+    })
+  }
+
+  /** + Add a job on a lead's card (v2.5561): the box shows a refusal's words, so this throws. */
+  async function addJobFor(prospectId: string, job: NewProspectJob) {
+    if (!authUser?.id) throw new Error('Sign in first.')
+    const made = await addProspectJob(prospectId, job, authUser.id)
+    setJobsByProspect((prev) => ({ ...prev, [prospectId]: [...(prev[prospectId] ?? []), made] }))
+  }
+
+  async function changeJob(job: ProspectJob, status: 'open' | 'dropped', wonBy: string | null = null) {
+    if (!currentProspect) return
+    const pid = currentProspect.id
+    try {
+      await setProspectJobStatus(job.id, status, wonBy)
+      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status, won_by: wonBy } : j)) }))
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+    }
+  }
+
+  async function markJobLost(job: ProspectJob) {
+    if (!currentProspect) return
+    const who = await promptDialog({ title: 'Who got it?', message: `${job.name}: the builder that won, if you know.`, placeholder: 'Another builder', confirmLabel: 'Mark lost' })
+    if (who === null) return
+    const pid = currentProspect.id
+    try {
+      await setProspectJobStatus(job.id, 'lost', who.trim() || null)
+      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status: 'lost', won_by: who.trim() || null } : j)) }))
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+    }
+  }
+
+  async function removeJob(job: ProspectJob) {
+    if (!currentProspect) return
+    const pid = currentProspect.id
+    try {
+      await deleteProspectJob(job.id)
+      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).filter((j) => j.id !== job.id) }))
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+    }
+  }
+
   async function handleSendBack(p: Prospect) {
     if (saving) return
     setSaving(true)
@@ -2214,6 +2381,7 @@ export default function Prospects() {
       links_to_website: newLinksToWebsite.trim() || null,
       kind: newKind,
       ...kindFieldsPayload(newKind, { source: newSource, trades: newTrades, maxMiles: newMaxMiles, lang: newLang, role: newRole }),
+      customer_id: newKind === 'gc_lead' && newCustomerLink ? newCustomerLink.id : null,
     }
     const { error } = await supabase.from('prospects').insert(payload)
     setSaving(false)
@@ -2233,6 +2401,7 @@ export default function Prospects() {
     setNewMaxMiles('')
     setNewLang('')
     setNewRole('')
+    setNewCustomerLink(null)
     if (newKind !== kind) {
       // The new row lives on another lane: go there, and its loaders run on the kind change.
       setKindTab(newKind)
@@ -2398,6 +2567,7 @@ export default function Prospects() {
               setNewLang('')
               setNewRole('')
               setNewKind(kind)
+              setNewCustomerLink(null)
               setNewProspectError(null)
               setNewProspectModalOpen(true)
             }}
@@ -2462,6 +2632,28 @@ export default function Prospects() {
                   </button>
                 )}
               </span>
+            </div>
+          )}
+          {kind === 'gc_lead' && canAccessFollowUp && (
+            <div
+              role="group"
+              aria-label="GC work in flight"
+              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
+            >
+              <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>GC work in flight</span>
+              {gcWork === null ? (
+                <span style={{ color: 'var(--text-muted)' }}>the Project Board could not be read</span>
+              ) : (
+                GC_WORK_LABELS.map((w) => (
+                  <span key={w.key} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'baseline', border: '1px solid var(--border)', borderRadius: 999, padding: '0.1rem 0.6rem', color: gcWork[w.key] === 0 ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                    <b>{w.label}</b> {gcWork[w.key]}
+                    {w.key === 'lost' && gcWork.lost > 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>· each owner can come back here</span>}
+                  </span>
+                ))
+              )}
+              <Link to="/gc" style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.75rem' }}>
+                from the Project Board
+              </Link>
             </div>
           )}
           {!canAccessFollowUp ? (
@@ -2578,6 +2770,19 @@ export default function Prospects() {
                         </button>
                       )}
                     </div>
+                    {currentProspect.kind === 'gc_lead' && (
+                      <div style={{ marginTop: '0.75rem' }}>
+                        <ProspectJobsBox
+                          jobs={jobsByProspect[currentProspect.id] ?? []}
+                          todayYmd={todayYmdInAppTz()}
+                          busy={saving}
+                          onAdd={(job) => addJobFor(currentProspect.id, job)}
+                          onLost={(job) => void markJobLost(job)}
+                          onStatus={(job, status) => void changeJob(job, status)}
+                          onRemove={(job) => void removeJob(job)}
+                        />
+                      </div>
+                    )}
                     {/* Outcome row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>How did the call end?</span>
@@ -2601,7 +2806,7 @@ export default function Prospects() {
                       </button>
                       <button
                         type="button"
-                        onClick={kind === 'sub' ? openBenchModal : handleConverted}
+                        onClick={kind === 'sub' ? openBenchModal : kind === 'gc_lead' ? handleAskedUs : handleConverted}
                         disabled={saving}
                         style={saving ? btnDisabled(btnConverted) : btnConverted}
                         title={kindWords.lastPressTitle}
@@ -4375,6 +4580,30 @@ export default function Prospects() {
                         Open it
                       </Link>{' '}
                       instead of a second record.
+                    </p>
+                  )
+                })()}
+              {newKind === 'gc_lead' &&
+                (() => {
+                  if (newCustomerLink) {
+                    return (
+                      <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
+                        Linked to the customer {newCustomerLink.name}. Asked us ✓ will use that record.{' '}
+                        <button type="button" onClick={() => setNewCustomerLink(null)} style={{ font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                          Unlink
+                        </button>
+                      </p>
+                    )
+                  }
+                  const twin = benchDouble(newCompanyName, newPhoneNumber, customerDoubles)
+                  if (!twin) return null
+                  return (
+                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
+                      {twin.name} is already a customer.{' '}
+                      <button type="button" onClick={() => setNewCustomerLink({ id: twin.id, name: twin.name })} style={{ font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                        Link this lead to them
+                      </button>{' '}
+                      or <Link to={`/customers/${twin.id}`} style={{ color: 'var(--text-link)', fontWeight: 600 }}>open their page</Link>.
                     </p>
                   )
                 })()}
