@@ -25,7 +25,7 @@ Groups are still by kind. Each header says how many have a login, for example *S
 
 ## Add someone
 
-Tap {{button:blue|+ Add to roster}} in the toolbar, or **Add** on a group. Pick what they are, type the name, and add an email and phone if you have them. That makes a roster row with **no login**. That is enough for the portal, paperwork, sub sheets and pay. Two boxes on the same dialog do the usual next steps:
+Tap {{button:blue|+ Add to roster}} in the toolbar, or **Add** on a group. Pick what they are, type the name, and add an email and phone if you have them. A person with an account gets the account's phone when you leave it blank. That makes a roster row with **no login**. That is enough for the portal, paperwork, sub sheets and pay. Two boxes on the same dialog do the usual next steps:
 
 - **Also invite them to sign in** sends the invite email. It needs an email. The link in that email opens a **Welcome to ClickTooling** page where they choose a password once. Say they come back to that page later while already signed in. Then it says **You're already set up** with a {{button:blue|Sign in}} button and *Not you? Sign out*. It never asks for a new password, so nobody can reset an account by re-opening the link. There is no self-service sign-up page. Everyone joins through this invite or through ***Accounts · dev*** → Manually add user.
 - **Open their desk after saving** lands you on their desk. For a sub, that is where the portal globe and {{button:blue|Copy link}} are.
