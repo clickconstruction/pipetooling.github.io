@@ -44,7 +44,10 @@ A **contact** is a view over the people the app already has, never a fifth list.
 `customer_contact_id`, `gc_company_person_id`, `person_id`, `prospect_id`, `supply_house_id`, `supply_house_contact_id`
 or `team_prospect_id` — and carries `kind` (`ContactKind` in `src/lib/contacts/names.ts`: customer, trade, arch, lead,
 supply_house, candidate, sub, team since v2.5546 (a roster row that is not a sub; the seed gives every roster person a
-contact with the roster's number, and *Who is this?* names a number the roster lacks and writes it back), unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
+contact with the roster's number, and *Who is this?* names a number the roster lacks and writes it back; read into the view since v2.5552, where
+`contacts/load.ts` had kept only the seven kinds it knew, so a teammate's thread said *This person is not in Messages.*
+and their text left Follow up's lanes — its known kinds are a `Record<ContactKind, true>` now, so a kind the loader
+does not read fails the type check), unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
 `has_until`, `has_since`, `has_how`) and the off-the-list columns. A number nobody knows is a contact of kind `unknown`
 with one channel until **Who is this?** names it (`name_contact`), which re-points the contact and keeps its thread.
 
@@ -92,6 +95,13 @@ pieces, cut 3's reply box, cut 4's flow rail, cut 4b's change order, R8's estima
 card — so the page never changes for a slot. **To add something to the thread, add a slot there and nowhere else.**
 Keys inside the column are prefixed per slot (`reply:`, `flow:`, `new-lane:`), since the slots are siblings.
 
+The header's second row says what the person is to us (*Customer: Acme*); for a number nobody has named it reads
+`unnamedWords` (`contacts/names.ts`: *A number nobody has named*, *An address nobody has named*, *Nobody has named
+them*), and the blue **Who is this?** under it is the header's only one (v2.5541). Its ☎ link, the dim *No number to
+call*, the ⋯ button and the who-has-it pill (`WhoHasItPill` `bare`, through `headerRight`) wear one class,
+`.thread-head-control` in `src/index.css`: 28 px, no border, a hover on the pressable ones; Follow up's rows keep the
+bordered pill (v2.5542).
+
 The window reads the open thread through `useThreadWindow` and asks for the read again after its own write with
 `useMessagesReread`. On a phone the header folds (`threadFold.ts`), ⋯ is a sheet, and a press and hold on a line opens
 **Tie this message to** (`tieSheet.ts`).
@@ -100,7 +110,7 @@ The **reply box** (`reply/ReplyBox.tsx`) is one component for the thread's foot 
 (Text · Email · Note, or one kind), the quick replies strip (`QuickRepliesStrip.tsx`, the editor, **Find a reply**),
 the textarea with the opt-out line and the count, **Attach** (`AttachPicker.tsx` over `attachIo.ts`, `replyFiles.ts`),
 **Tie to**, and the send window (`SendWindow.tsx`). What it sends is one interface, `replyIo.ts`, so the smokes hand it
-a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in place of the composer (`TextsWaitLine`: the switch is the first card on Settings → Phone and texts, a link for the owner or a dev).
+a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in place of the composer (`TextsWaitLine`: the switch is the first card on Settings → Phone and texts, a link for the owner or a dev; v2.5538).
 
 ## Follow up
 

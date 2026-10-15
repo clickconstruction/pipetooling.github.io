@@ -17,6 +17,15 @@ The office and estimators see Trade partners.
 
 Every trade on our projects has a card. A trade with no company yet says so in red.
 
+## Call a company new to us
+
+1. Press {{button:outline|Call script}} at the right of the trade strip.
+2. Read the script in your own words. Your first name is already in it.
+3. Press {{button:outline|Open in a new tab}} to keep it beside the app while you call.
+4. Press {{button:outline|Copy the script}} to paste it somewhere else.
+
+The script has four parts: the intro, the point of contact, the questions to ask, and the closing. When the call ends, add the company with what they gave you.
+
 ## Add a company
 
 1. On the trade's card, press {{button:outline|Add a company}}.

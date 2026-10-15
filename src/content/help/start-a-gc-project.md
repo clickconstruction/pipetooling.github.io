@@ -53,7 +53,7 @@ Each trade gets its usual scope lines. A scope line is one piece of work a quote
 4. Press {{button:outline|+ Add an exclusion}} for work the trade leaves out, and name who does it instead.
 5. Press {{button:blue|Create the project}}.
 
-A gap is work every trade leaves out. The footer counts them. Close a gap by giving the work to a trade.
+A gap is work one trade leaves out that no other trade on the job covers. The footer counts them. Close a gap by giving the work to a trade. The project's card says each gap in red.
 
 ## What happens after
 
