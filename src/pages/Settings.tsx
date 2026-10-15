@@ -1502,13 +1502,14 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-phone-texts" hidden={activeSettingsTab !== 'settings-phone-texts'} title={settingsGroupTitle('settings-phone-texts', 'Phone and texts')} description={settingsGroupHint('settings-phone-texts')}>
-        {/* Mounted while it is open, so it reads the seats, Quo's seats, the inboxes, the texts switch and the bids@ reader again each time. */}
+        {/* Mounted while it is open, so it reads the texts switch, the seats, Quo's seats, the inboxes and the bids@ reader again each time.
+            Send texts comes first (v2.5538): it is the one card a text waits on, and the three under it only add names and a second number. */}
         {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && (
           <div style={{ display: 'grid', gap: '1rem' }}>
+            {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
             <PhoneAndTextsSettingsSection />
             <QuoSeatsSettingsSection />
             <BoxesSettingsCard />
-            {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
             {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
           </div>

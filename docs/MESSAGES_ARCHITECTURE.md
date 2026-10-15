@@ -100,7 +100,7 @@ The **reply box** (`reply/ReplyBox.tsx`) is one component for the thread's foot 
 (Text · Email · Note, or one kind), the quick replies strip (`QuickRepliesStrip.tsx`, the editor, **Find a reply**),
 the textarea with the opt-out line and the count, **Attach** (`AttachPicker.tsx` over `attachIo.ts`, `replyFiles.ts`),
 **Tie to**, and the send window (`SendWindow.tsx`). What it sends is one interface, `replyIo.ts`, so the smokes hand it
-a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in place of the composer.
+a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in place of the composer (`TextsWaitLine`: the switch is the first card on Settings → Phone and texts, a link for the owner or a dev).
 
 ## Follow up
 

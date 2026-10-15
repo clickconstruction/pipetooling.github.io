@@ -44,3 +44,15 @@ describe('an email from the reply box (cut 3, its files cut 7e)', () => {
     expect(sent.calls[1]![1]).not.toHaveProperty('files')
   })
 })
+
+describe('the wait line’s words (v2.5538)', () => {
+  it('reads whole, with the link’s words inside, and keeps every sentence plain', async () => {
+    const { plainWordsFailures } = await import('../plainWords')
+    const { TEXTS_WAIT, TEXTS_WAIT_HREF, TEXTS_WAIT_OTHERS, TEXTS_WAIT_PARTS } = await import('./replyIo')
+    expect(TEXTS_WAIT).toBe(`${TEXTS_WAIT_PARTS.before}${TEXTS_WAIT_PARTS.link}${TEXTS_WAIT_PARTS.after}`)
+    expect(TEXTS_WAIT).toContain('It is the first card on Settings → Phone and texts. Nothing else there is needed first.')
+    expect(TEXTS_WAIT_HREF).toBe('/settings?tab=settings-phone-texts')
+    expect(TEXTS_WAIT_OTHERS).toContain('the owner or a dev')
+    for (const w of [TEXTS_WAIT, TEXTS_WAIT_OTHERS]) expect(plainWordsFailures(w), w).toEqual([])
+  })
+})

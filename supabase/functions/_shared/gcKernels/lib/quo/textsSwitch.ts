@@ -37,6 +37,8 @@ export const TEXTS_OFF = 'Texts are off. The owner or a dev turns them on in Set
 export const TEXTS_SWITCH_TITLE = 'Send texts'
 export const TEXTS_SWITCH_WHAT = 'When this is on, the office can text a person from their thread. Each text goes from the company number.'
 export const TEXTS_SWITCH_ALWAYS = 'Even when it is off, the app answers a HELP text and confirms a stop. The carriers expect both.'
+/** Under the switch (v2.5538): the cards below it are not steps before it. */
+export const TEXTS_SWITCH_FIRST = 'Nothing else on this page is needed first. The seats and the inboxes only add names and a second number.'
 export const TEXTS_SWITCH_CONFIRM = {
   title: 'Turn on texts?',
   message: 'The office can then text people from the company number. Each one is a real text to their phone.',

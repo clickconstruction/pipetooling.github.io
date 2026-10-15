@@ -10,13 +10,17 @@ import { renderWithProviders } from '../../../../test/renderSmokeMocks'
 import { DEMO_NOW } from '../../../../lib/messages/messagesDemo'
 import { spineMessagesView } from '../../../../lib/messages/spineRows'
 import type { JobTile } from '../../../../lib/messages/jobTiles'
-import type { ReplyIo } from '../../../../lib/messages/replyIo'
+import { TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
 
 const switchRead = vi.hoisted(() => ({ on: false }))
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => switchRead.on }))
+vi.mock('../../../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 
 function fakeIo(): ReplyIo {
   return {
@@ -62,7 +66,8 @@ describe('SendWindow over the texts switch (Messages, cut 5)', () => {
     const { io } = openTextWindow('email')
     const win = await screen.findByRole('dialog', { name: 'Before it goes, this is what they see' })
     fireEvent.click(within(win).getByRole('tab', { name: 'Text' }))
-    expect(win.querySelector('[data-send-waits]')?.textContent).toBe('Texts wait until Send texts is switched on in Settings → Phone and texts. Send this as an email, or come back to it then.')
+    expect(win.querySelector('[data-send-waits]')?.textContent).toBe(TEXTS_WAIT)
+    expect(win.querySelector('[data-send-waits] a')?.getAttribute('href')).toBe('/settings?tab=settings-phone-texts')
     expect((within(win).getByRole('button', { name: 'Send as text' }) as HTMLButtonElement).disabled).toBe(true)
     expect(io.sendText).not.toHaveBeenCalled()
   })

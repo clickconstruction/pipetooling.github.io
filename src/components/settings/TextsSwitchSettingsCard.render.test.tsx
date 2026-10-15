@@ -5,7 +5,7 @@
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { TEXTS_NOT_SAVED, TEXTS_OFF_TOAST, TEXTS_ON_TOAST, TEXTS_SWITCH_ALWAYS, TEXTS_SWITCH_CONFIRM } from '../../lib/quo/textsSwitch'
+import { TEXTS_NOT_SAVED, TEXTS_OFF_TOAST, TEXTS_ON_TOAST, TEXTS_SWITCH_ALWAYS, TEXTS_SWITCH_CONFIRM, TEXTS_SWITCH_FIRST } from '../../lib/quo/textsSwitch'
 import type { TextsSwitchIo } from '../../lib/quo/textsSwitchIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { TextsSwitchSettingsCard } from './TextsSwitchSettingsCard'
@@ -29,6 +29,7 @@ describe('TextsSwitchSettingsCard', () => {
     const toggle = await screen.findByRole('switch', { name: 'Send texts' })
     expect(toggle.getAttribute('aria-checked')).toBe('false')
     expect(card().getByText(TEXTS_SWITCH_ALWAYS)).toBeTruthy()
+    expect(card().getByText(TEXTS_SWITCH_FIRST)).toBeTruthy()
   })
 
   it('asks before it turns texts on, and turns them on only on a yes', async () => {

@@ -7,7 +7,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
-import { TEXTS_OFF_TOAST, TEXTS_ON_TOAST, TEXTS_SWITCH_ALWAYS, TEXTS_SWITCH_CONFIRM, TEXTS_SWITCH_TITLE, TEXTS_SWITCH_WHAT } from '../../lib/quo/textsSwitch'
+import { TEXTS_OFF_TOAST, TEXTS_ON_TOAST, TEXTS_SWITCH_ALWAYS, TEXTS_SWITCH_CONFIRM, TEXTS_SWITCH_FIRST, TEXTS_SWITCH_TITLE, TEXTS_SWITCH_WHAT } from '../../lib/quo/textsSwitch'
 import { supabaseTextsSwitchIo, type TextsSwitchIo } from '../../lib/quo/textsSwitchIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -87,6 +87,9 @@ export function TextsSwitchSettingsCard({ io = DEFAULT_IO }: { io?: TextsSwitchI
         )}
       </div>
       <p style={{ margin: 0, fontSize: '0.9rem' }}>{TEXTS_SWITCH_WHAT}</p>
+      <p data-send-texts-first style={muted}>
+        {TEXTS_SWITCH_FIRST}
+      </p>
       {on === null && !problem ? <p style={muted}>Loading the switch…</p> : <p style={muted}>{TEXTS_SWITCH_ALWAYS}</p>}
       {problem && (
         <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
