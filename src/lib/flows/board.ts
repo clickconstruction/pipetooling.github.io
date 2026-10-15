@@ -11,7 +11,7 @@
  */
 import { daysUntil, shortDate, weekdayDate } from '../gc/words'
 import { factById, FLOW_PAPERS, type FactId, type FlowKind, type PaperId } from './facts'
-import { flat, LANE_WORDS, laneOf, type FlowDef, type FlowPhase, type FlowStep, type Lane, type StepPlace } from './state'
+import { flat, laneOf, type FlowDef, type FlowPhase, type FlowStep, type Lane, type StepPlace } from './state'
 
 /** A company on a board, or a person with no company, with where it stands. */
 export interface BoardCompany {
@@ -232,6 +232,8 @@ export interface BoardSummary {
   off: OffCompany[]
   /** Companies by their worst line. The late and the lapsed need a hand today; over usual and waiting are watches. */
   hand: { count: number; late: number; lapsed: number; over: number; waiting: number }
+  /** The worst line of each company that needs a hand, late first (v2.5555, the today line names the first). */
+  handLines: BoardLine[]
 }
 
 const TONE_RANK: Record<LineTone, number> = { late: 0, lapsed: 1, over: 2, wait: 3, '': 4 }
@@ -253,28 +255,50 @@ function offCompanies(companies: readonly BoardCompany[], f: BoardFilter): OffCo
 }
 
 export function boardSummary(ctx: BoardContext, companies: readonly BoardCompany[], f: BoardFilter = NO_FILTER): BoardSummary {
-  const all = flat(ctx.flow).flatMap((s) => boardLines(ctx, companies, s).filter((l) => boardPasses(l, f)))
-  const tiles = PHASES[ctx.flow.kind].map((phase): PhaseTile => {
-    const xs = all.filter((l) => PHASES[ctx.flow.kind].length === 1 || l.step.phase === phase)
-    const worst = worstByCompany(xs)
-    return {
-      phase,
-      words: PHASE_WORDS[ctx.flow.kind][phase],
-      companies: worst.length,
-      jobIds: [...new Set(xs.flatMap((l) => (l.jobId ? [l.jobId] : [])))],
-      dots: worst.map((l) => ({ contactId: l.contactId, name: l.name, tone: dotTone(l.tone), line: l })),
-      firstStepId: xs[0]?.step.id ?? null,
-    }
-  })
+  const bands = boardBands(ctx, companies, f)
+  // A flow with no phases yet has no tiles, though the board still draws its steps in one band.
+  const tiles = PHASES[ctx.flow.kind].length ? bands.map(({ phase, words, companies, jobIds, dots, firstStepId }): PhaseTile => ({ phase, words, companies, jobIds, dots, firstStepId })) : []
+  const all = bands.flatMap((b) => b.rows.flatMap((r) => r.groups.flatMap((g) => g.chips.map((c) => c.line))))
   const hand = { count: 0, late: 0, lapsed: 0, over: 0, waiting: 0 }
+  const handLines: BoardLine[] = []
   for (const l of worstByCompany(all)) {
     if (l.tone === 'late') hand.late++
     else if (l.tone === 'lapsed') hand.lapsed++
     else if (l.tone === 'over') hand.over++
     else if (l.tone === 'wait') hand.waiting++
+    if (l.tone === 'late' || l.tone === 'lapsed') handLines.push(l)
   }
   hand.count = hand.late + hand.lapsed
-  return { tiles, off: offCompanies(companies, f), hand }
+  handLines.sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone] || b.lateDays - a.lateDays)
+  return { tiles, off: offCompanies(companies, f), hand, handLines }
+}
+
+/** The noun a board counts: customers, companies, architects, else people. */
+function kindNouns(kind: FlowKind): [string, string, string] {
+  if (kind === 'customer' || kind === 'residential') return ['customer', 'customers', 'a customer']
+  if (kind === 'trade' || kind === 'sub') return ['company', 'companies', 'a company']
+  if (kind === 'arch') return ['architect', 'architects', 'an architect']
+  return ['person', 'people', 'a person']
+}
+
+/**
+ * The today line over the bands (v2.5555): who needs a hand, the first of them named with their day and step, then
+ * the watches and the companies off the flow. Each is one plain sentence.
+ */
+export function todayWords(ctx: Pick<BoardContext, 'firstNames' | 'today'>, s: BoardSummary): { hand: string; watch: string[] } {
+  const n = s.hand.count
+  const first = s.handLines[0]
+  const hand =
+    n === 0 || !first
+      ? 'Nobody needs a hand today.'
+      : n === 1
+        ? `${first.name} needs a hand today: ${lineDayWords(first, ctx)} on ${first.step.name}.`
+        : `${n} need a hand today: ${first.name} is ${lineDayWords(first, ctx)} on ${first.step.name}, and ${n - 1} more.`
+  const watch: string[] = []
+  if (s.hand.waiting) watch.push(`${s.hand.waiting} waiting on someone else.`)
+  if (s.hand.over) watch.push(`${s.hand.over} over usual.`)
+  watch.push(`${s.off.length} off the flow.`)
+  return { hand, watch }
 }
 
 /** "on Stone Oak Pharmacy", "on 2 bids" while quoting, "on 3 jobs"; empty with no job. */
@@ -286,8 +310,9 @@ export function tileJobWords(ctx: Pick<BoardContext, 'flow' | 'jobs'>, t: PhaseT
 }
 
 // ---------------------------------------------------------------------------------------------------
-// 2 to 5. One row per step in the flow's order: empty runs folded, chips by job, days against the
-// usual, and the row's own press.
+// 2 to 5. One row per step in the flow's order, in a band per phase (v2.5555: the bands replaced the
+// tiles and the lanes; every step keeps its row, the owner's call of 2026-10-15): chips by job, days
+// against the usual, and the row's own press.
 
 /** What lands on an empty step, by the seed's step ids. A step the editor adds reads "Nobody on it." */
 const LANDS: Readonly<Record<string, string>> = {
@@ -313,7 +338,7 @@ const LANDS: Readonly<Record<string, string>> = {
   co: 'A change lands here.',
 }
 
-export const landsWords = (stepId: string, folded = false): string => LANDS[stepId] ?? (folded ? 'Nobody on them.' : 'Nobody on it.')
+export const landsWords = (stepId: string): string => LANDS[stepId] ?? 'Nobody on it.'
 
 /** The facts that start a trade's flow: an empty row there offers Invite a company. */
 const INVITE_FACTS: readonly FactId[] = ['invite_sent', 'portal_opened']
@@ -381,19 +406,21 @@ export interface RowHead {
   usual: number | null
 }
 
-export type BoardRow =
-  | { kind: 'step'; step: FlowStep; head: RowHead; groups: ChipGroup[]; press: RowPress | null; lands: string | null }
-  | { kind: 'folded'; steps: FlowStep[]; lands: string; press: RowPress | null }
-
-export interface BoardLaneRows {
-  lane: Lane
-  words: string
-  rows: BoardRow[]
+/** One step's row: its head, the chips by job, the step's own press, and what lands there while nobody is on it. */
+export interface BoardRow {
+  step: FlowStep
+  head: RowHead
+  groups: ChipGroup[]
+  press: RowPress | null
+  lands: string | null
 }
 
-export interface BoardRows {
-  lanes: BoardLaneRows[]
-  off: OffCompany[]
+/** A phase's band: the tile's counts and dots, which lanes its steps sit in, its late and lapsed, and every step's row. */
+export interface BoardBand extends PhaseTile {
+  lanes: Lane[]
+  late: number
+  lapsed: number
+  rows: BoardRow[]
 }
 
 const UNIT_PLURAL: Readonly<Record<string, string>> = { addendum: 'addenda' }
@@ -442,38 +469,70 @@ function groupsOf(ctx: BoardContext, lane: Lane, lines: readonly BoardLine[]): C
   })
 }
 
-/** The rows in the flow's order, the lanes named. A run of empty steps folds to one row; a lane's last step keeps its own. */
-export function boardRows(ctx: BoardContext, companies: readonly BoardCompany[], f: BoardFilter = NO_FILTER): BoardRows {
-  const lanes = ctx.flow.lanes.map((laneDef): BoardLaneRows => {
-    const rows: BoardRow[] = []
-    let run: FlowStep[] = []
-    const row = (step: FlowStep, lines: BoardLine[]): BoardRow => ({
-      kind: 'step',
-      step,
-      head: head(step, lines, ctx.usual[step.id] ?? null),
-      groups: groupsOf(ctx, laneDef.lane, lines),
-      press: rowPress(step, lines),
-      lands: lines.length ? null : landsWords(step.id),
-    })
-    const flush = () => {
-      const [first] = run
-      if (first && run.length === 1) rows.push(row(first, []))
-      else if (first) rows.push({ kind: 'folded', steps: run, lands: landsWords(first.id, true), press: rowPress(first, []) })
-      run = []
-    }
-    laneDef.steps.forEach((step, i) => {
+/** Under the step's name on a band: whose move it is, a count that names a thing, late, lapsed, over usual, waiting, and the usual. */
+export function stepSubParts(step: FlowStep, h: RowHead): string[] {
+  const parts = [step.who === 'us' ? 'our move' : step.who === 'them' ? 'their move' : 'both of us']
+  if (h.count && h.unit) parts.push(`${h.count} ${h.unit}`)
+  if (h.late) parts.push(`${h.late} late`)
+  if (h.lapsed) parts.push(`${h.lapsed} lapsed`)
+  if (h.over) parts.push(`${h.over} over usual`)
+  if (h.waiting) parts.push(`${h.waiting} waiting`)
+  if (h.usual != null) parts.push(`usually ${h.usual} d`)
+  return parts
+}
+
+/**
+ * The bands in the flow's order, one per phase, every step of the phase its own row. A flow with no phases yet is one
+ * band of every step, named for its first words.
+ */
+export function boardBands(ctx: BoardContext, companies: readonly BoardCompany[], f: BoardFilter = NO_FILTER): BoardBand[] {
+  const kind = ctx.flow.kind
+  const phases: readonly FlowPhase[] = PHASES[kind].length ? PHASES[kind] : ['setup']
+  const one = phases.length === 1
+  return phases.map((phase): BoardBand => {
+    const steps = flat(ctx.flow).filter((s) => one || s.phase === phase)
+    const rows = steps.map((step): BoardRow => {
       const lines = boardLines(ctx, companies, step).filter((l) => boardPasses(l, f))
-      if (!lines.length && i < laneDef.steps.length - 1) {
-        run.push(step)
-        return
+      return {
+        step,
+        head: head(step, lines, ctx.usual[step.id] ?? null),
+        groups: groupsOf(ctx, laneOf(ctx.flow, step.id) ?? 'once', lines),
+        press: rowPress(step, lines),
+        lands: lines.length ? null : landsWords(step.id),
       }
-      flush()
-      rows.push(row(step, lines))
     })
-    flush()
-    return { lane: laneDef.lane, words: LANE_WORDS[laneDef.lane], rows }
+    const all = rows.flatMap((r) => r.groups.flatMap((g) => g.chips.map((c) => c.line)))
+    const worst = worstByCompany(all)
+    return {
+      phase,
+      words: PHASE_WORDS[kind][phase],
+      companies: worst.length,
+      jobIds: [...new Set(all.flatMap((l) => (l.jobId ? [l.jobId] : [])))],
+      dots: worst.map((l) => ({ contactId: l.contactId, name: l.name, tone: dotTone(l.tone), line: l })),
+      firstStepId: all[0]?.step.id ?? null,
+      lanes: [...new Set(steps.map((s) => laneOf(ctx.flow, s.id) ?? 'once'))],
+      late: all.filter((l) => l.tone === 'late').length,
+      lapsed: all.filter((l) => l.tone === 'lapsed').length,
+      rows,
+    }
   })
-  return { lanes, off: offCompanies(companies, f) }
+}
+
+/** The band's count: "3 companies", "1 customer". */
+export function bandCountWords(ctx: Pick<BoardContext, 'flow'>, b: BoardBand): string {
+  const [one, many] = kindNouns(ctx.flow.kind)
+  return `${b.companies} ${b.companies === 1 ? one : many}`
+}
+
+/** The band's caption, from the lanes its steps sit in: the steps gone through once, or once per job. */
+export function bandLaneWords(ctx: Pick<BoardContext, 'flow'>, b: BoardBand): string {
+  const nounA = kindNouns(ctx.flow.kind)[2]
+  const once = b.lanes.includes('once')
+  const perJob = b.lanes.includes('per_job')
+  if (once && perJob) return `once for ${nounA}, then once per job`
+  if (perJob) return 'once per job'
+  if (once) return `the steps ${nounA} goes through once`
+  return 'any time'
 }
 
 // ---------------------------------------------------------------------------------------------------

@@ -31,7 +31,7 @@ export interface StageStripItem extends BoardStripItem {
 }
 
 /** A stage's colors: the bar, and its number's badge. The same family as the board's rings. */
-const STAGE_COLORS: Record<Tone, { bar: string; bg: string; fg: string }> = {
+export const STAGE_COLORS: Record<Tone, { bar: string; bg: string; fg: string }> = {
   amber: { bar: 'var(--text-amber-700)', bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)' },
   blue: { bar: 'var(--text-blue-500)', bg: 'var(--bg-blue-200)', fg: 'var(--text-blue-800)' },
   green: { bar: 'var(--text-green-600)', bg: 'var(--bg-green-100)', fg: 'var(--text-green-800)' },

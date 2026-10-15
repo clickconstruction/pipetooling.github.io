@@ -3,12 +3,12 @@ import { useFlowBoard } from '../../../hooks/useFlowBoard'
 import { companyAtForStep, customerAtForStep } from '../../../lib/flows/boardOpen'
 import { portalCellWords } from '../../../lib/flows/boardRead'
 import { loadCustomerPageOpens } from '../../../lib/flows/flowsIo'
-import type { BoardLine } from '../../../lib/flows/board'
+import { NO_FILTER, type BoardFilter, type BoardLine } from '../../../lib/flows/board'
 import type { BoardBy } from '../../../lib/gc/links'
 import { useCompanyOpener } from '../gcCompanyOpener'
 import { useCustomerOpener } from '../gcCustomerOpener'
 import { GcBoardByCompany } from './GcBoardByCompany'
-import { GcBoardByStep, type BoardPresses } from './GcBoardByStep'
+import { BoardPickers, GcBoardByStep, type BoardPresses } from './GcBoardByStep'
 import { GcBoardByTrade } from './GcBoardByTrade'
 
 /**
@@ -58,6 +58,8 @@ export function GcFlowBoard({
   const views = VIEWS[kind].filter(([v]) => v !== 'list' || list)
   const shown = views.some(([v]) => v === by) ? by : (views[0]?.[0] ?? 'step')
   const board = useFlowBoard(kind, { enabled: shown !== 'list' })
+  // By step's two pickers (v2.5555): held here so they sit in the views row, at its right.
+  const [filter, setFilter] = useState<BoardFilter>(NO_FILTER)
   // A customer's last open of their page, for By company's Portal column (helper 8's read). Null until read, or when it fails.
   const [pageOpens, setPageOpens] = useState<Record<string, string> | null>(null)
   const read = board.read
@@ -114,6 +116,7 @@ export function GcFlowBoard({
 
   return (
     <div style={{ display: 'grid', gap: '0.6rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
       {views.length > 1 && (
         <div role="group" aria-label="How to see them" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
           {views.map(([v, label]) => (
@@ -138,6 +141,8 @@ export function GcFlowBoard({
           ))}
         </div>
       )}
+      {shown === 'step' && board.ctx && board.read && <BoardPickers ctx={board.ctx} companies={board.read.companies} filter={filter} onFilter={setFilter} />}
+      </div>
       {shown === 'list' ? (
         list
       ) : board.error ? (
@@ -154,7 +159,7 @@ export function GcFlowBoard({
       ) : shown === 'trade' ? (
         <GcBoardByTrade ctx={board.ctx} companies={board.read.companies} onOpen={(c) => openFlow(c.contactId)} />
       ) : (
-        <GcBoardByStep ctx={board.ctx} companies={board.read.companies} presses={presses} />
+        <GcBoardByStep ctx={board.ctx} companies={board.read.companies} presses={presses} filter={filter} />
       )}
     </div>
   )
