@@ -11,11 +11,11 @@ The strip shows once the job's ring on the board has read the job. Today the off
 
 ## Read the strip
 
-- The line at the top shows where the job is in its life. It goes Bidding, Buying out, Building, then Closed.
-- The chip says **On track**, **Watch** or **Behind**. The words beside it say why.
-- The calendar shows each day of the stage. Its deadlines sit under their days.
-- Each trade has a tile. Green is done, amber needs a look, and red is late. Violet is our own crew.
-- The numbers at the bottom say how far the stage has come.
+- The chip says **On track**, **Watch** or **Behind**. The words beside it say why. The block takes the chip's colour.
+- The numbers sit under the chip. They say how far the stage has come.
+- **The clock** shows each day of the stage. Its deadlines sit under their days.
+- Under **The trades**, each trade has a tile. Green is done, amber needs a look, and red is late. Violet is our own crew.
+- Press **Key** on The clock or The trades to see what its colours mean. Press **Hide the key** to put it away.
 
 The rows about money show only to the money team.
 
