@@ -272,18 +272,19 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   </div>
                   {!folded && <span style={{ flex: 1 }} />}
                   {folded && slots.headerRight?.(contact, { folded })}
+                  {/* ☎, ⋯ and the who-has-it pill wear `.thread-head-control` (v2.5542): no border, one 28px height, a quiet hover. */}
                   <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative', flex: 'none' }}>
                     {phones[0] ? (
                       <a
                         href={`tel:${phones[0].value.replace(/[^\d+]/g, '')}`}
                         aria-label={`Call ${phones[0].value}`}
                         title="Calls their first number from this device. Calls on the company number come with Quo."
-                        style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', textDecoration: 'none', color: 'var(--text-base)' }}
+                        className="thread-head-control"
                       >
                         ☎
                       </a>
                     ) : (
-                      <span aria-label="No number to call" title="No number to call" style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', opacity: 0.4 }}>
+                      <span aria-label="No number to call" title="No number to call" className="thread-head-control" style={{ opacity: 0.4, cursor: 'default' }}>
                         ☎
                       </span>
                     )}
@@ -293,7 +294,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                       aria-expanded={menuOpen}
                       aria-label="More"
                       onClick={() => setMenuOpen((v) => !v)}
-                      style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', background: 'var(--surface)', cursor: 'pointer' }}
+                      className="thread-head-control"
                     >
                       ⋯
                     </button>

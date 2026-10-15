@@ -72,6 +72,9 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     expect(within(win).getByRole('heading', { name: 'Greg Paulk' })).toBeTruthy()
     expect(win.textContent).toContain('Trade partner: Hillside Excavation')
     expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:2105550113')
+    // v2.5542: the call link and ⋯ wear the header's control class (no border, one height) in place of their own borders.
+    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).className).toBe('thread-head-control')
+    expect(within(win).getByRole('button', { name: 'More' }).className).toBe('thread-head-control')
     const reach = win.querySelector('[data-thread-reach]') as HTMLElement
     expect(within(reach).getByRole('link', { name: 'greg@hillside.example' }).getAttribute('href')).toBe('mailto:greg@hillside.example')
     fireEvent.click(within(win).getByRole('button', { name: 'Hide their numbers and addresses' }))
