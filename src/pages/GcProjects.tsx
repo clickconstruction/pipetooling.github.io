@@ -1905,7 +1905,7 @@ export default function GcProjects() {
   }
 
   const page = (
-    <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
+    <div data-gc-page style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100, width: '100%', boxSizing: 'border-box', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <span data-tour="gc-mode-switch" style={{ display: 'inline-flex' }}>
           <BidsModeToggle mode="gc" />

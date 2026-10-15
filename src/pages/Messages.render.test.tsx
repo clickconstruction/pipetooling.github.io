@@ -236,3 +236,17 @@ describe('/messages from a link: it waits for the role before it decides (a hard
     expect(where()).toContain('thread=c-elena')
   })
 })
+
+describe('/messages: the page sits in the middle of a wide screen', () => {
+  // v2.5537: the same container as GC projects, centered the same way.
+  it('caps the page at 1100px and centers it with auto margins, full width inside the cap', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    const page = screen.getByRole('heading', { name: 'Messages' }).closest('[data-messages-page]') as HTMLElement
+    expect(page).toBeTruthy()
+    expect(page.style.maxWidth).toBe('1100px')
+    expect(page.style.width).toBe('100%')
+    expect(page.style.marginLeft).toBe('auto')
+    expect(page.style.marginRight).toBe('auto')
+  })
+})
