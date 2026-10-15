@@ -124,6 +124,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
     headerRight: (c) =>
       mine(c.id) ? (
         <WhoHasItPill
+          bare
           contact={followUpContactOf(c, rows.contact, userNames)}
           me={me}
           team={team}

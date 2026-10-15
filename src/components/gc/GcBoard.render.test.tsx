@@ -231,3 +231,36 @@ describe('GcBoard, the ring on each row (the Board’s B2b-vi-c)', () => {
     expect((document.querySelector('[data-gc-board-row="boerne"]') as HTMLElement).style.gridTemplateColumns.startsWith('3.5rem')).toBe(false)
   })
 })
+
+describe('GcBoard: each stage opens on the pipeline’s band (v2.5543)', () => {
+  it('the band wears the stage’s colour on its bar and its tint, the count in a pill, and no card of its own', () => {
+    const state = boardStateFromRows(clinicBoardRows())
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
+    const band = document.querySelector('[data-gc-stage-band="pursuing"]') as HTMLElement
+    expect(band.classList.contains('stagesSectionBand')).toBe(true)
+    expect(band.style.getPropertyValue('--stage-color')).toBe('var(--text-amber-700)')
+    const title = within(band).getByRole('heading', { level: 3 })
+    expect(title.classList.contains('stagesBandTitle')).toBe(true)
+    expect(title.textContent).toBe('Bidding to the customer 1')
+    expect(title.querySelector('.stagesBandCount')?.textContent).toBe('1')
+    expect(within(band).getByText('Collect a number for every trade, then give the customer a price.')).toBeTruthy()
+    // The band is flat: the rows under it are the cards. More room above it than under it.
+    expect(band.style.border).toBe('')
+    expect(band.style.borderRadius).toBe('')
+    expect(band.style.background).toBe('')
+    expect(band.style.marginTop).toBe('0.5rem')
+    expect(band.style.marginBottom).toBe('')
+    expect((document.querySelector('[data-gc-stage-band="lost"]') as HTMLElement).style.getPropertyValue('--stage-color')).toBe('var(--border-strong)')
+    expect(document.querySelectorAll('[data-gc-stage-band]').length).toBe(5)
+  })
+
+  it('By customer’s heading is the same band, blue, with the count in its pill', () => {
+    render(<GcBoard state={initialGcState()} onOpen={() => undefined} onPlans={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: 'By customer' }))
+    const band = document.querySelector('[data-gc-customer-band]') as HTMLElement
+    expect(band.classList.contains('stagesSectionBand')).toBe(true)
+    expect(band.style.getPropertyValue('--stage-color')).toBe('var(--text-blue-500)')
+    expect(band.style.border).toBe('')
+    expect(within(band).getByRole('heading', { level: 3 }).querySelector('.stagesBandCount')).toBeTruthy()
+  })
+})

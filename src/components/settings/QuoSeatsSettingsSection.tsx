@@ -1,7 +1,8 @@
 /**
  * Messages, cut 5's screens: Settings → Phone and texts → **Company phone seats**, under cut 2's Who gets a new message
  * in the same group and written the same way. A seat is one of Quo's workspace users, by Quo's id, and the person who
- * answers on it: `quo-send` texts as the sender's own seat, and `quo-webhook` names a call or a text by the seat it rang.
+ * answers on it, or **Shared by the office** (v2.5548, one login on several phones): `quo-send` texts as the sender's own
+ * seat, else the shared one, and `quo-webhook` names a call or a text by the seat it rang, the shared one as the office.
  * The GC office team reads the seats with their people; the owner and a dev add, change and remove them and save
  * (`app_settings.messages_quo_seats_v1` through `quo/seatsCardIo.ts`, the words `quo/seatsCard.ts`'s).
  */
@@ -10,7 +11,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { canSetAssignSeats, SEAT_GONE, seatOptions } from '../../lib/messages/assignRule'
 import type { SeatPerson } from '../../lib/messages/assignRuleIo'
-import { QUO_SEATS_INTRO, QUO_SEATS_NONE, QUO_SEATS_SAVED_TOAST, QUO_SEATS_WHY, quoSeatsProblem, sameQuoSeats, type QuoSeatRow } from '../../lib/quo/seatsCard'
+import { isSharedSeat, QUO_SEATS_INTRO, QUO_SEATS_NONE, QUO_SEATS_SAVED_TOAST, QUO_SEATS_WHY, quoSeatsProblem, sameQuoSeats, SEAT_SHARED, SEAT_SHARED_LABEL, type QuoSeatRow } from '../../lib/quo/seatsCard'
 import { supabaseQuoSeatsIo, type QuoSeatsIo } from '../../lib/quo/seatsCardIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from '../contracts/clauseStyles'
@@ -46,7 +47,7 @@ export function QuoSeatsSettingsSection({ io = DEFAULT_IO }: { io?: QuoSeatsIo }
   }, [io])
 
   const options = useMemo(() => seatOptions(loaded?.team ?? []), [loaded])
-  const nameOf = (id: string) => loaded?.team.find((t) => t.id === id)?.name || SEAT_GONE
+  const nameOf = (id: string) => (isSharedSeat(id) ? SEAT_SHARED_LABEL : loaded?.team.find((t) => t.id === id)?.name || SEAT_GONE)
   const changed = loaded !== null && !sameQuoSeats(draft, loaded.seats)
   const shown = canSet ? draft : (loaded?.seats ?? [])
 
@@ -107,7 +108,7 @@ export function QuoSeatsSettingsSection({ io = DEFAULT_IO }: { io?: QuoSeatsIo }
                 </tr>
               )}
               {shown.map((r, i) => {
-                const gone = r.userId !== '' && !options.some((o) => o.id === r.userId)
+                const gone = r.userId !== '' && !isSharedSeat(r.userId) && !options.some((o) => o.id === r.userId)
                 return (
                   <tr key={i} data-quo-seat={i}>
                     <td style={cell}>
@@ -134,6 +135,7 @@ export function QuoSeatsSettingsSection({ io = DEFAULT_IO }: { io?: QuoSeatsIo }
                           style={{ ...clauseInputStyle, width: 'auto', minWidth: 200 }}
                         >
                           <option value="">Pick someone</option>
+                          <option value={SEAT_SHARED}>{SEAT_SHARED_LABEL}</option>
                           {gone && <option value={r.userId}>{SEAT_GONE}</option>}
                           {options.map((o) => (
                             <option key={o.id} value={o.id}>

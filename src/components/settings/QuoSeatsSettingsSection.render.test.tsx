@@ -108,6 +108,23 @@ describe('Company phone seats (Settings → Phone and texts, Messages cut 5)', (
     expect((await within(card()).findByRole('alert')).textContent).toBe(SEATS_NOT_SAVED)
   })
 
+  it('offers Shared by the office, saves it as the functions read it, and names it for the office (v2.5548)', async () => {
+    const io = fakeIo()
+    renderWithProviders(<QuoSeatsSettingsSection io={io} />)
+    const pick = await within(card()).findByRole('combobox', { name: 'Seat 1: who answers on it' })
+    expect(within(pick).getByRole('option', { name: 'Shared by the office' })).toBeTruthy()
+    fireEvent.change(pick, { target: { value: 'office' } })
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save the seats' }))
+    await waitFor(() => expect(io.save).toHaveBeenCalledWith([{ quoUserId: 'USrosa2', userId: 'office' }]))
+    cleanup()
+
+    auth.role = 'assistant'
+    renderWithProviders(<QuoSeatsSettingsSection io={fakeIo([{ quoUserId: 'USoffice1', userId: 'office' }])} />)
+    await waitFor(() => expect(card().textContent).toContain('USoffice1'))
+    expect(card().textContent).toContain('Shared by the office')
+    expect(card().textContent).not.toContain(SEAT_GONE)
+  })
+
   it('names a seat whose person left the team', async () => {
     auth.role = 'assistant'
     renderWithProviders(<QuoSeatsSettingsSection io={fakeIo([{ quoUserId: 'USgone9', userId: 'u-gone' }])} />)

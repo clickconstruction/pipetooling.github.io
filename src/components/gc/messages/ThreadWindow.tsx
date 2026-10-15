@@ -4,7 +4,7 @@ import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { useMeasuredWidth } from '../../../hooks/useMeasuredWidth'
-import { contactById, firstName, initials, isOptedOut, kindWord, type Contact } from '../../../lib/contacts/kernel'
+import { contactById, firstName, initials, isOptedOut, kindWord, unnamedWords, type Contact } from '../../../lib/contacts/kernel'
 import { lastWroteTo } from '../../../lib/messages/boxes'
 import type { MessagesView } from '../../../lib/messages/messagesIo'
 import { isSentLine } from '../../../lib/messages/sentLines'
@@ -59,8 +59,9 @@ const ONE_LINE = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'no
 /**
  * Messages, cut 1's screens: a person's thread, as a window over any view of GC projects (`?thread=<id>&at=<id>`),
  * and a full-screen sheet on a phone. The header in four calm rows (v1.166): the name with ☎ ⋯, what they are to us
- * and their company with the chevron over their numbers and addresses, one status row that leads with whose move it
- * is, then the stamps sentence; the jobs rail last. Then the lines, a divider at each day, and the slots later cuts
+ * and their company with the chevron over their numbers and addresses (for a number nobody has named, that fact —
+ * `unnamedWords` — and the *Who is this?* button under it asks the question once, v2.5541), one status row that leads
+ * with whose move it is, then the stamps sentence; the jobs rail last. Then the lines, a divider at each day, and the slots later cuts
  * fill (`ThreadSlots`). The message window, Who is this? and the job picker are drawn inside the panel.
  *
  * Folded (cut 10, `threadFold.ts`): on a phone, or when the thread's column is 640 px or narrower. The chevron and the
@@ -251,7 +252,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     </h2>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-600)', display: 'flex', gap: '0.3rem', alignItems: 'center', minWidth: 0 }}>
                       {contact.kind === 'unknown' ? (
-                        <span>Who is this?</span>
+                        <span style={folded ? ONE_LINE : undefined}>{unnamedWords({ phones: phones.length, emails: emails.length })}</span>
                       ) : (
                         <span style={folded ? ONE_LINE : undefined}>
                           <strong>{capital(kindWord(contact.kind))}:</strong> {contact.company || contact.name}
@@ -272,18 +273,19 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   </div>
                   {!folded && <span style={{ flex: 1 }} />}
                   {folded && slots.headerRight?.(contact, { folded })}
+                  {/* ☎, ⋯ and the who-has-it pill wear `.thread-head-control` (v2.5542): no border, one 28px height, a quiet hover. */}
                   <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative', flex: 'none' }}>
                     {phones[0] ? (
                       <a
                         href={`tel:${phones[0].value.replace(/[^\d+]/g, '')}`}
                         aria-label={`Call ${phones[0].value}`}
                         title="Calls their first number from this device. Calls on the company number come with Quo."
-                        style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', textDecoration: 'none', color: 'var(--text-base)' }}
+                        className="thread-head-control"
                       >
                         ☎
                       </a>
                     ) : (
-                      <span aria-label="No number to call" title="No number to call" style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', opacity: 0.4 }}>
+                      <span aria-label="No number to call" title="No number to call" className="thread-head-control" style={{ opacity: 0.4, cursor: 'default' }}>
                         ☎
                       </span>
                     )}
@@ -293,7 +295,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                       aria-expanded={menuOpen}
                       aria-label="More"
                       onClick={() => setMenuOpen((v) => !v)}
-                      style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', background: 'var(--surface)', cursor: 'pointer' }}
+                      className="thread-head-control"
                     >
                       ⋯
                     </button>

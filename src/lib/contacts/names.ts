@@ -57,3 +57,13 @@ const KIND_WORD: Record<ContactKind, string> = {
 export function kindWord(kind: ContactKind): string {
   return KIND_WORD[kind]
 }
+
+/**
+ * The line under a contact nobody has named, where a named one reads what they are to us: the fact, by the way they
+ * reached us, so the thread's header asks *Who is this?* once, on its button (v2.5541).
+ */
+export function unnamedWords(reach: { phones: number; emails: number }): string {
+  if (reach.phones > 0) return 'A number nobody has named'
+  if (reach.emails > 0) return 'An address nobody has named'
+  return 'Nobody has named them'
+}
