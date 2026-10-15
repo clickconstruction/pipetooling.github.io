@@ -2144,7 +2144,9 @@ export default function GcProjects() {
                 only for a stage whose every layer this reader has read, so the strip and the ring give one answer. */}
             {(() => {
               const ringProject = ringState?.state.projects.find((x) => x.id === p.id)
-              if (!ringState || !ringProject || !ringState.ready.has(ringProject.stage)) return null
+              // Bill day's line (Messages cut 9), the money team's: the verdict band's foot, or on its own while the strip is not drawn.
+              const billDay = canSeeGcMoney(role) && billDayCards.get(p.id) ? <BillDayCardLine facts={billDayCards.get(p.id)!} onOpen={() => openBillDay(p.id)} /> : null
+              if (!ringState || !ringProject || !ringState.ready.has(ringProject.stage)) return billDay
               // Each next step opens what the card's own buttons open, behind the same doors; words alone otherwise.
               const opens: Partial<Record<HealthTarget, () => void>> = {
                 trades: () => document.querySelector(`[data-gc-project="${CSS.escape(p.id)}"] [data-gc-trade-asks]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
@@ -2175,12 +2177,10 @@ export default function GcProjects() {
                       }
                     : {})}
                   moneyShown={canSeeGcMoney(role) && moneyShown}
+                  foot={billDay ?? undefined}
                 />
               )
             })()}
-            {canSeeGcMoney(role) && billDayCards.get(p.id) && (
-              <BillDayCardLine facts={billDayCards.get(p.id)!} onOpen={() => openBillDay(p.id)} />
-            )}
             {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
             {roughKeepLines[p.id] && (
               <div role="status" data-rough-not-kept style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
