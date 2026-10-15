@@ -29,6 +29,7 @@ const VIEWS: Record<'trade' | 'customer', readonly [BoardBy, string][]> = {
     ['trade', 'By trade'],
   ],
   customer: [
+    ['list', 'List'],
     ['step', 'By step'],
     ['company', 'By company'],
   ],
@@ -46,7 +47,7 @@ export function GcFlowBoard({
   kind: 'trade' | 'customer'
   by: BoardBy
   onBy: (by: BoardBy) => void
-  /** Trade partners' list as it was, the first view. */
+  /** Trade partners' list as it was, the first view; Customers' list since v2.5557. */
   list?: ReactNode
   /** Needs a hand: Follow up. */
   onFollowUp: () => void

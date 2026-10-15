@@ -483,16 +483,18 @@ describe('GcProjects: the Project Board', () => {
     expect(document.querySelector('[data-gc-project="p1"]')).toBeTruthy()
   })
 
-  it('a dev switches to Customers, which reads every customer by step (Messages cut 4)', async () => {
+  it('a dev switches to Customers, which opens on its list (v2.5557) with By step one press away (Messages cut 4)', async () => {
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     fireEvent.click(screen.getByRole('button', { name: 'Customers' }))
     expect(screen.getByRole('heading', { name: 'Customers' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'List' }).getAttribute('aria-pressed')).toBe('true')
+    expect(await screen.findByRole('region', { name: 'Customers list' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'By step' }))
     expect(await screen.findByRole('group', { name: 'Where everyone stands' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'By company' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'List' })).toBeNull()
   })
 
   it('a dev opens Papers on a project’s card, which reads everyone on the job (Messages cut 4)', async () => {
