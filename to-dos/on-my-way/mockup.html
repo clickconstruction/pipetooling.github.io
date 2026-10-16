@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>On my way and I'm here</title>
+<style>
+  /* Punch list #112. Light only, like every to-do mock-up. Phone frames at 375 px, the Job Mode card as it draws. Made-up people: Luis Ortega on the job, Dana Whitfield at 1208 Mesquite Ln. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-mid: #d97706; --amber: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --orange: #c2410c; --orange-tint: #fff7ed; --orange-line: #fdba74; --orange-ink: #9a3412; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--line-2); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; }
+  .phone { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; padding: 12px; font-size: 13px; }
+
+  /* the Job Mode card as DashboardJobModeCard draws it */
+  .status { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .status.go { color: var(--green-ink); font-weight: 600; }
+  .status.site { color: var(--ink-2); font-weight: 600; }
+  .jobnum { font-weight: 800; font-size: 18px; letter-spacing: .01em; }
+  .jobnum .sep { color: var(--line); margin: 0 6px; font-weight: 400; }
+  .jobnum .name { font-weight: 700; font-size: 15px; }
+  .addr { color: var(--ink-2); font-size: 13px; }
+  .cal { color: var(--blue-ink); font-size: 11px; font-weight: 600; text-align: center; margin: 2px 0 8px; }
+  .rail { border: 1px solid var(--line-2); border-radius: 10px; padding: 6px 8px; margin: 0 0 10px; }
+  .rail .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .rail .r { display: grid; grid-template-columns: 16px 56px 1fr auto; gap: 6px; align-items: center; padding: 3px 2px; font-size: 12px; }
+  .rail .r.now { background: var(--green-tint); border-radius: 6px; outline: 1.5px solid var(--green); }
+  .rail .d { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); display: inline-block; }
+  .rail .d.now { border: 4px solid var(--green); width: 12px; height: 12px; }
+  .rail .d.done { background: var(--green); border-color: var(--green); }
+  .rail .flag { font-size: 10px; font-weight: 800; color: var(--green); }
+  .big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .big button, .wide { border: 0; border-radius: 12px; color: #fff; font: inherit; font-weight: 800; font-size: 15px; min-height: 84px; padding: 10px; line-height: 1.15; white-space: pre-line; }
+  .big .leave { background: var(--blue); }
+  .big .go { background: var(--green); }
+  .big .here { background: var(--blue-ink); }
+  .big .grey { background: #9ca3af; }
+  .wide { grid-column: 1 / -1; min-height: 46px; font-size: 13px; background: var(--amber-mid); width: 100%; margin-top: 8px; }
+  .quiet { display: block; text-align: center; color: var(--blue-ink); font-size: 12.5px; font-weight: 600; margin: 10px 0 0; }
+  .quiet.m { color: var(--muted); font-weight: 500; }
+
+  /* the sheet (ResponsiveModalShell, full screen on a phone) */
+  .sheet { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; font-size: 13px; overflow: hidden; }
+  .sheet .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; }
+  .sheet .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .sheet .body { padding: 12px; }
+  .sheet .foot { padding: 10px 12px; border-top: 1px solid var(--line-2); display: flex; gap: 8px; justify-content: space-between; }
+  .lab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+  .lab:first-child { margin-top: 0; }
+  .dest { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .dest b { font-size: 13.5px; }
+  .dest .sub { color: var(--ink-2); font-size: 12px; grid-column: 1; }
+  .dest .chg { grid-row: 1 / span 2; align-self: center; color: var(--blue-ink); font-weight: 600; font-size: 12px; }
+  .bubble { background: var(--orange-tint); border: 1px solid var(--orange-line); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 14.5px; line-height: 1.4; }
+  .bubble b { background: #fed7aa; border-radius: 4px; padding: 0 3px; }
+  .mins { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }
+  .mins button { height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-size: 18px; font-weight: 700; }
+  .mins .n { height: 44px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; gap: 6px; }
+  .mins .n small { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .from { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .acts { display: grid; gap: 6px; margin-top: 2px; }
+  .act { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 13px; color: var(--ink-2); }
+  .act .i { font-size: 15px; line-height: 1.3; }
+  .act.hold { color: var(--amber); }
+  .act.hold .i { color: var(--amber-mid); }
+  .warn { margin-top: 8px; font-size: 12.5px; color: var(--amber); background: var(--amber-tint); border-radius: 8px; padding: 6px 8px; }
+  .p { min-height: 46px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--green); color: #fff; font: inherit; font-weight: 800; font-size: 14px; }
+  .p.orange { background: var(--orange); }
+  .s { min-height: 46px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 13px; }
+  .links { display: flex; gap: 14px; justify-content: center; margin-top: 10px; font-size: 12.5px; }
+  .links span { color: var(--blue-ink); font-weight: 600; }
+  .links span.m { color: var(--muted); font-weight: 500; }
+
+  /* the editor's phone block */
+  .ed { width: 420px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 12px; font-size: 13px; }
+  .ed .words { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fafafa; }
+  .ed .tick { display: flex; gap: 6px; align-items: center; margin-top: 10px; font-size: 12.5px; }
+  .ed .f { margin-top: 8px; }
+  .ed .f .l { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+  .ed .f .l small { font-weight: 400; color: var(--muted); }
+  .ed input, .ed select { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; margin-top: 3px; }
+
+  /* the lists */
+  ol.alts, ol.pass { padding-left: 22px; max-width: 100ch; }
+  ol.alts li, ol.pass li { margin: 6px 0; color: var(--ink-2); }
+  ol.alts li b, ol.pass li b { color: var(--ink); }
+  .pick { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--green-tint); color: var(--green-ink); margin-left: 6px; vertical-align: 1px; }
+  .no { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--line-2); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #112 · mock-up · 2026-10-16</p>
+  <h1>On my way and I'm here: one press that clocks the drive and texts the customer</h1>
+  <p>Job Mode's big green button becomes <b>On my way</b>. One press clocks Luis in on the next job as on the way and texts Dana the office's line, after Luis reads it in the orange box he already knows from Message the customer. While he drives, the button reads <b>I'm here</b>. Every frame is 375 px, the card as <code>DashboardJobModeCard</code> draws it. The people and the job are made up.</p>
+</header>
+
+<h2><span class="num">1</span> Today, and the press</h2>
+<p class="lede">Left: the card before the first clock-in, as it is. Right: the same card with the one change. Leave Report keeps its place; the green button is the day's main press and now says what the day's main press does.</p>
+<div class="row">
+  <div>
+    <div class="cap">Today · ready to start</div>
+    <div class="fit"><div class="phone">
+      <div class="status">Ready to start</div>
+      <div class="jobnum">PLUM 512<span class="sep">|</span><span class="name">Whitfield water heater</span></div>
+      <div class="addr">1208 Mesquite Ln</div>
+      <div class="cal">▦ Job calendar</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div>
+        <div class="r"><span class="d"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div>
+        <div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div>
+        <div class="r"><span class="d"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div>
+      </div>
+      <div class="big"><button class="grey">Leave
+Report</button><button class="go">Start First
+Job</button></div>
+      <button class="wide">Turnaway — not ready / not home</button>
+      <span class="quiet">💬 Message the customer</span>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap green">The press · ready to start</div>
+    <div class="fit"><div class="phone">
+      <div class="status">Ready to start</div>
+      <div class="jobnum">PLUM 512<span class="sep">|</span><span class="name">Whitfield water heater</span></div>
+      <div class="addr">1208 Mesquite Ln</div>
+      <div class="cal">▦ Job calendar</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div>
+        <div class="r"><span class="d"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div>
+        <div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div>
+        <div class="r"><span class="d"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div>
+      </div>
+      <div class="big"><button class="grey">Leave
+Report</button><button class="go">🚐 On my
+way</button></div>
+      <button class="wide">Turnaway — not ready / not home</button>
+      <span class="quiet">💬 Message the customer</span>
+    </div></div>
+    <p class="note"><b>Where it shows.</b> Every advance to a scheduled job: Start First Job, Next Job, Switch to Scheduled Job, a tap on a rail row. <b>Clock In</b> with no schedule and <b>Wrap Up Day</b> stay as they are.</p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> The sheet</h2>
+<p class="lede">The message sheet's shape, pointed at the press: where to, the text as Dana gets it with the minutes already guessed, what the press will do, and a button that says exactly that. Luis changes the minutes or nothing.</p>
+<div class="row">
+  <div>
+    <div class="cap orange">On my way · the text can go</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="chg">Change</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+        <div class="lab">This is what Dana gets</div>
+        <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+        <div class="mins"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+        <div class="from">Guessed from your phone to the job, 9.4 mi. Change it if you know better.</div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">⏱</span><span>Clocks you in on 512 · Whitfield water heater as on the way.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Dana from the company number. Her answer comes back to you.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Dana</button></div>
+      <div class="links"><span>Start here instead</span><span class="m">Done for the day</span></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Where to · two still open</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest" style="border-color: var(--green); background: var(--green-tint)"><b>GAS 77 · Riverbend gas test</b><span class="chg" style="color: var(--green-ink)">Suggested</span><span class="sub">1:00 PM · 44 Riverbend Rd</span></div>
+        <div class="dest" style="margin-top:6px"><b>PLUM 501 · Oakmont trim set</b><span class="chg"></span><span class="sub">3:00 PM · 9 Oakmont Ct</span></div>
+        <div class="lab">This is what Priya gets</div>
+        <div class="bubble">Priya, this is Luis with Click Plumbing. I am on my way, about <b>35</b> minutes out.</div>
+        <div class="mins"><button>−</button><div class="n">35 <small>minutes</small></div><button>+</button></div>
+        <div class="warn">That lands about 1:20 PM, past the 1:00 window. Running late is under Message the customer and moves the board.</div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">⏱</span><span>Clocks you out of 512 and in on GAS 77 as on the way.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Priya from the company number. Her answer comes back to you.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Priya</button></div>
+      <div class="links"><span>Start here instead</span><span class="m">Done for the day</span></div>
+    </div></div>
+    <p class="note"><b>The minutes.</b> The phone's GPS to the job's geocoded point, straight line × 1.3 at 35 mph, rounded up to the next five, so the guess errs early. No GPS, or an address the map never placed: the number is empty and the button waits, as the sheet does today.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span> On the way, and I'm here</h2>
+<p class="lede">The header says where Luis is going and for how long. The green button reads <b>I'm here</b>. The press stamps the arrival; when Dana can be texted, the small sheet offers the I'm here line first.</p>
+<div class="row">
+  <div>
+    <div class="cap green">On the way</div>
+    <div class="fit"><div class="phone">
+      <div class="status go">🚐 On the way · left 10:12 · 14 min</div>
+      <div class="jobnum">PLUM 512<span class="sep">|</span><span class="name">Whitfield water heater</span></div>
+      <div class="addr">1208 Mesquite Ln</div>
+      <div class="cal">▦ Job calendar</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div>
+        <div class="r now"><span class="d now"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span class="flag">NOW</span></div>
+        <div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div>
+        <div class="r"><span class="d"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div>
+      </div>
+      <div class="big"><button class="leave">Leave
+Report</button><button class="here">📍 I'm
+here</button></div>
+      <button class="wide">Turnaway — not ready / not home</button>
+      <span class="quiet">💬 Message the customer</span>
+      <span class="quiet m">Clock out</span>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap orange">I'm here · the text can go</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>I'm here</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">This is what Dana gets</div>
+        <div class="bubble">Dana, this is Luis with Click Plumbing. I am here at 1208 Mesquite Ln.</div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">📍</span><span>Marks you on site at 512 · Whitfield water heater. 19 minutes on the road.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Dana that you are at the door. Skip it when she is already there.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">I'm here, no text</button><button class="p" style="background: var(--blue-ink)">I'm here, text Dana</button></div>
+    </div></div>
+    <p class="note"><b>No text possible</b> (no customer, no number, texts off, no I'm here line): the press stamps at once, no sheet, and a toast says <i>You are on site. 19 min on the road.</i></p>
+  </div>
+  <div>
+    <div class="cap">On site</div>
+    <div class="fit"><div class="phone">
+      <div class="status site">📍 On site since 10:31 · 19 min drive</div>
+      <div class="jobnum">PLUM 512<span class="sep">|</span><span class="name">Whitfield water heater</span></div>
+      <div class="addr">1208 Mesquite Ln</div>
+      <div class="cal">▦ Job calendar</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div>
+        <div class="r now"><span class="d now"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span class="flag">NOW</span></div>
+        <div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div>
+        <div class="r"><span class="d"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div>
+      </div>
+      <div class="big"><button class="leave">Leave
+Report</button><button class="go">🚐 On my
+way</button></div>
+      <button class="wide">Turnaway — not ready / not home</button>
+      <span class="quiet">✎ Write up a change</span>
+      <span class="quiet">💬 Message the customer</span>
+      <span class="quiet m">Clock out</span>
+    </div></div>
+    <p class="note"><b>The next press is On my way again</b>, to GAS 77: the old Next Job, with the drive and the text. Last job of the day: Wrap Up Day, as today.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span> When the text cannot go</h2>
+<p class="lede">The press never promises what it cannot do. The clock-in happens either way; the second row says why there is no text, and the button says only what is left.</p>
+<div class="row">
+  <div>
+    <div class="cap red">No customer on the job</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest"><b>PLUM 509 · Shop, stock the truck</b><span class="chg">Change</span><span class="sub">8:00 AM · 300 Commerce St</span></div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">⏱</span><span>Clocks you in on 509 · Shop, stock the truck as on the way.</span></div>
+          <div class="act hold"><span class="i">⚠</span><span>No text: this job has no customer yet.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Start here instead</button><button class="p">On my way</button></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap red">Texts are off</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="chg">Change</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">⏱</span><span>Clocks you in on 512 · Whitfield water heater as on the way.</span></div>
+          <div class="act hold"><span class="i">⚠</span><span>No text: texts are off. The owner or a dev turns them on in Settings → Phone and texts.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Start here instead</button><button class="p">On my way</button></div>
+    </div></div>
+    <p class="note"><b>The other holds</b> read the same way: <i>No text: the office has no On my way line on the phone.</i> · <i>No text: your role does not text from the phone.</i> A number Dana does not have is found on the send; the clock-in stands and the toast carries the words.</p>
+  </div>
+  <div>
+    <div class="cap">Already there</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="chg">Change</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+        <div class="warn" style="margin-top:12px">Your phone says you are already there, so there is no drive to text.</div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">📍</span><span>Clocks you in on 512 · Whitfield water heater, on site now.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Dana that you are at the door, if you want.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">I'm here, no text</button><button class="p" style="background: var(--blue-ink)">I'm here, text Dana</button></div>
+    </div></div>
+    <p class="note"><b>The same-site rule</b> is the Day view's: under 150 m. A drive that is not one is never texted.</p>
+  </div>
+</div>
+
+<h2><span class="num">5</span> The office owns the words</h2>
+<p class="lede">Both lines are ordinary team lines for customers on the tech's phone. The editor's phone block gains one picker, so the office rewords either line, or points a press at a different one, with no deploy.</p>
+<div class="row">
+  <div>
+    <div class="cap">Quick replies editor · the phone block</div>
+    <div class="fit"><div class="ed">
+      <div class="words">{first}, this is {me} with Click Plumbing. I am on my way, about {minutes} minutes out.</div>
+      <div class="tick"><input type="checkbox" checked> On the tech's phone</div>
+      <div class="f"><div class="l">Its short name on the phone <small>· What the tech's button says.</small></div><input value="On my way" style="width: 60%"></div>
+      <div class="f"><div class="l">Big button on Job Mode <small>· The press that sends this line without opening the sheet. One line each.</small></div><select><option>Not a big button</option><option selected>On my way</option><option>I'm here</option></select></div>
+    </div></div>
+    <p class="note"><b>Seeded once by the migration</b>: the first phone line that uses <code>{minutes}</code> becomes the On my way line; an I'm here line is added when none holds that press. Day one works with no office step.</p>
+  </div>
+  <div>
+    <div class="cap">The record · one row a visit, two new instants</div>
+    <div class="fit"><div class="ed" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.6">
+      clock_sessions<br>
+      &nbsp;&nbsp;clocked_in_at&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10:12 &nbsp;<span class="muted">← the press</span><br>
+      &nbsp;&nbsp;travel_started_at&nbsp;10:12 &nbsp;<span class="muted">← new</span><br>
+      &nbsp;&nbsp;arrived_at&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10:31 &nbsp;<span class="muted">← new, I'm here</span><br>
+      &nbsp;&nbsp;arrived_lat / lng&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;<span class="muted">← the phone, like the clock-in's</span><br>
+      &nbsp;&nbsp;clocked_out_at&nbsp;&nbsp;&nbsp;&nbsp;12:48 &nbsp;<span class="muted">← Next Job, as today</span><br>
+      &nbsp;&nbsp;notes&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;On my way to 512 · Whitfield water heater, about 20 min
+    </div></div>
+    <p class="note"><b>Nothing about hours, approval or pay changes.</b> A visit is still one row. The drive is <code>arrived_at − travel_started_at</code>, honest for the first time: it unblocks <i>Travel on Days</i>, the office's <i>On the way / On site</i> line and the Day view's gaps, each a follow-on.</p>
+  </div>
+</div>
+
+<h2><span class="num">6</span> Alternatives weighed</h2>
+<ol class="alts">
+  <li><b>A quiet door beside Message the customer.</b><span class="no">rejected</span> It is the day's main press and the owner's screenshot puts it big. A quiet door gets missed and the drive goes unmarked.</li>
+  <li><b>Housecall Pro's two round buttons, On my way and Start my time, with no sheet.</b><span class="no">rejected</span> Here the drive is paid time, so the press must clock the tech in, and the owner asked for the preview. Two buttons would split one act.</li>
+  <li><b>Text on every Next Job with no sheet.</b><span class="no">rejected</span> No preview, the wrong minutes, a text the tech never read.</li>
+  <li><b>The big button becomes On my way; one sheet does the destination, the preview and both acts; I'm here takes its place while on the way.</b><span class="pick">picked</span></li>
+  <li><b>A separate travel session, clocked out at the door and a work session clocked in.</b><span class="no">rejected</span> Two rows a visit would break every hours, approval and payroll reader. Two instants on one row keep every reader as it is.</li>
+</ol>
+
+<h2><span class="num">7</span> Is this the best we can do? The second pass</h2>
+<p class="lede">The first draft was shape D as drawn. Read back against the owner's three words, <i>deeply</i>, <i>holistically</i> and <i>modify</i>, seven things changed.</p>
+<ol class="pass">
+  <li><b>The minutes were typed.</b> Now the app guesses them from the phone and the job's point and the tech only corrects. The straight line rounds up, so the guess errs early. A routed guess is one gate change away.</li>
+  <li><b>I'm here always texted.</b> Now the arrival stamp happens on every press, and the text is a choice, since the stamp is the data and the text is a courtesy.</li>
+  <li><b>The notes box stayed.</b> Now the app writes the note, which is truer than what a tech types in a truck and reads right on the office's strip.</li>
+  <li><b>The window was ignored.</b> Now a guessed arrival past the block's end gets one quiet line that points at Running late, which already slides the board.</li>
+  <li><b>Every advance became a drive.</b> Now the same-site rule and Start here instead keep a text from going out for a drive that is not one.</li>
+  <li><b>The lines were found by their words.</b> Now a column names which line each press sends, the editor shows it, and the migration seeds both.</li>
+  <li><b>The stamps were the press's alone.</b> Now they are named as what unblocks Travel on Days, the office's On the way / On site line and the Day view's gaps.</li>
+</ol>
+</div>
+</body>
+</html>
