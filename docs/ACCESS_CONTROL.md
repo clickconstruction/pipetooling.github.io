@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-10-14
+last_updated: 2026-10-16
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -268,7 +268,7 @@ The tech's send (v2.5499, `20261014180000_messages_tech_send.sql`): `quo-send` t
 
 ### Training — courses with a clock (v2.5565, `20261015060000_training_courses.sql`)
 
-- **`training_courses`** (one row per course the app ships, keyed by the content folder's slug: `enabled`, `required_roles text[]` of user role words, `good_for_months`, `due_soon_days`, `retake_from`, `updated_by`): SELECT for everyone signed in (the Dashboard card reads the catalog); INSERT, UPDATE and DELETE behind `is_dev()`. Anon revoked, authenticated granted, the service role everything. Seeded `osha-30-refresher`, off, required for helpers, subcontractor, primary, master_technician and superintendent. The lessons are not in the database: they ship in the bundle under `src/content/training/<slug>/` (v2.5564).
+- **`training_courses`** (one row per course the app ships, keyed by the content folder's slug: `enabled`, `required_roles text[]` of user role words, `good_for_months`, `due_soon_days`, `retake_from`, `updated_by`): SELECT for everyone signed in (the Dashboard card reads the catalog); INSERT, UPDATE and DELETE behind `is_dev()`, the policy Settings → Training (v2.5569, a dev's tab) writes through. Anon revoked, authenticated granted, the service role everything. Seeded `osha-30-refresher`, off, required for helpers, subcontractor, primary, master_technician and superintendent. The lessons are not in the database: they ship in the bundle under `src/content/training/<slug>/` (v2.5564).
 - **`training_lesson_passes`** (`user_id`, `course_slug`, `lesson_key`, `passed_at`, `tries`) and **`training_passes`** (`content_version`, `passed_on`, `passed_at`, `score`, `total`, `answers`): SELECT own rows or `training_office()` (dev, master, assistant, controller); INSERT own rows (and UPDATE own lesson passes); no UPDATE or DELETE on a pass for `authenticated`. Written only through **`training_pass_lesson(slug, lesson_key, tries)`** and **`training_finish_course(slug, content_version, score, total, pass, answers)`**, both SECURITY INVOKER, so RLS, the read-only training-mode fence and the twin fence apply to the caller's own row; the finish refuses a score under the bar.
 - **`training_state_for(user)`** (SECURITY DEFINER, authenticated + service_role): the SQL twin of `src/lib/training/trainingState.ts`, own rows for anyone, everyone's for `training_office()`. **`training_standings(slug)`**: everyone active who must take the course with their colour, office only; samples, twins and archived accounts left out. The three fence appliers close the migration.
 

@@ -45,6 +45,7 @@
 | [`HELP_SHARE_CARDS.md`](./HELP_SHARE_CARDS.md) | Help-guide share pages and cards (`/g/<slug>/`): what a texted link shows, what the author gets right, how to check. |
 | [`TEAM_FEEDBACK_RETIRED_QUESTIONS.md`](./TEAM_FEEDBACK_RETIRED_QUESTIONS.md) | The scripted questions the Team Feedback wizard asked before the crew deck replaced it; kept so the wording is never lost. |
 | `../src/content/help/*.md` | User-facing help guides (ship with features — `../CLAUDE.md`). |
+| `../src/content/training/<slug>/` | Training courses as markdown (`course.md`, the lessons, `final-bank.md`), parsed by `src/lib/training/courseContent.ts`, whose test is the gate (Glossary *Training · course · pass*). |
 
 ## Runbooks and one-time setup
 
