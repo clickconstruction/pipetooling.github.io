@@ -97,6 +97,7 @@
     "test:pg:count-sources": "bash scripts/pgtest-count-sources.sh",
     "test:pg:people-phone": "bash scripts/pgtest-people-phone.sh",
     "test:pg:training": "bash scripts/pgtest-training.sh",
+    "test:pg:on-my-way": "bash scripts/pgtest-on-my-way.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

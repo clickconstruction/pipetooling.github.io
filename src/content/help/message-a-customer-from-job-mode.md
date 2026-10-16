@@ -20,7 +20,7 @@ If you do not see **Message the customer**, clock in on the job first. If a text
 
 The sheet lists the lines the office put on the phone. Each one shows its name and where its words come from.
 
-- **On my way** takes the minutes you type.
+- **On my way** takes the minutes you type. The big green button sends the same line and guesses the minutes for you. See [clock in and out with Job Mode](/help/job-mode-clocking#tell-the-customer-you-are-on-the-way).
 - **Running late** takes the new window from your schedule.
 - Their first name, your name and the job's address are filled for you.
 

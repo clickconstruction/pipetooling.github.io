@@ -323,8 +323,13 @@ export function QuickRepliesEditor({
                               fills={fills}
                               previewTo={previewTo}
                               onSave={async (text: string, tags: QuickReplyTags, r3) => {
+                                // The big button (v2.5573) saves through its own function; the rest through edit_quick_reply,
+                                // which refuses Nothing changed, so it is skipped when only the button moved.
+                                const { phonePress, ...rest } = r3
+                                const wordsOrTags = text !== q.text || tags.for !== q.for || (tags.stepId ?? null) !== (q.stepId ?? null)
                                 // A Save of words and tags alone stays the four named arguments.
-                                await (Object.keys(r3).length ? io.edit(q.id, text, tags, r3) : io.edit(q.id, text, tags))
+                                if (wordsOrTags || Object.keys(rest).length) await (Object.keys(rest).length ? io.edit(q.id, text, tags, rest) : io.edit(q.id, text, tags))
+                                if (phonePress !== undefined) await io.setPress(q.id, phonePress)
                                 await changed()
                               }}
                               onRemove={async () => {

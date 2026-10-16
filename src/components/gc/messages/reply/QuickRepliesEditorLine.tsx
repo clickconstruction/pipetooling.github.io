@@ -22,6 +22,7 @@ import type { BlankFills } from '../../../../lib/quickReplies/blanks'
 import { BLANK_CHIPS, insertBlank, preview } from '../../../../lib/quickReplies/filling'
 import { shortName } from '../../../../lib/quickReplies/phone'
 import { PHONE_TAB_WORDS, nextPhonePlace, phoneTick } from '../../../../lib/quickReplies/phoneTab'
+import { PHONE_PRESSES, PRESS_PICKER, PRESS_WORDS, phonePressOf, type PhonePress } from '../../../../lib/quickReplies/press'
 import { SPANISH_WORDS, spanishOffered } from '../../../../lib/quickReplies/spanish'
 import { formatDenverDateTimeShort } from '../../../../utils/dateUtils'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
@@ -30,7 +31,7 @@ import { FilledLine } from './FilledLine'
 import { QuickReplyTagFields } from './QuickRepliesEditorAdd'
 
 /** R3's three parts of a Save, each only when it changed, so a Save of words and tags alone stays as it was. */
-export type LineR3 = Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName'>
+export type LineR3 = Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName' | 'phonePress'>
 
 /** The kernel's words for a change that went. */
 const wordsOf = (r: QrResult): string => ('words' in r ? r.words : '')
@@ -90,6 +91,8 @@ export function QuickRepliesEditorLine({
   const [es, setEs] = useState(line.textEs ?? '')
   const [onPhone, setOnPhone] = useState(line.phoneOrder != null)
   const [phoneName, setPhoneName] = useState(line.phoneName ?? '')
+  /** v2.5573: the big button this line is, or null. Off the phone, a line is no big button. */
+  const [press, setPress] = useState<PhonePress | null>(line.phonePress ?? null)
   const words = useRef<HTMLTextAreaElement>(null)
   const tick = phoneTick({ for: tags.for, scope: line.scope })
   const shown = preview(text, fills, previewTo)
@@ -115,6 +118,8 @@ export function QuickRepliesEditorLine({
     if (place !== (line.phoneOrder ?? null)) out.phoneOrder = place
     const name = tick.can ? phoneName.trim() || null : (line.phoneName ?? null)
     if (name !== (line.phoneName ?? null)) out.phoneName = name
+    const wantPress = place != null ? press : null
+    if (wantPress !== (line.phonePress ?? null)) out.phonePress = wantPress
     return out
   }
   const [busy, setBusy] = useState(false)
@@ -236,6 +241,29 @@ export function QuickRepliesEditorLine({
               onChange={(e) => setPhoneName(e.target.value)}
               style={{ ...input, maxWidth: '22rem' }}
             />
+          </label>
+        )}
+        {tick.can && onPhone && (
+          <label style={{ display: 'grid', gap: '0.2rem' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-600)' }}>
+              {PRESS_PICKER.label}
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {PRESS_PICKER.note}</span>
+            </span>
+            <select
+              aria-label={PRESS_PICKER.label}
+              value={press ?? ''}
+              disabled={busy || line.removed}
+              onChange={(e) => setPress(phonePressOf(e.target.value))}
+              style={{ ...input, maxWidth: '22rem' }}
+              data-testid="qr-press"
+            >
+              <option value="">{PRESS_PICKER.none}</option>
+              {PHONE_PRESSES.map((p) => (
+                <option key={p} value={p}>
+                  {PRESS_WORDS[p]}
+                </option>
+              ))}
+            </select>
           </label>
         )}
       </div>

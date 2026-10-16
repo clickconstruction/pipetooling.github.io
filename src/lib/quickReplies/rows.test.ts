@@ -49,6 +49,7 @@ describe('quick replies read from the tables', () => {
       textEs: null,
       phoneOrder: null,
       phoneName: null,
+      phonePress: null,
     })
   })
 
