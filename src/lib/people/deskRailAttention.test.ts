@@ -85,3 +85,38 @@ describe('buildRailSections', () => {
     expect(normaliseKind('controller')).toBe('controller')
   })
 })
+
+describe('training on the rail (punch list #111, v2.5568)', () => {
+  const withTraining: RailFacts = {
+    ...facts,
+    trainingByUserId: {
+      'u-dana': { tone: 'red', label: 'training due', long: 'OSHA 30 refresher not done' },
+      'u-luis': { tone: 'amber', label: 'training lapsed', long: 'OSHA 30 refresher lapsed Oct 3, 2026' },
+    },
+  }
+  it('a course not done is a red chip that moves the dot; a lapsed one is amber and moves it only when nothing is red', () => {
+    const dana = buildRailRow(p({ name: 'Dana', userId: 'u-dana' }), withTraining)
+    expect(dana.attention).toBe('red')
+    expect(dana.signals.find((s) => s.key === 'training')).toEqual({ key: 'training', label: 'training due', tone: 'red' })
+    expect(dana.reasons).toContain('OSHA 30 refresher not done')
+    expect(dana.badge).toContain('trn')
+    const luis = buildRailRow(p({ name: 'Luis', userId: 'u-luis' }), withTraining)
+    expect(luis.attention).toBe('amber')
+    expect(luis.signals.find((s) => s.key === 'training')?.label).toBe('training lapsed')
+    const expiredAndLapsed = buildRailRow(p({ name: 'Texas R & A Electrical', userId: 'u-luis' }), withTraining)
+    expect(expiredAndLapsed.attention).toBe('red')
+  })
+  it('a person with no training fact, or no account, gets no chip', () => {
+    expect(buildRailRow(p({ name: 'Priya', userId: 'u-priya' }), withTraining).signals.some((s) => s.key === 'training')).toBe(false)
+    expect(buildRailRow(p({ name: 'Dana' }), withTraining).signals.some((s) => s.key === 'training')).toBe(false)
+  })
+  it('the Users row carries the same chip under Paperwork, with the verb that clears it', () => {
+    const row = buildRowNeeds({ person: p({ name: 'Dana', userId: 'u-dana' }), facts: withTraining, signingLight: 'green' })
+    const need = row.needs.find((n) => n.key === 'training')
+    expect(need).toMatchObject({ subject: 'paperwork', tone: 'red', short: 'training due', long: 'OSHA 30 refresher not done.', verb: 'Ask them to take it', door: 'paperwork' })
+    expect(row.attention).toBe('red')
+    const lapsed = buildRowNeeds({ person: p({ name: 'Luis', userId: 'u-luis' }), facts: withTraining, signingLight: 'green' })
+    expect(lapsed.needs.find((n) => n.key === 'training')?.verb).toBe('Ask them to take it again')
+    expect(lapsed.attention).toBe('amber')
+  })
+})

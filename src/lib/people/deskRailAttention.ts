@@ -29,6 +29,12 @@ export type RailFacts = {
   portalOnPersonIds?: Set<string>
   /** Subs on the bench (v2.2860): a gray chip, and their paperwork nags pause. */
   benchPersonIds?: Set<string>
+  /**
+   * Training (punch list #111, v2.5568): per account, the chip `trainingChip` gives from the person's standings on
+   * every course their role must take — red *training due* (a course not done) or amber *training lapsed* (a pass
+   * run out or within its last 30 days), with the course named in `long`. Only the office reads it; absent otherwise.
+   */
+  trainingByUserId?: Record<string, { tone: 'red' | 'amber'; label: string; long: string }>
 }
 
 /** One labeled chip on a Users tab row (v2.2762). Tone follows the app's chip palette. */
@@ -119,6 +125,15 @@ export function buildRailRow(p: RailPersonInput, f: RailFacts): RailRow {
     badge.push('exp!')
     signals.push({ key: 'expired', label: `${expired} expired`, tone: 'red' })
     attention = 'red'
+  }
+  // Training (v2.5568) rides beside the papers with the same colours: red moves the dot, amber moves it when nothing red is there.
+  const training = p.userId ? f.trainingByUserId?.[p.userId] : undefined
+  if (training) {
+    reasons.push(training.long)
+    badge.push('trn')
+    signals.push({ key: 'training', label: training.label, tone: training.tone })
+    if (training.tone === 'red') attention = 'red'
+    else if (attention === 'green') attention = 'amber'
   }
   if (p.userId && !p.personId && p.kind !== 'dev' && p.kind !== 'primary') {
     reasons.push('no roster row')

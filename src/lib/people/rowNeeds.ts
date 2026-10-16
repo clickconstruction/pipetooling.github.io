@@ -118,6 +118,22 @@ export function buildRowNeeds(input: RowNeedsInput): RowNeeds {
     })
   }
 
+  // Training (punch list #111, v2.5568): a course not done is red, a lapsed pass amber, under Paperwork beside
+  // the papers and licenses whose currency it shares; the fold-out names the course and the day.
+  const training = p.userId ? f.trainingByUserId?.[p.userId] : undefined
+  if (training) {
+    needs.push({
+      key: 'training',
+      subject: 'paperwork',
+      tone: training.tone,
+      count: 1,
+      short: training.label,
+      long: `${training.long}.`,
+      verb: training.tone === 'red' ? 'Ask them to take it' : 'Ask them to take it again',
+      door: 'paperwork',
+    })
+  }
+
   // Account: the roster gap is a need; login, push and portal state are facts.
   if (p.userId && !p.personId && p.kind !== 'dev' && p.kind !== 'primary') {
     needs.push({
