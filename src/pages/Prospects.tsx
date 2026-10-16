@@ -70,6 +70,7 @@ import {
 import { addGcCompany, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
+import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
 import { BY_NEED_NOTE, benchDouble, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
@@ -411,7 +412,10 @@ export default function Prospects() {
   const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
   // Which kind of company the deck is finding (v2.5559): customers, jobs to GC or subs. `?kind=`.
-  const [kind, setKind] = useState<ProspectKind>('customer')
+  // The lane from the link before the first load (v2.5578): starting on the customer deck and reading
+  // `?kind=` afterwards raced two loads, and a refresh could paint the Customers deck under a lane's tab.
+  const [kind, setKind] = useState<ProspectKind>(() => kindFromSearch(location.search))
+  const latestLoad = useRef(makeLatestOnly())
   const kindWords = PROSPECT_KIND_WORDS[kind]
   // Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company.
   const [benchDraft, setBenchDraft] = useState<BenchDraft | null>(null)
@@ -778,6 +782,8 @@ export default function Prospects() {
   async function loadFollowUpProspects() {
     if (!authUser?.id) return
     setFollowUpLoading(true)
+    // Only the newest load paints (v2.5578): a kind change mid-load starts another, and the first must not land last.
+    const load = latestLoad.current.start()
     const [{ data: locks }, { data: callRows }] = await Promise.all([
       // Only LIVE locks hide a prospect — a row older than the TTL is a closed
       // tab or a forgotten row, not a colleague on the phone (callingLock.ts).
@@ -788,6 +794,7 @@ export default function Prospects() {
         .gte('locked_at', callingLockCutoffIso(Date.now())),
       supabase.from('prospect_comments').select('prospect_id').in('interaction_type', [...CALL_INTERACTION_TYPES]),
     ])
+    if (!latestLoad.current.isLatest(load)) return
     const called = new Set(((callRows ?? []) as { prospect_id: string }[]).map((r) => r.prospect_id))
     setCalledProspectIds(called)
     const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
@@ -802,6 +809,7 @@ export default function Prospects() {
     const { data, error } = await query
       .order('last_contact', { ascending: true, nullsFirst: true })
       .order('created_at', { ascending: true })
+    if (!latestLoad.current.isLatest(load)) return
     if (error) {
       setFollowUpProspects([])
       setFollowUpLoading(false)
@@ -824,6 +832,7 @@ export default function Prospects() {
     if (kind === 'gc_lead') {
       // The Jobs to GC lane (v2.5561): each lead's jobs ride along, and Soonest bid orders on them.
       const jobs = await mergeJobs(prospects.map((p) => p.id))
+      if (!latestLoad.current.isLatest(load)) return
       if (callingOrderModeRef.current === 'soonest_bid') prospects = orderLeadsBySoonestBid(prospects, jobs, called)
     }
 
@@ -837,6 +846,7 @@ export default function Prospects() {
         .select(PROSPECT_COLUMNS)
         .eq('id', prospectId)
         .maybeSingle()
+      if (!latestLoad.current.isLatest(load)) return
       const otherKind = single ? (single as Prospect).kind : null
       if (otherKind && otherKind !== kind) {
         // A link from elsewhere (Calendar's callbacks, v2.5563) to a prospect of another kind: its own lane opens it,
@@ -2678,6 +2688,9 @@ export default function Prospects() {
             <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               No prospects to follow up. Add prospects in Prospect List.
             </p>
+          ) : currentProspect && !cardOnLane(currentProspect, kind) ? (
+            // A card of another kind never wears this lane's press (v2.5578): the lane's own load is still coming.
+            <p style={{ color: 'var(--text-muted)' }}>{laneLoadingWords(kind)}</p>
           ) : currentProspect ? (
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
