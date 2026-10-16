@@ -25,9 +25,11 @@ export async function loadProspectWarmthCounts(
 ): Promise<ProspectWarmthCounts> {
   return await withSupabaseRetry(
     async () => {
+      // The customer deck's counts (v2.5563): subs and jobs to GC have their own lanes on Prospects.
       const res = await supabase
         .from('prospects')
         .select('warmth_count, prospect_fit_status')
+        .eq('kind', 'customer')
       checkSupabaseError(res, 'load prospect warmth counts')
       const rows = (res.data ?? []) as Array<{
         warmth_count: number | null

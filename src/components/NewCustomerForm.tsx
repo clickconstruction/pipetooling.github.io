@@ -158,6 +158,8 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       const { data, error: loadErr } = await supabase
         .from('prospects')
         .select(CONVERTIBLE_PROSPECT_COLUMNS)
+        // A sub lands on the bench, never as a customer (v2.5563); a job to GC's owner may become one.
+        .neq('kind', 'sub')
         .order('company_name', { ascending: true })
       if (!mountedRef.current) return
       setProspectPool(loadErr ? [] : ((data ?? []) as ConvertibleProspect[]))

@@ -16,6 +16,8 @@ export type ProspectTeamRow = {
  */
 export async function loadProspectTeamActivity(
   supabase: SupabaseClient<Database>,
+  /** One kind of prospect (v2.5563, the Activity tab of a lane); missing: every kind (Quickfill's team chart). */
+  kind?: string,
 ): Promise<Record<string, ProspectTeamRow[]>> {
   return await withSupabaseRetry(
     async () => {
@@ -33,16 +35,30 @@ export async function loadProspectTeamActivity(
           // Office roles plus estimators who were granted Prospects access.
           .or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)')
           .order('name'),
-        supabase
-          .from('prospect_timer_events')
-          .select('user_id, prospect_id, created_at')
-          .gte('created_at', startIso)
-          .lte('created_at', endIso),
-        supabase
-          .from('prospect_comments')
-          .select('created_by, prospect_id, created_at')
-          .gte('created_at', startIso)
-          .lte('created_at', endIso),
+        kind
+          ? supabase
+              .from('prospect_timer_events')
+              .select('user_id, prospect_id, created_at, prospect:prospects!inner(kind)')
+              .eq('prospect.kind', kind)
+              .gte('created_at', startIso)
+              .lte('created_at', endIso)
+          : supabase
+              .from('prospect_timer_events')
+              .select('user_id, prospect_id, created_at')
+              .gte('created_at', startIso)
+              .lte('created_at', endIso),
+        kind
+          ? supabase
+              .from('prospect_comments')
+              .select('created_by, prospect_id, created_at, prospect:prospects!inner(kind)')
+              .eq('prospect.kind', kind)
+              .gte('created_at', startIso)
+              .lte('created_at', endIso)
+          : supabase
+              .from('prospect_comments')
+              .select('created_by, prospect_id, created_at')
+              .gte('created_at', startIso)
+              .lte('created_at', endIso),
       ])
 
       checkSupabaseError(usersRes, 'load prospect team users')

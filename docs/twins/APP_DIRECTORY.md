@@ -49,6 +49,8 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
 - A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
+- Owners, developers and architects with a job we could build as the GC → `/prospects?kind=gc-leads` (guide `find-jobs-to-build-as-the-gc`)
+- Trade companies to call for the bench, by what the bench needs → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
 
@@ -253,7 +255,7 @@ All customers/builders; the Hub is one customer's money strip, jobs, bids, conta
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
 
 ### /prospects — Prospects
-Customer-prospect calling pipeline (+ Team hiring tab, per-user gated).
+The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what the bench needs, Add to the bench ✓ → Trade partners); plus the Hiring tab, per-user gated.
 Roles: staff; estimator only with `estimator_prospects_access`.
 
 ### /estimates — Estimates
