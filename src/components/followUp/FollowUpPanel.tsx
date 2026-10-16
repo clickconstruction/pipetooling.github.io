@@ -8,6 +8,7 @@
  * **Sort all** on New's header opens the desk (`SortAllDesk`, residential R7's mockup C) over the New this panel draws.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMessagesLive } from '../gc/messages/useMessagesLive'
 import { askArchitectToast, planQuestionOf, type AskArchitectEnd, type PlanQuestionInput } from '../../lib/followUp/askArchitect'
 import { pressProblem, supabaseFollowUpIo, type FollowUpIo } from '../../lib/followUp/followUpIo'
 import { supabaseNewLaneCardIo, type NewLaneCardIo } from '../../lib/followUp/newLaneCardIo'
@@ -68,6 +69,8 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
   const passThrough = useMemo(() => ({ ...(clauses ? { clauses: clauses.rows } : {}), ...(nudges ? { nudges: nudges.build } : {}) }), [clauses, nudges])
   const q = useFollowUpQueue<C, N>({ io, userNames, enabled, passThrough, todayYmd, ...(props.nowIso ? { nowIso: props.nowIso } : {}) })
   const count = q.queue?.count
+  // v2.5572: a new line or a teammate's press elsewhere re-reads the queue, one read after the settle.
+  useMessagesLive(enabled, () => void q.reload())
   const [sorting, setSorting] = useState(false)
   // The queue as drawn: the kind pills' narrowing when the page has one. The desk walks the New this draws.
   const drawn = q.queue ? (narrow ? narrow(q.queue, q.contacts) : q.queue) : null
