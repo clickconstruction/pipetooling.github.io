@@ -1,5 +1,5 @@
 -- On my way and I'm here (v2.5573, punch list #112): the seeds, the press moving between lines, each refusal, a
--- geocoded address's point for a helper, and a helper's own two stamps on a clock session. Runs as each person
+-- geocoded address's point read by a helper, and a helper's own two stamps on a clock session. Runs as each person
 -- through RLS; everything inside one transaction that rolls back. Raises on the first failed assertion; ends with
 -- "on-my-way PASSED". See scripts/pgtest-on-my-way.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -104,17 +104,17 @@ SET LOCAL ROLE anon;
 SELECT tt.refused('anon has no execute', $$SELECT public.set_quick_reply_press('00000000-0000-0000-0000-000000000000', 'im_here')$$, 'permission denied');
 RESET ROLE;
 
--- 4 · The point: a helper reads a geocoded address through the definer; an address never placed reads nothing; no sign-in is refused.
+-- 4 · The point: a helper reads a geocoded address from the table, open to every signed-in user since v2.3131 (the
+--     phone's guess reads it the same way); an address never placed reads nothing; signed out reads nothing.
 INSERT INTO public.address_geocodes (address_normalized, lat, lng) VALUES ('1208 mesquite ln', 29.653, -97.797);
 SELECT tt.as_user('00000000-0000-0000-0000-0000000072e1');
 SET LOCAL ROLE authenticated;
-SELECT tt.same('a helper reads the point', (SELECT lat::text || ',' || lng::text FROM public.address_point('1208 mesquite ln')), '29.653,-97.797');
-SELECT tt.same('an address never placed reads nothing', (SELECT count(*)::text FROM public.address_point('9 nowhere ct')), '0');
-SELECT tt.same('the table itself stays closed to a helper', (SELECT count(*)::text FROM public.address_geocodes), '0');
+SELECT tt.same('a helper reads the point', (SELECT lat::text || ',' || lng::text FROM public.address_geocodes WHERE address_normalized = '1208 mesquite ln' AND geocode_error IS NULL), '29.653,-97.797');
+SELECT tt.same('an address never placed reads nothing', (SELECT count(*)::text FROM public.address_geocodes WHERE address_normalized = '9 nowhere ct'), '0');
 RESET ROLE;
 SELECT tt.as_user(NULL);
 SET LOCAL ROLE authenticated;
-SELECT tt.refused('no sign-in reads no point', $$SELECT * FROM public.address_point('1208 mesquite ln')$$, 'Sign in to read an address');
+SELECT tt.same('signed out reads no point', (SELECT count(*)::text FROM public.address_geocodes), '0');
 RESET ROLE;
 
 -- 5 · The stamps: a helper's own session takes travel_started_at on the insert and arrived_at on the press; another helper changes nothing.

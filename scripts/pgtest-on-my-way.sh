@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/on-my-way against a throwaway copy of the WHOLE schema (v2.5573, punch list #112: the two
-# stamps on clock_sessions, quick_replies.phone_press, set_quick_reply_press and address_point, migration *_on_my_way).
+# stamps on clock_sessions, quick_replies.phone_press and set_quick_reply_press, migration *_on_my_way).
 #
 #   npm run test:pg:on-my-way
 #
@@ -9,7 +9,7 @@
 # that rolls back: the two seeded press lines; a helper reads them; the office moves a press between lines, clears it
 # and sets it back, a phone version per line that changed; each refusal in words (an unknown press, a line not there,
 # a line off the phone, a removed line, a helper, a training account, no sign-in, anon); a helper reads a geocoded
-# address's point through the definer while the table stays closed; a helper's own session takes both stamps and
+# address's point from the table, open to every signed-in user; a helper's own session takes both stamps and
 # another helper's update touches nothing. It raises on its first failed assertion and ends with "on-my-way PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a
 # ready PR that touches a migration. Never touches prod.

@@ -3,7 +3,7 @@ SET lock_timeout = '3s';
 -- v2.5573 — On my way and I'm here (punch list #112; docs/migrations/20261016020000_on_my_way.md).
 --
 -- Job Mode's big button clocks the tech in on the next job as on the way and texts the customer the office's line;
--- while on the way the button reads I'm here and stamps the arrival. Four pieces, each idempotent:
+-- while on the way the button reads I'm here and stamps the arrival. Three pieces, each idempotent:
 --
 --   1. clock_sessions: two instants, travel_started_at and arrived_at, and the arrival's point beside the clock-in's.
 --      A visit stays one row; the drive is arrived_at - travel_started_at. Own-row RLS already lets a tech write them.
@@ -11,12 +11,11 @@ SET lock_timeout = '3s';
 --      press among live lines (a partial unique index).
 --   3. set_quick_reply_press(p_id, p_press): the office points a press at a line on the phone, or clears it; the
 --      press leaves any other line first; a 'phone' version per line that changed. The quick replies' own refusals.
---   4. address_point(p_address_normalized): a geocoded address's point for anyone signed in, since address_geocodes
---      is the map roles' alone and the tech's phone guesses the minutes from it.
+--   (The job's point for the phone's guess is read from address_geocodes, open to every signed-in user since v2.3131.)
 --
 -- Then the seeds, once: the first phone line that uses {minutes} becomes the On my way line (or one is added), and an
 -- I'm here line is added when none holds that press. Day one works with no office step; the words stay the office's.
--- No table is created, so the three fence appliers are not re-run; the new functions say who may in their bodies.
+-- No table is created, so the three fence appliers are not re-run; the new function says who may in its body.
 
 -- ---------- 1. The two instants and the arrival's point ----------
 
@@ -103,35 +102,7 @@ COMMENT ON FUNCTION public.set_quick_reply_press(uuid, text) IS
 REVOKE ALL ON FUNCTION public.set_quick_reply_press(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_quick_reply_press(uuid, text) TO authenticated;
 
--- ---------- 4. A geocoded address's point, for the phone's guess ----------
-
-CREATE OR REPLACE FUNCTION public.address_point(p_address_normalized text)
-RETURNS TABLE(lat double precision, lng double precision)
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Sign in to read an address''s point.' USING ERRCODE = 'P0001';
-  END IF;
-  RETURN QUERY
-    SELECT g.lat, g.lng
-    FROM public.address_geocodes g
-    WHERE g.address_normalized = btrim(coalesce(p_address_normalized, ''))
-      AND g.geocode_error IS NULL
-    LIMIT 1;
-END;
-$$;
-
-COMMENT ON FUNCTION public.address_point(text) IS
-  'Job Mode''s On my way (v2.5573): the point the map geocoded for an address (the client''s normalizeAddressForGeocodeKey), for anyone signed in, so the phone can guess the minutes. No row: the address was never placed; the tech types the minutes.';
-
-REVOKE ALL ON FUNCTION public.address_point(text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.address_point(text) TO authenticated;
-
--- ---------- 5. The seeds, once ----------
+-- ---------- 4. The seeds, once ----------
 
 DO $$
 DECLARE

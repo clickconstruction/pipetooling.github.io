@@ -3,7 +3,8 @@
  * (`lib/jobMode/onMyWay.ts` is the kernel). One interface, so the smokes hand it a fake; one implementation on the
  * app's client. The reads are the message sheet's (`jobModeMessageCustomerIo.ts`: the customer, the phone's lines, the
  * tech's blocks, the send) plus the texts switch, which line each press holds (read apart, fail-soft, until the
- * migration is pushed), the job's point through `address_point`, the phone's own point, the open session's two stamps
+ * migration is pushed), the job's point from `address_geocodes` (open to every signed-in user since v2.3131), the
+ * phone's own point, the open session's two stamps
  * and the arrival's stamp. The clock-in itself goes through the Dashboard's bridge (`applyUpdateFocusDirect`), which
  * the card hands the sheet.
  */
@@ -27,7 +28,7 @@ export interface OnMyWayIo extends JobModeMessageIo {
   loadTextsOn(): Promise<boolean>
   /** The phone's lines with the big button each holds. A client ahead of the push reads the lines with no press. */
   loadPressLines(): Promise<PhoneLine[]>
-  /** The point the map geocoded for the job's address, or null when it was never placed (or the push is not in yet). */
+  /** The point the map geocoded for the job's address, or null when it was never placed. */
   loadJobPoint(address: string | null): Promise<LatLng | null>
   /** The phone's own point, GPS only: an IP point is too coarse to guess a drive from. */
   loadMyPoint(): Promise<LatLng | null>
@@ -61,9 +62,9 @@ export function supabaseOnMyWayIo(client: unknown = supabase): OnMyWayIo {
     async loadJobPoint(address) {
       const key = normalizeAddressForGeocodeKey(address ?? '')
       if (key.length < 3) return null
-      const result = await db.rpc('address_point', { p_address_normalized: key })
+      const result = await db.from('address_geocodes').select('lat, lng').eq('address_normalized', key).is('geocode_error', null).limit(1).maybeSingle()
       if (result.error) return null
-      const row = ((result.data ?? []) as Array<{ lat: number; lng: number }>)[0]
+      const row = result.data as { lat: number; lng: number } | null
       return row && Number.isFinite(row.lat) && Number.isFinite(row.lng) ? { lat: row.lat, lng: row.lng } : null
     },
     async loadMyPoint() {
