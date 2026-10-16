@@ -34,6 +34,7 @@ const Quickfill = lazy(() => import('./pages/Quickfill'))
 const Bridge = lazy(() => import('./pages/Bridge'))
 const GcProjects = lazy(() => import('./pages/GcProjects'))
 const Messages = lazy(() => import('./pages/Messages'))
+const Training = lazy(() => import('./pages/Training'))
 const Moneyfill = lazy(() => import('./pages/Moneyfill'))
 const Partnerships = lazy(() => import('./pages/Partnerships'))
 const Bids = lazy(() => import('./pages/Bids'))
@@ -353,6 +354,8 @@ function AppContent() {
           <Route path="bridge" element={<ErrorBoundary><Bridge /></ErrorBoundary>} />
           <Route path="gc" element={<ErrorBoundary><GcProjects /></ErrorBoundary>} />
           <Route path="messages" element={<ErrorBoundary><Messages /></ErrorBoundary>} />
+          {/* A training course, read at the person's own pace (punch list #111): the lessons ride in this lazy chunk. */}
+          <Route path="training/:slug" element={<ErrorBoundary><Training /></ErrorBoundary>} />
           <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
           <Route path="partnerships" element={<ErrorBoundary><Partnerships /></ErrorBoundary>} />
           <Route path="my-statement" element={<ErrorBoundary><PartnerStatement /></ErrorBoundary>} />
