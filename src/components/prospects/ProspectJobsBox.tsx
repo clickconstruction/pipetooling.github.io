@@ -1,16 +1,18 @@
 import { useState } from 'react'
-import { jobDueWords, newJobProblem, orderJobs, type NewProspectJob, type ProspectJob } from '../../lib/prospects/gcLeadLane'
+import { EMPTY_JOB_DRAFT, jobDraftOf, jobDueWords, jobFromDraft, newJobProblem, orderJobs, type JobDraft, type NewProspectJob, type ProspectJob } from '../../lib/prospects/gcLeadLane'
 
 /**
  * A GC lead's jobs on its Follow Up card (v2.5561, punch list #110): one row a job with its bid
  * day, open ones soonest first, and + Add a job. A lead has several jobs over the years, and the
- * job's bid day, not the owner, is what the queue's Soonest bid order reads.
+ * job's bid day, not the owner, is what the queue's Soonest bid order reads. Since v2.5580 an open
+ * row has Edit: the row becomes the form where it sits, filled in, and Save changes puts it back.
  */
 export function ProspectJobsBox({
   jobs,
   todayYmd,
   busy,
   onAdd,
+  onEdit,
   onLost,
   onStatus,
   onRemove,
@@ -20,39 +22,42 @@ export function ProspectJobsBox({
   busy: boolean
   /** Saves the job; a rejection's message shows in the box. */
   onAdd: (job: NewProspectJob) => Promise<void>
+  /** Saves the changes to a job; a rejection's message shows in the row. */
+  onEdit: (job: ProspectJob, changes: NewProspectJob) => Promise<void>
   /** Lost: the page asks who won. */
   onLost: (job: ProspectJob) => void
   onStatus: (job: ProspectJob, status: 'open' | 'dropped') => void
   onRemove: (job: ProspectJob) => void
 }) {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [address, setAddress] = useState('')
-  const [sqFt, setSqFt] = useState('')
-  const [due, setDue] = useState('')
-  const [plans, setPlans] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<JobDraft>(EMPTY_JOB_DRAFT)
   const [saving, setSaving] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
   const clear = () => {
-    setName('')
-    setAddress('')
-    setSqFt('')
-    setDue('')
-    setPlans('')
+    setDraft(EMPTY_JOB_DRAFT)
     setProblem(null)
   }
+  const startAdd = () => {
+    setEditingId(null)
+    clear()
+    setOpen(true)
+  }
+  const startEdit = (job: ProspectJob) => {
+    setOpen(false)
+    setProblem(null)
+    setDraft(jobDraftOf(job))
+    setEditingId(job.id)
+  }
+  const stop = () => {
+    clear()
+    setOpen(false)
+    setEditingId(null)
+  }
 
-  const save = async () => {
-    const size = Number(sqFt)
-    const job: NewProspectJob = {
-      name: name.trim(),
-      address: address.trim() || null,
-      sq_ft: Number.isFinite(size) && size > 0 ? Math.round(size) : null,
-      size_note: null,
-      plans_link: plans.trim() || null,
-      bid_due: due || null,
-    }
+  const save = async (editing: ProspectJob | null) => {
+    const job = jobFromDraft(draft)
     const held = newJobProblem(job)
     if (held) {
       setProblem(held)
@@ -61,9 +66,9 @@ export function ProspectJobsBox({
     setSaving(true)
     setProblem(null)
     try {
-      await onAdd(job)
-      clear()
-      setOpen(false)
+      if (editing) await onEdit(editing, job)
+      else await onAdd(job)
+      stop()
     } catch (err) {
       setProblem(err instanceof Error ? err.message : 'That did not save.')
     } finally {
@@ -75,6 +80,55 @@ export function ProspectJobsBox({
   const box = { width: '100%', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
   const label = { display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: 'var(--text-muted)' } as const
   const ordered = orderJobs(jobs)
+  const set = (key: keyof JobDraft) => (e: React.ChangeEvent<HTMLInputElement>) => setDraft((d) => ({ ...d, [key]: e.target.value }))
+
+  /** The form, shared by + Add a job at the foot and Edit in a row's place. */
+  const form = (editing: ProspectJob | null) => (
+    <div
+      data-job-form={editing ? 'edit' : 'add'}
+      style={{ padding: '0.5rem 0.6rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.5rem', background: editing ? 'var(--bg-subtle)' : undefined }}
+    >
+      {editing && <div style={{ gridColumn: '1 / -1', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Editing {editing.name}</div>}
+      <label style={{ gridColumn: '1 / -1' }}>
+        <span style={label}>Job</span>
+        <input type="text" value={draft.name} onChange={set('name')} placeholder="Retail shell" style={box} />
+      </label>
+      <label style={{ gridColumn: '1 / -1' }}>
+        <span style={label}>Address</span>
+        <input type="text" value={draft.address} onChange={set('address')} style={box} />
+      </label>
+      <label>
+        <span style={label}>Size (sq ft)</span>
+        <input type="number" min={1} value={draft.sqFt} onChange={set('sqFt')} style={box} />
+      </label>
+      <label>
+        <span style={label}>Bids due</span>
+        <input type="date" value={draft.due} onChange={set('due')} style={box} />
+      </label>
+      <label style={{ gridColumn: '1 / -1' }}>
+        <span style={label}>Where the plans are (a link)</span>
+        <input type="url" value={draft.plans} onChange={set('plans')} placeholder="https://" style={box} />
+      </label>
+      {problem && (
+        <p role="alert" style={{ gridColumn: '1 / -1', margin: 0, color: 'var(--text-red-600)', fontSize: '0.75rem' }}>
+          {problem}
+        </p>
+      )}
+      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.5rem' }}>
+        <button
+          type="button"
+          onClick={() => void save(editing)}
+          disabled={saving}
+          style={{ padding: '0.35rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+        >
+          {saving ? 'Saving…' : editing ? 'Save changes' : 'Save the job'}
+        </button>
+        <button type="button" onClick={stop} disabled={saving} style={{ padding: '0.35rem 0.8rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer' }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <section aria-label="Jobs" data-prospect-jobs style={{ border: '1px solid var(--border)', borderRadius: 8, fontSize: '0.8125rem', maxWidth: 720 }}>
@@ -98,10 +152,7 @@ export function ProspectJobsBox({
         <button
           type="button"
           aria-expanded={open}
-          onClick={() => {
-            setProblem(null)
-            setOpen((o) => !o)
-          }}
+          onClick={() => (open ? stop() : startAdd())}
           style={{ font: 'inherit', textTransform: 'none', letterSpacing: 0, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}
         >
           {open ? 'Cancel' : '+ Add a job'}
@@ -109,6 +160,7 @@ export function ProspectJobsBox({
       </div>
 
       {ordered.map((job) => {
+        if (editingId === job.id) return <div key={job.id} data-job-status={job.status} data-job-editing>{form(job)}</div>
         const words = jobDueWords(job, todayYmd)
         const tone = words.tone === 'late' ? 'var(--text-red-600)' : words.tone === 'due' ? 'var(--text-strong)' : 'var(--text-muted)'
         return (
@@ -134,6 +186,9 @@ export function ProspectJobsBox({
                 )}
                 {job.status === 'open' && (
                   <>
+                    <button type="button" disabled={busy} onClick={() => startEdit(job)} style={link}>
+                      Edit
+                    </button>
                     <button type="button" disabled={busy} onClick={() => onLost(job)} style={link}>
                       Lost
                     </button>
@@ -166,56 +221,7 @@ export function ProspectJobsBox({
         <p style={{ margin: 0, padding: '0.4rem 0.6rem', color: 'var(--text-muted)' }}>No job yet. Press + Add a job with what they are building and when bids are due.</p>
       )}
 
-      {open && (
-        <div style={{ padding: '0.5rem 0.6rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.5rem' }}>
-          <label style={{ gridColumn: '1 / -1' }}>
-            <span style={label}>Job</span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Retail shell" style={box} />
-          </label>
-          <label style={{ gridColumn: '1 / -1' }}>
-            <span style={label}>Address</span>
-            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} style={box} />
-          </label>
-          <label>
-            <span style={label}>Size (sq ft)</span>
-            <input type="number" min={1} value={sqFt} onChange={(e) => setSqFt(e.target.value)} style={box} />
-          </label>
-          <label>
-            <span style={label}>Bids due</span>
-            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} style={box} />
-          </label>
-          <label style={{ gridColumn: '1 / -1' }}>
-            <span style={label}>Where the plans are (a link)</span>
-            <input type="url" value={plans} onChange={(e) => setPlans(e.target.value)} placeholder="https://" style={box} />
-          </label>
-          {problem && (
-            <p role="alert" style={{ gridColumn: '1 / -1', margin: 0, color: 'var(--text-red-600)', fontSize: '0.75rem' }}>
-              {problem}
-            </p>
-          )}
-          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={saving}
-              style={{ padding: '0.35rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-            >
-              {saving ? 'Saving…' : 'Save the job'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                clear()
-                setOpen(false)
-              }}
-              disabled={saving}
-              style={{ padding: '0.35rem 0.8rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      {open && form(null)}
     </section>
   )
 }

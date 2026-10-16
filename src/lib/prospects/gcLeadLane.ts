@@ -46,6 +46,35 @@ export function newJobProblem(job: { name: string; plans_link: string | null }):
   return null
 }
 
+/** The Jobs box's boxes as strings (v2.5580): blank for + Add a job, the row's own words for Edit. */
+export interface JobDraft {
+  name: string
+  address: string
+  sqFt: string
+  due: string
+  plans: string
+}
+
+export const EMPTY_JOB_DRAFT: JobDraft = { name: '', address: '', sqFt: '', due: '', plans: '' }
+
+/** The row as the form starts with it, so an edit changes only what the caller touches. */
+export function jobDraftOf(job: Pick<ProspectJob, 'name' | 'address' | 'sq_ft' | 'bid_due' | 'plans_link'>): JobDraft {
+  return { name: job.name, address: job.address ?? '', sqFt: job.sq_ft == null ? '' : String(job.sq_ft), due: job.bid_due ?? '', plans: job.plans_link ?? '' }
+}
+
+/** What the form sends, add or edit: trimmed, a size only when it is a positive number, blanks as null. */
+export function jobFromDraft(draft: JobDraft): NewProspectJob {
+  const size = Number(draft.sqFt)
+  return {
+    name: draft.name.trim(),
+    address: draft.address.trim() || null,
+    sq_ft: Number.isFinite(size) && size > 0 ? Math.round(size) : null,
+    size_note: null,
+    plans_link: draft.plans.trim() || null,
+    bid_due: draft.due || null,
+  }
+}
+
 const STATUS_RANK: Record<ProspectJobStatus, number> = { open: 0, asked: 1, lost: 2, dropped: 3 }
 
 function rank(status: string): number {

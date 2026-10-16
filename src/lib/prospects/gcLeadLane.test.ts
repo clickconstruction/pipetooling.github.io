@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EMPTY_JOB_DRAFT,
   customerRoleForLead,
+  jobDraftOf,
+  jobFromDraft,
   daysUntil,
   gcWorkCounts,
   jobDueWords,
@@ -145,5 +148,24 @@ describe('gcLeadLane: Asked us hands on, and a lost project sends back', () => {
         { stage: 'closed', lostOn: null },
       ]),
     ).toEqual({ bidding: 1, buyout: 1, building: 1, lost: 1 })
+  })
+})
+
+describe('job drafts (v2.5580)', () => {
+  it('starts the form from the row, numbers and days as strings, blanks for nulls', () => {
+    expect(jobDraftOf({ name: 'Retail shell', address: '4400 FM 1431', sq_ft: 12000, bid_due: '2026-11-03', plans_link: 'https://planhub.example/x' })).toEqual({
+      name: 'Retail shell', address: '4400 FM 1431', sqFt: '12000', due: '2026-11-03', plans: 'https://planhub.example/x',
+    })
+    expect(jobDraftOf({ name: 'Office TI', address: null, sq_ft: null, bid_due: null, plans_link: null })).toEqual({ name: 'Office TI', address: '', sqFt: '', due: '', plans: '' })
+  })
+
+  it('sends what was typed, trimmed, a size only when positive, blanks as null, and round-trips a row', () => {
+    expect(jobFromDraft({ name: '  Retail shell ', address: ' 4400 FM 1431 ', sqFt: '12000.4', due: '2026-11-11', plans: ' ' })).toEqual({
+      name: 'Retail shell', address: '4400 FM 1431', sq_ft: 12000, size_note: null, plans_link: null, bid_due: '2026-11-11',
+    })
+    expect(jobFromDraft({ ...EMPTY_JOB_DRAFT, name: 'x', sqFt: '-3' }).sq_ft).toBeNull()
+    expect(jobFromDraft({ ...EMPTY_JOB_DRAFT, name: 'x', sqFt: 'big' }).sq_ft).toBeNull()
+    const row = { name: 'Retail shell', address: '4400 FM 1431', sq_ft: 12000, bid_due: '2026-11-03', plans_link: 'https://planhub.example/x' }
+    expect(jobFromDraft(jobDraftOf(row))).toEqual({ ...row, size_note: null })
   })
 })

@@ -30,6 +30,7 @@ function mount(over: Partial<Parameters<typeof ProspectJobsBox>[0]> = {}) {
     todayYmd: '2026-10-15',
     busy: false,
     onAdd: vi.fn(async () => {}),
+    onEdit: vi.fn(async () => {}),
     onLost: vi.fn(),
     onStatus: vi.fn(),
     onRemove: vi.fn(),
@@ -109,5 +110,40 @@ describe('ProspectJobsBox (v2.5561)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save the job' }))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('new row violates row-level security policy'))
     expect(screen.getByRole('button', { name: 'Save the job' })).toBeTruthy()
+  })
+
+  it('Edit turns an open row into the form filled in, and Save changes sends only what changed (v2.5580)', async () => {
+    const props = mount()
+    const box = screen.getByRole('region', { name: 'Jobs' })
+    const shell = [...box.querySelectorAll('[data-job-status]')][0] as HTMLElement
+    fireEvent.click(within(shell).getByRole('button', { name: 'Edit' }))
+    expect(box.querySelector('[data-job-form="edit"]')).toBeTruthy()
+    expect((screen.getByLabelText('Job') as HTMLInputElement).value).toBe('Retail shell')
+    expect((screen.getByLabelText('Bids due') as HTMLInputElement).value).toBe('2026-11-03')
+    expect((screen.getByLabelText('Size (sq ft)') as HTMLInputElement).value).toBe('12000')
+    expect(screen.queryByRole('button', { name: '+ Add a job' })).toBeTruthy()
+    expect(screen.getByText('Editing Retail shell')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Bids due'), { target: { value: '2026-11-11' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull())
+    expect(props.onEdit).toHaveBeenCalledWith(jobs[2], { name: 'Retail shell', address: '4400 FM 1431', sq_ft: 12000, size_note: null, plans_link: 'https://planhub.example/x', bid_due: '2026-11-11' })
+    expect(props.onAdd).not.toHaveBeenCalled()
+  })
+
+  it('Cancel puts the row back as it was; a lost job has no Edit; + Add a job closes an edit', () => {
+    mount()
+    const box = screen.getByRole('region', { name: 'Jobs' })
+    const rows = () => [...box.querySelectorAll('[data-job-status]')] as HTMLElement[]
+    expect(within(rows()[2] as HTMLElement).queryByRole('button', { name: 'Edit' })).toBeNull()
+    fireEvent.click(within(rows()[0] as HTMLElement).getByRole('button', { name: 'Edit' }))
+    fireEvent.change(screen.getByLabelText('Job'), { target: { value: 'Something else' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(box.querySelector('[data-job-form]')).toBeNull()
+    expect(rows()[0]?.textContent).toContain('Retail shell')
+    fireEvent.click(within(rows()[0] as HTMLElement).getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ Add a job' }))
+    expect(box.querySelector('[data-job-form="edit"]')).toBeNull()
+    expect(box.querySelector('[data-job-form="add"]')).toBeTruthy()
+    expect((screen.getByLabelText('Job') as HTMLInputElement).value).toBe('')
   })
 })
