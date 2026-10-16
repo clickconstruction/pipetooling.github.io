@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
 import { checkSupabaseError, withSupabaseRetry } from '../utils/errorHandling'
+import { isZzTestName } from './jobs/zzTestJobSweep'
 
 export type ProspectTeamRow = {
   user_id: string
@@ -18,7 +19,12 @@ export async function loadProspectTeamActivity(
   supabase: SupabaseClient<Database>,
   /** One kind of prospect (v2.5563, the Activity tab of a lane); missing: every kind (Quickfill's team chart). */
   kind?: string,
+  /** `hideZz` (v2.5583): leave out the touches on ZZ-named prospects, the ZZ rule for everyone but a dev. */
+  opts?: { hideZz?: boolean },
 ): Promise<Record<string, ProspectTeamRow[]>> {
+  const hideZz = opts?.hideZz === true
+  // The prospect ridden along: its kind when a lane is asked for, its name when ZZ rows are hidden.
+  const prospectJoin = kind || hideZz ? `, prospect:prospects!inner(${[kind ? 'kind' : '', hideZz ? 'company_name' : ''].filter(Boolean).join(', ')})` : ''
   return await withSupabaseRetry(
     async () => {
       const now = new Date()
@@ -38,25 +44,25 @@ export async function loadProspectTeamActivity(
         kind
           ? supabase
               .from('prospect_timer_events')
-              .select('user_id, prospect_id, created_at, prospect:prospects!inner(kind)')
+              .select(`user_id, prospect_id, created_at${prospectJoin}`)
               .eq('prospect.kind', kind)
               .gte('created_at', startIso)
               .lte('created_at', endIso)
           : supabase
               .from('prospect_timer_events')
-              .select('user_id, prospect_id, created_at')
+              .select(`user_id, prospect_id, created_at${prospectJoin}`)
               .gte('created_at', startIso)
               .lte('created_at', endIso),
         kind
           ? supabase
               .from('prospect_comments')
-              .select('created_by, prospect_id, created_at, prospect:prospects!inner(kind)')
+              .select(`created_by, prospect_id, created_at${prospectJoin}`)
               .eq('prospect.kind', kind)
               .gte('created_at', startIso)
               .lte('created_at', endIso)
           : supabase
               .from('prospect_comments')
-              .select('created_by, prospect_id, created_at')
+              .select(`created_by, prospect_id, created_at${prospectJoin}`)
               .gte('created_at', startIso)
               .lte('created_at', endIso),
       ])
@@ -71,16 +77,18 @@ export async function loadProspectTeamActivity(
         email: string | null
         role: string
       }>
-      const timerRows = (timerRes.data ?? []) as Array<{
+      type Ridden = { prospect?: { company_name?: string | null } | null }
+      const keep = (r: Ridden) => !hideZz || !isZzTestName(r.prospect?.company_name)
+      const timerRows = ((timerRes.data ?? []) as unknown as Array<{
         user_id: string
         prospect_id: string | null
         created_at: string
-      }>
-      const commentRows = (commentsRes.data ?? []) as Array<{
+      } & Ridden>).filter(keep)
+      const commentRows = ((commentsRes.data ?? []) as unknown as Array<{
         created_by: string
         prospect_id: string
         created_at: string
-      }>
+      } & Ridden>).filter(keep)
 
       const userList: ProspectTeamRow[] = users.map((u) => ({
         user_id: u.id,
