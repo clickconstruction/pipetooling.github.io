@@ -76,7 +76,8 @@ SELECT tt.same('the second line holds On my way now', tt.presses(), 'im_here:I�
 SELECT tt.same('the same press again changes nothing', public.set_quick_reply_press((SELECT second_id FROM ids), 'on_my_way')::text, '0');
 SELECT tt.same('a clear takes the press off', public.set_quick_reply_press((SELECT second_id FROM ids), NULL)::text, '1');
 SELECT tt.same('no line holds On my way', tt.presses(), 'im_here:I’m here:team:customer:true');
-SELECT tt.same('a phone version per line that changed', (tt.phone_versions() - 2 - 1 - 1)::text, '3');
+-- The seed wrote one phone version per line (2) and the edit one (the place); the three moves wrote 2 + 0 + 1.
+SELECT tt.same('a phone version per line that changed', (tt.phone_versions() - 2 - 1)::text, '3');
 SELECT public.set_quick_reply_press((SELECT q.id FROM public.quick_replies q WHERE q.phone_name = 'On my way' AND q.removed_at IS NULL), 'on_my_way');
 SELECT tt.same('set back on the seeded line', tt.presses(), 'im_here:I’m here:team:customer:true,on_my_way:On my way:team:customer:true');
 

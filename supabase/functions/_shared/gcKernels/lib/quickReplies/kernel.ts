@@ -21,6 +21,7 @@
 import type { ContactKind } from '../contacts/names.ts'
 import { flowContactKind, type FlowKind } from '../flows/facts.ts'
 import type { FlowDef, FlowStep } from '../flows/state.ts'
+import type { PhonePress } from '../../../../../../src/lib/quickReplies/press.ts'
 
 // ---------- the line ----------
 
@@ -53,6 +54,8 @@ export interface QuickReply {
   textEs?: string | null
   phoneOrder?: number | null
   phoneName?: string | null
+  /** Job Mode's big button this line is (v2.5573, `quick_replies.phone_press`): On my way or I'm here, one live line each. */
+  phonePress?: PhonePress | null
 }
 
 /** A step of a kind's flow as a line names it: the flow's own step, by its id and name, and the flow it is on. */
@@ -537,6 +540,8 @@ export interface QuickReplyEdit {
   textEs?: string | null
   phoneOrder?: number | null
   phoneName?: string | null
+  /** v2.5573: the big button this line is, or null for none. Saved apart, through `set_quick_reply_press`. */
+  phonePress?: PhonePress | null
 }
 
 /** The refusal when a line that is not the team's for customers is put on the phone, in `edit_quick_reply`'s words. */
@@ -544,6 +549,9 @@ export const PHONE_ONLY_CUSTOMERS = "Only the team's lines for customers go on t
 
 /** The most characters a name on the phone holds (`quick_replies_phone_name_said`). */
 export const PHONE_NAME_MAX = 60
+
+/** The refusal when a line off the phone is made a big button, in `set_quick_reply_press`'s spirit. */
+export const PRESS_NEEDS_PHONE = 'A big button is a line on the phone. Tick On the tech’s phone first.'
 
 /**
  * Save a line from the editor: a version for each part that changed, in `edit_quick_reply`'s order. The words, the
@@ -557,8 +565,10 @@ export function editQuickReply(q: QuickReply, change: QuickReplyEdit, by: string
   const es = change.textEs === undefined ? (q.textEs ?? null) : change.textEs?.trim() || null
   const place = change.phoneOrder === undefined ? (q.phoneOrder ?? null) : change.phoneOrder && change.phoneOrder > 0 ? change.phoneOrder : null
   const name = change.phoneName === undefined ? (q.phoneName ?? null) : change.phoneName?.trim() || null
+  const press = change.phonePress === undefined ? (q.phonePress ?? null) : change.phonePress
   if (name && name.length > PHONE_NAME_MAX) return { error: `A name on the phone holds ${PHONE_NAME_MAX} characters at most.` }
   if (place != null && (q.scope !== 'team' || tags.for !== 'customer')) return { error: PHONE_ONLY_CUSTOMERS }
+  if (press != null && place == null) return { error: PRESS_NEEDS_PHONE }
   const versions: QuickReplyVersion[] = []
   if (text !== q.text) versions.push({ by, at, kind: 'words', fromText: q.text, toText: text })
   if (tags.for !== q.for || tags.stepId !== q.stepId) {
@@ -568,9 +578,9 @@ export function editQuickReply(q: QuickReply, change: QuickReplyEdit, by: string
   if (es !== wasEs) versions.push({ by, at, kind: 'es', ...(wasEs ? { fromText: wasEs } : {}), ...(es ? { toText: es } : {}) })
   const wasPlace = q.phoneOrder ?? null
   if (place !== wasPlace) versions.push({ by, at, kind: 'phone', fromPhoneOrder: wasPlace, toPhoneOrder: place })
-  else if (name !== (q.phoneName ?? null)) versions.push({ by, at, kind: 'phone' })
+  else if (name !== (q.phoneName ?? null) || press !== (q.phonePress ?? null)) versions.push({ by, at, kind: 'phone' })
   return {
-    line: { ...q, text, for: tags.for, stepId: tags.stepId, textEs: es, phoneOrder: place, phoneName: name },
+    line: { ...q, text, for: tags.for, stepId: tags.stepId, textEs: es, phoneOrder: place, phoneName: name, phonePress: press },
     versions,
     words: versions.length ? 'Saved, with your name and today in its history.' : 'Nothing changed.',
   }

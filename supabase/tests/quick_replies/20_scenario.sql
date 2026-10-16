@@ -20,6 +20,12 @@
 \set desk '00000000-0000-0000-0000-00000000a3e3'
 BEGIN;
 
+-- v2.5573's migration (20261016020000_on_my_way) seeds two more team lines for Job Mode's big buttons, On my way and
+-- I'm here, each with its added and phone versions. This bed counts cut 3's thirteen, so the two are set aside here
+-- (the on-my-way bed holds them); the transaction rolls back.
+DELETE FROM public.quick_reply_versions WHERE quick_reply_id IN (SELECT id FROM public.quick_replies WHERE phone_press IS NOT NULL);
+DELETE FROM public.quick_replies WHERE phone_press IS NOT NULL;
+
 -- Rosa in the office (an assistant), Maria on the money team (the controller, in the office too), a superintendent
 -- outside the office, an assistant in training mode, a digital twin, and a dev who keeps the customer.
 INSERT INTO auth.users (id, email) VALUES
