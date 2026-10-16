@@ -9,7 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastProvider } from '../contexts/ToastContext'
-import { installDomShims } from '../test/renderSmokeMocks'
+import { installDomShims, settle } from '../test/renderSmokeMocks'
 import Training from './Training'
 
 vi.mock('../lib/supabase', async () => {
@@ -148,6 +148,7 @@ describe('Training page', () => {
   it('opens on the first lesson not yet passed, ticks the passed one, and keeps the final check locked', async () => {
     open()
     await screen.findByRole('heading', { level: 2, name: 'Second lesson' })
+    await settle()
     expect(screen.getByText(/Part 1 · Lesson 2 of 3/)).toBeTruthy()
     const first = document.querySelector('[data-lesson-row="01-first"]')!
     expect(first.getAttribute('data-done')).toBe('true')
@@ -162,13 +163,15 @@ describe('Training page', () => {
   it('four right picks record the lesson once and open Next lesson; a wrong pick offers Try again', async () => {
     open()
     await screen.findByRole('heading', { level: 2, name: 'Second lesson' })
+    // The open lesson pins itself in an effect after the record lands; settle so the click lands on the settled check.
+    await settle()
     const questions = () => Array.from(document.querySelectorAll('[data-question]')) as HTMLElement[]
     // A wrong pick on the first question, then Try again.
     fireEvent.click(within(questions()[0]!).getByLabelText('Wrong one'))
-    expect(questions()[0]!.getAttribute('data-state')).toBe('wrong')
+    await waitFor(() => expect(questions()[0]!.getAttribute('data-state')).toBe('wrong'))
     expect(within(questions()[0]!).getByText(/Not this one/)).toBeTruthy()
     fireEvent.click(within(questions()[0]!).getByText('Try again'))
-    expect(questions()[0]!.getAttribute('data-state')).toBe('open')
+    await waitFor(() => expect(questions()[0]!.getAttribute('data-state')).toBe('open'))
     for (const q of questions()) pickRight(q)
     await waitFor(() => expect(io.passLesson).toHaveBeenCalledTimes(1))
     expect(io.passLesson).toHaveBeenCalledWith('fixture-course', '02-second', 2)
@@ -194,6 +197,7 @@ describe('Training page', () => {
     io.passed = ['01-first', '02-second', '03-third']
     open('/training/fixture-course?final=1')
     await screen.findByRole('heading', { level: 2, name: /8 questions from every part/ })
+    await settle()
     const questions = Array.from(document.querySelectorAll('[data-final-check] [data-question]')) as HTMLElement[]
     expect(questions).toHaveLength(8)
     const handIn = screen.getByText('Hand it in') as HTMLButtonElement
