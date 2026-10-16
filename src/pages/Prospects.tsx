@@ -3970,8 +3970,11 @@ export default function Prospects() {
               background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
-              maxWidth: 400,
+              maxWidth: 480,
               width: '90%',
+              // A sub's or a lead's boxes make the window taller than a laptop screen (v2.5574): it scrolls inside.
+              maxHeight: 'min(90vh, 100%)',
+              overflowY: 'auto',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -4541,8 +4544,12 @@ export default function Prospects() {
               background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
-              maxWidth: 400,
+              maxWidth: 520,
               width: '90%',
+              // The kind cards and a kind's boxes make the window taller than a laptop screen (v2.5574): it scrolls
+              // inside, and it is wide enough that the three cards read in a few lines each.
+              maxHeight: 'min(90vh, 100%)',
+              overflowY: 'auto',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
             }}
             onClick={(e) => e.stopPropagation()}
