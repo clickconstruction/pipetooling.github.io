@@ -2,7 +2,7 @@
 name: "Tell the customer: every text or email to a customer is pressed by a person, seen before it goes, and followed by a receipt that suggests the call"
 number: 115
 group: gated
-status: designed 2026-10-16 (a first pass and a second pass, below); waiting on Grace's look at the mock-up before PR 2
+status: designed 2026-10-16 (a first pass and a second pass); the build plan and the autonomy pass added the same evening; waiting on Grace's go before PR 2
 summary: >
   When an assistant schedules a job's first visit or sends an estimate, a Tell the customer sheet
   opens with the step's line filled for that customer, the channels that apply ticked, the words
@@ -13,8 +13,8 @@ summary: >
   call, with the step's script, a one-tap dial, and Add to my calls, a call task in Follow up that
   Quo's webhook closes when the call lands in the thread. The estimate's reminders become a
   cadence: a text on day one, a call on day three, a text on day seven.
-next: Grace's look at the mock-up; then PR 2 (the sheet on the schedule's first block and the estimate's send, the receipt).
-size: L as a train (the sheet, the receipt, Today's sends, the call task, the three-way switch and the scripts in Flows, the Rescheduled line); each PR S or M
+next: Grace's go on the train; then PR 2 (the sheet and the receipt on the schedule, the scripts' columns and seeds).
+size: L as a train of six (the sheet and the receipt, the estimate, offers and Today's sends, calls and scripts, the customer's say and the assistant's way); each PR M, offers L
 blocker: Grace's look; the A2P campaign's approval for transactional texts is to be confirmed before any automatic send
 opinion: build the sheet and the receipt first; they carry the principle. Today's sends and the call task next; the cadence and the scripts are Flows editor work the office can shape as it goes.
 mockup: to-dos/tell-the-customer/mockup.html
@@ -181,18 +181,83 @@ about a text, and the morning run that sends with nobody on a page, these change
 - Guides: *schedule a job and tell the customer*, *send an estimate and follow it up*, *work
   Today's sends*, *call a customer from a task*; the Flows guide's new rows.
 
+## Autonomy: what the design gives, and what it still takes
+
+Grace's question of 2026-10-16: *are we offering our users enough autonomy?* Read person by person.
+
+- **The assistant** sees every send before it goes and after, edits the words, skips, presses the
+  app's offers one by one or all at once, and decides whether to call. What the first draft still
+  took: the channel (the office's line picks text or email, not the customer), the timing (a
+  press at 9 PM sends at 9 PM), their own way of working (a sheet on every booking whether they
+  want one or not), and the words' home (an edit in the sheet dies with the send). Four additions
+  give those back, each small, in PR 6 or where the train reaches them first:
+  1. **Send in the morning** on the sheet: the press writes an offer for the morning run instead
+     of sending now, so an evening booking texts at 8 AM. The receipt reads *Goes in the morning*.
+  2. **My way** under Settings → Your account: per moment (a booking, an estimate), *Ask me first*
+     (the default) or *Send it and show me the receipt*. The principle holds either way: they know.
+  3. **Make this the office's line**: a quiet link on the sheet after an edit, for the office team,
+     through `edit_quick_reply` with its history, so a better sentence lives on.
+  4. **Hold until a day** on an offer (Hold until Mon exists; a date picker beside it) and
+     **Stop reminding on this job** (the `contact_step_skips` row, surfaced on Today's sends).
+- **The customer** can reply and can STOP, and has their page. What they cannot do today is say
+  how they want to hear from us: nothing in the app holds a channel preference. One column,
+  `contacts.prefers` (`text` · `email` · `either`), set from the customer's page, from an EMAIL
+  reply to a text (the way STOP is read), or by the office on the customer. The sheet ticks their
+  channel and the other reads *Dana prefers email*; Today's sends holds a text for an email-only
+  customer with that reason. This is the one gap that is theirs, not ours, and it goes early.
+- **The tech** picks lines and picks their bio's lines, and writes neither. That is the owner's
+  choice (#112: no misspelling, nothing said wrong) and stays. The door that gives a tech more,
+  *Suggest a line* the office approves, is #114's follow-on and is not in this train.
+- **The owner** holds every step's switch (off · offers · sends), every line and script, and the
+  suggest-a-call switch. Nothing to add.
+
+So: enough for the owner and nearly enough for the assistant; the customer's channel is the gap.
+The four assistant additions and the customer's preference are in the train below.
+
 ## The PR train
 
-1. **This to-do** (the plan and the mock-up), then Grace's look.
-2. **The sheet and the receipt on the schedule**: Tell the customer on the first block (the Booked
-   line, editable, Send or Skip), the receipt with the call and the dial, the Rescheduled line;
-   the registry; the guide.
-3. **The sheet on the estimate**: both channels in one press; the receipt names both.
-4. **Offers**: the three-way switch, the offers table, the morning run and the board writing offers,
-   Today's sends on the Dashboard.
-5. **The call task and the scripts**: the task in *We owe them*, Quo closing it, the scripts in the
-   Flows editor, the Approved cadence seeded.
-6. **The types** after each push.
+Each PR ships on its own with its release note, fragment, guide and docs; the migration PRs push
+after merge and regenerate the types. **Before PR 4 goes live** the A2P campaign's approval for
+transactional texts is confirmed, and a test customer with the owner's own number exists.
+
+1. **The plan** (#5797, merged 2026-10-16) and this refinement.
+2. **The sheet and the receipt on the schedule** (M). Migration: `flow_steps.call_script`,
+   `call_script_es`, `suggest_call` (default true), seeded for Booked, Estimate sent and Approved;
+   the office's Booked and Rescheduled lines seeded on the phone's step keys if none exist.
+   Kernel `lib/tellCustomer/` (the channels that apply, the words from the step line and the
+   block's fills, the acts rows, the primary's words, the receipt's words and script fills).
+   `TellCustomerSheet` opened by Add job to schedule after a job's first block saves, and by the
+   block editor when the first visit's day or window changes (Rescheduled). The send is the
+   office's path through `quo-send` (free text allowed for the office team). `SentReceiptWindow`
+   with the words, the time, the script, **Call** (a `tel:` link on a phone, the number on a desk)
+   and **Done**; *Add to my calls* waits for PR 5. The registry and journey rows for the two
+   texts. Guide: *schedule a job and tell the customer*. Smokes for the sheet and the receipt;
+   a SQL bed for the seeds.
+3. **The sheet on the estimate** (M). Both channels in one press: the email through
+   `send-estimate-to-customer` as today, the text through `quo-send` with the page link; Email
+   only / Text only; the receipt names both. The Approved step's cadence seeded (day 1 text, day
+   3 call, day 7 text) with the estimate's text lines. Guide: *send an estimate and follow it up*.
+4. **Offers** (L). Migration: `nudge_offers` (step, contact, job, the words as composed, channel,
+   held reason, prepared_at, pressed_by/at, sent message id); `messages_nudge_app_sends_v1` holds
+   `'offer' | 'send'` per step, read fail-soft (`true` = send). The morning run and the stage
+   sends write an offer for an *offers* step instead of sending. **Today's sends** on the
+   Dashboard's Customers line (`customerCounts.ts`): Send, Edit, Send all that are ready, held
+   reasons; no receipt for these. **Send in the morning** on the sheet (autonomy 1). Hold until a
+   day and Stop reminding on this job (autonomy 4). Guide: *work Today's sends*.
+5. **Calls and the scripts** (M). Migration: `call_tasks` (contact, job, step, due day, script as
+   filled, done_at, done_by, closed by a call id). The task in Follow up → We owe them with Call,
+   I called, Tomorrow; the Dashboard's Customers line counts it. `quo-webhook` closes a task on
+   `call.completed` to that number the same day. **Add to my calls** on the receipt and the quiet
+   line under a sent bubble on Messages. Flows editor: the three-way switch, the scripts in both
+   languages, Suggest a call after this goes. Guide: *call a customer from a task*.
+6. **The customer's say and the assistant's way** (M). `contacts.prefers` set from the customer's
+   page, an EMAIL reply, or the office; the sheet and Today's sends read it. **My way** in
+   Settings → Your account (ask first · send and show me). **Make this the office's line** on the
+   sheet. Guides updated.
+7. **The types** after each push.
+
+Order of value: 2 carries the principle and is walkable the day it lands; 3 and 4 make it daily;
+5 closes the call loop; 6 is the autonomy pass. Each can stop and still leave the app whole.
 
 ## How to verify
 
