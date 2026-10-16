@@ -75,6 +75,9 @@ import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubl
 import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
+import { useLeaveGuard } from '../hooks/useLeaveGuard'
+import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
+import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
@@ -464,6 +467,7 @@ export default function Prospects() {
   const [editMaxMiles, setEditMaxMiles] = useState('')
   const [editLang, setEditLang] = useState<'en' | 'es' | ''>('')
   const [editRole, setEditRole] = useState('')
+  const [editOpenedWith, setEditOpenedWith] = useState<Record<string, string>>({})
 
   // Callback form state
   const [callbackDate, setCallbackDate] = useState('')
@@ -655,6 +659,36 @@ export default function Prospects() {
       }, { replace: true })
     }
   }, [location.search, setSearchParams])
+
+  // Escape and the backdrop (v2.5582): an untouched window closes at once, a touched one asks (useLeaveGuard, as the
+  // big windows do since v2.5530). Leaving New Prospect clears its boxes; Edit compares its boxes to what it opened with.
+  const newProspectDirty = newProspectModalOpen && anyTyped({ newCompanyName, newContactName, newPhoneNumber, newEmail, newAddress, newLinksToWebsite, newSource, newTrades, newMaxMiles, newLang, newRole, linked: !!newCustomerLink })
+  const newGuard = useLeaveGuard({ dirty: newProspectDirty, onClose: closeNewProspect, busy: saving, paused: !newProspectModalOpen })
+  const editFieldsNow: Record<string, string> = { company: editCompanyName, contact: editContactName, phone: editPhoneNumber, email: editEmail, address: editAddress, links: editLinksToWebsite, source: editSource, trades: editTrades, miles: editMaxMiles, lang: editLang, role: editRole }
+  const editGuard = useLeaveGuard({ dirty: editModalOpen && editDirty(editFieldsNow, editOpenedWith), onClose: closeEditProspect, busy: saving, paused: !editModalOpen })
+  function closeNewProspect() {
+    setNewProspectModalOpen(false)
+    resetNewProspectForm()
+  }
+  function closeEditProspect() {
+    setEditModalOpen(false)
+    setEditingProspect(null)
+  }
+  function resetNewProspectForm() {
+    setNewCompanyName('')
+    setNewContactName('')
+    setNewPhoneNumber('')
+    setNewEmail('')
+    setNewAddress('')
+    setNewLinksToWebsite('')
+    setNewSource('')
+    setNewTrades('')
+    setNewMaxMiles('')
+    setNewLang('')
+    setNewRole('')
+    setNewCustomerLink(null)
+    setNewProspectError(null)
+  }
 
   // The bench (v2.5560): read the way GC projects reads it, so the strip says what the bench's own
   // rule says. Fail-soft: a role the GC tables refuse sees the lane without the strip.
@@ -1805,7 +1839,25 @@ export default function Prospects() {
     setEditAddress(currentProspect.address ?? '')
     setEditLinksToWebsite(currentProspect.links_to_website ?? '')
     setEditKindFields(currentProspect)
+    setEditOpenedWith(editSnapshotOf(currentProspect))
     setEditModalOpen(true)
+  }
+
+  /** The Edit window's boxes as a prospect fills them (v2.5582): what the window opened with, for the leave guard. */
+  function editSnapshotOf(p: Prospect): Record<string, string> {
+    return {
+      company: p.company_name ?? '',
+      contact: p.contact_name ?? '',
+      phone: p.phone_number ?? '',
+      email: p.email ?? '',
+      address: p.address ?? '',
+      links: p.links_to_website ?? '',
+      source: p.source ?? '',
+      trades: tradesText(p.trades),
+      miles: p.max_miles == null ? '' : String(p.max_miles),
+      lang: p.lang === 'en' || p.lang === 'es' ? p.lang : '',
+      role: p.company_role ?? '',
+    }
   }
 
   function setEditKindFields(p: Prospect) {
@@ -1837,6 +1889,7 @@ export default function Prospects() {
     setEditAddress(p.address ?? '')
     setEditLinksToWebsite(p.links_to_website ?? '')
     setEditKindFields(p)
+    setEditOpenedWith(editSnapshotOf(p))
     setEditModalOpen(true)
   }
 
@@ -2460,18 +2513,7 @@ export default function Prospects() {
       return
     }
     setNewProspectModalOpen(false)
-    setNewCompanyName('')
-    setNewContactName('')
-    setNewPhoneNumber('')
-    setNewEmail('')
-    setNewAddress('')
-    setNewLinksToWebsite('')
-    setNewSource('')
-    setNewTrades('')
-    setNewMaxMiles('')
-    setNewLang('')
-    setNewRole('')
-    setNewCustomerLink(null)
+    resetNewProspectForm()
     if (newKind !== kind) {
       // The new row lives on another lane: go there, and its loaders run on the kind change.
       setKindTab(newKind)
@@ -4034,7 +4076,7 @@ export default function Prospects() {
             zIndex: 750,
             paddingTop: 'var(--app-top-chrome, 0px)',
           }}
-          onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
+          onClick={editGuard.requestClose}
         >
           <div role="dialog" aria-modal="true"
             style={{
@@ -4153,6 +4195,7 @@ export default function Prospects() {
                 </div>
               )}
             </div>
+            {editGuard.asking && <LeaveQuestion what="The changes to this prospect are not saved." onLeave={closeEditProspect} onKeep={editGuard.keep} />}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
                 type="button"
@@ -4164,7 +4207,7 @@ export default function Prospects() {
               </button>
               <button
                 type="button"
-                onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
+                onClick={editGuard.requestClose}
                 style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
@@ -4608,7 +4651,7 @@ export default function Prospects() {
             zIndex: 750,
             paddingTop: 'var(--app-top-chrome, 0px)',
           }}
-          onClick={() => !saving && setNewProspectModalOpen(false)}
+          onClick={newGuard.requestClose}
         >
           <div role="dialog" aria-modal="true"
             style={{
@@ -4763,6 +4806,7 @@ export default function Prospects() {
                 tradeChoices: (benchTrades ?? []).map((b) => b.trade),
               })}
             </div>
+            {newGuard.asking && <LeaveQuestion what="The new prospect is not saved." onLeave={closeNewProspect} onKeep={newGuard.keep} />}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
                 type="button"
@@ -4774,7 +4818,7 @@ export default function Prospects() {
               </button>
               <button
                 type="button"
-                onClick={() => !saving && setNewProspectModalOpen(false)}
+                onClick={newGuard.requestClose}
                 style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
