@@ -33,8 +33,16 @@ function toneFor(need: RowNeed | undefined): CellTone {
 }
 
 /** Small inline glyphs so the rail reads the same on every phone (no emoji font lottery). */
-export function SubjectIcon({ subject }: { subject: 'hours' | 'paperwork' | 'account' }) {
-  const common = { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true }
+export function SubjectIcon({ subject }: { subject: 'hours' | 'paperwork' | 'account' | 'training' }) {
+  const common = { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true, 'data-subject': subject }
+  // v2.5577: a cap when the row's lead need is a course, so the Paper cell says training at a glance.
+  if (subject === 'training')
+    return (
+      <svg {...common}>
+        <path d="M2 9.5l10-5 10 5-10 5z" />
+        <path d="M6 12v4.5c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V12M22 9.5V15" />
+      </svg>
+    )
   if (subject === 'hours')
     return (
       <svg {...common}>
@@ -114,7 +122,7 @@ export function UsersRailCells({ rowNeeds, name, openDesk, openHours }: { rowNee
         label={`${name}: ${paper.length ? paper.map((n) => n.long).join(' ') : 'paperwork in order'}`}
         onClick={paperLead && openDesk ? () => openDesk(paperLead.door) : undefined}
       >
-        <SubjectIcon subject="paperwork" />
+        <SubjectIcon subject={paperLead?.key === 'training' ? 'training' : 'paperwork'} />
         {paperLead ? paperLead.count || null : null}
       </Cell>
       <Cell
@@ -177,7 +185,7 @@ export function UsersNeedsFoldOut({ rowNeeds, name, openDesk }: { rowNeeds: RowN
           {[...counted, ...facts].map((n) => (
             <div key={n.key} style={{ display: 'grid', gridTemplateColumns: '16px 1fr auto', gap: '0.5rem', alignItems: 'center', fontSize: '0.8125rem' }}>
               <span style={{ color: n.tone === 'red' ? 'var(--text-red-600)' : n.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)', display: 'inline-flex' }}>
-                <SubjectIcon subject={n.subject} />
+                <SubjectIcon subject={n.key === 'training' ? 'training' : n.subject} />
               </span>
               <span style={{ minWidth: 0 }}>
                 <strong style={{ color: 'var(--text-strong)' }}>{n.subject === 'paperwork' ? 'Paperwork' : 'Account'}</strong>

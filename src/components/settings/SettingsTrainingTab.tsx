@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
@@ -13,8 +14,12 @@ import { flowButton, flowHead, flowInput, flowNote, flowPrimary, flowQuiet, flow
  * policy and its counts. On or off; who must take it (role chips); how long a pass is good for and the amber
  * window; where everyone stands (`training_standings`: current, lapsed, not done, and See who); and
  * **Everyone takes it again…**, which stamps today as the day before which no pass counts, after a confirm that
- * says how many current people it turns red. The lessons live in the app: the bundle's facts (lessons, minutes,
- * the content version) come from a dynamic import so the course text never rides in the Settings chunk.
+ * says how many current people it turns red. The lessons live in the app: the bundle's facts (lessons, minutes)
+ * come from a dynamic import so the course text never rides in the Settings chunk.
+ *
+ * v2.5577: **Preview the course** opens `/training/<slug>` as the dev sees it (a course previews while off); the
+ * retake day is an amber chip with a quiet **Clear** that puts the old passes back to counting; the content hash
+ * left the facts line (it is on every pass record, where a dev reads it).
  */
 
 const ROLE_WORDS: Record<UserRole, string> = {
@@ -35,7 +40,7 @@ const CHIP: Record<TrainingColour, CSSProperties> = {
   green: { background: 'var(--bg-green-100)', color: 'var(--text-green-800)' },
 }
 
-type BundleFacts = { lessons: number; minutes: number; contentVersion: string }
+type BundleFacts = { lessons: number; minutes: number }
 
 /** Settings → Training's lede, rendered before the catalog loads. */
 export const TRAINING_LEDE =
@@ -77,7 +82,7 @@ export function SettingsTrainingTab() {
     void import('../../lib/training/courseRegistry')
       .then((m) => {
         const facts: Record<string, BundleFacts> = {}
-        for (const c of m.TRAINING_COURSES) facts[c.slug] = { lessons: c.lessons.length, minutes: c.minutes, contentVersion: c.contentVersion }
+        for (const c of m.TRAINING_COURSES) facts[c.slug] = { lessons: c.lessons.length, minutes: c.minutes }
         setBundle(facts)
       })
       .catch(() => setBundle({}))
@@ -144,8 +149,11 @@ export function SettingsTrainingTab() {
                 {p.on ? 'On' : 'Off'}
               </button>
               <span style={flowNote}>
-                {facts ? `${facts.lessons} lessons and a final check · about ${Math.round(facts.minutes / 60)} h · content ${facts.contentVersion} · ships with the app` : 'ships with the app'}
+                {facts ? `${facts.lessons} lessons and a final check · about ${Math.round(facts.minutes / 60)} h · ships with the app` : 'ships with the app'}
               </span>
+              <Link to={`/training/${p.slug}`} style={{ fontSize: '0.85rem', fontWeight: 600 }} data-training-preview>
+                Preview the course
+              </Link>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -211,7 +219,6 @@ export function SettingsTrainingTab() {
                   Save
                 </button>
               )}
-              {p.retakeFrom && <span style={flowNote}>· passes before {ymdWords(p.retakeFrom, today)} do not count</span>}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -250,6 +257,17 @@ export function SettingsTrainingTab() {
               </ul>
             )}
 
+            {p.retakeFrom && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }} data-training-retake-chip>
+                <span style={{ ...CHIP.amber, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }}>
+                  Everyone takes it again from {ymdWords(p.retakeFrom, today)}
+                </span>
+                <button type="button" disabled={busy} onClick={() => void save(p.slug, { retake_from: null }, `${p.title}: the old passes count again.`)} style={flowQuiet} data-training-retake-clear>
+                  Clear
+                </button>
+                <span style={flowNote}>Passes before that day do not count. Clear puts them back.</span>
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.25rem' }}>
               <button
                 type="button"
