@@ -1,8 +1,8 @@
 ---
 name: "On my way and I'm here: one press that clocks the drive and texts the customer"
 number: 112
-group: ready
-status: designed 2026-10-16; the build is on branch claude/on-my-way (PR open the same day)
+group: close
+status: BUILT and LIVE 2026-10-16 — the plan #5772, the build #5773 (v2.5573), migration 20261016020000 on prod with its two seeded lines, the types regen PR; left: the owner's live walk
 summary: >
   Job Mode's big green button becomes On my way. One press clocks the tech in on the next job as
   on the way and texts the customer the office's On my way line, with the minutes guessed from the
@@ -12,7 +12,7 @@ summary: >
   session, travel_started_at and arrived_at, give the office an honest drive time per visit for
   the first time. The office owns both lines in the quick replies editor, where a new Big button
   picker says which line each press sends.
-next: Merge the build PR, push migration 20261016010000, regenerate the types, then the live walk on the owner's own phone with a test job.
+next: The owner's live walk on his phone with a test job whose customer is his own number (On my way, the text, I'm here), then the follow-ons below as asked; delete the folder after the walk.
 size: M (one migration with two small functions, one kernel, two sheets, the card's wiring, the editor's picker, two guides)
 blocker: none
 opinion: build it as drawn; the sheet is the message sheet the owner already loves, pointed at the day's main press.
@@ -167,16 +167,16 @@ The first draft was D as drawn above. Reading it back against the owner's three 
   `fills: { minutes }`; `quo-send`'s tech path is untouched.
 - `src/lib/quickReplies/` and `QuickRepliesEditorLine.tsx` — `phonePress` on the line and the
   picker; `set_quick_reply_press(uuid, text)` saves it.
-- `address_point(text)` — a small definer that answers a geocoded address's point to anyone signed
-  in, since `address_geocodes` is the map roles' alone.
+- `address_geocodes` — the job's point, open to every signed-in user since v2.3131; the first cut
+  gave it a definer, `address_point`, until the SQL bed showed the table was already open.
 - `src/lib/jobTravelEstimate.ts` and `resolveClockPunchCoordinates.ts` — the guess and the phone's
   point, GPS only; an IP point is too coarse to text.
 
 ## The PR train
 
 1. **This to-do** (the plan and the mock-up).
-2. **The feature**: migration `20261016010000_on_my_way.sql` (the five columns, `phone_press`,
-   the two functions, the seeds), the kernel and its test, the two sheets, the card, the editor's
+2. **The feature**: migration `20261016020000_on_my_way.sql` (the five columns, `phone_press`,
+   `set_quick_reply_press`, the seeds), the kernel and its test, the two sheets, the card, the editor's
    picker, the two guides, the release note. The card reads the stamps fail-soft, so the client may
    deploy before the push.
 3. **The types**: regenerate `database.ts` and the dev-mcp catalog after the push.
