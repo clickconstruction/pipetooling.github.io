@@ -273,6 +273,28 @@ the preview in Settings (it is the course page). Both are in the PR list.
 7. **Blocking.** Drawn: a lapsed course never blocks the clock or a job. Keep it that way, or
    tie it to the clock after a grace period.
 
+## Follow-ups from the walkthrough (2026-10-16)
+
+The headless walk as the dev on prod data (the policy flipped to devs and put back) found nine
+small things, drawn as one spot each with the critique in `to-dos/training/followups.html` and
+shipped in three PRs (the page and the card; the questions; the office polish):
+
+1. **The card says the size** before the first press (*30 lessons of about five minutes · about
+   3 hours in all*, from `course.md`'s `minutes:`), and *N of 30 lessons done* once started.
+2. **Lessons and the final check counted apart** on the page: *N of 30 lessons* and a green
+   *Final check passed* chip, not *N of 31*.
+3. **No red chip until there is a pass to date**; the lesson count already says it.
+4. **A pass says the day** it is due again and offers *Back to the Dashboard* beside *Read a
+   lesson again*.
+5. **The question is a heading inside its box**, not a legend on the border.
+6. **44 px on touch** for every answer row, lesson row and press.
+7. **Seven lesson checks reworded** so the wrong options no longer give the answer away, with
+   questions from the owner's unused pool; the final bank loses the asks a lesson already asks,
+   and a draw never repeats an ask.
+8. **Settings → Training previews the course** with one link, and the retake day is a chip with
+   a *Clear*.
+9. **The Users row's training cap** matches the rail's lead.
+
 ## How to verify (once built)
 
 - A helper with no pass sees the red card; passing lesson 19 ticks it in the rail and the card

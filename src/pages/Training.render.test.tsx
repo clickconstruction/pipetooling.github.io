@@ -156,7 +156,8 @@ describe('Training page', () => {
     const finalRow = document.querySelector('[data-final-row]') as HTMLButtonElement
     expect(finalRow.disabled).toBe(true)
     expect(finalRow.textContent).toContain('opens when every lesson is done')
-    expect(screen.getByText('1 of 4')).toBeTruthy()
+    expect(screen.getByText('1 of 3 lessons')).toBeTruthy()
+    expect(document.querySelector('[data-standing]')).toBeNull()
     expect((screen.getByText('Next lesson ›') as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -207,8 +208,11 @@ describe('Training page', () => {
     fireEvent.click(handIn)
     await waitFor(() => expect(io.finishCourse).toHaveBeenCalledTimes(1))
     expect((io.finishCourse.mock.calls[0] as unknown[])[0]).toMatchObject({ courseSlug: 'fixture-course', score: 8, total: 8, pass: 6 })
-    await screen.findByText(/Passed\. 8 of 8 right\./)
+    await screen.findByText(/Passed\. 8 of 8 right\. Recorded, due again/)
     await waitFor(() => expect(document.querySelector('[data-standing]')?.getAttribute('data-standing')).toBe('green'))
+    expect(screen.getByText('Final check passed')).toBeTruthy()
+    fireEvent.click(screen.getByText('‹ Back to the Dashboard'))
+    await screen.findByText('Dashboard landing')
   })
 
   it('an unknown slug says so and offers the Dashboard', async () => {

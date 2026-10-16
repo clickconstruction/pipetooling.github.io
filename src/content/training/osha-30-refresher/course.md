@@ -4,6 +4,7 @@ summary: The 30-hour construction course in two and a half hours of five-minute 
 line: A refresher, not an OSHA card. The card comes from the 30-hour course.
 final_draw: 20
 final_pass: 14
+minutes: 176
 ---
 ## Parts
 0. Start here

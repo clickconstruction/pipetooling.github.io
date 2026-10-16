@@ -166,7 +166,7 @@ describe('the final check', () => {
     const lessons = [1, 2, 3].map((n) => ({ ...parseLesson(FIXTURE, `0${n}-a`), part: n - 1, questions: parseLesson(FIXTURE, `0${n}-a`).questions.map((q) => ({ ...q, part: n - 1 })) }))
     const bankSource = Array.from({ length: 20 }, (_, i) => `${i + 1}. Bank question ${i + 1}?\n- [x] Right\n- [ ] A\n- [ ] B\n- [ ] C\n> right: Yes.\n> wrong: No.`).join('\n\n')
     const finalBank = parseQuestions(bankSource.split('\n'), 'bank', 'final-bank', -1)
-    return { slug: 's', title: 't', summary: 's', line: 'l', finalDraw: 8, finalPass: 6, parts: [{ n: 0, name: 'a' }, { n: 1, name: 'b' }, { n: 2, name: 'c' }], lessons, finalBank, contentVersion: contentVersionOf([l.title]), minutes: 30 }
+    return { slug: 's', title: 't', summary: 's', line: 'l', finalDraw: 8, finalPass: 6, parts: [{ n: 0, name: 'a' }, { n: 1, name: 'b' }, { n: 2, name: 'c' }], lessons, finalBank, contentVersion: contentVersionOf([l.title]), minutes: 30, minutesStated: null }
   }
 
   it('draws one part at a time so every part is asked, shuffles options, and replays the same seed', () => {
@@ -207,7 +207,7 @@ describe('the final check', () => {
 
   it('courseProgress counts the lessons passed and the final check as the last step', () => {
     const course = makeCourse()
-    expect(courseProgress(course, new Set(['01-a']), false)).toMatchObject({ done: 1, of: 4, allLessonsDone: false })
+    expect(courseProgress(course, new Set(['01-a']), false)).toMatchObject({ done: 1, of: 4, lessonsDone: 1, lessons: 3, finalPassed: false, allLessonsDone: false })
     expect(courseProgress(course, new Set(['01-a']), false).nextLesson?.key).toBe('02-a')
     expect(courseProgress(course, new Set(['01-a', '02-a', '03-a']), true)).toMatchObject({ done: 4, of: 4, allLessonsDone: true, nextLesson: null })
   })
@@ -252,6 +252,7 @@ describe('the real content under src/content/training', () => {
       for (const p of c.parts) expect(partsUsed.has(p.n), `course "${c.slug}" part ${p.n} "${p.name}" has no lesson`).toBe(true)
       expect(c.contentVersion).toMatch(/^[0-9a-f]{8}$/)
       expect(c.minutes).toBeGreaterThan(60)
+      expect(c.minutesStated, `course "${c.slug}": course.md says minutes: ${c.minutesStated} but the lessons and the final check add up to ${c.minutes}`).toBe(c.minutes)
     }
   })
 

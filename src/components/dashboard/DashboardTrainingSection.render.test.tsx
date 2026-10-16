@@ -58,7 +58,7 @@ describe('DashboardTrainingSection', () => {
     await screen.findByText('1 course to do')
     expect(document.querySelector('[data-training-card]')?.getAttribute('data-training-card')).toBe('red')
     expect(screen.getByText('OSHA 30 refresher')).toBeTruthy()
-    expect(screen.getByText(/not started/)).toBeTruthy()
+    expect(screen.getByText(/30 lessons of about five minutes · about 3 hours in all/)).toBeTruthy()
     fireEvent.click(screen.getByText('Start'))
     await screen.findByText('Course page')
     expect(seen[seen.length - 1]).toBe(true)
@@ -68,7 +68,7 @@ describe('DashboardTrainingSection', () => {
     io.lessons = ['01-a', '02-b', '03-c']
     open()
     await screen.findByText('Continue')
-    expect(screen.getByText('Started · 3 lessons done')).toBeTruthy()
+    expect(screen.getByText('3 of 30 lessons done')).toBeTruthy()
   })
 
   it('lapsed is amber with Take it again; caught up is green with Read it again', async () => {
