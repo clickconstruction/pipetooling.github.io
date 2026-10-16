@@ -5428,6 +5428,7 @@ tr[data-stages-row-stamped] {
   .trainingPress,
   .trainingRow,
   .trainingOption {
-    min-height: 44px;
+    /* !important: the elements carry their desk min-height inline (36, 30, 28), which would beat this rule. */
+    min-height: 44px !important;
   }
 }
