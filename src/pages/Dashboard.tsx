@@ -1204,6 +1204,11 @@ export default function Dashboard() {
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
         {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
+        {/* Training (v2.5586): the full Dashboard's foot card, here under My Schedule, so a crew member who lives in
+            Job Mode meets the course too. Renders nothing while nothing is required of the role. */}
+        <div style={{ marginTop: '0.75rem' }} data-job-mode-training>
+          <DashboardTrainingSection userId={authUser.id} role={role} />
+        </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"
