@@ -3,7 +3,7 @@
  * anchor so a chip on People → Users, a deep link, or any door can open the Desk scrolled to
  * the one section that answers it. Pure; the Desk body owns the scrolling.
  */
-export const PERSON_DESK_SECTION_IDS = ['hours', 'portal', 'work_orders', 'pay', 'team', 'push', 'field', 'paperwork', 'records', 'schedule', 'access'] as const
+export const PERSON_DESK_SECTION_IDS = ['hours', 'portal', 'work_orders', 'pay', 'team', 'push', 'field', 'bio', 'paperwork', 'records', 'schedule', 'access'] as const
 
 export type PersonDeskSectionId = (typeof PERSON_DESK_SECTION_IDS)[number]
 
