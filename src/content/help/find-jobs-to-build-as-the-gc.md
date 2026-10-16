@@ -51,7 +51,7 @@ The job with the soonest bid day is the one handed on, and it reads **asked us**
 
 ## A lead who is already a customer
 
-New Prospect warns when the company is already a customer, by name or phone. Press **Link this lead to them**. Then Asked us ✓ uses that record and makes no second one.
+New Prospect checks the name and the phone against this lane, the other lanes, the bench and the customers. One line says where the company already lives. For a customer, press **Link this lead to them**. Then Asked us ✓ uses that record and makes no second one. For a company already on a lane, press **Open it** to go to its card. Press {{button:blue|Save anyway}} only for a second branch of the same company.
 
 ## A lost bid comes back
 

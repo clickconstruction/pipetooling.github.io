@@ -71,7 +71,9 @@ import { addGcCompany, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
 import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
-import { BY_NEED_NOTE, benchDouble, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
+import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubleRow } from '../lib/prospects/companyDouble'
+import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
+import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
@@ -425,7 +427,7 @@ export default function Prospects() {
   // refused), the bench's companies for the double check, the lane's whole queue for the counts,
   // and the call script's window.
   const [benchTrades, setBenchTrades] = useState<{ trade: string; dependable: number }[] | null>(null)
-  const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null }[]>([])
+  const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null; trades: string[]; vetted?: boolean }[]>([])
   const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
   const [scriptOpen, setScriptOpen] = useState(false)
   const tradeFilter = searchParams.get('trade')
@@ -433,7 +435,8 @@ export default function Prospects() {
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
   const [gcWork, setGcWork] = useState<GcWorkCounts | null>(null)
-  const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null }[]>([])
+  const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null; since: string | null }[]>([])
+  const [prospectDoubles, setProspectDoubles] = useState<ProspectDoubleRow[]>([])
   const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
 
   // Follow Up state
@@ -674,7 +677,7 @@ export default function Prospects() {
         if (!live) return
         const state = boardStateFromRows(rows)
         setBenchTrades(tradeBenches(state).map((b) => ({ trade: b.trade, dependable: b.dependable })))
-        setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null })))
+        setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null, trades: c.trades, vetted: c.vetting_status === 'approved' ? true : c.vetting_status === 'new' ? false : undefined })))
       } catch {
         if (live) setBenchTrades(null)
       }
@@ -687,6 +690,49 @@ export default function Prospects() {
   // The strip counts the lane as it stands: a sub the deck took off (an outcome, a delete) leaves the count with it.
   const deckIds = new Set(followUpProspects.map((p) => p.id))
   const benchNeedsNow: BenchNeed[] = kind === 'sub' ? benchNeeds(benchTrades ?? [], stillQueued(laneQueueAll, deckIds, tradeFilter)) : []
+
+  // One lookup for every double (v2.5579): the prospects of every lane and the customers load when New Prospect
+  // opens, whatever its kind; both fail-soft, and the bench rides along from the Subs effect above.
+  useEffect(() => {
+    if (!newProspectModalOpen || !authUser?.id) return
+    let live = true
+    loadProspectDoubles()
+      .then((rows) => {
+        if (live) setProspectDoubles(rows)
+      })
+      .catch(() => {
+        if (live) setProspectDoubles([])
+      })
+    loadCustomerDoubles()
+      .then((rows) => {
+        if (live) setCustomerDoubles(rows)
+      })
+      .catch(() => {
+        if (live) setCustomerDoubles([])
+      })
+    return () => {
+      live = false
+    }
+  }, [newProspectModalOpen, authUser?.id])
+  const newProspectTwin = newProspectModalOpen ? companyDouble(newCompanyName, newPhoneNumber, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }) : null
+
+  /** Open it on a prospect double (v2.5579): the form closes and the card opens on its own lane. */
+  function openDoubleProspect(twin: Extract<CompanyDouble, { door: 'open_prospect' }>) {
+    const lane = doubleLaneParams(twin)
+    setNewProspectModalOpen(false)
+    rememberProspectsTopTab('follow-up')
+    setTopTab('customers')
+    setActiveTab('follow-up')
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', 'follow-up')
+      if (lane.kind) next.set('kind', lane.kind)
+      else next.delete('kind')
+      next.set('prospect_id', lane.prospect_id)
+      next.delete('trade')
+      return next
+    })
+  }
 
   // The Jobs to GC lane (v2.5561): the Project Board's counts and the customers, both fail-soft.
   useEffect(() => {
@@ -4605,44 +4651,52 @@ export default function Prospects() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
-              {newKind === 'sub' &&
-                (() => {
-                  const twin = benchDouble(newCompanyName, newPhoneNumber, benchCompanies)
-                  if (!twin) return null
+              {(() => {
+                // One line for every double (v2.5579): this lane, another lane, the bench, the customers, in that order.
+                const linkish = { font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
+                if (newKind === 'gc_lead' && newCustomerLink) {
                   return (
-                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
-                      {twin.name} is already on the bench.{' '}
+                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
+                      Linked to the customer {newCustomerLink.name}. Asked us ✓ will use that record.{' '}
+                      <button type="button" onClick={() => setNewCustomerLink(null)} style={linkish}>
+                        Unlink
+                      </button>
+                    </p>
+                  )
+                }
+                const twin = newProspectTwin
+                if (!twin) return null
+                return (
+                  <p role="status" data-company-double={twin.where} style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
+                    {twin.line}{' '}
+                    {twin.door === 'open_prospect' && (
+                      <button type="button" onClick={() => openDoubleProspect(twin)} style={linkish}>
+                        Open it
+                      </button>
+                    )}
+                    {twin.door === 'open_bench' && (
                       <Link to="/gc?view=partners" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
                         Open it
-                      </Link>{' '}
-                      instead of a second record.
-                    </p>
-                  )
-                })()}
-              {newKind === 'gc_lead' &&
-                (() => {
-                  if (newCustomerLink) {
-                    return (
-                      <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
-                        Linked to the customer {newCustomerLink.name}. Asked us ✓ will use that record.{' '}
-                        <button type="button" onClick={() => setNewCustomerLink(null)} style={{ font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
-                          Unlink
-                        </button>
-                      </p>
-                    )
-                  }
-                  const twin = benchDouble(newCompanyName, newPhoneNumber, customerDoubles)
-                  if (!twin) return null
-                  return (
-                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
-                      {twin.name} is already a customer.{' '}
-                      <button type="button" onClick={() => setNewCustomerLink({ id: twin.id, name: twin.name })} style={{ font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
-                        Link this lead to them
-                      </button>{' '}
-                      or <Link to={`/customers/${twin.id}`} style={{ color: 'var(--text-link)', fontWeight: 600 }}>open their page</Link>.
-                    </p>
-                  )
-                })()}
+                      </Link>
+                    )}
+                    {twin.door === 'customer' && (
+                      <>
+                        {newKind === 'gc_lead' && (
+                          <>
+                            <button type="button" onClick={() => setNewCustomerLink({ id: twin.id, name: twin.name })} style={linkish}>
+                              Link this lead to them
+                            </button>
+                            {' · '}
+                          </>
+                        )}
+                        <Link to={`/customers/${twin.id}`} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                          Open their page
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )
+              })()}
               <label>
                 <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Contact Name</span>
                 <input
@@ -4704,7 +4758,7 @@ export default function Prospects() {
                 disabled={saving}
                 style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
               >
-                Save
+                {newProspectTwin ? 'Save anyway' : 'Save'}
               </button>
               <button
                 type="button"

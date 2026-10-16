@@ -56,11 +56,11 @@ export async function deleteProspectJob(jobId: string): Promise<void> {
   if (error) failed(error, 'remove the job')
 }
 
-/** The customers as the double check reads them: a name and a phone each. */
-export async function loadCustomerDoubles(): Promise<{ id: string; name: string; phone: string | null }[]> {
-  const { data, error } = await supabase.from('customers').select('id, name, contact_info').is('archived_at', null)
+/** The customers as the double check reads them: a name, a phone and the day they came (v2.5579's "With us since"). */
+export async function loadCustomerDoubles(): Promise<{ id: string; name: string; phone: string | null; since: string | null }[]> {
+  const { data, error } = await supabase.from('customers').select('id, name, contact_info, created_at').is('archived_at', null)
   if (error) failed(error, 'read the customers')
-  return (data ?? []).map((c) => ({ id: c.id, name: c.name, phone: extractContactInfo(c.contact_info).phone || null }))
+  return (data ?? []).map((c) => ({ id: c.id, name: c.name, phone: extractContactInfo(c.contact_info).phone || null, since: (c as { created_at?: string | null }).created_at ?? null }))
 }
 
 /**

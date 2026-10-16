@@ -55,4 +55,4 @@ On Trade partners, each "Find 2 more" line has {{button:outline|Find on Prospect
 
 ## Keep it tidy
 
-A sub stays a prospect until the bench has them. Do not type the same company on Trade partners as well. New Prospect warns when the company is already on the bench, by name or phone. Press **Open it** there instead of saving a second record. Read [work the prospect calling queue](/help/work-the-prospect-calling-queue) for the queue, callbacks and the timer.
+A sub stays a prospect until the bench has them. Do not type the same company twice. New Prospect checks the name and the phone against this lane, the other lanes, the bench and the customers. One line says where the company already lives and what happened last. Press **Open it** to go to that record instead of saving a second one. Press {{button:blue|Save anyway}} only for a second branch of the same company. Read [work the prospect calling queue](/help/work-the-prospect-calling-queue) for the queue, callbacks and the timer.
