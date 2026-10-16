@@ -4,19 +4,27 @@
  * the blanks the app cannot fill. The text is made here from the line and the record with the sheet's own kernel
  * (`jobModeText.ts`), so no free text goes out, and any body the client sends is never read.
  *
+ * Since v2.5590 (the tech's bio, punch list #114) the same path sends the tech's **bio**: `kind: 'bio'` with the
+ * picked lines' ids. The bio is composed here from the sender's own `user_bio_lines` with the bio kernel (`bio.ts`),
+ * refused when the customer's thread already carries this tech's bio (`messages.introduces_user_id`), when a picked
+ * id is not the sender's own live line, or when nothing is left to say; the line that goes is stamped with the tech it
+ * introduces, so the phone and this path never send it to that customer again.
+ *
  * Who may: a tech dispatched to or clocked on the job this week or last (`messages_tech_on_job`, asked as them), or
  * the office team, so the owner working a job is not turned away. The contact: the sheet's when it is the job's
  * customer's, else the door's (`contact_for_job` for a tech, `contact_for_customer` for the office), found or made as
  * the caller, so a training account and a digital twin are refused in words. A sheet's contact that is not the
  * customer's is logged, so a stale sheet shows. The number: the one they last texted from, else their first phone. The
- * line is tied to the job, keeps the phone line it came from (`messages.quick_reply_id`), and for a tech, the customer's
- * answer is held for them until their hour (`techHoldUntil`, `contacts.has_*`). The send itself is the reply box's
- * (`sendText`), so the box, the STOP, the opt-out line, the pause and Settings' Send texts switch all hold.
+ * line is tied to the job, keeps the phone line it came from (`messages.quick_reply_id`) or the tech it introduces, and
+ * for a tech, the customer's answer is held for them until their hour (`techHoldUntil`, `contacts.has_*`). The send
+ * itself is the reply box's (`sendText`), so the box, the STOP, the opt-out line, the pause and Settings' Send texts
+ * switch all hold.
  */
 // deno-lint-ignore-file no-explicit-any
 import { seatOf } from './gcKernels/lib/quo/rows.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox, type OptedOutByBox } from './gcKernels/lib/messages/boxes.ts'
-import { TECH_SEND_WORDS, composeTechText, parseTechSendBody, pickPhone } from './gcKernels/lib/quo/techSend.ts'
+import { TECH_SEND_WORDS, composeBioText, composeTechText, parseTechSendBody, pickPhone } from './gcKernels/lib/quo/techSend.ts'
+import { bioLinesFromRows, firstNameOf, type BioLineRow } from './gcKernels/lib/bio/bio.ts'
 import { jobModeFills } from './gcKernels/lib/jobModeText.ts'
 import { customerLang } from './gcKernels/lib/messages/customerLang.ts'
 import { OFFICE_HOURS_KEY, parseOfficeHours, techHoldUntil } from './gcKernels/lib/messages/hasRule.ts'
@@ -77,47 +85,68 @@ export async function jobModeSend(admin: any, caller: any, who: TechSendCaller, 
     contactId = data
   }
 
-  // The line, made from the phone's line and the record.
-  const today = scheduleTodayDateKey(new Date())
-  const [lineRead, customerRead, blocksRead] = await Promise.all([
-    admin.from('quick_replies').select('id, text, text_es, for_kind, scope, phone_order, removed_at').eq('id', ask.quickReplyId).maybeSingle(),
-    admin.from('customers').select('name, language').eq('id', job.customer_id).maybeSingle(),
-    admin
-      .from('job_schedule_blocks')
-      .select('work_date, time_start, time_end')
-      .eq('job_id', ask.jobId)
-      .eq('assignee_user_id', who.id)
-      .gte('work_date', today)
-      .order('work_date')
-      .order('time_start')
-      .limit(20),
-  ])
-  for (const [name, read] of [['quick_replies', lineRead], ['customers', customerRead], ['job_schedule_blocks', blocksRead]] as const) {
-    if (read.error) throw new Error(`${name}: ${read.error.message}`)
-  }
-  const line = lineRead.data
-  if (!line) return refused('notOnPhone', TECH_SEND_WORDS.notOnPhone, 404)
-  const customer = customerRead.data as { name: string | null; language: string | null } | null
-  const app = jobModeFills({
-    customerName: customer?.name ?? null,
-    me: who.name,
-    jobName: job.job_name ?? null,
-    jobAddress: job.job_address ?? null,
-    blocks: ((blocksRead.data ?? []) as Array<{ work_date: string; time_start: string; time_end: string }>).map((b) => ({
-      workDate: b.work_date,
-      timeStart: b.time_start,
-      timeEnd: b.time_end,
-    })),
-    today,
-  })
+  const { data: customerRow, error: customerError } = await admin.from('customers').select('name, language').eq('id', job.customer_id).maybeSingle()
+  if (customerError) throw new Error(`customers: ${customerError.message}`)
+  const customer = customerRow as { name: string | null; language: string | null } | null
   const language = customer?.language === 'es' || customer?.language === 'en' ? customer.language : undefined
-  const made = composeTechText(
-    { text: line.text, textEs: line.text_es ?? null, forKind: line.for_kind, scope: line.scope, phoneOrder: line.phone_order ?? null, removed: line.removed_at !== null },
-    app,
-    ask.fills,
-    customerLang({ lang: language }),
-  )
-  if (!made.ok) return refused(made.refused, made.words, 422)
+  const lang = customerLang({ lang: language })
+
+  // The words: the tech's bio, or the phone's line made from the record.
+  let text: string
+  /** What the line that goes keeps: the phone line it came from, or the tech it introduces. */
+  let keeps: { quick_reply_id: string } | { introduces_user_id: string }
+  if (ask.kind === 'bio') {
+    // Once per tech per customer: the thread's memory says whether they have it.
+    const { data: had, error: hadError } = await admin.from('messages').select('id').eq('contact_id', contactId).eq('direction', 'out').eq('introduces_user_id', who.id).limit(1)
+    if (hadError) throw new Error(`messages: ${hadError.message}`)
+    if (((had ?? []) as unknown[]).length > 0) return refused('alreadyIntroduced', TECH_SEND_WORDS.alreadyIntroduced, 409)
+    const { data: lineRows, error: linesError } = await admin.from('user_bio_lines').select('id, user_id, text, text_es, position, added_at, removed_at, off_by_user_at').eq('user_id', who.id)
+    if (linesError) throw new Error(`user_bio_lines: ${linesError.message}`)
+    const bio = composeBioText(bioLinesFromRows((lineRows ?? []) as BioLineRow[]), ask.lineIds, firstNameOf(who.name), lang)
+    if (!bio.ok) return refused(bio.refused, bio.words, 422)
+    text = bio.text
+    keeps = { introduces_user_id: who.id }
+  } else {
+    const today = scheduleTodayDateKey(new Date())
+    const [lineRead, blocksRead] = await Promise.all([
+      admin.from('quick_replies').select('id, text, text_es, for_kind, scope, phone_order, removed_at').eq('id', ask.quickReplyId).maybeSingle(),
+      admin
+        .from('job_schedule_blocks')
+        .select('work_date, time_start, time_end')
+        .eq('job_id', ask.jobId)
+        .eq('assignee_user_id', who.id)
+        .gte('work_date', today)
+        .order('work_date')
+        .order('time_start')
+        .limit(20),
+    ])
+    for (const [name, read] of [['quick_replies', lineRead], ['job_schedule_blocks', blocksRead]] as const) {
+      if (read.error) throw new Error(`${name}: ${read.error.message}`)
+    }
+    const line = lineRead.data
+    if (!line) return refused('notOnPhone', TECH_SEND_WORDS.notOnPhone, 404)
+    const app = jobModeFills({
+      customerName: customer?.name ?? null,
+      me: who.name,
+      jobName: job.job_name ?? null,
+      jobAddress: job.job_address ?? null,
+      blocks: ((blocksRead.data ?? []) as Array<{ work_date: string; time_start: string; time_end: string }>).map((b) => ({
+        workDate: b.work_date,
+        timeStart: b.time_start,
+        timeEnd: b.time_end,
+      })),
+      today,
+    })
+    const made = composeTechText(
+      { text: line.text, textEs: line.text_es ?? null, forKind: line.for_kind, scope: line.scope, phoneOrder: line.phone_order ?? null, removed: line.removed_at !== null },
+      app,
+      ask.fills,
+      lang,
+    )
+    if (!made.ok) return refused(made.refused, made.words, 422)
+    text = made.text
+    keeps = { quick_reply_id: line.id }
+  }
 
   // The number: the one they last texted from, else their first phone.
   const [channelsRead, lastInRead] = await Promise.all([
@@ -157,7 +186,7 @@ export async function jobModeSend(admin: any, caller: any, who: TechSendCaller, 
       channelId: channel.id,
       to: channel.value,
       optedOut: stoppedOn(stops, box),
-      body: made.text,
+      body: text,
       links: [],
       lastOurTextAt: await lastOurTextAt(admin, channel.id, box),
       held: false,
@@ -172,11 +201,11 @@ export async function jobModeSend(admin: any, caller: any, who: TechSendCaller, 
   )
   if (!outcome.ok) return refused(outcome.refused, outcome.words, outcome.status)
 
-  // The text went: its line keeps the phone line it came from, and a tech holds the answer until their hour. Neither
-  // write undoes the text, so a failure is logged and the answer stands.
+  // The text went: its line keeps the phone line it came from, or the tech it introduces, and a tech holds the answer
+  // until their hour. Neither write undoes the text, so a failure is logged and the answer stands.
   if (outcome.messageId) {
-    const { error } = await admin.from('messages').update({ quick_reply_id: line.id }).eq('id', outcome.messageId)
-    if (error) console.error('[quo-send] job_mode: the line kept no quick reply:', error.message)
+    const { error } = await admin.from('messages').update(keeps).eq('id', outcome.messageId)
+    if (error) console.error(`[quo-send] job_mode: the line kept no ${ask.kind === 'bio' ? 'bio mark' : 'quick reply'}:`, error.message)
   }
   if (!isOffice) {
     const { data: hoursRow, error: hoursError } = await admin.from('app_settings').select('value_text').eq('key', OFFICE_HOURS_KEY).maybeSingle()
@@ -188,6 +217,6 @@ export async function jobModeSend(admin: any, caller: any, who: TechSendCaller, 
   }
   return {
     status: 200,
-    body: { ok: true, messageId: outcome.messageId, quoId: outcome.quoId, segments: outcome.segments, mailbox: box, contactId },
+    body: { ok: true, kind: ask.kind, messageId: outcome.messageId, quoId: outcome.quoId, segments: outcome.segments, mailbox: box, contactId },
   }
 }

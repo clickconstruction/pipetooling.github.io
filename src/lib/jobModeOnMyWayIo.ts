@@ -17,6 +17,8 @@ import { phonePressOf } from './quickReplies/press'
 import type { PhoneLine } from './quickReplies/phone'
 import type { LatLng } from './jobTravelEstimate'
 import { supabaseJobModeMessageIo, type JobModeMessageIo } from './jobModeMessageCustomerIo'
+import { supabaseBioIo } from './bio/bioIo'
+import type { BioLine } from './bio/bio'
 import { normalizeAddressForGeocodeKey } from './map/normalizeAddressForGeocode'
 import { resolveClockPunchCoordinates } from './resolveClockPunchCoordinates'
 import { scheduleArrivedLocationPatch } from './patchClockPunchSessionLocations'
@@ -36,6 +38,10 @@ export interface OnMyWayIo extends JobModeMessageIo {
   loadTravelFacts(sessionId: string): Promise<TravelFacts | null>
   /** Stamps the arrival on the tech's own open session and patches the phone's point after. False when no row took it. */
   arrive(sessionId: string): Promise<boolean>
+  /** The tech's own bio lines (v2.5590), removed ones too; null while the push is not in. */
+  loadMyBio(userId: string): Promise<BioLine[] | null>
+  /** Whether this customer's thread already carries the tech's bio: false with no thread yet; null when the app cannot tell, so no bio is offered. */
+  loadIntroduced(contactId: string | null, userId: string): Promise<boolean | null>
 }
 
 export function supabaseOnMyWayIo(client: unknown = supabase): OnMyWayIo {
@@ -76,6 +82,19 @@ export function supabaseOnMyWayIo(client: unknown = supabase): OnMyWayIo {
       if (result.error) return null
       const row = result.data as { travel_started_at: string | null; arrived_at: string | null } | null
       return row ? { travelStartedAt: row.travel_started_at ?? null, arrivedAt: row.arrived_at ?? null } : null
+    },
+    async loadMyBio(userId) {
+      try {
+        return await supabaseBioIo(client).loadLines(userId)
+      } catch {
+        return null
+      }
+    },
+    async loadIntroduced(contactId, userId) {
+      if (!contactId) return false
+      const result = await db.from('messages').select('id').eq('contact_id', contactId).eq('direction', 'out').eq('introduces_user_id', userId).limit(1)
+      if (result.error) return null
+      return ((result.data ?? []) as unknown[]).length > 0
     },
     async arrive(sessionId) {
       const result = await db

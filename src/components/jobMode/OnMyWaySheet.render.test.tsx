@@ -7,11 +7,12 @@
  * window gets its line. Made-up people: Luis on the job, Dana Whitfield and Priya Natarajan.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { phoneLinesFromRows, type PhoneLineRow } from '../../lib/jobModeMessageCustomer'
 import type { JobModeCustomer } from '../../lib/jobModeMessageCustomerIo'
 import type { OnMyWayIo } from '../../lib/jobModeOnMyWayIo'
+import type { BioLine } from '../../lib/bio/bio'
 import { OnMyWaySheet, type OnMyWayDestination } from './OnMyWaySheet'
 
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
@@ -54,6 +55,8 @@ function fakeIo(set: Partial<OnMyWayIo> = {}): Fake {
     loadMyPoint: vi.fn(() => Promise.resolve(ME)),
     loadTravelFacts: vi.fn(() => Promise.resolve(null)),
     arrive: vi.fn(() => Promise.resolve(true)),
+    loadMyBio: vi.fn(() => Promise.resolve(null)),
+    loadIntroduced: vi.fn(() => Promise.resolve(null)),
     ...set,
   } as Fake
 }
@@ -199,5 +202,110 @@ describe('OnMyWaySheet at 375 px', { timeout: 15_000 }, () => {
     fireEvent.change(screen.getByTestId('on-my-way-minutes'), { target: { value: '170' } })
     expect(screen.getByTestId('on-my-way-window').textContent).toBe('That lands about 3:05 PM, past the 3:00 PM window. Running late is under Message the customer and moves the board.')
     expect(screen.getByTestId('on-my-way-done-for-day').textContent).toBe('Done for the day')
+  })
+})
+
+describe('the tech’s bio on the sheet (v2.5590, punch list #114)', { timeout: 15_000 }, () => {
+  const bioRow = (id: string, text: string, set: Partial<BioLine> = {}): BioLine => ({ id, text, textEs: null, position: 1, addedAt: 0, removed: false, offByUser: false, ...set })
+  const BIO: BioLine[] = [
+    bioRow('b1', 'Luis has been a plumber for twelve years.', { position: 1, textEs: 'Luis es plomero desde hace doce años.' }),
+    bioRow('b2', 'Water heaters are his specialty.', { position: 2, textEs: 'Su especialidad son los calentadores.' }),
+    bioRow('b3', 'Off the clock he coaches Little League.', { position: 3 }),
+    bioRow('b4', 'He is an Astros fan.', { position: 4, textEs: 'Es aficionado de los Astros.', offByUser: true }),
+  ]
+  const withBio = (set: Partial<OnMyWayIo> = {}) => fakeIo({ loadMyBio: vi.fn(() => Promise.resolve(BIO)), loadIntroduced: vi.fn(() => Promise.resolve(false)), ...set })
+
+  it('the first time: the bio follows the line with the usual picks, the third row counts them, and the press sends the line then the bio', async () => {
+    const io = withBio()
+    const { onClose } = mount(io)
+    expect((await screen.findByTestId('on-my-way-bio-first')).textContent).toBe('Dana hears from you for the first time. This goes right after:')
+    expect(screen.getByTestId('on-my-way-bio').textContent).toBe('A little about Luis: Luis has been a plumber for twelve years. Water heaters are his specialty. Off the clock he coaches Little League.')
+    expect(screen.getAllByTestId('on-my-way-act')[2]!.textContent).toBe('👋Then texts your bio, 3 of 4 lines, since Dana has not heard from you before.')
+    expect(screen.getByTestId('on-my-way-bio-hold').textContent).toBe('Not this time')
+    expect(screen.getByTestId('on-my-way-bio-edit').textContent).toBe('Edit bio')
+    fireEvent.click(screen.getByTestId('on-my-way-primary'))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(io.send).toHaveBeenCalledTimes(2)
+    expect(io.send.mock.calls[0]![0]).toMatchObject({ quickReplyId: 'q1' })
+    expect(io.send.mock.calls[1]![0]).toEqual({ from: 'job_mode', kind: 'bio', customerId: 'cust-dana', contactId: 'contact-dana', jobId: 'job-512', lineIds: ['b1', 'b2', 'b3'] })
+    expect(io.loadIntroduced).toHaveBeenCalledWith('contact-dana', 'luis')
+  })
+
+  it('Not this time holds the bio: the line goes alone', async () => {
+    const io = withBio()
+    const { onClose } = mount(io)
+    fireEvent.click(await screen.findByTestId('on-my-way-bio-hold'))
+    expect(screen.queryByTestId('on-my-way-bio')).toBeNull()
+    expect(screen.getAllByTestId('on-my-way-act')).toHaveLength(2)
+    fireEvent.click(screen.getByTestId('on-my-way-primary'))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(io.send).toHaveBeenCalledTimes(1)
+  })
+
+  it('Edit bio: the window opens on the usual picks, a tick changes the preview and the count, and Use these brings the pick back', async () => {
+    const io = withBio()
+    const { onClose } = mount(io)
+    fireEvent.click(await screen.findByTestId('on-my-way-bio-edit'))
+    const win = await screen.findByTestId('bio-pick-window')
+    expect(screen.getByRole('dialog', { name: 'Your bio for Dana' })).toBeTruthy()
+    const boxes = within(win).getAllByRole('checkbox') as HTMLInputElement[]
+    expect(boxes.map((b) => b.checked)).toEqual([true, true, true, false])
+    fireEvent.click(boxes[3]!)
+    fireEvent.click(boxes[2]!)
+    expect(screen.getByTestId('bio-pick-preview').textContent).toBe('A little about Luis: Luis has been a plumber for twelve years. Water heaters are his specialty. He is an Astros fan.')
+    expect(screen.getByTestId('bio-pick-count').textContent).toMatch(/^\d+ left of 320$/)
+    fireEvent.click(screen.getByTestId('bio-pick-use'))
+    await waitFor(() => expect(screen.queryByTestId('bio-pick-window')).toBeNull())
+    expect(screen.getByTestId('on-my-way-bio').textContent).toBe('A little about Luis: Luis has been a plumber for twelve years. Water heaters are his specialty. He is an Astros fan.')
+    expect(screen.getAllByTestId('on-my-way-act')[2]!.textContent).toContain('3 of 4 lines')
+    fireEvent.click(screen.getByTestId('on-my-way-primary'))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(io.send.mock.calls[1]![0]).toMatchObject({ kind: 'bio', lineIds: ['b1', 'b2', 'b4'] })
+  })
+
+  it('Back leaves the pick as it was, and every line unticked says nothing goes', async () => {
+    const io = withBio()
+    mount(io)
+    fireEvent.click(await screen.findByTestId('on-my-way-bio-edit'))
+    const win = await screen.findByTestId('bio-pick-window')
+    fireEvent.click(within(win).getAllByRole('checkbox')[0]!)
+    fireEvent.click(screen.getByTestId('bio-pick-back'))
+    await waitFor(() => expect(screen.queryByTestId('bio-pick-window')).toBeNull())
+    expect(screen.getByTestId('on-my-way-bio').textContent).toContain('twelve years')
+    fireEvent.click(screen.getByTestId('on-my-way-bio-edit'))
+    const again = await screen.findByTestId('bio-pick-window')
+    for (const box of within(again).getAllByRole('checkbox').slice(0, 3)) fireEvent.click(box)
+    expect(screen.getByTestId('bio-pick-preview').textContent).toBe('Nothing goes while every line is off.')
+    fireEvent.click(screen.getByTestId('bio-pick-use'))
+    await waitFor(() => expect(screen.queryByTestId('bio-pick-window')).toBeNull())
+    expect(screen.getByTestId('on-my-way-bio').textContent).toBe('Nothing goes while every line is off.')
+    expect(screen.getAllByTestId('on-my-way-act')).toHaveLength(2)
+  })
+
+  it('a customer who has the bio already, a tech with none, or the push not in: no bio block', async () => {
+    mount(withBio({ loadIntroduced: vi.fn(() => Promise.resolve(true)) }))
+    await screen.findByTestId('on-my-way-preview')
+    await waitFor(() => expect(screen.getAllByTestId('on-my-way-act')).toHaveLength(2))
+    expect(screen.queryByTestId('on-my-way-bio-first')).toBeNull()
+    cleanup()
+    mount(withBio({ loadMyBio: vi.fn(() => Promise.resolve([])) }))
+    await screen.findByTestId('on-my-way-preview')
+    expect(screen.queryByTestId('on-my-way-bio-first')).toBeNull()
+    cleanup()
+    mount(fakeIo())
+    await screen.findByTestId('on-my-way-preview')
+    expect(screen.queryByTestId('on-my-way-bio-first')).toBeNull()
+  })
+
+  it('a Spanish reader gets the Spanish lines, and a line without Spanish cannot be ticked', async () => {
+    const io = withBio({ loadCustomer: vi.fn(() => Promise.resolve({ ...DANA, lang: 'es' as const })) })
+    mount(io)
+    expect((await screen.findByTestId('on-my-way-bio')).textContent).toBe('Un poco sobre Luis: Luis es plomero desde hace doce años. Su especialidad son los calentadores.')
+    expect(screen.getAllByTestId('on-my-way-act')[2]!.textContent).toContain('2 of 4 lines')
+    fireEvent.click(screen.getByTestId('on-my-way-bio-edit'))
+    const win = await screen.findByTestId('bio-pick-window')
+    const boxes = within(win).getAllByRole('checkbox') as HTMLInputElement[]
+    expect(boxes[2]!.disabled).toBe(true)
+    expect(within(win).getByText('No Spanish yet, so it cannot go to a Spanish reader.')).toBeTruthy()
   })
 })

@@ -42,8 +42,10 @@ export interface JobModeCustomer {
  * takes the customer's number from their record, ties the line to the job, keeps which phone line it came from, and
  * holds their answer for the tech. Only the blanks the tech typed go; no words of the line travel from the phone.
  */
-export interface PhoneSend {
+/** A line send: the office's line by its id and the blanks the tech typed. */
+export interface PhoneLineSend {
   from: 'job_mode'
+  kind?: 'line'
   customerId: string
   contactId: string | null
   jobId: string
@@ -51,6 +53,18 @@ export interface PhoneSend {
   /** The blanks the tech typed, by blank: `{ minutes: '15' }`. Forty characters each at most, on one line. */
   fills: Record<string, string>
 }
+
+/** The tech's bio (v2.5590): the second text after their first On my way to a customer, as the picked lines' ids. */
+export interface PhoneBioSend {
+  from: 'job_mode'
+  kind: 'bio'
+  customerId: string
+  contactId: string | null
+  jobId: string
+  lineIds: string[]
+}
+
+export type PhoneSend = PhoneLineSend | PhoneBioSend
 
 export interface JobModeMessageIo {
   loadCustomer(jobId: string): Promise<JobModeCustomer>

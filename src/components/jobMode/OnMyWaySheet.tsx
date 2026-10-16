@@ -5,8 +5,13 @@
  * The press clocks first (the session is the tech's pay) and texts second (a courtesy); a text that cannot go is said
  * in its row and never promised. The phone at the job already makes the press an I'm here. The rules are
  * `lib/jobMode/onMyWay.ts`; the reads are `lib/jobModeOnMyWayIo.ts`; the clock-in is the Dashboard's bridge.
+ *
+ * Since v2.5590 (the tech's bio, punch list #114) the first time this customer hears from the tech, the bio the
+ * office wrote follows the line as a second text: it shows under the line with **Not this time** and **Edit bio**,
+ * the window on top where the tech ticks the lines for this customer (`BioPickWindow`); the press texts the line,
+ * then the bio, each said in the toast.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { UpdateFocusApplyDirectFn } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -20,6 +25,7 @@ import { jobModeMessagesOffered } from '../../lib/messages/jobBox'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import type { LatLng } from '../../lib/jobTravelEstimate'
 import type { PhoneLine } from '../../lib/quickReplies/phone'
+import { bioPickedLines, bioText, liveLines, usualPicks, type BioLine } from '../../lib/bio/bio'
 import {
   acts,
   guessDrive,
@@ -34,9 +40,10 @@ import {
   travelNote,
   type PhonePress,
 } from '../../lib/jobMode/onMyWay'
+import { BioPickWindow } from './BioPickWindow'
 import * as S from './sheetStyles'
 
-/** The press's row in `ui_nav_clicks`: `#text`, `#no-text` or `#start-here`. */
+/** The press's row in `ui_nav_clicks`: `#text`, `#text-bio`, `#no-text` or `#start-here`. */
 export const ON_MY_WAY_CONTROL = 'job_mode_on_my_way'
 
 /** One of today's still-open jobs, as the card names it. */
@@ -77,6 +84,10 @@ export interface OnMyWaySheetProps {
 
 const firstOf = (name: string | null) => name?.trim().split(/\s+/)[0] || null
 
+const bioFirstLine: CSSProperties = { margin: '0.9rem 0 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-amber-800)' }
+const bioRowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.3rem' }
+const editBioBtn: CSSProperties = { ...S.secondaryBtn, minHeight: 40, padding: '0 0.8rem', fontSize: '0.875rem' }
+
 export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, leaving, canFinishDay, apply, onFinishDay, onDone, onClose, io: ioProp, today = scheduleTodayDateKey(), now = Date.now }: OnMyWaySheetProps) {
   const { showToast } = useToastContext()
   const io = useMemo(() => ioProp ?? supabaseOnMyWayIo(), [ioProp])
@@ -93,8 +104,16 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
   const touched = useRef(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /** The tech's bio: `undefined` while reading, `null` while the push is not in. */
+  const [myBio, setMyBio] = useState<BioLine[] | null | undefined>(undefined)
+  /** Whether this job's customer already has the tech's bio, per job. */
+  const [introducedState, setIntroducedState] = useState<{ jobId: string; value: boolean | null } | undefined>(undefined)
+  /** The lines picked for this customer; null takes the usual picks. */
+  const [picked, setPicked] = useState<string[] | null>(null)
+  const [bioHeld, setBioHeld] = useState(false)
+  const [pickOpen, setPickOpen] = useState(false)
 
-  // Once: the phone's lines, the switch, the phone's own point.
+  // Once: the phone's lines, the switch, the phone's own point, the tech's bio.
   useEffect(() => {
     let live = true
     io.loadPressLines().then(
@@ -103,10 +122,11 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
     )
     void io.loadTextsOn().then((on) => live && setTextsOn(on))
     void io.loadMyPoint().then((p) => live && setMyPoint(p), () => live && setMyPoint(null))
+    void io.loadMyBio(userId).then((b) => live && setMyBio(b), () => live && setMyBio(null))
     return () => {
       live = false
     }
-  }, [io])
+  }, [io, userId])
 
   // Per destination: the customer, the tech's blocks, the job's point.
   useEffect(() => {
@@ -126,6 +146,23 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
 
   const theirs = customer?.jobId === jobId ? customer.customer : null
   const first = firstOf(theirs?.customerName ?? null)
+  /** The tech's own first name, for the bio's opener. */
+  const myFirst = firstOf(me)
+
+  // Once the customer is read: has their thread had the tech's bio?
+  useEffect(() => {
+    if (!customer || !jobId || customer.jobId !== jobId) return
+    let live = true
+    const id = jobId
+    io.loadIntroduced(customer.customer.contactId, userId).then(
+      (v) => live && setIntroducedState({ jobId: id, value: v }),
+      () => live && setIntroducedState({ jobId: id, value: null }),
+    )
+    return () => {
+      live = false
+    }
+  }, [io, customer, jobId, userId])
+
   const pointsPending = myPoint === undefined || jobPoint === undefined || jobPoint.jobId !== jobId
   const guess = useMemo(() => (pointsPending ? null : guessDrive(myPoint ?? null, jobPoint?.point ?? null)), [pointsPending, myPoint, jobPoint])
 
@@ -146,8 +183,20 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
     [theirs?.customerName, me, dest?.jobName, dest?.jobAddress, blocks, today],
   )
   const typedFills: Record<string, string> = press === 'on_my_way' && minutes != null ? { minutes: String(minutes) } : {}
-  const preview = line && !hold ? previewOf(line, fills, typedFills, theirs?.lang ?? 'en') : null
-  const a = dest ? acts({ press: 'on_my_way', jobLabel: dest.label, first, leaving, hold, sameSite }) : null
+  const lang = theirs?.lang ?? 'en'
+  const preview = line && !hold ? previewOf(line, fills, typedFills, lang) : null
+
+  // The bio: the first time this customer hears from the tech, it follows the line.
+  const bioLines = useMemo(() => myBio ?? [], [myBio])
+  const bioLive = useMemo(() => liveLines(bioLines), [bioLines])
+  const pickedIds = useMemo(() => picked ?? usualPicks(bioLines), [picked, bioLines])
+  const introducedHere = introducedState?.jobId === jobId ? introducedState.value : undefined
+  const bioBlock = press === 'on_my_way' && !loading && !hold && !sameSite && Boolean(theirs?.customerId) && introducedHere === false && bioLive.length > 0 && !bioHeld
+  const bioWords = useMemo(() => (bioBlock ? bioText({ lines: bioLines, picked: pickedIds, first: myFirst, lang }) : null), [bioBlock, bioLines, pickedIds, myFirst, lang])
+  const bioGoes = bioBlock && bioWords != null
+  const bioCount = useMemo(() => (bioGoes ? { lines: bioPickedLines({ lines: bioLines, picked: pickedIds, first: myFirst, lang }).length, of: bioLive.length } : null), [bioGoes, bioLines, pickedIds, myFirst, lang, bioLive.length])
+
+  const a = dest ? acts({ press: 'on_my_way', jobLabel: dest.label, first, leaving, hold, sameSite, bio: bioCount }) : null
   const window = press === 'on_my_way' && dest?.timeEnd ? pastWindowWords(now(), minutes, { timeEnd: dest.timeEnd }) : null
   const needsMinutes = press === 'on_my_way' && !hold && preview?.stop != null
   const canGo = Boolean(dest) && !busy && !loading && !needsMinutes
@@ -156,9 +205,11 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
     setJobId(id)
     touched.current = false
     setTyped('')
+    setPicked(null)
+    setBioHeld(false)
   }
 
-  /** The press: clock first, then the text, each said in its own toast. */
+  /** The press: clock first, then the text, then the bio the first time, each said in the toast. */
   const go = async (travel: 'on-the-way' | 'on-site', withText: boolean) => {
     if (!dest || busy) return
     setBusy(true)
@@ -170,8 +221,10 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
         return
       }
       const texting = withText && !hold && line && theirs?.customerId
-      recordNavClick(userId, role ?? null, ON_MY_WAY_CONTROL, travel === 'on-site' && !withText ? '#start-here' : texting ? '#text' : '#no-text')
+      const withBio = Boolean(texting) && travel === 'on-the-way' && bioGoes
+      recordNavClick(userId, role ?? null, ON_MY_WAY_CONTROL, travel === 'on-site' && !withText ? '#start-here' : texting ? (withBio ? '#text-bio' : '#text') : '#no-text')
       let sent: string | null = null
+      let bioSaid: string | null = null
       if (texting) {
         try {
           await io.send({ from: 'job_mode', customerId: theirs.customerId!, contactId: theirs.contactId, jobId: dest.jobId, quickReplyId: line.id, fills: typedFills })
@@ -179,9 +232,17 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
         } catch (e) {
           showToast(formatErrorMessage(e, ON_MY_WAY_WORDS.textFailed), 'error')
         }
+        if (sent && withBio) {
+          try {
+            await io.send({ from: 'job_mode', kind: 'bio', customerId: theirs.customerId!, contactId: theirs.contactId, jobId: dest.jobId, lineIds: pickedIds })
+            bioSaid = ON_MY_WAY_WORDS.bioSent
+          } catch (e) {
+            showToast(formatErrorMessage(e, ON_MY_WAY_WORDS.bioFailed), 'error')
+          }
+        }
       }
       const did = travel === 'on-the-way' ? ON_MY_WAY_WORDS.onTheWay(dest.label) : ON_MY_WAY_WORDS.arrived(null)
-      showToast(sent ? `${did} ${sent}` : did, 'success')
+      showToast([did, sent, bioSaid].filter(Boolean).join(' '), 'success')
       onDone()
       onClose()
     } finally {
@@ -217,7 +278,7 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
   )
 
   return (
-    <ResponsiveModalShell title={ON_MY_WAY_WORDS.title} onRequestClose={() => !busy && onClose()} footer={footer}>
+    <ResponsiveModalShell title={ON_MY_WAY_WORDS.title} onRequestClose={() => !busy && !pickOpen && onClose()} footer={footer}>
       <div data-testid="on-my-way-sheet">
         <p style={{ ...S.label, marginTop: 0 }}>{ON_MY_WAY_WORDS.whereTo}</p>
         {destinations.length === 0 ? (
@@ -285,6 +346,24 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
                   {pointsPending ? ON_MY_WAY_WORDS.guessing : guess ? ON_MY_WAY_WORDS.guessed(guessMiles(guess)) : ON_MY_WAY_WORDS.noGuess}
                 </p>
                 {window ? <p style={S.warn} data-testid="on-my-way-window">{window}</p> : null}
+                {bioBlock ? (
+                  <>
+                    <p style={bioFirstLine} data-testid="on-my-way-bio-first">
+                      {ON_MY_WAY_WORDS.bioFirst(first)}
+                    </p>
+                    <p style={{ ...S.bubble, fontSize: '0.9375rem', borderStyle: 'dashed', marginTop: '0.4rem' }} data-testid="on-my-way-bio">
+                      {bioWords ?? ON_MY_WAY_WORDS.bioNone}
+                    </p>
+                    <div style={bioRowStyle}>
+                      <button type="button" style={S.quietMuted} disabled={busy} onClick={() => setBioHeld(true)} data-testid="on-my-way-bio-hold">
+                        {ON_MY_WAY_WORDS.notThisTime}
+                      </button>
+                      <button type="button" style={editBioBtn} disabled={busy} onClick={() => setPickOpen(true)} data-testid="on-my-way-bio-edit">
+                        {ON_MY_WAY_WORDS.editBio}
+                      </button>
+                    </div>
+                  </>
+                ) : null}
               </>
             ) : null}
           </>
@@ -317,6 +396,9 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
           ) : null}
         </div>
       </div>
+      {pickOpen ? (
+        <BioPickWindow lines={bioLines} picked={pickedIds} techFirst={myFirst} customerFirst={first} lang={lang} onUse={(ids) => { setPicked(ids); setPickOpen(false) }} onClose={() => setPickOpen(false)} />
+      ) : null}
     </ResponsiveModalShell>
   )
 }
