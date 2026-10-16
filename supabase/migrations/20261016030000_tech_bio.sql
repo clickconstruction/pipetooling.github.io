@@ -51,6 +51,10 @@ DROP POLICY IF EXISTS user_bio_lines_select ON public.user_bio_lines;
 CREATE POLICY user_bio_lines_select ON public.user_bio_lines
   FOR SELECT TO authenticated USING (user_id = auth.uid() OR public.gc_office_team());
 
+-- The schema's default privileges hand a new table to anon and authenticated whole; this table is read by the signed-in
+-- and written only through the two functions below, so the rest is taken back.
+REVOKE ALL ON TABLE public.user_bio_lines FROM PUBLIC, anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLE public.user_bio_lines FROM authenticated;
 GRANT SELECT ON TABLE public.user_bio_lines TO authenticated;
 GRANT ALL ON TABLE public.user_bio_lines TO service_role;
 
