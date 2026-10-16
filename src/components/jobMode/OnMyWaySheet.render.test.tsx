@@ -85,6 +85,15 @@ function mount(io: OnMyWayIo, over: Partial<Parameters<typeof OnMyWaySheet>[0]> 
   return { apply, onDone, onClose, onFinishDay }
 }
 
+/**
+ * The preview paints as soon as the customer and the lines are read, while the two points (the phone's and the job's)
+ * are still on their way, so for a tick it holds the bare {minutes}; a loaded runner (the merge group, 2026-10-16) read
+ * it there. Wait for the guess to fill the box before reading the preview or stepping the minutes.
+ */
+async function guessed(minutes = '20'): Promise<void> {
+  await waitFor(() => expect((screen.getByTestId('on-my-way-minutes') as HTMLInputElement).value).toBe(minutes))
+}
+
 beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 })
   window.matchMedia = ((q: string) => ({ matches: /max-width:\s*640px/.test(q), media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })) as typeof window.matchMedia
@@ -99,8 +108,9 @@ describe('OnMyWaySheet at 375 px', { timeout: 15_000 }, () => {
     const dest = screen.getByTestId('on-my-way-destination')
     expect(dest.getAttribute('aria-pressed')).toBe('true')
     expect(dest.textContent).toContain('Suggested')
-    expect((await screen.findByTestId('on-my-way-preview')).textContent).toBe('Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out.')
-    expect((screen.getByTestId('on-my-way-minutes') as HTMLInputElement).value).toBe('20')
+    await screen.findByTestId('on-my-way-preview')
+    await guessed()
+    expect(screen.getByTestId('on-my-way-preview').textContent).toBe('Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out.')
     expect(screen.getByTestId('on-my-way-guess').textContent).toMatch(/^Guessed from your phone to the job, 9\.\d mi\./)
     expect(screen.getAllByTestId('on-my-way-act').map((p) => p.textContent)).toEqual([
       '⏱Clocks you in on PLUM 512 · Whitfield water heater as on the way.',
@@ -122,6 +132,7 @@ describe('OnMyWaySheet at 375 px', { timeout: 15_000 }, () => {
     const io = fakeIo()
     const { apply } = mount(io)
     await screen.findByTestId('on-my-way-preview')
+    await guessed()
     fireEvent.click(screen.getByLabelText('Five minutes more'))
     expect((screen.getByTestId('on-my-way-minutes') as HTMLInputElement).value).toBe('25')
     expect(screen.getByTestId('on-my-way-preview').textContent).toContain('about 25 minutes')
@@ -181,6 +192,7 @@ describe('OnMyWaySheet at 375 px', { timeout: 15_000 }, () => {
     const io = fakeIo()
     mount(io, { destinations: [WHITFIELD, RIVERBEND], leaving: 'PLUM 498 · Baker St water heater', canFinishDay: true })
     await screen.findByTestId('on-my-way-preview')
+    await guessed()
     fireEvent.click(screen.getAllByTestId('on-my-way-destination')[1]!)
     await waitFor(() => expect(screen.getByTestId('on-my-way-preview').textContent).toContain('Priya,'))
     expect(screen.getAllByTestId('on-my-way-act')[0]!.textContent).toBe('⏱Clocks you out of PLUM 498 · Baker St water heater and in on GAS 77 · Riverbend gas test as on the way.')
