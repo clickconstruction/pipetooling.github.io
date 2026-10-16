@@ -78,6 +78,8 @@ import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/d
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
 import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
 import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
@@ -398,6 +400,8 @@ export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
+  // The ZZ rule for prospects (v2.5583): a ZZ-named company is a dev's test row, hidden from every role but dev.
+  const hideZz = useZzTestJobsHidden(authRole)
   // v2.3805: a column share opens the Hiring pill too — the board then renders trimmed (`shared`).
   const { sharedRoleIds: myHiringShares, loading: hiringSharesLoading } = useMyHiringShares(authUser?.id)
   const canOpenHiring = teamProspectsAccess || myHiringShares.length > 0
@@ -887,7 +891,7 @@ export default function Prospects() {
       setFollowUpLoading(false)
       return
     }
-    const raw = (data ?? []) as Prospect[]
+    const raw = withoutZzProspects((data ?? []) as Prospect[], hideZz)
     let prospects = orderFollowUpProspects(
       raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach' && p.prospect_fit_status !== 'converted'),
       called,
@@ -932,7 +936,7 @@ export default function Prospects() {
         setFollowUpLoading(false)
         return
       }
-      if (single) {
+      if (single && !(hideZz && isZzTestProspect(single as Prospect))) {
         finalProspects = [single as Prospect, ...prospects]
         idx = 0
       }
@@ -1051,9 +1055,10 @@ export default function Prospects() {
       if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
     }
     setProspectLastCallMap(lastCalls)
-    setProspectListProspects((data ?? []) as Prospect[])
+    const rows = withoutZzProspects((data ?? []) as Prospect[], hideZz)
+    setProspectListProspects(rows)
     setProspectListLoading(false)
-    if (kind === 'gc_lead') void mergeJobs(((data ?? []) as Prospect[]).map((p) => p.id))
+    if (kind === 'gc_lead') void mergeJobs(rows.map((p) => p.id))
   }
 
   async function loadCopyTemplates() {
@@ -1478,14 +1483,14 @@ export default function Prospects() {
     setTeamLoading(true)
     try {
       // The lane's own 30 days (v2.5563); Quickfill's team chart keeps every kind.
-      const result = await loadProspectTeamActivity(supabase, kind)
+      const result = await loadProspectTeamActivity(supabase, kind, { hideZz })
       setTeamDataByDate(result)
     } catch {
       setTeamDataByDate({})
     } finally {
       setTeamLoading(false)
     }
-  }, [canAccessActivityTab, kind])
+  }, [canAccessActivityTab, kind, hideZz])
 
   useEffect(() => {
     if (activeTab === 'activity' && canAccessActivityTab) {
