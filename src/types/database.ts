@@ -5443,6 +5443,10 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          arrived_at: string | null
+          arrived_lat: number | null
+          arrived_lng: number | null
+          arrived_location_source: string | null
           bid_id: string | null
           clock_in_lat: number | null
           clock_in_lng: number | null
@@ -5463,12 +5467,17 @@ export type Database = {
           revoked_at: string | null
           revoked_by: string | null
           salary_segment_index: number | null
+          travel_started_at: string | null
           user_id: string
           work_date: string
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          arrived_at?: string | null
+          arrived_lat?: number | null
+          arrived_lng?: number | null
+          arrived_location_source?: string | null
           bid_id?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
@@ -5489,12 +5498,17 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
+          travel_started_at?: string | null
           user_id: string
           work_date: string
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          arrived_at?: string | null
+          arrived_lat?: number | null
+          arrived_lng?: number | null
+          arrived_location_source?: string | null
           bid_id?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
@@ -5515,6 +5529,7 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
+          travel_started_at?: string | null
           user_id?: string
           work_date?: string
         }
@@ -26442,6 +26457,7 @@ export type Database = {
           id: string
           phone_name: string | null
           phone_order: number | null
+          phone_press: string | null
           removed_at: string | null
           scope: string
           step_key: string | null
@@ -26455,6 +26471,7 @@ export type Database = {
           id?: string
           phone_name?: string | null
           phone_order?: number | null
+          phone_press?: string | null
           removed_at?: string | null
           scope?: string
           step_key?: string | null
@@ -26468,6 +26485,7 @@ export type Database = {
           id?: string
           phone_name?: string | null
           phone_order?: number | null
+          phone_press?: string | null
           removed_at?: string | null
           scope?: string
           step_key?: string | null
@@ -36773,6 +36791,10 @@ export type Database = {
           p_project_id: string
         }
         Returns: string
+      }
+      set_quick_reply_press: {
+        Args: { p_id: string; p_press: string }
+        Returns: number
       }
       set_request_priority: {
         Args: {
