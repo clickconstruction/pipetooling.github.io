@@ -1,8 +1,8 @@
 ---
 name: "Prospects: finding jobs to GC and subs for the bench, beside the customers"
 number: 110
-group: gated
-status: mock-up drawn 2026-10-15 (today, a first cut, the critique, the revised cut in mockup.html); nothing built; the owner's seven calls at the mock-up's foot
+group: close
+status: built 2026-10-15 to the revised cut in four PRs: v2.5559 (#5753, migration 20261015040000 pushed 21:51 UTC), v2.5560 (#5755), v2.5561 (#5760), v2.5563 (#5765); walked live on prod data with made-up rows, all deleted
 summary: >
   Prospects is the company's one finding page, and it finds only customers (a GC or an owner who
   could send us plans for our trades) and hires. GC mode now needs two more kinds found: owners,
@@ -16,14 +16,44 @@ summary: >
   heading the Subs lane, a double caught while typing, sources with success, and doors back from
   the bench's gap and the Lost lane.
 next: >
-  The owner's seven calls at the mock-up's foot (the tab names, who sees the lanes, what Asked us ✓
-  does, whether the jobs list ships in PR 3 or notes do for a month, lost owners back to Prospects,
-  By need on the Subs queue, the trade names). Then PR 1.
-size: M · M · M–L · S
-blocker: The owner's calls.
+  The owner uses the three lanes for a week and changes any call under Where it stands, each built
+  to the mock-up's default. Then the two residuals if the owner wants them (a sub's and an owner's email
+  words; Add to Prospects from a lead's thread), or retire this folder.
+size: S · S
+blocker: The owner's look.
 ---
 
 # Prospects: finding jobs to GC and subs for the bench
+
+## Where it stands
+
+**Built 2026-10-15**, on the owner's "build it" for the revised cut, in four PRs, each rebased onto `main` after the one before merged:
+
+| PR | Version | What it did |
+|---|---|---|
+| #5753 | v2.5559 | The kind on `prospects` (migration `20261015040000_prospect_kinds.sql`: `kind`, `source`, a sub's trades, range and language, a lead's role and customer link, the two conversion links, `prospect_jobs`), the four top tabs, New Prospect's kind cards and each kind's boxes, the per-kind last press (Add to the bench ✓ opens the bench's Add a company filled in), the list and Activity per lane. |
+| #5755 | v2.5560 | Subs: What the bench needs (the bench's rule of three, a chip a trade, counting the lane as it stands), By need, the call script on the card, the bench's trade names as picks, the double against the bench, Source success, and Find on Prospects → on the bench's "Find N more". |
+| #5760 | v2.5561 | Jobs to GC: the Jobs box (+ Add a job, Lost with who won, Drop, Reopen, Remove), Soonest bid, GC work in flight, Asked us ✓ handing the soonest job to New project filled in, Link this lead to a customer it already is, and Send the owner back to Prospects on a lost GC project's card. |
+| #5765 | v2.5563 | Every other reader keeps to its kind: Quickfill's counts and Can't reach list, Add customer's prospect search, Activity's 30 days, and a link that names a prospect of another kind opens its own lane. |
+
+**The owner's seven calls, as built** (each the mock-up's default; say so to change one):
+
+1. **Tab names**: Jobs to GC and Subs.
+2. **Who sees the lanes**: the one Prospects gate (dev, master, assistant, controller, an estimator with the flag).
+3. **Asked us ✓**: makes the customer (or uses the linked one), marks the soonest job asked, and opens New project filled in. Nothing is made on GC projects until New project's own Save.
+4. **The jobs list**: shipped from day one.
+5. **Lost owners**: back to Prospects by a press on the lost card, never on their own.
+6. **By need**: shipped beside Coldest and Never called.
+7. **Trade names**: typed, with the bench's own names offered as picks, since the strip counts by the bench's spelling.
+
+**Walked live 2026-10-15** on the dev server against prod, as a dev, with made-up rows, all deleted after. The customer deck read as before: 268 in the queue, the same first card, Converted ✓ and the copy row. On Subs a test sub showed its chips and facts, and the strip went from 0 to 1 to call and back to 0 on delete. By need and the call script showed, and Add to the bench ✓ opened Add a company filled in (cancelled, not saved). The double warning named the GC test trade company, a link with no lane opened the sub on Subs, Activity read Source success, and Quickfill held at the customer deck's 268. On Jobs to GC a lead typed as the GC test customer's name offered and took the link. The Jobs box added, lost, reopened, dropped and removed jobs, and Asked us ✓ opened New project filled with the job and the customer (cancelled), the job reading asked us. The walk found two faults, both fixed before their PRs merged: the strip kept counting a deleted sub (v2.5560's `stillQueued`), and an asked job claimed a GC project held it before any did (v2.5561's words).
+
+**Not run live**: a saved Add to the bench (no screen removes a company from the bench, so a test company would stay on it and count toward a real trade), Send the owner back to Prospects (no lost GC project on prod), and Asked us ✓ through Add customer (it would make a customer). Each is covered by its kernel and render tests.
+
+**Residuals**, each waiting on the owner:
+
+- **A sub's and an owner's email words.** The customer deck's three templates are written to win plumbing customers, so they show on Customers only. Templates per lane need the company's words for each audience.
+- **Add to Prospects from a lead's thread.** Messages draws no lead card yet (R8 · 9 has been kernel-only since v2.5416, with its own calls on leads' home and who reads a lead's prospect). `prospectRowFor` takes the lane since v2.5563, so the press is one small PR once the card exists.
 
 ## The ask
 
@@ -60,7 +90,7 @@ intuitive and robust? and then present me the revised mockup."
 - **Bids** carry ITB links labelled PlanHub · BuildingConnected · Procore (`src/lib/itbLinks.ts`);
   there is no lead feed.
 
-## The decision (pending)
+## The decision
 
 `mockup.html` draws today (0), the first cut (A) and the revised cut (B), with the critique between
 them and the owner's calls at the foot.
