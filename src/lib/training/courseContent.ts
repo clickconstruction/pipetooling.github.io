@@ -434,6 +434,11 @@ export function shuffleOptions(q: CourseQuestion, seed: number): CourseQuestion 
  * The final check's questions: `finalDraw` of them, taken one part at a time (the bank counts as a
  * part) so every part is asked, each with its options shuffled. The same seed draws the same check.
  */
+/** The ask with its case and punctuation stripped: two questions with the same key are one question asked twice. */
+export function askKey(ask: string): string {
+  return ask.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
+}
+
 export function drawFinalCheck(course: Course, seed: number): CourseQuestion[] {
   const rnd = seededRandom(seed)
   const groups = new Map<number, CourseQuestion[]>()
@@ -441,13 +446,17 @@ export function drawFinalCheck(course: Course, seed: number): CourseQuestion[] {
   groups.set(-1, [...course.finalBank])
   const queues = [...groups.entries()].sort(([a], [b]) => a - b).map(([, qs]) => shuffled(qs, rnd))
   const out: CourseQuestion[] = []
+  const asked = new Set<string>()
   let guard = 0
   while (out.length < course.finalDraw && guard++ < 10_000) {
     let took = false
     for (const queue of queues) {
       if (out.length >= course.finalDraw) break
-      const q = queue.shift()
+      // v2.5576: an ask the draw already holds is skipped, so a bank question that repeats a lesson's never comes up twice.
+      let q = queue.shift()
+      while (q && asked.has(askKey(q.ask))) q = queue.shift()
       if (!q) continue
+      asked.add(askKey(q.ask))
       out.push({ ...q, options: shuffled(q.options, rnd) })
       took = true
     }

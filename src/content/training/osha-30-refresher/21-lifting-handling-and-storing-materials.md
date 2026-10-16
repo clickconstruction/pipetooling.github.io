@@ -60,10 +60,10 @@ Poor handling causes sprains, fractures, amputations and crushing deaths. Back i
 > right: Lift with the legs and a straight back. The other three are the real prevention steps.
 > wrong: Planning, reporting and controls prevent injuries. Bending at the waist is how backs get hurt.
 
-4. Which of the following is an example of an engineering control for lifting heavy objects?
-- [ ] A written lifting procedure
-- [ ] Training on lifting
-- [ ] Back belts for the crew
-- [x] A mechanical lift or hoist
-> right: A hoist takes the strain off without relying on anyone's behavior.
-> wrong: Procedures and training are administrative controls. The engineering answer puts a machine under the load.
+4. A rigging sling has no tag. What does that mean?
+- [ ] It is rated for its full size
+- [x] It is out of service
+- [ ] It can lift up to 50 lb
+- [ ] It was made before tags were required
+> right: No tag, no rating, no lift. Tag it out and report it.
+> wrong: The tag carries the rating. Without it nobody knows the capacity, so the sling is out of service.

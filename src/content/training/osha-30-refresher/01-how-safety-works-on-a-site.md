@@ -38,21 +38,21 @@ Every module of the course comes back to the same few ideas. They cover the stro
 - **30 days** to file a retaliation complaint
 
 ## Check yourself
-1. What type of control involves installing barriers around hazards?
-- [ ] Administrative control
-- [x] Engineering control
+1. Which hazard control method involves changing the way people work?
+- [ ] Engineering controls
+- [x] Administrative controls
 - [ ] PPE
-- [ ] Substitution
-> right: A barrier works whether or not anyone follows a rule.
-> wrong: A barrier works without worker behavior, so it sits on the engineering rung.
+- [ ] Elimination
+> right: Administrative controls change what people do. Training, permits and work rules are the examples.
+> wrong: Engineering changes the machine, PPE covers the body and elimination removes the hazard. Changing how people work is administrative.
 
-2. When is it safe to enter a trench?
-- [ ] When caution tape is around the opening
-- [ ] When a coworker entered earlier without reporting problems
-- [ ] When it is more than 10 feet deep
-- [x] When a competent person has inspected it
-> right: The competent person inspects daily and after any event, before anyone goes in.
-> wrong: Tape, a coworker's luck or the depth prove nothing. Only the inspection does.
+2. What is the employer's responsibility if a trench is deeper than 20 feet?
+- [ ] Provide extra tools
+- [ ] Reduce the number of workers
+- [x] Have a registered professional engineer design the protective system
+- [ ] Offer more breaks
+> right: Past 20 ft the protection is designed by a registered professional engineer, never improvised.
+> wrong: Tools, fewer workers and breaks do not hold up a wall. Past 20 ft an engineer designs the protection.
 
 3. Which of the following does NFPA 70E, the electrical safety standard, require workers to do?
 - [x] Follow the employer's electrical safety procedures
