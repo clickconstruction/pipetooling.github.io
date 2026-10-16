@@ -5,7 +5,7 @@ roles: all
 keywords: training, course, OSHA 30, refresher, lessons, check yourself, final check, caught up, lapsed, training due, take it again
 order: 80
 ---
-Training is a card at the bottom of your Dashboard, under My Time. It lists the courses your role must take. Each course is a set of short lessons you read at your own pace. A phone or a desk both work.
+Training is a card at the bottom of your Dashboard, under My Time. In Job Mode it sits under My Schedule. It lists the courses your role must take. Each course is a set of short lessons you read at your own pace. A phone or a desk both work.
 
 ## Start a course
 

@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, my requests, dispatch answered
+keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, my requests, dispatch answered, training, course
 order: 10
 ---
 Job Mode turns the Dashboard into one big card built for working in the field. It shows your current job, your next job, and big buttons for what you do on site.
@@ -64,6 +64,10 @@ While you are clocked into a job, the card keeps going below the buttons:
 - You tap {{button:outline|Job detail}}. It opens the full **Job Detail** modal right over the card.
 - A **Street View photo** of the job address. You tap it to open Street View in Google Maps.
 - **Job updates** is the same updates thread as Job Detail. You read what the office posted. You add your own note without leaving the card.
+
+## Training under the card
+
+Under My Schedule, a Training card lists the courses your role must take. It is the same card the full Dashboard shows. One press opens the course. See [take a training course](/help/take-a-training-course).
 
 ## Clocking in and out
 
