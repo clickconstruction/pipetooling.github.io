@@ -102,6 +102,22 @@ describe('SettingsTrainingTab', () => {
     expect(patch.retake_from).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
+  it('Preview the course opens the course page, the facts line carries no hash, and the retake day is a chip whose Clear puts the old passes back (v2.5577)', async () => {
+    io.retakeFrom = '2026-10-16'
+    await open()
+    expect((section().querySelector('[data-training-preview]') as HTMLAnchorElement).getAttribute('href')).toBe('/training/osha-30-refresher')
+    expect(within(section()).getByText(/30 lessons and a final check · about 3 h · ships with the app/)).toBeTruthy()
+    expect(section().textContent).not.toContain('abcdef01')
+    expect(within(section()).getByText(/Everyone takes it again from/)).toBeTruthy()
+    fireEvent.click(section().querySelector('[data-training-retake-clear]') as HTMLButtonElement)
+    await waitFor(() => expect(io.save).toHaveBeenCalledTimes(1))
+    expect((io.save.mock.calls[0] as unknown[])[1]).toEqual({ retake_from: null })
+    cleanup()
+    io.retakeFrom = null
+    await open()
+    expect(section().querySelector('[data-training-retake-chip]')).toBeNull()
+  })
+
   it('says so before the tables exist, and that an off course counts nobody', async () => {
     io.missing = true
     renderWithProviders(<SettingsTrainingTab />)
