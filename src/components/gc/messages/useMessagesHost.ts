@@ -9,6 +9,7 @@
  * window); it moves onto this hook in its own PR.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMessagesLive } from './useMessagesLive'
 import { useNavigate } from 'react-router-dom'
 import { useBidPreview } from '../../../contexts/BidPreviewModalContext'
 import { useCustomerProfileModal } from '../../../contexts/CustomerProfileModalContext'
@@ -74,6 +75,8 @@ export function useMessagesHost({ enabled, closeThread }: { enabled: boolean; cl
   }, [enabled, tick])
 
   const reread = useCallback(() => setTick((t) => t + 1), [])
+  // v2.5572: a line the webhook wrote, a delivery, a teammate's press elsewhere: one read after the settle.
+  useMessagesLive(enabled, reread)
   const writes = useMemo<MessagesWrites>(() => {
     const after = async <T,>(press: Promise<T>): Promise<T> => {
       const answer = await press
