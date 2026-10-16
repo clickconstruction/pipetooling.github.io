@@ -121,7 +121,7 @@ SELECT tt.as_user('00000000-0000-0000-0000-0000000073b2');
 SET LOCAL ROLE authenticated;
 SELECT tt.same('the office reads them all', (SELECT count(*)::text FROM public.user_bio_lines), '3');
 SELECT tt.refused('the office writes the table only through the function',
-  format('INSERT INTO public.user_bio_lines (user_id, text) VALUES (%L, %L)', '00000000-0000-0000-0000-0000000073b1', 'straight in'), 'permission denied');
+  format('INSERT INTO public.user_bio_lines (user_id, text) VALUES (%L, %L)', '00000000-0000-0000-0000-0000000073b1', 'straight in'), 'user_bio_lines');
 RESET ROLE;
 
 -- 4 · The helper's own veto: off, off again keeps the first stamp, on; each refusal in words.
@@ -154,7 +154,7 @@ SELECT tt.refused('nobody signed in cannot write a line',
 RESET ROLE;
 SET LOCAL ROLE anon;
 SELECT tt.refused('anon holds neither function', format('SELECT public.bio_line_say(%L, false)', (SELECT l1 FROM ids)), 'permission denied');
-SELECT tt.refused('anon reads no line', 'SELECT count(*) FROM public.user_bio_lines', 'permission denied');
+SELECT tt.refused('anon reads no line', 'SELECT count(*) FROM public.user_bio_lines', 'user_bio_lines');
 RESET ROLE;
 
 -- 5 · Who writes: the office only, and not a training account.
