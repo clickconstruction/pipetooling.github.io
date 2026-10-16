@@ -11,6 +11,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { isNotThereYetError } from '../gcWordAskIo'
+import type { PhonePress } from './press'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import type { QuickReply, QuickReplyEdit, QuickReplyTags, QuickReplyVersion } from './kernel'
 import { quickRepliesFromRows, versionsFromRows, type QuickReplyRow, type QuickReplyUseRow, type QuickReplyVersionRow } from './rows'
@@ -31,6 +33,8 @@ export interface QuickRepliesIo {
   edit(id: string, text: string, tags: QuickReplyTags, r3?: Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName'>): Promise<number>
   remove(id: string): Promise<void>
   restore(id: string): Promise<void>
+  /** v2.5573: points a big button at the line (or clears it with null) through `set_quick_reply_press`. Returns how many lines changed. */
+  setPress(id: string, press: PhonePress | null): Promise<number>
 }
 
 const LINE_COLUMNS = 'id, text, for_kind, step_key, scope, added_by, added_at, removed_at, text_es, phone_order, phone_name'
@@ -61,10 +65,19 @@ export function supabaseQuickRepliesIo(client: unknown = supabase): QuickReplies
   const tagArgs = (tags: QuickReplyTags) => ({ p_for: tags.for, p_step: tags.for === 'any' ? null : tags.stepId })
   return {
     async loadLines() {
-      const [lines, uses] = await Promise.all([db.from('quick_replies').select(LINE_COLUMNS), db.from('quick_reply_uses').select(USE_COLUMNS)])
+      const [lines, uses, presses] = await Promise.all([
+        db.from('quick_replies').select(LINE_COLUMNS),
+        db.from('quick_reply_uses').select(USE_COLUMNS),
+        // The press column (v2.5573) is read apart, so a client ahead of the push still reads the lines.
+        db.from('quick_replies').select('id, phone_press'),
+      ])
       checkSupabaseError(lines, 'load the quick replies')
       checkSupabaseError(uses, 'load how often each is used')
-      return quickRepliesFromRows((lines.data ?? []) as QuickReplyRow[], (uses.data ?? []) as QuickReplyUseRow[])
+      const pressOf = new Map<string, string | null>()
+      if (!presses.error) for (const r of (presses.data ?? []) as Array<{ id: string; phone_press: string | null }>) pressOf.set(r.id, r.phone_press)
+      else if (!isNotThereYetError(presses.error)) checkSupabaseError(presses, 'load the phone’s big buttons')
+      const rows = ((lines.data ?? []) as QuickReplyRow[]).map((r) => ({ ...r, phone_press: pressOf.get(r.id) ?? null }))
+      return quickRepliesFromRows(rows, (uses.data ?? []) as QuickReplyUseRow[])
     },
     async loadVersions() {
       const result = await db.from('quick_reply_versions').select(VERSION_COLUMNS).order('id')
@@ -82,6 +95,9 @@ export function supabaseQuickRepliesIo(client: unknown = supabase): QuickReplies
     },
     async remove(id) {
       await call('remove_quick_reply', { p_id: id }, 'remove a quick reply')
+    },
+    async setPress(id, press) {
+      return call<number>('set_quick_reply_press', { p_id: id, p_press: press }, 'point the big button at a line')
     },
     async restore(id) {
       await call('restore_quick_reply', { p_id: id }, 'bring a quick reply back')

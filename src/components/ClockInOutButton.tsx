@@ -1159,13 +1159,17 @@ export default function ClockInOutButton({
   // handleUpdateFocus / handleCompleteClockIn but takes opts directly so the
   // caller doesn't depend on any modal state.
   const applyUpdateFocusDirectImpl = useCallback(
-    async (opts: { jobLedgerId: string | null; bidId: string | null; notes: string }) => {
+    async (opts: { jobLedgerId: string | null; bidId: string | null; notes: string; travel?: 'on-the-way' | 'on-site' }) => {
       if (!userId || !userName?.trim()) {
         return { ok: false, error: 'Missing user identity' }
       }
       const trimmedNotes = opts.notes.trim()
       try {
         const now = new Date()
+        // Job Mode's On my way / I'm here (v2.5573): the leg's stamp rides on the row. The two columns join the
+        // generated types with the types PR, so the stamp goes as a plain record.
+        const travelStamp: Record<string, string> =
+          opts.travel === 'on-the-way' ? { travel_started_at: now.toISOString() } : opts.travel === 'on-site' ? { arrived_at: now.toISOString() } : {}
         if (!openSession) {
           const inserted = await withSupabaseRetry(
             async () =>
@@ -1178,7 +1182,8 @@ export default function ClockInOutButton({
                   notes: trimmedNotes,
                   job_ledger_id: opts.jobLedgerId,
                   bid_id: opts.bidId,
-                })
+                  ...travelStamp,
+                } as never)
                 .select('id')
                 .single(),
             'job mode clock in',
@@ -1199,7 +1204,8 @@ export default function ClockInOutButton({
               job_ledger_id: opts.jobLedgerId,
               bid_id: opts.bidId,
               notes: trimmedNotes || openSession.notes || '',
-            })
+              ...travelStamp,
+            } as never)
             .eq('id', openSession.id)
           if (error) throw error
           await fetchSessions()
@@ -1226,7 +1232,8 @@ export default function ClockInOutButton({
                 notes: trimmedNotes,
                 job_ledger_id: opts.jobLedgerId,
                 bid_id: opts.bidId,
-              })
+                ...travelStamp,
+              } as never)
               .select('id')
               .single(),
           'job mode update focus clock in',

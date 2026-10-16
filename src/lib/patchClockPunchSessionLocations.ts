@@ -98,3 +98,26 @@ async function patchUpdateFocusLocations(
     /* non-fatal */
   }
 }
+
+/** Job Mode's I'm here (v2.5573): the phone's point at the arrival, on the session's `arrived_*` columns, after the stamp. */
+export function scheduleArrivedLocationPatch(supabase: SupabaseClient, sessionId: string): void {
+  void patchArrivedLocation(supabase, sessionId)
+}
+
+async function patchArrivedLocation(supabase: SupabaseClient, sessionId: string): Promise<void> {
+  const punch = await resolveClockPunchCoordinates(supabase)
+  if (!punch) return
+  try {
+    await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('clock_sessions')
+          // The three columns join the generated types with the types PR.
+          .update({ arrived_lat: punch.lat, arrived_lng: punch.lng, arrived_location_source: punch.source } as never)
+          .eq('id', sessionId),
+      'patch arrival location',
+    )
+  } catch {
+    /* non-fatal: the stamp is already saved without coordinates */
+  }
+}

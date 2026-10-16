@@ -45,6 +45,7 @@ const quickIo = (): QuickRepliesIo => ({
   edit: vi.fn(() => Promise.resolve(1)),
   remove: vi.fn(() => Promise.resolve()),
   restore: vi.fn(() => Promise.resolve()),
+  setPress: vi.fn(() => Promise.resolve(1)),
 })
 const io = (): ReplyIo => ({
   loadSender: vi.fn(() => Promise.resolve({ name: 'Robert' })),

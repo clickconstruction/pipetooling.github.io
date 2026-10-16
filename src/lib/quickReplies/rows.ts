@@ -7,6 +7,7 @@
  * name there, a version its Spanish (`es`) and its phone places (`phone`), and a line may be for any of the seven kinds.
  */
 import { QR_KIND_ORDER, type QuickReply, type QuickReplyChange, type QuickReplyFor, type QuickReplyScope, type QuickReplyTags, type QuickReplyVersion } from './kernel'
+import { phonePressOf } from './press'
 
 export interface QuickReplyRow {
   id: string
@@ -21,6 +22,8 @@ export interface QuickReplyRow {
   text_es?: string | null
   phone_order?: number | null
   phone_name?: string | null
+  /** Job Mode's big button this line is (v2.5573): on_my_way | im_here; a row read without it leaves null. */
+  phone_press?: string | null
 }
 
 export interface QuickReplyUseRow {
@@ -83,6 +86,7 @@ export function quickRepliesFromRows(lines: readonly QuickReplyRow[], uses: read
       textEs: r.text_es ?? null,
       phoneOrder: r.phone_order ?? null,
       phoneName: r.phone_name ?? null,
+      phonePress: phonePressOf(r.phone_press),
     }
     return [line]
   })

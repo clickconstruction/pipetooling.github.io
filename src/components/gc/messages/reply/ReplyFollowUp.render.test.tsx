@@ -41,6 +41,7 @@ const fakeQuick = (): QuickRepliesIo => ({
   edit: vi.fn(() => Promise.resolve(1)),
   remove: vi.fn(() => Promise.resolve()),
   restore: vi.fn(() => Promise.resolve()),
+  setPress: vi.fn(() => Promise.resolve(1)),
 })
 
 function box() {

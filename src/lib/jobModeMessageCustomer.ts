@@ -28,6 +28,8 @@ export interface PhoneLineRow extends QuickReplyRow {
   phone_order: number | null
   phone_name: string | null
   text_es: string | null
+  /** v2.5573: on_my_way | im_here, read apart by the On my way sheet; absent on the message sheet's read. */
+  phone_press?: string | null
 }
 
 /** The rows a tech reads (`quick_replies_phone_tech`) as the phone's lines. A row of a kind the kernel does not know is left out. */
@@ -35,7 +37,7 @@ export function phoneLinesFromRows(rows: readonly PhoneLineRow[]): PhoneLine[] {
   const byId = new Map(rows.map((r) => [r.id, r]))
   return quickRepliesFromRows(rows, []).map((q) => {
     const r = byId.get(q.id)
-    return { ...q, phoneOrder: r?.phone_order ?? null, phoneName: r?.phone_name ?? null, textEs: r?.text_es ?? null }
+    return { ...q, phoneOrder: r?.phone_order ?? null, phoneName: r?.phone_name ?? null, textEs: r?.text_es ?? null, phonePress: q.phonePress ?? null }
   })
 }
 
