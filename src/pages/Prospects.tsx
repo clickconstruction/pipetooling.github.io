@@ -76,7 +76,7 @@ import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
-import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
+import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
@@ -2166,6 +2166,12 @@ export default function Prospects() {
     setJobsByProspect((prev) => ({ ...prev, [prospectId]: [...(prev[prospectId] ?? []), made] }))
   }
 
+  /** Edit in place (v2.5580): the row's changes saved, the box re-sorts on the new bid day. */
+  async function editJobFor(job: ProspectJob, changes: NewProspectJob) {
+    const saved = await updateProspectJob(job.id, changes)
+    setJobsByProspect((prev) => ({ ...prev, [job.prospect_id]: (prev[job.prospect_id] ?? []).map((j) => (j.id === job.id ? saved : j)) }))
+  }
+
   async function changeJob(job: ProspectJob, status: 'open' | 'dropped', wonBy: string | null = null) {
     if (!currentProspect) return
     const pid = currentProspect.id
@@ -2850,6 +2856,7 @@ export default function Prospects() {
                           todayYmd={todayYmdInAppTz()}
                           busy={saving}
                           onAdd={(job) => addJobFor(currentProspect.id, job)}
+                          onEdit={(job, changes) => editJobFor(job, changes)}
                           onLost={(job) => void markJobLost(job)}
                           onStatus={(job, status) => void changeJob(job, status)}
                           onRemove={(job) => void removeJob(job)}

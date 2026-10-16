@@ -46,6 +46,13 @@ export async function addProspectJob(prospectId: string, job: NewProspectJob, us
   return data as ProspectJob
 }
 
+/** Save the changes to a job (v2.5580's Edit): the row as it reads after. */
+export async function updateProspectJob(jobId: string, job: NewProspectJob): Promise<ProspectJob> {
+  const { data, error } = await supabase.from('prospect_jobs').update({ ...job }).eq('id', jobId).select(JOB_COLUMNS).single()
+  if (error || !data) failed(error, 'save the job')
+  return data as ProspectJob
+}
+
 export async function setProspectJobStatus(jobId: string, status: ProspectJobStatus, wonBy: string | null = null): Promise<void> {
   const { error } = await supabase.from('prospect_jobs').update({ status, won_by: wonBy }).eq('id', jobId)
   if (error) failed(error, 'change the job')

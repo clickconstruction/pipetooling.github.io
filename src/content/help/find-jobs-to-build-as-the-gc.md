@@ -22,6 +22,7 @@ The card shows who they are and the source under the name. Under that sits the *
 
 A lead can have several jobs over the years. Each one is a row in the Jobs box on the card. Press **+ Add a job**. Type the job, the address and the size. Then say when bids are due and where the plans are. The row shows the bid day and how many days are left.
 
+- **Edit** turns the row into the form, filled in. Change the bid day or the size and press **Save changes**.
 - **Lost** marks a job another builder got. It asks who won.
 - **Drop** marks a job that is not happening. **Reopen** brings either back.
 - **Remove** takes a lost or dropped job off the card.
