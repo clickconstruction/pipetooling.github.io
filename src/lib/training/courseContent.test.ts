@@ -7,6 +7,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { TRAINING_COURSE_FACTS } from './courseFacts'
 import {
   APPENDIX_B_BANNED_ASKS,
   appendixBFailures,
@@ -269,6 +270,10 @@ describe('the real content under src/content/training', () => {
       expect(c.contentVersion).toMatch(/^[0-9a-f]{8}$/)
       expect(c.minutes).toBeGreaterThan(60)
       expect(c.minutesStated, `course "${c.slug}": course.md says minutes: ${c.minutesStated} but the lessons and the final check add up to ${c.minutes}`).toBe(c.minutes)
+      // v2.5589: the Dashboard's facts come from course.md alone (no lesson file is globbed there), so hold them to the lessons on disk.
+      const facts = TRAINING_COURSE_FACTS[c.slug]
+      expect(facts?.lessons, `course "${c.slug}": course.md says lessons: ${facts?.lessons} but ${c.lessons.length} lesson files are on disk`).toBe(c.lessons.length)
+      expect(facts?.minutes).toBe(c.minutes)
     }
   })
 
