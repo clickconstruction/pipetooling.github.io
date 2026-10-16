@@ -22703,6 +22703,7 @@ export type Database = {
           gmail_id: string | null
           gmail_thread_id: string | null
           id: string
+          introduces_user_id: string | null
           jobs_ledger_id: string | null
           mailbox: string | null
           office_only: boolean
@@ -22740,6 +22741,7 @@ export type Database = {
           gmail_id?: string | null
           gmail_thread_id?: string | null
           id?: string
+          introduces_user_id?: string | null
           jobs_ledger_id?: string | null
           mailbox?: string | null
           office_only?: boolean
@@ -22777,6 +22779,7 @@ export type Database = {
           gmail_id?: string | null
           gmail_thread_id?: string | null
           id?: string
+          introduces_user_id?: string | null
           jobs_ledger_id?: string | null
           mailbox?: string | null
           office_only?: boolean
@@ -22829,6 +22832,13 @@ export type Database = {
             columns: ["estimate_id"]
             isOneToOne: false
             referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_introduces_user_id_fkey"
+            columns: ["introduces_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -30413,6 +30423,67 @@ export type Database = {
           },
         ]
       }
+      user_bio_lines: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          id: string
+          off_by_user_at: string | null
+          position: number
+          removed_at: string | null
+          removed_by: string | null
+          text: string
+          text_es: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          off_by_user_at?: string | null
+          position?: number
+          removed_at?: string | null
+          removed_by?: string | null
+          text: string
+          text_es?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          off_by_user_at?: string | null
+          position?: number
+          removed_at?: string | null
+          removed_by?: string | null
+          text?: string
+          text_es?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_bio_lines_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bio_lines_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bio_lines_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_checklist_item_mute_preferences: {
         Row: {
           checklist_item_id: string
@@ -32374,6 +32445,14 @@ export type Database = {
           project_name: string
         }[]
       }
+      bio_line_say: {
+        Args: { p_id: string; p_say: boolean }
+        Returns: undefined
+      }
+      bio_opener: {
+        Args: { p_lang: string; p_user_id: string }
+        Returns: string
+      }
       bulk_apply_tally_payroll_rule_flags: {
         Args: { p_rows: Json }
         Returns: number
@@ -32966,6 +33045,17 @@ export type Database = {
       duplicate_purchase_order: {
         Args: { p_created_by: string; p_source_po_id: string }
         Returns: Json
+      }
+      edit_bio_line: {
+        Args: {
+          p_id: string
+          p_position?: number
+          p_remove?: boolean
+          p_text: string
+          p_text_es: string
+          p_user_id: string
+        }
+        Returns: string
       }
       edit_clause: {
         Args: {
