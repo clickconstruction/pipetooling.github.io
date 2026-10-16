@@ -40,29 +40,29 @@ Every job has the same shape. Plan it, inspect the gear, lock it out, wear the P
 - **988** the crisis line, call or text
 
 ## Check yourself
-1. What is required by a Hot Work Permit for welding?
-- [ ] Noise baffling
-- [ ] A water hose
-- [x] A fire watch
-- [ ] Radiation shielding
-> right: The permit names a trained fire watch, who stays 30 minutes after the work ends.
-> wrong: The permit is about fire. It calls for a trained person watching for one, not for noise or radiation gear.
+1. What is the primary danger of working in the area of a crane?
+- [ ] Slipping on leaking hydraulic fluid
+- [x] Getting struck by the crane's load or moving arm
+- [ ] High-voltage exposure
+- [ ] Blocking the operator's field of view
+> right: The load and the boom move. Stay out of the swing radius and in the operator's sight.
+> wrong: Fluid, voltage and sight lines are real, but the load and the swinging boom are what kill. Stay out of the radius.
 
-2. What should a worker do before using a ladder?
-- [x] Inspect it for damage and stability
-- [ ] Step on the top rung
-- [ ] Set it on a sloped or uneven surface
-- [ ] Remove the tags and labels
-> right: Inspect before use, every time. A defective ladder is tagged and pulled from service.
-> wrong: Look it over for damage first. The top rung, a slope and missing labels are all hazards.
+2. What is the purpose of lockout and tagout?
+- [ ] To show who used the machine last
+- [x] To keep a machine from starting up or releasing energy during maintenance
+- [ ] To mark a machine as out of service for good
+- [ ] To keep an untrained worker off the machine
+> right: Your lock holds the energy back while you are inside the machine. One key, your name on the tag.
+> wrong: Lockout is about stored energy, not records or access. The lock keeps the machine dead while you work on it.
 
-3. What should you wear to protect yourself from smaller struck-by hazards like a dropped tool?
-- [ ] Respirator
-- [ ] Safety harness
-- [ ] Ear protection
-- [x] Hard hat
-> right: A hard hat stops small objects. It does not stop a crane load.
-> wrong: A dropped tool comes from above and hits the head. Respirators, harnesses and earplugs guard other things.
+3. Which condition is most likely to increase the risk of a vehicle accident on a worksite?
+- [ ] An operator wearing a hi-vis vest
+- [ ] A vehicle inspected at the start of the shift
+- [x] Poor visibility from weather, lighting or obstructions
+- [ ] Clear traffic markings and walkways
+> right: If the operator cannot see you, nothing else protects you. Make eye contact first.
+> wrong: A vest, an inspection and marked paths all help. Poor visibility is what gets people hit.
 
 4. Before digging, which of these is the worker's job and not the employer's?
 - [ ] Call 811 to mark the lines

@@ -43,13 +43,13 @@ The course ends on one case, built on two NIOSH reports. Those are the governmen
 > right: Any worker can stop unsafe work, and an untrained spotter must not work.
 > wrong: Weather and experience are not training. Stop the work and get someone trained.
 
-2. When is it safe to enter a trench?
-- [ ] When caution tape is around the opening
-- [x] When a competent person has inspected it
-- [ ] When a coworker entered earlier without reporting problems
-- [ ] When it is more than 10 feet deep
-> right: The competent person inspects daily and owns the trench. In the real case nobody was named.
-> wrong: Tape, a coworker's luck and depth prove nothing. Wait for the daily inspection.
+2. How can workers avoid getting caught in a trench collapse?
+- [ ] Enter before the protection is in
+- [x] Wait to enter until protections are in place and the trench is inspected
+- [ ] Ignore the safety signs
+- [ ] Work alone
+> right: Protection first, then the competent person's inspection, then you. In the real case nobody owned either.
+> wrong: Nobody enters an unprotected or uninspected trench. In the real case no competent person was named to inspect it.
 
 3. What is the swing radius?
 - [ ] The distance between two objects

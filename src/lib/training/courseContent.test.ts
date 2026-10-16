@@ -13,6 +13,7 @@ import {
   buildCourseRegistry,
   contentVersionOf,
   courseProgress,
+  askKey,
   drawFinalCheck,
   gradeFinalCheck,
   lessonPlainWordsFailures,
@@ -180,6 +181,21 @@ describe('the final check', () => {
     for (const q of drawn) expect(q.options.filter((o) => o.right)).toHaveLength(1)
   })
 
+  it('skips an ask the draw already holds, so a bank question that repeats a lesson\'s never comes up twice (v2.5576)', () => {
+    // The fixture's three lessons share one source, so first give each lesson its own asks; then every bank question repeats lesson 1's first.
+    const base = makeCourse()
+    const lessons = base.lessons.map((l, li) => ({ ...l, questions: l.questions.map((q) => ({ ...q, ask: `${q.ask} (${li})` })) }))
+    const twin = lessons[0]!.questions[0]!
+    const finalBank = base.finalBank.map((q) => ({ ...q, ask: twin.ask.toUpperCase() + ' ' }))
+    const course: Course = { ...base, lessons, finalBank }
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const drawn = drawFinalCheck(course, seed)
+      expect(drawn).toHaveLength(8)
+      expect(new Set(drawn.map((q) => askKey(q.ask))).size).toBe(8)
+    }
+    expect(askKey("What is it's name?  ")).toBe('what is its name')
+  })
+
   it('grades picks by the drawn order and passes at final_pass', () => {
     const course = makeCourse()
     const drawn = drawFinalCheck(course, 1)
@@ -252,6 +268,15 @@ describe('the real content under src/content/training', () => {
       for (const p of c.parts) expect(partsUsed.has(p.n), `course "${c.slug}" part ${p.n} "${p.name}" has no lesson`).toBe(true)
       expect(c.contentVersion).toMatch(/^[0-9a-f]{8}$/)
       expect(c.minutes).toBeGreaterThan(60)
+    }
+  })
+
+  it('no ask appears twice across a course: the lessons and the bank ask each question once (v2.5576)', () => {
+    for (const c of buildCourseRegistry(loadContent())) {
+      const where = new Map<string, string[]>()
+      for (const q of [...c.lessons.flatMap((l) => l.questions), ...c.finalBank]) where.set(askKey(q.ask), [...(where.get(askKey(q.ask)) ?? []), q.id])
+      const twice = [...where.entries()].filter(([, ids]) => ids.length > 1).map(([key, ids]) => `${ids.join(' and ')} both ask "${key}"`)
+      expect(twice, `course "${c.slug}" asks a question twice:\n  - ${twice.join('\n  - ')}`).toEqual([])
     }
   })
 
