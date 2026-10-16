@@ -8,6 +8,7 @@ import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { isIOSDevice, isStandalonePwa } from '../../lib/iosPwa'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import PasswordInput from '../PasswordInput'
+import { YourBioCard } from './YourBioCard'
 
 /** Structural shape of usePushNotifications() result (only the fields this tab reads). */
 type PushNotificationsState = {
@@ -151,6 +152,8 @@ export default function SettingsAccountTab({
           </button>
         </form>
       </div>
+
+      <YourBioCard role={myRole} name={myProfileName} />
 
       {isIOSDevice() && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>

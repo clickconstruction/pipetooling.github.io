@@ -1,8 +1,8 @@
 ---
 name: "The tech's bio: a short resume that rides the first On my way a tech sends a customer"
-number: 113
-group: gated
-status: designed 2026-10-16 (a first pass, Grace's correction, a second pass, then Grace's Edit bio; all below); waiting on the five calls before PR 2
+number: 114
+group: ready
+status: Grace took every recommendation 2026-10-16; building on branch claude/messaging-customers-on-my-way-605c82 — PR 2 the ground (v2.5587, migration 20261016030000) built the same day; PR 3 the send next
 summary: >
   The office writes a short bio for each tech, like the resume handed over with a plumber or an
   electrician: years in the trade, the license, what they are best at, a personal line. The first
@@ -13,9 +13,9 @@ summary: >
   presses Edit bio to pick which lines go for this customer. In Settings → Your account the tech
   sets their usual picks with Say it / Don't say this; the office writes the lines on the person's
   desk.
-next: Grace's five calls under "The calls"; then PR 2 (the table, the memory column, the bio send).
+next: PR 3 (the bio kind in quo-send's tech path, the sheet's bubble and Edit bio window, the thread's mark), then the push and the types, then the live walk on the owner's phone.
 size: M (one migration: a table, a column on messages, two functions; one send kind in quo-send's tech path; one kernel; the sheet's second bubble and the Edit bio window; the desk's block; the Settings block; two guides)
-blocker: the five calls (one text or two, what counts as introduced, the voice, whether a tech may write, where the office edits)
+blocker: none. The five calls are made: two texts, a line in the thread that introduces the tech and never again, the company's third person, pick lines only, the person's desk
 opinion: build it as drawn — the bio is its own text, sent once per tech per customer, in the company's words about the tech, with the tech picking the lines for this customer.
 mockup: to-dos/tech-about-lines/mockup.html
 ---

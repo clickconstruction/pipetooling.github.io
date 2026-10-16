@@ -27,6 +27,10 @@ Name: `Mike Thompson` &nbsp;·&nbsp; Email: `mike@example.com` &nbsp;·&nbsp; Ph
 
 On a sub or helper account, the Name field is locked. The note reads "Name is managed by admins. Contact a master or dev to change it."
 
+## Your bio
+
+Techs and office staff see **Your bio** under **Your account**. The office writes it. A customer gets it with your first On my way text to them, and never again. Each line has a switch. **Say it** keeps the line in. **Don’t say this** takes it out. Ask the office to change the words.
+
 ## Push notifications
 
 Push notifications are how the app reaches you: dispatch alerts, report notifications, reminders.
