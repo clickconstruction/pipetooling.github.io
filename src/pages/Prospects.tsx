@@ -74,6 +74,7 @@ import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '..
 import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubleRow } from '../lib/prospects/companyDouble'
 import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
+import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
@@ -184,15 +185,6 @@ function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function formatDueBadge(lastContact: string | null): string | null {
-  const now = Date.now()
-  if (!lastContact) return 'Due'
-  const diffMs = now - new Date(lastContact).getTime()
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
-  if (diffDays >= 7) return `Due ${diffDays} days`
-  return null
 }
 
 function formatInteractionType(type: string): string {
@@ -1624,13 +1616,15 @@ export default function Prospects() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
+  // The card's clock ticks only while a card is up (v2.5581): an empty lane used to count, then stamp its minutes on the first card added.
   useEffect(() => {
-    if (topTab !== 'customers' || activeTab !== 'follow-up' || document.visibilityState !== 'visible') return
+    if (!cardClockTicks({ onDeck: topTab === 'customers' && activeTab === 'follow-up', visible: document.visibilityState === 'visible', hasCard: !!currentProspect })) return
     const interval = setInterval(() => {
       setFollowUpTimerSeconds((s) => s + 1)
     }, 1000)
     return () => clearInterval(interval)
-  }, [topTab, activeTab])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topTab, activeTab, currentProspect?.id])
 
   // Auto-resize comment textarea as text wraps
   useEffect(() => {
@@ -2737,9 +2731,20 @@ export default function Prospects() {
           ) : followUpLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
           ) : followUpProspects.length === 0 ? (
-            <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No prospects to follow up. Add prospects in Prospect List.
-            </p>
+            (() => {
+              // The empty lane names the control that fills it (v2.5581): New Prospect, or All subs on a trade filter.
+              const words = emptyLaneWords(kind, kind === 'sub' ? tradeFilter : null)
+              const door = { font: 'inherit', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
+              return (
+                <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  {words.main}{' '}
+                  <button type="button" onClick={() => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true))} style={door}>
+                    {words.doorLabel}
+                  </button>{' '}
+                  {words.tail}
+                </p>
+              )
+            })()
           ) : currentProspect && !cardOnLane(currentProspect, kind) ? (
             // A card of another kind never wears this lane's press (v2.5578): the lane's own load is still coming.
             <p style={{ color: 'var(--text-muted)' }}>{laneLoadingWords(kind)}</p>
@@ -2806,9 +2811,9 @@ export default function Prospects() {
                         )}
                       </div>
                       <div style={{ flex: 1 }} />
-                      {formatDueBadge(currentProspect.last_contact) && (
+                      {dueChipWords(currentProspect.last_contact) && (
                         <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
-                          {formatDueBadge(currentProspect.last_contact)}
+                          {dueChipWords(currentProspect.last_contact)}
                         </span>
                       )}
                       {!calledProspectIds.has(currentProspect.id) && (
