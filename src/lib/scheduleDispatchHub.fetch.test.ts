@@ -10,7 +10,7 @@ import { makeFakeRowCapSupabase } from '../test/fakeRowCapSupabase'
  */
 const fake = vi.hoisted(() => ({ current: null as ReturnType<typeof makeFakeRowCapSupabase> | null }))
 vi.mock('./supabase', () => ({
-  supabase: { from: (table: string) => fake.current!.client.from(table) },
+  supabase: { from: (table: string) => fake.current!.client.from(table as 'jobs_ledger') },
 }))
 
 import { fetchJobsLedgerForScheduleDispatchHub } from './scheduleDispatchHub'
