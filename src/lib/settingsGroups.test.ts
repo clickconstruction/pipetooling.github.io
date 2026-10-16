@@ -22,6 +22,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-jobs',
       'settings-catalogs',
       'settings-people',
+      'settings-training',
       'settings-emails',
       'settings-what-customers-see',
       'settings-what-the-team-sees',

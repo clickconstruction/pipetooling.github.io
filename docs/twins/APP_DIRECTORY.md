@@ -63,6 +63,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Type the two inboxes' addresses and numbers, the team inbox and the bids inbox → `/settings?tab=settings-phone-texts` (Inboxes, under Company phone seats: the office reads, the owner or a dev saves; the app uses them once the inboxes are switched on; guide `set-up-the-two-inboxes`)
 - Turn on the reply push, so a customer's, a lead's or a sub's reply reaches whoever has it as a phone alert within a minute → `/settings?tab=settings-phone-texts` (Reply push, the owner or a dev, off as it ships; guide `turn-on-the-reply-push`)
 - Change the steps a customer, trade partner, architect, residential customer or sub goes through → `/settings?tab=settings-flows` (Flows: the office edits; guide `set-up-the-steps-a-person-goes-through`)
+- Turn a training course on, say which roles must take it, how long a pass is good for, and see where everyone stands → `/settings?tab=settings-training` (Training: a dev; guide `take-a-training-course`)
 - Where the company stands this week, the weakest link, the Monday sheet → `/bridge` (dev only)
 - How-do-I articles → `/help` (search) or `/help?g=<slug>`
 - The public trade rule behind a count or check (hanger spacing, fill limit, drop, mount height) → `https://counttooling.com/rules/` — `https://counttooling.com/rules/rules.json` for software; derive from it and stamp `ruleId` (see the CountTooling bid guide)

@@ -1,8 +1,8 @@
 ---
 name: "Training: courses the crew takes at their own pace, with a clock on each"
 number: 111
-group: ready
-status: the owner said "I love it, build it" 2026-10-15; building on branches claude/training-* (PR 1 content + kernel first, PR 2 the tables, then the four screens); the calls at the mock-up's foot are built to the drawn leans until he says otherwise
+group: close
+status: BUILT 2026-10-15 — PR 1 v2.5564 #5758 and PR 2 v2.5565 #5757 merged (migration 20261015060000 on prod, drift 925/925, the course seeded off); PR 3 #5761 (the course page), PR 4 #5762 (the Dashboard card), PR 5 #5763 (the People chips) and PR 6 (this PR, Settings → Training) in the queue; types #5759; left: a dev turns the OSHA 30 refresher On in Settings → Training, then the live walk (a helper reads the red card, passes lesson 19, finishes the course, reads green; the office reads the People chips)
 summary: >
   A Training section at the bottom of the Dashboard, under My Time, where each person sees the
   courses their role must take, in one of three states: not done (red), done but lapsed or
@@ -12,7 +12,7 @@ summary: >
   everyone take it again. The People rail and the Users row carry a training chip beside the
   paperwork ones. The first course is the OSHA 30 refresher, 30 lessons plus a final check,
   built from the owner's capture of the ClickSafety course.
-next: The owner reads the mock-up and answers the calls at its foot; then PR 1 (the course content and its kernel) and PR 2 (the tables) go first, since every screen reads them.
+next: Turn the course On in Settings → Training, walk it live as a helper and as the office, then use it for a week and answer the seven calls at the mock-up's foot; delete this folder once nothing comes up.
 size: L (six PRs, each S or M; the lesson rewrite into plain words is the biggest single piece)
 blocker: none; the seven calls are built to the drawn leans and each is one constant or one Settings number.
 opinion: build it as drawn; the Dashboard section and the course page are the feature, the rest is wiring the three states into places that already show paperwork state.
