@@ -3,6 +3,7 @@ import { buildApprovalsQueue } from './approvalsQueue'
 import { fetchAllPendingClockSessions } from './fetchAllPendingClockSessions'
 import type { RailFacts } from './deskRailAttention'
 import { docFactKey } from './rowNeeds'
+import { loadTrainingChipsByUser } from '../training/trainingIo'
 
 export type RailFactsAccess = {
   canAccessHours: boolean
@@ -21,7 +22,7 @@ export type RailFactsAccess = {
  */
 export async function loadRailFacts(access: RailFactsAccess, todayYmd: string): Promise<RailFacts> {
   const soon = new Date(Date.parse(`${todayYmd}T12:00:00Z`) + 30 * 86_400_000).toISOString().slice(0, 10)
-  const [pending, docsRes, licRes, portalRes, benchRes] = await Promise.all([
+  const [pending, docsRes, licRes, portalRes, benchRes, trainingByUserId] = await Promise.all([
     access.canAccessHours || access.canAccessPay ? fetchAllPendingClockSessions().catch(() => []) : Promise.resolve([]),
     access.canAccessContracts
       ? supabase.from('person_contract_documents').select('person_id, person_name, status, expires_at').or(`status.eq.unsent,expires_at.lte.${soon}`)
@@ -29,6 +30,8 @@ export async function loadRailFacts(access: RailFactsAccess, todayYmd: string): 
     access.canAccessLicenses ? supabase.from('person_licenses').select('person_name, date_of_expiry').lte('date_of_expiry', soon) : Promise.resolve({ data: [] }),
     supabase.from('sub_portal_links').select('person_id').is('revoked_at', null),
     supabase.from('people').select('id').eq('kind', 'sub').not('end_date', 'is', null),
+    // Training (v2.5568): the office reads everyone's standing; anyone else gets an empty map, as does a prod without the tables yet.
+    loadTrainingChipsByUser().catch(() => ({})),
   ])
   const pendingByUserId: RailFacts['pendingByUserId'] = {}
   const q = buildApprovalsQueue(pending, { todayYmd })
@@ -57,5 +60,5 @@ export async function loadRailFacts(access: RailFactsAccess, todayYmd: string): 
   for (const r of (((portalRes as { data: unknown[] | null }).data) ?? []) as Array<{ person_id: string }>) portalOnPersonIds.add(r.person_id)
   const benchPersonIds = new Set<string>()
   for (const r of (((benchRes as { data: unknown[] | null }).data) ?? []) as Array<{ id: string }>) benchPersonIds.add(r.id)
-  return { pendingByUserId, unsentDocsByName, expiringByName, expiredByName, portalOnPersonIds, benchPersonIds }
+  return { pendingByUserId, unsentDocsByName, expiringByName, expiredByName, portalOnPersonIds, benchPersonIds, trainingByUserId }
 }

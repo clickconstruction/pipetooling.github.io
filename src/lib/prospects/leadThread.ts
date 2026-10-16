@@ -46,6 +46,8 @@ export function leadFromWhoIsThis(contacts: readonly Contact[], unknownId: strin
 
 /** The `prospects` row **Add to Prospects** writes for a lead: its insert's columns. */
 export interface ProspectRow {
+  /** Which lane of Prospects (v2.5563): a homeowner asking for work is a customer, one asking about a build a job to GC. */
+  kind: 'customer' | 'gc_lead' | 'sub'
   contact_name: string | null
   company_name: null
   phone_number: string | null
@@ -71,12 +73,18 @@ const CAME_IN: Readonly<Partial<Record<MessageChannel, string>>> = {
 const nameIsChannel = (lead: Pick<Contact, 'name' | 'channels'>) => lead.channels.some((ch) => ch.value.trim() === lead.name.trim())
 
 /** The row **Add to Prospects** writes: the lead's name, number and address, and their first line in the notes. */
-export function prospectRowFor(lead: Contact, messages: readonly ThreadMessage[], by: { userId: string; masterUserId: string }): ProspectRow {
+export function prospectRowFor(
+  lead: Contact,
+  messages: readonly ThreadMessage[],
+  by: { userId: string; masterUserId: string },
+  kind: ProspectRow['kind'] = 'customer',
+): ProspectRow {
   const lines = theirs(messages, lead.id)
   const first = lines.find((m) => m.direction === 'in')
   const how = (first && CAME_IN[first.channel]) || 'Wrote the office'
   const words = first ? (snippetOf(first).split(/\r?\n/)[0] ?? '').trim() : ''
   return {
+    kind,
     contact_name: nameIsChannel(lead) ? null : lead.name,
     company_name: null,
     phone_number: lead.channels.find((ch) => ch.kind === 'phone')?.value ?? null,

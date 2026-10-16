@@ -16,7 +16,7 @@
   2. **Bids** — estimation: 26 tabs (`BIDS_TABS` in `src/lib/bids/bidsTabAccess.ts`) from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
   3. **Materials** — supply houses, price book, templates, purchase orders, PO Generator ledger
   4. **Checklist** — recurring tasks: Today / History / Review / Manage / Roadmap
-- **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (leads + Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally, GC mode (`/gc`: we are the general contractor and trades quote to us; PROJECT_DOCUMENTATION §20, every GC table's door in `src/lib/gc/doors.ts`; the Messages system's map is `docs/MESSAGES_ARCHITECTURE.md`, its kernels and tables listed in the Glossary's **Messages** entry), Messages for the company's own customers (`/messages`: Follow up's lanes for every kind of person, the thread window, the job box, Job Mode's door, the two inboxes and the reply push — the plan is `docs/MESSAGES_RESIDENTIAL_BUILD_PLAN.md`, its row in `docs/README.md` → Plans)
+- **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (the cold-call deck in three lanes, customers, jobs to GC and subs for the bench, + the Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally, GC mode (`/gc`: we are the general contractor and trades quote to us; PROJECT_DOCUMENTATION §20, every GC table's door in `src/lib/gc/doors.ts`; the Messages system's map is `docs/MESSAGES_ARCHITECTURE.md`, its kernels and tables listed in the Glossary's **Messages** entry), Messages for the company's own customers (`/messages`: Follow up's lanes for every kind of person, the thread window, the job box, Job Mode's door, the two inboxes and the reply push — the plan is `docs/MESSAGES_RESIDENTIAL_BUILD_PLAN.md`, its row in `docs/README.md` → Plans), Training (`/training/<slug>`: courses the crew takes at their own pace, each with a clock, the policy a dev's in Settings → Training; PROJECT_DOCUMENTATION §23)
 
 ---
 
@@ -70,7 +70,7 @@ Customer
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~540 tables; ~160 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~550 tables; ~160 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (four separate tracks — see `../CLAUDE.md`)
@@ -98,6 +98,7 @@ pipetooling.github.io/
 │   ├── utils/              # errorHandling, dateUtils (APP_CALENDAR_TZ), teamLabor, …
 │   ├── types/              # database.ts (generated), database-functions.ts (manual)
 │   ├── content/help/       # User-facing help guides (ship with features)
+│   ├── content/training/   # Training courses as markdown, one folder per course
 │   └── content/releaseNotes/ # One v2.NNNN.ts release note per PR (aggregator frozen)
 ├── supabase/
 │   ├── migrations/         # Post-baseline migrations (baseline: 20250101000000_baseline.sql)
@@ -259,7 +260,7 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~540 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~550 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
@@ -301,4 +302,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-10-14
+last_updated: 2026-10-16

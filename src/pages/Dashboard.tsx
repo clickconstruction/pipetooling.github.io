@@ -60,6 +60,7 @@ import CrewReviewDeck from '../components/team-feedback/CrewReviewDeck'
 import { fetchTeamFeedbackSettings } from '../lib/teamFeedback'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import DashboardMyVehicleCard from '../components/DashboardMyVehicleCard'
+import { DashboardTrainingSection } from '../components/dashboard/DashboardTrainingSection'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
@@ -362,6 +363,8 @@ export default function Dashboard() {
   } = useDashboardBoot({ authUserId: authUser?.id })
   /** Mirrors DashboardMyInboxCard’s render gate (reported via onVisibleChange) for the SectionDock entry. */
   const [myInboxDockVisible, setMyInboxDockVisible] = useState(true)
+  // Training (punch list #111): the card reports whether it drew, so the dock lists it only when there is a course to show.
+  const [trainingDockVisible, setTrainingDockVisible] = useState(false)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
   const {
     assignedJobs,
@@ -1297,6 +1300,7 @@ export default function Dashboard() {
     { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
     { id: 'dash-hr-report', label: 'HR', visible: role === 'dev' || role === 'master_technician' },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
+    { id: 'dash-training', label: 'Training', visible: Boolean(authUser?.id) && trainingDockVisible },
   ].filter((sec) => sec.visible)
 
   const myInboxCard = (
@@ -1802,6 +1806,10 @@ export default function Dashboard() {
       {/* v2.1648: field self-service for whoever holds a company vehicle —
           renders nothing for everyone else. Owner placement: just below My Time. */}
       {authUser?.id && <DashboardMyVehicleCard userId={authUser.id} />}
+      {/* Training (punch list #111, v2.5567): the courses the role must take, in one colour, at the bottom under My Time.
+          Renders nothing while nothing is required of the role or the tables are not on prod yet. */}
+      {authUser?.id && <div id="dash-training" aria-hidden="true" style={dockAnchorStyle} />}
+      {authUser?.id && <DashboardTrainingSection userId={authUser.id} role={role} onVisibility={setTrainingDockVisible} />}
 
       <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 

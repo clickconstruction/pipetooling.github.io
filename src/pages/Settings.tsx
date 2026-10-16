@@ -41,6 +41,7 @@ import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatT
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
 import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
+import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
 import { canEditClause, canEditFlows } from '../lib/gc/access'
 import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
 import { canSwitchReplyPush } from '../lib/messages/replyPushSwitch'
@@ -1519,6 +1520,11 @@ export default function Settings() {
       <SettingsGroup id="settings-flows" hidden={activeSettingsTab !== 'settings-flows'} title={settingsGroupTitle('settings-flows', 'Flows')} description={settingsGroupHint('settings-flows')}>
         {/* Mounted while it is open, so it reads the flow and who is on it each time it is opened. */}
         {activeSettingsTab === 'settings-flows' && canEditFlows(myRole) && <SettingsFlowsTab />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-training" hidden={activeSettingsTab !== 'settings-training'} title={settingsGroupTitle('settings-training', 'Training')} description={settingsGroupHint('settings-training')}>
+        {/* Training (punch list #111, v2.5569): a dev's. Mounted while open, so the counts are read each time. */}
+        {activeSettingsTab === 'settings-training' && myRole === 'dev' && <SettingsTrainingTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
