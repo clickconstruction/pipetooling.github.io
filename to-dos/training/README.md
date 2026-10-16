@@ -277,7 +277,9 @@ the preview in Settings (it is the course page). Both are in the PR list.
 
 The headless walk as the dev on prod data (the policy flipped to devs and put back) found nine
 small things, drawn as one spot each with the critique in `to-dos/training/followups.html` and
-shipped in three PRs (the page and the card; the questions; the office polish):
+shipped in three PRs (the page and the card #5775; the questions #5778; the office polish #5780),
+then walked live again the same day (every spot confirmed; the touch rule needed `!important`
+over the inline sizes, the fourth PR):
 
 1. **The card says the size** before the first press (*30 lessons of about five minutes · about
    3 hours in all*, from `course.md`'s `minutes:`), and *N of 30 lessons done* once started.
