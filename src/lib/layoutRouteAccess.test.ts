@@ -12,6 +12,14 @@ describe('isPathAllowedForRole', () => {
     }
   })
 
+  it('allows /training and a course under it for every role (v2.5592: the Dashboard card sent a helper to the course and the guard bounced them home)', () => {
+    for (const role of ROLES) {
+      expect(isPathAllowedForRole(role, '/training', false), role).toBe(true)
+      expect(isPathAllowedForRole(role, '/training/osha-30-refresher', false), role).toBe(true)
+      expect(isPathAllowedForRole(role, '/training/osha-30-refresher/', true), role).toBe(true)
+    }
+  })
+
   it('allows /settings and /dashboard for every role', () => {
     for (const role of ROLES) {
       expect(isPathAllowedForRole(role, '/settings', false), `role ${role}`).toBe(true)

@@ -14,7 +14,9 @@ import { canAccessBanking } from './bankingAccess'
 /** Routes the office cohort reaches only with Banking access (`canAccessBanking`). */
 export const BANKING_ONLY_PATHS = ['/banking'] as const
 
-export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
+// '/training' (v2.5592): a course page is every signed-in role's; the policy in Settings → Training says who must
+// take it, and the Dashboard card's Start sent a helper here, where the guard bounced them home.
+export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/checklist', '/settings', '/tally', '/help', '/training', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
 
 export const PRIMARY_PATHS = [
   '/dashboard',
@@ -35,6 +37,7 @@ export const PRIMARY_PATHS = [
   '/settings',
   '/tally',
   '/help',
+  '/training',
   '/job-mode/schedule',
   '/job-mode/inbox',
   '/job-mode/customers',
@@ -55,6 +58,7 @@ export const SUPERINTENDENT_PATHS = [
   '/settings',
   '/tally',
   '/help',
+  '/training',
   '/job-mode/schedule',
   '/job-mode/inbox',
   '/job-mode/customers',
@@ -84,6 +88,7 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     '/settings',
     '/tally',
     '/help',
+    '/training',
   ]
 }
 
