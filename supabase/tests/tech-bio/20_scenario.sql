@@ -70,6 +70,8 @@ ALTER TABLE ids ADD COLUMN l3 uuid;
 UPDATE ids SET l2 = public.edit_bio_line('00000000-0000-0000-0000-0000000073b1', NULL, '  Water heaters are his specialty.  ', '   ', NULL, false);
 UPDATE ids SET l3 = public.edit_bio_line('00000000-0000-0000-0000-0000000073b1', NULL, 'He coaches Little League.', 'Entrena béisbol infantil.', NULL, false);
 RESET ROLE;
+-- The ids table was made under the authenticated role; anon reads it too, for the refusals asked as anon.
+GRANT SELECT ON ids TO anon;
 SELECT tt.same('three lines in order, trimmed, blank Spanish as none', tt.lines('00000000-0000-0000-0000-0000000073b1'),
   '1:Way has been a plumber for twelve years.:Es plomero desde hace doce años.:false|2:Water heaters are his specialty.:-:false|3:He coaches Little League.:Entrena béisbol infantil.:false');
 SELECT tt.same('the office is written on each line', (SELECT count(*)::text FROM public.user_bio_lines WHERE user_id = '00000000-0000-0000-0000-0000000073b1' AND added_by = '00000000-0000-0000-0000-0000000073b2'), '3');
