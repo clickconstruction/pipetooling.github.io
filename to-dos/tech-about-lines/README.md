@@ -1,235 +1,239 @@
 ---
-name: "A word about the tech: the office's lines about each tech, one in every On my way text"
+name: "The tech's introduction: a short resume that rides the first On my way a tech sends a customer"
 number: 113
 group: gated
-status: designed 2026-10-16 (first pass, then a second pass; both below); waiting on the five calls before PR 2
+status: designed 2026-10-16 (a first pass, Grace's correction, a second pass; all below); waiting on the five calls before PR 2
 summary: >
-  The office writes a few short lines about each tech, in the tech's own voice, and the On my way
-  text carries one of them: "Dana, this is Luis with Click Plumbing. I am on my way, about 20
-  minutes out. I have two kids and coach Little League on Saturdays." Every visit says a different
-  one, and a customer never hears the same fact twice while an unheard one is left. The line is a
-  new blank, {about me}, that the office places in the On my way line (or any team line) in the
-  quick replies editor. The tech reads the lines in Settings → Your account and can turn any one
-  off. The office writes them on the person's desk.
-next: Grace's five calls under "The calls"; then PR 2 (the migration, the blank and the kernel).
-size: M (one migration: a table, a column on messages, two functions, one seed; one blank; one kernel; the sheet's swap link; the desk's block; the Settings block; two guides)
-blocker: the five calls (the voice, whether a tech may write, the rotation, where the office edits, day one)
-opinion: build it as the second pass draws it — first person, the office writes, the tech vetoes, the thread remembers what the customer heard.
+  The office writes a short introduction for each tech, like the resume handed over with a plumber
+  or an electrician: years in the trade, the license, what they are best at, a personal line. The
+  first time a tech presses On my way to a customer who has never heard from them, the On my way
+  text goes as today and the introduction follows it as a second text. Every later On my way from
+  that tech to that customer is just the line. A different tech on the same customer gets their own
+  introduction the first time. The tech reads their introduction in Settings → Your account and can
+  turn a line off; the office writes it on the person's desk.
+next: Grace's five calls under "The calls"; then PR 2 (the table, the memory column, the introduction send).
+size: M (one migration: a table, a column on messages, two functions; one send kind in quo-send's tech path; one kernel; the sheet's second bubble; the desk's block; the Settings block; two guides)
+blocker: the five calls (one text or two, what counts as introduced, the voice, whether a tech may write, where the office edits)
+opinion: build it as the second pass draws it — the introduction is its own text, sent once per tech per customer, in the company's words about the tech.
 mockup: to-dos/tech-about-lines/mockup.html
 ---
 
-# A word about the tech
+# The tech's introduction
 
 ## The ask
 
 Grace, 2026-10-16, the morning after On my way shipped (punch list #112, v2.5573):
 
 > I think it would be really smart for us to add a short bio for techs that they can set in their
-> settings with ad-libs, so on every visit what is told to customers is a little different.
->
-> I see this looking like: "XYZ is on the way to you. He/she is a father of 2, his favorite sports
-> team is the ABC, and has been in the business for 12 years" — but where each of those lines can
-> be set by office staff and looked at by a tech in their settings, and are a part of the On my
-> way message.
+> settings, so what is told to customers is a little different. "XYZ is on the way to you. He/she is
+> a father of 2, his favorite sports team is the ABC, and has been in the business for 12 years" —
+> where each of those lines can be set by office staff and looked at by a tech in their settings,
+> and are a part of the On my way message.
 
-The owner's ask behind #112 is the parent: pre-configured lines that keep a tech from misspelling
-or saying the wrong thing, with a preview before the send. This adds the one thing a canned text
-lacks: a person on the other end.
+And on the first mock-up, which rotated one fact into every On my way:
+
+> It is meant to be that initial resume we hand over with a plumber or electrician or technician
+> that shows, like a resume, who they are, so the person feels comfortable right off the bat. It is
+> not meant to be something that is sent every time. It really should only accompany the first
+> message. To be personable, every time a new person that has not already sent a message to that
+> customer submits I'm on my way, it could give them a short resume. And then every additional
+> message about that person is just "Abraham is on his way."
 
 ## What is already there
 
-- **The On my way text** is the office's line with blanks the app fills: *{first}, this is {me}
-  with Click Plumbing. I am on my way, about {minutes} minutes out.* The blanks table is
-  `src/lib/quickReplies/blanks.ts` (`{first}`, `{me}`, `{address}`, `{job}`, `{minutes}`,
-  `{window}`, `{back day}`, `{back time}`, `{day}`, `{link}`, `{amount}`); a blank the app cannot
-  fill is the tech's to type, and Send waits while one is open. `jobModeText.ts` is the one kernel
-  both sides use: the phone shows the preview with it, and `quo-send`'s tech path
+- **The On my way text** is the office's line with blanks the app fills (*{first}, this is {me}
+  with Click Plumbing. I am on my way, about {minutes} minutes out.*). `quo-send`'s tech path
   (`_shared/quoTechSend.ts`, `src/lib/quo/techSend.ts`) makes the text again from the line and the
-  record, so **what the tech saw is what goes and no free text leaves the phone**. A typed blank
-  holds 40 characters at most.
-- **The office's editor** is the quick replies window (Messages → the reply box → Quick replies →
-  Edit; the guide *edit the quick replies*). A line has English and Spanish (`text_es`), a place
-  on the phone, a name for the button, and since v2.5573 a **Big button on Job Mode** press. The
-  editor's chip row names the blanks.
+  record, so what the tech saw is what goes and no free text leaves the phone. The office rewords
+  the line in the quick replies editor; it can already read *{me} with Click Plumbing is on the
+  way* if the owner prefers the company's voice.
+- **The thread remembers who sent what.** Every text out is a `messages` row with `who_user_id`
+  (the sender), `contact_id` (the customer's own thread), `jobs_ledger_id` and `quick_reply_id`
+  (the line it came from). A tech reads a contact's lines on a job they are on
+  (`messages_tech_read`), so the phone can read the same memory the server does.
 - **A tech's Settings** is one tab, *Your account* (My Profile: name, email, phone; password; push;
   location). Primaries and helpers see no Phone and texts tab and no quick replies editor.
-- **The office's person surface** is the person's desk (People → Users → Open desk, v2.4336–4348)
-  and the row's *Edit name, title & phone*.
-- **The customer's language**: `customerLang` picks Spanish when the customer reads it, and a line
-  without Spanish goes out in English.
-- **The thread remembers the line**: `messages.quick_reply_id` ties every sent text to the line it
-  came from. Nothing ties it to a fact about the tech yet. Neither `users` nor `people` has a
-  photo column.
+- **The office's person surface** is the person's desk (People → Users → Open desk, v2.4336–4348;
+  `src/components/personDesk/sections/`) and the row's *Edit name, title & phone*.
+- **The customer's language**: `customerLang` picks Spanish when the customer reads it.
+- Neither `users` nor `people` has a photo column, and `{link}` (the customer's page) is off the
+  phone until the field can make it.
 
 ## The decision
 
-**A new blank, `{about me}`, filled from the office's lines about the sender.** The office places
-it where it wants, in the On my way line or any team line for customers; the migration adds it to
-the end of the On my way press line once, so day one works, and the office moves or removes it in
-the editor. It is the first **optional** blank: with nothing to say it vanishes with its sentence,
-and it never stops a send. The chip reads *a word about you*.
+**The introduction is a short resume the office writes for each tech.** A table,
+`user_about_lines`: the user, the English, the Spanish, a place, who added it and when, when it
+was removed, and when the tech turned it off. The office writes it the way a resume reads when you
+hand it over, **in the company's words about the tech, in the third person**, each line a full
+sentence with the pronoun written in, since the office knows the person: *Luis has been a plumber
+for twelve years and holds a Texas journeyman license. Water heaters and repipes are his
+specialty. Off the clock he coaches Little League in Seguin.* The desk's **Add a line** offers six
+prompts shaped like a resume (years in the trade, license, best at, family, off the clock,
+hometown) that only start the sentence. The app opens the text with *A little about Luis:* and
+joins the lines in order. **320 characters at most for the whole introduction**, two text
+segments; the editor counts down on the whole, not the line.
 
-**The lines are the office's, in the tech's voice.** A table, `user_about_lines`: the user, the
-English, the Spanish, a place, who added it and when, when it was removed, and when the tech
-turned it off. The office writes each line as the tech would say it in a text that already says
-*this is Luis*: **first person** — *I have two kids and coach Little League on Saturdays.* — so
-there is no he or she to get wrong. `{me}` is allowed for an office that prefers the third person
-(*Luis has twelve years in the trade.*). **120 characters at most**, so the text stays inside two
-SMS segments; the editor counts down.
+**It rides the first On my way a tech sends a customer, as a second text.** When the tech presses
+**On my way, text Dana**, the clock-in happens, the On my way line goes exactly as the office wrote
+it, and then, when Dana has never had this tech's introduction, the introduction goes as its own
+text right after. Two bubbles on her phone: the line, then the card. Every later On my way from
+Luis to Dana is the line alone. When Michael takes the next visit, Dana gets Michael's
+introduction with his first On my way. The I'm here text and the Message the customer lines never
+carry it: by then they have met, or the line is about something else.
 
-**One fact a text, and a customer never hears the same one twice while an unheard one is left.**
-The pick, from the tech's live lines the tech has not turned off (and that have Spanish, when the
-customer reads Spanish): the first in order that this customer's thread has not carried yet
-(`messages.about_line_id`, stamped on every text that carried one); when all have been heard, the
-one heard longest ago. The rule reads only facts the phone and the server both hold, so the preview
-is the text. The sheet shows the sentence marked in the orange box and offers two quiet links,
-**Another fact** (the next in the rotation) and **Not this time**. The phone sends the line's id,
-never its words; the server checks it is the sender's own live line, fills it, and stamps the
-message.
+**What counts as introduced is the thread's memory.** Every introduction sent is a `messages`
+row with `introduces_user_id` set to the tech it introduces. The phone and the server ask the same
+question, *is there a line in this customer's thread that introduces Luis?*, before offering or
+sending. So a tech whose first text to a customer was *Running late* still introduces themself on
+their first On my way; an office text to the customer does not count as Luis; and a customer Luis
+served two years ago is not introduced twice (call 2 asks whether a long gap should re-introduce).
 
-**The tech holds a veto.** Settings → Your account gains **What customers hear about you**: the
-lines, each with **Say it** / **Don't say this**. A line turned off is never sent, and the desk
-shows the office *Luis turned this off*. The tech does not write or edit a line: the company's
-voice stays the office's (call 2 below).
+**The sheet, the first time.** Under the On my way bubble a second block: *Dana hears from you for
+the first time. This goes right after:* and the introduction in its own orange bubble, with one
+quiet link, **Not this time**. The *What happens* rows gain a third: *Then texts your introduction,
+since Dana has not heard from you before.* The press clocks first, texts the line second, the
+introduction third; an introduction that fails leaves the first two standing and says so. Every
+later press draws the sheet as today.
 
-**The office writes on the person's desk.** A block, **What customers hear about Luis**: the lines
-in order with the Spanish beside each, *No Spanish yet* where it is missing, *Luis turned this off*
-where he did, remove, and **Add a line** with five prompts to pick from (years in the trade,
-family, a team, a hobby, where you grew up) that only start the sentence. The office team
-(`GC_OFFICE_TEAM`) writes; the tech reads their own; `quo-send` reads as the service role.
+**The tech reads and vetoes.** Settings → Your account gains **Your introduction**: the text as a
+customer gets it, then each line with **Say it** / **Don't say this**. A line turned off leaves the
+introduction, and the desk shows the office *Luis turned this off*. The tech does not write or
+edit a line: the voice is the company's (call 4).
 
-**Where it does not go.** The I'm here text: they are about to meet. The office's own sends from
-the reply box fill `{about me}` from the office person's lines, which are usually none, so the
-sentence vanishes — one rule, no special case.
+**The office writes on the person's desk.** A block, **Luis's introduction**: the lines in order
+with the Spanish beside each, *No Spanish yet* where it is missing, the preview as a customer
+reads it, the count left, remove, and **Add a line** with the prompts. The office team
+(`GC_OFFICE_TEAM`) writes; the tech reads their own; `quo-send` reads as the service role. A
+Spanish-reading customer gets the Spanish lines only; with none written, no introduction goes
+rather than an English one.
 
 ## The calls
 
 Grace's, before PR 2. The recommendation is first in each.
 
-1. **The voice.** First person, written as the tech would say it (*I have two kids…*), or third
-   person with `{me}` (*Luis has two kids…*). First person reads as one text from one person and
-   has no pronoun to get wrong; the office may still write a line in the third person when it
-   wants to.
-2. **May a tech write?** Only turn a line off (the office writes), or also suggest a line the
-   office approves, or write freely. The veto alone keeps the company's voice and ships smallest;
-   a suggestion door is one later cut (a `proposed_at` on the row and an *Approve* on the desk).
-3. **The rotation.** The thread's memory (never the same fact twice to one customer while an
-   unheard one is left), or round robin per tech across all customers, or random each press. The
-   thread's memory is what the customer notices; the other two repeat a fact on a three-visit job.
-4. **Where the office edits.** The person's desk (one place per person, beside their title and
-   phone), or a fold per tech inside the quick replies editor, or a card on Settings → Phone and
-   texts. The desk is where the office already shapes who a person is.
-5. **Day one.** The migration appends `{about me}` to the On my way press line, or the office adds
-   it by hand after reading the guide. Appending means the first tech with lines is heard on the
-   first press; the office can take it out in one edit.
+1. **One text or two.** The introduction as its own text right after the On my way line, or one
+   longer text with the introduction under a blank line. Two reads like a card handed over after
+   the greeting, keeps the On my way line exactly the office's words, and lets the line go even
+   when the introduction cannot.
+2. **What counts as introduced.** A line in the customer's thread that introduces this tech (so a
+   tech whose first text was *Running late* still introduces themself on their first On my way), or
+   any earlier text from this tech to this customer, your literal words. And whether a tech is
+   introduced again after a long gap with no texts to that customer: never, or after a year.
+3. **The voice.** The company's words about the tech, third person, opened by *A little about
+   Luis:*, like a resume, or the tech's first person (*A little about me: I have…*). Third person
+   matches the handover and your example; the office writes the pronoun in, so there is nothing to
+   guess.
+4. **May a tech write?** Turn a line off only (the office writes), or suggest a line the office
+   approves, or write freely. The veto keeps the company's voice and ships smallest; a suggestion
+   door is one later cut.
+5. **Where the office edits.** The person's desk, or a card on Settings → Phone and texts listing
+   every tech. The desk is where the office already shapes who a person is, one person at a time.
 
 ## Alternatives weighed
 
-- **A. One bio field on the user, appended whole.** Rejected: the same paragraph every visit, and
-  a text that runs three segments.
-- **B. A random fact on every press.** Rejected: a customer on a three-visit job hears the same
-  fact twice while another waits; and unless the pick rides the request, the preview and the text
-  can differ.
-- **C. Kinds the app composes** (family, a team, years) into a sentence from a template. Rejected:
-  the he/she problem and stiff grammar; the office writes a better sentence than a template fills.
-- **D. The tech writes their own bio in Settings.** Rejected for now: the voice customers hear is
-  the company's. The tech sees every line and can turn any one off instead (call 2).
-- **E. A `{about me}` blank, the office's lines in the tech's voice, the pick by the thread's
-  memory, the veto in Settings.** Picked.
-- **F. A link to a "Meet Luis" page with a photo** (Housecall Pro's way). Not now: `{link}` is off
-  the phone until the field can make the customer's page link, and there is no photo column. It is
-  the first follow-on once the On my way customer-page card exists (#112's last follow-on).
+- **A. One fact rotated into every On my way** (the first mock-up). Rejected by Grace: the
+  introduction is a handover, not a running feature; a customer who knows the tech needs no fact.
+- **B. The introduction inside the On my way line through a new blank.** Rejected: it ties the
+  resume to one line's wording, needs the first optional blank in the fill system, and makes the
+  line longer every first time. A second text leaves the line and the blanks untouched.
+- **C. One bio field, free text, appended whole.** Rejected: no Spanish beside each line, no veto
+  on a line, no count the office can see; lines give the office and the tech the same handles.
+- **D. The tech writes their own introduction in Settings.** Rejected for now: the voice customers
+  hear is the company's. The tech reads every line and can turn one off (call 4).
+- **E. Fields the app composes** (years, license, specialty) into sentences. Rejected: stiff
+  grammar and the pronoun problem; the office writes a better sentence than a template fills.
+- **F. The office's lines about each tech, joined into one introduction, sent as a second text the
+  first time a tech texts On my way to a customer, remembered in the thread, vetoed in Settings.**
+  Picked.
+- **G. A link to a "Meet Luis" page with a photo** (Housecall Pro's way). Not now: `{link}` is off
+  the phone and there is no photo column. The first follow-on once the On my way customer-page
+  card exists (#112's last follow-on): the introduction then ends with the link.
 
 ## Is this the best we can do? The second pass
 
-The first draft took Grace's picture as drawn: third-person lines (*he is a father of two*), the
-office writing them in a settings card, a random one on every On my way. Read back against the
-customer who gets the text, the tech it is about, and the rule that the preview is the text, these
-changed:
+The first pass after Grace's correction kept the resume inside the On my way text through a blank
+and asked "has this tech texted this customer?" Read back against the customer who gets the text,
+the tech it introduces, and the office that writes it, six things changed:
 
-1. **Third person became first person.** The text already says *this is Luis*; a third sentence
-   about *he* breaks the voice and asks the office to get the pronoun right. First person has no
-   pronoun. The office can still write the third person with `{me}`.
-2. **Random became the thread's memory.** The customer is the one who hears a repeat. Reading
-   which facts this thread already carried costs one column and makes the pick the same on the
-   phone and the server.
-3. **Office-only became the office writes, the tech vetoes.** The line is about the tech. One
-   switch per line in Settings, and the desk says who turned what off.
-4. **Baked into On my way became a blank the office places.** The office decides whether the fact
-   rides at all, in which line, and where in the sentence; it reads in the chip row like every
-   other blank.
-5. **A required blank became the first optional one.** Every other blank stops the send until it is
-   filled; this one vanishes with its sentence. A tech with no lines yet texts as today.
-6. **No Spanish rule became skip the line.** A Spanish-reading customer never gets an English fact
-   wedged into a Spanish text; the desk shows *No Spanish yet* so the office fills it.
-7. **Fixed on the sheet became Another fact / Not this time.** The tech reads the fact as a
-   sentence of their own and may pick a better one for this customer, or none, which is the
-   owner's "offer the tech the tools to modify it" without free text.
-8. **Unbounded became 120 characters.** One fact plus the On my way line stays inside two
-   segments; the editor counts down.
+1. **Inside the line became a second text.** The On my way line goes exactly as the office wrote
+   it every time; the introduction follows it as its own bubble the first time, like a card after
+   the greeting. The fill system and the editor are untouched, and the thread shows *Luis's
+   introduction* as its own line.
+2. **"Has texted before" became "has been introduced".** A tech whose first text was *Running
+   late* still gets introduced on their first On my way; an office text does not count as the
+   tech; the memory is one column on the message, read the same way on the phone and the server.
+3. **First person became the company's third person.** A resume is handed over by someone else.
+   *A little about Luis: he has been a plumber for twelve years…* is the handover's frame; the
+   office writes the pronoun in, so there is nothing for the app to guess.
+4. **Prompts for facts became prompts shaped like a resume.** Years in the trade, license, best at,
+   then the personal lines: what makes a customer comfortable before the truck pulls up.
+5. **A cap per line became a cap on the whole.** The introduction is one text, 320 characters,
+   two segments; the desk counts down on the whole and the tech's switches change the count.
+6. **Nothing on the sheet became a second bubble and one link.** The tech reads what Dana gets
+   before it goes, and **Not this time** holds the introduction for a customer who clearly knows
+   them, while the line still goes.
 
 ## Where it plugs in
 
-- `src/lib/quickReplies/blanks.ts` — `{about me}` in `BLANKS` (`from: 'you'`, words *a word about
-  you*); `OPTIONAL_BLANKS = ['about me']`: `fillLine` drops an optional blank and the sentence it
-  stands in when its fill is empty, and never lists it in `left`.
-- `src/lib/jobModeText.ts` — `jobModeFills` takes the picked line's words and puts `about me`;
-  `quo-send` fills the same way from the id the request names.
-- `src/lib/aboutLines/` (new, pure, tested) — `pickAboutLine(lines, heard, lang)`: the rotation;
-  `nextAfter` for Another fact; `aboutLineCap = 120`; the desk's and the Settings block's words.
-- `src/lib/quo/techSend.ts` and `supabase/functions/_shared/quoTechSend.ts` — the request gains
-  `aboutLineId: string | null`; the server reads the sender's live lines, refuses an id that is not
-  theirs or is turned off (*That line is not yours to send.*), fills, stamps
-  `messages.about_line_id`. `npm run gen:edge-kernels` after.
-- `src/components/jobMode/OnMyWaySheet.tsx` and `MessageCustomerSheet.tsx` — the sentence marked in
-  the orange box, **Another fact** / **Not this time** under it; `jobModeOnMyWayIo.ts` and
-  `jobModeMessageCustomerIo.ts` load the sender's lines and the thread's `about_line_id`s (the
-  tail the sheet already reads, one more column).
-- `src/components/gc/messages/reply/QuickRepliesEditorLine.tsx` — the chip; nothing else.
-- The person’s desk (People → Users → Open desk; `src/components/personDesk/sections/`, a new `PersonDeskAboutSection` after the Field section) — the block **What customers hear about
-  <name>**, over `edit_about_line(p_user_id, p_id, p_text, p_text_es, p_position, p_remove)`;
-  refusals in words through the same caller check `quick_reply_caller` uses (signed out, training,
-  a twin, off the office team).
-- `src/components/settings/SettingsAccountTab.tsx` — **What customers hear about you**, over
+- `src/lib/aboutLines/` (new, pure, tested) — `introductionText(lines, first, lang)` (the opener,
+  the live lines not turned off, Spanish only for a Spanish reader, null with none),
+  `INTRODUCTION_CAP = 320`, `introduced(tail, userId)` (a line with `introduces_user_id`), the
+  desk's, the sheet's and the Settings block's words.
+- `src/lib/quo/techSend.ts` and `supabase/functions/_shared/quoTechSend.ts` — a second request
+  kind, `{ from: 'job_mode', kind: 'introduction', customerId, contactId, jobId }`: the same
+  who-may check (a tech on the job, or the office), the sender's lines read as the service role,
+  the customer's language, refused in words when there is nothing to send (*Nothing to introduce
+  yet*) or the thread already has it (*They have your introduction*); the send is the reply box's
+  (`sendText`), the row gets `introduces_user_id` and the job. `npm run gen:edge-kernels` after.
+- `src/components/jobMode/OnMyWaySheet.tsx` — the second bubble, the third *What happens* row, the
+  **Not this time** link, the introduction send after the line's; `jobModeOnMyWayIo.ts` loads the
+  sender's lines and reads `introduces_user_id` on the tail the sheet already loads (one more
+  column). `MessageCustomerSheet.tsx` and `ImHereSheet.tsx` are untouched.
+- The person's desk — a new `PersonDeskAboutSection` after the Field section: **<name>'s
+  introduction**, over `edit_about_line(p_user_id, p_id, p_text, p_text_es, p_position,
+  p_remove)`; refusals in words through the same caller check `quick_reply_caller` uses (signed
+  out, training, a twin, off the office team).
+- `src/components/settings/SettingsAccountTab.tsx` — **Your introduction**, over
   `about_line_say(p_id, p_say)` (the row's owner only).
 - Migration: `user_about_lines` (RLS: the office team reads and writes, a user reads their own and
-  updates only `off_by_user_at`; the three fence calls), `messages.about_line_id uuid`, the two
-  functions, the seed (`{about me}` appended to the On my way press line when it has none).
-  `set_quick_reply_press` and the press column are untouched.
-- Guides: a new one for the office, *say a word about a tech in the On my way text*; a section in
-  *clock in and out with Job Mode* (**A word about you**) and one in the Settings basics.
+  updates only `off_by_user_at`; the three fence calls), `messages.introduces_user_id uuid`
+  (nullable, indexed with `contact_id`), the two functions. No seed, no change to any quick reply.
+- `src/components/gc/messages/` — the thread draws an introduction line with a small *introduction*
+  mark, so the office sees it went.
+- Guides: a new one for the office, *write a tech's introduction*; a section in *clock in and out
+  with Job Mode* (**Your introduction goes with your first On my way**) and a line in the Settings
+  basics guide.
 
 ## The PR train
 
 1. **This to-do** (the plan and the mock-up), then Grace's five calls.
-2. **The ground**: the migration, the optional blank, the fills on both sides, the request's
-   `aboutLineId`, the kernel and its tests, the SQL bed. Nothing on a screen changes until a tech
-   has lines; the seed puts the blank in the line, which vanishes with nothing to say.
-3. **The screens**: the sheets' marked sentence and two links; the desk's block; the Settings
-   block; the editor's chip; the guides; the release note.
+2. **The ground**: the migration, the kernel and its tests, the introduction kind in the tech path
+   and its SQL bed, the thread's mark. Nothing on a phone changes until a tech has lines.
+3. **The screens**: the sheet's second bubble and link; the desk's block; the Settings block; the
+   guides; the release note.
 4. **The types** after the push.
 
-Follow-ons, each its own PR when asked: a *Suggest a line* door for the tech (call 2); a photo
-and a **Meet Luis** card on the customer's page while the leg is on the way (after #112's
-customer-page follow-on); which facts get a reply, on the desk.
+Follow-ons, each its own PR when asked: a *Suggest a line* door for the tech (call 4); a photo and
+a **Meet Luis** card on the customer's page, linked from the introduction (after #112's
+customer-page follow-on); a re-introduction after a long gap if call 2 wants one.
 
 ## How to verify
 
 Live, as a primary or helper in Job Mode on a phone, with a test job whose customer is the owner's
 own number, after the office wrote three lines for that tech (one without Spanish):
 
-1. Press **On my way**. The orange box ends with one of the lines, marked. Press **Another fact**:
-   the next line. Press **Not this time**: the sentence is gone and the text ends at the minutes.
-2. Send. The owner's phone gets the text with the fact; the thread shows the line with its
-   `about_line_id`.
-3. Clock out, press **On my way** on the same job again: a different fact is marked. Repeat until
-   all three were sent; the fourth press marks the first again.
-4. In Settings → Your account as the tech, turn one line off. The next press never offers it; the
-   desk reads *… turned this off*.
-5. Switch the customer to Spanish (their record). The line without Spanish is never offered; the
-   others read in Spanish.
-6. Remove `{about me}` from the On my way line in the editor: the text ends at the minutes, no
-   links on the sheet. Put it back in the middle of the line: the fact reads where the office put
-   it.
-7. Negative: a tech with no lines reads the text as today, with no links; the office adds a line of
-   121 characters and the editor refuses it.
+1. Press **On my way** on a customer the tech never texted. Under the orange box: *Dana hears from
+   you for the first time* and the introduction. Press **On my way, text Dana**: the owner's phone
+   gets two texts, the line then the introduction; the thread shows both, the second marked
+   *introduction*.
+2. Clock out and press **On my way** on the same job again: no second bubble, one text.
+3. Sign in as a second tech on the same job and press **On my way**: that tech's introduction,
+   once.
+4. Press **Not this time** on a fresh customer: one text; the next press offers the introduction
+   again, since none went.
+5. In Settings → Your account as the tech, turn one line off: the preview shortens; the desk reads
+   *… turned this off*.
+6. Switch the customer to Spanish: the introduction is the Spanish lines only; with none written,
+   no second text and the sheet says so under *What happens*.
+7. Negative: a tech with no lines sees the sheet as today; the office adds a line that takes the
+   introduction past 320 characters and the desk refuses it with the count.

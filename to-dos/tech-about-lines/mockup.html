@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>A word about the tech</title>
+<title>The tech's introduction</title>
 <style>
-  /* Punch list #113. Light only, like every to-do mock-up. Phone frames at 375 px, the sheets as ResponsiveModalShell draws them. Made-up people: Luis Ortega on the job, Dana Whitfield at 1208 Mesquite Ln, Rosa Delgado who reads Spanish. The facts about Luis are made up too. */
-  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-mid: #d97706; --amber: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --orange: #c2410c; --orange-tint: #fff7ed; --orange-line: #fdba74; --orange-ink: #9a3412; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  /* Punch list #113. Light only, like every to-do mock-up. Phone frames at 375 px, the sheet as ResponsiveModalShell draws it. Made-up people: Luis Ortega and Michael Reyes on the job, Dana Whitfield at 1208 Mesquite Ln, Rosa Delgado who reads Spanish. The introductions are made up too. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-mid: #d97706; --amber: #92400e; --amber-tint: #fef3c7; --orange: #c2410c; --orange-tint: #fff7ed; --orange-line: #fdba74; --orange-ink: #9a3412; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
   .wrap { max-width: 1160px; margin: 0 auto; }
@@ -40,15 +40,15 @@
   .dest .sug { color: var(--green-ink); font-weight: 700; font-size: 11px; align-self: center; }
   .bubble { background: var(--orange-tint); border: 1px solid var(--orange-line); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 14.5px; line-height: 1.4; }
   .bubble b { background: #fed7aa; border-radius: 4px; padding: 0 3px; }
-  .bubble mark { background: #fef08a; border-bottom: 2px solid #ca8a04; border-radius: 3px; padding: 0 2px; color: var(--ink); }
+  .bubble.intro { font-size: 13.5px; margin-top: 6px; border-style: dashed; }
+  .first { margin-top: 12px; font-size: 12.5px; color: var(--orange-ink); font-weight: 600; }
   .mins { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }
   .mins button { height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-size: 18px; font-weight: 700; }
   .mins .n { height: 44px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; gap: 6px; }
   .mins .n small { font-size: 12px; font-weight: 500; color: var(--muted); }
   .from { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .word { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; }
-  .word .k { color: var(--muted); }
-  .word span.l { color: var(--blue-ink); font-weight: 600; }
+  .quietlink { margin-top: 6px; font-size: 12.5px; text-align: right; }
+  .quietlink span { color: var(--blue-ink); font-weight: 600; }
   .acts { display: grid; gap: 6px; margin-top: 2px; }
   .act { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 13px; color: var(--ink-2); }
   .act .i { font-size: 15px; line-height: 1.3; }
@@ -60,14 +60,17 @@
   .their .who { text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
   .their .day { text-align: center; font-size: 10.5px; color: var(--muted); margin: 10px 0 4px; }
   .sms { background: #e5e7eb; color: var(--ink); border-radius: 16px 16px 16px 4px; padding: 8px 12px; font-size: 13.5px; line-height: 1.35; max-width: 92%; }
-  .sms mark { background: transparent; color: var(--ink); font-weight: 600; border-bottom: 2px solid #ca8a04; }
-  .sms.es mark { border-bottom-color: var(--blue); }
+  .sms + .sms { margin-top: 4px; }
+  .sms.card { background: #f3f4f6; border: 1px solid var(--line); }
 
   /* the desk's block and the Settings block */
   .block { width: 520px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 14px; font-size: 13px; }
   .block h3 { margin: 0 0 2px; font-size: 15px; }
   .block .hint { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
+  .prev { background: #f9fafb; border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--ink-2); }
+  .prev .l { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; display: flex; justify-content: space-between; }
   .ln { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line-2); }
+  .ln:first-of-type { border-top: 0; }
   .ln .n { color: var(--muted); font-weight: 700; font-size: 12px; padding-top: 2px; }
   .ln .en { font-size: 13.5px; }
   .ln .es { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
@@ -76,26 +79,17 @@
   .ln .act2 { display: grid; gap: 4px; justify-items: end; font-size: 12px; }
   .ln .act2 span { color: var(--blue-ink); font-weight: 600; }
   .tag { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--amber-tint); color: var(--amber); }
-  .tag.grey { background: var(--line-2); color: var(--ink-2); }
   .add { border: 1px dashed var(--line); border-radius: 10px; padding: 10px; margin-top: 10px; }
   .add .l { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
   .add textarea, .add input { width: 100%; font: inherit; font-size: 13px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; margin-top: 3px; }
   .add .cnt { text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-size: 12px; background: #fafafa; color: var(--ink-2); }
-  .chip.new { border-color: #ca8a04; background: #fef9c3; color: var(--ink); font-weight: 600; }
   .sw { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; font-size: 11.5px; font-weight: 700; }
   .sw span { padding: 3px 9px; color: var(--muted); }
   .sw span.on { background: var(--green-tint); color: var(--green-ink); }
   .sw span.off { background: var(--line-2); color: var(--ink-2); }
   .btn { display: inline-block; min-height: 34px; padding: 6px 12px; border-radius: 8px; border: 0; background: var(--blue); color: #fff; font: inherit; font-weight: 700; font-size: 13px; margin-top: 8px; }
-
-  /* the editor's line */
-  .ed { width: 520px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 12px; font-size: 13px; }
-  .ed .words { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fafafa; font-size: 13.5px; }
-  .ed .words em { font-style: normal; background: #fef08a; border-radius: 3px; padding: 0 3px; }
-  .ed .f { margin-top: 8px; }
-  .ed .f .l { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
 
   /* the lists */
   ol.alts, ol.pass, ol.calls { padding-left: 22px; max-width: 100ch; }
@@ -108,16 +102,16 @@
 <body>
 <div class="wrap">
 <header class="top">
-  <p class="eyebrow">Punch list #113 · mock-up · 2026-10-16</p>
-  <h1>A word about the tech: the office's lines about each tech, one in every On my way text</h1>
-  <p>The office writes a few short lines about Luis, in his own voice. Every <b>On my way</b> text ends with one of them, and Dana never hears the same one twice while another waits. The line is a blank, <code>{about me}</code>, that the office places like any other; Luis reads his lines in Settings and can turn one off. The people, the job and the facts are made up.</p>
+  <p class="eyebrow">Punch list #113 · mock-up, second draft · 2026-10-16</p>
+  <h1>The tech's introduction: a short resume that rides the first On my way a tech sends a customer</h1>
+  <p>The office writes a short introduction for Luis, the way a resume reads when you hand it over: years in the trade, the license, what he is best at, a personal line. The first time Luis presses <b>On my way</b> to Dana, his text goes as today and his introduction follows it as a second text. Every later On my way from Luis to Dana is just the line. When Michael takes the next visit, Dana gets Michael's. The people, the job and the introductions are made up.</p>
 </header>
 
-<h2><span class="num">1</span> The sheet: today, and with a word about you</h2>
-<p class="lede">Left: the On my way sheet as v2.5573 draws it. Right: the same sheet once the office wrote lines for Luis and left <code>{about me}</code> at the end of its On my way line. One sentence more in the orange box, marked so Luis sees it is about him, and two quiet links under it. Nothing else moves.</p>
+<h2><span class="num">1</span> The sheet: the first time, and every time after</h2>
+<p class="lede">Left: Luis presses On my way to Dana, who has never heard from him. The On my way bubble is unchanged; under it the sheet says this is her first time and shows the introduction that follows, with one link to hold it. Right: the next visit, the sheet as v2.5573 draws it. Nothing new, because Dana has Luis's introduction.</p>
 <div class="row">
   <div>
-    <div class="cap">Today · v2.5573</div>
+    <div class="cap green">The first time · Dana has not heard from Luis</div>
     <div class="fit"><div class="sheet">
       <div class="bar"><span>On my way</span><span class="x">✕</span></div>
       <div class="body">
@@ -127,27 +121,30 @@
         <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
         <div class="mins"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
         <div class="from">Guessed from your phone to the job, 9.4 mi. Change it if you know better.</div>
+        <div class="first">Dana hears from you for the first time. This goes right after:</div>
+        <div class="bubble intro">A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+        <div class="quietlink"><span>Not this time</span></div>
         <div class="lab">What happens</div>
         <div class="acts">
           <div class="act"><span class="i">⏱</span><span>Clocks you in on PLUM 512 · Whitfield water heater as on the way.</span></div>
           <div class="act"><span class="i">💬</span><span>Texts Dana from the company number. Her answer comes back to you.</span></div>
+          <div class="act"><span class="i">👋</span><span>Then texts your introduction, since Dana has not heard from you before.</span></div>
         </div>
       </div>
       <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Dana</button></div>
     </div></div>
   </div>
   <div>
-    <div class="cap green">With a word about you</div>
+    <div class="cap">Every time after · as today</div>
     <div class="fit"><div class="sheet">
       <div class="bar"><span>On my way</span><span class="x">✕</span></div>
       <div class="body">
         <div class="lab">Where to</div>
-        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="sug">Suggested</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="sug">Suggested</span><span class="sub">8:30 AM · 1208 Mesquite Ln</span></div>
         <div class="lab">This is what Dana gets.</div>
-        <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out. <mark>I have two kids and coach Little League on Saturdays.</mark></div>
-        <div class="word"><span class="k">A word about you · 2 of 4</span><span class="l">Another fact</span><span class="l">Not this time</span></div>
-        <div class="mins"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
-        <div class="from">Guessed from your phone to the job, 9.4 mi. Change it if you know better.</div>
+        <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>15</b> minutes out.</div>
+        <div class="mins"><button>−</button><div class="n">15 <small>minutes</small></div><button>+</button></div>
+        <div class="from">Guessed from your phone to the job, 6.1 mi. Change it if you know better.</div>
         <div class="lab">What happens</div>
         <div class="acts">
           <div class="act"><span class="i">⏱</span><span>Clocks you in on PLUM 512 · Whitfield water heater as on the way.</span></div>
@@ -158,21 +155,23 @@
     </div></div>
   </div>
 </div>
-<p class="note"><b>Why 2 of 4.</b> Dana already heard fact 1 on Tuesday, so today's press picks the first she has not: fact 2. <b>Another fact</b> moves to fact 3; <b>Not this time</b> drops the sentence and the text ends at the minutes. The phone sends the fact's id, never its words, and the server fills the same line from the same record, so what Luis read is what goes.</p>
+<p class="note"><b>The order.</b> The press clocks in first, texts the line second, and the introduction third. An introduction that cannot go leaves the first two standing and says so. <b>Not this time</b> holds the introduction for a customer who clearly knows Luis; the line still goes, and the next first-time press offers it again, since none went. The phone never sends the introduction's words: it asks for the send by kind, and the server composes it from the office's lines.</p>
 
-<h2><span class="num">2</span> What the customer gets, visit after visit</h2>
-<p class="lede">Dana's water heater took three visits. Each text ends differently, and the fourth would start the rotation over. Rosa reads Spanish: she gets the Spanish line, and the one fact the office has not translated yet is never offered on her job.</p>
+<h2><span class="num">2</span> What the customer gets</h2>
+<p class="lede">Dana's water heater took three visits and two techs. Tuesday Luis introduces himself; Thursday he is just Luis; Monday Michael takes the job and introduces himself once. Rosa reads Spanish: she gets the Spanish introduction, and the line the office has not translated yet is left out of hers.</p>
 <div class="row">
   <div>
-    <div class="cap orange">Dana · three visits</div>
+    <div class="cap orange">Dana · three visits, two techs</div>
     <div class="fit"><div class="their">
       <div class="who">Click Plumbing · (830) 555‑0100</div>
       <div class="day">Tuesday 10:12 AM</div>
-      <div class="sms">Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out. <mark>I have been with Click Plumbing for twelve years.</mark></div>
+      <div class="sms">Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out.</div>
+      <div class="sms card">A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
       <div class="day">Thursday 8:41 AM</div>
-      <div class="sms">Dana, this is Luis with Click Plumbing. I am on my way, about 15 minutes out. <mark>I have two kids and coach Little League on Saturdays.</mark></div>
+      <div class="sms">Dana, this is Luis with Click Plumbing. I am on my way, about 15 minutes out.</div>
       <div class="day">Monday 1:05 PM</div>
-      <div class="sms">Dana, this is Luis with Click Plumbing. I am on my way, about 25 minutes out. <mark>I grew up in Seguin and still live there.</mark></div>
+      <div class="sms">Dana, this is Michael with Click Plumbing. I am on my way, about 10 minutes out.</div>
+      <div class="sms card">A little about Michael: he joined Click Plumbing three years ago after four years in the Navy. Drains and gas lines are what he does best. He and his wife are expecting their first baby this winter.</div>
     </div></div>
   </div>
   <div>
@@ -180,32 +179,34 @@
     <div class="fit"><div class="their">
       <div class="who">Click Plumbing · (830) 555‑0100</div>
       <div class="day">miércoles 9:30 AM</div>
-      <div class="sms es">Rosa, soy Luis de Click Plumbing. Voy en camino, llego en unos 20 minutos. <mark>Tengo dos hijos y entreno béisbol infantil los sábados.</mark></div>
+      <div class="sms">Rosa, soy Luis de Click Plumbing. Voy en camino, llego en unos 20 minutos.</div>
+      <div class="sms card">Un poco sobre Luis: es plomero desde hace doce años y tiene licencia de oficial en Texas. Su especialidad son los calentadores de agua y las retuberías.</div>
       <div class="day">viernes 2:15 PM</div>
-      <div class="sms es">Rosa, soy Luis de Click Plumbing. Voy en camino, llego en unos 10 minutos. <mark>Llevo doce años en Click Plumbing.</mark></div>
+      <div class="sms">Rosa, soy Luis de Click Plumbing. Voy en camino, llego en unos 10 minutos.</div>
     </div></div>
-    <p class="note">Fact 4, <i>I am an Astros fan, win or lose</i>, has no Spanish yet, so Rosa's job never offers it. The desk shows the office which lines still need Spanish.</p>
+    <p class="note">The Little League line has no Spanish yet, so Rosa's introduction stops after the specialty. With no Spanish line at all, no introduction goes rather than an English one.</p>
   </div>
 </div>
 
-<h2><span class="num">3</span> The office writes, on the person's desk</h2>
-<p class="lede">People → Users → Open desk, under the name, title and phone the office already shapes: <b>What customers hear about Luis</b>. The office writes each line as Luis would say it, 120 characters at most, with the Spanish beside it. A line Luis turned off stays on the list, crossed out, so the office knows.</p>
+<h2><span class="num">3</span> The office writes it; the tech reads it and can hold a line</h2>
+<p class="lede">People → Users → Open desk, under the name, title and phone the office already shapes: <b>Luis's introduction</b>. The office writes in the company's words about Luis, with the pronoun written in, like a resume. The preview reads as a customer gets it, and the count is for the whole introduction, two text segments at most. In Settings → Your account Luis sees the same, and one switch per line is his.</p>
 <div class="row">
   <div>
     <div class="cap">The desk · the office</div>
     <div class="fit"><div class="block">
-      <h3>What customers hear about Luis</h3>
-      <p class="hint">One of these rides every On my way text, in Luis's own words. A customer never hears the same one twice while another waits.</p>
-      <div class="ln"><span class="n">1</span><div><div class="en">I have been with Click Plumbing for twelve years.</div><div class="es">Llevo doce años en Click Plumbing.</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
-      <div class="ln"><span class="n">2</span><div><div class="en">I have two kids and coach Little League on Saturdays.</div><div class="es">Tengo dos hijos y entreno béisbol infantil los sábados.</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
-      <div class="ln"><span class="n">3</span><div class="off"><div class="en">I grew up in Seguin and still live there.</div><div class="es">Crecí en Seguin y sigo viviendo ahí.</div></div><div class="act2"><span class="tag">Luis turned this off</span><span>Remove</span></div></div>
-      <div class="ln"><span class="n">4</span><div><div class="en">I am an Astros fan, win or lose.</div><div class="es none">No Spanish yet</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
+      <h3>Luis's introduction</h3>
+      <p class="hint">Goes as a second text the first time Luis presses On my way to a customer. Write it as a customer should read it: Luis has…, He coaches…</p>
+      <div class="prev"><div class="l"><span>As a customer gets it</span><span>129 left of 320</span></div>A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+      <div class="ln" style="margin-top:8px"><span class="n">1</span><div><div class="en">He has been a plumber for twelve years and holds a Texas journeyman license.</div><div class="es">Es plomero desde hace doce años y tiene licencia de oficial en Texas.</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
+      <div class="ln"><span class="n">2</span><div><div class="en">Water heaters and repipes are his specialty.</div><div class="es">Su especialidad son los calentadores de agua y las retuberías.</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
+      <div class="ln"><span class="n">3</span><div><div class="en">Off the clock he coaches Little League in Seguin.</div><div class="es none">No Spanish yet</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
+      <div class="ln"><span class="n">4</span><div class="off"><div class="en">He is an Astros fan, win or lose.</div><div class="es">Es aficionado de los Astros, ganen o pierdan.</div></div><div class="act2"><span class="tag">Luis turned this off</span><span>Remove</span></div></div>
       <div class="add">
         <div class="l">Add a line <small style="font-weight:400;color:var(--muted)">· start from one, or write your own</small></div>
-        <div class="chips"><span class="chip">Years in the trade</span><span class="chip">Family</span><span class="chip">A team</span><span class="chip">A hobby</span><span class="chip">Where you grew up</span></div>
-        <textarea rows="2" placeholder="As Luis would say it in a text: I …"></textarea>
-        <div class="cnt">120 left</div>
+        <div class="chips"><span class="chip">Years in the trade</span><span class="chip">License</span><span class="chip">Best at</span><span class="chip">Family</span><span class="chip">Off the clock</span><span class="chip">Hometown</span></div>
+        <textarea rows="2" placeholder="He …"></textarea>
         <input placeholder="The same in Spanish (optional)">
+        <div class="cnt">129 left of 320 for the whole introduction</div>
         <button class="btn">Add the line</button>
       </div>
     </div></div>
@@ -213,66 +214,48 @@
   <div>
     <div class="cap">Settings → Your account · the tech</div>
     <div class="fit"><div class="block" style="width:420px">
-      <h3>What customers hear about you</h3>
-      <p class="hint">The office wrote these. One rides each On my way text. Turn off any you would rather not say. Ask the office to change the words.</p>
-      <div class="ln"><span class="n">1</span><div class="en">I have been with Click Plumbing for twelve years.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
-      <div class="ln"><span class="n">2</span><div class="en">I have two kids and coach Little League on Saturdays.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
-      <div class="ln"><span class="n">3</span><div class="off"><div class="en">I grew up in Seguin and still live there.</div></div><div class="sw"><span>Say it</span><span class="off">Don't</span></div></div>
-      <div class="ln"><span class="n">4</span><div class="en">I am an Astros fan, win or lose.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
+      <h3>Your introduction</h3>
+      <p class="hint">The office wrote this. A customer gets it with your first On my way to them, and never again. Turn off a line you would rather not say. Ask the office to change the words.</p>
+      <div class="prev"><div class="l"><span>As a customer gets it</span></div>A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+      <div class="ln" style="margin-top:8px"><span class="n">1</span><div class="en">He has been a plumber for twelve years and holds a Texas journeyman license.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
+      <div class="ln"><span class="n">2</span><div class="en">Water heaters and repipes are his specialty.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
+      <div class="ln"><span class="n">3</span><div class="en">Off the clock he coaches Little League in Seguin.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
+      <div class="ln"><span class="n">4</span><div class="off"><div class="en">He is an Astros fan, win or lose.</div></div><div class="sw"><span>Say it</span><span class="off">Don't</span></div></div>
     </div></div>
-    <p class="note">The tech does not write or edit a line here (call 2). The switch is the one thing that is theirs: the line is about them.</p>
+    <p class="note">The tech does not write or edit a line (call 4). The switch is the one thing that is theirs: the line is about them, and the desk shows the office what was turned off.</p>
   </div>
 </div>
 
-<h2><span class="num">4</span> The office places the blank, like any other</h2>
-<p class="lede">The quick replies editor's chip row gains one chip. The migration appends <code>{about me}</code> to the On my way press line once; the office moves it, puts it in another line, or takes it out. With nothing to say, the blank and its sentence vanish and the send never waits.</p>
-<div class="row">
-  <div>
-    <div class="cap">The quick replies editor · the On my way line</div>
-    <div class="fit"><div class="ed">
-      <div class="f"><div class="l">The line</div>
-        <div class="words">{first}, this is {me} with Click Plumbing. I am on my way, about {minutes} minutes out. <em>{about me}</em></div>
-      </div>
-      <div class="f"><div class="l">Blanks the app fills</div>
-        <div class="chips"><span class="chip">their first name</span><span class="chip">your name</span><span class="chip">the job's address</span><span class="chip">the job's name</span><span class="chip">minutes out, from the drive</span><span class="chip">the new window</span><span class="chip">the next visit</span><span class="chip">the day of the visit</span><span class="chip new">a word about you</span></div>
-      </div>
-      <div class="f"><div class="l">Big button on Job Mode</div><div class="words" style="background:#fff">On my way</div></div>
-    </div></div>
-    <p class="note"><b>The first optional blank.</b> Every other blank stops the send until it is filled. <code>{about me}</code> is the only one that may be empty: a tech with no lines yet, a tech who turned them all off, or a Spanish reader with no translated line, texts as today.</p>
-  </div>
-</div>
-
-<h2><span class="num">5</span> The calls</h2>
+<h2><span class="num">4</span> The calls</h2>
 <p class="lede">Five, Grace's. The recommendation is first in each.</p>
 <ol class="calls">
-  <li><b>The voice.</b> First person, as Luis would say it <span class="pick">recommended</span>, or third person with <code>{me}</code>. The text already says <i>this is Luis</i>; a third sentence about <i>he</i> breaks the voice and asks the office to get the pronoun right. The office may still write a line in the third person.</li>
+  <li><b>One text or two.</b> The introduction as its own text right after the On my way line <span class="pick">recommended</span>, or one longer text with the introduction under a blank line. Two reads like a card handed over after the greeting, keeps the On my way line exactly the office's words, and lets the line go even when the introduction cannot.</li>
+  <li><b>What counts as introduced.</b> A line in the customer's thread that introduces this tech <span class="pick">recommended</span>, so a tech whose first text was <i>Running late</i> still introduces themself on their first On my way; or any earlier text from this tech to this customer. And whether a tech is introduced again after a long gap: never <span class="pick">recommended</span>, or after a year with no texts to that customer.</li>
+  <li><b>The voice.</b> The company's words about the tech, third person, opened by <i>A little about Luis:</i> <span class="pick">recommended</span>, or the tech's first person, <i>A little about me: I have…</i>. Third person matches the handover; the office writes the pronoun in, so there is nothing to guess.</li>
   <li><b>May a tech write?</b> Turn a line off only <span class="pick">recommended</span>, or suggest one the office approves, or write freely. The veto keeps the company's voice and ships smallest; a suggestion door is one later cut.</li>
-  <li><b>The rotation.</b> The thread's memory, never the same fact twice to one customer while another waits <span class="pick">recommended</span>, or round robin per tech across every customer, or random. The customer is the one who hears a repeat.</li>
-  <li><b>Where the office edits.</b> The person's desk <span class="pick">recommended</span>, a fold per tech in the quick replies editor, or a card on Settings → Phone and texts. The desk is where the office already shapes who a person is.</li>
-  <li><b>Day one.</b> The migration appends <code>{about me}</code> to the On my way line <span class="pick">recommended</span>, or the office adds it by hand. Appending means the first tech with lines is heard on the first press; one edit takes it out.</li>
+  <li><b>Where the office edits.</b> The person's desk <span class="pick">recommended</span>, or a card on Settings → Phone and texts listing every tech. The desk is where the office already shapes who a person is, one person at a time.</li>
 </ol>
 
-<h2><span class="num">6</span> Alternatives weighed</h2>
+<h2><span class="num">5</span> Alternatives weighed</h2>
 <ol class="alts">
-  <li><b>One bio field on the user, appended whole.</b><span class="no">rejected</span> The same paragraph every visit, and a text that runs three segments.</li>
-  <li><b>A random fact on every press.</b><span class="no">rejected</span> A customer on a three-visit job hears a fact twice while another waits; and unless the pick rides the request, the preview and the text can differ.</li>
-  <li><b>Kinds the app composes</b> (family, a team, years) through a template.<span class="no">rejected</span> The he/she problem and stiff grammar; the office writes a better sentence than a template fills.</li>
-  <li><b>The tech writes their own bio in Settings.</b><span class="no">rejected for now</span> The voice customers hear is the company's. The tech sees every line and can turn any one off instead.</li>
-  <li><b>A <code>{about me}</code> blank, the office's lines in the tech's voice, the pick by the thread's memory, the veto in Settings.</b><span class="pick">picked</span></li>
-  <li><b>A link to a "Meet Luis" page with a photo</b> (Housecall Pro's way).<span class="no">not now</span> <code>{link}</code> is off the phone until the field can make the customer's page link, and there is no photo column. The first follow-on once the On my way customer-page card exists.</li>
+  <li><b>One fact rotated into every On my way</b> (the first mock-up).<span class="no">rejected</span> Grace: the introduction is a handover, not a running feature; a customer who knows the tech needs no fact.</li>
+  <li><b>The introduction inside the On my way line, through a new blank.</b><span class="no">rejected</span> It ties the resume to one line's wording, needs an optional blank in the fill system, and lengthens the line. A second text leaves both alone.</li>
+  <li><b>One bio field, free text, appended whole.</b><span class="no">rejected</span> No Spanish beside each line, no veto on a line, no count the office can see.</li>
+  <li><b>The tech writes their own introduction in Settings.</b><span class="no">rejected for now</span> The voice customers hear is the company's. The tech reads every line and can turn one off.</li>
+  <li><b>Fields the app composes</b> (years, license, specialty) into sentences.<span class="no">rejected</span> Stiff grammar and the pronoun problem; the office writes a better sentence than a template fills.</li>
+  <li><b>The office's lines about each tech, joined into one introduction, sent as a second text the first time a tech texts On my way to a customer, remembered in the thread, vetoed in Settings.</b><span class="pick">picked</span></li>
+  <li><b>A link to a "Meet Luis" page with a photo</b> (Housecall Pro's way).<span class="no">not now</span> The customer's page link is off the phone and there is no photo column. The first follow-on once the On my way customer-page card exists: the introduction then ends with the link.</li>
 </ol>
 
-<h2><span class="num">7</span> Is this the best we can do? The second pass</h2>
-<p class="lede">The first draft took the picture as drawn: third-person lines, the office writing them in a settings card, a random one on every On my way. Read back against the customer who gets the text, the tech it is about, and the rule that the preview is the text, eight things changed.</p>
+<h2><span class="num">6</span> Is this the best we can do? The second pass</h2>
+<p class="lede">The first pass after Grace's correction kept the resume inside the On my way text through a blank and asked "has this tech texted this customer?" Read back against the customer who gets the text, the tech it introduces, and the office that writes it, six things changed.</p>
 <ol class="pass">
-  <li><b>Third person became first person.</b> No pronoun to get wrong; one voice from one person.</li>
-  <li><b>Random became the thread's memory.</b> One column on the message, and the pick is the same on the phone and the server.</li>
-  <li><b>Office-only became the office writes, the tech vetoes.</b> The line is about the tech; one switch per line is theirs.</li>
-  <li><b>Baked into On my way became a blank the office places.</b> Whether, in which line, and where in the sentence are the office's.</li>
-  <li><b>A required blank became the first optional one.</b> It vanishes with its sentence and never stops a send.</li>
-  <li><b>No Spanish rule became skip the line.</b> A Spanish reader never gets an English fact wedged in; the desk shows what still needs Spanish.</li>
-  <li><b>Fixed on the sheet became Another fact / Not this time.</b> The tech may pick a better fact for this customer, or none, with no free text.</li>
-  <li><b>Unbounded became 120 characters.</b> One fact plus the line stays inside two segments; the editor counts down.</li>
+  <li><b>Inside the line became a second text.</b> The On my way line goes exactly as the office wrote it every time; the introduction follows as its own bubble the first time, like a card after the greeting. The thread shows <i>Luis's introduction</i> as its own line.</li>
+  <li><b>"Has texted before" became "has been introduced".</b> A tech whose first text was <i>Running late</i> still gets introduced on their first On my way; an office text does not count as the tech; one column on the message is the memory, read the same way on the phone and the server.</li>
+  <li><b>First person became the company's third person.</b> A resume is handed over by someone else. <i>A little about Luis: he has…</i> is the handover's frame, and the office writes the pronoun in.</li>
+  <li><b>Prompts for facts became prompts shaped like a resume.</b> Years in the trade, license, best at, then the personal lines: what makes a customer comfortable before the truck pulls up.</li>
+  <li><b>A cap per line became a cap on the whole.</b> One text, 320 characters, two segments; the desk counts down on the whole, and the tech's switches change the count.</li>
+  <li><b>Nothing on the sheet became a second bubble and one link.</b> The tech reads what Dana gets before it goes, and <b>Not this time</b> holds the introduction for a customer who clearly knows them, while the line still goes.</li>
 </ol>
 </div>
 </body>
