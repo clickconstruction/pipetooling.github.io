@@ -73,6 +73,7 @@ import { tradeBenches } from '../lib/gc/bench'
 import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
 import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubleRow } from '../lib/prospects/companyDouble'
 import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
+import { stripReads, type StripRead } from '../lib/prospects/stripState'
 import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
@@ -425,7 +426,8 @@ export default function Prospects() {
   // The Subs lane (v2.5560): the bench's trades and how many each can count on (null: not read, or
   // refused), the bench's companies for the double check, the lane's whole queue for the counts,
   // and the call script's window.
-  const [benchTrades, setBenchTrades] = useState<{ trade: string; dependable: number }[] | null>(null)
+  // The strips' reads (v2.5585): undefined until the first answer, null when the read failed, the rows once read.
+  const [benchTrades, setBenchTrades] = useState<StripRead<{ trade: string; dependable: number }[]>>(undefined)
   const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null; trades: string[]; vetted?: boolean }[]>([])
   const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
   const [scriptOpen, setScriptOpen] = useState(false)
@@ -433,7 +435,7 @@ export default function Prospects() {
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
-  const [gcWork, setGcWork] = useState<GcWorkCounts | null>(null)
+  const [gcWork, setGcWork] = useState<StripRead<GcWorkCounts>>(undefined)
   const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null; since: string | null }[]>([])
   const [prospectDoubles, setProspectDoubles] = useState<ProspectDoubleRow[]>([])
   const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
@@ -2702,7 +2704,7 @@ export default function Prospects() {
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <>
-          {kind === 'sub' && canAccessFollowUp && (
+          {kind === 'sub' && canAccessFollowUp && stripReads(benchTrades) !== 'loading' && (
             <div
               role="group"
               aria-label="What the bench needs"
@@ -2710,7 +2712,7 @@ export default function Prospects() {
             >
               <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>The bench needs</span>
               {benchNeedsNow.length === 0 && (
-                <span style={{ color: 'var(--text-muted)' }}>{benchTrades === null ? 'the bench could not be read' : 'nothing yet — no trade is on the bench'}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{stripReads(benchTrades) === 'failed' ? 'the bench could not be read' : 'nothing yet — no trade is on the bench'}</span>
               )}
               {benchNeedsNow.map((need) => {
                 const words = benchNeedWords(need)
@@ -2751,14 +2753,15 @@ export default function Prospects() {
               </span>
             </div>
           )}
-          {kind === 'gc_lead' && canAccessFollowUp && (
+          {kind === 'gc_lead' && canAccessFollowUp && stripReads(gcWork) !== 'loading' && (
             <div
               role="group"
               aria-label="GC work in flight"
               style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
             >
               <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>GC work in flight</span>
-              {gcWork === null ? (
+              {gcWork == null ? (
+                // Only a failed read lands here: the strip draws nothing while loading (v2.5585).
                 <span style={{ color: 'var(--text-muted)' }}>the Project Board could not be read</span>
               ) : (
                 GC_WORK_LABELS.map((w) => (
