@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, my requests, dispatch answered, training, course
+keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course
 order: 10
 ---
 Job Mode turns the Dashboard into one big card built for working in the field. It shows your current job, your next job, and big buttons for what you do on site.
@@ -114,6 +114,17 @@ The clock-in happens first. If the text cannot go, the sheet says why under **Wh
 - When the guess lands past the customer's window, a line says so. **Running late** under **Message the customer** moves the board.
 
 Your phone's location is only a guess. Change the minutes when you know better.
+
+## Send your bio the first time
+
+The office writes a short bio about you. A customer gets it the first time you press {{button:green|On my way}} to them. It goes as a second text, right after your line. The same customer never gets it again.
+
+1. Read the bio under the orange box. The line above it says the customer hears from you for the first time.
+2. Press **Edit bio** to pick the lines for this customer. Tick a line on or off. Press {{button:blue|Use these}}.
+3. Press **Not this time** to send the line alone.
+4. Press {{button:green|On my way, text Dana}}. The line goes first, then your bio.
+
+Your usual picks are in Settings under **Your bio**. A change on the sheet is for this customer only. See [set up my profile and notifications](/help/settings-basics#your-bio).
 
 ## Say you are here
 

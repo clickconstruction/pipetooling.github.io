@@ -5,7 +5,8 @@
 import { describe, expect, it } from 'vitest'
 import { jobModeFills } from '../jobModeText'
 import { plainWordsFailures } from '../plainWords'
-import { TECH_SEND_WORDS, TYPED_MAX, composeTechText, isJobModeSend, parseTechSendBody, pickPhone, type PhoneLineRecord } from './techSend'
+import type { BioLine } from '../bio/bio'
+import { LINE_IDS_MAX, TECH_SEND_WORDS, TYPED_MAX, composeBioText, composeTechText, isJobModeSend, parseTechSendBody, pickPhone, type PhoneLineRecord } from './techSend'
 
 const line = (set: Partial<PhoneLineRecord>): PhoneLineRecord => ({
   text: '{first}, this is {me} with Click Plumbing. We are on our way to {address}, about {minutes} minutes out.',
@@ -34,7 +35,7 @@ describe('the tech path’s request', () => {
     expect(isJobModeSend({ ...REQUEST, from: 'box' })).toBe(false)
     expect(parseTechSendBody({ ...REQUEST, body: 'Anything at all' })).toEqual({
       ok: true,
-      body: { customerId: 'cust-dana', contactId: null, jobId: 'job-1312', quickReplyId: 'r2', fills: { minutes: '15' } },
+      body: { kind: 'line', customerId: 'cust-dana', contactId: null, jobId: 'job-1312', quickReplyId: 'r2', fills: { minutes: '15' }, lineIds: [] },
     })
     expect(parseTechSendBody({ ...REQUEST, contactId: ' c-dana ', fills: undefined })).toMatchObject({ ok: true, body: { contactId: 'c-dana', fills: {} } })
   })
@@ -101,5 +102,56 @@ describe('the number it goes to', () => {
 describe('plain words', () => {
   it('holds every refusal the sheet shows', () => {
     expect(Object.values(TECH_SEND_WORDS).flatMap((w) => plainWordsFailures(w))).toEqual([])
+  })
+})
+
+describe('the bio kind (v2.5590)', () => {
+  const BIO_REQUEST = { from: 'job_mode', kind: 'bio', customerId: 'cust-dana', contactId: 'contact-dana', jobId: 'job-512', lineIds: ['b1', 'b1', ' b2 '] }
+
+  it('reads a bio request: the ids once each, trimmed, with no line and no fills', () => {
+    expect(parseTechSendBody({ ...BIO_REQUEST, body: 'Anything at all', fills: { minutes: '9' } })).toEqual({
+      ok: true,
+      body: { kind: 'bio', customerId: 'cust-dana', contactId: 'contact-dana', jobId: 'job-512', quickReplyId: null, fills: {}, lineIds: ['b1', 'b2'] },
+    })
+    expect(parseTechSendBody({ ...BIO_REQUEST, lineIds: undefined })).toMatchObject({ ok: true, body: { kind: 'bio', lineIds: [] } })
+    expect(parseTechSendBody({ ...BIO_REQUEST, contactId: null })).toMatchObject({ ok: true, body: { contactId: null } })
+  })
+
+  it('refuses a pick that is not a list of ids, too many ids, and a bio with no job', () => {
+    expect(parseTechSendBody({ ...BIO_REQUEST, lineIds: 'b1' })).toEqual({ ok: false, words: TECH_SEND_WORDS.badPick })
+    expect(parseTechSendBody({ ...BIO_REQUEST, lineIds: ['b1', 7] })).toEqual({ ok: false, words: TECH_SEND_WORDS.badPick })
+    expect(parseTechSendBody({ ...BIO_REQUEST, lineIds: ['not an id!'] })).toEqual({ ok: false, words: TECH_SEND_WORDS.badPick })
+    expect(parseTechSendBody({ ...BIO_REQUEST, lineIds: Array.from({ length: LINE_IDS_MAX + 1 }, (_, i) => `b${i}`) })).toEqual({ ok: false, words: TECH_SEND_WORDS.badPick })
+    expect(parseTechSendBody({ ...BIO_REQUEST, jobId: '' })).toEqual({ ok: false, words: TECH_SEND_WORDS.badRequest })
+    // A line request still needs its line.
+    expect(parseTechSendBody({ from: 'job_mode', customerId: 'c', jobId: 'j' })).toEqual({ ok: false, words: TECH_SEND_WORDS.badRequest })
+  })
+
+  const bioLine = (id: string, text: string, set: Partial<BioLine> = {}): BioLine => ({ id, text, textEs: null, position: 1, addedAt: 0, removed: false, offByUser: false, ...set })
+  const LUIS: BioLine[] = [
+    bioLine('b1', 'Luis has been a plumber for twelve years.', { position: 1, textEs: 'Luis es plomero desde hace doce años.' }),
+    bioLine('b2', 'Water heaters are his specialty.', { position: 2, textEs: 'Su especialidad son los calentadores.' }),
+    bioLine('b3', 'Off the clock he coaches Little League.', { position: 3 }),
+    bioLine('b4', 'He is an Astros fan.', { position: 4, textEs: 'Es aficionado de los Astros.', offByUser: true }),
+    bioLine('b0', 'He drove a white van.', { position: 5, removed: true }),
+  ]
+
+  it('composes the bio from the pick, in the office’s order, in the customer’s language', () => {
+    expect(composeBioText(LUIS, ['b4', 'b1'], 'Luis', 'en')).toEqual({ ok: true, text: 'A little about Luis: Luis has been a plumber for twelve years. He is an Astros fan.', lineIds: ['b1', 'b4'] })
+    expect(composeBioText(LUIS, ['b1', 'b2', 'b3'], 'Luis', 'es')).toEqual({ ok: true, text: 'Un poco sobre Luis: Luis es plomero desde hace doce años. Su especialidad son los calentadores.', lineIds: ['b1', 'b2'] })
+  })
+
+  it('refuses an id that is not the sender’s live line, and a pick with nothing to say', () => {
+    expect(composeBioText(LUIS, ['b1', 'zz'], 'Luis', 'en')).toEqual({ ok: false, refused: 'notYourLine', words: TECH_SEND_WORDS.notYourLine })
+    expect(composeBioText(LUIS, ['b0'], 'Luis', 'en')).toEqual({ ok: false, refused: 'notYourLine', words: TECH_SEND_WORDS.notYourLine })
+    expect(composeBioText(LUIS, [], 'Luis', 'en')).toEqual({ ok: false, refused: 'nothingToSay', words: TECH_SEND_WORDS.nothingToSay })
+    expect(composeBioText(LUIS, ['b3'], 'Luis', 'es')).toEqual({ ok: false, refused: 'nothingToSay', words: TECH_SEND_WORDS.nothingToSay })
+    expect(composeBioText([], [], 'Luis', 'en')).toMatchObject({ ok: false, refused: 'nothingToSay' })
+  })
+
+  it('the bio’s words are plain', () => {
+    for (const words of [TECH_SEND_WORDS.badPick, TECH_SEND_WORDS.nothingToSay, TECH_SEND_WORDS.notYourLine, TECH_SEND_WORDS.alreadyIntroduced]) {
+      expect(plainWordsFailures(words), words).toEqual([])
+    }
   })
 })

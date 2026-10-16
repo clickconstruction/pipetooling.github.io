@@ -11,36 +11,55 @@
  * - The line: one of the phone's lines (the team's, for customers, with a place, not removed) that needs neither money
  *   nor the page link (`onPhone`). Typed words fill only the blanks the app cannot, so they never stand in for a name.
  * - The phone: the number they last texted from, else the first phone on their contact.
+ *
+ * Since v2.5590 (the tech's bio, punch list #114) a second kind: `{ from: 'job_mode', kind: 'bio', customerId,
+ * contactId, jobId, lineIds }` asks for the tech's bio, the second text after their first On my way to a customer.
+ * The phone sends the picked lines' ids, never their words; the server composes the bio from the office's lines with
+ * the bio's own kernel (`bio.ts`: `bioText`), so what the tech read is what goes.
  */
 
 import type { PortalLang } from '../gc/portalI18n.ts'
+import { bioPickedLines, bioText, type BioLine } from '../bio/bio.ts'
 import { onPhone, previewOf } from '../jobModeText.ts'
 import type { BlankFills } from '../quickReplies/blanks.ts'
 
 /** The most characters a typed blank holds. */
 export const TYPED_MAX = 40
+/** The most lines a bio pick names. */
+export const LINE_IDS_MAX = 20
+
+/** What the press asks for: one of the phone's lines, or the tech's bio. */
+export type TechSendKind = 'line' | 'bio'
 
 /** The tech path's request, read. */
 export interface TechSendBody {
+  kind: TechSendKind
   customerId: string
   /** The thread the sheet read, or null when there was none to read. */
   contactId: string | null
   jobId: string
-  quickReplyId: string
-  /** The blanks the tech typed, by blank: `{ minutes: '15' }`. */
+  /** The phone line, for a line; null for a bio. */
+  quickReplyId: string | null
+  /** The blanks the tech typed, by blank: `{ minutes: '15' }`. Empty for a bio. */
   fills: Record<string, string>
+  /** The bio's picked lines, by id, in any order. Empty for a line. */
+  lineIds: string[]
 }
 
 /** The tech path's words, each a sentence the sheet shows as it is. */
 export const TECH_SEND_WORDS = {
   badRequest: 'The text is missing its job, its customer or its line.',
   badFill: `A word you type holds ${TYPED_MAX} characters at most, on one line.`,
+  badPick: 'The bio’s pick could not be read.',
   notTech: 'Only a tech on this job sends from Job Mode.',
   noCustomer: 'This job has no customer yet.',
   wrongCustomer: 'That job is not this customer’s.',
   noPhone: 'They have no phone number on file. Use Something else.',
   notOnPhone: 'That line is not on the phone.',
   offPhone: 'That line needs the office. Use Something else.',
+  nothingToSay: 'Nothing to say yet. Ask the office for a bio.',
+  notYourLine: 'That line is not yours to send.',
+  alreadyIntroduced: 'They have your bio already.',
 } as const
 
 /** Whether a request is Job Mode's: it takes the tech path, not the reply box's. */
@@ -49,16 +68,29 @@ export function isJobModeSend(json: unknown): boolean {
 }
 
 const BLANK_KEY = /^[a-z][a-z ]{0,19}$/
+const ID = /^[A-Za-z0-9_-]{1,64}$/
 
 /** The tech path's request, read; the words when something in it cannot go. Any `body` is left unread. */
 export function parseTechSendBody(json: unknown): { ok: true; body: TechSendBody } | { ok: false; words: string } {
   if (!isJobModeSend(json)) return { ok: false, words: TECH_SEND_WORDS.badRequest }
   const o = json as Record<string, unknown>
   const id = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+  const kind: TechSendKind = o.kind === 'bio' ? 'bio' : 'line'
   const customerId = id(o.customerId)
   const jobId = id(o.jobId)
+  if (!customerId || !jobId) return { ok: false, words: TECH_SEND_WORDS.badRequest }
+  if (kind === 'bio') {
+    const raw = o.lineIds ?? []
+    if (!Array.isArray(raw) || raw.length > LINE_IDS_MAX) return { ok: false, words: TECH_SEND_WORDS.badPick }
+    const lineIds: string[] = []
+    for (const v of raw) {
+      if (typeof v !== 'string' || !ID.test(v.trim())) return { ok: false, words: TECH_SEND_WORDS.badPick }
+      if (!lineIds.includes(v.trim())) lineIds.push(v.trim())
+    }
+    return { ok: true, body: { kind, customerId, contactId: id(o.contactId), jobId, quickReplyId: null, fills: {}, lineIds } }
+  }
   const quickReplyId = id(o.quickReplyId)
-  if (!customerId || !jobId || !quickReplyId) return { ok: false, words: TECH_SEND_WORDS.badRequest }
+  if (!quickReplyId) return { ok: false, words: TECH_SEND_WORDS.badRequest }
   const raw = o.fills ?? {}
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, words: TECH_SEND_WORDS.badFill }
   const fills: Record<string, string> = {}
@@ -68,7 +100,7 @@ export function parseTechSendBody(json: unknown): { ok: true; body: TechSendBody
     if (typed.length > TYPED_MAX || /[\r\n]/.test(typed)) return { ok: false, words: TECH_SEND_WORDS.badFill }
     if (typed) fills[key] = typed
   }
-  return { ok: true, body: { customerId, contactId: id(o.contactId), jobId, quickReplyId, fills } }
+  return { ok: true, body: { kind, customerId, contactId: id(o.contactId), jobId, quickReplyId, fills, lineIds: [] } }
 }
 
 /** A phone line as `quick_replies` keeps it. */
@@ -99,6 +131,22 @@ export function composeTechText(line: PhoneLineRecord, app: BlankFills, typed: R
   const own = Object.fromEntries(Object.entries(typed).filter(([key]) => asked.has(key)))
   const shown = previewOf(words, app, own, lang)
   return shown.stop ? { ok: false, refused: 'blankOpen', words: shown.stop } : { ok: true, text: shown.text }
+}
+
+export type BioSendText = { ok: true; text: string; lineIds: string[] } | { ok: false; refused: 'notYourLine' | 'nothingToSay'; words: string }
+
+/**
+ * The bio the tech's press sends: the sender's own lines (`user_bio_lines`, as the bio kernel reads them), the ones
+ * the phone picked, in the office's order, in the customer's language, after the opener. Refused when a picked id is
+ * not one of the sender's live lines, and when nothing is left to say (no pick, or a Spanish reader with no Spanish
+ * line). The ids that went come back, for the record.
+ */
+export function composeBioText(lines: readonly BioLine[], picked: readonly string[], first: string | null, lang: PortalLang): BioSendText {
+  const live = new Set(lines.filter((l) => !l.removed).map((l) => l.id))
+  if (picked.some((id) => !live.has(id))) return { ok: false, refused: 'notYourLine', words: TECH_SEND_WORDS.notYourLine }
+  const text = bioText({ lines, picked, first, lang })
+  if (!text) return { ok: false, refused: 'nothingToSay', words: TECH_SEND_WORDS.nothingToSay }
+  return { ok: true, text, lineIds: bioPickedLines({ lines, picked, first, lang }).map((l) => l.id) }
 }
 
 /** A number on a contact. */

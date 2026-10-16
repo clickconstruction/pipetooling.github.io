@@ -194,9 +194,14 @@ export interface ActsInput {
   sameSite: boolean
   /** On an I'm here press: the drive so far. */
   driveMinutes?: number | null
+  /** On an On my way press: the bio that follows the line, as the lines picked of the lines there; null when none goes. */
+  bio?: { lines: number; of: number } | null
 }
 
 const firstOr = (first: string | null, fallback: string) => first ?? fallback
+
+/** The third row on a first-time press: *Then texts your bio, 3 of 4 lines, since Dana has not heard from you before.* */
+const bioRow = (bio: { lines: number; of: number }, who: string) => `Then texts your bio, ${bio.lines} of ${bio.of} lines, since ${who} has not heard from you before.`
 
 /** The sheet's rows and its two presses, for either press. */
 export function acts(input: ActsInput): Acts {
@@ -224,7 +229,7 @@ export function acts(input: ActsInput): Acts {
   const clockIn = input.leaving ? `Clocks you out of ${input.leaving} and in on ${input.jobLabel} as on the way.` : `Clocks you in on ${input.jobLabel} as on the way.`
   const textRow = { icon: '💬', words: `Texts ${who} from the company number. Their answer comes back to you.`, hold: false }
   return {
-    rows: [{ icon: '⏱', words: clockIn, hold: false }, holdRow ?? textRow],
+    rows: [{ icon: '⏱', words: clockIn, hold: false }, holdRow ?? textRow, ...(input.bio && !input.hold ? [{ icon: '👋', words: bioRow(input.bio, who), hold: false }] : [])],
     primary: input.hold ? 'On my way' : `On my way, text ${them}`,
     secondary: input.hold ? null : 'Clock in, no text',
   }
@@ -259,4 +264,18 @@ export const ON_MY_WAY_WORDS = {
   textFailed: 'The text did not go. You are clocked in; Message the customer sends it again.',
   hereTextFailed: 'The text did not go. You are on site; Message the customer sends it again.',
   noDestination: 'Pick where you are going.',
+  /** The tech's bio (v2.5590): the block under the line the first time, the window on top, and the toasts. */
+  bioFirst: (first: string | null) => `${first ?? 'They'} hears from you for the first time. This goes right after:`,
+  bioNone: 'Nothing goes while every line is off.',
+  notThisTime: 'Not this time',
+  editBio: 'Edit bio',
+  bioSent: 'Your bio went too.',
+  bioFailed: 'Your bio did not go. The line did.',
+  bioWindowTitle: (first: string | null) => `Your bio for ${first ?? 'them'}`,
+  bioWindowHint: 'Tick what goes this time. The office wrote the lines.',
+  bioPreview: (first: string | null) => (first ? `As ${first} gets it` : 'As they get it'),
+  bioUsual: 'Your usual picks are in Settings → Your account. A change here is for this customer only.',
+  bioNoSpanish: 'No Spanish yet, so it cannot go to a Spanish reader.',
+  useThese: 'Use these',
+  back: 'Back',
 } as const

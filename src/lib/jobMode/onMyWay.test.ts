@@ -11,6 +11,7 @@ import {
   legOf,
   legWords,
   minutesOf,
+  ON_MY_WAY_WORDS,
   pastWindowWords,
   pressLine,
   stepMinutes,
@@ -176,5 +177,36 @@ describe('the note and the rows', () => {
     ]) {
       for (const r of a.rows) expect(plainWordsFailures(r.words), r.words).toEqual([])
     }
+  })
+})
+
+describe('the bio row (v2.5590)', () => {
+  it('a first-time press gets a third row that counts the lines; a hold or no bio gets none', () => {
+    const a = acts({ press: 'on_my_way', jobLabel: 'PLUM 512', first: 'Dana', leaving: null, hold: null, sameSite: false, bio: { lines: 3, of: 4 } })
+    expect(a.rows.map((r) => r.words)).toEqual([
+      'Clocks you in on PLUM 512 as on the way.',
+      'Texts Dana from the company number. Their answer comes back to you.',
+      'Then texts your bio, 3 of 4 lines, since Dana has not heard from you before.',
+    ])
+    expect(a.rows[2]?.icon).toBe('👋')
+    expect(acts({ press: 'on_my_way', jobLabel: 'PLUM 512', first: null, leaving: null, hold: null, sameSite: false, bio: { lines: 2, of: 2 } }).rows[2]?.words).toBe('Then texts your bio, 2 of 2 lines, since the customer has not heard from you before.')
+    expect(acts({ press: 'on_my_way', jobLabel: 'PLUM 512', first: 'Dana', leaving: null, hold: 'texts-off', sameSite: false, bio: { lines: 3, of: 4 } }).rows).toHaveLength(2)
+    expect(acts({ press: 'on_my_way', jobLabel: 'PLUM 512', first: 'Dana', leaving: null, hold: null, sameSite: false, bio: null }).rows).toHaveLength(2)
+    expect(acts({ press: 'on_my_way', jobLabel: 'PLUM 512', first: 'Dana', leaving: null, hold: null, sameSite: false }).rows).toHaveLength(2)
+  })
+
+  it('the bio’s words are plain', () => {
+    const read = [
+      ON_MY_WAY_WORDS.bioFirst('Dana'),
+      ON_MY_WAY_WORDS.bioFirst(null),
+      ON_MY_WAY_WORDS.bioNone,
+      ON_MY_WAY_WORDS.bioSent,
+      ON_MY_WAY_WORDS.bioFailed,
+      ON_MY_WAY_WORDS.bioWindowHint,
+      ON_MY_WAY_WORDS.bioUsual,
+      ON_MY_WAY_WORDS.bioNoSpanish,
+      acts({ press: 'on_my_way', jobLabel: 'PLUM 512', first: 'Dana', leaving: null, hold: null, sameSite: false, bio: { lines: 3, of: 4 } }).rows[2]!.words,
+    ]
+    for (const words of read) expect(plainWordsFailures(words), words).toEqual([])
   })
 })

@@ -91,9 +91,10 @@ export const ENTRIES = {
   'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'techHoldUntil', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },
   // R5: quo-send's tech path. The text is made from the line and the record with the sheet's own kernel.
   'lib/quo/techSend.ts': {
-    values: ['TECH_SEND_WORDS', 'TYPED_MAX', 'composeTechText', 'isJobModeSend', 'parseTechSendBody', 'pickPhone'],
-    types: ['PhoneChannel', 'PhoneLineRecord', 'TechSendBody', 'TechSendText'],
+    values: ['TECH_SEND_WORDS', 'TYPED_MAX', 'LINE_IDS_MAX', 'composeBioText', 'composeTechText', 'isJobModeSend', 'parseTechSendBody', 'pickPhone'],
+    types: ['BioSendText', 'PhoneChannel', 'PhoneLineRecord', 'TechSendBody', 'TechSendKind', 'TechSendText'],
   },
+  'lib/bio/bio.ts': { values: ['bioText', 'bioPickedLines', 'bioLinesFromRows', 'usualPicks', 'firstNameOf', 'introduced', 'BIO_CAP'], types: ['BioLine', 'BioLineRow'] },
   'lib/jobModeText.ts': { values: ['jobModeFills'], types: ['JobModeBlock', 'JobModeFillInput'] },
   'lib/messages/customerLang.ts': { values: ['customerLang'], types: [] },
   'lib/followUp/assignSeats.ts': { values: ['ASSIGN_RULE_KEY', 'parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
