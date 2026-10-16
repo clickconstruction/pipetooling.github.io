@@ -2,7 +2,7 @@
 name: "On my way and I'm here: one press that clocks the drive and texts the customer"
 number: 112
 group: ready
-status: designed 2026-10-16; the build is on branch claude/on-my-way (PR open the same day)
+status: built as v2.5573 (#5773, merged 2026-10-16); migration 20261016020000 pushed and the types regenerated the same day
 summary: >
   Job Mode's big green button becomes On my way. One press clocks the tech in on the next job as
   on the way and texts the customer the office's On my way line, with the minutes guessed from the
@@ -12,7 +12,7 @@ summary: >
   session, travel_started_at and arrived_at, give the office an honest drive time per visit for
   the first time. The office owns both lines in the quick replies editor, where a new Big button
   picker says which line each press sends.
-next: Merge the build PR, push migration 20261016010000, regenerate the types, then the live walk on the owner's own phone with a test job.
+next: The live walk on the owner’s own phone with a test job whose customer is his own number; then the follow-ons below, each its own PR when asked.
 size: M (one migration with two small functions, one kernel, two sheets, the card's wiring, the editor's picker, two guides)
 blocker: none
 opinion: build it as drawn; the sheet is the message sheet the owner already loves, pointed at the day's main press.
@@ -175,7 +175,7 @@ The first draft was D as drawn above. Reading it back against the owner's three 
 ## The PR train
 
 1. **This to-do** (the plan and the mock-up).
-2. **The feature**: migration `20261016010000_on_my_way.sql` (the five columns, `phone_press`,
+2. **The feature**: migration `20261016020000_on_my_way.sql` (the five columns, `phone_press`,
    the two functions, the seeds), the kernel and its test, the two sheets, the card, the editor's
    picker, the two guides, the release note. The card reads the stamps fail-soft, so the client may
    deploy before the push.
