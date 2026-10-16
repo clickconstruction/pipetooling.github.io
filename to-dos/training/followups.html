@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Training follow-ups</title>
+<style>
+  /* Nine spots from the 2026-10-16 walk, each as Now beside Suggestion, one sentence each. Light only, like every to-do mock-up. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --amber: #92400e; --amber-tint: #fef3c7; --green: #15803d; --green-tint: #dcfce7; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #fff; --page: #f3f4f6; --font: -apple-system, "Segoe UI", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 17px; margin: 40px 0 8px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; background: var(--line-2); color: var(--ink-2); }
+  .cap.new { background: var(--blue-tint); color: var(--blue-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; overflow-x: auto; min-width: 0; }
+  .note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 70ch; }
+  .note b { color: var(--ink); }
+  .phone { width: 330px; margin: 0 auto; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; padding: 12px; font-size: 14px; }
+  .desk { background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 11.5px; line-height: 18px; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); } .chip.red { background: var(--red-tint); color: var(--red-ink); } .chip.green { background: var(--green-tint); color: var(--green); } .chip.amber { background: var(--amber-tint); color: var(--amber); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; border-radius: 6px; padding: 4px 12px; font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); }
+  .btn.tall { min-height: 44px; padding: 8px 16px; }
+  .btn.short { height: 31px; }
+  .q { margin: 8px 0 0; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 8px; position: relative; }
+  .q .ask { font-weight: 600; margin: 0 0 4px; }
+  .q.legend { padding-top: 0; margin-top: 18px; }
+  .q.legend .ask { position: relative; top: -11px; background: var(--surface); display: inline; padding: 0 4px; margin-left: 4px; }
+  .opt { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
+  .opt.tall { min-height: 44px; }
+  .opt i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line); flex: none; }
+  .row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; color: var(--ink-2); }
+  .row.tall { min-height: 44px; align-items: center; }
+  .row .n { width: 20px; text-align: right; color: var(--muted); }
+  .verdict { padding: 7px 10px; border-radius: 7px; font-weight: 700; margin: 8px 0; }
+  .verdict.red { background: var(--red-tint); color: var(--red-ink); } .verdict.green { background: var(--green-tint); color: var(--green); }
+  .muted { color: var(--muted); } .ink2 { color: var(--ink-2); }
+  .cell { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 54px; height: 24px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+  .cell.red { background: var(--red-tint); color: var(--red-ink); } .cell.amber { background: var(--amber-tint); color: var(--amber); } .cell.quiet { opacity: .35; }
+  svg { width: 13px; height: 13px; vertical-align: -2px; }
+  .hr { border-top: 1px solid var(--line-2); margin: 10px 0; }
+  .tick { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+  .tick.on { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-ink); font-weight: 600; }
+  ul.crit { margin: 8px 0 0; padding-left: 20px; max-width: 100ch; } ul.crit li { margin: 5px 0; } ul.crit b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #111 · follow-ups from the 2026-10-16 walk · made-up names and dates</p>
+  <h1>Training follow-ups</h1>
+  <p>Nine spots, each the way it stands now beside the suggestion, one sentence each. The walk ran on a 375 px phone as a crew member and on a desk as the office and the dev. The critique at the foot says what changed between the first cut and this one.</p>
+</header>
+
+<h2><span class="num">1</span> A question's box, on a phone</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="phone">
+    <div class="q legend"><p class="ask">1. What type of control involves installing barriers around hazards?</p><div class="opt"><i></i>Substitution</div><div class="opt"><i></i>Administrative control</div><div class="opt"><i></i>PPE</div><div class="opt"><i></i>Engineering control</div></div>
+    <p class="note">The question is the box's legend, so when it wraps the border runs through the words.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="phone">
+    <div class="q"><p class="ask">1. What type of control involves installing barriers around hazards?</p><div class="opt tall"><i></i>Substitution</div><div class="opt tall"><i></i>Administrative control</div><div class="opt tall"><i></i>PPE</div><div class="opt tall"><i></i>Engineering control</div></div>
+    <p class="note">The question is a heading inside the box, and the box names it for a screen reader. Each answer row is 44 px tall on a touch screen.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">2</span> Touch targets</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="phone">
+    <div class="row"><span class="n">17</span>Ladders and stairs</div><div class="row"><span class="n">18</span>Scaffolds</div><div class="row"><span class="n">19</span>Trenches: soil and protection</div>
+    <div class="hr"></div>
+    <span class="btn short">Try again</span> &nbsp; <span class="btn p short">Next lesson ›</span>
+    <p class="note">Lesson rows are 30 px, Try again 31 px, Next lesson and Continue 37 px. The house rule on touch is 44.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="phone">
+    <div class="row tall"><span class="n">17</span>Ladders and stairs</div><div class="row tall"><span class="n">18</span>Scaffolds</div><div class="row tall"><span class="n">19</span>Trenches: soil and protection</div>
+    <div class="hr"></div>
+    <span class="btn tall">Try again</span> &nbsp; <span class="btn p tall">Next lesson ›</span>
+    <p class="note">Every press and every row is at least 44 px on a touch screen, the desk keeps its size. One rule in the stylesheet, not nine inline styles.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">3</span> One count, not two</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="phone">
+    <div><b>OSHA 30 refresher</b></div>
+    <div style="margin:6px 0"><span class="chip blue">1 of 31</span> <span class="chip red">Not done yet</span></div>
+    <div class="btn" style="width:100%;justify-content:space-between">Lessons · 1 of 31 <span>▾</span></div>
+    <p class="eyebrow" style="margin-top:10px">Start here · Lesson 1 of 30 · about 6 minutes</p>
+    <p class="note">"1 of 31" counts the final check as a step, while the line under it says "of 30".</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="phone">
+    <div><b>OSHA 30 refresher</b></div>
+    <div style="margin:6px 0"><span class="chip blue">1 of 30 lessons</span></div>
+    <div class="btn" style="width:100%;justify-content:space-between">Lessons · 1 of 30 <span>▾</span></div>
+    <p class="eyebrow" style="margin-top:10px">Start here · Lesson 1 of 30 · about 6 minutes</p>
+    <p class="note">Lessons count lessons. The final check is its own row at the foot of the list, and once passed it is a green chip: <span class="chip green">Final check passed</span>.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">4</span> The red chip beside the count</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="phone">
+    <div style="margin:6px 0"><span class="chip blue">12 of 31</span> <span class="chip red">Not done yet</span></div>
+    <p class="note">While there is no pass the red chip says what the count already says.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="phone">
+    <div style="margin:6px 0"><span class="chip blue">12 of 30 lessons</span></div>
+    <div style="margin:6px 0"><span class="chip blue">30 of 30 lessons</span> <span class="chip green">Done Oct 16 · due again Oct 16, 2027</span></div>
+    <div style="margin:6px 0"><span class="chip blue">30 of 30 lessons</span> <span class="chip amber">Done Nov 7, 2025 · due again Nov 7, in 23 days</span></div>
+    <p class="note">The standing chip appears only once there is a pass to describe: green inside the window, amber when it is due.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">5</span> After a pass</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="phone">
+    <div class="hr"></div><b style="color:var(--green)">Passed. 20 of 20 right.</b>
+    <p class="note">The page ends there. The way back is the small ‹ Dashboard at the top.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="phone">
+    <div class="hr"></div><b style="color:var(--green)">Passed. 20 of 20 right. Recorded, due again Oct 16, 2027.</b>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><span class="btn p tall">‹ Back to the Dashboard</span><span class="btn q tall">Read a lesson again</span></div>
+    <p class="note">One blue press home, and the day it is due again said once, where the person is looking.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">6</span> A question asked twice</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="desk">
+    <div>Final check, question 4: <i>When is it safe to enter a trench?</i></div>
+    <div>Final check, question 11: <i>When is it safe to enter a trench?</i></div>
+    <p class="note">17 questions live in more than one place: lessons 1 and 2 borrow later lessons' quiz questions, and the final bank repeats 12 lesson questions. The draw takes one part at a time, so the same question can come up twice.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="desk">
+    <div>Lessons 1 and 2 get their own questions from the course's own checks on the principles. The bank keeps only questions no lesson asks. The draw skips a repeat.</div>
+    <p class="note">A content test holds it from now on: no question asked twice across the course. The bank stays over twenty.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">7</span> Settings → Training</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="desk">
+    <div><b>OSHA 30 refresher</b> <span class="chip green">On</span> <span class="muted">30 lessons and a final check · about 3 h · content 90600611 · ships with the app</span></div>
+    <div style="margin-top:8px"><span class="muted">GOOD FOR</span> <span class="tick">12</span> months · amber from <span class="tick">30</span> days before the day <span class="muted">· passes before Oct 16 do not count</span></div>
+    <div style="margin-top:8px"><span class="btn" style="color:var(--red-ink)">Everyone takes it again…</span></div>
+    <p class="note">No way to open the course from here, and once Everyone takes it again is pressed there is no way to take it back.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="desk">
+    <div><b>OSHA 30 refresher</b> <span class="chip green">On</span> <span class="muted">30 lessons and a final check · about 3 h · ships with the app</span> <span class="btn q">Preview the course</span></div>
+    <div style="margin-top:8px"><span class="muted">GOOD FOR</span> <span class="tick">12</span> months · amber from <span class="tick">30</span> days before the day</div>
+    <div style="margin-top:8px"><span class="chip amber">Everyone takes it again from Oct 16</span> <span class="btn q">Clear</span> <span class="muted">· 14 people turned red</span></div>
+    <div style="margin-top:8px"><span class="btn" style="color:var(--red-ink)">Everyone takes it again…</span></div>
+    <p class="note">Preview opens the course as the dev sees it. The stamp is a chip with Clear, which puts the old passes back to counting. The content hash leaves the line; it is in the pass record where a dev can read it.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">8</span> People → Users, the cell</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="desk">
+    <div style="display:flex;align-items:center;gap:12px"><span><b>Dana R.</b> <span class="chip">login</span></span><span style="margin-left:auto" class="cell quiet">⏱</span><span class="cell red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg>1</span><span class="cell quiet">👤</span></div>
+    <p class="note">A course not done shows as a red paper with a count of 1. The course's name is only in the hover text.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="desk">
+    <div style="display:flex;align-items:center;gap:12px"><span><b>Dana R.</b> <span class="chip">login</span></span><span style="margin-left:auto" class="cell quiet">⏱</span><span class="cell red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-4 9 4-9 4-9-4z"/><path d="M7 11v4c0 1.5 2.5 3 5 3s5-1.5 5-3v-4"/><path d="M21 9v5"/></svg></span><span class="cell quiet">👤</span></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:6px"><span><b>Luis M.</b> <span class="chip">login</span></span><span style="margin-left:auto" class="cell quiet">⏱</span><span class="cell amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg>2</span><span class="cell quiet">👤</span></div>
+    <p class="note">When training leads the cell it wears a cap, not a paper. Papers keep the paper. The three cells stay as the owner picked them.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">9</span> The card before the first press</h2>
+<div class="two">
+  <div><div class="cap">Now</div><div class="fit"><div class="phone">
+    <div><b>Training</b> <span class="muted">at your own pace</span></div>
+    <div class="verdict red">● 1 course to do</div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><div><b>OSHA 30 refresher</b><div class="muted" style="font-size:12.5px">Required for your role · not started</div></div><span class="btn p">Start</span></div>
+    <p class="note">Nothing says how big the course is before the first press.</p>
+  </div></div></div>
+  <div><div class="cap new">Suggestion</div><div class="fit"><div class="phone">
+    <div><b>Training</b> <span class="muted">at your own pace</span></div>
+    <div class="verdict red">● 1 course to do</div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><div><b>OSHA 30 refresher</b><div class="muted" style="font-size:12.5px">30 lessons of about five minutes · about 3 hours in all</div></div><span class="btn p tall">Start</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px"><div><b>OSHA 30 refresher</b><div class="muted" style="font-size:12.5px">12 of 30 lessons · next: Trenches: soil and protection</div></div><span class="btn p tall">Continue</span></div>
+    <p class="note">Not started says the size. Started says how far and what is next. The size comes from the course's own file, not the lessons, so the Dashboard loads no lesson text.</p>
+  </div></div></div>
+</div>
+
+<h2><span class="num">★</span> Is this the best we can do?</h2>
+<ul class="crit">
+  <li><b>Spot 1</b> first kept the fieldset and pushed the legend inside with CSS. A heading inside a labelled group is simpler, reads the same to a screen reader, and never fights the border.</li>
+  <li><b>Spot 2</b> first grew every button everywhere. On a desk the small presses are right, so the rule is one media query for coarse pointers, and it covers the lesson rows and the answer rows too, which the first cut missed.</li>
+  <li><b>Spot 3</b> first said "1 of 31 steps". Nobody thinks in steps; they think in lessons, and the final check is the one thing that is not a lesson, so it gets its own chip when passed.</li>
+  <li><b>Spot 5</b> first put the due day only on the Dashboard. Saying it once at the moment of the pass is what a person wants to read, and the Dashboard still carries it.</li>
+  <li><b>Spot 6</b> first only made the draw skip repeats. That hides the problem; the content test and the rewritten questions remove it.</li>
+  <li><b>Spot 7</b> first made Clear a second red button. A chip that states the stamp with a quiet Clear reads as a fact with an undo, not a second alarm.</li>
+  <li><b>Spot 8</b> first added a fourth cell. The owner picked three cells in v2.2815; an icon that changes with the lead need keeps that decision and still reads at a glance.</li>
+  <li><b>Spot 9</b> first imported the lessons to count them, which would put the lesson text on every Dashboard. A size line in the course's own file keeps the Dashboard light.</li>
+</ul>
+</div>
+</body>
+</html>

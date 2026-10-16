@@ -5421,3 +5421,13 @@ tr[data-stages-row-stamped] {
   background: var(--bg-subtle);
   text-decoration: none;
 }
+
+/* Training (punch list #111, v2.5575): on a touch screen every press, lesson row and answer row is at least 44 px
+   tall; the desk keeps its size. One rule here instead of a media query the inline styles cannot carry. */
+@media (pointer: coarse) {
+  .trainingPress,
+  .trainingRow,
+  .trainingOption {
+    min-height: 44px;
+  }
+}

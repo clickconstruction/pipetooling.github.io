@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useToastContext } from '../contexts/ToastContext'
@@ -7,7 +7,7 @@ import { pageGate } from '../lib/roleGate'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { findCourse } from '../lib/training/courseRegistry'
 import { courseProgress, lessonToOpen, type CourseLesson, type FinalCheckResult } from '../lib/training/courseContent'
-import { courseStanding, standingWords, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../lib/training/trainingState'
+import { courseStanding, standingWords, ymdWords, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../lib/training/trainingState'
 import { finishCourse, loadMyTraining, loadTrainingCatalog, passLesson } from '../lib/training/trainingIo'
 import { LessonCheck } from '../components/training/LessonCheck'
 import { FinalCheck } from '../components/training/FinalCheck'
@@ -41,6 +41,7 @@ export default function Training() {
   const { slug = '' } = useParams()
   const { user, role, loading: authLoading } = useAuth()
   const { showToast } = useToastContext()
+  const navigate = useNavigate()
   const isMobile = useIsMobile()
   const [params, setParams] = useSearchParams()
   const gate = pageGate({ loading: authLoading, user, role }, () => true)
@@ -209,13 +210,15 @@ export default function Training() {
           ‹ Dashboard
         </Link>
         <h1 style={{ margin: 0, fontSize: '1.25rem', lineHeight: 1.2 }}>{course.title}</h1>
-        <Chip tone="blue" title="Lessons done, and the final check">
-          {progress.done} of {progress.of}
+        <Chip tone="blue" title="Lessons done">
+          {progress.lessonsDone} of {progress.lessons} lessons
         </Chip>
+        {progress.finalPassed && <Chip tone="green">Final check passed</Chip>}
         {!courseOn && <Chip tone="gray">Preview · switched off</Chip>}
-        {standing && (
+        {/* The standing chip says when a pass was and when it is due; with no pass the lesson count already says it all (v2.5575). */}
+        {standing && standing.passedOn && standingLine && (
           <span style={{ ...VERDICT_TONES[standing.colour], padding: '0.1rem 0.6rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600 }} data-standing={standing.colour}>
-            {standingLine || 'Not done yet'}
+            {standingLine}
           </span>
         )}
         <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{course.line}</span>
@@ -224,8 +227,8 @@ export default function Training() {
       <div className="training-cols">
         <nav className="training-rail" aria-label="Lessons">
           {isMobile && (
-            <button type="button" onClick={() => setRailOpen((o) => !o)} style={{ ...BTN, margin: '0 0.75rem 0.4rem', width: 'calc(100% - 1.5rem)', justifyContent: 'space-between' }} aria-expanded={railOpen}>
-              <span>Lessons · {progress.done} of {progress.of}</span>
+            <button type="button" className="trainingPress" onClick={() => setRailOpen((o) => !o)} style={{ ...BTN, margin: '0 0.75rem 0.4rem', width: 'calc(100% - 1.5rem)', justifyContent: 'space-between' }} aria-expanded={railOpen}>
+              <span>Lessons · {progress.lessonsDone} of {progress.lessons}</span>
               <span aria-hidden="true">{railOpen ? '▴' : '▾'}</span>
             </button>
           )}
@@ -246,6 +249,7 @@ export default function Training() {
                         <button
                           key={l.key}
                           type="button"
+                          className="trainingRow"
                           onClick={() => openLesson(l.key)}
                           aria-current={now ? 'page' : undefined}
                           data-lesson-row={l.key}
@@ -281,6 +285,7 @@ export default function Training() {
               <div style={{ margin: '0.75rem 0.9rem 0.25rem' }}>
                 <button
                   type="button"
+                  className="trainingPress"
                   onClick={openFinal}
                   disabled={!progress.allLessonsDone}
                   aria-current={showFinal ? 'page' : undefined}
@@ -307,7 +312,17 @@ export default function Training() {
 
         <main style={{ padding: '1rem 1.25rem 1.5rem', maxWidth: '72ch', minWidth: 0 }}>
           {showFinal ? (
-            <FinalCheck course={course} onPassed={onFinalPassed} saving={saving} />
+            <FinalCheck
+              course={course}
+              onPassed={onFinalPassed}
+              saving={saving}
+              recordedLine={standing?.dueOn ? `Recorded, due again ${ymdWords(standing.dueOn, today)}.` : null}
+              onHome={() => navigate('/dashboard')}
+              onReadAgain={() => {
+                const first = course.lessons[0]
+                if (first) openLesson(first.key)
+              }}
+            />
           ) : (
             <article data-lesson={lesson.key}>
               <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>
@@ -347,17 +362,17 @@ export default function Training() {
               <LessonCheck lesson={lesson} seed={checkSeed} alreadyPassed={lessonDone} onPassed={onLessonPassed} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
                 {prev && (
-                  <button type="button" onClick={() => openLesson(prev.key)} style={BTN}>
+                  <button type="button" className="trainingPress" onClick={() => openLesson(prev.key)} style={BTN}>
                     ‹ {prev.title}
                   </button>
                 )}
                 <span style={{ marginLeft: 'auto' }} />
                 {next ? (
-                  <button type="button" onClick={() => openLesson(next.key)} disabled={!lessonDone} style={{ ...BTN_PRIMARY, ...(lessonDone ? {} : BTN_DISABLED) }} data-next-lesson>
+                  <button type="button" className="trainingPress" onClick={() => openLesson(next.key)} disabled={!lessonDone} style={{ ...BTN_PRIMARY, ...(lessonDone ? {} : BTN_DISABLED) }} data-next-lesson>
                     Next lesson ›
                   </button>
                 ) : (
-                  <button type="button" onClick={openFinal} disabled={!progress.allLessonsDone} style={{ ...BTN_PRIMARY, ...(progress.allLessonsDone ? {} : BTN_DISABLED) }} data-next-lesson>
+                  <button type="button" className="trainingPress" onClick={openFinal} disabled={!progress.allLessonsDone} style={{ ...BTN_PRIMARY, ...(progress.allLessonsDone ? {} : BTN_DISABLED) }} data-next-lesson>
                     Final check ›
                   </button>
                 )}

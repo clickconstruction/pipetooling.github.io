@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { loadMyTraining, loadTrainingCatalog } from '../../lib/training/trainingIo'
+import { TRAINING_COURSE_FACTS, courseSizeWords } from '../../lib/training/courseFacts'
 import { personStandings, standingPress, standingWords, trainingVerdict, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../../lib/training/trainingState'
 
 /**
@@ -78,13 +79,16 @@ export function DashboardTrainingSection({ userId, role, onVisibility }: { userI
         const started = done > 0
         const press = standingPress(s, started)
         const words = standingWords(s, today)
-        const sub = words || (started ? `Started · ${done} lesson${done === 1 ? '' : 's'} done` : 'Required for your role · not started')
+        // v2.5575: before the first press the line says the size (from course.md, never the lessons); started says how far.
+        const facts = TRAINING_COURSE_FACTS[s.slug]
+        const sub = words || (started ? `${done} of ${facts?.lessons ?? '?'} lessons done` : (courseSizeWords(facts) ?? 'Required for your role · not started'))
         const quiet = press === 'Read it again'
         return (
           <div key={s.slug} data-training-course={s.slug} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.25rem 0.9rem', alignItems: 'center', paddingTop: '0.7rem' }}>
             <div style={{ fontWeight: 700 }}>{s.title}</div>
             <button
               type="button"
+              className="trainingPress"
               onClick={() => navigate(`/training/${s.slug}`)}
               style={{
                 gridRow: '1 / span 2',

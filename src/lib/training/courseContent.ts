@@ -80,6 +80,8 @@ export type Course = {
   contentVersion: string
   /** The lessons' minutes added up, plus the final check's. */
   minutes: number
+  /** `minutes:` in course.md, which the Dashboard reads without the lessons; the content test holds it equal to `minutes`. */
+  minutesStated: number | null
 }
 
 export const LESSON_QUESTIONS = 4
@@ -281,7 +283,8 @@ function parseCourseMeta(source: string, slug: string): Omit<Course, 'lessons' |
     parts.push({ n, name: (m[2] ?? '').trim() })
   }
   if (parts.length < 2) fail(`${slug}/course.md`, 'a course has at least two parts')
-  return { slug, title, summary, line, finalDraw, finalPass, parts }
+  const minutesStated = Number.parseInt((fields.minutes ?? '').trim(), 10)
+  return { slug, title, summary, line, finalDraw, finalPass, parts, minutesStated: Number.isFinite(minutesStated) ? minutesStated : null }
 }
 
 function parseFinalBank(source: string, slug: string): CourseQuestion[] {
@@ -467,11 +470,15 @@ export function gradeFinalCheck(drawn: readonly CourseQuestion[], picks: Readonl
   return { right, total: drawn.length, passed: right >= finalPass, missed }
 }
 
-/** `{ lesson: 12, of: 31 }` style progress: lessons passed plus the final check as the last step. */
-export function courseProgress(course: Course, passedLessonKeys: ReadonlySet<string>, finalPassed: boolean): { done: number; of: number; nextLesson: CourseLesson | null; allLessonsDone: boolean } {
+/**
+ * Progress: `lessonsDone` of `lessons`, whether the final check is passed, and the next lesson. `done`/`of` count
+ * the final check as the last step (the dock and older callers); the screens say lessons and the final check apart
+ * (v2.5575).
+ */
+export function courseProgress(course: Course, passedLessonKeys: ReadonlySet<string>, finalPassed: boolean): { done: number; of: number; lessonsDone: number; lessons: number; finalPassed: boolean; nextLesson: CourseLesson | null; allLessonsDone: boolean } {
   const done = course.lessons.filter((l) => passedLessonKeys.has(l.key)).length
   const nextLesson = course.lessons.find((l) => !passedLessonKeys.has(l.key)) ?? null
-  return { done: done + (finalPassed ? 1 : 0), of: course.lessons.length + 1, nextLesson, allLessonsDone: done === course.lessons.length }
+  return { done: done + (finalPassed ? 1 : 0), of: course.lessons.length + 1, lessonsDone: done, lessons: course.lessons.length, finalPassed, nextLesson, allLessonsDone: done === course.lessons.length }
 }
 
 /** The lesson a course opens on: the first not yet passed, else the first. */
