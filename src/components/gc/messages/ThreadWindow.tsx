@@ -430,9 +430,15 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
               </div>
               {/* On a phone the side (cut 4's flow) is a row over the lines, so the lines keep the whole width (cut 10). */}
               {phone && slots.side?.(contact)}
-              {slots.aboveLines?.(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id) })}
+              {/* What a cut draws above the lines (the sort card, Who has it) scrolls on its own when it is taller than the room
+                  (v2.5570): the lines keep a few rows and the box at the foot stays in the window. */}
+              {slots.aboveLines && (
+                <div data-thread-above style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
+                  {slots.aboveLines(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id) })}
+                </div>
+              )}
               <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-                <div data-thread-lines style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
+                <div data-thread-lines style={{ flex: 1, minHeight: '7rem', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
                   {rows.length === 0 && (
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{jobFilter ? 'No line is tied to this job yet.' : 'No messages with them yet.'}</div>
                   )}
