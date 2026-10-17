@@ -138,3 +138,17 @@ describe('prospectKinds: the facts under the name', () => {
     expect(prospectKindFacts({ kind: 'customer', source: 'A referral', max_miles: 30 })).toEqual(['from A referral'])
   })
 })
+
+describe('benchDraftFromProspect carries the person and the profile (v2.5603)', () => {
+  it('dials the cell first and rides the license and the Maps link', () => {
+    const draft = benchDraftFromProspect({ company_name: 'Bexar Fire Protection', contact_name: 'Tomás Reyna', phone_number: '(210) 555-0188', contact_phone: '(210) 555-0122', email: null, address: null, trades: ['Fire sprinkler'], max_miles: 40, lang: 'es', license: ' TX SCR-1884 ', maps_url: 'https://maps.app.goo.gl/x7Qz' })
+    expect(draft.phone).toBe('(210) 555-0122')
+    expect(draft.license).toBe('TX SCR-1884')
+    expect(draft.mapsUrl).toBe('https://maps.app.goo.gl/x7Qz')
+    expect(draft.lang).toBe('es')
+    const bare = benchDraftFromProspect({ company_name: 'Comal Concrete', contact_name: null, phone_number: '(830) 555-0100', email: null, address: null, trades: ['Concrete'], max_miles: null, lang: null })
+    expect(bare.phone).toBe('(830) 555-0100')
+    expect('license' in bare).toBe(false)
+    expect('mapsUrl' in bare).toBe(false)
+  })
+})

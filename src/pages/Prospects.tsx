@@ -2032,6 +2032,10 @@ export default function Prospects() {
         email: prospect.email,
         address: prospect.address,
         prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
       },
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
@@ -2159,6 +2163,10 @@ export default function Prospects() {
         email: prospect.email,
         address: prospect.address,
         prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
       },
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
