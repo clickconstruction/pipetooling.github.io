@@ -10673,6 +10673,7 @@ export type Database = {
           id: string
           lang: string
           license: string
+          maps_url: string | null
           max_miles: number | null
           name: string
           phone: string
@@ -10694,6 +10695,7 @@ export type Database = {
           id?: string
           lang?: string
           license?: string
+          maps_url?: string | null
           max_miles?: number | null
           name: string
           phone?: string
@@ -10715,6 +10717,7 @@ export type Database = {
           id?: string
           lang?: string
           license?: string
+          maps_url?: string | null
           max_miles?: number | null
           name?: string
           phone?: string
@@ -26310,9 +26313,12 @@ export type Database = {
       prospects: {
         Row: {
           address: string | null
+          also_reach: string | null
           company_name: string | null
           company_role: string | null
           contact_name: string | null
+          contact_phone: string | null
+          contact_title: string | null
           converted_customer_id: string | null
           converted_gc_company_id: string | null
           created_at: string | null
@@ -26320,13 +26326,17 @@ export type Database = {
           customer_id: string | null
           email: string | null
           id: string
+          is_person: boolean
           kind: string
           lang: string | null
           last_contact: string | null
+          license: string | null
           links_to_website: string | null
+          maps_url: string | null
           master_user_id: string
           max_miles: number | null
           notes: string | null
+          ok_to_text: string
           phone_number: string | null
           prospect_fit_status: string | null
           source: string | null
@@ -26337,9 +26347,12 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          also_reach?: string | null
           company_name?: string | null
           company_role?: string | null
           contact_name?: string | null
+          contact_phone?: string | null
+          contact_title?: string | null
           converted_customer_id?: string | null
           converted_gc_company_id?: string | null
           created_at?: string | null
@@ -26347,13 +26360,17 @@ export type Database = {
           customer_id?: string | null
           email?: string | null
           id?: string
+          is_person?: boolean
           kind?: string
           lang?: string | null
           last_contact?: string | null
+          license?: string | null
           links_to_website?: string | null
+          maps_url?: string | null
           master_user_id: string
           max_miles?: number | null
           notes?: string | null
+          ok_to_text?: string
           phone_number?: string | null
           prospect_fit_status?: string | null
           source?: string | null
@@ -26364,9 +26381,12 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          also_reach?: string | null
           company_name?: string | null
           company_role?: string | null
           contact_name?: string | null
+          contact_phone?: string | null
+          contact_title?: string | null
           converted_customer_id?: string | null
           converted_gc_company_id?: string | null
           created_at?: string | null
@@ -26374,13 +26394,17 @@ export type Database = {
           customer_id?: string | null
           email?: string | null
           id?: string
+          is_person?: boolean
           kind?: string
           lang?: string | null
           last_contact?: string | null
+          license?: string | null
           links_to_website?: string | null
+          maps_url?: string | null
           master_user_id?: string
           max_miles?: number | null
           notes?: string | null
+          ok_to_text?: string
           phone_number?: string | null
           prospect_fit_status?: string | null
           source?: string | null

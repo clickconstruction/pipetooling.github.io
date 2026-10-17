@@ -11,7 +11,7 @@ The deck works like the customer deck. The queue, the timer, callbacks and the A
 
 ## Add a lead
 
-Press {{button:blue|New Prospect}} and pick **A job to GC** at the top. Type the company, the contact and the phone. Then say who they are:
+Press {{button:blue|New Prospect}} and pick **A job to GC** at the top. Type the person first, then the company under them. A homeowner is a person on their own, so leave the company empty. Then say who they are:
 
 - **The owner**, **A developer**, **An architect**, **An owner's rep** or **Another general contractor**.
 - **Where we found them**: PlanHub, a permit, a referral, the architect, or anything you type.

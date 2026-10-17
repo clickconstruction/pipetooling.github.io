@@ -13,6 +13,10 @@ A prospect is a company we want something from. Everything you record feeds the 
 
 The top row picks what you are finding. **Customers** are GCs and owners who could send us plans for our trades. **Jobs to GC** are owners, developers and architects with a job we could build as the GC. **Subs** are trade companies for the bench. Each kind has its own queue and its own last press. Read [find jobs to build as the GC](/help/find-jobs-to-build-as-the-gc) and [find subs for the bench](/help/find-subs-for-the-bench). The rest of this guide is the same on every kind.
 
+## The person and the company
+
+New Prospect asks for the person first. Type their name, their title, their cell and their email. Pick their language. Say whether we may text them, once you have asked. The company goes under them. Leave the company empty for a person on their own. The card then names the person and dials their cell. The office line shows beside it.
+
 ## Make the call
 
 The card at the top is who you're calling. The card shows the company, the contact, and a big {{button:blue|📞 phone}} button that dials on tap. Chips beside it warn you when the prospect is {{chip:yellow|Due 183 days}} overdue. The chips also warn you when the prospect shows {{chip:green|never called}}. Never called means no real call was ever logged.

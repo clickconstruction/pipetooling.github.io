@@ -50,23 +50,7 @@ import {
   markProspectOnBench,
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
-import {
-  PROSPECT_COMPANY_ROLES,
-  PROSPECT_KINDS,
-  PROSPECT_KIND_WORDS,
-  PROSPECT_LANGS,
-  PROSPECT_SOURCES,
-  benchDraftFromProspect,
-  isProspectCompanyRole,
-  kindFromUrlKey,
-  parseTradesText,
-  prospectKindFacts,
-  prospectLandedToast,
-  tradesText,
-  urlKeyForKind,
-  type BenchDraft,
-  type ProspectKind,
-} from '../lib/prospects/prospectKinds'
+import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, isProspectCompanyRole, kindFromUrlKey, parseTradesText, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
 import { addGcCompany, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
@@ -74,6 +58,8 @@ import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '..
 import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubleRow } from '../lib/prospects/companyDouble'
 import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { stripReads, type StripRead } from '../lib/prospects/stripState'
+import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
+import { EMPTY_COMPANY, EMPTY_PERSON, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type PersonFields } from '../lib/prospects/personBlock'
 import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
@@ -161,11 +147,19 @@ type Prospect = {
   customer_id: string | null
   converted_customer_id: string | null
   converted_gc_company_id: string | null
+  /** v2.5601: the person we call, and whether we may text them. */
+  is_person: boolean
+  contact_title: string | null
+  contact_phone: string | null
+  ok_to_text: string | null
+  maps_url: string | null
+  license: string | null
+  also_reach: string | null
 }
 
 /** Every column the deck reads (v2.5559 added the kind and its facts). */
 const PROSPECT_COLUMNS =
-  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id'
+  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id, is_person, contact_title, contact_phone, ok_to_text, maps_url, license, also_reach'
 
 type ProspectComment = {
   id: string
@@ -315,8 +309,6 @@ function renderKindFields(
     setTrades: (v: string) => void
     maxMiles: string
     setMaxMiles: (v: string) => void
-    lang: 'en' | 'es' | ''
-    setLang: (v: 'en' | 'es' | '') => void
     role: string
     setRole: (v: string) => void
     /** The bench's trade names (v2.5560), offered as picks under Trades. */
@@ -371,17 +363,6 @@ function renderKindFields(
             <span style={labelStyle}>Goes up to (miles)</span>
             <input type="number" min={1} value={f.maxMiles} onChange={(e) => f.setMaxMiles(e.target.value)} style={inputStyle} placeholder="not said" />
           </label>
-          <div>
-            <span style={labelStyle}>Language</span>
-            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem' }}>
-              {PROSPECT_LANGS.map((l) => (
-                <label key={l.lang} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
-                  <input type="radio" name="prospect-lang" checked={f.lang === l.lang} onChange={() => f.setLang(l.lang)} />
-                  {l.label}
-                </label>
-              ))}
-            </div>
-          </div>
         </>
       )}
       <label>
@@ -462,17 +443,13 @@ export default function Prospects() {
   const [lockHeldBy, setLockHeldBy] = useState<{ prospectId: string; name: string | null } | null>(null)
 
   // Edit form state
-  const [editCompanyName, setEditCompanyName] = useState('')
-  const [editContactName, setEditContactName] = useState('')
-  const [editPhoneNumber, setEditPhoneNumber] = useState('')
-  const [editEmail, setEditEmail] = useState('')
-  const [editAddress, setEditAddress] = useState('')
-  const [editLinksToWebsite, setEditLinksToWebsite] = useState('')
   const [editSource, setEditSource] = useState('')
   const [editTrades, setEditTrades] = useState('')
   const [editMaxMiles, setEditMaxMiles] = useState('')
-  const [editLang, setEditLang] = useState<'en' | 'es' | ''>('')
   const [editRole, setEditRole] = useState('')
+  // The person we call and the company under them (v2.5601), the two blocks both windows share.
+  const [editPerson, setEditPerson] = useState<PersonFields>(EMPTY_PERSON)
+  const [editCompany, setEditCompany] = useState<CompanyFields>(EMPTY_COMPANY)
   const [editOpenedWith, setEditOpenedWith] = useState<Record<string, string>>({})
 
   // Callback form state
@@ -537,19 +514,14 @@ export default function Prospects() {
 
   // New Prospect modal state
   const [newProspectModalOpen, setNewProspectModalOpen] = useState(false)
-  const [newCompanyName, setNewCompanyName] = useState('')
-  const [newContactName, setNewContactName] = useState('')
-  const [newPhoneNumber, setNewPhoneNumber] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [newAddress, setNewAddress] = useState('')
-  const [newLinksToWebsite, setNewLinksToWebsite] = useState('')
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
   const [newKind, setNewKind] = useState<ProspectKind>('customer')
   const [newSource, setNewSource] = useState('')
   const [newTrades, setNewTrades] = useState('')
   const [newMaxMiles, setNewMaxMiles] = useState('')
-  const [newLang, setNewLang] = useState<'en' | 'es' | ''>('')
   const [newRole, setNewRole] = useState('')
+  const [newPerson, setNewPerson] = useState<PersonFields>(EMPTY_PERSON)
+  const [newCompany, setNewCompany] = useState<CompanyFields>(EMPTY_COMPANY)
 
   // Copy templates (defaults from app_settings, overrides from user_prospect_copy_templates)
   const [copyDefaults, setCopyDefaults] = useState<Record<CopyTemplateKey, string>>({
@@ -668,9 +640,9 @@ export default function Prospects() {
 
   // Escape and the backdrop (v2.5582): an untouched window closes at once, a touched one asks (useLeaveGuard, as the
   // big windows do since v2.5530). Leaving New Prospect clears its boxes; Edit compares its boxes to what it opened with.
-  const newProspectDirty = newProspectModalOpen && anyTyped({ newCompanyName, newContactName, newPhoneNumber, newEmail, newAddress, newLinksToWebsite, newSource, newTrades, newMaxMiles, newLang, newRole, linked: !!newCustomerLink })
+  const newProspectDirty = newProspectModalOpen && anyTyped({ ...newPerson, okToText: newPerson.okToText !== 'not_asked', ...newCompany, newSource, newTrades, newMaxMiles, newRole, linked: !!newCustomerLink })
   const newGuard = useLeaveGuard({ dirty: newProspectDirty, onClose: closeNewProspect, busy: saving, paused: !newProspectModalOpen })
-  const editFieldsNow: Record<string, string> = { company: editCompanyName, contact: editContactName, phone: editPhoneNumber, email: editEmail, address: editAddress, links: editLinksToWebsite, source: editSource, trades: editTrades, miles: editMaxMiles, lang: editLang, role: editRole }
+  const editFieldsNow: Record<string, string> = { ...editPerson, ...editCompany, source: editSource, trades: editTrades, miles: editMaxMiles, role: editRole }
   const editGuard = useLeaveGuard({ dirty: editModalOpen && editDirty(editFieldsNow, editOpenedWith), onClose: closeEditProspect, busy: saving, paused: !editModalOpen })
   function closeNewProspect() {
     setNewProspectModalOpen(false)
@@ -681,16 +653,11 @@ export default function Prospects() {
     setEditingProspect(null)
   }
   function resetNewProspectForm() {
-    setNewCompanyName('')
-    setNewContactName('')
-    setNewPhoneNumber('')
-    setNewEmail('')
-    setNewAddress('')
-    setNewLinksToWebsite('')
+    setNewPerson(EMPTY_PERSON)
+    setNewCompany(EMPTY_COMPANY)
     setNewSource('')
     setNewTrades('')
     setNewMaxMiles('')
-    setNewLang('')
     setNewRole('')
     setNewCustomerLink(null)
     setNewProspectError(null)
@@ -746,7 +713,9 @@ export default function Prospects() {
       live = false
     }
   }, [newProspectModalOpen, authUser?.id])
-  const newProspectTwin = newProspectModalOpen ? companyDouble(newCompanyName, newPhoneNumber, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }) : null
+  const newProspectTwin = newProspectModalOpen
+    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles })
+    : null
 
   /** Open it on a prospect double (v2.5579): the form closes and the card opens on its own lane. */
   function openDoubleProspect(twin: Extract<CompanyDouble, { door: 'open_prospect' }>) {
@@ -1839,12 +1808,9 @@ export default function Prospects() {
   function openEditModal() {
     if (!currentProspect) return
     setEditingProspect(null)
-    setEditCompanyName(currentProspect.company_name ?? '')
-    setEditContactName(currentProspect.contact_name ?? '')
-    setEditPhoneNumber(currentProspect.phone_number ?? '')
-    setEditEmail(currentProspect.email ?? '')
-    setEditAddress(currentProspect.address ?? '')
-    setEditLinksToWebsite(currentProspect.links_to_website ?? '')
+    const blocks = blocksFromRow(currentProspect)
+    setEditPerson(blocks.person)
+    setEditCompany(blocks.company)
     setEditKindFields(currentProspect)
     setEditOpenedWith(editSnapshotOf(currentProspect))
     setEditModalOpen(true)
@@ -1852,17 +1818,13 @@ export default function Prospects() {
 
   /** The Edit window's boxes as a prospect fills them (v2.5582): what the window opened with, for the leave guard. */
   function editSnapshotOf(p: Prospect): Record<string, string> {
+    const blocks = blocksFromRow(p)
     return {
-      company: p.company_name ?? '',
-      contact: p.contact_name ?? '',
-      phone: p.phone_number ?? '',
-      email: p.email ?? '',
-      address: p.address ?? '',
-      links: p.links_to_website ?? '',
+      ...blocks.person,
+      ...blocks.company,
       source: p.source ?? '',
       trades: tradesText(p.trades),
       miles: p.max_miles == null ? '' : String(p.max_miles),
-      lang: p.lang === 'en' || p.lang === 'es' ? p.lang : '',
       role: p.company_role ?? '',
     }
   }
@@ -1871,30 +1833,25 @@ export default function Prospects() {
     setEditSource(p.source ?? '')
     setEditTrades(tradesText(p.trades))
     setEditMaxMiles(p.max_miles == null ? '' : String(p.max_miles))
-    setEditLang(p.lang === 'en' || p.lang === 'es' ? p.lang : '')
     setEditRole(p.company_role ?? '')
   }
 
   /** The kind's facts as the row holds them (v2.5559), from the Edit and New windows' boxes. */
-  function kindFieldsPayload(k: ProspectKind, f: { source: string; trades: string; maxMiles: string; lang: 'en' | 'es' | ''; role: string }) {
+  function kindFieldsPayload(k: ProspectKind, f: { source: string; trades: string; maxMiles: string; role: string }) {
     const miles = Number(f.maxMiles)
     return {
       source: f.source.trim() || null,
       trades: k === 'sub' ? parseTradesText(f.trades) : [],
       max_miles: k === 'sub' && Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
-      lang: k === 'sub' && f.lang ? f.lang : null,
       company_role: k === 'gc_lead' && isProspectCompanyRole(f.role) ? f.role : null,
     }
   }
 
   function openEditModalForProspect(p: Prospect) {
     setEditingProspect(p)
-    setEditCompanyName(p.company_name ?? '')
-    setEditContactName(p.contact_name ?? '')
-    setEditPhoneNumber(p.phone_number ?? '')
-    setEditEmail(p.email ?? '')
-    setEditAddress(p.address ?? '')
-    setEditLinksToWebsite(p.links_to_website ?? '')
+    const blocks = blocksFromRow(p)
+    setEditPerson(blocks.person)
+    setEditCompany(blocks.company)
     setEditKindFields(p)
     setEditOpenedWith(editSnapshotOf(p))
     setEditModalOpen(true)
@@ -1933,14 +1890,15 @@ export default function Prospects() {
     const prospectToEdit = editingProspect ?? currentProspect
     if (!prospectToEdit || saving) return
     setSaving(true)
+    const held = blocksProblem(editPerson, editCompany)
+    if (held) {
+      showToast(held, 'error')
+      setSaving(false)
+      return
+    }
     const updated = {
-      company_name: editCompanyName.trim() || null,
-      contact_name: editContactName.trim() || null,
-      phone_number: editPhoneNumber.trim() || null,
-      email: editEmail.trim() || null,
-      address: editAddress.trim() || null,
-      links_to_website: editLinksToWebsite.trim() || null,
-      ...kindFieldsPayload(prospectToEdit.kind, { source: editSource, trades: editTrades, maxMiles: editMaxMiles, lang: editLang, role: editRole }),
+      ...rowFromBlocks(editPerson, editCompany),
+      ...kindFieldsPayload(prospectToEdit.kind, { source: editSource, trades: editTrades, maxMiles: editMaxMiles, role: editRole }),
     }
     const { error } = await supabase
       .from('prospects')
@@ -2491,6 +2449,11 @@ export default function Prospects() {
 
   async function saveNewProspect() {
     if (!authUser?.id || saving) return
+    const held = blocksProblem(newPerson, newCompany)
+    if (held) {
+      setNewProspectError(held)
+      return
+    }
     setNewProspectError(null)
     setSaving(true)
     const effectiveMasterId = await getEffectiveMasterId()
@@ -2503,14 +2466,9 @@ export default function Prospects() {
       master_user_id: effectiveMasterId,
       created_by: authUser.id,
       warmth_count: 0,
-      company_name: newCompanyName.trim() || null,
-      contact_name: newContactName.trim() || null,
-      phone_number: newPhoneNumber.trim() || null,
-      email: newEmail.trim() || null,
-      address: newAddress.trim() || null,
-      links_to_website: newLinksToWebsite.trim() || null,
+      ...rowFromBlocks(newPerson, newCompany),
       kind: newKind,
-      ...kindFieldsPayload(newKind, { source: newSource, trades: newTrades, maxMiles: newMaxMiles, lang: newLang, role: newRole }),
+      ...kindFieldsPayload(newKind, { source: newSource, trades: newTrades, maxMiles: newMaxMiles, role: newRole }),
       customer_id: newKind === 'gc_lead' && newCustomerLink ? newCustomerLink.id : null,
     }
     const { error } = await supabase.from('prospects').insert(payload)
@@ -2674,17 +2632,7 @@ export default function Prospects() {
           <button
             type="button"
             onClick={() => {
-              setNewCompanyName('')
-              setNewContactName('')
-              setNewPhoneNumber('')
-              setNewEmail('')
-              setNewAddress('')
-              setNewLinksToWebsite('')
-              setNewSource('')
-              setNewTrades('')
-              setNewMaxMiles('')
-              setNewLang('')
-              setNewRole('')
+              resetNewProspectForm()
               setNewKind(kind)
               setNewCustomerLink(null)
               setNewProspectError(null)
@@ -2824,12 +2772,27 @@ export default function Prospects() {
                     {/* Who you're calling */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)' }}>{currentProspect.company_name || '(no company name)'}</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)' }}>{prospectTitle(currentProspect)}</div>
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                          {currentProspect.contact_name ? <span>{currentProspect.contact_name}</span> : null}
+                          {personLineParts(currentProspect).map((part, i) => (
+                            <Fragment key={part}>
+                              {i > 0 ? <span aria-hidden>·</span> : null}
+                              <span>{part}</span>
+                            </Fragment>
+                          ))}
+                          {(() => {
+                            // The texting fact (v2.5601): asked on the call, read by the texts' path.
+                            const ask = textAskWords(okToTextOf(currentProspect.ok_to_text))
+                            const tone = ask.tone === 'yes' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : ask.tone === 'no' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
+                            return (
+                              <span data-ok-to-text={okToTextOf(currentProspect.ok_to_text)} style={{ padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, ...tone }}>
+                                {ask.words}
+                              </span>
+                            )
+                          })()}
                           {currentProspect.email ? (
                             <>
-                              {currentProspect.contact_name ? <span aria-hidden>·</span> : null}
+                              <span aria-hidden>·</span>
                               <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: 'var(--text-link)' }}>{currentProspect.email}</a>
                             </>
                           ) : null}
@@ -2882,17 +2845,30 @@ export default function Prospects() {
                           {lockHeldBy.name ?? 'Someone'} is calling this one
                         </span>
                       )}
-                      {currentProspect.phone_number ? (
-                        <a
-                          href={telHrefFor(currentProspect.phone_number)}
-                          onClick={() => takeCallingLock('dial')}
-                          style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
-                        >
-                          📞 {currentProspect.phone_number}
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>no phone number</span>
-                      )}
+                      {(() => {
+                        // The cell first (v2.5601); the office line beside it when both are known.
+                        const nums = callNumbers(currentProspect)
+                        if (!nums.call) return <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>no phone number</span>
+                        return (
+                          <>
+                            <a
+                              href={telHrefFor(nums.call)}
+                              onClick={() => takeCallingLock('dial')}
+                              style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                            >
+                              📞 {nums.call}
+                            </a>
+                            {nums.other && (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                {nums.other.label} {nums.other.number}
+                              </span>
+                            )}
+                            {currentProspect.also_reach && (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>also {currentProspect.also_reach}</span>
+                            )}
+                          </>
+                        )
+                      })()}
                       {kind === 'sub' && (
                         <button
                           type="button"
@@ -4127,65 +4103,11 @@ export default function Prospects() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Company Name</span>
-                <input
-                  type="text"
-                  value={editCompanyName}
-                  onChange={(e) => setEditCompanyName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Contact Name</span>
-                <input
-                  type="text"
-                  value={editContactName}
-                  onChange={(e) => setEditContactName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Phone Number</span>
-                <input
-                  type="text"
-                  value={editPhoneNumber}
-                  onChange={(e) => setEditPhoneNumber(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Email</span>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Address</span>
-                <input
-                  type="text"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Links to Website</span>
-                <input
-                  type="text"
-                  value={editLinksToWebsite}
-                  onChange={(e) => setEditLinksToWebsite(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
+              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} />
               {renderKindFields((editingProspect ?? currentProspect)?.kind ?? kind, {
                 source: editSource, setSource: setEditSource,
                 trades: editTrades, setTrades: setEditTrades,
                 maxMiles: editMaxMiles, setMaxMiles: setEditMaxMiles,
-                lang: editLang, setLang: setEditLang,
                 role: editRole, setRole: setEditRole,
                 tradeChoices: (benchTrades ?? []).map((b) => b.trade),
               })}
@@ -4705,16 +4627,13 @@ export default function Prospects() {
               <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{newProspectError}</p>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Company Name</span>
-                <input
-                  type="text"
-                  value={newCompanyName}
-                  onChange={(e) => setNewCompanyName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              {(() => {
+              <ProspectPersonForm
+                person={newPerson}
+                onPerson={setNewPerson}
+                company={newCompany}
+                onCompany={setNewCompany}
+                kind={newKind}
+                double={(() => {
                 // One line for every double (v2.5579): this lane, another lane, the bench, the customers, in that order.
                 const linkish = { font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
                 if (newKind === 'gc_lead' && newCustomerLink) {
@@ -4760,56 +4679,11 @@ export default function Prospects() {
                   </p>
                 )
               })()}
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Contact Name</span>
-                <input
-                  type="text"
-                  value={newContactName}
-                  onChange={(e) => setNewContactName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Phone Number</span>
-                <input
-                  type="text"
-                  value={newPhoneNumber}
-                  onChange={(e) => setNewPhoneNumber(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Email</span>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Address</span>
-                <input
-                  type="text"
-                  value={newAddress}
-                  onChange={(e) => setNewAddress(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Links to Website</span>
-                <input
-                  type="text"
-                  value={newLinksToWebsite}
-                  onChange={(e) => setNewLinksToWebsite(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
+              />
               {renderKindFields(newKind, {
                 source: newSource, setSource: setNewSource,
                 trades: newTrades, setTrades: setNewTrades,
                 maxMiles: newMaxMiles, setMaxMiles: setNewMaxMiles,
-                lang: newLang, setLang: setNewLang,
                 role: newRole, setRole: setNewRole,
                 tradeChoices: (benchTrades ?? []).map((b) => b.trade),
               })}
