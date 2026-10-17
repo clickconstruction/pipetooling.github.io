@@ -59,7 +59,7 @@ import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubl
 import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { stripReads, type StripRead } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
-import { EMPTY_COMPANY, EMPTY_PERSON, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type PersonFields } from '../lib/prospects/personBlock'
+import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
 import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
@@ -521,6 +521,8 @@ export default function Prospects() {
   const [newMaxMiles, setNewMaxMiles] = useState('')
   const [newRole, setNewRole] = useState('')
   const [newPerson, setNewPerson] = useState<PersonFields>(EMPTY_PERSON)
+  /** May we text? on the card (v2.5606): the chip opens the three answers. */
+  const [textAskOpen, setTextAskOpen] = useState(false)
   const [newCompany, setNewCompany] = useState<CompanyFields>(EMPTY_COMPANY)
 
   // Copy templates (defaults from app_settings, overrides from user_prospect_copy_templates)
@@ -714,7 +716,7 @@ export default function Prospects() {
     }
   }, [newProspectModalOpen, authUser?.id])
   const newProspectTwin = newProspectModalOpen
-    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles })
+    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }, Date.now(), newCompany.mapsUrl)
     : null
 
   /** Open it on a prospect double (v2.5579): the form closes and the card opens on its own lane. */
@@ -1167,6 +1169,10 @@ export default function Prospects() {
   }, [activeTab, searchParams, prospectListProspects])
 
   const currentProspect = followUpProspects[currentProspectIndex] ?? null
+  const currentProspectId = currentProspect?.id ?? null
+  useEffect(() => {
+    setTextAskOpen(false)
+  }, [currentProspectId])
 
   useEffect(() => {
     setFollowUpNotes(currentProspect?.notes ?? '')
@@ -2032,6 +2038,10 @@ export default function Prospects() {
         email: prospect.email,
         address: prospect.address,
         prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
       },
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
@@ -2159,6 +2169,10 @@ export default function Prospects() {
         email: prospect.email,
         address: prospect.address,
         prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
       },
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
@@ -2445,6 +2459,19 @@ export default function Prospects() {
     if (!authUser?.id) return null
     // One company (v2.2972): every prospect is stamped with the company owner account.
     return resolveCompanyOwnerUserId(supabase, authUser.id)
+  }
+
+  /** May we text? (v2.5606): the answer asked on the call, saved from the card; quo-send reads it. */
+  async function saveOkToText(prospect: Prospect, value: OkToText) {
+    setTextAskOpen(false)
+    if (prospect.ok_to_text === value) return
+    const { error } = await supabase.from('prospects').update({ ok_to_text: value }).eq('id', prospect.id)
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    setFollowUpProspects((prev) => prev.map((p) => (p.id === prospect.id ? { ...p, ok_to_text: value } : p)))
+    setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? { ...p, ok_to_text: value } : p)))
   }
 
   async function saveNewProspect() {
@@ -2781,13 +2808,39 @@ export default function Prospects() {
                             </Fragment>
                           ))}
                           {(() => {
-                            // The texting fact (v2.5601): asked on the call, read by the texts' path.
-                            const ask = textAskWords(okToTextOf(currentProspect.ok_to_text))
+                            // The texting fact (v2.5601): asked on the call, read by the texts' path. Since v2.5606 the chip is a press
+                            // that opens the three answers and saves the one pressed.
+                            const ok = okToTextOf(currentProspect.ok_to_text)
+                            const ask = textAskWords(ok)
                             const tone = ask.tone === 'yes' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : ask.tone === 'no' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
+                            if (textAskOpen) {
+                              return (
+                                <span role="group" aria-label="May we text?" style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>May we text?</span>
+                                  {OK_TO_TEXT_CHOICES.map((c) => (
+                                    <button
+                                      key={c.value}
+                                      type="button"
+                                      aria-pressed={ok === c.value}
+                                      onClick={() => void saveOkToText(currentProspect, c.value)}
+                                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0 0.45rem', borderRadius: 999, border: '1px solid var(--border)', background: ok === c.value ? 'var(--bg-blue-200)' : 'var(--surface)', color: ok === c.value ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
+                                    >
+                                      {c.label}
+                                    </button>
+                                  ))}
+                                </span>
+                              )
+                            }
                             return (
-                              <span data-ok-to-text={okToTextOf(currentProspect.ok_to_text)} style={{ padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, ...tone }}>
+                              <button
+                                type="button"
+                                data-ok-to-text={ok}
+                                onClick={() => setTextAskOpen(true)}
+                                title="May we text them? Press to answer."
+                                style={{ font: 'inherit', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, border: 'none', cursor: 'pointer', ...tone }}
+                              >
                                 {ask.words}
-                              </span>
+                              </button>
                             )
                           })()}
                           {currentProspect.email ? (
@@ -2802,6 +2855,20 @@ export default function Prospects() {
                               <a href={getWebsiteHref(currentProspect.links_to_website)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
                                 {formatWebsiteDisplay(currentProspect.links_to_website)}
                               </a>
+                            </>
+                          ) : null}
+                          {currentProspect.maps_url ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <a href={currentProspect.maps_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                                Maps ↗
+                              </a>
+                            </>
+                          ) : null}
+                          {currentProspect.kind === 'sub' && currentProspect.license ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span>{currentProspect.license}</span>
                             </>
                           ) : null}
                         </div>
@@ -4103,7 +4170,7 @@ export default function Prospects() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} />
+              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} onSource={setEditSource} />
               {renderKindFields((editingProspect ?? currentProspect)?.kind ?? kind, {
                 source: editSource, setSource: setEditSource,
                 trades: editTrades, setTrades: setEditTrades,
@@ -4633,6 +4700,7 @@ export default function Prospects() {
                 company={newCompany}
                 onCompany={setNewCompany}
                 kind={newKind}
+                onSource={setNewSource}
                 double={(() => {
                 // One line for every double (v2.5579): this lane, another lane, the bench, the customers, in that order.
                 const linkish = { font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const

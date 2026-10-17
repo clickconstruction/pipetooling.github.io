@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canAccessProspectPipeline,
+  contactPersonFromProspect,
   customerDraftFromProspect,
   markProspectConverted,
   prospectChipLabel,
@@ -210,5 +211,22 @@ describe('markProspectOnBench (v2.5559)', () => {
     const { client, calls } = fakeClient({ updateError: 'RLS says no' })
     await expect(markProspectOnBench('p-2', 'co-3', 'Bexar', 'u-1', client)).resolves.toEqual({ ok: false, error: 'RLS says no' })
     expect(calls.map((c) => c.op)).toEqual(['update'])
+  })
+})
+
+describe('the person we call lands on the customer (v2.5603)', () => {
+  const sub = { company_name: 'Bexar Fire Protection', contact_name: 'Tomás Reyna', contact_title: 'Estimator', contact_phone: '(210) 555-0122', phone_number: '(210) 555-0188', email: 'tomas@example.com', address: '1800 Cibolo Trail', is_person: false, lang: 'es' }
+  it('a company: Commercial, the cell first, the language, and the person as a contact person with their title', () => {
+    expect(customerDraftFromProspect(sub)).toEqual({ name: 'Bexar Fire Protection', address: '1800 Cibolo Trail', phone: '(210) 555-0122', email: 'tomas@example.com', customerType: 'commercial', language: 'es' })
+    expect(contactPersonFromProspect(sub)).toEqual({ name: 'Tomás Reyna', phone: '(210) 555-0122', email: 'tomas@example.com', note: 'Estimator' })
+  })
+  it('a person on their own: Residential, and no contact person, since the customer is them', () => {
+    const dana = { company_name: 'Dana Whitlock', contact_name: 'Dana Whitlock', contact_title: null, contact_phone: '(512) 555-0177', phone_number: null, email: null, address: null, is_person: true, lang: 'en' }
+    expect(customerDraftFromProspect(dana)).toEqual({ name: 'Dana Whitlock', phone: '(512) 555-0177', customerType: 'residential', language: 'en' })
+    expect(contactPersonFromProspect(dana)).toBeNull()
+  })
+  it('an old row says nothing about the type or the language, and a nameless person is no contact person', () => {
+    expect(customerDraftFromProspect({ company_name: 'Ridgeway Builders', contact_name: null, phone_number: '(512) 555-0142', email: null, address: null })).toEqual({ name: 'Ridgeway Builders', phone: '(512) 555-0142' })
+    expect(contactPersonFromProspect({ is_person: false, contact_name: '  ', phone_number: '(512) 555-0142' })).toBeNull()
   })
 })

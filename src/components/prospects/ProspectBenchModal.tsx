@@ -28,6 +28,8 @@ export function ProspectBenchModal({
   const [maxMiles, setMaxMiles] = useState(draft.maxMiles == null ? '' : String(draft.maxMiles))
   const [lang, setLang] = useState<'en' | 'es'>(draft.lang ?? 'en')
   const [known, setKnown] = useState(draft.known)
+  const [license, setLicense] = useState(draft.license ?? '')
+  const [mapsUrl, setMapsUrl] = useState(draft.mapsUrl ?? '')
   const [problem, setProblem] = useState<string | null>(null)
 
   const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
@@ -55,6 +57,8 @@ export function ProspectBenchModal({
       maxMiles: Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
       known,
       lang,
+      ...(license.trim() ? { license: license.trim() } : {}),
+      ...(mapsUrl.trim() ? { mapsUrl: mapsUrl.trim() } : {}),
     })
   }
 
@@ -115,6 +119,14 @@ export function ProspectBenchModal({
           <label>
             <span style={labelStyle}>Address</span>
             <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} style={inputStyle} />
+          </label>
+          <label>
+            <span style={labelStyle}>License</span>
+            <input type="text" value={license} onChange={(e) => setLicense(e.target.value)} style={inputStyle} placeholder="TX SCR-1884" />
+          </label>
+          <label>
+            <span style={labelStyle}>Google Maps</span>
+            <input type="text" value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} style={inputStyle} placeholder="https://maps.app.goo.gl/…" />
           </label>
           <label>
             <span style={labelStyle}>
