@@ -3,7 +3,7 @@ import { EMPTY_COMPANY, EMPTY_PERSON, blocksFromRow, blocksProblem, callNumbers,
 
 const sub = rowFromBlocks(
   { name: 'Tomás Reyna', title: 'Estimator', cell: '(210) 555-0122', email: 'tomas@example.com', lang: 'es', okToText: 'not_asked' },
-  { company: 'Bexar Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://bexarfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190' },
+  { company: 'Bexar Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://bexarfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190', mapsUrl: '', license: '' },
 )
 
 describe('rowFromBlocks and blocksFromRow', () => {
@@ -18,7 +18,7 @@ describe('rowFromBlocks and blocksFromRow', () => {
     expect(sub.ok_to_text).toBe('not_asked')
     expect(blocksFromRow(sub)).toEqual({
       person: { name: 'Tomás Reyna', title: 'Estimator', cell: '(210) 555-0122', email: 'tomas@example.com', lang: 'es', okToText: 'not_asked' },
-      company: { company: 'Bexar Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://bexarfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190' },
+      company: { company: 'Bexar Fire Protection', officePhone: '(210) 555-0188', address: '1800 Cibolo Trail, Boerne', website: 'https://bexarfire.example', alsoReach: 'Ana Reyna, office · (210) 555-0190', mapsUrl: '', license: '' },
     })
   })
 
@@ -36,7 +36,7 @@ describe('rowFromBlocks and blocksFromRow', () => {
   })
 
   it('an old row with no person reads as a company with an empty person block', () => {
-    const old = blocksFromRow({ company_name: 'Ridgeway Builders', contact_name: null, contact_title: null, contact_phone: null, phone_number: '(512) 555-0142', email: null, address: null, links_to_website: null, lang: null, ok_to_text: null, is_person: false, also_reach: null })
+    const old = blocksFromRow({ company_name: 'Ridgeway Builders', contact_name: null, contact_title: null, contact_phone: null, phone_number: '(512) 555-0142', email: null, address: null, links_to_website: null, lang: null, ok_to_text: null, is_person: false, also_reach: null, maps_url: null, license: null })
     expect(old.person).toEqual(EMPTY_PERSON)
     expect(old.company.company).toBe('Ridgeway Builders')
     expect(old.company.officePhone).toBe('(512) 555-0142')
@@ -69,5 +69,11 @@ describe('the card', () => {
     expect(callNumbers(sub)).toEqual({ call: '(210) 555-0122', other: { label: 'office', number: '(210) 555-0188' } })
     expect(callNumbers({ contact_phone: null, phone_number: '(512) 555-0142' })).toEqual({ call: '(512) 555-0142', other: null })
     expect(callNumbers({ contact_phone: null, phone_number: null }).call).toBeNull()
+  })
+  it('carries the Maps link and the license both ways (v2.5604)', () => {
+    const row = rowFromBlocks({ ...EMPTY_PERSON, name: 'Tomás' }, { ...EMPTY_COMPANY, company: 'Bexar Fire Protection', mapsUrl: ' https://maps.app.goo.gl/x7Qz ', license: 'TX SCR-1884' })
+    expect(row.maps_url).toBe('https://maps.app.goo.gl/x7Qz')
+    expect(row.license).toBe('TX SCR-1884')
+    expect(blocksFromRow(row).company.mapsUrl).toBe('https://maps.app.goo.gl/x7Qz')
   })
 })

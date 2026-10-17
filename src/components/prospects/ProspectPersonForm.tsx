@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { MAPS_SOURCE, parseMapsShare } from '../../lib/prospects/mapsShareText'
 import { OK_TO_TEXT_CHOICES, type CompanyFields, type PersonFields } from '../../lib/prospects/personBlock'
 import { PROSPECT_LANGS, type ProspectKind } from '../../lib/prospects/prospectKinds'
 
@@ -14,6 +15,7 @@ export function ProspectPersonForm({
   onCompany,
   kind,
   double,
+  onSource,
 }: {
   person: PersonFields
   onPerson: (next: PersonFields) => void
@@ -21,7 +23,10 @@ export function ProspectPersonForm({
   onCompany: (next: CompanyFields) => void
   kind: ProspectKind
   double?: ReactNode
+  /** v2.5604: a paste from Google Maps sets the source to Google Maps. */
+  onSource?: (source: string) => void
 }) {
+  const [paste, setPaste] = useState('')
   const input = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
   const label = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
   const head = { margin: '0.25rem 0 0', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-700)' } as const
@@ -29,6 +34,17 @@ export function ProspectPersonForm({
   const setP = (key: keyof PersonFields) => (v: string) => onPerson({ ...person, [key]: v })
   const setC = (key: keyof CompanyFields) => (v: string) => onCompany({ ...company, [key]: v })
   const companyHint = kind === 'sub' ? 'the company on the bench' : 'leave it empty for a person on their own'
+  // Paste first, type second (v2.5604): what Share copies fills the company block and sets the source.
+  const takePaste = (text: string) => {
+    const share = parseMapsShare(text)
+    if (!share) {
+      setPaste(text)
+      return
+    }
+    onCompany({ ...company, company: company.company || share.name, address: company.address || share.address, mapsUrl: share.url })
+    onSource?.(MAPS_SOURCE)
+    setPaste('')
+  }
   return (
     <div data-prospect-person-form style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       <p style={head}>The person we call</p>
@@ -76,6 +92,16 @@ export function ProspectPersonForm({
       <p style={head}>
         The company <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {companyHint}</span>
       </p>
+      <label>
+        <span style={label}>Paste from Google Maps</span>
+        <textarea
+          value={paste}
+          onChange={(e) => takePaste(e.target.value)}
+          rows={2}
+          placeholder="The name, the address and the link, as Share copies them"
+          style={{ ...input, resize: 'vertical', fontFamily: 'inherit', borderStyle: 'dashed' }}
+        />
+      </label>
       <div style={grid}>
         <label>
           <span style={label}>Company</span>
@@ -97,6 +123,16 @@ export function ProspectPersonForm({
           <span style={label}>Also reach</span>
           <input type="text" value={company.alsoReach} onChange={(e) => setC('alsoReach')(e.target.value)} style={input} placeholder="Ana Reyna, office · (210) 555-0190" />
         </label>
+        <label>
+          <span style={label}>Google Maps</span>
+          <input type="text" value={company.mapsUrl} onChange={(e) => setC('mapsUrl')(e.target.value)} style={input} placeholder="https://maps.app.goo.gl/…" />
+        </label>
+        {kind === 'sub' && (
+          <label>
+            <span style={label}>License</span>
+            <input type="text" value={company.license} onChange={(e) => setC('license')(e.target.value)} style={input} placeholder="TX SCR-1884" />
+          </label>
+        )}
       </div>
     </div>
   )
