@@ -8,6 +8,7 @@ import type { SampleTextId } from '../customerJourneys'
 import { GC_COMPANY } from '../gc/company'
 import { textToSend, type ComposeCompany } from '../messages/textOut'
 import { helpAnswer } from '../quo/events'
+import { fillLine } from '../quickReplies/blanks'
 import { DEFAULT_LINES, tellFills, tellWords } from '../tellCustomer/tellCustomer'
 
 /** Our company as a sample text names it: the GC's name, with a made-up number and mailbox. */
@@ -72,6 +73,19 @@ export function sampleText(id: SampleTextId, company: ComposeCompany = SAMPLE_TE
           note: 'The office pressed Send on the Tell the customer sheet after saving her first visit. The first text to a number carries the opt-out line.',
         },
         { side: 'theirs', text: 'Great, see you Friday.', note: null },
+      ],
+    }
+  }
+  if (id === 'text-estimate') {
+    // Tell the customer (v2.5594): the estimate's text as the sheet sends it, the link filled from the email's accept link.
+    const fills = tellFills({ customerName: 'Elena Marchetti', me: 'Rosa Perez', jobName: null, jobAddress: null, estimate: { amount: '$1,850.00', title: 'Marchetti water heater' } })
+    const body = fillLine(tellWords(DEFAULT_LINES.estimate, fills, 'en').text, { link: 'click.co/e/8Kp4' }).text
+    return {
+      from,
+      to: 'Elena Marchetti · (210) 555-0188',
+      bubbles: [
+        { side: 'ours', text: textToSend({ body, reason: 'first', company }).text, note: 'The office pressed Send both on the Tell the customer sheet. The email went first, and the text carries the same accept link.' },
+        { side: 'theirs', text: 'Got it, I will look tonight.', note: null },
       ],
     }
   }

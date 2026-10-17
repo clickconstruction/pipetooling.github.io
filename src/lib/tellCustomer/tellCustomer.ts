@@ -1,11 +1,12 @@
 /**
  * Tell the customer (v2.5593, punch list #115; the plan `to-dos/tell-the-customer/README.md`). The principle: nothing
  * reaches a customer without a person pressing it, or seeing it the moment after. When the office books a job's first
- * visit, the sheet opens before anything goes: the office's Booked line filled from the block, the text ticked, the
- * words theirs to change, Send or Skip. After the send, the receipt: what went, when, and the call to make, with its
- * script. Pure: the fills from the block, the line for the moment (the office's on the step, else the app's own), the
- * words, why no text can go, the rows and the presses, the receipt's words and its script. The reads and the send are
- * `tellCustomerIo.ts`; the sheet is `components/customers/TellCustomerSheet.tsx`.
+ * visit, or sends an estimate (v2.5594), the sheet opens before anything goes: the office's line on the step filled
+ * for this customer, the channels that apply ticked, the words theirs to change, Send or Skip. After the send, the
+ * receipt: what went, when, and the call to make, with its script. Pure: the fills from the block or the estimate, the
+ * line for the moment (the office's on the step, else the app's own), the words, why no text can go, the rows and the
+ * presses, the receipt's words and its script. The reads and the sends are `tellCustomerIo.ts`; the sheet is
+ * `components/customers/TellCustomerSheet.tsx`.
  */
 import type { PortalLang } from '../gc/portalI18n'
 import { windowWords } from '../jobModeText'
@@ -15,11 +16,11 @@ import { stepLine, type QuickReply } from '../quickReplies/kernel'
 import { lineWords } from '../quickReplies/spanish'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-/** The moments that open the sheet. PR 3 adds the estimate. */
-export type TellMoment = 'booked' | 'rescheduled'
+/** The moments that open the sheet. */
+export type TellMoment = 'booked' | 'rescheduled' | 'estimate'
 
 /** The flow step each moment's line lives on, for the office's quick replies. A moved visit reads the Booked step too. */
-export const MOMENT_STEP: Readonly<Record<TellMoment, string>> = { booked: 'booked', rescheduled: 'booked' }
+export const MOMENT_STEP: Readonly<Record<TellMoment, string>> = { booked: 'booked', rescheduled: 'booked', estimate: 'estimate' }
 
 /** The app's own words for a moment, used until the office writes a line on the step. */
 export const DEFAULT_LINES: Readonly<Record<TellMoment, { text: string; textEs: string }>> = {
@@ -30,6 +31,10 @@ export const DEFAULT_LINES: Readonly<Record<TellMoment, { text: string; textEs: 
   rescheduled: {
     text: '{first}, this is {me} with Click Plumbing. Your visit moved to {day}, {window}. {tech} will text you when on the way.',
     textEs: '{first}, le habla {me} de Click Plumbing. Su visita cambió al {day}, {window}. {tech} le enviará un mensaje cuando vaya en camino.',
+  },
+  estimate: {
+    text: '{first}, this is {me} with Click Plumbing. Your estimate for {job} is ready, {amount}. Open it to approve the option you want: {link}',
+    textEs: '{first}, le habla {me} de Click Plumbing. Su presupuesto de {job} está listo, {amount}. Ábralo para aprobar la opción que prefiera: {link}',
   },
 }
 
@@ -42,6 +47,10 @@ export const DEFAULT_SCRIPTS: Readonly<Record<TellMoment, { text: string; textEs
   rescheduled: {
     text: 'Hi {first}, this is {me} with Click Plumbing. We moved your visit to {day}, {window}, and I wanted to make sure that works for you.',
     textEs: 'Hola {first}, le habla {me} de Click Plumbing. Cambiamos su visita al {day}, {window}, y quería confirmar que le funciona.',
+  },
+  estimate: {
+    text: 'Hi {first}, this is {me} with Click Plumbing. I just sent your estimate for {job}, {amount}. Do you have two minutes for me to walk you through it? You can approve from the link whenever you are ready.',
+    textEs: 'Hola {first}, le habla {me} de Click Plumbing. Acabo de enviarle el presupuesto de {job}, {amount}. ¿Tiene dos minutos para que se lo explique? Puede aprobarlo desde el enlace cuando guste.',
   },
 }
 
@@ -58,18 +67,30 @@ export interface TellBlock {
   techName: string | null
 }
 
+/** The estimate the sheet reads (v2.5594): its total as words and its title. */
+export interface TellEstimateFacts {
+  /** "$1,850.00" */
+  amount: string
+  title: string
+}
+
 export interface TellFillInput {
   customerName: string | null
   /** The signed-in person's name. */
   me: string | null
   jobName: string | null
   jobAddress: string | null
-  block: TellBlock
+  block?: TellBlock | null
+  estimate?: TellEstimateFacts | null
 }
 
 export const firstWord = (name: string | null | undefined) => name?.trim().split(/\s+/)[0] || null
 
-/** The blanks the sheet fills: their first name, ours, the job, its address, the visit's day and window, and the tech. */
+/**
+ * The blanks the sheet fills: their first name, ours, the job, its address, and from a block the visit's day, window
+ * and tech; from an estimate its amount and, when the job has no name, its title. `{link}` is never filled here: the
+ * estimate's link exists only once the email went, and the send fills it then.
+ */
 export function tellFills(input: TellFillInput): BlankFills {
   const fills: Record<string, string> = {}
   const put = (key: string, value: string | null | undefined) => {
@@ -77,11 +98,14 @@ export function tellFills(input: TellFillInput): BlankFills {
   }
   put('first', firstWord(input.customerName))
   put('me', firstWord(input.me))
-  put('job', input.jobName)
+  put('job', input.jobName ?? input.estimate?.title ?? null)
   put('address', input.jobAddress)
-  put('day', scheduleFormatWeekdayLong(input.block.workDate))
-  put('window', windowWords(input.block))
-  put('tech', firstWord(input.block.techName))
+  if (input.block) {
+    put('day', scheduleFormatWeekdayLong(input.block.workDate))
+    put('window', windowWords(input.block))
+    put('tech', firstWord(input.block.techName))
+  }
+  if (input.estimate) put('amount', input.estimate.amount)
   return fills
 }
 
@@ -96,10 +120,10 @@ export interface TellLine {
   id: string | null
 }
 
-/** The line a moment sends: the office's team line for customers on the moment's step, else the app's own words. */
+/** The line a moment sends: the office's team line for customers on the moment's step, else the app's own words. A moved visit always takes its own. */
 export function lineFor(moment: TellMoment, lines: readonly QuickReply[], me: string): TellLine {
-  const own = stepLine(lines, 'customer', MOMENT_STEP[moment], me)
-  if (own && moment === 'booked') return { text: own.text, textEs: own.textEs ?? null, office: true, id: own.id }
+  const own = moment === 'rescheduled' ? null : stepLine(lines, 'customer', MOMENT_STEP[moment], me)
+  if (own) return { text: own.text, textEs: own.textEs ?? null, office: true, id: own.id }
   const d = DEFAULT_LINES[moment]
   return { text: d.text, textEs: d.textEs, office: false, id: null }
 }
@@ -109,9 +133,10 @@ export function tellWords(line: Pick<TellLine, 'text' | 'textEs'>, fills: BlankF
   return fillLine(lineWords(line, lang), fills)
 }
 
-/** The blanks still in a body the person edited: "{x}" words. */
-export function blanksLeftIn(body: string): string[] {
-  return [...new Set(Array.from(body.matchAll(/\{([a-z ]+)\}/g)).flatMap((m) => (m[1] ? [m[1]] : [])))]
+/** The blanks still in a body the person edited: "{x}" words. On an estimate, `{link}` is the send's to fill, so it never holds the press. */
+export function blanksLeftIn(body: string, moment: TellMoment = 'booked'): string[] {
+  const left = [...new Set(Array.from(body.matchAll(/\{([a-z ]+)\}/g)).flatMap((m) => (m[1] ? [m[1]] : [])))]
+  return moment === 'estimate' ? left.filter((k) => k !== 'link') : left
 }
 
 // ---------- why no text ----------
@@ -157,20 +182,27 @@ export interface TellActs {
   primary: string
   /** The quiet press beside it. */
   skip: string
+  /** On an estimate whose text can go: the press that sends the email alone. Null otherwise. */
+  emailOnly: string | null
 }
 
 export function tellActs(moment: TellMoment, first: string | null, hold: TellHold | null): TellActs {
   const who = first ?? 'the customer'
   const their = first ? `${first}’s` : 'Their'
-  if (hold) return { rows: [{ icon: '⚠', words: holdWords(hold, first), hold: true }], primary: 'Close', skip: 'Skip' }
+  const receipt = { icon: '🧾', words: 'Then shows you what went, and offers the call.', hold: false }
+  if (moment === 'estimate') {
+    const email = { icon: '✉️', words: `Emails ${who} the estimate with the link to approve it.`, hold: false }
+    if (hold) return { rows: [email, { icon: '⚠', words: holdWords(hold, first), hold: true }, receipt], primary: `Send email to ${who}`, skip: 'Skip', emailOnly: null }
+    const text = { icon: '💬', words: `Texts ${who} the same link from the company number. ${their} answer comes to the office.`, hold: false }
+    return { rows: [email, text, receipt], primary: `Send both to ${who}`, skip: 'Skip', emailOnly: 'Email only' }
+  }
+  if (hold) return { rows: [{ icon: '⚠', words: holdWords(hold, first), hold: true }], primary: 'Close', skip: 'Skip', emailOnly: null }
   const what = moment === 'rescheduled' ? 'the new day and window' : 'the day and the window'
   return {
-    rows: [
-      { icon: '💬', words: `Texts ${who} ${what} from the company number. ${their} answer comes to the office.`, hold: false },
-      { icon: '🧾', words: 'Then shows you what went, and offers the call.', hold: false },
-    ],
+    rows: [{ icon: '💬', words: `Texts ${who} ${what} from the company number. ${their} answer comes to the office.`, hold: false }, receipt],
     primary: `Send text to ${who}`,
     skip: 'Skip',
+    emailOnly: null,
   }
 }
 
@@ -181,9 +213,14 @@ export function clockHm(ms: number): string {
   return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ })
 }
 
-/** The receipt's line under the words: *Text · from the company number · 2:41 PM · in Dana’s thread*. */
+/** The receipt's line under the text: *Text · from the company number · 2:41 PM · in Dana’s thread*. */
 export function sentLine(first: string | null, atMs: number): string {
   return `Text · from the company number · ${clockHm(atMs)} · in ${first ? `${first}’s` : 'their'} thread`
+}
+
+/** The receipt's line for the estimate's email: *Email · dana@example.com · 3:05 PM*. */
+export function emailSentLine(email: string, atMs: number): string {
+  return `Email · ${email} · ${clockHm(atMs)}`
 }
 
 /** The call's script, filled for this customer, in the office's language. The step's own script replaces the default in PR 5. */
@@ -199,9 +236,15 @@ export const TELL_WORDS = {
   whatGoes: 'What goes',
   whatHappens: 'What happens',
   textTo: (number: string) => `Text to ${number}`,
+  emailTo: (email: string) => `Email to ${email}`,
+  emailWhat: 'The estimate with its link to approve, as the page previews it.',
   reads: (lang: PortalLang) => (lang === 'es' ? 'reads Spanish' : 'reads English'),
-  editHint: (office: boolean, moment: TellMoment) =>
-    office ? 'The office’s Booked line, filled from the block. Change any word.' : moment === 'rescheduled' ? 'The app’s own words for a moved visit. Change any word.' : 'The app’s own words, since the office has no Booked line yet. Change any word.',
+  editHint: (office: boolean, moment: TellMoment) => {
+    if (moment === 'estimate') return office ? 'The office’s Estimate line, filled for this estimate. Change any word.' : 'The app’s own words, since the office has no Estimate line yet. Change any word.'
+    if (moment === 'rescheduled') return 'The app’s own words for a moved visit. Change any word.'
+    return office ? 'The office’s Booked line, filled from the block. Change any word.' : 'The app’s own words, since the office has no Booked line yet. Change any word.'
+  },
+  linkHint: 'The link fills in when it sends. Keep the word link in braces where you want it.',
   noEmail: 'No email goes for a booking.',
   blanksLeft: (left: readonly string[]) => `Fill ${blankNames(left)} before it sends.`,
   reading: 'Reading the job…',
@@ -213,5 +256,8 @@ export const TELL_WORDS = {
   call: (number: string) => `Call ${number}`,
   done: 'Done',
   sentToast: (first: string | null) => `Sent to ${first ?? 'the customer'}.`,
+  bothSentToast: (first: string | null) => `Emailed and texted ${first ?? 'the customer'}.`,
+  emailOnlyToast: 'The email went. No link came back, so no text went.',
+  textFailed: 'The email went. The text did not. Send it from the thread.',
   skipped: 'Nothing sent.',
 } as const

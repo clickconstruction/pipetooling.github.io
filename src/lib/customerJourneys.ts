@@ -25,9 +25,9 @@ export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'cont
 export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
 
 /** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
-export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked'
+export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate'
 
-export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked']
+export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -134,6 +134,16 @@ export function customerJourneys(): Journey[] {
           guide: 'tell-if-a-customer-opened-an-estimate-and-record-a-no',
           reflects: ['Thank-you heading and body'],
           render: { kind: 'page', path: ESTIMATE_SAMPLE_DONE_PATH },
+        },
+        {
+          id: 'estimate-text',
+          label: 'Estimate text',
+          sublabel: 'Estimates → Send to customer → Tell the customer (the office presses it with the email; nothing goes on its own)',
+          when: 'Day 0, with the email, when the customer has a number on file.',
+          customerCan: 'Open the same accept link from their phone, and text back to the same number.',
+          guide: 'send-an-estimate-and-turn-it-into-a-job',
+          reflects: ['The office’s Estimate line on the quick replies, or the app’s own words', 'The accept link the email carries', 'Our company name and the company number'],
+          render: { kind: 'text', text: 'text-estimate' },
         },
         {
           id: 'booked-text',

@@ -12,7 +12,7 @@ import type { QuickReply } from '../../lib/quickReplies/kernel'
 import type { TellBlock } from '../../lib/tellCustomer/tellCustomer'
 import type { TellCustomerIo } from '../../lib/tellCustomer/tellCustomerIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { TellCustomerSheet } from './TellCustomerSheet'
+import { TellCustomerSheet, type TellEstimate } from './TellCustomerSheet'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -27,6 +27,7 @@ type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn> }
 function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
   return {
     loadJob: vi.fn(async () => ({ customerId: 'cust-dana', customerName: 'Dana Whitfield', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', lang: 'en' as const })),
+    loadCustomer: vi.fn(async () => ({ name: 'Dana Whitfield', lang: 'en' as const })),
     loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [{ channelId: 'ch-1', value: '(830) 555-0121', stopped: false }] })),
     loadLines: vi.fn(async () => [BOOKED]),
     loadTextsOn: vi.fn(async () => true),
@@ -118,5 +119,94 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     mount(io, { role: 'primary' })
     expect((await screen.findByTestId('tell-hold')).textContent).toBe('⚠No text: only the office team texts a customer from here.')
     expect(io.loadContact).not.toHaveBeenCalled()
+  })
+})
+
+describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () => {
+  const ESTIMATE_LINE: QuickReply = { ...BOOKED, id: 'q9', stepId: 'estimate', text: '{first}, {me} here with Click Plumbing. Your estimate for {job} is ready, {amount}: {link}' }
+  const estimate = (sendEmail: TellEstimate['sendEmail'] = vi.fn(async () => ({ acceptUrl: 'https://clicktooling.com/estimate/accept?t=abc', emailed: true }))) => ({
+    customerId: 'cust-dana',
+    email: 'dana@example.com',
+    amount: '$1,850.00',
+    title: 'Whitfield water heater',
+    jobId: null,
+    sendEmail,
+  })
+  const mountEstimate = (io: TellCustomerIo, est = estimate()) => {
+    const onClose = vi.fn()
+    renderWithProviders(<TellCustomerSheet moment="estimate" jobId={null} jobLabel="Estimate #512 · Whitfield water heater" estimate={est} userId="rosa" role="assistant" onClose={onClose} io={io} now={() => AT} />)
+    return { onClose, est }
+  }
+
+  it('both channels in one press: the email first, then the text with the link it came back with, and the receipt names both', async () => {
+    const io = fakeIo({ loadLines: vi.fn(async () => [ESTIMATE_LINE]) })
+    const { est } = mountEstimate(io)
+    const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    expect(io.loadCustomer).toHaveBeenCalledWith('cust-dana')
+    expect(io.loadJob).not.toHaveBeenCalled()
+    expect(box.value).toBe('Dana, Rosa here with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00: {link}')
+    expect(screen.getByTestId('tell-email').textContent).toBe('The estimate with its link to approve, as the page previews it.')
+    expect(screen.getAllByTestId('tell-act').map((p) => p.textContent)).toEqual([
+      '✉️Emails Dana the estimate with the link to approve it.',
+      '💬Texts Dana the same link from the company number. Dana’s answer comes to the office.',
+      '🧾Then shows you what went, and offers the call.',
+    ])
+    const primary = screen.getByTestId('tell-primary') as HTMLButtonElement
+    expect(primary.textContent).toBe('Send both to Dana')
+    expect(primary.disabled).toBe(false)
+    fireEvent.click(primary)
+    await waitFor(() => expect(io.send).toHaveBeenCalledTimes(1))
+    expect(est.sendEmail).toHaveBeenCalledTimes(1)
+    expect(io.send).toHaveBeenCalledWith({ contactId: 'contact-dana', channelId: 'ch-1', jobId: null, body: 'Dana, Rosa here with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00: https://clicktooling.com/estimate/accept?t=abc' })
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    expect(screen.getByTestId('tell-receipt-email').textContent).toBe('Email · dana@example.com · 2:41 PM')
+    expect(screen.getByTestId('tell-receipt-words').textContent).toContain('https://clicktooling.com/estimate/accept?t=abc')
+    expect(screen.getByTestId('tell-script').textContent).toBe('Hi Dana, this is Rosa with Click Plumbing. I just sent your estimate for Whitfield water heater, $1,850.00. Do you have two minutes for me to walk you through it? You can approve from the link whenever you are ready.')
+  })
+
+  it('Email only sends the email alone; a failed email sends no text and stays on the sheet', async () => {
+    const io = fakeIo()
+    const { est } = mountEstimate(io)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-email-only'))
+    await waitFor(() => expect(est.sendEmail).toHaveBeenCalledTimes(1))
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    expect(io.send).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('tell-receipt-words')).toBeNull()
+    cleanup()
+    const failing = estimate(vi.fn(async () => null))
+    const io2 = fakeIo()
+    mountEstimate(io2, failing)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    await waitFor(() => expect(failing.sendEmail).toHaveBeenCalled())
+    expect(io2.send).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('tell-receipt')).toBeNull()
+  })
+
+  it('with no number the email still goes, the hold says why no text, and the press reads Send email', async () => {
+    const io = fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [] })) })
+    const { est } = mountEstimate(io)
+    expect((await screen.findByTestId('tell-hold')).textContent).toBe('⚠No text: Dana has no phone number on file. Add one on the customer.')
+    expect(screen.queryByTestId('tell-body')).toBeNull()
+    expect(screen.queryByTestId('tell-email-only')).toBeNull()
+    const primary = screen.getByTestId('tell-primary') as HTMLButtonElement
+    expect(primary.textContent).toBe('Send email to Dana')
+    expect(primary.disabled).toBe(false)
+    fireEvent.click(primary)
+    await waitFor(() => expect(est.sendEmail).toHaveBeenCalled())
+    expect(await screen.findByTestId('tell-receipt-email')).toBeTruthy()
+    expect(io.send).not.toHaveBeenCalled()
+  })
+
+  it('the link word may stay in braces; any other blank left holds the press', async () => {
+    mountEstimate(fakeIo())
+    const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    expect(box.value).toContain('{link}')
+    expect((screen.getByTestId('tell-primary') as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByText('The link fills in when it sends. Keep the word link in braces where you want it.')).toBeTruthy()
+    fireEvent.change(box, { target: { value: 'Dana, your estimate for {job} is here: {link}' } })
+    expect((screen.getByTestId('tell-primary') as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByTestId('tell-primary') as HTMLButtonElement).title).toBe('Fill {job} before it sends.')
   })
 })
