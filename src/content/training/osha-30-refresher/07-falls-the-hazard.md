@@ -10,6 +10,7 @@ Falls are the leading cause of construction deaths. Nearly **60** serious falls 
 ## Must know
 - A fall hazard is anything that can make you lose your balance or your support. Falls happen on the same level or to a lower level.
 - A fall is fast. You take **0.3 s** to realize it, **0.33 s** to react and **1 s** to fall **16 ft**. Once it starts you cannot stop it.
+- {{figure:fall-timeline|One second is all it takes to fall 16 ft. Hanging in a harness starts to hurt you within minutes.}}
 - Report every fall, even one with no injury.
 - Same-level falls come from slippery surfaces, cords, uneven ground and gaps over **2 in**.
 - Lower-level falls come from scaffolds, roofs, ladders, lifts, unprotected edges and openings over **30 by 18 in**.

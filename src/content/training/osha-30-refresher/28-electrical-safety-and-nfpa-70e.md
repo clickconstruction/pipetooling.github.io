@@ -18,6 +18,7 @@ Most electrical deaths fall on workers in non-electrical trades. **53%** of elec
 - An unqualified worker learns to recognize hazards, follow safe practices, understand approach boundaries and know when they are not qualified.
 - The arc flash boundary is where an arc could burn you. The limited approach boundary is for shock. An unqualified person crosses either only while continuously escorted by a qualified person. The restricted boundary is qualified workers only, in shock PPE with insulated tools.
 - Arc flash PPE categories: 1 is **4 cal/cm²**, 2 is **8**, 3 is **25**, 4 is **40**. Wear it over natural fibers, because synthetics melt. Read the equipment's arc flash label and never reuse yesterday's choice.
+- {{figure:arc-flash-categories|Each category is the heat a suit must take. The label on the gear says which. Cross a boundary only as the rule allows.}}
 - Shock protection is rubber insulating gloves under leather protectors, dielectric boots, mats, blankets and tools rated **1,000 V**. Check the test date on the gloves. Inspect all of it before each day's use and after any incident.
 - Near exposed parts, enforce the boundaries, follow LOTO and read the labels. Poor lighting is a major cause of electrical accidents.
 

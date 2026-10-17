@@ -10,6 +10,7 @@ Bad air in a sewer, crawl space or trench kills fast. The wrong respirator is no
 ## Must know
 - There are four airborne hazards. Particulates like dust, fibers and fumes, gases and vapors, biological agents, and oxygen deficiency.
 - Normal air is **20.9%** oxygen. Below **19.5%** is IDLH, immediately dangerous to life or health, and at **10%** or less people pass out or die. A monitor only warns, and ventilation is the engineering control.
+- {{figure:oxygen-gauge|Normal air is 20.9 percent oxygen. Below 19.5 the space is deadly, and a dust mask does nothing for it.}}
 - Air-purifying respirators clean the air you have. They are dust masks, half or full face masks with filters or cartridges, and PAPRs, the powered hoods.
 - Atmosphere-supplying respirators bring clean air from outside, and IDLH air requires one. An airline unit gives the most protection but tethers you to a hose. An SCBA carries its own cylinder.
 - The employer selects by **APF**, the assigned protection factor. Oxygen deficiency is the one hazard an APF cannot address.
