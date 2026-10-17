@@ -16,6 +16,7 @@ This is the field toolkit. Spot the hazard, weigh the risk, pick the control, an
 - Mitigation gives each control an owner with authority and fixes the highest risk first. Workers fix housekeeping within their own span of control.
 - Then validate. The controls exist, the training is current and the PPE is actually worn.
 - A JHA lists each step, its hazards and its controls, with the workers. A serious hazard found during the JHA means stop work and install temporary controls.
+- {{figure:controls-ladder|The controls in a JHA come from this ladder. Reach for the top rungs first.}}
 - Revise the JHA on any change, like weather, a new chemical or a new site. Never reuse another site's JHA.
 - An incident is a work-related injury, illness, death or property damage. A near miss differs only by luck and is reported too.
 - Investigations are fact-finding, not fault-finding. Preserve the scene, collect the facts, find the root cause, correct it and verify.

@@ -14,9 +14,11 @@ Work-related musculoskeletal disorders affect millions of workers. OSHA has no e
 - Carrying cement is lifting. Overhead work is posture. Hammering nails is repetition. A jackhammer is vibration.
 - Injuries include herniated discs, tendinitis, carpal tunnel syndrome, rotator cuff tears and hand-arm vibration syndrome. Carpal tunnel syndrome is nerve compression that makes the hands numb and weak.
 - Eliminate with prefabricated parts. Substitute power tools for repetitive hand work. Engineer with lifting equipment, anti-vibration tools and adjustable scaffolds.
+- {{figure:controls-ladder|The same ladder for strain. Prefabricate, then power tools, then a hoist, then breaks, then gloves.}}
 - Administrative controls are job rotation, breaks, training and weight labels. PPE is knee pads, anti-vibration gloves, supportive boots and wrist braces.
 - PPE reduces strain but does not remove the risk.
 - Set precision work about **4 in above** the elbow. Light work sits just below the elbow. Heavy work sits **4 to 6 in below** it.
+- {{figure:lifting-zone|Precision above the elbow, light just below it, heavy 4 to 6 in down. Lift from the green zone.}}
 - Take a break about **every hour** during repetitive or vibrating work. Stretch daily.
 - Report aches, numbness and tingling early, and suggest fixes. The employer identifies risks, trains, provides handling equipment and encourages reporting.
 - A roofer twisted while carrying a ladder alone and lost **3 weeks**. The fix was a helper and no twisting, not a shorter ladder.

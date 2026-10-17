@@ -9,7 +9,9 @@ A cave-in is not the only thing that kills in a trench. Bad air, water and a slo
 
 ## Must know
 - A trench deeper than **4 ft** needs a ladder, stair or ramp within **25 ft** of every worker. One ladder in the middle of a 60-ft trench fails the rule.
+- {{figure:trench-section|A way out within 25 ft of everyone, the box 18 in proud, spoil 2 ft back.}}
 - Secure the ladder and extend it **3 ft** above the landing.
+- {{figure:ladder-angle|Tied at the top and bottom, 3 ft past the landing, so you step off and not over.}}
 - Under 4 ft a protective system is usually unnecessary. Water, unstable soil or loads at the edge change that.
 - Warning signs: bulging, cracking, boiling, heaving, slumping and sliding. On any sign, or seeping water, stop work and reinforce the walls before anyone goes back in.
 - {{figure:cave-in-signs|Six ways a wall says it is about to go. On any one, stop work and get out.}}

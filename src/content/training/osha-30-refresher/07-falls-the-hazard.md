@@ -18,6 +18,7 @@ Falls are the leading cause of construction deaths. Nearly **60** serious falls 
 - A personal fall arrest system, a PFAS, stops a fall in progress. A restraint or a passive system like a guardrail prevents the fall.
 - A hole cover holds **twice** the load, is secured, is marked HOLE or COVER and covers the whole opening. Cover any opening before you leave it. Guard skylights.
 - Platforms above **10 ft** need guardrails on all sides. A 20-ft ladder's base sits **5 ft** out from the wall.
+- {{figure:ladder-angle|A 20-ft ladder sits 5 ft out, one foot out for every four up.}}
 - The employer trains you before any work at height, again on any change, and every year.
 - The site keeps a fall protection plan with a rescue plan. Never copy the plan from the last jobsite.
 - Suspension trauma is the harm from hanging in a harness. It starts within **3 to 5 minutes** and can kill within **30 minutes**.

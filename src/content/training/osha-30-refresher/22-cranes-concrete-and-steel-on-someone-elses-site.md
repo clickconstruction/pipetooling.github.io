@@ -9,6 +9,7 @@ Power-line contact, overloading, shock loading and poor communication kill groun
 
 ## Must know
 - Never stand under a load. Stay out of the swing radius, the circle the crane's parts sweep through, and behind the barricade.
+- {{figure:swing-radius|The circle the crane sweeps and the spots the operator cannot see. Stay outside, in sight.}}
 - A crane is inspected before first use each day and after any accident or shock load. A qualified person inspects it **annually**. A hydraulic leak is reported and repaired before use, never sealed or wiped up.
 - Overloading is the most common cause of tip-overs. Load weight comes from shipping papers, markings or cut sheets, never a guess. Only trained riggers rig, and the choker hitch is the weakest.
 - A certified signal person is required whenever the operator cannot see the load or the landing. A stop signal from anyone on site stops the lift.

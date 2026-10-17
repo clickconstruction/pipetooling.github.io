@@ -15,7 +15,9 @@ About **2.3 million** construction workers use scaffolds. That is **65%** of the
 - Platforms are fully planked with scaffold-grade planks, no more than **1 in** from the uprights. Never paint a wood plank. Paint hides defects. Use mud sills under base plates on dirt or asphalt.
 - Fall protection starts above **10 ft**. Guardrails go on every open side. Without them you wear a PFAS, the personal fall arrest system, tied only to an anchorage rated **5,000 lb**.
 - Top rails sit **38 to 45 in** high, midrails halfway, toeboards at least **3.5 in**. Add screens or nets where materials stack higher than the toeboard.
+- {{figure:guardrail|The same rail on a scaffold, 38 to 45 in at the top, with a midrail halfway and a toeboard.}}
 - Stay **3 ft** from insulated power lines under **300 V**. Stay **10 ft** from uninsulated lines or anything over 300 V.
+- {{figure:power-line-clearances|On a scaffold the rule starts at 3 ft from an insulated line and 10 ft from anything else.}}
 - Tie the scaffold to the structure once its height passes four times the narrowest base width. Ties go every **20 ft** up when the base is 3 ft wide or less. A wider base ties every **26 ft** up. Every scaffold ties every **30 ft** across.
 - Climb down before a mobile scaffold moves. Riding is allowed only when the surface is within **3 degrees** of level. The height can be no more than **twice** the base width. Powered movement stays under **1 ft per second** and nobody rides beyond the wheels.
 - Push a mobile scaffold near the base and lock the casters when it stops.
