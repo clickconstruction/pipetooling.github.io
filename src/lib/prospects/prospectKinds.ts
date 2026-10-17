@@ -130,6 +130,7 @@ export function companyRoleChip(role: string | null | undefined): string | null 
 
 /** Where we found them: the suggestions under the Source box. The caller may type anything. */
 export const PROSPECT_SOURCES: readonly string[] = [
+  'Google Maps',
   "A GC's sub list",
   'PlanHub',
   'BuildingConnected',

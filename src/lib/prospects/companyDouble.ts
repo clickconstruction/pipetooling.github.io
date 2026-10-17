@@ -7,6 +7,7 @@
  * one shape, `<Company> is already <where>. <One fact>.`, and names the door the page draws.
  */
 import { benchDouble } from './subsLane'
+import { mapsKey } from './mapsShareText'
 import { PROSPECT_KIND_WORDS, type ProspectKind } from './prospectKinds'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
@@ -21,6 +22,8 @@ export type ProspectDoubleRow = {
   last_contact: string | null
   created_at: string | null
   updated_at: string | null
+  /** v2.5604: the Google Maps link; the same place is the same company. */
+  maps_url?: string | null
 }
 
 export type BenchDoubleRow = { id: string; name: string; phone: string | null; trades?: readonly string[]; vetted?: boolean }
@@ -101,12 +104,14 @@ function sentence(name: string, where: string, fact: string): string {
  * (seven digits or more): this lane, then another lane, then the bench, then the customers. Null
  * when the company is new everywhere. `nowMs` is the clock, so the words can be tested.
  */
-export function companyDouble(name: string, phone: string | null | undefined, homes: DoubleHomes, nowMs: number = Date.now()): CompanyDouble | null {
+export function companyDouble(name: string, phone: string | null | undefined, homes: DoubleHomes, nowMs: number = Date.now(), mapsUrl: string | null | undefined = null): CompanyDouble | null {
   const n = name.trim()
-  if (!n && (phone ?? '').replace(/\D/g, '').length < 7) return null
-  const here = benchDouble(name, phone, homes.prospects.filter((p) => p.kind === homes.kind))
+  const key = mapsKey(mapsUrl)
+  if (!n && (phone ?? '').replace(/\D/g, '').length < 7 && !key) return null
+  const byMaps = (rows: readonly ProspectDoubleRow[]) => (key ? rows.find((p) => mapsKey(p.maps_url) === key) ?? null : null)
+  const here = byMaps(homes.prospects.filter((p) => p.kind === homes.kind)) ?? benchDouble(name, phone, homes.prospects.filter((p) => p.kind === homes.kind))
   if (here) return { where: 'lane', id: here.id, name: here.name, kind: here.kind, door: 'open_prospect', line: sentence(here.name, `on ${PROSPECT_KIND_WORDS[here.kind].tab}`, prospectFact(here, nowMs)) }
-  const elsewhere = benchDouble(name, phone, homes.prospects.filter((p) => p.kind !== homes.kind))
+  const elsewhere = byMaps(homes.prospects.filter((p) => p.kind !== homes.kind)) ?? benchDouble(name, phone, homes.prospects.filter((p) => p.kind !== homes.kind))
   if (elsewhere) return { where: 'other_lane', id: elsewhere.id, name: elsewhere.name, kind: elsewhere.kind, door: 'open_prospect', line: sentence(elsewhere.name, `on ${PROSPECT_KIND_WORDS[elsewhere.kind].tab}`, prospectFact(elsewhere, nowMs)) }
   const bench = benchDouble(name, phone, homes.bench)
   if (bench) return { where: 'bench', id: bench.id, name: bench.name, door: 'open_bench', line: sentence(bench.name, 'on the bench', benchFact(bench)) }

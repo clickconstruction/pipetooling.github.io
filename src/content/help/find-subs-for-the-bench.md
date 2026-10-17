@@ -11,7 +11,7 @@ The deck works like the customer deck. The queue, the timer, callbacks and the A
 
 ## Add a sub
 
-Press {{button:blue|New Prospect}} and pick **A sub** at the top. Type the person you reach first, with their title and cell. Then the company and its office phone. Then the sub's own facts:
+Press {{button:blue|New Prospect}} and pick **A sub** at the top. Type the person you reach first, with their title and cell. For the company, open their Google Maps profile and press Share. Paste what it copies into **Paste from Google Maps**. The company, the address and the link fill in. Add their license. Then the sub's own facts:
 
 - **Trades**: the trades they do, with a comma between two. Use the bench's own names, like Concrete or Fire sprinkler.
 - **Goes up to**: how many miles their crews drive. Leave it blank if they did not say.
