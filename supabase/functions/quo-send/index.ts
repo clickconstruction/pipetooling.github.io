@@ -5,6 +5,7 @@ import { parseQuoSendBody, seatOf } from '../_shared/gcKernels/lib/quo/rows.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { lastOurTextAt, loadBoxes, loadSeats, quoCompany, sendText } from '../_shared/quoLines.ts'
 import { isJobModeSend } from '../_shared/gcKernels/lib/quo/techSend.ts'
+import { textRefusal, type OkToTextRow } from '../_shared/gcKernels/lib/prospects/textingRule.ts'
 import { jobModeSend } from '../_shared/quoTechSend.ts'
 
 /**
@@ -84,8 +85,21 @@ serve(async (req) => {
     }
 
     // The box it goes from: the one they last texted on this number, else their kind's, else the company number's.
-    const { data: contact, error: contactError } = await admin.from('contacts').select('kind').eq('id', input.contactId).single()
+    const { data: contact, error: contactError } = await admin.from('contacts').select('kind, prospect_id, customer_id').eq('id', input.contactId).single()
     if (contactError) throw new Error(`contacts: ${contactError.message}`)
+    // May we text? (v2.5606): a prospect who has not said yes is not texted. The office asks on the call and sets the
+    // answer on the card; a contact who is a customer too is theirs to text as before.
+    const link = contact as { kind: string; prospect_id?: string | null; customer_id?: string | null }
+    if (link.prospect_id && !link.customer_id) {
+      const { data: prospect, error: prospectError } = await admin
+        .from('prospects')
+        .select('ok_to_text, contact_name, company_name')
+        .eq('id', link.prospect_id)
+        .maybeSingle()
+      if (prospectError) throw new Error(`prospects: ${prospectError.message}`)
+      const held = textRefusal((prospect ?? null) as OkToTextRow | null)
+      if (held) return refuse(held.refused, held.words, 403)
+    }
     const { data: lastIn, error: lastInError } = await admin
       .from('messages')
       .select('mailbox')
