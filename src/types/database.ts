@@ -23118,6 +23118,111 @@ export type Database = {
           },
         ]
       }
+      nudge_offers: {
+        Row: {
+          bid_id: string | null
+          body: string
+          by_user_id: string | null
+          channel_id: string | null
+          contact_id: string
+          dismissed_at: string | null
+          dismissed_by_user_id: string | null
+          dismissed_why: string | null
+          held_why: string | null
+          how: string
+          id: string
+          jobs_ledger_id: string | null
+          message_id: string | null
+          prepared_at: string
+          prepared_by: string
+          project_id: string | null
+          send_on: string | null
+          sent_at: string | null
+          sent_by_user_id: string | null
+          step_key: string
+        }
+        Insert: {
+          bid_id?: string | null
+          body: string
+          by_user_id?: string | null
+          channel_id?: string | null
+          contact_id: string
+          dismissed_at?: string | null
+          dismissed_by_user_id?: string | null
+          dismissed_why?: string | null
+          held_why?: string | null
+          how?: string
+          id?: string
+          jobs_ledger_id?: string | null
+          message_id?: string | null
+          prepared_at?: string
+          prepared_by?: string
+          project_id?: string | null
+          send_on?: string | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          step_key: string
+        }
+        Update: {
+          bid_id?: string | null
+          body?: string
+          by_user_id?: string | null
+          channel_id?: string | null
+          contact_id?: string
+          dismissed_at?: string | null
+          dismissed_by_user_id?: string | null
+          dismissed_why?: string | null
+          held_why?: string | null
+          how?: string
+          id?: string
+          jobs_ledger_id?: string | null
+          message_id?: string | null
+          prepared_at?: string
+          prepared_by?: string
+          project_id?: string | null
+          send_on?: string | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          step_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nudge_offers_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nudge_offers_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "contact_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nudge_offers_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nudge_offers_dismissed_by_user_id_fkey"
+            columns: ["dismissed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nudge_offers_sent_by_user_id_fkey"
+            columns: ["sent_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nudge_sent: {
         Row: {
           bid_id: string | null
@@ -36127,6 +36232,26 @@ export type Database = {
         Returns: string
       }
       nudge_let_go: { Args: { p_hold: string }; Returns: undefined }
+      nudge_offer_dismiss: {
+        Args: { p_offer: string; p_why: string }
+        Returns: undefined
+      }
+      nudge_offer_make: {
+        Args: {
+          p_body: string
+          p_channel: string
+          p_contact: string
+          p_job_id: string
+          p_job_kind: string
+          p_send_on: string
+          p_step: string
+        }
+        Returns: string
+      }
+      nudge_offer_sent: {
+        Args: { p_message: string; p_offer: string }
+        Returns: undefined
+      }
       nudge_record_sent: {
         Args: {
           p_contact: string
