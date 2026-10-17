@@ -4644,6 +4644,110 @@ export type Database = {
           },
         ]
       }
+      call_tasks: {
+        Row: {
+          bid_id: string | null
+          contact_id: string
+          done_at: string | null
+          done_by: string | null
+          done_how: string | null
+          done_message_id: string | null
+          due_on: string
+          id: string
+          jobs_ledger_id: string | null
+          made_at: string
+          made_by: string | null
+          project_id: string | null
+          script: string | null
+          step_key: string | null
+          what: string
+        }
+        Insert: {
+          bid_id?: string | null
+          contact_id: string
+          done_at?: string | null
+          done_by?: string | null
+          done_how?: string | null
+          done_message_id?: string | null
+          due_on: string
+          id?: string
+          jobs_ledger_id?: string | null
+          made_at?: string
+          made_by?: string | null
+          project_id?: string | null
+          script?: string | null
+          step_key?: string | null
+          what: string
+        }
+        Update: {
+          bid_id?: string | null
+          contact_id?: string
+          done_at?: string | null
+          done_by?: string | null
+          done_how?: string | null
+          done_message_id?: string | null
+          due_on?: string
+          id?: string
+          jobs_ledger_id?: string | null
+          made_at?: string
+          made_by?: string | null
+          project_id?: string | null
+          script?: string | null
+          step_key?: string | null
+          what?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_tasks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_tasks_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_tasks_done_by_fkey"
+            columns: ["done_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_tasks_done_message_id_fkey"
+            columns: ["done_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_tasks_jobs_ledger_id_fkey"
+            columns: ["jobs_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_tasks_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       cashapp_aliases: {
         Row: {
           counterparty: string
@@ -6025,6 +6129,9 @@ export type Database = {
           off_since: string | null
           off_why: string | null
           person_id: string | null
+          prefers: string | null
+          prefers_at: string | null
+          prefers_how: string | null
           prospect_id: string | null
           snoozed_until: string | null
           state: string
@@ -6050,6 +6157,9 @@ export type Database = {
           off_since?: string | null
           off_why?: string | null
           person_id?: string | null
+          prefers?: string | null
+          prefers_at?: string | null
+          prefers_how?: string | null
           prospect_id?: string | null
           snoozed_until?: string | null
           state?: string
@@ -6075,6 +6185,9 @@ export type Database = {
           off_since?: string | null
           off_why?: string | null
           person_id?: string | null
+          prefers?: string | null
+          prefers_at?: string | null
+          prefers_how?: string | null
           prospect_id?: string | null
           snoozed_until?: string | null
           state?: string
@@ -9882,6 +9995,8 @@ export type Database = {
       flow_steps: {
         Row: {
           aside: boolean
+          call_script: string | null
+          call_script_es: string | null
           facts: string[]
           flow_id: string
           fork: boolean
@@ -9905,12 +10020,15 @@ export type Database = {
           seat_user_id: string | null
           skip_one_job: boolean
           step_key: string
+          suggest_call: boolean
           updated_at: string
           usual: number
           who: string
         }
         Insert: {
           aside?: boolean
+          call_script?: string | null
+          call_script_es?: string | null
           facts?: string[]
           flow_id: string
           fork?: boolean
@@ -9934,12 +10052,15 @@ export type Database = {
           seat_user_id?: string | null
           skip_one_job?: boolean
           step_key: string
+          suggest_call?: boolean
           updated_at?: string
           usual?: number
           who: string
         }
         Update: {
           aside?: boolean
+          call_script?: string | null
+          call_script_es?: string | null
           facts?: string[]
           flow_id?: string
           fork?: boolean
@@ -9963,6 +10084,7 @@ export type Database = {
           seat_user_id?: string | null
           skip_one_job?: boolean
           step_key?: string
+          suggest_call?: boolean
           updated_at?: string
           usual?: number
           who?: string
@@ -29852,6 +29974,35 @@ export type Database = {
           },
         ]
       }
+      tell_customer_prefs: {
+        Row: {
+          booked: string
+          estimate: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booked?: string
+          estimate?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booked?: string
+          estimate?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tell_customer_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_courses: {
         Row: {
           created_at: string
@@ -32574,6 +32725,30 @@ export type Database = {
         Args: { p_page?: string; p_seconds?: number }
         Returns: undefined
       }
+      call_task_add: {
+        Args: {
+          p_contact: string
+          p_due: string
+          p_job_id: string
+          p_job_kind: string
+          p_script: string
+          p_step: string
+          p_what: string
+        }
+        Returns: string
+      }
+      call_task_done: {
+        Args: { p_how: string; p_id: string; p_note?: string }
+        Returns: string
+      }
+      call_task_move: {
+        Args: { p_due: string; p_id: string }
+        Returns: undefined
+      }
+      call_tasks_close_by_call: {
+        Args: { p_contact: string; p_message: string }
+        Returns: number
+      }
       can_access_bid_for_pricing: {
         Args: { bid_id_param: string }
         Returns: boolean
@@ -32791,6 +32966,10 @@ export type Database = {
       contact_put_back_on: { Args: { p_contact: string }; Returns: undefined }
       contact_set_off: {
         Args: { p_contact: string; p_why: string }
+        Returns: undefined
+      }
+      contact_set_prefers: {
+        Args: { p_contact: string; p_prefers: string }
         Returns: undefined
       }
       contacts_candidate_ids: { Args: never; Returns: string[] }
@@ -36243,7 +36422,7 @@ export type Database = {
           p_contact: string
           p_job_id: string
           p_job_kind: string
-          p_send_on: string
+          p_send_on?: string
           p_step: string
         }
         Returns: string
