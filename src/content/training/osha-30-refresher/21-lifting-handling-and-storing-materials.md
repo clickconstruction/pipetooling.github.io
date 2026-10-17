@@ -13,6 +13,7 @@ Poor handling causes sprains, fractures, amputations and crushing deaths. Back i
 - The safe lifting zone is **mid-thigh to mid-chest**. Stop and tell your manager at the first warning sign.
 - {{figure:lifting-zone|Lift between mid-thigh and mid-chest. Set work at the elbow, precision above it and heavy below.}}
 - Plan each task with a JHA, the job hazard analysis. Eliminate the lift first. Then engineering controls like forklifts, hoists and carts. Then training and weight markings. PPE like gloves and steel toes comes last.
+- {{figure:controls-ladder|Eliminate the lift first, then a hoist or a cart, then training. Gloves come last.}}
 - The lift has five steps. Plan the weight and the route. Squat with a straight back and grip close to the body. Move without twisting or rushing, then set down carefully.
 - {{figure:lift-steps|Plan it, squat with a straight back, hold it close, move without twisting, set it down with care.}}
 - Over **50 lb** may need a second person or a mechanical aid. Count off a team lift together. Never roll a barrel or cylinder by hand.
@@ -21,6 +22,7 @@ Poor handling causes sprains, fractures, amputations and crushing deaths. Back i
 - A missing tag means out of service. Rigging attachments are proof-tested at **125%** of rated load.
 - At a conveyor, no loose clothing or jewelry. Never ride one or walk under it. Keep the guards on and lock out before clearing a jam.
 - Block stacks over **6 ft** taper back half a block per tier. Interlock bagged materials. Cylinders stay no higher than **5 ft** unless racked. Hazardous materials go in leak-proof containers away from ignition sources.
+- {{figure:stacking-limits|Lumber, bricks, blocks and cylinders each have a top. Bricks and blocks taper as they rise.}}
 - Clean as you work. Check the SDS, the safety data sheet, before disposing of a chemical. Use an enclosed chute when dropping material more than **20 ft**. Barricade and sign drop zones.
 
 ## Traps
