@@ -14,6 +14,7 @@ Poor handling causes sprains, fractures, amputations and crushing deaths. Back i
 - {{figure:lifting-zone|Lift between mid-thigh and mid-chest. Set work at the elbow, precision above it and heavy below.}}
 - Plan each task with a JHA, the job hazard analysis. Eliminate the lift first. Then engineering controls like forklifts, hoists and carts. Then training and weight markings. PPE like gloves and steel toes comes last.
 - The lift has five steps. Plan the weight and the route. Squat with a straight back and grip close to the body. Move without twisting or rushing, then set down carefully.
+- {{figure:lift-steps|Plan it, squat with a straight back, hold it close, move without twisting, set it down with care.}}
 - Over **50 lb** may need a second person or a mechanical aid. Count off a team lift together. Never roll a barrel or cylinder by hand.
 - Only trained, certified people run cranes, forklifts and rigging. An untrained coworker does not move the forklift, not even 10 ft.
 - Wire rope shows damage. Alloy chain hides it, and every link is a single point of failure. Synthetic slings are damaged by chemicals, UV and sharp edges.

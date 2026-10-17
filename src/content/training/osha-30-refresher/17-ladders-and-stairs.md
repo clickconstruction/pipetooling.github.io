@@ -12,6 +12,7 @@ About **160** workers die in ladder falls each year. A fall from a ladder is dan
 - Inspect stairs at least daily and keep them clear.
 - Fixed ladders over **24 ft** need fall protection: a cage, a well or a ladder safety system.
 - Keep **three points of contact**. Never carry tools in your hands while climbing.
+- {{figure:three-points|Two hands and a foot, or two feet and a hand. The tool goes up on a belt or a rope.}}
 - Fiberglass stays non-conductive when wet and is the choice near electricity. Aluminum conducts. Wood conducts once it is wet.
 - Straight ladders stop at **30 ft** and step ladders at **20 ft**. A platform ladder carries one person. A double-cleated ladder lets two climb at once.
 - Secure an extension ladder at the top and the bottom. Extend it **3 ft** above the landing at a **4:1** angle. Never stand on the top three rungs.
