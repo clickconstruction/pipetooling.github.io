@@ -13,9 +13,11 @@ Noise, vibration, heat and cold are hazards you usually cannot see. Construction
 - An 8-hour TWA, the time-weighted average, of 85 dBA starts a hearing conservation program. That means noise monitoring, free hearing protection, training, records, and baseline and annual hearing tests.
 - **90 dBA** as an 8-hour TWA is the PEL, the permissible exposure limit. Above it you need hearing protection plus engineering or administrative controls.
 - Unprotected time: **8 h** at 90, **4 h** at 95, **2 h** at 100 and **1 h** at 105 dBA. At 110 it is **30 min**, and at 115 only **15 min**.
+- {{figure:noise-by-tool|Every 5 dBA louder halves the time you can stand it. Above 85, protect your ears.}}
 - Hand-arm vibration from handheld tools is the bigger injury source. Up to **50%** of exposed workers develop hand-arm vibration syndrome: tingling, numbness, white fingertips. Controls: low-vibration tools, anti-vibration gloves, breaks, rotation and maintenance.
 - Heat is a hazard in any season, indoors or out. Acclimatization takes **1 to 2 weeks**, and skipping it is a major factor in heat deaths. Hydrate all day, take breaks at least every **2 hours**, and seek shade.
 - Heat illness runs rash, cramps, exhaustion, then heat stroke at around **104°F** with confusion and hot dry skin. Call **911**, move the person to shade and cool them.
+- {{figure:heat-stages|Rash, cramps, exhaustion, then stroke at about 104°F. Confusion and hot dry skin mean call 911.}}
 - Cold risk combines temperature, wind and wetness, and wet feet lose heat **25 times** faster. Hypothermia is a body temperature below **95°F**: shivering, confusion, slurred speech. Treat it with a warm area, dry clothing, medical care and warm sweet drinks, never alcohol.
 - Site radiation is non-ionizing: power lines, radio frequency, infrared, ultraviolet from the sun and welding arcs, and lasers. Keep exposure as low as reasonably achievable with time, distance and shielding.
 - Lasers are for qualified operators only, with laser eyewear when reflections can exceed **5 mW**. Cap a laser when idle and never aim it at people or reflective surfaces.

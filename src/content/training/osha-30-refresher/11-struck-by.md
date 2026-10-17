@@ -15,6 +15,7 @@ Struck-by incidents cause **10 to 15%** of construction deaths. Vehicles and hea
 - Powder-actuated and pneumatic tools need certification. Everyone nearby wears a hard hat and safety glasses. An uncertified nail gun killed an apprentice **27 ft** away.
 - Cleaning with compressed air: under **30 psi**, a chip guard, a face shield and hearing protection. Never aim it at anyone.
 - A hard hat has limits. A 1-lb wrench injures from **30 ft** and a 2-lb hammer from **15 ft**. A 5-lb brick from **8 ft** and a 10-lb drill from **4 ft**. A 20-lb sledge from **2 ft**, a 50-lb block from **1 ft**.
+- {{figure:hard-hat-limits|The heavier the thing, the shorter the drop it takes. A block at waist height is as bad as a wrench from a roof.}}
 - Working overhead, tether your tools and use toeboards at least **3.5 in** high. Keep everything **2 ft** back from a trench edge. Cover holes **2 in** or wider.
 - Bricks are a falling hazard while lifted, placed, braced and drying. Brace walls **8 ft** or higher. Watch the forecast: a **70 mph** gust toppled five drying walls.
 - Vehicle blind spots: directly behind, under a raised bucket, the far side of a side-set cab. Reversing needs a back-up alarm and a spotter. Inspect each shift.

@@ -12,6 +12,7 @@ Asbestos fibers from pre-1980 materials cause mesothelioma, lung cancer and asbe
 ## Must know
 - Crystalline silica is in sand, rock, concrete, brick, block, stone, grout, mortar and tile, not in paint or wood. Cutting, grinding, drilling, jackhammering, sandblasting, demolition, mixing grout and dry sweeping all make the dust.
 - Respirable particles under **10 microns** lodge deep in the lungs and scar them. Silicosis can be chronic at **10 to 30 years**, accelerated at **5 to 10**, or acute within **2 years**. There is no cure, and smoking speeds it up.
+- {{figure:silica-particle|A hair is about 70 microns across. A silica particle under 10 goes deep into the lung and stays.}}
 - Action level: **25 µg/m³** as an 8-hour TWA. PEL: **50 µg/m³** as an 8-hour TWA. Below the action level under all foreseeable conditions, the standard does not apply.
 - Wet methods and dust collection with HEPA vacuums come first. Never dry sweep or blow dust with compressed air. Respirators come only where the controls fall short.
 - Employers may measure exposure, assume the action level, or follow **Table 1**, 18 common tasks with set controls and respirators. Following Table 1 is optional. Its respirator column splits at **4 hours** per shift and is stricter indoors.
