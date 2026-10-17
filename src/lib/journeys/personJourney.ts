@@ -232,6 +232,9 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
   const isGc = rows.jobs.some((j) => j.gc_customer_id === subject.id) || rows.bidRooms.length > 0 || rows.gcStatements.length > 0
   const jobIdsOfCustomer = new Set(rows.jobs.map((j) => j.id))
 
+  // Tell the customer (v2.5593): the Booked text is the office's press on the schedule; its line is read in their thread.
+  steps['booked-text'] = na('Schedule: pressed by the office when the first visit is booked; read in their thread')
+
   // -- estimate lane --
   const sentEstimates = rows.estimates.filter((e) => e.sent_at)
   const est = latestBy(sentEstimates, (e) => e.sent_at)

@@ -16,13 +16,14 @@ const DANA: BlankFills = {
   'back day': 'Fri, Oct 9',
   'back time': '8:00 AM',
   day: 'Thu',
+  tech: 'Mateo',
   link: 'click.co/e/8Kp4',
   amount: '$4,850',
 }
 
 describe('the fill table', () => {
-  it('lists the eleven blanks the app fills, in the chip order', () => {
-    expect(BLANKS.map((b) => b.key)).toEqual(['first', 'me', 'address', 'job', 'minutes', 'window', 'back day', 'back time', 'day', 'link', 'amount'])
+  it('lists the twelve blanks the app fills, in the chip order', () => {
+    expect(BLANKS.map((b) => b.key)).toEqual(['first', 'me', 'address', 'job', 'minutes', 'window', 'back day', 'back time', 'day', 'tech', 'link', 'amount'])
   })
 
   it('keeps the person’s blanks off the table', () => {
@@ -49,7 +50,7 @@ describe('fillLine', () => {
     const all = BLANKS.map((b) => `{${b.key}}`).join(' ')
     const r = fillLine(all, DANA)
     expect(r.left).toEqual([])
-    expect(r.text).toBe('Dana Luis 4120 Oakridge Trl Oakridge sewer line 25 9:30 to 10:00 Fri, Oct 9 8:00 AM Thu click.co/e/8Kp4 $4,850')
+    expect(r.text).toBe('Dana Luis 4120 Oakridge Trl Oakridge sewer line 25 9:30 to 10:00 Fri, Oct 9 8:00 AM Thu Mateo click.co/e/8Kp4 $4,850')
     expect(blanksIn(r.text)).toEqual([])
   })
 

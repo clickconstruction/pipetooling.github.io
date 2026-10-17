@@ -8,6 +8,7 @@ import type { SampleTextId } from '../customerJourneys'
 import { GC_COMPANY } from '../gc/company'
 import { textToSend, type ComposeCompany } from '../messages/textOut'
 import { helpAnswer } from '../quo/events'
+import { DEFAULT_LINES, tellFills, tellWords } from '../tellCustomer/tellCustomer'
 
 /** Our company as a sample text names it: the GC's name, with a made-up number and mailbox. */
 export const SAMPLE_TEXT_COMPANY: ComposeCompany = {
@@ -55,6 +56,22 @@ export function sampleText(id: SampleTextId, company: ComposeCompany = SAMPLE_TE
           text: helpAnswer(company),
           note: 'The app answers HELP. Quo answers STOP itself, and the app stops texting that number.',
         },
+      ],
+    }
+  }
+  if (id === 'text-booked') {
+    // Tell the customer (v2.5593): the Booked text as the sheet sends it, the app's own words filled from a made-up block.
+    const fills = tellFills({ customerName: 'Elena Marchetti', me: 'Rosa Perez', jobName: 'Marchetti water heater', jobAddress: '1208 Mesquite Ln', block: { workDate: '2026-10-23', timeStart: '10:00:00', timeEnd: '12:00:00', techName: 'Luis Ortega' } })
+    return {
+      from,
+      to: 'Elena Marchetti · (210) 555-0188',
+      bubbles: [
+        {
+          side: 'ours',
+          text: textToSend({ body: tellWords(DEFAULT_LINES.booked, fills, 'en').text, reason: 'first', company }).text,
+          note: 'The office pressed Send on the Tell the customer sheet after saving her first visit. The first text to a number carries the opt-out line.',
+        },
+        { side: 'theirs', text: 'Great, see you Friday.', note: null },
       ],
     }
   }
