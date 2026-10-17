@@ -17,7 +17,7 @@ The first course is the OSHA 30 refresher. It is thirty lessons of about five mi
 
 ## Read a lesson
 
-A lesson has five parts. **Why it matters** says why in a line or two. **Must know** lists the facts, with the numbers in bold. **Traps** lists the mistakes the real quizzes catch. **Numbers to remember** repeats the numbers as chips. **Check yourself** asks four questions.
+A lesson has five parts. **Why it matters** says why in a line or two. **Must know** lists the facts, with the numbers in bold. **Traps** lists the mistakes the real quizzes catch. **Numbers to remember** repeats the numbers as chips. **Check yourself** asks four questions. Some facts come with a drawing under the sentence. The line under the drawing says what it shows.
 
 The list of lessons sits on the left. On a phone, press **Lessons** to open the list. You can read the lessons in any order. A tick shows each lesson you have done.
 

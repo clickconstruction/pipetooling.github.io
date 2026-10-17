@@ -8,6 +8,8 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import { findCourse } from '../lib/training/courseRegistry'
 import { courseProgress, lessonToOpen, type CourseLesson, type FinalCheckResult } from '../lib/training/courseContent'
 import { courseStanding, standingWords, ymdWords, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../lib/training/trainingState'
+import { lessonItems } from '../lib/training/figures'
+import { TrainingFigure } from '../components/training/TrainingFigure'
 import { finishCourse, loadMyTraining, loadTrainingCatalog, passLesson } from '../lib/training/trainingIo'
 import { LessonCheck } from '../components/training/LessonCheck'
 import { FinalCheck } from '../components/training/FinalCheck'
@@ -336,21 +338,9 @@ export default function Training() {
                 </p>
               ))}
               <h3 style={h5}>Must know</h3>
-              <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                {lesson.mustKnow.map((p, i) => (
-                  <li key={i} style={{ margin: '0.2rem 0' }}>
-                    {inlineBold(p)}
-                  </li>
-                ))}
-              </ul>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>{lessonList(lesson.mustKnow)}</ul>
               <h3 style={h5}>Traps</h3>
-              <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                {lesson.traps.map((p, i) => (
-                  <li key={i} style={{ margin: '0.2rem 0' }}>
-                    {inlineBold(p)}
-                  </li>
-                ))}
-              </ul>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>{lessonList(lesson.traps)}</ul>
               <h3 style={h5}>Numbers to remember</h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                 {lesson.numbers.map((n, i) => (
@@ -382,6 +372,21 @@ export default function Training() {
         </main>
       </div>
     </div>
+  )
+}
+
+/** A Must know or Traps list: a sentence as a bullet, a figure line (punch list #116) as its drawing with no bullet. */
+function lessonList(items: readonly string[]) {
+  return lessonItems(items).map((item, i) =>
+    item.kind === 'figure' ? (
+      <li key={i} style={{ listStyle: 'none', marginLeft: '-1.2rem' }}>
+        <TrainingFigure name={item.figure} caption={item.caption} />
+      </li>
+    ) : (
+      <li key={i} style={{ margin: '0.2rem 0' }}>
+        {inlineBold(item.text)}
+      </li>
+    ),
   )
 }
 

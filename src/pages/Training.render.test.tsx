@@ -45,6 +45,7 @@ One short line.
 
 ## Must know
 - First fact.
+- {{figure:controls-ladder|Start at the top.}}
 - Second fact with a **number** in it.
 - Third fact.
 - Fourth fact.
@@ -159,6 +160,12 @@ describe('Training page', () => {
     expect(screen.getByText('1 of 3 lessons')).toBeTruthy()
     expect(document.querySelector('[data-standing]')).toBeNull()
     expect((screen.getByText('Next lesson ›') as HTMLButtonElement).disabled).toBe(true)
+    // punch list #116: the figure line draws its figure under the sentence, named by its caption, with no bullet
+    const figure = document.querySelector('figure[data-training-figure="controls-ladder"]')!
+    expect(figure.querySelector('figcaption')?.textContent).toBe('Start at the top.')
+    expect(screen.getByRole('img', { name: 'Start at the top.' })).toBeTruthy()
+    expect((figure.parentElement as HTMLElement).style.listStyle).toBe('none')
+    expect(screen.queryByText('{{figure:controls-ladder|Start at the top.}}')).toBeNull()
   })
 
   it('four right picks record the lesson once and open Next lesson; a wrong pick offers Try again', async () => {

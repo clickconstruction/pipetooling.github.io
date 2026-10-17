@@ -8,6 +8,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { TRAINING_COURSE_FACTS } from './courseFacts'
+import { FIGURE_NAMES, parseFigureItem } from './figures'
 import {
   APPENDIX_B_BANNED_ASKS,
   appendixBFailures,
@@ -142,6 +143,16 @@ describe('parseLesson', () => {
     expect(() => parseLesson(FIXTURE.replace('## Must know', '## Numbers').replace('## Numbers\n- **5', '## Must know\n- **5'), '03-a-fixture')).toThrow(/sections must be exactly/)
     expect(() => parseLesson(FIXTURE.replace(/\n4\. Fourth question\?[\s\S]*$/, '\n'), '03-a-fixture')).toThrow(/exactly 4 questions/)
     expect(() => parseLesson(FIXTURE, 'a-fixture')).toThrow(/named NN-<slug>\.md/)
+  })
+
+  it('a figure line (punch list #116) parses when the app draws it, fails the lesson when it does not, and the plain-words rules read its caption', () => {
+    const withFigure = FIXTURE.replace('- First fact.\n', '- First fact.\n- {{figure:controls-ladder|Start at the top. Each step down leans more on people doing the right thing.}}\n')
+    const lesson = parseLesson(withFigure, '01-a')
+    expect(lesson.mustKnow).toHaveLength(5)
+    expect(lessonPlainWordsFailures(lesson)).toEqual([])
+    const tooLong = FIXTURE.replace('- First fact.\n', '- First fact.\n- {{figure:controls-ladder|' + 'word '.repeat(22).trim() + '.}}\n')
+    expect(lessonPlainWordsFailures(parseLesson(tooLong, '01-a')).join(' ')).toMatch(/must know 2/)
+    expect(() => parseLesson(FIXTURE.replace('- First fact.\n', '- First fact.\n- {{figure:no-such-drawing|Words.}}\n'), '01-a')).toThrow(/figure "no-such-drawing" is not drawn/)
   })
 
   it('a Numbers item is **value** label', () => {
@@ -284,6 +295,15 @@ describe('the real content under src/content/training', () => {
       const twice = [...where.entries()].filter(([, ids]) => ids.length > 1).map(([key, ids]) => `${ids.join(' and ')} both ask "${key}"`)
       expect(twice, `course "${c.slug}" asks a question twice:\n  - ${twice.join('\n  - ')}`).toEqual([])
     }
+  })
+
+  it('every drawn figure is named by a lesson, and every named figure is drawn (punch list #116)', () => {
+    const named = new Set<string>()
+    for (const c of buildCourseRegistry(loadContent())) for (const l of c.lessons) for (const item of [...l.mustKnow, ...l.traps]) {
+      const f = parseFigureItem(item, l.key)
+      if (f) named.add(f.figure)
+    }
+    expect([...named].sort(), 'a drawing no lesson names is dead weight in the chunk; a lesson naming an undrawn figure fails parseLesson').toEqual([...FIGURE_NAMES])
   })
 
   it('the Appendix B list is lower case substrings', () => {
