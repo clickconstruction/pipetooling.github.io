@@ -103,6 +103,16 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
+/**
+ * The primary press, once the sheet can take it: it is disabled until the reads behind canGo settle, and on a loaded
+ * runner a click that lands before then does nothing (the queue run of 03:49, the deploys of 06:33 and 11:59, 2026-10-17).
+ */
+async function pressPrimary() {
+  const primary = screen.getByTestId('on-my-way-primary') as HTMLButtonElement
+  await waitFor(() => expect(primary.disabled).toBe(false), { timeout: 4000 })
+  fireEvent.click(primary)
+}
+
 describe('OnMyWaySheet at 375 px', { timeout: 15_000 }, () => {
   it('fills the office’s line for Dana with the guessed minutes, says both acts, and the press clocks in as on the way then sends', async () => {
     const io = fakeIo()
@@ -186,7 +196,7 @@ describe('OnMyWaySheet at 375 px', { timeout: 15_000 }, () => {
     expect(screen.getAllByTestId('on-my-way-act')[0]!.textContent).toBe('📍Clocks you in on PLUM 512 · Whitfield water heater, on site now.')
     expect(screen.getByTestId('on-my-way-primary').textContent).toBe('I’m here, text Dana')
     expect(screen.getByTestId('on-my-way-secondary').textContent).toBe('I’m here, no text')
-    fireEvent.click(screen.getByTestId('on-my-way-primary'))
+    await pressPrimary()
     await waitFor(() => expect(apply).toHaveBeenCalledWith({ jobLedgerId: 'job-512', bidId: null, notes: 'On site at PLUM 512 · Whitfield water heater', travel: 'on-site' }))
     expect(io.send).toHaveBeenCalledWith(expect.objectContaining({ quickReplyId: 'q2', fills: {} }))
   })
@@ -223,7 +233,7 @@ describe('the tech’s bio on the sheet (v2.5590, punch list #114)', { timeout: 
     expect(screen.getAllByTestId('on-my-way-act')[2]!.textContent).toBe('👋Then texts your bio, 3 of 4 lines, since Dana has not heard from you before.')
     expect(screen.getByTestId('on-my-way-bio-hold').textContent).toBe('Not this time')
     expect(screen.getByTestId('on-my-way-bio-edit').textContent).toBe('Edit bio')
-    fireEvent.click(screen.getByTestId('on-my-way-primary'))
+    await pressPrimary()
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 4000 })
     expect(io.send).toHaveBeenCalledTimes(2)
     expect(io.send.mock.calls[0]![0]).toMatchObject({ quickReplyId: 'q1' })
@@ -237,7 +247,7 @@ describe('the tech’s bio on the sheet (v2.5590, punch list #114)', { timeout: 
     fireEvent.click(await screen.findByTestId('on-my-way-bio-hold'))
     expect(screen.queryByTestId('on-my-way-bio')).toBeNull()
     expect(screen.getAllByTestId('on-my-way-act')).toHaveLength(2)
-    fireEvent.click(screen.getByTestId('on-my-way-primary'))
+    await pressPrimary()
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 4000 })
     expect(io.send).toHaveBeenCalledTimes(1)
   })
@@ -258,7 +268,7 @@ describe('the tech’s bio on the sheet (v2.5590, punch list #114)', { timeout: 
     await waitFor(() => expect(screen.queryByTestId('bio-pick-window')).toBeNull())
     expect(screen.getByTestId('on-my-way-bio').textContent).toBe('A little about Luis: Luis has been a plumber for twelve years. Water heaters are his specialty. He is an Astros fan.')
     expect(screen.getAllByTestId('on-my-way-act')[2]!.textContent).toContain('3 of 4 lines')
-    fireEvent.click(screen.getByTestId('on-my-way-primary'))
+    await pressPrimary()
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 4000 })
     expect(io.send.mock.calls[1]![0]).toMatchObject({ kind: 'bio', lineIds: ['b1', 'b2', 'b4'] })
   })
