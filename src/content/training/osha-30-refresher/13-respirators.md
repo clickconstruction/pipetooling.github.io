@@ -14,6 +14,7 @@ Bad air in a sewer, crawl space or trench kills fast. The wrong respirator is no
 - Atmosphere-supplying respirators bring clean air from outside, and IDLH air requires one. An airline unit gives the most protection but tethers you to a hose. An SCBA carries its own cylinder.
 - The employer selects by **APF**, the assigned protection factor. Oxygen deficiency is the one hazard an APF cannot address.
 - A NIOSH mask shows the maker, the model, the filter rating, NIOSH spelled right and the TC number. Only the lot number is optional. **N95** filters 95% and is not oil-resistant, **P99** filters 99% and is oil-proof.
+- {{figure:niosh-label|Five things on a real mask. Only the lot number may be missing.}}
 - Inspect the respirator first, then put it on and seal-check it before eyewear or a hard hat. A dust mask collapses on inhale and bulges on exhale.
 - On a tight-fitting respirator, cover the exhalation valve and feel it bulge. A failed seal check means readjust and test again. Loose PAPR hoods need no seal check.
 - Any odd smell, heat or hard breathing: get out, get cleaned up, get a replacement.

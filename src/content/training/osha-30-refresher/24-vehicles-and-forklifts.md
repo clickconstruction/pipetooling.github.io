@@ -13,6 +13,7 @@ About **200** workers die each year in highway and street construction, and more
 - Active features prevent crashes: brakes, lights, wipers, horn and back-up alarm. Passive features protect the people inside: seat belts, a cab shield, secured tools and fenders.
 - Flaggers direct traffic with hand signals. Keep vehicle and pedestrian routes apart. Where there are no signs, yield and go slowly. An obstructed rear view needs a back-up alarm or a spotter.
 - Red signs mean danger, the most severe hazard. Orange or yellow means warning. Yellow and black means caution. Blue is a safety notice.
+- {{figure:sign-colours|Red is the worst. Orange or yellow could hurt you. Yellow and black says watch it. Blue is information.}}
 - Training is free before anyone operates. A refresher and evaluation come **every 3 years**, and at once after unsafe operation or a near miss.
 - A PIT, a powered industrial truck, carries, pushes, pulls, lifts or stacks material. Forklifts, pallet jacks and telehandlers are PITs, in **7** classes.
 - The **load center** is the distance from the fork backrest to the load's center of gravity. The standard rating uses **24 in**. A load out at the fork tips can tip the truck.

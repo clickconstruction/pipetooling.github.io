@@ -14,14 +14,23 @@ export type FigureItem = { figure: FigureName; caption: string }
 
 /** Every figure the app draws, by the name a lesson uses. Kept sorted; the test holds it so. */
 export const FIGURE_NAMES = [
+  'cave-in-signs',
   'clearance-stack',
   'controls-ladder',
+  'dig-flags',
   'excavator-site-map',
+  'fire-classes',
   'forklift-load-center',
   'guardrail',
+  'hard-hat-markings',
+  'hazcom-pictograms',
   'ladder-angle',
   'lifting-zone',
+  'niosh-label',
+  'poison-ivy',
   'power-line-clearances',
+  'ppe-labels',
+  'sign-colours',
   'stacking-limits',
   'swing-radius',
   'trench-section',

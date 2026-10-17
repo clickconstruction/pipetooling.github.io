@@ -15,8 +15,10 @@ Health hazards hide in everyday tasks. A chronic exposure feels harmless until t
 - Under HazCom, the hazard communication standard, manufacturers evaluate hazards and write labels and SDSs, the safety data sheets. Employers keep containers labeled and an SDS for every chemical on site **24/7**. They train you to read labels and SDSs and keep a written program.
 - An SDS has **16** sections. A label carries the product name, the supplier, pictograms, a signal word and hazard and precautionary statements. The content is standardized, the layout is not.
 - The nine pictograms include the flame, health hazard, skull and crossbones, corrosion, and flame over circle for an oxidizer. The signal word **Danger** is more severe than **Warning**.
+- {{figure:hazcom-pictograms|The nine pictograms. Learn them by sight here and you will know them on a label.}}
 - Biological hazards: droppings and carcasses, insects, poison ivy, oak and sumac, mold, and bloodborne pathogens. Have a wasp nest removed rather than working around it.
 - Poison ivy: leaves of three, let it be. The rash comes in **12 to 48 hours**. Never burn it, and rubbing alcohol within **30 minutes** helps.
+- {{figure:poison-ivy|Three leaflets on one stem is poison ivy. Five is a different plant.}}
 - Mold is riskiest for people with asthma, weak immune systems and older workers. Hepatitis B survives about **a week** on a surface.
 - Universal precautions: treat all blood and body fluids as infectious. Cover your own cuts, wear gloves for any first aid, and put sharps in a sharps container.
 
