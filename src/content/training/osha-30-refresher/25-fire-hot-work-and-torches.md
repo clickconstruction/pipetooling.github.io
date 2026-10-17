@@ -23,6 +23,7 @@ A soldering or brazing torch is hot work. Hot work is any work that makes a sour
 - A hot work permit is issued for each shift and operation. It requires a trained fire watch, who stays **30 minutes** after the work ends and can stop the work.
 - Extinguishers: one per **3,000 sq ft**, within **100 ft** of travel from any point. Within **50 ft** wherever more than **5 gallons** of flammable liquid or **5 lb** of flammable gas is in use. A gauge not in the green takes it out of service.
 - Use PASS from **6 to 8 ft** away: Pull, Aim at the base, Squeeze, Sweep. If the fire does not shrink right away, get out.
+- {{figure:pass-steps|Four moves from 6 to 8 ft away. If the fire does not shrink at once, get out.}}
 
 ## Traps
 - An electrical fire takes dry chemical, never water, foam or wet chemical.

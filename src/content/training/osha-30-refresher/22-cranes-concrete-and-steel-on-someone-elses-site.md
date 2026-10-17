@@ -12,6 +12,7 @@ Power-line contact, overloading, shock loading and poor communication kill groun
 - A crane is inspected before first use each day and after any accident or shock load. A qualified person inspects it **annually**. A hydraulic leak is reported and repaired before use, never sealed or wiped up.
 - Overloading is the most common cause of tip-overs. Load weight comes from shipping papers, markings or cut sheets, never a guess. Only trained riggers rig, and the choker hitch is the weakest.
 - A certified signal person is required whenever the operator cannot see the load or the landing. A stop signal from anyone on site stops the lift.
+- {{figure:hand-signals|Three signals from the crane's signal person, and the flagger's two. A stop from anyone stops the lift.}}
 - A snagged load: stop and assess, never add power. Mark overhead lines and keep the clearance. A boom that touches a line kills the worker on the tag line too.
 - Wet concrete burns skin. Wear chemical-resistant gloves, long sleeves and pants, eye protection and waterproof boots sealed at the top. Wash splashes at once and flush eyes for **15 minutes**.
 - Cap every exposed rebar end the moment it is exposed. Signs, tape and training do not stop an impalement.

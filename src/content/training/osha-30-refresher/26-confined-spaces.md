@@ -17,6 +17,7 @@ Confined spaces kill more than **100** workers a year. The hazards are usually i
 - Oxygen from **19.5% to 23.5%** is acceptable. Normal air is about **21%**. Below 19.5% is oxygen-deficient and immediately dangerous. Flammable gas above **10% of the lower explosive limit** is unsafe.
 - Test with a calibrated meter, oxygen first, then flammables, then toxics. Monitor continuously during entry and record readings on the permit.
 - Rescue order: the entrant self-evacuates, then the attendant helps with a hoist or tripod, then the rescue service. Coworkers never go in. An unconscious entrant is pulled out by winch.
+- {{figure:confined-space-roles|The entrant works, the attendant watches from outside, the supervisor signs. Rescue goes self, then tripod, then the service.}}
 - On-site rescue teams practice at least every **12 months**. An off-site service like the fire department is arranged in advance and walks the site.
 - Controls: empty the silo, isolate with lockout, blanking or capping, ventilate, then the permit, then PPE. An air-purifying respirator is useless in low oxygen, so use supplied air.
 - The permit lists the space, purpose, date and duration, hazards, controls, names, test results, equipment and rescue. It is cancelled when the work is done and kept at least **1 year**.

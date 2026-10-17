@@ -2,7 +2,7 @@
 name: "Training visuals: a drawing beside the sentence it explains"
 number: 116
 group: close
-status: BUILDING 2026-10-17 — Grace picked line drawings and all thirty-five; PR 0 (the mechanism, figures 1 and 2) is v2.5598; PR 1 (space, figures 3 to 10 and the lesson 30 map) is v2.5599; PR 2 (sight, figures 11 to 19) is v2.5602; PR 3 (scales, figures 20 to 28) is v2.5605, each figure checked at three widths in both themes; next PR 4 motions
+status: BUILDING 2026-10-17 — Grace picked line drawings and all thirty-five; PR 0 (the mechanism, figures 1 and 2) is v2.5598; PR 1 (space, figures 3 to 10 and the lesson 30 map) is v2.5599; PR 2 (sight, figures 11 to 19) is v2.5602; PR 3 (scales, figures 20 to 28) is v2.5605; PR 4 (motions, figures 29 to 35) is v2.5607, each figure checked at three widths in both themes, all thirty-five drawn; next PR 5 reuse
 summary: >
   Read as a fourteen-year-old on a phone, the OSHA 30 refresher holds up where a lesson is a
   rule or a story and fails in four kinds of places: shapes in space (a ladder's angle, a
@@ -13,7 +13,7 @@ summary: >
   SVG beside the sentence it explains, and a catalog of thirty-five figures in five groups, each
   a line drawing in the page's own ink so it reads in both themes, loads with the lesson, and
   never goes stale.
-next: PR 4 motions (figures 29 to 35), then reuse; call 3 (a figure inside a question) stays open. Grace's rule from PR 1 on: after each drawing, screenshots on multiple viewports.
+next: PR 5 reuse (each figure named in every other lesson that teaches the same fact), then delete the folder once the owner has read a lesson or two with the drawings; call 3 (a figure inside a question) stays open. Grace's rule from PR 1 on: after each drawing, screenshots on multiple viewports.
 size: M (PR 0 is S; each figure PR is S, about eight drawings)
 blocker: none; nothing waits on a migration, a function or another stream.
 opinion: build it as drawn; the figures are the feature, the mechanism is thirty lines and a test, and the catalog below is the whole scope so nothing is invented later.

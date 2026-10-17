@@ -18,6 +18,7 @@ Bad air in a sewer, crawl space or trench kills fast. The wrong respirator is no
 - {{figure:niosh-label|Five things on a real mask. Only the lot number may be missing.}}
 - Inspect the respirator first, then put it on and seal-check it before eyewear or a hard hat. A dust mask collapses on inhale and bulges on exhale.
 - On a tight-fitting respirator, cover the exhalation valve and feel it bulge. A failed seal check means readjust and test again. Loose PAPR hoods need no seal check.
+- {{figure:seal-check|Cover the valve, breathe out, feel the mask bulge. If it leaks, fix it and test again.}}
 - Any odd smell, heat or hard breathing: get out, get cleaned up, get a replacement.
 - To clean a reusable respirator, take it apart and wash it in mild detergent. Disinfect it **2 minutes** in 1 mL bleach per liter of water, then rinse, dry and test. Store it cool, dry, enclosed and in its natural shape, with cartridges stored separately.
 - A written respiratory protection program is required wherever respiratory hazards exist. A licensed health professional clears you before use and annually.
