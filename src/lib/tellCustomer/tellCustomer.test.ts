@@ -6,6 +6,7 @@ import {
   clockHm,
   DEFAULT_LINES,
   DEFAULT_SCRIPTS,
+  emailSentLine,
   holdWords,
   lineFor,
   receiptScript,
@@ -102,5 +103,45 @@ describe('the receipt', () => {
       DEFAULT_SCRIPTS.rescheduled.text.replace(/\{[a-z ]+\}/g, 'x'),
     ]
     for (const words of read) expect(plainWordsFailures(words), words).toEqual([])
+  })
+})
+
+describe('the estimate moment (v2.5594)', () => {
+  const fills = tellFills({ customerName: 'Dana Whitfield', me: 'Rosa Perez', jobName: null, jobAddress: null, estimate: { amount: '$1,850.00', title: 'Whitfield water heater' } })
+  it('fills the amount and the title as the job, and leaves the link to the send', () => {
+    expect(fills).toEqual({ first: 'Dana', me: 'Rosa', job: 'Whitfield water heater', amount: '$1,850.00' })
+    expect(tellWords(lineFor('estimate', [], 'rosa'), fills, 'en')).toEqual({
+      text: 'Dana, this is Rosa with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00. Open it to approve the option you want: {link}',
+      left: ['link'],
+    })
+    expect(blanksLeftIn('Dana, see {link} for {job}', 'estimate')).toEqual(['job'])
+    expect(blanksLeftIn('Dana, see {link}', 'booked')).toEqual(['link'])
+  })
+  it('takes the office’s Estimate line when it has one', () => {
+    const office = line('q9', '{first}, your estimate is ready: {link}', { stepId: 'estimate' })
+    expect(lineFor('estimate', [office], 'rosa')).toMatchObject({ office: true, id: 'q9' })
+    expect(lineFor('estimate', [line('q1', 'A Booked line')], 'rosa')).toMatchObject({ office: false })
+  })
+  it('the rows name both channels; a hold keeps the email and drops the text', () => {
+    const both = tellActs('estimate', 'Dana', null)
+    expect(both.rows.map((r) => r.words)).toEqual([
+      'Emails Dana the estimate with the link to approve it.',
+      'Texts Dana the same link from the company number. Dana’s answer comes to the office.',
+      'Then shows you what went, and offers the call.',
+    ])
+    expect(both.primary).toBe('Send both to Dana')
+    expect(both.emailOnly).toBe('Email only')
+    const held = tellActs('estimate', 'Dana', 'stop')
+    expect(held.rows.map((r) => r.hold)).toEqual([false, true, false])
+    expect(held.primary).toBe('Send email to Dana')
+    expect(held.emailOnly).toBeNull()
+    expect(tellActs('booked', 'Dana', null).emailOnly).toBeNull()
+  })
+  it('the receipt names the email, and the script walks through the estimate', () => {
+    expect(emailSentLine('dana@example.com', Date.parse('2026-10-16T20:05:00Z'))).toBe('Email · dana@example.com · 3:05 PM')
+    expect(receiptScript('estimate', fills)).toBe('Hi Dana, this is Rosa with Click Plumbing. I just sent your estimate for Whitfield water heater, $1,850.00. Do you have two minutes for me to walk you through it? You can approve from the link whenever you are ready.')
+    for (const words of [TELL_WORDS.emailWhat, TELL_WORDS.linkHint, TELL_WORDS.editHint(true, 'estimate'), TELL_WORDS.editHint(false, 'estimate'), TELL_WORDS.emailOnlyToast, TELL_WORDS.textFailed, TELL_WORDS.bothSentToast('Dana'), receiptScript('estimate', fills), ...tellActs('estimate', 'Dana', null).rows.map((r) => r.words)]) {
+      expect(plainWordsFailures(words), words).toEqual([])
+    }
   })
 })

@@ -2,7 +2,7 @@
 title: send an estimate and turn it into a job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: estimate, new estimate, send to customer, accept, approve, signature, opened, never opened, nudge, resend link, declined, no thanks, record a decline, create job from estimate, link existing job, create jobs automatically, change order, estimate loop, quote
+keywords: estimate, new estimate, send to customer, tell the customer, text, email only, receipt, call, accept, approve, signature, opened, never opened, nudge, resend link, declined, no thanks, record a decline, create job from estimate, link existing job, create jobs automatically, change order, estimate loop, quote
 order: 61
 ---
 One estimate, start to finish. You write it, the customer gets a link, and the signed record becomes a job.
@@ -21,7 +21,21 @@ The **numbered guide** beside the document lists what the customer's copy needs.
 
 ## 2. Send it
 
-{{button:amber|Send to customer}} asks one question: **Send to pat@example.com?** So you see who is about to get it. A $0 total is called out in the same ask. Confirm, and the customer gets one letter with a {{button:amber|Review & accept the estimate}} button. Nothing is sent until you confirm. What the letter looks like, and how to preview it first: [see the email a customer gets with an estimate](?g=see-the-email-a-customer-gets-with-an-estimate).
+{{button:amber|Send to customer}} opens the **Tell the customer** sheet. Nothing is sent until you press.
+
+1. Read **What goes**. The email is ticked, with the address it goes to. The text is ticked when the customer has a number on file.
+2. Read the text in the orange box. Change any word. Keep the word link in braces where you want the estimate's link.
+3. Press {{button:green|Send both to Dana}}. The email goes first. Then the text goes with the same link.
+
+Press **Email only** to skip the text this time. Press **Skip** to send nothing.
+
+:::example The text as it goes
+Dana, this is Rosa with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00. Open it to approve the option you want: clicktooling.com/estimate/…
+:::
+
+After the send, the sheet shows what went and when. Under it, **Call Dana to talk it through?** with the words to say. Press {{button:blue|Call}} to dial, or **Done**.
+
+A change order, or an estimate with a $0 total, keeps the old question: **Send to pat@example.com?** The customer gets one letter with a {{button:amber|Review & accept the estimate}} button either way. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer) for the same sheet on a booking.
 
 ## 3. Watch the row
 

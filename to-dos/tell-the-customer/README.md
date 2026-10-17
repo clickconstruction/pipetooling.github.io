@@ -2,7 +2,7 @@
 name: "Tell the customer: every text or email to a customer is pressed by a person, seen before it goes, and followed by a receipt that suggests the call"
 number: 115
 group: gated
-status: Grace said build it all 2026-10-16; PR 2 (v2.5593, the sheet and the receipt on the schedule) built the same evening on branch claude/tell-the-customer-pr2; PR 3 the estimate next
+status: Grace said build it all 2026-10-16; PR 2 (v2.5593, the sheet and the receipt on the schedule, PR 5799) and PR 3 (v2.5594, the estimate with both channels, stacked on PR 2) built the same evening; PR 4 offers next
 summary: >
   When an assistant schedules a job's first visit or sends an estimate, a Tell the customer sheet
   opens with the step's line filled for that customer, the channels that apply ticked, the words
@@ -13,7 +13,7 @@ summary: >
   call, with the step's script, a one-tap dial, and Add to my calls, a call task in Follow up that
   Quo's webhook closes when the call lands in the thread. The estimate's reminders become a
   cadence: a text on day one, a call on day three, a text on day seven.
-next: PR 3 (the sheet on the estimate, both channels), then PR 4 offers, PR 5 calls and scripts, PR 6 the customer's say and the assistant's way; the Rescheduled hook on the block editor rides with PR 3.
+next: PR 4 offers and Today's sends (with the Rescheduled line as an offer on a moved first visit), then PR 5 calls and scripts, PR 6 the customer's say and the assistant's way.
 size: L as a train of six (the sheet and the receipt, the estimate, offers and Today's sends, calls and scripts, the customer's say and the assistant's way); each PR M, offers L
 blocker: Grace's look; the A2P campaign's approval for transactional texts is to be confirmed before any automatic send
 opinion: build the sheet and the receipt first; they carry the principle. Today's sends and the call task next; the cadence and the scripts are Flows editor work the office can shape as it goes.

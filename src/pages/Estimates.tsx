@@ -93,6 +93,9 @@ import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateC
 import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkPanel'
 import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
 import { recordNavClick } from '../lib/navClickTelemetry'
+import { GC_OFFICE_TEAM } from '../lib/gc/access'
+import { formatCurrency } from '../lib/format'
+import { TellCustomerSheet } from '../components/customers/TellCustomerSheet'
 import { estimateDraftFormSnapshot, shouldDiscardFreshEstimateDraftOnLeave } from '../lib/estimateFreshDraftDiscard'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import { SearchableMultiSelect } from '../components/SearchableMultiSelect'
@@ -1313,6 +1316,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [unlinkJobConfirmOpen, setUnlinkJobConfirmOpen] = useState(false)
   const [customerPreviewTab, setCustomerPreviewTab] = useState<'email' | 'page' | 'thankyou'>('email')
   const [lastAcceptUrl, setLastAcceptUrl] = useState<string | null>(null)
+  /** Tell the customer (v2.5594): a normal estimate's send goes through the sheet — the email, the text with the link, the receipt with the call. */
+  const [tellEstimate, setTellEstimate] = useState<{ customerId: string; customerName: string | null; email: string; totalCents: number; number: number; title: string; jobId: string | null } | null>(null)
   // Resend link (v2.2856, J17-F2/N3): the fresh URL is shown once, in the tab that asked for it.
   const [resending, setResending] = useState(false)
   const [resentInfo, setResentInfo] = useState<{ email: string; emailed: boolean; url: string } | null>(null)
@@ -2808,6 +2813,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     // real customer. Rail decision 1's $0 soft gate (schedule-only change
     // orders are legitimate, silent $0 sends are not) folds into the same ask.
     recordNavClick(user.id, role, 'discard_guard_shown', 'estimate_send')
+    // Tell the customer (v2.5594): a normal estimate's send goes through the sheet, which emails it, texts the link, and shows the receipt with the call.
+    if (!isCO && totalCents > 0 && role && GC_OFFICE_TEAM.includes(role)) {
+      setTellEstimate({ customerId: sel.id, customerName: sel.name ?? null, email: payloadEmail, totalCents, number: row.estimate_number, title: (row.status === 'draft' ? title : row.title) ?? '', jobId: row.job_ledger_id ?? null })
+      return
+    }
     const zeroNote = totalCents === 0 ? (isCO ? ' The net change to contract is $0.00.' : ' The total is $0.00.') : ''
     const okSend = await confirmDialog({
       title: isCO ? 'Send for signature?' : 'Send to customer?',
@@ -2815,6 +2825,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       confirmLabel: totalCents === 0 ? 'Send anyway' : 'Send',
     })
     if (!okSend) return
+    await sendEstimateEmail(payloadEmail)
+  }
+
+  /** The estimate's email through `send-estimate-to-customer`; answers the accept link, or null after a failure it already said. */
+  async function sendEstimateEmail(payloadEmail: string): Promise<{ acceptUrl: string | null; emailed: boolean } | null> {
+    if (!row) return null
     setSending(true)
     try {
       await saveDraft()
@@ -2822,7 +2838,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       const jwt = sess.session?.access_token
       if (!jwt) {
         showToast('Not signed in', 'error')
-        return
+        return null
       }
       const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
@@ -2848,7 +2864,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       }
       if (!res.ok || !json.ok) {
         showToast(json.error || 'Send failed', 'error')
-        return
+        return null
       }
       showToast(json.emailed ? 'Email sent.' : `Link ready. ${json.warning || json.email_error || ''}`, 'success')
       if (json.accept_url) {
@@ -2865,8 +2881,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         void navigator.clipboard.writeText(json.accept_url)
       }
       await load()
+      return { acceptUrl: json.accept_url ?? null, emailed: Boolean(json.emailed) }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Send failed'), 'error')
+      return null
     } finally {
       setSending(false)
     }
@@ -3046,6 +3064,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       <div style={{ marginBottom: '1rem' }}>
         <Link to="/estimates">← Estimates</Link>
       </div>
+      {tellEstimate && user ? (
+        <TellCustomerSheet
+          moment="estimate"
+          jobId={tellEstimate.jobId}
+          jobLabel={`Estimate #${tellEstimate.number}${tellEstimate.title ? ` · ${tellEstimate.title}` : ''}`}
+          estimate={{ customerId: tellEstimate.customerId, email: tellEstimate.email, amount: `$${formatCurrency(tellEstimate.totalCents / 100)}`, title: tellEstimate.title, jobId: tellEstimate.jobId, sendEmail: () => sendEstimateEmail(tellEstimate.email) }}
+          userId={user.id}
+          role={role}
+          onClose={() => setTellEstimate(null)}
+        />
+      ) : null}
       {isDraft ? (
         <EstimateDraftStepRail
           steps={railData.steps}

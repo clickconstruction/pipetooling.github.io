@@ -103,7 +103,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // Messages (cut 3): an email from the reply box in a person's thread, to a customer, an architect or a trade partner.
   { kind: 'sender', ref: 'messages-email', audience: 'owner', steps: [G('gc-reply-email'), S('sub-reply-email')] },
   // Messages cut 5: a text from the company number, through Quo. The reply box's text and the webhook's answer to HELP.
-  { kind: 'sender', ref: 'quo-send', audience: 'owner', steps: [G('gc-text'), S('sub-text'), H('booked-text')] },
+  { kind: 'sender', ref: 'quo-send', audience: 'owner', steps: [G('gc-text'), S('sub-text'), H('booked-text'), H('estimate-text')] },
   { kind: 'sender', ref: 'quo-webhook', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
   // Messages cut 5: the morning reminders the app sends itself from the company number, one step at a time, off until the
   // owner turns a step on. The same text, opt-out line and thread as the office's own.

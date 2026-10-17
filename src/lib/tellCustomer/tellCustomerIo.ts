@@ -1,10 +1,10 @@
 /**
  * Tell the customer (v2.5593, punch list #115): what the sheet reads and the one thing it writes (`tellCustomer.ts` is
  * the kernel). One interface, so the smoke hands it a fake; one implementation on the app's client. The job and its
- * customer from `jobs_ledger` and `customers`; the customer's own thread through `contact_for_customer` (the office's
- * door, which makes one when there is none) and the numbers on it; the office's quick replies; the texts switch; the
- * signed-in person's name; whether a block is the job's first; and the send, which is the reply box's own path through
- * `quo-send` tied to the job.
+ * customer from `jobs_ledger` and `customers` (or the customer alone, for an estimate); the customer's own thread
+ * through `contact_for_customer` (the office's door, which makes one when there is none) and the numbers on it; the
+ * office's quick replies; the texts switch; the signed-in person's name; whether a block is the job's first; and the
+ * send, which is the reply box's own path through `quo-send`, tied to the job when there is one.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
@@ -44,12 +44,15 @@ export interface TellContact {
 export interface TellSend {
   contactId: string
   channelId: string
-  jobId: string
+  /** The pipeline job the line ties to, or null on the person alone (an estimate before a job). */
+  jobId: string | null
   body: string
 }
 
 export interface TellCustomerIo {
   loadJob(jobId: string): Promise<TellJob>
+  /** The customer alone, for an estimate (v2.5594): their name and the language they read. */
+  loadCustomer(customerId: string): Promise<{ name: string | null; lang: PortalLang }>
   loadContact(customerId: string): Promise<TellContact>
   loadLines(): Promise<QuickReply[]>
   loadTextsOn(): Promise<boolean>
@@ -60,30 +63,27 @@ export interface TellCustomerIo {
   send(input: TellSend): Promise<string>
 }
 
+const langOf = (language: string | null | undefined): PortalLang => customerLang({ lang: language === 'es' || language === 'en' ? language : undefined })
+
 export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomerIo {
   const db = client as SupabaseClient
+  const customerRow = async (customerId: string) => {
+    const customer = await db.from('customers').select('name, language').eq('id', customerId).maybeSingle()
+    checkSupabaseError(customer, 'read the customer')
+    return customer.data as { name: string | null; language: string | null } | null
+  }
   return {
     async loadJob(jobId) {
       const job = await db.from('jobs_ledger').select('customer_id, job_name, job_address').eq('id', jobId).maybeSingle()
       checkSupabaseError(job, 'read the job')
       const row = job.data as { customer_id: string | null; job_name: string | null; job_address: string | null } | null
       const customerId = row?.customer_id ?? null
-      let customerName: string | null = null
-      let language: string | null = null
-      if (customerId) {
-        const customer = await db.from('customers').select('name, language').eq('id', customerId).maybeSingle()
-        checkSupabaseError(customer, 'read the customer')
-        const c = customer.data as { name: string | null; language: string | null } | null
-        customerName = c?.name ?? null
-        language = c?.language ?? null
-      }
-      return {
-        customerId,
-        customerName,
-        jobName: row?.job_name ?? null,
-        jobAddress: row?.job_address ?? null,
-        lang: customerLang({ lang: language === 'es' || language === 'en' ? language : undefined }),
-      }
+      const c = customerId ? await customerRow(customerId) : null
+      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language) }
+    },
+    async loadCustomer(customerId) {
+      const c = await customerRow(customerId)
+      return { name: c?.name ?? null, lang: langOf(c?.language) }
     },
     async loadContact(customerId) {
       const contactId = await contactForCustomer(customerId)
@@ -115,6 +115,13 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       if (result.error) return false
       return (result.count ?? 0) === 0
     },
-    send: (input) => supabaseReplyIo().sendText({ contactId: input.contactId, channelId: input.channelId, jobKey: jobKey({ kind: 'pipeline', id: input.jobId }), body: input.body, held: false }),
+    send: (input) =>
+      supabaseReplyIo().sendText({
+        contactId: input.contactId,
+        channelId: input.channelId,
+        jobKey: input.jobId ? jobKey({ kind: 'pipeline', id: input.jobId }) : null,
+        body: input.body,
+        held: false,
+      }),
   }
 }
