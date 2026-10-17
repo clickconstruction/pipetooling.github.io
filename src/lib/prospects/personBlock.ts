@@ -35,10 +35,13 @@ export interface CompanyFields {
   address: string
   website: string
   alsoReach: string
+  /** v2.5604: the Google Maps profile link, and a sub's license. */
+  mapsUrl: string
+  license: string
 }
 
 export const EMPTY_PERSON: PersonFields = { name: '', title: '', cell: '', email: '', lang: '', okToText: 'not_asked' }
-export const EMPTY_COMPANY: CompanyFields = { company: '', officePhone: '', address: '', website: '', alsoReach: '' }
+export const EMPTY_COMPANY: CompanyFields = { company: '', officePhone: '', address: '', website: '', alsoReach: '', mapsUrl: '', license: '' }
 
 /** The row's columns the two blocks read and write. */
 export interface PersonRow {
@@ -54,6 +57,8 @@ export interface PersonRow {
   ok_to_text: string | null
   is_person: boolean
   also_reach: string | null
+  maps_url: string | null
+  license: string | null
 }
 
 const s = (v: string | null | undefined) => (v ?? '').trim()
@@ -74,6 +79,8 @@ export function blocksFromRow(row: PersonRow): { person: PersonFields; company: 
     address: s(row.address),
     website: s(row.links_to_website),
     alsoReach: s(row.also_reach),
+    mapsUrl: s(row.maps_url),
+    license: s(row.license),
   }
   return { person, company }
 }
@@ -97,6 +104,8 @@ export function rowFromBlocks(person: PersonFields, company: CompanyFields): Per
     ok_to_text: person.okToText,
     is_person: isPerson,
     also_reach: s(company.alsoReach) || null,
+    maps_url: s(company.mapsUrl) || null,
+    license: s(company.license) || null,
   }
 }
 

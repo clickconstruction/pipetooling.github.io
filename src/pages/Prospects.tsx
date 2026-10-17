@@ -714,7 +714,7 @@ export default function Prospects() {
     }
   }, [newProspectModalOpen, authUser?.id])
   const newProspectTwin = newProspectModalOpen
-    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles })
+    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }, Date.now(), newCompany.mapsUrl)
     : null
 
   /** Open it on a prospect double (v2.5579): the form closes and the card opens on its own lane. */
@@ -2032,6 +2032,10 @@ export default function Prospects() {
         email: prospect.email,
         address: prospect.address,
         prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
       },
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
@@ -2159,6 +2163,10 @@ export default function Prospects() {
         email: prospect.email,
         address: prospect.address,
         prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
       },
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
@@ -2802,6 +2810,20 @@ export default function Prospects() {
                               <a href={getWebsiteHref(currentProspect.links_to_website)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
                                 {formatWebsiteDisplay(currentProspect.links_to_website)}
                               </a>
+                            </>
+                          ) : null}
+                          {currentProspect.maps_url ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <a href={currentProspect.maps_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                                Maps ↗
+                              </a>
+                            </>
+                          ) : null}
+                          {currentProspect.kind === 'sub' && currentProspect.license ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span>{currentProspect.license}</span>
                             </>
                           ) : null}
                         </div>
@@ -4103,7 +4125,7 @@ export default function Prospects() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} />
+              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} onSource={setEditSource} />
               {renderKindFields((editingProspect ?? currentProspect)?.kind ?? kind, {
                 source: editSource, setSource: setEditSource,
                 trades: editTrades, setTrades: setEditTrades,
@@ -4633,6 +4655,7 @@ export default function Prospects() {
                 company={newCompany}
                 onCompany={setNewCompany}
                 kind={newKind}
+                onSource={setNewSource}
                 double={(() => {
                 // One line for every double (v2.5579): this lane, another lane, the bench, the customers, in that order.
                 const linkish = { font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
