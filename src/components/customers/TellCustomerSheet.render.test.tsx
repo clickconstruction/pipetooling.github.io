@@ -23,7 +23,7 @@ const BLOCK: TellBlock = { workDate: '2026-10-23', timeStart: '10:00:00', timeEn
 const BOOKED: QuickReply = { id: 'q1', text: '{first}, this is {me} with Click Plumbing. We have you booked for {day}, {window}. {tech} will text you when on the way.', for: 'customer', stepId: 'booked', scope: 'team', addedBy: 'rosa', addedAt: 1, removed: false, uses: {}, lastUsed: null, textEs: null } as QuickReply
 const AT = Date.parse('2026-10-16T19:41:00Z')
 
-type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn> }
+type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn>; makeOffer: ReturnType<typeof vi.fn> }
 function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
   return {
     loadJob: vi.fn(async () => ({ customerId: 'cust-dana', customerName: 'Dana Whitfield', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', lang: 'en' as const })),
@@ -34,6 +34,7 @@ function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
     loadMyName: vi.fn(async () => 'Rosa Perez'),
     isFirstVisit: vi.fn(async () => true),
     send: vi.fn(async () => 'msg-1'),
+    makeOffer: vi.fn(async () => 'offer-1'),
     ...set,
   } as Fake
 }
@@ -87,6 +88,29 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     fireEvent.click(screen.getByTestId('tell-skip'))
     expect(onClose).toHaveBeenCalled()
     expect(io.send).not.toHaveBeenCalled()
+  })
+
+  it('Send in the morning hands the text to the 9 AM run and says when it goes (v2.5595)', async () => {
+    const io = fakeIo()
+    const { onSent } = mount(io)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-morning'))
+    // AT is 2:41 PM Central on Fri Oct 16, after the run: it goes Sat Oct 17.
+    await waitFor(() =>
+      expect(io.makeOffer).toHaveBeenCalledWith({
+        contactId: 'contact-dana',
+        channelId: 'ch-1',
+        jobId: 'job-512',
+        stepKey: 'booked',
+        body: 'Dana, this is Rosa with Click Plumbing. We have you booked for Friday, October 23, 2026, 10:00 AM to 12:00 PM. Luis will text you when on the way.',
+        sendOn: '2026-10-17',
+      }),
+    )
+    expect(await screen.findByTestId('tell-morning-receipt')).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'Ready for the morning' })).toBeTruthy()
+    expect(screen.getByTestId('tell-morning-line').textContent).toMatch(/^Goes at 9 AM on Sat.*17 from the company number\.$/)
+    expect(io.send).not.toHaveBeenCalled()
+    expect(onSent).not.toHaveBeenCalled()
   })
 
   it('takes the app’s own words when the office has no Booked line', async () => {

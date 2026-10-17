@@ -341,7 +341,7 @@ SELECT mfl.same('every new table carries the office policy and the read-only and
     || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt'), E'\n' ORDER BY c.relname COLLATE "C")
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND c.relname IN ('flows', 'flow_steps', 'flow_step_history', 'flow_removed_steps', 'flow_fact_wishes',
-    'contact_step_skips', 'nudge_holds', 'nudge_sent')),
+    'contact_step_skips', 'nudge_holds', 'nudge_offers', 'nudge_sent')),
   'contact_step_skips:contact_step_skips_team,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
   'flow_fact_wishes:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_fact_wishes_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
   'flow_removed_steps:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_removed_steps_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
@@ -349,6 +349,7 @@ SELECT mfl.same('every new table carries the office policy and the read-only and
   'flow_steps:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_steps_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
   'flows:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flows_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
   'nudge_holds:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_holds_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+  'nudge_offers:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_offers_select,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
   'nudge_sent:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,nudge_sent_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
 
 -- 8 · The four facts main did not keep have their columns.
@@ -358,6 +359,69 @@ SELECT mfl.same('the four new facts'' columns', (
   WHERE table_schema = 'public' AND (table_name, column_name) IN (
     ('gc_trade_portal_links', 'first_opened_at'), ('gc_invites', 'lost_on'), ('gc_projects', 'won_on'), ('gc_owner_pay_apps', 'paid_on'))),
   'gc_invites.lost_on date, gc_owner_pay_apps.paid_on date, gc_projects.won_on date, gc_trade_portal_links.first_opened_at timestamp with time zone');
+
+-- 9 · Today's sends (v2.5595, *_nudge_offers): the office prepares a text for a morning, presses one the run prepared
+--     (stamped, and recorded in nudge_sent as a person's), puts one away; the refusals; who reads.
+INSERT INTO public.contact_channels (id, contact_id, kind, value) VALUES
+  ('00000000-0000-0000-0000-00000000600c', '00000000-0000-0000-0000-000000006005', 'phone', '(210) 555-0113');
+-- The run's own rows, as the service role writes them: one ready, one held with why.
+INSERT INTO public.nudge_offers (id, contact_id, step_key, project_id, body, channel_id, prepared_by) VALUES
+  ('00000000-0000-0000-0000-000000006e01', '00000000-0000-0000-0000-000000006005', 'portal', '00000000-0000-0000-0000-0000000006f1',
+   'Greg, did the invite come through?', '00000000-0000-0000-0000-00000000600c', 'app');
+INSERT INTO public.nudge_offers (id, contact_id, step_key, body, prepared_by, held_why) VALUES
+  ('00000000-0000-0000-0000-000000006e02', '00000000-0000-0000-0000-000000006005', 'msa', 'Greg, the agreement is in your portal to sign.', 'app',
+   'No phone number on file. Add one on the customer, or call instead.');
+-- What the office's press returned, to read back (made as postgres: authenticated makes no temp table).
+CREATE TEMP TABLE offers (what text, id uuid);
+GRANT SELECT, INSERT ON offers TO authenticated;
+SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d1');
+SET LOCAL ROLE authenticated;
+INSERT INTO offers SELECT 'morning', public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', 'project', '00000000-0000-0000-0000-0000000006f1',
+  '  Greg, the portal is open for you.  ', '00000000-0000-0000-0000-00000000600c', public.app_today() + 1);
+SELECT mfl.same('the office''s text waits for its morning, trimmed, stamped with who',
+  (SELECT concat_ws('|', prepared_by, by_user_id::text, (send_on = public.app_today() + 1)::text, (sent_at IS NULL AND dismissed_at IS NULL)::text, body, channel_id::text)
+   FROM public.nudge_offers WHERE id = (SELECT id FROM offers WHERE what = 'morning')),
+  'office|00000000-0000-0000-0000-0000000006d1|true|true|Greg, the portal is open for you.|00000000-0000-0000-0000-00000000600c');
+SELECT mfl.refused('a text says its words', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', NULL, NULL, '  ', NULL, public.app_today())$q$, 'Write the text first');
+SELECT mfl.refused('a text says its morning', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', NULL, NULL, 'Hi', NULL, NULL)$q$, 'Say which morning');
+SELECT mfl.refused('the number is theirs', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'Hi', '00000000-0000-0000-0000-00000000600c', public.app_today())$q$, 'not theirs');
+SELECT mfl.refused('the job is there', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', 'project', '00000000-0000-0000-0000-00000000006ff', 'Hi', NULL, public.app_today())$q$, 'jobNotFound');
+-- The press: the row is stamped, and nudge_sent carries the reminder as a person's.
+SELECT public.nudge_offer_sent('00000000-0000-0000-0000-000000006e01', NULL);
+SELECT mfl.same('a pressed text is stamped and recorded',
+  (SELECT concat_ws('|', (o.sent_at IS NOT NULL)::text, o.sent_by_user_id::text,
+     (SELECT count(*) FROM public.nudge_sent s WHERE s.contact_id = o.contact_id AND s.step_key = 'portal' AND s.project_id = o.project_id AND s.sent_by = 'person' AND s.by_user_id = o.sent_by_user_id)::text)
+   FROM public.nudge_offers o WHERE o.id = '00000000-0000-0000-0000-000000006e01'),
+  'true|00000000-0000-0000-0000-0000000006d1|1');
+SELECT mfl.refused('a text goes once', $q$SELECT public.nudge_offer_sent('00000000-0000-0000-0000-000000006e01', NULL)$q$, 'already went');
+SELECT mfl.refused('a text that went is not put away', $q$SELECT public.nudge_offer_dismiss('00000000-0000-0000-0000-000000006e01', 'held')$q$, 'already went');
+SELECT public.nudge_offer_dismiss('00000000-0000-0000-0000-000000006e02', 'not this one');
+SELECT mfl.same('a put-away text says why and who',
+  (SELECT dismissed_why || '|' || dismissed_by_user_id::text FROM public.nudge_offers WHERE id = '00000000-0000-0000-0000-000000006e02'),
+  'not this one|00000000-0000-0000-0000-0000000006d1');
+SELECT mfl.refused('a put-away says a known why', $q$SELECT public.nudge_offer_dismiss((SELECT id FROM offers WHERE what = 'morning'), 'later')$q$, 'Say why');
+SELECT mfl.refused('a put-away text is not pressed', $q$SELECT public.nudge_offer_sent('00000000-0000-0000-0000-000000006e02', NULL)$q$, 'already went');
+SELECT mfl.same('the office reads the open texts', (SELECT count(*)::text FROM public.nudge_offers WHERE sent_at IS NULL AND dismissed_at IS NULL), '1');
+RESET ROLE;
+-- Outside the office: a superintendent reads none and prepares none; training mode and a twin are refused in words; anon reads nothing.
+SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d4');
+SET LOCAL ROLE authenticated;
+SELECT mfl.same('a superintendent reads no prepared text', (SELECT count(*)::text FROM public.nudge_offers), '0');
+SELECT mfl.refused('a superintendent prepares no text', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', NULL, NULL, 'Hi', NULL, public.app_today())$q$, 'Only the office can');
+RESET ROLE;
+SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d6');
+SET LOCAL ROLE authenticated;
+SELECT mfl.refused('training mode prepares no text', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', NULL, NULL, 'Hi', NULL, public.app_today())$q$, 'training account');
+SELECT mfl.refused('training mode presses no text', $q$SELECT public.nudge_offer_sent((SELECT id FROM public.nudge_offers WHERE prepared_by = 'office' LIMIT 1), NULL)$q$, 'training account');
+RESET ROLE;
+SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d7');
+SET LOCAL ROLE authenticated;
+SELECT mfl.refused('a twin prepares no text', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', NULL, NULL, 'Hi', NULL, public.app_today())$q$, 'digital twin');
+SELECT mfl.refused('a twin puts no text away', $q$SELECT public.nudge_offer_dismiss((SELECT id FROM public.nudge_offers WHERE prepared_by = 'office' LIMIT 1), 'not this one')$q$, 'digital twin');
+RESET ROLE;
+SET LOCAL ROLE anon;
+SELECT mfl.refused('anon reads no prepared text', $q$SELECT count(*) FROM public.nudge_offers$q$, 'permission denied');
+RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'messages_flows PASSED'; END $$;
 ROLLBACK;

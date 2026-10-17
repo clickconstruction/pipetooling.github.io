@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { QuickReply } from '../quickReplies/kernel'
 import {
+  APP_SEND_MODE_HINT,
+  APP_SEND_MODE_WORDS,
   APP_SENDS_OWNER_ONLY,
   APP_SENDS_SAVE_FIRST,
   APP_SENDS_TEXTS_ONLY,
-  LAST_RUN_NONE,
+  appSendMode,
   appSendOn,
-  appSendSwitch,
+  appSendSetWords,
   appSendsFrom,
   appSendsText,
+  appSendSwitch,
   canSetAppSends,
+  LAST_RUN_NONE,
   lastRunFrom,
   lastRunLine,
   runSendsStep,
@@ -50,16 +54,29 @@ describe('the switch, nested by kind', () => {
 
   it('turns one step on or off, keeps the others, drops a kind with none on, and leaves the old switch as it was', () => {
     const was = appSendsFrom({ trade: { portal: true }, customer: { yes: true } })
-    const on = withAppSend(was, 'trade', 'msa', true)
+    const on = withAppSend(was, 'trade', 'msa', 'send')
     expect(on).toEqual({ customer: { yes: true }, trade: { msa: true, portal: true } })
     expect(was).toEqual({ trade: { portal: true }, customer: { yes: true } })
-    expect(withAppSend(on, 'customer', 'yes', false)).toEqual({ trade: { msa: true, portal: true } })
-    expect(withAppSend({}, 'trade', 'portal', false)).toEqual({})
+    expect(withAppSend(on, 'customer', 'yes', 'off')).toEqual({ trade: { msa: true, portal: true } })
+    expect(withAppSend({}, 'trade', 'portal', 'off')).toEqual({})
+  })
+
+  it('sets a step to offers (v2.5595), reads the three ways, and words each press', () => {
+    const sends = withAppSend(withAppSend({}, 'trade', 'portal', 'offer'), 'residential', 'approved', 'send')
+    expect(sends).toEqual({ trade: { portal: 'offer' }, residential: { approved: true } })
+    expect(appSendsFrom(appSendsText(sends))).toEqual(sends)
+    expect(appSendMode(sends, 'trade', 'portal')).toBe('offer')
+    expect(appSendMode(sends, 'residential', 'approved')).toBe('send')
+    expect(appSendOn(sends, 'trade', 'portal')).toBe(false)
+    expect(withAppSend(sends, 'trade', 'portal', 'send')).toEqual({ trade: { portal: true }, residential: { approved: true } })
+    expect(appSendSetWords('Portal opened', 'offer')).toBe('The app prepares the Portal opened reminder each morning for Today’s sends on the Dashboard.')
+    const words = [...Object.values(APP_SEND_MODE_WORDS), ...Object.values(APP_SEND_MODE_HINT), ...(['off', 'offer', 'send'] as const).map((m) => appSendSetWords('Portal opened', m))]
+    for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 
   it('writes the same text for the same switch, which the run reads back as it was', () => {
-    const a = withAppSend(withAppSend({}, 'trade', 'portal', true), 'customer', 'yes', true)
-    const b = withAppSend(withAppSend({}, 'customer', 'yes', true), 'trade', 'portal', true)
+    const a = withAppSend(withAppSend({}, 'trade', 'portal', 'send'), 'customer', 'yes', 'send')
+    const b = withAppSend(withAppSend({}, 'customer', 'yes', 'send'), 'trade', 'portal', 'send')
     expect(appSendsText(a)).toBe(appSendsText(b))
     expect(appSendsText(a)).toBe('{"customer":{"yes":true},"trade":{"portal":true}}')
     expect(appSendsFrom(appSendsText(a))).toEqual(a)
@@ -159,6 +176,8 @@ describe('the newest morning run', () => {
       textsOff: 0,
       refusedCount: 0,
       unread: 0,
+      prepared: 0,
+      morningSent: 0,
       words: summary.words,
     })
     const odd = lastRunFrom({ at, sent: -2, kept: { off: '3', stolen: 4, snoozed: 2.6 }, words: ['', 7, 'One.'], unread: Number.NaN })
@@ -178,6 +197,10 @@ describe('the newest morning run', () => {
       'A dry run. Last morning run today at 9:00 AM: 2 texts would go, 7 kept back. 1 is snoozed, 1 sent STOP, 2 already have a text this morning and 3 wait on Send texts. 1 text did not go.',
     )
     expect(lastRunLine(lastRunFrom({ at, sent: 1 }), '2026-10-13T16:30:00.000Z')).toBe('Last morning run today at 9:00 AM: 1 text went, none kept back.')
+    // Offers (v2.5595): the texts prepared for Today's sends, and a step whose text already waited.
+    expect(lastRunLine(lastRunFrom({ at, sent: 1, prepared: 2, kept: { offered: 1 } }), '2026-10-13T16:30:00.000Z')).toBe(
+      'Last morning run today at 9:00 AM: 1 text went, 1 kept back. 1 already waits on Today’s sends. 2 texts prepared for Today’s sends.',
+    )
   })
 
   it('keeps to plain words', () => {

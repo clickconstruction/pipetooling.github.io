@@ -260,4 +260,7 @@ export const TELL_WORDS = {
   emailOnlyToast: 'The email went. No link came back, so no text went.',
   textFailed: 'The email went. The text did not. Send it from the thread.',
   skipped: 'Nothing sent.',
+  morningTitle: 'Ready for the morning',
+  morningLine: (day: string) => `Goes at 9 AM on ${day} from the company number.`,
+  morningWhere: 'Until then it waits on the Dashboard under Today’s sends. You can change it or take it back there.',
 } as const

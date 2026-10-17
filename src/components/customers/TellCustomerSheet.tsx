@@ -14,6 +14,8 @@ import type { UserRole } from '../../hooks/useAuth'
 import { GC_OFFICE_TEAM } from '../../lib/gc/access'
 import { telHrefFor } from '../../lib/phoneContact'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { weekdayDate } from '../../lib/gc/words'
+import { morningSendOn, TODAYS_SENDS_WORDS } from '../../lib/offers/offers'
 import { fillLine } from '../../lib/quickReplies/blanks'
 import type { QuickReply } from '../../lib/quickReplies/kernel'
 import {
@@ -21,6 +23,7 @@ import {
   emailSentLine,
   firstWord,
   lineFor,
+  MOMENT_STEP,
   receiptScript,
   sentLine,
   tellActs,
@@ -82,7 +85,7 @@ const secondaryBtn: CSSProperties = { minHeight: 46, padding: '0 0.9rem', border
 const quietBtn: CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem 0.4rem' }
 const disabled: CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
 
-type View = { kind: 'tell' } | { kind: 'receipt'; text: string | null; email: string | null; atMs: number }
+type View = { kind: 'tell' } | { kind: 'receipt'; text: string | null; email: string | null; atMs: number } | { kind: 'morning'; day: string }
 
 export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, userId, role, onClose, onSent, io: ioProp, now = Date.now }: TellCustomerSheetProps) {
   const { showToast } = useToastContext()
@@ -190,6 +193,46 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     }
   }
 
+  /** Send in the morning (v2.5595): the text waits on Today's sends, and the morning run sends it at 9 AM on its day. */
+  const morning = async () => {
+    if (!canSend || !contact || !number || moment === 'estimate') return
+    setBusy(true)
+    try {
+      const day = morningSendOn(now())
+      await io.makeOffer({ contactId: contact.contactId, channelId: number.channelId, jobId, stepKey: MOMENT_STEP[moment], body: text.trim(), sendOn: day })
+      showToast(TODAYS_SENDS_WORDS.morningToast(weekdayDate(day)), 'success')
+      setView({ kind: 'morning', day })
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The text was not prepared.'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (view.kind === 'morning') {
+    const footer = (
+      <div style={footerRow}>
+        <span />
+        <button type="button" style={primaryBtn} onClick={onClose} data-testid="tell-done">
+          {TELL_WORDS.done}
+        </button>
+      </div>
+    )
+    return (
+      <ResponsiveModalShell title={TELL_WORDS.morningTitle} onRequestClose={onClose} footer={footer}>
+        <div data-testid="tell-morning-receipt">
+          <p style={bubble} data-testid="tell-receipt-words">
+            {text.trim()}
+          </p>
+          <p style={muted} data-testid="tell-morning-line">
+            {TELL_WORDS.morningLine(weekdayDate(view.day))}
+          </p>
+          <p style={muted}>{TELL_WORDS.morningWhere}</p>
+        </div>
+      </ResponsiveModalShell>
+    )
+  }
+
   if (view.kind === 'receipt') {
     const tel = number ? telHrefFor(number.value) : null
     const footer = (
@@ -251,6 +294,11 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
         {a.emailOnly && textCanGo ? (
           <button type="button" style={quietBtn} disabled={busy || loading} onClick={() => void go(false)} data-testid="tell-email-only">
             {a.emailOnly}
+          </button>
+        ) : null}
+        {moment !== 'estimate' && textCanGo ? (
+          <button type="button" style={quietBtn} disabled={!canSend} onClick={() => void morning()} data-testid="tell-morning">
+            {TODAYS_SENDS_WORDS.sendInMorning}
           </button>
         ) : null}
       </div>

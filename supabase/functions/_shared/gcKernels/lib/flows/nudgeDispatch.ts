@@ -18,8 +18,28 @@ import { FLOW_PAPERS, factForPaper, flowContactKind, type FlowKind, type PaperId
 import { daysSince, nudgeRows, type NudgeOptions, type NudgeStep, type PersonFlow } from './nudges.ts'
 import { stampDay, stepById, type FlowStep, type NudgeHow } from './state.ts'
 
-/** The steps the app may send a reminder for itself, by kind: off for every step until the owner turns one on. */
-export type AppSends = Partial<Record<FlowKind, Partial<Record<string, boolean>>>>
+/**
+ * The steps the app may send a reminder for itself, by kind: off for every step until the owner turns one on. `true` is
+ * *sends* (the run texts it); `'offer'` is *offers* (v2.5595, punch list #115: the run prepares the text and the office
+ * presses it on the Dashboard's Today's sends).
+ */
+export type AppSends = Partial<Record<FlowKind, Partial<Record<string, true | 'offer'>>>>
+
+/** What the app does with a step's reminder: nothing, prepares it for the office to press, or sends it. */
+export type AppSendMode = 'off' | 'offer' | 'send'
+
+/** A step's mode under its own kind, since a step id repeats across flows. */
+export function appSendMode(sends: AppSends, kind: FlowKind, stepId: string): AppSendMode {
+  const v = sends[kind]?.[stepId]
+  return v === true ? 'send' : v === 'offer' ? 'offer' : 'off'
+}
+
+/** A text already prepared and waiting on Today's sends (`nudge_offers`, open), so a step is never offered twice. */
+export interface NudgeOffered {
+  contactId: string
+  stepId: string
+  jobId: string | null
+}
 
 /** A reminder sent for a step, by the app or by one of ours (`nudge_sent`), so a reminder never doubles. */
 export interface NudgeSent {
@@ -58,6 +78,8 @@ export interface NudgeRunInput {
    * an ISO timestamp. Snoozed is a person's "not now", and the app never overrules one of ours.
    */
   snoozed?: Partial<Record<string, string>>
+  /** The texts waiting on Today's sends, so the run never prepares a second for the same step and job. */
+  offered?: readonly NudgeOffered[]
 }
 
 /** One text the run sends. */
@@ -73,12 +95,23 @@ export interface NudgeText {
   event: string
 }
 
+/** A text the run prepares for the office to press (an *offers* step), and why it waits when it cannot go yet. */
+export interface NudgeOffer extends NudgeText {
+  held: string | null
+}
+
+/** Why a prepared text waits, in the words Today's sends shows, each with its door. */
+export const OFFER_HELD = {
+  'no number': 'No phone number on file. Add one on the customer, or call instead.',
+  'opted out': 'The number sent STOP. Call instead.',
+} as const
+
 /**
- * Why a due reminder of the app's did not go: its step is not switched on, its channel is not a text, the person is
- * snoozed on Follow up, one went inside its days, the number sent STOP or there is none, or the person already has a
- * text this morning.
+ * Why a due reminder of the app's did not go: its step is not switched on, a text for it already waits on Today's
+ * sends, its channel is not a text, the person is snoozed on Follow up, one went inside its days, the number sent STOP
+ * or there is none, or the person already has a text this morning.
  */
-export type NudgeNotSent = 'off' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'one a morning'
+export type NudgeNotSent = 'off' | 'offered' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'one a morning'
 
 /** A due reminder of the app's the run kept back, with why in words for the run's log. */
 export interface NudgeKept {
@@ -91,6 +124,8 @@ export interface NudgeKept {
 
 export interface NudgeRun {
   texts: NudgeText[]
+  /** The texts prepared for the office to press (v2.5595), one `nudge_offers` row each. */
+  offers: NudgeOffer[]
   notSent: NudgeKept[]
 }
 
@@ -99,6 +134,8 @@ export function notSentWords(why: NudgeNotSent, snoozedUntil: string | null = nu
   switch (why) {
     case 'off':
       return 'the app does not send this step yet'
+    case 'offered':
+      return 'a text for this step already waits on Today’s sends'
     case 'not a text':
       return 'its reminder is not a text'
     case 'snoozed':
@@ -164,14 +201,22 @@ export function sentLately(sent: readonly NudgeSent[], contactId: string, step: 
   return sent.some((s) => s.contactId === contactId && s.stepId === step.stepId && (s.jobId ?? null) === step.jobId && daysSince(s.at, now) < within)
 }
 
+/** Whether a text for this step and job already waits on Today's sends. */
+export function offeredAlready(offered: readonly NudgeOffered[] | undefined, contactId: string, step: Pick<NudgeStep, 'stepId' | 'jobId'>): boolean {
+  return (offered ?? []).some((o) => o.contactId === contactId && o.stepId === step.stepId && (o.jobId ?? null) === step.jobId)
+}
+
 /**
  * The morning's texts: of every Follow up row, each due step whose reminder the app sends (`nudge.send` is `app`) and
  * whose step is switched on, unless the person is snoozed on Follow up, one of ours or the app sent it inside its days,
- * or their number sent STOP or there is none. One text a person a morning, their worst such step; another waits for
- * the next run.
+ * a text for it already waits on Today's sends, or their number sent STOP or there is none. One text a person a
+ * morning, their worst such step; another waits for the next run. A step set to *offers* (v2.5595) takes the same
+ * road, but its text is prepared for the office to press instead of sent, and a number that is missing or sent STOP
+ * holds the prepared text with why instead of keeping it back.
  */
 export function planNudgeRun(input: NudgeRunInput): NudgeRun {
   const texts: NudgeText[] = []
+  const offers: NudgeOffer[] = []
   const notSent: NudgeKept[] = []
   const today = todayYmdInAppTz(input.now)
   for (const row of nudgeRows(input.people, input.now, input.options)) {
@@ -185,23 +230,31 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
       const keep = (why: NudgeNotSent) =>
         notSent.push({ contactId: person.id, stepId: step.stepId, jobId: step.jobId, why, words: notSentWords(why, snoozed) })
       const number = input.numbers[person.id]
-      if (!input.appSends[person.reading.kind]?.[step.stepId]) keep('off')
+      const mode = appSendMode(input.appSends, person.reading.kind, step.stepId)
+      const text = (event: string): NudgeText => ({
+        contactId: person.id,
+        stepId: step.stepId,
+        jobId: step.jobId,
+        body: nudgeLine(person, def, input.quickReplies, input.links?.[person.id] ?? null),
+        record: { contactId: person.id, stepId: step.stepId, jobId: step.jobId, at: input.now.toISOString(), by: 'app', how: n.how },
+        event,
+      })
+      const oneAlready = texts.some((t) => t.contactId === person.id) || offers.some((t) => t.contactId === person.id)
+      if (mode === 'off') keep('off')
       else if (n.how !== 'text') keep('not a text')
       else if (snoozed && today < snoozed) keep('snoozed')
       else if (sentLately(input.sent, person.id, step, n.days, input.now)) keep('sent lately')
+      else if (offeredAlready(input.offered, person.id, step)) keep('offered')
+      else if (oneAlready) keep('one a morning')
+      else if (mode === 'offer')
+        offers.push({
+          ...text(`The app prepared the ${def.name} reminder for Today’s sends.`),
+          held: !number?.number ? OFFER_HELD['no number'] : number.optedOut ? OFFER_HELD['opted out'] : null,
+        })
       else if (!number?.number) keep('no number')
       else if (number.optedOut) keep('opted out')
-      else if (texts.some((t) => t.contactId === person.id)) keep('one a morning')
-      else
-        texts.push({
-          contactId: person.id,
-          stepId: step.stepId,
-          jobId: step.jobId,
-          body: nudgeLine(person, def, input.quickReplies, input.links?.[person.id] ?? null),
-          record: { contactId: person.id, stepId: step.stepId, jobId: step.jobId, at: input.now.toISOString(), by: 'app', how: n.how },
-          event: `The app sent the ${def.name} reminder by text.`,
-        })
+      else texts.push(text(`The app sent the ${def.name} reminder by text.`))
     }
   }
-  return { texts, notSent }
+  return { texts, offers, notSent }
 }

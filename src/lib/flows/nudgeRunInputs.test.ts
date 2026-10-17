@@ -11,6 +11,7 @@ import {
   newestLines,
   nudgeRunReads,
   nudgeSentFrom,
+  offeredFrom,
   portalLinkOf,
   quickRepliesFrom,
   textNumberOf,
@@ -72,10 +73,10 @@ describe('appSendsFrom: the owner’s switch as stored', () => {
     for (const value of [undefined, null, {}, [], 'on', 1]) expect(appSendsFrom(value)).toEqual({})
   })
 
-  it('turns a step on only with true, under a kind the app knows', () => {
+  it('turns a step on only with true (sends) or offer (offers, v2.5595), under a kind the app knows', () => {
     // The residential customer and the sub are kinds the app knows since the residential flow (v2.5396); robot is not one.
-    expect(appSendsFrom({ trade: { portal: true, msa: 'yes', ask: 1, sow: false }, customer: { contract: true }, sub: { yes: true }, robot: { yes: true }, arch: [] })).toEqual({
-      trade: { portal: true },
+    expect(appSendsFrom({ trade: { portal: true, msa: 'yes', ask: 1, sow: false, yes: 'offer' }, customer: { contract: true }, sub: { yes: true }, robot: { yes: true }, arch: [] })).toEqual({
+      trade: { portal: true, yes: 'offer' },
       customer: { contract: true },
       sub: { yes: true },
     })
@@ -243,6 +244,21 @@ describe('nudgeRunReads: everyone’s flow for the morning run', () => {
     const second = planNudgeRun(nudgeRunReads(again, new Date('2026-10-02T15:00:00Z'), { origin: ORIGIN }).input)
     expect(second.texts).toEqual([])
     expect(second.notSent.map((k) => k.why)).toEqual(['sent lately'])
+  })
+
+  it('reads the texts waiting on Today’s sends (v2.5595), so the run keeps the step offered already', () => {
+    expect(offeredFrom([{ contact_id: 'tom', step_key: 'portal', bid_id: null, project_id: 'p1', jobs_ledger_id: null }])).toEqual([{ contactId: 'tom', stepId: 'portal', jobId: 'p1' }])
+    const reads = nudgeRunReads(
+      rowsFor({ appSends: { trade: { portal: 'offer' } }, offers: [{ contact_id: 'tom', step_key: 'portal', bid_id: null, project_id: null, jobs_ledger_id: null }] }),
+      MORNING,
+      { origin: ORIGIN },
+    )
+    expect(reads.input.appSends).toEqual({ trade: { portal: 'offer' } })
+    expect(reads.input.offered).toEqual([{ contactId: 'tom', stepId: 'portal', jobId: null }])
+    expect(planNudgeRun(reads.input).notSent.map((k) => k.why)).toEqual(['offered'])
+    const fresh = planNudgeRun(nudgeRunReads(rowsFor({ appSends: { trade: { portal: 'offer' } } }), MORNING, { origin: ORIGIN }).input)
+    expect(fresh.texts).toEqual([])
+    expect(fresh.offers.map((o) => [o.contactId, o.stepId, o.held])).toEqual([['tom', 'portal', null]])
   })
 
   it('reads only their newest 50 lines, as their panel does: an older text of ours drops out', () => {

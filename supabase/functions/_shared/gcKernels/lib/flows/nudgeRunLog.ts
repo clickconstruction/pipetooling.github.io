@@ -49,16 +49,21 @@ export interface RunSummary {
   unread: number
   /** Customers left out because the run cannot read their page yet. */
   customersHeld: number
+  /** Texts prepared for the office to press on Today's sends (v2.5595), one `nudge_offers` row each. */
+  prepared: number
+  /** Texts the office prepared for this morning that went (Send in the morning); counted in `sent` too. */
+  morningSent: number
   /** The summary in plain words, one sentence each. */
   words: string[]
 }
 
 /** The reasons in the order the summary says them. */
-const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
+const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
 
 /** Why a reminder was kept back, after "because". */
 const KEPT_WHY: Readonly<Record<NudgeNotSent, string>> = {
   off: 'the app does not send that step yet',
+  offered: 'a text for that step already waits on Today’s sends',
   'not a text': 'its reminder is a call or an email',
   snoozed: 'the person is snoozed on Follow up',
   'sent lately': 'someone reminded them inside the step’s days',
@@ -75,6 +80,8 @@ export function summaryWords(s: Omit<RunSummary, 'words'>): string[] {
   if (s.dry) words.push('A dry run. Nothing went and nothing was written.')
   if (s.dry) words.push(s.sent === 0 ? 'No text would go.' : `${many(s.sent, 'text', 'texts')} would go.`)
   else words.push(s.sent === 0 ? 'No text went.' : `${many(s.sent, 'text', 'texts')} went.`)
+  if (s.morningSent) words.push(`${many(s.morningSent, 'text', 'texts')} the office prepared for this morning went.`)
+  if (s.prepared) words.push(s.dry ? `${many(s.prepared, 'text', 'texts')} would be prepared for Today’s sends.` : `${many(s.prepared, 'text was', 'texts were')} prepared for Today’s sends.`)
   for (const why of KEPT_ORDER) {
     const n = s.kept[why] ?? 0
     if (n) words.push(`${many(n, 'reminder was', 'reminders were')} kept back because ${KEPT_WHY[why]}.`)
@@ -95,6 +102,10 @@ export function runSummary(i: {
   textsOff?: number
   unread: number
   customersHeld: number
+  /** Texts written to `nudge_offers` for the office to press; on a dry run, the texts that would be. */
+  prepared?: number
+  /** Texts the office prepared for this morning that went. */
+  morningSent?: number
   now: Date
   dry: boolean
 }): RunSummary {
@@ -110,6 +121,8 @@ export function runSummary(i: {
     refusedCount: i.refused.length,
     unread: i.unread,
     customersHeld: i.customersHeld,
+    prepared: i.prepared ?? 0,
+    morningSent: i.morningSent ?? 0,
   }
   return { ...base, words: summaryWords(base) }
 }

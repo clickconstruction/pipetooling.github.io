@@ -89,6 +89,14 @@ describe('the moves the customer feels', () => {
 })
 
 describe('stageSendFor', () => {
+  it('an offers step (v2.5595) prepares the Working line for Today’s sends instead of sending it', () => {
+    const s = stageSendFor(WORKING, readingOf(DANA), LINES, settings({ appSends: { residential: { working: 'offer' } } }))
+    expect(s.kept).toBeNull()
+    expect(s.kept === null ? [s.mode, s.text.event] : null).toEqual(['offer', 'The app prepared the Working line for Today’s sends.'])
+    const sent = stageSendFor(WORKING, readingOf(DANA), LINES, settings())
+    expect(sent.kept === null ? sent.mode : null).toBe('send')
+  })
+
   it('Waiting to Working, the step on: sends the Working line once, and not twice that day', () => {
     const first = stageSendFor(WORKING, readingOf(DANA), LINES, settings())
     expect(first.text).toEqual({
@@ -114,7 +122,7 @@ describe('stageSendFor', () => {
 
   it('sends nothing for a step that is off', () => {
     expect(why(stageSendFor(WORKING, readingOf(DANA), LINES, settings({ appSends: {} })))).toBe('off')
-    expect(why(stageSendFor(WORKING, readingOf(DANA), LINES, settings({ appSends: { residential: { working: false } } })))).toBe('off')
+    expect(why(stageSendFor(WORKING, readingOf(DANA), LINES, settings({ appSends: { residential: { paid: true } } })))).toBe('off')
   })
 
   it('sends nothing to a number that sent STOP, or with no number', () => {

@@ -19,7 +19,7 @@ import type { QuickReply, QuickReplyFor, QuickReplyScope } from '../quickReplies
 import { flowFromRows, type FlowStepRow } from './editor'
 import { FLOW_KINDS, flowContactKind, type FlowKind } from './facts'
 import type { FlowCard, FlowRows } from './load'
-import type { AppSends, NudgeRunInput, NudgeSent, TextNumber } from './nudgeDispatch'
+import type { AppSends, NudgeOffered, NudgeRunInput, NudgeSent, TextNumber } from './nudgeDispatch'
 import type { NudgeOptions, PersonFlow } from './nudges'
 import { personFlowFrom, type HoldRow, type OwedRow, type PortalReadBackRow, type SentRow, type StepNoteRow, type ThreadLineRow } from './person'
 import { SEED_FLOWS } from './seed'
@@ -58,6 +58,8 @@ export type RunQuickReplyRow = {
 }
 /** `quick_reply_uses`: one press. */
 export type RunQuickReplyUseRow = { quick_reply_id: string; user_id: string | null }
+/** An open `nudge_offers` row (v2.5595): a text waiting on Today's sends, so the run never prepares a second. */
+export type RunOfferRow = { contact_id: string; step_key: string; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null }
 
 export interface NudgeRunRows {
   contacts: readonly RunContactRow[]
@@ -79,6 +81,8 @@ export interface NudgeRunRows {
   customerLinks?: Readonly<Partial<Record<string, string>>>
   /** The switch's `app_settings` `value_text` as stored, or its value already parsed. */
   appSends: unknown
+  /** The texts waiting on Today's sends (`nudge_offers`, open), when the run reads them. */
+  offers?: readonly RunOfferRow[]
 }
 
 /** A text number with the `contact_channels` row the send writes the line on. */
@@ -104,8 +108,9 @@ const parsed = (text: string): unknown => {
 }
 
 /**
- * The owner's switch as stored (`value_text`, or its value already parsed): only a `true` under a known kind and a step
- * id turns a step on. Text that does not read as JSON is off for every step.
+ * The owner's switch as stored (`value_text`, or its value already parsed): only a `true` (sends) or an `'offer'`
+ * (offers, v2.5595) under a known kind and a step id turns a step on. Text that does not read as JSON is off for every
+ * step.
  */
 export function appSendsFrom(stored: unknown): AppSends {
   const out: AppSends = {}
@@ -114,10 +119,15 @@ export function appSendsFrom(stored: unknown): AppSends {
   for (const kind of FLOW_KINDS) {
     const steps = (value as Record<string, unknown>)[kind]
     if (!steps || typeof steps !== 'object' || Array.isArray(steps)) continue
-    const on = Object.entries(steps as Record<string, unknown>).filter(([, v]) => v === true)
-    if (on.length) out[kind] = Object.fromEntries(on.map(([id]) => [id, true]))
+    const on = Object.entries(steps as Record<string, unknown>).filter(([, v]) => v === true || v === 'offer')
+    if (on.length) out[kind] = Object.fromEntries(on.map(([id, v]) => [id, v === 'offer' ? 'offer' : true]))
   }
   return out
+}
+
+/** The texts waiting on Today's sends, by person, step and job. */
+export function offeredFrom(rows: readonly RunOfferRow[]): NudgeOffered[] {
+  return rows.map((r) => ({ contactId: r.contact_id, stepId: r.step_key, jobId: r.bid_id ?? r.project_id ?? r.jobs_ledger_id ?? null }))
 }
 
 /** Each kind's flow as the office edited it, or the seed's for a kind with no steps on the database (`readFlowDef`). */
@@ -282,6 +292,7 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
       links,
       options: opts.options,
       snoozed,
+      offered: offeredFrom(rows.offers ?? []),
     },
     channelIds,
     unread,

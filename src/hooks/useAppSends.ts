@@ -4,7 +4,7 @@
  * the flow's Save, since it is its own setting under its own policy.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { appSendSetWords } from '../lib/flows/appSends'
+import { appSendSetWords, type AppSendMode } from '../lib/flows/appSends'
 import { supabaseAppSendsIo, type AppSendsIo, type AppSendsRead } from '../lib/flows/appSendsIo'
 import type { FlowKind } from '../lib/flows/facts'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -14,8 +14,8 @@ export interface AppSendsState {
   problem: string | null
   /** The step being written, as `<kind>:<step id>`. */
   busy: string | null
-  /** Turn one step's reminder on or off. Resolves with the toast's words. */
-  set: (kind: FlowKind, step: { id: string; name: string }, on: boolean) => Promise<{ ok: boolean; words: string }>
+  /** Set one step's reminder to off, offers or sends. Resolves with the toast's words. */
+  set: (kind: FlowKind, step: { id: string; name: string }, mode: AppSendMode) => Promise<{ ok: boolean; words: string }>
 }
 
 export function useAppSends(io?: AppSendsIo): AppSendsState {
@@ -45,12 +45,12 @@ export function useAppSends(io?: AppSendsIo): AppSendsState {
   }, [client])
 
   const set = useCallback(
-    async (kind: FlowKind, step: { id: string; name: string }, on: boolean) => {
+    async (kind: FlowKind, step: { id: string; name: string }, mode: AppSendMode) => {
       setBusy(`${kind}:${step.id}`)
       try {
-        const sends = await client.set(kind, step.id, on)
+        const sends = await client.set(kind, step.id, mode)
         if (live.current) setRead((r) => (r ? { ...r, sends } : r))
-        return { ok: true, words: appSendSetWords(step.name, on) }
+        return { ok: true, words: appSendSetWords(step.name, mode) }
       } catch (e) {
         return { ok: false, words: formatErrorMessage(e) }
       } finally {

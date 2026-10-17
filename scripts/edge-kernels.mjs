@@ -116,9 +116,9 @@ export const ENTRIES = {
   // from the run's rows, the planner, the 9 AM gate and the summary.
   'lib/flows/nudgeRunInputs.ts': {
     values: ['APP_SENDS_SETTING_KEY', 'nudgeRunReads'],
-    types: ['NudgeRunReads', 'NudgeRunRows', 'RunChannelRow', 'RunContactRow', 'RunHoldRow', 'RunLineRow', 'RunNoteRow', 'RunQuickReplyRow', 'RunQuickReplyUseRow', 'RunSentRow', 'RunStepRow'],
+    types: ['NudgeRunReads', 'NudgeRunRows', 'RunChannelRow', 'RunContactRow', 'RunHoldRow', 'RunLineRow', 'RunNoteRow', 'RunOfferRow', 'RunQuickReplyRow', 'RunQuickReplyUseRow', 'RunSentRow', 'RunStepRow'],
   },
-  'lib/flows/nudgeDispatch.ts': { values: ['planNudgeRun'], types: ['NudgeRun', 'NudgeText'] },
+  'lib/flows/nudgeDispatch.ts': { values: ['planNudgeRun'], types: ['NudgeOffer', 'NudgeRun', 'NudgeText'] },
   'lib/flows/nudgeRunLog.ts': { values: ['runHourNow', 'runSummary'], types: ['RunRefused', 'RunSummary'] },
 }
 

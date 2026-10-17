@@ -9,15 +9,26 @@ import type { UserRole } from '../../hooks/useAuth'
 import { lineWhen } from '../messages/thread'
 import type { QuickReply } from '../quickReplies/kernel'
 import { FLOW_KINDS, type FlowKind } from './facts'
-import { nudgeLine, type AppSends, type NudgeNotSent } from './nudgeDispatch'
+import { appSendMode, nudgeLine, type AppSendMode, type AppSends, type NudgeNotSent } from './nudgeDispatch'
 import type { PersonFlow } from './nudges'
 import { appSendsFrom } from './nudgeRunInputs'
 import { flat, type FlowDef, type FlowStep } from './state'
 
-export { appSendsFrom }
+export { appSendMode, appSendsFrom }
+export type { AppSendMode }
 
-/** The switch's name on a step. */
-export const APP_SENDS_LABEL = 'The app sends this reminder'
+/** The control's name on a step: since v2.5595 three ways, Off, Offers (the office presses it on Today's sends) and Sends. */
+export const APP_SENDS_LABEL = 'The app and this reminder'
+/** The three ways, in the order the control draws them. */
+export const APP_SEND_MODES: readonly AppSendMode[] = ['off', 'offer', 'send']
+/** Each way's word on the control. */
+export const APP_SEND_MODE_WORDS: Readonly<Record<AppSendMode, string>> = { off: 'Off', offer: 'Offers', send: 'Sends' }
+/** Each way under the control, one or two short sentences. */
+export const APP_SEND_MODE_HINT: Readonly<Record<AppSendMode, string>> = {
+  off: 'The app does nothing with this reminder.',
+  offer: 'Each morning the app prepares the text for Today’s sends on the Dashboard. The office presses it.',
+  send: 'The app texts it at 9 AM from the company number.',
+}
 /** On a step whose reminder the app sends, but only in the unsaved draft. */
 export const APP_SENDS_SAVE_FIRST = 'Save the flow first.'
 /** On a step whose reminder the app sends as a call or an email. */
@@ -31,9 +42,11 @@ export const LAST_RUN_NONE = 'The app has not run its morning reminders yet.'
 /** The press that opens the run's own sentences. */
 export const READ_THE_RUN = 'Read the run'
 
-/** What a press on the switch did, for its toast. */
-export function appSendSetWords(stepName: string, on: boolean): string {
-  return on ? `The app sends the ${stepName} reminder from its next morning run at 9 AM.` : `The app no longer sends the ${stepName} reminder.`
+/** What a press on the control did, for its toast. */
+export function appSendSetWords(stepName: string, mode: AppSendMode): string {
+  if (mode === 'send') return `The app sends the ${stepName} reminder from its next morning run at 9 AM.`
+  if (mode === 'offer') return `The app prepares the ${stepName} reminder each morning for Today’s sends on the Dashboard.`
+  return `The app no longer sends the ${stepName} reminder.`
 }
 
 /** Who may turn a step's reminder on or off: the owner and a dev, as the setting's UPDATE policy allows. */
@@ -41,27 +54,30 @@ export function canSetAppSends(role: UserRole | null | undefined): boolean {
   return role === 'master_technician' || role === 'dev'
 }
 
-/** Whether the app sends a step's reminder: only a `true` under its kind. */
+/** Whether the app sends a step's reminder itself: only a `true` under its kind. Offers (v2.5595) is not sending. */
 export function appSendOn(sends: AppSends, kind: FlowKind, stepId: string): boolean {
-  return sends[kind]?.[stepId] === true
+  return appSendMode(sends, kind, stepId) === 'send'
 }
 
-/** Only the steps that are on, the kinds in the flows' order and the steps sorted, and no kind with none. */
+/** Only the steps that are on (sends or offers), the kinds in the flows' order and the steps sorted, and no kind with none. */
 function onlyOn(sends: AppSends): AppSends {
   const out: AppSends = {}
   for (const k of FLOW_KINDS) {
     const steps = sends[k] ?? {}
     const on = Object.keys(steps)
-      .filter((id) => steps[id] === true)
+      .filter((id) => steps[id] === true || steps[id] === 'offer')
       .sort()
-    if (on.length) out[k] = Object.fromEntries(on.map((id) => [id, true]))
+    if (on.length) out[k] = Object.fromEntries(on.map((id) => [id, steps[id] === 'offer' ? 'offer' : true]))
   }
   return out
 }
 
-/** The switch with one step turned on or off. */
-export function withAppSend(sends: AppSends, kind: FlowKind, stepId: string, on: boolean): AppSends {
-  return onlyOn({ ...sends, [kind]: { ...(sends[kind] ?? {}), [stepId]: on } })
+/** The switch with one step set to off, offers or sends. */
+export function withAppSend(sends: AppSends, kind: FlowKind, stepId: string, mode: AppSendMode): AppSends {
+  const steps: Partial<Record<string, true | 'offer'>> = { ...(sends[kind] ?? {}) }
+  if (mode === 'off') delete steps[stepId]
+  else steps[stepId] = mode === 'send' ? true : 'offer'
+  return onlyOn({ ...sends, [kind]: steps })
 }
 
 /** The switch as `value_text` stores it, so the same switch always writes the same text. */
@@ -126,12 +142,16 @@ export interface LastRun {
   refusedCount: number
   /** People whose rows did not come back. */
   unread: number
+  /** Texts prepared for Today's sends (v2.5595). */
+  prepared: number
+  /** Texts the office prepared for that morning that went. */
+  morningSent: number
   /** The run's own sentences. */
   words: string[]
 }
 
 /** The reasons in the order the line says them, as the run's summary orders them. */
-export const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
+export const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
 
 const count = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0)
 
@@ -163,6 +183,8 @@ export function lastRunFrom(stored: unknown): LastRun | null {
     textsOff: count(v.textsOff),
     refusedCount: count(v.refusedCount),
     unread: count(v.unread),
+    prepared: count(v.prepared),
+    morningSent: count(v.morningSent),
     words: Array.isArray(v.words) ? v.words.filter((w): w is string => typeof w === 'string' && w.trim() !== '') : [],
   }
 }
@@ -174,6 +196,8 @@ function keptPart(why: NudgeNotSent, n: number): string {
   switch (why) {
     case 'off':
       return is(n, 'is off', 'are off')
+    case 'offered':
+      return is(n, 'already waits on Today’s sends', 'already wait on Today’s sends')
     case 'not a text':
       return is(n, 'is not a text', 'are not a text')
     case 'snoozed':
@@ -218,6 +242,7 @@ export function lastRunLine(run: LastRun | null, nowIso: string): string {
     ...(run.dry ? ['A dry run.'] : []),
     `Last morning run ${when}: ${sent}, ${keptTotal ? `${keptTotal} kept back` : 'none kept back'}.`,
     ...(parts.length ? [`${capital(andList(parts))}.`] : []),
+    ...(run.prepared ? [`${is(run.prepared, 'text', 'texts')} prepared for Today’s sends.`] : []),
     ...(run.refusedCount ? [`${is(run.refusedCount, 'text', 'texts')} did not go.`] : []),
   ]
   return words.join(' ')

@@ -2,7 +2,7 @@
 title: schedule a job and tell the customer
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window
+keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send in the morning, today's sends
 order: 40
 ---
 When you book a job's first visit, the app asks before it tells the customer. You see the text, change any word, and press Send or Skip. Nothing goes on its own.
@@ -31,6 +31,16 @@ Dana, this is Rosa with Click Plumbing. We have you booked for Friday, October 2
 Press **Skip** to send nothing. The visit is still saved.
 
 The words come from the office's Booked line in the quick replies. With no Booked line yet, the app uses its own words. See [edit the quick replies](/help/edit-the-quick-replies).
+
+## Send it in the morning instead
+
+Booked a visit late in the day? Press **Send in the morning** beside Skip. The text waits, and the app sends it at 9 AM.
+
+1. Read and change the text as usual.
+2. Press **Send in the morning**. The sheet says which day it goes.
+3. Press **Done**.
+
+Until then the text sits on the Dashboard under Today's sends. You can change it there, or take it back. See [work Today's sends](/help/work-todays-sends).
 
 ## The receipt, and the call
 
