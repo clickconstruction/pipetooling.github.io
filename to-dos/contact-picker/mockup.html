@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The To chip</title>
+<style>
+  /* Punch list #118. Light only, like every to-do mock-up. Made-up people: Rosa at the office, Dana Whitfield the customer, Mike Whitfield a person at her account, Luis the tech. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-ink: #92400e; --amber-tint: #fef3c7; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #e5e7eb; --page: #f6f7f9; --card: #ffffff; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; }
+  .cap.gray { background: var(--line); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .frame { background: var(--card); border: 1px solid var(--line); border-radius: 0 0 10px 10px; padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .frame h3 { margin: 0 0 4px; font-size: 15px; }
+  .sub { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+  .label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 13px; background: #fff; }
+  .chip.press { border-color: var(--blue); color: var(--blue-ink); cursor: pointer; }
+  .chip .caret { font-size: 11px; color: var(--muted); }
+  .menu { margin-top: 6px; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.08); max-width: 360px; overflow: hidden; }
+  .menu .item { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); font-size: 13px; align-items: center; }
+  .menu .item:first-child { border-top: none; }
+  .menu .item.on { background: var(--blue-tint); }
+  .menu .item .when { color: var(--muted); font-size: 12px; }
+  .menu .item .mark { font-size: 12px; }
+  .menu .item .mark.stop { color: var(--red-ink); background: var(--red-tint); border-radius: 6px; padding: 1px 6px; }
+  .menu .item .mark.star { color: var(--amber-ink); }
+  .menu .foot { padding: 9px 12px; border-top: 1px solid var(--line); display: flex; gap: 10px; align-items: center; font-size: 13px; background: var(--page); }
+  .menu .foot input { margin: 0; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fffbeb; font-size: 13.5px; margin: 6px 0 10px; }
+  .btn { display: inline-block; border-radius: 8px; padding: 7px 14px; font-weight: 700; font-size: 13px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  .btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .say { font-size: 12.5px; color: var(--amber-ink); margin: 6px 0 0; }
+  .people .item .who { display: grid; }
+  .people .item .who small { color: var(--muted); font-size: 12px; }
+  .grey { color: var(--muted); }
+  .phone { max-width: 375px; border: 10px solid #111; border-radius: 34px; padding: 18px 14px 22px; background: #fff; }
+  .phone h3 { font-size: 16px; }
+  .gray-line { font-size: 12px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 8px; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #118 · a mock-up, no real people</p>
+    <h1>The To chip: pick the number, the address and the person a send goes to, and remember the pick</h1>
+    <p>Every send picks by a rule today and offers no switch. The chip shows where a text goes, opens a short menu when a customer has more than one number, and remembers the pick as their usual. One rule in one kernel, so the thread, the sheets, the morning run, the call and the tech's text all agree.</p>
+  </header>
+
+  <h2><span class="num">1</span> The decision, in one spot: the send window's To line</h2>
+  <p class="lede">Dana texted from a second phone last week and the office answered <i>Who is this?</i>. Now and my suggestion, on the same send.</p>
+  <div class="row">
+    <div>
+      <div class="cap gray">Now</div>
+      <div class="frame">
+        <h3>Send to Dana Whitfield</h3>
+        <p class="sub">Text · (830) 555-0121 · from the company number</p>
+        <div class="box">Dana, this is Rosa with Click Plumbing. Luis is on his way, about 25 minutes.</div>
+        <div class="acts"><span class="btn">Cancel</span><span class="btn green">Send</span></div>
+        <p class="note">The rule picks the first number that can still take a text: the landline she gave at the first visit. Her cell, the one she wrote from last week, is second on file and never offered.</p>
+      </div>
+    </div>
+    <div>
+      <div class="cap green">My suggestion</div>
+      <div class="frame">
+        <h3>Send to Dana Whitfield</h3>
+        <p class="sub">Text · from the company number</p>
+        <p class="label">To</p>
+        <span class="chip press">(830) 555-0190 <span class="caret">▾</span></span>
+        <div class="menu">
+          <div class="item on"><span>(830) 555-0190 <span class="when">· her last text, 6 days ago</span></span><span class="mark star">★ usual</span></div>
+          <div class="item"><span>(830) 555-0121 <span class="when">· the first visit's number, no text in 3 months</span></span><span class="mark"></span></div>
+          <div class="item"><span class="grey">(830) 555-0144 <span class="when">· sent STOP</span></span><span class="mark stop">STOP</span></div>
+          <div class="foot"><input type="checkbox" checked> Make this her usual number</div>
+        </div>
+        <div class="box" style="margin-top:10px">Dana, this is Rosa with Click Plumbing. Luis is on his way, about 25 minutes.</div>
+        <div class="acts"><span class="btn">Cancel</span><span class="btn green">Send to (830) 555-0190</span></div>
+        <p class="note"><b>With one number the chip is a label and nothing changes.</b> With more, the menu lists each with when it last carried a line, marks a STOP, and stars the usual. The tick remembers the pick; without it, this once. A gray line in the thread: <i>Rosa made (830) 555-0190 Dana's usual number.</i></p>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">2</span> The same chip on the Tell the customer sheet, with the customer's say beside it</h2>
+  <p class="lede">A booking's first visit. Dana asked to hear from us by email (#115), so the chip carries that note; the office still decides.</p>
+  <div class="row">
+    <div>
+      <div class="cap green">My suggestion</div>
+      <div class="frame">
+        <h3>Tell Dana</h3>
+        <p class="sub">PLUM 512 · Whitfield water heater · Friday, October 23 · 10:00 AM to 12:00 PM · Luis</p>
+        <p class="label">What goes</p>
+        <div>✓ Text to <span class="chip press">(830) 555-0190 ★ <span class="caret">▾</span></span> <span class="grey">· Dana reads English</span></div>
+        <p class="say">ℹ️ Dana asked to hear from us by email. A call may be kinder than this text.</p>
+        <div class="box">Dana, this is Rosa with Click Plumbing. We have you booked for Friday, October 23, 2026, 10:00 AM to 12:00 PM. Luis will text you when on the way.</div>
+        <div class="acts"><span class="btn">Skip</span><span class="btn">Send in the morning</span><span class="btn green">Send text to Dana</span></div>
+        <p class="note">The chip reads the usual first, else the number her thread last carried a line on, else the first that can still take a text. The morning run and Today's sends read the same order, so a held row names the number it would go to.</p>
+      </div>
+    </div>
+    <div>
+      <div class="cap green">The tech's On my way, the same chip</div>
+      <div class="phone">
+        <h3>On my way</h3>
+        <p class="sub">Whitfield water heater · 25 minutes</p>
+        <p class="label">Texts</p>
+        <span class="chip press">Dana · (830) 555-0190 <span class="caret">▾</span></span>
+        <div class="box">Dana, Luis with Click Plumbing is on the way, about 25 minutes.</div>
+        <div class="acts"><span class="btn">Not this time</span><span class="btn green">Send and go</span></div>
+        <p class="note">The tech sees where it goes and may switch, since this is a number, not words. A plain switch is this once; the tick under the menu makes it her usual, with the same gray line in the thread.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">3</span> Who on this job</h2>
+  <p class="lede">A job with two people: Dana's own account, and Mike Whitfield, the person at her account who meets the crew. The sheet offers both, the starred one first, and the pick is a pick of threads.</p>
+  <div class="row">
+    <div>
+      <div class="cap gray">Now</div>
+      <div class="frame">
+        <h3>Tell Dana</h3>
+        <p class="sub">The sheet always texts the customer's own contact. Mike has his own thread and never hears about the visit unless someone opens it.</p>
+        <div class="box">Dana, this is Rosa with Click Plumbing. We have you booked for Friday…</div>
+      </div>
+    </div>
+    <div>
+      <div class="cap green">My suggestion</div>
+      <div class="frame">
+        <h3>Tell the customer</h3>
+        <p class="label">Who</p>
+        <div class="menu people">
+          <div class="item on"><span class="who">Mike Whitfield <small>meets the crew · (830) 555-0177</small></span><span class="mark star">★ this job's usual</span></div>
+          <div class="item"><span class="who">Dana Whitfield <small>the account · (830) 555-0190</small></span><span class="mark"></span></div>
+          <div class="item"><span class="who grey">Pat Whitfield <small>no number on file</small></span><span class="mark"></span></div>
+          <div class="foot"><input type="checkbox"> Make Mike this job's usual</div>
+        </div>
+        <div class="box" style="margin-top:10px">Mike, this is Rosa with Click Plumbing. We have you booked for Friday, October 23, 2026, 10:00 AM to 12:00 PM. Luis will text you when on the way.</div>
+        <div class="acts"><span class="btn">Skip</span><span class="btn green">Send text to Mike</span></div>
+        <p class="gray-line">Rosa made Mike Whitfield this job's usual person.</p>
+        <p class="note">The chosen person's thread gets the line, their usual number is the chip's, and the receipt names them. The star is <code>contact_jobs.is_default</code>, which the job already keeps. A person with no number of the kind is listed grey with why.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">4</span> Where the pick is first known: Who is this?</h2>
+  <p class="lede">The office names a new number the moment the customer writes from it. That is when it knows which phone she holds.</p>
+  <div class="row">
+    <div>
+      <div class="cap green">My suggestion</div>
+      <div class="frame">
+        <h3>Who is this?</h3>
+        <p class="sub">(830) 555-0190 wrote: <i>Hi, this is Dana, can Luis come Friday instead?</i></p>
+        <p class="label">This number is</p>
+        <div><span class="chip press">Dana Whitfield · a customer</span></div>
+        <div class="menu" style="margin-top:10px">
+          <div class="foot"><input type="checkbox" checked> Make this her usual number <span class="grey">· (830) 555-0121 was</span></div>
+        </div>
+        <div class="acts"><span class="btn green">Save</span></div>
+        <p class="note">Ticked by default when the old number has not carried a text in a month; unticked when it has. Either way the office sees both numbers on one line.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
