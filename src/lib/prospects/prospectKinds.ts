@@ -178,6 +178,10 @@ export type BenchableProspect = {
   trades: string[] | null
   max_miles: number | null
   lang?: string | null
+  /** v2.5603: the person's cell, the license and the Maps link, when the row has them. */
+  contact_phone?: string | null
+  license?: string | null
+  maps_url?: string | null
 }
 
 /** What `gc_add_company` takes (the bench's `NewCompanyDraft`), spelled here so the kernel stays free of the client. */
@@ -191,6 +195,9 @@ export type BenchDraft = {
   maxMiles: number | null
   known: boolean
   lang?: 'en' | 'es'
+  /** v2.5603: the sub's license and Google Maps profile ride to the bench. */
+  license?: string
+  mapsUrl?: string
 }
 
 /** Add to the bench's prefill: the sub's facts in the bench's shape. The company is new to us unless the caller says otherwise. */
@@ -200,13 +207,18 @@ export function benchDraftFromProspect(p: BenchableProspect): BenchDraft {
     name: (p.company_name ?? '').trim() || (p.contact_name ?? '').trim(),
     trades: [...(p.trades ?? [])],
     contactName: (p.contact_name ?? '').trim(),
-    phone: (p.phone_number ?? '').trim(),
+    // The number that reaches the person first (v2.5603): their cell, else the company line.
+    phone: (p.contact_phone ?? '').trim() || (p.phone_number ?? '').trim(),
     email: (p.email ?? '').trim(),
     address: (p.address ?? '').trim(),
     maxMiles: miles,
     known: false,
   }
   if (p.lang === 'en' || p.lang === 'es') draft.lang = p.lang
+  const license = (p.license ?? '').trim()
+  if (license) draft.license = license
+  const mapsUrl = (p.maps_url ?? '').trim()
+  if (mapsUrl) draft.mapsUrl = mapsUrl
   return draft
 }
 

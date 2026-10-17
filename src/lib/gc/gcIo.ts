@@ -912,6 +912,10 @@ export interface NewCompanyDraft {
   address: string
   maxMiles: number | null
   known: boolean
+  lang?: 'en' | 'es'
+  /** v2.5603: the license and the Google Maps profile, read by `gc_add_company` since v2.5600. */
+  license?: string
+  mapsUrl?: string
 }
 
 /** Add a company: the row and its main contact in one press. The new company's id comes back. */
