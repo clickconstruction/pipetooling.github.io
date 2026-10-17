@@ -21,11 +21,12 @@ ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS prefers_at timestamptz;
 
 COMMENT ON COLUMN public.contacts.prefers IS 'How they want to hear from us (v2.5597): text, email or either; null when nobody said. Set by a reply (EMAIL / TEXT), the office, or their page.';
 
--- The office sets it from the thread's menu; a gray line says so. Either clears a preference.
+-- The office sets it from the thread's menu; a gray line says so. Either clears a preference. A definer, as the
+-- thread's other presses on contacts are: authenticated holds no UPDATE on the table, and follow_up_press is the gate.
 CREATE OR REPLACE FUNCTION public.contact_set_prefers(p_contact uuid, p_prefers text)
 RETURNS void
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -50,7 +51,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.contact_set_prefers(uuid, text) IS
-  'The customer''s channel (v2.5597): the office sets text, email or either from the thread''s menu, through follow_up_press, with a gray line. The same word again writes nothing.';
+  'The customer''s channel (v2.5597): the office sets text, email or either from the thread''s menu, through follow_up_press (a definer: the table takes no direct write), with a gray line. The same word again writes nothing.';
 
 REVOKE ALL ON FUNCTION public.contact_set_prefers(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contact_set_prefers(uuid, text) TO authenticated;
