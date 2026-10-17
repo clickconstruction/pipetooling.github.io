@@ -18,6 +18,7 @@ Trench collapses kill about **40** workers a year. Most happen in trenches only 
 - Fissured, vibrated, disturbed or layered soil can never be Type A. Use the least stable class you find.
 - Slopes: Type A at **¾ to 1**, Type B at **1 to 1**, Type C at **1½ to 1**. Benching is allowed in A and B, never in C.
 - The system reaches **18 inches** above the top of the trench. Spoil and tools stay at least **2 feet** back from the edge.
+- {{figure:trench-section|A box or a slope, never a bare wall. The box stands 18 in proud, spoil stays 2 ft back.}}
 - A trench box protects the people inside it. It does not stop the soil from moving.
 
 ## Traps

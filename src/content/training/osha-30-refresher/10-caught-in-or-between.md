@@ -12,6 +12,7 @@ A small move of a machine or a trench wall crushes a person in an instant. These
 - Around equipment, get the operator's authorization first. Stay out of the marked swing radius. Never stand between a machine and a fixed object.
 - Stack on stable, level ground. Lumber goes **16 ft** high by hand and **20 ft** by machine.
 - Loose bricks stop at **7 ft** and taper above **4 ft**. Blocks taper above **6 ft**. Keep materials **6 ft** from any edge.
+- {{figure:stacking-limits|How high each pile may go. Bricks and blocks taper as they rise.}}
 - An unsafe stack: move away, warn others, notify your manager. Then stay nearby and keep people away.
 - Moving parts pinch, crush, shear, wrap, nip and cut. A full enclosure beats a distance rule or gloves.
 - Never run a machine with a missing, damaged or homemade guard. Remove a guard only after lockout.

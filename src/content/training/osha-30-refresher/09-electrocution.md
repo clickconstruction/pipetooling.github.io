@@ -19,6 +19,7 @@ Electricity is a leading cause of construction deaths. Almost every electrical i
 - Inspect tools before each use. Never carry or unplug a tool by the cord. No wet areas, homemade cords, two-prong adapters or cut-off ground prongs.
 - Arc flash is current jumping a gap through the air. Live work only when de-energizing is infeasible or more dangerous, with a permit, arc-rated PPE and insulated tools.
 - Overhead lines are always live. Stay **10 ft** away up to **50 kV** and **15 ft** up to 200 kV. Then **20 ft** to 350 kV and **25 ft** to 500 kV. Past that, **35 ft** to 750 kV and **45 ft** to 1,000 kV.
+- {{figure:power-line-clearances|The higher the voltage, the further you stay. Ten feet is the least, and that is for the smallest line.}}
 - Underground flags: **yellow** gas or oil, **blue** water, **red** electric. The employer calls **811**. You verify the marks and use hand tools within **3 ft** of a flag.
 
 ## Traps

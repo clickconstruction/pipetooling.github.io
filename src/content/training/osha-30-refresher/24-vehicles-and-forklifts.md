@@ -16,6 +16,7 @@ About **200** workers die each year in highway and street construction, and more
 - Training is free before anyone operates. A refresher and evaluation come **every 3 years**, and at once after unsafe operation or a near miss.
 - A PIT, a powered industrial truck, carries, pushes, pulls, lifts or stacks material. Forklifts, pallet jacks and telehandlers are PITs, in **7** classes.
 - The **load center** is the distance from the fork backrest to the load's center of gravity. The standard rating uses **24 in**. A load out at the fork tips can tip the truck.
+- {{figure:forklift-load-center|The rating assumes the load's weight sits 24 in from the backrest. Further out, the truck tips forward.}}
 - Keep the load low. An empty truck's center of gravity is higher than a loaded one's. Do not speed up after dropping a load.
 - Inspect the forklift before each shift: lights, brakes, steering, horn, seat belt, tires and fuel or battery. Check the load and the pallet too. A failed inspection means report it and pull the key.
 - If the load blocks your view, drive in reverse or use a spotter. Sound the horn at intersections. Carry people only on a purpose-built platform.
