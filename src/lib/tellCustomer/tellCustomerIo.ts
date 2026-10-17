@@ -14,6 +14,7 @@ import { customerLang } from '../messages/customerLang'
 import { contactForCustomer } from '../messages/messagesIo'
 import { jobKey } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
+import { supabaseOffersIo } from '../offers/offersIo'
 import type { PortalLang } from '../gc/portalI18n'
 import { supabaseQuickRepliesIo } from '../quickReplies/quickRepliesIo'
 import type { QuickReply } from '../quickReplies/kernel'
@@ -61,6 +62,20 @@ export interface TellCustomerIo {
   isFirstVisit(jobId: string, groupId: string | null): Promise<boolean>
   /** Resolves to the text's line id. */
   send(input: TellSend): Promise<string>
+  /** Send in the morning (v2.5595): the text waits on Today's sends and the morning run sends it on its day. Resolves to the offer's id. */
+  makeOffer(input: TellOffer): Promise<string>
+}
+
+/** A text the office hands to a morning, from the sheet. */
+export interface TellOffer {
+  contactId: string
+  channelId: string
+  jobId: string | null
+  /** The step the text is for (`MOMENT_STEP`), so the run never doubles it. */
+  stepKey: string
+  body: string
+  /** YYYY-MM-DD, the morning it goes. */
+  sendOn: string
 }
 
 const langOf = (language: string | null | undefined): PortalLang => customerLang({ lang: language === 'es' || language === 'en' ? language : undefined })
@@ -115,6 +130,15 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       if (result.error) return false
       return (result.count ?? 0) === 0
     },
+    makeOffer: (input) =>
+      supabaseOffersIo(db).make({
+        contactId: input.contactId,
+        stepKey: input.stepKey,
+        jobKey: input.jobId ? jobKey({ kind: 'pipeline', id: input.jobId }) : null,
+        body: input.body,
+        channelId: input.channelId,
+        sendOn: input.sendOn,
+      }),
     send: (input) =>
       supabaseReplyIo().sendText({
         contactId: input.contactId,

@@ -13,7 +13,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAppSends } from '../../hooks/useAppSends'
 import { useAuth } from '../../hooks/useAuth'
 import { useFlowEditor, type EditorKind } from '../../hooks/useFlowEditor'
-import { canSetAppSends, lastRunLine, READ_THE_RUN } from '../../lib/flows/appSends'
+import { canSetAppSends, lastRunLine, READ_THE_RUN, type AppSendMode } from '../../lib/flows/appSends'
 import { PUT_BACK_WORDS, restoreStep, WHO_MOVES_NOTE } from '../../lib/flows/editor'
 import { EDITOR_KINDS, PEOPLE_NOT_READ, readsPeopleOf } from '../../lib/flows/editorKinds'
 import { askForFact, loadDocNames, loadSeats, loadTradeNames } from '../../lib/flows/flowEditorIo'
@@ -93,8 +93,8 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
     showToast(done.words, done.ok ? 'success' : 'error')
   }
 
-  const flipAppSend = async (step: FlowStep, on: boolean) => {
-    const done = await appSends.set(kind, step, on)
+  const flipAppSend = async (step: FlowStep, mode: AppSendMode) => {
+    const done = await appSends.set(kind, step, mode)
     showToast(done.words, done.ok ? 'success' : 'error')
   }
   const runWords = appSends.read?.lastRun?.words ?? []
@@ -200,7 +200,7 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
                   saved: editor.kept?.flow ?? null,
                   quickReplies: appSends.read.quickReplies,
                   busy: appSends.busy,
-                  onSet: (step, on) => void flipAppSend(step, on),
+                  onSet: (step, mode) => void flipAppSend(step, mode),
                 }
               : undefined
           }

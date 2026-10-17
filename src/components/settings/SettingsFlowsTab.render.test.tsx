@@ -102,10 +102,12 @@ beforeEach(() => {
   vi.mocked(loadDocNames).mockReset().mockResolvedValue({})
   auth.role = 'assistant'
   appSendsIo.load.mockReset().mockResolvedValue({ sends: {}, lastRun: null, quickReplies: [] })
-  appSendsIo.set.mockReset().mockImplementation(async (kind: string, stepId: string, on: boolean) => (on ? { [kind]: { [stepId]: true } } : {}))
+  appSendsIo.set.mockReset().mockImplementation(async (kind: string, stepId: string, mode: string) => (mode === 'off' ? {} : { [kind]: { [stepId]: mode === 'send' ? true : 'offer' } }))
 })
 
-const portalSwitch = () => within(row('portal')).getByRole('switch', { name: 'Portal opened: The app sends this reminder' })
+const portalGroup = () => within(row('portal')).getByRole('radiogroup', { name: 'Portal opened: The app and this reminder' })
+/** One of the three ways on Portal opened: Off, Offers or Sends (v2.5595). */
+const portalWay = (name: string) => within(portalGroup()).getByRole('radio', { name }) as HTMLButtonElement
 
 describe('SettingsFlowsTab', () => {
   it('lays the trade partners’ flow out by lane, each step with what finishes it and whose move it is', async () => {
@@ -198,12 +200,12 @@ describe('SettingsFlowsTab', () => {
     expect(rows).toEqual(SEED_FLOWS.trade.lanes.flatMap((l) => l.steps.map((s) => s.id)))
   })
 
-  it('shows the office the app’s reminder switch read only, on the one step the app sends, with the words it would send', async () => {
+  it('shows the office the app’s three-way control read only, on the one step the app sends, with the words it would send', async () => {
     await open()
     expect(screen.getByText(LAST_RUN_NONE)).toBeTruthy()
-    await waitFor(() => expect(portalSwitch()).toBeTruthy())
-    expect(portalSwitch().getAttribute('aria-checked')).toBe('false')
-    expect((portalSwitch() as HTMLButtonElement).disabled).toBe(true)
+    await waitFor(() => expect(portalGroup()).toBeTruthy())
+    expect(portalWay('Off').getAttribute('aria-checked')).toBe('true')
+    expect(portalWay('Sends').disabled).toBe(true)
     expect(within(row('portal')).getByText(APP_SENDS_OWNER_ONLY)).toBeTruthy()
     expect(within(row('portal')).getByText('“Chris, did the invite come through?”')).toBeTruthy()
     expect(document.querySelectorAll('[data-app-sends]')).toHaveLength(1)
@@ -212,25 +214,30 @@ describe('SettingsFlowsTab', () => {
   it('lets the owner turn the reminder on at once, apart from the flow’s Save', async () => {
     auth.role = 'master_technician'
     await open()
-    await waitFor(() => expect((portalSwitch() as HTMLButtonElement).disabled).toBe(false))
-    fireEvent.click(portalSwitch())
-    await waitFor(() => expect(appSendsIo.set).toHaveBeenCalledWith('trade', 'portal', true))
-    await waitFor(() => expect(portalSwitch().getAttribute('aria-checked')).toBe('true'))
+    await waitFor(() => expect(portalWay('Sends').disabled).toBe(false))
+    fireEvent.click(portalWay('Sends'))
+    await waitFor(() => expect(appSendsIo.set).toHaveBeenCalledWith('trade', 'portal', 'send'))
+    await waitFor(() => expect(portalWay('Sends').getAttribute('aria-checked')).toBe('true'))
     expect(screen.getByText('The app sends the Portal opened reminder from its next morning run at 9 AM.')).toBeTruthy()
     expect(screen.queryByLabelText('Before you save')).toBeNull()
+    // Offers (v2.5595): the morning run prepares the text and the office presses it on Today's sends.
+    fireEvent.click(portalWay('Offers'))
+    await waitFor(() => expect(appSendsIo.set).toHaveBeenCalledWith('trade', 'portal', 'offer'))
+    await waitFor(() => expect(portalWay('Offers').getAttribute('aria-checked')).toBe('true'))
+    expect(screen.getByText('The app prepares the Portal opened reminder each morning for Today’s sends on the Dashboard.')).toBeTruthy()
   })
 
   it('says so when the switch did not change, and waits for Save on a step the draft hands to the app', async () => {
     auth.role = 'dev'
     appSendsIo.set.mockRejectedValue(new Error(APP_SENDS_NOT_SAVED))
     await open()
-    await waitFor(() => expect((portalSwitch() as HTMLButtonElement).disabled).toBe(false))
-    fireEvent.click(portalSwitch())
+    await waitFor(() => expect(portalWay('Sends').disabled).toBe(false))
+    fireEvent.click(portalWay('Sends'))
     await waitFor(() => expect(screen.getByText(APP_SENDS_NOT_SAVED)).toBeTruthy())
-    expect(portalSwitch().getAttribute('aria-checked')).toBe('false')
+    expect(portalWay('Off').getAttribute('aria-checked')).toBe('true')
     fireEvent.change(within(row('msa')).getByLabelText(/: who sends it$/), { target: { value: 'app' } })
     await waitFor(() => expect(within(row('msa')).getByText(APP_SENDS_SAVE_FIRST)).toBeTruthy())
-    expect((within(row('msa')).getByRole('switch') as HTMLButtonElement).disabled).toBe(true)
+    expect(within(row('msa')).getAllByRole('radio').every((b) => (b as HTMLButtonElement).disabled)).toBe(true)
   })
 
   it('reads the newest morning run above the flow, and its own sentences on Read the run', async () => {
@@ -242,7 +249,7 @@ describe('SettingsFlowsTab', () => {
     await open()
     const line = document.querySelector('[data-flows-last-run]') as HTMLElement
     await waitFor(() => expect(within(line).getByText(/^Last morning run today at .*: no text went, 12 kept back\. 11 are off and 1 has no number\.$/)).toBeTruthy())
-    expect(portalSwitch().getAttribute('aria-checked')).toBe('true')
+    expect(portalWay('Sends').getAttribute('aria-checked')).toBe('true')
     fireEvent.click(within(line).getByRole('button', { name: 'Read the run' }))
     expect(within(screen.getByLabelText('The morning run')).getByText('Customers wait until the run can read their page.')).toBeTruthy()
   })

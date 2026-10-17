@@ -94,7 +94,7 @@ describe('supabaseAppSendsIo', () => {
       now: { data: { value_text: '{"customer":{"yes":true}}' }, error: null },
       update: { data: [{ key: 'messages_nudge_app_sends_v1' }], error: null },
     })
-    await expect(supabaseAppSendsIo(client).set('trade', 'portal', true)).resolves.toEqual({ customer: { yes: true }, trade: { portal: true } })
+    await expect(supabaseAppSendsIo(client).set('trade', 'portal', 'send')).resolves.toEqual({ customer: { yes: true }, trade: { portal: true } })
     expect(calls).toContainEqual(['update', { value_text: '{"customer":{"yes":true},"trade":{"portal":true}}' }])
     expect(calls).toContainEqual(['eq', 'key', 'messages_nudge_app_sends_v1'])
   })
@@ -104,6 +104,6 @@ describe('supabaseAppSendsIo', () => {
       now: { data: { value_text: '{}' }, error: null },
       update: { data: [], error: null },
     })
-    await expect(supabaseAppSendsIo(client).set('trade', 'portal', true)).rejects.toThrow(APP_SENDS_NOT_SAVED)
+    await expect(supabaseAppSendsIo(client).set('trade', 'portal', 'send')).rejects.toThrow(APP_SENDS_NOT_SAVED)
   })
 })

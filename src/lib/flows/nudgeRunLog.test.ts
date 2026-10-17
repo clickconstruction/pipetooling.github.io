@@ -4,7 +4,7 @@ import type { NudgeKept, NudgeNotSent, NudgeRun } from './nudgeDispatch'
 import { RUN_HOUR, SUMMARY_REFUSED_MAX, runHourNow, runSummary, summaryWords } from './nudgeRunLog'
 
 const kept = (why: NudgeNotSent, contactId = 'tom'): NudgeKept => ({ contactId, stepId: 'portal', jobId: null, why, words: '' })
-const run = (notSent: NudgeKept[] = []): NudgeRun => ({ texts: [], notSent })
+const run = (notSent: NudgeKept[] = []): NudgeRun => ({ texts: [], offers: [], notSent })
 const NOW = new Date('2026-10-02T14:00:00Z')
 
 describe('runHourNow: which cron tick runs', () => {
@@ -58,11 +58,28 @@ describe('runSummary: what the owner reads first', () => {
     expect(s.words).toEqual(['2 texts went.', '23 texts did not go.', '1 person could not be read, so the run left them out.', 'Customers wait until the run can read their page.'])
   })
 
+  it('says the texts prepared for Today’s sends and the office’s morning texts that went (v2.5595)', () => {
+    const s = runSummary({ run: run([kept('offered')]), sent: 1, refused: [], unread: 0, customersHeld: 0, prepared: 2, morningSent: 1, now: NOW, dry: false })
+    expect(s).toMatchObject({ sent: 1, prepared: 2, morningSent: 1, kept: { offered: 1 } })
+    expect(s.words).toEqual([
+      '1 text went.',
+      '1 text the office prepared for this morning went.',
+      '2 texts were prepared for Today’s sends.',
+      '1 reminder was kept back because a text for that step already waits on Today’s sends.',
+    ])
+    expect(runSummary({ run: run(), sent: 0, refused: [], unread: 0, customersHeld: 0, prepared: 1, now: NOW, dry: true }).words).toEqual([
+      'A dry run. Nothing went and nothing was written.',
+      'No text would go.',
+      '1 text would be prepared for Today’s sends.',
+    ])
+    expect(runSummary({ run: run(), sent: 0, refused: [], unread: 0, customersHeld: 0, now: NOW, dry: false })).toMatchObject({ prepared: 0, morningSent: 0 })
+  })
+
   it('reads in plain words for every reason and every line', () => {
-    const all: NudgeNotSent[] = ['off', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
+    const all: NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
     const words = [
-      ...summaryWords({ at: '', dry: true, sent: 1, kept: Object.fromEntries(all.map((w) => [w, 1])), textsOff: 1, refused: [], refusedCount: 1, unread: 1, customersHeld: 1 }),
-      ...summaryWords({ at: '', dry: false, sent: 2, kept: Object.fromEntries(all.map((w) => [w, 3])), textsOff: 2, refused: [], refusedCount: 2, unread: 2, customersHeld: 0 }),
+      ...summaryWords({ at: '', dry: true, sent: 1, kept: Object.fromEntries(all.map((w) => [w, 1])), textsOff: 1, refused: [], refusedCount: 1, unread: 1, customersHeld: 1, prepared: 1, morningSent: 1 }),
+      ...summaryWords({ at: '', dry: false, sent: 2, kept: Object.fromEntries(all.map((w) => [w, 3])), textsOff: 2, refused: [], refusedCount: 2, unread: 2, customersHeld: 0, prepared: 2, morningSent: 2 }),
     ]
     expect(words.length).toBeGreaterThan(all.length * 2)
     for (const w of words) expect(plainWordsFailures(w)).toEqual([])

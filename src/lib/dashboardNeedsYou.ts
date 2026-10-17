@@ -101,6 +101,7 @@ export type NeedsYouItem = {
     | 'roadmap-needs-person'
     | 'job-followups'
     | 'customer-messages'
+    | 'todays-sends'
     | 'gc-review-weekly'
     | 'bulk-delete'
     | 'bulk-hours'
@@ -197,6 +198,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   // Revenue chasing tier, beside the quiet jobs: a customer waiting on our answer (residential build, R8 · 14).
   'customer-messages': 40,
+  // The same tier: the texts the morning run prepared for the office to press (Today's sends, v2.5595).
+  'todays-sends': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
   'bid-followups': 40,
   'demand-deadline': 40,
@@ -605,6 +608,12 @@ export type NeedsYouInputs = {
    */
   customerMessagesEnabled?: boolean
   customerMessages?: CustomerMessagesCounts | null
+  /**
+   * Today's sends (v2.5595, punch list #115): the texts the morning run prepared for the office to press, and the ones
+   * the office prepared for a morning, as `useTodaysSends` counts them (`lib/offers/offers.ts` → `todaysSendsLine`).
+   */
+  todaysSendsEnabled?: boolean
+  todaysSends?: { count: number; line: string } | null
   /**
    * Messages, cut 4c (v2.5285): the clause changes waiting on a controller's or a dev's approval, as `useClauseNeeds` reads
    * them (`contracts/approval.ts` → `clauseNeeds`). Approvers only; the rows are empty for anyone else.
@@ -1187,6 +1196,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         actionLabel: 'Messages',
       })
     }
+  }
+
+  if (inputs.todaysSendsEnabled && inputs.todaysSends && inputs.todaysSends.count > 0) {
+    const t = inputs.todaysSends
+    items.push({
+      key: 'todays-sends',
+      severity: 'amber',
+      kicker: 'Messages',
+      title: 'Today’s sends',
+      detail: t.line,
+      figure: t.count > 99 ? '99+' : String(t.count),
+      actionLabel: 'Open',
+    })
   }
 
   if (inputs.statementRoundEnabled && inputs.statementRound && inputs.statementRound.count > 0) {

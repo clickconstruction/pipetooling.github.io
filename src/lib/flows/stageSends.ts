@@ -15,7 +15,7 @@ import { stepLine, type QuickReply } from '../quickReplies/kernel'
 import { channelWord, clockTime, daysAgo, snippetOf, whenWords, type ThreadMessage } from '../messages/thread'
 import type { NeedsReplyRow } from '../followUp/queue'
 import { flowContactKind } from './facts'
-import { sentLately, type AppSends, type NudgeSent, type NudgeText, type TextNumber } from './nudgeDispatch'
+import { appSendMode, sentLately, type AppSends, type NudgeSent, type NudgeText, type TextNumber } from './nudgeDispatch'
 import { stepById, stepReading, type FlowDef, type FlowReading } from './state'
 
 // ---------- the moves the customer feels ----------
@@ -88,7 +88,14 @@ export interface StageKept {
   words: string
 }
 
-export type StageSend = { text: NudgeText; kept: null } | { text: null; kept: StageKept }
+export type StageSend =
+  | {
+      text: NudgeText
+      kept: null
+      /** Sent at once, or prepared for the office to press on Today's sends (an *offers* step, v2.5595). */
+      mode: 'send' | 'offer'
+    }
+  | { text: null; kept: StageKept }
 
 /** The log's words for a move that sent nothing. */
 export function stageNotSentWords(why: StageNotSent, left: readonly string[] = []): string {
@@ -128,7 +135,8 @@ export function stageSendFor(event: StageEvent, reading: FlowReading, lines: rea
   })
   if (!stepId || reading.kind !== 'residential') return kept('not felt')
   if (reading.off) return kept('off the flow')
-  if (!settings.appSends.residential?.[stepId]) return kept('off')
+  const mode = appSendMode(settings.appSends, 'residential', stepId)
+  if (mode === 'off') return kept('off')
   const step = stepReading(reading, stepId, jobId)
   if (!step || !(step.isTrue || step.rounds.some((r) => r.state === 'done'))) return kept('not done')
   if (sentLately(settings.sent, settings.contactId, { stepId, jobId }, 1, settings.now)) return kept('sent today')
@@ -146,9 +154,10 @@ export function stageSendFor(event: StageEvent, reading: FlowReading, lines: rea
       jobId,
       body: filled.text,
       record: { contactId: settings.contactId, stepId, jobId, at: settings.now.toISOString(), by: 'app', how: 'text' },
-      event: `The app sent the ${name} line by text.`,
+      event: mode === 'offer' ? `The app prepared the ${name} line for Today’s sends.` : `The app sent the ${name} line by text.`,
     },
     kept: null,
+    mode,
   }
 }
 

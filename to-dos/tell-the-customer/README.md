@@ -2,7 +2,7 @@
 name: "Tell the customer: every text or email to a customer is pressed by a person, seen before it goes, and followed by a receipt that suggests the call"
 number: 115
 group: gated
-status: Grace said build it all 2026-10-16; PR 2 (v2.5593, the sheet and the receipt on the schedule, PR 5799) and PR 3 (v2.5594, the estimate with both channels, stacked on PR 2) built the same evening; PR 4 offers next
+status: Grace said build it all 2026-10-16; PR 2 (v2.5593, the sheet and the receipt on the schedule, PR 5799) and PR 3 (v2.5594, the estimate with both channels, stacked on PR 2) built the same evening; PR 4 (v2.5595, the three-way switch, offers and Today's sends, Send in the morning, Hold until a day and Stop reminding) built that night, stacked on PR 3; the Rescheduled line's offer deferred to PR 6
 summary: >
   When an assistant schedules a job's first visit or sends an estimate, a Tell the customer sheet
   opens with the step's line filled for that customer, the channels that apply ticked, the words
@@ -13,7 +13,7 @@ summary: >
   call, with the step's script, a one-tap dial, and Add to my calls, a call task in Follow up that
   Quo's webhook closes when the call lands in the thread. The estimate's reminders become a
   cadence: a text on day one, a call on day three, a text on day seven.
-next: PR 4 offers and Today's sends (with the Rescheduled line as an offer on a moved first visit), then PR 5 calls and scripts, PR 6 the customer's say and the assistant's way.
+next: PR 5 calls and scripts, then PR 6 the customer's say and the assistant's way, with the Rescheduled line as an offer on a moved first visit.
 size: L as a train of six (the sheet and the receipt, the estimate, offers and Today's sends, calls and scripts, the customer's say and the assistant's way); each PR M, offers L
 blocker: Grace's look; the A2P campaign's approval for transactional texts is to be confirmed before any automatic send
 opinion: build the sheet and the receipt first; they carry the principle. Today's sends and the call task next; the cadence and the scripts are Flows editor work the office can shape as it goes.
@@ -253,7 +253,8 @@ transactional texts is confirmed, and a test customer with the owner's own numbe
 6. **The customer's say and the assistant's way** (M). `contacts.prefers` set from the customer's
    page, an EMAIL reply, or the office; the sheet and Today's sends read it. **My way** in
    Settings → Your account (ask first · send and show me). **Make this the office's line** on the
-   sheet. Guides updated.
+   sheet. The Rescheduled line as an offer when a first visit's day or window moves (deferred from PR 4: the
+   block editors change blocks in several places). Guides updated.
 7. **The types** after each push.
 
 Order of value: 2 carries the principle and is walkable the day it lands; 3 and 4 make it daily;

@@ -54,20 +54,25 @@ When the app does not know the paper yet, press **+ Add a new paper** instead. S
 
 A step can send its own reminder. Pick **the app sends it** under **Nudge after**, then press **Save**.
 
-The step then shows a switch called **The app sends this reminder**. Every step starts off. Only the owner or a dev turns one on.
+The step then shows a control called **The app and this reminder**. It has three ways. Every step starts on **Off**. Only the owner or a dev changes it.
 
-When the switch is on, the app texts the reminder at 9 AM. It goes from the company number once the step's quiet days pass. The words under the switch are the text it sends. The app sends texts only, so a call or an email stays with a person.
+- **Off**. The app does nothing with this reminder.
+- **Offers**. Each morning at 9 AM the app prepares the text and puts it on the Dashboard under Today's sends. The office reads it and presses Send. See [work Today's sends](/help/work-todays-sends).
+- **Sends**. The app texts the reminder at 9 AM from the company number.
 
-The switch saves the moment you press it. It does not wait for **Save**.
+Either way the text waits for the step's quiet days to pass. The words under the control are the text it prepares or sends. The app sends texts only, so a call or an email stays with a person.
 
-:::example A step the app sends
-{{chip:green|On}} The app sends this reminder
+The control saves the moment you press it. It does not wait for **Save**.
+
+:::example A step the office presses
+{{chip:gray|Off}} {{chip:green|Offers}} {{chip:gray|Sends}}
+Each morning the app prepares the text for Today's sends on the Dashboard. The office presses it.
 “Chris, did the invite come through?”
 :::
 
 ## See the morning run
 
-The line above the flow says what the last morning run did. It counts the texts that went and the reminders kept back. It also says why each one was kept back. Press **Read the run** to see every line the run wrote.
+The line above the flow says what the last morning run did. It counts the texts that went, the texts it prepared for Today's sends, and the reminders kept back. It also says why each one was kept back. Press **Read the run** to see every line the run wrote.
 
 ## Save or put it back
 

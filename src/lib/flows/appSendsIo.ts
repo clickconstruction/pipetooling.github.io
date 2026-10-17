@@ -10,7 +10,7 @@ import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorH
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1, APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 } from '../appSettingsKeys'
 import type { QuickReply } from '../quickReplies/kernel'
 import { supabase } from '../supabase'
-import { APP_SENDS_NOT_SAVED, appSendsFrom, appSendsText, lastRunFrom, withAppSend, type LastRun } from './appSends'
+import { APP_SENDS_NOT_SAVED, appSendsFrom, appSendsText, lastRunFrom, withAppSend, type AppSendMode, type LastRun } from './appSends'
 import type { FlowKind } from './facts'
 import type { AppSends } from './nudgeDispatch'
 import { quickRepliesFrom, type RunQuickReplyRow } from './nudgeRunInputs'
@@ -24,8 +24,8 @@ export interface AppSendsRead {
 
 export interface AppSendsIo {
   load(): Promise<AppSendsRead>
-  /** Turns one step on or off over the switch as stored now, and resolves with the switch as written. Rejects with words a person can act on when nothing changed. */
-  set(kind: FlowKind, stepId: string, on: boolean): Promise<AppSends>
+  /** Sets one step to off, offers or sends over the switch as stored now, and resolves with the switch as written. Rejects with words a person can act on when nothing changed. */
+  set(kind: FlowKind, stepId: string, mode: AppSendMode): Promise<AppSends>
 }
 
 const QUICK_REPLY_COLUMNS = 'id, text, for_kind, step_key, scope, added_by, added_at, removed_at'
@@ -49,11 +49,11 @@ export function supabaseAppSendsIo(client: SupabaseClient<Database> = supabase):
         quickReplies: replies.error ? [] : quickRepliesFrom(replies.data ?? []),
       }
     },
-    async set(kind, stepId, on) {
-      // Read the switch again first, so turning one step on keeps a step someone turned on since the tab was read.
+    async set(kind, stepId, mode) {
+      // Read the switch again first, so setting one step keeps a step someone set since the tab was read.
       const now = await client.from('app_settings').select('value_text').eq('key', APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1).maybeSingle()
       checkSupabaseError(now, 'read the app’s reminders')
-      const next = withAppSend(appSendsFrom(now.data?.value_text ?? null), kind, stepId, on)
+      const next = withAppSend(appSendsFrom(now.data?.value_text ?? null), kind, stepId, mode)
       const result = await client.from('app_settings').update({ value_text: appSendsText(next) }).eq('key', APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1).select('key')
       checkSupabaseError(result, 'turn the app’s reminder on or off')
       if (result.data.length === 0) throw new Error(APP_SENDS_NOT_SAVED)

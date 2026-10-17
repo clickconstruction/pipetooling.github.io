@@ -27,7 +27,7 @@ import {
   type EditResult,
   type FlowDraft,
 } from '../../../lib/flows/editor'
-import { APP_SENDS_LABEL, appSendOn, appSendSwitch, stepNudgeWords } from '../../../lib/flows/appSends'
+import { APP_SEND_MODE_HINT, APP_SEND_MODE_WORDS, APP_SEND_MODES, APP_SENDS_LABEL, appSendMode, appSendSwitch, stepNudgeWords, type AppSendMode } from '../../../lib/flows/appSends'
 import { FLOW_PAPERS, isDocPaperId, isPaperId, stepFactById, type FlowKind } from '../../../lib/flows/facts'
 import type { SavedPaper } from '../../../lib/flows/newPaper'
 import type { AppSends } from '../../../lib/flows/nudgeDispatch'
@@ -88,7 +88,7 @@ export interface FlowAppSends {
   quickReplies: readonly QuickReply[]
   /** The step being written, as `<kind>:<step id>`. */
   busy: string | null
-  onSet: (step: FlowStep, on: boolean) => void
+  onSet: (step: FlowStep, mode: AppSendMode) => void
 }
 
 /** A name box that saves on leaving it or Enter, so one rename is one change. */
@@ -157,30 +157,35 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
   }
   const paperLabel = (paper: string) => (isPaperId(paper) ? FLOW_PAPERS[paper].short : isDocPaperId(paper) ? docName(paper, p.docNames) : paper)
 
-  // The owner's switch on a reminder the app sends, with the words the morning run would send.
+  // The owner's control on a reminder the app may send: Off, Offers (the office presses it on Today's sends, v2.5595) or
+  // Sends, with the words the morning run would prepare or send.
   const appSend = (step: FlowStep) => {
     const a = p.appSends
     if (!a) return null
     const sw = appSendSwitch(step, { canSet: a.canSet, saved: a.saved })
     if (!sw.show) return null
-    const on = appSendOn(a.sends, p.kind, step.id)
+    const mode = appSendMode(a.sends, p.kind, step.id)
     const busy = a.busy === `${p.kind}:${step.id}`
     return (
       <div data-app-sends={step.id} style={{ whiteSpace: 'normal', maxWidth: 280, marginTop: '0.35rem', display: 'grid', gap: '0.2rem' }}>
-        <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={on}
-            aria-label={`${step.name}: ${APP_SENDS_LABEL}`}
-            disabled={!sw.live || busy}
-            onClick={() => a.onSet(step, !on)}
-            style={flowSwitch(on, !sw.live || busy)}
-          >
-            {busy ? 'Saving…' : on ? 'On' : 'Off'}
-          </button>
-          <span style={{ fontSize: '0.8rem' }}>{APP_SENDS_LABEL}</span>
+        <span style={{ fontSize: '0.8rem' }}>{APP_SENDS_LABEL}</span>
+        <span role="radiogroup" aria-label={`${step.name}: ${APP_SENDS_LABEL}`} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+          {APP_SEND_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mode === m}
+              disabled={!sw.live || busy}
+              onClick={() => mode !== m && a.onSet(step, m)}
+              style={flowSwitch(mode === m, !sw.live || busy)}
+            >
+              {APP_SEND_MODE_WORDS[m]}
+            </button>
+          ))}
+          {busy && <span style={{ ...flowNote, fontSize: '0.78rem' }}>Saving…</span>}
         </span>
+        <span style={{ ...flowNote, fontSize: '0.78rem' }}>{APP_SEND_MODE_HINT[mode]}</span>
         {sw.note && <span style={{ ...flowNote, fontSize: '0.78rem' }}>{sw.note}</span>}
         <span style={{ ...flowNote, fontSize: '0.78rem' }}>“{stepNudgeWords(p.kind, step, a.quickReplies)}”</span>
       </div>

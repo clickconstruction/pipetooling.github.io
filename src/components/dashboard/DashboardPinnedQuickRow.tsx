@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
+import { lazy, Suspense, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
@@ -47,6 +47,7 @@ import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
 import { useCustomerMessagesCounts } from '../../hooks/useCustomerMessagesCounts'
+import { useTodaysSends } from '../../hooks/useTodaysSends'
 import { useClauseNeeds } from '../../hooks/useClauseNeeds'
 import { clausePaperHref } from '../../lib/contracts/clauseRows'
 import { canOpenGcProjects } from '../../lib/gc/access'
@@ -90,6 +91,9 @@ import {
   getPinnedChipDisplay,
   getTallyLinkAccessibleName,
 } from '../../lib/dashboardPinnedRow'
+
+// Today's sends (v2.5595): the window behind the Needs you line, loaded when it opens so the Dashboard's chunk stays as it was.
+const TodaysSendsWindow = lazy(() => import('./TodaysSendsWindow').then((m) => ({ default: m.TodaysSendsWindow })))
 
 export interface DashboardPinnedQuickRowProps {
   authUserId: string | undefined
@@ -372,6 +376,7 @@ export function DashboardPinnedQuickRow({
     Boolean(authUserId) && role != null,
   )
   const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
+  const [todaysSendsOpen, setTodaysSendsOpen] = useState(false)
   /** Needs You "Match deposits" opens Accounts Receivable in place (Tier-2 #17; the v2.2751 pattern). */
   const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
   // Why-we-lost nudge (v2.1800): same audience as the lens — the superintendent gate on
@@ -521,6 +526,9 @@ export function DashboardPinnedQuickRow({
   // The Customers line (residential build, R8 · 14): the same team, off until Messages has its page.
   const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && gcFollowUpEnabled
   const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled)
+  // Today's sends (v2.5595): the texts the morning run prepared for the office to press; the same team as the Customers line.
+  const todaysSendsEnabled = gcFollowUpEnabled
+  const todaysSends = useTodaysSends(todaysSendsEnabled)
   // Contracts and clauses (Messages, cut 4c): the clause changes waiting on a controller's or a dev's approval.
   const contractClausesEnabled = !hideBanners && Boolean(authUserId)
   const { rows: contractClauses } = useClauseNeeds(contractClausesEnabled)
@@ -606,6 +614,8 @@ export function DashboardPinnedQuickRow({
     gcFollowUp,
     customerMessagesEnabled,
     customerMessages,
+    todaysSendsEnabled,
+    todaysSends: todaysSends.need,
     contractClausesEnabled,
     contractClauses,
     robotBacklogEnabled,
@@ -765,6 +775,8 @@ export function DashboardPinnedQuickRow({
               navigate('/tally?tab=transactions')
             } else if (item.key === 'tally-team') {
               setTallyStaffFollowUpModalOpen(true)
+            } else if (item.key === 'todays-sends') {
+              setTodaysSendsOpen(true)
             } else if (item.key === 'lost-bids') {
               navigate('/bids?tab=why-we-lost')
             } else if (item.key === 'bid-followups') {
@@ -999,6 +1011,11 @@ export function DashboardPinnedQuickRow({
             void refetchArBankUnallocatedCount()
           }}
         />
+      )}
+      {renderModals && todaysSendsOpen && (
+        <Suspense fallback={null}>
+          <TodaysSendsWindow onClose={() => setTodaysSendsOpen(false)} onChanged={() => todaysSends.reload()} />
+        </Suspense>
       )}
       {renderModals && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardStaleTallyStaffFollowUpModal
