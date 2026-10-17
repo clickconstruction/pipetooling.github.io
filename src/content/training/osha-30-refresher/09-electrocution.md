@@ -21,6 +21,7 @@ Electricity is a leading cause of construction deaths. Almost every electrical i
 - Overhead lines are always live. Stay **10 ft** away up to **50 kV** and **15 ft** up to 200 kV. Then **20 ft** to 350 kV and **25 ft** to 500 kV. Past that, **35 ft** to 750 kV and **45 ft** to 1,000 kV.
 - {{figure:power-line-clearances|The higher the voltage, the further you stay. Ten feet is the least, and that is for the smallest line.}}
 - Underground flags: **yellow** gas or oil, **blue** water, **red** electric. The employer calls **811**. You verify the marks and use hand tools within **3 ft** of a flag.
+- {{figure:dig-flags|Yellow is gas or oil, blue is water, red is electric. A square inside a square means double insulated.}}
 
 ## Traps
 - A disconnected panel is not safe. Stored energy or a coworker re-energizing it can still shock you. Lock out, tag out, then try it.

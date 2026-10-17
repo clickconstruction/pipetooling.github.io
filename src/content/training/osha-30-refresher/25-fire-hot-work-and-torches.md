@@ -13,6 +13,7 @@ A soldering or brazing torch is hot work. Hot work is any work that makes a sour
 - Fire needs heat, fuel, oxygen and a chain reaction. Remove any one and the fire goes out.
 - Flammables like gasoline, sawdust and propane ignite easily. Combustibles like timber, cardboard and rubber need more heat.
 - Fire classes: **A** ordinary combustibles, **B** flammable liquids and gases, **C** energized electrical equipment, **D** metals, **K** cooking oils.
+- {{figure:fire-classes|Five classes and what puts each out. Never water on electricity.}}
 - An electrical fire takes dry chemical or CO2, never water. A flammable liquid takes CO2, dry chemical or foam.
 - Keep every ignition source at least **50 ft** from flammable liquids. Keep the containers closed and grounded. Keep fuel gas at least **20 ft** from oxygen, or behind a 5-ft noncombustible barrier rated for half an hour.
 - Cylinders stay upright and secured with valve caps on. No oil or grease on oxygen fittings. Never store LP gas inside a building.

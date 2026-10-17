@@ -12,6 +12,7 @@ A cave-in is not the only thing that kills in a trench. Bad air, water and a slo
 - Secure the ladder and extend it **3 ft** above the landing.
 - Under 4 ft a protective system is usually unnecessary. Water, unstable soil or loads at the edge change that.
 - Warning signs: bulging, cracking, boiling, heaving, slumping and sliding. On any sign, or seeping water, stop work and reinforce the walls before anyone goes back in.
+- {{figure:cave-in-signs|Six ways a wall says it is about to go. On any one, stop work and get out.}}
 - Bad air collects at the bottom and can be invisible and odorless. Engine exhaust, contaminated soil, a cut gas or sewer line, chemicals, welding fumes and low oxygen all count.
 - Test the air in any trench deeper than 4 ft where a hazardous atmosphere could exist. Use a calibrated **four-gas meter**: oxygen, flammable gas, carbon monoxide and hydrogen sulfide. Test before entry and re-test.
 - The competent person's atmospheric permit lasts **one day**. It is cancelled when conditions turn unsafe. A gas smell means test, evacuate and re-enter only on a safe reading and a new permit.
