@@ -478,10 +478,19 @@ SELECT mfu.refused('a call says its day', $q$SELECT public.call_task_add(priya, 
 SELECT public.call_task_move((SELECT id FROM calls WHERE what = 'first'), public.app_today());
 SELECT mfu.same('Tomorrow moves the day', (SELECT (due_on = public.app_today())::text FROM public.call_tasks WHERE id = (SELECT id FROM calls WHERE what = 'first')), 'true');
 SELECT mfu.refused('a call is never moved to a day gone by', $q$SELECT public.call_task_move((SELECT id FROM calls WHERE what = 'first'), public.app_today() - 1)$q$, 'Pick today or a day to come');
-SELECT mfu.same('the badge counts her once for the call', public.follow_up_count()::text, (SELECT count(*)::text FROM (
-  SELECT c.id FROM public.contacts c WHERE c.state = 'waiting' OR (c.state = 'snoozed' AND c.snoozed_until <= public.app_today())
-  UNION SELECT o.contact_id FROM public.contact_owed o WHERE o.done_at IS NULL
-  UNION SELECT priya FROM ids) p WHERE NOT EXISTS (SELECT 1 FROM public.contacts off WHERE off.id = p.id AND off.kind IN ('supply_house', 'candidate'))));
+-- The badge: a person with nothing else open counts once for an open call, and not once it closes.
+RESET ROLE;
+INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000006012', 'unknown');
+INSERT INTO public.contact_channels (contact_id, kind, value) VALUES ('00000000-0000-0000-0000-000000006012', 'phone', '(830) 555-0190');
+CREATE TEMP TABLE badge (what text, n integer);
+GRANT SELECT, INSERT ON badge TO authenticated;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+INSERT INTO badge SELECT 'before', public.follow_up_count();
+INSERT INTO calls SELECT 'badge', public.call_task_add('00000000-0000-0000-0000-000000006012', NULL, NULL, NULL, public.app_today() + 1, 'about the pad', NULL);
+SELECT mfu.same('the badge counts a person once for an open call', public.follow_up_count()::text, (SELECT (n + 1)::text FROM badge WHERE what = 'before'));
+SELECT public.call_task_done((SELECT id FROM calls WHERE what = 'badge'), 'skipped', NULL);
+SELECT mfu.same('and not once the call closes', public.follow_up_count()::text, (SELECT n::text FROM badge WHERE what = 'before'));
 -- I called, with the app's note.
 SELECT public.call_task_done((SELECT id FROM calls WHERE what = 'first'), 'called', NULL);
 SELECT mfu.same('I called closes it with a note in the thread',
