@@ -9,6 +9,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Contact } from '../../lib/contacts/kernel'
 import type { FollowUpThreadIo, FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
+import type { ThreadMessage } from '../../lib/messages/thread'
 import { BACK_CLEARED_TOAST } from '../../lib/followUp/queue'
 import { owedStore } from '../../lib/followUp/owedStore'
 import { SMOKE_AUTH_USER_ID, renderWithProviders } from '../../test/renderSmokeMocks'
@@ -92,6 +93,7 @@ function fakeIo(over: Partial<FollowUpThreadIo> = {}, read: FollowUpThreadRows =
     setState: vi.fn(async () => null),
     backDone: vi.fn(async () => undefined),
     markOwed: vi.fn(async () => 'o-new'),
+    callAdd: vi.fn(async () => 'c-new'),
     ...over,
   }
 }
@@ -103,10 +105,11 @@ function BoxStandIn({ contactId }: { contactId: string }) {
 }
 
 /** The slots as the window draws them, for one person, with or without a reply box. */
-function Harness({ io, contact, box = false }: { io: FollowUpThreadIo; contact: Contact; box?: boolean }) {
+function Harness({ io, contact, box = false, line }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; line?: ThreadMessage }) {
   const slots = useFollowUpThreadSlots(io)
   return (
     <div>
+      <div data-testid="under">{line ? slots.underLine?.(line, contact) : null}</div>
       <div data-testid="header">{slots.headerRight?.(contact)}</div>
       <div data-testid="status">{slots.statusRow?.(contact)}</div>
       <div data-testid="above">{slots.aboveBox?.(contact)}</div>
@@ -123,13 +126,26 @@ function Harness({ io, contact, box = false }: { io: FollowUpThreadIo; contact: 
 }
 
 const reread = vi.fn()
-function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false) {
+function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false, line?: ThreadMessage) {
   renderWithProviders(
     <MessagesRereadContext.Provider value={reread}>
-      <Harness io={io} contact={contact} box={box} />
+      <Harness io={io} contact={contact} box={box} line={line} />
     </MessagesRereadContext.Provider>,
   )
 }
+
+/** A text we sent, as the thread holds it. */
+const sentText = (patch: Partial<ThreadMessage> = {}): ThreadMessage => ({
+  id: 'm-out',
+  contactId: 'priya',
+  jobId: null,
+  channel: 'text',
+  direction: 'out',
+  at: new Date().toISOString(),
+  who: 'Rosa',
+  body: 'Your estimate is ready.',
+  ...patch,
+})
 const header = () => within(screen.getByTestId('header'))
 const status = () => within(screen.getByTestId('status'))
 const more = () => within(screen.getByTestId('more'))
@@ -293,5 +309,38 @@ describe('what we owe, in the thread window (C2)', () => {
     expect(await screen.findByText('Greg Paulk comes back to Follow up on Monday.')).toBeTruthy()
     expect(io.setState).toHaveBeenCalledWith('greg', 'snoozed')
     expect(io.markOwed).not.toHaveBeenCalled()
+  })
+})
+
+describe('the quiet call ask under a text we sent (v2.5596)', () => {
+  it('asks under a customer’s text sent today, and Add to my calls makes the task for tomorrow', async () => {
+    open.contactId = 'priya'
+    const io = fakeIo()
+    renderThread(io, PRIYA, false, sentText())
+    await waitFor(() => expect(within(screen.getByTestId('under')).getByText('Call Priya to talk it through?')).toBeTruthy())
+    fireEvent.click(within(screen.getByTestId('under')).getByRole('button', { name: 'Add to my calls' }))
+    await waitFor(() => expect(io.callAdd).toHaveBeenCalledWith(expect.objectContaining({ contactId: 'priya', stepKey: null, jobKey: null, what: 'to follow up', script: null })))
+  })
+
+  it('stays quiet under their text, under a text from another day, for a trade partner, and once a call to them waits', async () => {
+    open.contactId = 'priya'
+    renderThread(fakeIo(), PRIYA, false, sentText({ direction: 'in' }))
+    await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
+    expect(screen.getByTestId('under').textContent).toBe('')
+    cleanup()
+    renderThread(fakeIo(), PRIYA, false, sentText({ at: '2026-09-01T15:00:00.000Z' }))
+    await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
+    expect(screen.getByTestId('under').textContent).toBe('')
+    cleanup()
+    open.contactId = 'greg'
+    renderThread(fakeIo(), GREG, false, sentText({ contactId: 'greg' }))
+    await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
+    expect(screen.getByTestId('under').textContent).toBe('')
+    cleanup()
+    const waiting = fakeIo({}, { ...rows(), calls: [{ id: 'c1', contact_id: 'priya', step_key: 'estimate', bid_id: null, project_id: null, jobs_ledger_id: null, due_on: '2026-10-03', what: 'about the estimate', script: null, made_by: 'u-rosa', made_at: '2026-10-02T15:00:00.000Z', done_at: null }] })
+    open.contactId = 'priya'
+    renderThread(waiting, PRIYA, false, sentText())
+    await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
+    expect(screen.getByTestId('under').textContent).toBe('')
   })
 })

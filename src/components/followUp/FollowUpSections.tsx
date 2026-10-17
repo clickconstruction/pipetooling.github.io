@@ -7,7 +7,9 @@
  * line. The queue and its words are the kernels' (`followUp/queue.ts`, `messages/owed.ts`, `messages/promises.ts`);
  * this draws them and hands each press to the page.
  */
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { callFirst, callTitle, CALL_WORDS, dayAfter, type CallTaskRow } from '../../lib/calls/callTasks'
+import { telHrefFor } from '../../lib/phoneContact'
 import { lineGcProject } from '../../lib/followUp/askArchitect'
 import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
 import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
@@ -26,6 +28,9 @@ export interface FollowUpSectionActions {
   remindMonday: (contactId: string) => void
   backDone: (noteId: string) => void
   anotherDay: (noteId: string) => void
+  /** A call to make (v2.5596): I called or Skip, and Tomorrow. Unset: the row reads only. */
+  callDone?: (id: string, how: 'called' | 'skipped') => void
+  callMove?: (id: string, dueYmd: string) => void
   /** A plans question to the job's architect. Unset, or a line on no GC project: no press. */
   askArchitect?: (messageId: string) => void
   /** A customer's page as they see it (the portal's; the screen comes with cut 8). Unset: no press. */
@@ -114,8 +119,15 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
           queue.needsReply.map((r) => byId.get(r.contactId) && <ReplyRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
       </Section>
-      <Section title={`We owe them (${queue.weOwe.length})`} note="What we still have to do for someone, with its day. It stays our move until a note or a message marks it done.">
-        {queue.weOwe.length === 0 ? <Empty>Nothing we owe anyone.</Empty> : queue.weOwe.map((r) => byId.get(r.contactId) && <OwedRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
+      <Section title={`We owe them (${queue.weOwe.length + queue.calls.length})`} note={`What we still have to do for someone, with its day. It stays our move until a note or a message marks it done. ${CALL_WORDS.lane}`}>
+        {queue.weOwe.length === 0 && queue.calls.length === 0 ? (
+          <Empty>Nothing we owe anyone.</Empty>
+        ) : (
+          <>
+            {queue.weOwe.map((r) => byId.get(r.contactId) && <OwedRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
+            {queue.calls.map((r) => byId.get(r.contactId) && <CallRowView key={r.id} row={r} contact={byId.get(r.contactId)!} {...props} />)}
+          </>
+        )}
       </Section>
       {renderNudges?.(queue.nudges)}
     </section>
@@ -351,6 +363,57 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
               </Btn>
             ),
           )}
+        </>
+      }
+      props={props}
+    />
+  )
+}
+
+/** A call to make (v2.5596): who, about what, its day; the script to read; Call, I called, Tomorrow and Skip. */
+function CallRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: CallTaskRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
+  const { actions, pressing, todayYmd, nowIso } = props
+  const [open, setOpen] = useState(false)
+  const first = callFirst(contact)
+  const tel = contact.phone ? telHrefFor(contact.phone) : null
+  const busy = pressing === `call ${row.id}`
+  return (
+    <Row
+      contact={contact}
+      pill={<Chip tone={row.late ? 'red' : row.today ? 'amber' : 'blue'}>{row.pill}</Chip>}
+      sub={`${callTitle(first, row.what)} · added by ${row.madeBy} ${agoWords(row.madeAt, nowIso)}`}
+      snippet={
+        row.script ? (
+          <div data-call-script-row={row.id} style={{ fontSize: '0.85rem' }}>
+            <button type="button" onClick={() => setOpen((o) => !o)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}>
+              {open ? 'Hide what to say' : CALL_WORDS.whatToSay}
+            </button>
+            {open && <p style={{ margin: '0.25rem 0 0', whiteSpace: 'pre-wrap' }}>{row.script}</p>}
+          </div>
+        ) : undefined
+      }
+      acts={
+        <>
+          {tel ? (
+            <a href={tel} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.7rem', borderRadius: 8, background: '#16a34a', color: 'white', fontWeight: 700, fontSize: '0.8rem', textDecoration: 'none' }} data-testid={`call-dial-${row.id}`}>
+              📞 {CALL_WORDS.call}
+            </a>
+          ) : null}
+          {actions.callDone ? (
+            <Btn onClick={() => actions.callDone?.(row.id, 'called')} disabled={busy} title="Closes the call with a note in the thread.">
+              {CALL_WORDS.iCalled}
+            </Btn>
+          ) : null}
+          {actions.callMove ? (
+            <Btn onClick={() => actions.callMove?.(row.id, dayAfter(todayYmd))} disabled={busy} title="Moves the call to tomorrow.">
+              {CALL_WORDS.tomorrow}
+            </Btn>
+          ) : null}
+          {actions.callDone ? (
+            <Btn onClick={() => actions.callDone?.(row.id, 'skipped')} disabled={busy} title="Closes the call with no note. A gray line says so.">
+              {CALL_WORDS.skip}
+            </Btn>
+          ) : null}
         </>
       }
       props={props}

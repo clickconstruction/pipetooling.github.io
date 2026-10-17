@@ -19,6 +19,7 @@
  * Paid's reminder reads each bill's pay by day, which the loader stamps from the expected pay model. Each bill is a
  * round of Billed and of Paid. The usual days are a first guess until a year of done steps gives the middle.
  */
+import { SEED_CALL_SCRIPTS } from './callScripts.ts'
 import type { FlowKind } from './facts.ts'
 import type { FlowDef, FlowStep } from './state.ts'
 
@@ -36,8 +37,13 @@ const step = (s: StepInput): FlowStep => ({
   later: null,
   nudge: null,
   owedWords: null,
+  callScript: null,
+  suggestCall: true,
   ...s,
 })
+
+/** The app's own call script on a residential step (v2.5596), as the migration seeds it. */
+const scriptOf = (id: keyof typeof SEED_CALL_SCRIPTS): FlowStep['callScript'] => ({ en: SEED_CALL_SCRIPTS[id].text, es: SEED_CALL_SCRIPTS[id].textEs })
 
 export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
   trade: {
@@ -189,7 +195,7 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
       {
         lane: 'per_job',
         steps: [
-          step({ id: 'booked', name: 'Booked', nameEs: 'Agendado', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['booked'], owedWords: 'the day we come', usual: 1 }),
+          step({ id: 'booked', name: 'Booked', nameEs: 'Agendado', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['booked'], owedWords: 'the day we come', usual: 1, callScript: scriptOf('booked') }),
           step({
             id: 'onway', name: 'On the way', nameEs: 'En camino', phase: 'setup', who: 'us', seat: 'Luis',
             later: { en: 'On the day of your visit.', es: 'El día de su visita.' },
@@ -206,12 +212,12 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
             facts: ['found'], owedWords: 'what we found', usual: 0,
           }),
           step({
-            id: 'estimate', name: 'Estimate sent', nameEs: 'Presupuesto enviado', phase: 'pricing', who: 'us', seat: 'Rosa',
+            id: 'estimate', name: 'Estimate sent', nameEs: 'Presupuesto enviado', phase: 'pricing', who: 'us', seat: 'Rosa', callScript: scriptOf('estimate'),
             later: { en: 'After we find the problem.', es: 'Después de encontrar el problema.' },
             facts: ['estimate_sent'], papers: ['estimate'], owedWords: 'the estimate', usual: 1,
           }),
           step({
-            id: 'approved', name: 'Approved', nameEs: 'Aprobado', phase: 'pricing', who: 'them',
+            id: 'approved', name: 'Approved', nameEs: 'Aprobado', phase: 'pricing', who: 'them', callScript: scriptOf('approved'),
             later: { en: 'Once you have the estimate.', es: 'Cuando reciba el presupuesto.' },
             facts: ['estimate_approved'], nudge: { days: 1, how: 'text', send: 'app', dayFact: null }, usual: 3,
           }),

@@ -2,7 +2,7 @@
 title: set up the steps a person goes through
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: flows, flow, residential customer, sub, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings
+keywords: flows, flow, residential customer, sub, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings, call script, suggest a call
 order: 100
 ---
 Each customer, trade partner, architect, residential customer and sub goes through a flow of steps. The office sets up those steps in Settings. Every change is tried on everyone before you save it.
@@ -69,6 +69,17 @@ The control saves the moment you press it. It does not wait for **Save**.
 Each morning the app prepares the text for Today's sends on the Dashboard. The office presses it.
 “Chris, did the invite come through?”
 :::
+
+## Write the call script
+
+After a step's text goes to a customer, the receipt suggests a call and shows what to say. The words come from the step.
+
+1. Open the step and press **Call script**.
+2. Write the words in English, then in Spanish. Use the same blanks as the lines, like {first} and {day}.
+3. Leave both boxes empty to use the app's own words.
+4. Untick **Suggest a call after this goes** when a step needs no call.
+
+The script saves with **Save**. See [call a customer from a task](/help/call-a-customer-from-a-task).
 
 ## See the morning run
 

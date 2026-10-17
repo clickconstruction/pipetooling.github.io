@@ -85,13 +85,15 @@ export function queueForPill<C, N extends { contactId: string }>(
   const needsYou = queue.needsYou.filter(keep)
   const needsReply = queue.needsReply.filter(keep)
   const weOwe = queue.weOwe.filter(keep)
-  const people = new Set<string>([...newLane, ...needsYou, ...needsReply, ...weOwe].map((r) => r.contactId))
+  const calls = queue.calls.filter(keep)
+  const people = new Set<string>([...newLane, ...needsYou, ...needsReply, ...weOwe, ...calls].map((r) => r.contactId))
   return {
     newLane,
     needsYou,
     clauses: [],
     needsReply,
     weOwe,
+    calls,
     nudges: queue.nudges.filter(keep),
     onPortal: queue.onPortal,
     count: people.size,

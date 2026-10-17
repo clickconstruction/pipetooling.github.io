@@ -13,6 +13,7 @@ import { askArchitectToast, planQuestionOf, type AskArchitectEnd, type PlanQuest
 import { pressProblem, supabaseFollowUpIo, type FollowUpIo } from '../../lib/followUp/followUpIo'
 import { supabaseNewLaneCardIo, type NewLaneCardIo } from '../../lib/followUp/newLaneCardIo'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
+import { CALL_WORDS } from '../../lib/calls/callTasks'
 import { anotherDay, BACK_CLEARED_TOAST, hasToast, stateToast, type FollowUpQueue, type OnPortal } from '../../lib/followUp/queue'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useFollowUpQueue } from '../../hooks/useFollowUpQueue'
@@ -121,6 +122,9 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
       const next = anotherDay(todayYmd)
       void run(`back ${noteId}`, (x) => x.setBackDay(noteId, { ymd: next.backOn, words: null }), next.toast)
     },
+    // A call to make (v2.5596): I called writes the app's note, Skip a gray line, Tomorrow moves the day.
+    callDone: (id, how) => void run(`call ${id}`, (x) => x.callDone(id, how), how === 'called' ? CALL_WORDS.calledToast : CALL_WORDS.skippedToast),
+    callMove: (id, dueYmd) => void run(`call ${id}`, (x) => x.callMove(id, dueYmd), CALL_WORDS.movedToast(dueYmd)),
     ...(planQuestions ? { askArchitect: (messageId: string) => void askArchitect(planQuestions, messageId) } : {}),
     ...(seeTheirPage ? { seeTheirPage } : {}),
     sortAll: () => setSorting(true),

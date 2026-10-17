@@ -6,6 +6,9 @@
  * until the generated types carry the tables; the lead's one types PR swaps them for `Tables<'…'>`.
  */
 import type { Contact } from '../contacts/kernel'
+import type { CallTaskRecord } from '../calls/callTasks'
+import type { CallTaskDbRow } from '../calls/callTasksIo'
+import { jobKeyOfRow } from '../messages/jobKeys'
 import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { threadMessageFromRow, type MessageLoadContext, type MessageRow } from '../messages/load'
 import type { ThreadMessage } from '../messages/thread'
@@ -80,6 +83,8 @@ export type FollowUpContact = QueueContact & {
   /** Their jobs, by key, in the rail's order, and the starred one. Empty when the read loaded none. */
   jobIds?: string[]
   defaultJobId?: string | null
+  /** Their first phone number that did not send STOP, for a call's dial (v2.5596); null for none. */
+  phone?: string | null
 }
 
 /** A highlight as the thread draws it. */
@@ -104,6 +109,8 @@ export interface FollowUpRows {
   /** The open people's jobs, and those jobs' states, for the New lane's *Which job?* (R7). */
   jobs?: readonly ContactJobRow[]
   jobStates?: LaneJobRows
+  /** The open calls to make (v2.5596), every person's; none before the push. */
+  callTasks?: readonly CallTaskDbRow[]
 }
 
 const STATES: ReadonlySet<string> = new Set<ContactState>(['waiting', 'snoozed', 'done'])
@@ -121,7 +128,9 @@ const nameOf = (userNames: Readonly<Record<string, string>>, id: string | null) 
  */
 export function followUpContactsFromRows(rows: FollowUpRows, userNames: Readonly<Record<string, string>>): FollowUpContact[] {
   const byId = new Map(rows.contacts.map((r) => [r.id, r]))
-  return contactsFromRows(rows.contacts, rows.channels, rows.jobs ?? [], rows.records).map((c: Contact) => followUpContactOf(c, byId.get(c.id), userNames))
+  const phones = new Map<string, string>()
+  for (const ch of rows.channels) if (ch.kind === 'phone' && !ch.opted_out_at && !phones.has(ch.contact_id)) phones.set(ch.contact_id, ch.value)
+  return contactsFromRows(rows.contacts, rows.channels, rows.jobs ?? [], rows.records).map((c: Contact) => ({ ...followUpContactOf(c, byId.get(c.id), userNames), phone: phones.get(c.id) ?? null }))
 }
 
 /**
@@ -250,6 +259,22 @@ export function owedRecordsFromRows(rows: readonly ContactOwedRow[], userNames: 
   })
 }
 
+/** The calls to make (v2.5596), the maker named. */
+export function callTasksFromRows(rows: readonly CallTaskDbRow[], userNames: Readonly<Record<string, string>>): CallTaskRecord[] {
+  return rows.map((r) => ({
+    id: r.id,
+    contactId: r.contact_id,
+    stepKey: r.step_key,
+    jobKey: jobKeyOfRow(r),
+    dueYmd: r.due_on,
+    what: r.what,
+    script: r.script,
+    madeBy: nameOf(userNames, r.made_by) ?? 'Someone',
+    madeAt: r.made_at,
+    doneAt: r.done_at,
+  }))
+}
+
 /** Each line's highlights, oldest first, with who highlighted them by name. */
 export function highlightsFromRows(rows: readonly MessageHighlightRow[], userNames: Readonly<Record<string, string>>): Map<string, MessageHighlight[]> {
   const out = new Map<string, MessageHighlight[]>()
@@ -274,6 +299,7 @@ export function followUpInputFromRows(
     messages: followUpMessagesFromRows(rows.messages, { userNames, contacts: named }),
     heard: heardLinesFromRows(rows.heard),
     owed: owedRecordsFromRows(rows.owed, userNames),
+    calls: callTasksFromRows(rows.callTasks ?? [], userNames),
     todayYmd,
   }
 }

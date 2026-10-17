@@ -63,6 +63,9 @@ export interface FlowStepRow {
   nudge_day_fact: FlowNudge['dayFact']
   usual: number
   owed_words: string | null
+  call_script: string | null
+  call_script_es: string | null
+  suggest_call: boolean
 }
 
 const LANES: readonly Lane[] = ['once', 'per_job', 'any_time']
@@ -97,6 +100,8 @@ export function flowFromRows(kind: FlowKind, rows: readonly FlowStepRow[]): Flow
               : null,
           usual: r.usual,
           owedWords: r.owed_words,
+          callScript: r.call_script != null || r.call_script_es != null ? { en: r.call_script ?? '', es: r.call_script_es ?? '' } : null,
+          suggestCall: r.suggest_call ?? true,
         }),
       ),
   }))
@@ -131,6 +136,9 @@ export function flowRows(flow: FlowDef): FlowStepRow[] {
       nudge_day_fact: s.nudge?.dayFact ?? null,
       usual: s.usual,
       owed_words: s.owedWords,
+      call_script: s.callScript?.en || null,
+      call_script_es: s.callScript?.es || null,
+      suggest_call: s.suggestCall,
     })),
   )
 }
@@ -330,6 +338,8 @@ export interface NewStep {
   usual?: number
   later?: { en: string; es: string } | null
   owedWords?: string | null
+  callScript?: { en: string; es: string } | null
+  suggestCall?: boolean
 }
 
 const PHASE_BY_LANE: Readonly<Record<Lane, FlowPhase>> = { once: 'setup', per_job: 'pricing', any_time: 'building' }
@@ -376,6 +386,8 @@ export function addStep(draft: FlowDraft, lane: Lane, input: NewStep): EditResul
     nudge: input.nudge ?? null,
     usual: input.usual ?? 0,
     owedWords: input.owedWords ?? null,
+    callScript: input.callScript ?? null,
+    suggestCall: input.suggestCall ?? true,
   }
   const has = draft.flow.lanes.some((l) => l.lane === lane)
   const lanes = has
@@ -429,6 +441,21 @@ export function setSeat(draft: FlowDraft, stepId: string, seat: { id: string; na
 /** The step's nudge, or none. History says the change from the step as saved, in one line. */
 export function setNudge(draft: FlowDraft, stepId: string, nudge: FlowNudge | null): EditResult {
   return onStep(draft, stepId, () => next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, nudge })), { stepId, nudge: true }))
+}
+
+/** The script for the call the receipt suggests after this step's text (v2.5596); empty in both languages clears it to the app's own. */
+export function setCallScript(draft: FlowDraft, stepId: string, script: { en: string; es: string } | null): EditResult {
+  const en = script?.en.trim() ?? ''
+  const es = script?.es.trim() ?? ''
+  const value = en || es ? { en, es } : null
+  return onStep(draft, stepId, (step) =>
+    next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, callScript: value })), { stepId, words: `${step.name}: call script → ${value ? 'the office’s' : 'the app’s own'}` }),
+  )
+}
+
+/** Whether the receipt suggests a call after this step's text goes (v2.5596). */
+export function setSuggestCall(draft: FlowDraft, stepId: string, on: boolean): EditResult {
+  return onStep(draft, stepId, (step) => next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, suggestCall: on })), { stepId, words: `${step.name}: suggest a call → ${on ? 'yes' : 'no'}` }))
 }
 
 /** Whether the step repeats, and per what ('each ask'); a loop ends by its rounds unless told otherwise. */

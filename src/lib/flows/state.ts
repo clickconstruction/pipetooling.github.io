@@ -91,6 +91,10 @@ export type FlowStep = {
   usual: number
   /** On an our-move step, what we owe them in Follow up's We owe them list ("our bid"); null elsewhere. */
   owedWords: string | null
+  /** What to say on the call the receipt suggests after this step's text (v2.5596), both languages; null uses the app's own words. */
+  callScript: { en: string; es: string } | null
+  /** Whether the receipt suggests a call after this step's text goes (v2.5596). */
+  suggestCall: boolean
 }
 
 export type FlowLaneDef = { lane: Lane; steps: FlowStep[] }

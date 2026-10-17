@@ -160,6 +160,11 @@ async function planAndWrite(
   })
   // A text's pictures and files: our copy now, since Quo's link to them does not last (Messages, cut 10).
   if (reading.kind === 'text' && lineId) await keepTextMedia(admin, lineId, reading.quoId, reading.media)
+  // A completed call to or from them closes every open call to make (v2.5596, Follow up's We owe them), with its line.
+  if (reading.kind === 'call' && reading.status === 'answered' && lineId) {
+    const { error } = await admin.rpc('call_tasks_close_by_call', { p_contact: placed.contactId, p_message: lineId })
+    if (error) console.error('[quo-webhook] call_tasks_close_by_call:', error.message)
+  }
 
   // For the box it came to alone; both when our number is not placed, so a STOP is never missed.
   if (plan.optout) await writeStops(admin, placed.stops, plan.optout === 'out' ? 'stop' : 'start', boxed.to, reading.at)

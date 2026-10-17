@@ -2,7 +2,7 @@
 title: schedule a job and tell the customer
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send in the morning, today's sends
+keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send in the morning, today's sends, add to my calls
 order: 40
 ---
 When you book a job's first visit, the app asks before it tells the customer. You see the text, change any word, and press Send or Skip. Nothing goes on its own.
@@ -51,6 +51,8 @@ After the send, the sheet shows what went and when. Under it, **Call Dana to tal
 3. Press **Done** when you are finished.
 
 The call lands in the customer's thread when it ends. You do not need to log it.
+
+Not calling right now? Press **Add to my calls**. The call becomes a task for tomorrow in Follow up under We owe them. See [call a customer from a task](/help/call-a-customer-from-a-task).
 
 ## When no text can go
 

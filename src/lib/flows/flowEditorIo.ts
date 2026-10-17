@@ -19,7 +19,7 @@ const db = supabase as unknown as SupabaseClient
 
 /** The columns `flowFromRows` reads, as the flows' migration names them. */
 const STEP_COLUMNS =
-  'step_key, lane, position, name, name_es, phase, who, seat_user_id, facts, join_word, papers, loop_words, loop_ends, fork, aside, skip_one_job, later_en, later_es, nudge_days, nudge_how, nudge_send, nudge_day_fact, usual, owed_words'
+  'step_key, lane, position, name, name_es, phase, who, seat_user_id, facts, join_word, papers, loop_words, loop_ends, fork, aside, skip_one_job, later_en, later_es, nudge_days, nudge_how, nudge_send, nudge_day_fact, usual, owed_words, call_script, call_script_es, suggest_call'
 
 /** History reads this many lines, newest first. */
 export const HISTORY_LINES = 200

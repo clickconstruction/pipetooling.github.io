@@ -15,6 +15,7 @@ import { contactForCustomer } from '../messages/messagesIo'
 import { jobKey } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
 import { supabaseOffersIo } from '../offers/offersIo'
+import { supabaseCallTasksIo, type CallTaskAdd } from '../calls/callTasksIo'
 import type { PortalLang } from '../gc/portalI18n'
 import { supabaseQuickRepliesIo } from '../quickReplies/quickRepliesIo'
 import type { QuickReply } from '../quickReplies/kernel'
@@ -64,6 +65,17 @@ export interface TellCustomerIo {
   send(input: TellSend): Promise<string>
   /** Send in the morning (v2.5595): the text waits on Today's sends and the morning run sends it on its day. Resolves to the offer's id. */
   makeOffer(input: TellOffer): Promise<string>
+  /** The step's call script and whether the receipt suggests the call at all (v2.5596); null before the push or on a step with no row. */
+  loadCallScript(stepKey: string): Promise<TellCallScript | null>
+  /** Add to my calls (v2.5596): a call task in Follow up's We owe them. Resolves to the task's id. */
+  addCall(input: CallTaskAdd): Promise<string>
+}
+
+/** What the residential flow's step says about the call after its text. */
+export interface TellCallScript {
+  /** The office's script in both languages; null uses the app's own. */
+  script: { text: string; textEs: string } | null
+  suggest: boolean
 }
 
 /** A text the office hands to a morning, from the sheet. */
@@ -130,6 +142,14 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       if (result.error) return false
       return (result.count ?? 0) === 0
     },
+    async loadCallScript(stepKey) {
+      const result = await db.from('flow_steps').select('call_script, call_script_es, suggest_call, flows!inner(kind)').eq('step_key', stepKey).eq('flows.kind', 'residential').maybeSingle()
+      if (result.error) return null
+      const r = result.data as unknown as { call_script: string | null; call_script_es: string | null; suggest_call: boolean | null } | null
+      if (!r) return null
+      return { script: r.call_script ? { text: r.call_script, textEs: r.call_script_es ?? '' } : null, suggest: r.suggest_call ?? true }
+    },
+    addCall: (input) => supabaseCallTasksIo(db).add(input),
     makeOffer: (input) =>
       supabaseOffersIo(db).make({
         contactId: input.contactId,
