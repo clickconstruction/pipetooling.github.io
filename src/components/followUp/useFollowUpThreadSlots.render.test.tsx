@@ -94,6 +94,7 @@ function fakeIo(over: Partial<FollowUpThreadIo> = {}, read: FollowUpThreadRows =
     backDone: vi.fn(async () => undefined),
     markOwed: vi.fn(async () => 'o-new'),
     callAdd: vi.fn(async () => 'c-new'),
+    setPrefers: vi.fn(async () => undefined),
     ...over,
   }
 }
@@ -342,5 +343,24 @@ describe('the quiet call ask under a text we sent (v2.5596)', () => {
     renderThread(waiting, PRIYA, false, sentText())
     await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
     expect(screen.getByTestId('under').textContent).toBe('')
+  })
+})
+
+describe('how they hear from us (v2.5597)', () => {
+  it('offers the three ways on a customer’s ⋯, ticks the one that stands, and sets it through the io', async () => {
+    open.contactId = 'priya'
+    const io = fakeIo({}, { ...rows(), contact: { state: 'waiting', snoozed_until: null, has_user_id: 'u-rosa', has_since: '2026-10-01T15:00:00.000Z', has_how: 'took', prefers: 'text' } })
+    renderThread(io, PRIYA)
+    expect(await more().findByRole('button', { name: '✓ Hears from us by text' })).toBeTruthy()
+    fireEvent.click(more().getByRole('button', { name: 'Hears from us by email' }))
+    await waitFor(() => expect(io.setPrefers).toHaveBeenCalledWith('priya', 'email'))
+    expect(await screen.findByText('Priya hears from us by email.')).toBeTruthy()
+  })
+
+  it('offers none on a trade partner', async () => {
+    open.contactId = 'greg'
+    renderThread(fakeIo(), GREG)
+    await more().findByRole('button', { name: 'Remind me Monday' })
+    expect(more().queryByRole('button', { name: /Hears from us/ })).toBeNull()
   })
 })

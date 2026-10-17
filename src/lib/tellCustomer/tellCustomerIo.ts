@@ -16,6 +16,9 @@ import { jobKey } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
 import { supabaseOffersIo } from '../offers/offersIo'
 import { supabaseCallTasksIo, type CallTaskAdd } from '../calls/callTasksIo'
+import { supabaseMyWayIo } from './myWayIo'
+import type { MyWays } from './myWay'
+import type { TellPrefers } from './tellCustomer'
 import type { PortalLang } from '../gc/portalI18n'
 import { supabaseQuickRepliesIo } from '../quickReplies/quickRepliesIo'
 import type { QuickReply } from '../quickReplies/kernel'
@@ -41,6 +44,8 @@ export interface TellContact {
   contactId: string
   /** Their phone numbers, oldest first. */
   numbers: TellNumber[]
+  /** How they asked to hear from us (v2.5597); null when nobody said. */
+  prefers: TellPrefers
 }
 
 export interface TellSend {
@@ -59,8 +64,8 @@ export interface TellCustomerIo {
   loadLines(): Promise<QuickReply[]>
   loadTextsOn(): Promise<boolean>
   loadMyName(userId: string): Promise<string | null>
-  /** True when the job has no other block than the group just saved: the first visit. */
-  isFirstVisit(jobId: string, groupId: string | null): Promise<boolean>
+  /** True when the job has no other block than the group just saved, or the block itself (v2.5597): the first visit. */
+  isFirstVisit(jobId: string, groupId: string | null, blockId?: string | null): Promise<boolean>
   /** Resolves to the text's line id. */
   send(input: TellSend): Promise<string>
   /** Send in the morning (v2.5595): the text waits on Today's sends and the morning run sends it on its day. Resolves to the offer's id. */
@@ -69,6 +74,10 @@ export interface TellCustomerIo {
   loadCallScript(stepKey: string): Promise<TellCallScript | null>
   /** Add to my calls (v2.5596): a call task in Follow up's We owe them. Resolves to the task's id. */
   addCall(input: CallTaskAdd): Promise<string>
+  /** My way (v2.5597): whether the sheet asks first or sends and shows the receipt, per moment. */
+  loadMyWay(userId: string): Promise<MyWays>
+  /** Make this the office's line (v2.5597): the edited words, blanks back, as the step's team line; the Spanish when the customer reads it. */
+  saveOfficeLine(input: { lineId: string | null; stepKey: string; text: string; lang: PortalLang }): Promise<void>
 }
 
 /** What the residential flow's step says about the call after its text. */
@@ -114,12 +123,18 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
     },
     async loadContact(customerId) {
       const contactId = await contactForCustomer(customerId)
-      const channels = await db.from('contact_channels').select('id, kind, value, opted_out_at, created_at').eq('contact_id', contactId).order('created_at')
+      const [channels, who] = await Promise.all([
+        db.from('contact_channels').select('id, kind, value, opted_out_at, created_at').eq('contact_id', contactId).order('created_at'),
+        // Their say (v2.5597): a column a client ahead of the push reads as null.
+        db.from('contacts').select('prefers').eq('id', contactId).maybeSingle(),
+      ])
       checkSupabaseError(channels, 'read their numbers')
       const rows = (channels.data ?? []) as Array<{ id: string; kind: string; value: string; opted_out_at: string | null }>
+      const prefers = who.error ? null : ((who.data as { prefers?: string | null } | null)?.prefers ?? null)
       return {
         contactId,
         numbers: rows.filter((r) => r.kind === 'phone' && r.value.trim()).map((r) => ({ channelId: r.id, value: r.value, stopped: r.opted_out_at != null })),
+        prefers: prefers === 'text' || prefers === 'email' || prefers === 'either' ? prefers : null,
       }
     },
     loadLines: () => supabaseQuickRepliesIo(client).loadLines(),
@@ -135,9 +150,10 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       if (result.error) return null
       return (result.data as { name: string | null } | null)?.name ?? null
     },
-    async isFirstVisit(jobId, groupId) {
+    async isFirstVisit(jobId, groupId, blockId = null) {
       let query = db.from('job_schedule_blocks').select('id', { count: 'exact', head: true }).eq('job_id', jobId)
       if (groupId) query = query.neq('shared_block_group_id', groupId)
+      if (blockId) query = query.neq('id', blockId)
       const result = await query
       if (result.error) return false
       return (result.count ?? 0) === 0
@@ -150,6 +166,20 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       return { script: r.call_script ? { text: r.call_script, textEs: r.call_script_es ?? '' } : null, suggest: r.suggest_call ?? true }
     },
     addCall: (input) => supabaseCallTasksIo(db).add(input),
+    loadMyWay: (userId) => supabaseMyWayIo(db).load(userId),
+    async saveOfficeLine(input) {
+      const lines = supabaseQuickRepliesIo(client)
+      const tags = { for: 'customer' as const, stepId: input.stepKey }
+      if (input.lineId) {
+        if (input.lang === 'es') {
+          // The English stays; the Spanish is what changed.
+          const own = (await lines.loadLines()).find((l) => l.id === input.lineId)
+          await lines.edit(input.lineId, own?.text ?? input.text, tags, { textEs: input.text })
+        } else await lines.edit(input.lineId, input.text, tags)
+        return
+      }
+      await lines.add(input.text, tags, false)
+    },
     makeOffer: (input) =>
       supabaseOffersIo(db).make({
         contactId: input.contactId,

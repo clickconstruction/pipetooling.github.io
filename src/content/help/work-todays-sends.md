@@ -21,6 +21,8 @@ A step in Flows can be set to **Offers**. Each morning at 9 AM the app prepares 
 
 The office can also hand a text to the morning. On the Tell the customer sheet, press **Send in the morning**. The text waits here until 9 AM on its day, then the app sends it. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer#send-it-in-the-morning-instead).
 
+A first visit moved to another day or window puts its Rescheduled text here too. Press it when the move is settled.
+
 ## Press one, or all that are ready
 
 Each row shows the person, the step and the text.
@@ -49,6 +51,7 @@ A held row says why under the text and has no Send button.
 
 - The customer has no phone number on file. Add one on the customer, or call instead.
 - The number sent STOP. Call instead.
+- The customer asked to hear from us by email. Email them, or call.
 - Quo turned the text away. The row holds Quo's words.
 
 Fix the cause, then send the text from the customer's thread. Press **Not this one** to clear the row.

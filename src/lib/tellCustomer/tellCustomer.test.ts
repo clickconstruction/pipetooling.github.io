@@ -18,6 +18,8 @@ import {
   TELL_WORDS,
   type TellBlock,
   type TellHold,
+  prefersNote,
+  unfillLine,
 } from './tellCustomer'
 
 const BLOCK: TellBlock = { workDate: '2026-10-23', timeStart: '10:00:00', timeEnd: '12:00:00', techName: 'Luis Ortega' }
@@ -143,5 +145,29 @@ describe('the estimate moment (v2.5594)', () => {
     for (const words of [TELL_WORDS.emailWhat, TELL_WORDS.linkHint, TELL_WORDS.editHint(true, 'estimate'), TELL_WORDS.editHint(false, 'estimate'), TELL_WORDS.emailOnlyToast, TELL_WORDS.textFailed, TELL_WORDS.bothSentToast('Dana'), receiptScript('estimate', fills), ...tellActs('estimate', 'Dana', null).rows.map((r) => r.words)]) {
       expect(plainWordsFailures(words), words).toEqual([])
     }
+  })
+})
+
+describe('the customer’s say and the office’s line (v2.5597)', () => {
+  it('notes, never holds, a channel they did not ask for', () => {
+    expect(prefersNote('booked', 'Dana', 'email')).toBe('Dana asked to hear from us by email. A call may be kinder than this text.')
+    expect(prefersNote('estimate', 'Dana', 'email')).toBe('Dana asked to hear from us by email. Email only may be the kinder press.')
+    expect(prefersNote('estimate', 'Dana', 'text')).toBe('Dana asked to hear from us by text. The email still carries the link.')
+    expect(prefersNote('booked', 'Dana', 'text')).toBeNull()
+    expect(prefersNote('booked', 'Dana', 'either')).toBeNull()
+    expect(prefersNote('booked', null, 'email')).toBe('They asked to hear from us by email. A call may be kinder than this text.')
+    const acts = tellActs('booked', 'Dana', null, 'email')
+    expect(acts.rows.map((r) => [r.icon, r.hold])).toEqual([['💬', false], ['ℹ️', false], ['🧾', false]])
+    expect(acts.primary).toBe('Send text to Dana')
+    expect(tellActs('estimate', 'Dana', null, 'text').rows.map((r) => r.icon)).toEqual(['✉️', '💬', 'ℹ️', '🧾'])
+    for (const w of [prefersNote('booked', 'Dana', 'email')!, prefersNote('estimate', 'Dana', 'email')!, prefersNote('estimate', 'Dana', 'text')!]) expect(plainWordsFailures(w), w).toEqual([])
+  })
+
+  it('puts the blanks back into an edited line, the longest fill first', () => {
+    const fills = tellFills({ customerName: 'Dana Whitfield', me: 'Rosa Perez', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', block: { workDate: '2026-10-23', timeStart: '10:00:00', timeEnd: '12:00:00', techName: 'Luis Ortega' } })
+    expect(unfillLine('Dana, Rosa here with Click Plumbing. You are booked Friday, October 23, 2026, 10:00 AM to 12:00 PM at 1208 Mesquite Ln. Luis will text you.', fills)).toBe(
+      '{first}, {me} here with Click Plumbing. You are booked {day}, {window} at {address}. {tech} will text you.',
+    )
+    expect(unfillLine('Nothing of theirs here.', fills)).toBe('Nothing of theirs here.')
   })
 })

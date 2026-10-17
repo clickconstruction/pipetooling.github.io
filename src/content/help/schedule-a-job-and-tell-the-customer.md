@@ -2,7 +2,7 @@
 title: schedule a job and tell the customer
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send in the morning, today's sends, add to my calls
+keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send in the morning, today's sends, add to my calls, make this the office's line, prefers email, my way
 order: 40
 ---
 When you book a job's first visit, the app asks before it tells the customer. You see the text, change any word, and press Send or Skip. Nothing goes on its own.
@@ -31,6 +31,18 @@ Dana, this is Rosa with Click Plumbing. We have you booked for Friday, October 2
 Press **Skip** to send nothing. The visit is still saved.
 
 The words come from the office's Booked line in the quick replies. With no Booked line yet, the app uses its own words. See [edit the quick replies](/help/edit-the-quick-replies).
+
+## Make this the office's line
+
+Changed a word for the better? Press **Make this the office's line** under the box. The words come back with their blanks, like {first} and {day}. Look them over, then press **Save as the office's line**. The step's line is now this for everyone. The send is not changed.
+
+## When the customer asked for email
+
+Some customers ask to hear from us by email. The sheet says so under **What happens**. The text can still go. A call may be kinder. The office sets how a customer hears from us on their thread. See [see who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them#in-their-thread).
+
+## When a visit moves
+
+Move a first visit to another day or window, and the Rescheduled text waits on the Dashboard under Today's sends. Press it there, or put it away. See [work Today's sends](/help/work-todays-sends).
 
 ## Send it in the morning instead
 

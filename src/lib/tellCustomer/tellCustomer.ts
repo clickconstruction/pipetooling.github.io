@@ -181,24 +181,51 @@ export interface TellActs {
   emailOnly: string | null
 }
 
-export function tellActs(moment: TellMoment, first: string | null, hold: TellHold | null): TellActs {
+/** How the customer asked to hear from us (`contacts.prefers`, v2.5597); null when nobody said. */
+export type TellPrefers = 'text' | 'email' | 'either' | null
+
+/** The customer's say beside a channel it does not match: a note, never a hold. The office still decides. */
+export function prefersNote(moment: TellMoment, first: string | null, prefers: TellPrefers): string | null {
+  const who = first ?? 'They'
+  if (prefers === 'email') return `${who} asked to hear from us by email. ${moment === 'estimate' ? 'Email only may be the kinder press.' : 'A call may be kinder than this text.'}`
+  if (prefers === 'text' && moment === 'estimate') return `${who} asked to hear from us by text. The email still carries the link.`
+  return null
+}
+
+export function tellActs(moment: TellMoment, first: string | null, hold: TellHold | null, prefers: TellPrefers = null): TellActs {
   const who = first ?? 'the customer'
   const their = first ? `${first}’s` : 'Their'
   const receipt = { icon: '🧾', words: 'Then shows you what went, and offers the call.', hold: false }
+  const note = prefersNote(moment, first, prefers)
+  const say = note ? [{ icon: 'ℹ️', words: note, hold: false }] : []
   if (moment === 'estimate') {
     const email = { icon: '✉️', words: `Emails ${who} the estimate with the link to approve it.`, hold: false }
     if (hold) return { rows: [email, { icon: '⚠', words: holdWords(hold, first), hold: true }, receipt], primary: `Send email to ${who}`, skip: 'Skip', emailOnly: null }
     const text = { icon: '💬', words: `Texts ${who} the same link from the company number. ${their} answer comes to the office.`, hold: false }
-    return { rows: [email, text, receipt], primary: `Send both to ${who}`, skip: 'Skip', emailOnly: 'Email only' }
+    return { rows: [email, text, ...say, receipt], primary: `Send both to ${who}`, skip: 'Skip', emailOnly: 'Email only' }
   }
   if (hold) return { rows: [{ icon: '⚠', words: holdWords(hold, first), hold: true }], primary: 'Close', skip: 'Skip', emailOnly: null }
   const what = moment === 'rescheduled' ? 'the new day and window' : 'the day and the window'
   return {
-    rows: [{ icon: '💬', words: `Texts ${who} ${what} from the company number. ${their} answer comes to the office.`, hold: false }, receipt],
+    rows: [{ icon: '💬', words: `Texts ${who} ${what} from the company number. ${their} answer comes to the office.`, hold: false }, ...say, receipt],
     primary: `Send text to ${who}`,
     skip: 'Skip',
     emailOnly: null,
   }
+}
+
+/**
+ * The office's edited words back to a line with blanks (Make this the office's line, v2.5597): each fill's value, the
+ * longest first, becomes its blank again, so *Dana* reads `{first}` and *Friday, October 23, 2026* reads `{day}`. A
+ * value that is empty, or one word of one letter, is left alone.
+ */
+export function unfillLine(text: string, fills: BlankFills): string {
+  const pairs = Object.entries(fills)
+    .filter((e): e is [string, string] => typeof e[1] === 'string' && e[1].trim().length > 1)
+    .sort((a, b) => b[1].length - a[1].length)
+  let out = text
+  for (const [key, value] of pairs) out = out.split(value).join(`{${key}}`)
+  return out
 }
 
 // ---------- the receipt ----------
@@ -256,6 +283,10 @@ export const TELL_WORDS = {
   emailOnlyToast: 'The email went. No link came back, so no text went.',
   textFailed: 'The email went. The text did not. Send it from the thread.',
   skipped: 'Nothing sent.',
+  officeLine: 'Make this the office’s line',
+  officeLineHint: 'The words with the blanks back, as the step’s line for everyone. Change any blank before you save.',
+  officeLineSave: 'Save as the office’s line',
+  officeLineSaved: 'Saved as the office’s line. It fills for the next customer.',
   morningTitle: 'Ready for the morning',
   morningLine: (day: string) => `Goes at 9 AM on ${day} from the company number.`,
   morningWhere: 'Until then it waits on the Dashboard under Today’s sends. You can change it or take it back there.',

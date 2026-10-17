@@ -383,7 +383,12 @@ SELECT mfl.same('the office''s text waits for its morning, trimmed, stamped with
    FROM public.nudge_offers WHERE id = (SELECT id FROM offers WHERE what = 'morning')),
   'office|00000000-0000-0000-0000-0000000006d1|true|true|Greg, the portal is open for you.|00000000-0000-0000-0000-00000000600c');
 SELECT mfl.refused('a text says its words', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', NULL, NULL, '  ', NULL, public.app_today())$q$, 'Write the text first');
-SELECT mfl.refused('a text says its morning', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', NULL, NULL, 'Hi', NULL, NULL)$q$, 'Say which morning');
+-- v2.5597: a text with no morning waits for a press on Today's sends (a moved first visit).
+INSERT INTO offers SELECT 'waits', public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'msa', NULL, NULL, 'Greg, your visit moved.', '00000000-0000-0000-0000-00000000600c', NULL);
+SELECT mfl.same('a text with no morning waits, the office''s, for a press',
+  (SELECT concat_ws('|', prepared_by, coalesce(send_on::text, '-'), (sent_at IS NULL AND dismissed_at IS NULL)::text) FROM public.nudge_offers WHERE id = (SELECT id FROM offers WHERE what = 'waits')),
+  'office|-|true');
+SELECT public.nudge_offer_dismiss((SELECT id FROM offers WHERE what = 'waits'), 'not this one');
 SELECT mfl.refused('the number is theirs', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'Hi', '00000000-0000-0000-0000-00000000600c', public.app_today())$q$, 'not theirs');
 SELECT mfl.refused('the job is there', $q$SELECT public.nudge_offer_make('00000000-0000-0000-0000-000000006005', 'portal', 'project', '00000000-0000-0000-0000-000000000fff', 'Hi', NULL, public.app_today())$q$, 'jobNotFound');
 -- The press: the row is stamped, and nudge_sent carries the reminder as a person's.

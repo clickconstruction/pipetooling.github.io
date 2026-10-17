@@ -93,6 +93,12 @@ A note with a day shows {{chip:blue|↩ back Fri Oct 2}} under the name. Press �
 
 A snoozed conversation shows {{chip:gray|snoozed until Mon Oct 5}} there too.
 
+## How a customer hears from us
+
+A customer can text back one word, EMAIL or TEXT, to say how they want to hear from us. The thread gets a gray line. You can set it too. Open their thread and press **⋯**. The menu offers three ways. Pick **Hears from us by text** or **Hears from us by email**. Pick **Hears from us either way** to clear it. A tick marks the one that stands.
+
+When a customer asked for email, the morning run holds their texts on Today's sends and says why. The Tell the customer sheet says it too.
+
 ## What comes next
 
 To work through everyone we wait on, see [Work through everyone we wait on in one sitting](/help/work-through-everyone-we-wait-on).

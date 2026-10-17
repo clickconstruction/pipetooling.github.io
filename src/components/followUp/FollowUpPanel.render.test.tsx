@@ -158,6 +158,7 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}, rows: FollowUpRows = ROWS):
     callAdd: vi.fn(async () => 'c-new'),
     callDone: vi.fn(async () => undefined),
     callMove: vi.fn(async () => undefined),
+    setPrefers: vi.fn(async () => undefined),
     ...overrides,
   }
 }

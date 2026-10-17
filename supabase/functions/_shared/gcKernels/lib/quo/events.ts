@@ -299,8 +299,13 @@ export const APP_STOP_WORDS: readonly string[] = ['REVOKE', 'OPT OUT', 'OPTOUT']
 export const START_WORDS: readonly string[] = ['START', 'UNSTOP']
 /** Quo leaves these to us: the app answers with who we are and how to reach us. */
 export const HELP_WORDS: readonly string[] = ['HELP', 'INFO']
+/** The customer's say (v2.5597): one word alone sets how they hear from us. */
+export const PREFER_WORDS: Readonly<Record<string, CustomerPrefers>> = { EMAIL: 'email', EMAILS: 'email', TEXT: 'text', TEXTS: 'text' }
 
-export type QuoKeyword = { kind: 'stop' | 'start' | 'help'; word: string; quoAnswers: boolean }
+/** How a person wants to hear from us (`contacts.prefers`). */
+export type CustomerPrefers = 'text' | 'email' | 'either'
+
+export type QuoKeyword = { kind: 'stop' | 'start' | 'help'; word: string; quoAnswers: boolean } | { kind: 'prefer'; word: string; prefers: CustomerPrefers; quoAnswers: false }
 
 const plainUpper = (text: string) =>
   text
@@ -322,6 +327,8 @@ export function keywordOf(text: string): QuoKeyword | null {
   if (APP_STOP_WORDS.includes(words)) return { kind: 'stop', word: words, quoAnswers: false }
   if (START_WORDS.includes(words)) return { kind: 'start', word: words, quoAnswers: exact === words }
   if (HELP_WORDS.includes(words)) return { kind: 'help', word: words, quoAnswers: false }
+  const prefers = PREFER_WORDS[words]
+  if (prefers) return { kind: 'prefer', word: words, prefers, quoAnswers: false }
   return null
 }
 
@@ -418,6 +425,8 @@ export interface QuoPlan {
   answer: { body: string; purpose: 'answer' | 'confirm' } | null
   /** A team event line for the thread. */
   event: string | null
+  /** The customer's say (v2.5597): EMAIL or TEXT alone sets `contacts.prefers`; null leaves it. */
+  prefers?: CustomerPrefers | null
 }
 
 const NOTHING: QuoPlan = { line: null, optout: null, answer: null, event: null }
@@ -477,6 +486,14 @@ function planText(t: Extract<QuoReading, { kind: 'text' }>, ctx: QuoPlanContext)
     return ctx.optedOut
       ? { ...NOTHING, line, event: `${who} asked for help but has opted out of texts. Call them if it matters.` }
       : { ...NOTHING, line, answer: { body: helpAnswer(ctx.company), purpose: 'answer' } }
+  }
+  if (key?.kind === 'prefer') {
+    return {
+      ...NOTHING,
+      line,
+      prefers: key.prefers,
+      event: key.prefers === 'email' ? `${who} asked to hear from us by email. The app holds their texts for the office.` : `${who} asked to hear from us by text.`,
+    }
   }
   if (mayAskToStop(t.body)) {
     return { ...NOTHING, line, event: `${who} may be asking for no more texts. If so, use Mark STOP.` }

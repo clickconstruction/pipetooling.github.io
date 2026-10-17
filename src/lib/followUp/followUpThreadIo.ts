@@ -30,7 +30,7 @@ export interface FollowUpThreadRows {
   calls?: CallTaskDbRow[]
 }
 
-export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'backDone' | 'markOwed' | 'callAdd'> {
+export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'backDone' | 'markOwed' | 'callAdd' | 'setPrefers'> {
   loadThread(contactId: string, todayYmd: string): Promise<FollowUpThreadRows>
   loadTeam(): Promise<Teammate[]>
 }
@@ -45,7 +45,7 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
   return {
     async loadThread(contactId, todayYmd) {
       const [contact, notes, holders, owed, promises, calls] = await Promise.all([
-        db.from('contacts').select('state, snoozed_until, has_user_id, has_since, has_how').eq('id', contactId).maybeSingle(),
+        db.from('contacts').select('state, snoozed_until, has_user_id, has_since, has_how, prefers').eq('id', contactId).maybeSingle(),
         db.from('messages').select(MESSAGE_COLUMNS).eq('contact_id', contactId).eq('channel', 'note').or('back_on.not.is.null,back_words.not.is.null'),
         db.from('contacts').select('id, state, snoozed_until, has_user_id').not('has_user_id', 'is', null).neq('state', 'done'),
         db.from('contact_owed').select(OWED_COLUMNS).eq('contact_id', contactId).is('done_at', null),
@@ -67,6 +67,10 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
       }
     },
     callAdd: (input) => supabaseCallTasksIo(db).add(input),
+    async setPrefers(contactId, prefers) {
+      const result = await db.rpc('contact_set_prefers', { p_contact: contactId, p_prefers: prefers })
+      checkSupabaseError(result, 'set how they hear from us')
+    },
     async loadTeam() {
       const result = await db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false)
       checkSupabaseError(result, 'load the office team')

@@ -204,6 +204,13 @@ describe('the morning run’s offers (v2.5595)', () => {
     expect(run({ appSends: PORTAL_OFFERS, sent: [pressed] })).toEqual({ texts: [], offers: [], notSent: [tomKept('sent lately')] })
   })
 
+  it('holds or keeps back a text for a person who asked for email (v2.5597)', () => {
+    expect(run({ appSends: PORTAL_ON, prefers: { tom: 'email' } })).toEqual({ texts: [], offers: [], notSent: [tomKept('prefers email')] })
+    expect(run({ appSends: PORTAL_OFFERS, prefers: { tom: 'email' } }).offers).toEqual([{ ...TOMS_OFFER, held: OFFER_HELD['prefers email'] }])
+    expect(run({ appSends: PORTAL_ON, prefers: { tom: 'text' } }).texts).toEqual([TOMS_TEXT])
+    expect(run({ appSends: PORTAL_ON, prefers: { tom: 'either' } }).texts).toEqual([TOMS_TEXT])
+  })
+
   it('reads the switch three ways, and holds and keeps back in plain words', () => {
     expect(appSendMode({ trade: { portal: true, msa: 'offer' } }, 'trade', 'portal')).toBe('send')
     expect(appSendMode({ trade: { portal: true, msa: 'offer' } }, 'trade', 'msa')).toBe('offer')

@@ -88,7 +88,7 @@ const jobAtOf = (o: OfferRow): JobAt | null =>
 /** The morning's rows, read as the service role. */
 async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld: number; offers: OfferRow[] }> {
   const contacts = await all<NudgeRunRows['contacts'][number]>(
-    (a, b) => admin.from('contacts').select('id, kind, name, goes_by, snoozed_until').in('kind', RUN_KINDS).order('id').range(a, b),
+    (a, b) => admin.from('contacts').select('id, kind, name, goes_by, snoozed_until, prefers').in('kind', RUN_KINDS).order('id').range(a, b),
     'contacts',
   )
   const { count: customersHeld, error: heldError } = await admin.from('contacts').select('id', { count: 'exact', head: true }).eq('kind', 'customer')

@@ -668,3 +668,19 @@ describe('the box a call or text came through (R6)', () => {
     expect(planQuoEvent(ours('message.delivered'), ctx({ existing: before, mailbox: 'bids' })).line?.mailbox).toBe('team')
   })
 })
+
+describe('the customer’s say (v2.5597): EMAIL or TEXT alone', () => {
+  it('reads the word alone, in any case, and nothing longer', () => {
+    expect(keywordOf('EMAIL')).toEqual({ kind: 'prefer', word: 'EMAIL', prefers: 'email', quoAnswers: false })
+    expect(keywordOf('emails')).toEqual({ kind: 'prefer', word: 'EMAILS', prefers: 'email', quoAnswers: false })
+    expect(keywordOf('Text.')).toEqual({ kind: 'prefer', word: 'TEXT', prefers: 'text', quoAnswers: false })
+    expect(keywordOf('texts please')).toBeNull()
+    expect(keywordOf('Email me the estimate')).toBeNull()
+  })
+
+  it('plans the preference and a gray line, and sends nothing back', () => {
+    expect(planQuoEvent(text('EMAIL'), ctx())).toMatchObject({ optout: null, answer: null, prefers: 'email', event: 'Greg asked to hear from us by email. The app holds their texts for the office.' })
+    expect(planQuoEvent(text('text'), ctx())).toMatchObject({ optout: null, answer: null, prefers: 'text', event: 'Greg asked to hear from us by text.' })
+    expect(planQuoEvent(text('Any word on the start date?'), ctx()).prefers).toBeUndefined()
+  })
+})

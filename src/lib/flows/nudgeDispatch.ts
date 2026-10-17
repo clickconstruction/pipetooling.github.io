@@ -78,6 +78,8 @@ export interface NudgeRunInput {
   snoozed?: Partial<Record<string, string>>
   /** The texts waiting on Today's sends, so the run never prepares a second for the same step and job. */
   offered?: readonly NudgeOffered[]
+  /** How each person wants to hear from us (`contacts.prefers`, v2.5597), by contact: an email-only person gets no text from the run. */
+  prefers?: Partial<Record<string, 'text' | 'email' | 'either' | null>>
 }
 
 /** One text the run sends. */
@@ -102,6 +104,7 @@ export interface NudgeOffer extends NudgeText {
 export const OFFER_HELD = {
   'no number': 'No phone number on file. Add one on the customer, or call instead.',
   'opted out': 'The number sent STOP. Call instead.',
+  'prefers email': 'They asked to hear from us by email. Email them, or call.',
 } as const
 
 /**
@@ -109,7 +112,7 @@ export const OFFER_HELD = {
  * sends, its channel is not a text, the person is snoozed on Follow up, one went inside its days, the number sent STOP
  * or there is none, or the person already has a text this morning.
  */
-export type NudgeNotSent = 'off' | 'offered' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'one a morning'
+export type NudgeNotSent = 'off' | 'offered' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'prefers email' | 'one a morning'
 
 /** A due reminder of the app's the run kept back, with why in words for the run's log. */
 export interface NudgeKept {
@@ -144,6 +147,8 @@ export function notSentWords(why: NudgeNotSent, snoozedUntil: string | null = nu
       return 'the number sent STOP'
     case 'no number':
       return 'no number on file'
+    case 'prefers email':
+      return 'they asked for email'
     case 'one a morning':
       return 'one text a morning'
   }
@@ -228,6 +233,7 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
       const keep = (why: NudgeNotSent) =>
         notSent.push({ contactId: person.id, stepId: step.stepId, jobId: step.jobId, why, words: notSentWords(why, snoozed) })
       const number = input.numbers[person.id]
+      const emailOnly = input.prefers?.[person.id] === 'email'
       const mode = appSendMode(input.appSends, person.reading.kind, step.stepId)
       const text = (event: string): NudgeText => ({
         contactId: person.id,
@@ -247,10 +253,11 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
       else if (mode === 'offer')
         offers.push({
           ...text(`The app prepared the ${def.name} reminder for Today’s sends.`),
-          held: !number?.number ? OFFER_HELD['no number'] : number.optedOut ? OFFER_HELD['opted out'] : null,
+          held: !number?.number ? OFFER_HELD['no number'] : number.optedOut ? OFFER_HELD['opted out'] : emailOnly ? OFFER_HELD['prefers email'] : null,
         })
       else if (!number?.number) keep('no number')
       else if (number.optedOut) keep('opted out')
+      else if (emailOnly) keep('prefers email')
       else texts.push(text(`The app sent the ${def.name} reminder by text.`))
     }
   }

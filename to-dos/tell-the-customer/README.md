@@ -2,7 +2,7 @@
 name: "Tell the customer: every text or email to a customer is pressed by a person, seen before it goes, and followed by a receipt that suggests the call"
 number: 115
 group: gated
-status: Grace said build it all 2026-10-16; PR 2 (v2.5593, the sheet and the receipt on the schedule, PR 5799) and PR 3 (v2.5594, the estimate with both channels, stacked on PR 2) built the same evening; PR 4 (v2.5595, the three-way switch, offers and Today's sends, Send in the morning, Hold until a day and Stop reminding) built that night, stacked on PR 3; PR 5 (v2.5596, call tasks in We owe them closed by Quo, Add to my calls on the receipt and on Messages, the script on the step) built 2026-10-17, stacked on PR 4; the Rescheduled line's offer deferred to PR 6
+status: Grace said build it all 2026-10-16; PR 2 (v2.5593, the sheet and the receipt on the schedule, PR 5799) and PR 3 (v2.5594, the estimate with both channels, stacked on PR 2) built the same evening; PR 4 (v2.5595, the three-way switch, offers and Today's sends, Send in the morning, Hold until a day and Stop reminding) built that night, stacked on PR 3; PR 5 (v2.5596, call tasks in We owe them closed by Quo, Add to my calls on the receipt and on Messages, the script on the step) built 2026-10-17, stacked on PR 4; PR 6 (v2.5597, the customer's say by EMAIL/TEXT reply and from the thread's menu, My way, Make this the office's line, a moved first visit's Rescheduled text on Today's sends) built 2026-10-17, stacked on PR 5; the customer's page toggle for their channel is the one piece left for the portal's next cut
 summary: >
   When an assistant schedules a job's first visit or sends an estimate, a Tell the customer sheet
   opens with the step's line filled for that customer, the channels that apply ticked, the words
@@ -13,7 +13,7 @@ summary: >
   call, with the step's script, a one-tap dial, and Add to my calls, a call task in Follow up that
   Quo's webhook closes when the call lands in the thread. The estimate's reminders become a
   cadence: a text on day one, a call on day three, a text on day seven.
-next: PR 6 the customer's say and the assistant's way, with the Rescheduled line as an offer on a moved first visit.
+next: the merges, the pushes and the redeploys in order (PR 4, 5, 6), then the owner's live walks on a test customer; the customer's page toggle for their channel with the portal's next cut.
 size: L as a train of six (the sheet and the receipt, the estimate, offers and Today's sends, calls and scripts, the customer's say and the assistant's way); each PR M, offers L
 blocker: Grace's look; the A2P campaign's approval for transactional texts is to be confirmed before any automatic send
 opinion: build the sheet and the receipt first; they carry the principle. Today's sends and the call task next; the cadence and the scripts are Flows editor work the office can shape as it goes.
