@@ -1,13 +1,17 @@
 import type { FigureProps } from './figureProps'
 
-/** The crane signal person's stop, raise and lower, and the flagger's stop and slow (punch list #116). Lesson 22; lesson 24 names it too. */
+/**
+ * The crane signal person's stop, raise and lower, and the flagger's stop and slow (punch list #116; v2.5609
+ * drew the motions as arrows: the swing under the stop arm, the circles at the raised and lowered finger).
+ * Lesson 22; lesson 24 names it too.
+ */
 export function HandSignals({ titleId }: FigureProps) {
   const person = (x: number, arms: JSX.Element) => (
     <g transform={`translate(${x} 0)`}>
       <circle cx="30" cy="34" r="7" fill="var(--surface)" />
       <line x1="30" y1="41" x2="30" y2="78" />
-      <line x1="30" y1="78" x2="22" y2="106" />
-      <line x1="30" y1="78" x2="38" y2="106" />
+      <line x1="30" y1="78" x2="24" y2="106" />
+      <line x1="30" y1="78" x2="36" y2="106" />
       {arms}
     </g>
   )
@@ -18,24 +22,27 @@ export function HandSignals({ titleId }: FigureProps) {
           <>
             <line x1="30" y1="50" x2="4" y2="50" />
             <line x1="30" y1="50" x2="42" y2="70" />
-            <path d="M2 44 q-4 6 0 12" stroke="#b91c1c" />
-            <path d="M8 40 h12 M8 60 h12" stroke="#b91c1c" strokeWidth="1.5" />
+            <line x1="0" y1="60" x2="20" y2="60" stroke="#dc2626" strokeWidth="2" />
+            <polygon points="-4,60 2,56 2,64" fill="#dc2626" stroke="none" />
+            <polygon points="24,60 18,56 18,64" fill="#dc2626" stroke="none" />
           </>
         ))}
         {person(60, (
           <>
-            <line x1="30" y1="50" x2="42" y2="38" />
-            <line x1="42" y1="38" x2="42" y2="18" />
+            <line x1="30" y1="50" x2="44" y2="38" />
+            <line x1="44" y1="38" x2="44" y2="20" />
             <line x1="30" y1="50" x2="18" y2="70" />
-            <path d="M36 14 a6 6 0 1 1 12 0" stroke="#15803d" strokeWidth="1.5" />
+            <path d="M44 7 a7 7 0 1 1 -7 7" stroke="#15803d" strokeWidth="2" />
+            <polygon points="37,9 33,15 41,15" fill="#15803d" stroke="none" />
           </>
         ))}
         {person(120, (
           <>
-            <line x1="30" y1="50" x2="42" y2="62" />
-            <line x1="42" y1="62" x2="42" y2="86" />
+            <line x1="30" y1="50" x2="44" y2="62" />
+            <line x1="44" y1="62" x2="44" y2="84" />
             <line x1="30" y1="50" x2="18" y2="70" />
-            <path d="M36 90 a6 6 0 1 0 12 0" stroke="#15803d" strokeWidth="1.5" />
+            <path d="M44 83 a7 7 0 1 1 -7 7" stroke="#15803d" strokeWidth="2" />
+            <polygon points="37,85 33,91 41,91" fill="#15803d" stroke="none" />
           </>
         ))}
         {person(190, (
@@ -45,7 +52,7 @@ export function HandSignals({ titleId }: FigureProps) {
             <polygon points="46,34 56,18 66,34 56,50" fill="#dc2626" stroke="currentColor" strokeWidth="1" />
           </>
         ))}
-        {person(246, (
+        {person(240, (
           <>
             <line x1="30" y1="50" x2="46" y2="34" />
             <line x1="30" y1="50" x2="18" y2="70" />
@@ -58,7 +65,7 @@ export function HandSignals({ titleId }: FigureProps) {
         <text x="90" y="136">raise the load</text>
         <text x="150" y="136">lower the load</text>
         <text x="218" y="136">STOP</text>
-        <text x="276" y="136">SLOW</text>
+        <text x="270" y="136">SLOW</text>
       </g>
       <g fontSize="7" fill="var(--text-muted)" textAnchor="middle">
         <text x="36" y="146">arm out</text>
@@ -70,7 +77,7 @@ export function HandSignals({ titleId }: FigureProps) {
         <text x="150" y="146">arm down</text>
         <text x="150" y="155">finger down</text>
         <text x="150" y="164">small circles</text>
-        <text x="247" y="146">the flagger's paddle</text>
+        <text x="244" y="146">the flagger's paddle</text>
       </g>
       <text x="4" y="180" fontSize="9" fill="var(--text-muted)">
         the signal person is certified; a stop from anyone on site stops the lift
