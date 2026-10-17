@@ -16,6 +16,7 @@
  *
  * Supply houses and candidates are never on it (`OFF_FOLLOW_UP`): their threads live on the RFQ and the hiring board.
  */
+import { callRows, type CallTaskRecord, type CallTaskRow } from '../calls/callTasks'
 import { firstName, type ContactKind } from '../contacts/kernel'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, ymdDaysBetween } from '../../utils/dateUtils'
 import type { ThreadMessage } from '../messages/thread'
@@ -381,6 +382,8 @@ export interface FollowUpInput {
   messages: ReadonlyArray<QueueMessage>
   heard?: ReadonlyArray<HeardLine>
   owed?: ReadonlyArray<OwedRecord>
+  /** The calls to make (v2.5596), drawn in We owe them. */
+  calls?: ReadonlyArray<CallTaskRecord>
   portalPapers?: ReadonlyArray<CustomerPaper>
   todayYmd: string
 }
@@ -397,6 +400,8 @@ export interface FollowUpQueue<C = never, N extends { contactId: string } = neve
   clauses: C[]
   needsReply: NeedsReplyRow[]
   weOwe: OwedRow[]
+  /** The calls to make (v2.5596), drawn in We owe them after what we owe, soonest first. */
+  calls: CallTaskRow[]
   /** Nudges from the flow, after We owe them, as `nudgeRows` returns them. */
   nudges: N[]
   /** The papers the portal rows show, for the step card's options (`flows/card.ts`), so the card agrees with the queue. */
@@ -458,11 +463,12 @@ export function followUpQueue<C = never, N extends { contactId: string } = never
   const sorting = new Set(newLane.map((r) => r.contactId))
   const reply = waiting.filter((r) => !sorting.has(r.contactId))
   const owing = weOwe(input.owed ?? [], input.todayYmd)
+  const calls = callRows(all.calls ?? [], input.todayYmd).filter(on)
   const clauses = [...(passThrough.clauses ?? [])]
   const shows = onPortal(portal)
   const nudges = (passThrough.nudges?.(shows) ?? []).filter(on)
-  const people = new Set<string>([...newLane, ...needsYou, ...reply, ...owing].map((r) => r.contactId))
-  return { newLane, needsYou, clauses, needsReply: reply, weOwe: owing, nudges, onPortal: shows, count: people.size }
+  const people = new Set<string>([...newLane, ...needsYou, ...reply, ...owing, ...calls].map((r) => r.contactId))
+  return { newLane, needsYou, clauses, needsReply: reply, weOwe: owing, calls, nudges, onPortal: shows, count: people.size }
 }
 
 /** The Needs you heading's count: every row, as the prototype counts them. */

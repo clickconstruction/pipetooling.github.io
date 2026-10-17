@@ -14,7 +14,10 @@ import type { UserRole } from '../../hooks/useAuth'
 import { GC_OFFICE_TEAM } from '../../lib/gc/access'
 import { telHrefFor } from '../../lib/phoneContact'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
 import { weekdayDate } from '../../lib/gc/words'
+import { jobKey } from '../../lib/messages/jobKeys'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { morningSendOn, TODAYS_SENDS_WORDS } from '../../lib/offers/offers'
 import { fillLine } from '../../lib/quickReplies/blanks'
 import type { QuickReply } from '../../lib/quickReplies/kernel'
@@ -34,7 +37,7 @@ import {
   type TellBlock,
   type TellMoment,
 } from '../../lib/tellCustomer/tellCustomer'
-import { supabaseTellCustomerIo, type TellContact, type TellCustomerIo, type TellJob } from '../../lib/tellCustomer/tellCustomerIo'
+import { supabaseTellCustomerIo, type TellCallScript, type TellContact, type TellCustomerIo, type TellJob } from '../../lib/tellCustomer/tellCustomerIo'
 
 /** The estimate the sheet sends (v2.5594): its facts, and the page's own email send, which answers the link the text carries. */
 export interface TellEstimate {
@@ -96,6 +99,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const [lines, setLines] = useState<QuickReply[] | null>(null)
   const [textsOn, setTextsOn] = useState<boolean | null>(null)
   const [me, setMe] = useState<string | null>(null)
+  const [callScript, setCallScript] = useState<TellCallScript | null>(null)
   const [body, setBody] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -105,17 +109,20 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     let live = true
     void (async () => {
       try {
-        const [j, l, on, name] = await Promise.all([
+        const [j, l, on, name, cs] = await Promise.all([
           estimate ? io.loadCustomer(estimate.customerId).then((c) => ({ customerId: estimate.customerId, customerName: c.name, jobName: null, jobAddress: null, lang: c.lang }) as TellJob) : jobId ? io.loadJob(jobId) : Promise.reject(new Error('No job and no estimate.')),
           io.loadLines(),
           io.loadTextsOn(),
           io.loadMyName(userId),
+          // The step's call script (v2.5596); a read that fails leaves the app's own words.
+          io.loadCallScript(MOMENT_STEP[moment]).catch(() => null),
         ])
         if (!live) return
         setJob(j)
         setLines(l)
         setTextsOn(on)
         setMe(name)
+        setCallScript(cs)
         if (j.customerId && office) {
           try {
             const c = await io.loadContact(j.customerId)
@@ -134,7 +141,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     return () => {
       live = false
     }
-  }, [io, jobId, userId, office, estimate])
+  }, [io, jobId, userId, office, estimate, moment])
 
   const first = firstWord(job?.customerName ?? null)
   const lang = job?.lang ?? 'en'
@@ -209,6 +216,29 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     }
   }
 
+  /** Add to my calls (v2.5596): a call task for tomorrow in Follow up's We owe them, with the script as filled. */
+  const addCall = async () => {
+    if (!contact) return
+    setBusy(true)
+    try {
+      const day = dayAfter(todayYmdInAppTz(new Date(now())))
+      const theJob = estimate ? estimate.jobId : jobId
+      await io.addCall({
+        contactId: contact.contactId,
+        stepKey: MOMENT_STEP[moment],
+        jobKey: theJob ? jobKey({ kind: 'pipeline', id: theJob }) : null,
+        dueYmd: day,
+        what: callWhat(MOMENT_STEP[moment], job?.jobName ?? null),
+        script: receiptScript(moment, fills, 'en', callScript?.script ?? null),
+      })
+      showToast(CALL_WORDS.added(first, day), 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The call was not added.'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (view.kind === 'morning') {
     const footer = (
       <div style={footerRow}>
@@ -265,12 +295,21 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
               </p>
             </>
           ) : null}
-          <p style={label}>{TELL_WORDS.callAsk(first)}</p>
-          <p style={{ ...label, margin: '0 0 0.25rem', fontSize: '0.65rem' }}>{TELL_WORDS.whatToSay}</p>
-          <p style={script} data-testid="tell-script">
-            {receiptScript(moment, fills, 'en')}
-          </p>
-          <p style={muted}>{TELL_WORDS.callLands(first)}</p>
+          {callScript?.suggest === false ? null : (
+            <>
+              <p style={label}>{TELL_WORDS.callAsk(first)}</p>
+              <p style={{ ...label, margin: '0 0 0.25rem', fontSize: '0.65rem' }}>{TELL_WORDS.whatToSay}</p>
+              <p style={script} data-testid="tell-script">
+                {receiptScript(moment, fills, 'en', callScript?.script ?? null)}
+              </p>
+              <p style={muted}>{TELL_WORDS.callLands(first)}</p>
+              {contact ? (
+                <button type="button" style={quietBtn} disabled={busy} onClick={() => void addCall()} data-testid="tell-add-call">
+                  {CALL_WORDS.addToMyCalls}
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
       </ResponsiveModalShell>
     )

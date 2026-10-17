@@ -29,7 +29,7 @@ export interface CustomerMessagesCounts {
 }
 
 export function customerMessageCounts(
-  queue: Pick<FollowUpQueue<unknown, { contactId: string }>, 'newLane' | 'needsYou' | 'needsReply' | 'weOwe'>,
+  queue: Pick<FollowUpQueue<unknown, { contactId: string }>, 'newLane' | 'needsYou' | 'needsReply' | 'weOwe' | 'calls'>,
   contacts: ReadonlyArray<Pick<QueueContact, 'id' | 'kind'>>,
 ): CustomerMessagesCounts {
   const kind = new Map(contacts.map((c) => [c.id, c.kind]))
@@ -43,7 +43,8 @@ export function customerMessageCounts(
   for (const r of queue.needsYou) if (r.kind === 'portal' && r.landOnId && isCustomer(r.contactId)) replying.add(r.contactId)
   return {
     needReply: replying.size,
-    weOwe: queue.weOwe.filter((r) => isCustomer(r.contactId)).length,
+    // A customer we owe something, or a call to make (v2.5596): each person once.
+    weOwe: new Set([...queue.weOwe, ...queue.calls].filter((r) => isCustomer(r.contactId)).map((r) => r.contactId)).size,
     toSort: newLaneCount(queue.newLane.filter((r) => isCustomer(r.contactId))),
   }
 }

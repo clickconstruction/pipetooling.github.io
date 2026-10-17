@@ -6,6 +6,7 @@
  * team (`followUpTeamOf`). The presses are Follow up's own (`supabaseFollowUpIo`). One interface, so a smoke fakes it.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { loadOpenCallTasks, supabaseCallTasksIo, type CallTaskDbRow } from '../calls/callTasksIo'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { GC_OFFICE_TEAM } from '../gc/access'
 import { supabase } from '../supabase'
@@ -25,9 +26,11 @@ export interface FollowUpThreadRows {
   owed: ContactOwedRow[]
   /** Their written promises whose day has not passed, for the move line. */
   promises: MessagePromiseRow[]
+  /** Their open calls to make (v2.5596); none before the push. */
+  calls?: CallTaskDbRow[]
 }
 
-export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'backDone' | 'markOwed'> {
+export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'backDone' | 'markOwed' | 'callAdd'> {
   loadThread(contactId: string, todayYmd: string): Promise<FollowUpThreadRows>
   loadTeam(): Promise<Teammate[]>
 }
@@ -41,12 +44,13 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
   const presses = supabaseFollowUpIo(client)
   return {
     async loadThread(contactId, todayYmd) {
-      const [contact, notes, holders, owed, promises] = await Promise.all([
+      const [contact, notes, holders, owed, promises, calls] = await Promise.all([
         db.from('contacts').select('state, snoozed_until, has_user_id, has_since, has_how').eq('id', contactId).maybeSingle(),
         db.from('messages').select(MESSAGE_COLUMNS).eq('contact_id', contactId).eq('channel', 'note').or('back_on.not.is.null,back_words.not.is.null'),
         db.from('contacts').select('id, state, snoozed_until, has_user_id').not('has_user_id', 'is', null).neq('state', 'done'),
         db.from('contact_owed').select(OWED_COLUMNS).eq('contact_id', contactId).is('done_at', null),
         db.from('message_promises').select(THREAD_PROMISE_COLUMNS).eq('message.contact_id', contactId).eq('state', 'written').gte('day', todayYmd),
+        loadOpenCallTasks(db, contactId),
       ])
       checkSupabaseError(contact, 'load who has the conversation')
       checkSupabaseError(notes, 'load the notes with a day')
@@ -59,8 +63,10 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
         holders: (holders.data ?? []) as unknown as HolderRow[],
         owed: (owed.data ?? []) as unknown as ContactOwedRow[],
         promises: (promises.data ?? []) as unknown as MessagePromiseRow[],
+        calls,
       }
     },
+    callAdd: (input) => supabaseCallTasksIo(db).add(input),
     async loadTeam() {
       const result = await db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false)
       checkSupabaseError(result, 'load the office team')

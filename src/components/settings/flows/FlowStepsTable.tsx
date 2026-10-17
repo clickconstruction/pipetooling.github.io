@@ -6,7 +6,7 @@
  * (`flows/editor.ts`), or a refusal said in words. On a reminder the app sends, the owner's switch writes at once
  * instead (cut 5, `flows/appSends.ts`), with the words the morning run would send.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useConfirmDialog, usePromptDialog } from '../../../contexts/ConfirmDialogContext'
 import type { BoardRead } from '../../../lib/flows/boardRead'
 import {
@@ -19,10 +19,12 @@ import {
   removePaper,
   removeStep,
   renameStep,
+  setCallScript,
   setFork,
   setLoop,
   setNudge,
   setSeat,
+  setSuggestCall,
   setWho,
   type EditResult,
   type FlowDraft,
@@ -89,6 +91,23 @@ export interface FlowAppSends {
   /** The step being written, as `<kind>:<step id>`. */
   busy: string | null
   onSet: (step: FlowStep, mode: AppSendMode) => void
+}
+
+/** A script box that saves on leaving it, so one edit is one change (the call the receipt suggests, v2.5596). */
+function ScriptBox({ value, label, placeholder, onSave }: { value: string; label: string; placeholder?: string; onSave: (v: string) => void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => setText(value), [value])
+  return (
+    <textarea
+      aria-label={label}
+      placeholder={placeholder}
+      value={text}
+      rows={3}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => text !== value && onSave(text)}
+      style={{ width: '100%', boxSizing: 'border-box', fontSize: '0.78rem', fontFamily: 'inherit', padding: '0.3rem 0.4rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', marginTop: '0.25rem' }}
+    />
+  )
 }
 
 /** A name box that saves on leaving it or Enter, so one rename is one change. */
@@ -191,6 +210,19 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
       </div>
     )
   }
+
+  // The call the receipt suggests after this step's text (v2.5596): whether to suggest it, and the script in both languages.
+  const callScript = (step: FlowStep) => (
+    <details data-call-script={step.id} style={{ marginTop: '0.35rem', maxWidth: 280, whiteSpace: 'normal' }}>
+      <summary style={{ cursor: 'pointer', fontSize: '0.8rem' }}>Call script{step.callScript ? '' : ' · the app’s own'}</summary>
+      <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.8rem', margin: '0.3rem 0' }}>
+        <input type="checkbox" checked={step.suggestCall} onChange={(e) => go((d) => setSuggestCall(d, step.id, e.target.checked))} aria-label={`${step.name}: suggest a call after this goes`} />
+        Suggest a call after this goes
+      </label>
+      <ScriptBox value={step.callScript?.en ?? ''} label={`${step.name}: call script`} placeholder="What to say, in English" onSave={(en) => go((d) => setCallScript(d, step.id, { en, es: step.callScript?.es ?? '' }))} />
+      <ScriptBox value={step.callScript?.es ?? ''} label={`${step.name}: call script en español`} placeholder="en español" onSave={(es) => go((d) => setCallScript(d, step.id, { en: step.callScript?.en ?? '', es }))} />
+    </details>
+  )
 
   const row = (step: FlowStep, lane: Lane, at: number, count: number) => {
     const facts = step.facts as readonly string[]
@@ -308,6 +340,7 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
               {appSend(step)}
             </>
           )}
+          {callScript(step)}
         </td>
         <td style={cell}>
           <select aria-label={`${step.name}: repeats`} value={step.loop ?? ''} onChange={(e) => go((d) => setLoop(d, step.id, e.target.value || null))} style={flowSelect}>

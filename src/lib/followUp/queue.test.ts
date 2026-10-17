@@ -1,5 +1,6 @@
 import type { NewLaneRow } from './newLane'
 import { describe, expect, it } from 'vitest'
+import type { CallTaskRecord } from '../calls/callTasks'
 import { plainWordsFailures } from '../plainWords'
 import {
   DEMO_FOLLOW_UP_CONTACTS,
@@ -454,5 +455,41 @@ describe('plain words', () => {
       anotherDay(DEMO_TODAY).toast,
     ]
     expect(sentences.flatMap(plainWordsFailures)).toEqual([])
+  })
+})
+
+describe('the calls to make (v2.5596)', () => {
+  const call = (over: Partial<CallTaskRecord> = {}): CallTaskRecord => ({
+    id: 'c1',
+    contactId: 'dana',
+    stepKey: 'estimate',
+    jobKey: null,
+    dueYmd: '2026-10-03',
+    what: 'about the estimate',
+    script: null,
+    madeBy: 'Rosa',
+    madeAt: '2026-10-02T15:00:00.000Z',
+    doneAt: null,
+    ...over,
+  })
+  const contacts = [
+    { id: 'dana', kind: 'customer' as const, name: 'Dana Whitfield', goesBy: null, company: null, state: 'done' as const, snoozedUntil: null, has: null },
+    { id: 'shop', kind: 'supply_house' as const, name: 'Ferguson', goesBy: null, company: null, state: 'done' as const, snoozedUntil: null, has: null },
+  ]
+
+  it('draws them in We owe them after what we owe, counts the person once, and leaves out a supply house', () => {
+    const q = followUpQueue({ contacts, messages: [], calls: [call(), call({ id: 'c2', contactId: 'shop' }), call({ id: 'c3', dueYmd: '2026-10-01', stepKey: 'booked' })], todayYmd: '2026-10-02' })
+    expect(q.calls.map((r) => [r.id, r.pill, r.late])).toEqual([
+      ['c3', 'call · Thu Oct 1, late', true],
+      ['c1', 'call · Sat Oct 3', false],
+    ])
+    expect(q.weOwe).toEqual([])
+    expect(q.count).toBe(1)
+  })
+
+  it('is empty with none, and adds nobody to the count', () => {
+    const q = followUpQueue({ contacts, messages: [], todayYmd: '2026-10-02' })
+    expect(q.calls).toEqual([])
+    expect(q.count).toBe(0)
   })
 })

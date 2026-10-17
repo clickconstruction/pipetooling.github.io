@@ -9,6 +9,7 @@
  * A thread's highlights load with the thread.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { loadOpenCallTasks, supabaseCallTasksIo, type CallTaskAdd } from '../calls/callTasksIo'
 import type { ContactChannelRow, ContactJobRow, ContactRecordRows } from '../contacts/load'
 import type { JobRef } from '../messages/load'
 import type { DayKept } from '../messages/owed'
@@ -47,6 +48,12 @@ export interface FollowUpIo {
   /** Returns the highlight (the same one for the same words). */
   highlight(messageId: string, text: string): Promise<string>
   unhighlight(highlightId: string): Promise<void>
+  /** Calls (v2.5596): Add to my calls; resolves to the task's id. */
+  callAdd(input: CallTaskAdd): Promise<string>
+  /** I called (a team note, the given words or the app's) or Skip. */
+  callDone(id: string, how: 'called' | 'skipped', note?: string | null): Promise<void>
+  /** Tomorrow, or any day from today on. */
+  callMove(id: string, dueYmd: string): Promise<void>
 }
 
 const CONTACT_COLUMNS = [
@@ -165,7 +172,7 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
   }
   return {
     async loadQueue(todayYmd) {
-      const [contacts, channels, inbound, notes, heard, owed, jobs] = await Promise.all([
+      const [contacts, channels, inbound, notes, heard, owed, jobs, callTasks] = await Promise.all([
         db.from('contacts').select(CONTACT_COLUMNS),
         db.from('contact_channels').select(CHANNEL_COLUMNS),
         // Their lines in while the conversation is open or snoozed: the queue reads each person's newest.
@@ -174,6 +181,8 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
         db.from('message_promises').select(PROMISE_COLUMNS).or(`state.eq.offered,and(state.eq.written,day.gte.${todayYmd})`),
         db.from('contact_owed').select(OWED_COLUMNS).is('done_at', null),
         db.from('contact_jobs').select(JOB_COLUMNS).in('contact.state', ['waiting', 'snoozed']),
+        // The calls to make (v2.5596), fail-soft before the push.
+        loadOpenCallTasks(db),
       ])
       checkSupabaseError(contacts, 'load the people Follow up reads')
       checkSupabaseError(channels, 'load their numbers and addresses')
@@ -195,6 +204,7 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
         owed: (owed.data ?? []) as unknown as ContactOwedRow[],
         jobs: jobRows,
         jobStates: await loadJobStates(db, jobRows),
+        callTasks,
       }
     },
     async loadHighlights(messageIds) {
@@ -209,6 +219,9 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
     async takeIt(contactId) {
       await call('take_it', { p_contact_id: contactId }, 'take a conversation')
     },
+    callAdd: (input) => supabaseCallTasksIo(db).add(input),
+    callDone: (id, how, note) => supabaseCallTasksIo(db).done(id, how, note),
+    callMove: (id, dueYmd) => supabaseCallTasksIo(db).move(id, dueYmd),
     async handTo(contactId, userId) {
       await call('hand_to', { p_contact_id: contactId, p_user_id: userId }, 'hand a conversation on')
     },

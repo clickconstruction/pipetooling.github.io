@@ -58,6 +58,8 @@ describe('loadQueue', () => {
       ['message_promises', ['or state.eq.offered,and(state.eq.written,day.gte.2026-10-02)']],
       ['contact_owed', ['done_at is null']],
       ['contact_jobs', ['contact.state in waiting,snoozed']],
+      // The calls to make (v2.5596).
+      ['call_tasks', ['done_at is null']],
     ])
     expect(queries[0]!.select).toContain('state, snoozed_until, has_user_id, has_since, has_how')
     // R0's four kinds point at their records, and a lead's prospect is embedded. Follow up never holds a supply house
@@ -79,7 +81,8 @@ describe('loadQueue', () => {
     ]
     const { client, queries } = fakeClient({ contact_jobs: jobs, gc_projects: [{ project_id: 'p1', stage: 'building', lost_on: null }], jobs_ledger: [{ id: 'j1', status: 'paid' }] })
     const rows = await supabaseFollowUpIo(client).loadQueue('2026-10-02')
-    expect(queries.slice(7).map((q) => [q.table, q.select, q.filters])).toEqual([
+    // After the seven queue reads and the calls' (v2.5596), the two job-state reads.
+    expect(queries.slice(8).map((q) => [q.table, q.select, q.filters])).toEqual([
       ['gc_projects', 'project_id, stage, lost_on', ['project_id in p1']],
       ['jobs_ledger', 'id, status', ['id in j1']],
     ])

@@ -43,6 +43,10 @@ The note stays in the thread. The person leaves **We owe them**. The move goes b
 
 Press {{button:outline|Put it off}}. The person leaves Follow up until Monday morning. What we owe stays marked.
 
+## A call to make
+
+A call you added from a receipt sits in the same list. The row reads **Call Dana about the estimate** with its day. Press **Call** to dial, **I called** when it is done, or **Tomorrow** to move it. See [call a customer from a task](/help/call-a-customer-from-a-task).
+
 ## What comes next
 
 To see everyone waiting on us, see [See who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them).

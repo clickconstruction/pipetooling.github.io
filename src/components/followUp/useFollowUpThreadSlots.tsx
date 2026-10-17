@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
+import { callFirst, CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { pressProblem } from '../../lib/followUp/followUpIo'
 import { followUpContactOf, followUpMessagesFromRows, holdersFromRows, owedRecordsFromRows } from '../../lib/followUp/followUpRows'
@@ -30,7 +31,7 @@ import { WhoHasItPill } from './WhoHasItPill'
 
 const DEFAULT_IO = supabaseFollowUpThreadIo()
 
-export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox'>
+export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox' | 'underLine'>
 
 const quiet = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.55rem' } as const
 
@@ -121,6 +122,26 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
   const mine = (id: string) => id === contactId
 
   return {
+    // Calls (v2.5596): under a text we sent a customer today, the quiet ask, until a call to them waits.
+    underLine: (m, c) => {
+      if (!mine(c.id) || c.kind !== 'customer' || m.direction !== 'out' || m.channel !== 'text') return null
+      if (todayYmdInAppTz(new Date(m.at)) !== todayYmd || (rows.calls ?? []).length > 0) return null
+      const first = callFirst(c)
+      const day = dayAfter(todayYmd)
+      return (
+        <span key={`call-${m.id}`} data-call-ask={m.id} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          {CALL_WORDS.quietAsk(first)}
+          <button
+            type="button"
+            style={quiet}
+            disabled={pressing === 'call add'}
+            onClick={() => void press('call add', () => io.callAdd({ contactId: c.id, stepKey: null, jobKey: null, dueYmd: day, what: callWhat(null), script: null }), CALL_WORDS.added(first, day))}
+          >
+            {CALL_WORDS.addToMyCalls}
+          </button>
+        </span>
+      )
+    },
     headerRight: (c) =>
       mine(c.id) ? (
         <WhoHasItPill

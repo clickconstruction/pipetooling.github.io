@@ -129,6 +129,9 @@ function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
     backDone: vi.fn(async () => undefined),
     highlight: vi.fn(async () => 'h-new'),
     unhighlight: vi.fn(async () => undefined),
+    callAdd: vi.fn(async () => 'c-new'),
+    callDone: vi.fn(async () => undefined),
+    callMove: vi.fn(async () => undefined),
   }
 }
 

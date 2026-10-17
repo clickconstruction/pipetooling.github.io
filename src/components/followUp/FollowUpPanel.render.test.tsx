@@ -131,6 +131,8 @@ const ROWS: FollowUpRows = {
   ],
   heard: [question('q-greg', 'm-greg', 'greg', '2026-10-01T14:00:00.000Z')],
   owed: [owed('o-priya', 'priya', 'the start date', '2026-10-05')],
+  // A call to make (v2.5596): Elena about the estimate, tomorrow.
+  callTasks: [{ id: 'call-elena', contact_id: 'elena', step_key: 'estimate', bid_id: null, project_id: null, jobs_ledger_id: 'job-7', due_on: '2026-10-03', what: 'about the estimate', script: 'Hi Elena, this is Rosa with Click Plumbing.', made_by: 'u-rosa', made_at: '2026-10-02T15:00:00.000Z', done_at: null }],
 }
 
 const EMPTY: FollowUpRows = { contacts: [], channels: [], records: {}, messages: [], heard: [], owed: [] }
@@ -153,6 +155,9 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}, rows: FollowUpRows = ROWS):
     backDone: vi.fn(async () => undefined),
     highlight: vi.fn(async () => 'h-new'),
     unhighlight: vi.fn(async () => undefined),
+    callAdd: vi.fn(async () => 'c-new'),
+    callDone: vi.fn(async () => undefined),
+    callMove: vi.fn(async () => undefined),
     ...overrides,
   }
 }
@@ -202,7 +207,7 @@ describe('FollowUpPanel', () => {
     await loaded()
     // Elena twice in Needs you, as the prototype counts its rows; the badge counts each person once.
     expect(screen.getByRole('heading', { name: 'Needs you (2)' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'We owe them (1)' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'We owe them (2)' })).toBeTruthy()
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(4))
 
     const reply = screen.getByRole('region', { name: 'Needs a reply' })
@@ -233,6 +238,23 @@ describe('FollowUpPanel', () => {
     // What we owe opens the thread at the reply box, where the ways to deal with it are.
     fireEvent.click(rowIn('We owe them', 'priya').getByRole('button', { name: /we owe the start date/ }))
     expect(onOpenThread).toHaveBeenLastCalledWith('priya')
+  })
+
+  it('draws a call to make in We owe them with its day and the words to say; I called, Tomorrow and Skip press through the io (v2.5596)', async () => {
+    const { io, say } = renderPanel()
+    await loaded()
+    const row = rowIn('We owe them', 'elena')
+    expect(row.getByText('call · Sat Oct 3')).toBeTruthy()
+    expect(row.getByText(/Call Elena about the estimate · added by Rosa/)).toBeTruthy()
+    fireEvent.click(row.getByRole('button', { name: 'What to say' }))
+    expect(row.getByText('Hi Elena, this is Rosa with Click Plumbing.')).toBeTruthy()
+    fireEvent.click(row.getByRole('button', { name: 'Tomorrow' }))
+    await waitFor(() => expect(io.callMove).toHaveBeenCalledWith('call-elena', '2026-10-03'))
+    fireEvent.click(rowIn('We owe them', 'elena').getByRole('button', { name: 'I called' }))
+    await waitFor(() => expect(io.callDone).toHaveBeenCalledWith('call-elena', 'called'))
+    expect(say).toHaveBeenLastCalledWith('Done. The note is in the thread.', 'success')
+    fireEvent.click(rowIn('We owe them', 'elena').getByRole('button', { name: 'Skip' }))
+    await waitFor(() => expect(io.callDone).toHaveBeenCalledWith('call-elena', 'skipped'))
   })
 
   it('each press runs, reads the queue again and says the kernel’s words', async () => {

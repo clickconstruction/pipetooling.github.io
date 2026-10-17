@@ -23,7 +23,7 @@ const BLOCK: TellBlock = { workDate: '2026-10-23', timeStart: '10:00:00', timeEn
 const BOOKED: QuickReply = { id: 'q1', text: '{first}, this is {me} with Click Plumbing. We have you booked for {day}, {window}. {tech} will text you when on the way.', for: 'customer', stepId: 'booked', scope: 'team', addedBy: 'rosa', addedAt: 1, removed: false, uses: {}, lastUsed: null, textEs: null } as QuickReply
 const AT = Date.parse('2026-10-16T19:41:00Z')
 
-type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn>; makeOffer: ReturnType<typeof vi.fn> }
+type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn>; makeOffer: ReturnType<typeof vi.fn>; addCall: ReturnType<typeof vi.fn> }
 function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
   return {
     loadJob: vi.fn(async () => ({ customerId: 'cust-dana', customerName: 'Dana Whitfield', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', lang: 'en' as const })),
@@ -35,6 +35,8 @@ function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
     isFirstVisit: vi.fn(async () => true),
     send: vi.fn(async () => 'msg-1'),
     makeOffer: vi.fn(async () => 'offer-1'),
+    loadCallScript: vi.fn(async () => null),
+    addCall: vi.fn(async () => 'call-1'),
     ...set,
   } as Fake
 }
@@ -111,6 +113,35 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     expect(screen.getByTestId('tell-morning-line').textContent).toMatch(/^Goes at 9 AM on Sat.*17 from the company number\.$/)
     expect(io.send).not.toHaveBeenCalled()
     expect(onSent).not.toHaveBeenCalled()
+  })
+
+  it('Add to my calls on the receipt makes the call a task for tomorrow with the script as filled (v2.5596)', async () => {
+    const io = fakeIo()
+    mount(io)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    await screen.findByTestId('tell-receipt')
+    fireEvent.click(screen.getByTestId('tell-add-call'))
+    // AT is Fri Oct 16 in the app's zone: the call is for Sat Oct 17.
+    await waitFor(() => expect(io.addCall).toHaveBeenCalledWith(expect.objectContaining({ contactId: 'contact-dana', stepKey: 'booked', jobKey: 'pipeline:job-512', dueYmd: '2026-10-17', what: 'about the visit' })))
+    expect((io.addCall.mock.calls[0]![0] as { script: string }).script).toContain('Hi Dana, this is Rosa with Click Plumbing.')
+  })
+
+  it('reads the step’s own script on the receipt, and hides the call ask when the step says not to suggest one', async () => {
+    const io = fakeIo({ loadCallScript: vi.fn(async () => ({ script: { text: 'Hey {first}, {me} here. Good for {day}?', textEs: '' }, suggest: true })) })
+    mount(io)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    await screen.findByTestId('tell-receipt')
+    expect(screen.getByTestId('tell-script').textContent).toBe('Hey Dana, Rosa here. Good for Friday, October 23, 2026?')
+    cleanup()
+    const quiet = fakeIo({ loadCallScript: vi.fn(async () => ({ script: null, suggest: false })) })
+    mount(quiet)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    await screen.findByTestId('tell-receipt')
+    expect(screen.queryByTestId('tell-script')).toBeNull()
+    expect(screen.queryByTestId('tell-add-call')).toBeNull()
   })
 
   it('takes the app’s own words when the office has no Booked line', async () => {

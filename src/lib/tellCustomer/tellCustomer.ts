@@ -8,6 +8,7 @@
  * presses, the receipt's words and its script. The reads and the sends are `tellCustomerIo.ts`; the sheet is
  * `components/customers/TellCustomerSheet.tsx`.
  */
+import { SEED_CALL_SCRIPTS } from '../flows/callScripts'
 import type { PortalLang } from '../gc/portalI18n'
 import { windowWords } from '../jobModeText'
 import { scheduleFormatWeekdayLong } from '../jobScheduleChicago'
@@ -38,20 +39,14 @@ export const DEFAULT_LINES: Readonly<Record<TellMoment, { text: string; textEs: 
   },
 }
 
-/** What to say on the call the receipt offers, until the office writes a script on the step (the Flows editor, PR 5). */
+/** What to say on the call the receipt offers, until the office writes a script on the step (Settings → Flows, v2.5596). */
 export const DEFAULT_SCRIPTS: Readonly<Record<TellMoment, { text: string; textEs: string }>> = {
-  booked: {
-    text: 'Hi {first}, this is {me} with Click Plumbing. You should have a text from us with the window for {day}, {window}. Does that still work for you? {tech} will text you when on the way.',
-    textEs: 'Hola {first}, le habla {me} de Click Plumbing. Le llegó un mensaje nuestro con la ventana del {day}, {window}. ¿Le sigue funcionando? {tech} le avisará cuando vaya en camino.',
-  },
+  booked: SEED_CALL_SCRIPTS.booked,
   rescheduled: {
     text: 'Hi {first}, this is {me} with Click Plumbing. We moved your visit to {day}, {window}, and I wanted to make sure that works for you.',
     textEs: 'Hola {first}, le habla {me} de Click Plumbing. Cambiamos su visita al {day}, {window}, y quería confirmar que le funciona.',
   },
-  estimate: {
-    text: 'Hi {first}, this is {me} with Click Plumbing. I just sent your estimate for {job}, {amount}. Do you have two minutes for me to walk you through it? You can approve from the link whenever you are ready.',
-    textEs: 'Hola {first}, le habla {me} de Click Plumbing. Acabo de enviarle el presupuesto de {job}, {amount}. ¿Tiene dos minutos para que se lo explique? Puede aprobarlo desde el enlace cuando guste.',
-  },
+  estimate: SEED_CALL_SCRIPTS.estimate,
 }
 
 // ---------- the fills ----------
@@ -223,10 +218,11 @@ export function emailSentLine(email: string, atMs: number): string {
   return `Email · ${email} · ${clockHm(atMs)}`
 }
 
-/** The call's script, filled for this customer, in the office's language. The step's own script replaces the default in PR 5. */
-export function receiptScript(moment: TellMoment, fills: BlankFills, lang: PortalLang = 'en'): string {
-  const s = DEFAULT_SCRIPTS[moment]
-  return fillLine(lang === 'es' ? s.textEs : s.text, fills).text
+/** The call's script, filled for this customer, in the office's language: the step's own (`flow_steps.call_script`, v2.5596) when the office wrote one, else the app's. */
+export function receiptScript(moment: TellMoment, fills: BlankFills, lang: PortalLang = 'en', script: { text: string; textEs: string } | null = null): string {
+  const s = script ?? DEFAULT_SCRIPTS[moment]
+  const words = lang === 'es' ? s.textEs || s.text : s.text || s.textEs
+  return fillLine(words, fills).text
 }
 
 // ---------- the words ----------
