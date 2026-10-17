@@ -19,6 +19,7 @@ Almost **50%** of fatal falls happen with no protection in use. Roofs cause **33
 - Snap hooks are self-closing and self-locking. A shock-absorbing lanyard allows about **6 ft** of free fall. A self-retracting lanyard locks within about **2 ft**.
 - Free fall is the lanyard length plus or minus the distance from D-ring to anchor. It is never over **6 ft**. A 6-ft lanyard anchored at your feet means **11 ft**.
 - Clearance adds four things to the free fall. **3.5 ft** to slow, **1 ft** of D-ring shift, **5 ft** of D-ring height and **2 ft** of safety. Rule of thumb: **18 ft** below you.
+- {{figure:clearance-stack|Five distances stacked under the anchor. With less than 18 ft of clear space, the harness cannot save you.}}
 - The fall protection plan drives the training. An in-house competent person gives it and records it. It repeats when hazards change or after a fall.
 
 ## Traps

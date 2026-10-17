@@ -27,6 +27,7 @@
  * voids a pass and the office can see which words a person passed on.
  */
 import { parseHelpGuideFrontmatter } from '../helpGuides'
+import { itemWords, parseFigureItem } from './figures'
 import { PLAIN_WORDS_GLUE, plainWordsFailures } from '../plainWords'
 
 export type CourseQuestionOption = { text: string; right: boolean }
@@ -247,9 +248,12 @@ export function parseLesson(source: string, key: string): CourseLesson {
     numbers: parseNumbers(listItems(numbers.lines, key, 'Numbers'), key),
     questions: parseQuestions(check.lines, key, key, part),
   }
+  // Figures (punch list #116, v2.5598): a `{{figure:<name>|<caption>}}` item must name a drawing the app has,
+  // and a figure is not a fact, so the item counts below are of sentences.
+  const facts = (items: readonly string[]) => items.filter((item) => !parseFigureItem(item, key)).length
   if (lesson.why.length < 1 || lesson.why.length > 3) fail(key, 'Why it matters is one to three short paragraphs')
-  if (lesson.mustKnow.length < 4 || lesson.mustKnow.length > 12) fail(key, `Must know is 4 to 12 items (found ${lesson.mustKnow.length})`)
-  if (lesson.traps.length < 1 || lesson.traps.length > 4) fail(key, `Traps is 1 to 4 items (found ${lesson.traps.length})`)
+  if (facts(lesson.mustKnow) < 4 || facts(lesson.mustKnow) > 12) fail(key, `Must know is 4 to 12 facts (found ${facts(lesson.mustKnow)})`)
+  if (facts(lesson.traps) < 1 || facts(lesson.traps) > 4) fail(key, `Traps is 1 to 4 items (found ${facts(lesson.traps)})`)
   if (lesson.numbers.length < 3 || lesson.numbers.length > 10) fail(key, `Numbers is 3 to 10 items (found ${lesson.numbers.length})`)
   if (lesson.questions.length !== LESSON_QUESTIONS) fail(key, `Check yourself is exactly ${LESSON_QUESTIONS} questions (found ${lesson.questions.length})`)
   return lesson
@@ -368,8 +372,8 @@ export function lessonPlainWordsFailures(lesson: CourseLesson): string[] {
     for (const f of plainWordsFailures(forCounting(text))) failures.push(`${lesson.key} ${where}: ${f}`)
   }
   lesson.why.forEach((p, i) => hold(`why ${i + 1}`, p))
-  lesson.mustKnow.forEach((p, i) => hold(`must know ${i + 1}`, p))
-  lesson.traps.forEach((p, i) => hold(`trap ${i + 1}`, p))
+  lesson.mustKnow.forEach((p, i) => hold(`must know ${i + 1}`, itemWords(p)))
+  lesson.traps.forEach((p, i) => hold(`trap ${i + 1}`, itemWords(p)))
   lesson.numbers.forEach((n, i) => {
     if (PLAIN_WORDS_GLUE.test(n.label)) failures.push(`${lesson.key} number ${i + 1}: glued label: ${n.label}`)
   })

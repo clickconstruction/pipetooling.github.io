@@ -9,6 +9,7 @@ Every module of the course comes back to the same few ideas. They cover the stro
 
 ## Must know
 - Controls run from most to least effective. Elimination, substitution, engineering, administrative, then PPE, the gear you wear.
+- {{figure:controls-ladder|Start at the top. Each step down leans more on people doing the right thing.}}
 - Engineering controls work without you. Guards, ventilation and dust collection are engineering, while training and permits are administrative.
 - PPE is the last line of defense. It reduces the effect of a hazard and never removes it.
 - The competent person is named by the employer. They spot existing and predictable hazards and can stop work.
