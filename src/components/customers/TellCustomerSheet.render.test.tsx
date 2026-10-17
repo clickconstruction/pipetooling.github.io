@@ -149,9 +149,11 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
   it('My way: send and show me the receipt sends the moment the sheet can, and says so (v2.5597)', async () => {
     const io = fakeIo({ loadMyWay: vi.fn(async () => ({ booked: 'send' as const, estimate: 'ask' as const })) })
     mount(io)
+    // The toast fires before the send and lives five seconds; on a loaded runner the receipt can draw after it has
+    // gone (the merge queue, 2026-10-17). Read the toast while it is up, then the receipt.
+    expect(await screen.findByText('Sent your way. Change it under Settings → Your account.')).toBeTruthy()
     expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
     expect(io.send).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Sent your way. Change it under Settings → Your account.')).toBeTruthy()
   })
 
   it('an edit offers Make this the office’s line: the blanks come back, a last look, and the save goes through the io (v2.5597)', async () => {
