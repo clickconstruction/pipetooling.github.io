@@ -480,7 +480,8 @@ SELECT mfu.same('Tomorrow moves the day', (SELECT (due_on = public.app_today()):
 SELECT mfu.refused('a call is never moved to a day gone by', $q$SELECT public.call_task_move((SELECT id FROM calls WHERE what = 'first'), public.app_today() - 1)$q$, 'Pick today or a day to come');
 -- The badge: a person with nothing else open counts once for an open call, and not once it closes.
 RESET ROLE;
-INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000006012', 'unknown');
+-- Done, so nothing but the call could count them: a new row starts waiting.
+INSERT INTO public.contacts (id, kind, state) VALUES ('00000000-0000-0000-0000-000000006012', 'unknown', 'done');
 INSERT INTO public.contact_channels (contact_id, kind, value) VALUES ('00000000-0000-0000-0000-000000006012', 'phone', '(830) 555-0190');
 CREATE TEMP TABLE badge (what text, n integer);
 GRANT SELECT, INSERT ON badge TO authenticated;
