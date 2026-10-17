@@ -35,7 +35,7 @@ The card at the top is who you are calling. Press the {{button:blue|📞 phone}}
 
 ## Add to the bench
 
-{{button:purple|Add to the bench ✓}} opens **Add a company**, the same window Trade partners uses. It is filled from the card. Check the trades and the miles, then press {{button:blue|Save to the bench}}.
+{{button:purple|Add to the bench ✓}} opens **Add a company**, the same window Trade partners uses. It is filled from the card, with the person's cell, the license and the Google Maps link. Check the trades and the miles, then press {{button:blue|Save to the bench}}.
 
 The company lands on **GC projects → Trade partners** under each of its trades. It can quote at once. An award waits until someone approves it there. The prospect leaves the queue and sits under **On the bench** on the Prospect List.
 

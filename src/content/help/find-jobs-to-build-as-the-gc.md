@@ -46,7 +46,7 @@ The card at the top is who you are calling. Press the {{button:blue|📞 phone}}
 
 ## Asked us
 
-{{button:purple|Asked us ✓}} opens **Add customer**, filled from the card and already linked. Press {{button:blue|Save}} to make the customer. Then **New project** opens on GC projects with the job filled in. It carries the name, the address, the size, who we work for and the bid day. Read [start a GC project](/help/start-a-gc-project) for the rest of that window.
+{{button:purple|Asked us ✓}} opens **Add customer**, filled from the card and already linked. A person on their own opens as Residential. A company opens as Commercial with the person as its contact. Press {{button:blue|Save}} to make the customer. Then **New project** opens on GC projects with the job filled in. It carries the name, the address, the size, who we work for and the bid day. Read [start a GC project](/help/start-a-gc-project) for the rest of that window.
 
 The job with the soonest bid day is the one handed on, and it reads **asked us** on the card. The prospect leaves the queue and sits under **Asked us** on the Prospect List. A lead with another open job stays in the queue for it.
 
