@@ -10,6 +10,7 @@ Struck-by incidents cause **10 to 15%** of construction deaths. Vehicles and hea
 ## Must know
 - Four types: flying, falling, swinging and rolling objects. Walking into a wall is not struck-by. A piece of it falling on you is.
 - The swing radius is the full **360 degrees** out to the furthest moving point. It includes loads, cabs, tracks and buckets. Red rope on delineators marks it.
+- {{figure:swing-radius|Everything inside the red circle can move. The three shaded spots are where the operator cannot see you.}}
 - Never stand under a crane load. Stay in the operator's sight. Guide loads with tag lines.
 - Powder-actuated and pneumatic tools need certification. Everyone nearby wears a hard hat and safety glasses. An uncertified nail gun killed an apprentice **27 ft** away.
 - Cleaning with compressed air: under **30 psi**, a chip guard, a face shield and hearing protection. Never aim it at anyone.

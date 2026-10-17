@@ -2,7 +2,7 @@
 name: "Training visuals: a drawing beside the sentence it explains"
 number: 116
 group: close
-status: BUILDING 2026-10-17 — Grace picked line drawings and all thirty-five; PR 0 (the mechanism, the controls ladder in lesson 1, the clearance stack in lesson 8) is v2.5598; next PR 1 space
+status: BUILDING 2026-10-17 — Grace picked line drawings and all thirty-five; PR 0 (the mechanism, figures 1 and 2) is v2.5598; PR 1 (space, figures 3 to 10 and the lesson 30 map, each checked at three widths in both themes) is v2.5599; next PR 2 sight
 summary: >
   Read as a fourteen-year-old on a phone, the OSHA 30 refresher holds up where a lesson is a
   rule or a story and fails in four kinds of places: shapes in space (a ladder's angle, a
@@ -13,7 +13,7 @@ summary: >
   SVG beside the sentence it explains, and a catalog of thirty-five figures in five groups, each
   a line drawing in the page's own ink so it reads in both themes, loads with the lesson, and
   never goes stale.
-next: PR 1 space (figures 3 to 10 and the lesson 30 map), then sight, scales, motions, reuse; call 3 (a figure inside a question) stays open.
+next: PR 2 sight (figures 11 to 19), then scales, motions, reuse; call 3 (a figure inside a question) stays open. Grace's rule from PR 1 on: after each drawing, screenshots on multiple viewports.
 size: M (PR 0 is S; each figure PR is S, about eight drawings)
 blocker: none; nothing waits on a migration, a function or another stream.
 opinion: build it as drawn; the figures are the feature, the mechanism is thirty lines and a test, and the catalog below is the whole scope so nothing is invented later.

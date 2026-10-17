@@ -11,6 +11,7 @@ Almost **50%** of fatal falls happen with no protection in use. Roofs cause **33
 - A leading edge is an edge that moves as the work goes on. Only a restraint or an arrest system can protect it.
 - Passive systems need no action from you: guardrails, nets and covers. Active systems are PPE you wear, and they need training.
 - Guardrail top rail at **42 in ± 3 in**. Midrail at **21 in**. Posts take **200 lb**. Add a toeboard wherever objects could fall.
+- {{figure:guardrail|The top rail at the hip, the midrail at the knee, the toeboard at the ankle.}}
 - A parapet is the short wall at a roof edge. A **24-in** parapet can serve as midrail and toeboard under an added top rail.
 - The competent person inspects guardrails before each use. You inspect your PFAS before every use and tag damaged gear Do Not Use.
 - Safety nets go under work over **25 ft**. Mesh no larger than **6 by 6 in**. Inspected **weekly**. Never more than **30 ft** below the work.

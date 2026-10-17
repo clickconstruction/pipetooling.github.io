@@ -9,6 +9,7 @@ The course ends on one case, built on two NIOSH reports. Those are the governmen
 
 ## Must know
 - The setup: a new residential site, trenching for water and sewer lines. You, an excavator operator and a few others are on site. The case walks **four** decisions.
+- {{figure:excavator-site-map|The four decisions on one site. Each keeps a person out of the circle or off an unchecked machine.}}
 - Decision **1**: an untrained new hire volunteers to spot for the excavator. Stop the work and escalate the need for a trained spotter. Any worker can stop unsafe work.
 - Checking the weather fixes nothing. Swapping in a more experienced but still untrained worker fixes nothing either.
 - Decision **2**: the employer names you competent person. Your daily inspection finds the excavator and its attachments uninspected and no manual on site. The soil is Type B, and the boom carries a quick coupler.

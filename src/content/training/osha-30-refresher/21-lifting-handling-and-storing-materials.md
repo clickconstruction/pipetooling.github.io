@@ -11,6 +11,7 @@ Poor handling causes sprains, fractures, amputations and crushing deaths. Back i
 - Manual handling's main risk is hurting your body. Overexertion is the primary manual hazard. Mechanical handling's main risk is losing control of the equipment.
 - Back pain is the most common musculoskeletal disorder. Carpal tunnel, tendinitis, trigger finger, rotator cuff injuries and tennis elbow follow it.
 - The safe lifting zone is **mid-thigh to mid-chest**. Stop and tell your manager at the first warning sign.
+- {{figure:lifting-zone|Lift between mid-thigh and mid-chest. Set work at the elbow, precision above it and heavy below.}}
 - Plan each task with a JHA, the job hazard analysis. Eliminate the lift first. Then engineering controls like forklifts, hoists and carts. Then training and weight markings. PPE like gloves and steel toes comes last.
 - The lift has five steps. Plan the weight and the route. Squat with a straight back and grip close to the body. Move without twisting or rushing, then set down carefully.
 - Over **50 lb** may need a second person or a mechanical aid. Count off a team lift together. Never roll a barrel or cylinder by hand.

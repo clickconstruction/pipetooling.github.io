@@ -15,6 +15,7 @@ About **160** workers die in ladder falls each year. A fall from a ladder is dan
 - Fiberglass stays non-conductive when wet and is the choice near electricity. Aluminum conducts. Wood conducts once it is wet.
 - Straight ladders stop at **30 ft** and step ladders at **20 ft**. A platform ladder carries one person. A double-cleated ladder lets two climb at once.
 - Secure an extension ladder at the top and the bottom. Extend it **3 ft** above the landing at a **4:1** angle. Never stand on the top three rungs.
+- {{figure:ladder-angle|One foot out for every four feet up, tied at both ends, 3 ft past the landing.}}
 - Open a step ladder fully and lock the spreaders. Never stand on the top cap. Never use one to reach a roof.
 - Inspect before each use. Take a defective ladder out of service. Never use a ladder as a scaffold or work platform.
 - A job-made ladder has side rails **16 to 20 in** apart and rungs **12 in** on center. It runs no more than **24 ft**.
