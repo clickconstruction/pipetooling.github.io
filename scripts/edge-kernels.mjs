@@ -97,6 +97,8 @@ export const ENTRIES = {
   'lib/bio/bio.ts': { values: ['bioText', 'bioPickedLines', 'bioLinesFromRows', 'usualPicks', 'firstNameOf', 'introduced', 'BIO_CAP'], types: ['BioLine', 'BioLineRow'] },
   'lib/jobModeText.ts': { values: ['jobModeFills'], types: ['JobModeBlock', 'JobModeFillInput'] },
   'lib/messages/customerLang.ts': { values: ['customerLang'], types: [] },
+  // May we text? (v2.5606): the one rule the card and quo-send read.
+  'lib/prospects/textingRule.ts': { values: ['textRefusal'], types: [] },
   'lib/followUp/assignSeats.ts': { values: ['ASSIGN_RULE_KEY', 'parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
   'lib/messages/legalRoute.ts': {
     values: ['legalLines', 'legalSendsFromDemandLetters', 'legalSendsFromFilings', 'routeReply', 'standingLegalLine'],
