@@ -17,6 +17,8 @@ The top row picks what you are finding. **Customers** are GCs and owners who cou
 
 New Prospect asks for the person first. Type their name, their title, their cell and their email. Pick their language. Say whether we may text them, once you have asked. The company goes under them. Leave the company empty for a person on their own. The card then names the person and dials their cell. The office line shows beside it.
 
+Ask on the call whether we may text them. Then press the texting chip on the card and pick Yes or No. Messages texts a prospect only after a Yes. Until then a text says who has not been asked.
+
 ## Make the call
 
 The card at the top is who you're calling. The card shows the company, the contact, and a big {{button:blue|📞 phone}} button that dials on tap. Chips beside it warn you when the prospect is {{chip:yellow|Due 183 days}} overdue. The chips also warn you when the prospect shows {{chip:green|never called}}. Never called means no real call was ever logged.

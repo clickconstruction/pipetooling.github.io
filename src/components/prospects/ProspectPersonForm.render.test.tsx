@@ -30,4 +30,18 @@ describe('ProspectPersonForm (v2.5601)', () => {
     expect(screen.getByText(/the company on the bench/)).toBeTruthy()
     expect(rowFromBlocks({ ...EMPTY_PERSON, name: 'Dana' }, EMPTY_COMPANY).is_person).toBe(true)
   })
+  it('a paste from Google Maps fills the company, the address and the link, sets the source, and clears itself (v2.5604)', () => {
+    const onCompany = vi.fn()
+    const onSource = vi.fn()
+    render(<ProspectPersonForm person={EMPTY_PERSON} onPerson={() => {}} company={EMPTY_COMPANY} onCompany={onCompany} onSource={onSource} kind="sub" />)
+    const box = screen.getByLabelText('Paste from Google Maps') as HTMLTextAreaElement
+    fireEvent.change(box, { target: { value: 'Bexar Fire' } })
+    expect(onCompany).not.toHaveBeenCalled()
+    expect(box.value).toBe('Bexar Fire')
+    fireEvent.change(box, { target: { value: 'Bexar Fire Protection\n1800 Cibolo Trail, Boerne, TX 78006\nhttps://maps.app.goo.gl/x7QzAbc' } })
+    expect(onCompany).toHaveBeenCalledWith({ ...EMPTY_COMPANY, company: 'Bexar Fire Protection', address: '1800 Cibolo Trail, Boerne, TX 78006', mapsUrl: 'https://maps.app.goo.gl/x7QzAbc' })
+    expect(onSource).toHaveBeenCalledWith('Google Maps')
+    expect(box.value).toBe('')
+    expect(screen.getByLabelText('License')).toBeTruthy()
+  })
 })

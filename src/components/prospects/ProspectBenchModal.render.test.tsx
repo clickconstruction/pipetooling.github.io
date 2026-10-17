@@ -67,4 +67,13 @@ describe('ProspectBenchModal (v2.5559)', () => {
     expect(onCancel).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeTruthy()
   })
+
+  it('shows the license and the Google Maps boxes filled from the sub, and saves them (v2.5603)', () => {
+    const onSave = vi.fn()
+    render(<ProspectBenchModal draft={{ name: 'Bexar Fire Protection', trades: ['Fire sprinkler'], contactName: 'Tomás Reyna', phone: '(210) 555-0122', email: '', address: '', maxMiles: null, known: false, license: 'TX SCR-1884', mapsUrl: 'https://maps.app.goo.gl/x7Qz' }} saving={false} error={null} onSave={onSave} onCancel={() => {}} />)
+    expect((screen.getByLabelText('License') as HTMLInputElement).value).toBe('TX SCR-1884')
+    expect((screen.getByLabelText('Google Maps') as HTMLInputElement).value).toBe('https://maps.app.goo.gl/x7Qz')
+    fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ license: 'TX SCR-1884', mapsUrl: 'https://maps.app.goo.gl/x7Qz', phone: '(210) 555-0122' }))
+  })
 })

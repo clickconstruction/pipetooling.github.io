@@ -76,4 +76,10 @@ describe('prospectFact', () => {
     expect(prospectFact(row({ status: 'not_a_fit' }), NOW)).toBe('Not a fit')
     expect(prospectFact(row({ last_contact: null, created_at: null }), NOW)).toBe('Never called')
   })
+  it('the same Google Maps place is the same company, whatever the spelling (v2.5604)', () => {
+    const rows = [row({ id: 'm1', name: 'Bexar Fire Protection LLC', phone: null, maps_url: 'https://maps.app.goo.gl/x7QzAbc?g_st=ic' })]
+    const twin = companyDouble('Bexar Fire', '', homes({ prospects: rows }), NOW, 'maps.app.goo.gl/x7QzAbc/')
+    expect(twin).toMatchObject({ where: 'lane', id: 'm1' })
+    expect(companyDouble('', '', homes({ prospects: rows }), NOW, 'https://maps.app.goo.gl/other')).toBeNull()
+  })
 })
