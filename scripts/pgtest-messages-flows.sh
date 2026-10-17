@@ -38,10 +38,13 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
 for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  # A second run must change nothing, so the flows migration is applied again right here, in its own place: a later
+  # migration that redefines one of its functions keeps the newer body (2026-10-17: re-applying it after every other
+  # file silently put the old follow_up_count back, and the bed tested a function prod does not run).
+  if [ "$f" = "$FLOWS" ]; then
+    psql_as postgres -f - < "$FLOWS" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $FLOWS"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  fi
 done
-# A second run must change nothing: the tables, their indexes, policies and grants, the functions and the triggers are
-# there, and the seed finds nobody new.
-psql_as postgres -f - < "$FLOWS" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $FLOWS"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/messages_flows/20_scenario.sql 2>&1 || true)"
 if ! grep -q "messages_flows PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

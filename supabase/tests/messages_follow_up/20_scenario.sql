@@ -101,8 +101,9 @@ $$;
 CREATE FUNCTION mfu.line(p_contact uuid, p_channel text, p_direction text, p_ago interval, p_body text) RETURNS uuid LANGUAGE sql AS $$
   INSERT INTO public.messages (contact_id, channel, direction, at, body) VALUES (p_contact, p_channel, p_direction, now() - p_ago, p_body) RETURNING id
 $$;
-GRANT USAGE ON SCHEMA mfu TO anon, authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mfu TO anon, authenticated;
+-- The service role too (v2.5596): the webhook's close is asserted as the role that makes it.
+GRANT USAGE ON SCHEMA mfu TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mfu TO anon, authenticated, service_role;
 
 -- The people, as the spine's seed makes them, and a number nobody knows.
 SELECT public.messages_seed_contacts();
@@ -112,7 +113,7 @@ CREATE TEMP TABLE ids AS SELECT
   (SELECT id FROM public.contacts WHERE gc_company_id = '00000000-0000-0000-0000-0000000006a1') AS greg,
   (SELECT id FROM public.contacts WHERE customer_contact_person_id = '00000000-0000-0000-0000-0000000006e1') AS priya,
   '00000000-0000-0000-0000-000000006011'::uuid AS dee;
-GRANT SELECT ON ids TO authenticated;
+GRANT SELECT ON ids TO authenticated, service_role;
 
 -- 1 · Every conversation starts closed, nobody has it, and the badge reads 0.
 SELECT mfu.same('every conversation starts closed', (SELECT string_agg(DISTINCT state, ',') FROM public.contacts), 'done');
@@ -513,6 +514,7 @@ INSERT INTO calls SELECT 'webhook', public.call_task_add(priya, 'approved', 'pro
 SELECT mfu.refused('the office does not close by call', $q$SELECT public.call_tasks_close_by_call(priya, NULL) FROM ids$q$, 'permission denied');
 RESET ROLE;
 CREATE TEMP TABLE the_call AS SELECT mfu.line((SELECT priya FROM ids), 'call', 'out', interval '1 minute', 'Rosa called Dr. Priya Raman, 4:12') AS id;
+GRANT SELECT ON the_call TO service_role;
 SET LOCAL ROLE service_role;
 SELECT mfu.same('the webhook closes the open call with its line', public.call_tasks_close_by_call((SELECT priya FROM ids), (SELECT id FROM the_call))::text, '1');
 RESET ROLE;
