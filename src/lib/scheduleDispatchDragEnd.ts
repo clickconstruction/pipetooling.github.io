@@ -1,4 +1,5 @@
 import type { DragEndEvent } from '@dnd-kit/core'
+import { offerRescheduledVisit } from './tellCustomer/rescheduledOffer'
 import {
   fetchScheduleBlocksForAssigneesOnDay,
   moveJobScheduleBlockGroupViaRpc,
@@ -118,6 +119,8 @@ export async function moveScheduleDispatchBlockTo(
       deps.showToast(rpcErr, 'error')
       return false
     }
+    // A moved first visit becomes a Rescheduled text on Today's sends (v2.5597); never in the way of the move.
+    if (block.job_id) void offerRescheduledVisit({ jobId: block.job_id, groupId: gid, workDate: target.workDate, timeStart: block.time_start, timeEnd: block.time_end, assigneeUserId: block.assignee_user_id })
     await deps.onSuccess()
     return true
   }
@@ -152,6 +155,8 @@ export async function moveScheduleDispatchBlockTo(
     deps.showToast(upErr, 'error')
     return false
   }
+  // A moved first visit becomes a Rescheduled text on Today's sends (v2.5597); never in the way of the move.
+  if (patch.work_date && block.job_id) void offerRescheduledVisit({ jobId: block.job_id, groupId: null, blockId, workDate: target.workDate, timeStart: block.time_start, timeEnd: block.time_end, assigneeUserId: target.assigneeUserId })
   await deps.onSuccess()
   return true
 }

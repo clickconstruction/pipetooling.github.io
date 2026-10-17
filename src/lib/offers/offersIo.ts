@@ -22,8 +22,8 @@ export interface OfferMake {
   jobKey: string | null
   body: string
   channelId: string | null
-  /** YYYY-MM-DD, the morning the run sends it. */
-  sendOn: string
+  /** YYYY-MM-DD, the morning the run sends it; null waits for a press on Today's sends (a moved first visit, v2.5597). */
+  sendOn: string | null
 }
 
 export interface OffersIo {

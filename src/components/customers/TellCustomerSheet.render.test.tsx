@@ -23,12 +23,12 @@ const BLOCK: TellBlock = { workDate: '2026-10-23', timeStart: '10:00:00', timeEn
 const BOOKED: QuickReply = { id: 'q1', text: '{first}, this is {me} with Click Plumbing. We have you booked for {day}, {window}. {tech} will text you when on the way.', for: 'customer', stepId: 'booked', scope: 'team', addedBy: 'rosa', addedAt: 1, removed: false, uses: {}, lastUsed: null, textEs: null } as QuickReply
 const AT = Date.parse('2026-10-16T19:41:00Z')
 
-type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn>; makeOffer: ReturnType<typeof vi.fn>; addCall: ReturnType<typeof vi.fn> }
+type Fake = TellCustomerIo & { send: ReturnType<typeof vi.fn>; makeOffer: ReturnType<typeof vi.fn>; addCall: ReturnType<typeof vi.fn>; saveOfficeLine: ReturnType<typeof vi.fn> }
 function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
   return {
     loadJob: vi.fn(async () => ({ customerId: 'cust-dana', customerName: 'Dana Whitfield', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', lang: 'en' as const })),
     loadCustomer: vi.fn(async () => ({ name: 'Dana Whitfield', lang: 'en' as const })),
-    loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [{ channelId: 'ch-1', value: '(830) 555-0121', stopped: false }] })),
+    loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [{ channelId: 'ch-1', value: '(830) 555-0121', stopped: false }], prefers: null })),
     loadLines: vi.fn(async () => [BOOKED]),
     loadTextsOn: vi.fn(async () => true),
     loadMyName: vi.fn(async () => 'Rosa Perez'),
@@ -37,6 +37,8 @@ function fakeIo(set: Partial<TellCustomerIo> = {}): Fake {
     makeOffer: vi.fn(async () => 'offer-1'),
     loadCallScript: vi.fn(async () => null),
     addCall: vi.fn(async () => 'call-1'),
+    loadMyWay: vi.fn(async () => ({ booked: 'ask' as const, estimate: 'ask' as const })),
+    saveOfficeLine: vi.fn(async () => undefined),
     ...set,
   } as Fake
 }
@@ -144,6 +146,36 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     expect(screen.queryByTestId('tell-add-call')).toBeNull()
   })
 
+  it('My way: send and show me the receipt sends the moment the sheet can, and says so (v2.5597)', async () => {
+    const io = fakeIo({ loadMyWay: vi.fn(async () => ({ booked: 'send' as const, estimate: 'ask' as const })) })
+    mount(io)
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    expect(io.send).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Sent your way. Change it under Settings → Your account.')).toBeTruthy()
+  })
+
+  it('an edit offers Make this the office’s line: the blanks come back, a last look, and the save goes through the io (v2.5597)', async () => {
+    const io = fakeIo()
+    mount(io)
+    const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    expect(screen.queryByTestId('tell-office-line')).toBeNull()
+    fireEvent.change(box, { target: { value: 'Dana, Rosa here. We have you booked Friday, October 23, 2026, 10:00 AM to 12:00 PM. Luis will text you when on the way.' } })
+    fireEvent.click(screen.getByTestId('tell-office-line'))
+    const words = screen.getByTestId('tell-office-line-words') as HTMLTextAreaElement
+    expect(words.value).toBe('{first}, {me} here. We have you booked {day}, {window}. {tech} will text you when on the way.')
+    fireEvent.click(screen.getByTestId('tell-office-line-save'))
+    await waitFor(() => expect(io.saveOfficeLine).toHaveBeenCalledWith({ lineId: 'q1', stepKey: 'booked', text: '{first}, {me} here. We have you booked {day}, {window}. {tech} will text you when on the way.', lang: 'en' }))
+    expect(await screen.findByText('Saved as the office’s line. It fills for the next customer.')).toBeTruthy()
+    expect(io.send).not.toHaveBeenCalled()
+  })
+
+  it('says when the customer asked for email, and still lets the text go (v2.5597)', async () => {
+    mount(fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [{ channelId: 'ch-1', value: '(830) 555-0121', stopped: false }], prefers: 'email' as const })) }))
+    await screen.findByTestId('tell-body')
+    expect(screen.getAllByTestId('tell-act').map((p) => p.textContent)).toContain('ℹ️Dana asked to hear from us by email. A call may be kinder than this text.')
+    expect((screen.getByTestId('tell-primary') as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it('takes the app’s own words when the office has no Booked line', async () => {
     mount(fakeIo({ loadLines: vi.fn(async () => []) }))
     const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
@@ -152,7 +184,7 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
   })
 
   it('each hold reads why, with no box and a Close', async () => {
-    mount(fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [] })) }))
+    mount(fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [], prefers: null })) }))
     expect((await screen.findByTestId('tell-hold')).textContent).toBe('⚠No text: Dana has no phone number on file. Add one on the customer.')
     expect(screen.queryByTestId('tell-body')).toBeNull()
     expect(screen.getByTestId('tell-primary').textContent).toBe('Close')
@@ -160,7 +192,7 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     mount(fakeIo({ loadTextsOn: vi.fn(async () => false) }))
     expect((await screen.findByTestId('tell-hold')).textContent).toContain('No text: texts are off.')
     cleanup()
-    mount(fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [{ channelId: 'ch-1', value: '(830) 555-0121', stopped: true }] })) }))
+    mount(fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [{ channelId: 'ch-1', value: '(830) 555-0121', stopped: true }], prefers: null })) }))
     expect((await screen.findByTestId('tell-hold')).textContent).toBe('⚠No text: Dana sent STOP to the company number. Call instead.')
     cleanup()
     const noCustomer = fakeIo({ loadJob: vi.fn(async () => ({ customerId: null, customerName: null, jobName: 'A job', jobAddress: null, lang: 'en' as const })) })
@@ -240,7 +272,7 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
   })
 
   it('with no number the email still goes, the hold says why no text, and the press reads Send email', async () => {
-    const io = fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [] })) })
+    const io = fakeIo({ loadContact: vi.fn(async () => ({ contactId: 'contact-dana', numbers: [], prefers: null })) })
     const { est } = mountEstimate(io)
     expect((await screen.findByTestId('tell-hold')).textContent).toBe('⚠No text: Dana has no phone number on file. Add one on the customer.')
     expect(screen.queryByTestId('tell-body')).toBeNull()

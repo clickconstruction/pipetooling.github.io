@@ -36,7 +36,7 @@ export const PERSON_LINES = 50
 // ---------- the rows, as the run selects them ----------
 
 /** `contacts`: who they are, their kind, and Follow up's snooze (set only while `state` is `snoozed`). */
-export type RunContactRow = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; snoozed_until: string | null }
+export type RunContactRow = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; snoozed_until: string | null; prefers?: string | null }
 /** `flow_steps` with its flow's kind (`flows(kind)`), as `readFlowDef` reads one kind. */
 export type RunStepRow = FlowStepRow & { flows: { kind: string } | null }
 export type RunHoldRow = HoldRow & { contact_id: string }
@@ -251,6 +251,7 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
   const channelIds: Partial<Record<string, string>> = {}
   const links: Partial<Record<string, string>> = {}
   const snoozed: Partial<Record<string, string>> = {}
+  const prefers: NonNullable<NudgeRunInput['prefers']> = {}
   const unread: string[] = []
   for (const contact of rows.contacts) {
     const flowRows = rows.flowRows[contact.id]
@@ -282,6 +283,7 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
     const link = contact.kind === 'customer' ? (customerId ? rows.customerLinks?.[customerId] : null) : portalLinkOf(flowRows.previewPath, opts.origin)
     if (link) links[contact.id] = link
     if (contact.snoozed_until) snoozed[contact.id] = contact.snoozed_until
+    if (contact.prefers === 'text' || contact.prefers === 'email' || contact.prefers === 'either') prefers[contact.id] = contact.prefers
   }
   return {
     input: {
@@ -295,6 +297,7 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
       options: opts.options,
       snoozed,
       offered: offeredFrom(rows.offers ?? []),
+      prefers,
     },
     channelIds,
     unread,

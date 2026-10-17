@@ -132,6 +132,7 @@ function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
     callAdd: vi.fn(async () => 'c-new'),
     callDone: vi.fn(async () => undefined),
     callMove: vi.fn(async () => undefined),
+    setPrefers: vi.fn(async () => undefined),
   }
 }
 

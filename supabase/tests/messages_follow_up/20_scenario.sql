@@ -545,5 +545,41 @@ SELECT mfu.same('the residential flow''s scripts are seeded',
   (SELECT string_agg(s.step_key, ',' ORDER BY s.step_key) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential' AND s.call_script IS NOT NULL AND s.call_script_es IS NOT NULL),
   'approved,booked,estimate');
 
+-- 14 · The customer's say (v2.5597): the office sets text, email or either with a gray line; the same word again writes
+--      nothing; My way is each person's own row.
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT public.contact_set_prefers(priya, 'email') FROM ids;
+SELECT mfu.same('the office sets how she hears from us, with a gray line',
+  (SELECT concat_ws('|', c.prefers, c.prefers_how, (c.prefers_at IS NOT NULL)::text,
+     (SELECT body FROM public.messages WHERE contact_id = c.id AND channel = 'event' ORDER BY at DESC, id DESC LIMIT 1))
+   FROM public.contacts c WHERE c.id = (SELECT priya FROM ids)),
+  'email|office|true|Rosa set how Dr. Priya Raman hears from us: email.');
+SELECT public.contact_set_prefers(priya, 'email') FROM ids;
+SELECT mfu.same('the same word again writes no second line',
+  (SELECT count(*)::text FROM public.messages WHERE contact_id = (SELECT priya FROM ids) AND channel = 'event' AND body LIKE 'Rosa set how % hears from us: email.'), '1');
+SELECT public.contact_set_prefers(priya, 'either') FROM ids;
+SELECT mfu.same('either stands as a word of its own', (SELECT prefers FROM public.contacts WHERE id = (SELECT priya FROM ids)), 'either');
+SELECT mfu.refused('a known word only', $q$SELECT public.contact_set_prefers(priya, 'fax') FROM ids$q$, 'Say text, email or either');
+-- My way: Rosa's own row, and nobody else reads or writes it.
+INSERT INTO public.tell_customer_prefs (user_id, booked) VALUES ('00000000-0000-0000-0000-0000000006d3', 'send');
+SELECT mfu.same('Rosa reads her own way', (SELECT booked || '|' || estimate FROM public.tell_customer_prefs WHERE user_id = '00000000-0000-0000-0000-0000000006d3'), 'send|ask');
+SELECT mfu.refused('a way is ask or send', $q$UPDATE public.tell_customer_prefs SET estimate = 'maybe' WHERE user_id = '00000000-0000-0000-0000-0000000006d3'$q$, 'tell_customer_prefs_estimate_known');
+SELECT mfu.refused('nobody writes another''s way', $q$INSERT INTO public.tell_customer_prefs (user_id, booked) VALUES ('00000000-0000-0000-0000-0000000006d2', 'send')$q$, 'row-level security');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d2');
+SET LOCAL ROLE authenticated;
+SELECT mfu.same('Robert reads no row of Rosa''s', (SELECT count(*)::text FROM public.tell_customer_prefs), '0');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d4');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('a superintendent sets nothing', $q$SELECT public.contact_set_prefers(priya, 'text') FROM ids$q$, 'Only the office team can');
+RESET ROLE;
+SELECT mfu.same('the prefs table carries the read-only and twin blocks', (
+  SELECT (SELECT string_agg(polname, ',' ORDER BY polname COLLATE "C") FROM pg_policy WHERE polrelid = c.oid)
+    || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt')
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'tell_customer_prefs'),
+  'digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update,tell_customer_prefs_own:1');
+
 DO $$ BEGIN RAISE NOTICE 'messages_follow_up PASSED'; END $$;
 ROLLBACK;

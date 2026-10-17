@@ -169,6 +169,12 @@ async function planAndWrite(
   // For the box it came to alone; both when our number is not placed, so a STOP is never missed.
   if (plan.optout) await writeStops(admin, placed.stops, plan.optout === 'out' ? 'stop' : 'start', boxed.to, reading.at)
 
+  // The customer's say (v2.5597): EMAIL or TEXT alone sets how they hear from us.
+  if (plan.prefers) {
+    const { error } = await admin.from('contacts').update({ prefers: plan.prefers, prefers_how: 'reply', prefers_at: reading.at }).eq('id', placed.contactId)
+    if (error) console.error('[quo-webhook] contacts.prefers:', error.message)
+  }
+
   if (plan.event) {
     // Keyed beside its line, so Quo's retry never writes it twice.
     const { error } = await admin.from('messages').upsert(

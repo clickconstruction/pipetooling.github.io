@@ -151,7 +151,7 @@ export interface LastRun {
 }
 
 /** The reasons in the order the line says them, as the run's summary orders them. */
-export const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
+export const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'prefers email', 'one a morning']
 
 const count = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0)
 
@@ -208,6 +208,8 @@ function keptPart(why: NudgeNotSent, n: number): string {
       return is(n, 'has no number', 'have no number')
     case 'opted out':
       return `${n} sent STOP`
+    case 'prefers email':
+      return is(n, 'asked for email', 'asked for email')
     case 'one a morning':
       return is(n, 'already has a text this morning', 'already have a text this morning')
   }

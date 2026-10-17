@@ -76,7 +76,7 @@ describe('runSummary: what the owner reads first', () => {
   })
 
   it('reads in plain words for every reason and every line', () => {
-    const all: NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'one a morning']
+    const all: NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'prefers email', 'one a morning']
     const words = [
       ...summaryWords({ at: '', dry: true, sent: 1, kept: Object.fromEntries(all.map((w) => [w, 1])), textsOff: 1, refused: [], refusedCount: 1, unread: 1, customersHeld: 1, prepared: 1, morningSent: 1 }),
       ...summaryWords({ at: '', dry: false, sent: 2, kept: Object.fromEntries(all.map((w) => [w, 3])), textsOff: 2, refused: [], refusedCount: 2, unread: 2, customersHeld: 0, prepared: 2, morningSent: 2 }),

@@ -15,6 +15,7 @@ import { GC_OFFICE_TEAM } from '../../lib/gc/access'
 import { telHrefFor } from '../../lib/phoneContact'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
+import { MY_WAY_DEFAULT, MY_WAY_WORDS, myWayFor, type MyWays } from '../../lib/tellCustomer/myWay'
 import { weekdayDate } from '../../lib/gc/words'
 import { jobKey } from '../../lib/messages/jobKeys'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -34,6 +35,7 @@ import {
   tellHold,
   tellWords,
   TELL_WORDS,
+  unfillLine,
   type TellBlock,
   type TellMoment,
 } from '../../lib/tellCustomer/tellCustomer'
@@ -100,6 +102,9 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const [textsOn, setTextsOn] = useState<boolean | null>(null)
   const [me, setMe] = useState<string | null>(null)
   const [callScript, setCallScript] = useState<TellCallScript | null>(null)
+  const [myWays, setMyWays] = useState<MyWays>(MY_WAY_DEFAULT)
+  /** Make this the office's line (v2.5597): the words with their blanks back, open for a last look. */
+  const [officeLine, setOfficeLine] = useState<string | null>(null)
   const [body, setBody] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -109,13 +114,15 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     let live = true
     void (async () => {
       try {
-        const [j, l, on, name, cs] = await Promise.all([
+        const [j, l, on, name, cs, ways] = await Promise.all([
           estimate ? io.loadCustomer(estimate.customerId).then((c) => ({ customerId: estimate.customerId, customerName: c.name, jobName: null, jobAddress: null, lang: c.lang }) as TellJob) : jobId ? io.loadJob(jobId) : Promise.reject(new Error('No job and no estimate.')),
           io.loadLines(),
           io.loadTextsOn(),
           io.loadMyName(userId),
           // The step's call script (v2.5596); a read that fails leaves the app's own words.
           io.loadCallScript(MOMENT_STEP[moment]).catch(() => null),
+          // My way (v2.5597): a read that fails asks first.
+          io.loadMyWay(userId).catch(() => MY_WAY_DEFAULT),
         ])
         if (!live) return
         setJob(j)
@@ -123,6 +130,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
         setTextsOn(on)
         setMe(name)
         setCallScript(cs)
+        setMyWays(ways)
         if (j.customerId && office) {
           try {
             const c = await io.loadContact(j.customerId)
@@ -156,7 +164,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const hold = loading ? null : tellHold({ office, hasCustomer: Boolean(job?.customerId), number: number?.value ?? null, stopped: number?.stopped ?? false, textsOn: textsOn === true })
   const text = body ?? starting?.text ?? ''
   const left = blanksLeftIn(text, moment)
-  const a = tellActs(moment, first, hold)
+  const a = tellActs(moment, first, hold, contact?.prefers ?? null)
   const textCanGo = !hold && Boolean(contact) && Boolean(number)
   const canSend = !loading && !busy && (moment === 'estimate' ? Boolean(estimate) && (!textCanGo || (text.trim().length > 0 && left.length === 0)) : textCanGo && text.trim().length > 0 && left.length === 0)
 
@@ -199,6 +207,34 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
       setBusy(false)
     }
   }
+
+  // My way (v2.5597): send and show the receipt, once, the moment the sheet can send.
+  const myWay = myWayFor(myWays, moment)
+  const [wentMyWay, setWentMyWay] = useState(false)
+  useEffect(() => {
+    if (myWay !== 'send' || wentMyWay || loading || busy || !canSend || view.kind !== 'tell') return
+    setWentMyWay(true)
+    showToast(MY_WAY_WORDS.sentMyWay, 'success')
+    void go(true)
+    // go reads the sheet's state as it is now; it is a press, not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myWay, wentMyWay, loading, busy, canSend, view.kind])
+
+  /** Make this the office's line (v2.5597): the edited words, blanks back, saved as the step's team line. */
+  const saveOfficeLine = async () => {
+    if (officeLine === null || !officeLine.trim()) return
+    setBusy(true)
+    try {
+      await io.saveOfficeLine({ lineId: line?.id ?? null, stepKey: MOMENT_STEP[moment], text: officeLine.trim(), lang })
+      showToast(TELL_WORDS.officeLineSaved, 'success')
+      setOfficeLine(null)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The line was not saved.'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const edited = body !== null && starting !== null && body.trim() !== starting.text.trim()
 
   /** Send in the morning (v2.5595): the text waits on Today's sends, and the morning run sends it at 9 AM on its day. */
   const morning = async () => {
@@ -389,6 +425,25 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
                   <textarea style={box} value={text} aria-label="The text" disabled={busy} onChange={(e) => setBody(e.target.value)} data-testid="tell-body" />
                   <p style={muted}>{left.length ? TELL_WORDS.blanksLeft(left) : TELL_WORDS.editHint(line?.office ?? false, moment)}</p>
                   {moment === 'estimate' ? <p style={muted}>{TELL_WORDS.linkHint}</p> : null}
+                  {edited && office && moment !== 'rescheduled' && officeLine === null ? (
+                    <button type="button" style={quietBtn} disabled={busy} onClick={() => setOfficeLine(unfillLine(text.trim(), fills))} data-testid="tell-office-line">
+                      {TELL_WORDS.officeLine}
+                    </button>
+                  ) : null}
+                  {officeLine !== null ? (
+                    <div data-testid="tell-office-line-box">
+                      <p style={muted}>{TELL_WORDS.officeLineHint}</p>
+                      <textarea style={box} value={officeLine} aria-label="The office’s line" disabled={busy} onChange={(e) => setOfficeLine(e.target.value)} data-testid="tell-office-line-words" />
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="button" style={quietBtn} disabled={busy} onClick={() => setOfficeLine(null)}>
+                          Not now
+                        </button>
+                        <button type="button" style={quietBtn} disabled={busy || !officeLine.trim()} onClick={() => void saveOfficeLine()} data-testid="tell-office-line-save">
+                          {TELL_WORDS.officeLineSave}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}

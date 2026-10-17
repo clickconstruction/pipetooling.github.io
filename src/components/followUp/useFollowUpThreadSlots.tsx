@@ -31,6 +31,13 @@ import { WhoHasItPill } from './WhoHasItPill'
 
 const DEFAULT_IO = supabaseFollowUpThreadIo()
 
+/** The customer's say (v2.5597), as the ⋯ menu offers it. */
+const PREFERS_ROWS: readonly { value: 'text' | 'email' | 'either'; label: string; tip: string }[] = [
+  { value: 'text', label: 'Hears from us by text', tip: 'They asked for texts. The sheet and the morning run text them.' },
+  { value: 'email', label: 'Hears from us by email', tip: 'They asked for email. The morning run holds their texts for the office, and the sheet says so.' },
+  { value: 'either', label: 'Hears from us either way', tip: 'No preference. Texts and emails go as the steps say.' },
+]
+
 export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox' | 'underLine'>
 
 const quiet = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.55rem' } as const
@@ -228,13 +235,25 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
     },
     menuRows: (c): ThreadMenuRow[] =>
       mine(c.id)
-        ? threadStateRows(followUpContactOf(c, rows.contact, userNames).state, todayYmd).map((r) => ({
-            key: `follow-up-${r.move}`,
-            label: r.label,
-            tip: r.tip,
-            disabled: pressing !== null,
-            onPress: () => void press('state', () => io.setState(c.id, r.sets), stateToast(r.move, c.name)),
-          }))
+        ? [
+            ...threadStateRows(followUpContactOf(c, rows.contact, userNames).state, todayYmd).map((r) => ({
+              key: `follow-up-${r.move}`,
+              label: r.label,
+              tip: r.tip,
+              disabled: pressing !== null,
+              onPress: () => void press('state', () => io.setState(c.id, r.sets), stateToast(r.move, c.name)),
+            })),
+            // The customer's say (v2.5597): how they hear from us, set by the office; a tick marks the one that stands.
+            ...(c.kind === 'customer'
+              ? PREFERS_ROWS.map((r) => ({
+                  key: `prefers-${r.value}`,
+                  label: `${rows.contact?.prefers === r.value ? '✓ ' : ''}${r.label}`,
+                  tip: r.tip,
+                  disabled: pressing !== null || rows.contact?.prefers === r.value,
+                  onPress: () => void press('prefers', () => io.setPrefers(c.id, r.value), `${callFirst(c) ?? 'They'} ${callFirst(c) ? 'hears' : 'hear'} from us by ${r.value === 'either' ? 'text or email' : r.value}.`),
+                }))
+              : []),
+          ]
         : [],
   }
 }

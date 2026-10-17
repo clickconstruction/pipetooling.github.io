@@ -8,6 +8,7 @@ import {
   updateJobScheduleBlock,
   updateJobScheduleBlockGroup,
 } from './jobScheduleBlocks'
+import { offerRescheduledVisit } from './tellCustomer/rescheduledOffer'
 import {
   MIN_MIN,
   MAX_MIN,
@@ -125,6 +126,11 @@ export async function saveEditedScheduleBlockTimes(params: {
       note: noteVal,
     })
     if (upErr) return { ok: false, error: upErr }
+    const was = legs.find((l) => l.id === params.blockId) ?? legs[0]
+    if (params.jobId && (movingDay || !was || was.time_start !== ts || was.time_end !== te)) {
+      // A moved first visit becomes a Rescheduled text on Today's sends (v2.5597); never in the way of the save.
+      void offerRescheduledVisit({ jobId: params.jobId, groupId: params.sharedBlockGroupId, workDate: targetDate, timeStart: ts, timeEnd: te, assigneeUserId: params.assigneeUserId })
+    }
     return { ok: true }
   }
 
@@ -143,6 +149,11 @@ export async function saveEditedScheduleBlockTimes(params: {
     ...(movingDay ? { work_date: targetDate } : {}),
   })
   if (upErr) return { ok: false, error: upErr }
+  const was = dayBlocks.find((b) => b.id === params.blockId)
+  if (params.jobId && (movingDay || !was || was.time_start !== ts || was.time_end !== te)) {
+    // A moved first visit becomes a Rescheduled text on Today's sends (v2.5597); never in the way of the save.
+    void offerRescheduledVisit({ jobId: params.jobId, groupId: null, blockId: params.blockId, workDate: targetDate, timeStart: ts, timeEnd: te, assigneeUserId: params.assigneeUserId })
+  }
   return { ok: true }
 }
 

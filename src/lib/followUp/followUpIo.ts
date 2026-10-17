@@ -54,6 +54,8 @@ export interface FollowUpIo {
   callDone(id: string, how: 'called' | 'skipped', note?: string | null): Promise<void>
   /** Tomorrow, or any day from today on. */
   callMove(id: string, dueYmd: string): Promise<void>
+  /** The customer's say (v2.5597): text, email or either, from the thread's menu. */
+  setPrefers(contactId: string, prefers: 'text' | 'email' | 'either'): Promise<void>
 }
 
 const CONTACT_COLUMNS = [
@@ -222,6 +224,9 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
     callAdd: (input) => supabaseCallTasksIo(db).add(input),
     callDone: (id, how, note) => supabaseCallTasksIo(db).done(id, how, note),
     callMove: (id, dueYmd) => supabaseCallTasksIo(db).move(id, dueYmd),
+    async setPrefers(contactId, prefers) {
+      await call('contact_set_prefers', { p_contact: contactId, p_prefers: prefers }, 'set how they hear from us')
+    },
     async handTo(contactId, userId) {
       await call('hand_to', { p_contact_id: contactId, p_user_id: userId }, 'hand a conversation on')
     },
