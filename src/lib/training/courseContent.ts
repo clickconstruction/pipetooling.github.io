@@ -394,6 +394,29 @@ export function questionsPlainWordsFailures(questions: readonly CourseQuestion[]
   return failures
 }
 
+/**
+ * Intro to electrical (punch list #120, the owner's call 6): electrical is not the company's trade, so no Must know
+ * or Traps item may read as an instruction to do electrical work. An item that begins with one of these verbs fails
+ * unless the sentence names who does it: the electrician, a licensed person, the utility, or the plumber under the
+ * company's rule. Held for the courses listed here and for nothing else; the plumbing course instructs on purpose.
+ */
+export const NO_INSTRUCTION_COURSES: readonly string[] = ['intro-electrical']
+export const NO_INSTRUCTION_VERBS: readonly string[] = ['connect', 'land', 'wire', 'splice', 'install', 'replace', 'remove the cover']
+const NAMES_WHO = /\b(electrician|licensed|the utility|the lineman|the owner|the plumber|a plumber)\b/i
+
+export function instructionFailures(lesson: CourseLesson): string[] {
+  const out: string[] = []
+  const hold = (where: string, item: string) => {
+    const words = itemWords(item).trim()
+    const lower = words.toLowerCase()
+    const verb = NO_INSTRUCTION_VERBS.find((v) => lower === v || lower.startsWith(`${v} `))
+    if (verb && !NAMES_WHO.test(words)) out.push(`${lesson.key} ${where} begins with "${verb}" and names nobody who does it: ${words}`)
+  }
+  lesson.mustKnow.forEach((p, i) => hold(`must know ${i + 1}`, p))
+  lesson.traps.forEach((p, i) => hold(`trap ${i + 1}`, p))
+  return out
+}
+
 /** A question whose ask stands on an Appendix B quirk. */
 export function appendixBFailures(questions: readonly CourseQuestion[]): string[] {
   const out: string[] = []

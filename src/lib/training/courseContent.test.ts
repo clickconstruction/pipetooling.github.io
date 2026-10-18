@@ -18,7 +18,9 @@ import {
   askKey,
   drawFinalCheck,
   gradeFinalCheck,
+  instructionFailures,
   lessonPlainWordsFailures,
+  NO_INSTRUCTION_COURSES,
   parseLesson,
   parseQuestions,
   seededRandom,
@@ -170,6 +172,28 @@ describe('plain words over a lesson', () => {
     const numberGlue = { ...l, numbers: [{ value: '5 ft', label: 'a system · a box' }] }
     expect(lessonPlainWordsFailures(numberGlue)[0]).toMatch(/number 1: glued label/)
     expect(lessonPlainWordsFailures(l)).toEqual([])
+  })
+})
+
+describe('no lesson instructs (punch list #120, the owner\'s call 6)', () => {
+  it('an item that begins with a doing verb fails unless it names who does it; a word that only starts the same passes', () => {
+    const l = parseLesson(FIXTURE, '01-a')
+    const bare = instructionFailures({ ...l, mustKnow: ['Replace the element with the breaker off.'], traps: ['Remove the cover and press the button once.'] })
+    expect(bare).toHaveLength(2)
+    expect(bare[0]).toMatch(/^01-a must know 1 begins with "replace"/)
+    expect(bare[1]).toMatch(/^01-a trap 1 begins with "remove the cover"/)
+    expect(instructionFailures({ ...l, mustKnow: ['Replace the element only when the electrician says it is dead.'], traps: ['Remove the cover only with the breaker off, which a plumber on the truck may do.'] })).toEqual([])
+    expect(instructionFailures({ ...l, mustKnow: ['Replacement parts come from the truck.', 'Landing a wire is the electrician\'s.', '{{figure:controls-ladder|A wire and a pipe never read as one thing.}}'] })).toEqual([])
+    expect(instructionFailures({ ...l, mustKnow: ['{{figure:controls-ladder|Wire the box with the breaker off.}}'] })).toHaveLength(1)
+  })
+
+  it('holds every lesson of the courses listed, and the list names a course on disk', () => {
+    expect(NO_INSTRUCTION_COURSES).toEqual(['intro-electrical'])
+    expect(courseFolders()).toContain('intro-electrical')
+    for (const f of lessonFiles().filter((x) => NO_INSTRUCTION_COURSES.includes(x.slug))) {
+      const failures = instructionFailures(parseLesson(f.source, f.key))
+      expect(failures, `lesson "${f.key}" reads as an instruction to do electrical work:\n  - ${failures.join('\n  - ')}`).toEqual([])
+    }
   })
 })
 
