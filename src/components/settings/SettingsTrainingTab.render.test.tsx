@@ -22,6 +22,7 @@ const io = vi.hoisted(() => ({
   enabled: true,
   requiredRoles: ['helpers', 'subcontractor'] as string[],
   retakeFrom: null as string | null,
+  offered: false,
   rows: [
     { user_id: 'u1', name: 'Dana R', role: 'helpers', colour: 'red', passed_on: null, due_on: null, days_to_due: null },
     { user_id: 'u2', name: 'Luis M', role: 'helpers', colour: 'amber', passed_on: '2025-10-03', due_on: '2026-10-03', days_to_due: -12 },
@@ -32,10 +33,11 @@ const io = vi.hoisted(() => ({
 vi.mock('../../lib/training/trainingIo', () => ({
   loadTrainingCatalog: () =>
     Promise.resolve({
-      policies: [{ slug: 'osha-30-refresher', title: 'OSHA 30 refresher', on: io.enabled, requiredRoles: io.requiredRoles, goodForMonths: 12, dueSoonDays: 30, retakeFrom: io.retakeFrom }],
+      policies: [{ slug: 'osha-30-refresher', title: 'OSHA 30 refresher', on: io.enabled, requiredRoles: io.requiredRoles, goodForMonths: 12, dueSoonDays: 30, retakeFrom: io.retakeFrom, offered: io.offered }],
       missing: io.missing,
     }),
   loadTrainingStandings: () => Promise.resolve({ rows: io.rows, missing: false }),
+  loadTrainingTakenCount: () => Promise.resolve(3),
   saveTrainingPolicy: io.save,
 }))
 
@@ -52,6 +54,7 @@ beforeEach(() => {
   cleanup()
   io.missing = false
   io.enabled = true
+  io.offered = false
   io.requiredRoles = ['helpers', 'subcontractor']
   io.retakeFrom = null
   io.save.mockClear()
@@ -129,5 +132,19 @@ describe('SettingsTrainingTab', () => {
     expect(within(section()).getByText('Off')).toBeTruthy()
     expect(within(section()).getByText(/nobody is counted/)).toBeTruthy()
     expect((section().querySelector('[data-training-retake]') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('Also open to · Everyone is the offered state (v2.5610): the chip saves it, and an offered course says how many took it', async () => {
+    await open()
+    const chip = section().querySelector('[data-training-offered]') as HTMLButtonElement
+    expect(chip.getAttribute('aria-pressed')).toBe('false')
+    expect(within(section()).getByText(/only the required roles see it/)).toBeTruthy()
+    fireEvent.click(chip)
+    await waitFor(() => expect(io.save).toHaveBeenCalledWith('osha-30-refresher', { offered: true }, expect.any(String)))
+    cleanup()
+    io.offered = true
+    await open()
+    expect((section().querySelector('[data-training-offered]') as HTMLButtonElement).getAttribute('aria-pressed')).toBe('true')
+    await waitFor(() => expect(within(section()).getByText(/3 took it/)).toBeTruthy())
   })
 })

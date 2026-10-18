@@ -4,7 +4,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { loadMyTraining, loadTrainingCatalog } from '../../lib/training/trainingIo'
 import { TRAINING_COURSE_FACTS, courseSizeWords } from '../../lib/training/courseFacts'
-import { personStandings, standingPress, standingWords, trainingVerdict, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../../lib/training/trainingState'
+import { offeredCourses, offeredPress, personStandings, standingPress, standingWords, trainingVerdict, ymdWords, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../../lib/training/trainingState'
 
 /**
  * Dashboard → Training (punch list #111, v2.5567): the card at the bottom of the page, under My Time, where a
@@ -14,6 +14,11 @@ import { personStandings, standingPress, standingWords, trainingVerdict, type Co
  * required of the role, the catalog is empty or the tables are not on prod yet; it never nags a caught-up crew
  * member with more than one quiet green line. The colour is `trainingState.ts`'s, the same rule the People rail
  * and Settings read.
+ *
+ * v2.5610 (punch list #119): an OFFERED course, open to every role, sits under an **Available** line for the roles
+ * it is not required of: the title, its size, one press (Start, Continue, Read it again), no dot, no colour and no
+ * due day. The verdict line counts required courses only, and a viewer with nothing required and one offer sees the
+ * card with the Available row alone.
  */
 
 type Loaded = { policies: TrainingPolicy[]; passes: TrainingPass[]; lessonCounts: Record<string, number> }
@@ -50,30 +55,33 @@ export function DashboardTrainingSection({ userId, role, onVisibility }: { userI
   }, [userId])
 
   const standings = useMemo(() => (loaded ? personStandings(loaded.policies, loaded.passes, role, today) : []), [loaded, role, today])
+  const offered = useMemo(() => (loaded ? offeredCourses(loaded.policies, loaded.passes, role) : []), [loaded, role])
   const verdict = trainingVerdict(standings)
-  const visible = standings.length > 0 && verdict != null
+  const visible = (standings.length > 0 && verdict != null) || offered.length > 0
 
   useEffect(() => {
     onVisibility?.(visible)
   }, [visible, onVisibility])
 
-  if (!visible || !verdict) return null
+  if (!visible) return null
 
   return (
     <div
       role="region"
       aria-label="Training"
-      data-training-card={verdict.colour}
+      data-training-card={verdict?.colour ?? 'none'}
       style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.85rem 1rem 1rem' }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.6rem' }}>
         <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Training</span>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>at your own pace</span>
       </div>
-      <div style={{ ...TONES[verdict.colour], padding: '0.45rem 0.7rem', borderRadius: 7, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }} data-training-verdict>
-        <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', background: DOTS[verdict.colour], flex: 'none' }} />
-        {verdict.line}
-      </div>
+      {verdict && (
+        <div style={{ ...TONES[verdict.colour], padding: '0.45rem 0.7rem', borderRadius: 7, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }} data-training-verdict>
+          <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: '50%', background: DOTS[verdict.colour], flex: 'none' }} />
+          {verdict.line}
+        </div>
+      )}
       {standings.map((s) => {
         const done = loaded?.lessonCounts[s.slug] ?? 0
         const started = done > 0
@@ -103,6 +111,45 @@ export function DashboardTrainingSection({ userId, role, onVisibility }: { userI
                 border: quiet ? '1px solid transparent' : '1px solid #2563eb',
                 background: quiet ? 'none' : '#2563eb',
                 color: quiet ? 'var(--text-link)' : '#fff',
+              }}
+            >
+              {press}
+            </button>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{sub}</div>
+          </div>
+        )
+      })}
+      {offered.length > 0 && (
+        <div style={{ marginTop: standings.length ? '0.9rem' : 0, fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }} data-training-available>
+          Available
+        </div>
+      )}
+      {offered.map((o) => {
+        const done = loaded?.lessonCounts[o.slug] ?? 0
+        const press = offeredPress(o, done > 0)
+        const facts = TRAINING_COURSE_FACTS[o.slug]
+        const sub = o.passedOn ? `Done ${ymdWords(o.passedOn, today)}` : done > 0 ? `${done} of ${facts?.lessons ?? '?'} lessons done` : (courseSizeWords(facts) ?? 'Open to everyone')
+        const quiet = press === 'Read it again'
+        return (
+          <div key={o.slug} data-training-offered={o.slug} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.25rem 0.9rem', alignItems: 'center', paddingTop: '0.5rem' }}>
+            <div style={{ fontWeight: 700 }}>{o.title}</div>
+            <button
+              type="button"
+              className="trainingPress"
+              onClick={() => navigate(`/training/${o.slug}`)}
+              style={{
+                gridRow: '1 / span 2',
+                gridColumn: 2,
+                padding: '0.45rem 0.9rem',
+                minHeight: 36,
+                borderRadius: 6,
+                font: 'inherit',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: quiet ? '1px solid transparent' : '1px solid var(--border)',
+                background: quiet ? 'none' : 'var(--surface)',
+                color: quiet ? 'var(--text-link)' : 'var(--text-base)',
               }}
             >
               {press}

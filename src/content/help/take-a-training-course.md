@@ -2,10 +2,10 @@
 title: take a training course
 category: Field Work
 roles: all
-keywords: training, course, OSHA 30, refresher, lessons, check yourself, final check, caught up, lapsed, training due, take it again
+keywords: training, course, OSHA 30, refresher, plumbing, lessons, check yourself, final check, caught up, lapsed, training due, take it again, available
 order: 80
 ---
-Training is a card at the bottom of your Dashboard, under My Time. In Job Mode it sits under My Schedule. It lists the courses your role must take. Each course is a set of short lessons you read at your own pace. A phone or a desk both work.
+Training is a card at the bottom of your Dashboard, under My Time. In Job Mode it sits under My Schedule. It lists the courses your role must take. Each course is a set of short lessons you read at your own pace. A phone or a desk both work. Some courses are open to everyone. Those sit under an **Available** line, with no colour and no clock.
 
 ## Start a course
 
@@ -13,7 +13,7 @@ Training is a card at the bottom of your Dashboard, under My Time. In Job Mode i
 2. Read the line at the top. It says how you stand in one colour. Red means a course is not done. Amber means a pass has lapsed or is about to. Green means you are caught up.
 3. Press {{button:blue|Start}} on a course. The course opens on its first lesson.
 
-The first course is the OSHA 30 refresher. It is thirty lessons of about five minutes each, plus a final check. It is a refresher, not an OSHA card. The card comes from the 30-hour course.
+The first course is the OSHA 30 refresher. It is thirty lessons of about five minutes each, plus a final check. It is a refresher, not an OSHA card. The card comes from the 30-hour course. The second is Intro to plumbing. It shows how water comes into a house and how it leaves, with a drawing in every lesson.
 
 ## Read a lesson
 
@@ -41,4 +41,4 @@ The office can see where everyone stands. A red or amber course shows beside you
 
 ## Reference
 
-A dev turns each course on and sets who must take it and how long a pass is good for. That is done in Settings. If your Training card says a course is not on yet, the office has not turned it on.
+A dev turns each course on and sets who must take it and how long a pass is good for. That is done in Settings. A dev can also open a course to everyone. If your Training card says a course is not on yet, the office has not turned it on.

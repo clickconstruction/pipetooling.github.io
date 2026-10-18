@@ -5,7 +5,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { ROLES } from '../../lib/userRoles'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { loadTrainingCatalog, loadTrainingStandings, saveTrainingPolicy, type TrainingStandingRow } from '../../lib/training/trainingIo'
+import { loadTrainingCatalog, loadTrainingStandings, loadTrainingTakenCount, saveTrainingPolicy, type TrainingStandingRow } from '../../lib/training/trainingIo'
 import { ymdWords, type TrainingColour, type TrainingPolicy } from '../../lib/training/trainingState'
 import { flowButton, flowHead, flowInput, flowNote, flowPrimary, flowQuiet, flowSwitch } from './flows/flowStyles'
 
@@ -20,6 +20,9 @@ import { flowButton, flowHead, flowInput, flowNote, flowPrimary, flowQuiet, flow
  * v2.5577: **Preview the course** opens `/training/<slug>` as the dev sees it (a course previews while off); the
  * retake day is an amber chip with a quiet **Clear** that puts the old passes back to counting; the content hash
  * left the facts line (it is on every pass record, where a dev reads it).
+ *
+ * v2.5610 (punch list #119): **Also open to · Everyone** on each course is the offered state: a role not in
+ * Required for may take it with no colour and no clock, and the row says how many took it.
  */
 
 const ROLE_WORDS: Record<UserRole, string> = {
@@ -55,6 +58,7 @@ export function SettingsTrainingTab() {
   const [error, setError] = useState<string | null>(null)
   const [bundle, setBundle] = useState<Record<string, BundleFacts>>({})
   const [standings, setStandings] = useState<Record<string, TrainingStandingRow[]>>({})
+  const [taken, setTaken] = useState<Record<string, number>>({})
   const [seeWho, setSeeWho] = useState<string | null>(null)
   const [numbers, setNumbers] = useState<Record<string, { months: string; days: string }>>({})
   const [saving, setSaving] = useState<string | null>(null)
@@ -71,6 +75,9 @@ export function SettingsTrainingTab() {
       const rows: Record<string, TrainingStandingRow[]> = {}
       for (const p of catalog.policies) rows[p.slug] = p.on ? (await loadTrainingStandings(p.slug)).rows : []
       setStandings(rows)
+      const took: Record<string, number> = {}
+      for (const p of catalog.policies) if (p.on && p.offered) took[p.slug] = await loadTrainingTakenCount(p.slug)
+      setTaken(took)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read the courses')
     }
@@ -187,6 +194,35 @@ export function SettingsTrainingTab() {
                   </button>
                 )
               })}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span style={{ ...flowHead, width: 110 }}>Also open to</span>
+              <button
+                type="button"
+                onClick={() => void save(p.slug, { offered: !p.offered }, p.offered ? `${p.title} is for the required roles only.` : `${p.title} is open to everyone.`)}
+                disabled={busy}
+                aria-pressed={p.offered}
+                data-training-offered
+                style={{
+                  ...flowButton,
+                  borderRadius: 999,
+                  padding: '0.1rem 0.6rem',
+                  fontSize: '0.8rem',
+                  background: p.offered ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  borderColor: p.offered ? 'var(--border-blue)' : 'var(--border)',
+                  color: p.offered ? 'var(--text-blue-700)' : 'var(--text-base)',
+                  fontWeight: p.offered ? 600 : 400,
+                }}
+              >
+                {p.offered ? '✓ ' : ''}
+                Everyone
+              </button>
+              <span style={flowNote}>
+                {p.offered
+                  ? `Any role may take it, with no colour and no clock.${p.on ? ` ${taken[p.slug] ?? 0} took it.` : ''}`
+                  : 'Off: only the required roles see it.'}
+              </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>

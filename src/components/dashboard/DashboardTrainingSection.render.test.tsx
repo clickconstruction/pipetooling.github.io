@@ -17,14 +17,19 @@ const io = vi.hoisted(() => ({
   enabled: true,
   passes: [] as Array<{ slug: string; passedOn: string; contentVersion: string }>,
   lessons: [] as string[],
+  offered: false,
+  plumbingLessons: [] as string[],
 }))
 vi.mock('../../lib/training/trainingIo', () => ({
   loadTrainingCatalog: () =>
     Promise.resolve({
-      policies: [{ slug: 'osha-30-refresher', title: 'OSHA 30 refresher', on: io.enabled, requiredRoles: ['helpers'], goodForMonths: 12, dueSoonDays: 30, retakeFrom: null }],
+      policies: [
+        { slug: 'osha-30-refresher', title: 'OSHA 30 refresher', on: io.enabled, requiredRoles: ['helpers'], goodForMonths: 12, dueSoonDays: 30, retakeFrom: null, offered: false },
+        ...(io.offered ? [{ slug: 'intro-to-plumbing', title: 'Intro to plumbing', on: true, requiredRoles: ['helpers'], goodForMonths: 120, dueSoonDays: 30, retakeFrom: null, offered: true }] : []),
+      ],
       missing: io.missing,
     }),
-  loadMyTraining: () => Promise.resolve({ lessonPasses: { 'osha-30-refresher': io.lessons }, passes: io.passes, missing: io.missing }),
+  loadMyTraining: () => Promise.resolve({ lessonPasses: { 'osha-30-refresher': io.lessons, 'intro-to-plumbing': io.plumbingLessons }, passes: io.passes, missing: io.missing }),
 }))
 
 const TODAY = new Date()
@@ -48,6 +53,8 @@ beforeEach(() => {
   io.enabled = true
   io.passes = []
   io.lessons = []
+  io.offered = false
+  io.plumbingLessons = []
 })
 afterEach(cleanup)
 
@@ -101,5 +108,37 @@ describe('DashboardTrainingSection', () => {
     open()
     await new Promise((r) => setTimeout(r, 20))
     expect(document.querySelector('[data-training-card]')).toBeNull()
+  })
+
+  it('an offered course (v2.5610) sits under Available for a role it is not required of, with no verdict line, and the press follows the record', async () => {
+    io.offered = true
+    const seen: boolean[] = []
+    open('assistant', (v) => seen.push(v))
+    await screen.findByText('Intro to plumbing')
+    expect(document.querySelector('[data-training-card]')?.getAttribute('data-training-card')).toBe('none')
+    expect(document.querySelector('[data-training-verdict]')).toBeNull()
+    expect(screen.getByText('Available')).toBeTruthy()
+    expect(screen.queryByText('OSHA 30 refresher')).toBeNull()
+    expect(seen[seen.length - 1]).toBe(true)
+    fireEvent.click(screen.getByText('Start'))
+    await screen.findByText('Course page')
+    cleanup()
+    io.plumbingLessons = ['01-a']
+    open('assistant')
+    await screen.findByText('Continue')
+    cleanup()
+    io.passes = [{ slug: 'intro-to-plumbing', passedOn: daysAgo(500), contentVersion: 'a' }]
+    open('assistant')
+    await screen.findByText('Read it again')
+    expect(screen.getByText(/^Done /)).toBeTruthy()
+  })
+
+  it('a helper, who must take the offered course, sees it as a red row and never under Available', async () => {
+    io.offered = true
+    open('helpers')
+    await screen.findByText('2 courses to do')
+    expect(screen.getByText('Intro to plumbing')).toBeTruthy()
+    expect(screen.queryByText('Available')).toBeNull()
+    expect(document.querySelector('[data-training-offered]')).toBeNull()
   })
 })

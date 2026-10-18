@@ -63,8 +63,12 @@ GRANT EXECUTE ON FUNCTION tt.as_user(uuid) TO authenticated;
 
 -- 0 · The seed: one course, off, required of the field roles.
 SELECT tt.same('the seed row, off',
-  (SELECT slug || ' ' || enabled::text || ' ' || array_to_string(required_roles, ',') || ' ' || good_for_months || ' ' || due_soon_days FROM public.training_courses),
+  (SELECT slug || ' ' || enabled::text || ' ' || array_to_string(required_roles, ',') || ' ' || good_for_months || ' ' || due_soon_days FROM public.training_courses WHERE slug = 'osha-30-refresher'),
   'osha-30-refresher false helpers,subcontractor,primary,master_technician,superintendent 12 30');
+-- v2.5610: the second course, off, required of helpers, offered to every other role, good for 120 months.
+SELECT tt.same('the second seed row, off and offered',
+  (SELECT slug || ' ' || enabled::text || ' ' || offered::text || ' ' || array_to_string(required_roles, ',') || ' ' || good_for_months FROM public.training_courses WHERE slug = 'intro-to-plumbing'),
+  'intro-to-plumbing false true helpers 120');
 
 -- 1 · Off: a helper who must take it once it is on reads nothing yet.
 SELECT tt.as_user('00000000-0000-0000-0000-0000000071e1');
@@ -74,12 +78,12 @@ SELECT tt.same('off: nothing to show', tt.standing('00000000-0000-0000-0000-0000
 -- 2 · Only a dev turns it on: the helper's update changes nothing under RLS; the dev's takes.
 UPDATE public.training_courses SET enabled = true WHERE slug = 'osha-30-refresher';
 RESET ROLE;
-SELECT tt.same('a helper cannot switch a course on', (SELECT enabled::text FROM public.training_courses), 'false');
+SELECT tt.same('a helper cannot switch a course on', (SELECT enabled::text FROM public.training_courses WHERE slug = 'osha-30-refresher'), 'false');
 SELECT tt.as_user('00000000-0000-0000-0000-0000000071e3');
 SET LOCAL ROLE authenticated;
 UPDATE public.training_courses SET enabled = true, updated_by = auth.uid() WHERE slug = 'osha-30-refresher';
 RESET ROLE;
-SELECT tt.same('a dev switches it on', (SELECT enabled::text || ' ' || (updated_by = '00000000-0000-0000-0000-0000000071e3')::text FROM public.training_courses), 'true true');
+SELECT tt.same('a dev switches it on', (SELECT enabled::text || ' ' || (updated_by = '00000000-0000-0000-0000-0000000071e3')::text FROM public.training_courses WHERE slug = 'osha-30-refresher'), 'true true');
 
 -- 3 · Red with no pass; a lesson passed is one row, passed again is the same row; a final check under the bar is refused.
 SELECT tt.as_user('00000000-0000-0000-0000-0000000071e1');
@@ -177,6 +181,36 @@ RESET ROLE;
 SET LOCAL ROLE anon;
 SELECT tt.refused('anon cannot pass a lesson', $$SELECT public.training_pass_lesson('osha-30-refresher', '01-how-safety-works-on-a-site', 1)$$, 'permission denied');
 SELECT tt.refused('anon cannot read the standings', $$SELECT * FROM public.training_state_for('00000000-0000-0000-0000-0000000071e1')$$, 'permission denied');
+RESET ROLE;
+
+-- 9 · An offered course (v2.5610, punch list #119): once on, a role it is not required of reads no colour for it and may
+--     still pass it; the office reads the pass; requiring that role later turns the old pass green at once.
+SELECT tt.as_user('00000000-0000-0000-0000-0000000071e3');
+SET LOCAL ROLE authenticated;
+UPDATE public.training_courses SET enabled = true WHERE slug = 'intro-to-plumbing';
+RESET ROLE;
+SELECT tt.as_user('00000000-0000-0000-0000-0000000071e4');
+SET LOCAL ROLE authenticated;
+SELECT tt.same('offered: an estimator reads no colour for it', tt.standing('00000000-0000-0000-0000-0000000071e4'), '(none)');
+SELECT public.training_pass_lesson('intro-to-plumbing', '01-two-systems-one-house', 1);
+SELECT tt.same('offered: the estimator passed a lesson', (SELECT count(*)::text FROM public.training_lesson_passes WHERE course_slug = 'intro-to-plumbing'), '1');
+SELECT public.training_finish_course('intro-to-plumbing', 'abcdef01', 18, 20, 14, '{}'::jsonb);
+SELECT tt.same('offered: the estimator passed the course and still reads no colour', tt.standing('00000000-0000-0000-0000-0000000071e4'), '(none)');
+RESET ROLE;
+SELECT tt.as_user('00000000-0000-0000-0000-0000000071e2');
+SET LOCAL ROLE authenticated;
+SELECT tt.same('the office reads the offered pass', (SELECT count(*)::text FROM public.training_passes WHERE course_slug = 'intro-to-plumbing'), '1');
+SELECT tt.same('standings of the offered course: the helpers who must take it, none of them the estimator',
+  (SELECT string_agg(name || ' ' || colour, ', ' ORDER BY colour, name) FROM public.training_standings('intro-to-plumbing') WHERE name LIKE 'Training %'),
+  'Training Helper red, Training Other Helper red, Training Trainee red');
+RESET ROLE;
+SELECT tt.as_user('00000000-0000-0000-0000-0000000071e3');
+SET LOCAL ROLE authenticated;
+UPDATE public.training_courses SET required_roles = ARRAY['helpers', 'estimator'] WHERE slug = 'intro-to-plumbing';
+RESET ROLE;
+SELECT tt.as_user('00000000-0000-0000-0000-0000000071e4');
+SET LOCAL ROLE authenticated;
+SELECT tt.same('required of estimators later: the old pass is green at once', (SELECT split_part(tt.standing('00000000-0000-0000-0000-0000000071e4'), ' ', 1)), 'green');
 RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'training PASSED'; END $$;

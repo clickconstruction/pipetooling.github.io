@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   countingPass,
   courseStanding,
+  offeredCourses,
+  offeredPress,
   personStandings,
   standingCounts,
   standingPress,
@@ -24,6 +26,7 @@ const osha: TrainingPolicy = {
   goodForMonths: 12,
   dueSoonDays: 30,
   retakeFrom: null,
+  offered: false,
 }
 
 const TODAY = '2026-10-15'
@@ -120,5 +123,34 @@ describe('the words', () => {
     ])
     expect(worstColour(standings)).toBe('red')
     expect(standingCounts([standings[0] ?? null, standings[1] ?? null, null, courseStanding(osha, [{ slug: osha.slug, passedOn: '2025-10-03', contentVersion: 'a' }], 'helpers', TODAY)])).toEqual({ current: 1, lapsed: 1, notDone: 1 })
+  })
+})
+
+describe('an offered course (punch list #119)', () => {
+  const plumbing: TrainingPolicy = { slug: 'intro-to-plumbing', title: 'Intro to plumbing', on: true, requiredRoles: ['helpers'], goodForMonths: 120, dueSoonDays: 30, retakeFrom: null, offered: true }
+  const passes: TrainingPass[] = [
+    { slug: 'intro-to-plumbing', passedOn: '2025-01-10', contentVersion: 'a' },
+    { slug: 'intro-to-plumbing', passedOn: '2026-02-02', contentVersion: 'b' },
+  ]
+
+  it('is a standing for a role it is required of and an offer for every other role, never both', () => {
+    expect(personStandings([osha, plumbing], [], 'helpers', TODAY).map((s) => s.slug)).toEqual(['intro-to-plumbing', 'osha-30-refresher'])
+    expect(offeredCourses([osha, plumbing], [], 'helpers')).toEqual([])
+    expect(personStandings([osha, plumbing], [], 'assistant', TODAY)).toEqual([])
+    expect(offeredCourses([osha, plumbing], [], 'assistant')).toEqual([{ slug: 'intro-to-plumbing', title: 'Intro to plumbing', passedOn: null }])
+  })
+
+  it('carries the newest pass with no clock, and is gone when the course is off, not offered, or the role is unknown', () => {
+    expect(offeredCourses([plumbing], passes, 'controller')[0]?.passedOn).toBe('2026-02-02')
+    expect(offeredCourses([{ ...plumbing, on: false }], passes, 'controller')).toEqual([])
+    expect(offeredCourses([{ ...plumbing, offered: false }], passes, 'controller')).toEqual([])
+    expect(offeredCourses([plumbing], passes, null)).toEqual([])
+  })
+
+  it('the press: Start, Continue once started, Read it again after a pass', () => {
+    const o = { slug: 'intro-to-plumbing', title: 'Intro to plumbing', passedOn: null }
+    expect(offeredPress(o, false)).toBe('Start')
+    expect(offeredPress(o, true)).toBe('Continue')
+    expect(offeredPress({ ...o, passedOn: '2026-02-02' }, false)).toBe('Read it again')
   })
 })

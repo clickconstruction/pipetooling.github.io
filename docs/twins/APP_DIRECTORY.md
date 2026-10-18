@@ -48,6 +48,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Everyone waiting on us for an answer and what we owe them, for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
 - A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard, under My Schedule in Job Mode; guide `take-a-training-course`)
+- A course open to everyone, with a drawing in every lesson of how water comes into a house and leaves it → `/training/intro-to-plumbing` (the **Available** row of the same Training card; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Owners, developers and architects with a job we could build as the GC → `/prospects?kind=gc-leads` (guide `find-jobs-to-build-as-the-gc`)
 - Trade companies to call for the bench, by what the bench needs → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
@@ -65,7 +66,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Type the two inboxes' addresses and numbers, the team inbox and the bids inbox → `/settings?tab=settings-phone-texts` (Inboxes, under Company phone seats: the office reads, the owner or a dev saves; the app uses them once the inboxes are switched on; guide `set-up-the-two-inboxes`)
 - Turn on the reply push, so a customer's, a lead's or a sub's reply reaches whoever has it as a phone alert within a minute → `/settings?tab=settings-phone-texts` (Reply push, the owner or a dev, off as it ships; guide `turn-on-the-reply-push`)
 - Change the steps a customer, trade partner, architect, residential customer or sub goes through → `/settings?tab=settings-flows` (Flows: the office edits; guide `set-up-the-steps-a-person-goes-through`)
-- Turn a training course on, say which roles must take it, how long a pass is good for, see where everyone stands, preview the course and clear a retake day → `/settings?tab=settings-training` (Training: a dev; guide `take-a-training-course`)
+- Turn a training course on, say which roles must take it or open it to everyone, how long a pass is good for, see where everyone stands, preview the course and clear a retake day → `/settings?tab=settings-training` (Training: a dev; guide `take-a-training-course`)
 - Where the company stands this week, the weakest link, the Monday sheet → `/bridge` (dev only)
 - How-do-I articles → `/help` (search) or `/help?g=<slug>`
 - The public trade rule behind a count or check (hanger spacing, fill limit, drop, mount height) → `https://counttooling.com/rules/` — `https://counttooling.com/rules/rules.json` for software; derive from it and stamp `ruleId` (see the CountTooling bid guide)
@@ -126,6 +127,10 @@ Roles: dev, master_technician, assistant, controller, estimator.
 ### /training/osha-30-refresher — Training: a course
 
 A course read at the person's own pace (punch list #111, v2.5566): the rail of parts and lessons on the left with a tick on each one done (a **Lessons · N of 30** button on a phone, and a header chip *N of 30 lessons* with a green *Final check passed* after the pass), the lesson on the right (Why it matters, Must know, Traps, with a line drawing under a sentence that needs one, Numbers to remember, Check yourself), and the Final check at the foot of the rail once every lesson is done. Pick one answer per question; a wrong pick says why and offers **Try again**; the lesson records itself when all four are right; **Next lesson ›** goes on. `?lesson=<key>` opens a lesson, `?final=1` the final check. Anyone signed in may read a course that is on; a dev reads one that is off as a preview. The first course is the OSHA 30 refresher, thirty lessons and a final check of twenty, each asked once, fourteen right passes; a pass says the day it is due again and offers **‹ Back to the Dashboard**. Guide `take-a-training-course`.
+
+### /training/intro-to-plumbing — Training: Intro to plumbing
+
+The second course (punch list #119, v2.5610), the same page: how water comes into a house under pressure and leaves by gravity, a drawing in every lesson in one language (a pipe is two lines, water a tint, flow an arrow, the trap's seal a hatch). Required of helpers and **offered** to every other role, who find it under the Training card's **Available** line with no colour and no clock. Off until a dev turns it on; Start here and Water in are built, Water out, the conditions and Reading the job follow. Guide `take-a-training-course`.
 
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick
