@@ -13,7 +13,7 @@ Training is a card at the bottom of your Dashboard, under My Time. In Job Mode i
 2. Read the line at the top. It says how you stand in one colour. Red means a course is not done. Amber means a pass has lapsed or is about to. Green means you are caught up.
 3. Press {{button:blue|Start}} on a course. The course opens on its first lesson.
 
-The first course is the OSHA 30 refresher. It is thirty lessons of about five minutes each, plus a final check. It is a refresher, not an OSHA card. The card comes from the 30-hour course. The second is Intro to plumbing. It shows how water comes into a house and how it leaves, with a drawing in every lesson.
+The first course is the OSHA 30 refresher. It is thirty lessons of about five minutes each, plus a final check. It is a refresher, not an OSHA card. The card comes from the 30-hour course. The second is Intro to plumbing. It shows how water comes into a house and how it leaves, with a drawing in every lesson. The third is Intro to electrical. It shows how a house's electrical system works and where plumbing work touches it. It teaches understanding, not doing.
 
 ## Read a lesson
 
