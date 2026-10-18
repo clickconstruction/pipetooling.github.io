@@ -9,6 +9,7 @@ Copper has carried water in houses for a hundred years. It is joined with heat a
 
 ## Must know
 - Copper pipe comes in three wall thicknesses. Type **M** is thin, **L** is medium and **K** is thick.
+- {{figure:copper-types|Type M prints red, L blue and K green. The thin one is M, the thick one is K.}}
 - Houses use type M or L. Underground service lines use type K.
 - The common sizes in a house are **1/2 in** and **3/4 in**.
 - A copper joint is soldered. The pipe sits inside the fitting's cup with a hair of a gap around it.

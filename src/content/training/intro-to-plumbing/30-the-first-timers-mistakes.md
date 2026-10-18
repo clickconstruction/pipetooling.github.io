@@ -12,6 +12,7 @@ Four mistakes look fine from across the room and fail the house a year later. Ea
 - {{figure:first-timer-mistakes|An S-trap, a tee on its back, a flat run, a trap arm too long. Each beside the right way.}}
 - An S-trap drops straight down after the bend with no vent. It siphons itself every time. The right way is a P-trap with a vented arm.
 - A sanitary tee on its back takes a branch into a horizontal run. The branch's water stalls. The right way is a wye or a combo.
+- {{figure:san-tee-vs-wye|A sanitary tee drops a branch into a stack. A wye joins a branch to a horizontal run.}}
 - A flat run has no slope. Water sits and solids settle. The right way is **1/4 in per ft**.
 - A trap arm too long, past the table, siphons the trap. The right way is **6 ft** for 1-1/2 in and 8 ft for 2 in, with the vent inside it.
 - Each of the four passes water on the first day. Each fails the inspection, and then the house.

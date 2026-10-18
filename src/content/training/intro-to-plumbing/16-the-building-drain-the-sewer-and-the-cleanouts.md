@@ -13,6 +13,7 @@ Every drain in the house ends in one pipe under it. That pipe becomes the sewer 
 - The building drain is usually **4 in**. It holds the same slope as every drain.
 - The building drain becomes the building sewer **30 in** outside the foundation wall. From there it runs to the city sewer or a septic tank.
 - A septic tank is a buried box, often **1,000 gal**. Solids settle in it and the liquid runs out to a drain field.
+- {{figure:septic-tank|Solids settle in the tank behind its baffles. The liquid runs on to the drain field.}}
 - A cleanout is a capped opening a plumber opens to run a cable into the pipe.
 - A cleanout goes at the base of each stack and where the drain leaves the house. Every turn of more than **45°** gets one too.
 - A straight run gets a cleanout every **100 ft**.

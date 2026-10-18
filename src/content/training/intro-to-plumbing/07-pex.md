@@ -11,6 +11,7 @@ PEX is the plastic pipe in most new houses. It bends around corners, so it needs
 - PEX is a flexible plastic pipe for hot and cold water. It comes in **three kinds**, A, B and C.
 - PEX bends, so a run can turn a corner with no fitting. Fewer fittings means fewer places to leak.
 - A bend must not be too tight. Keep the bend to **6 to 8 times** the pipe's width or wider.
+- {{figure:pex-bend|A bend of 6 to 8 pipe widths needs no fitting. A kink is damage and is cut out.}}
 - A crimp joint pushes the pipe over a barbed fitting and squeezes a ring down over it.
 - {{figure:pex-joints|A crimp ring squeezes PEX onto a barbed fitting. An expansion joint stretches it over the fitting and lets it shrink back.}}
 - An expansion joint stretches the pipe and its ring with a tool. The pipe slides over a bigger fitting and shrinks back to grip it.

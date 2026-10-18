@@ -16,6 +16,7 @@ You do not shut off the whole house to fix one faucet. Small valves at each fixt
 - A vacuum breaker screws onto the bib's spout. It stops water in the hose flowing back into the house.
 - Without a breaker, a pressure drop can pull a bucket or a pool back up the hose into the house.
 - A frost-proof hose bib has a long stem. Its valve seat sits **8 to 12 in** inside the warm wall.
+- {{figure:frost-proof-bib|The seat sits 8 to 12 in inside the warm wall. A hose left on holds water in the stem.}}
 - Take the hose off a frost-proof bib in winter. A hose left on holds water in the stem and it freezes.
 
 ## Traps

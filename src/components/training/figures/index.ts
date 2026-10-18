@@ -112,6 +112,16 @@ import { FiveTouchPoints } from './FiveTouchPoints'
 import { InspectorElectrical } from './InspectorElectrical'
 import { PlumberMistakes } from './PlumberMistakes'
 
+import { CopperTypes } from './CopperTypes'
+import { DishwasherAirGap } from './DishwasherAirGap'
+import { FrostProofBib } from './FrostProofBib'
+import { MeterDial } from './MeterDial'
+import { PexBend } from './PexBend'
+import { SepticTank } from './SepticTank'
+import { ToiletRoughIn } from './ToiletRoughIn'
+import { ToiletTank } from './ToiletTank'
+import { TrapArmDrop } from './TrapArmDrop'
+import { WetVent } from './WetVent'
 
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
@@ -210,5 +220,14 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'five-touch-points': FiveTouchPoints,
   'inspector-electrical': InspectorElectrical,
   'plumber-mistakes': PlumberMistakes,
-
+  'copper-types': CopperTypes,
+  'dishwasher-air-gap': DishwasherAirGap,
+  'frost-proof-bib': FrostProofBib,
+  'meter-dial': MeterDial,
+  'pex-bend': PexBend,
+  'septic-tank': SepticTank,
+  'toilet-rough-in': ToiletRoughIn,
+  'toilet-tank': ToiletTank,
+  'trap-arm-drop': TrapArmDrop,
+  'wet-vent': WetVent,
 }

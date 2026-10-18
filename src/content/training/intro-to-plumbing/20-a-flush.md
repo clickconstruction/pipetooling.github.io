@@ -11,6 +11,7 @@ A flush is both systems working in about four seconds. The supply fills, the dra
 - A flush is the tank dumping, the bowl emptying, the vent breathing and the supply refilling, in that order.
 - {{figure:flush-strip|The tank dumps into the bowl. The bowl's own trap siphons. The vent lets air follow. The fill valve refills the tank.}}
 - Press the handle and the flapper lifts. The tank's water drops into the bowl through the rim and the jet.
+- {{figure:toilet-tank|Inside the tank. The flapper lifts off the flush valve. The float shuts the fill valve when the water is back.}}
 - The bowl's own trap fills past its top and starts a siphon. The siphon pulls the bowl's water down the drain in one pull.
 - When air reaches the trap the siphon breaks with a gulp. The bowl refills to its seal from the tank's refill tube.
 - The fill valve opens as the tank empties and closes when the float rises. The supply does the refilling.
