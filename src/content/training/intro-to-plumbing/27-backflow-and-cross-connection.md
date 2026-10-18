@@ -5,31 +5,28 @@ minutes: 5
 from: Outline lesson 27
 ---
 ## Why it matters
-Supply water must never touch anything else. A hose in a bucket can poison a street when the pressure drops. The air gap and the breaker are what stand in the way.
+Supply water must never touch anything else. A hose in a bucket can poison a street when the street's pressure drops. The air gap and the hose bib's vacuum breaker are what stand in the way.
 
 ## Must know
 - Supply water must never touch anything else. A place where it could is a cross-connection.
 - {{figure:cross-connection-strip|A hose sits in a bucket. Street pressure drops. The bucket's water is pulled back into the house line.}}
-- Back siphonage happens when street pressure drops. A hose in a bucket, a pool or a sprayer gets pulled back into the house.
-- Back pressure happens when something on the house side pushes harder than the supply, a boiler or a pump.
+- Street pressure can drop when a main breaks or a hydrant opens. Then the push that holds the water in the pipes is gone.
+- Back siphonage is that drop pulling water the wrong way. A hose in a bucket, a pool or a sprayer gets pulled back into the house.
 - The air gap is the first defense. The faucet ends above the rim by **twice the pipe's width**, at least **1 in**.
 - {{figure:two-systems|The faucet ends in the air above the rim. That gap is the one place the two systems meet.}}
-- A vacuum breaker goes on every hose bib. It lets air in the moment the pressure drops.
-- A backflow preventer goes on an irrigation line, a boiler feed and a fire line. It is tested **every year**.
-- A dishwasher drains through an air gap on the counter or a high loop. The sink cannot drain back into it.
-- {{figure:dishwasher-air-gap|A high loop under the counter or an air gap on it. The sink cannot drain back into the dishwasher.}}
-- The city tests backflow devices because one bad hose can poison a street.
+- A vacuum breaker goes on every hose bib. It lets air in the moment the pressure drops, so the hose cannot pull.
+- One bad hose can poison a street. That is why the gap and the breaker are the code's rule, not a choice.
 
 ## Traps
 - The hose is the cross-connection most houses have. The bib's breaker is what makes it safe.
-- A check valve is not a backflow preventer. It has no test ports and no way to prove it holds.
 - A faucet extended down into a basin, or a hose left in a tub, defeats the air gap.
+- A dishwasher drains through an air gap on the counter or a high loop under it. The sink cannot drain back into it.
+- {{figure:dishwasher-air-gap|A high loop under the counter or an air gap on it. The sink cannot drain back into the dishwasher.}}
 
 ## Numbers
 - **an air gap** of twice the pipe's width, at least 1 in
 - **a vacuum breaker** on every hose bib
-- **a backflow preventer** on the irrigation line
-- **every year** it is tested
+- **a pressure drop** in the street starts the pull
 
 ## Check yourself
 1. What is a cross-connection?
@@ -56,10 +53,10 @@ Supply water must never touch anything else. A hose in a bucket can poison a str
 > right: Two pipe widths, never under an inch, between the spout and the rim.
 > wrong: The air gap is twice the pipe's width and at least 1 in.
 
-4. Why is a check valve not a backflow preventer?
-- [ ] It is too small
-- [x] It cannot be tested to prove it holds
-- [ ] It only works on hot water
-- [ ] It lets air in
-> right: A preventer has test ports and a yearly test. A check valve only hopes.
-> wrong: A check valve has no test ports. A backflow preventer can be proved to hold.
+4. What defeats a faucet's air gap?
+- [x] A hose left lying in the tub
+- [ ] A spout 2 in above the rim
+- [ ] Shutting the angle stop
+- [ ] A vacuum breaker on the bib
+> right: The hose bridges the gap. The tub's water has a path back up it.
+> wrong: A hose in the tub, or a spout pushed down into the basin, closes the gap the code wants open.

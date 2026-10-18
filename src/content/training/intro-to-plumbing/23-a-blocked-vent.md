@@ -16,12 +16,15 @@ A vent blocked at the roof stops the drain breathing. The drain gulps air throug
 - A smell after the gurgle means the seal went with the air.
 - The fix is at the roof. Clear the vent from the top with a hose or a cable.
 - In cold country a vent frosts shut from the steam inside it. The pipe through the roof is at least **3 in** there.
+- An air admittance valve, an AAV, is a one-way air valve under a sink. It goes where no pipe can reach the roof.
+- An AAV opens on suction to let air in and closes by itself. It sits at least **4 in** above the trap arm, where a hand can reach it.
 - An AAV that sticks shut acts like a blocked vent for its one fixture.
 
 ## Traps
 - A gurgle is not a clog. Cabling the drain finds nothing because the trouble is above it.
 - The slow drain is everywhere at once. A clog is in one place.
 - Do not cap a vent to stop a smell. The smell comes from the trap the capped vent empties.
+- An AAV is not a vent through the roof. It lets air in and never lets gas out.
 
 ## Numbers
 - **a gurgle** is air through a seal

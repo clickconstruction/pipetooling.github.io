@@ -50,7 +50,7 @@ Waste has no pump. It runs downhill, and the code says how steep. Too flat and t
 - [ ] A fitting that turns the pipe
 - [ ] The widest part of the trap
 - [x] A low spot where water sits
-- [ ] The cleanout cap
+- [ ] The top of the vent
 > right: Water sits in the low spot, solids settle, and the line clogs.
 > wrong: A belly is a sag in the run. Water sits in it and it clogs.
 

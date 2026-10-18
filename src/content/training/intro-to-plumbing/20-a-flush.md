@@ -16,7 +16,8 @@ A flush is both systems working in about four seconds. The supply fills, the dra
 - When air reaches the trap the siphon breaks with a gulp. The bowl refills to its seal from the tank's refill tube.
 - The fill valve opens as the tank empties and closes when the float rises. The supply does the refilling.
 - A new toilet uses **1.6 gal** a flush. A WaterSense toilet uses **1.28 gal**. Old ones used 3.5 or more.
-- The closet drain is at least **3 in**. The vent lets air follow the slug of water down the stack.
+- In the trade the toilet is the closet, so its drain is the closet drain. It is at least **3 in**.
+- The vent lets air follow the slug of water down the stack.
 - A flapper that leaks lets the tank run. The fill valve cycles and the water bill climbs.
 
 ## Traps

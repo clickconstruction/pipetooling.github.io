@@ -12,7 +12,8 @@ Every drain in the house is open to the sewer. The only thing between the sewer 
 - {{figure:p-trap-seal|The water sitting in the bend is the seal. Sewer gas stops at it.}}
 - The water in the bend is the seal. Sewer gas cannot pass through water, so it stops there.
 - The seal is **2 to 4 in** deep. It is measured from the top of the dip to the top of the outlet.
-- A sink trap is **1-1/2 in**. A lavatory trap is **1-1/4 in**. A toilet's trap is cast into the bowl.
+- A lavatory, a lav for short, is the bathroom sink. Its trap is **1-1/4 in**.
+- A kitchen sink trap is **1-1/2 in**. A toilet's trap is cast into the bowl.
 - One trap per fixture. Two traps in a row hold air between them, and the drain gurgles and slows.
 - The pipe leaving the trap is the trap arm. It runs to the vent and on to the drain.
 - A plug at the bottom of the bend lets a plumber open the trap without cutting it.
@@ -27,7 +28,7 @@ Every drain in the house is open to the sewer. The only thing between the sewer 
 - **2 to 4 in** of seal
 - **1** trap per fixture, never two
 - **1-1/4 in** a lav trap
-- **1-1/2 in** a sink trap
+- **1-1/2 in** a kitchen sink trap
 
 ## Check yourself
 1. What stops sewer gas at a fixture?

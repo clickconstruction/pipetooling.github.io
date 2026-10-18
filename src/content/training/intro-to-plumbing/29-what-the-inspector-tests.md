@@ -15,6 +15,8 @@ The inspector reads a gauge or a water level, not your word. The tests are simpl
 - The supply is tested at the working pressure, or with air at **50 psi** for 15 min.
 - Test plugs and caps close every opening. A test ball in the cleanout holds the water in the stack.
 - At the final, every fixture runs, every trap holds, and the T&P drain line runs where it should.
+- A backflow preventer goes where the house side can push harder than the street. An irrigation line, a boiler feed and a fire line each get one.
+- That push is back pressure. A tester proves the preventer holds **every year**, and the city keeps the report.
 - The inspector also looks. Slope, hangers, cleanouts, the vent through the roof, fittings facing the right way.
 - A failed test is a leak somewhere. Find it, fix it and call again. Nothing closes until it passes.
 
@@ -22,12 +24,14 @@ The inspector reads a gauge or a water level, not your word. The tests are simpl
 - A water test is not a pressure test. The 10 ft head is under 5 psi, but it finds the leaks a drain will see.
 - A cap left on after the test is a plug in the line. Count your test caps.
 - Passing the test is not passing the inspection. The inspector still walks the slope and the fittings.
+- A check valve is not a backflow preventer. It has no test ports and no way to prove it holds.
 
 ## Numbers
 - **10 ft** of water on the drains for 15 min
 - **5 psi** air on the drains instead
 - **50 psi** air on the supply
 - **every trap** holds at the final
+- **every year** the backflow preventer is tested
 
 ## Check yourself
 1. How is the drain and vent system water tested?

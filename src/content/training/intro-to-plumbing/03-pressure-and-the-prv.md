@@ -8,7 +8,7 @@ from: Outline lesson 3
 Pressure is the push behind every faucet. Too little and the shower dribbles. Too much and fittings, hoses and the water heater fail. The PRV, the pressure reducing valve, holds the push where the house wants it.
 
 ## Must know
-- Pressure is measured in psi, pounds per square inch. A gauge screwed onto a hose bib reads it.
+- Pressure is measured in psi, pounds per square inch. A gauge screwed onto a hose bib, the outside faucet, reads it.
 - {{figure:pressure-and-prv|The gauge reads the push. The PRV lets high street pressure through as a lower house pressure.}}
 - **40 to 60 psi** feels good at the shower and is kind to the pipes.
 - Under **40 psi** the house feels weak. Two fixtures running at once make it worse.

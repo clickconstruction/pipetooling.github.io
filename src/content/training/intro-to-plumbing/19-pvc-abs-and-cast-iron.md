@@ -9,11 +9,12 @@ Three pipes carry the drains. Two are plastics that look alike and must never sh
 
 ## Must know
 - Three pipes carry drains. PVC is white, ABS is black, cast iron is grey and heavy.
+- A hub is the bell end of a drain fitting that the pipe sits in. Plastic pipe glues into a hub.
 - {{figure:dwv-materials|PVC and ABS are glued, each with its own cement. Cast iron is clamped with a no-hub band.}}
 - PVC is glued with primer and PVC cement. The purple primer shows the inspector the joint was primed.
 - ABS is glued with ABS cement alone. It takes no primer.
 - PVC and ABS never share a cement. Joining them takes a transition cement where the code allows it, or a listed coupling.
-- Cast iron is joined with a no-hub coupling, a rubber sleeve inside a steel band, tightened to **60 in-lb**.
+- Cast iron has no hub. It is joined with a no-hub coupling, a rubber sleeve inside a steel band, tightened to **60 in-lb**.
 - Cast iron is quiet. A plastic stack lets you hear every flush through the wall. Cast iron does not.
 - Cast iron lasts **50 to 100 years**. Old houses still run on it, and it is cut with a snap cutter.
 - Plastic drain pipe grows with heat. A long run needs room to move, or it bows and pulls its joints.
