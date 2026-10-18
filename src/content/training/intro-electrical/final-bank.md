@@ -233,3 +233,59 @@ title: Final check bank
 - [ ] The water heater's elements
 > right: The low-voltage world is the thermostat, the doorbell, the sprinkler and the gas valve.
 > wrong: The 24 V side feeds the thermostat, the doorbell and the gas valve. The pumps and the heater are not low voltage.
+
+30. A breaker's handle sits in the middle. What is it?
+- [ ] On
+- [x] Tripped
+- [ ] Off
+- [ ] Broken
+> right: The middle is the tripped position.
+> wrong: A handle in the middle is a tripped breaker. Off, then on, once.
+
+31. What is the first step after a GFCI trips because of a damp cord?
+- [ ] Reset
+- [x] Dry the cord or unplug the tool
+- [ ] Reset the breaker
+- [ ] Replace the GFCI
+> right: The cause first, then Reset once.
+> wrong: The cause comes first. Reset without it trips again.
+
+32. Where is the water shut off when a leak hits a panel?
+- [ ] At the main breaker
+- [x] At the main shutoff or the valve above the leak, away from the panel
+- [ ] At the panel's door
+- [ ] It is not shut off
+> right: The water stops somewhere else. The panel is not touched.
+> wrong: The water is shut off away from the panel, at the main shutoff or the valve above.
+
+33. At what current does a breaker trip?
+- [ ] 5 mA
+- [ ] 30 mA
+- [ ] 200 mA
+- [x] 15,000 mA
+> right: Fifteen amps, and nothing that hurts a person reaches it.
+> wrong: A breaker trips at 15,000 mA. It protects the wiring, not you.
+
+34. Who is the path when a bonded metal pipe is cut with no jumper?
+- [ ] Nobody, the rod carries it
+- [x] The person holding both ends
+- [ ] The homeowner
+- [ ] The inspector
+> right: The two pipe ends are a gap, and the person across it is the way round.
+> wrong: With no jumper the person holding both ends of the cut is the ground path.
+
+35. How many times does a plumber press a water heater's high-limit reset?
+- [x] Once
+- [ ] Twice
+- [ ] Until it holds
+- [ ] Never
+> right: Once, with the breaker off and the circuit tested dead. A second trip is a call.
+> wrong: The high-limit is pressed once, dead. If it trips again, it is a call.
+
+36. What can make a wire live with the utility's power off?
+- [ ] The ground rod
+- [x] A generator or a solar array feeding from the other end
+- [ ] The water heater
+- [ ] A GFCI
+> right: A second source in the house can feed the wire from its own side.
+> wrong: A generator, a solar array or a battery can hold a wire live with the utility off.
