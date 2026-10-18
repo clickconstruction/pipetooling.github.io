@@ -327,7 +327,7 @@ Each is taken in the cut that needs it; none blocks cut 1 through 4 except the f
    them. Lean: yes, and *Who is this?* re-points.
 2. **A person on two flows** (cut 4): one contact with two flows as tabs, or two contacts. Lean: one
    contact, two tabs.
-3. **Whether the app may send a nudge itself** (cut 5): per step, off until turned on.
+3. **Whether the app may send a nudge itself** (cut 5): per step, off until turned on (widened in v2.5595: off, offers or sends).
 4. **The Google grant on bids@** (cut 6): the app reads the whole box.
 5. **Whether the file agent files papers on its own when sure** (cut 6), or always offers.
 6. **How long an email's copy of a file stays** once it is in Drive (cut 6). Lean: keep it.

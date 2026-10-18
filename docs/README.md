@@ -45,7 +45,7 @@
 | [`HELP_SHARE_CARDS.md`](./HELP_SHARE_CARDS.md) | Help-guide share pages and cards (`/g/<slug>/`): what a texted link shows, what the author gets right, how to check. |
 | [`TEAM_FEEDBACK_RETIRED_QUESTIONS.md`](./TEAM_FEEDBACK_RETIRED_QUESTIONS.md) | The scripted questions the Team Feedback wizard asked before the crew deck replaced it; kept so the wording is never lost. |
 | `../src/content/help/*.md` | User-facing help guides (ship with features — `../CLAUDE.md`). |
-| `../src/content/training/<slug>/` | Training courses as markdown (`course.md`, the lessons, `final-bank.md`), parsed by `src/lib/training/courseContent.ts`, whose test is the gate (Glossary *Training · course · pass*). |
+| `../src/content/training/<slug>/` | Training courses as markdown (`course.md` with the stated `lessons` and `minutes`, the lessons with their `{{figure:…}}` lines, `final-bank.md`), parsed by `src/lib/training/courseContent.ts` (the figures by `figures.ts`, drawn from `src/components/training/figures/`), whose test is the gate (Glossary *Training · course · pass*). |
 
 ## Runbooks and one-time setup
 
@@ -151,4 +151,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-10-14
+last_updated: 2026-10-17
