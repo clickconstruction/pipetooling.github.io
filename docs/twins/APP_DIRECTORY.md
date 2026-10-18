@@ -49,6 +49,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
 - A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard, under My Schedule in Job Mode; guide `take-a-training-course`)
 - A course open to everyone, with a drawing in every lesson of how water comes into a house and leaves it → `/training/intro-to-plumbing` (the **Available** row of the same Training card; guide `take-a-training-course`)
+- A course open to everyone on how a house's electrical system works, what is live and where plumbing work touches it, understanding and not doing → `/training/intro-electrical` (the **Available** row of the same Training card; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Owners, developers and architects with a job we could build as the GC → `/prospects?kind=gc-leads` (guide `find-jobs-to-build-as-the-gc`)
 - Trade companies to call for the bench, by what the bench needs → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
@@ -131,6 +132,10 @@ A course read at the person's own pace (punch list #111, v2.5566): the rail of p
 ### /training/intro-to-plumbing — Training: Intro to plumbing
 
 The second course (punch list #119, v2.5610), the same page: how water comes into a house under pressure and leaves by gravity, a drawing in every lesson in one language (a pipe is two lines, water a tint, flow an arrow, the trap's seal a hatch). Required of helpers and **offered** to every other role, who find it under the Training card's **Available** line with no colour and no clock. Off until a dev turns it on; all four parts are built (v2.5610 to v2.5613): Start here, Water in, Water out, the two systems under conditions, Reading the job, thirty lessons and a final check of twenty. Guide `take-a-training-course`.
+
+### /training/intro-electrical — Training: Intro to electrical
+
+The third course (punch list #120, v2.5614), the same page: how a house's electrical system works, for the plumbing crew that works beside it, understanding and not doing. A conductor is one line in the ink for the hot, white for the neutral and amber for the ground, current an arrow along it, and the house red for one thing only, current where it should not be. Every lesson ends at what it does, how you know it is live, what you do not touch and who you call, and the content test refuses a Must know or Traps item that begins with a doing verb without naming who does it. Offered to every role and required of nobody, under the Training card's **Available** line; off until the owner's reader signs it off and a dev turns it on. Start here and Power in are built, The devices, The two together and On the job follow. Guide `take-a-training-course`.
 
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick

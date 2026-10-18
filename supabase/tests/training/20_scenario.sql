@@ -69,6 +69,10 @@ SELECT tt.same('the seed row, off',
 SELECT tt.same('the second seed row, off and offered',
   (SELECT slug || ' ' || enabled::text || ' ' || offered::text || ' ' || array_to_string(required_roles, ',') || ' ' || good_for_months FROM public.training_courses WHERE slug = 'intro-to-plumbing'),
   'intro-to-plumbing false true helpers 120');
+-- v2.5614: the third course, off, required of nobody, offered to every role, good for 120 months.
+SELECT tt.same('the third seed row, off, offered and required of nobody',
+  (SELECT slug || ' ' || enabled::text || ' ' || offered::text || ' [' || array_to_string(required_roles, ',') || '] ' || good_for_months FROM public.training_courses WHERE slug = 'intro-electrical'),
+  'intro-electrical false true [] 120');
 
 -- 1 · Off: a helper who must take it once it is on reads nothing yet.
 SELECT tt.as_user('00000000-0000-0000-0000-0000000071e1');

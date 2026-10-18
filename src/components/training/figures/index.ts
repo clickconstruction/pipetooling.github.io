@@ -77,6 +77,10 @@ import { ThreeVisits } from './ThreeVisits'
 import { InspectorTests } from './InspectorTests'
 import { FirstTimerMistakes } from './FirstTimerMistakes'
 
+import { OneLoop } from './OneLoop'
+import { NeutralVsGround } from './NeutralVsGround'
+import { BondingJumper } from './BondingJumper'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -144,4 +148,7 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'three-visits': ThreeVisits,
   'inspector-tests': InspectorTests,
   'first-timer-mistakes': FirstTimerMistakes,
+  'one-loop': OneLoop,
+  'neutral-vs-ground': NeutralVsGround,
+  'bonding-jumper': BondingJumper,
 }
