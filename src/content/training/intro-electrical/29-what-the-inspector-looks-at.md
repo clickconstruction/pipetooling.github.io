@@ -16,6 +16,7 @@ Two inspectors read the same house. The electrical inspector reads the panel, th
 - The GFCI faces are on the list. Every outlet near water has one, or is downstream of one.
 - The AFCI breakers are on the list. The bedrooms and the living areas, by the cycle.
 - The plumbing inspector reads the water heater's bonding too. The hot and the cold are tied together where the heater breaks the metal.
+- {{figure:heater-bond|The water heater breaks the metal pipe. A bond from the cold to the hot ties the two sides back together.}}
 - The pan and its drain are the plumbing inspector's. So is the T&P line.
 - A plumber who leaves the jumper on and the pan in place has done both inspectors' lists in one.
 

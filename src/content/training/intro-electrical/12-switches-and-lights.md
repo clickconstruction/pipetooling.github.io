@@ -14,6 +14,7 @@ A switch is the simplest break in the loop. It breaks one wire, the hot, and lea
 - The wire from the switch to the light is the switch leg. It is live only when the switch is on.
 - Off at the switch leaves the box live on the line side. A dark light proves nothing.
 - A three-way is two switches on one light. Either one changes it, so neither one is a true off.
+- {{figure:three-way-switch|Two switches on one light. Either one changes it. Neither one is a true off, and the line side stays live.}}
 - A dimmer is a switch that lets part of the current through. It is still live on its line side.
 - LED does the same light for a tenth of the watts. An old 60 W bulb is a 9 W LED.
 - A light in a wet place, a shower or outdoors, has a rating for it. The fixture says so.
