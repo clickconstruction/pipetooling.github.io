@@ -15,12 +15,12 @@ The electric water heater is where the two trades meet most. It is the plumber's
 - A disconnect is a switch box or a pull-out near the heater that cuts its power. The company's rule draws its line there.
 - {{figure:water-heater-circuit|Two hots feed the heater on a two-pole breaker. The top thermostat runs first, then hands off to the bottom one. The plumber's side begins at the disconnect.}}
 - The company's rule: a plumber on the truck works on the whip, the elements, the thermostats and the high-limit reset. The high-limit is the safety button behind the top cover.
-- The company's rule: first the breaker off, then the circuit tested dead at the heater, then the covers.
+- The company's rule: first the breaker off, then the circuit tested dead at the heater's terminals, then the covers. The terminals are the screws where the wires land.
 - The company's rule: the panel, the breaker's wiring and everything between the panel and the disconnect are the electrician's.
 - A gas heater can have a cord too. A power-vent heater has a fan that pushes the exhaust out, and the fan runs on 120 V. No power can mean no hot water on a gas heater too.
 
 ## Traps
-- The breaker off is not tested dead. The tester goes to the heater's terminals, the screws where the wires land, before a cover comes off.
+- The breaker off is not tested dead. The tester goes to the heater's terminals before a cover comes off.
 - A 240 V heater has no neutral. A white wire in the whip, if there is one, is a hot and is marked so.
 - An element is a plumber's part only with the circuit dead. Live, it is nobody's.
 

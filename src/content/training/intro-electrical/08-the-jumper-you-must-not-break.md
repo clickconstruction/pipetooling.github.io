@@ -21,7 +21,7 @@ The metal water pipe is part of the ground. Plumbers cut it, pull meters out of 
 
 ## Traps
 - A jumper is not clutter. Clamps and a bare wire around the meter are the ground going round the gap.
-- A plastic meter yoke, the fitting that holds the meter, opens the gap with no cut. So does a plastic filter. The jumper still has to be there.
+- A plastic fitting that holds the meter opens the gap with no cut. So does a plastic filter. The jumper still has to be there.
 - The gap is not safe just because the water is off. The ground has nothing to do with the water.
 
 ## Numbers
