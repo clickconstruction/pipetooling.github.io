@@ -11,16 +11,16 @@ Every module of the course comes back to the same few ideas. They cover the stro
 - Controls run from most to least effective. Elimination, substitution, engineering, administrative, then PPE, the gear you wear.
 - {{figure:controls-ladder|Start at the top. Each step down leans more on people doing the right thing.}}
 - Engineering controls work without you. Guards, ventilation and dust collection are engineering, while training and permits are administrative.
-- PPE is the last line of defense. It reduces the effect of a hazard and never removes it.
+- PPE is the last line of defense. It reduces the effect of a hazard and never removes it. A respirator, the mask you breathe through, is PPE too.
 - The competent person is named by the employer. They spot existing and predictable hazards and can stop work.
 - The qualified person has proven skill on that task and that equipment. A license or years alone do not make one.
-- A registered professional engineer designs trench protection deeper than **20 ft**. A fire watch stays **30 minutes** after hot work ends.
+- A registered professional engineer designs trench protection, the protective system against falling walls, deeper than **20 ft**. A fire watch stays **30 minutes** after hot work ends.
 - A signal person is certified and is needed when the crane operator cannot see the load. A spotter prevents collisions and needs no certification.
-- Your employer owes a workplace free of recognized hazards, training you understand, and PPE at no cost. Your duties are to follow the rules, inspect your gear, and report hazards instead of fixing them yourself.
+- Your employer owes a workplace free of recognized hazards, training you understand, and PPE at no cost. Your duties are to follow the rules, inspect your gear, and report hazards instead of fixing them yourself. NFPA 70E, the electrical safety standard, splits the duties the same way.
 - A death is reported to OSHA within **8 hours**. A hospital stay, an amputation or a lost eye within **24 hours**.
 - Employers with **more than 10** employees keep the OSHA 300 log. The 300A summary is posted **Feb 1 to Apr 30** and kept **5 years**.
 - You may speak up, ask for an inspection, report an injury and see your records. A retaliation complaint goes to OSHA within **30 days**.
-- Any employee at any level can stop unsafe work. Raise it with your supervisor first, then the next level, then OSHA.
+- Any employee at any level can stop unsafe work. An unsafe scaffold, the platform built up to work from, is one case. Raise it with your supervisor first, then the next level, then OSHA.
 
 ## Traps
 - Safety training is an administrative control. A barrier is an engineering control.

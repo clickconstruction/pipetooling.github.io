@@ -14,7 +14,7 @@ Confined spaces kill more than **100** workers a year. The hazards are usually i
 - The entrant does the work, reports symptoms and leaves on any order, symptom or alarm.
 - The attendant stays outside with no other duties. They count entrants, stay in contact, monitor the air, order evacuation, keep others out and call rescue.
 - The entry supervisor is a qualified person. They confirm acceptable conditions, sign and cancel the permit, and verify rescue is available.
-- Oxygen from **19.5% to 23.5%** is acceptable. Normal air is about **21%**. Below 19.5% is oxygen-deficient and immediately dangerous. Flammable gas above **10% of the lower explosive limit** is unsafe.
+- Oxygen from **19.5% to 23.5%** is acceptable. Normal air is about **21%**. Below 19.5% is oxygen-deficient and immediately dangerous. Flammable gas above **10% of the lower explosive limit**, the LEL, is unsafe.
 - {{figure:oxygen-gauge|The safe band is 19.5 to 23.5 percent. Test oxygen first, before flammables and toxics.}}
 - Test with a calibrated meter, oxygen first, then flammables, then toxics. Monitor continuously during entry and record readings on the permit.
 - Rescue order: the entrant self-evacuates, then the attendant helps with a hoist or tripod, then the rescue service. Coworkers never go in. An unconscious entrant is pulled out by winch.

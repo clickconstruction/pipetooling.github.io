@@ -11,7 +11,7 @@ Health hazards hide in everyday tasks. A chronic exposure feels harmless until t
 - Four routes of entry: inhalation, absorption through skin or eyes, ingestion from dirty hands, and injection from sharps.
 - **Acute** exposure is short with immediate effects. **Chronic** exposure builds over years with delayed effects.
 - Chemical forms: fumes from heated metal, vapors from solvents, dust from grinding, mists from spraying, and liquids. Ventilation is the most effective control for solvent vapors.
-- Asbestos and lead are hazardous when disturbed by scraping, grinding, demolition or renovation. Stop, do not disturb it, and report. A qualified person tests and a certified contractor abates.
+- Asbestos and lead are hazardous when disturbed by scraping, grinding, demolition or renovation. Stop, do not disturb it, and report. A qualified person tests and a certified contractor abates. Abatement is the name for that removal.
 - Under HazCom, the hazard communication standard, manufacturers evaluate hazards and write labels and SDSs, the safety data sheets. Employers keep containers labeled and an SDS for every chemical on site **24/7**. They train you to read labels and SDSs and keep a written program.
 - An SDS has **16** sections. A label carries the product name, the supplier, pictograms, a signal word and hazard and precautionary statements. The content is standardized, the layout is not.
 - The nine pictograms include the flame, health hazard, skull and crossbones, corrosion, and flame over circle for an oxidizer. The signal word **Danger** is more severe than **Warning**.
