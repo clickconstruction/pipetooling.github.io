@@ -289,3 +289,35 @@ title: Final check bank
 - [ ] A GFCI
 > right: A second source in the house can feed the wire from its own side.
 > wrong: A generator, a solar array or a battery can hold a wire live with the utility off.
+
+37. What proves a non-contact tester is working before it reads a wire?
+- [ ] A new battery
+- [x] It just beeped on a known live outlet
+- [ ] It is silent on the floor
+- [ ] The electrician said so
+> right: A tester is proved on a live outlet first, and again after.
+> wrong: The tester is tried on a known live outlet before and after the wire.
+
+38. What makes a lockout a lockout?
+- [ ] A tag on the door
+- [ ] Tape over the breaker
+- [x] A lock on the breaker that only its owner removes
+- [ ] A note on the panel
+> right: The lock is the lockout. The tag says whose.
+> wrong: Only a lock on the breaker is lockout. Tape and tags stop nobody.
+
+39. What covers a cable that sits too close to a stud's face?
+- [ ] Drywall
+- [x] A steel nail plate
+- [ ] Tape
+- [ ] A hanger
+> right: The plate is the sign and the shield.
+> wrong: A steel nail plate covers a cable within 1-1/4 in of the face.
+
+40. Which single miss can fail a plumber's job at the electrical inspection?
+- [ ] A loose cover plate
+- [x] A missing jumper around the water meter
+- [ ] A dirty panel
+- [ ] A long cord
+> right: The jumper is on the electrical inspector's list.
+> wrong: One missing jumper fails the electrical inspection.

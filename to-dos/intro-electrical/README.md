@@ -2,7 +2,7 @@
 name: "Intro to electrical: what is live, what the panel does, and where our work touches it"
 number: 120
 group: gated
-status: BUILDING 2026-10-18 — the owner read the outline and said build it, with six changes written in below (the water heater's scope line, the jumper lesson moved up into Part 1, the hot wire in the plain ink, the shock numbers from the refresher, the final check at twenty and fourteen, the seven calls decided); PR 0 (the drawing language, Start here and all of Power in, ten lessons, three drawn, the seed row off and offered) is v2.5614; PR 1 (Power in drawn, the seven held-back figures) is v2.5615; PR 2 (The devices, lessons 11 to 18 and eight figures) is v2.5616; PR 3 (The two together, lessons 19 to 25 as seven strips) is v2.5617; the reader is still unnamed, so every `from:` cites the published page or the owner and the first page carries a blank for the name
+status: BUILT 2026-10-18 — the owner read the outline and said build it, with six changes written in below (the water heater's scope line, the jumper lesson moved up into Part 1, the hot wire in the plain ink, the shock numbers from the refresher, the final check at twenty and fourteen, the seven calls decided); PR 0 (the drawing language, Start here and all of Power in, ten lessons, three drawn, the seed row off and offered) is v2.5614; PR 1 (Power in drawn, the seven held-back figures) is v2.5615; PR 2 (The devices, lessons 11 to 18 and eight figures) is v2.5616; PR 3 (The two together, lessons 19 to 25 as seven strips) is v2.5617; PR 4 (On the job, lessons 26 to 30, the course whole at thirty) is v2.5618; the reader is still unnamed, so every `from:` cites the published page or the owner and the first page carries a blank for the name
 summary: >
   The third training course: thirty five-minute lessons on how a house's electrical system
   works, for the plumbing crew that works beside it. Understanding, not doing. Part 1 is power
@@ -17,7 +17,7 @@ summary: >
   touches theirs, what the inspector looks at, the field mistakes. Electrical is not the
   company's trade, so a named licensed reader or a published source checks every lesson, and no
   lesson reads as instruction to do electrical work.
-next: PR 1 (Part 1's seven held-back figures), then Parts 2, 3 and 4 as one PR each; the owner names the reader, whose read-through and corrections ride the PRs as commits and whose name and code cycle go on the first page.
+next: the owner names the reader; the reader's read-through of the live course as a dev preview, every correction as one commit with the `from:` line naming it, the reader's name and the code cycle on `course.md`'s `line`, then On in Settings → Training.
 size: L (PR 0 is M; each part is an M PR of five to eight drawings; the reader's corrections ride each one)
 blocker: none for the build (PR #5827 and #5828 merged 2026-10-18); the switch to On waits on the reader the owner names, because the company cannot vouch for electrical facts itself.
 opinion: build it as outlined once a reader has corrected it; the drawings are the course, the mechanism needs nothing new, and the one rule that matters is that every lesson ends at "do not touch it" and never at "here is how".
@@ -297,8 +297,9 @@ their names behind it, and each part PR rebases over whatever has landed.
    the three widths in both themes; the reader's corrections to the words ride a later PR.
 2. **Part 2, the devices** (v2.5616): lessons 11 to 18 and their eight figures.
 3. **Part 3, the conditions** (v2.5617): lessons 19 to 25, the seven strips, `current-scale` reused by name.
-4. **Part 4, on the job**: lessons 26 to 30, the five figures, the bank filled from every part,
-   `lessons: 30` and `minutes: 165`, the glossary's Training line naming three courses.
+4. **Part 4, on the job** (v2.5618): lessons 26 to 30, the five figures, the bank filled from every
+   part (forty), `lessons: 30` and `minutes: 165`, the glossary's Training line, the page map, the
+   guide and the app directory naming three courses.
 5. **The reader's read-through** of the live course as a dev preview, every correction as one
    commit with the `from:` line naming it, the reader's name on `course.md`'s `line`, then **On**
    in Settings → Training.

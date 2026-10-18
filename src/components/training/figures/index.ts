@@ -106,6 +106,13 @@ import { CutPipeStrip } from './CutPipeStrip'
 import { WaterHeaterNoPowerStrip } from './WaterHeaterNoPowerStrip'
 import { BackfeedStrip } from './BackfeedStrip'
 
+import { TestBeforeTouch } from './TestBeforeTouch'
+import { LockoutTag } from './LockoutTag'
+import { FiveTouchPoints } from './FiveTouchPoints'
+import { InspectorElectrical } from './InspectorElectrical'
+import { PlumberMistakes } from './PlumberMistakes'
+
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -198,4 +205,10 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'cut-pipe-strip': CutPipeStrip,
   'water-heater-no-power-strip': WaterHeaterNoPowerStrip,
   'backfeed-strip': BackfeedStrip,
+  'test-before-touch': TestBeforeTouch,
+  'lockout-tag': LockoutTag,
+  'five-touch-points': FiveTouchPoints,
+  'inspector-electrical': InspectorElectrical,
+  'plumber-mistakes': PlumberMistakes,
+
 }
