@@ -13,6 +13,12 @@ import {
   appSendsFrom,
   appSendsText,
   appSendSwitch,
+  APP_SENDS_MOVE_LABEL,
+  isMoveStep,
+  moveSampleWords,
+  MOVE_MODE_HINT,
+  MOVE_MODE_WORDS,
+  MOVE_SEND_MODES,
   canSetAppSends,
   LAST_RUN_NONE,
   lastRunFrom,
@@ -91,11 +97,11 @@ describe('the switch on a step', () => {
   })
 
   it('is live for the owner on a saved text the app sends', () => {
-    expect(appSendSwitch(portal, { canSet: true, saved: trade })).toEqual({ show: true, live: true, note: null })
+    expect(appSendSwitch(portal, { canSet: true, saved: trade })).toEqual({ show: true, live: true, note: null, move: false })
   })
 
   it('reads only for anyone else, says texts only on a call or an email, and waits for Save on a draft’s change', () => {
-    expect(appSendSwitch(portal, { canSet: false, saved: trade })).toEqual({ show: true, live: false, note: APP_SENDS_OWNER_ONLY })
+    expect(appSendSwitch(portal, { canSet: false, saved: trade })).toEqual({ show: true, live: false, note: APP_SENDS_OWNER_ONLY, move: false })
     const call = { ...portal, nudge: { ...portal.nudge!, how: 'call' as const } }
     expect(appSendSwitch(call, { canSet: true, saved: trade }).note).toBe(APP_SENDS_TEXTS_ONLY)
     // The draft makes MSA signed the app's; the saved flow still asks a person.
@@ -212,5 +218,31 @@ describe('the newest morning run', () => {
       APP_SENDS_SAVE_FIRST,
     ]
     expect(lines.flatMap(plainWordsFailures)).toEqual([])
+  })
+})
+
+describe('the board’s moves (v2.5627)', () => {
+  const residential = SEED_FLOWS.residential
+  const step = (id: string) => stepOf(residential, id)
+  it('shows a two-way switch on the homeowner flow’s Working, Done and Billed, live for the owner and a dev alone', () => {
+    expect(appSendSwitch(step('done'), { canSet: true, saved: residential }, 'residential')).toEqual({ show: true, live: true, note: null, move: true })
+    expect(appSendSwitch(step('working'), { canSet: false, saved: residential }, 'residential')).toEqual({ show: true, live: false, note: APP_SENDS_OWNER_ONLY, move: true })
+    expect(appSendSwitch(step('billed'), { canSet: true, saved: null }, 'residential').move).toBe(true)
+    expect(isMoveStep('residential', 'done')).toBe(true)
+    expect(isMoveStep('customer', 'done')).toBe(false)
+    expect(isMoveStep('residential', 'paid')).toBe(false)
+    expect(appSendSwitch(step('paid'), { canSet: true, saved: residential }, 'residential').move).toBe(false)
+    expect(appSendSwitch(step('booked'), { canSet: true, saved: residential }, 'residential').show).toBe(false)
+    expect(MOVE_SEND_MODES).toEqual(['off', 'offer'])
+    expect(MOVE_MODE_WORDS.offer).toBe('Asks')
+    expect(APP_SENDS_MOVE_LABEL).toBe('The app and this move')
+    for (const words of Object.values(MOVE_MODE_HINT)) expect(plainWordsFailures(words), words).toEqual([])
+  })
+  it('shows the text the move would ask about, the team’s line on the step else the app’s own, and words the press', () => {
+    expect(moveSampleWords(step('done'))).toBe('Dana, this is Rosa with Click Plumbing. The work on the water heater is done. Your bill follows by email. Text me here with any question.')
+    const line: QuickReply = { id: 'q-done', text: '{first}, {job} is finished. Thank you from Click Plumbing.', for: 'customer', stepId: 'done', scope: 'team', addedBy: 'u-rosa', addedAt: 0, removed: false, uses: {}, lastUsed: null }
+    expect(moveSampleWords(step('done'), [line])).toBe('Dana, the water heater is finished. Thank you from Click Plumbing.')
+    expect(appSendSetWords('Done', 'offer', true)).toBe('When a job is moved to Done on the Pipeline, the office is asked before the text goes.')
+    expect(appSendSetWords('Done', 'off', true)).toBe('The board no longer asks when a job is moved to Done.')
   })
 })

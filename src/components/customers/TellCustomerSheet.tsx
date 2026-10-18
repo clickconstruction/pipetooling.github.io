@@ -452,7 +452,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
                 <span style={tick} aria-hidden />
                 <div>
                   <div style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Email</div>
-                  <p style={muted}>{TELL_WORDS.noEmail}</p>
+                  <p style={muted}>{TELL_WORDS.noEmail(moment)}</p>
                 </div>
               </div>
             ) : null}

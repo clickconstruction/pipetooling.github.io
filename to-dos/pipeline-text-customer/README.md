@@ -2,7 +2,7 @@
 name: "Text the customer from the Pipeline row"
 number: 123
 group: close
-status: BUILDING 2026-10-18 — the owner read the three mock-ups, asked whether that was the best we could do, and picked the two better shapes (the customer's name as the door; the stage move offering the text); PR 1 (v2.5626) found the row already carried a speech bubble to the customer's thread (v2.5451) and made it the door, the customer's sheet over the board with Call · Text · Email · Open their thread · Their record and whose word came last, the name keeping its press to the record; left: PR 2, the stage move's Tell the customer offer with its Flows step
+status: BUILT 2026-10-18 — the owner read the three mock-ups, asked whether that was the best we could do, and picked the two better shapes; PR 1 (v2.5626) found the row already carried a speech bubble to the customer's thread (v2.5451) and made it the door, the customer's sheet over the board with Call · Text · Email · Open their thread · Their record and whose word came last; PR 2 (v2.5627) is the board's ask, a forward move to Working, Ready to Bill or Billed opening Tell the customer with the step's text while the Residential customer flow's step is set to Asks under The app and this move, every step shipped Off; left: the owner turns a step to Asks and the first live walk (his yes of 2026-10-18: Done to Asks, a test job to Ready to Bill, nothing sent, back to Off)
 summary: >
   One door on the Pipeline row and the phone card that texts or emails the job's customer. Today the
   office can do it only inside the job window, below the activity: open the job, scroll, press Text,
@@ -12,11 +12,11 @@ summary: >
   The three options differ in what the icon opens: the job window already scrolled to the box on
   Text; the box alone in a small window over the board; or the customer's whole thread filtered to
   the job. Every send lands in the customer's thread tied to the job, as the box does now.
-next: PR 2, the stage move offers the text through Tell the customer, governed by a Flows step per stage; delete this folder when it is on the board.
-size: M for PR 1 (shipped, v2.5626); M–L for PR 2
-blocker: none for PR 2; the owner's read of the first stage's text is its gate
-opinion: built as 2 on the bubble the row already had; PR 2 is the one that makes the door unnecessary for the common case
-ver: v2.5626
+next: The owner turns Working, Done or Billed to Asks in Settings → Flows when he is ready; delete this folder after the first live move asks.
+size: M + M, both shipped (v2.5626, v2.5627)
+blocker: none; the switch is the owner's
+opinion: built; turn Done to Asks first, since the work-is-done text is the one customers most want
+ver: v2.5626 · v2.5627
 mockup: to-dos/pipeline-text-customer/mockup.html
 ---
 
@@ -105,3 +105,11 @@ grey with the reason. Everywhere else the bubble sits (the job window, Customers
 **Left.** PR 2: the stage move's offer. Every move on the board goes through `updateJobStatus`; the offer is Tell
 the customer's sheet drafted from the move, governed by a Flows step per stage (Off · Offers · Sends), so nothing
 reaches a customer without a person pressing it. The owner reads the first stage's text before it goes On.
+
+**2026-10-18, PR 2 (v2.5627).** The second shape. The flows already held `stageSends.ts` (R4 · 4), the moves a
+homeowner feels, with no caller; PR 2 gives it one through Tell the customer: `TellMoment` gains Working, Done and
+Billed (Paid stays out, its step carries the pay-by reminder), `lib/tellCustomer/moveOffer.ts` names the moment of a
+forward move and reads the step's switch, the Residential customer flow's Working, Done and Billed carry **The app
+and this move** (Off · Asks) in Settings → Flows, and `JobsStagesTab`'s `askAfterMove` opens the sheet over the
+board on the move hook's notice. A move back, Waiting, Paid, the crew's moves and the Dashboard's billing moves ask
+nothing. Every step ships Off.

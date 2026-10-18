@@ -298,4 +298,23 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     expect((screen.getByTestId('tell-primary') as HTMLButtonElement).disabled).toBe(true)
     expect((screen.getByTestId('tell-primary') as HTMLButtonElement).title).toBe('Fill {job} before it sends.')
   })
+  it('asks on a board’s move with the app’s Done words filled for the job, and the Done script on the receipt (v2.5627)', async () => {
+    const io = fakeIo()
+    const { onSent } = mount(io, { moment: 'done', block: null })
+    const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    expect(screen.getByRole('dialog', { name: 'Tell Dana' })).toBeTruthy()
+    expect(box.value).toBe('Dana, this is Rosa with Click Plumbing. The work on Whitfield water heater is done. Your bill follows by email. Text me here with any question.')
+    expect(screen.getByText('The app’s own words, since the office has no Done line yet. Change any word.')).toBeTruthy()
+    expect(screen.getAllByTestId('tell-act').map((p) => p.textContent)).toEqual([
+      '💬Texts Dana that the work is done from the company number. Dana’s answer comes to the office.',
+      '🧾Then shows you what went, and offers the call.',
+    ])
+    const primary = screen.getByTestId('tell-primary') as HTMLButtonElement
+    expect(primary.textContent).toBe('Send text to Dana')
+    fireEvent.click(primary)
+    await waitFor(() => expect(io.send).toHaveBeenCalledWith(expect.objectContaining({ contactId: 'contact-dana', jobId: 'job-512', body: expect.stringContaining('is done') })))
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    expect(screen.getByTestId('tell-script').textContent).toContain('The work on Whitfield water heater is done. I wanted to make sure everything looks right to you.')
+    expect(onSent).toHaveBeenCalledWith('msg-1')
+  })
 })
