@@ -2,7 +2,7 @@
 title: text a customer from the job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: job window, text, email, customer, message, note, orange, quick replies, job activity, reply, residential, write as
+keywords: job window, text, email, customer, message, note, orange, quick replies, job activity, reply, residential, write as, pipeline, speech bubble, call
 order: 66
 ---
 You can text or email a job's customer right from the job. The message lands in their thread in Messages, tied to the job.
@@ -14,6 +14,17 @@ You can text or email a job's customer right from the job. The message lands in 
 3. Over the box is a row of three: {{button:outline|Note}}, {{button:outline|Text}} and {{button:outline|Email}}.
 
 The row shows for the office team only. The crew's view of the job keeps the note box as it was.
+
+## From the Pipeline row
+
+The speech bubble beside the customer's name is a shorter way in. It sits on the Pipeline row and on the phone card.
+
+1. Press the speech bubble. A small window opens over the board.
+2. The window names the job and the customer. It says who wrote last.
+3. Press {{button:outline|Text}} or {{button:outline|Email}}. The same orange box opens in the window.
+4. Write the message. Press {{button:blue|Send text…}} or {{button:blue|Send email…}}.
+
+The window also offers **Call**, **Open their thread** and **Their record**. A customer with no mobile number sees Text greyed out, with the reason under it. A job with no customer has no bubble.
 
 ## Write to the customer
 
