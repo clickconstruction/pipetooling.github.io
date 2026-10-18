@@ -17,6 +17,7 @@ A plumber visits a new house three times, and an inspector follows each visit. K
 - Trim is the last visit. The fixtures, the faucets, the toilets and the water heater are set after the drywall and the paint.
 - A stub-out is a capped pipe end waiting for its fixture. Hot on the left, cold on the right, the drain below.
 - Rough-in dimensions decide where a fixture can go. A toilet's drain sits **12 in** from the finished wall.
+- {{figure:toilet-rough-in|Measure 12 in to the finished wall. Measured to the stud, the toilet sits half an inch too close.}}
 
 ## Traps
 - The slab inspection is the one you cannot redo. Under the concrete, a mistake is a jackhammer.

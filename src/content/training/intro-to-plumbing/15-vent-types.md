@@ -12,6 +12,7 @@ Vents come in a few shapes, and each has a rule about where it ends. Knowing the
 - {{figure:vent-types|Every trap has a vent. The vents join and leave through the roof.}}
 - An individual vent serves one trap. A common vent serves two fixtures that drain into one pipe.
 - A wet vent is a drain that also vents another fixture. A bathroom group often shares one.
+- {{figure:wet-vent|The lav drains into the pipe that vents the toilet. One pipe does two jobs.}}
 - A stack vent is the top of a drain stack above the last fixture. A vent stack is a pipe that carries only air.
 - An air admittance valve, an AAV, lets air in under a sink where no pipe can reach the roof. It opens on suction and closes by itself.
 - An AAV sits at least **4 in** above the trap arm and must stay where a hand can reach it.

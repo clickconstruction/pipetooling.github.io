@@ -11,6 +11,7 @@ All the water in a house enters through one pipe. One valve stops all of it. Whe
 - The street main runs under the road. A service line tees off it to each house.
 - {{figure:meter-and-main-shutoff|The city's valve is at the meter. Yours is where the pipe enters the house.}}
 - The meter sits in a box at the curb. It counts every gallon that goes in.
+- {{figure:meter-dial|The sweep hand turns while water runs. The small indicator turning with every faucet off is a leak.}}
 - The city's valve is beside the meter. It is the city's to turn, and some need a special key.
 - Your main shutoff is where the service line enters the house. It is often on a riser near the front wall or in the garage.
 - The main shutoff stops every faucet, every toilet and the water heater at once.

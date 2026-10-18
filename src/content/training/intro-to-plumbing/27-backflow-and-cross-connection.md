@@ -13,9 +13,11 @@ Supply water must never touch anything else. A hose in a bucket can poison a str
 - Back siphonage happens when street pressure drops. A hose in a bucket, a pool or a sprayer gets pulled back into the house.
 - Back pressure happens when something on the house side pushes harder than the supply, a boiler or a pump.
 - The air gap is the first defense. The faucet ends above the rim by **twice the pipe's width**, at least **1 in**.
+- {{figure:two-systems|The faucet ends in the air above the rim. That gap is the one place the two systems meet.}}
 - A vacuum breaker goes on every hose bib. It lets air in the moment the pressure drops.
 - A backflow preventer goes on an irrigation line, a boiler feed and a fire line. It is tested **every year**.
 - A dishwasher drains through an air gap on the counter or a high loop. The sink cannot drain back into it.
+- {{figure:dishwasher-air-gap|A high loop under the counter or an air gap on it. The sink cannot drain back into the dishwasher.}}
 - The city tests backflow devices because one bad hose can poison a street.
 
 ## Traps

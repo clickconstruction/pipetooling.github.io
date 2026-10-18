@@ -9,6 +9,7 @@ A trap keeps sewer gas out only while it holds water. Water that nobody replaces
 
 ## Must know
 - A trap keeps its seal only while water stays in the bend. Water nobody replaces evaporates.
+- {{figure:p-trap-seal|The water in the bend is the seal. Sewer gas stops at it only while the water stays.}}
 - {{figure:dry-trap-strip|A trap left unused dries out. Sewer gas comes through the empty bend.}}
 - A floor drain nobody uses can dry in **a month** in a warm room.
 - A guest bath, a basement floor drain, a laundry standpipe or a shop sink are the usual ones.
