@@ -5,7 +5,7 @@ minutes: 5
 from: Outline lesson 10
 ---
 ## Why it matters
-You do not shut off the whole house to fix one faucet. Small valves at each fixture stop one line. Outside, a hose bib needs a part that stops the hose pulling dirty water back in.
+You do not shut off the whole house to fix one faucet. Small valves at each fixture stop one line. Outside, a hose bib needs a vacuum breaker, a part that stops the hose pulling dirty water back in.
 
 ## Must know
 - An angle stop sits under every fixture, one on the hot line and one on the cold.
@@ -14,7 +14,7 @@ You do not shut off the whole house to fix one faucet. Small valves at each fixt
 - A toilet has one angle stop. It only takes cold water.
 - A hose bib is the faucet on the outside wall. Its spout is threaded for a hose.
 - A vacuum breaker screws onto the bib's spout. It stops water in the hose flowing back into the house.
-- Without a breaker, a pressure drop can pull a bucket or a pool back up the hose into the house.
+- Without a breaker, a pressure drop can pull a bucket or a pool back up the hose into the house. That is backflow.
 - A frost-proof hose bib has a long stem. Its valve seat sits **8 to 12 in** inside the warm wall.
 - {{figure:frost-proof-bib|The seat sits 8 to 12 in inside the warm wall. A hose left on holds water in the stem.}}
 - Take the hose off a frost-proof bib in winter. A hose left on holds water in the stem and it freezes.

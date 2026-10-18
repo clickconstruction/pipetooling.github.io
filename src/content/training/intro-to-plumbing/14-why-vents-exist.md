@@ -15,7 +15,8 @@ Water leaving a drain pulls air behind it. If no air can get in, it pulls the tr
 - The trap arm for a **1-1/2 in** trap is at most **6 ft**. For a **2 in** trap it is **8 ft**.
 - The trap arm drops no more than its own width over its length. A steeper arm siphons the trap.
 - {{figure:trap-arm-drop|The arm drops one pipe width at most before the vent. Past 6 ft or 8 ft it siphons.}}
-- Back pressure is the other danger. Water dropping down a stack pushes air ahead of it, and without a vent that air blows the seal out.
+- A stack is the vertical drain pipe that the branches drop into. Water dropping down it pushes air ahead of it.
+- Back pressure is the other danger. Without a vent, the air pushed ahead of the water blows the seal out.
 - A gurgle at a drain is the sound of air pulled through a seal. The vent is missing or blocked.
 - The vent also carries sewer gas up and out above the roof, where it cannot come inside.
 

@@ -4,8 +4,9 @@ import { DRAIN, SVG_STYLE } from './plumbingTokens'
 
 /**
  * The vents of a two-storey house (punch list #119): the stack rising through the roof as the stack vent, an
- * individual vent from the upstairs lav joining it, the toilet's arm into the stack, an air admittance valve under
- * the kitchen sink downstairs, and the window the vent's end must keep away from. Lesson 15.
+ * individual vent from the upstairs lav joining it, the toilet's arm into the stack, the kitchen sink downstairs with
+ * its own vent rising above its rim before it turns to the stack, and the window the vent's end must keep away from.
+ * Lesson 15 (the AAV it once drew under the kitchen sink is lesson 23's since v2.5621).
  */
 export function VentTypes({ titleId }: FigureProps) {
   const h = `${titleId}-seal`
@@ -28,8 +29,7 @@ export function VentTypes({ titleId }: FigureProps) {
       <Pipe d="M118 100 V108 H150" bore={DRAIN} tint="waste" />
       <Sink x={74} y={132} w={34} />
       <Trap x={74} y={146} drop={14} r={7} armTo={150} bore={9} id={h} />
-      <Pipe d="M100 157 V138" bore={6} tint="air" />
-      <rect x="95" y="130" width="10" height="8" rx="2" fill="var(--surface)" stroke="currentColor" strokeWidth="1.5" />
+      <Pipe d="M100 157 V122 H150" bore={6} tint="air" />
       <Flow x={100} y={146} angle={90} color="var(--text-muted)" size={0.8} />
       <Label x={160} y={12} size={8} bold color="currentColor">
         stack vent
@@ -49,14 +49,11 @@ export function VentTypes({ titleId }: FigureProps) {
       <Label x={46} y={126} anchor="end" size={7.5}>
         kitchen
       </Label>
-      <Label x={110} y={128} size={7.5} bold color="currentColor">
-        AAV
+      <Label x={106} y={132} size={6.5}>
+        individual
       </Label>
-      <Label x={110} y={137} size={7}>
-        4 in above
-      </Label>
-      <Label x={110} y={145} size={7}>
-        the arm
+      <Label x={106} y={139} size={6.5}>
+        vent
       </Label>
       <Label x={166} y={128} size={7.5}>
         the stack

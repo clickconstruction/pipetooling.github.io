@@ -5,7 +5,7 @@ minutes: 5
 from: Outline lesson 17
 ---
 ## Why it matters
-Drain fittings look like supply fittings with a curve. The curve is the whole point. It keeps solids moving, and it only works when the fitting faces the right way.
+Drain fittings look like supply fittings with a curve. The curve is the whole point. It keeps solids moving, and it only works when the fitting faces the right way. The two fittings to know are the sanitary tee and the wye.
 
 ## Must know
 - Drain fittings sweep. Supply fittings turn hard. The sweep keeps solids moving with the water.
@@ -56,7 +56,7 @@ Drain fittings look like supply fittings with a curve. The curve is the whole po
 
 4. What is wrong with a sanitary tee on its back?
 - [ ] Nothing
-- [ ] It leaks at the hub
+- [ ] It leaks at the joint
 - [x] The branch's water hits the far wall and stalls
 - [ ] It is too small
 > right: Water dropping into a horizontal pipe needs the long merge of a wye.

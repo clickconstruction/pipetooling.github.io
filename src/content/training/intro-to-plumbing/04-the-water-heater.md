@@ -15,7 +15,7 @@ The water heater is the one supply fixture that can hurt someone. It holds hot w
 - The T&P valve is the temperature and pressure relief valve. It opens at **150 psi** or **210°F**.
 - The T&P valve's drain line runs down and ends near the floor. Never cap it or plug it.
 - A common tank holds **40 to 50 gal**. A family of four uses most of it in a morning.
-- A house with a PRV or a check valve needs an expansion tank. Heated water grows and needs somewhere to go.
+- A house with a PRV or a check valve, a one-way valve, needs an expansion tank. Heated water grows and needs somewhere to go.
 - The drain valve at the bottom lets you flush out sediment. Sediment makes the tank rumble and work harder.
 
 ## Traps

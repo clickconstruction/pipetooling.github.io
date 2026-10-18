@@ -8,6 +8,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { TRAINING_COURSE_FACTS } from './courseFacts'
+import { TRADE_TERMS, TRADE_TERM_TEACHING_PLACES, tradeTermFailures, tradeTermFirstUse } from './tradeTerms'
 import { FIGURE_NAMES, parseFigureItem } from './figures'
 import {
   APPENDIX_B_BANNED_ASKS,
@@ -26,6 +27,7 @@ import {
   seededRandom,
   shuffleOptions,
   type Course,
+  type CourseLesson,
 } from './courseContent'
 
 const CONTENT_DIR = join(__dirname, '../../content/training')
@@ -332,5 +334,40 @@ describe('the real content under src/content/training', () => {
 
   it('the Appendix B list is lower case substrings', () => {
     for (const b of APPENDIX_B_BANNED_ASKS) expect(b).toBe(b.toLowerCase())
+  })
+})
+
+describe('a trade word is taught before it is tested (punch list #119, the fourteen-year-old\'s read)', () => {
+  const courses = buildCourseRegistry(loadContent())
+
+  it('finds the first place a term is met, reading the lessons in order and the bank last', () => {
+    const plumbing = courses.find((c) => c.slug === 'intro-to-plumbing')!
+    const stack = tradeTermFirstUse(plumbing, 'stack')!
+    expect(stack.lesson?.order).toBe(14)
+    expect(stack.place).toBe('must know')
+    expect(tradeTermFirstUse(plumbing, 'no such word')).toBeNull()
+    // A term met first as a quiz option, a Numbers label, a Traps item or a figure caption fails; the same words in Must know pass.
+    const first = plumbing.lessons[0]!
+    const questions = first.questions.map((q) => ({ ...q, ask: 'Which?', options: q.options.map((o) => ({ ...o, text: 'A thing' })), rightWhy: 'Yes.', wrongWhy: 'No.' }))
+    const lesson: CourseLesson = { ...first, mustKnow: ['One fact.', 'Two.', 'Three.', 'Four.'], traps: ['A trap.'], why: ['A why.'], numbers: [{ value: '2', label: 'systems' }], questions }
+    const asOption = { ...lesson, questions: lesson.questions.map((q, i) => (i === 0 ? { ...q, options: [{ text: 'A cleanout', right: false }, ...q.options.slice(1)] } : q)) }
+    const asCaption = { ...lesson, mustKnow: ['{{figure:two-systems|A cleanout where the drain leaves.}}', ...lesson.mustKnow] }
+    const asTrap = { ...lesson, traps: ['The cleanout is the first door.'] }
+    const asFact = { ...lesson, mustKnow: ['A cleanout is a capped opening a plumber opens to run a cable in.', ...lesson.mustKnow] }
+    const only = (l: CourseLesson): Course => ({ ...plumbing, lessons: [l], finalBank: [] })
+    expect(tradeTermFailures(only(asOption))).toEqual([expect.stringMatching(/^"cleanout" is first met in lesson 1 "01-[a-z-]+" check yourself option/)])
+    expect(tradeTermFailures(only(asCaption))[0]).toMatch(/figure caption/)
+    expect(tradeTermFailures(only(asTrap))[0]).toMatch(/ traps,/)
+    expect(tradeTermFailures(only(asFact))).toEqual([])
+  })
+
+  it('the list is lower case apart from an acronym, and the teaching places are the two sentence sections', () => {
+    for (const t of TRADE_TERMS) expect(t === t.toUpperCase() || t === t.toLowerCase(), `"${t}" is neither an acronym nor lower case`).toBe(true)
+    expect(TRADE_TERM_TEACHING_PLACES).toEqual(['why it matters', 'must know'])
+  })
+
+  it.each(courses.map((c) => [c.slug, c] as const))('%s — every trade word is first met in a Must know or Why it matters sentence', (_slug, c) => {
+    const failures = tradeTermFailures(c)
+    expect(failures, `course "${c.slug}" tests a word before it teaches it (src/lib/training/tradeTerms.ts):\n  - ${failures.join('\n  - ')}`).toEqual([])
   })
 })
