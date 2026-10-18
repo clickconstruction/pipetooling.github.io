@@ -11,6 +11,7 @@ Three words come up on every label and every breaker. Volts, amps and watts. Eac
 - Volts is the push. It is like pressure in a pipe.
 - Amps is the flow. It is like gallons per minute.
 - Watts is the work. Push times flow is work, like a shower that needs both pressure and flow.
+- {{figure:volts-amps-watts|Volts is the push. Amps is the flow. Watts is the work they do together.}}
 - Volts times amps equals watts. A 120 V circuit at 15 A can do 1,800 W of work.
 - A wall outlet pushes at 120 V. A big appliance pushes at 240 V.
 - A breaker's number is amps. It is the most flow the wire behind it may carry.

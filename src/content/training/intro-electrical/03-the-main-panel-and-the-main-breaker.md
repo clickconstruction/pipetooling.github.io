@@ -9,6 +9,7 @@ One box takes the three wires and splits them into every circuit in the house. T
 
 ## Must know
 - The main panel is one box. The three service wires land in it and every circuit leaves from it.
+- {{figure:main-panel|The main breaker feeds two bus bars. Every branch breaker hangs off them. The lugs above the main are live whatever you do.}}
 - The main breaker sits at the top. It shuts off everything below it in the panel.
 - The lugs above the main breaker are where the service wires land. They are live with the main off.
 - Two bus bars run down the panel. The hots land on them, and every branch breaker clips onto them.

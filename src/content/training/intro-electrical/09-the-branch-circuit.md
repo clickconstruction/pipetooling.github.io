@@ -9,6 +9,7 @@ Everything past the panel is a branch circuit. One breaker, one run of wire and 
 
 ## Must know
 - A branch circuit is one breaker, one wire run and everything on it.
+- {{figure:branch-circuit|One breaker, one wire run, the outlets on it. The breaker's number is the most the wire may carry.}}
 - The breaker's number is the most amps the wire may carry. Past it, the breaker trips.
 - A general circuit is 15 A or 20 A. It feeds lights and outlets in a few rooms.
 - Some loads get a circuit of their own. The dishwasher, the disposal, the water heater and the dryer.

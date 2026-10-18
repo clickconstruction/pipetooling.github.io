@@ -9,6 +9,7 @@ Power reaches the house before anyone in the house can switch it off. The wires 
 
 ## Must know
 - Power arrives on three wires from the pole or from underground. Two are hots and one is the neutral.
+- {{figure:service-and-meter|Three wires come from the pole to the meter. Everything on the street side of the meter stays live.}}
 - The service drop is the overhead run from the pole to the house. Underground it is called a service lateral.
 - The wires land at the weatherhead on the roof or the wall and run down to the meter.
 - The meter counts the power used. It sits in a base on the outside wall, and it is the utility's.
