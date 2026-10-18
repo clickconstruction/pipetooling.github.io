@@ -193,3 +193,67 @@ title: Final check bank
 - [ ] At the burner
 > right: Cold connects at the top and the dip tube carries it down.
 > wrong: The cold line enters at the top. The dip tube takes the water to the bottom.
+
+25. What speed of flow carries solids along a drain?
+- [ ] About 2 in per second
+- [x] About 2 ft per second
+- [ ] About 20 ft per second
+- [ ] Speed does not matter
+> right: The code's slope gives about 2 ft per second, enough to carry solids.
+> wrong: Solids need about 2 ft per second. The slope is set to give it.
+
+26. What is a trap arm?
+- [x] The pipe from the trap to the vent and the drain
+- [ ] The handle on the cleanout
+- [ ] The tailpiece under the sink
+- [ ] The vent through the roof
+> right: The trap arm carries the water from the trap to where the vent joins.
+> wrong: The trap arm is the pipe leaving the trap toward the vent and the drain.
+
+27. What is back pressure in a drain?
+- [ ] Water pushed back up to the fixture
+- [x] Air pushed ahead of falling water that can blow a seal out
+- [ ] The street's pressure in the sewer
+- [ ] A clog
+> right: The falling water drives air ahead of it. A vent gives that air a way out.
+> wrong: Back pressure is the air a slug of water pushes ahead of itself.
+
+28. What is the smallest vent allowed?
+- [ ] 1/2 in
+- [x] 1-1/4 in
+- [ ] 2 in
+- [ ] 4 in
+> right: Vents are smaller than drains, but never under 1-1/4 in.
+> wrong: The smallest vent is 1-1/4 in.
+
+29. What goes at the base of every stack?
+- [ ] A trap
+- [ ] A wye
+- [x] A cleanout
+- [ ] An AAV
+> right: The base of the stack is where a cable needs to go in.
+> wrong: A cleanout sits at the base of every stack.
+
+30. Which fitting takes a cleanout so the cable follows the flow?
+- [ ] A sanitary tee
+- [x] A wye
+- [ ] A coupling
+- [ ] A short sweep
+> right: The cable enters at 45° and goes downstream.
+> wrong: A wye takes the cleanout. The cable follows its 45° branch into the flow.
+
+31. What do two 45s with a short piece between them replace?
+- [ ] A sanitary tee
+- [ ] A cleanout
+- [x] A long sweep
+- [ ] A trap
+> right: Two eighth turns make one gentle quarter turn.
+> wrong: Two 45s do a long sweep's job on a horizontal turn.
+
+32. How is cast iron pipe cut?
+- [ ] With a torch
+- [x] With a snap cutter
+- [ ] With PVC cement
+- [ ] It cannot be cut
+> right: The snap cutter's chain scores the pipe round and snaps it.
+> wrong: Cast iron is cut with a snap cutter, not a saw or a torch.

@@ -55,6 +55,15 @@ import { TrunkVsManifold } from './TrunkVsManifold'
 import { TwoSystems } from './TwoSystems'
 import { WaterHeaterCutaway } from './WaterHeaterCutaway'
 
+import { SlopeRule } from './SlopeRule'
+import { PTrapSeal } from './PTrapSeal'
+import { SiphonAndVent } from './SiphonAndVent'
+import { VentTypes } from './VentTypes'
+import { HouseToSewer } from './HouseToSewer'
+import { SanTeeVsWye } from './SanTeeVsWye'
+import { SweepsAndDirection } from './SweepsAndDirection'
+import { DwvMaterials } from './DwvMaterials'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -103,4 +112,12 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'trunk-vs-manifold': TrunkVsManifold,
   'two-systems': TwoSystems,
   'water-heater-cutaway': WaterHeaterCutaway,
+  'slope-rule': SlopeRule,
+  'p-trap-seal': PTrapSeal,
+  'siphon-and-vent': SiphonAndVent,
+  'vent-types': VentTypes,
+  'house-to-sewer': HouseToSewer,
+  'san-tee-vs-wye': SanTeeVsWye,
+  'sweeps-and-direction': SweepsAndDirection,
+  'dwv-materials': DwvMaterials,
 }

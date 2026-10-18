@@ -26,7 +26,7 @@ PEX is the plastic pipe in most new houses. It bends around corners, so it needs
 ## Numbers
 - **A, B, C** the three kinds
 - **100 psi at 180°F** the rating
-- **no sunlight** ever, it breaks PEX down
+- **no sunlight** keep it covered
 - **6 to 8** pipe widths the tightest bend
 
 ## Check yourself
