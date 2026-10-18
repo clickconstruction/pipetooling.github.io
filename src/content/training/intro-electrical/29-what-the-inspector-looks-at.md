@@ -23,7 +23,7 @@ Two inspectors read the same house. The electrical inspector reads the panel, th
 ## Traps
 - A passed plumbing inspection is not a passed electrical one. The jumper is on the second list.
 - A panel with a shelf in front of it fails. 36 in is clear, not a place for the water heater.
-- A new plastic meter yoke with no jumper is a fail even though no pipe was cut.
+- A new plastic meter fitting with no jumper is a fail even though no pipe was cut.
 
 ## Numbers
 - **36 in** clear in front of a panel

@@ -2,7 +2,7 @@
  * Trade words a course must teach before it tests (punch list #119, the fourteen-year-old's read):
  * a reader meets each of these first in a Must know or Why it matters sentence, never first in a
  * Check yourself option, a Numbers label, a Traps item or a figure caption. The list is the words
- * the Intro to plumbing read-through found used before their lesson; a course that never uses a
+ * the Intro to plumbing and Intro to electrical read-throughs found used before their lesson; a course that never uses a
  * word is not held to it. Held for every course under src/content/training.
  */
 import type { Course, CourseLesson } from './courseContent'
@@ -27,6 +27,63 @@ export const TRADE_TERMS: readonly string[] = [
   'wye',
   'sanitary tee',
   'wet vent',
+  // Intro to electrical (punch list #120, v2.5622), by the lesson that teaches each. Off the list because another
+  // course uses them in a plain sense first: hot, breaker, load, meter, panel, ground, live, GFCI.
+  'neutral',
+  'circuit',
+  'current',
+  'fault',
+  'service drop',
+  'weatherhead',
+  'lug',
+  'bus bar',
+  'subpanel',
+  'volt',
+  'amp',
+  'watt',
+  'two-pole',
+  'bonding',
+  'electrode',
+  'ground rod',
+  'jumper',
+  'branch circuit',
+  'directory',
+  'tester',
+  'gauge',
+  'AWG',
+  'overload',
+  'milliamp',
+  'whip',
+  'receptacle',
+  'line side',
+  'switch leg',
+  'three-way',
+  'AFCI',
+  'arc',
+  'element',
+  'thermostat',
+  'high-limit',
+  'disconnect',
+  'terminal',
+  'power-vent',
+  'kick plate',
+  'air switch',
+  'float switch',
+  'pressure switch',
+  'control box',
+  'transformer',
+  'low voltage',
+  'thermocouple',
+  'backfeed',
+  'transfer switch',
+  'lineman',
+  'solar array',
+  'non-contact tester',
+  'conduit',
+  'lockout',
+  'tagout',
+  'hasp',
+  'nail plate',
 ]
 
 /** Where a term may be met first. */

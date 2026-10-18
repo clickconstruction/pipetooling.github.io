@@ -20,7 +20,7 @@ Everything past the panel is a branch circuit. One breaker, one run of wire and 
 - The panel's directory, the list inside its door, names each breaker. It is often wrong. A tester, the tool that says if a wire is live, is the truth.
 
 ## Traps
-- An outlet dead is not the circuit dead. It may sit past a tripped GFCI, the outlet with two buttons that lesson 13 explains.
+- An outlet dead is not the circuit dead. It may sit past a tripped safety outlet, the one with two buttons that lesson 13 explains.
 - Two outlets side by side can be two circuits. Each one is tested on its own.
 - The directory is a guess until it is checked. Trust the tester, not the label.
 
