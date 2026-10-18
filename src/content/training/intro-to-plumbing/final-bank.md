@@ -257,3 +257,67 @@ title: Final check bank
 - [ ] It cannot be cut
 > right: The snap cutter's chain scores the pipe round and snaps it.
 > wrong: Cast iron is cut with a snap cutter, not a saw or a torch.
+
+33. What breaks the siphon in a toilet bowl at the end of a flush?
+- [ ] The flapper closing
+- [x] Air reaching the trap, with a gulp
+- [ ] The fill valve
+- [ ] The vent closing
+> right: Once air gets into the bowl's trap the siphon stops and the bowl refills.
+> wrong: The siphon breaks when air reaches the bowl's trap.
+
+34. Why does a plunger need water over its cup?
+- [ ] To keep it clean
+- [x] It pushes and pulls water, not air
+- [ ] To seal the overflow
+- [ ] It does not need water
+> right: Air squashes. Water does not, so the push reaches the clog.
+> wrong: A plunger moves water. With air under the cup the push goes nowhere.
+
+35. What slows a seldom-used trap from drying out?
+- [ ] Bleach
+- [x] A spoon of mineral oil on the water
+- [ ] A bigger trap
+- [ ] Hot water
+> right: The oil floats and slows the evaporation under it.
+> wrong: A little mineral oil on top of the seal slows its evaporation.
+
+36. What does an AAV that sticks shut act like?
+- [ ] A clog
+- [x] A blocked vent for its one fixture
+- [ ] A dry trap
+- [ ] A cleanout
+> right: With the valve shut no air gets in, the same as a vent blocked at the roof.
+> wrong: A stuck AAV is a blocked vent for the fixture it serves.
+
+37. What does old galvanized pipe do to a house's pressure over the years?
+- [ ] Raises it
+- [x] Closes up with rust inside and weakens it
+- [ ] Nothing
+- [ ] Makes it swing
+> right: Rust narrows the bore year by year.
+> wrong: Galvanized pipe rusts shut from the inside and the house gets weaker.
+
+38. What happens to a frozen pipe heated with a torch?
+- [ ] It thaws safely
+- [x] The water inside boils and bursts it
+- [ ] The ice gets harder
+- [ ] The solder melts
+> right: Boiling water trapped by ice has nowhere to go.
+> wrong: A torch boils the trapped water and bursts the pipe. Warm air, slowly.
+
+39. Where do a washing machine's arrestors go?
+- [ ] On the drain
+- [x] At its hose bibs
+- [ ] On the water heater
+- [ ] At the meter
+> right: Close to the fast valves, on both the hot and the cold.
+> wrong: The washer's arrestors sit at its hose bibs, hot and cold.
+
+40. How does a dishwasher keep the sink from draining back into it?
+- [ ] A check valve
+- [x] An air gap on the counter or a high loop in the hose
+- [ ] A bigger drain
+- [ ] A vent
+> right: The gap or the high loop puts the hose above the sink's water.
+> wrong: An air gap or a high loop keeps the sink's water from running back into the dishwasher.
