@@ -30,6 +30,8 @@ export type TrainingCourseRow = {
   good_for_months: number | null
   due_soon_days: number | null
   retake_from: string | null
+  /** Open to every role (v2.5610); read as false until the column is on prod. */
+  offered?: boolean | null
   updated_at?: string | null
 }
 
@@ -43,10 +45,12 @@ export function policyFromRow(r: TrainingCourseRow): TrainingPolicy {
     goodForMonths: r.good_for_months ?? TRAINING_GOOD_FOR_MONTHS_DEFAULT,
     dueSoonDays: r.due_soon_days ?? TRAINING_DUE_SOON_DAYS_DEFAULT,
     retakeFrom: r.retake_from,
+    offered: Boolean(r.offered),
   }
 }
 
-const COURSE_COLUMNS = 'slug, title, enabled, required_roles, good_for_months, due_soon_days, retake_from, updated_at'
+/** Every column, so a client deployed before a column's migration is pushed still reads the catalog (v2.5610's `offered`). */
+const COURSE_COLUMNS = '*'
 
 /** Every course the app has a policy row for, on or off. Everyone signed in may read it. */
 export async function loadTrainingCatalog(): Promise<{ policies: TrainingPolicy[]; missing: boolean }> {
@@ -134,7 +138,20 @@ export async function loadTrainingChipsByUser(): Promise<Record<string, { tone: 
   return out
 }
 
-export type TrainingPolicyPatch = Partial<{ enabled: boolean; required_roles: string[]; good_for_months: number; due_soon_days: number; retake_from: string | null }>
+export type TrainingPolicyPatch = Partial<{ enabled: boolean; required_roles: string[]; good_for_months: number; due_soon_days: number; retake_from: string | null; offered: boolean }>
+
+/**
+ * How many people have passed a course, for Settings → Training's *N took it* on an offered course (v2.5610). The
+ * office reads every pass; anyone else reads their own, so the count is theirs alone and the tab never shows it.
+ */
+export async function loadTrainingTakenCount(courseSlug: string): Promise<number> {
+  const { data, error } = await db.from('training_passes').select('user_id').eq('course_slug', courseSlug)
+  if (error) {
+    if (isNotThereYetError(error)) return 0
+    throw new Error(error.message)
+  }
+  return new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)).size
+}
 
 /** A dev's change to a course's policy (RLS: `is_dev()`). */
 export async function saveTrainingPolicy(courseSlug: string, patch: TrainingPolicyPatch, updatedBy: string): Promise<void> {

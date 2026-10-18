@@ -9,6 +9,10 @@
  *   green  the newest pass is inside the window
  *   null   the course is off, or not required for the role: nothing to show
  *
+ * An OFFERED course (punch list #119, v2.5610) is open to every role: for a role it is not required of,
+ * `offeredCourses` lists it with the newest pass and no colour, so the Dashboard card draws it under an
+ * Available line and nothing else (the rail, the row, the counts) ever mentions it.
+ *
  * A pass counts only when it is on or after `retakeFrom` (the *Everyone takes it again…* stamp).
  * Days are YYYY-MM-DD in the app's calendar; the caller passes `todayYmdInAppTz()`.
  */
@@ -25,6 +29,8 @@ export type TrainingPolicy = {
   dueSoonDays: number
   /** A pass before this day does not count; null until a dev presses Everyone takes it again. */
   retakeFrom: string | null
+  /** Open to every role (punch list #119): a role not in `requiredRoles` may take it, with no colour and no clock. */
+  offered: boolean
 }
 
 export type TrainingPass = {
@@ -123,6 +129,34 @@ export function personStandings(policies: readonly TrainingPolicy[], passes: rea
     .map((p) => courseStanding(p, passes, role, todayYmd))
     .filter((s): s is CourseStanding => s != null)
     .sort((a, b) => rank[a.colour] - rank[b.colour] || (a.daysToDue ?? 0) - (b.daysToDue ?? 0) || a.title.localeCompare(b.title))
+}
+
+export type OfferedCourse = {
+  slug: string
+  title: string
+  /** The newest pass, whatever its age: an offered course has no clock. Null until the person passes it. */
+  passedOn: string | null
+}
+
+/**
+ * Every course that is on, offered and not required of the role, with the person's newest pass. A course the role
+ * must take is a standing, never an offer, so a course is on the card once at most.
+ */
+export function offeredCourses(policies: readonly TrainingPolicy[], passes: readonly TrainingPass[], role: UserRole | null): OfferedCourse[] {
+  return policies
+    .filter((p) => p.on && p.offered && role != null && !roleMustTake(p, role))
+    .map((p) => {
+      let newest: string | null = null
+      for (const x of passes) if (x.slug === p.slug && (!newest || x.passedOn > newest)) newest = x.passedOn
+      return { slug: p.slug, title: p.title, passedOn: newest }
+    })
+    .sort((a, b) => a.title.localeCompare(b.title))
+}
+
+/** The press on an offered course's row: Start, Continue once a lesson is passed, Read it again after a pass. */
+export function offeredPress(o: OfferedCourse, started: boolean): 'Start' | 'Continue' | 'Read it again' {
+  if (o.passedOn) return 'Read it again'
+  return started ? 'Continue' : 'Start'
 }
 
 /** The worst colour among standings, or null when there is nothing to show. */

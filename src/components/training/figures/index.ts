@@ -43,6 +43,18 @@ import { TrenchSection } from './TrenchSection'
  * `FIGURE_NAMES` in `src/lib/training/figures.ts`, so a lesson can never name a figure the app does not draw
  * and the app never carries a drawing no lesson names. The drawings ride in the course page's lazy chunk only.
  */
+import { BallGateCheck } from './BallGateCheck'
+import { CopperSweatJoint } from './CopperSweatJoint'
+import { FixtureValves } from './FixtureValves'
+import { MeterAndMainShutoff } from './MeterAndMainShutoff'
+import { PexJoints } from './PexJoints'
+import { PressureAndPrv } from './PressureAndPrv'
+import { SolventJoint } from './SolventJoint'
+import { SupplyFittings } from './SupplyFittings'
+import { TrunkVsManifold } from './TrunkVsManifold'
+import { TwoSystems } from './TwoSystems'
+import { WaterHeaterCutaway } from './WaterHeaterCutaway'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -80,4 +92,15 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'three-points': ThreePoints,
   'tip-over': TipOver,
   'trench-section': TrenchSection,
+  'ball-gate-check': BallGateCheck,
+  'copper-sweat-joint': CopperSweatJoint,
+  'fixture-valves': FixtureValves,
+  'meter-and-main-shutoff': MeterAndMainShutoff,
+  'pex-joints': PexJoints,
+  'pressure-and-prv': PressureAndPrv,
+  'solvent-joint': SolventJoint,
+  'supply-fittings': SupplyFittings,
+  'trunk-vs-manifold': TrunkVsManifold,
+  'two-systems': TwoSystems,
+  'water-heater-cutaway': WaterHeaterCutaway,
 }

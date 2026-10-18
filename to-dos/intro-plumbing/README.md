@@ -1,8 +1,8 @@
 ---
 name: "Intro to plumbing: how water comes in and goes out, in drawings"
 number: 119
-group: gated
-status: PLANNED 2026-10-17 — the outline below is for the owner to read and correct; nothing built, no version claimed; PR 0 waits on the owner's read and the six calls at the foot
+group: close
+status: BUILDING 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; Part 2 Water out next; the six calls taken as drawn until the owner says otherwise
 summary: >
   The second training course: thirty five-minute lessons on how a house's plumbing works, for
   understanding and not for estimating. Part 1 is water in under pressure, from the meter to the
@@ -13,9 +13,9 @@ summary: >
   first-timer's mistakes. The course rides the Training mechanism built for the OSHA 30 refresher
   and adds one thing to it, an offered state so a course can be open to every role and required
   for some. The owner, a master plumber, co-writes and corrects every lesson.
-next: The owner reads the outline and answers the six calls, correcting any fact or number in place. Then PR 1, the offered state and three drawn lessons as the proof.
+next: PR 2, Water out (lessons 12 to 19 and their eight figures, the trap and its seal among them), then Part 3 and Part 4; the owner corrects any fact or number in place as each part lands.
 size: L (PR 1 is M; each part is an M PR of eight to ten drawings; the owner's corrections ride each one)
-blocker: The owner's read of the outline and the six calls. Nothing waits on a migration, a function or another stream.
+blocker: none; the six calls are built to the drawn leans and each is one row in Settings or one line in a lesson.
 opinion: build it as outlined once the owner has corrected it; the drawings are the course, the mechanism is one column and one row on the card.
 mockup: not required — the outline is the thing to read; PR 1 draws three lessons on the real course page as the proof, shot at three widths in both themes
 ---
@@ -267,17 +267,17 @@ together`, `4. Reading the job`.
 ## PRs, in order
 
 0. **This to-do.** The outline, for the owner's read. Docs only, no version.
-1. **The offered state and three drawn lessons as the proof.** The migration and its doc, the
-   kernel's `offered` and `offeredCourses`, the card's Available row, the Settings switch, the
-   `training_courses` line in `ACCESS_CONTROL.md`, and the course folder with lessons 1, 2 and
-   13 (the two-systems map, the meter and shutoff, the trap and its seal), `plumbingParts.tsx`
-   and the three figures, a bank of twenty questions over those three lessons, `lessons: 3` for
-   now. Lesson 13 ships as `03` until Part 1 lands, then moves to its number; the course is off,
-   so no pass exists to void. The seed row off and offered. The guide
-   `take-a-training-course` gains one line on the Available row. `docs/twins/APP_DIRECTORY.md`
-   gains the course's path. The SQL bed for the column and the seed. Shots of the three
-   drawings at 375, 768 and 1280 px in both themes, read before the merge.
-2. **Part 1, water in**: lessons 2 to 11 and their ten figures.
+1. **The offered state, the drawing language and the first part as the proof** (v2.5610). The
+   migration and its doc, the kernel's `offered` and `offeredCourses`, the card's Available row,
+   the Settings chip, the `training_courses` line in `ACCESS_CONTROL.md`, `plumbingParts.tsx`
+   and `plumbingTokens.ts`, and the course folder with lessons 1 to 11 (Start here and all of
+   Water in) and a bank of twenty-four. Eleven lessons and not three, because the content test
+   holds every course to at least ten lessons and over an hour. The seed row off and offered. The
+   guide `take-a-training-course` gains one line on the Available row. `docs/twins/APP_DIRECTORY.md`
+   gains the course's path. The SQL bed's section 9 for the column and the seed. Every drawing shot
+   at 375 px in both themes and at 768 and 1280 px on the real page; eight label collisions found
+   in the shots and fixed before the merge.
+2. **Part 1, water in**: shipped in PR 1.
 3. **Part 2, water out**: lessons 12 to 19 and their eight figures.
 4. **Part 3, the conditions**: lessons 20 to 27, the eight strips.
 5. **Part 4, reading the job**: lessons 28 to 30, the three figures, the bank filled from every
