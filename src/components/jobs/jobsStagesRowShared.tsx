@@ -115,6 +115,12 @@ export type StagesRowRenderContext = {
    * says which door it is (`contractRowChip`): `gc-paper` opens Add the contract on the GC's jobs.
    */
   onOpenJobContract?: (job: JobWithDetails, opens?: ContractRowChipOpens) => void
+  /**
+   * The customer's door (v2.5626, punch list #123): the speech bubble beside the customer's name opens the sheet over the
+   * board (Call · Text · Email · Open their thread · Their record) instead of the Messages page. Absent, the bubble keeps
+   * its own press.
+   */
+  onOpenCustomerDoor?: (job: JobWithDetails) => void
 }
 
 type ContractRowChipOpens = Extract<ContractRowChip, { show: true }>['opens']
@@ -681,7 +687,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         // and the owner-sees chip (v2.3827: only on a GC-billed job whose customer is the owner; renders null otherwise).
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', verticalAlign: 'middle', marginLeft: '0.15rem' }} data-testid="customer-line-tail">
           <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
-          <MessagesButton customerId={job.customer_id} customerName={cn} size={13} />
+          <MessagesButton customerId={job.customer_id} customerName={cn} size={13} onPressInstead={ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined} />
           <OwnerShareChip job={job} invoices={job.invoices ?? []} ownerName={cn || 'The owner'} gcName={gcName} role={ctx.authRole} onChanged={() => void ctx.loadJobs()} onError={(m) => ctx.showToast(m, 'error')} />
         </span>
       ) : null}
@@ -817,7 +823,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
             <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn || '—'}</span>
           </button>
         ) : null}
-        {hasCustomerInfo && job.customer_id ? <MessagesButton customerId={job.customer_id} customerName={cn} size={14} /> : null}
+        {hasCustomerInfo && job.customer_id ? <MessagesButton customerId={job.customer_id} customerName={cn} size={14} onPressInstead={ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined} /> : null}
         {hasCustomerInfo && addrOneLine ? <span aria-hidden>·</span> : null}
         {addrOneLine ? (
           <a
