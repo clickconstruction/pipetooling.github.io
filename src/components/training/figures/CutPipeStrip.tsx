@@ -1,6 +1,6 @@
 import type { FigureProps } from './figureProps'
 import { Conductor, Current } from './electricalParts'
-import { Label, Panel, Person, Pipe } from './plumbingParts'
+import { Flow, Label, Panel, Person, Pipe } from './plumbingParts'
 import { RIGHT, SVG_STYLE, WRONG } from './plumbingTokens'
 
 /**
@@ -24,8 +24,8 @@ export function CutPipeStrip({ titleId }: FigureProps) {
       <Panel {...at(0)} w={W} h={146} title="1 at rest" sub="along the pipe">
         <Pipe d="M6 78 H90" />
         {jumper}
-        <Current x={16} y={78} color="var(--text-muted)" />
-        <Current x={82} y={78} color="var(--text-muted)" />
+        <Flow x={16} y={78} color="var(--text-muted)" size={0.9} />
+        <Flow x={82} y={78} color="var(--text-muted)" size={0.9} />
         <Label x={48} y={52} anchor="middle" size={6.5}>
           the jumper
         </Label>
