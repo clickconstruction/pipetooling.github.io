@@ -17,17 +17,16 @@ Everything past the panel is a branch circuit. One breaker, one run of wire and 
 - Outlets on one circuit share it. A heater on one outlet leaves less for the tool on the next.
 - The kitchen has at least two 20 A circuits for the counters. The bathroom has its own 20 A circuit.
 - A circuit off at the breaker is dead to the last outlet on it. Something still live is on another breaker.
-- The panel's directory names each breaker. It is often wrong, and a tester is the truth.
+- The panel's directory, the list inside its door, names each breaker. It is often wrong. A tester, the tool that says if a wire is live, is the truth.
 
 ## Traps
-- An outlet dead is not the circuit dead. The outlet may be downstream of a tripped GFCI.
+- An outlet dead is not the circuit dead. It may sit past a tripped GFCI, the outlet with two buttons that lesson 13 explains.
 - Two outlets side by side can be two circuits. Each one is tested on its own.
 - The directory is a guess until it is checked. Trust the tester, not the label.
 
 ## Numbers
 - **15 A or 20 A** a general circuit
 - **one breaker** per branch
-- **2** 20 A circuits for the kitchen counters, at least
 - **the code counts watts** not outlets
 
 ## Check yourself
@@ -59,6 +58,6 @@ Everything past the panel is a branch circuit. One breaker, one run of wire and 
 - [ ] The garage is dead when it is off
 - [ ] The garage is live when it is on
 - [x] Nothing until a tester says so
-- [ ] The garage has a GFCI
+- [ ] The garage has a light
 > right: Directories are often wrong. The tester is the truth.
 > wrong: A label is a guess. Only a tester says what is dead.

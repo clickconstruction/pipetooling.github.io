@@ -5,16 +5,16 @@ minutes: 5
 from: NEC 210.8, the GFCI rooms, and the OSHA refresher's lesson 9 for the 5 mA and the 1/40 s, for the reader to confirm against the cycle
 ---
 ## Why it matters
-The breaker never sees a shock. The GFCI does. It is the one device that watches for current going through a person. It lives where water and a person can meet.
+The breaker never sees a shock. The GFCI does, and the name is short for ground fault circuit interrupter. It is the one device that watches for current going through a person. It lives where water and a person can meet.
 
 ## Must know
 - A GFCI compares the current going out on the hot with the current coming back on the neutral.
 - {{figure:gfci-compare|The GFCI counts current out and current back. A difference means some went through you. It trips before the breaker knows.}}
 - A difference between the two means some current went somewhere else. Through a person, through water, through a pipe.
-- It trips at 5 mA of difference, in 1/40 of a second. That is before a shock can lock a muscle.
+- It trips at 5 mA of difference, five thousandths of an amp, in 1/40 of a second. That is before a shock can lock a muscle.
 - It needs no ground to work. It only needs the two currents to differ.
 - It lives where water and a person meet. Bathrooms, kitchens, garages, outdoors, basements, laundry, and within 6 ft of a sink.
-- A GFCI receptacle protects the outlets wired downstream of it. One GFCI covers a string.
+- A GFCI receptacle protects the outlets wired past it on the circuit. One GFCI covers a string.
 - A GFCI breaker protects the whole circuit from the panel.
 - Press Test monthly. The Reset button pops out and the outlet goes dead, and Reset brings it back.
 - A GFCI that will not reset is seeing a leak that is still there. It is not broken, it is working.
@@ -27,10 +27,7 @@ The breaker never sees a shock. The GFCI does. It is the one device that watches
 ## Numbers
 - **5 mA** the difference that trips it
 - **1/40 s** to trip
-- **no ground** needed
 - **6 ft** of a sink
-- **bathrooms, kitchens, garages, outdoors, basements, laundry** where it lives
-- **monthly** press Test
 
 ## Check yourself
 1. What does a GFCI compare?

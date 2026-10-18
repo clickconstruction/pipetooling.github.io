@@ -12,7 +12,7 @@ Water and a live panel make a path. A leak above a panel is an electrical emerge
 - {{figure:water-on-panel-strip|A leak drips onto the panel. The panel is live. Shut the water off at the main, not the power at the panel. Call.}}
 - A wet panel is not touched. Not the cover, not the main breaker, not the door.
 - The water is shut off somewhere else. The main shutoff for the house, or the valve above the leak.
-- The power is killed by the utility at the meter if it has to be. Nobody in the house throws a wet main.
+- The power is killed by the utility at the meter if it has to be. Nobody in the house flips a wet main breaker.
 - A water heater sits in a pan with a drain for this reason. The pan catches the leak before it reaches anything live.
 - A panel under a bathroom, a kitchen or a water heater is a leak waiting. The code keeps panels out of bathrooms for it.
 - Water on the floor near a panel is the same rule. Nobody steps into it to reach the panel.
@@ -27,7 +27,6 @@ Water and a live panel make a path. A leak above a panel is an electrical emerge
 - **do not touch** the panel
 - **the main shutoff** for the water, not the main breaker
 - **the utility** can kill the power at the meter
-- **the water heater pan** is why it has a drain
 
 ## Check yourself
 1. A leak drips onto the panel. What is the first move?
@@ -49,8 +48,8 @@ Water and a live panel make a path. A leak above a panel is an electrical emerge
 3. Why does a water heater sit in a pan with a drain?
 - [ ] To keep the floor clean
 - [x] To catch a leak before it reaches anything live or anything below
-- [ ] To hold the expansion tank
-- [ ] The code needs a drain for the T&P valve
+- [ ] To hold the heater up
+- [ ] The code needs a drain for the relief valve
 > right: The pan catches the water and the drain takes it away.
 > wrong: The pan is for a leak. It keeps the water off what is below and around the heater.
 

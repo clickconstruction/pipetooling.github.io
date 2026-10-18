@@ -2,7 +2,7 @@
 name: "Intro to electrical: what is live, what the panel does, and where our work touches it"
 number: 120
 group: gated
-status: BUILT 2026-10-18 — the owner read the outline and said build it, with six changes written in below (the water heater's scope line, the jumper lesson moved up into Part 1, the hot wire in the plain ink, the shock numbers from the refresher, the final check at twenty and fourteen, the seven calls decided); PR 0 (the drawing language, Start here and all of Power in, ten lessons, three drawn, the seed row off and offered) is v2.5614; PR 1 (Power in drawn, the seven held-back figures) is v2.5615; PR 2 (The devices, lessons 11 to 18 and eight figures) is v2.5616; PR 3 (The two together, lessons 19 to 25 as seven strips) is v2.5617; PR 4 (On the job, lessons 26 to 30, the course whole at thirty) is v2.5618; the reader is still unnamed, so every `from:` cites the published page or the owner and the first page carries a blank for the name
+status: BUILT 2026-10-18 — the owner read the outline and said build it, with six changes written in below (the water heater's scope line, the jumper lesson moved up into Part 1, the hot wire in the plain ink, the shock numbers from the refresher, the final check at twenty and fourteen, the seven calls decided); PR 0 (the drawing language, Start here and all of Power in, ten lessons, three drawn, the seed row off and offered) is v2.5614; PR 1 (Power in drawn, the seven held-back figures) is v2.5615; PR 2 (The devices, lessons 11 to 18 and eight figures) is v2.5616; PR 3 (The two together, lessons 19 to 25 as seven strips) is v2.5617; PR 4 (On the job, lessons 26 to 30, the course whole at thirty) is v2.5618; four more drawings (the subpanel, the three-way, the stud setback, the heater bond) are v2.5620; the fourteen-year-old pass (every trade word given its plain words where it is first met, no word first met in a quiz option or a caption, one subject and three Numbers a lesson, the measurement in its fragment) is v2.5622; the reader is still unnamed, so every `from:` cites the published page or the owner and the first page carries a blank for the name
 summary: >
   The third training course: thirty five-minute lessons on how a house's electrical system
   works, for the plumbing crew that works beside it. Understanding, not doing. Part 1 is power
@@ -300,7 +300,16 @@ their names behind it, and each part PR rebases over whatever has landed.
 4. **Part 4, on the job** (v2.5618): lessons 26 to 30, the five figures, the bank filled from every
    part (forty), `lessons: 30` and `minutes: 165`, the glossary's Training line, the page map, the
    guide and the app directory naming three courses.
-5. **The reader's read-through** of the live course as a dev preview, every correction as one
+5. **Four more drawings** (v2.5620): the subpanel, the three-way switch, the cable set back in the
+   stud with the nail plate, the bond across the water heater, each a second figure in its lesson.
+6. **The fourteen-year-old pass** (v2.5622): the owner's question about the plumbing course, asked
+   of this one. A term scan over every lesson, then every trade word given its plain words in the
+   sentence where it is first met, no word first met in a Check yourself option or a figure
+   caption, four captions moved under the lines that name their words, and every lesson cut to
+   one subject and three Numbers with the rest in Must know or the lesson that owns it. The
+   term-first-use rule in the content test belongs to the plumbing pass's PR; the terms for this
+   course are listed in the fragment for when its list is extended.
+7. **The reader's read-through** of the live course as a dev preview, every correction as one
    commit with the `from:` line naming it, the reader's name on `course.md`'s `line`, then **On**
    in Settings → Training.
 

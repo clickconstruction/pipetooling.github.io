@@ -13,7 +13,7 @@ Two wires go back to the panel and both end up at the earth. One works all day a
 - {{figure:neutral-vs-ground|The neutral carries the current back every day. The ground carries it only when something has gone wrong. They join once, in the main panel.}}
 - The neutral is white. The ground is bare copper or green.
 - The neutral and the ground meet in one place, the main panel. Nowhere else.
-- In a subpanel they stay apart. The neutral bar floats and the ground bar bolts to the box.
+- In a subpanel they stay apart. The neutral bar sits on plastic feet and the ground bar bolts to the box.
 - The ground is there for a fault. A hot wire that touches a metal case puts current on the ground wire.
 - That fault current runs back to the panel and trips the breaker. Without a ground, the case stays live and waits for a hand.
 - A neutral can bite. It carries current, and a broken neutral can sit at 120 V.
@@ -28,14 +28,13 @@ Two wires go back to the panel and both end up at the earth. One works all day a
 - **the neutral** carries current all day
 - **the ground** carries it only in a fault
 - **1** place they join, the main panel
-- **white** the neutral, bare or green the ground
 
 ## Check yourself
 1. Which wire carries current every time something runs?
 - [ ] The ground
 - [x] The neutral
-- [ ] The bonding jumper
-- [ ] The rod
+- [ ] The clamp
+- [ ] The cover plate
 > right: The neutral is the way back for every loop.
 > wrong: The neutral carries the current back every day. The ground only carries it in a fault.
 

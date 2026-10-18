@@ -13,7 +13,7 @@ The metal water pipe is part of the ground. Plumbers cut it, pull meters out of 
 - A jumper is a wire with a clamp at each end. It carries the ground around a gap in the pipe.
 - The jumper goes around the water meter, a filter, a softener and anything else that can come out.
 - With the jumper on, the meter can come out and the ground path stays whole.
-- With the jumper off, the gap is open. A fault upstream has no way to the earth.
+- With the jumper off, the gap is open. A fault in the house has no way to the earth through the pipe.
 - A plastic section in a metal run is a gap for good. The ground stops at the plastic.
 - A plumber never removes a jumper. If it is in the way, the electrician moves it.
 - A metal to plastic change gets a word to the electrician first. They may need a new jumper or a rod.
@@ -21,13 +21,11 @@ The metal water pipe is part of the ground. Plumbers cut it, pull meters out of 
 
 ## Traps
 - A jumper is not clutter. Clamps and a bare wire around the meter are the ground going round the gap.
-- A plastic meter yoke or filter in a metal line opens the gap with no cut at all. The jumper still has to be there.
+- A plastic meter yoke, the fitting that holds the meter, opens the gap with no cut. So does a plastic filter. The jumper still has to be there.
 - The gap is not safe just because the water is off. The ground has nothing to do with the water.
 
 ## Numbers
-- **the metal water pipe** is part of the ground path
 - **a jumper** around the meter, a filter and any break
-- **plastic** breaks the path for good
 - **never** remove a jumper
 - **tell the electrician** before a metal to plastic change
 

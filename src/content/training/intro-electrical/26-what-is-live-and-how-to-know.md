@@ -13,7 +13,7 @@ A wire is live until a tester says it is not. A switch off, a breaker off or a d
 - A non-contact tester beeps and lights near a live hot. It needs no touching and no cover off.
 - The tester is tested first on an outlet that is known live. A tester with a dead battery says everything is dead.
 - Then the wire. Then the known live outlet again, to prove the tester still works.
-- A non-contact tester cannot see a neutral carrying current or a wire inside metal conduit. Those are the electrician's meter.
+- A non-contact tester cannot see a neutral carrying current or a wire inside metal conduit, the pipe wires run through. Those are the electrician's test meter.
 - The lugs above the main stay live with the main off. The tester at a panel is the electrician's job, not the plumber's.
 - A 240 V circuit has two hots. Each one is tested, because one dead says nothing about the other.
 - A house with solar, a generator or a battery can feed a wire from the other end. The tester is the only truth there.
@@ -26,9 +26,7 @@ A wire is live until a tester says it is not. A switch off, a breaker off or a d
 
 ## Numbers
 - **every wire** is live until tested
-- **a non-contact tester** beeps on a hot
 - **test the tester** on a known live outlet first, then the wire, then the outlet again
-- **the lugs above the main** stay live
 - **both hots** on a 240 V circuit are tested
 
 ## Check yourself

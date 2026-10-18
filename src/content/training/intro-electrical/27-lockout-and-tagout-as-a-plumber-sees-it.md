@@ -13,7 +13,7 @@ When a plumber's work needs a circuit off, someone opens the breaker, locks it a
 - The electrician or the owner opens the breaker, locks it and tags it. That person is the one who takes the lock off.
 - The plumber checks the lock is on and the tag has a name. Then the circuit is tested dead at the work.
 - A plumber never cuts, removes or works around another person's lock. Not even to go home.
-- A plumber working under a lock puts their own lock on too. A hasp holds more than one lock.
+- A plumber working under a lock puts their own lock on too. A hasp, a clip with holes for several locks, holds more than one.
 - The lock comes off only when the person who put it on takes it off. If they have gone, the office finds them.
 - A tag alone is not a lock. A tag can be ignored by a stranger. A lock cannot.
 - The water heater's breaker on a long job gets a lock. Nobody can turn it back on with the covers off.
@@ -28,8 +28,6 @@ When a plumber's work needs a circuit off, someone opens the breaker, locks it a
 - **the one who locks it** is the one who unlocks it
 - **a tag** says who and why
 - **test dead** after the lock
-- **never** cut another person's lock
-- **your own lock** too, where there is a hasp
 
 ## Check yourself
 1. Who takes a lock off a breaker?

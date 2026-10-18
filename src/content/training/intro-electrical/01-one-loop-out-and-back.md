@@ -5,16 +5,16 @@ minutes: 5
 from: The outline as the owner approved it on 2026-10-18, for the reader to correct
 ---
 ## Why it matters
-Every wire in a house is half of a loop. Current leaves the panel on one wire, does its work, and comes back on another. Once you see the loop, a breaker, a switch and a shock all make sense.
+Every wire in a house is half of a loop. Current, which is electricity on the move, leaves the panel on one wire and comes back on another. Once you see the loop, a switch, a breaker and a shock all make sense.
 
 ## Must know
-- Electricity only moves in a loop. It leaves the panel on one wire and comes back on another.
-- {{figure:one-loop|Current leaves the panel on the hot wire, does its work, and comes back on the neutral. The ground waits for a fault.}}
+- Electricity only moves in a loop, and one loop is called a circuit. It leaves the panel, the metal box where every circuit starts, and comes back to it.
 - The wire that carries current out is the hot. It is black or red in the wall.
 - The wire that carries current back is the neutral. It is white.
-- The light, the motor or the heater sits in the loop. The current does its work there.
-- Break the loop anywhere and the current stops. A switch and a breaker are both ways to break it.
-- A third wire, the ground, is bare or green. It carries current only when something has gone wrong.
+- The light, the motor or the heater sits in the loop and does the work. Each one is called a load.
+- Break the loop anywhere and the current stops. A switch does it by hand, and a breaker trips, which means it opens on its own.
+- A third wire, the ground, is bare or green. It carries current only in a fault, when current goes somewhere it should not.
+- {{figure:one-loop|Current leaves the panel on the hot wire, does its work, and comes back on the neutral. The ground waits for a fault.}}
 - Current takes every path it can find. A person touching a hot wire and the floor is a path too.
 - The loop is why one wire alone does nothing. Current needs a way out and a way back.
 
@@ -25,8 +25,7 @@ Every wire in a house is half of a loop. Current leaves the panel on one wire, d
 
 ## Numbers
 - **2** wires make the loop, the hot out and the neutral back
-- **1** more wire, the ground, for when something goes wrong
-- **0** work done until the loop is closed
+- **1** more wire, the ground, for a fault
 - **3** colours to know, black or red the hot, white the neutral, bare or green the ground
 
 ## Check yourself
@@ -42,7 +41,7 @@ Every wire in a house is half of a loop. Current leaves the panel on one wire, d
 - [x] The current stops
 - [ ] The current goes to the ground wire
 - [ ] The current backs up to the panel
-- [ ] The voltage drops to zero on every wire
+- [ ] The light gets brighter
 > right: A loop with a gap carries no current. The hot side of the switch stays live.
 > wrong: Current simply stops. It does not move to another wire, and the hot side stays live.
 
@@ -50,7 +49,7 @@ Every wire in a house is half of a loop. Current leaves the panel on one wire, d
 - [ ] The hot
 - [ ] The neutral
 - [x] The ground
-- [ ] The switch leg
+- [ ] All three
 > right: The ground is for a fault. On a good day it carries nothing.
 > wrong: The hot and the neutral carry current every day. The ground carries it only in a fault.
 
