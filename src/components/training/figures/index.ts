@@ -64,6 +64,15 @@ import { SanTeeVsWye } from './SanTeeVsWye'
 import { SweepsAndDirection } from './SweepsAndDirection'
 import { DwvMaterials } from './DwvMaterials'
 
+import { FlushStrip } from './FlushStrip'
+import { ClogStrip } from './ClogStrip'
+import { DryTrapStrip } from './DryTrapStrip'
+import { BlockedVentStrip } from './BlockedVentStrip'
+import { PressureDropStrip } from './PressureDropStrip'
+import { FreezeStrip } from './FreezeStrip'
+import { WaterHammerStrip } from './WaterHammerStrip'
+import { CrossConnectionStrip } from './CrossConnectionStrip'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -120,4 +129,12 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'san-tee-vs-wye': SanTeeVsWye,
   'sweeps-and-direction': SweepsAndDirection,
   'dwv-materials': DwvMaterials,
+  'flush-strip': FlushStrip,
+  'clog-strip': ClogStrip,
+  'dry-trap-strip': DryTrapStrip,
+  'blocked-vent-strip': BlockedVentStrip,
+  'pressure-drop-strip': PressureDropStrip,
+  'freeze-strip': FreezeStrip,
+  'water-hammer-strip': WaterHammerStrip,
+  'cross-connection-strip': CrossConnectionStrip,
 }
