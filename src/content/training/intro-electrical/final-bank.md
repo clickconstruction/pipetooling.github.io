@@ -169,3 +169,67 @@ title: Final check bank
 - [ ] The panel needs a bigger main
 > right: Heat at a breaker is a sign. Say so and leave it.
 > wrong: A warm breaker or cover is a warning. It is not reset.
+
+22. Which slot of a receptacle is the neutral?
+- [ ] The short one
+- [x] The long one
+- [ ] The round hole
+- [ ] The screw on the side
+> right: Long is neutral, short is hot.
+> wrong: The long slot is the neutral.
+
+23. What does the switch leg carry?
+- [ ] Current from the panel to the switch, always
+- [x] Current from the switch to the light, only when the switch is on
+- [ ] The neutral
+- [ ] The ground
+> right: The switch leg is live only with the switch on.
+> wrong: The switch leg runs from the switch to the light and is live only when the switch is on.
+
+24. How close to a sink must an outlet be to need a GFCI?
+- [ ] 1 ft
+- [x] Within 6 ft
+- [ ] Within 20 ft
+- [ ] Any outlet in the house
+> right: Six feet of a sink is the GFCI zone.
+> wrong: An outlet within 6 ft of a sink is GFCI protected.
+
+25. What is an arc?
+- [ ] Too many amps on a wire
+- [x] Current jumping a gap through the air
+- [ ] Current through a person
+- [ ] A wire that is too small
+> right: A spark across a gap, and it burns.
+> wrong: An arc is current jumping a gap. The AFCI listens for it.
+
+26. Under the company's rule, where does the plumber's side of a water heater end?
+- [ ] At the panel
+- [x] At the heater's disconnect
+- [ ] At the meter
+- [ ] At the thermostat
+> right: From the disconnect down is the plumber's, dead. Upstream is the electrician's.
+> wrong: The disconnect is the line. The panel and the feed above it are the electrician's.
+
+27. How many breakers feed the disposal and the dishwasher?
+- [ ] One for both
+- [x] Two, one each
+- [ ] None, they run off the switch
+- [ ] Three
+> right: Two circuits, two breakers, two tests.
+> wrong: The dishwasher has its own circuit and the disposal its own. Two breakers.
+
+28. At what pressure does a common well pump start?
+- [ ] 5 psi
+- [x] 30 psi
+- [ ] 80 psi
+- [ ] 150 psi
+> right: About 30 psi on and 50 psi off is the common setting.
+> wrong: The pressure switch starts the pump at about 30 psi.
+
+29. What runs on the 24 V side of a transformer?
+- [ ] The dishwasher
+- [x] The thermostat, the doorbell and the gas valve
+- [ ] The sump pump
+- [ ] The water heater's elements
+> right: The low-voltage world is the thermostat, the doorbell, the sprinkler and the gas valve.
+> wrong: The 24 V side feeds the thermostat, the doorbell and the gas valve. The pumps and the heater are not low voltage.

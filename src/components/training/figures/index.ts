@@ -89,6 +89,15 @@ import { GroundPath } from './GroundPath'
 import { BranchCircuit } from './BranchCircuit'
 import { WireAndBreaker } from './WireAndBreaker'
 
+import { ReceptacleFaces } from './ReceptacleFaces'
+import { SwitchAndLight } from './SwitchAndLight'
+import { GfciCompare } from './GfciCompare'
+import { AfciListens } from './AfciListens'
+import { WaterHeaterCircuit } from './WaterHeaterCircuit'
+import { UnderTheSink } from './UnderTheSink'
+import { PumpsStartAlone } from './PumpsStartAlone'
+import { LowVoltageWorld } from './LowVoltageWorld'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -166,4 +175,12 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'ground-path': GroundPath,
   'branch-circuit': BranchCircuit,
   'wire-and-breaker': WireAndBreaker,
+  'receptacle-faces': ReceptacleFaces,
+  'switch-and-light': SwitchAndLight,
+  'gfci-compare': GfciCompare,
+  'afci-listens': AfciListens,
+  'water-heater-circuit': WaterHeaterCircuit,
+  'under-the-sink': UnderTheSink,
+  'pumps-start-alone': PumpsStartAlone,
+  'low-voltage-world': LowVoltageWorld,
 }
