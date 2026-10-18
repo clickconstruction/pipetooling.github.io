@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Text the customer from the Pipeline row</title>
+<style>
+  /* Punch list #123. Light only, like every to-do mock-up. Made-up people and jobs: Dana Whitfield at 14 Alder Ct, Ridgeway Builders, Luis Ortega on the crew. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --teal: #0f766e; --sky: #0284c7; --purple: #7c3aed; --orange: #ea580c; --orange-ink: #c2410c; --orange-tint: #ffedd5; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --amber-tint: #fef3c7; --amber-ink: #92400e; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #ffffff; --page: #f6f7f9; --subtle: #f3f4f6; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; flex: none; }
+  h3 { font-size: 14px; margin: 18px 0 6px; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 14px 0 0; }
+  .fact { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .fact .t { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; overflow: auto; }
+  .phone { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; padding: 12px; font-size: 13px; }
+  .desk { width: 100%; max-width: 1040px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; font-size: 13px; overflow: hidden; }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; }
+  .pill.on { background: var(--orange-tint); border-color: var(--orange); color: var(--orange-ink); }
+  .pill.blue { background: var(--blue-tint); border-color: #93c5fd; color: var(--blue-ink); }
+  .new { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--orange-ink); background: var(--orange-tint); padding: 1px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+
+  /* the desktop Pipeline table, as JobsStagesUnifiedTable draws it: Job · Crew & Dates · Activity */
+  table.board { border-collapse: collapse; width: 100%; }
+  table.board th { text-align: left; font-size: 12px; padding: 8px 12px; background: var(--subtle); border-bottom: 1px solid var(--line-2); color: var(--ink-2); }
+  table.board td { padding: 10px 12px; vertical-align: top; border-bottom: 1px solid var(--line-2); }
+  .jobname { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .stack { display: inline-flex; flex-direction: column; gap: 4px; vertical-align: top; margin-right: 10px; }
+  .ic { width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; }
+  .ic.green { background: var(--green); } .ic.blue { background: var(--blue); } .ic.teal { background: var(--teal); } .ic.sky { background: var(--sky); } .ic.purple { background: var(--purple); }
+  .ic.orange { background: var(--orange); outline: 2px solid var(--orange-tint); outline-offset: 1px; }
+  .ic.dim { background: #cbd5e1; color: #64748b; }
+  .crew { display: inline-block; }
+  .crew .n { font-weight: 600; }
+  .act { color: var(--ink-2); font-size: 12.5px; }
+
+  /* the phone card (zoned card): header, customer line, chips, the foot with ☎ and ⋯ */
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface); }
+  .card .hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card .num { font-weight: 800; }
+  .card .foot { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line-2); padding-top: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .card .foot .right { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
+  .mini { font-size: 10.5px; border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; color: var(--ink-2); }
+  .more { border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-weight: 800; font-size: 15px; line-height: 1.3; }
+
+  /* the ⋯ sheet */
+  .sheet { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; font-size: 13px; overflow: hidden; }
+  .sheet .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; }
+  .sheet .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .sheet .r { padding: 10px 12px; border-bottom: 1px solid var(--line-2); }
+  .sheet .r.hot { background: var(--orange-tint); font-weight: 700; color: var(--orange-ink); }
+
+  /* the box (JobCustomerBox over ReplyBox) */
+  .box { border: 1.5px solid var(--orange); border-radius: 10px; padding: 8px; background: #fff7ed; }
+  .kinds { display: flex; gap: 6px; margin: 0 0 6px; }
+  .kinds .k { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); }
+  .kinds .k.on { border-color: var(--orange); background: var(--orange); color: #fff; }
+  .qr { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 6px; }
+  .qr span { font-size: 11.5px; border: 1px solid #fdba74; border-radius: 999px; padding: 1px 8px; background: #fff; color: var(--orange-ink); }
+  .ta { background: #fff; border: 1px solid #fdba74; border-radius: 8px; min-height: 58px; padding: 6px 8px; color: var(--ink-2); font-size: 13px; }
+  .ta i { color: var(--muted); }
+  .boxfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+  .send { background: var(--blue); color: #fff; font-weight: 700; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; }
+  .tie { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
+  /* the job window frame */
+  .win { width: 100%; max-width: 720px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .win .bar { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; }
+  .win .tabs { display: flex; gap: 14px; padding: 6px 12px; border-bottom: 1px solid var(--line-2); font-size: 12px; color: var(--muted); }
+  .win .tabs .on { color: var(--ink); font-weight: 700; border-bottom: 2px solid var(--ink); }
+  .win .fold { padding: 6px 12px; color: var(--muted); font-size: 12px; background: var(--subtle); border-bottom: 1px dashed var(--line); text-align: center; }
+  .win .body { padding: 10px 12px; }
+  .scrim { background: rgba(17,24,39,.45); padding: 18px; border-radius: 8px; display: flex; justify-content: center; }
+
+  /* the thread window */
+  .thread { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .thread .hd { padding: 10px 12px; border-bottom: 1px solid var(--line-2); }
+  .thread .hd .who { font-weight: 800; font-size: 15px; }
+  .thread .rail { display: flex; gap: 6px; margin-top: 6px; }
+  .thread .lines { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: var(--subtle); }
+  .bub { max-width: 78%; padding: 7px 10px; border-radius: 12px; font-size: 12.5px; background: #fff; border: 1px solid var(--line-2); }
+  .bub.us { align-self: flex-end; background: var(--orange-tint); border-color: #fdba74; }
+  .bub .m { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .thread .ft { padding: 10px 12px; }
+
+  .dead { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .dead .d { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .dead .d .t { font-weight: 700; margin: 0 0 4px; }
+  .cost { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 10px; }
+  .cost .c { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .cost .c .t { font-weight: 800; margin: 0 0 4px; }
+  .cost .c.pick { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-tint); }
+  ul.tight { margin: 6px 0 0; padding-left: 18px; }
+  ul.tight li { margin: 2px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #123 · three mock-ups for one pick · nothing built</p>
+  <h1>Text the customer from the Pipeline row</h1>
+  <p>Today the office can text or email a job's customer, but only inside the job window, below the activity: open the job, scroll, press <b>Text</b>, write, press <b>Send text…</b>, check, send. Five presses and a scroll, and nothing on the row says the job can message its customer at all. Each option below puts one door on the row and the card. They differ in what the door opens.</p>
+</header>
+
+<section>
+  <h2>What every option shares</h2>
+  <div class="facts">
+    <div class="fact"><p class="t">The door</p>A speech-bubble icon in the customer's orange, beside the teal ☎ call icon the row already carries, on the desktop quick-action stack (Crew &amp; Dates cell) and on the phone card's foot. Orange is free on the stack (green, blue, teal, sky, purple are taken) and is already the customer's colour in the box.</div>
+    <div class="fact"><p class="t">Who sees it</p>The office team only (dev, master, assistant, controller, estimator), the same gate as the job window's Note · Text · Email row. The crew's Pipeline keeps the call icon and nothing more.</div>
+    <div class="fact"><p class="t">What the row already knows</p>The job's customer, their mobile and their email ride on the row today (the call icon reads the same phone), so the door needs no new read. A job with no customer has no icon.</div>
+    <div class="fact"><p class="t">Where the message lands</p>In the customer's thread in Messages, tied to the job, with the sent copy kept, exactly as the job window's box does now. Texts still wait on <b>Send texts</b> in Settings; until it is on, the door offers Email and says why.</div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">1</span> The icon opens the job window, already on the box</h2>
+  <p class="lede">The cheapest cut. The orange icon opens the job window as the name does, but scrolled to the notes box with <b>Text</b> already pressed and the cursor in the box. One press to writing; the window and its activity are still there above.</p>
+  <div class="row">
+    <div>
+      <div class="cap">Desktop row · the stack gains one icon</div>
+      <div class="fit"><div class="desk">
+        <table class="board">
+          <thead><tr><th style="width:38%">Job</th><th>Crew &amp; Dates</th><th>Activity</th></tr></thead>
+          <tbody><tr>
+            <td><div><b>#2148</b> · <span class="jobname">Whitfield re-pipe</span></div><div class="sub">Dana Whitfield · 14 Alder Ct</div><div style="margin-top:4px"><span class="pill blue">Working</span> <span class="pill">Top-out Thu</span></div></td>
+            <td><div style="display:flex;gap:10px;align-items:flex-start"><span class="stack"><span class="ic green">▦</span><span class="ic blue">▤</span><span class="ic teal">☎</span><span class="ic orange" title="Text the customer">✉</span><span class="ic sky">➤</span><span class="ic purple">✓</span></span><span class="crew"><div class="n">Luis Ortega, Sam Reyes</div><div class="sub">Next: Thu 8–10 · top-out</div></span></div></td>
+            <td class="act">Luis: inspector passed rough-in, top-out Thursday. <span class="sub">Yesterday 4:12 PM</span></td>
+          </tr></tbody>
+        </table>
+      </div></div>
+      <p class="note"><b>The icon's title</b>: <i>Text Dana Whitfield</i>. Dim with <i>No mobile on file. Email instead.</i> when the customer has no mobile.</p>
+    </div>
+    <div>
+      <div class="cap orange">What it opens · the job window on the Job tab, at the box</div>
+      <div class="fit"><div class="win">
+        <div class="bar"><span>#2148 · Whitfield re-pipe</span><span style="color:var(--muted);font-weight:400">×</span></div>
+        <div class="tabs"><span class="on">Job</span><span>Money</span><span>Schedule</span><span>Photos</span><span>Contract</span><span>Documents</span></div>
+        <div class="fold">▲ the activity, folded above</div>
+        <div class="body">
+          <div class="kinds"><span class="k">Note</span><span class="k on">Text</span><span class="k">Email</span></div>
+          <div class="box">
+            <div class="qr"><span>On our way Thu 8–10</span><span>Inspector passed, next is top-out</span><span>Find a reply…</span></div>
+            <div class="ta"><i>Text Dana Whitfield…</i></div>
+            <div class="boxfoot"><span>0 / 320 · Reply STOP to end</span><span class="send">Send text…</span></div>
+          </div>
+          <div class="tie">Tie to: #2148 Whitfield re-pipe</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">2</span> The icon opens the box alone, over the board</h2>
+  <p class="lede">The same icon opens a small window over the Pipeline, the way the Lien desk's windows open over the desk: the job's line on top, the Text · Email pills, the quick replies, the box, <b>Send text…</b>. No job window, no scroll, the board still behind it. On a phone it is a bottom sheet.</p>
+  <div class="row">
+    <div>
+      <div class="cap">Phone card · the foot gains the icon beside ☎</div>
+      <div class="fit"><div class="phone">
+        <div class="card">
+          <div class="hd"><div><span class="num">#2148</span> · <b>Whitfield re-pipe</b><div class="sub">Dana Whitfield · 14 Alder Ct</div></div><span class="pill blue">Working</span></div>
+          <div style="margin-top:6px" class="sub">Next: Thu 8–10 · top-out · Luis, Sam</div>
+          <div class="foot"><span class="mini">See all</span><span class="mini">j 3</span><span class="mini">b 1</span><span class="mini">14h</span><span class="right"><span class="ic teal" style="width:20px;height:20px">☎</span><span class="ic orange" style="width:20px;height:20px">✉</span><span class="more">⋯</span></span></div>
+        </div>
+        <p class="note" style="margin-top:8px"><b>Or in the ⋯ sheet</b>, one row down, for the thumb that misses, and for <i>Email the customer</i>:</p>
+        <div class="sheet" style="width:100%">
+          <div class="bar"><span>#2148 · Whitfield re-pipe</span><span class="x">×</span></div>
+          <div class="r">View job</div>
+          <div class="r hot">Text the customer <span class="new">new</span></div>
+          <div class="r">Edit job</div>
+          <div class="r">Activity and notes</div>
+          <div class="r">Calendar</div>
+          <div class="r" style="color:var(--muted)">…</div>
+        </div>
+      </div></div>
+    </div>
+    <div>
+      <div class="cap orange">What it opens · the box over the dimmed board</div>
+      <div class="fit"><div class="scrim" style="width:100%"><div class="phone" style="width:100%;max-width:420px">
+        <div style="display:flex;justify-content:space-between;font-weight:800"><span>Text Dana Whitfield</span><span style="color:var(--muted);font-weight:400">×</span></div>
+        <div class="sub" style="margin-bottom:8px">#2148 · Whitfield re-pipe · (555) 014-2290</div>
+        <div class="kinds"><span class="k on">Text</span><span class="k">Email</span></div>
+        <div class="box">
+          <div class="qr"><span>On our way Thu 8–10</span><span>Inspector passed, next is top-out</span><span>Find a reply…</span></div>
+          <div class="ta"><i>Text Dana Whitfield…</i></div>
+          <div class="boxfoot"><span>0 / 320 · Reply STOP to end</span><span class="send">Send text…</span></div>
+        </div>
+        <div class="tie">Lands in Dana's thread, tied to #2148. <u>Open the thread</u></div>
+      </div></div></div>
+      <p class="note">After the send the window says <i>Sent · 2:14 PM</i> and closes on the next press; the board reads the job again so the activity line shows the text.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">3</span> The icon opens the customer's thread, filtered to the job</h2>
+  <p class="lede">The icon opens the customer's whole thread window, the same one Messages and GC projects open, filtered to this job, with the reply box at its foot on <b>Text</b>. You read what they last said before you write. The heaviest cut: the Jobs page must host the thread window the way those two pages do.</p>
+  <div class="row">
+    <div>
+      <div class="cap orange">What it opens · the thread window over the board</div>
+      <div class="fit"><div class="thread">
+        <div class="hd"><div class="who">Dana Whitfield <span style="font-weight:400;color:var(--muted);font-size:12px">· ☎ · ⋯</span></div><div class="sub">Customer · (555) 014-2290</div><div class="rail"><span class="pill on">#2148 Whitfield re-pipe</span><span class="pill">All jobs</span></div></div>
+        <div class="lines">
+          <div class="bub us">Inspector passed the rough-in. Top-out is Thursday 8–10.<span class="m">Us · yesterday 4:20 PM · text</span></div>
+          <div class="bub">Great, I'll leave the side gate open.<span class="m">Dana · yesterday 4:31 PM</span></div>
+        </div>
+        <div class="ft">
+          <div class="kinds"><span class="k on">Text</span><span class="k">Email</span><span class="k">Note</span></div>
+          <div class="box"><div class="qr"><span>On our way Thu 8–10</span><span>Find a reply…</span></div><div class="ta"><i>Text Dana Whitfield…</i></div><div class="boxfoot"><span>0 / 320</span><span class="send">Send text…</span></div></div>
+          <div class="tie">Tie to: #2148 Whitfield re-pipe</div>
+        </div>
+      </div></div>
+    </div>
+    <div>
+      <div class="cap">The same icon on the row and the card</div>
+      <div class="fit"><div class="desk" style="max-width:520px">
+        <table class="board"><thead><tr><th>Job</th><th>Crew &amp; Dates</th></tr></thead><tbody><tr>
+          <td><div><b>#2151</b> · <span class="jobname">Ridgeway Builders · lot 7</span></div><div class="sub">Ridgeway Builders · 220 Kestrel Way</div></td>
+          <td><div style="display:flex;gap:10px;align-items:flex-start"><span class="stack"><span class="ic green">▦</span><span class="ic blue">▤</span><span class="ic teal">☎</span><span class="ic orange">✉</span><span class="ic sky">➤</span><span class="ic purple">✓</span></span><span class="crew"><div class="n">Sam Reyes</div><div class="sub">Next: Mon 7–9</div></span></div></td>
+        </tr></tbody></table>
+      </div></div>
+      <p class="note">On a GC job the customer is the builder's contact, so the thread is Ridgeway's and the door reads <i>Text Ridgeway Builders</i>. Same rule as the job window's box today.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The dead states, the same in every option</h2>
+  <div class="dead">
+    <div class="d"><p class="t">No customer on the job</p>No icon. The ⋯ sheet's row reads <i>This job has no customer yet. Add one in Edit Job.</i></div>
+    <div class="d"><p class="t">A customer with no mobile</p>The icon is dim, titled <i>No mobile on file. Email instead.</i> A press opens the door on <b>Email</b>.</div>
+    <div class="d"><p class="t">Send texts is off</p>The door opens with <b>Text</b> saying texts are not on yet, <b>Email</b> beside it live, and the switch linked for the owner or a dev.</div>
+    <div class="d"><p class="t">Not the office</p>No icon. The crew's row keeps ☎ and the note box in the job window, as today.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Cost and the recommendation</h2>
+  <div class="cost">
+    <div class="c"><p class="t">1 · the job window at the box</p><b>S.</b> One icon in the stack and on the card foot, one <i>open at the box on Text</i> argument on the job window, the scroll the note box already has. Still loads the whole window. Fallback if the budget is one PR.</div>
+    <div class="c pick"><p class="t">2 · the box alone, over the board</p><b>M.</b> One new small window mounting the existing job box with Text chosen, the board's read after a send, the phone sheet. One press to writing, nothing to scroll, nothing to host. <b>The pick.</b></div>
+    <div class="c"><p class="t">3 · the thread over the board</p><b>M–L.</b> The Jobs page mounts the messages host the Messages and GC pages mount, plus the icon. Best context, heaviest page. Worth it when the Jobs page hosts the thread for another reason too.</div>
+  </div>
+  <p class="note"><b>The phone placement is a second pick</b>: the foot icon beside ☎ (one press; breaks the card's one-quick-action rule, which ☎ already bent for the same person), the ⋯ sheet row (two presses, keeps the rule), or both.</p>
+</section>
+</div>
+</body>
+</html>
