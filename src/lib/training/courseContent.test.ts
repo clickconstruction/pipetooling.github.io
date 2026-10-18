@@ -8,7 +8,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { TRAINING_COURSE_FACTS } from './courseFacts'
-import { TRADE_TERMS, TRADE_TERM_TEACHING_PLACES, tradeTermFailures, tradeTermFirstUse } from './tradeTerms'
+import { COURSE_TRADE_TERMS, TRADE_TERMS, TRADE_TERM_TEACHING_PLACES, tradeTermFailures, tradeTermFirstUse, tradeTermsFor } from './tradeTerms'
+import { questionTaughtFailures, questionWords, sharedWords } from './questionTaught'
 import { FIGURE_NAMES, parseFigureItem } from './figures'
 import {
   APPENDIX_B_BANNED_ASKS,
@@ -362,12 +363,45 @@ describe('a trade word is taught before it is tested (punch list #119, the fourt
   })
 
   it('the list is lower case apart from an acronym, and the teaching places are the two sentence sections', () => {
-    for (const t of TRADE_TERMS) expect(t === t.toUpperCase() || t === t.toLowerCase(), `"${t}" is neither an acronym nor lower case`).toBe(true)
+    for (const t of [...TRADE_TERMS, ...Object.values(COURSE_TRADE_TERMS).flat()]) expect(t === t.toUpperCase() || t === t.toLowerCase(), `"${t}" is neither an acronym nor lower case`).toBe(true)
     expect(TRADE_TERM_TEACHING_PLACES).toEqual(['why it matters', 'must know'])
+  })
+
+  it('a course\'s own words hold that course and no other, and every course list names a course on disk', () => {
+    for (const slug of Object.keys(COURSE_TRADE_TERMS)) expect(courses.map((c) => c.slug)).toContain(slug)
+    expect(tradeTermsFor({ slug: 'osha-30-refresher' })).toEqual(expect.arrayContaining(['competent person', 'GFCI', ...TRADE_TERMS]))
+    expect(tradeTermsFor({ slug: 'intro-electrical' })).toEqual(TRADE_TERMS)
+    for (const list of Object.values(COURSE_TRADE_TERMS)) expect(new Set(list).size, 'a course list names a word twice').toBe(list.length)
   })
 
   it.each(courses.map((c) => [c.slug, c] as const))('%s — every trade word is first met in a Must know or Why it matters sentence', (_slug, c) => {
     const failures = tradeTermFailures(c)
     expect(failures, `course "${c.slug}" tests a word before it teaches it (src/lib/training/tradeTerms.ts):\n  - ${failures.join('\n  - ')}`).toEqual([])
+  })
+})
+
+describe('a question is taught before it is asked (punch list #111, so a moved sentence cannot strand a question)', () => {
+  const courses = buildCourseRegistry(loadContent())
+
+  it('compares subject words, not glue or the course\'s everyday words, and a short word matches the longer one it begins', () => {
+    expect(questionWords('The worker\'s employer inspects **the** trench daily.')).toEqual(['inspects', 'trench', 'daily'])
+    expect(sharedWords(['Inspect the ladders'], ['A ladder is inspected each shift.'])).toEqual(['inspect', 'ladders'])
+    expect(sharedWords(['Who is on the site?'], ['Safety on the site is the employer\'s.'])).toEqual([])
+  })
+
+  it('fails a lesson question whose teaching sentences are gone, and a bank question no lesson teaches', () => {
+    const osha = courses.find((c) => c.slug === 'osha-30-refresher')!
+    const trench = osha.lessons.find((l) => l.key.startsWith('19-'))!
+    const stranded: CourseLesson = { ...trench, why: ['A why.'], mustKnow: ['One fact.', 'Two.', 'Three.', 'Four.'] }
+    const one = (l: CourseLesson, bank = osha.finalBank.slice(0, 0)): Course => ({ ...osha, lessons: [l], finalBank: bank })
+    expect(questionTaughtFailures(one(trench))).toEqual([])
+    expect(questionTaughtFailures(one(stranded))).toHaveLength(4)
+    const bankQ = { ...osha.finalBank[0]!, ask: 'Which pictogram is the flame over a circle?', options: [{ text: 'The oxidizer', right: true }, ...osha.finalBank[0]!.options.filter((o) => !o.right)], rightWhy: 'It feeds a fire.' }
+    expect(questionTaughtFailures(one(trench, [bankQ]))[0]).toMatch(/^final-bank#\d+ shares fewer than 2 words/)
+  })
+
+  it.each(courses.map((c) => [c.slug, c] as const))('%s — every Check yourself and final-bank question is taught by Why it matters or Must know words', (_slug, c) => {
+    const failures = questionTaughtFailures(c)
+    expect(failures, `course "${c.slug}" asks what no teaching sentence says (src/lib/training/questionTaught.ts):\n  - ${failures.join('\n  - ')}`).toEqual([])
   })
 })

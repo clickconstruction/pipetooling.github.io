@@ -5,10 +5,10 @@ minutes: 6
 from: Unit 19
 ---
 ## Why it matters
-Trench collapses kill about **40** workers a year. Most happen in trenches only **5 to 15 feet** deep. The right protection depends on reading the soil right.
+Trench collapses kill about **40** workers a year. Most happen in trenches only **5 to 15 feet** deep. The right protection depends on reading the soil right. Egress means the way out of a trench.
 
 ## Must know
-- A trench is deeper than it is wide, and no more than **15 feet** wide at the bottom.
+- An excavation is any cut dug into the ground, and a trench is one kind. A trench is deeper than it is wide, and no more than **15 feet** wide at the bottom.
 - The competent person classifies the soil and inspects the trench **daily**, before anyone enters.
 - They inspect again after rain, vibration or any other event. They can stop the work.
 - Under **5 feet**, a protective system is needed only if the competent person sees cave-in potential.

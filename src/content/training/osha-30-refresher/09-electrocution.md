@@ -12,10 +12,10 @@ Electricity is a leading cause of construction deaths. Almost every electrical i
 - Electrocution is a shock that kills. BE SAFE: Burns, Electrocution, Shock, Arc flash, Fires, Explosions. Burns are the most common injury.
 - Severity depends on the current, its path and how long it lasts. Across the chest is worst. See a doctor after any shock.
 - **1 mA** is a tingle. **5 mA** is a slight shock. About **30 mA** locks your muscles so you cannot let go. **50 to 150 mA** stops breathing. **200 mA** can stop the heart.
+- A GFCI, the ground fault circuit interrupter, trips at **5 mA** in **1/40 s**. It protects only what is plugged in downstream of it.
 - {{figure:current-scale|The GFCI trips at the first tick. The breaker sits so far up that everything that hurts you happens below it.}}
 - A breaker trips at **15,000 mA**. It protects the wiring, not you.
 - The ground prong carries fault current to earth. A double-insulated tool shows a square within a square.
-- A GFCI, the ground fault circuit interrupter, trips at **5 mA** in **1/40 s**. It protects only what is plugged in downstream of it.
 - GFCIs are required on every temporary **120 V, 15 A and 20 A** receptacle. Test them **monthly**.
 - Inspect tools before each use. Never carry or unplug a tool by the cord. No wet areas, homemade cords, two-prong adapters or cut-off ground prongs.
 - Arc flash is current jumping a gap through the air. Live work only when de-energizing is infeasible or more dangerous, with a permit, arc-rated PPE and insulated tools.

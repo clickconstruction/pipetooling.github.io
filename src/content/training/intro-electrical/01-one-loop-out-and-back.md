@@ -15,6 +15,7 @@ Every wire in a house is half of a loop. Current, which is electricity on the mo
 - Break the loop anywhere and the current stops. A switch does it by hand, and a breaker trips, which means it opens on its own.
 - A third wire, the ground, is bare or green. It carries current only in a fault, when current goes somewhere it should not.
 - {{figure:one-loop|Current leaves the panel on the hot wire, does its work, and comes back on the neutral. The ground waits for a fault.}}
+- A wire is live when it is ready to push current the moment a path appears. It can be live with no current in it.
 - Current takes every path it can find. A person touching a hot wire and the floor is a path too.
 - The loop is why one wire alone does nothing. Current needs a way out and a way back.
 

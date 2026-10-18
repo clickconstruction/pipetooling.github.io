@@ -2,7 +2,7 @@
 name: "Training: courses the crew takes at their own pace, with a clock on each"
 number: 111
 group: close
-status: BUILT and LIVE 2026-10-16 — the six PRs (#5758, #5757, #5761, #5762, #5763, #5764), the types regen #5759 and the test fix #5768 merged; migration 20261015060000 on prod (drift 925/925), dev-mcp redeployed; walked live as the dev on prod data (the course page previews while off, lesson 19 recorded a pass, the Settings tab flips the policy, the Dashboard card read red with Continue and the People rail read the need while the course was on for devs, then the policy was put back: off, required for the five field roles); left: the owner or a dev presses On in Settings → Training, then the crew walk
+status: BUILT and LIVE 2026-10-16; the fourteen-year-old's read over the OSHA refresher, every OSHA word met first where it is explained by adding words only, is v2.5624 (2026-10-18) — the six PRs (#5758, #5757, #5761, #5762, #5763, #5764), the types regen #5759 and the test fix #5768 merged; migration 20261015060000 on prod (drift 925/925), dev-mcp redeployed; walked live as the dev on prod data (the course page previews while off, lesson 19 recorded a pass, the Settings tab flips the policy, the Dashboard card read red with Continue and the People rail read the need while the course was on for devs, then the policy was put back: off, required for the five field roles); left: the owner or a dev presses On in Settings → Training, then the crew walk
 summary: >
   A Training section at the bottom of the Dashboard, under My Time, where each person sees the
   courses their role must take, in one of three states: not done (red), done but lapsed or
@@ -225,6 +225,16 @@ list), never invented. The mock-up draws lesson 19 whole, in plain words, as the
 6. **Settings → Training** (dev): the course list, the policy editor, the counts with *See who*,
    **Preview the course**, **Everyone takes it again…** (a confirm that names the count it
    voids). `PROJECT_DOCUMENTATION.md` Settings section, `GLOSSARY.md` *Training · course · pass*.
+
+7. **The fourteen-year-old's read** (v2.5624, after Intro to plumbing's v2.5621). OSHA's own
+   words go on the trade-word rule's list for this course alone (`COURSE_TRADE_TERMS` in
+   `src/lib/training/tradeTerms.ts`, seventy-seven words), and the seventeen met first in a quiz,
+   a Traps line, a Numbers label or a caption each get one defining clause where the lesson
+   teaches, or the sentence that teaches them moves above the first use (the GFCI in lesson 9).
+   Nothing is removed: no fact, number, question, option or figure line changes, and every
+   `from:` line stands. `src/lib/training/questionTaught.ts` holds every Check yourself and
+   final-bank question to words a teaching sentence carries. The load the owner may want to
+   look at is listed in `docs/recent-features/v2.5624.md`, not changed.
 
 Later, each its own card: a Spanish copy of a course (`PORTAL_SPANISH_ON` is the one Spanish
 switch); a *training due* line in the weekly digest; a CSV of passes for an insurer or a GC's

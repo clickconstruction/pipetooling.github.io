@@ -16,7 +16,7 @@ PPE is the last line of defense. It reduces the effect of a hazard and never rem
 - Replace the shell after **2 years** of heavy use, or **5 years** after the date on the date wheel. Replace the suspension every **12 months**, every **6** with heavy use.
 - Rubber or plastic gloves stop chemicals and electricity, fabric does not. Leather handles cuts and moderate heat and is flame-resistant. Metal mesh stops cuts and punctures only.
 - Chemical ratings on gloves run **VG, G, F, P**, from very good to poor. Discard any damaged glove.
-- Safety glasses stop front-facing particles. Goggles seal against splashes and vapors. A face shield goes over glasses or goggles, never alone.
+- Safety glasses stop front-facing particles. Goggles seal against splashes and vapors. A face shield goes over glasses or goggles, never alone. Cutting rebar, the steel bar inside concrete, throws such particles.
 - Prescription glasses are not safety glasses. Welding lenses are rated by shade number, **2 to 14**, against radiant light.
 - {{figure:ppe-labels|A glove's chemical rating runs very good to poor. A welding shade runs 2 to 14, light to dark.}}
 - Wear protective footwear wherever foot hazards exist, including slippery surfaces. Metatarsal guards protect the top of the foot.
