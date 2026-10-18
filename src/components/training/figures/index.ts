@@ -73,6 +73,10 @@ import { FreezeStrip } from './FreezeStrip'
 import { WaterHammerStrip } from './WaterHammerStrip'
 import { CrossConnectionStrip } from './CrossConnectionStrip'
 
+import { ThreeVisits } from './ThreeVisits'
+import { InspectorTests } from './InspectorTests'
+import { FirstTimerMistakes } from './FirstTimerMistakes'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -137,4 +141,7 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'freeze-strip': FreezeStrip,
   'water-hammer-strip': WaterHammerStrip,
   'cross-connection-strip': CrossConnectionStrip,
+  'three-visits': ThreeVisits,
+  'inspector-tests': InspectorTests,
+  'first-timer-mistakes': FirstTimerMistakes,
 }
