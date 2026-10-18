@@ -44,7 +44,7 @@ const JOB: JobCustomerSheetJob = {
   id: 'j-helotes',
   job_name: 'Helotes re-pipe',
   hcp_number: '2148',
-  click_number: null,
+  click_number: '',
   status: 'working',
   created_at: '2026-10-01T12:00:00.000Z',
   customer_id: 'cust-dana',

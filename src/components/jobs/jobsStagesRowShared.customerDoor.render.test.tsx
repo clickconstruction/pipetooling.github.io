@@ -17,7 +17,7 @@ vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
 })
-const contactForCustomer = vi.fn(() => Promise.resolve('c-dana'))
+const contactForCustomer = vi.fn((_id: string) => Promise.resolve('c-dana'))
 vi.mock('../../lib/messages/messagesIo', async () => {
   const real = await vi.importActual<typeof import('../../lib/messages/messagesIo')>('../../lib/messages/messagesIo')
   return { ...real, contactForCustomer: (id: string) => contactForCustomer(id) }
