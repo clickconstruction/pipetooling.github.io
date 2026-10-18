@@ -1478,7 +1478,7 @@ uuid3           | Supply House C    | 0
 The jobs pipeline postdates the schema sections above; its column semantics are summarized here (their one schema home). Behavior lives in [JOBS_TABS_ARCHITECTURE.md](./JOBS_TABS_ARCHITECTURE.md), [BILLING_FLOWS.md](./BILLING_FLOWS.md), and [GLOSSARY.md](./GLOSSARY.md).
 
 #### `public.jobs_ledger`
-- One row per job; `status` runs waiting → working → ready_to_bill → billed → paid via the `update_job_status` RPC.
+- One row per job; `status` runs waiting → working → ready_to_bill → billed → paid via the `update_job_status` RPC. A forward move by the office on the Pipeline to Working, Ready to Bill or Billed opens **Tell the customer** over the board while the homeowner flow's step is set to Asks in Settings → Flows (v2.5627, punch list #123; `tellCustomer/moveOffer.ts`, `JobsStagesTab`'s `askAfterMove` on the move hook's `followMovedJob` notice; a move back asks nothing).
 - Every status change is audited in `job_status_events` (single-writer trigger since v2.1435).
 - `revenue` is the canonical job total; `payments_made` is a trigger-maintained cache of payment rows. A lien claim is not `revenue − payments_made`: since v2.4969 every lien reader takes `lien_billed_open()`, what the sent bills still owe, under the payment rule since v2.5093 ([`20261010024000_lien_claim_follows_the_rule.md`](./migrations/20261010024000_lien_claim_follows_the_rule.md)) ([`20261009150000_lien_claim_is_billed.md`](./migrations/20261009150000_lien_claim_is_billed.md)).
 - `hcp_number` and `click_number` combine into the effective job number (HCP wins when both are set).

@@ -18,10 +18,22 @@ import { lineWords } from '../quickReplies/spanish'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /** The moments that open the sheet. */
-export type TellMoment = 'booked' | 'rescheduled' | 'estimate'
+export type TellMoment = 'booked' | 'rescheduled' | 'estimate' | 'working' | 'done' | 'billed'
+
+/**
+ * The board's moves the sheet asks about (v2.5627, punch list #123): a job moved forward to Working, Ready to Bill or
+ * Billed on the Pipeline, the residential steps Working, Done and Billed. Paid stays out: its step already carries the
+ * pay-by reminder, and the payment has its own email.
+ */
+export type MoveMoment = 'working' | 'done' | 'billed'
+export const MOVE_MOMENTS: readonly MoveMoment[] = ['working', 'done', 'billed']
+export const isMoveMoment = (moment: TellMoment): moment is MoveMoment => (MOVE_MOMENTS as readonly string[]).includes(moment)
+
+/** Each moment's step name, for the sheet's hints. */
+export const MOMENT_NAMES: Readonly<Record<TellMoment, string>> = { booked: 'Booked', rescheduled: 'Booked', estimate: 'Estimate', working: 'Working', done: 'Done', billed: 'Billed' }
 
 /** The flow step each moment's line lives on, for the office's quick replies. A moved visit reads the Booked step too. */
-export const MOMENT_STEP: Readonly<Record<TellMoment, string>> = { booked: 'booked', rescheduled: 'booked', estimate: 'estimate' }
+export const MOMENT_STEP: Readonly<Record<TellMoment, string>> = { booked: 'booked', rescheduled: 'booked', estimate: 'estimate', working: 'working', done: 'done', billed: 'billed' }
 
 /** The app's own words for a moment, used until the office writes a line on the step. */
 export const DEFAULT_LINES: Readonly<Record<TellMoment, { text: string; textEs: string }>> = {
@@ -37,6 +49,18 @@ export const DEFAULT_LINES: Readonly<Record<TellMoment, { text: string; textEs: 
     text: '{first}, this is {me} with Click Plumbing. Your estimate for {job} is ready, {amount}. Open it to approve the option you want: {link}',
     textEs: '{first}, le habla {me} de Click Plumbing. Su presupuesto de {job} está listo, {amount}. Ábralo para aprobar la opción que prefiera: {link}',
   },
+  working: {
+    text: '{first}, this is {me} with Click Plumbing. We started the work on {job} today. Text me here with any question.',
+    textEs: '{first}, le habla {me} de Click Plumbing. Hoy empezamos el trabajo de {job}. Escríbame aquí si tiene alguna pregunta.',
+  },
+  done: {
+    text: '{first}, this is {me} with Click Plumbing. The work on {job} is done. Your bill follows by email. Text me here with any question.',
+    textEs: '{first}, le habla {me} de Click Plumbing. El trabajo de {job} está terminado. Su factura llega por correo electrónico. Escríbame aquí si tiene alguna pregunta.',
+  },
+  billed: {
+    text: '{first}, this is {me} with Click Plumbing. Your bill for {job} went to your email today. Text me here with any question.',
+    textEs: '{first}, le habla {me} de Click Plumbing. Hoy le enviamos la factura de {job} a su correo electrónico. Escríbame aquí si tiene alguna pregunta.',
+  },
 }
 
 /** What to say on the call the receipt offers, until the office writes a script on the step (Settings → Flows, v2.5596). */
@@ -47,6 +71,18 @@ export const DEFAULT_SCRIPTS: Readonly<Record<TellMoment, { text: string; textEs
     textEs: 'Hola {first}, le habla {me} de Click Plumbing. Cambiamos su visita al {day}, {window}, y quería confirmar que le funciona.',
   },
   estimate: SEED_CALL_SCRIPTS.estimate,
+  working: {
+    text: 'Hi {first}, this is {me} with Click Plumbing. We started on {job} today, and I wanted to see if you have any questions.',
+    textEs: 'Hola {first}, le habla {me} de Click Plumbing. Hoy empezamos con {job}, y quería saber si tiene alguna pregunta.',
+  },
+  done: {
+    text: 'Hi {first}, this is {me} with Click Plumbing. The work on {job} is done. I wanted to make sure everything looks right to you.',
+    textEs: 'Hola {first}, le habla {me} de Click Plumbing. El trabajo de {job} está terminado. Quería asegurarme de que todo quedó bien.',
+  },
+  billed: {
+    text: 'Hi {first}, this is {me} with Click Plumbing. Your bill for {job} went out by email today. I wanted to make sure it reached you.',
+    textEs: 'Hola {first}, le habla {me} de Click Plumbing. Hoy le enviamos la factura de {job} por correo electrónico. Quería asegurarme de que le llegó.',
+  },
 }
 
 // ---------- the fills ----------
@@ -192,6 +228,9 @@ export function prefersNote(moment: TellMoment, first: string | null, prefers: T
   return null
 }
 
+/** What a board's move texts, in the act's row (v2.5627). */
+const MOVE_WHAT: Readonly<Partial<Record<TellMoment, string>>> = { working: 'that the work has started', done: 'that the work is done', billed: 'that the bill went to their email' }
+
 export function tellActs(moment: TellMoment, first: string | null, hold: TellHold | null, prefers: TellPrefers = null): TellActs {
   const who = first ?? 'the customer'
   const their = first ? `${first}’s` : 'Their'
@@ -205,7 +244,7 @@ export function tellActs(moment: TellMoment, first: string | null, hold: TellHol
     return { rows: [email, text, ...say, receipt], primary: `Send both to ${who}`, skip: 'Skip', emailOnly: 'Email only' }
   }
   if (hold) return { rows: [{ icon: '⚠', words: holdWords(hold, first), hold: true }], primary: 'Close', skip: 'Skip', emailOnly: null }
-  const what = moment === 'rescheduled' ? 'the new day and window' : 'the day and the window'
+  const what = MOVE_WHAT[moment] ?? (moment === 'rescheduled' ? 'the new day and window' : 'the day and the window')
   return {
     rows: [{ icon: '💬', words: `Texts ${who} ${what} from the company number. ${their} answer comes to the office.`, hold: false }, ...say, receipt],
     primary: `Send text to ${who}`,
@@ -265,10 +304,11 @@ export const TELL_WORDS = {
   editHint: (office: boolean, moment: TellMoment) => {
     if (moment === 'estimate') return office ? 'The office’s Estimate line, filled for this estimate. Change any word.' : 'The app’s own words, since the office has no Estimate line yet. Change any word.'
     if (moment === 'rescheduled') return 'The app’s own words for a moved visit. Change any word.'
+    if (isMoveMoment(moment)) return office ? `The office’s ${MOMENT_NAMES[moment]} line, filled for this job. Change any word.` : `The app’s own words, since the office has no ${MOMENT_NAMES[moment]} line yet. Change any word.`
     return office ? 'The office’s Booked line, filled from the block. Change any word.' : 'The app’s own words, since the office has no Booked line yet. Change any word.'
   },
   linkHint: 'The link fills in when it sends. Keep the word link in braces where you want it.',
-  noEmail: 'No email goes for a booking.',
+  noEmail: (moment: TellMoment) => (isMoveMoment(moment) ? 'No email goes with this text.' : 'No email goes for a booking.'),
   blanksLeft: (left: readonly string[]) => `Fill ${blankNames(left)} before it sends.`,
   reading: 'Reading the job…',
   sending: 'Sending…',

@@ -276,4 +276,28 @@ describe('SettingsFlowsTab', () => {
     expect(screen.getAllByText(PEOPLE_NOT_READ)).toHaveLength(2)
     expect(document.querySelector('[data-flow-going]')).toBeNull()
   })
+  it('shows The app and this move on the Residential customer flow’s Done, two ways, and Asks writes offer (v2.5627)', async () => {
+    auth.role = 'dev'
+    vi.mocked(loadFlowForEditing).mockImplementation(async (kind: string) => ({
+      flow: SEED_FLOWS[kind as keyof typeof SEED_FLOWS],
+      history: [],
+      removed: [],
+      basedOn: '2026-09-28T14:05:00.000Z',
+      drawnAt: '2026-09-01T13:00:00.000Z',
+      fromSeed: false,
+    }))
+    await open()
+    fireEvent.click(screen.getByRole('tab', { name: 'Residential customer' }))
+    await waitFor(() => expect(row('done')).toBeTruthy())
+    const group = within(row('done')).getByRole('radiogroup', { name: 'Done: The app and this move' })
+    expect(within(group).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Off', 'Asks'])
+    expect(within(row('done')).getByText('Nothing happens on the board when a job reaches this stage.')).toBeTruthy()
+    expect(within(row('done')).getByText(/The work on the water heater is done/)).toBeTruthy()
+    expect(within(row('paid')).getByRole('radiogroup', { name: 'Paid: The app and this reminder' })).toBeTruthy()
+    expect(within(row('booked')).queryByRole('radiogroup')).toBeNull()
+    fireEvent.click(within(group).getByRole('radio', { name: 'Asks' }))
+    await waitFor(() => expect(appSendsIo.set).toHaveBeenCalledWith('residential', 'done', 'offer'))
+    await waitFor(() => expect(within(group).getByRole('radio', { name: 'Asks' }).getAttribute('aria-checked')).toBe('true'))
+    expect(screen.getByText('When a job is moved to Done on the Pipeline, the office is asked before the text goes.')).toBeTruthy()
+  })
 })

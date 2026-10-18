@@ -157,6 +157,12 @@ import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienInstrumentsModal from './LienInstrumentsModal'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
+import { TellCustomerSheet } from '../customers/TellCustomerSheet'
+import { supabaseAppSendsIo } from '../../lib/flows/appSendsIo'
+import type { AppSends } from '../../lib/flows/nudgeDispatch'
+import { jobBoxOffered } from '../../lib/messages/jobBox'
+import { moveAsks, moveMoment } from '../../lib/tellCustomer/moveOffer'
+import type { MoveMoment } from '../../lib/tellCustomer/tellCustomer'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienDeskMoneyCard, lienDeskCount as lienDeskCountOf } from '../../lib/jobs/lienDeskMoneyCard'
@@ -1787,9 +1793,37 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // `?rtb=1` (v2.2276): strip it and scroll Ready to Bill into view once the board holds still.
   useStagesRtbFocus(deepLinks, searchParams, navigate, focusStagesSection)
 
+  // The board's ask (v2.5627, punch list #123 PR 2): a job moved forward by the office to a stage the customer feels
+  // opens Tell the customer with the step's text, while the residential step is set to Asks in Settings → Flows. The
+  // switch is read once, on the first move; the job's status before the move is the board's own, read through the tab's
+  // `jobsRef`, because the hook patches the list before it tells the tab.
+  const appSendsRef = useRef<AppSends | null>(null)
+  const appSendsIo = useMemo(() => supabaseAppSendsIo(), [])
+  const [moveTell, setMoveTell] = useState<{ moment: MoveMoment; jobId: string; jobLabel: string } | null>(null)
+  const askAfterMove = useCallback(
+    (jobId: string, toStatus: string) => {
+      if (!authUser || !jobBoxOffered(authRole)) return
+      const job = jobsRef.current.find((j) => j.id === jobId)
+      const moment = moveMoment(job?.status ?? null, toStatus)
+      if (!moment) return
+      const number = (effectiveJobLedgerNumber(job?.hcp_number ?? null, job?.click_number ?? null) ?? '').trim()
+      const jobLabel = [number, (job?.job_name ?? '').trim() || 'Job'].filter(Boolean).join(' · ')
+      void (async () => {
+        try {
+          const sends = appSendsRef.current ?? (appSendsRef.current = (await appSendsIo.load()).sends)
+          if (moveAsks(sends, moment)) setMoveTell({ moment, jobId, jobLabel })
+        } catch {
+          // The ask is a courtesy on top of the move: a switch that could not be read asks nothing.
+        }
+      })()
+    },
+    [authUser, authRole, appSendsIo],
+  )
+
   /** "Follow cards I move": open the destination section, then scroll to + flash the job row. */
   const followMovedJob = useCallback(
     (jobId: string, toStatus: string) => {
+      askAfterMove(jobId, toStatus)
       if (!stagesFollowMoves) return
       const section = stagesSectionKeyForJobStatus(toStatus)
       if (!section) return
@@ -1797,7 +1831,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setPendingStagesJobFocusId(jobId)
       setStagesJobFlashId(jobId)
     },
-    [stagesFollowMoves],
+    [stagesFollowMoves, askAfterMove],
   )
 
   const stagesFilteredJobs = stagesBoardLists.filtered
@@ -4598,6 +4632,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setOwnerRecordsJobId(null)
         }}
       />
+      {moveTell && authUser ? (
+        <TellCustomerSheet moment={moveTell.moment} jobId={moveTell.jobId} jobLabel={moveTell.jobLabel} userId={authUser.id} role={authRole} onClose={() => setMoveTell(null)} />
+      ) : null}
       <GcOnNoticeModal
         open={gcNotice != null}
         gcId={gcNotice?.gcId ?? null}

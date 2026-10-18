@@ -2,7 +2,7 @@
 title: set up the steps a person goes through
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: flows, flow, residential customer, sub, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings, call script, suggest a call
+keywords: flows, flow, residential customer, sub, the app and this move, asks, pipeline, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings, call script, suggest a call
 order: 100
 ---
 Each customer, trade partner, architect, residential customer and sub goes through a flow of steps. The office sets up those steps in Settings. Every change is tried on everyone before you save it.
@@ -68,6 +68,21 @@ The control saves the moment you press it. It does not wait for **Save**.
 {{chip:gray|Off}} {{chip:green|Offers}} {{chip:gray|Sends}}
 Each morning the app prepares the text for Today's sends on the Dashboard. The office presses it.
 “Chris, did the invite come through?”
+:::
+
+## Ask before a text when a job moves
+
+Three steps on the **Residential customer** flow follow the Pipeline. They are **Working**, **Done** and **Billed**. Each shows a control called **The app and this move**. It has two ways. Every step starts on **Off**. Only the owner or a dev changes it.
+
+- **Off**. Nothing happens on the board when a job reaches the stage.
+- **Asks**. When the office moves a job to the stage, Tell the customer opens with the text ready. The office reads it, changes a word if it wants, and presses Send or Skip.
+
+The words under the control are the text it would ask about. They come from the step's line, or from the app's own words until the office writes one. A move back asks nothing. A move by the crew asks nothing.
+
+:::example A move that asks
+{{chip:gray|Off}} {{chip:green|Asks}}
+Move a job to Ready to Bill and the sheet opens with the Done text.
+“Dana, this is Rosa with Click Plumbing. The work on the water heater is done. Your bill follows by email. Text me here with any question.”
 :::
 
 ## Write the call script

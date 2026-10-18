@@ -5,12 +5,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
-import { MY_WAY_DEFAULT, myWaysFrom, type MyWay, type MyWays } from './myWay'
-import type { TellMoment } from './tellCustomer'
+import { MY_WAY_DEFAULT, myWaysFrom, type MyWay, type MyWayMoment, type MyWays } from './myWay'
 
 export interface MyWayIo {
   load(userId: string): Promise<MyWays>
-  set(userId: string, moment: Exclude<TellMoment, 'rescheduled'>, way: MyWay): Promise<MyWays>
+  set(userId: string, moment: MyWayMoment, way: MyWay): Promise<MyWays>
 }
 
 export function supabaseMyWayIo(client: unknown = supabase): MyWayIo {

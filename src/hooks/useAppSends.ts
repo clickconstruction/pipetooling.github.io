@@ -4,7 +4,7 @@
  * the flow's Save, since it is its own setting under its own policy.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { appSendSetWords, type AppSendMode } from '../lib/flows/appSends'
+import { appSendSetWords, isMoveStep, type AppSendMode } from '../lib/flows/appSends'
 import { supabaseAppSendsIo, type AppSendsIo, type AppSendsRead } from '../lib/flows/appSendsIo'
 import type { FlowKind } from '../lib/flows/facts'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -50,7 +50,7 @@ export function useAppSends(io?: AppSendsIo): AppSendsState {
       try {
         const sends = await client.set(kind, step.id, mode)
         if (live.current) setRead((r) => (r ? { ...r, sends } : r))
-        return { ok: true, words: appSendSetWords(step.name, mode) }
+        return { ok: true, words: appSendSetWords(step.name, mode, isMoveStep(kind, step.id)) }
       } catch (e) {
         return { ok: false, words: formatErrorMessage(e) }
       } finally {

@@ -13,6 +13,10 @@ import { appSendMode, nudgeLine, type AppSendMode, type AppSends, type NudgeNotS
 import type { PersonFlow } from './nudges'
 import { appSendsFrom } from './nudgeRunInputs'
 import { flat, type FlowDef, type FlowStep } from './state'
+import { fillLine } from '../quickReplies/blanks'
+import { stepLine } from '../quickReplies/kernel'
+import { DEFAULT_LINES, MOVE_MOMENTS, type MoveMoment } from '../tellCustomer/tellCustomer'
+import { flowContactKind } from './facts'
 
 export { appSendMode, appSendsFrom }
 export type { AppSendMode }
@@ -29,6 +33,30 @@ export const APP_SEND_MODE_HINT: Readonly<Record<AppSendMode, string>> = {
   offer: 'Each morning the app prepares the text for Today’s sends on the Dashboard. The office presses it.',
   send: 'The app texts it at 9 AM from the company number.',
 }
+/**
+ * The board's moves (v2.5627, punch list #123): the residential steps Working, Done and Billed carry a second kind of
+ * switch, two ways, Off and Asks. On Asks, moving a job forward to that stage on the Pipeline opens Tell the customer
+ * with the step's text for the office to press. Stored as the reminder switch is ('offer'); a 'send' reads as Asks too.
+ */
+export const APP_SENDS_MOVE_LABEL = 'The app and this move'
+export const MOVE_SEND_MODES: readonly AppSendMode[] = ['off', 'offer']
+export const MOVE_MODE_WORDS: Readonly<Record<AppSendMode, string>> = { off: 'Off', offer: 'Asks', send: 'Asks' }
+export const MOVE_MODE_HINT: Readonly<Record<AppSendMode, string>> = {
+  off: 'Nothing happens on the board when a job reaches this stage.',
+  offer: 'When the office moves a job here on the Pipeline, Tell the customer opens with the text to press.',
+  send: 'When the office moves a job here on the Pipeline, Tell the customer opens with the text to press.',
+}
+/** Whether a step is one of the board's moves: the residential flow's Working, Done and Billed. */
+export function isMoveStep(kind: FlowKind, stepId: string): stepId is MoveMoment {
+  return kind === 'residential' && (MOVE_MOMENTS as readonly string[]).includes(stepId)
+}
+/** The text a move would ask about, to the sample homeowner: the team's line on the step, else the app's own words. */
+export function moveSampleWords(step: FlowStep, quickReplies: readonly QuickReply[] = []): string {
+  const line = stepLine(quickReplies, flowContactKind('residential'), step.id, '')
+  const words = line?.text ?? (isMoveStep('residential', step.id) ? DEFAULT_LINES[step.id].text : '')
+  return fillLine(words, { first: SAMPLE_FIRST.residential, me: 'Rosa', job: 'the water heater' }).text
+}
+
 /** On a step whose reminder the app sends, but only in the unsaved draft. */
 export const APP_SENDS_SAVE_FIRST = 'Save the flow first.'
 /** On a step whose reminder the app sends as a call or an email. */
@@ -43,7 +71,8 @@ export const LAST_RUN_NONE = 'The app has not run its morning reminders yet.'
 export const READ_THE_RUN = 'Read the run'
 
 /** What a press on the control did, for its toast. */
-export function appSendSetWords(stepName: string, mode: AppSendMode): string {
+export function appSendSetWords(stepName: string, mode: AppSendMode, move = false): string {
+  if (move) return mode === 'off' ? `The board no longer asks when a job is moved to ${stepName}.` : `When a job is moved to ${stepName} on the Pipeline, the office is asked before the text goes.`
   if (mode === 'send') return `The app sends the ${stepName} reminder from its next morning run at 9 AM.`
   if (mode === 'offer') return `The app prepares the ${stepName} reminder each morning for Today’s sends on the Dashboard.`
   return `The app no longer sends the ${stepName} reminder.`
@@ -98,18 +127,21 @@ export interface AppSendSwitch {
   live: boolean
   /** Why it cannot be pressed, in words; null when it can. */
   note: string | null
+  /** One of the board's moves (v2.5627): two ways, Off and Asks, and no morning run behind it. */
+  move: boolean
 }
 
 /**
  * The switch on a step in the draft: shown where the app sends the reminder. Anyone but the owner and a dev reads it
  * only. A call or an email is not the app's to send. A step the saved flow does not send that way waits for Save.
  */
-export function appSendSwitch(step: FlowStep, opts: { canSet: boolean; saved: FlowDef | null | undefined }): AppSendSwitch {
-  if (step.nudge?.send !== 'app') return { show: false, live: false, note: null }
-  if (!opts.canSet) return { show: true, live: false, note: APP_SENDS_OWNER_ONLY }
-  if (step.nudge.how !== 'text') return { show: true, live: false, note: APP_SENDS_TEXTS_ONLY }
-  if (!runSendsStep(opts.saved, step.id)) return { show: true, live: false, note: APP_SENDS_SAVE_FIRST }
-  return { show: true, live: true, note: null }
+export function appSendSwitch(step: FlowStep, opts: { canSet: boolean; saved: FlowDef | null | undefined }, kind: FlowKind = 'customer'): AppSendSwitch {
+  if (isMoveStep(kind, step.id) && step.nudge?.send !== 'app') return { show: true, live: opts.canSet, note: opts.canSet ? null : APP_SENDS_OWNER_ONLY, move: true }
+  if (step.nudge?.send !== 'app') return { show: false, live: false, note: null, move: false }
+  if (!opts.canSet) return { show: true, live: false, note: APP_SENDS_OWNER_ONLY, move: false }
+  if (step.nudge.how !== 'text') return { show: true, live: false, note: APP_SENDS_TEXTS_ONLY, move: false }
+  if (!runSendsStep(opts.saved, step.id)) return { show: true, live: false, note: APP_SENDS_SAVE_FIRST, move: false }
+  return { show: true, live: true, note: null, move: false }
 }
 
 /** The first name a step's reminder is shown with, by kind: the prototype's samples. */

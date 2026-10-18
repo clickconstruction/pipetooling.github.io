@@ -29,7 +29,7 @@ import {
   type EditResult,
   type FlowDraft,
 } from '../../../lib/flows/editor'
-import { APP_SEND_MODE_HINT, APP_SEND_MODE_WORDS, APP_SEND_MODES, APP_SENDS_LABEL, appSendMode, appSendSwitch, stepNudgeWords, type AppSendMode } from '../../../lib/flows/appSends'
+import { APP_SEND_MODE_HINT, APP_SEND_MODE_WORDS, APP_SEND_MODES, APP_SENDS_LABEL, APP_SENDS_MOVE_LABEL, MOVE_MODE_HINT, MOVE_MODE_WORDS, MOVE_SEND_MODES, appSendMode, appSendSwitch, moveSampleWords, stepNudgeWords, type AppSendMode } from '../../../lib/flows/appSends'
 import { FLOW_PAPERS, isDocPaperId, isPaperId, stepFactById, type FlowKind } from '../../../lib/flows/facts'
 import type { SavedPaper } from '../../../lib/flows/newPaper'
 import type { AppSends } from '../../../lib/flows/nudgeDispatch'
@@ -181,32 +181,38 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
   const appSend = (step: FlowStep) => {
     const a = p.appSends
     if (!a) return null
-    const sw = appSendSwitch(step, { canSet: a.canSet, saved: a.saved })
+    const sw = appSendSwitch(step, { canSet: a.canSet, saved: a.saved }, p.kind)
     if (!sw.show) return null
     const mode = appSendMode(a.sends, p.kind, step.id)
     const busy = a.busy === `${p.kind}:${step.id}`
+    // One of the board's moves (v2.5627): two ways, Off and Asks, and the text the move would ask about.
+    const label = sw.move ? APP_SENDS_MOVE_LABEL : APP_SENDS_LABEL
+    const modes = sw.move ? MOVE_SEND_MODES : APP_SEND_MODES
+    const modeWords = sw.move ? MOVE_MODE_WORDS : APP_SEND_MODE_WORDS
+    const hint = sw.move ? MOVE_MODE_HINT[mode] : APP_SEND_MODE_HINT[mode]
+    const sample = sw.move ? moveSampleWords(step, a.quickReplies) : stepNudgeWords(p.kind, step, a.quickReplies)
     return (
       <div data-app-sends={step.id} style={{ whiteSpace: 'normal', maxWidth: 280, marginTop: '0.35rem', display: 'grid', gap: '0.2rem' }}>
-        <span style={{ fontSize: '0.8rem' }}>{APP_SENDS_LABEL}</span>
-        <span role="radiogroup" aria-label={`${step.name}: ${APP_SENDS_LABEL}`} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
-          {APP_SEND_MODES.map((m) => (
+        <span style={{ fontSize: '0.8rem' }}>{label}</span>
+        <span role="radiogroup" aria-label={`${step.name}: ${label}`} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+          {modes.map((m) => (
             <button
               key={m}
               type="button"
               role="radio"
-              aria-checked={mode === m}
+              aria-checked={sw.move && m === 'offer' ? mode !== 'off' : mode === m}
               disabled={!sw.live || busy}
               onClick={() => mode !== m && a.onSet(step, m)}
-              style={flowSwitch(mode === m, !sw.live || busy)}
+              style={flowSwitch(sw.move && m === 'offer' ? mode !== 'off' : mode === m, !sw.live || busy)}
             >
-              {APP_SEND_MODE_WORDS[m]}
+              {modeWords[m]}
             </button>
           ))}
           {busy && <span style={{ ...flowNote, fontSize: '0.78rem' }}>Saving…</span>}
         </span>
-        <span style={{ ...flowNote, fontSize: '0.78rem' }}>{APP_SEND_MODE_HINT[mode]}</span>
+        <span style={{ ...flowNote, fontSize: '0.78rem' }}>{hint}</span>
         {sw.note && <span style={{ ...flowNote, fontSize: '0.78rem' }}>{sw.note}</span>}
-        <span style={{ ...flowNote, fontSize: '0.78rem' }}>“{stepNudgeWords(p.kind, step, a.quickReplies)}”</span>
+        <span style={{ ...flowNote, fontSize: '0.78rem' }}>“{sample}”</span>
       </div>
     )
   }
@@ -340,6 +346,8 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
               {appSend(step)}
             </>
           )}
+          {/* One of the board's moves (v2.5627) has no nudge of its own: its switch draws here. `appSend` is null for any other step. */}
+          {!step.nudge ? appSend(step) : null}
           {callScript(step)}
         </td>
         <td style={cell}>
