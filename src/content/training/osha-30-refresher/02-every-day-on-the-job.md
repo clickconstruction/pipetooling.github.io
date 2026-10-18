@@ -5,7 +5,7 @@ minutes: 6
 from: Unit 0
 ---
 ## Why it matters
-Every job has the same shape. Plan it, inspect the gear, lock it out, wear the PPE, report what goes wrong. Nearly every death in the course came from rushing, a shortcut or a skipped step.
+Every job has the same shape. Plan it, inspect the gear, lock it out, wear the PPE, report what goes wrong. Nearly every death in the course came from rushing, a shortcut or a skipped step. Around a machine, stay out of its swing radius, the circle its parts sweep through.
 
 ## Must know
 - Do a JHA, the job hazard analysis, before any task. List the steps, the hazards in each and the controls.

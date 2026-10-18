@@ -5,7 +5,7 @@ minutes: 6
 from: Unit 12
 ---
 ## Why it matters
-Bad air in a sewer, crawl space or trench kills fast. The wrong respirator is no protection at all. An N95 does nothing against a gas or low oxygen.
+Bad air in a sewer, crawl space or trench kills fast. The wrong respirator is no protection at all. An N95, the common dust mask, does nothing against a gas or low oxygen.
 
 ## Must know
 - There are four airborne hazards. Particulates like dust, fibers and fumes, gases and vapors, biological agents, and oxygen deficiency.

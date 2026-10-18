@@ -12,7 +12,7 @@ This is the field toolkit. Spot the hazard, weigh the risk, pick the control, an
 - The tools: root cause analysis, worker input, inspections, SDSs, the chemical safety sheets, and observation.
 - A hazard is the source of harm. Risk is how likely the harm is, weighed against how severe.
 - A SIF, a serious injury or fatality, is a death, a life-threatening injury or a life-altering one. Minor cuts, uninjured slips, delays and outages are not SIFs.
-- High-risk work: heights, electricity, struck-by, trenching, confined spaces and cranes.
+- High-risk work: heights, electricity, struck-by, trenching, confined spaces and cranes. Caught-in or between means crushed or pinned between two things.
 - Mitigation gives each control an owner with authority and fixes the highest risk first. Workers fix housekeeping within their own span of control.
 - Then validate. The controls exist, the training is current and the PPE is actually worn.
 - A JHA lists each step, its hazards and its controls, with the workers. A serious hazard found during the JHA means stop work and install temporary controls.

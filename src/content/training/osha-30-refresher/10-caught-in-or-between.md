@@ -19,7 +19,7 @@ A small move of a machine or a trench wall crushes a person in an instant. These
 - ROPS, the roll cage over the operator, is required on all heavy machinery on any ground.
 - If it tips, stay inside, belted. Grip the wheel and lean away from the tip. Seat belts are enforced under the General Duty Clause.
 - {{figure:tip-over|Belted in, hands on the wheel, leaning away from the fall. The cage does the rest. Never jump.}}
-- A cubic yard of soil weighs **2,000 to 3,000 lb**, as much as a car. Protection goes in before anyone enters.
+- A cubic yard of soil weighs **2,000 to 3,000 lb**, as much as a car. A cave-in is a trench wall falling in on you. Protection goes in before anyone enters.
 - {{figure:soil-cube-car|A yard of soil weighs as much as a car. A cave-in buries you under several.}}
 - Warning signs of a cave-in: bubbling or cracking walls, cracks parallel to the trench, sagging or bulging, dry cracked soil.
 - {{figure:cave-in-signs|Six ways a wall says it is about to go. On any one, everybody out.}}

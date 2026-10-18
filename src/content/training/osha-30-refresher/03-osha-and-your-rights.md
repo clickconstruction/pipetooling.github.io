@@ -12,7 +12,7 @@ OSHA is the legal backbone of everything else in the course. Who it covers, what
 - Not covered: the self-employed, family on a family farm, and workers under mining, aviation, nuclear or military rules. Federal agencies are monitored but not fined.
 - Construction standards are **29 CFR 1926**. Rule **1926.501** requires guardrails, nets or fall arrest at unprotected edges **6 ft** or higher.
 - The General Duty Clause applies when no standard exists. The hazard is recognized, could cause serious harm, can be corrected, and the employer left it.
-- **Six** hazard categories: safety, chemical, biological, physical, ergonomic and work organization. Safety hazards, unsafe conditions and unsafe acts, are the most common.
+- **Six** hazard categories: safety, chemical, biological, physical, ergonomic and work organization. Safety hazards, unsafe conditions and unsafe acts, are the most common. Asbestos, the fiber in old building materials, counts as chemical.
 - An inspection follows a severe injury, imminent danger, a complaint, or random targeting of high-hazard work.
 - The steps: opening conference, a walkaround with a worker representative, private interviews, document review, closing conference.
 - A citation is issued within **6 months**. It is posted at the work area for **3 working days** or until corrected, whichever is longer.
