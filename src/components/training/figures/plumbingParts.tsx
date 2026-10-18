@@ -117,6 +117,35 @@ export function Valve({ x, y, kind, open = true, bore = SUPPLY, tint = 'cold' }:
   )
 }
 
+/**
+ * A P-trap: the tailpiece down from x,y, the bend, the outlet leg up and the trap arm to `armTo`. The seal is the
+ * hatch (`Hatch` with the same id) over the water: `full` to the weir, `low` only in the bottom of the bend, `none`.
+ */
+export function Trap({ x, y, drop = 20, r = 9, armTo, bore = DRAIN, id, seal = 'full', tint = 'waste' }: { x: number; y: number; drop?: number; r?: number; armTo: number; bore?: number; id: string; seal?: 'full' | 'low' | 'none'; tint?: Tint }) {
+  const y1 = y + drop
+  const up = r
+  const d = `M${x} ${y} V${y1} a${r} ${r} 0 0 0 ${2 * r} 0 V${y1 - up} H${armTo}`
+  const full = `M${x} ${y1 - up} V${y1} a${r} ${r} 0 0 0 ${2 * r} 0 V${y1 - up}`
+  const low = `M${x} ${y1} a${r} ${r} 0 0 0 ${2 * r} 0`
+  return (
+    <>
+      <Pipe d={d} bore={bore} tint={tint} />
+      {seal === 'full' && <Seal d={full} bore={bore} id={id} />}
+      {seal === 'low' && <Seal d={low} bore={bore} id={id} />}
+    </>
+  )
+}
+
+/** A toilet seen from the side: the tank and the bowl, the outlet under it at x. */
+export function Toilet({ x, y }: { x: number; y: number }) {
+  return (
+    <g stroke="currentColor" strokeWidth="1.5" fill="var(--surface)" strokeLinejoin="round">
+      <rect x={x - 6} y={y - 30} width="14" height="18" rx="2" />
+      <path d={`M${x - 4} ${y - 12} h22 q6 0 6 6 v4 q0 8 -10 8 h-10 q-8 0 -8 -8 z`} />
+    </g>
+  )
+}
+
 /** A stick figure, feet at x,y. */
 export function Person({ x, y, h = 44, arm }: { x: number; y: number; h?: number; arm?: 'up' | 'out' | 'down' }) {
   const head = h * 0.16
