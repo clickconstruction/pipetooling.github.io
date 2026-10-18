@@ -98,6 +98,14 @@ import { UnderTheSink } from './UnderTheSink'
 import { PumpsStartAlone } from './PumpsStartAlone'
 import { LowVoltageWorld } from './LowVoltageWorld'
 
+import { TrippedBreakerStrip } from './TrippedBreakerStrip'
+import { GfciTripStrip } from './GfciTripStrip'
+import { WaterOnPanelStrip } from './WaterOnPanelStrip'
+import { WetFloorStrip } from './WetFloorStrip'
+import { CutPipeStrip } from './CutPipeStrip'
+import { WaterHeaterNoPowerStrip } from './WaterHeaterNoPowerStrip'
+import { BackfeedStrip } from './BackfeedStrip'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -183,4 +191,11 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'under-the-sink': UnderTheSink,
   'pumps-start-alone': PumpsStartAlone,
   'low-voltage-world': LowVoltageWorld,
+  'tripped-breaker-strip': TrippedBreakerStrip,
+  'gfci-trip-strip': GfciTripStrip,
+  'water-on-panel-strip': WaterOnPanelStrip,
+  'wet-floor-strip': WetFloorStrip,
+  'cut-pipe-strip': CutPipeStrip,
+  'water-heater-no-power-strip': WaterHeaterNoPowerStrip,
+  'backfeed-strip': BackfeedStrip,
 }

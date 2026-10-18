@@ -16,6 +16,7 @@ export type FigureItem = { figure: FigureName; caption: string }
 export const FIGURE_NAMES = [
   'afci-listens',
   'arc-flash-categories',
+  'backfeed-strip',
   'ball-gate-check',
   'blocked-vent-strip',
   'bonding-jumper',
@@ -28,6 +29,7 @@ export const FIGURE_NAMES = [
   'copper-sweat-joint',
   'cross-connection-strip',
   'current-scale',
+  'cut-pipe-strip',
   'dig-flags',
   'dry-trap-strip',
   'dwv-materials',
@@ -40,6 +42,7 @@ export const FIGURE_NAMES = [
   'forklift-load-center',
   'freeze-strip',
   'gfci-compare',
+  'gfci-trip-strip',
   'ground-path',
   'guardrail',
   'hand-signals',
@@ -89,6 +92,7 @@ export const FIGURE_NAMES = [
   'three-visits',
   'tip-over',
   'trench-section',
+  'tripped-breaker-strip',
   'trunk-vs-manifold',
   'two-systems',
   'under-the-sink',
@@ -97,6 +101,9 @@ export const FIGURE_NAMES = [
   'water-hammer-strip',
   'water-heater-circuit',
   'water-heater-cutaway',
+  'water-heater-no-power-strip',
+  'water-on-panel-strip',
+  'wet-floor-strip',
   'wire-and-breaker',
 ] as const
 export type FigureName = (typeof FIGURE_NAMES)[number]
