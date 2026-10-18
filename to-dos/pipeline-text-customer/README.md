@@ -1,8 +1,8 @@
 ---
 name: "Text the customer from the Pipeline row"
 number: 123
-group: gated
-status: DRAFTED 2026-10-18 — three mock-ups beside this file for the owner's pick (what the door opens) and a second pick for the phone card (the foot icon, the ⋯ sheet row, or both); nothing built
+group: close
+status: BUILDING 2026-10-18 — the owner read the three mock-ups, asked whether that was the best we could do, and picked the two better shapes (the customer's name as the door; the stage move offering the text); PR 1 (v2.5626) found the row already carried a speech bubble to the customer's thread (v2.5451) and made it the door, the customer's sheet over the board with Call · Text · Email · Open their thread · Their record and whose word came last, the name keeping its press to the record; left: PR 2, the stage move's Tell the customer offer with its Flows step
 summary: >
   One door on the Pipeline row and the phone card that texts or emails the job's customer. Today the
   office can do it only inside the job window, below the activity: open the job, scroll, press Text,
@@ -12,10 +12,11 @@ summary: >
   The three options differ in what the icon opens: the job window already scrolled to the box on
   Text; the box alone in a small window over the board; or the customer's whole thread filtered to
   the job. Every send lands in the customer's thread tied to the job, as the box does now.
-next: The owner picks 1, 2 or 3 and the phone placement, then PR 1 builds it; delete this folder when the door is on the row.
-size: S for option 1; M for option 2; M–L for option 3, which also mounts the messages host on the Jobs page
-blocker: The owner's pick.
-opinion: build 2 — one press to writing, nothing to scroll, nothing new to host; the box is the one that exists
+next: PR 2, the stage move offers the text through Tell the customer, governed by a Flows step per stage; delete this folder when it is on the board.
+size: M for PR 1 (shipped, v2.5626); M–L for PR 2
+blocker: none for PR 2; the owner's read of the first stage's text is its gate
+opinion: built as 2 on the bubble the row already had; PR 2 is the one that makes the door unnecessary for the common case
+ver: v2.5626
 mockup: to-dos/pipeline-text-customer/mockup.html
 ---
 
@@ -87,3 +88,20 @@ it when the Jobs page hosts the thread for another reason too.
 2. **The verify**: as the dev at 375 px and on the desktop, a job with a customer and a mobile, one
    with no mobile, one with no customer; a helper's Pipeline shows no icon. A send to a test customer
    lands in their thread tied to the job and in the job's activity.
+
+## Where it stands
+
+**2026-10-18, PR 1 (v2.5626).** The owner read the three mock-ups and asked whether that was the best we could
+do. It was not: the three varied where an icon opens and never questioned the icon. The two better shapes were
+the customer's name as the door and the board's own stage move offering the text through Tell the customer.
+Building the first found what the mock-ups had missed: the row already carried a speech bubble to the customer's
+thread (residential R2, v2.5451, `MessagesButton`), which left the board for the Messages page. So the name keeps
+its own press (the customer's record) and the bubble is the door: on the Pipeline's rows and cards it opens the
+customer's sheet over the board (`JobCustomerSheet.tsx`, its rows from `lib/messages/customerDoor.ts`): the job
+and the customer named, *Waiting on us: Dana wrote last, yesterday.* from the job's own lines, Call, Text, Email
+(the job window's box, tied to the job), Open their thread and Their record. A customer with no mobile sees Text
+grey with the reason. Everywhere else the bubble sits (the job window, Customers, Estimates) it is unchanged.
+
+**Left.** PR 2: the stage move's offer. Every move on the board goes through `updateJobStatus`; the offer is Tell
+the customer's sheet drafted from the move, governed by a Flows step per stage (Off · Offers · Sends), so nothing
+reaches a customer without a person pressing it. The owner reads the first stage's text before it goes On.
