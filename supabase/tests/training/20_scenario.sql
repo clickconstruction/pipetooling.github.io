@@ -78,12 +78,12 @@ SELECT tt.same('off: nothing to show', tt.standing('00000000-0000-0000-0000-0000
 -- 2 · Only a dev turns it on: the helper's update changes nothing under RLS; the dev's takes.
 UPDATE public.training_courses SET enabled = true WHERE slug = 'osha-30-refresher';
 RESET ROLE;
-SELECT tt.same('a helper cannot switch a course on', (SELECT enabled::text FROM public.training_courses), 'false');
+SELECT tt.same('a helper cannot switch a course on', (SELECT enabled::text FROM public.training_courses WHERE slug = 'osha-30-refresher'), 'false');
 SELECT tt.as_user('00000000-0000-0000-0000-0000000071e3');
 SET LOCAL ROLE authenticated;
 UPDATE public.training_courses SET enabled = true, updated_by = auth.uid() WHERE slug = 'osha-30-refresher';
 RESET ROLE;
-SELECT tt.same('a dev switches it on', (SELECT enabled::text || ' ' || (updated_by = '00000000-0000-0000-0000-0000000071e3')::text FROM public.training_courses), 'true true');
+SELECT tt.same('a dev switches it on', (SELECT enabled::text || ' ' || (updated_by = '00000000-0000-0000-0000-0000000071e3')::text FROM public.training_courses WHERE slug = 'osha-30-refresher'), 'true true');
 
 -- 3 · Red with no pass; a lesson passed is one row, passed again is the same row; a final check under the bar is refused.
 SELECT tt.as_user('00000000-0000-0000-0000-0000000071e1');
