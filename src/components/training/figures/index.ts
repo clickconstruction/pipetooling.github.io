@@ -123,6 +123,11 @@ import { ToiletTank } from './ToiletTank'
 import { TrapArmDrop } from './TrapArmDrop'
 import { WetVent } from './WetVent'
 
+import { Subpanel } from './Subpanel'
+import { ThreeWaySwitch } from './ThreeWaySwitch'
+import { StudSetback } from './StudSetback'
+import { HeaterBond } from './HeaterBond'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -230,4 +235,8 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'toilet-tank': ToiletTank,
   'trap-arm-drop': TrapArmDrop,
   'wet-vent': WetVent,
+  'subpanel': Subpanel,
+  'three-way-switch': ThreeWaySwitch,
+  'stud-setback': StudSetback,
+  'heater-bond': HeaterBond,
 }

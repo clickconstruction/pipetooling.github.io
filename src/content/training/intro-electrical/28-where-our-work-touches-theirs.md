@@ -15,6 +15,7 @@ Five places on a plumbing job meet a circuit. Each one has one rule. Knowing the
 - The jumper. The bonding jumper on the metal water pipe stays. A metal to plastic change gets a word to the electrician.
 - The holes. A cable in a stud sits set back from the stud's face, and a plate covers it where it cannot.
 - A cable sits at least 1-1/4 in back from the face of the stud. A screw or a nail shorter than that misses it.
+- {{figure:stud-setback|A cable sits 1-1/4 in back from the stud's face, so a normal screw misses it. Closer than that, a steel plate covers it.}}
 - Where a cable is closer than that, a steel nail plate covers it. The plate is the sign a cable is behind.
 - A drill into a cable is a short, a fire or a shock. A long screw into a cable is an arc behind the drywall.
 - Before a hole in a wall, a floor or a joist, the question is what runs through it. A tester and a look are cheap.

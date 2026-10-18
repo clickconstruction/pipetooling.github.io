@@ -16,6 +16,7 @@ One box takes the three wires and splits them into every circuit in the house. T
 - A branch breaker takes power from a bus bar and feeds one circuit. Its number is its amps.
 - A neutral bar holds every white wire. A ground bar holds every bare or green wire.
 - A subpanel is a second box fed by one breaker in the main panel. That breaker is its real off switch.
+- {{figure:subpanel|One breaker in the main panel feeds the subpanel. That breaker is its real off. In the subpanel the neutral and the ground stay apart.}}
 - A panel's cover is screwed on for a reason. With it off, the bus bars are bare and live.
 - The space in front of a panel stays clear. Nothing stored there, nothing leaning on it.
 
