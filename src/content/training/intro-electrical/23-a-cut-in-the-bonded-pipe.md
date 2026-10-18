@@ -8,11 +8,11 @@ from: NEC 250.53(D)(1) and 250.104(A), the jumper and the bonding of metal water
 Lesson 8 was the jumper at rest. This is the day it goes wrong. A plumber cuts out a section of metal water pipe. The ground path now runs through the two pipe ends and whoever holds them.
 
 ## Must know
-- The metal water pipe is part of the ground path. Current from a fault anywhere upstream can be running along it.
+- The metal water pipe is part of the ground path. Current from a fault anywhere in the house can be running along it.
 - {{figure:cut-pipe-strip|The ground runs through the pipe. The jumper is on, and the cut is safe. The jumper is off, and the person holding both ends is the path.}}
 - With a jumper across the section, the ground goes round the gap. The cut opens nothing.
 - With no jumper, the cut opens the ground path. The two pipe ends are the two sides of a gap.
-- A fault upstream now has no way to the earth. Or it finds one, through the person holding both ends.
+- A fault in the house now has no way to the earth. Or it finds one, through the person holding both ends.
 - The current need not be a fault. A neutral that shares the pipe can put current on it every day.
 - A plastic section in a metal run is the same gap, for good. The ground stops where the plastic starts.
 - A temporary jumper across a cut is the electrician's call, not the plumber's. The plumber asks before the cut.
@@ -27,8 +27,6 @@ Lesson 8 was the jumper at rest. This is the day it goes wrong. A plumber cuts o
 ## Numbers
 - **the jumper** before the cut
 - **both ends** of the gap are the path without it
-- **plastic** in a metal run is the same gap, for good
-- **tell the electrician** before a metal to plastic change
 - **a temporary jumper** is the electrician's call
 
 ## Check yourself

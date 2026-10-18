@@ -5,16 +5,16 @@ minutes: 5
 from: NEC 210.12, the AFCI rooms, for the reader to confirm against the cycle
 ---
 ## Why it matters
-Fires start in walls where nobody sees them. An arc is a tiny spark that jumps a gap in a loose or damaged wire. It burns below any breaker's trip point. The AFCI listens for it.
+Fires start in walls where nobody sees them. An arc is a tiny spark that jumps a gap in a loose or damaged wire. It burns below any breaker's trip point. The AFCI, the arc fault circuit interrupter, listens for it.
 
 ## Must know
-- An arc is current jumping a gap through the air. A loose screw, a cracked wire, a nail through a cable.
+- An arc is current jumping a gap through the air. A loose screw, a cracked wire, a nail through a cable, the flat bundle of wires in a plastic jacket.
 - {{figure:afci-listens|An AFCI listens for the arc of a loose wire or a nail through a cable. It trips before the fire. It is not a GFCI.}}
 - An arc is hot enough to light wood and paper. It can burn for a long time below a breaker's trip point.
 - An AFCI listens for the pattern of an arc on the wire and trips when it hears one.
 - It is not a GFCI. A GFCI catches current leaving the circuit. An AFCI catches current jumping inside it.
 - It usually lives in the breaker at the panel. Its handle looks like a GFCI breaker's, with a Test button.
-- It is required in bedrooms and most living areas. The code cycle sets the list, and the lessons give the company's rule.
+- It is required in bedrooms and most living areas. The code's edition, called its cycle, sets the list, and the lessons give the company's rule.
 - A nail or a screw through a cable is what it is for. A pipe strap screwed into a cable is one.
 - An AFCI that trips with one tool running may be hearing that tool's motor. Say so, and the electrician decides.
 
@@ -27,7 +27,6 @@ Fires start in walls where nobody sees them. An arc is a tiny spark that jumps a
 - **arcs** not shocks
 - **bedrooms and living areas** where it is required
 - **the breaker** is where it usually lives
-- **a nail through a cable** is what it is for
 
 ## Check yourself
 1. What does an AFCI catch?

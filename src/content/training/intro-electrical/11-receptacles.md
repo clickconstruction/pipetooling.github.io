@@ -5,7 +5,7 @@ minutes: 5
 from: NEC Article 406, receptacles, for the reader to confirm against the cycle
 ---
 ## Why it matters
-A receptacle is the one electrical part a plumber plugs into all day. Its three holes are the three wires. Knowing which is which tells you what a tester is reading and why a plug only fits one way.
+A receptacle is a wall outlet, the one electrical part a plumber plugs into all day. Its three holes are the three wires. Knowing which is which tells you what a tester is reading and why a plug only fits one way.
 
 ## Must know
 - The three holes in a receptacle are the three wires. Each one lands on the back of the device.
@@ -15,7 +15,7 @@ A receptacle is the one electrical part a plumber plugs into all day. Its three 
 - A 240 V receptacle has a different face. A 120 V plug cannot fit it, on purpose.
 - A dryer's face and a range's face are different again. Each one says its amps by its shape.
 - A receptacle with no round hole is an old two-wire outlet. It has no ground.
-- A GFCI receptacle carries two buttons, Test and Reset. Lesson 13 is the GFCI.
+- A GFCI receptacle carries two buttons, Test and Reset. It trips when current leaks out of the loop, and lesson 13 explains it.
 - A receptacle is live on its back and its screws whenever its circuit is on. The cover plate is what keeps fingers out.
 - A plug-in tester shows which wires are right and which are swapped. Three lights, and the card on it says what they mean.
 
@@ -28,8 +28,6 @@ A receptacle is the one electrical part a plumber plugs into all day. Its three 
 - **short** slot hot
 - **long** slot neutral
 - **round** hole ground
-- **a 240 V face** will not take a 120 V plug
-- **3 lights** on a plug-in tester
 
 ## Check yourself
 1. Which slot of a receptacle is the hot?

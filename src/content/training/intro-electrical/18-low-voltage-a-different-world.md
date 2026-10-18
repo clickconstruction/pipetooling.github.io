@@ -8,12 +8,12 @@ from: NEC Articles 725 and 411, low-voltage circuits, for the reader to confirm 
 A whole second world of wiring runs at 24 V. Thermostats, doorbells, sprinkler controllers and the gas water heater's valve. It cannot hurt you. The box that makes it can.
 
 ## Must know
-- Low voltage is 24 V or less. It comes from a transformer that steps 120 V down.
+- Low voltage is 24 V or less. It comes from a transformer, a small box that turns 120 V into 24 V.
 - {{figure:low-voltage-world|A transformer turns 120 V into 24 V for the thermostat, the doorbell and the gas valve. The 24 V side is safe. The 120 V side of the transformer is not.}}
 - The 24 V side will not hurt you. It is the thermostat, the doorbell, the sprinkler controller and the gas valve.
 - The 120 V side of the transformer is a normal live box. It is wherever the transformer is mounted.
 - A gas water heater's valve runs on 24 V from its own small transformer or control board.
-- A standing-pilot gas heater uses a thermocouple. It makes its own tiny current from the pilot's heat and needs no wire from the house.
+- A gas heater with a pilot flame that always burns uses a thermocouple. It makes its own tiny current from the pilot's heat and needs no wire from the house.
 - A power-vent gas heater is different. Its blower is 120 V on a cord, and lesson 15's rule holds for it.
 - Low voltage wire is thin and often in a bundle. Cutting it stops a thermostat or a sprinkler, not a person.
 - A doorbell transformer is often in the attic, the basement or on the panel. Its 120 V side is live.
@@ -27,9 +27,7 @@ A whole second world of wiring runs at 24 V. Thermostats, doorbells, sprinkler c
 ## Numbers
 - **24 V** the usual low voltage
 - **a transformer** makes it from 120 V
-- **thermostat, doorbell, sprinkler, gas valve** run on it
 - **the transformer's box** is 120 V
-- **the thermocouple** makes its own
 
 ## Check yourself
 1. What makes 24 V in a house?

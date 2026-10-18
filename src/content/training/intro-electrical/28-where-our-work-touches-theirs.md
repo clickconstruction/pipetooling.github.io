@@ -27,11 +27,8 @@ Five places on a plumbing job meet a circuit. Each one has one rule. Knowing the
 
 ## Numbers
 - **5** places our work touches theirs
-- **the water heater** off at the breaker and tested dead
-- **under the sink** the boxes stay live
-- **the pumps** start by themselves
-- **the jumper** stays
-- **1-1/4 in** from the stud's face is where cables sit, a nail plate where they cannot
+- **1-1/4 in** from the stud's face is where cables sit
+- **a nail plate** where a cable sits closer
 
 ## Check yourself
 1. How far back from the stud's face does a cable sit?

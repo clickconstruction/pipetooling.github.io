@@ -14,9 +14,9 @@ No hot water is often an electrical fault. A tripped breaker, a tripped high-lim
 - The high-limit is behind the top cover. It trips when the tank gets too hot, and it has a red reset button.
 - The company's rule: the breaker goes off and the circuit is tested dead at the heater. Then the cover comes off.
 - The company's rule: with the circuit dead, the high-limit reset, the thermostats, the elements and the whip are the plumber's.
-- The company's rule: the panel, the breaker's wiring and anything upstream of the heater's disconnect are the electrician's.
+- The company's rule: the panel, the breaker's wiring and everything between the panel and the disconnect are the electrician's.
 - The high-limit is pressed once. If it trips again, a thermostat is stuck or an element is grounded, and it is a call.
-- A dead element reads open on a meter. Testing it is done dead, and some cities call the swap a licensed job.
+- A dead element has a break inside it, and a test meter shows that as open. Testing it is done dead, and some cities call the swap a licensed job.
 - A heater that trips its breaker over and over has a fault inside. The breaker stays off and the call goes out.
 
 ## Traps
@@ -27,16 +27,13 @@ No hot water is often an electrical fault. A tripped breaker, a tripped high-lim
 ## Numbers
 - **the breaker** first, once
 - **off at the breaker and tested dead** before any cover comes off
-- **the high-limit button** behind the top cover, once
-- **the elements and the thermostats** are the plumber's, dead
-- **the disconnect** is where the plumber's side ends
 - **a second trip** means call
 
 ## Check yourself
 1. No hot water on an electric heater. Where does the look start?
 - [ ] The elements
 - [x] The breaker
-- [ ] The T&P valve
+- [ ] The relief valve
 - [ ] The thermostat
 > right: A tripped breaker is the first and most common cause.
 > wrong: The breaker is the first look. The covers stay on until it is off and tested dead.
@@ -62,5 +59,5 @@ No hot water is often an electrical fault. A tripped breaker, a tripped high-lim
 - [ ] An element, dead
 - [x] The breaker's wiring in the panel
 - [ ] The whip, dead
-> right: The panel and everything upstream of the disconnect are the electrician's.
+> right: The panel and everything between it and the disconnect are the electrician's.
 > wrong: The plumber's side ends at the disconnect. The panel is the electrician's.

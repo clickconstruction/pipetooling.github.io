@@ -26,17 +26,15 @@ Three words come up on every label and every breaker. Volts, amps and watts. Eac
 
 ## Numbers
 - **volts × amps = watts** the one rule
-- **120 V** the push on a wall outlet
-- **15 A** the flow a small circuit allows
-- **1,800 W** the work that makes
-- **240 V** the push on a big appliance
+- **120 V** the push on a wall outlet, 240 V on a big appliance
+- **1,800 W** the work 120 V at 15 A can do
 
 ## Check yourself
 1. Which word is like pressure in a pipe?
 - [x] Volts
 - [ ] Amps
 - [ ] Watts
-- [ ] Ohms
+- [ ] Gallons
 > right: Volts is the push.
 > wrong: Volts is the push, like pressure. Amps is the flow and watts is the work.
 

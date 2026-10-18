@@ -8,15 +8,15 @@ from: NEC 240.4(D), the small conductor rule, for the reader to confirm against 
 The breaker and the wire are a pair. The wire can carry so much, and the breaker stops the current before the wire overheats. The breaker is there for the wire in the wall, not for the person touching it.
 
 ## Must know
-- A wire has a size, called its gauge. A smaller number is a bigger wire.
+- A wire has a size, called its gauge and written AWG. A smaller number is a bigger wire.
 - A 14 AWG wire takes a 15 A breaker. A 12 AWG takes 20 A. A 10 AWG takes 30 A.
-- {{figure:wire-and-breaker|The breaker's number matches the wire's size. A short trips it at once. An overload trips it in minutes. Either way it saves the wire, not you.}}
 - The breaker trips on too many amps. It saves the wire from overheating inside the wall.
 - A short trips the breaker at once. Hot touches neutral or ground and the current spikes.
 - An overload trips it in minutes. Too many loads pull more than the wire's rating and the breaker warms and opens.
-- A breaker trips at thousands of milliamps. A person is hurt by a few. The breaker never sees a shock.
+- {{figure:wire-and-breaker|The breaker's number matches the wire's size. A short trips it at once. An overload trips it in minutes. Either way it saves the wire, not you.}}
+- A breaker trips at thousands of milliamps, and a milliamp is a thousandth of an amp. A person is hurt by a few. The breaker never sees a shock.
 - A bigger breaker on a small wire is a fire waiting. The wire heats before the breaker trips.
-- The water heater's 10 AWG and 30 A is the pair you will see most. The whip to the heater matches it.
+- The water heater's 10 AWG and 30 A is the pair you will see most. The whip, the short bendable cable into the heater, matches it.
 - A breaker that trips over and over is doing its job. Something on the circuit is wrong.
 
 ## Traps
@@ -28,8 +28,6 @@ The breaker and the wire are a pair. The wire can carry so much, and the breaker
 - **14 AWG** with a 15 A breaker
 - **12 AWG** with 20 A
 - **10 AWG** with 30 A
-- **smaller number** bigger wire
-- **the wire** not the person is what it protects
 
 ## Check yourself
 1. What does a breaker protect?
@@ -60,6 +58,6 @@ The breaker and the wire are a pair. The wire can carry so much, and the breaker
 - [ ] An overload
 - [x] A short
 - [ ] A ground that is missing
-- [ ] A low voltage
+- [ ] A dead tool
 > right: A short spikes the current and the breaker opens at once.
 > wrong: An overload takes minutes. A trip at once is a short.

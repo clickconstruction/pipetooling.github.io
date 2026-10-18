@@ -5,13 +5,13 @@ minutes: 5
 from: NEC Article 702 and 705, generators and interconnected sources, for the reader to confirm against the cycle
 ---
 ## Why it matters
-A house can make its own power. A generator or a solar array can push current into wires the utility turned off. It can push out to the street. A wire the plumber thinks is dead can be live from the other end.
+A house can make its own power. A generator or a solar array, the panels on the roof, can push current into wires the utility turned off. It can push out to the street. A wire the plumber thinks is dead can be live from the other end.
 
 ## Must know
 - A generator or a solar array is a second source of power in the house.
 - {{figure:backfeed-strip|The utility is off. The generator or the solar array pushes power the other way. The wire that should be dead is live from the other end.}}
 - A transfer switch keeps the house's source inside the house. It disconnects the utility before it connects the generator.
-- A backfeed is power going out through the meter to the street. It can kill a lineman working on a line they turned off.
+- A backfeed is power going out through the meter to the street. It can kill a lineman, the utility's worker up the pole, on a line they turned off.
 - Solar makes power whenever the sun is up. An array that is still connected can feed the house with the main off.
 - A battery system does the same in the dark. It can hold a circuit live with the utility off.
 - Never assume dead on a house with a generator, solar or a battery. The tester is the only truth.
@@ -27,9 +27,7 @@ A house can make its own power. A generator or a solar array can push current in
 ## Numbers
 - **a transfer switch** keeps it inside
 - **a backfeed** goes out to the lineman
-- **solar** makes power whenever the sun is up
 - **never assume dead** on a house with either
-- **the sticker** at the meter says the house has it
 
 ## Check yourself
 1. What does a transfer switch do?
@@ -43,7 +41,7 @@ A house can make its own power. A generator or a solar array can push current in
 2. What is a backfeed?
 - [ ] A breaker wired backwards
 - [x] Power going out through the meter to the street
-- [ ] A ground loop
+- [ ] A loose ground wire
 - [ ] A reverse-flow valve
 > right: It goes out to a line the utility turned off, where a lineman may be working.
 > wrong: A backfeed is the house's power pushing out to the street.

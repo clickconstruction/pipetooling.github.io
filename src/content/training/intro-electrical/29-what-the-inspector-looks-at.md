@@ -8,16 +8,16 @@ from: NEC 110.26 for the working space and 250.104 for the bonding, for the read
 Two inspectors read the same house. The electrical inspector reads the panel, the protection and the bonding. The plumbing inspector reads the water heater's bonding and its pan. A plumber's job can fail an electrical inspection by one missing jumper.
 
 ## Must know
-- The electrical inspector reads the panel. Its clearances, its directory, its cover and its bonding.
+- The electrical inspector reads the panel. The clear space around it, its directory, its cover and its bonding.
 - {{figure:inspector-electrical|The inspector reads the jumper, the disconnect, the clearance in front of the panel and the GFCI faces. One missing jumper fails the job.}}
 - The space in front of a panel is 36 in deep and clear. Nothing stored there, nothing built across it.
 - The jumper around the water meter is on the list. A plumber's new meter with no jumper is a fail.
 - The water heater's disconnect is on the list in some cycles. A 240 V disconnect within sight of the heater, or a lockable breaker. The lessons give the company's rule.
-- The GFCI faces are on the list. Every outlet near water has one, or is downstream of one.
+- The GFCI faces are on the list. Every outlet near water has one, or sits past one.
 - The AFCI breakers are on the list. The bedrooms and the living areas, by the cycle.
 - The plumbing inspector reads the water heater's bonding too. The hot and the cold are tied together where the heater breaks the metal.
 - {{figure:heater-bond|The water heater breaks the metal pipe. A bond from the cold to the hot ties the two sides back together.}}
-- The pan and its drain are the plumbing inspector's. So is the T&P line.
+- The pan and its drain are the plumbing inspector's. So is the relief valve's line.
 - A plumber who leaves the jumper on and the pan in place has done both inspectors' lists in one.
 
 ## Traps
@@ -28,9 +28,7 @@ Two inspectors read the same house. The electrical inspector reads the panel, th
 ## Numbers
 - **36 in** clear in front of a panel
 - **the jumper** around the meter
-- **a 240 V disconnect** within sight of the water heater in some cycles
 - **the pan and its drain** on the plumbing list
-- **the hot and the cold** bonded across the heater
 
 ## Check yourself
 1. How much clear space does the inspector want in front of the panel?
@@ -54,7 +52,7 @@ Two inspectors read the same house. The electrical inspector reads the panel, th
 - [ ] The panel directory
 - [x] The water heater's pan and its drain
 - [ ] The GFCI faces
-> right: The pan, its drain and the T&P line are the plumbing inspector's.
+> right: The pan, its drain and the relief valve's line are the plumbing inspector's.
 > wrong: The pan is plumbing. The breakers, the directory and the GFCIs are electrical.
 
 4. Where are the hot and the cold bonded at a water heater?

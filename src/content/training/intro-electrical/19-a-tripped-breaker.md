@@ -27,7 +27,6 @@ A breaker trips for a reason. Resetting it once is a plumber's call. Resetting i
 ## Numbers
 - **once** is how many times a plumber resets a breaker
 - **the middle** position means tripped
-- **off then on** to reset
 - **a second trip** means call
 
 ## Check yourself

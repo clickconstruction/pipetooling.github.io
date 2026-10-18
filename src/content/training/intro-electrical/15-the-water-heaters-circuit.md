@@ -9,27 +9,24 @@ The electric water heater is where the two trades meet most. It is the plumber's
 
 ## Must know
 - An electric water heater is a 240 V load on its own two-pole breaker. There is no neutral.
+- The common pair is a 30 A two-pole breaker and 10 AWG wire. The whip, the short cable into the heater, matches it.
+- Two elements heat the water, one at the top and one at the bottom. An element is a metal rod that gets hot inside the tank. Only one runs at a time.
+- A thermostat is a switch that reads the water's heat. The top one runs the top element first, then hands off to the bottom.
+- A disconnect is a switch box or a pull-out near the heater that cuts its power. The company's rule draws its line there.
 - {{figure:water-heater-circuit|Two hots feed the heater on a two-pole breaker. The top thermostat runs first, then hands off to the bottom one. The plumber's side begins at the disconnect.}}
-- The common pair is a 30 A two-pole breaker and 10 AWG wire. The whip to the heater matches it.
-- Two elements heat the water, one at the top and one at the bottom. They never run both at once.
-- The top thermostat runs the top element first. When the top is hot it hands off to the bottom.
-- The high-limit is a safety behind the top cover. It cuts the power if the tank gets too hot, and it has a reset button.
-- The company's rule: a plumber on the truck works on the whip, the elements, the thermostats and the high-limit reset.
+- The company's rule: a plumber on the truck works on the whip, the elements, the thermostats and the high-limit reset. The high-limit is the safety button behind the top cover.
 - The company's rule: first the breaker off, then the circuit tested dead at the heater, then the covers.
-- The company's rule: the panel, the breaker's wiring and anything upstream of the heater's disconnect are the electrician's.
-- A gas heater can have a cord too. Its power-vent blower runs on 120 V, so no power can mean no hot water on a gas heater too.
+- The company's rule: the panel, the breaker's wiring and everything between the panel and the disconnect are the electrician's.
+- A gas heater can have a cord too. A power-vent heater has a fan that pushes the exhaust out, and the fan runs on 120 V. No power can mean no hot water on a gas heater too.
 
 ## Traps
-- The breaker off is not tested dead. The tester goes to the heater's terminals before a cover comes off.
+- The breaker off is not tested dead. The tester goes to the heater's terminals, the screws where the wires land, before a cover comes off.
 - A 240 V heater has no neutral. A white wire in the whip, if there is one, is a hot and is marked so.
 - An element is a plumber's part only with the circuit dead. Live, it is nobody's.
 
 ## Numbers
 - **240 V** two hots, no neutral
 - **30 A** two-pole breaker with 10 AWG
-- **4,500 W** a common element
-- **2** elements, never both at once
-- **the breaker off and tested dead** before the cover
 - **the disconnect** is where the plumber's side ends
 
 ## Check yourself
@@ -44,7 +41,7 @@ The electric water heater is where the two trades meet most. It is the plumber's
 2. Under the company's rule, which of these is the plumber's?
 - [ ] The breaker's wiring in the panel
 - [x] The elements, with the breaker off and the circuit tested dead
-- [ ] The feed upstream of the disconnect
+- [ ] The feed between the panel and the disconnect
 - [ ] The bus bars
 > right: The whip, the elements, the thermostats and the high-limit reset, dead first.
 > wrong: The plumber's side is the heater from the disconnect down, and only dead.
@@ -54,7 +51,7 @@ The electric water heater is where the two trades meet most. It is the plumber's
 - [ ] The thermostats
 - [x] The breaker's wiring in the panel
 - [ ] The whip
-> right: The panel and everything upstream of the disconnect are the electrician's.
+> right: The panel and everything between it and the disconnect are the electrician's.
 > wrong: The panel is never the plumber's. The whip, the elements and the thermostats are, dead.
 
 4. What comes before a cover comes off the heater?

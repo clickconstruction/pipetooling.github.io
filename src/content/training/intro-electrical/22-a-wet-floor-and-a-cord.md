@@ -20,18 +20,14 @@ A tool on a cord on a wet floor is the path waiting for a person. The numbers th
 - A tool with a frayed cord leaves the job. Tape is not a fix.
 
 ## Traps
-- A wet floor is not safe because the tool is double insulated. The cord's nick is the hazard, not the tool.
+- A wet floor is not safe because the tool is double insulated, with a plastic case. The cord's nick is the hazard, not the tool.
 - The breaker is not between you and a shock. 15 A is thousands of times what stops a heart.
 - A tingle is not nothing. It is 1 mA already finding a path through you.
 
 ## Numbers
-- **1 mA** a tingle
 - **5 mA** a slight shock, and the GFCI trips
 - **30 mA** you cannot let go
-- **50 to 150 mA** breathing stops
-- **200 mA** can stop the heart
 - **15,000 mA** the breaker trips
-- **a GFCI** on every cord on a job
 
 ## Check yourself
 1. Which path through the body is the one that kills?

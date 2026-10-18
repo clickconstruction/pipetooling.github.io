@@ -25,11 +25,9 @@ Five mistakes, each one a lesson in this course on its worst day. Each is drawn 
 - Knowing the five is not the same as doing the step. The step is the point.
 
 ## Numbers
-- **the jumper** goes back on
-- **the plastic section** gets a word to the electrician
-- **the GFCI** on every cord
-- **the breaker** off and tested dead before the cover
-- **the cable** behind the drywall, looked for before the hole
+- **5** mistakes, each one lesson on its worst day
+- **1** step for each, every time
+- **a call** when one has already happened
 
 ## Check yourself
 1. The meter went back in with no jumper. What is the right way?

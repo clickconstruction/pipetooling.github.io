@@ -9,13 +9,13 @@ The ground wire has to end somewhere. It ends in the earth, through a rod and th
 
 ## Must know
 - The ground wire from the panel runs to the earth. The thing it lands on is called the grounding electrode.
-- One electrode is a rod driven into the ground outside. It is 8 ft long and often there are two.
+- One electrode is a ground rod, a metal rod driven 8 ft into the earth outside. Often there are two.
 - {{figure:ground-path|The ground runs from the panel to a rod in the earth and to the metal water pipe. A fault goes there and not through you.}}
 - Another electrode is the metal water pipe from the street, if it runs 10 ft or more in the earth.
 - The ground wire clamps onto the metal water pipe within the first 5 ft of pipe inside the wall.
 - A metal water pipe inside the house is bonded too. The pipe is tied to the ground whether it is the electrode or not.
 - A fault goes to the earth through these paths. That is a path with no person in it.
-- A jumper carries the ground around the water meter, so pulling the meter does not break the path. The next lesson is the jumper.
+- A jumper, a short wire with a clamp at each end, carries the ground around the water meter. The next lesson is the jumper.
 - A plastic water service has no metal to the street. The rod does the job and the inside pipe is still bonded.
 - The clamp on the pipe is the electrician's. It is not a hanger and not a place to hang a strap.
 
@@ -25,11 +25,9 @@ The ground wire has to end somewhere. It ends in the earth, through a rod and th
 - Bonded is not grounded. Bonding ties metal together. Grounding takes it to the earth.
 
 ## Numbers
-- **1** rod, often 2
-- **8 ft** long
+- **8 ft** the rod, driven into the earth
 - **10 ft** of metal pipe in the earth makes the water pipe an electrode
 - **5 ft** inside the wall is where the clamp goes
-- **a jumper** around the meter
 
 ## Check yourself
 1. Where does the ground wire from the panel end?

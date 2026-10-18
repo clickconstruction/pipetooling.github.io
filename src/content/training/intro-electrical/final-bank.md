@@ -207,7 +207,7 @@ title: Final check bank
 - [x] At the heater's disconnect
 - [ ] At the meter
 - [ ] At the thermostat
-> right: From the disconnect down is the plumber's, dead. Upstream is the electrician's.
+> right: From the disconnect down is the plumber's, dead. The panel's side is the electrician's.
 > wrong: The disconnect is the line. The panel and the feed above it are the electrician's.
 
 27. How many breakers feed the disposal and the dishwasher?
