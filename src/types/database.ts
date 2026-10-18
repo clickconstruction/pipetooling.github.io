@@ -30033,6 +30033,7 @@ export type Database = {
           due_soon_days: number
           enabled: boolean
           good_for_months: number
+          offered: boolean
           required_roles: string[]
           retake_from: string | null
           slug: string
@@ -30045,6 +30046,7 @@ export type Database = {
           due_soon_days?: number
           enabled?: boolean
           good_for_months?: number
+          offered?: boolean
           required_roles?: string[]
           retake_from?: string | null
           slug: string
@@ -30057,6 +30059,7 @@ export type Database = {
           due_soon_days?: number
           enabled?: boolean
           good_for_months?: number
+          offered?: boolean
           required_roles?: string[]
           retake_from?: string | null
           slug?: string
