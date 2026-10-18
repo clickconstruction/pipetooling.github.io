@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-10-14
+last_updated: 2026-10-17
 ---
 
 ## What it is, in one paragraph
@@ -30,7 +30,7 @@ the design is the plans named at the end of this page.
 | The thread window (every door opens the same one) | over either page | the office; a tech through Job Mode's door | `src/components/gc/messages/ThreadWindow.tsx`, `openThread.ts`, `useMessagesHost.ts` |
 | A job's box, **Note · Text · Email** | a job's window on the Pipeline | the office | `src/components/jobs/JobCustomerBox.tsx` over `reply/ReplyBox.tsx` |
 | Job activity's message lines | Jobs → Pipeline → a job's activity | the office; techs by the gate (see *Who sees what*) | `src/components/jobs/JobActivityView.tsx`, `src/hooks/useJobMessages.ts` |
-| Job Mode: **Message the customer**, the customer's texts in Job updates, since v2.5573 the big button **On my way** / **I'm here** (the office's two press lines, `quick_replies.phone_press`), and since v2.5590 the tech's **bio** as a second text the first time a customer hears from them (`BioPickWindow` to pick the lines for one customer; the memory is `messages.introduces_user_id`) | Job Mode | primary and helpers (`MESSAGES_TECH_TEAM`); the clock-in half of On my way for every Job Mode role | `src/components/jobMode/`, `src/lib/jobModeMessageCustomerIo.ts`, `src/lib/jobModeOnMyWayIo.ts`, `src/lib/jobMode/onMyWay.ts`, `src/lib/bio/` |
+| Job Mode: **Message the customer**, the customer's texts in Job updates, since v2.5573 the big button **On my way** / **I'm here** (the office's two press lines, `quick_replies.phone_press`), and since v2.5590 the tech's **bio** as a second text the first time a customer hears from them (`BioPickWindow` to pick the lines for one customer; the memory is `messages.introduces_user_id`; the office writes the bio on the person desk's Bio section, the tech picks the usual lines on Settings → Your account → Your bio) | Job Mode | primary and helpers (`MESSAGES_TECH_TEAM`); the clock-in half of On my way for every Job Mode role | `src/components/jobMode/`, `src/lib/jobModeMessageCustomerIo.ts`, `src/lib/jobModeOnMyWayIo.ts`, `src/lib/jobMode/onMyWay.ts`, `src/lib/bio/` |
 | **Tell the customer** (punch list #115): the sheet before a customer's text, and the receipt with the call after — on the schedule (v2.5593, a job's first visit, the office's Booked line filled from the block) and on the estimate (v2.5594, the email and the text with the accept link in one press); **Send in the morning** on a booking (v2.5595) hands the text to the 9 AM run; the receipt's **Add to my calls** (v2.5596) makes the call a task; since v2.5597 the sheet notes the customer's say (`contacts.prefers`), presses itself when My way (`tell_customer_prefs`) says send, offers **Make this the office's line**, and a moved first visit's Rescheduled text waits on Today's sends | Add job to schedule, from the job and from the Dispatch hub's picker (`ScheduleJobModal`); Send to customer on a normal estimate (`Estimates.tsx`) | the office team (`GC_OFFICE_TEAM`); the send is the reply box's path through `quo-send` | `src/components/customers/TellCustomerSheet.tsx`, `src/lib/tellCustomer/` |
 | **Today's sends** (v2.5595, punch list #115): the texts the morning run prepared for the office to press instead of sending (a step set to *Offers* in Flows), and the texts the office handed to a morning; Edit, Send, Send all that are ready, Not this one, Hold until a day, Stop reminding on this job; a held one says why | the Dashboard's Needs you line *Today's sends* (`todays-sends`) | the GC office team (`canOpenGcProjects`); a press is the reply box's path through `quo-send`, then `nudge_offer_sent` | `src/components/dashboard/TodaysSendsWindow.tsx`, `src/lib/offers/`, `nudge_offers` |
 | **Call tasks** (v2.5596, punch list #115): the call the receipt suggests, as a task in Follow up → We owe them with the day and the script; Call, I called, Tomorrow, Skip; closed by an answered call Quo logs | **Add to my calls** on the Tell the customer receipt, and the quiet line under a text we sent a customer today on Messages (`useFollowUpThreadSlots` `underLine`) | the GC office team (`follow_up_press`); `quo-webhook` closes as the service role | `src/lib/calls/`, `src/components/followUp/FollowUpSections.tsx` (`CallRowView`), `call_tasks`, `flow_steps.call_script` |
@@ -51,7 +51,7 @@ contact with the roster's number, and *Who is this?* names a number the roster l
 `contacts/load.ts` had kept only the seven kinds it knew, so a teammate's thread said *This person is not in Messages.*
 and their text left Follow up's lanes — its known kinds are a `Record<ContactKind, true>` now, so a kind the loader
 does not read fails the type check), unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
-`has_until`, `has_since`, `has_how`) and the off-the-list columns. A number nobody knows is a contact of kind `unknown`
+`has_until`, `has_since`, `has_how`), the customer's say (`prefers`, `prefers_how`, `prefers_at`, v2.5597) and the off-the-list columns. A number nobody knows is a contact of kind `unknown`
 with one channel until **Who is this?** names it (`name_contact`), which re-points the contact and keeps its thread.
 
 - `contact_channels` — a phone number or email that is theirs, with the opt-out (`opted_out_at`, and per box since R6,
@@ -62,12 +62,12 @@ with one channel until **Who is this?** names it (`name_contact`), which re-poin
 - `messages` — one row per call, voicemail, missed call, text, email, team note, event or portal line: `contact_id`,
   the job keys (`bid_id`, `project_id`, `jobs_ledger_id`), `channel`, `direction` (in, out, team), `who_user_id` or
   `who_text`, `at`, `subject`, `body`, the source id (`quo_id`, the RFC `Message-ID` for email, unique so a resend never
-  doubles), `mailbox` (team, bids), `quick_reply_id`, `estimate_id`, `office_only`, `optout_line`, `back_on` / `back_by`
+  doubles), `mailbox` (team, bids), `quick_reply_id` (or `introduces_user_id` on a bio text, v2.5590), `estimate_id`, `office_only`, `optout_line`, `back_on` / `back_by`
   (a note's follow-up day), and cut 5's call columns (recording, transcript, summary, length).
 - `message_attachments` — a file as it arrived or went (`bucket_path` our copy, `link`, `sent_as`, `drive_file_id` once
   filed, `paper_answer` once read as a paper).
 - `message_highlights`, `message_promises` (what a line was read as: a quote, a start, papers, a payment, with the day),
-  `contact_owed` (what we owe a person, one open row), `quick_replies` with its uses and versions.
+  `contact_owed` (what we owe a person, one open row), `quick_replies` with its uses and versions (and `phone_press`, the one live On my way and I'm here line each, v2.5573), `user_bio_lines` (a tech's bio, v2.5587), `nudge_offers` (Today's sends, v2.5595), `call_tasks` (v2.5596) and `tell_customer_prefs` (My way, v2.5597).
 
 The kernels are `src/lib/contacts/` (`kernel.ts`, `names.ts`, `load.ts`) and `src/lib/messages/`: `thread.ts` (one
 thread per person, the rows and the move line), `stamps.ts` (their last word and ours), `load.ts` and `jobKeys.ts` (the
@@ -75,7 +75,7 @@ rows as the screens load them), `compose.ts` and `textOut.ts` (the reply box's w
 out), `owed.ts`, `promises.ts`, `jobTiles.ts` (a job as the thread names it), `listRows.ts` (the Messages list). The
 reads and the presses are `messagesIo.ts`. The SQL doors are the definer functions a migration under
 `supabase/migrations/202610*` names: `name_contact`, `tie_message`, `contact_for_customer`, `contact_find_or_make`,
-`contact_for_channel`, `contact_set_off` / `contact_put_back_on`, `edit_quick_reply`, `quick_reply_step`, and the flow
+`contact_for_channel`, `contact_set_off` / `contact_put_back_on`, `edit_quick_reply`, `quick_reply_step`, `set_quick_reply_press`, `edit_bio_line` / `bio_line_say` / `bio_opener`, `contact_set_prefers`, `call_task_add` / `call_task_done` / `call_task_move`, `nudge_offer_make` / `nudge_offer_sent` / `nudge_offer_dismiss`, and the flow
 and nudge functions below. Every table carries the three fences (`CLAUDE.md`).
 
 ### Lines from other systems
@@ -114,7 +114,7 @@ and reads again when the tab comes back to focus. On a phone the header folds (`
 **Tie this message to** (`tieSheet.ts`).
 
 The **reply box** (`reply/ReplyBox.tsx`) is one component for the thread's foot and the job's box: the kinds row
-(Text · Email · Note, or one kind), the quick replies strip (`QuickRepliesStrip.tsx`, the editor, **Find a reply**),
+(Text · Email · Note, or one kind), the quick replies strip (`QuickRepliesStrip.tsx`, the editor with its phone block's **Big button on Job Mode**, **Find a reply**),
 the textarea with the opt-out line and the count, **Attach** (`AttachPicker.tsx` over `attachIo.ts`, `replyFiles.ts`),
 **Tie to**, and the send window (`SendWindow.tsx`). What it sends is one interface, `replyIo.ts`, so the smokes hand it
 a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in place of the composer (`TextsWaitLine`: the switch is the first card on Settings → Phone and texts, a link for the owner or a dev; v2.5538).
@@ -123,19 +123,19 @@ a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in
 
 `src/lib/followUp/queue.ts` is the queue: one row per person, Open · Snoozed · Done, who has it (`has_user_id`,
 `has_how`), the move line, and the lanes the screens group by — **New** (R7, what came in and still needs sorting:
-`newLane.ts`, **Sort all** in `sortDesk.ts`), Needs a reply, We owe them (`owed.ts`), They owe us (`theyOweUs.ts`).
+`newLane.ts`, **Sort all** in `sortDesk.ts`), Needs a reply, We owe them (`owed.ts`; since v2.5596 the call rows too, `FollowUpQueue.calls` from `callTasksFromRows`, `CallRowView`), They owe us (`theyOweUs.ts`).
 `team.ts` says who a conversation can be handed to; `assignSeats.ts` is **Who gets a new message** (the rule and its
 seats, `app_settings.messages_assign_rule_v1`); `hasRule.ts` is R5's answer to who answers a customer's reply (the tech
 who last texted them until 5 PM, `has_until`, then the office). The screens are `src/components/followUp/`
 (`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`) and the
-two slot hooks that put them in the thread. The Dashboard's Customers line counts from the same reads
+two slot hooks that put them in the thread. The Dashboard's Customers line (and `follow_up_count`; since v2.5596 a customer with an open call counts once) counts from the same reads
 (`customerCounts.ts`).
 
 ## Flows, steps and the morning run
 
 A **flow** is one per kind (`flows`, `flow_steps`, seeded by `src/lib/flows/seed.ts`; `flowsSql.test.ts` pins the seed
 to the newest migration). A step has a lane (once, per job, any time), whose move it is, the facts that finish it, the
-papers it turns on, and its nudge (after how many days, how, and whether the app may send it). **State is never stored**:
+papers it turns on, and its nudge (after how many days, how, and whether the app may send it: off, offers or sends) and since v2.5596 its call script (`call_script`, `call_script_es`, `suggest_call`). **State is never stored**:
 `flows/state.ts` (`readFlow`) reads where a person stands from the stamps `flows/load.ts` and `residentialLoad.ts`
 gather out of the rows main keeps (invites, portal opens, signed papers, quotes, draws, schedule blocks, clock sessions,
 reports). The facts a step may pick from are **one list in code**, `flows/facts.ts`; a fact that is not there cannot be
@@ -146,14 +146,14 @@ the thread and the panel it opens to), `now.ts` (where one person is, in a line,
 `goingInputs.ts` (**How it is going**), `board.ts`, `boardRead.ts` and `flowsIo.ts` (the boards over `flow_rows_kind`,
 the office's one read), `editor.ts`, `editorKinds.ts` and `flowEditorIo.ts` (Settings → Flows, `flow_save`,
 `flow_paper_create`, the history), `jobPapers.ts` (Papers on this job), `portalPage.ts`, `portalSteps.ts` and
-`customerMove.ts` (the customer's side), `stageSends.ts` (R4, the stages a residential customer feels). A step's note goes
+`customerMove.ts` (the customer's side), `stageSends.ts` (R4, the stages a residential customer feels), `callScripts.ts` (the seeded scripts, v2.5596). A step's note goes
 through `flow_add_note`, a skip for one person is `contact_step_skips`, and a wish for a missing fact is `flow_fact_wishes`.
 
 The **morning run** is `messages-nudge-dispatch`, fired by the cron `messages-nudge-dispatch` at 14:00 and 15:00 UTC
 with `X-Cron-Secret` from the vault. Its decisions are the kernels' (`nudgeRunInputs.ts`, `nudgeDispatch.ts`,
 `nudgeRunLog.ts`, copied to the edge): everyone's flow, the steps due, what was already sent (`nudge_sent`, never
 doubled), what is held (`nudge_holds`, **Hold until Mon**), and the per-step switch
-`app_settings.messages_nudge_app_sends_v1` — **off until the owner turns a step on** (the plan's decision 3); since v2.5595 three ways per step, off, **offers** (`'offer'`: the run writes the text to `nudge_offers` for the office to press on the Dashboard's Today's sends, held with why when the number is missing or sent STOP) and **sends** (`true`), and the run also sends the texts the office handed to a morning (Send in the morning, `prepared_by` office with a `send_on`). The run
+`app_settings.messages_nudge_app_sends_v1` — **off until the owner turns a step on** (the plan's decision 3); since v2.5595 three ways per step, off, **offers** (`'offer'`: the run writes the text to `nudge_offers` for the office to press on the Dashboard's Today's sends, held with why when the number is missing, sent STOP or asked for email, v2.5597) and **sends** (`true`), and the run also sends the texts the office handed to a morning (Send in the morning, `prepared_by` office with a `send_on`); a moved first visit's Rescheduled offer has no `send_on` and waits for a press, and an email-only person's text is kept back (`prefers email`, v2.5597). The run
 writes its summary to `messages_nudge_last_run_v1`, which Settings → Flows reads as *Last morning run …*. The first run
 fired 2026-10-14 with nothing switched on: *no text went, none kept back*.
 
@@ -161,8 +161,8 @@ fired 2026-10-14 with nothing switched on: *no text went, none kept back*.
 
 **Texts, through Quo.** `quo-webhook` takes every event of our numbers (signature checked, `quo_webhook_ids` keeps a
 replay out) and lands it in the sender's thread as a line, keeps a picture that came with it (`mediaKeep.ts`, then the
-`photo-save` sweep every five minutes files it to the job's photos), and answers HELP and STOP itself. `quo-send` is a
-text going out: from the reply box's send window, from a job's box, and from Job Mode (`techSend.ts`, R5). The events come from Quo webhook 43696, made through Quo's API (version 2026-03-30), which Quo's settings page does not list; its key and how to rotate it are in `MESSAGES_SWITCH_ON_HANDOFF_2026-10-14.md`. Both are
+`photo-save` sweep every five minutes files it to the job's photos), and answers HELP and STOP itself (since v2.5597 the one-word EMAIL or TEXT too, `PREFER_WORDS` → `contacts.prefers` with a gray line, and since v2.5596 an answered call closes the person's open call tasks, `call_tasks_close_by_call`). `quo-send` is a
+text going out: from the reply box's send window, from a job's box, and from Job Mode (`techSend.ts`, R5: the line with `fills: { minutes }`, and since v2.5590 `kind: 'bio'` with the picked line ids, composed by `composeBioText`); a contact tied to a prospect and not to a customer is refused until the prospect's `ok_to_text` is yes (`textRefusal`, v2.5606). The events come from Quo webhook 43696, made through Quo's API (version 2026-03-30), which Quo's settings page does not list; its key and how to rotate it are in `MESSAGES_SWITCH_ON_HANDOFF_2026-10-14.md`. Both are
 gated by **Send texts** (`messages_texts_on_v1`, Settings → Phone and texts; the owner or a dev), paused while Quo will
 not take one (`paused.ts`), and read the company phone seats (`messages_quo_seats_v1`) and the two boxes
 (`messages_boxes_v1`, R6: the team's number and bids@'s, one inbox). The pure parts are `src/lib/quo/`; the edge
@@ -214,6 +214,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
 | Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every three minutes |
 | The reminders the app sends itself, per step: off, offers or sends (v2.5595) | Settings → Flows | `messages_nudge_app_sends_v1`; the cron `messages-nudge-dispatch`, 14:00 and 15:00 UTC; the summary `messages_nudge_last_run_v1` |
+| My way: per moment, *Ask me first* or *Send it and show me the receipt* (v2.5597) | Settings → Your account, each office member's own | `tell_customer_prefs` |
 | Photos saved on arrival (the tick on a line) | the line | the cron `photo-save`, every five minutes; `photo_saves` |
 | The customer page's words and its paper views per job | Settings → What customers see | `customer_page_words` |
 | A customer's language | the customer's record | `customers.language` (en, es) |
@@ -284,8 +285,8 @@ vault for the crons; and the morning run's dry run with the secret before a step
 - The prototypes and mock-ups stay on branch `spike/gc-mode` under `to-dos/gc-mode/messages/` (`prototype.html`
   v1.178 is the GC spec; `customer-messages-prototype.html` and `customer-messages-integrations-mockups.html` the
   residential one; one `*-mockups.html` per screen). Read one with `git show origin/spike/gc-mode:<path>`.
-- The words a user reads: the Glossary's **Messages · thread · contact**, **Flow · step · step card** and **Messages
+- The words a user reads: the Glossary's **Messages · thread · contact**, **Flow · step · step card**, **Tell the customer**, **Today's sends**, **Call task**, **The customer's say** and **Messages
   (GC mode, the build)** entries; the help guides under Messages in `src/content/help/` (reply from a thread, see who is
   waiting on us, set up the steps a person goes through, turn on texts, choose who gets a new message, set up the two
   inboxes, turn on the reply push, turn on reading the bids inbox, message a customer from Job Mode, sort new messages,
-  edit the quick replies, open a job's activity full screen).
+  edit the quick replies, open a job's activity full screen, schedule a job and tell the customer, work Today's sends, call a customer from a task).

@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-14
+last_updated: 2026-10-17
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -47,7 +47,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Every message with every person we work with on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
 - Everyone waiting on us for an answer and what we owe them, for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
-- A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard; guide `take-a-training-course`)
+- A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard, under My Schedule in Job Mode; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Owners, developers and architects with a job we could build as the GC → `/prospects?kind=gc-leads` (guide `find-jobs-to-build-as-the-gc`)
 - Trade companies to call for the bench, by what the bench needs → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
@@ -65,7 +65,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Type the two inboxes' addresses and numbers, the team inbox and the bids inbox → `/settings?tab=settings-phone-texts` (Inboxes, under Company phone seats: the office reads, the owner or a dev saves; the app uses them once the inboxes are switched on; guide `set-up-the-two-inboxes`)
 - Turn on the reply push, so a customer's, a lead's or a sub's reply reaches whoever has it as a phone alert within a minute → `/settings?tab=settings-phone-texts` (Reply push, the owner or a dev, off as it ships; guide `turn-on-the-reply-push`)
 - Change the steps a customer, trade partner, architect, residential customer or sub goes through → `/settings?tab=settings-flows` (Flows: the office edits; guide `set-up-the-steps-a-person-goes-through`)
-- Turn a training course on, say which roles must take it, how long a pass is good for, and see where everyone stands → `/settings?tab=settings-training` (Training: a dev; guide `take-a-training-course`)
+- Turn a training course on, say which roles must take it, how long a pass is good for, see where everyone stands, preview the course and clear a retake day → `/settings?tab=settings-training` (Training: a dev; guide `take-a-training-course`)
 - Where the company stands this week, the weakest link, the Monday sheet → `/bridge` (dev only)
 - How-do-I articles → `/help` (search) or `/help?g=<slug>`
 - The public trade rule behind a count or check (hanger spacing, fill limit, drop, mount height) → `https://counttooling.com/rules/` — `https://counttooling.com/rules/rules.json` for software; derive from it and stamp `ruleId` (see the CountTooling bid guide)
@@ -74,7 +74,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 ### /dashboard — Dashboard
 Landing page for every role: pinned pages, role-relevant cards (recent reports, my bids,
-Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses; for the office team the **Customers** line, opening `/messages?kind=customer`, v2.5451; and on Job Mode's card **Message the customer** for primary and helpers, v2.5449, on since v2.5505, guide `message-a-customer-from-job-mode`). Start here to orient; do work elsewhere.
+Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses; for the office team the **Customers** line, opening `/messages?kind=customer`, v2.5451; and on Job Mode's card **Message the customer** for primary and helpers, v2.5449, on since v2.5505, guide `message-a-customer-from-job-mode`; since v2.5573 the big **On my way** / **I'm here** press that clocks the drive and texts the customer, with the tech's bio the first time, v2.5590, guide `job-mode-clocking`; for the office team the **Today's sends** line, the texts the app prepared for a person to press, v2.5595, guide `work-todays-sends`). Start here to orient; do work elsewhere.
 Roles: all.
 
 ### /gc — GC projects
@@ -116,7 +116,7 @@ Roles: dev, master_technician, assistant, controller, estimator.
 ### /messages — Messages
 Follow up for every kind of person, from **Messages** in the header (its count is everyone waiting on us): **New** first
 (what came in and still needs sorting: **Who is this?**, **Which job?**, **Who has it?**, each row opening the thread
-with the sort card at its top; guide `/help?g=sort-new-messages`), then **Needs you**, **Needs a reply** and **We owe them**,
+with the sort card at its top; guide `/help?g=sort-new-messages`), then **Needs you**, **Needs a reply** and **We owe them** (with the call tasks since v2.5596, guide `call-a-customer-from-a-task`),
 with pills for Customers, Trade partners, Architects, Leads and Subs (`?kind=`), and **Supply houses and candidates**,
 which never count on Follow up and show as a people list. A row opens the person's thread over the page
 (`?thread=<contactId>&at=<messageId>`), the thread window described under `/gc`. Other doors to a customer's thread: the speech bubble beside a customer's name on `/customers`, the customer's page, `/jobs`, the job window and `/estimates` (`/messages?thread=<contact>`), and the Dashboard's **Customers** line (`?kind=customer`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
@@ -125,7 +125,7 @@ Roles: dev, master_technician, assistant, controller, estimator.
 
 ### /training/osha-30-refresher — Training: a course
 
-A course read at the person's own pace (punch list #111, v2.5566): the rail of parts and lessons on the left with a tick on each one done (a **Lessons** button on a phone), the lesson on the right (Why it matters, Must know, Traps, Numbers to remember, Check yourself), and the Final check at the foot of the rail once every lesson is done. Pick one answer per question; a wrong pick says why and offers **Try again**; the lesson records itself when all four are right; **Next lesson ›** goes on. `?lesson=<key>` opens a lesson, `?final=1` the final check. Anyone signed in may read a course that is on; a dev reads one that is off as a preview. The first course is the OSHA 30 refresher, thirty lessons and a final check of twenty, fourteen right passes. Guide `take-a-training-course`.
+A course read at the person's own pace (punch list #111, v2.5566): the rail of parts and lessons on the left with a tick on each one done (a **Lessons · N of 30** button on a phone, and a header chip *N of 30 lessons* with a green *Final check passed* after the pass), the lesson on the right (Why it matters, Must know, Traps, with a line drawing under a sentence that needs one, Numbers to remember, Check yourself), and the Final check at the foot of the rail once every lesson is done. Pick one answer per question; a wrong pick says why and offers **Try again**; the lesson records itself when all four are right; **Next lesson ›** goes on. `?lesson=<key>` opens a lesson, `?final=1` the final check. Anyone signed in may read a course that is on; a dev reads one that is off as a preview. The first course is the OSHA 30 refresher, thirty lessons and a final check of twenty, each asked once, fourteen right passes; a pass says the day it is due again and offers **‹ Back to the Dashboard**. Guide `take-a-training-course`.
 
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick
@@ -243,7 +243,7 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
 - `?tab=inspections`, `?tab=billed` — inspection tracking; billed-jobs list.
 
 ### /schedule-dispatch — Dispatch
-Week grid scheduling crews/subs onto jobs (and bid-anchored blocks). Drag to assign.
+Week grid scheduling crews/subs onto jobs (and bid-anchored blocks). Drag to assign. A job's first visit saved asks before it texts the customer, and a moved first visit's Rescheduled text waits on Today's sends (guide `schedule-a-job-and-tell-the-customer`).
 Roles: dev, master, assistant, controller, superintendent (limited).
 
 ### /people — People
@@ -259,7 +259,7 @@ The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a le
 Roles: staff; estimator only with `estimator_prospects_access`.
 
 ### /estimates — Estimates
-Homeowner-style quotes (separate from bids): line items, send for acceptance, → job.
+Homeowner-style quotes (separate from bids): line items, send for acceptance (since v2.5594 through **Tell the customer**: the email and the text with the link, guide `send-an-estimate-and-turn-it-into-a-job`), → job.
 Roles: dev, master, assistant, controller, estimator, primary; super limited.
 
 ### /tally — Tally
