@@ -10,6 +10,7 @@ The breaker and the wire are a pair. The wire can carry so much, and the breaker
 ## Must know
 - A wire has a size, called its gauge. A smaller number is a bigger wire.
 - A 14 AWG wire takes a 15 A breaker. A 12 AWG takes 20 A. A 10 AWG takes 30 A.
+- {{figure:wire-and-breaker|The breaker's number matches the wire's size. A short trips it at once. An overload trips it in minutes. Either way it saves the wire, not you.}}
 - The breaker trips on too many amps. It saves the wire from overheating inside the wall.
 - A short trips the breaker at once. Hot touches neutral or ground and the current spikes.
 - An overload trips it in minutes. Too many loads pull more than the wire's rating and the breaker warms and opens.

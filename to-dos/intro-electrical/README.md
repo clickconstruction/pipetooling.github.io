@@ -2,7 +2,7 @@
 name: "Intro to electrical: what is live, what the panel does, and where our work touches it"
 number: 120
 group: gated
-status: BUILDING 2026-10-18 — the owner read the outline and said build it, with six changes written in below (the water heater's scope line, the jumper lesson moved up into Part 1, the hot wire in the plain ink, the shock numbers from the refresher, the final check at twenty and fourteen, the seven calls decided); PR 0 (the drawing language, Start here and all of Power in, ten lessons, three drawn, the seed row off and offered) is v2.5614; the reader is still unnamed, so every `from:` cites the published page or the owner and the first page carries a blank for the name
+status: BUILDING 2026-10-18 — the owner read the outline and said build it, with six changes written in below (the water heater's scope line, the jumper lesson moved up into Part 1, the hot wire in the plain ink, the shock numbers from the refresher, the final check at twenty and fourteen, the seven calls decided); PR 0 (the drawing language, Start here and all of Power in, ten lessons, three drawn, the seed row off and offered) is v2.5614; PR 1 (Power in drawn, the seven held-back figures) is v2.5615; the reader is still unnamed, so every `from:` cites the published page or the owner and the first page carries a blank for the name
 summary: >
   The third training course: thirty five-minute lessons on how a house's electrical system
   works, for the plumbing crew that works beside it. Understanding, not doing. Part 1 is power
@@ -293,8 +293,8 @@ their names behind it, and each part PR rebases over whatever has landed.
    since the Available row is already in it. `docs/twins/APP_DIRECTORY.md` gains the course's
    path. Every `from:` cites the published page or the owner until the reader is named. Shots of
    the three drawings at 375, 768 and 1280 px in both themes, read before the merge.
-1. **Part 1, power in, drawn**: the seven figures held back from lessons 2 to 10, and the reader's
-   corrections to the words.
+1. **Part 1, power in, drawn** (v2.5615): the seven figures held back from lessons 2 to 10, shot at
+   the three widths in both themes; the reader's corrections to the words ride a later PR.
 2. **Part 2, the devices**: lessons 11 to 18 and their eight figures.
 3. **Part 3, the conditions**: lessons 19 to 25, the seven strips, `current-scale` reused by name.
 4. **Part 4, on the job**: lessons 26 to 30, the five figures, the bank filled from every part,

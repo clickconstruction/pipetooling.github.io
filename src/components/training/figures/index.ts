@@ -81,6 +81,14 @@ import { OneLoop } from './OneLoop'
 import { NeutralVsGround } from './NeutralVsGround'
 import { BondingJumper } from './BondingJumper'
 
+import { ServiceAndMeter } from './ServiceAndMeter'
+import { MainPanel } from './MainPanel'
+import { VoltsAmpsWatts } from './VoltsAmpsWatts'
+import { OneTwentyTwoForty } from './OneTwentyTwoForty'
+import { GroundPath } from './GroundPath'
+import { BranchCircuit } from './BranchCircuit'
+import { WireAndBreaker } from './WireAndBreaker'
+
 export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'arc-flash-categories': ArcFlashCategories,
   'cave-in-signs': CaveInSigns,
@@ -151,4 +159,11 @@ export const FIGURES: Record<FigureName, ComponentType<FigureProps>> = {
   'one-loop': OneLoop,
   'neutral-vs-ground': NeutralVsGround,
   'bonding-jumper': BondingJumper,
+  'service-and-meter': ServiceAndMeter,
+  'main-panel': MainPanel,
+  'volts-amps-watts': VoltsAmpsWatts,
+  'one-twenty-two-forty': OneTwentyTwoForty,
+  'ground-path': GroundPath,
+  'branch-circuit': BranchCircuit,
+  'wire-and-breaker': WireAndBreaker,
 }
