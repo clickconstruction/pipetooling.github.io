@@ -130,7 +130,7 @@ A course read at the person's own pace (punch list #111, v2.5566): the rail of p
 
 ### /training/intro-to-plumbing — Training: Intro to plumbing
 
-The second course (punch list #119, v2.5610), the same page: how water comes into a house under pressure and leaves by gravity, a drawing in every lesson in one language (a pipe is two lines, water a tint, flow an arrow, the trap's seal a hatch). Required of helpers and **offered** to every other role, who find it under the Training card's **Available** line with no colour and no clock. Off until a dev turns it on; Start here and Water in are built, Water out, the conditions and Reading the job follow. Guide `take-a-training-course`.
+The second course (punch list #119, v2.5610), the same page: how water comes into a house under pressure and leaves by gravity, a drawing in every lesson in one language (a pipe is two lines, water a tint, flow an arrow, the trap's seal a hatch). Required of helpers and **offered** to every other role, who find it under the Training card's **Available** line with no colour and no clock. Off until a dev turns it on; all four parts are built (v2.5610 to v2.5613): Start here, Water in, Water out, the two systems under conditions, Reading the job, thirty lessons and a final check of twenty. Guide `take-a-training-course`.
 
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick

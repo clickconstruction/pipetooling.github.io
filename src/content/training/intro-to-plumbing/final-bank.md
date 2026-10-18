@@ -321,3 +321,51 @@ title: Final check bank
 - [ ] A vent
 > right: The gap or the high loop puts the hose above the sink's water.
 > wrong: An air gap or a high loop keeps the sink's water from running back into the dishwasher.
+
+41. What is a stub-out?
+- [x] A capped pipe end waiting for its fixture
+- [ ] A short piece of vent
+- [ ] The cleanout at the base of a stack
+- [ ] A broken pipe
+> right: At top-out every fixture's supplies and drain end in a capped stub.
+> wrong: A stub-out is the capped end left for the fixture to connect to at trim.
+
+42. Which inspection comes before the concrete is poured?
+- [ ] Top-out
+- [ ] The final
+- [x] The under-slab rough
+- [ ] The water heater's
+> right: The pipe under the slab is seen once, before the pour.
+> wrong: The under-slab rough is inspected before the concrete hides it.
+
+43. What holds the test water in a stack?
+- [ ] The trap
+- [x] A test ball or plug in the cleanout
+- [ ] The vent cap
+- [ ] The water heater
+> right: The plug closes the bottom and the stack fills to its 10 ft head.
+> wrong: A test ball in the cleanout holds the water in for the test.
+
+44. How long must a drain test hold?
+- [ ] 1 min
+- [x] 15 min
+- [ ] 1 hour
+- [ ] A day
+> right: Fifteen minutes with no drop, for water or for air.
+> wrong: The test holds 15 min, water at a 10 ft head or air at 5 psi.
+
+45. What does a vent run flat below the fixture's rim do?
+- [ ] Vents better
+- [x] Fills with water
+- [ ] Nothing
+- [ ] Raises the pressure
+> right: Water backs into the low vent and it stops carrying air.
+> wrong: A vent must rise above the rim before it turns level, or it fills with water.
+
+46. Which mistake drains fine on the first day and then smells?
+- [ ] A flat run
+- [x] An S-trap
+- [ ] A tee on its back
+- [ ] A long trap arm
+> right: The S-trap passes water and siphons its own seal, so the smell follows.
+> wrong: An S-trap drains and then loses its seal. The smell is the sign.

@@ -2,7 +2,7 @@
 name: "Intro to plumbing: how water comes in and goes out, in drawings"
 number: 119
 group: close
-status: BUILDING 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; Part 4 Reading the job next; the six calls taken as drawn until the owner says otherwise
+status: BUILT 2026-10-18 — the owner said build it, checking the work along the way; PR 1 (the offered state, the pipe drawing language, Start here and all of Water in, eleven lessons and eleven figures shot at three widths in both themes) is v2.5610; PR 2 (Water out, eight lessons and eight figures) is v2.5611; PR 3 (the conditions, eight strips) is v2.5612; PR 4 (Reading the job, three figures, the course whole at thirty lessons) is v2.5613; left: the owner's read-through and On in Settings → Training; the six calls taken as drawn until the owner says otherwise
 summary: >
   The second training course: thirty five-minute lessons on how a house's plumbing works, for
   understanding and not for estimating. Part 1 is water in under pressure, from the meter to the
@@ -13,7 +13,7 @@ summary: >
   first-timer's mistakes. The course rides the Training mechanism built for the OSHA 30 refresher
   and adds one thing to it, an offered state so a course can be open to every role and required
   for some. The owner, a master plumber, co-writes and corrects every lesson.
-next: PR 4, Part 4, Reading the job, the bank filled from every part and lessons: 30; then the owner's read-through and On in Settings → Training.
+next: The owner reads the course as a dev preview, corrects any fact or number in place, then presses On in Settings → Training; delete this folder once the first crew member has been through it.
 size: L (PR 1 is M; each part is an M PR of eight to ten drawings; the owner's corrections ride each one)
 blocker: none; the six calls are built to the drawn leans and each is one row in Settings or one line in a lesson.
 opinion: build it as outlined once the owner has corrected it; the drawings are the course, the mechanism is one column and one row on the card.
@@ -281,8 +281,8 @@ together`, `4. Reading the job`.
 3. **Part 2, water out** (v2.5611): lessons 12 to 19 and their eight figures, the `Trap` and `Toilet`
    parts, eight more bank questions.
 4. **Part 3, the conditions** (v2.5612): lessons 20 to 27, the eight strips, eight more bank questions.
-5. **Part 4, reading the job**: lessons 28 to 30, the three figures, the bank filled from every
-   part, `lessons: 30` and `minutes: 165`, the glossary's Training line naming two courses.
+5. **Part 4, reading the job** (v2.5613): lessons 28 to 30, the three figures, six more bank
+   questions, `lessons: 30` and `minutes: 165`.
 6. **The owner's read-through** of the live course as a dev preview, every correction as one
    commit, then **On** in Settings → Training.
 
