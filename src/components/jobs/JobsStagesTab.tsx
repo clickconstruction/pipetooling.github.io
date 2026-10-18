@@ -155,6 +155,7 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienInstrumentsModal from './LienInstrumentsModal'
+import { JobCustomerSheet } from './JobCustomerSheet'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
 import GcOnNoticeModal from './GcOnNoticeModal'
@@ -822,6 +823,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const isMobile = useIsMobile()
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
   /** Lien instruments (v2.2640): the orange lien icon's home — every lien paper is made in this window. */
+  /** The customer's door (v2.5626, punch list #123): the job whose customer sheet is open over the board, from the row's speech bubble. */
+  const [customerDoorJob, setCustomerDoorJob] = useState<JobWithDetails | null>(null)
   const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
@@ -2468,6 +2471,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     onPropertyKindSaved: propertyKinds.setKind,
     propertyLinkByJobId: propertyKinds.linkByJobId,
     onPropertyLinked: propertyKinds.linkJob,
+    onOpenCustomerDoor: setCustomerDoorJob,
     }
   /** The phone rows' kernel input for a job, from the same side maps the cards read. */
   const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
@@ -4614,6 +4618,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onChanged={refetchLienDesk}
         rereadKey={gcNoticeRereadKey}
       />
+      {customerDoorJob ? <JobCustomerSheet job={customerDoorJob} onClose={() => setCustomerDoorJob(null)} onSent={() => void loadJobs()} /> : null}
       <LienInstrumentsModal
         open={lienInstrumentsModal != null}
         onClose={() => setLienInstrumentsModal(null)}

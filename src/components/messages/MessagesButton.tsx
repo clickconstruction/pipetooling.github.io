@@ -26,6 +26,11 @@ export interface MessagesButtonProps {
   onOpen?: () => void
   /** Laid over the bubble's own look: a phone row's tile, as its ☎ and ✉ beside it. */
   style?: CSSProperties
+  /**
+   * The Pipeline's rows (v2.5626, punch list #123): the press opens the customer's door over the board, not the Messages
+   * page, so the board stays where it was. Given, the button reads nothing and goes nowhere itself.
+   */
+  onPressInstead?: () => void
 }
 
 export function MessagesButton(props: MessagesButtonProps) {
@@ -34,7 +39,7 @@ export function MessagesButton(props: MessagesButtonProps) {
   return <MessagesButtonShown {...props} />
 }
 
-function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, style }: MessagesButtonProps) {
+function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, style, onPressInstead }: MessagesButtonProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const [busy, setBusy] = useState(false)
@@ -47,6 +52,10 @@ function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, styl
     // The button sits inside rows and names that have presses of their own.
     e.preventDefault()
     e.stopPropagation()
+    if (onPressInstead) {
+      onPressInstead()
+      return
+    }
     if (busy) return
     setBusy(true)
     try {

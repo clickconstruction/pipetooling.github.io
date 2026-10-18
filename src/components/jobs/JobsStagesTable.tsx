@@ -142,6 +142,7 @@ export type JobsStagesTableProps = {
   propertyLinkByJobId?: StagesRowRenderContext['propertyLinkByJobId']
   onPropertyLinked?: StagesRowRenderContext['onPropertyLinked']
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
+  onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']
 }
 
 export default function JobsStagesTable(props: JobsStagesTableProps) {
@@ -212,6 +213,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     propertyLinkByJobId,
     onPropertyLinked,
     onOpenJobContract,
+    onOpenCustomerDoor,
   } = props
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
@@ -258,6 +260,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     propertyLinkByJobId,
     onPropertyLinked,
     onOpenJobContract,
+    onOpenCustomerDoor,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) => <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} />
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
