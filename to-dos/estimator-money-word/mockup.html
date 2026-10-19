@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The estimator's word on money</title>
+<style>
+  /* Punch list #128. Light only, like every to-do mock-up. Made-up people, jobs and numbers: Dana Whitfield the homeowner; Theo the estimator who bid her job; Rosa the office; Marcus the tech. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --green-line: #86efac; --orange: #ea580c; --orange-ink: #c2410c; --orange-deep: #9a3412; --orange-tint: #ffedd5; --orange-line: #fdba74; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --amber: #d97706; --amber-tint: #fef3c7; --amber-ink: #92400e; --amber-line: #fcd34d; --violet-ink: #6d28d9; --violet-tint: #f5f3ff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --faint: #9ca3af; --line: #d1d5db; --line-2: #e5e7eb; --line-strong: #9ca3af; --surface: #ffffff; --page: #f6f7f9; --subtle: #f3f4f6; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1320px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; flex: none; }
+  h3 { font-size: 15px; margin: 30px 0 4px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  h3 .opt { font-size: 12px; font-weight: 800; color: #fff; background: var(--orange); border-radius: 6px; padding: 1px 8px; }
+  h3 .opt.grey { background: var(--muted); }
+  h3 .pick { font-size: 11px; font-weight: 700; color: var(--orange-ink); background: var(--orange-tint); border: 1px solid var(--orange-line); border-radius: 999px; padding: 0 8px; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  code { font-size: 12px; background: var(--subtle); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 4px; }
+
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .row.wide { grid-template-columns: repeat(auto-fit, minmax(min(600px, 100%), 1fr)); }
+  .pair > *, .row > * { min-width: 0; }
+  @media (max-width: 1000px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .cap .w { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; opacity: .8; }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; overflow-x: auto; }
+  .fit.center { display: flex; justify-content: center; }
+  .new { outline: 2px dashed var(--orange); outline-offset: 2px; border-radius: 6px; }
+
+  /* ---------- the Bid Board row (Won) ---------- */
+  .board { min-width: 820px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; overflow: hidden; }
+  .board .hdr { display: grid; grid-template-columns: 90px minmax(0, 1fr) 150px 110px 130px; gap: 12px; padding: 5px 12px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line-2); background: var(--subtle); }
+  .brow { display: grid; grid-template-columns: 90px minmax(0, 1fr) 150px 110px 130px; gap: 12px; padding: 9px 12px 4px; font-size: 12.5px; align-items: start; }
+  .bnum { font-weight: 800; font-size: 13px; }
+  .bnum small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+  .bname { font-weight: 700; }
+  .bname .sub { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+  .bgc { font-size: 12px; color: var(--ink-2); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+  .pill.won { background: var(--green-tint); color: var(--green-ink); border: 1px solid var(--green-line); }
+  .pill.started { background: var(--blue-tint); color: var(--blue-ink); border: 1px solid #93c5fd; }
+  .bval { text-align: right; font-weight: 700; }
+  .bval small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+  .under { padding: 0 12px 10px 114px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line-2); }
+  .youwon { font-size: 11.5px; color: var(--muted); }
+  .acct { font-size: 11.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .acct .ch { font-size: 10.5px; font-weight: 700; color: #0f766e; background: #ccfbf1; border-radius: 6px; padding: 0 6px; }
+
+  /* the money line */
+  .money { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; background: var(--subtle); min-width: 0; }
+  .money .jp { font-size: 10.5px; font-weight: 800; color: var(--green-ink); background: var(--green-tint); border: 1px solid var(--green-line); border-radius: 999px; padding: 0 7px; }
+  .money .st { font-weight: 700; }
+  .money .sep { color: var(--line-strong); }
+  .money .open { font-weight: 800; }
+  .money .word { display: inline-flex; align-items: center; gap: 5px; }
+  .money .word b { font-weight: 700; }
+  .money .word .by { color: var(--muted); font-size: 11.5px; }
+  .money .rec { color: var(--muted); font-size: 11.5px; }
+  .money .sp { flex: 1; min-width: 6px; }
+  .money .btn { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 10px; white-space: nowrap; border: 1px solid var(--line); background: #fff; color: var(--ink-2); }
+  .money .btn.main { border-color: var(--blue); color: var(--blue-ink); }
+  .money .btn.green { border-color: var(--green); color: var(--green-ink); }
+  .money .btn.grey { color: var(--faint); border-style: dashed; }
+  .money.amber { background: var(--amber-tint); border-color: var(--amber-line); }
+  .money.amber .open { color: var(--amber-ink); }
+  .money.red { background: var(--red-tint); border-color: #fca5a5; }
+  .money.red .word b { color: var(--red-ink); }
+  .money.green { background: var(--green-tint); border-color: var(--green-line); }
+  .money.green .st { color: var(--green-ink); }
+  .money.quiet { background: #fff; color: var(--muted); }
+  .money .claim { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--violet-ink); background: var(--violet-tint); border-radius: 6px; padding: 0 7px; }
+  .states { display: flex; flex-direction: column; gap: 8px; }
+  .states .lab { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin: 6px 0 -2px; }
+
+  /* ---------- sheets / windows ---------- */
+  .win { width: 100%; max-width: 480px; min-width: 300px; margin: 0 auto; background: #fff; border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; box-shadow: 0 16px 40px rgba(0,0,0,.12); }
+  .win .bar { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; gap: 8px; }
+  .win .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .win .body { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .win .sub { color: var(--muted); font-size: 12px; margin: -4px 0 0; }
+  .fld { display: flex; flex-direction: column; gap: 4px; }
+  .fld label { font-size: 11px; font-weight: 700; color: var(--ink-2); letter-spacing: .04em; text-transform: uppercase; }
+  .inp { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: #fff; font-size: 13px; color: var(--ink); }
+  .inp .ph { color: var(--faint); }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg span { font-size: 12px; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; color: var(--ink-2); background: #fff; }
+  .seg span.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .onrec { border-top: 1px solid var(--line-2); padding-top: 8px; font-size: 12px; color: var(--ink-2); }
+  .onrec .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .onrec .r { display: flex; gap: 8px; align-items: baseline; }
+  .onrec .r .never { margin-left: auto; color: var(--red-ink); font-size: 11.5px; }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+  .foot .hint { font-size: 11.5px; color: var(--muted); max-width: 32ch; }
+  .foot .btns { display: flex; gap: 6px; }
+  .send { background: var(--blue); color: #fff; font-weight: 700; border-radius: 8px; padding: 6px 13px; font-size: 12.5px; white-space: nowrap; }
+  .send.green { background: var(--green); }
+  .send.dim { background: var(--faint); }
+  .ghost { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: #fff; white-space: nowrap; }
+  .after { font-size: 12.5px; background: var(--ink); color: #fff; border-radius: 8px; padding: 7px 12px; display: flex; justify-content: space-between; gap: 10px; }
+  .after u { color: #93c5fd; text-decoration: none; font-weight: 700; }
+  .match { border: 1px solid var(--green-line); background: var(--green-tint); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; color: var(--green-ink); display: flex; gap: 8px; align-items: baseline; }
+  .match b { color: var(--ink); }
+  .match.none { border-color: var(--amber-line); background: var(--amber-tint); color: var(--amber-ink); }
+
+  /* ---------- Needs you + Pipeline row (office side) ---------- */
+  .needs { width: 100%; max-width: 560px; margin: 0 auto; background: #fff; border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; }
+  .needs .hd { padding: 8px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+  .needs .hd .c { font-size: 11px; font-weight: 700; color: #fff; background: var(--orange); border-radius: 999px; padding: 0 7px; }
+  .nline { display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line-2); font-size: 12.5px; }
+  .nline .ic { width: 26px; height: 26px; border-radius: 8px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+  .nline .ic.v { background: var(--violet-tint); color: var(--violet-ink); }
+  .nline .ic.g { background: var(--subtle); color: var(--muted); }
+  .nline .tx { flex: 1; min-width: 0; }
+  .nline .tx b { display: block; }
+  .nline .tx span { color: var(--muted); font-size: 11.5px; }
+  .nline .go { color: var(--blue-ink); font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .prow { display: flex; gap: 14px; align-items: flex-start; padding: 10px 12px; }
+  .ident { flex: 0 0 210px; min-width: 0; font-size: 12.5px; }
+  .ident .jn { font-weight: 700; font-size: 13.5px; display: flex; gap: 6px; align-items: center; }
+  .jnum { font-size: 10.5px; font-weight: 800; color: #fff; background: var(--orange); border-radius: 5px; padding: 1px 6px; }
+  .ident .cust { display: flex; gap: 7px; align-items: center; margin-top: 3px; color: var(--ink-2); }
+  .ident .addr { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chip { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--line); background: #fff; color: var(--ink-2); white-space: nowrap; }
+  .chip.money { border-color: var(--amber-line); background: var(--amber-tint); color: var(--amber-ink); }
+  .chip.said { border-color: var(--blue); color: var(--blue-ink); background: var(--blue-tint); }
+  .chip.claim { border-color: #c4b5fd; color: var(--violet-ink); background: var(--violet-tint); }
+  .cols { flex: 0 0 120px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; font-size: 12px; }
+  .stage { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: var(--amber-tint); color: var(--amber-ink); }
+  .cols .m { font-weight: 700; }
+  .cols .sub { color: var(--muted); font-size: 11px; }
+  .abox { flex: 1 1 300px; min-width: 260px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--subtle); padding: 6px 10px 7px; font-size: 12px; }
+  .ent { display: flex; align-items: flex-start; margin-top: 4px; line-height: 1.45; }
+  .ent .n { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%; flex: none; border: 1px solid var(--line-strong); color: var(--muted); font-size: 10px; font-weight: 700; margin: 1px 7px 0 0; }
+  .ent .tag { display: inline-flex; align-items: center; height: 17px; flex: none; border-radius: 999px; padding: 0 5px; font-size: 10px; font-weight: 600; margin: 1px 7px 0 0; border: 1px solid var(--blue); color: var(--blue-ink); background: var(--blue-tint); }
+  .ent .tag.v { border-color: #c4b5fd; color: var(--violet-ink); background: var(--violet-tint); }
+  .ent .tx { min-width: 0; color: var(--ink-2); }
+  .ent .who { color: var(--ink); font-weight: 700; }
+  .ent .meta { color: var(--muted); font-size: 11px; }
+
+  /* ---------- the lens ---------- */
+  .lens { min-width: 760px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; overflow: hidden; }
+  .lens .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line-2); font-size: 13px; font-weight: 700; flex-wrap: wrap; }
+  .lens .top .roll { font-size: 11.5px; font-weight: 600; background: var(--subtle); border-radius: 999px; padding: 2px 9px; color: var(--ink-2); }
+  .lens .top .m { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .lens .top label { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--muted); display: flex; gap: 5px; align-items: center; }
+  .lh { display: grid; grid-template-columns: 120px minmax(0, 1fr) 130px minmax(0, 1.2fr) 190px; gap: 10px; padding: 4px 12px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line-2); }
+  .lr { display: grid; grid-template-columns: 120px minmax(0, 1fr) 130px minmax(0, 1.2fr) 190px; gap: 10px; padding: 8px 12px; font-size: 12.5px; border-bottom: 1px solid var(--line-2); align-items: center; }
+  .lr .when { font-weight: 700; font-size: 12px; }
+  .lr .when.red { color: var(--red-ink); }
+  .lr .when.amber { color: var(--amber-ink); }
+  .lr .when.green { color: var(--green-ink); }
+  .lr .job b { display: block; }
+  .lr .job span { color: var(--muted); font-size: 11.5px; }
+  .lr .amt { font-weight: 800; }
+  .lr .amt small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+  .lr .wd { font-size: 12px; color: var(--ink-2); }
+  .lr .wd b { font-weight: 700; }
+  .lr .wd .by { color: var(--muted); font-size: 11px; }
+  .lr .acts { display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; }
+  .lr .acts .btn { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--line); background: #fff; color: var(--ink-2); white-space: nowrap; }
+  .lr .acts .btn.main { border-color: var(--blue); color: var(--blue-ink); }
+  .lr .acts .btn.green { border-color: var(--green); color: var(--green-ink); }
+  .lr .acts .btn.org { border-color: var(--orange); color: var(--orange-ink); }
+  .lr.red { background: #fff5f5; }
+  .lr.done { color: var(--muted); }
+
+  /* ---------- the phone ---------- */
+  .phone { width: 360px; max-width: 100%; margin: 0 auto; background: var(--page); border: 1px solid #aab2bd; border-radius: 24px; padding: 10px 10px 16px; font-size: 12.5px; }
+  .phone .pbar { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 0 6px 6px; }
+  .phone .ptitle { font-weight: 800; font-size: 15px; padding: 0 4px 8px; }
+  .card { background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 10px rgba(0,0,0,.07); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .card .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card .top .nm { font-weight: 700; font-size: 13.5px; display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .card .cust { color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+  .card .ml { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; font-size: 12px; }
+  .card .ml .open { font-weight: 800; color: var(--amber-ink); }
+  .card .ml .wd { color: var(--ink-2); }
+  .card .ml .wd b { color: var(--red-ink); }
+  .card .acts { display: flex; gap: 6px; border-top: 1px solid var(--line-2); padding-top: 6px; flex-wrap: wrap; }
+  .card .acts span { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 3px 10px; border: 1px solid var(--line); background: #fff; color: var(--ink-2); }
+  .card .acts span.main { border-color: var(--blue); color: var(--blue-ink); }
+  .card .acts span.green { border-color: var(--green); color: var(--green-ink); }
+  .card .acts span.org { border-color: var(--orange); color: var(--orange-ink); }
+
+  /* ---------- the Messages thread ---------- */
+  .thread { width: 100%; max-width: 560px; margin: 0 auto; background: #fff; border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .thread .hd { padding: 9px 14px; border-bottom: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: baseline; }
+  .thread .hd b { font-size: 15px; }
+  .thread .hd span { color: var(--muted); font-size: 11.5px; }
+  .msgs { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 82%; border-radius: 12px; padding: 6px 10px; font-size: 12.5px; line-height: 1.4; }
+  .msg.them { align-self: flex-start; background: var(--orange-tint); border: 1px solid var(--orange-line); }
+  .msg.us { align-self: flex-end; background: var(--blue-tint); border: 1px solid #93c5fd; }
+  .msg .m { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .slot { margin: 0 14px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--subtle); padding: 8px 10px; font-size: 12.5px; display: flex; flex-direction: column; gap: 6px; }
+  .slot .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .slot .heard { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .slot .heard b { font-weight: 700; }
+  .slot .heard .k { font-size: 11px; font-weight: 700; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; background: #fff; }
+  .slot .heard .k.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .slot .landed { font-size: 12px; color: var(--green-ink); background: var(--green-tint); border: 1px solid var(--green-line); border-radius: 8px; padding: 4px 8px; }
+  .slot .landed u { text-decoration: none; color: var(--blue-ink); font-weight: 700; }
+
+  /* ---------- second pass ---------- */
+  .pass { border: 2px solid var(--ink); border-radius: 12px; padding: 14px 18px; background: #fff; margin-top: 18px; }
+  .pass h3 { margin: 0 0 8px; }
+  .pass ol { margin: 0; padding-left: 20px; }
+  .pass li { margin: 6px 0; color: var(--ink-2); }
+  .pass li b { color: var(--ink); }
+  .pass .was { color: var(--muted); text-decoration: line-through; }
+  table.plan { border-collapse: collapse; width: 100%; font-size: 12.5px; margin-top: 10px; }
+  table.plan th, table.plan td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  table.plan th { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  table.plan td:first-child { font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #128 · mock-up · to-dos/estimator-money-word</p>
+  <h1>The estimator's word on money</h1>
+  <p>Theo bid Dana Whitfield's repipe and still talks to her more than anyone. When she tells him <i>the check goes out the 25th</i>, or <i>I paid it Tuesday</i>, Theo today phones Rosa and Rosa marks it. The app gives Theo the jobs born of his bids, with their money, in the places he already works: the Bid Board row, a lens beside Job accounts, the thread in Messages and a card on his phone. What Dana says about paying, a day or that she already did, is Theo's own word and goes straight on the job as one record. <i>Paid</i> stays the bank's word: her word that she paid meets the deposit when it lands, so Rosa's allocation is one press, and a word nothing lands behind comes back to Theo, not to Rosa.</p>
+</header>
+
+<h2><span class="num">1</span>The money line under a won bid</h2>
+<p class="lede">The Bid Board's Won row already carries <i>You won it</i> and the job-accounts line. One more line, for the bid's estimator or account manager and the office: the job, where its money stands, the customer's last word, and the two presses. Every state the line can be in, top to bottom.</p>
+
+<div class="cap">Bid Board · Won · desktop <span class="w">the row Theo sees</span></div>
+<div class="fit">
+  <div class="board">
+    <div class="hdr"><span>Bid</span><span>Project</span><span>Customer</span><span>Outcome</span><span>Our number</span></div>
+    <div class="brow">
+      <div class="bnum">B512<small>bid by Theo</small></div>
+      <div class="bname">Whitfield repipe <div class="sub">114 Larkspur Ct · residential</div></div>
+      <div class="bgc">Dana Whitfield</div>
+      <div><span class="pill started">Started</span></div>
+      <div class="bval">$4,200<small>won Sep 12</small></div>
+    </div>
+    <div class="under">
+      <div class="acct">Job accounts <span class="ch">Ferguson · opened</span> <span class="ch">Winsupply · opened</span></div>
+      <div class="states">
+        <div class="lab">Not billed yet</div>
+        <div class="money quiet"><span class="jp">J1032</span> <span class="st">Working</span> <span class="sep">·</span> not billed yet <span class="sp"></span> <span class="btn grey">Write down their word</span></div>
+
+        <div class="lab">Billed, no word yet</div>
+        <div class="money amber new"><span class="jp">J1032</span> <span class="st">Billed Sep 30</span> <span class="sep">·</span> <span class="open">$4,200 open</span> <span class="sep">·</span> <span class="word">no word yet</span> <span class="rec">· Dana keeps 3 of 4 · slips ~6 d</span> <span class="sp"></span> <span class="btn org">Send the pay page</span> <span class="btn main">Write down their word</span></div>
+
+        <div class="lab">They said</div>
+        <div class="money"><span class="jp">J1032</span> <span class="st">Billed Sep 30</span> <span class="sep">·</span> <span class="open">$4,200 open</span> <span class="sep">·</span> <span class="word">They said <b>Oct 25</b> <span class="by">· Dana, by text, Theo heard it Oct 14</span></span> <span class="sp"></span> <span class="btn org">Send the pay page</span> <span class="btn main">Write down their word</span></div>
+
+        <div class="lab">Past their word</div>
+        <div class="money red"><span class="jp">J1032</span> <span class="st">Billed Sep 30</span> <span class="sep">·</span> <span class="open">$4,200 open</span> <span class="sep">·</span> <span class="word">Said <b>Oct 25 · 4 days past</b> <span class="by">· Dana, by text</span></span> <span class="sp"></span> <span class="btn org">Text Dana</span> <span class="btn main">Write down their word</span></div>
+
+        <div class="lab">They say they paid · waiting on the deposit</div>
+        <div class="money"><span class="jp">J1032</span> <span class="st">Billed Sep 30</span> <span class="sep">·</span> <span class="open">$4,200 open</span> <span class="sep">·</span> <span class="claim">They say they paid · check mailed Oct 20</span> <span class="rec">· Theo heard it · the deposit has not landed yet</span> <span class="sp"></span> <span class="btn main">Write down their word</span></div>
+
+        <div class="lab">Nothing landed · 7 days on</div>
+        <div class="money amber"><span class="jp">J1032</span> <span class="st">Billed Sep 30</span> <span class="sep">·</span> <span class="open">$4,200 open</span> <span class="sep">·</span> <span class="claim">They say they paid · check mailed Oct 20</span> <span class="word"><b style="color:var(--amber-ink)">nothing landed in 7 days</b></span> <span class="sp"></span> <span class="btn org">Text Dana</span> <span class="btn main">Write down their word</span></div>
+
+        <div class="lab">Paid</div>
+        <div class="money green"><span class="jp">J1032</span> <span class="st">Paid Oct 23</span> <span class="sep">·</span> $4,200 <span class="sep">·</span> <span class="word">2 days before their word</span> <span class="rec">· Dana keeps 4 of 5 now</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>What is on the line.</b> One press, <b>Write down their word</b>, whatever Dana said: a day, or that she already paid. The job's number and stage, the bill day and what is still open after the payment rule (the AR page's bill truth), the latest live promise with who said it, how and who heard it, and the payer's record from the pay-speed kernel (<code>paymentPromises.ts</code>, the same <i>keeps 3 of 7 · slips ~9d</i> the Pipeline shows). One read per page, <code>list_bid_money_strip(p_bid_ids)</code> beside <code>list_bid_job_account_strip</code>, SECURITY DEFINER and scoped by <code>is_job_people(job)</code>: <b>the job's people</b> are the office, the job's account manager and the bid's estimator or account manager. The same predicate gates the promise read and write, the trail and, later, primary's paid verbs. <b>Nothing changes on <code>jobs_ledger</code>'s policies</b> — Theo still reads no job row; he reads this line.</p>
+<p class="note"><b>Send the pay page</b> opens the customer's door Theo already has (Call · Text · Email) with the job's box and the <code>{bill}</code> line lit, the way the Pipeline sheet does since v2.5628 — the same read gives the line the bill's pay page, so the papers read in Messages works for him on these jobs. <b>Text Dana</b> past her word is the same door with the <i>past their word</i> quick reply first.</p>
+
+<h2><span class="num">2</span>Write down their word — one sheet, two kinds of word</h2>
+<p class="lede">The Pipeline's own promise sheet (<code>SetPromisedPayDateModal</code>) with a switch at the top. <b>They'll pay by…</b> is the promise as today: the day, who said it, how. <b>They say they paid…</b> is the same record with the method and the day they name (<code>job_payment_promises</code> kind <code>paid_claim</code>). Both go in through <code>add_job_payment_promise</code> with the gate on the job's people; <code>heard_by</code> is Theo. Both show in Job activity as <i>They said</i>, both void with <i>Never said that</i>, and the Pipeline's chip reads either.</p>
+<div class="row">
+  <div>
+    <div class="cap">They'll pay by… <span class="w">the promise, as the Pipeline's</span></div>
+    <div class="fit center">
+      <div class="win">
+        <div class="bar">Write down their word <span class="x">×</span></div>
+        <div class="body">
+          <p class="sub">J1032 · Whitfield repipe · $4,200 open since Sep 30</p>
+          <div class="seg new"><span class="on">They'll pay by…</span><span>They say they paid…</span></div>
+          <div class="fld"><label>The day they named</label><div class="inp">Oct 25, 2026</div></div>
+          <div class="fld"><label>Who said it</label><div class="inp">Dana Whitfield</div></div>
+          <div class="fld"><label>How</label><div class="seg"><span>Phone</span><span class="on">Text</span><span>Email</span><span>In person</span></div></div>
+          <div class="onrec">
+            <div class="t">On record for this job</div>
+            <div class="r">Oct 10 · <b>Oct 18</b> · Dana, by phone · Rosa heard it <span class="never">Never said that</span></div>
+          </div>
+          <div class="foot">
+            <div class="hint">Goes on the job's board now. Rosa's chase reads it; a changed day is a second promise.</div>
+            <div class="btns"><span class="ghost">Cancel</span><span class="send">Write it on J1032</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">They say they paid… <span class="w">the same sheet, the other way</span></div>
+    <div class="fit center">
+      <div class="win">
+        <div class="bar">Write down their word <span class="x">×</span></div>
+        <div class="body">
+          <p class="sub">J1032 · Whitfield repipe · $4,200 open since Sep 30</p>
+          <div class="seg new"><span>They'll pay by…</span><span class="on">They say they paid…</span></div>
+          <div class="fld"><label>How, they say</label><div class="seg"><span class="on">Check in the mail</span><span>Paid online</span><span>Bank transfer</span><span>Card by phone</span><span>Not sure</span></div></div>
+          <div class="fld"><label>When, they say</label><div class="inp">Oct 20, 2026</div></div>
+          <div class="fld"><label>How much</label><div class="inp"><span class="ph">All of it ($4,200) · or type an amount</span></div></div>
+          <div class="fld"><label>Who said it · a note</label><div class="inp">Dana Whitfield <span class="ph">· Check #1187, she says</span></div></div>
+          <div class="foot">
+            <div class="hint">The job stays Billed until the money lands. When a deposit of this amount lands, Rosa's allocation names this job.</div>
+            <div class="btns"><span class="ghost">Cancel</span><span class="send green">Write it on J1032</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row" style="margin-top:18px">
+  <div>
+    <div class="cap">After either press <span class="w">the job's trail, and Rosa's row</span></div>
+    <div class="fit">
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:460px">
+        <div class="after"><span>Written on J1032 — check mailed <b>Oct 20</b>, Dana by text.</span><u>Open the thread</u></div>
+        <div class="abox">
+          <div class="ent"><span class="n">15</span><span class="tag v">They said</span><span class="tx"><span class="who">Dana Whitfield</span> says she paid · check in the mail · Oct 20 · <i>Check #1187</i> · <span class="meta">Theo heard it · Oct 21, 9:40 am</span></span></div>
+          <div class="ent"><span class="n">14</span><span class="tag">They said</span><span class="tx"><span class="who">Dana Whitfield</span> will pay by <b>Oct 25</b> · by text · <span class="meta">Theo heard it · Oct 14, 3:12 pm</span></span></div>
+          <div class="ent"><span class="n">13</span><span class="tag">Sent</span><span class="tx">Bill emailed through Stripe <span class="meta">· Rosa · Sep 30</span></span></div>
+        </div>
+        <p class="note" style="margin:0">Rosa's Pipeline row carries the chip — <span class="chip claim">They say paid · check · Oct 20</span> — and the chase leaves the row alone while a deposit may still be on its way. Nothing is marked paid; nothing is in Needs you.</p>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap orange">Where it is heard first <span class="w">the thread's slot reads it too</span></div>
+    <div class="fit center">
+      <div class="thread">
+        <div class="hd"><b>Dana Whitfield</b> <span>customer · J1032 · Theo has it</span></div>
+        <div class="msgs">
+          <div class="msg them">Mailed the check this morning, #1187. Thanks again Theo. <span class="m">Oct 21, 9:31 am</span></div>
+        </div>
+        <div class="slot new">
+          <div class="t">Heard something about paying?</div>
+          <div class="heard">read as <span class="k">A day they'll pay</span><span class="k on">They say they paid</span><span class="k">Decision</span><span class="k">Just talk</span></div>
+          <div class="heard"><span class="k on">Check in the mail</span><span class="k">Paid online</span><span class="k">Bank transfer</span> · <b>Oct 21</b></div>
+          <div class="landed">✓ Written on <u>J1032</u> — Dana says she paid, check in the mail, Theo heard it.</div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Follow up's slot (cut 2's <code>write_down</code>) already takes a <i>payment</i> day from the office team and left it in <code>message_promises</code>. The bridge makes it land on the customer's open billed job under the bill-payer rule, the job named in the thread first (two open jobs ask which), and gains the <i>They say they paid</i> reading. Most of Theo's words arrive here; the Bid Board's press is for what he heard in person.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span>The office side — the word does work, it makes none</h2>
+<p class="lede">The first draft raised a Needs you line at Rosa on every claim. Wrong direction. The claim is useful at one moment: <b>when the deposit lands</b>. Allocating bank deposits is a flow Rosa already runs (Accounts Receivable → the bank deposits); a claim turns that press into one. The only thing that ever reaches Needs you is a claim with nothing behind it, and it goes to <b>Theo</b>, who can ask Dana.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Accounts Receivable · bank deposits <span class="w">Rosa's allocation, with the suggestion</span></div>
+    <div class="fit">
+      <div class="win" style="max-width:560px">
+        <div class="bar">Allocate · $4,200 from WHITFIELD D · landed Oct 22 <span class="x">×</span></div>
+        <div class="body">
+          <div class="match new">✓ <span><b>J1032 · Whitfield repipe · $4,200 open</b> — Theo wrote Oct 21: Dana says she paid, check #1187 in the mail Oct 20</span></div>
+          <div class="fld"><label>Or another job</label><div class="inp"><span class="ph">Search by name, J#, address…</span></div></div>
+          <div class="foot">
+            <div class="hint">One press: the deposit goes to J1032, the job moves to Paid, the word reads <i>kept</i>.</div>
+            <div class="btns"><span class="ghost">Not that job</span><span class="send green">Allocate to J1032 · paid Oct 22</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="note" style="margin:10px 0 0">The suggestion is the AR page's existing deposit-to-job matcher given one more signal: a live <code>paid_claim</code> on an open job whose amount and payer fit. No new press for Rosa, no Needs you line, and a check that comes to the office goes through the Bill pane's <i>Record payment</i> as today, where the claim shows under the amount.</p>
+    </div>
+  </div>
+  <div>
+    <div class="cap amber">Nothing landed <span class="w">7 days on, it comes back to Theo</span></div>
+    <div class="fit center">
+      <div class="phone">
+        <div class="pbar"><span>9:41</span><span>●●●</span></div>
+        <div class="ptitle">Needs you</div>
+        <div class="card new">
+          <div class="top"><div class="nm">Money on your bids</div><span style="color:var(--muted);font-size:11px">1 to ask about</span></div>
+          <div class="ml"><span class="open">$4,200</span><span class="wd">J1032 Whitfield · she said a check went out <b>Oct 20</b> · nothing landed in 7 days</span></div>
+          <div class="acts"><span class="org">Text Dana</span><span class="main">Write down their word</span><span>Never said that</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Rosa sees the row's chip turn amber and leaves it alone: the person who heard the word is the person who asks. <i>Never said that</i> voids the claim as it voids a promise. A claim whose deposit lands later clears on its own when the allocation names the job.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span>Money on my bids — the lens, the phone, and the door on the row</h2>
+<p class="lede">The won bid's row gets the customer's speech bubble the Pipeline row has (Call · Text · Email · Open their thread, <i>Dana wrote last, yesterday</i>, the waiting dot), and a <b>Trail</b> press on the money line opens the job's activity read-only for the job's people: the bill, the sends, every <i>They said</i> and the conversation on one timeline. Beside <i>Job accounts</i> on the Bid Board: every job born of my bids with money open, the ones past their word first, then no word, then waiting. It is Theo's chase list, the one he does anyway by memory. The office sees it with <i>Only my bids</i> off: who is talking to whom.</p>
+<div class="cap">Bid Board · Money on my bids <span class="w">desktop</span></div>
+<div class="fit">
+  <div class="lens">
+    <div class="top">Money on my bids <span class="roll">3 open · $11,900 · 1 past their word</span> <span class="m">of 9 won or started</span> <label><input type="checkbox" checked> Only my bids</label></div>
+    <div class="lh"><span>Where it stands</span><span>Job · customer</span><span>Open</span><span>Their last word</span><span></span></div>
+    <div class="lr red"><span class="when red">4 days past</span><span class="job"><b>J1032 · Whitfield repipe</b><span>Dana Whitfield · B512</span></span><span class="amt">$4,200<small>billed Sep 30</small></span><span class="wd">Said <b>Oct 25</b> <span class="by">· by text · Theo heard it</span></span><span class="acts"><span class="btn org">Text Dana</span><span class="btn main">Their word</span></span></div>
+    <div class="lr"><span class="when amber">no word · 19 d</span><span class="job"><b>J1040 · Park water heater</b><span>Lee Park · B530</span></span><span class="amt">$2,900<small>billed Oct 1</small></span><span class="wd"><span class="by">nothing heard · keeps 1 of 1</span></span><span class="acts"><span class="btn org">Send the pay page</span><span class="btn main">Their word</span></span></div>
+    <div class="lr"><span class="when green">waiting · Nov 2</span><span class="job"><b>J1037 · Ortega gas line</b><span>Marisol Ortega · B521</span></span><span class="amt">$4,800<small>billed Oct 12</small></span><span class="wd">Said <b>Nov 2</b> <span class="by">· by phone · Rosa heard it</span></span><span class="acts"><span class="btn main">Their word</span></span></div>
+    <div class="lr done"><span class="when">they say paid</span><span class="job"><b>J1029 · Nguyen sewer</b><span>An Nguyen · B498</span></span><span class="amt">$3,100<small>billed Sep 18</small></span><span class="wd"><span class="chip claim">paid online, they say · Oct 20</span> <span class="by">waiting on the deposit</span></span><span class="acts"></span></div>
+  </div>
+</div>
+<div class="row" style="margin-top:18px">
+  <div>
+    <div class="cap">Theo's phone <span class="w">the Dashboard's Needs you, and the card</span></div>
+    <div class="fit center">
+      <div class="phone">
+        <div class="pbar"><span>9:41</span><span>●●●</span></div>
+        <div class="ptitle">Needs you</div>
+        <div class="card new">
+          <div class="top"><div class="nm">Money on your bids</div><span style="color:var(--muted);font-size:11px">3 open · 1 past their word</span></div>
+          <div class="ml"><span class="open">$4,200</span><span class="wd">J1032 Whitfield · said <b>Oct 25 · 4 d past</b></span></div>
+          <div class="acts"><span class="org">Text Dana</span><span class="main">Their word</span></div>
+        </div>
+        <div class="card">
+          <div class="top"><div class="nm">Bid follow-ups due</div><span style="color:var(--muted);font-size:11px">2 today</span></div>
+          <div class="cust">B541 Harbor View · call Mike at Stanton</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="pass">
+  <h3>Second pass — is this the best we can do?</h3>
+  <ol>
+    <li><b>The scope was estimator-shaped; it is job-shaped now.</b> <span class="was">jobs born of my bids, for the estimator role</span> → <b>the job's people</b>: the office, the job's account manager (<code>jobs_ledger.account_manager_user_id</code>, the field <code>primary_scope</code> already runs on) and the bid's estimator or account manager. Opening a job from a bid copies the estimator in as the account manager, so the field means what it says. One predicate serves the primary role's mirror bug too (they see their jobs but no promise chip, and may mark any job paid).</li>
+    <li><b>Two sheets were one too many.</b> <span class="was">Write down their word · Tell the office they paid</span> → one press, one sheet with a switch, one record: a day they'll pay, or that they say they paid, both <i>They said</i> in the trail, both voided by <i>Never said that</i>.</li>
+    <li><b>The claim does work for the office instead of making work.</b> <span class="was">a Needs you line at Rosa on every claim, with a confirm box</span> → the claim shows up where Rosa already is, the bank deposit's allocation, as the suggested job; only a stale claim surfaces, and to Theo.</li>
+    <li><b>The thread is the first door, not the sixth.</b> The Messages bridge moves up to PR 3 and gains the <i>They say they paid</i> reading, so the common case needs no new screen.</li>
+    <li><b>The pay page is still the real tool.</b> <b>Send the pay page</b> on the line and <code>{bill}</code> filled for these jobs: what gets money in.</li>
+    <li><b>Left out on purpose.</b> No RLS change on <code>jobs_ledger</code>; no estimator <i>Mark paid</i>; no new table (the claim is a <code>job_payment_promises</code> kind with a method column); the Bid Board's hidden J#### chip stays hidden, the money line is his door.</li>
+  </ol>
+  <table class="plan">
+    <tr><th>PR</th><th>What</th><th>Server</th></tr>
+    <tr><td>1 · the job's people</td><td><code>is_job_people(job)</code>; the promise read and write gates on it; <code>list_job_payment_promises(job)</code> scoped (the company-wide read retired); the job opened from a bid copies the account manager; <code>estimator_can_reach_job_account</code> uses it</td><td>one migration + SQL bed</td></tr>
+    <tr><td>2 · the line + the door</td><td><code>list_bid_money_strip</code>; the money line (read-only) with Send the pay page; the customer's door on the won bid's row</td><td>one migration (the RPC)</td></tr>
+    <tr><td>3 · their word</td><td>the bridge from Messages' slot to the job (a day, or they say they paid); the one sheet from the line; <code>paid_claim</code> kind + method</td><td>one migration</td></tr>
+    <tr><td>4 · the office side</td><td>the allocation suggestion in AR; the stale claim back to the estimator; the amber on the row</td><td>none</td></tr>
+    <tr><td>5 · the lens, the card, the trail</td><td>Money on my bids; the Dashboard card; read-only Job activity for the job's people</td><td>none</td></tr>
+    <tr><td>6 · primary</td><td>narrow primary's paid verbs to the job's people, the same predicate</td><td>one migration</td></tr>
+  </table>
+</div>
+
+</div>
+</body>
+</html>
