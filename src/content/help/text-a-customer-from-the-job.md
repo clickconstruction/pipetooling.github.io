@@ -36,6 +36,8 @@ The window also offers **Call**, **Open their thread** and **Their record**. A c
 
 **Tie to** under the box names the job. A message from the job window always lands on that job.
 
+A line with `{bill}` fills with the pay page of the job's newest bill. The customer opens it and sees the bill with its Pay button. A bill not billed through Stripe has no pay page. Then the box asks you to fill the blank or take it out. **Attach** can add the bill's copy from the job's files instead.
+
 Texts wait until **Send texts** is switched on in Settings. Until then **Text** says so in place of the box. Press {{button:outline|Email}} to send it as an email instead. The owner or a dev turns texts on. For them, the line links to the switch. [Turn on texts from the company number](/help/turn-on-texts-from-the-company-number) shows how.
 
 An email goes under the plumbing company's letterhead. Its copy is kept in Documents.

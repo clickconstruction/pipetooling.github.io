@@ -37,7 +37,7 @@ The app keeps the Spanish beside the English for customers who read Spanish. A c
 
 ## Put blanks in a line
 
-A blank is a word in braces, like `{first}`. The app fills it when someone presses the line.
+A blank is a word in braces, like `{first}`. The app fills it when someone presses the line. A line can also hold `{bill}`. The app fills it with the pay page of the job's newest bill, when the line goes from a job.
 
 1. Press a line to open it.
 2. Put the cursor where the blank goes.

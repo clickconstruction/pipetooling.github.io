@@ -47,3 +47,13 @@ describe('the board’s moves', () => {
     expect(myWayFor({ booked: 'ask', estimate: 'send' }, 'estimate')).toBe('send')
   })
 })
+
+describe('the bill’s pay page in the sheet (v2.5628)', () => {
+  it('fills {bill} from the job’s newest bill, and leaves it so the press holds when the bill has no pay page', () => {
+    const line = { text: '{first}, here is a copy of your last bill: {bill}.', textEs: '' }
+    const withBill = tellFills({ customerName: 'Dana Whitfield', me: 'Tanya Reyes', jobName: 'Whitfield water heater', jobAddress: null, billLink: 'https://clicktooling.com/pay/8f3k2q' })
+    expect(tellWords(line, withBill, 'en')).toEqual({ text: 'Dana, here is a copy of your last bill: https://clicktooling.com/pay/8f3k2q.', left: [] })
+    const without = tellFills({ customerName: 'Dana Whitfield', me: 'Tanya Reyes', jobName: 'Whitfield water heater', jobAddress: null, billLink: null })
+    expect(tellWords(line, without, 'en').left).toEqual(['bill'])
+  })
+})

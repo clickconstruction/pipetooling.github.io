@@ -103,6 +103,7 @@ export function ReplyBox({
   io: ioGiven,
   quickIo,
   job,
+  billLink = null,
   kinds,
   attachIo,
   loadBoxes = loadBoxSettings,
@@ -112,6 +113,8 @@ export function ReplyBox({
   quickIo?: QuickRepliesIo
   /** The job's window: the job every reply here is tied to, and its name. */
   job?: { key: string; name: string }
+  /** The job's newest billed bill's pay page, for `{bill}` (v2.5628): the job's box and the Pipeline's sheet read it; the thread's foot has no one job. */
+  billLink?: string | null
   /** The kinds it offers, in `REPLY_KINDS`' order. All three when left out. */
   kinds?: readonly ReplyKind[]
   /** What Attach reads (cut 7f): the job's files, their portal, a file from this computer. */
@@ -273,7 +276,7 @@ export function ReplyBox({
   // The live flow names the step; the seed names the rest of their kind's steps.
   const kindSteps = flowNow ? [{ id: flowNow.stepId, name: flowNow.stepName }, ...(STEPS[qrKindOf(contact.kind)] ?? [])] : (STEPS[qrKindOf(contact.kind)] ?? [])
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
-  const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null) })
+  const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink })
   const waits = goesOut(shown) ? sendWaits(body) : null
   const lang = customerLang(contact)
   const where =

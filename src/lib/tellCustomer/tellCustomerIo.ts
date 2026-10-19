@@ -8,6 +8,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { loadNewestBillLink } from '../billing/billLinkIo'
 import type { Database } from '../../types/database'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { customerLang } from '../messages/customerLang'
@@ -30,6 +31,8 @@ export interface TellJob {
   jobName: string | null
   jobAddress: string | null
   lang: PortalLang
+  /** The job's newest billed bill's pay page, for `{bill}` (v2.5628); null with none. */
+  billLink?: string | null
 }
 
 export interface TellNumber {
@@ -114,8 +117,8 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       checkSupabaseError(job, 'read the job')
       const row = job.data as { customer_id: string | null; job_name: string | null; job_address: string | null } | null
       const customerId = row?.customer_id ?? null
-      const c = customerId ? await customerRow(customerId) : null
-      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language) }
+      const [c, billLink] = await Promise.all([customerId ? customerRow(customerId) : Promise.resolve(null), loadNewestBillLink(jobId, client)])
+      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language), billLink }
     },
     async loadCustomer(customerId) {
       const c = await customerRow(customerId)

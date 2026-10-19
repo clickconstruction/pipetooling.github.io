@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
+import { loadNewestBillLink } from '../../lib/billing/billLinkIo'
 import { jobBoxJobKey, NO_CUSTOMER_WORDS } from '../../lib/messages/jobBox'
 import { loadCustomerContact } from '../../lib/messages/messagesIo'
 import type { ReplyIo } from '../../lib/messages/replyIo'
@@ -24,16 +25,29 @@ export interface JobCustomerBoxProps {
   customerId: string | null
   /** After a text, an email or a note to them goes: the job's window reads its activity again. */
   onSent?: () => void
-  /** For a smoke: the customer's contact, the box's sends and its quick replies. */
+  /** For a smoke: the customer's contact, the box's sends and its quick replies, and the job's newest bill's pay page. */
   load?: (customerId: string) => Promise<Contact>
+  loadBill?: (jobId: string) => Promise<string | null>
   io?: ReplyIo
   quickIo?: QuickRepliesIo
 }
 
 const quiet = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 } as const
 
-export function JobCustomerBox({ kind, jobId, jobName, customerId, onSent, load = loadCustomerContact, io, quickIo }: JobCustomerBoxProps) {
+export function JobCustomerBox({ kind, jobId, jobName, customerId, onSent, load = loadCustomerContact, loadBill = loadNewestBillLink, io, quickIo }: JobCustomerBoxProps) {
   const [read, setRead] = useState<{ customerId: string; contact: Contact | null; problem: string | null } | null>(null)
+  // `{bill}` (v2.5628): the job's newest billed bill's pay page, read once; a read that fails leaves the blank for the person.
+  const [billLink, setBillLink] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    loadBill(jobId).then(
+      (link) => live && setBillLink(link),
+      () => live && setBillLink(null),
+    )
+    return () => {
+      live = false
+    }
+  }, [jobId, loadBill])
 
   useEffect(() => {
     if (!customerId) return
@@ -63,7 +77,7 @@ export function JobCustomerBox({ kind, jobId, jobName, customerId, onSent, load 
     )
   return (
     <MessagesRereadContext.Provider value={onSent ?? (() => {})}>
-      <ReplyBox contact={got.contact} io={io} quickIo={quickIo} job={{ key: jobBoxJobKey(jobId), name: jobName }} kinds={[kind]} />
+      <ReplyBox contact={got.contact} io={io} quickIo={quickIo} job={{ key: jobBoxJobKey(jobId), name: jobName }} billLink={billLink} kinds={[kind]} />
     </MessagesRereadContext.Provider>
   )
 }

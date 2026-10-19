@@ -113,6 +113,8 @@ export interface TellFillInput {
   jobAddress: string | null
   block?: TellBlock | null
   estimate?: TellEstimateFacts | null
+  /** The job's newest billed bill's pay page, for `{bill}` (v2.5628). */
+  billLink?: string | null
 }
 
 export const firstWord = (name: string | null | undefined) => name?.trim().split(/\s+/)[0] || null
@@ -137,6 +139,7 @@ export function tellFills(input: TellFillInput): BlankFills {
     put('tech', firstWord(input.block.techName))
   }
   if (input.estimate) put('amount', input.estimate.amount)
+  put('bill', input.billLink)
   return fills
 }
 
