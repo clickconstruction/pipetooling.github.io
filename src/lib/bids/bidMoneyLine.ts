@@ -105,7 +105,8 @@ export function bidMoneyLine(entry: BidMoneyStripEntry, today: string): BidMoney
   const openBills = bills.filter((b) => b.open)
   const billed = bills.length > 0
   const open = billed ? openBills.reduce((sum, b) => sum + b.amount, 0) : null
-  const newestBilled = bills.map((b) => b.billedYmd).filter((d): d is string => !!d).sort().at(-1) ?? null
+  const billedDays = bills.map((b) => b.billedYmd).filter((d): d is string => !!d).sort()
+  const newestBilled = billedDays.length ? billedDays[billedDays.length - 1]! : null
   const status = job.status ?? null
   const stageWord = STAGE_WORDS[status ?? ''] ?? (status ? status.replace(/_/g, ' ') : 'Job')
   const stage = (status === 'billed' || status === 'collections' || status === 'paid') && newestBilled ? `${stageWord} ${shortDate(newestBilled)}` : stageWord
