@@ -120,11 +120,12 @@ export function slashPaperKind(words: string): PaperKind | null {
 
 /**
  * The team's line for a paper: the line for their kind or anyone that holds the paper's blank (`{bill}`, or
- * `{estimate}`), the person's most used first. A paid bill takes the app's own words, since the team's bill line speaks
- * of an open one. Null when there is none.
+ * `{estimate}`), the person's most used first. A paid bill and an approved estimate take the app's own copy words,
+ * since the team's lines speak of an open bill and an estimate still to choose from. Null when there is none.
  */
-export function paperTeamLine(lines: readonly QuickReply[], kind: ContactKind, paper: { kind: PaperKind; open?: boolean }, me: string): QuickReply | null {
+export function paperTeamLine(lines: readonly QuickReply[], kind: ContactKind, paper: { kind: PaperKind; open?: boolean; approved?: boolean }, me: string): QuickReply | null {
   if (paper.kind === 'bill' && paper.open === false) return null
+  if (paper.kind === 'estimate' && paper.approved === true) return null
   const blank = paper.kind === 'bill' ? '{bill}' : '{estimate}'
   const forKind = qrKindOf(kind)
   return (

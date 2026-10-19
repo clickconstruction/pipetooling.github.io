@@ -14,8 +14,9 @@
  *
  * The fills: `paperFills` is what a paper puts in the blanks (its pay page, its amount, its number, its job), and
  * `defaultPaperFills` is the paper a line about money speaks of when nobody picked one: the job's newest open bill in a
- * job's box, the newest open bill anywhere in a person's thread. `{estimate}` is a link made for the message when the
- * line goes in (`ReplyBox`, `estimateLinkIo.ts`, PR 3).
+ * job's box, the newest open bill anywhere in a person's thread. `defaultEstimatePaper` is the same rule for a line that
+ * holds `{estimate}`: a job's box speaks of the job's own estimate and no other job's. `{estimate}` is a link made for
+ * the message when the line goes in (`ReplyBox`, `estimateLinkIo.ts`, PR 3).
  */
 import { computeBillTruth, jobIsUncollectible, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../billing/billTruth'
 import { isPayLinkId, payLinkUrl } from '../billing/payLink'
@@ -169,6 +170,18 @@ export function defaultPaperFills(papers: readonly Paper[], jobId: string | null
   return { bill: fills.bill, amount: fills.amount, number: fills.number }
 }
 
+/**
+ * The estimate a line that holds `{estimate}` speaks of when nobody picked one (v2.5645). A job's box (`jobOnly`) speaks
+ * of the job's own estimate, the one still waiting on an answer first, else the approved one that made the job, and
+ * never another job's, as `defaultPaperFills` holds a job's box to its own bills. A thread speaks of the tied job's,
+ * else their newest sent one. Null when there is none, and the blank is left for the person.
+ */
+export function defaultEstimatePaper(papers: readonly Paper[], jobId: string | null, jobOnly = false): EstimatePaper | null {
+  const listed = listedPapers(papers, 'estimate', jobId).filter((p): p is EstimatePaper => p.kind === 'estimate')
+  const own = jobId ? listed.find((e) => e.jobId === jobId) : undefined
+  return (jobOnly ? own : (own ?? listed[0])) ?? null
+}
+
 // ---------- a paper in the / list (#127 PR 2) ----------
 
 /**
@@ -185,11 +198,13 @@ export const PAPER_LINES = {
   openBill: '{first}, here is your bill {number} for {job}. {amount} is open. You can pay it here: {bill}',
   paidBill: '{first}, here is a copy of your paid bill {number} for {job}: {bill}',
   estimate: '{first}, here is your estimate {number} for {job}, {amount}. Open it to choose the option you want: {estimate}',
+  /** An approved estimate has been chosen already, so it goes in as a copy, as a paid bill does (v2.5645). */
+  approvedEstimate: '{first}, here is a copy of your approved estimate {number} for {job}, {amount}: {estimate}',
 } as const
 
-/** The app's words for a paper: an open bill's, a paid bill's or an estimate's. */
+/** The app's words for a paper: an open bill's, a paid bill's, an estimate's or an approved estimate's. */
 export function paperLineWords(paper: Paper): string {
-  if (paper.kind === 'estimate') return PAPER_LINES.estimate
+  if (paper.kind === 'estimate') return paper.approved ? PAPER_LINES.approvedEstimate : PAPER_LINES.estimate
   return paper.open ? PAPER_LINES.openBill : PAPER_LINES.paidBill
 }
 

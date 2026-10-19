@@ -68,7 +68,7 @@ Under the quick replies, the list shows their bills. The open ones come first, t
 
 An open bill uses the team's own bill line when there is one. A paid bill goes in as a copy.
 
-Type **/estimate**, **/quote** or **/price** for their estimates. The ones still waiting on an answer come first. Pick one and the line goes in with a link to it. The app makes that link just for this message. The link in their email keeps working. A note under the box says so.
+Type **/estimate**, **/quote** or **/price** for their estimates. The ones still waiting on an answer come first. Pick one and the line goes in with a link to it. The app makes that link just for this message. The link in their email keeps working. A note under the box says so. An approved estimate goes in as a copy. In a job's window, a quick reply about an estimate speaks of that job's own estimate.
 
 :::example send the bill a customer asks for
 Dana texts that a bill went missing. Type **/bill** and light the open bill. Press **Enter** and read the line. Then press **Send text…**.

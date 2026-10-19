@@ -48,6 +48,8 @@ const PAPERS: Paper[] = [
   { kind: 'bill', id: 'b-1042', jobId: 'j-helotes', job: 'Helotes re-pipe', number: '1312', open: true, amount: 1440, billedYmd: '2026-10-12', payUrl: 'https://clicktooling.com/pay/b-1042' },
   { kind: 'bill', id: 'b-paid', jobId: 'j-helotes', job: 'Helotes re-pipe', number: '1312', open: false, amount: 300, billedYmd: '2026-09-01', payUrl: 'https://clicktooling.com/pay/b-paid' },
   { kind: 'estimate', id: 'e-1044', jobId: null, job: 'Kitchen re-pipe', number: '1044', approved: false, amount: 3200, sentYmd: '2026-10-14' },
+  // The approved estimate that made the Helotes job.
+  { kind: 'estimate', id: 'e-900', jobId: 'j-helotes', job: 'Helotes re-pipe', number: '900', approved: true, amount: 5400, sentYmd: '2026-09-20' },
 ]
 
 // Cast, so the fake reads the same before and after the shortcut's io lands beside it.
@@ -71,7 +73,7 @@ const fakeIo = (): ReplyIo => ({
   sendText: vi.fn(() => Promise.resolve('m-text')),
 })
 
-function draw(over: { job?: boolean; contact?: Contact; lines?: QuickReply[]; share?: EstimateLinkIo['share'] } = {}) {
+function draw(over: { job?: boolean | { key: string; name: string }; contact?: Contact; lines?: QuickReply[]; share?: EstimateLinkIo['share'] } = {}) {
   const papersIo: PapersIo = { load: vi.fn(() => Promise.resolve(PAPERS)) }
   const estimateLinkIo: EstimateLinkIo = { share: vi.fn(over.share ?? ((id: string) => Promise.resolve(`https://clicktooling.com/estimate/accept?t=new-${id}`))) }
   const quickIo = fakeQuick()
@@ -83,7 +85,7 @@ function draw(over: { job?: boolean; contact?: Contact; lines?: QuickReply[]; sh
       quickIo={quickIo}
       papersIo={papersIo}
       estimateLinkIo={estimateLinkIo}
-      job={over.job === false ? undefined : { key: 'pipeline:j-helotes', name: 'Helotes re-pipe' }}
+      job={over.job === false ? undefined : typeof over.job === 'object' ? over.job : { key: 'pipeline:j-helotes', name: 'Helotes re-pipe' }}
       kinds={['text']}
       openStrip
     />,
@@ -153,36 +155,93 @@ describe('/bill lists the customer’s bills after the lines (#127 PR 2)', () =>
 
 })
 
+const LINE_EST: QuickReply = { ...REMIND, id: 'q-est', text: '{first}, your estimate {number} is here: {estimate}' }
+const LINK_1044 = 'https://clicktooling.com/estimate/accept?t=new-e-1044'
+const NOTE_1044 = 'A second link to estimate 1044 was made for this message. The link in their email keeps working.'
+
+/** A share the test resolves or refuses when it chooses. */
+function heldShare() {
+  let resolve!: (link: string) => void
+  let reject!: (e: Error) => void
+  const share = vi.fn(() => new Promise<string>((res, rej) => {
+    resolve = res
+    reject = rej
+  }))
+  return { share, resolve: (link: string) => resolve(link), reject: (e: Error) => reject(e) }
+}
+
 describe('/estimate puts in a link of its own (#127 PR 3, the owner’s pick B)', () => {
-  it('lists the sent estimate, and Enter makes a link for this message and fills the line with it', async () => {
-    const { el, textbox, estimateLinkIo } = draw()
+  it('in a thread, lists the sent estimate then the approved one, and Enter makes a link for this message and fills the line with it', async () => {
+    const { el, textbox, estimateLinkIo } = draw({ job: false })
     type(textbox, '/estimate')
-    await waitFor(() => expect(paperIds(el)).toEqual(['e-1044']))
+    await waitFor(() => expect(paperIds(el)).toEqual(['e-1044', 'e-900']))
     expect(el.querySelector('[data-slash-papers]')?.textContent).toBe("Dana's estimates")
     fireEvent.keyDown(textbox, { key: 'Enter' })
-    await waitFor(() => expect(textbox.value).toBe('Dana, here is your estimate 1044 for Kitchen re-pipe, $3,200. Open it to choose the option you want: https://clicktooling.com/estimate/accept?t=new-e-1044'))
+    await waitFor(() => expect(textbox.value).toBe(`Dana, here is your estimate 1044 for Kitchen re-pipe, $3,200. Open it to choose the option you want: ${LINK_1044}`))
     expect(estimateLinkIo.share).toHaveBeenCalledWith('e-1044')
-    expect(el.querySelector('[data-reply-estimate-link]')?.textContent).toBe('A second link to estimate 1044 was made for this message. The link in their email keeps working.')
+    expect(el.querySelector('[data-reply-estimate-link]')?.textContent).toBe(NOTE_1044)
   })
 
-  it('a line of the team’s that holds {estimate} makes the link for their newest sent estimate when pressed', async () => {
-    const line: QuickReply = { ...REMIND, id: 'q-est', text: '{first}, your estimate {number} is here: {estimate}' }
-    const { el, textbox, estimateLinkIo } = draw({ lines: [line] })
-    await waitFor(() => expect(el.querySelector('[data-qr-line="q-est"]')).toBeTruthy())
+  it('an approved estimate goes in as a copy, with its own link (v2.5645)', async () => {
+    const { el, textbox, estimateLinkIo } = draw({ job: false, lines: [LINE_EST] })
+    type(textbox, '/quote')
+    await waitFor(() => expect(paperIds(el)).toEqual(['e-1044', 'e-900']))
+    fireEvent.mouseDown(el.querySelector('[data-slash-paper="e-900"]')!)
+    await waitFor(() => expect(textbox.value).toBe('Dana, here is a copy of your approved estimate 900 for Helotes re-pipe, $5,400: https://clicktooling.com/estimate/accept?t=new-e-900'))
+    expect(estimateLinkIo.share).toHaveBeenCalledWith('e-900')
+  })
+
+  it('in a thread, a line of the team’s that holds {estimate} speaks of their newest sent estimate', async () => {
+    localStorage.setItem('msgQrOpen', '1')
+    const { el, textbox, estimateLinkIo } = draw({ job: false, lines: [LINE_EST] })
     await waitFor(() => expect(el.querySelector('[data-qr-line="q-est"]')?.textContent).toContain('1044'))
     fireEvent.click(el.querySelector('[data-qr-line="q-est"]')!)
-    await waitFor(() => expect(textbox.value).toBe('Dana, your estimate 1044 is here: https://clicktooling.com/estimate/accept?t=new-e-1044'))
+    await waitFor(() => expect(textbox.value).toBe(`Dana, your estimate 1044 is here: ${LINK_1044}`))
     expect(estimateLinkIo.share).toHaveBeenCalledTimes(1)
   })
 
-  it('says so when the link was not made, and leaves {estimate} to fill', async () => {
-    const { el, textbox } = draw({ share: () => Promise.reject(new Error('Only the office can share an estimate.')) })
+  it('in a job’s box, the line speaks of the job’s own estimate and no other job’s (v2.5645)', async () => {
+    const { el, textbox, estimateLinkIo } = draw({ lines: [LINE_EST] })
+    await waitFor(() => expect(el.querySelector('[data-qr-line="q-est"]')?.textContent).toContain('900'))
+    fireEvent.click(el.querySelector('[data-qr-line="q-est"]')!)
+    await waitFor(() => expect(textbox.value).toBe('Dana, your estimate 900 is here: https://clicktooling.com/estimate/accept?t=new-e-900'))
+    expect(estimateLinkIo.share).toHaveBeenCalledWith('e-900')
+  })
+
+  it('in a job’s box with no estimate of its own, the line goes in with {estimate} left to fill, and no link is made', async () => {
+    const { el, textbox, estimateLinkIo } = draw({ job: { key: 'pipeline:j-sink', name: 'Sink swap' }, lines: [LINE_EST] })
+    await waitFor(() => expect(el.querySelector('[data-qr-line="q-est"]')).toBeTruthy())
+    fireEvent.click(el.querySelector('[data-qr-line="q-est"]')!)
+    expect(textbox.value).toBe('Dana, your estimate {number} is here: {estimate}')
+    expect(estimateLinkIo.share).not.toHaveBeenCalled()
+    expect(el.querySelector('[data-reply-waits]')?.textContent).toBe('Fill {number} and {estimate} first. The app does not know them.')
+  })
+
+  it('the line goes in at once and waits on the link; what is typed meanwhile is kept; the note goes when the link does', async () => {
+    const held = heldShare()
+    const { el, textbox } = draw({ job: false, share: held.share })
     type(textbox, '/estimate')
-    await waitFor(() => expect(paperIds(el)).toEqual(['e-1044']))
+    await waitFor(() => expect(paperIds(el)).toHaveLength(2))
     fireEvent.keyDown(textbox, { key: 'Enter' })
-    await waitFor(() => expect(textbox.value).toContain('{estimate}'))
+    expect(textbox.value).toContain('{estimate}')
+    expect(el.querySelector('[data-reply-waits]')?.textContent).toBe('Making the estimate’s link…')
+    type(textbox, `${textbox.value} Call me with any question.`)
+    held.resolve(LINK_1044)
+    await waitFor(() => expect(textbox.value).toBe(`Dana, here is your estimate 1044 for Kitchen re-pipe, $3,200. Open it to choose the option you want: ${LINK_1044} Call me with any question.`))
+    expect(el.querySelector('[data-reply-waits]')).toBeNull()
+    expect(el.querySelector('[data-reply-estimate-link]')?.textContent).toBe(NOTE_1044)
+    type(textbox, 'Never mind.')
     expect(el.querySelector('[data-reply-estimate-link]')).toBeNull()
-    expect(el.querySelector('[data-reply-waits]')?.textContent).toBe('Fill {estimate} first. The app does not know it.')
+  })
+
+  it('says so when the link was not made, and leaves {estimate} to fill', async () => {
+    const { el, textbox } = draw({ job: false, share: () => Promise.reject(new Error('Only the office can share an estimate.')) })
+    type(textbox, '/estimate')
+    await waitFor(() => expect(paperIds(el)).toHaveLength(2))
+    fireEvent.keyDown(textbox, { key: 'Enter' })
+    await waitFor(() => expect(el.querySelector('[data-reply-waits]')?.textContent).toBe('Fill {estimate} first. The app does not know it.'))
+    expect(textbox.value).toContain('{estimate}')
+    expect(el.querySelector('[data-reply-estimate-link]')).toBeNull()
   })
 
   it('a bill line makes no estimate link', async () => {

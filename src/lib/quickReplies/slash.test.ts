@@ -163,7 +163,7 @@ describe('the customer’s papers (#127 PR 2)', () => {
     expect([slashPaperKind(''), slashPaperKind('b'), slashPaperKind('late'), slashPaperKind('thanks')]).toEqual([null, null, null, null])
   })
 
-  it('paperTeamLine: the person’s most used line holding the paper’s blank, none for a paid bill', () => {
+  it('paperTeamLine: the person’s most used line holding the paper’s blank, none for a paid bill or an approved estimate', () => {
     const own = line('own-bill', 'Your bill: {bill}', { uses: { 'u-rosa': 2 } })
     const team = line('team-bill', 'Pay here: {bill}', { uses: { 'u-lee': 9 } })
     const est = line('est', 'Your estimate: {estimate}')
@@ -171,6 +171,8 @@ describe('the customer’s papers (#127 PR 2)', () => {
     expect(paperTeamLine(lines, 'customer', { kind: 'bill', open: true }, 'u-rosa')?.id).toBe('own-bill')
     expect(paperTeamLine(lines, 'customer', { kind: 'bill', open: false }, 'u-rosa')).toBeNull()
     expect(paperTeamLine(lines, 'customer', { kind: 'estimate' }, 'u-rosa')?.id).toBe('est')
+    expect(paperTeamLine(lines, 'customer', { kind: 'estimate', approved: false }, 'u-rosa')?.id).toBe('est')
+    expect(paperTeamLine(lines, 'customer', { kind: 'estimate', approved: true }, 'u-rosa')).toBeNull()
     expect(paperTeamLine([team], 'trade', { kind: 'estimate' }, 'u-rosa')).toBeNull()
   })
 })

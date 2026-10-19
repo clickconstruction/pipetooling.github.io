@@ -33,8 +33,8 @@ import {
 } from '../../../../lib/messages/compose'
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { jobRefOf } from '../../../../lib/messages/jobKeys'
-import { defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type EstimatePaper, type Paper } from '../../../../lib/messages/papers'
-import { estimateLinkNote, supabaseEstimateLinkIo, type EstimateLinkIo } from '../../../../lib/messages/estimateLinkIo'
+import { defaultEstimatePaper, defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
+import { ESTIMATE_LINK_MAKING, estimateLinkNote, supabaseEstimateLinkIo, type EstimateLinkIo } from '../../../../lib/messages/estimateLinkIo'
 import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
@@ -246,7 +246,7 @@ export function ReplyBox({
     setBody('')
     setTie(undefined)
     setFiles([])
-    setEstimateNote(null)
+    setMade(null)
     showToast([sentWords(sentKind, company), more].filter(Boolean).join(' '), 'success')
     reread()
   }
@@ -320,9 +320,12 @@ export function ReplyBox({
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
   // #127: the bill a line about money speaks of: the job's newest open bill when the reply is a Pipeline job's, else theirs.
   const pipelineJob = jobRefOf(jobKey)
-  const paper = papers ? defaultPaperFills(papers, pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null, Boolean(job)) : undefined
+  const pipelineJobId = pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null
+  const paper = papers ? defaultPaperFills(papers, pipelineJobId, Boolean(job)) : undefined
   const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? auth?.profileName ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink, paper })
-  const waits = goesOut(shown) ? sendWaits(body) : null
+  // While an estimate's link is being made the line is in the box with its blank, so the send waits on the link, not the person.
+  const [linking, setLinking] = useState(false)
+  const waits = goesOut(shown) ? (linking ? ESTIMATE_LINK_MAKING : sendWaits(body)) : null
   const lang = customerLang(contact)
   const where =
     flowNow === undefined
@@ -334,31 +337,38 @@ export function ReplyBox({
           daysOn: flowNow?.sinceYmd ? ymdDaysBetween(flowNow.sinceYmd, todayYmdInAppTz()) : null,
           off: false,
         })
-  // #127 PR 3: a line that holds {estimate} speaks of an estimate: the one picked, else their newest sent one, the job's
-  // first. A link of its own is made for this message (`share_estimate_link`), so the emailed link keeps working, and the
-  // line goes in once it is back; every other line goes in at once, as before.
+  // #127 PR 3: a line that holds {estimate} speaks of an estimate: the one picked, else the job's own in a job's box, else
+  // their newest sent one (`defaultEstimatePaper`). A link of its own is made for this message (`share_estimate_link`),
+  // so the emailed link keeps working. The line goes in at once with its blank, as every line does, and the blank takes
+  // the link when it is back (v2.5645), so nothing typed meanwhile is lost; a later press supersedes a share still out,
+  // so no line ever takes another's link.
   const eio = useMemo(() => estimateLinkIo ?? supabaseEstimateLinkIo(), [estimateLinkIo])
-  const [estimateNote, setEstimateNote] = useState<string | null>(null)
-  const defaultEstimate = papers ? ((listedPapers(papers, 'estimate', pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null)[0] as EstimatePaper | undefined) ?? null) : null
+  const [made, setMade] = useState<{ link: string; number: string } | null>(null)
+  const linkSeq = useRef(0)
+  const defaultEstimate = papers ? defaultEstimatePaper(papers, pipelineJobId, Boolean(job)) : null
   const fillNow = (words: string, paper: Paper | null) => fillLine(words, { ...fills, ...(paper ? paperFills(paper) : {}) }).text
   /** How a line reads in the lists before a press: one that holds {estimate} with the estimate it will speak of. */
   const fillsFor = (q: QuickReply) => (defaultEstimate && lineWords(q, lang).includes('{estimate}') ? { ...fills, ...paperFills(defaultEstimate) } : fills)
   const withLink = (words: string, paper: Paper | null, put: (filled: string) => void) => {
-    const estimate = paper?.kind === 'estimate' ? paper : !paper ? defaultEstimate : null
-    if (!estimate || !words.includes('{estimate}')) {
-      put(fillNow(words, paper))
-      return
-    }
-    void eio.share(estimate.id).then(
-      (link) => {
-        setEstimateNote(estimateLinkNote(estimate.number))
-        put(fillLine(words, { ...fills, ...paperFills(estimate), estimate: link }).text)
-      },
-      (e: unknown) => {
-        showToast(formatErrorMessage(e, 'The estimate’s link was not made.'), 'error')
-        put(fillNow(words, estimate))
-      },
-    )
+    const estimate = words.includes('{estimate}') ? (paper?.kind === 'estimate' ? paper : !paper ? defaultEstimate : null) : null
+    put(fillNow(words, paper ?? estimate))
+    if (!estimate) return
+    const mine = ++linkSeq.current
+    setLinking(true)
+    eio.share(estimate.id)
+      .then(
+        (link) => {
+          if (mine !== linkSeq.current) return
+          setMade({ link, number: estimate.number })
+          setBody((b) => b.replace('{estimate}', link))
+        },
+        (e: unknown) => {
+          if (mine === linkSeq.current) showToast(formatErrorMessage(e, 'The estimate’s link was not made.'), 'error')
+        },
+      )
+      .finally(() => {
+        if (mine === linkSeq.current) setLinking(false)
+      })
   }
   const use = (q: QuickReply) => {
     withLink(lineWords(q, lang), null, (filled) => setBody(filled))
@@ -386,7 +396,7 @@ export function ReplyBox({
   const slashRows = slashOpen && stripLines ? slashLines(stripLines, slashInput, slashWord.words) : []
   // #127 PR 2: words that call their papers (`/bill`, `/estimate`) list them after the lines, the job's first.
   const paperKind = slashOpen ? slashPaperKind(slashWord.words) : null
-  const slashPapers = paperKind && papers ? listedPapers(papers, paperKind, pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null) : []
+  const slashPapers = paperKind && papers ? listedPapers(papers, paperKind, pipelineJobId) : []
   const slashCount = slashRows.length + slashPapers.length
   const lit = slashLit.key === slashKey ? Math.min(slashLit.at, Math.max(0, slashCount - 1)) : 0
   useEffect(() => {
@@ -418,7 +428,7 @@ export function ReplyBox({
   /** A paper picked: the team's line for it when there is one, else the app's words, filled for that paper. */
   const pickPaper = (p: Paper) => {
     if (!slashWord) return
-    const team = paperTeamLine(stripLines ?? [], contact.kind, p.kind === 'bill' ? { kind: 'bill', open: p.open } : { kind: 'estimate' }, me)
+    const team = paperTeamLine(stripLines ?? [], contact.kind, p.kind === 'bill' ? { kind: 'bill', open: p.open } : { kind: 'estimate', approved: p.approved }, me)
     const words = team ? lineWords(team, lang) : paperLineWords(p)
     withLink(words, p, putInPlace(body, slashWord))
     setPeek(false)
@@ -592,9 +602,9 @@ export function ReplyBox({
         </div>
       )}
 
-      {estimateNote && goesOut(shown) && !textWaits && (
+      {made && body.includes(made.link) && goesOut(shown) && !textWaits && (
         <div data-reply-estimate-link role="status" style={{ fontSize: '0.78rem', color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', borderRadius: 6, padding: '0.25rem 0.5rem' }}>
-          {estimateNote}
+          {estimateLinkNote(made.number)}
         </div>
       )}
 

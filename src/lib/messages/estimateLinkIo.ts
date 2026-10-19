@@ -22,6 +22,9 @@ export function estimateAcceptUrl(token: string, origin: string = APP_ORIGIN): s
   return `${origin.replace(/\/$/, '')}/estimate/accept?t=${encodeURIComponent(token)}`
 }
 
+/** The send row's words while the link is being made: the line is in the box already, its blank waiting on the link. */
+export const ESTIMATE_LINK_MAKING = 'Making the estimate’s link…'
+
 /** The note under the box once a link is made: the customer's emailed link is untouched. */
 export function estimateLinkNote(number: string): string {
   return `A second link to estimate${number ? ` ${number}` : ''} was made for this message. The link in their email keeps working.`
