@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
+keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
 order: 117
 ---
 The reply box sits at the foot of every thread in Messages. Write a text, an email or a team note to the person there.
@@ -38,6 +38,22 @@ Quick replies are lines the office types every day. They sit above the box for a
 The lines for the step they are on come first, then the rest for their kind of person. The lines for anyone come last. In each group the lines you use most come first. A press counts, so the order follows the office.
 
 While you type, the lines fold away. They come back when the box is empty.
+
+## Type / for a quick reply
+
+You can reach a quick reply without the mouse. Type **/** at the start of the box, or after a space.
+
+1. Type **/** and a word from the line, like **/pay**. A short list of quick replies opens above the box.
+2. Press **↓** or **↑** to light the line you want.
+3. Press **Enter** or **Tab**. The line takes the place of the **/** and your word. Nothing sends.
+
+Press **Esc** to close the list. Your words stay in the box.
+
+A **/** inside a word opens nothing. So **1/2 inch** and **and/or** stay as you typed them. The list holds the same lines as **Quick replies**, in the same order. A line you pick this way counts like a press.
+
+:::example answer a customer who asks for the bill
+Dana texts that the bill email is lost. Type **/pay** in the box. Light the bill line and press **Enter**. The box now holds the line with the bill's pay link. Press **Send text…** and read it once more in the send window.
+:::
 
 ## Find a reply
 

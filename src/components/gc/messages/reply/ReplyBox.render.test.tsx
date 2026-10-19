@@ -10,6 +10,7 @@ import type { BoxSettings } from '../../../../lib/messages/boxes'
 import type { ReplyIo } from '../../../../lib/messages/replyIo'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
+import { SLASH_HINT } from '../../../../lib/quickReplies/slash'
 import { ReplyBox } from './ReplyBox'
 
 // Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
@@ -59,7 +60,7 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
     const { el } = box()
     const kinds = within(el).getByRole('radiogroup', { name: 'Reply as' })
     expect(within(kinds).getByRole('radio', { name: 'Text' }).getAttribute('aria-checked')).toBe('true')
-    expect(within(el).getByRole('textbox', { name: 'Write to Greg Paulk' }).getAttribute('placeholder')).toBe('Write to Greg Paulk…')
+    expect(within(el).getByRole('textbox', { name: 'Write to Greg Paulk' }).getAttribute('placeholder')).toBe(`Write to Greg Paulk… ${SLASH_HINT}`)
     expect(el.querySelector('[data-reply-from]')?.textContent).toBe('from the company number · Click Construction')
     expect(within(el).getByRole('button', { name: 'Send text…' })).toBeTruthy()
   })
