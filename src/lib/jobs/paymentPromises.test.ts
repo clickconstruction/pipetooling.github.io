@@ -244,6 +244,9 @@ describe('the record under "They said…"', () => {
     source: 'office',
     note: null,
     createdAt,
+    kind: 'promise',
+    method: null,
+    amount: null,
     ...over,
   })
 
