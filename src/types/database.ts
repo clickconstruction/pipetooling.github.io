@@ -9125,6 +9125,48 @@ export type Database = {
           },
         ]
       }
+      estimate_share_links: {
+        Row: {
+          estimate_id: string
+          expires_at: string
+          id: string
+          made_at: string
+          made_by: string | null
+          token_hash: string
+        }
+        Insert: {
+          estimate_id: string
+          expires_at: string
+          id?: string
+          made_at?: string
+          made_by?: string | null
+          token_hash: string
+        }
+        Update: {
+          estimate_id?: string
+          expires_at?: string
+          id?: string
+          made_at?: string
+          made_by?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_share_links_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_share_links_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           accept_header_brand: string | null
@@ -37301,6 +37343,7 @@ export type Database = {
       }
       shadow_fmt_money: { Args: { v: number }; Returns: string }
       shadow_fmt_pct: { Args: { v: number }; Returns: string }
+      share_estimate_link: { Args: { p_estimate_id: string }; Returns: string }
       signed_agreement_notify_recipients: {
         Args: { p_master_user_id: string }
         Returns: string[]
