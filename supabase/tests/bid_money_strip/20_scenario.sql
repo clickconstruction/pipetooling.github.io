@@ -32,10 +32,10 @@ INSERT INTO public.bids (id, created_by, estimator_id, service_type_id, project_
   ('00000000-0000-0000-0000-0000000e5d03', '00000000-0000-0000-0000-0000000e5a03', '00000000-0000-0000-0000-0000000e5a01', '00000000-0000-0000-0000-0000000e5b01', 'Nothing yet', '00000000-0000-0000-0000-0000000e5c01');
 
 -- J1 from B1 (an older J0 from B1 too, so the newest wins); J2 from B2.
-INSERT INTO public.jobs_ledger (id, hcp_number, job_name, customer_name, customer_id, customer_phone, customer_email, bill_to_party, revenue, payments_made, status, bid_id, created_at) VALUES
-  ('00000000-0000-0000-0000-0000000e5f00', '1031', 'Whitfield first try', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e5c01', NULL, NULL, 'customer', 100, 0, 'waiting', '00000000-0000-0000-0000-0000000e5d01', '2026-09-01T15:00:00Z'),
-  ('00000000-0000-0000-0000-0000000e5f01', '1032', 'Whitfield repipe', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e5c01', '210-555-0100', 'dana@strip.test', 'customer', 4200, 1200, 'billed', '00000000-0000-0000-0000-0000000e5d01', '2026-09-12T15:00:00Z'),
-  ('00000000-0000-0000-0000-0000000e5f02', '1040', 'Park water heater', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e5c01', NULL, NULL, 'customer', 2900, 0, 'billed', '00000000-0000-0000-0000-0000000e5d02', '2026-10-01T15:00:00Z');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, customer_id, customer_phone, customer_email, bill_to_party, revenue, payments_made, status, bid_id, created_at) VALUES
+  ('00000000-0000-0000-0000-0000000e5f00', '00000000-0000-0000-0000-0000000e5a07', '00000000-0000-0000-0000-0000000e5b01', '1031', 'Whitfield first try', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e5c01', NULL, NULL, 'customer', 100, 0, 'waiting', '00000000-0000-0000-0000-0000000e5d01', '2026-09-01T15:00:00Z'),
+  ('00000000-0000-0000-0000-0000000e5f01', '00000000-0000-0000-0000-0000000e5a07', '00000000-0000-0000-0000-0000000e5b01', '1032', 'Whitfield repipe', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e5c01', '210-555-0100', 'dana@strip.test', 'customer', 4200, 1200, 'billed', '00000000-0000-0000-0000-0000000e5d01', '2026-09-12T15:00:00Z'),
+  ('00000000-0000-0000-0000-0000000e5f02', '00000000-0000-0000-0000-0000000e5a07', '00000000-0000-0000-0000-0000000e5b01', '1040', 'Park water heater', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e5c01', NULL, NULL, 'customer', 2900, 0, 'billed', '00000000-0000-0000-0000-0000000e5d02', '2026-10-01T15:00:00Z');
 INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES ('00000000-0000-0000-0000-0000000e5f01', '00000000-0000-0000-0000-0000000e5a06');
 INSERT INTO public.jobs_ledger_invoices (id, job_id, sequence_order, status, amount, stripe_invoice_id, billed_at) VALUES
   ('00000000-0000-0000-0000-0000000e5e01', '00000000-0000-0000-0000-0000000e5f01', 0, 'billed', 4200, 'in_strip_1', '2026-09-30T15:00:00Z'),
