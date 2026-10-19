@@ -1,6 +1,6 @@
 ---
 name: "The estimator's word on money"
-number: 128
+number: 129
 group: ready
 status: PLANNED 2026-10-19 — the flow traced, the mock-up drawn and re-drawn once; PR 1 (the job's people) starts now on the owner's word
 summary: >
@@ -19,7 +19,7 @@ opinion: the scope is the job's, not the role's; one sheet for both kinds of wor
 mockup: to-dos/estimator-money-word/mockup.html
 ---
 
-# The estimator's word on money (#128)
+# The estimator's word on money (#129)
 
 ## Where it stands
 
