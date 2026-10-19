@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 160 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-17
+last_updated: 2026-10-19
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -4477,7 +4477,7 @@ interface SendHazmatNoticeEmailBody {
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
-**Purpose**: Email the customer an open billed line's bill — ours, or Stripe's through **`invoices.sendInvoice`** (see v2.4020 above). After the email goes out, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](../src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)), and for **Email invoice to customer** on Dashboard **Collect Payment** step 3 ([`CollectPaymentModal`](../src/components/jobs/CollectPaymentModal.tsx)).
+**Purpose**: Email the customer an open billed line's bill — ours, or Stripe's through **`invoices.sendInvoice`** (see v2.4020 above). After the email goes out, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list, and since v2.5634 each row's line in the job's trail through the log's own trigger, `20261019010000`, a bill's first send excepted since the invoice's `invoice_sent` holds it; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](../src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)), and for **Email invoice to customer** on Dashboard **Collect Payment** step 3 ([`CollectPaymentModal`](../src/components/jobs/CollectPaymentModal.tsx)).
 
 Pre-send validation uses **[`customerEmailFromStripeInvoice`](../supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)** on the retrieved invoice (**expanded Customer `email` first**, then **`invoice.customer_email`**).
 
