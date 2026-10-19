@@ -5,14 +5,24 @@
  * combo as one row that fills several lines, and the amount-only matches
  * from other customers under their own heading. Lifted out of the first
  * allocation line, where the same data was a row of chips. Every row keeps
- * the "Apply allocation: …" name the render suites find it by.
+ * the "Apply allocation: …" name the render suites find it by. Since v2.5650 (punch list #129) a customer's word that
+ * they paid leads the pane when it fits the deposit (`claimSuggestion`): the claim's words and the job's open bills.
  */
 import type { CSSProperties } from 'react'
 import type { ArDepositCustomerMatch } from '../../../lib/jobs/arDepositCustomerMatch'
 import { bankPaymentTargetDetailLead, bankPaymentTargetPrimaryLabel, formatBankPaymentTargetDollars, type BankPaymentTarget } from '../../../lib/jobsStagesBoard'
 
+/** A paid claim that fits the deposit (v2.5650): its words, and the claim's job's open bills to pick. */
+export type ArClaimSuggestion = {
+  words: string
+  /** The counterparty names the customer too. */
+  nameToo: boolean
+  targets: BankPaymentTarget[]
+}
+
 export type ArPayerMatchesProps = {
   match: ArDepositCustomerMatch | null
+  claimSuggestion?: ArClaimSuggestion | null
   /** The matched payer's open bills, deposit-amount matches first. */
   payerTargets: BankPaymentTarget[]
   /** Keys whose remaining equals the deposit's remaining. */
@@ -73,11 +83,24 @@ function BillRow({ t, highlight, canApply, onPick }: { t: BankPaymentTarget; hig
   )
 }
 
-export function ArPayerMatches({ match, payerTargets, amountMatchKeys, combo, depositRemaining, outsideTargets, canApply, onPick, onPickCombo }: ArPayerMatchesProps) {
+export function ArPayerMatches({ match, claimSuggestion = null, payerTargets, amountMatchKeys, combo, depositRemaining, outsideTargets, canApply, onPick, onPickCombo }: ArPayerMatchesProps) {
   const hasPayer = match != null && payerTargets.length > 0
-  if (!hasPayer && outsideTargets.length === 0) return null
+  const hasClaim = claimSuggestion != null && claimSuggestion.targets.length > 0
+  if (!hasPayer && !hasClaim && outsideTargets.length === 0) return null
   return (
     <div data-testid="ar-payer-matches" style={{ marginBottom: '0.9rem' }}>
+      {hasClaim ? (
+        <div data-testid="ar-claim-suggestion" style={{ marginBottom: hasPayer ? 10 : 0 }}>
+          <div style={eyebrow}>They said they paid</div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+            {claimSuggestion.words}
+            {claimSuggestion.nameToo ? <span style={{ color: 'var(--text-green-700)', fontWeight: 700 }}> · the deposit names them</span> : null}
+          </div>
+          {claimSuggestion.targets.map((t) => (
+            <BillRow key={`claim-${t.key}`} t={t} highlight={amountMatchKeys.has(t.key)} canApply={canApply} onPick={onPick} />
+          ))}
+        </div>
+      ) : null}
       {hasPayer ? (
         <>
           <div style={eyebrow}>Who paid you</div>

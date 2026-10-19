@@ -48,4 +48,6 @@ Press {{button:outline|Write down their word}} on the line. A sheet opens with a
 
 The same press sits under the customer's own lines in [Messages](/messages). The word shows on the line and in the job's activity. The job stays billed until the money lands. The office pairs the word with the deposit. A wrong entry comes off with **Never said that** under the sheet.
 
+When a week passes after the day they named and nothing lands, the word comes back to you. The line turns amber and says **nothing landed in 9 days**. Your [Dashboard](/dashboard) shows it under Needs you. Ask the customer before the office chases.
+
 Read [text a customer from the job](/help/text-a-customer-from-the-job) for the box the door opens.

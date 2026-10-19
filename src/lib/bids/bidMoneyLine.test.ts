@@ -111,10 +111,26 @@ describe('parseBidMoneyStrip', () => {
 describe('they say they paid on the line (v2.5648)', () => {
   it('the newest word is a claim: no days past, quiet, the claim’s words', () => {
     const claim = promise('2026-10-20', { id: 'w2', kind: 'paid_claim', method: 'check_mailed', createdAt: '2026-10-21T14:40:00Z' })
-    const line = bidMoneyLine(entry({ promises: [promise('2026-10-25'), claim] }), '2026-11-02')
+    const line = bidMoneyLine(entry({ promises: [promise('2026-10-25'), claim] }), '2026-10-24')
     expect(line.promise?.kind).toBe('paid_claim')
     expect(line.pastDays).toBeNull()
     expect(line.tone).toBe('quiet')
     expect(bidMoneyWords(line)).toMatchObject({ word: 'They say they paid · a check in the mail · Oct 20', by: 'Dana · by text · heard by Theo' })
+  })
+})
+
+describe('a stale claim on the line (v2.5650)', () => {
+  it('amber with the days once nothing landed in a week; quiet before; never once something landed', () => {
+    const claim = promise('2026-10-20', { id: 'w2', kind: 'paid_claim', method: 'check_mailed', createdAt: '2026-10-21T14:40:00Z' })
+    const early = bidMoneyLine(entry({ promises: [claim] }), '2026-10-26')
+    expect(early.staleDays).toBeNull()
+    expect(early.tone).toBe('quiet')
+    const stale = bidMoneyLine(entry({ promises: [claim] }), '2026-10-29')
+    expect(stale.staleDays).toBe(9)
+    expect(stale.tone).toBe('amber')
+    expect(bidMoneyWords(stale).word).toBe('They say they paid · a check in the mail · Oct 20 · nothing landed in 9 days')
+    const landed = bidMoneyLine(entry({ promises: [claim], payments: [{ invoice_id: PAY_ID, job_id: 'j1032', amount: 1000, paid_on: '2026-10-22', sequence_order: 0 }] }), '2026-11-10')
+    expect(landed.staleDays).toBeNull()
+    expect(landed.tone).toBe('quiet')
   })
 })

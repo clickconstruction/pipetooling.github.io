@@ -76,7 +76,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 ### /dashboard — Dashboard
 Landing page for every role: pinned pages, role-relevant cards (recent reports, my bids,
-Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses; for the office team the **Customers** line, opening `/messages?kind=customer`, v2.5451; and on Job Mode's card **Message the customer** for primary and helpers, v2.5449, on since v2.5505, guide `message-a-customer-from-job-mode`; since v2.5573 the big **On my way** / **I'm here** press that clocks the drive and texts the customer, with the tech's bio the first time, v2.5590, guide `job-mode-clocking`; for the office team the **Today's sends** line, the texts the app prepared for a person to press, v2.5595, guide `work-todays-sends`). Start here to orient; do work elsewhere.
+Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for whoever wrote down a customer's word that they paid, *A customer said they paid, and nothing landed* a week on, v2.5650, opening the won bid for an estimator and the Pipeline for the office; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses; for the office team the **Customers** line, opening `/messages?kind=customer`, v2.5451; and on Job Mode's card **Message the customer** for primary and helpers, v2.5449, on since v2.5505, guide `message-a-customer-from-job-mode`; since v2.5573 the big **On my way** / **I'm here** press that clocks the drive and texts the customer, with the tech's bio the first time, v2.5590, guide `job-mode-clocking`; for the office team the **Today's sends** line, the texts the app prepared for a person to press, v2.5595, guide `work-todays-sends`). Start here to orient; do work elsewhere.
 Roles: all.
 
 ### /gc — GC projects
@@ -288,7 +288,7 @@ Mercury bank ledger: user/drag sort, accounting labels, card + category review,
 reconciliation. Roles: dev (full incl. Stripe), master, assistant/controller (staff tabs).
 
 ### /accounts-receivable — AR
-Outstanding billed jobs by customer; collections flags. Roles: dev, master, assistant, controller.
+Outstanding billed jobs by customer; collections flags. The bank deposits modal leads a deposit's pane with a customer's word that they paid when the deposit fits it (**They said they paid**, v2.5650; guide `match-bank-deposits-to-bills`). Roles: dev, master, assistant, controller.
 
 ### /materials — Materials
 Price book / labor book / assembly book catalogs feeding Pricing.
