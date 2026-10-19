@@ -47,6 +47,7 @@ export function QuickRepliesStrip({
   nowStepId,
   steps,
   fills = {},
+  fillsFor,
   lang = 'en',
   open,
   problem,
@@ -65,6 +66,8 @@ export function QuickRepliesStrip({
   steps: readonly StepRef[]
   /** What the box fills on a press (R3's `replyFills`); a blank it leaves is lit. */
   fills?: BlankFills
+  /** #127: a line's own fills when they differ from the box's (a line that holds `{estimate}` speaks of an estimate). */
+  fillsFor?: (q: QuickReply) => BlankFills
   /** The language the person gets: their own once Spanish is on, English until then. */
   lang?: PortalLang
   open: boolean
@@ -189,7 +192,7 @@ export function QuickRepliesStrip({
                 onClick={() => onUse(q)}
                 style={{ ...press, whiteSpace: 'nowrap', flex: 'none', borderStyle: q.scope === 'mine' ? 'dashed' : 'solid', fontSize: '0.78rem' }}
               >
-                <FilledLine text={lineWords(q, lang)} fills={fills} needle={filter} />
+                <FilledLine text={lineWords(q, lang)} fills={fillsFor ? fillsFor(q) : fills} needle={filter} />
               </button>
             ))}
           </div>

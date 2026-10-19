@@ -7,6 +7,7 @@ import {
   toClientCustomerExperience,
 } from '../_shared/estimateCustomerExperience.ts'
 import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
+import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
 import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachment.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -127,15 +128,19 @@ serve(async (req) => {
 
     const tokenHash = await sha256HexFromString(raw)
 
-    const { data: row, error } = await admin
-      .from('estimates')
-      .select(
-        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent, doc_kind, change_order_fields, options_snapshot',
-      )
-      .eq('public_token_hash', tokenHash)
-      .maybeSingle()
+    // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
+    const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
+    const { data: row, error } = ref
+      ? await admin
+          .from('estimates')
+          .select(
+            'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent, doc_kind, change_order_fields, options_snapshot',
+          )
+          .eq('id', ref.estimateId)
+          .maybeSingle()
+      : { data: null, error: null }
 
-    if (error || !row) {
+    if (error || !row || !ref) {
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -172,8 +177,7 @@ serve(async (req) => {
       })
     }
 
-    const exp = est.public_token_expires_at ? Date.parse(String(est.public_token_expires_at)) : NaN
-    if (!Number.isNaN(exp) && exp < Date.now()) {
+    if (linkHasExpired(ref, est.public_token_expires_at, Date.now())) {
       return new Response(JSON.stringify({ error: 'Link expired', code: 'expired' }), {
         status: 410,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

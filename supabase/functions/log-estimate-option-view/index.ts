@@ -9,6 +9,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
+import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
 import { publicEventGate } from '../_shared/publicEventThrottle.ts'
 
@@ -50,14 +51,16 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
     const tokenHash = await sha256HexFromString(raw)
+    // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
+    const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
+    if (!ref) return ok()
     const { data: row } = await admin
       .from('estimates')
       .select('id, status, public_token_expires_at, options_snapshot')
-      .eq('public_token_hash', tokenHash)
+      .eq('id', ref.estimateId)
       .maybeSingle()
     if (!row || row.status !== 'sent') return ok()
-    const exp = row.public_token_expires_at ? Date.parse(String(row.public_token_expires_at)) : NaN
-    if (!Number.isNaN(exp) && exp < Date.now()) return ok()
+    if (linkHasExpired(ref, row.public_token_expires_at, Date.now())) return ok()
 
     const options = normalizeSharedEstimateOptions(row.options_snapshot)
     const chosen = options.find((o) => o.key === optionKey)

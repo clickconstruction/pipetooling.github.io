@@ -57,7 +57,7 @@ A line can have its own shortcut, like **/bill**. Type it in full and that line 
 Dana texts that the bill email is lost. Type **/pay** in the box. Light the bill line and press **Enter**. The box now holds the line with the bill's pay link. Press **Send text…** and read it once more in the send window.
 :::
 
-## Put in a bill
+## Put in a bill or an estimate
 
 A customer's own bills sit in the same list. Type **/bill**, **/invoice**, **/pay** or **/owe** in the box.
 
@@ -67,6 +67,8 @@ Under the quick replies, the list shows their bills. The open ones come first, t
 2. Press **Enter**. A line about that bill goes in the box, with its amount and its pay link. Nothing sends.
 
 An open bill uses the team's own bill line when there is one. A paid bill goes in as a copy.
+
+Type **/estimate**, **/quote** or **/price** for their estimates. The ones still waiting on an answer come first. Pick one and the line goes in with a link to it. The app makes that link just for this message. The link in their email keeps working. A note under the box says so.
 
 :::example send the bill a customer asks for
 Dana texts that a bill went missing. Type **/bill** and light the open bill. Press **Enter** and read the line. Then press **Send text…**.

@@ -1819,6 +1819,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-estimate-for-customer
 
+> **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
+
 **Purpose**: Public read of a **sent** estimate for the customer acceptance page (no JWT).
 
 **Endpoint**: `GET /functions/v1/get-estimate-for-customer?token=<opaque>[&preview=1]`
@@ -1840,6 +1842,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 ### log-estimate-option-view
+
+> **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
 
 **Purpose**: Option-browsing telemetry for the acceptance page (Estimate Options Phase 3, v2.2462) — the staff activity feed's "Viewed option — Tankless upgrade" rows.
 
@@ -2360,6 +2364,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### accept-estimate
+
+> **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
 
 > **v2.5359 — `deno check` passes again**: `handleDecline` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the decline's `.update` took `never` and the service-role client could not be handed in (2 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 

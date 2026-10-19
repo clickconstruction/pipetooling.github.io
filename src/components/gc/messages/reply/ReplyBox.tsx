@@ -15,7 +15,7 @@ import { appLinesForStage, isAppLine } from '../../../../lib/messages/stageLines
 import { lineWords } from '../../../../lib/quickReplies/spanish'
 import { customerLang } from '../../../../lib/messages/customerLang'
 import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
-import { paperTeamLine, SLASH_HINT, slashHead, slashLines, slashMove, slashPaperKind, slashPick, slashTotal, slashWordAt } from '../../../../lib/quickReplies/slash'
+import { paperTeamLine, SLASH_HINT, slashHead, slashLines, slashMove, slashPaperKind, slashPick, slashTotal, slashWordAt, type SlashWord } from '../../../../lib/quickReplies/slash'
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
   boxPlaceholder,
@@ -33,7 +33,8 @@ import {
 } from '../../../../lib/messages/compose'
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { jobRefOf } from '../../../../lib/messages/jobKeys'
-import { defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
+import { defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type EstimatePaper, type Paper } from '../../../../lib/messages/papers'
+import { estimateLinkNote, supabaseEstimateLinkIo, type EstimateLinkIo } from '../../../../lib/messages/estimateLinkIo'
 import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
@@ -122,6 +123,7 @@ export function ReplyBox({
   io: ioGiven,
   quickIo,
   papersIo,
+  estimateLinkIo,
   job,
   billLink = null,
   stageStepIds = [],
@@ -135,6 +137,8 @@ export function ReplyBox({
   quickIo?: QuickRepliesIo
   /** Punch list #127: the customer's bills and estimates, for `{amount}`, `{number}` and `{bill}`; a smoke hands its own. */
   papersIo?: PapersIo
+  /** #127 PR 3: makes an estimate's link for a message (`share_estimate_link`); a smoke hands its own. */
+  estimateLinkIo?: EstimateLinkIo
   /** The job's window: the job every reply here is tied to, and its name. */
   job?: { key: string; name: string }
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628): the job's box and the Pipeline's sheet read it; the thread's foot has no one job. */
@@ -242,6 +246,7 @@ export function ReplyBox({
     setBody('')
     setTie(undefined)
     setFiles([])
+    setEstimateNote(null)
     showToast([sentWords(sentKind, company), more].filter(Boolean).join(' '), 'success')
     reread()
   }
@@ -329,8 +334,34 @@ export function ReplyBox({
           daysOn: flowNow?.sinceYmd ? ymdDaysBetween(flowNow.sinceYmd, todayYmdInAppTz()) : null,
           off: false,
         })
+  // #127 PR 3: a line that holds {estimate} speaks of an estimate: the one picked, else their newest sent one, the job's
+  // first. A link of its own is made for this message (`share_estimate_link`), so the emailed link keeps working, and the
+  // line goes in once it is back; every other line goes in at once, as before.
+  const eio = useMemo(() => estimateLinkIo ?? supabaseEstimateLinkIo(), [estimateLinkIo])
+  const [estimateNote, setEstimateNote] = useState<string | null>(null)
+  const defaultEstimate = papers ? ((listedPapers(papers, 'estimate', pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null)[0] as EstimatePaper | undefined) ?? null) : null
+  const fillNow = (words: string, paper: Paper | null) => fillLine(words, { ...fills, ...(paper ? paperFills(paper) : {}) }).text
+  /** How a line reads in the lists before a press: one that holds {estimate} with the estimate it will speak of. */
+  const fillsFor = (q: QuickReply) => (defaultEstimate && lineWords(q, lang).includes('{estimate}') ? { ...fills, ...paperFills(defaultEstimate) } : fills)
+  const withLink = (words: string, paper: Paper | null, put: (filled: string) => void) => {
+    const estimate = paper?.kind === 'estimate' ? paper : !paper ? defaultEstimate : null
+    if (!estimate || !words.includes('{estimate}')) {
+      put(fillNow(words, paper))
+      return
+    }
+    void eio.share(estimate.id).then(
+      (link) => {
+        setEstimateNote(estimateLinkNote(estimate.number))
+        put(fillLine(words, { ...fills, ...paperFills(estimate), estimate: link }).text)
+      },
+      (e: unknown) => {
+        showToast(formatErrorMessage(e, 'The estimate’s link was not made.'), 'error')
+        put(fillNow(words, estimate))
+      },
+    )
+  }
   const use = (q: QuickReply) => {
-    setBody(fillLine(lineWords(q, lang), fills).text)
+    withLink(lineWords(q, lang), null, (filled) => setBody(filled))
     setFinding(false)
     setPeek(false)
     if (!isAppLine(q)) quick.press(q, contact.id)
@@ -371,12 +402,16 @@ export function ReplyBox({
     setCaret(at)
     if (slashShut !== null && slashWordAt(text, at)?.start !== slashShut) setSlashShut(null)
   }
-  const pickSlash = (q: QuickReply) => {
-    if (!slashWord) return
-    const next = slashPick(body, slashWord, fillLine(lineWords(q, lang), fills).text)
+  /** The `/` word gives way to a filled line, now or once an estimate's link is back. */
+  const putInPlace = (was: string, word: SlashWord) => (filled: string) => {
+    const next = slashPick(was, word, filled)
     caretAfter.current = next.caret
     setBody(next.text)
     setCaret(next.caret)
+  }
+  const pickSlash = (q: QuickReply) => {
+    if (!slashWord) return
+    withLink(lineWords(q, lang), null, putInPlace(body, slashWord))
     setPeek(false)
     if (!isAppLine(q)) quick.press(q, contact.id)
   }
@@ -385,10 +420,7 @@ export function ReplyBox({
     if (!slashWord) return
     const team = paperTeamLine(stripLines ?? [], contact.kind, p.kind === 'bill' ? { kind: 'bill', open: p.open } : { kind: 'estimate' }, me)
     const words = team ? lineWords(team, lang) : paperLineWords(p)
-    const next = slashPick(body, slashWord, fillLine(words, { ...fills, ...paperFills(p) }).text)
-    caretAfter.current = next.caret
-    setBody(next.text)
-    setCaret(next.caret)
+    withLink(words, p, putInPlace(body, slashWord))
     setPeek(false)
     if (team && !isAppLine(team)) quick.press(team, contact.id)
   }
@@ -457,6 +489,7 @@ export function ReplyBox({
           stageStepIds={stageStepIds}
           steps={kindSteps}
           fills={fills}
+          fillsFor={fillsFor}
           lang={lang}
           open={stripShown && (!body.trim() || peek)}
           problem={quick.problem}
@@ -492,6 +525,7 @@ export function ReplyBox({
           active={lit}
           words={slashWord.words}
           fills={fills}
+          fillsFor={fillsFor}
           lang={lang}
           steps={kindSteps}
           head={slashHead(contact.kind === 'unknown' ? null : first, slashRows.length, stripLines ? slashTotal(stripLines, slashInput) : 0)}
@@ -555,6 +589,12 @@ export function ReplyBox({
       {settleProblem && (
         <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>
           {settleProblem}
+        </div>
+      )}
+
+      {estimateNote && goesOut(shown) && !textWaits && (
+        <div data-reply-estimate-link role="status" style={{ fontSize: '0.78rem', color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', borderRadius: 6, padding: '0.25rem 0.5rem' }}>
+          {estimateNote}
         </div>
       )}
 
@@ -674,6 +714,7 @@ export function ReplyBox({
           nowStepId={nowStepId}
           steps={kindSteps}
           fills={fills}
+          fillsFor={fillsFor}
           lang={lang}
           where={where}
           onOpenStep={
