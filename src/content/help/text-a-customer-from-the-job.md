@@ -20,7 +20,7 @@ The row shows for the office team only. The crew's view of the job keeps the not
 The speech bubble beside the customer's name is a shorter way in. It sits on the Pipeline row and on the phone card.
 
 1. Press the speech bubble. A small window opens over the board.
-2. The window names the job and the customer. It says who wrote last.
+2. The window names the job and the customer. It says who wrote last. Under that sit the last three lines between you and the customer. The customer's lines carry an orange bar.
 3. Press {{button:outline|Text}} or {{button:outline|Email}}. The same orange box opens in the window.
 4. The quick replies open on their own. The lines for the job's stage come first, under **For this stage**. Press one and the box fills.
 5. Read the words. Press {{button:blue|Send text…}} or {{button:blue|Send email…}}.
@@ -28,6 +28,8 @@ The speech bubble beside the customer's name is a shorter way in. It sits on the
 On a job in Billed Awaiting Payment the payment reminder comes first. Then comes the line that says the bill went out. On a job in Working the Working line comes first. Where the office has not written a line for a stage yet, the app's own words stand in.
 
 The window also offers **Call**, **Open their thread** and **Their record**. A customer with no mobile number sees Text greyed out, with the reason under it. A job with no customer has no bubble.
+
+A small orange dot on the speech bubble means the customer wrote last on this job and nobody has answered. Hold the mouse over the bubble to read who wrote, how and when. Press the bubble and the window shows their words. The dot goes once anyone answers them. It reads the same Needs a reply list as Follow up.
 
 ## Write to the customer
 

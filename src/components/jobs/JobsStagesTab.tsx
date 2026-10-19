@@ -108,6 +108,8 @@ import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
+import { useBoardDots } from '../../hooks/useBoardDots'
+import { canOpenMessages } from '../../lib/gc/access'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -831,6 +833,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Lien instruments (v2.2640): the orange lien icon's home — every lien paper is made in this window. */
   /** The customer's door (v2.5626, punch list #123): the job whose customer sheet is open over the board, from the row's speech bubble. */
   const [customerDoorJob, setCustomerDoorJob] = useState<JobWithDetails | null>(null)
+  /** The waiting dots (v2.5632): the jobs whose customer waits in Follow up's Needs a reply, read once per load of the board's jobs. */
+  const boardDots = useBoardDots({ enabled: canOpenMessages(authRole), refreshKey: jobs })
   const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
@@ -2506,6 +2510,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     propertyLinkByJobId: propertyKinds.linkByJobId,
     onPropertyLinked: propertyKinds.linkJob,
     onOpenCustomerDoor: setCustomerDoorJob,
+    boardDotByJobId: boardDots.dotByJobId,
     }
   /** The phone rows' kernel input for a job, from the same side maps the cards read. */
   const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
@@ -4655,7 +4660,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onChanged={refetchLienDesk}
         rereadKey={gcNoticeRereadKey}
       />
-      {customerDoorJob ? <JobCustomerSheet job={customerDoorJob} onClose={() => setCustomerDoorJob(null)} onSent={() => void loadJobs()} /> : null}
+      {customerDoorJob ? (
+        <JobCustomerSheet
+          job={customerDoorJob}
+          onClose={() => setCustomerDoorJob(null)}
+          onSent={() => {
+            void loadJobs()
+            // Our reply closes their row in Follow up: the dot goes with the next read.
+            void boardDots.reload()
+          }}
+        />
+      ) : null}
       <LienInstrumentsModal
         open={lienInstrumentsModal != null}
         onClose={() => setLienInstrumentsModal(null)}

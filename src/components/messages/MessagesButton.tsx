@@ -9,7 +9,9 @@ import { useState, type CSSProperties, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
+import type { BoardDotHover } from '../../lib/flows/stageSends'
 import { canOpenMessages } from '../../lib/gc/access'
+import { boardDotTitle } from '../../lib/messages/boardDots'
 import { messagesButtonLabel, messagesThreadHref } from '../../lib/messages/customerThread'
 import { contactForCustomer } from '../../lib/messages/messagesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -31,6 +33,12 @@ export interface MessagesButtonProps {
    * page, so the board stays where it was. Given, the button reads nothing and goes nowhere itself.
    */
   onPressInstead?: () => void
+  /**
+   * The waiting dot (v2.5632): the customer waits in Follow up's Needs a reply with their newest line on this job. The
+   * bubble draws a dot at its corner and its hover says who, how, when, their first line and that nobody has answered
+   * (`boardDotTitle`). Null or absent draws none.
+   */
+  dot?: BoardDotHover | null
 }
 
 export function MessagesButton(props: MessagesButtonProps) {
@@ -39,11 +47,11 @@ export function MessagesButton(props: MessagesButtonProps) {
   return <MessagesButtonShown {...props} />
 }
 
-function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, style, onPressInstead }: MessagesButtonProps) {
+function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, style, onPressInstead, dot }: MessagesButtonProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const [busy, setBusy] = useState(false)
-  const label = messagesButtonLabel(customerName)
+  const label = dot ? `${messagesButtonLabel(customerName)} · ${boardDotTitle(dot)}` : messagesButtonLabel(customerName)
   // On a list the box grows to the minimum and a negative margin gives the room back, so the row keeps its height and
   // the bubble keeps its place. A caller's own look (the phone row's tile) sizes itself.
   const slack = style ? 0 : Math.max(0, MESSAGES_BUTTON_MIN_HIT - (size + 4)) / 2
@@ -78,6 +86,7 @@ function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, styl
       aria-label={label}
       data-messages-button={customerId}
       style={{
+        position: 'relative',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -99,6 +108,13 @@ function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, styl
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
+      {dot ? (
+        <span
+          aria-hidden
+          data-messages-dot
+          style={{ position: 'absolute', top: 1, right: 1, width: 8, height: 8, borderRadius: 999, background: 'var(--text-orange-700)', boxShadow: '0 0 0 1.5px var(--surface)' }}
+        />
+      ) : null}
     </button>
   )
 }

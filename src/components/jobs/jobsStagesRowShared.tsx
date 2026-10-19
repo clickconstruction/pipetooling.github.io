@@ -28,6 +28,7 @@ import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import type { BoardDotHover } from '../../lib/flows/stageSends'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
@@ -121,6 +122,11 @@ export type StagesRowRenderContext = {
    * its own press.
    */
   onOpenCustomerDoor?: (job: JobWithDetails) => void
+  /**
+   * The waiting dot (v2.5632): job id → the hover's parts for the jobs whose customer waits in Follow up's Needs a reply
+   * with their newest line on the job (`boardDotsByJob`, read once per board). Absent, or a job not on it, draws none.
+   */
+  boardDotByJobId?: ReadonlyMap<string, BoardDotHover>
 }
 
 type ContractRowChipOpens = Extract<ContractRowChip, { show: true }>['opens']
@@ -687,7 +693,13 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         // and the owner-sees chip (v2.3827: only on a GC-billed job whose customer is the owner; renders null otherwise).
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', verticalAlign: 'middle', marginLeft: '0.15rem' }} data-testid="customer-line-tail">
           <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
-          <MessagesButton customerId={job.customer_id} customerName={cn} size={13} onPressInstead={ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined} />
+          <MessagesButton
+            customerId={job.customer_id}
+            customerName={cn}
+            size={13}
+            onPressInstead={ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined}
+            dot={ctx.boardDotByJobId?.get(job.id) ?? null}
+          />
           <OwnerShareChip job={job} invoices={job.invoices ?? []} ownerName={cn || 'The owner'} gcName={gcName} role={ctx.authRole} onChanged={() => void ctx.loadJobs()} onError={(m) => ctx.showToast(m, 'error')} />
         </span>
       ) : null}
@@ -823,7 +835,15 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
             <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn || '—'}</span>
           </button>
         ) : null}
-        {hasCustomerInfo && job.customer_id ? <MessagesButton customerId={job.customer_id} customerName={cn} size={14} onPressInstead={ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined} /> : null}
+        {hasCustomerInfo && job.customer_id ? (
+          <MessagesButton
+            customerId={job.customer_id}
+            customerName={cn}
+            size={14}
+            onPressInstead={ctx.onOpenCustomerDoor ? () => ctx.onOpenCustomerDoor?.(job) : undefined}
+            dot={ctx.boardDotByJobId?.get(job.id) ?? null}
+          />
+        ) : null}
         {hasCustomerInfo && addrOneLine ? <span aria-hidden>·</span> : null}
         {addrOneLine ? (
           <a

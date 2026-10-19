@@ -54,3 +54,29 @@ describe('the speech bubble on a row', () => {
     expect(contactForCustomer).toHaveBeenCalledWith('cust-dana')
   })
 })
+
+describe('the waiting dot on the bubble (v2.5632)', () => {
+  const hover = { who: 'Dana', channel: 'text', when: '9:05 AM', line: 'Can you do Thursday?', status: 'Nobody has answered.' as const }
+
+  it('draws the dot with its hover when the board’s map holds the job, on both customer lines', () => {
+    for (const render of [renderJobCustomerLine, renderJobCustomerAndAddressLine]) {
+      const ctx = { ...ctxWith(vi.fn()), boardDotByJobId: new Map([[job.id, hover]]) } as StagesRowRenderContext
+      renderWithProviders(<>{render(ctx, job)}</>)
+      const bubble = document.querySelector('[data-messages-button="cust-dana"]') as HTMLButtonElement
+      expect(bubble.querySelector('[data-messages-dot]')).not.toBeNull()
+      expect(bubble.title).toBe('Open Dana Whitfield’s messages · Dana · text · 9:05 AM · Can you do Thursday? · Nobody has answered.')
+      expect(bubble.getAttribute('aria-label')).toBe(bubble.title)
+      cleanup()
+    }
+  })
+
+  it('draws none for a job off the map, or with no map at all', () => {
+    const ctx = { ...ctxWith(vi.fn()), boardDotByJobId: new Map([['another-job', hover]]) } as StagesRowRenderContext
+    renderWithProviders(<>{renderJobCustomerLine(ctx, job)}</>)
+    expect(document.querySelector('[data-messages-dot]')).toBeNull()
+    expect((document.querySelector('[data-messages-button="cust-dana"]') as HTMLButtonElement).title).toBe('Open Dana Whitfield’s messages')
+    cleanup()
+    renderWithProviders(<>{renderJobCustomerLine(ctxWith(vi.fn()), job)}</>)
+    expect(document.querySelector('[data-messages-dot]')).toBeNull()
+  })
+})

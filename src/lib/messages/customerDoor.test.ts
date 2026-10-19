@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobActivityMessage } from '../jobs/jobActivityMessages'
-import { customerDoorRows, lastWordOnJob, lastWordWords, NO_EMAIL_WORDS, NO_MOBILE_AT_ALL_WORDS, NO_MOBILE_WORDS, NO_NUMBER_WORDS } from './customerDoor'
+import { customerDoorRows, LAST_LINE_WORDS_MAX, lastLineMeta, lastLinesOnJob, lastWordOnJob, lastWordWords, NO_EMAIL_WORDS, NO_MOBILE_AT_ALL_WORDS, NO_MOBILE_WORDS, NO_NUMBER_WORDS } from './customerDoor'
 
 const line = (over: Partial<JobActivityMessage>): JobActivityMessage => ({
   id: 'm',
@@ -71,5 +71,48 @@ describe('lastWordWords', () => {
     expect(lastWordWords({ who: 'them', at: '2026-10-17T21:31:00.000Z', name: 'Dana' }, now)).toBe('Waiting on us: Dana wrote last, yesterday.')
     expect(lastWordWords({ who: 'us', at: '2026-10-18T13:44:00.000Z', name: 'Dana' }, now)).toMatch(/^You wrote last, today at \d{1,2}:\d{2} [AP]M\.$/)
     expect(lastWordWords(null, now)).toBeNull()
+  })
+})
+
+describe('lastLinesOnJob', () => {
+  const ours = line({ id: 'm-us', direction: 'out', who: 'Tanya', at: '2026-10-17T22:00:00.000Z', body: 'We will be there at 8.' })
+  const older = line({ id: 'm-older', at: '2026-10-16T15:00:00.000Z', body: 'Is Friday still on?' })
+  const oldest = line({ id: 'm-oldest', at: '2026-10-15T15:00:00.000Z', body: 'Hi, this is Dana.' })
+  const note = line({ id: 'm-note', channel: 'note', direction: 'team', who: 'Rosa', at: '2026-10-18T09:00:00.000Z', body: 'Call her about the gate.' })
+
+  it('takes the newest three words between us and them, oldest first, and leaves the notes out', () => {
+    const got = lastLinesOnJob([note, oldest, line({ id: 'm-newest' }), older, ours])
+    expect(got.map((l) => l.id)).toEqual(['m-older', 'm-newest', 'm-us'])
+    expect(got.map((l) => l.who)).toEqual(['them', 'them', 'us'])
+    expect(got[0]).toMatchObject({ name: 'Dana', channel: 'text', words: 'Is Friday still on?' })
+    expect(got[2]).toMatchObject({ name: 'Tanya', channel: 'text', words: 'We will be there at 8.' })
+  })
+
+  it('names the app on a line it sent, an email by its subject, a missed call and a voicemail by their words', () => {
+    const app = line({ id: 'm-app', direction: 'out', who: '', at: '2026-10-17T10:00:00.000Z', body: 'Your plumber is on the way.' })
+    const email = line({ id: 'm-email', channel: 'email', at: '2026-10-17T11:00:00.000Z', subject: 'Invoice 2148', body: 'Hi Dana,\nAttached is your invoice.' })
+    const missed = line({ id: 'm-missed', channel: 'missed', at: '2026-10-17T12:00:00.000Z', body: '' })
+    const voicemail = line({ id: 'm-vm', channel: 'voicemail', at: '2026-10-17T13:00:00.000Z', body: '', transcript: 'Hey, it is Dana, call me back.', durationSeconds: 12 })
+    const got = lastLinesOnJob([app, email, missed, voicemail], 4)
+    expect(got.map((l) => [l.name, l.channel, l.words])).toEqual([
+      ['the app', 'text', 'Your plumber is on the way.'],
+      ['Dana', 'email', 'Invoice 2148'],
+      ['Dana', 'missed call', 'No voicemail.'],
+      ['Dana', 'voicemail · 0:12', 'Hey, it is Dana, call me back.'],
+    ])
+  })
+
+  it('clips long words at a word and keeps an empty thread empty', () => {
+    const long = line({ id: 'm-long', body: `${'word '.repeat(60)}end` })
+    const got = lastLinesOnJob([long])[0]!
+    expect(got.words.length).toBeLessThanOrEqual(LAST_LINE_WORDS_MAX + 1)
+    expect(got.words.endsWith('…')).toBe(true)
+    expect(got.words).not.toContain('  ')
+    expect(lastLinesOnJob([note])).toEqual([])
+  })
+
+  it('writes the meta line as who, how and when', () => {
+    expect(lastLineMeta({ name: 'Dana', channel: 'text', at: '2026-10-17T21:31:00.000Z' }, '2026-10-18T15:00:00.000Z')).toBe('Dana · text · yesterday')
+    expect(lastLineMeta({ name: 'Tanya', channel: 'email', at: '2026-10-18T13:44:00.000Z' }, '2026-10-18T15:00:00.000Z')).toBe('Tanya · email · today at 8:44 AM')
   })
 })
