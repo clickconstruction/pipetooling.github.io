@@ -7,7 +7,7 @@
  */
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { shortDate } from '../gc/words'
-import { parsePaymentPromisesRpc, promiseSaidLine, promisesOnJob, type PaymentPromise } from '../jobs/paymentPromises'
+import { claimWords, parsePaymentPromisesRpc, promiseSaidLine, promisesOnJob, type PaymentPromise } from '../jobs/paymentPromises'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { billPapers, type BillPaper, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from '../messages/papers'
 
@@ -70,9 +70,9 @@ export interface BidMoneyLine {
   bills: BillPaper[]
   /** The newest open bill's pay page; null when no open bill is on Stripe. */
   payUrl: string | null
-  /** The customer's latest live word on this job. */
+  /** The customer's latest live word on this job: a promise, or since v2.5648 a paid claim (`kind`). */
   promise: PaymentPromise | null
-  /** Days today is past the promised day while money is open; null otherwise. */
+  /** Days today is past the promised day while money is open; null otherwise, and null for a paid claim. */
   pastDays: number | null
   tone: BidMoneyTone
 }
@@ -112,7 +112,7 @@ export function bidMoneyLine(entry: BidMoneyStripEntry, today: string): BidMoney
   const stage = (status === 'billed' || status === 'collections' || status === 'paid') && newestBilled ? `${stageWord} ${shortDate(newestBilled)}` : stageWord
   const promise = promisesOnJob(parsePaymentPromisesRpc(entry.promises), job.id)[0] ?? null
   const moneyOpen = open != null && open > 0
-  const past = promise && moneyOpen ? daysBetween(promise.promisedYmd, today) : 0
+  const past = promise && promise.kind !== 'paid_claim' && moneyOpen ? daysBetween(promise.promisedYmd, today) : 0
   const pastDays = past > 0 ? past : null
   const tone: BidMoneyTone = !billed ? 'quiet' : !moneyOpen ? 'green' : pastDays ? 'red' : promise ? 'quiet' : 'amber'
   return {
@@ -148,7 +148,7 @@ export interface BidMoneyWords {
   stage: string
   /** "$4,200 open", "not billed yet", "paid". */
   money: string
-  /** "They said Oct 25", "Said Oct 25 · 4 days past", "no word yet"; null when nothing is billed or it is paid. */
+  /** "They said Oct 25", "Said Oct 25 · 4 days past", "They say they paid · a check in the mail · Oct 20", "no word yet"; null when nothing is billed or it is paid. */
   word: string | null
   /** "Dana, by text, heard by Theo"; null with no word. */
   by: string | null
@@ -162,6 +162,7 @@ export function bidMoneyWords(line: BidMoneyLine): BidMoneyWords {
   const p = line.promise
   if (!p) return { stage: line.stage, money, word: 'no word yet', by: null }
   const day = shortDate(p.promisedYmd)
+  if (p.kind === 'paid_claim') return { stage: line.stage, money, word: `They say they paid \u00b7 ${claimWords(p)} \u00b7 ${day}`, by: promiseSaidLine(p) || null }
   const word = line.pastDays ? `Said ${day} · ${line.pastDays === 1 ? '1 day' : `${line.pastDays} days`} past` : `They said ${day}`
   return { stage: line.stage, money, word, by: promiseSaidLine(p) || null }
 }

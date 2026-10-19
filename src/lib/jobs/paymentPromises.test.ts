@@ -271,3 +271,32 @@ describe('the record under "They said…"', () => {
     expect(voidTakesDateOffBoard(onJob[0]!, null, onJob)).toBe(false)
   })
 })
+
+import { claimWords, promisesOnly, parsePaymentPromisesRpc as parseWords, voidTakesDateOffBoard as voidOff } from './paymentPromises'
+
+describe('they say they paid (v2.5648)', () => {
+  const raw = (over: Record<string, unknown> = {}) => ({ id: 'w1', jobId: 'j', customerId: 'c', promisedYmd: '2026-10-20', saidBy: 'Dana', heardByName: 'Theo', channel: 'text', source: 'office', note: null, createdAt: '2026-10-21T14:40:00Z', ...over })
+  it('the parse reads a claim’s kind, method and amount, and a row with no kind as a promise', () => {
+    const rows = parseWords([raw({ kind: 'paid_claim', method: 'check_mailed', amount: '1500' }), raw({ id: 'w2', kind: 'paid_claim', method: 'cash', amount: 0 }), raw({ id: 'w3' })])!
+    expect(rows[0]).toMatchObject({ kind: 'paid_claim', method: 'check_mailed', amount: 1500 })
+    expect(rows[1]).toMatchObject({ kind: 'paid_claim', method: null, amount: null })
+    expect(rows[2]).toMatchObject({ kind: 'promise', method: null, amount: null })
+    expect(parseWords([raw({ kind: 'promise', method: 'check_mailed', amount: 5 })])![0]).toMatchObject({ method: null, amount: null })
+  })
+  it('promisesOnly leaves the claims out', () => {
+    const rows = parseWords([raw({ kind: 'paid_claim', method: 'paid_online' }), raw({ id: 'w3' })])!
+    expect(promisesOnly(rows).map((p) => p.id)).toEqual(['w3'])
+  })
+  it('claimWords: how, and the amount when it is not all of it', () => {
+    expect(claimWords({ method: 'check_mailed', amount: null })).toBe('a check in the mail')
+    expect(claimWords({ method: 'bank_transfer', amount: 1500 })).toBe('a bank transfer · $1,500')
+    expect(claimWords({ method: 'paid_online', amount: 99.5 })).toBe('paid online · $99.50')
+    expect(claimWords({ method: null, amount: null })).toBe('not sure how')
+  })
+  it('voiding a claim never takes the board’s date off, and a claim on the board’s day does not hold it there', () => {
+    const claim = { id: 'w1', promisedYmd: '2026-10-25', kind: 'paid_claim' as const }
+    const promise = { id: 'w2', promisedYmd: '2026-10-25', kind: 'promise' as const }
+    expect(voidOff(claim, '2026-10-25', [claim, promise])).toBe(false)
+    expect(voidOff(promise, '2026-10-25', [claim, promise])).toBe(true)
+  })
+})

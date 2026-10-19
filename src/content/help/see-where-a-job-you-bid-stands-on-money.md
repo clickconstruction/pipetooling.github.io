@@ -2,7 +2,7 @@
 title: see where a job you bid stands on money
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator, primary
-keywords: estimator, won bid, job, money, open, billed, paid, promise, they said, pay page, bill, customer, text, email, speech bubble, account manager
+keywords: estimator, won bid, job, money, open, billed, paid, promise, they said, they say they paid, write down their word, check in the mail, pay page, bill, customer, text, email, speech bubble, account manager
 order: 67
 ---
 You bid the job and you still talk to the customer. The won bid now shows you where its job stands on money, right under the bid.
@@ -39,6 +39,13 @@ The speech bubble on the line opens the customer's door. Pick **Call**, **Text**
 
 The line shows for the job's people. That is the office, the job's account manager, and the estimator or account manager of the bid. When you open a job from your won bid, the app makes you its account manager. The office can change that on the job.
 
-## What is next
+## Write down their word
 
-Writing down the customer's word from this line comes in the next release. Until then, the office writes it from [Jobs](/jobs). Read [text a customer from the job](/help/text-a-customer-from-the-job) for the box the door opens.
+Press {{button:outline|Write down their word}} on the line. A sheet opens with a switch at the top.
+
+- **They'll pay by…** is for a day the customer named. Pick the day, who said it and how, then press {{button:green|Save promise}}.
+- **They say they paid…** is for a customer who says the money is on its way. Pick how they paid, the day they name and who said it. Leave the amount blank when they paid all of it. Then press {{button:green|Write it down}}.
+
+The word shows on the line and in the job's activity. The job stays billed until the money lands. The office pairs the word with the deposit. A wrong entry comes off with **Never said that** under the sheet.
+
+Read [text a customer from the job](/help/text-a-customer-from-the-job) for the box the door opens.

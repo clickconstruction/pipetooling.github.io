@@ -107,3 +107,14 @@ describe('parseBidMoneyStrip', () => {
     expect(by.get('b512')?.open).toBe(4200)
   })
 })
+
+describe('they say they paid on the line (v2.5648)', () => {
+  it('the newest word is a claim: no days past, quiet, the claim’s words', () => {
+    const claim = promise('2026-10-20', { id: 'w2', kind: 'paid_claim', method: 'check_mailed', createdAt: '2026-10-21T14:40:00Z' })
+    const line = bidMoneyLine(entry({ promises: [promise('2026-10-25'), claim] }), '2026-11-02')
+    expect(line.promise?.kind).toBe('paid_claim')
+    expect(line.pastDays).toBeNull()
+    expect(line.tone).toBe('quiet')
+    expect(bidMoneyWords(line)).toMatchObject({ word: 'They say they paid · a check in the mail · Oct 20', by: 'Dana · by text · heard by Theo' })
+  })
+})

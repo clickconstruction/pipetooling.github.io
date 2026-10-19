@@ -2,7 +2,7 @@
 name: "The estimator's word on money"
 number: 129
 group: ready
-status: BUILDING 2026-10-19 — PR 1 (the job's people, v2.5646, 20261019060000) and PR 2 (the money line under the won bid with Send the pay page and the customer's door, v2.5647, 20261019070000) built the day the plan was drawn; next the word itself, and the Messages bridge
+status: BUILDING 2026-10-19 — PR 1 (the job's people, v2.5646), PR 2 (the money line, v2.5647) and PR 3a (Write down their word, one sheet for a day or they say they paid, v2.5648, 20261019080000) built the day the plan was drawn; next PR 3b, the Messages bridge
 summary: >
   On a job an estimator bid, the estimator often talks to the owner more than anyone, so they
   are the one who hears "the check goes out the 25th" or "I paid it Tuesday", and today they
@@ -12,7 +12,7 @@ summary: >
   people, the office, the job's account manager and the bid's estimator, the job's money and
   one press for the customer's word on paying: a day, or that they say they paid. Paid stays
   the bank's word; the claim meets the deposit when it lands.
-next: PR 3, Write down their word from the line (one sheet, a day or they say they paid, the `paid_claim` kind) and the bridge from the Messages slot; push 20261019060000 and 20261019070000 after PRs 1 and 2 merge.
+next: PR 3b, the bridge from the Messages slot (a day, or they say they paid) to the customer's open billed job; push 20261019060000, 20261019070000 and 20261019080000 after PRs 1, 2 and 3a merge.
 size: S (the people) + M (the line and the door) + M (their word and the bridge) + S (the office side) + M (the lens, the card, the trail) + XS (primary)
 blocker: none
 opinion: the scope is the job's, not the role's; one sheet for both kinds of word; the paid claim does work for the office at allocation and makes none in Needs you
@@ -143,7 +143,8 @@ reads who is talking to whom. The Dashboard's Needs you gets the card.
 |---|---|---|
 | 1 · the job's people | **built v2.5646**: `is_job_people(job)`; the promise writers and `list_job_payment_promises_for(job)` on it, the company-wide read kept for the office's readers; the job opened from a bid copies the bid's account manager or estimator as its account manager | one migration + SQL bed |
 | 2 · the line + the door | **built v2.5647**: `list_bid_money_strip`; the money line under Edit Bid's Job block, read-only, with Send the pay page; the customer's door from the line (the board row's line rides the lens's one read in PR 5) | one migration |
-| 3 · their word | the bridge from the Messages slot to the job, a day or they say they paid; the one sheet from the line; the `paid_claim` kind with its method | one migration |
+| 3a · their word | **built v2.5648**: the `paid_claim` kind with its method and amount, `add_job_payment_claim`, the one sheet with its switch from the money line, the trail's They said for a claim; the company-wide reads promises only, the per-job read both | one migration |
+| 3b · the thread | the bridge from the Messages slot to the job, a day or they say they paid | none |
 | 4 · the office side | the allocation suggestion in AR; the stale claim back to the estimator; the amber on the row | none |
 | 5 · the lens, the card, the trail | Money on my bids; the Dashboard card; read-only Job activity for the job's people | none |
 | 6 · primary | primary's paid verbs narrowed to the job's people, the same predicate | one migration |

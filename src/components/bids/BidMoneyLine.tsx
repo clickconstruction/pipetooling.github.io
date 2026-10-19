@@ -5,14 +5,15 @@
  * latest word and how far past it the day is, worked out by `lib/bids/bidMoneyLine.ts` from one bid-gated read
  * (`useBidMoneyStrip`). Two doors: the customer's speech bubble opens the customer's door over the page (the Pipeline
  * row's sheet, `JobCustomerSheet`), and **Send the pay page** opens the same sheet already on Text or Email with the
- * open bill's pay page as the box's `{bill}`, since the bill rows are not the person's to read. Nothing here writes:
- * the word itself is PR 3's press.
+ * open bill's pay page as the box's `{bill}`, since the bill rows are not the person's to read. **Write down their
+ * word** (v2.5648) opens the Pipeline's own sheet on the job: a day they will pay by, or that they say they paid.
  */
 import { useCallback, useState, type CSSProperties } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useBidMoneyStrip } from '../../hooks/useBidMoneyStrip'
 import { bidMoneyWords, canSendPayPage, payPageKind, type BidMoneyLine as Line, type BidMoneyTone } from '../../lib/bids/bidMoneyLine'
 import { JobCustomerSheet } from '../jobs/JobCustomerSheet'
+import SetPromisedPayDateModal from '../jobs/SetPromisedPayDateModal'
 import { MessagesButton } from '../messages/MessagesButton'
 
 const TONES: Record<BidMoneyTone, { bg: string; border: string; strong: string }> = {
@@ -39,6 +40,7 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded }: BidMon
   const loaded = given === undefined ? strip.loaded : (givenLoaded ?? true)
   const customerProfile = useCustomerProfileModal()
   const [door, setDoor] = useState<{ kind?: 'text' | 'email' } | null>(null)
+  const [word, setWord] = useState(false)
   const loadBill = useCallback(async () => line?.payUrl ?? null, [line])
   if (!loaded || !line) return null
   const words = bidMoneyWords(line)
@@ -81,6 +83,20 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded }: BidMon
           ) : null}
           <MessagesButton customerId={line.job.customerId} customerName={line.job.customerName} onPressInstead={() => setDoor({})} />
         </span>
+      ) : null}
+      {line.open != null && line.open > 0 ? (
+        <button type="button" onClick={() => setWord(true)} style={{ ...btn, borderColor: 'var(--text-link)', color: 'var(--text-link)' }} data-bid-money-word-press title="A day they will pay by, or that they say they paid">
+          Write down their word
+        </button>
+      ) : null}
+      {word ? (
+        <SetPromisedPayDateModal
+          jobId={line.job.id}
+          jobLabel={`${line.job.number ? `#${line.job.number} \u00b7 ` : ''}${line.job.name || 'Job'}`}
+          initialYmd={line.promise && line.promise.kind !== 'paid_claim' ? line.promise.promisedYmd : null}
+          onClose={() => setWord(false)}
+          onSaved={() => strip.reload()}
+        />
       ) : null}
       {door ? (
         <JobCustomerSheet

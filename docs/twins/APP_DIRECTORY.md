@@ -148,7 +148,7 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   Won / Lost / Started). Row shows value, due, estimator, last contact; multi-GC bids show a
   line per GC (sent date · waiting/won/lost pill). Key actions: set per-GC outcome, open
   notes, update last contact, open Edit Bid (✎), jump to tool tabs (icons).
-  Edit Bid's **Job** block on a won bid carries the **money line** for the job's people (the office, the job's account manager, the bid's estimator or account manager): the job's stage, what is still open on its bills, the customer's last word on paying, **Send the pay page** (a text or an email with the open bill's pay page filled in) and the customer's speech bubble opening their door (Call · Text · Email · Open their thread). Guide `see-where-a-job-you-bid-stands-on-money`.
+  Edit Bid's **Job** block on a won bid carries the **money line** for the job's people (the office, the job's account manager, the bid's estimator or account manager): the job's stage, what is still open on its bills, the customer's last word on paying, **Send the pay page** (a text or an email with the open bill's pay page filled in), the customer's speech bubble opening their door (Call · Text · Email · Open their thread), and **Write down their word** (a day they will pay by, or that they say they paid). Guide `see-where-a-job-you-bid-stands-on-money`.
 - `?tab=robot-board` — **🤖 Robot Board** (v2.2500; a mirror since v2.3222): the HUMAN
   bids that have a robot run, in the human board's sections, with a robot column — status
   before the human sends (`queued` / `working` / `sealed`, never a number), the robot's

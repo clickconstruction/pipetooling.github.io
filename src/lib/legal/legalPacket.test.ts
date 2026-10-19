@@ -229,7 +229,7 @@ describe('buildLegalPacket', () => {
     // The first bill is Apr 17 at noon. Both were logged at 7:30 pm CDT on Apr 16, which is Apr 17 in UTC.
     const packet = buildLegalPacket(
       baseInput(account, {
-        promises: [{ id: 'pr0', jobId: 'job-a', customerId: 'tle', promisedYmd: '2026-04-30', saidBy: 'Aaron', heardByName: 'Malachi', channel: 'phone', source: 'office', note: null, createdAt: '2026-04-17T00:30:00+00:00' }],
+        promises: [{ id: 'pr0', jobId: 'job-a', customerId: 'tle', promisedYmd: '2026-04-30', saidBy: 'Aaron', heardByName: 'Malachi', channel: 'phone', source: 'office', note: null, createdAt: '2026-04-17T00:30:00+00:00', kind: 'promise', method: null, amount: null }],
         chaseTouches: [{ id: 't0', customerId: 'tle', jobId: null, outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-04-17T00:30:00Z', createdByName: 'Taunya' }],
       }),
     )
@@ -266,7 +266,7 @@ describe('buildLegalPacket', () => {
           { id: 'c1', ymd: '2026-03-28', method: 'Site visit', by: 'Malachi', text: 'Walked the scope.' },
           { id: 'c2', ymd: '2026-05-05', method: 'Phone', by: 'Taunya', text: 'GC holding retainage.' },
         ],
-        promises: [{ id: 'pr1', jobId: 'job-a', customerId: 'tle', promisedYmd: '2026-05-30', saidBy: 'Aaron', heardByName: 'Malachi', channel: 'phone', source: 'office', note: null, createdAt: '2026-05-20T10:00:00Z' }],
+        promises: [{ id: 'pr1', jobId: 'job-a', customerId: 'tle', promisedYmd: '2026-05-30', saidBy: 'Aaron', heardByName: 'Malachi', channel: 'phone', source: 'office', note: null, createdAt: '2026-05-20T10:00:00Z', kind: 'promise', method: null, amount: null }],
         promiseOutcomes: [{ id: 'pr1', jobId: 'job-a', customerId: 'tle', promisedYmd: '2026-05-30', createdAt: '2026-05-20T10:00:00Z', source: 'office', state: 'broken', deadlineYmd: '2026-06-03', paidOffYmd: null, daysLate: null, rePromised: false, promiseIndexOnJob: 0 }],
         chaseTouches: [{ id: 't1', customerId: 'tle', jobId: null, outcome: 'cant_reach', note: 'voicemail', promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-05-10T10:00:00Z', createdByName: 'Taunya' }],
         holdOverrides: { 'contact:c2': true, 'contact:c1': false },
