@@ -65,6 +65,7 @@
     "test:pg:gc-customer-contacts": "bash scripts/pgtest-gc-customer-contacts.sh",
     "test:pg:quick-replies": "bash scripts/pgtest-quick-replies.sh",
     "test:pg:quick-replies-phone-tech": "bash scripts/pgtest-quick-replies-phone-tech.sh",
+    "test:pg:quick-replies-shortcut": "bash scripts/pgtest-quick-replies-shortcut.sh",
     "test:pg:messages-follow-up": "bash scripts/pgtest-messages-follow-up.sh",
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
     "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",

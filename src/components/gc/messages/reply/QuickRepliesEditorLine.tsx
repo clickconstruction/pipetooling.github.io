@@ -23,6 +23,7 @@ import { BLANK_CHIPS, insertBlank, preview } from '../../../../lib/quickReplies/
 import { shortName } from '../../../../lib/quickReplies/phone'
 import { PHONE_TAB_WORDS, nextPhonePlace, phoneTick } from '../../../../lib/quickReplies/phoneTab'
 import { PHONE_PRESSES, PRESS_PICKER, PRESS_WORDS, phonePressOf, type PhonePress } from '../../../../lib/quickReplies/press'
+import { SHORTCUT_MAX, SHORTCUT_WORDS, shortcutHolder, shortcutTakenWords, shortcutWord } from '../../../../lib/quickReplies/shortcut'
 import { SPANISH_WORDS, spanishOffered } from '../../../../lib/quickReplies/spanish'
 import { formatDenverDateTimeShort } from '../../../../utils/dateUtils'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
@@ -30,8 +31,8 @@ import { Btn, input } from '../../gcUi'
 import { FilledLine } from './FilledLine'
 import { QuickReplyTagFields } from './QuickRepliesEditorAdd'
 
-/** R3's three parts of a Save, each only when it changed, so a Save of words and tags alone stays as it was. */
-export type LineR3 = Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName' | 'phonePress'>
+/** R3's parts of a Save and #126's shortcut, each only when it changed, so a Save of words and tags alone stays as it was. */
+export type LineR3 = Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName' | 'phonePress' | 'shortcut'>
 
 /** The kernel's words for a change that went. */
 const wordsOf = (r: QrResult): string => ('words' in r ? r.words : '')
@@ -50,6 +51,10 @@ const wordsOf = (r: QrResult): string => ('words' in r ? r.words : '')
  * preview shows the line as it would go, with what the box leaves to the person. Below the tags, a line for customers
  * takes its Spanish, and the team's lines for customers take the tick **On the tech’s phone** and a short name. A
  * ticked line goes after the last on the phone; the **Phone** tab moves it. Moved away from customers, it comes off.
+ *
+ * Punch list #126 (C): every line takes a **Shortcut**, one word typed after a `/` in the reply box. It is cleaned and
+ * checked as `set_quick_reply_shortcut` does it (`quickReplies/shortcut.ts`), and a word another line holds is said
+ * before the Save goes.
  */
 export function QuickRepliesEditorLine({
   line,
@@ -93,6 +98,8 @@ export function QuickRepliesEditorLine({
   const [phoneName, setPhoneName] = useState(line.phoneName ?? '')
   /** v2.5573: the big button this line is, or null. Off the phone, a line is no big button. */
   const [press, setPress] = useState<PhonePress | null>(line.phonePress ?? null)
+  /** Punch list #126: the line's `/` word as typed. */
+  const [shortcut, setShortcut] = useState(line.shortcut ?? '')
   const words = useRef<HTMLTextAreaElement>(null)
   const tick = phoneTick({ for: tags.for, scope: line.scope })
   const shown = preview(text, fills, previewTo)
@@ -120,6 +127,10 @@ export function QuickRepliesEditorLine({
     if (name !== (line.phoneName ?? null)) out.phoneName = name
     const wantPress = place != null ? press : null
     if (wantPress !== (line.phonePress ?? null)) out.phonePress = wantPress
+    // A word that is not one goes as typed, so the kernel's Save says why.
+    const word = shortcutWord(shortcut)
+    if ('error' in word) out.shortcut = shortcut
+    else if (word.word !== (line.shortcut ?? null)) out.shortcut = word.word
     return out
   }
   const [busy, setBusy] = useState(false)
@@ -140,6 +151,11 @@ export function QuickRepliesEditorLine({
 
   const save = () => {
     const parts = r3()
+    const taken = parts.shortcut ? shortcutHolder(parts.shortcut, line, lines, me) : null
+    if (taken && parts.shortcut) {
+      setProblem(shortcutTakenWords(parts.shortcut))
+      return
+    }
     const result = editQuickReply(line, { text, tags, ...parts }, me, Date.now())
     if ('error' in result) {
       setProblem(result.error)
@@ -221,6 +237,30 @@ export function QuickRepliesEditorLine({
             />
           </label>
         )}
+        <label style={{ display: 'grid', gap: '0.2rem' }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-600)' }}>
+            {SHORTCUT_WORDS.label}
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {SHORTCUT_WORDS.note}</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <span aria-hidden="true" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: 'var(--text-muted)' }}>
+              /
+            </span>
+            <input
+              aria-label={SHORTCUT_WORDS.label}
+              data-qr-shortcut
+              value={shortcut}
+              maxLength={SHORTCUT_MAX + 1}
+              placeholder={SHORTCUT_WORDS.placeholder}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={busy || line.removed}
+              onChange={(e) => setShortcut(e.target.value)}
+              style={{ ...input, maxWidth: '12rem', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+            />
+          </span>
+        </label>
         <label data-qr-phone-tick style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
           <input type="checkbox" checked={onPhone && tick.can} disabled={busy || line.removed || !tick.can} onChange={(e) => setOnPhone(e.target.checked)} />
           <span>{PHONE_TAB_WORDS.tick}</span>

@@ -35,6 +35,18 @@ Type in the search box to find a line by its words.
 
 Saving keeps the old words in the history, with your name and today. The history under the line lists every change, newest first. It also says who used the line and when it was last used.
 
+## Give a line a shortcut
+
+A shortcut is one short word for a line, like **bill**. Type **/bill** in any reply box and press **Enter**. The line goes in.
+
+1. Press a line. The line opens in place.
+2. Type one word under **Shortcut**. Use letters, numbers or a dash.
+3. Press {{button:blue|Save}}.
+
+A word belongs to one team line. When another team line has it, the window says so before it saves. Your own lines may use a word that someone else's own line uses. A line with a shortcut shows it in the list, like **/bill**.
+
+To take a shortcut off, empty the field and press {{button:blue|Save}}.
+
 ## Add a line
 
 1. Press {{button:blue|+ Add a line}}.

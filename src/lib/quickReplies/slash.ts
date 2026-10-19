@@ -1,5 +1,5 @@
 /**
- * Quick replies by keyboard (punch list #126, the owner's pick A): a `/` typed at the start of the reply box, or after a
+ * Quick replies by keyboard (punch list #126, the owner's picks A and C): a `/` typed at the start of the reply box, or after a
  * space or a line break, opens a short list of the person's quick replies under the box, narrowed by the words typed
  * after it. ↑ ↓ move through it, Enter or Tab puts the line in the box in place of the `/` word, Escape closes it.
  * Pure: the box hands the text and the caret in, and takes the list and the new text back.
@@ -60,9 +60,20 @@ export function slashWordAt(text: string, caret: number): SlashWord | null {
 /** The groups' input the strip already builds, less the narrow box's words and its place. */
 export type SlashInput = Omit<QrGroupsInput, 'filter' | 'place'>
 
-/** The lines the list offers for the words, in the strip's order: the job's stage, the step they are on, their kind, anyone. */
+/**
+ * The lines the list offers for the words. A line whose shortcut is the words comes first, then the shortcuts that start
+ * with them (C, the owner's pick), then the lines whose words hold them, each in the strip's order: the job's stage, the
+ * step they are on, their kind, anyone.
+ */
 export function slashLines(lines: readonly QuickReply[], input: SlashInput, words: string): QuickReply[] {
-  return qrGroups(lines, { ...input, filter: words, place: 'strip' }).flatMap((g) => g.rows)
+  const byWords = qrGroups(lines, { ...input, filter: words, place: 'strip' }).flatMap((g) => g.rows)
+  const typed = words.trim().toLowerCase()
+  if (!typed) return byWords
+  const every = qrGroups(lines, { ...input, filter: '', place: 'strip' }).flatMap((g) => g.rows)
+  const exact = every.filter((q) => q.shortcut === typed)
+  const starts = every.filter((q) => Boolean(q.shortcut) && q.shortcut !== typed && q.shortcut!.startsWith(typed))
+  const keyed = new Set([...exact, ...starts].map((q) => q.id))
+  return [...exact, ...starts, ...byWords.filter((q) => !keyed.has(q.id))]
 }
 
 /** Every line the strip would show them, for the head's count. */

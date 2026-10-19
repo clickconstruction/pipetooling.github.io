@@ -11,9 +11,10 @@ const LIT = { background: 'var(--bg-blue-tint)', boxShadow: 'inset 3px 0 0 var(-
 
 /**
  * Quick replies by keyboard (punch list #126): the list a `/` in the reply box opens, drawn above the box so a phone's
- * keyboard never covers it. Each row is the line as it would go (`FilledLine`), the typed words lit, the step it sits on
- * at the right. The box keeps the focus: a press on a row picks it without taking the caret away (`onMouseDown`), and
- * the keys are the box's own (`ReplyBox`). Every word is `quickReplies/slash.ts`'s.
+ * keyboard never covers it. Each row is the line as it would go (`FilledLine`), the typed words lit, its `/` shortcut
+ * at the left when it has one (#126 C), the step it sits on at the right. The box keeps the focus: a press on a row
+ * picks it without taking the caret away (`onMouseDown`), and the keys are the box's own (`ReplyBox`). Every word is
+ * `quickReplies/slash.ts`'s.
  */
 export function SlashList({
   id,
@@ -89,6 +90,11 @@ export function SlashList({
                 onMouseEnter={() => onHover(i)}
                 style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', ...(i === active ? LIT : null) }}
               >
+                {q.shortcut && (
+                  <span data-slash-shortcut style={{ flex: 'none', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-blue-700)' }}>
+                    /{q.shortcut}
+                  </span>
+                )}
                 <span style={{ flex: 1, minWidth: 0, color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
                   <FilledLine text={lineWords(q, lang)} fills={fills} needle={words} />
                 </span>
