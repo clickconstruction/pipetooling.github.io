@@ -164,7 +164,9 @@ export function ReplyBox({
   // Punch list #126: where the caret is, so a `/` word at it opens the list; the lines are read the first time it does.
   const [caret, setCaret] = useState(0)
   const slashTyped = slashWordAt(body, caret)
-  const quick = useQuickReplies(qio, me, goesOut(kind) && (stripOpen || finding || slashTyped !== null))
+  // A job's box opens the strip on its own (v2.5629), so its lines are read then too, not only the app's stage line.
+  const stripShown = stripOpen || (openStrip && !foldedByHand())
+  const quick = useQuickReplies(qio, me, goesOut(kind) && (stripShown || finding || slashTyped !== null))
   const [tie, setTie] = useState<ReplyTie>(undefined)
   const [picking, setPicking] = useState(false)
   const [sending, setSending] = useState<'text' | 'email' | null>(null)
@@ -426,7 +428,7 @@ export function ReplyBox({
           steps={kindSteps}
           fills={fills}
           lang={lang}
-          open={(stripOpen || (openStrip && !foldedByHand())) && (!body.trim() || peek)}
+          open={stripShown && (!body.trim() || peek)}
           problem={quick.problem}
           onOpen={(o) => {
             setStripOpen(o)
