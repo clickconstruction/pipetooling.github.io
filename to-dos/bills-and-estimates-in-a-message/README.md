@@ -2,14 +2,14 @@
 name: "Bills and estimates in a message: /bill, /estimate and their fills"
 number: 127
 group: ready
-status: BUILDING 2026-10-19 — the owner picked B (a second link per share) and the rest as drawn; PR 1, the papers read and the fills, is v2.5641; left: PR 2 (the papers in the / list) and PR 3 (the estimate's second link)
+status: BUILDING 2026-10-19 — the owner picked B (a second link per share) and the rest as drawn; PR 1 (the papers read and the fills) is v2.5641, PR 2 (bills in the / list) is v2.5642; left: PR 3 (the estimate's second link, and estimates on the list)
 summary: >
   The office should be able to drop a customer's own bill or estimate into a text in a press or two. Today the
   reply box knows one paper: {bill}, the newest Stripe bill's pay page, and only in a job's box. {amount} is never
   filled there, and an estimate's link cannot be had at all once the email is out, because only its hash is kept.
   This to-do draws /bill and /estimate listing that customer's actual papers in the / list (#126), each pick putting
   in a line about that paper, and the {amount} and a new {estimate} blank filling on their own.
-next: PR 2, /bill and /estimate listing the papers in the / list; then PR 3, the estimate's second link.
+next: PR 3: estimate_share_links, the three functions that open an estimate reading either hash, {estimate}, and ESTIMATE_LINKS_ON.
 size: S (the papers read and the fills) + S (the papers in the / list) + M (a second estimate link, if picked)
 blocker: none
 opinion: build the papers in the / list and the fills, and give an estimate a second link for texts so the emailed one keeps working

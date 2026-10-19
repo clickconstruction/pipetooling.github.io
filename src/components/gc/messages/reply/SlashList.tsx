@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { PortalLang } from '../../../../lib/gc/portalI18n'
 import type { BlankFills } from '../../../../lib/quickReplies/blanks'
 import type { QuickReply, StepRef } from '../../../../lib/quickReplies/kernel'
+import { paperRowWords, type Paper } from '../../../../lib/messages/papers'
 import { SLASH_KEYS, SLASH_NONE, SLASH_READING } from '../../../../lib/quickReplies/slash'
 import { lineWords } from '../../../../lib/quickReplies/spanish'
 import { FilledLine } from './FilledLine'
@@ -15,6 +16,9 @@ const LIT = { background: 'var(--bg-blue-tint)', boxShadow: 'inset 3px 0 0 var(-
  * at the left when it has one (#126 C), the step it sits on at the right. The box keeps the focus: a press on a row
  * picks it without taking the caret away (`onMouseDown`), and the keys are the box's own (`ReplyBox`). Every word is
  * `quickReplies/slash.ts`'s.
+ *
+ * Punch list #127: when the words call a customer's papers (`/bill`, `/estimate`), the papers follow the lines under
+ * their own title, the job's first; ↑ ↓ move through both, the lines first, and a press on a paper picks it.
  */
 export function SlashList({
   id,
@@ -27,7 +31,10 @@ export function SlashList({
   head,
   reading,
   problem,
+  papers = [],
+  papersTitle = '',
   onPick,
+  onPickPaper,
   onHover,
 }: {
   /** The listbox's id, which the box names in `aria-controls`; row `i` is `${id}-${i}`. */
@@ -42,7 +49,11 @@ export function SlashList({
   /** The lines are not read yet. */
   reading: boolean
   problem: string | null
+  /** #127: the customer's papers the words call, after the lines; row `rows.length + j` is paper `j`. */
+  papers?: readonly Paper[]
+  papersTitle?: string
   onPick: (q: QuickReply) => void
+  onPickPaper?: (p: Paper) => void
   onHover: (i: number) => void
 }) {
   useEffect(() => {
@@ -67,7 +78,7 @@ export function SlashList({
         <div role="alert" style={{ padding: '0.45rem 0.6rem', color: 'var(--text-red-700)' }}>
           {problem}
         </div>
-      ) : rows.length === 0 ? (
+      ) : rows.length === 0 && papers.length === 0 ? (
         <div data-slash-none style={{ padding: '0.45rem 0.6rem', color: 'var(--text-muted)' }}>
           {SLASH_NONE}
         </div>
@@ -99,6 +110,42 @@ export function SlashList({
                   <FilledLine text={lineWords(q, lang)} fills={fills} needle={words} />
                 </span>
                 {step && <span style={{ flex: 'none', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{step}</span>}
+              </li>
+            )
+          })}
+          {papers.length > 0 && (
+            <li role="presentation" data-slash-papers style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+              {papersTitle}
+            </li>
+          )}
+          {papers.map((p, j) => {
+            const i = rows.length + j
+            const w = paperRowWords(p)
+            return (
+              <li
+                key={`paper-${p.id}`}
+                id={`${id}-${i}`}
+                role="option"
+                aria-selected={i === active}
+                data-slash-paper={p.id}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  onPickPaper?.(p)
+                }}
+                onMouseEnter={() => onHover(i)}
+                style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.1rem 0.6rem', alignItems: 'baseline', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', ...(i === active ? LIT : null) }}
+              >
+                <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '0.78rem', fontWeight: 700 }}>{w.number}</span>
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                  {w.what}
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{w.when}</span>
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  {w.money}
+                  <span data-slash-paper-state style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: w.tone === 'open' || w.tone === 'sent' ? 'var(--text-amber-800)' : 'var(--text-green-700)' }}>
+                    {w.state}
+                  </span>
+                </span>
               </li>
             )
           })}
