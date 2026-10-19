@@ -141,6 +141,8 @@ interface BidsTakeoffTabProps {
   // Shared controlled state
   costEstimatePOModalTaxPercent: string
   setCostEstimatePOModalTaxPercent: Dispatch<SetStateAction<string>>
+  /** The box's blur saves the bid's own rate (punch list #128 PR 1). */
+  onCommitTaxPercent?: (text: string) => void
   // Engine values + setters/loaders
   takeoffCountRows: BidsTakeoffEngine['takeoffCountRows']
   takeoffRoughPartLines: BidsTakeoffEngine['takeoffRoughPartLines']
@@ -194,6 +196,7 @@ export function BidsTakeoffTab({
   activeTab,
   costEstimatePOModalTaxPercent,
   setCostEstimatePOModalTaxPercent,
+  onCommitTaxPercent,
   takeoffCountRows,
   takeoffRoughPartLines,
   setTakeoffRoughPartLines,
@@ -1979,6 +1982,7 @@ export function BidsTakeoffTab({
             costEstimateMaterialTotalRoughIn={costEstimateMaterialTotalRoughIn}
             costEstimatePOModalTaxPercent={costEstimatePOModalTaxPercent}
             setCostEstimatePOModalTaxPercent={setCostEstimatePOModalTaxPercent}
+            onCommitTaxPercent={onCommitTaxPercent}
           />
         </div>
       <PartFormModal
