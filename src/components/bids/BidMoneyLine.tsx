@@ -46,7 +46,7 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded }: BidMon
   const sheetJob = {
     id: line.job.id,
     job_name: line.job.name,
-    hcp_number: line.job.number || null,
+    hcp_number: line.job.number,
     click_number: '',
     status: line.job.status ?? 'waiting',
     created_at: line.job.createdAt,
