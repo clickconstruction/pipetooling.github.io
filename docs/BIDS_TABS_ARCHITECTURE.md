@@ -8,8 +8,10 @@ covers:
   - src/pages/Bids.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-19
 ---
+
+> **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `Bids.tsx` reads `bid_count_sources` once for every bid on the board (`useBidCountSourcesByBid`, chunked) and hands the projects to the board's links cluster and to the Counts tab's *From* tile and column (`BidsCountsTab.tsx`, `sheetFromFilter`, `countRowFrom`), both drawn only once the bid has a project (`docs/recent-features/v2.5520.md`).
 
 ## Overview
 

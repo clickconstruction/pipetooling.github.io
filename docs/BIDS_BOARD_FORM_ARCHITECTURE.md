@@ -9,8 +9,10 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-19
 ---
+
+> **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `BidFormModal.tsx` draws `BidCountSourcesField` (new) under the CountTooling Plans field of a saved bid — one row per `bid_count_sources` project (`countSourceLabel`, *first* / *combined*, imported by whom and when, Open ↗, × → Remove / Keep) — and `BidsBidBoardTab.tsx` adds one CountTooling chip per project beyond the bid's own link through `useBidCountSourcesByBid` / `useBidBoardScope` (`docs/recent-features/v2.5520.md`, the combine train's last PR).
 
 ## What this surface is
 

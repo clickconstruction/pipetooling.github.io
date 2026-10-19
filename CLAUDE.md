@@ -15,7 +15,7 @@ Guidance for Claude Code (and humans) working in this repo. Hard rules only, one
 
 ## Deploy model (four separate tracks)
 
-CI (`deploy.yml`) typechecks, lints, tests and deploys the **client** to GitHub Pages. The other three are manual — the first two against the linked prod project `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"):
+CI (`deploy.yml`) typechecks, lints, tests and deploys the **client** to GitHub Pages; only the deploy runs `vite build`, so run `npm run build` before merging a change to a glob, an asset import or `vite.config.ts`. The other three are manual — the first two against the linked prod project `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"):
 
 1. **DB migrations** — `supabase db push` (rule above). When a migration changes behavior the old client would misread, deploy the client first.
 2. **Edge functions** — `supabase functions deploy <name>` (or MCP `deploy_edge_function`). Editing `supabase/functions/*` does nothing until deployed; `npm run check:edge-drift` says what is behind. `create-user` keeps `verify_jwt = false` in `config.toml` on every redeploy.

@@ -5,7 +5,7 @@ file: TROUBLESHOOTING.md
 type: Troubleshooting guide
 purpose: Common issues and how to resolve them
 audience: Devs + AI agents
-last_updated: 2026-09-05
+last_updated: 2026-10-19
 ---
 
 Common issues and how to resolve them.
@@ -189,6 +189,14 @@ Never raise `max_rows` instead — it moves the cliff and hides it again.
 **Solution**: Move the self-referential check into a **`SECURITY DEFINER`** helper function (which bypasses RLS), then reference the helper from the policy. The repo already does this for the common role checks — `is_dev()`, `is_master_or_dev()`, `is_estimator()`, `is_user_notes_editor()`, etc. Pattern and rationale are in [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) ("Helper Functions"). Never put a bare `FROM <same-table>` subquery in a policy on that table.
 
 ---
+
+## Deploy failed in build, and the log only says `[copy-404] ENOENT … dist/404.html`
+
+**Symptoms**: main's deploy (`deploy.yml`) fails in the build step and Vite's *error during build* line names only `[copy-404] ENOENT: no such file … dist/index.html → dist/404.html`. The PR's checks were green, because they never run `vite build`.
+
+**Cause**: Rollup runs the `copy-404` plugin's `closeBundle` even after a failed bundle; before v2.5588 the plugin's `copyFileSync` threw on the missing `index.html` and replaced the build's own error. The real error on 2026-10-16 was every lesson `.md` parsed as JavaScript by a lazy `import.meta.glob` with no `?raw` (fixed in v2.5589).
+
+**Fix**: since v2.5588 the plugin returns when there is no `index.html` to copy, so the log shows the error that stopped the build; read that line. Run `npm run build` locally before merging a change to a glob, an asset import or `vite.config.ts` — only the deploy runs it.
 
 ## Investigating errors under load (CLI + logs)
 
