@@ -124,3 +124,37 @@ describe('a bill sent to the customer (v2.5633)', () => {
     expect(sentLineBody({ type: 'invoice_stripe_email_sent', summary: 'Stripe emailed the invoice', detail: undefined })).toBe('Bill emailed through Stripe')
   })
 })
+
+describe('the papers that follow a bill (v2.5636)', () => {
+  const event = (id: string, at: string, type: JobThreadEventActivityItem['event']['type'], over: Partial<JobThreadEventActivityItem['event']> = {}): JobThreadActivityItem => ({
+    kind: 'event',
+    event: { dedupeKey: `ev:${id}`, type, occurredAt: at, actorName: null, summary: '', financial: true, ...over },
+  })
+
+  it('a paper resend, a demand letter and a notice come in unnumbered, each in its words; a contract reminder stays out', () => {
+    const feed = buildJobActivityBoxFeed([
+      note('n1', '2026-10-01T15:00:00Z', 'Bill out'),
+      event('e-resent', '2026-10-05T15:00:00Z', 'invoice_resent', { actorName: 'Kim', summary: 'Invoice emailed again to pat@example.test' }),
+      event('e-remind', '2026-10-06T15:00:00Z', 'contract_reminded', { summary: 'Contract reminder 1 emailed to pat@example.test — Service agreement' }),
+      event('e-demand', '2026-10-12T19:30:00Z', 'demand_letter_sent', { actorName: 'Kim', summary: 'Demand letter sent to Pat Example by certified mail — $4,720.00' }),
+      event('e-notice', '2026-10-15T20:00:00Z', 'lien_notice_sent', { actorName: 'Lee', detail: { kind: 'notice_53_056' } }),
+      event('e-retainage', '2026-10-16T20:00:00Z', 'lien_notice_sent', { detail: { kind: 'retainage_53_057' } }),
+      note('n2', '2026-10-17T15:00:00Z', 'They called back'),
+    ])
+    expect(feed.map((e) => [e.kind, e.number, e.body])).toEqual([
+      ['note', 1, 'Bill out'],
+      ['sent', null, 'Bill emailed again'],
+      ['sent', null, 'Demand letter sent'],
+      ['sent', null, 'Lien notice sent'],
+      ['sent', null, 'Retainage notice sent'],
+      ['note', 2, 'They called back'],
+    ])
+    expect(feed.map((e) => e.authorName)).toEqual(['Roxi', 'Kim', 'Kim', 'Lee', SENT_BY_APP, 'Roxi'])
+  })
+
+  it('names each send by its type before reading a channel', () => {
+    expect(sentLineBody({ type: 'invoice_resent', summary: 'Invoice emailed again to x (stripe)', detail: { channel: 'physical' } })).toBe('Bill emailed again')
+    expect(sentLineBody({ type: 'demand_letter_sent', summary: 'Demand letter sent to x by email — $1.00', detail: { sent_method: 'email' } })).toBe('Demand letter sent')
+    expect(sentLineBody({ type: 'lien_notice_sent', summary: 'Lien notice sent — $75.00', detail: undefined })).toBe('Lien notice sent')
+  })
+})

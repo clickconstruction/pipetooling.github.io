@@ -13,6 +13,7 @@ gc-award
 pay-applications
 gc-back-charges
 lien-claim
+customer-sends-trail
 sub-sheet-stamps
 gc-papers
 gc-trade-sign-sow

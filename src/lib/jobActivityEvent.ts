@@ -39,6 +39,10 @@ export type JobActivityEventType =
   | 'contract_signed'
   | 'contract_voided'
   | 'contract_shared'
+  | 'contract_reminded'
+  | 'demand_letter_sent'
+  | 'lien_notice_sent'
+  | 'invoice_resent'
   | 'job_auto_created_from_estimate'
   | 'job_renamed_from_work'
   | 'job_created'
@@ -129,6 +133,14 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   contract_signed: { tag: 'Contract', ...MONEY_GREEN, bucket: 'billing' },
   contract_voided: { tag: 'Contract', ...DANGER_RED, bucket: 'billing' },
   contract_shared: { tag: 'Contract', ...BILLING_BLUE, bucket: 'billing' },
+  // Customer sends that left no line before v2.5636 (20261019030000), each written by a trigger on its own
+  // record and backfilled; all financial. A contract reminder from the reminder cron (job_contract_events),
+  // a final demand recorded in the Lien window (job_demand_letters), a lien or retainage notice
+  // (job_lien_filings), and a paper bill emailed again (its sent copy, kind bill_resent).
+  contract_reminded: { tag: 'Contract', ...STATUS_AMBER, bucket: 'billing' },
+  demand_letter_sent: { tag: 'Demand', ...DANGER_RED, bucket: 'billing' },
+  lien_notice_sent: { tag: 'Lien notice', ...DANGER_RED, bucket: 'billing' },
+  invoice_resent: { tag: 'Resent', ...BILLING_BLUE, bucket: 'billing' },
   // Auto-create-job guard (v2.2838) — written by auto_create_job_from_signed_estimate on a real create.
   job_auto_created_from_estimate: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },
   // v2.3766: the plan_job_names_from_work backfill — customer name → customer — work.

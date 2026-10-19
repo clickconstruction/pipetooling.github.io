@@ -80,7 +80,7 @@ const reportNumStyle: CSSProperties = {
   background: 'var(--bg-blue-tint)',
 }
 
-/** A bill sent to the customer (v2.5633): no number, a small tag in the report's blue, the same height as a number. */
+/** A send to the customer (a bill since v2.5633, the papers that follow it since v2.5636): no number, a small tag in the report's blue, the same height as a number. */
 const sentTagStyle: CSSProperties = {
   ...reportNumStyle,
   width: 'auto',
@@ -95,8 +95,8 @@ function entryLine(e: JobActivityBoxEntry) {
   return (
     <div key={`${e.kind}-${e.number ?? 'x'}-${e.atIso}`} data-activity-entry-kind={e.kind} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 5 }}>
       {sent ? (
-        // A bill sent to the customer (v2.5633) takes no number: a small Sent tag in the billing blue holds its place.
-        <span style={sentTagStyle} aria-label="A bill sent to the customer">
+        // A send to the customer (v2.5633, v2.5636) takes no number: a small Sent tag in the billing blue holds its place.
+        <span style={sentTagStyle} aria-label="Sent to the customer">
           Sent
         </span>
       ) : (

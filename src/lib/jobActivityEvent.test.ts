@@ -37,6 +37,10 @@ const ALL_TYPES: JobActivityEventType[] = [
   'contract_signed',
   'contract_voided',
   'contract_shared',
+  'contract_reminded',
+  'demand_letter_sent',
+  'lien_notice_sent',
+  'invoice_resent',
   'sub_stage_change',
   'sub_progress',
   'job_auto_created_from_estimate',
@@ -82,6 +86,17 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
     expect(bucketForEvent('lien_release_signed')).toBe('billing')
     expect(bucketForEvent('job_created')).toBe('status')
     expect(eventRenderMeta('job_created').tag).toBe('Opened')
+  })
+
+  it('files the customer sends of v2.5636 under Billing with their own tags', () => {
+    expect(bucketForEvent('contract_reminded')).toBe('billing')
+    expect(bucketForEvent('demand_letter_sent')).toBe('billing')
+    expect(bucketForEvent('lien_notice_sent')).toBe('billing')
+    expect(bucketForEvent('invoice_resent')).toBe('billing')
+    expect(eventRenderMeta('contract_reminded').tag).toBe('Contract')
+    expect(eventRenderMeta('demand_letter_sent').tag).toBe('Demand')
+    expect(eventRenderMeta('lien_notice_sent').tag).toBe('Lien notice')
+    expect(eventRenderMeta('invoice_resent').tag).toBe('Resent')
   })
 })
 
