@@ -32,6 +32,9 @@ import {
   type ReplyKind,
 } from '../../../../lib/messages/compose'
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
+import { jobRefOf } from '../../../../lib/messages/jobKeys'
+import { defaultPaperFills } from '../../../../lib/messages/papers'
+import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
 import { TextsWaitLine } from './TextsWaitLine'
@@ -54,6 +57,7 @@ import { CUSTOMER_BAR, CUSTOMER_LOOK, KIND_LOOK, RING } from './kindLook'
 import { QuickRepliesStrip } from './QuickRepliesStrip'
 import { SendWindow } from './SendWindow'
 import { SlashList } from './SlashList'
+import { usePapers } from './usePapers'
 import { useQuickReplies } from './useQuickReplies'
 import { useTextsOn } from './useTextsOn'
 
@@ -117,6 +121,7 @@ export function ReplyBox({
   contact,
   io: ioGiven,
   quickIo,
+  papersIo,
   job,
   billLink = null,
   stageStepIds = [],
@@ -128,6 +133,8 @@ export function ReplyBox({
   contact: Contact
   io?: ReplyIo
   quickIo?: QuickRepliesIo
+  /** Punch list #127: the customer's bills and estimates, for `{amount}`, `{number}` and `{bill}`; a smoke hands its own. */
+  papersIo?: PapersIo
   /** The job's window: the job every reply here is tied to, and its name. */
   job?: { key: string; name: string }
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628): the job's box and the Pipeline's sheet read it; the thread's foot has no one job. */
@@ -167,6 +174,9 @@ export function ReplyBox({
   // A job's box opens the strip on its own (v2.5629), so its lines are read then too, not only the app's stage line.
   const stripShown = stripOpen || (openStrip && !foldedByHand())
   const quick = useQuickReplies(qio, me, goesOut(kind) && (stripShown || finding || slashTyped !== null))
+  // #127: their bills and estimates, read when the lines are, so a line about money fills from the right bill.
+  const pio = useMemo(() => papersIo ?? supabasePapersIo(), [papersIo])
+  const papers = usePapers(pio, contact.kind === 'customer' ? (contact.customerId ?? null) : null, goesOut(kind) && (stripShown || finding || slashTyped !== null))
   const [tie, setTie] = useState<ReplyTie>(undefined)
   const [picking, setPicking] = useState(false)
   const [sending, setSending] = useState<'text' | 'email' | null>(null)
@@ -303,7 +313,10 @@ export function ReplyBox({
   // The live flow names the step; the seed names the rest of their kind's steps.
   const kindSteps = flowNow ? [{ id: flowNow.stepId, name: flowNow.stepName }, ...(STEPS[qrKindOf(contact.kind)] ?? [])] : (STEPS[qrKindOf(contact.kind)] ?? [])
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
-  const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? auth?.profileName ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink })
+  // #127: the bill a line about money speaks of: the job's newest open bill when the reply is a Pipeline job's, else theirs.
+  const pipelineJob = jobRefOf(jobKey)
+  const paper = papers ? defaultPaperFills(papers, pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null, Boolean(job)) : undefined
+  const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? auth?.profileName ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink, paper })
   const waits = goesOut(shown) ? sendWaits(body) : null
   const lang = customerLang(contact)
   const where =

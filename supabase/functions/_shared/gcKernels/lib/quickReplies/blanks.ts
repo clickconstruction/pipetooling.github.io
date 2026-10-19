@@ -13,7 +13,7 @@
 // ---------- the fill table ----------
 
 /** The blanks the app fills on the press. */
-export type BlankKey = 'first' | 'me' | 'address' | 'job' | 'minutes' | 'window' | 'back day' | 'back time' | 'day' | 'tech' | 'link' | 'amount' | 'bill'
+export type BlankKey = 'first' | 'me' | 'address' | 'job' | 'minutes' | 'window' | 'back day' | 'back time' | 'day' | 'tech' | 'link' | 'amount' | 'bill' | 'number' | 'estimate'
 
 /**
  * Where the app reads a blank: the person written to, the signed-in user, the job, the drive to it, the schedule,
@@ -43,6 +43,9 @@ export const BLANKS: readonly Blank[] = [
   { key: 'link', words: "their page's link", from: 'page' },
   { key: 'amount', words: 'the estimate or bill', from: 'money' },
   { key: 'bill', words: "the bill's pay page", from: 'money' },
+  // Punch list #127: the bill's or estimate's number (a bill goes by its job's), and the estimate's own link.
+  { key: 'number', words: "the bill's or estimate's number", from: 'money' },
+  { key: 'estimate', words: "the estimate's link", from: 'money' },
 ]
 
 /** Chips for blanks the app never fills: the person types them before it sends. */
