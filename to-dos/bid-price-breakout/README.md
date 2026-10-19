@@ -2,7 +2,7 @@
 name: "What the price is made of: material, markup, tax, equipment, labor"
 number: 128
 group: gated
-status: proposed 2026-10-19 — four proposals drawn, one recommended; waiting on the owner's picks D1–D4
+status: proposed 2026-10-19 — the owner picked D1 (one markup number, the SOV factor set to 1.4) and D2 (hours × rate with margin left over; the residual only with no hours) the same day; D3 and D4 open; PR 1 can start
 summary: >
   A bid's price is the price book's all-in number per fixture, so some estimators skip the Labor
   tab and let the fixture's price carry its material. Then the Workbench's margin lies, tax is a
@@ -11,9 +11,9 @@ summary: >
   ★ price apart into material, the company markup on it, sales tax on it, the equipment rows and
   labor, and says plainly when labor is only what is left; a kind on each count row so equipment
   stops being a guess; and tags of the estimator's own that add up to the price.
-next: The owner picks D1 (one material markup number, or a second), D2 (the labor line's rule when hours exist), D3 (whether the lines reach the cover letter) and D4 (free tags, or kinds only); then PR 1.
+next: PR 1, the tax rate on the bid; the owner still picks D3 (whether the lines reach the cover letter) and D4 (free tags, or kinds only) before PR 4 and 5.
 size: S (PR 1 and 2) · M (PR 3) · S (PR 4) · S (PR 5, if picked)
-blocker: The owner's picks.
+blocker: None for PR 1–3; D3 gates PR 5 and D4 gates PR 4.
 opinion: build — PR 1 to 3 in one week; the card answers the owner's ask and Wendi's in one place, and the labor book fills the hours it needs
 mockup: to-dos/bid-price-breakout/mockup.html
 ---
@@ -23,7 +23,10 @@ mockup: to-dos/bid-price-breakout/mockup.html
 ## Where it stands
 
 Proposed 2026-10-19 after a read of the Pricing, Labor and Takeoffs code and the cover letter's
-schedule of values. Nothing is built. The mock-up draws the recommended card in both of its
+schedule of values. The owner picked **D1** and **D2** the same day, as recommended: one material
+markup number (the schedule-of-values factor, set to 1.4), and when hours exist Labor is hours ×
+rate with Margin what is left, Wendi's residual rule only on a bid with no hours. D3 and D4 are
+open. Nothing is built. The mock-up draws the recommended card in both of its
 states, the two ways not taken, the kind chip, the tag card and the paper question.
 
 ## The ask, in the owner's words
@@ -170,11 +173,11 @@ PR 1–4 reaches the GC.
 
 ## Decisions for the owner
 
-- **D1 · One material markup number or two?** Today's schedule-of-values factor (1.5, per-bid
+- **D1 · One material markup number or two? — picked: one** (2026-10-19). Today's schedule-of-values factor (1.5, per-bid
   override) is already "what we charge for material over cost". The proposal makes it the one
   material markup, shown as 40% / 50%, and sets it to 1.4. The other way is a second setting for
   the card alone, which would let the paper and the screen disagree.
-- **D2 · When hours exist, is the Labor line hours × rate, or still what is left?** The
+- **D2 · When hours exist, is the Labor line hours × rate, or still what is left? — picked: hours × rate** (2026-10-19). The
   recommendation is hours × rate with a Margin line below; Wendi's rule then shows only on a bid
   with no hours. The other way is Wendi's rule always, with the book's labor as a note under it.
 - **D3 · Do the lines reach the cover letter?** Proposal 5, or stay internal.
