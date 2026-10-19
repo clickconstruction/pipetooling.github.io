@@ -14,7 +14,8 @@
  *
  * The fills: `paperFills` is what a paper puts in the blanks (its pay page, its amount, its number, its job), and
  * `defaultPaperFills` is the paper a line about money speaks of when nobody picked one: the job's newest open bill in a
- * job's box, the newest open bill anywhere in a person's thread. `{estimate}` waits for its link (#127 PR 3).
+ * job's box, the newest open bill anywhere in a person's thread. `{estimate}` is a link made for the message when the
+ * line goes in (`ReplyBox`, `estimateLinkIo.ts`, PR 3).
  */
 import { computeBillTruth, jobIsUncollectible, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../billing/billTruth'
 import { isPayLinkId, payLinkUrl } from '../billing/payLink'
@@ -141,7 +142,7 @@ export function papersFor<T extends Paper>(papers: readonly T[], jobId: string |
 
 // ---------- the fills ----------
 
-/** What a paper puts in the blanks. `{estimate}` waits for its link (#127 PR 3). */
+/** What a paper puts in the blanks. `{estimate}` is made apart, for the message (`estimateLinkIo.ts`). */
 export interface PaperFills {
   bill?: string | null
   amount?: string | null
@@ -171,10 +172,10 @@ export function defaultPaperFills(papers: readonly Paper[], jobId: string | null
 // ---------- a paper in the / list (#127 PR 2) ----------
 
 /**
- * Whether the `/` list offers estimates yet. Their link is made by PR 3 (a second link per share, the owner's pick B);
- * until then an estimate picked would leave `{estimate}` to fill, so none is offered.
+ * Whether the `/` list offers estimates: on since PR 3 (v2.5643), which makes each message's link to an estimate (a
+ * second link per share, the owner's pick B, `messages/estimateLinkIo.ts`).
  */
-export const ESTIMATE_LINKS_ON = false
+export const ESTIMATE_LINKS_ON = true
 
 /** How many paid bills the list shows under the open ones: a long-standing customer has dozens. */
 export const PAID_BILLS_SHOWN = 3

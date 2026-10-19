@@ -27,6 +27,7 @@ export function FindReplyWindow({
   nowStepId,
   steps,
   fills = {},
+  fillsFor,
   lang = 'en',
   where,
   onOpenStep,
@@ -43,6 +44,8 @@ export function FindReplyWindow({
   steps: readonly StepRef[]
   /** What the box fills on a press (R3); a blank it leaves is lit, as on the strip. */
   fills?: BlankFills
+  /** #127: a line's own fills when they differ from the box's (a line that holds `{estimate}` speaks of an estimate). */
+  fillsFor?: (q: QuickReply) => BlankFills
   /** The language the person gets, as on the strip. */
   lang?: PortalLang
   /** Where they are in the flow (`findWhere`); null while the flow is still being read, so nothing is said yet. */
@@ -163,7 +166,7 @@ export function FindReplyWindow({
                     style={{ textAlign: 'left', border: '1px solid var(--border)', borderStyle: q.scope === 'mine' ? 'dashed' : 'solid', borderRadius: 8, background: 'var(--surface)', padding: '0.4rem 0.6rem', cursor: 'pointer', display: 'grid', gap: '0.1rem' }}
                   >
                     <span>
-                      <FilledLine text={lineWords(q, lang)} fills={fills} needle={filter} />
+                      <FilledLine text={lineWords(q, lang)} fills={fillsFor ? fillsFor(q) : fills} needle={filter} />
                     </span>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       {[stepOf(q), `used ${qrTotal(q)}`, q.scope === 'mine' ? 'mine' : null].filter(Boolean).join(' · ')}

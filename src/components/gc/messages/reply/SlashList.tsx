@@ -26,6 +26,7 @@ export function SlashList({
   active,
   words,
   fills,
+  fillsFor,
   lang,
   steps,
   head,
@@ -43,6 +44,8 @@ export function SlashList({
   active: number
   words: string
   fills: BlankFills
+  /** #127: a line's own fills when they differ from the box's (a line that holds `{estimate}` speaks of an estimate). */
+  fillsFor?: (q: QuickReply) => BlankFills
   lang: PortalLang
   steps: readonly StepRef[]
   head: { title: string; count: string }
@@ -107,7 +110,7 @@ export function SlashList({
                   </span>
                 )}
                 <span style={{ flex: 1, minWidth: 0, color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
-                  <FilledLine text={lineWords(q, lang)} fills={fills} needle={words} />
+                  <FilledLine text={lineWords(q, lang)} fills={fillsFor ? fillsFor(q) : fills} needle={words} />
                 </span>
                 {step && <span style={{ flex: 'none', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{step}</span>}
               </li>

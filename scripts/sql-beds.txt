@@ -27,6 +27,7 @@ gc-customer-contacts
 quick-replies
 quick-replies-phone-tech
 quick-replies-shortcut
+estimate-share-links
 messages-follow-up
 messages-spine
 messages-flows

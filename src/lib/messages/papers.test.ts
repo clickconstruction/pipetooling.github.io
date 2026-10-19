@@ -153,10 +153,10 @@ describe('a paper in the / list (#127 PR 2)', () => {
   const est = { kind: 'estimate' as const, id: 'e1', jobId: null, job: 'Kitchen re-pipe', number: '1044', approved: false, amount: 3200, sentYmd: '2026-10-14' }
   const papers = [open('o1', 'j-a', '2026-10-17'), open('o2', 'j-b', '2026-10-12'), paid('p1', '2026-09-30'), paid('p2', '2026-09-20'), paid('p3', '2026-09-10'), paid('p4', '2026-09-01'), est]
 
-  it('lists bills open first, the job’s first, then the newest three paid; estimates only while their links are on', () => {
+  it('lists bills open first, the job’s first, then the newest three paid; estimates while their links are on (since PR 3)', () => {
     expect(listedPapers(papers, 'bill', 'j-b').map((p) => p.id)).toEqual(['o2', 'o1', 'p1', 'p2', 'p3'])
-    expect(listedPapers(papers, 'estimate', null)).toEqual([])
-    expect(listedPapers(papers, 'estimate', null, true).map((p) => p.id)).toEqual(['e1'])
+    expect(listedPapers(papers, 'estimate', null).map((p) => p.id)).toEqual(['e1'])
+    expect(listedPapers(papers, 'estimate', null, false)).toEqual([])
   })
 
   it('gives each paper the app’s words and its row', () => {
