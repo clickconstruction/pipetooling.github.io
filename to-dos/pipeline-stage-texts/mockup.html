@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stage texts from the Pipeline</title>
+<style>
+  /* Punch list #124. Light only, like every to-do mock-up. Made-up people and bills: Dana Whitfield, Osman Vasquez, Lee Park; Tanya as the office. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --orange: #ea580c; --orange-ink: #c2410c; --orange-tint: #ffedd5; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --amber-tint: #fef3c7; --amber-ink: #92400e; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #ffffff; --page: #f6f7f9; --subtle: #f3f4f6; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; flex: none; }
+  h2 .num.x { background: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; overflow: auto; }
+  .win { width: 100%; max-width: 520px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .win .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 16px; }
+  .win .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .win .body { padding: 10px 14px 14px; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); white-space: nowrap; }
+  .pill.on { background: var(--orange-tint); border-color: var(--orange); color: var(--orange-ink); }
+  .pill.amber { background: var(--amber-tint); border-color: #fcd34d; color: var(--amber-ink); }
+  .kinds { display: flex; gap: 6px; margin: 8px 0 6px; align-items: center; }
+  .kinds .k { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); }
+  .kinds .k.on { border-color: var(--orange); background: var(--orange); color: #fff; }
+  .kinds .back { margin-left: auto; color: var(--blue-ink); font-size: 12px; font-weight: 600; }
+  .strip { border: 1px solid var(--line); border-radius: 8px; background: var(--subtle); padding: 8px; margin: 0 0 8px; }
+  .strip .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips span { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: #fff; color: var(--ink-2); }
+  .chips span.lit { border-color: var(--orange); background: var(--orange-tint); color: var(--orange-ink); font-weight: 700; }
+  .chips span.more { color: var(--muted); border-style: dashed; }
+  .ta { background: #fff7ed; border: 1.5px solid var(--orange); border-radius: 8px; min-height: 86px; padding: 8px 10px; color: var(--ink); font-size: 13px; line-height: 1.45; }
+  .ta .lnk { color: var(--blue-ink); text-decoration: underline; }
+  .ta .held { background: var(--red-tint); color: var(--red-ink); border-radius: 4px; padding: 0 3px; }
+  .boxfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11.5px; color: var(--muted); gap: 8px; }
+  .send { background: var(--blue); color: #fff; font-weight: 700; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; }
+  .send.dim { background: #9ca3af; }
+  .ghost { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .tie { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  /* the job window's header, as the screenshot shows it */
+  .jw { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .jw .tabs { display: flex; gap: 18px; padding: 10px 16px; border-bottom: 1px solid var(--line-2); font-weight: 600; color: var(--ink-2); }
+  .jw .tabs .on { background: var(--blue); color: #fff; padding: 2px 12px; border-radius: 999px; }
+  .jw .head { padding: 12px 16px; }
+  .jw .title { font-size: 20px; font-weight: 800; }
+  .jw .icons { display: flex; gap: 14px; align-items: center; margin-top: 8px; font-size: 18px; }
+  .jw .icons .num { font-size: 11px; font-weight: 800; color: #fff; background: var(--orange); padding: 2px 8px; border-radius: 6px; }
+  .jw .icons .story { color: var(--blue-ink); font-size: 14px; font-weight: 600; margin-right: auto; }
+  .jw .icons .bub { color: var(--blue-ink); outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 4px; }
+  .jw .icons .new { color: var(--blue-ink); outline: 2px dashed var(--red); outline-offset: 3px; border-radius: 4px; }
+  .jw .cust { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+  .act { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface); width: 100%; max-width: 560px; }
+  .act .empty { border: 1px solid var(--line); border-radius: 10px; padding: 10px; text-align: center; color: var(--muted); }
+  .act .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .act .add { background: #93c5fd; color: #fff; font-weight: 700; border-radius: 999px; padding: 4px 14px; }
+  .act .doc { border: 1px solid var(--blue); color: var(--blue-ink); border-radius: 999px; padding: 4px 12px; }
+  .act .new { border: 2px dashed var(--red); color: var(--red-ink); border-radius: 999px; padding: 4px 12px; font-weight: 700; }
+  /* Today's sends */
+  .ts { width: 100%; max-width: 620px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .ts .bar { padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+  .ts .r { padding: 10px 14px; border-bottom: 1px solid var(--line-2); display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; }
+  .ts .r .who { font-weight: 700; }
+  .ts .r .step { color: var(--muted); font-size: 12px; }
+  .ts .r .words { margin-top: 4px; color: var(--ink-2); }
+  .ts .r .btns { display: flex; gap: 6px; }
+  .ts .all { padding: 10px 14px; display: flex; justify-content: flex-end; gap: 8px; }
+  .dead { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .dead .d { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .dead .d .t { font-weight: 700; margin: 0 0 4px; }
+  .cost { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 10px; }
+  .cost .c { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .cost .c .t { font-weight: 800; margin: 0 0 4px; }
+  .cost .c.pick { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-tint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #124 · a validity read, three cuts and the draft set aside · nothing built</p>
+  <h1>Stage texts from the Pipeline</h1>
+  <p>The ask: Tanya sends a customer the right message from the Pipeline in one press, the bill's reminder first. <i>Hi, this is Tanya. Here is a copy of your last invoice. Let us know if you need any help getting it paid.</i> Since v2.5626 the row's speech bubble opens the customer's sheet and Text opens the box, so the door is there. What is missing is that the box opens empty, the right words sit under a folded Quick replies, no line can carry the bill, and the common case, every bill past its day, should need no press per job at all.</p>
+</header>
+
+<section>
+  <h2><span class="num x">✕</span> What I drew first, and set aside</h2>
+  <p class="lede">The two doors the ask named. Both open the same empty box the bubble already opens, so they add a third and a fourth door to a row that has one. The activity strip is the crew's notes, where a customer text beside + Add invites the wrong press.</p>
+  <div class="row">
+    <div>
+      <div class="cap red">The job window · a new icon in the row</div>
+      <div class="fit"><div class="jw">
+        <div class="tabs"><span>Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span class="on">History</span><span>Documents</span></div>
+        <div class="head">
+          <div class="title">Faucet and Drains</div>
+          <div class="icons"><span class="num">1045 PLUM</span><span class="story">money story →</span><span>🏪</span><span>✉️</span><span>📅</span><span class="new">💬</span><span>➤</span><span>📝</span><span>⬆︎</span></div>
+        </div>
+      </div></div>
+    </div>
+    <div>
+      <div class="cap red">The row's activity strip · a Text press beside + Add</div>
+      <div class="fit"><div class="act">
+        <div class="empty">No activity yet — post the first note</div>
+        <div class="foot"><span class="new">Text</span><span class="add">+ Add</span><span class="doc">📄</span></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">1</span> The sheet opens on the stage's words, with the bill's link filled</h2>
+  <p class="lede">On a Billed Awaiting Payment row the bubble opens the sheet as today; Text opens the box with the Quick replies strip unfolded and the stage's lines first: the <b>Paid</b> step's reminder and the <b>Billed</b> step's line. One press on a chip fills the box. A new blank, <code>{bill}</code>, fills with the bill's own pay page, so "a copy of your last invoice" is a link that opens the bill and its Pay button. The person reads, presses Send text…, and the confirm shows what the customer sees.</p>
+  <div class="row">
+    <div>
+      <div class="cap orange">The sheet on a Billed Awaiting Payment row · Text pressed</div>
+      <div class="fit"><div class="win">
+        <div class="bar"><span>Dana Whitfield</span><span class="x">×</span></div>
+        <div class="body">
+          <div style="font-weight:600">#2148 · Whitfield re-pipe <span class="pill amber">Billed 23 d · $1,240 open</span></div>
+          <div class="sub">(555) 014-2290 · dana@example.com</div>
+          <div class="sub" style="color:var(--orange-ink)">You wrote last, on Sep 25.</div>
+          <div class="kinds"><span class="k on">Text</span><span class="k">Email</span><span class="back">‹ Back</span></div>
+          <div class="strip"><div class="t">For this stage</div><div class="chips"><span class="lit">Payment reminder</span><span>Your bill went out</span><span class="more">Find a reply…</span></div></div>
+          <div class="ta">Dana, this is Tanya with Click Plumbing. Here is a copy of your last bill: <span class="lnk">clicktooling.com/pay/8f3k2q</span>. Let us know if you need any help getting it paid.</div>
+          <div class="boxfoot"><span>152 / 320 · Reply STOP to end</span><span style="display:flex;gap:6px"><span class="ghost">Attach</span><span class="send">Send text…</span></span></div>
+          <div class="tie">Tie to: #2148 Whitfield re-pipe</div>
+        </div>
+      </div></div>
+      <p class="note"><b>The line is the team's</b>, written once with <code>{first}</code>, <code>{me}</code> and <code>{bill}</code>; whoever presses it is the one it names. A stage with no team line shows the app's own words for the step, so the chip is never empty.</p>
+    </div>
+    <div>
+      <div class="cap">The same box when the bill has no pay page</div>
+      <div class="fit"><div class="win">
+        <div class="bar"><span>Lee Park</span><span class="x">×</span></div>
+        <div class="body">
+          <div style="font-weight:600">#2131 · Park water heater <span class="pill amber">Billed 41 d · $890 open</span></div>
+          <div class="sub">(555) 014-7781 · no email on file</div>
+          <div class="kinds"><span class="k on">Text</span><span class="k">Email</span><span class="back">‹ Back</span></div>
+          <div class="strip"><div class="t">For this stage</div><div class="chips"><span class="lit">Payment reminder</span><span>Your bill went out</span><span class="more">Find a reply…</span></div></div>
+          <div class="ta">Lee, this is Tanya with Click Plumbing. Here is a copy of your last bill: <span class="held">{bill}</span>. Let us know if you need any help getting it paid.</div>
+          <div class="boxfoot"><span style="color:var(--red-ink)">This bill has no pay page. Attach its copy, or take the blank out.</span><span style="display:flex;gap:6px"><span class="ghost">Attach</span><span class="send dim">Send text…</span></span></div>
+          <div class="tie">Attach → the job's files → <i>Bill 2131 · sent Sep 7.pdf</i></div>
+        </div>
+      </div></div>
+      <p class="note">A bill billed outside Stripe has no pay page, so the blank is left, the press holds and says why, and <b>Attach</b> picks the sent copy from the job's files, as it can today.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">2</span> The job window's bubble opens the same sheet</h2>
+  <p class="lede">The window's header already has the bubble beside the customer's name; today it leaves for the Messages page. With the row's door it opens the sheet over the window instead, so the window and the row behave alike. The activity strip stays notes.</p>
+  <div class="row">
+    <div>
+      <div class="cap orange">The job window · the bubble is the door</div>
+      <div class="fit"><div class="jw">
+        <div class="tabs"><span class="on">Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span>Documents</span></div>
+        <div class="head">
+          <div class="title">Faucet and Drains</div>
+          <div class="icons"><span class="num">1045 PLUM</span><span class="story">money story →</span><span>🏪</span><span>✉️</span><span>📅</span><span>➤</span><span>📝</span><span>⬆︎</span></div>
+          <div class="cust">👤 Dana Whitfield <span class="bub">💬</span> 🌐 · 15638 Mission Crest, San Antonio, TX</div>
+        </div>
+      </div></div>
+    </div>
+    <div>
+      <div class="cap">The activity strip · unchanged</div>
+      <div class="fit"><div class="act">
+        <div class="empty">No activity yet — post the first note</div>
+        <div class="foot"><span class="add">+ Add</span><span class="doc">📄</span></div>
+      </div></div>
+      <p class="note">A note is the crew's and the office's; the customer never sees it. The customer's door stays beside the customer's name, on the row and in the window.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">3</span> The morning does the hunting: Paid set to Offers</h2>
+  <p class="lede">The Residential customer flow's Paid step already carries a reminder on each bill's pay-by day. Give it Tanya's words and set it to <b>Offers</b>: each morning the app prepares the text for every bill past its day and lists them on the Dashboard under Today's sends. Tanya reads and presses Send on each, or Send all that are ready. Nothing reaches a customer without a person pressing it, and nobody hunts the board for billed jobs.</p>
+  <div class="row">
+    <div>
+      <div class="cap green">Today's sends · three bills past their day</div>
+      <div class="fit"><div class="ts">
+        <div class="bar"><span>Today's sends</span><span class="pill">3 ready · 1 held</span></div>
+        <div class="r"><div><div class="who">Dana Whitfield <span class="step">· Paid · #2148 Whitfield re-pipe · pay-by was Oct 11</span></div><div class="words">Dana, this is Tanya with Click Plumbing. Here is a copy of your last bill: clicktooling.com/pay/8f3k2q. Let us know if you need any help getting it paid.</div></div><div class="btns"><span class="ghost">Edit</span><span class="send">Send</span></div></div>
+        <div class="r"><div><div class="who">Osman Vasquez <span class="step">· Paid · #1019 Vasquez Pinpoint · pay-by was Oct 14</span></div><div class="words">Osman, this is Tanya with Click Plumbing. Here is a copy of your last bill: clicktooling.com/pay/c91t7m. Let us know if you need any help getting it paid.</div></div><div class="btns"><span class="ghost">Edit</span><span class="send">Send</span></div></div>
+        <div class="r"><div><div class="who">Lee Park <span class="step">· Paid · #2131 Park water heater · held: no pay page for this bill</span></div><div class="words" style="color:var(--muted)">Lee, this is Tanya with Click Plumbing. Here is a copy of your last bill: {bill}. Let us know…</div></div><div class="btns"><span class="ghost">Open the thread</span></div></div>
+        <div class="all"><span class="ghost">Not today</span><span class="send">Send all that are ready</span></div>
+      </div></div>
+    </div>
+    <div>
+      <div class="cap">Settings → Flows → Residential customer · the Paid step</div>
+      <div class="fit"><div class="win" style="max-width:460px">
+        <div class="body">
+          <div style="font-weight:700">Paid <span class="sub">· the bill is paid · nudge after 0 days, a text, the app sends it</span></div>
+          <div class="strip" style="margin-top:8px"><div class="t">The app and this reminder</div><div class="chips"><span>Off</span><span class="lit">Offers</span><span>Sends</span></div><div class="sub" style="margin-top:6px">Each morning the app prepares the text for Today's sends on the Dashboard. The office presses it.</div><div class="sub" style="margin-top:4px">“Dana, this is Tanya with Click Plumbing. Here is a copy of your last bill: clicktooling.com/pay/8f3k2q. Let us know if you need any help getting it paid.”</div></div>
+        </div>
+      </div></div>
+      <p class="note"><b>Today's words</b> on that step are the app's fallback, <i>Dana, checking in on paid. Anything you need from us?</i>, because nobody has written the step's line. The owner's sentence replaces it, once, in the box or in Flows.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The holds, the same everywhere</h2>
+  <div class="dead">
+    <div class="d"><p class="t">No pay page on the bill</p>The blank is left, the press holds and says why; Attach picks the sent copy from the job's files. On Today's sends the row is held with the same words.</div>
+    <div class="d"><p class="t">No mobile, STOP, texts off</p>The box's own holds, as today: Text grey with the reason, Email beside it, the switch linked for the owner.</div>
+    <div class="d"><p class="t">Reminded already</p>The morning run keeps nudge_sent and nudge_offers: a bill reminded today is not offered tomorrow, and a text the office sent by hand counts.</div>
+    <div class="d"><p class="t">The customer asked for email</p>The sheet notes it, as Tell the customer does; the office still decides. The same line goes by Email with the copy attached.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Cost and the recommendation</h2>
+  <div class="cost">
+    <div class="c pick"><p class="t">1 · the {bill} blank</p><b>S.</b> A blank, its fill from the job's newest billed invoice with a Stripe id (the rule They owe us already applies), the hold, the run's line. <b>First.</b></div>
+    <div class="c pick"><p class="t">2 · the stage's lines first</p><b>S.</b> The strip unfolded on the sheet and the job box, the stage's steps first (Billed Awaiting Payment → Paid, then Billed), the app's own words when no team line exists.</div>
+    <div class="c"><p class="t">3 · the window's bubble</p><b>XS.</b> The job window's bubble takes the row's door; the window and the row behave alike.</div>
+    <div class="c pick"><p class="t">4 · Paid to Offers</p><b>A setting.</b> The owner's words on the Paid step and its switch to Offers; the first morning's Today's sends is the live test.</div>
+  </div>
+  <p class="note"><b>Why this is better than the first draft</b>: the deliberate press is one chip away from the door that exists, and the common case needs no press on the board at all, because the morning finds every bill past its day and the office presses the list.</p>
+</section>
+</div>
+</body>
+</html>
