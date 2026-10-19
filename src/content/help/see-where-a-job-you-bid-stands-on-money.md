@@ -2,7 +2,7 @@
 title: see where a job you bid stands on money
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator, primary
-keywords: estimator, won bid, job, money, open, billed, paid, promise, they said, they say they paid, write down their word, check in the mail, pay page, bill, customer, text, email, speech bubble, account manager
+keywords: estimator, won bid, job, money, open, billed, paid, promise, they said, they say they paid, write down their word, check in the mail, pay page, bill, customer, text, email, speech bubble, account manager, money lens, chase list, trail, dashboard
 order: 67
 ---
 You bid the job and you still talk to the customer. The won bid now shows you where its job stands on money, right under the bid.
@@ -49,5 +49,17 @@ Press {{button:outline|Write down their word}} on the line. A sheet opens with a
 The same press sits under the customer's own lines in [Messages](/messages). The word shows on the line and in the job's activity. The job stays billed until the money lands. The office pairs the word with the deposit. A wrong entry comes off with **Never said that** under the sheet.
 
 When a week passes after the day they named and nothing lands, the word comes back to you. The line turns amber and says **nothing landed in 9 days**. Your [Dashboard](/dashboard) shows it under Needs you. Ask the customer before the office chases.
+
+## The Money lens
+
+Open [Bids](/bids?tab=money) and press **Money** on the Followup bar. Every won job with money open is a row. The rows come in chase order. Past their word comes first, then no word, then waiting on a day. Each row carries the money line and its doors. Tick **Only my bids** to keep the jobs you sold.
+
+## Your Dashboard
+
+Your [Dashboard](/dashboard) shows **Money on your bids** under Needs you. It says how many jobs you sold have money open and what is open. It turns red when a day they named has gone by. Press it to open the Money lens.
+
+## The trail
+
+Press **Trail** on a money line. The money's story on that job opens, newest first. You see the bills, the payments, the customer's words and their lines in Messages. The customer's own lines show in orange.
 
 Read [text a customer from the job](/help/text-a-customer-from-the-job) for the box the door opens.

@@ -81,9 +81,9 @@ describe('robotLenses — who sees which pill', () => {
 })
 
 describe('followupLenses — who sees which pill', () => {
-  it('the office gets all six, the Call queue first', () => {
+  it('the office gets all seven, the Call queue first', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) {
-      expect(followupKeys(role)).toEqual(['call-queue', 'builder-review', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts'])
+      expect(followupKeys(role)).toEqual(['call-queue', 'builder-review', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'money'])
     }
   })
 
@@ -91,9 +91,9 @@ describe('followupLenses — who sees which pill', () => {
     expect(followupLenses({ role: 'superintendent', jobAccountsMissing: 5 })).toEqual([{ key: 'builder-review', label: 'By builder' }])
   })
 
-  it('the bar keeps its own rule for a primary and a role not loaded yet: all six', () => {
-    expect(followupKeys('primary')).toHaveLength(6)
-    expect(followupKeys(null)).toHaveLength(6)
+  it('the bar keeps its own rule for a primary and a role not loaded yet: all seven', () => {
+    expect(followupKeys('primary')).toHaveLength(7)
+    expect(followupKeys(null)).toHaveLength(7)
   })
 
   it('"Old:" sits before By builder', () => {
@@ -111,6 +111,14 @@ describe('followupLenses — who sees which pill', () => {
     expect('badge' in at(0)).toBe(false)
     expect(at(7).badge).toEqual({ text: '7', tone: 'count' })
     expect(at(7).testId).toBe('followup-job-accounts-tab')
+  })
+
+  it('Money counts the jobs past their word, and carries no badge at zero (v2.5651)', () => {
+    const at = (n: number) => followupLenses({ role: 'estimator', jobAccountsMissing: 0, moneyPastWord: n }).find((l) => l.key === 'money')!
+    expect('badge' in at(0)).toBe(false)
+    expect(at(2).badge).toEqual({ text: '2', tone: 'count' })
+    expect(at(2).testId).toBe('followup-money-tab')
+    expect(followupLensCaption('money')).toMatch(/money open/)
   })
 
   it('every pill is a Followup-group tab', () => {
@@ -151,9 +159,9 @@ describe('followupLensCaption', () => {
     expect(followupLensCaption('waiting-to-hear')).toMatch(/^Chase recent sent bids/)
   })
 
-  it('six lenses, six different lines', () => {
+  it('seven lenses, seven different lines', () => {
     const keys = followupLenses({ role: 'dev', jobAccountsMissing: 0 }).map((l) => l.key)
-    expect(new Set(keys.map(followupLensCaption)).size).toBe(6)
+    expect(new Set(keys.map(followupLensCaption)).size).toBe(7)
   })
 })
 

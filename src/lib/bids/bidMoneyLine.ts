@@ -78,6 +78,9 @@ export interface BidMoneyLine {
   /** A paid claim with nothing landed on the job since the day they named: the days since, once `STALE_AFTER_DAYS` or more (v2.5650). */
   staleDays: number | null
   tone: BidMoneyTone
+  /** The job's payments and every live word, newest first, for the trail (v2.5651). */
+  payments: PaperPaymentRow[]
+  words: PaymentPromise[]
 }
 
 const STAGE_WORDS: Record<string, string> = {
@@ -113,7 +116,8 @@ export function bidMoneyLine(entry: BidMoneyStripEntry, today: string): BidMoney
   const status = job.status ?? null
   const stageWord = STAGE_WORDS[status ?? ''] ?? (status ? status.replace(/_/g, ' ') : 'Job')
   const stage = (status === 'billed' || status === 'collections' || status === 'paid') && newestBilled ? `${stageWord} ${shortDate(newestBilled)}` : stageWord
-  const promise = promisesOnJob(parsePaymentPromisesRpc(entry.promises), job.id)[0] ?? null
+  const words = promisesOnJob(parsePaymentPromisesRpc(entry.promises), job.id)
+  const promise = words[0] ?? null
   const moneyOpen = open != null && open > 0
   const past = promise && promise.kind !== 'paid_claim' && moneyOpen ? daysBetween(promise.promisedYmd, today) : 0
   const pastDays = past > 0 ? past : null
@@ -143,6 +147,8 @@ export function bidMoneyLine(entry: BidMoneyStripEntry, today: string): BidMoney
     pastDays,
     staleDays,
     tone,
+    payments: entry.payments,
+    words,
   }
 }
 

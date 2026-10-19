@@ -149,6 +149,7 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   line per GC (sent date · waiting/won/lost pill). Key actions: set per-GC outcome, open
   notes, update last contact, open Edit Bid (✎), jump to tool tabs (icons).
   Edit Bid's **Job** block on a won bid carries the **money line** for the job's people (the office, the job's account manager, the bid's estimator or account manager): the job's stage, what is still open on its bills, the customer's last word on paying, **Send the pay page** (a text or an email with the open bill's pay page filled in), the customer's speech bubble opening their door (Call · Text · Email · Open their thread), and **Write down their word** (a day they will pay by, or that they say they paid). Guide `see-where-a-job-you-bid-stands-on-money`.
+- `?tab=money` — **Money** (v2.5651): every won job with money open, past their word first, then no word, then waiting; each row the money line with its doors and a **Trail** of the money's story; **Only my bids** keeps the bids the person sold. The Dashboard's **Money on your bids** card opens it for estimators and primaries. Guide `see-where-a-job-you-bid-stands-on-money`.
 - `?tab=robot-board` — **🤖 Robot Board** (v2.2500; a mirror since v2.3222): the HUMAN
   bids that have a robot run, in the human board's sections, with a robot column — status
   before the human sends (`queued` / `working` / `sealed`, never a number), the robot's

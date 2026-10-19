@@ -46,9 +46,9 @@ describe('bidsTabAccess — who opens the page', () => {
 })
 
 describe('bidsTabAccess — the tab keys and the two groups', () => {
-  it('knows 26 tab keys, none twice', () => {
-    expect(BIDS_TABS).toHaveLength(26)
-    expect(new Set(BIDS_TABS).size).toBe(26)
+  it('knows 27 tab keys, none twice', () => {
+    expect(BIDS_TABS).toHaveLength(27)
+    expect(new Set(BIDS_TABS).size).toBe(27)
   })
 
   it('tells a tab key from anything else', () => {
@@ -72,8 +72,8 @@ describe('bidsTabAccess — the tab keys and the two groups', () => {
     expect(BIDS_TABS.filter(isRobotLens)).toEqual(['robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console'])
   })
 
-  it('the Followup group is the six followup lenses', () => {
-    expect(BIDS_TABS.filter(isFollowupLens)).toEqual(['builder-review', 'call-queue', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts'])
+  it('the Followup group is the seven followup lenses', () => {
+    expect(BIDS_TABS.filter(isFollowupLens)).toEqual(['builder-review', 'call-queue', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'money'])
   })
 
   it('every group key and every role list is a tab key, and the groups do not overlap', () => {

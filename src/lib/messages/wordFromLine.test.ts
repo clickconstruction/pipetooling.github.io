@@ -12,6 +12,8 @@ const line = (id: string, open: number | null, number = '1032', name = 'Whitfiel
   promise: null,
   pastDays: null,
   staleDays: null,
+  payments: [],
+  words: [],
   tone: 'quiet',
 })
 
