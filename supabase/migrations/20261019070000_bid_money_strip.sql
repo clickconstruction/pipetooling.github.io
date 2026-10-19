@@ -16,7 +16,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   WITH job_for_bid AS (
-    SELECT DISTINCT ON (j.bid_id) j.bid_id, j.*
+    SELECT DISTINCT ON (j.bid_id) j.*
     FROM public.jobs_ledger j
     WHERE j.bid_id = ANY (COALESCE(p_bid_ids, '{}'::uuid[]))
     ORDER BY j.bid_id, j.created_at DESC
