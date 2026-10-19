@@ -20,7 +20,7 @@ const line: BidMoneyLine = {
   words: [word({ id: 'w2', kind: 'paid_claim', method: 'check_mailed', promisedYmd: '2026-10-20', createdAt: '2026-10-21T14:40:00Z', note: 'Check #1187' }), word()],
 }
 
-const msg = (over: Partial<JobActivityMessage>): JobActivityMessage => ({ id: 'm1', contactId: 'c1', contact: { name: 'Dana Whitfield', goesBy: 'Dana', kind: 'customer' }, channel: 'text', direction: 'in', at: '2026-10-14T20:11:00Z', who: '', body: 'Check goes out the 25th.', tied: true, ...over })
+const msg = (over: Partial<JobActivityMessage> = {}): JobActivityMessage => ({ id: 'm1', contactId: 'c1', contact: { name: 'Dana Whitfield', goesBy: 'Dana', kind: 'customer' }, channel: 'text', direction: 'in', at: '2026-10-14T20:11:00Z', who: '', body: 'Check goes out the 25th.', tied: true, ...over })
 
 describe('buildMoneyTrail', () => {
   it('bills, payments, words and lines on one timeline, newest first, notes and events left out', () => {
