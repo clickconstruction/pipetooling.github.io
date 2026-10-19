@@ -17,7 +17,8 @@ function entryMetaLabel(atIso: string): string {
 
 /**
  * The Pipeline row "Job activity" box (viewports ≥1100px): fills the
- * Job cell's dead middle with the job's conversational trail. Anatomy (owner-
+ * Job cell's dead middle with the job's conversational trail: the notes, the
+ * reports and, since v2.5633, a bill sent to the customer, unnumbered. Anatomy (owner-
  * approved mockup): pinned NEXT line, a SCROLLING feed of numbered entries
  * in chat order — 1 = oldest at the top, newest at the bottom, the box keeps
  * itself scrolled to the newest (owner request v2.2062; numbers are stable
@@ -79,11 +80,30 @@ const reportNumStyle: CSSProperties = {
   background: 'var(--bg-blue-tint)',
 }
 
+/** A bill sent to the customer (v2.5633): no number, a small tag in the report's blue, the same height as a number. */
+const sentTagStyle: CSSProperties = {
+  ...reportNumStyle,
+  width: 'auto',
+  borderRadius: 999,
+  padding: '0 5px',
+  fontWeight: 600,
+}
+
 function entryLine(e: JobActivityBoxEntry) {
   const report = e.kind === 'report'
+  const sent = e.kind === 'sent'
   return (
-    <div key={`${e.kind}-${e.number}-${e.atIso}`} data-activity-entry-kind={e.kind} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 5 }}>
-      <span style={report ? reportNumStyle : numStyle} aria-label={report ? `Entry ${e.number}, a report` : `Entry ${e.number}`}>{e.number}</span>
+    <div key={`${e.kind}-${e.number ?? 'x'}-${e.atIso}`} data-activity-entry-kind={e.kind} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 5 }}>
+      {sent ? (
+        // A bill sent to the customer (v2.5633) takes no number: a small Sent tag in the billing blue holds its place.
+        <span style={sentTagStyle} aria-label="A bill sent to the customer">
+          Sent
+        </span>
+      ) : (
+        <span style={report ? reportNumStyle : numStyle} aria-label={report ? `Entry ${e.number}, a report` : `Entry ${e.number}`}>
+          {e.number}
+        </span>
+      )}
       <span
         style={{
           minWidth: 0,
@@ -94,7 +114,7 @@ function entryLine(e: JobActivityBoxEntry) {
           WebkitLineClamp: 2,
           lineHeight: 1.45,
         }}
-        title={`(${e.number}) ${formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} ${e.authorName ?? ''} — ${e.body}`}
+        title={`${e.number == null ? '' : `(${e.number}) `}${formatDispatchNoteWeekdayShortTimeChicago(e.atIso)} ${e.authorName ?? ''} — ${e.body}`}
       >
         {report ? (
           <span style={{ marginRight: 4 }}>
