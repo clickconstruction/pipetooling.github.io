@@ -46,6 +46,12 @@ export interface JobCustomerSheetProps {
   io?: ReplyIo
   quickIo?: QuickRepliesIo
   openThread?: (customerId: string) => Promise<void>
+  /**
+   * The money line under a won bid (v2.5647): the sheet opens already on Text or Email, and the box's `{bill}` comes from
+   * the line's own read, since the job's people read no bill row of their own.
+   */
+  initialKind?: 'text' | 'email'
+  loadBill?: (jobId: string) => Promise<string | null>
 }
 
 type Kind = 'text' | 'email'
@@ -72,12 +78,12 @@ const rowStyle = (enabled: boolean) =>
 
 const quiet = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 } as const
 
-export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, loadLines = loadJobMessages, load, io, quickIo, openThread }: JobCustomerSheetProps) {
+export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, loadLines = loadJobMessages, load, io, quickIo, openThread, initialKind, loadBill }: JobCustomerSheetProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const customerProfile = useCustomerProfileModal()
   const openRecord = onOpenRecord ?? customerProfile?.openCustomerProfile
-  const [kind, setKind] = useState<Kind | null>(null)
+  const [kind, setKind] = useState<Kind | null>(initialKind ?? null)
   const [busy, setBusy] = useState(false)
 
   const customerId = job.customer_id ?? null
@@ -203,7 +209,7 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
                 ‹ Back
               </button>
             </div>
-            <JobCustomerBox kind={kind} jobId={job.id} jobName={jobName} customerId={customerId} jobStatus={job.status ?? null} onSent={onSent} load={load} io={io} quickIo={quickIo} />
+            <JobCustomerBox kind={kind} jobId={job.id} jobName={jobName} customerId={customerId} jobStatus={job.status ?? null} onSent={onSent} load={load} loadBill={loadBill} io={io} quickIo={quickIo} />
           </div>
         )}
       </div>
