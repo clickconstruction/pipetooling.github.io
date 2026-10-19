@@ -9,6 +9,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Contact } from '../../lib/contacts/kernel'
 import type { FollowUpThreadIo, FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
+import type { BidMoneyLine } from '../../lib/bids/bidMoneyLine'
 import type { ThreadMessage } from '../../lib/messages/thread'
 import { BACK_CLEARED_TOAST } from '../../lib/followUp/queue'
 import { owedStore } from '../../lib/followUp/owedStore'
@@ -106,8 +107,8 @@ function BoxStandIn({ contactId }: { contactId: string }) {
 }
 
 /** The slots as the window draws them, for one person, with or without a reply box. */
-function Harness({ io, contact, box = false, line }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; line?: ThreadMessage }) {
-  const slots = useFollowUpThreadSlots(io)
+function Harness({ io, contact, box = false, line, loadLines }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; line?: ThreadMessage; loadLines?: (customerId: string) => Promise<BidMoneyLine[]> }) {
+  const slots = useFollowUpThreadSlots(io, loadLines)
   return (
     <div>
       <div data-testid="under">{line ? slots.underLine?.(line, contact) : null}</div>
@@ -127,10 +128,10 @@ function Harness({ io, contact, box = false, line }: { io: FollowUpThreadIo; con
 }
 
 const reread = vi.fn()
-function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false, line?: ThreadMessage) {
+function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false, line?: ThreadMessage, loadLines?: (customerId: string) => Promise<BidMoneyLine[]>) {
   renderWithProviders(
     <MessagesRereadContext.Provider value={reread}>
-      <Harness io={io} contact={contact} box={box} line={line} />
+      <Harness io={io} contact={contact} box={box} line={line} loadLines={loadLines} />
     </MessagesRereadContext.Provider>,
   )
 }
@@ -327,7 +328,8 @@ describe('the quiet call ask under a text we sent (v2.5596)', () => {
     open.contactId = 'priya'
     renderThread(fakeIo(), PRIYA, false, sentText({ direction: 'in' }))
     await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
-    expect(screen.getByTestId('under').textContent).toBe('')
+    // Their own text carries the word press (v2.5649) and no call ask.
+    expect(screen.getByTestId('under').textContent).toBe('Write down their word')
     cleanup()
     renderThread(fakeIo(), PRIYA, false, sentText({ at: '2026-09-01T15:00:00.000Z' }))
     await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
@@ -362,5 +364,53 @@ describe('how they hear from us (v2.5597)', () => {
     renderThread(fakeIo(), GREG)
     await more().findByRole('button', { name: 'Remind me Monday' })
     expect(more().queryByRole('button', { name: /Hears from us/ })).toBeNull()
+  })
+})
+
+describe('Write down their word under their line (v2.5649)', () => {
+  const DANA: Contact = { ...PRIYA, id: 'dana', name: 'Dana Whitfield', company: '', customerId: 'c-dana' }
+  const money = (id: string, number: string, open: number | null): BidMoneyLine => ({
+    bidId: null,
+    job: { id, number, name: `Job ${number}`, status: 'billed', customerId: 'c-dana', customerName: 'Dana Whitfield', customerPhone: null, customerEmail: null, createdAt: null },
+    stage: 'Billed',
+    open,
+    bills: [],
+    payUrl: null,
+    promise: null,
+    pastDays: null,
+    tone: 'quiet',
+  })
+  const theirText = (patch: Partial<ThreadMessage> = {}): ThreadMessage => sentText({ id: 'm-in', contactId: 'dana', direction: 'in', who: 'Dana Whitfield', body: 'Check goes out the 25th.', ...patch })
+
+  it('opens the sheet on the line’s own job, with their name and the text filled in', async () => {
+    open.contactId = 'dana'
+    const loadLines = vi.fn(async () => [money('j1', '1032', 4200), money('j2', '1040', 900)])
+    renderThread(fakeIo(), DANA, false, theirText({ jobId: 'j2' }), loadLines)
+    fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+    expect(loadLines).toHaveBeenCalledWith('c-dana')
+    expect(screen.getByText('#1040 · Job 1040')).toBeTruthy()
+    expect((screen.getByLabelText('Who said it') as HTMLInputElement).value).toBe('Dana Whitfield')
+    expect(screen.getByRole('radio', { name: 'Text' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('a line on no job with two jobs open asks which, and the pick opens the sheet', async () => {
+    open.contactId = 'dana'
+    const loadLines = vi.fn(async () => [money('j1', '1032', 4200), money('j2', '1040', 900), money('j3', '1050', 0)])
+    renderThread(fakeIo(), DANA, false, theirText({ channel: 'call' }), loadLines)
+    fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
+    await within(screen.getByTestId('under')).findByText('Which job is it about?')
+    expect(within(screen.getByTestId('under')).queryByRole('button', { name: '#1050 · Job 1050' })).toBeNull()
+    fireEvent.click(within(screen.getByTestId('under')).getByRole('button', { name: '#1032 · Job 1032' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+    expect(screen.getByRole('radio', { name: 'Phone' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('with no job of theirs to write on, the press says so and opens nothing', async () => {
+    open.contactId = 'dana'
+    renderThread(fakeIo(), DANA, false, theirText(), async () => [])
+    fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
+    expect(await screen.findByText('None of their jobs is yours to write on.')).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
