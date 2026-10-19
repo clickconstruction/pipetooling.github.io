@@ -47,7 +47,7 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded }: BidMon
     id: line.job.id,
     job_name: line.job.name,
     hcp_number: line.job.number || null,
-    click_number: null,
+    click_number: '',
     status: line.job.status ?? 'waiting',
     created_at: line.job.createdAt,
     customer_id: line.job.customerId,
