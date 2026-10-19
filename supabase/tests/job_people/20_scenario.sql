@@ -76,10 +76,11 @@ CREATE FUNCTION jpp.people() RETURNS text LANGUAGE sql AS $$
       || ', J2 ' || left(public.is_job_people('00000000-0000-0000-0000-0000000e4f02')::text, 1)
       || ', J3 ' || left(public.is_job_people('00000000-0000-0000-0000-0000000e4f03')::text, 1)
 $$;
--- One job's live promises as the signed-in person: "Oct 25 by text, Dana, heard by People Theo; …" or "NULL".
+-- One job's live promises as the signed-in person, the latest day first (every row of one transaction shares its
+-- created_at, so the read's own newest-first order is not the bed's to assert): "Oct 28 …; Oct 25 …" or "NULL".
 CREATE FUNCTION jpp.promises(p_job uuid) RETURNS text LANGUAGE sql AS $$
   SELECT coalesce((
-    SELECT string_agg(to_char((e->>'promisedYmd')::date, 'Mon DD') || ' by ' || (e->>'channel') || ', ' || (e->>'saidBy') || ', heard by ' || (e->>'heardByName'), '; ' ORDER BY e->>'createdAt' DESC)
+    SELECT string_agg(to_char((e->>'promisedYmd')::date, 'Mon DD') || ' by ' || (e->>'channel') || ', ' || (e->>'saidBy') || ', heard by ' || (e->>'heardByName'), '; ' ORDER BY e->>'promisedYmd' DESC)
     FROM jsonb_array_elements(public.list_job_payment_promises_for(p_job)) e), 'NULL')
 $$;
 -- The rows themselves are the dev's alone under RLS (job_payment_promises, job_promised_pay_dates), so the bed reads
@@ -132,7 +133,7 @@ SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a03');
 SELECT jpp.same('Rosa writes a second word on J1', (public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f01', DATE '2026-10-28', 'Dana', 'phone'))->>'promisedDate', '2026-10-28');
 SELECT jpp.same('Rosa writes one on J2', (public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f02', DATE '2026-11-02', 'Dana', 'phone'))->>'promisedDate', '2026-11-02');
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a01');
-SELECT jpp.same('Theo reads both of J1''s, newest first', jpp.promises('00000000-0000-0000-0000-0000000e4f01'), 'Oct 28 by phone, Dana, heard by People Rosa; Oct 25 by text, Dana, heard by People Theo');
+SELECT jpp.same('Theo reads both of J1''s', jpp.promises('00000000-0000-0000-0000-0000000e4f01'), 'Oct 28 by phone, Dana, heard by People Rosa; Oct 25 by text, Dana, heard by People Theo');
 SELECT jpp.same('Theo voids the office''s word on his job', (public.void_job_payment_promise(jpp.pid('00000000-0000-0000-0000-0000000e4f01', DATE '2026-10-28')))->>'voided', 'true');
 SELECT jpp.refused('Theo is refused voiding a word on Kim''s job', $q$SELECT public.void_job_payment_promise(jpp.pid('00000000-0000-0000-0000-0000000e4f02', DATE '2026-11-02'))$q$, 'Not allowed to void payment promises');
 SELECT jpp.refused('voiding a promise that is not there is refused', $q$SELECT public.void_job_payment_promise('00000000-0000-0000-0000-0000000e4f99')$q$, 'Not allowed to void payment promises');
