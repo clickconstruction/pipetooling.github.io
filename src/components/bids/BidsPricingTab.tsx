@@ -158,6 +158,8 @@ type BidsPricingTabProps = {
   pricingMaterialTotalTopOut: number | null
   pricingMaterialTotalTrimSet: number | null
   pricingLaborRate: number | null
+  /** Where the rate came from (punch list #128, PR 0): the bid's own box, the crew rate standing in, or nothing. */
+  pricingLaborRateSource?: 'override' | 'company' | 'none'
   pricingFixtureMaterialsFromTakeoff: Record<string, number>
   teamLaborDataForBids: TeamLaborBidRow[]
   /** Shared master catalog (bid_id IS NULL) shown under the "Templates" toggle / used as clone sources. */
@@ -239,6 +241,7 @@ export function BidsPricingTab({
   pricingMaterialTotalTopOut,
   pricingMaterialTotalTrimSet,
   pricingLaborRate,
+  pricingLaborRateSource = 'none',
   pricingFixtureMaterialsFromTakeoff,
   teamLaborDataForBids,
   templatePriceBookVersions,
@@ -1949,9 +1952,11 @@ export function BidsPricingTab({
   /** Workbench: a hand-typed price saves itself on Enter/blur (v2.2373, Wendi) —
       the same write Apply uses, no preview gate. The preview gate stays solver-only. */
   async function commitWorkbenchTypedPrice(countRowId: string) {
-    if (!guardPricingWrite()) return
+    // A sale-price cell losing focus with nothing typed is no write, so a sent bid's lock has
+    // nothing to refuse — the toast only when a draft exists (punch list #128).
     const raw = wbPriceDrafts[countRowId]
     if (raw == null) return
+    if (!guardPricingWrite()) return
     const clearDraft = () =>
       setWbPriceDrafts((prev) => {
         const next = { ...prev }
@@ -2782,7 +2787,7 @@ export function BidsPricingTab({
                           <>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
                             {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
-                            {stat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}`)}
+                            {stat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
                             {stat('Profit', `${effProfit < 0 ? '-' : ''}$${Math.abs(Math.round(effProfit)).toLocaleString('en-US')}`, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `$${formatCurrency(effProfit)} · our cost $${formatCurrency(totalCost)}`)}
                             {stat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
                             {/* v2.2423 (owner): margin's other dialect — revenue as a multiple of cost. */}

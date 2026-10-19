@@ -2,7 +2,7 @@
 name: "What the price is made of: material, markup, tax, equipment, labor"
 number: 128
 group: gated
-status: proposed 2026-10-19 — the owner picked D1 (one markup number, the SOV factor set to 1.4) and D2 (hours × rate with margin left over; the residual only with no hours) the same day; a second pass the same evening turned the card into Cost · Price · Profit columns and put PR 0 (the crew rate stands in) first; D3, D4 and D5 open
+status: BUILDING 2026-10-19 — the owner walked the spike on B505 and said build it all; PR 0 shipped as v2.5652 (the crew rate stands in); PR 1 (the tax rate on the bid), PR 2 (the row's kind, tags and split) and PR 3 (the Workbench split, the three cards, the Markup and Tax tools) follow in that order
 summary: >
   A bid's price is the price book's all-in number per fixture, so some estimators skip the Labor
   tab and let the fixture's price carry its material. Then the Workbench's margin lies, tax is a
