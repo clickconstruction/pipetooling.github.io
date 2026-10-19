@@ -26721,6 +26721,7 @@ export type Database = {
           phone_press: string | null
           removed_at: string | null
           scope: string
+          shortcut: string | null
           step_key: string | null
           text: string
           text_es: string | null
@@ -26735,6 +26736,7 @@ export type Database = {
           phone_press?: string | null
           removed_at?: string | null
           scope?: string
+          shortcut?: string | null
           step_key?: string | null
           text: string
           text_es?: string | null
@@ -26749,6 +26751,7 @@ export type Database = {
           phone_press?: string | null
           removed_at?: string | null
           scope?: string
+          shortcut?: string | null
           step_key?: string | null
           text?: string
           text_es?: string | null
@@ -34824,6 +34827,27 @@ export type Database = {
           job_name: string
         }[]
       }
+      job_activity_line_bill_resent: {
+        Args: { s: Database["public"]["Tables"]["sent_documents"]["Row"] }
+        Returns: undefined
+      }
+      job_activity_line_contract_reminder: {
+        Args: { e: Database["public"]["Tables"]["job_contract_events"]["Row"] }
+        Returns: undefined
+      }
+      job_activity_line_demand_letter: {
+        Args: { d: Database["public"]["Tables"]["job_demand_letters"]["Row"] }
+        Returns: undefined
+      }
+      job_activity_line_lien_notice: {
+        Args: { f: Database["public"]["Tables"]["job_lien_filings"]["Row"] }
+        Returns: undefined
+      }
+      job_activity_send_at: {
+        Args: { p_day: string; p_recorded_at: string }
+        Returns: string
+      }
+      job_activity_send_words: { Args: { p_method: string }; Returns: string }
       job_baseline_rates: {
         Args: never
         Returns: {
@@ -37215,6 +37239,10 @@ export type Database = {
       }
       set_quick_reply_press: {
         Args: { p_id: string; p_press: string }
+        Returns: number
+      }
+      set_quick_reply_shortcut: {
+        Args: { p_id: string; p_shortcut: string }
         Returns: number
       }
       set_request_priority: {
