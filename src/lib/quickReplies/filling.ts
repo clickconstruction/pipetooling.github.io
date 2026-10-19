@@ -41,10 +41,14 @@ export function preview(text: string, fills: BlankFills, to: string | null): { t
   return { text: filled.text, note: head + left }
 }
 
-/** What the reply box fills on a press: their first name, the signed-in person's first name and the job's name. */
-export function replyFills(input: { first: string | null; myName: string | null; jobName: string | null }): BlankFills {
+/**
+ * What the reply box fills on a press: their first name, the signed-in person's first name, the job's name and, where
+ * the box knows the job, its newest bill's pay page for `{bill}` (v2.5628).
+ */
+export function replyFills(input: { first: string | null; myName: string | null; jobName: string | null; billLink?: string | null }): BlankFills {
   const firstWord = (name: string | null) => name?.trim().split(/\s+/)[0] || null
-  return { first: input.first?.trim() || null, me: firstWord(input.myName), job: input.jobName?.trim() || null }
+  const bill = input.billLink?.trim() || null
+  return { first: input.first?.trim() || null, me: firstWord(input.myName), job: input.jobName?.trim() || null, ...(bill ? { bill } : {}) }
 }
 
 /** Why the box will not send while a blank is left in it, or null when none is. Braces with a word in them are a blank. */

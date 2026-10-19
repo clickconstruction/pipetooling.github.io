@@ -154,7 +154,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const first = firstWord(job?.customerName ?? null)
   const lang = job?.lang ?? 'en'
   const fills = useMemo(
-    () => tellFills({ customerName: job?.customerName ?? null, me, jobName: job?.jobName ?? null, jobAddress: job?.jobAddress ?? null, block, estimate: estimate ? { amount: estimate.amount, title: estimate.title } : null }),
+    () => tellFills({ customerName: job?.customerName ?? null, me, jobName: job?.jobName ?? null, jobAddress: job?.jobAddress ?? null, billLink: job?.billLink ?? null, block, estimate: estimate ? { amount: estimate.amount, title: estimate.title } : null }),
     [job, me, block, estimate],
   )
   const line = useMemo(() => (lines ? lineFor(moment, lines, userId) : null), [lines, moment, userId])

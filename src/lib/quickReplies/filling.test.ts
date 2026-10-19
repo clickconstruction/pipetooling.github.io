@@ -8,7 +8,7 @@ const FOUND = '{first}, here is what we found: {found}. {me} will send you the e
 
 describe('the chips under a line’s words', () => {
   it('lists the app’s blanks, then the two the person fills', () => {
-    expect(BLANK_CHIPS.map((c) => c.label)).toEqual(['{first}', '{me}', '{address}', '{job}', '{minutes}', '{window}', '{back day}', '{back time}', '{day}', '{tech}', '{link}', '{amount}', '{thing}', '{found}'])
+    expect(BLANK_CHIPS.map((c) => c.label)).toEqual(['{first}', '{me}', '{address}', '{job}', '{minutes}', '{window}', '{back day}', '{back time}', '{day}', '{tech}', '{link}', '{amount}', '{bill}', '{thing}', '{found}'])
     expect(BLANK_CHIPS.filter((c) => c.theirs).map((c) => c.words)).toEqual(['what you want a photo of, yours to fill', 'what you found, yours to fill'])
   })
 
@@ -46,5 +46,16 @@ describe('the reply box', () => {
   it('says it all plainly', () => {
     const sentences = [preview(FOUND, {}, 'Dana').note, sendWaits('{found} {thing}') ?? '']
     expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
+  })
+})
+
+describe('the bill’s pay page (v2.5628)', () => {
+  it('fills {bill} from the job’s newest bill when the box knows it, and leaves it when it does not', () => {
+    const line = '{first}, this is {me} with Click Plumbing. Here is a copy of your last bill: {bill}. Let us know if you need any help getting it paid.'
+    const withBill = replyFills({ first: 'Dana', myName: 'Tanya Reyes', jobName: 'Oakridge sewer line', billLink: 'https://clicktooling.com/pay/8f3k2q' })
+    expect(preview(line, withBill, 'Dana').text).toBe('Dana, this is Tanya with Click Plumbing. Here is a copy of your last bill: https://clicktooling.com/pay/8f3k2q. Let us know if you need any help getting it paid.')
+    const without = replyFills({ first: 'Dana', myName: 'Tanya Reyes', jobName: 'Oakridge sewer line' })
+    expect(preview(line, without, 'Dana').note).toBe('As it would go to Dana. Fill {bill} in the box before it sends.')
+    expect(sendWaits(preview(line, without, 'Dana').text)).toBe('Fill {bill} first. The app does not know it.')
   })
 })

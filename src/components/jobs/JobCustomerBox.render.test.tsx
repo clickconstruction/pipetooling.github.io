@@ -53,9 +53,10 @@ function draw(over: { kind?: 'text' | 'email'; customerId?: string | null; load?
   const io = fakeIo()
   const load = vi.fn(over.load ?? (async (_id: string) => DANA))
   const onSent = vi.fn()
-  const props = { jobId: 'j-helotes', jobName: 'Helotes', customerId: over.customerId === undefined ? 'cust-dana' : over.customerId, onSent, load, io }
+  const loadBill = vi.fn(async (_jobId: string) => 'https://clicktooling.com/pay/8f3k2q')
+  const props = { jobId: 'j-helotes', jobName: 'Helotes', customerId: over.customerId === undefined ? 'cust-dana' : over.customerId, onSent, load, loadBill, io }
   const r = renderWithProviders(<JobCustomerBox kind={over.kind ?? 'text'} {...props} />)
-  return { io, load, onSent, rerender: (kind: 'text' | 'email') => r.rerender(<JobCustomerBox kind={kind} {...props} />) }
+  return { io, load, loadBill, onSent, rerender: (kind: 'text' | 'email') => r.rerender(<JobCustomerBox kind={kind} {...props} />) }
 }
 
 const box = async () => {
@@ -110,5 +111,11 @@ describe('JobCustomerBox', () => {
   it('says why when their thread cannot be opened', async () => {
     draw({ load: async () => Promise.reject(new Error('Only the office opens a customer’s messages.')) })
     expect((await screen.findByRole('alert')).textContent).toBe('Only the office opens a customer’s messages.')
+  })
+  it('reads the job’s newest bill’s pay page once, for {bill} (v2.5628)', async () => {
+    const { loadBill } = draw()
+    await box()
+    expect(loadBill).toHaveBeenCalledTimes(1)
+    expect(loadBill).toHaveBeenCalledWith('j-helotes')
   })
 })
