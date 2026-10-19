@@ -61,7 +61,10 @@ export default function SetPromisedPayDateModal({
 
   const loadOnRecord = useCallback(async () => {
     try {
-      const { data } = await supabase.rpc('list_job_payment_promises' as never)
+      // The job's own read (v2.5646): the job's people read it where the company-wide one answers them nothing.
+      // Before the push the per-job function is not there, so the company-wide read filtered here stands in.
+      const perJob = await supabase.rpc('list_job_payment_promises_for' as never, { p_job_id: jobId } as never)
+      const { data } = perJob.error && isMissingRpc(perJob.error) ? await supabase.rpc('list_job_payment_promises' as never) : perJob
       setOnRecord(promisesOnJob(parsePaymentPromisesRpc(data as unknown), jobId))
     } catch {
       // the record is an extra — the form works without it

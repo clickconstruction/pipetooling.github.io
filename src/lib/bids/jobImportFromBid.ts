@@ -166,3 +166,14 @@ export function bidImportWinWrite(
     previousOutcome: packet?.outcome === 'lost' ? 'lost' : null,
   }
 }
+
+/**
+ * Who the job opened from a bid gets as its account manager (punch list #128, v2.5646): the
+ * bid's account manager, else its estimator, so the person who sold the job is the job's person
+ * from the first day (`is_job_people`); null when the bid names neither or the form already has
+ * one. The caller adds them to the team too — an account manager is always a team member.
+ */
+export function bidImportAccountMan(bid: { estimator_id: string | null; account_manager_id: string | null }, formHas: string | null): string | null {
+  if (formHas) return null
+  return bid.account_manager_id || bid.estimator_id || null
+}

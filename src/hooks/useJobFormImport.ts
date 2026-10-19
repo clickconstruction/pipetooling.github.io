@@ -11,7 +11,7 @@ import { latestSendByVersion, type VersionSendRow } from '../lib/bids/versionSen
 import { setGcPacketOutcome } from '../lib/bids/gcPacketOutcome'
 import { bidBoardJobLinkLabel } from '../lib/bids/bidBoardJobLinks'
 import { secondConversionMessage } from '../lib/bids/wonMomentActions'
-import { bidImportCarry, bidImportCarryQuestion, bidImportEffectiveGc, bidImportFirstLine, bidImportGcOptions, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../lib/bids/jobImportFromBid'
+import { bidImportAccountMan, bidImportCarry, bidImportCarryQuestion, bidImportEffectiveGc, bidImportFirstLine, bidImportGcOptions, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../lib/bids/jobImportFromBid'
 import { estimateImportCustomerFields, estimateImportFixtureRows } from '../lib/jobs/jobImportFromEstimate'
 import { visibleServiceTypesForJobForm } from '../lib/jobs/jobFormServiceTypes'
 import { pickableServiceTypes } from '../lib/serviceTypePickers'
@@ -55,6 +55,11 @@ export type JobFormImportArgs = {
   setFixtureScopeExpandedById: Dispatch<SetStateAction<Record<string, boolean>>>
   setSelectedSegmentIds: Dispatch<SetStateAction<Set<string>>>
   setBidId: Dispatch<SetStateAction<string | null>>
+  /** The job's people (v2.5646): the bid's account manager, else its estimator, joins the team as the job's account manager when the form has none. */
+  accountManagerUserId: string | null
+  setTeamMemberIds: Dispatch<SetStateAction<string[]>>
+  setAccountManagerUserId: Dispatch<SetStateAction<string | null>>
+  setAccountManagerRelationship: Dispatch<SetStateAction<string | null>>
   setBids: Dispatch<SetStateAction<JobBidLinkOption[]>>
   setLinkedBidSummary: Dispatch<SetStateAction<{ project_name: string | null; bid_number: string | null; service_type_id?: string | null } | null>>
   setLinkedBidGc: Dispatch<SetStateAction<{ id: string; name: string } | null>>
@@ -102,6 +107,10 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
     setFixtureScopeExpandedById,
     setSelectedSegmentIds,
     setBidId,
+    accountManagerUserId,
+    setTeamMemberIds,
+    setAccountManagerUserId,
+    setAccountManagerRelationship,
     setBids,
     setLinkedBidSummary,
     setLinkedBidGc,
@@ -142,7 +151,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
             await supabase
               .from('bids')
               .select(
-                'id, project_name, bid_number, service_type_id, customer_id, address, drive_link, plans_link, outcome, bid_date_sent, agreed_value, customers(name, address, contact_info, date_met)',
+                'id, project_name, bid_number, service_type_id, customer_id, address, drive_link, plans_link, outcome, bid_date_sent, agreed_value, estimator_id, account_manager_id, customers(name, address, contact_info, date_met)',
               )
               .eq('id', bidRowId)
               .maybeSingle(),
@@ -164,6 +173,8 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
           outcome: string | null
           bid_date_sent: string | null
           agreed_value: number | string | null
+          estimator_id: string | null
+          account_manager_id: string | null
           customers: {
             name: string
             address: string | null
@@ -263,6 +274,14 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
           }
         }
         setBidId(b.id)
+        // The job's people (punch list #128, v2.5646): the bid's account manager, else its estimator, is the job's
+        // account manager from the start, on the team as the picker requires; the office unticks them if it wants.
+        const accountMan = bidImportAccountMan(b, accountManagerUserId)
+        if (accountMan) {
+          setTeamMemberIds((ids) => (ids.includes(accountMan) ? ids : [...ids, accountMan]))
+          setAccountManagerUserId(accountMan)
+          setAccountManagerRelationship((rel) => rel ?? 'primary')
+        }
         setJobName((b.project_name ?? '').trim())
         setJobAddress((b.address ?? '').trim())
         setLinkedBidSummary({
@@ -313,7 +332,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         showToast(formatPostgrestOrUnknownError(e, 'Could not load bid'), 'error')
       }
     },
-    [customers, meServiceTypeColumns, serviceTypes, showToast, confirmDialog, cancelBidImport],
+    [customers, meServiceTypeColumns, serviceTypes, showToast, confirmDialog, cancelBidImport, accountManagerUserId],
   )
 
   const handleWinningGcPick = useCallback(
