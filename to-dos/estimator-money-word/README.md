@@ -12,7 +12,7 @@ summary: >
   people, the office, the job's account manager and the bid's estimator, the job's money and
   one press for the customer's word on paying: a day, or that they say they paid. Paid stays
   the bank's word; the claim meets the deposit when it lands.
-next: PR 6, primary's paid verbs narrowed to the job's people; push 20261019100000 and 20261019110000 after PRs 4 and 5 merge (the first four are pushed), then one types regen PR.
+next: push 20261019100000 and 20261019110000 after PRs 4 and 5 merge (the first four are pushed), then one types regen PR; PR 6 waits on the owner's word.
 size: S (the people) + M (the line and the door) + M (their word and the bridge) + S (the office side) + M (the lens, the card, the trail) + XS (primary)
 blocker: none
 opinion: the scope is the job's, not the role's; one sheet for both kinds of word; the paid claim does work for the office at allocation and makes none in Needs you
@@ -147,7 +147,7 @@ reads who is talking to whom. The Dashboard's Needs you gets the card.
 | 3b · the thread | **built v2.5649**: cut 2's heard-day offer was never drawn, so the door is the sheet itself under a customer's line (the line's job, else the one with money open, else a pick), over `list_customer_money_strip` | one migration |
 | 4 · the office side | **built v2.5650**: `list_paid_claims`; the claim that fits a deposit leads the AR allocation pane; a week with nothing landed comes back to who heard it as a Needs you line and amber on the money line; the Pipeline row's own claim chip left | one migration |
 | 5 · the lens, the card, the trail | **built v2.5651**: the Followup bar's Money lens over the board's one read; the Dashboard's Money on your bids card over `list_my_money_strip`; Trail on a money line, the money's story from the line's own read and the job's lines (the office's Job activity stays the office's) | one migration |
-| 6 · primary | primary's paid verbs narrowed to the job's people, the same predicate | one migration |
+| 6 · primary | **held for the owner**: narrowing primary's paid verbs (`mark_job_paid` ×2, `mark_invoice_paid`, `apply_mercury_bank_payment_allocations`, `remove_jobs_ledger_payment_and_reconcile`, `record_job_tip_from_deposit`) to the job's people means re-pasting five large money functions for one gate line each, and the allocation knows its jobs only line by line; it belongs with the next money-function audit, not this train | one migration |
 
 ## How to verify
 
@@ -174,6 +174,9 @@ reads who is talking to whom. The Dashboard's Needs you gets the card.
   this way; for an estimator it is new. The office changes the account manager on the job when it
   wants the customer back, a control that exists today.
 - **The stale day.** Seven days is the mock-up's number; a mailed check is usually in by then.
+- **Primary's paid verbs (PR 6).** A primary may mark any job paid and allocate any deposit; narrowing those five
+  functions to the job's people is one gate line each inside five large bodies. Held until the owner says, and
+  best done with the next money-function audit.
 - **The job-accounts gate.** `estimator_can_reach_job_account(job)` opens any bid-born job's supply-house
   account to any estimator. Narrowing it to the job's people is one line, but it changes the Job accounts
   lens for an estimator working another's bids (*Only my bids* off); held until the owner says.
