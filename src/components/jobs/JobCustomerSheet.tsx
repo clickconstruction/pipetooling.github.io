@@ -5,12 +5,14 @@
  * the office knows where the conversation stands before it writes), and offers Call, Text, Email, Open their thread and
  * Their record. Text and Email draw the job window's own box (`JobCustomerBox`) in place of the rows, in the
  * customer's orange, tied to the job; a send asks the board to read the job again. The bubble is the office team's
- * already, so the sheet gates nothing itself.
+ * already, so the sheet gates nothing itself. Since v2.5635 the lines are the job activity's own live read
+ * (`useJobMessages`), so a reply that lands while the sheet is open shows in its last lines and its last word.
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useJobMessages } from '../../hooks/useJobMessages'
 import type { Contact } from '../../lib/contacts/kernel'
 import type { JobActivityMessage } from '../../lib/jobs/jobActivityMessages'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -76,7 +78,6 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
   const customerProfile = useCustomerProfileModal()
   const openRecord = onOpenRecord ?? customerProfile?.openCustomerProfile
   const [kind, setKind] = useState<Kind | null>(null)
-  const [lines, setLines] = useState<JobActivityMessage[] | null>(null)
   const [busy, setBusy] = useState(false)
 
   const customerId = job.customer_id ?? null
@@ -88,17 +89,8 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
   const jobLine = number ? `#${number} · ${jobName}` : jobName
   const rows = customerDoorRows({ phone, email, canOpenRecord: Boolean(openRecord && customerId) })
 
-  useEffect(() => {
-    let live = true
-    loadLines({ id: job.id, status: job.status ?? null, createdAt: job.created_at ?? null }).then(
-      (got) => live && setLines(got),
-      // Whose word came last is a courtesy line: a read that fails leaves it off and says nothing.
-      () => live && setLines([]),
-    )
-    return () => {
-      live = false
-    }
-  }, [job.id, job.status, job.created_at, loadLines])
+  // Whose word came last is a courtesy line: a read that fails leaves it off and says nothing.
+  const lines = useJobMessages({ id: job.id, status: job.status ?? null, createdAt: job.created_at ?? null }, 0, loadLines)
 
   const now = nowIso ?? new Date().toISOString()
   const lastWord = lines ? lastWordWords(lastWordOnJob(lines), now) : null

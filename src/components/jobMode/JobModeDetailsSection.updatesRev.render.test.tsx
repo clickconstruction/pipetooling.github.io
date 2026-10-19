@@ -29,7 +29,14 @@ vi.mock('../../lib/supabase', () => {
     builder.then = (f?: (v: unknown) => unknown, r?: (e: unknown) => unknown) => result().then(f, r)
     return builder
   }
-  return { supabase: { from: (t: string) => makeBuilder(t) } }
+  // The job's lines hear the page's Messages channel (v2.5635); a quiet one here, as `rev` is what this test bumps.
+  const channel = () => {
+    const ch: Record<string, unknown> = {}
+    ch.on = () => ch
+    ch.subscribe = () => ch
+    return ch
+  }
+  return { supabase: { from: (t: string) => makeBuilder(t), channel, removeChannel: () => {} } }
 })
 vi.mock('../../lib/fetchStreetViewPreview', () => ({
   fetchStreetViewMeta: () => Promise.resolve(null),
