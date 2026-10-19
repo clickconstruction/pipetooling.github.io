@@ -96,8 +96,8 @@ describe('bidMoneyLine', () => {
 
 describe('parseBidMoneyStrip', () => {
   it('keeps an entry with a bid and a job, reads missing lists as empty, drops the rest', () => {
-    const got = parseBidMoneyStrip([entry(), { bidId: 'b2', job: { id: 'j2', status: 'working' } }, { bidId: 'b3' }, 'x', null])
-    expect(got.map((e) => e.bidId)).toEqual(['b512', 'b2'])
+    const got = parseBidMoneyStrip([entry(), { bidId: 'b2', job: { id: 'j2', status: 'working' } }, { bidId: 'b3' }, { job: { id: 'j4' } }, 'x', null])
+    expect(got.map((e) => e.bidId)).toEqual(['b512', 'b2', null])
     expect(got[1]).toMatchObject({ invoices: [], payments: [] })
     expect(parseBidMoneyStrip(null)).toEqual([])
     expect(parseBidMoneyStrip({})).toEqual([])

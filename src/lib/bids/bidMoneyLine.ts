@@ -11,9 +11,9 @@ import { claimWords, parsePaymentPromisesRpc, promiseSaidLine, promisesOnJob, ty
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { billPapers, type BillPaper, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from '../messages/papers'
 
-/** One bid's entry, as the read returns it. */
+/** One entry, as the reads return it: a bid's (`list_bid_money_strip`) or a customer's job's (`list_customer_money_strip`, v2.5649, `bidId` the job's bid or null). */
 export interface BidMoneyStripEntry {
-  bidId: string
+  bidId: string | null
   job: PaperJobRow & {
     customer_id: string | null
     customer_name: string | null
@@ -27,7 +27,7 @@ export interface BidMoneyStripEntry {
   promises: unknown
 }
 
-/** Defensive parse of `list_bid_money_strip`: an entry needs a bid and a job with an id; the rest reads as empty. */
+/** Defensive parse of `list_bid_money_strip` and `list_customer_money_strip`: an entry needs a job with an id; the rest reads as empty. */
 export function parseBidMoneyStrip(raw: unknown): BidMoneyStripEntry[] {
   if (!Array.isArray(raw)) return []
   const out: BidMoneyStripEntry[] = []
@@ -35,9 +35,9 @@ export function parseBidMoneyStrip(raw: unknown): BidMoneyStripEntry[] {
     if (v == null || typeof v !== 'object') continue
     const r = v as Record<string, unknown>
     const job = r.job
-    if (typeof r.bidId !== 'string' || job == null || typeof job !== 'object' || typeof (job as { id?: unknown }).id !== 'string') continue
+    if (job == null || typeof job !== 'object' || typeof (job as { id?: unknown }).id !== 'string') continue
     out.push({
-      bidId: r.bidId,
+      bidId: typeof r.bidId === 'string' ? r.bidId : null,
       job: job as BidMoneyStripEntry['job'],
       invoices: Array.isArray(r.invoices) ? (r.invoices as BidMoneyStripEntry['invoices']) : [],
       payments: Array.isArray(r.payments) ? (r.payments as PaperPaymentRow[]) : [],
@@ -50,7 +50,7 @@ export function parseBidMoneyStrip(raw: unknown): BidMoneyStripEntry[] {
 export type BidMoneyTone = 'quiet' | 'amber' | 'red' | 'green'
 
 export interface BidMoneyLine {
-  bidId: string
+  bidId: string | null
   job: {
     id: string
     /** The job's number, as the board shows it: "1032". '' when it has none. */
@@ -138,9 +138,9 @@ export function bidMoneyLine(entry: BidMoneyStripEntry, today: string): BidMoney
   }
 }
 
-/** The lines for every entry, by bid. */
+/** The lines for every entry that has a bid, by bid. */
 export function bidMoneyLinesByBid(entries: readonly BidMoneyStripEntry[], today: string): Map<string, BidMoneyLine> {
-  return new Map(entries.map((e) => [e.bidId, bidMoneyLine(e, today)]))
+  return new Map(entries.filter((e) => e.bidId).map((e) => [e.bidId!, bidMoneyLine(e, today)]))
 }
 
 export interface BidMoneyWords {

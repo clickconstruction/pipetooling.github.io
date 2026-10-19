@@ -70,6 +70,7 @@
     "test:pg:job-people": "bash scripts/pgtest-job-people.sh",
     "test:pg:bid-money-strip": "bash scripts/pgtest-bid-money-strip.sh",
     "test:pg:paid-claim": "bash scripts/pgtest-paid-claim.sh",
+    "test:pg:customer-money-strip": "bash scripts/pgtest-customer-money-strip.sh",
     "test:pg:messages-follow-up": "bash scripts/pgtest-messages-follow-up.sh",
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
     "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",

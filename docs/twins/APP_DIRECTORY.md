@@ -121,7 +121,7 @@ Follow up for every kind of person, from **Messages** in the header (its count i
 with the sort card at its top; guide `/help?g=sort-new-messages`), then **Needs you**, **Needs a reply** and **We owe them** (with the call tasks since v2.5596, guide `call-a-customer-from-a-task`),
 with pills for Customers, Trade partners, Architects, Leads and Subs (`?kind=`), and **Supply houses and candidates**,
 which never count on Follow up and show as a people list. A row opens the person's thread over the page
-(`?thread=<contactId>&at=<messageId>`), the thread window described under `/gc`. Other doors to a customer's thread: the speech bubble beside a customer's name on `/customers`, the customer's page and `/estimates` (`/messages?thread=<contact>`), the customer's door behind the same bubble on `/jobs` rows and in the job window (its **Open their thread**), and the Dashboard's **Customers** line (`?kind=customer`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
+(`?thread=<contactId>&at=<messageId>`), the thread window described under `/gc`; under a customer's own line, **Write down their word** opens the promise sheet on the job the line is about, else their one job with money open, else a pick (guide `reply-to-a-person-from-their-thread`). Other doors to a customer's thread: the speech bubble beside a customer's name on `/customers`, the customer's page and `/estimates` (`/messages?thread=<contact>`), the customer's door behind the same bubble on `/jobs` rows and in the job window (its **Open their thread**), and the Dashboard's **Customers** line (`?kind=customer`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
 Roles: dev, master_technician, assistant, controller, estimator.
 
 

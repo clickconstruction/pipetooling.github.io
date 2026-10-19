@@ -51,6 +51,8 @@ export default function SetPromisedPayDateModal({
   jobLabel,
   initialYmd,
   initialMode = 'promise',
+  initialSaidBy,
+  initialChannel,
   onClose,
   onSaved,
 }: {
@@ -60,6 +62,9 @@ export default function SetPromisedPayDateModal({
   initialYmd: string | null
   /** Which side the sheet opens on (v2.5648); the Pipeline's chip opens on the promise. */
   initialMode?: PromiseSheetMode
+  /** From a line in the thread (v2.5649): who the line is from, and how it came. */
+  initialSaidBy?: string | null
+  initialChannel?: PromiseChannel | null
   onClose: () => void
   /** Fired after a successful save/clear so the board can refresh its promise map. */
   onSaved: () => void
@@ -67,8 +72,8 @@ export default function SetPromisedPayDateModal({
   const { showToast } = useToastContext()
   const [mode, setMode] = useState<PromiseSheetMode>(initialMode)
   const [ymd, setYmd] = useState(initialYmd ?? '')
-  const [saidBy, setSaidBy] = useState('')
-  const [channel, setChannel] = useState<PromiseChannel>('phone')
+  const [saidBy, setSaidBy] = useState(initialSaidBy ?? '')
+  const [channel, setChannel] = useState<PromiseChannel>(initialChannel ?? 'phone')
   const [method, setMethod] = useState<PaidMethod>('check_mailed')
   const [paidYmd, setPaidYmd] = useState('')
   const [amountRaw, setAmountRaw] = useState('')

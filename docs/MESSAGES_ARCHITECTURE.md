@@ -94,7 +94,10 @@ reply after one goes), `activityRows.ts` (a job's activity in the thread, behind
 (`ThreadLine.tsx`, `LineFiles.tsx`), and the foot. **Everything a later cut draws inside it is a slot**
 (`threadSlots.tsx`, `ThreadSlots`): `headerRight`, `statusRow`, `aboveLines`, `menuRows`, `aboveBox`, `box`,
 `underLine`, `lineBody`, `side`, and the message window's first slot. A slot is a function of the person or the line
-that returns what to draw; an empty slot draws nothing. `useThreadSlots` merges the cuts in order — cut 2's Follow up
+that returns what to draw; an empty slot draws nothing. Cut 2's heard-day offer under a line was never drawn; since
+v2.5649 (punch list #129) `underLine` carries **Write down their word** under a customer's own call, voicemail, text or
+email (`useFollowUpThreadSlots`, `messages/wordFromLine.ts` over `list_customer_money_strip`): the Pipeline's promise
+sheet on the line's job, else the customer's one job with money open, else a pick, the name and the channel filled in. `useThreadSlots` merges the cuts in order — cut 2's Follow up
 pieces, cut 3's reply box, cut 4's flow rail, cut 4b's change order, R8's estimate line, cut 6's paper offer, R7's sort
 card — so the page never changes for a slot. **To add something to the thread, add a slot there and nowhere else.** What `aboveLines` draws has its own scrolling
 wrapper (`data-thread-above`, v2.5570): a card taller than the room shrinks and scrolls before the lines and the box do.

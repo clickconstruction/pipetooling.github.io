@@ -6,7 +6,9 @@
  * Monday and Reopen. Each press says the kernel's words, reads the rows again and asks the window to read the thread
  * again (`useMessagesReread`), for the gray line the press wrote. Since C2 it fills `aboveBox` with what we owe them
  * (`OwedStrip`), opened from the status row's *We owe them…* or *Change what we owe*; *Mark it done, with a team note*
- * hands the box a settle (`owedStore`), which ends when the thread changes or closes.
+ * hands the box a settle (`owedStore`), which ends when the thread changes or closes. Since v2.5649 (punch list #129)
+ * a customer's own line carries **Write down their word** under it: the sheet on the job the line is tied to, else
+ * the customer's one job with money open, else a pick (`messages/wordFromLine.ts` over `list_customer_money_strip`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
@@ -21,7 +23,11 @@ import { owedDayToast, owedMarkedToast, owedWhatToast, type DayKept } from '../.
 import type { Teammate } from '../../lib/followUp/team'
 import { backPillTip, threadStateRows } from '../../lib/followUp/thread'
 import { canOpenGcProjects } from '../../lib/gc/access'
+import { jobLabelOf, lineTakesWord, wordChannel, wordLanding, WORD_PICK_WORDS, WORD_PRESS, type WordLanding } from '../../lib/messages/wordFromLine'
+import { loadCustomerMoneyLines } from '../../lib/messages/wordFromLineIo'
+import type { BidMoneyLine } from '../../lib/bids/bidMoneyLine'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import SetPromisedPayDateModal from '../jobs/SetPromisedPayDateModal'
 import { Chip } from '../gc/gcUi'
 import type { ThreadMenuRow, ThreadSlots } from '../gc/messages/threadSlots'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
@@ -42,7 +48,8 @@ export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' 
 
 const quiet = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.55rem' } as const
 
-export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): FollowUpThreadSlots {
+/** For a smoke: the customer's jobs as money lines, in place of the read. */
+export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLines: (customerId: string) => Promise<BidMoneyLine[]> = loadCustomerMoneyLines): FollowUpThreadSlots {
   const { contactId } = useThreadWindow()
   // Optional, so a window drawn without the app's providers (another cut's smoke) draws none of cut 2's pieces.
   const auth = useOptionalAuth()
@@ -60,6 +67,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
   const settle = useSyncExternalStore(owedStore.subscribe, owedStore.get, owedStore.get)
   // The thread asked for last: a read for one opened before it never lands on it.
   const asked = useRef<string | null>(null)
+  // The word from a line (v2.5649): the line pressed, where it lands, and the sheet once a job is picked.
+  const [word, setWord] = useState<{ messageId: string; landing: WordLanding; sheet: BidMoneyLine | null } | null>(null)
 
   const load = useCallback(async () => {
     asked.current = on ? contactId : null
@@ -78,6 +87,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
   // A settle, and the strip, belong to the thread they started in: leaving it ends them.
   useEffect(() => {
     setOwedOpen(false)
+    setWord(null)
     return () => {
       owedStore.cancel(contactId)
       owedStore.unpublish(contactId)
@@ -131,7 +141,55 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
   return {
     // Calls (v2.5596): under a text we sent a customer today, the quiet ask, until a call to them waits.
     underLine: (m, c) => {
-      if (!mine(c.id) || c.kind !== 'customer' || m.direction !== 'out' || m.channel !== 'text') return null
+      if (!mine(c.id)) return null
+      // The word from their line (v2.5649): under a customer's own call, voicemail, text or email.
+      if (lineTakesWord(m, c)) {
+        const open = word?.messageId === m.id ? word : null
+        const press = async () => {
+          if (!c.customerId) return
+          setPressing(`word ${m.id}`)
+          try {
+            const landing = wordLanding(await loadLines(c.customerId), m.jobId ?? null)
+            if (landing.kind === 'none') showToast(landing.words, 'info')
+            else setWord({ messageId: m.id, landing, sheet: landing.kind === 'job' ? landing.line : null })
+          } finally {
+            setPressing(null)
+          }
+        }
+        return (
+          <span key={`word-${m.id}`} data-word-from-line={m.id} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {open?.landing.kind === 'pick' && !open.sheet ? (
+              <>
+                {WORD_PICK_WORDS}
+                {open.landing.lines.map((l) => (
+                  <button key={l.job.id} type="button" style={quiet} onClick={() => setWord({ ...open, sheet: l })}>
+                    {jobLabelOf(l)}
+                  </button>
+                ))}
+                <button type="button" style={{ ...quiet, border: 'none' }} onClick={() => setWord(null)}>
+                  Never mind
+                </button>
+              </>
+            ) : (
+              <button type="button" style={quiet} disabled={pressing === `word ${m.id}`} onClick={() => void press()} title="A day they will pay by, or that they say they paid, written on the job">
+                {WORD_PRESS}
+              </button>
+            )}
+            {open?.sheet ? (
+              <SetPromisedPayDateModal
+                jobId={open.sheet.job.id}
+                jobLabel={jobLabelOf(open.sheet)}
+                initialYmd={open.sheet.promise && open.sheet.promise.kind !== 'paid_claim' ? open.sheet.promise.promisedYmd : null}
+                initialSaidBy={c.name}
+                initialChannel={wordChannel(m.channel)}
+                onClose={() => setWord(null)}
+                onSaved={() => reread()}
+              />
+            ) : null}
+          </span>
+        )
+      }
+      if (c.kind !== 'customer' || m.direction !== 'out' || m.channel !== 'text') return null
       if (todayYmdInAppTz(new Date(m.at)) !== todayYmd || (rows.calls ?? []).length > 0) return null
       const first = callFirst(c)
       const day = dayAfter(todayYmd)
