@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The customer's conversation on the Pipeline</title>
+<style>
+  /* Punch list #125. Light only, like every to-do mock-up. Made-up people, jobs and numbers: Dana Whitfield, Lee Park; Tanya and Rosa as the office, Marcus as the tech. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --orange: #ea580c; --orange-ink: #c2410c; --orange-deep: #9a3412; --orange-tint: #ffedd5; --orange-line: #fdba74; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --amber-tint: #fef3c7; --amber-ink: #92400e; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --faint: #9ca3af; --line: #d1d5db; --line-2: #e5e7eb; --line-strong: #9ca3af; --surface: #ffffff; --page: #f6f7f9; --subtle: #f3f4f6; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1320px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; flex: none; }
+  h3 { font-size: 15px; margin: 30px 0 4px; display: flex; gap: 8px; align-items: baseline; }
+  h3 .opt { font-size: 12px; font-weight: 800; color: #fff; background: var(--orange); border-radius: 6px; padding: 1px 8px; }
+  h3 .opt.grey { background: var(--muted); }
+  h3 .pick { font-size: 11px; font-weight: 700; color: var(--orange-ink); background: var(--orange-tint); border: 1px solid var(--orange-line); border-radius: 999px; padding: 0 8px; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  code { font-size: 12px; background: var(--subtle); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 4px; }
+
+  /* desktop + phone pair: side by side when there is room, stacked on a phone */
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .row.wide { grid-template-columns: repeat(auto-fit, minmax(min(600px, 100%), 1fr)); }
+  .pair > *, .row > * { min-width: 0; }
+  @media (max-width: 1000px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap .w { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; opacity: .8; }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; overflow-x: auto; }
+  .fit.center { display: flex; justify-content: center; }
+
+  /* ---------- the Pipeline row at desktop width ---------- */
+  .board { min-width: 840px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; overflow: hidden; }
+  .board .sec { background: var(--subtle); border-bottom: 1px solid var(--line-2); padding: 5px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); display: flex; gap: 8px; }
+  .prow { display: flex; gap: 14px; align-items: flex-start; padding: 10px 12px; border-bottom: 1px solid var(--line-2); }
+  .prow:last-child { border-bottom: 0; }
+  .ident { flex: 0 0 200px; min-width: 0; font-size: 12.5px; }
+  .ident .jn { font-weight: 700; font-size: 13.5px; display: flex; gap: 6px; align-items: center; }
+  .jnum { font-size: 10.5px; font-weight: 800; color: #fff; background: var(--orange); border-radius: 5px; padding: 1px 6px; }
+  .ident .cust { display: flex; gap: 7px; align-items: center; margin-top: 3px; color: var(--ink-2); }
+  .ident .addr { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .tel { color: #0f766e; }
+  .bub { position: relative; color: var(--orange-ink); }
+  .bub .dot { position: absolute; top: -3px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--orange); border: 1.5px solid #fff; }
+  .waitline { margin-top: 5px; font-size: 11.5px; line-height: 1.4; color: var(--ink-2); background: var(--orange-tint); border-left: 3px solid var(--orange-ink); border-radius: 0 6px 6px 0; padding: 2px 7px; }
+  .waitline b { color: var(--orange-deep); }
+  .waitline .q { color: var(--orange-ink); font-weight: 600; }
+  .new { outline: 2px dashed var(--orange); outline-offset: 2px; border-radius: 6px; }
+  .boxcol { flex: 1 1 380px; min-width: 320px; display: flex; flex-direction: column; }
+  .abox { border: 1px solid var(--line-strong); border-radius: 10px; background: var(--subtle); padding: 6px 10px 7px; font-size: 12px; }
+  .next { border-left: 3px solid #86efac; padding: 0 8px; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .next b { color: #15803d; font-size: 10.5px; text-transform: uppercase; }
+  .feed { max-height: 106px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  .ent { display: flex; align-items: flex-start; margin-top: 5px; line-height: 1.45; }
+  .ent .n { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%; flex: none; border: 1px solid var(--line-strong); color: var(--muted); font-size: 10px; font-weight: 700; margin: 1px 7px 0 0; }
+  .ent .n.rep { border-color: var(--blue); color: var(--blue-ink); background: var(--blue-tint); }
+  .ent .tag { display: inline-flex; align-items: center; height: 17px; flex: none; border-radius: 999px; padding: 0 5px; font-size: 10px; font-weight: 600; margin: 1px 7px 0 0; border: 1px solid var(--orange); color: var(--orange-ink); background: #fff; }
+  .ent .tag.sent { border-color: var(--blue); color: var(--blue-ink); background: var(--blue-tint); }
+  .ent .tag.in { background: var(--orange-tint); border-color: var(--orange-ink); color: var(--orange-deep); }
+  .ent .tx { min-width: 0; color: var(--ink-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .ent .meta { color: var(--muted); font-size: 11px; }
+  .ent .who { color: var(--ink); font-weight: 700; }
+  .ent.in .who { color: var(--orange-deep); }
+  .ent.in { background: var(--orange-tint); border-radius: 0 6px 6px 0; box-shadow: inset 3px 0 0 var(--orange-ink); padding: 1px 4px 1px 6px; margin-left: -6px; }
+  .ent.fresh { outline: 2px dashed var(--orange); outline-offset: 1px; border-radius: 6px; }
+  .sep { color: #d1d5db; margin: 0 5px; }
+  .astrip { display: flex; align-items: stretch; gap: 6px; margin-top: 4px; height: 22px; font-size: 11.5px; }
+  .astrip .seeall { color: var(--blue-ink); padding: 0 4px; display: inline-flex; align-items: center; gap: 4px; }
+  .astrip .sp { flex: 1; }
+  .astrip .add { background: #3b82f6; color: #fff; border-radius: 999px; padding: 0 13px; font-weight: 700; display: inline-flex; align-items: center; }
+  .astrip .rp { border: 1px solid #3b82f6; border-radius: 999px; padding: 0 9px; display: inline-flex; align-items: center; background: #fff; color: var(--blue-ink); }
+  .custstrip { margin-top: 4px; font-size: 11.5px; color: var(--ink-2); background: var(--orange-tint); border: 1px solid var(--orange-line); border-radius: 8px; padding: 2px 8px; display: flex; gap: 6px; align-items: baseline; min-width: 0; white-space: nowrap; }
+  .custstrip .sub { flex: none; font-size: 11px; }
+  .custstrip .lab { font-size: 10px; font-weight: 700; color: var(--orange-ink); flex: none; }
+  .custstrip .who { font-weight: 700; color: var(--orange-deep); flex: none; }
+  .custstrip .body { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .custstrip .st { flex: none; color: var(--orange-ink); font-weight: 600; }
+  .cols { flex: 0 0 120px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; font-size: 12px; }
+  .stage { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 9px; background: var(--blue-tint); color: var(--blue-ink); }
+  .stage.billed { background: var(--amber-tint); color: var(--amber-ink); }
+  .money { font-weight: 700; }
+  .cols .sub { color: var(--muted); font-size: 11px; }
+
+  /* ---------- the phone ---------- */
+  .phone { width: 360px; max-width: 100%; margin: 0 auto; background: var(--page); border: 1px solid #aab2bd; border-radius: 24px; padding: 10px 10px 16px; font-size: 12.5px; }
+  .phone .pbar { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 0 6px 6px; }
+  .phone .ptitle { font-weight: 800; font-size: 15px; padding: 0 4px 8px; }
+  .card { background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 10px rgba(0,0,0,.07); padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .card .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card .top .nm { font-weight: 700; font-size: 13.5px; display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .card .cust { display: flex; gap: 8px; align-items: center; color: var(--ink-2); }
+  .card .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .card .chips span { font-size: 10.5px; background: var(--subtle); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 6px; color: var(--ink-2); }
+  .card .acts { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--line-2); padding-top: 5px; font-size: 11.5px; }
+  .card .acts .seeall { color: var(--blue-ink); }
+  .card .acts .sp { flex: 1; }
+  .card .pulse { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--line-2); padding-top: 5px; }
+  .nchip { align-self: flex-start; font-size: 10.5px; color: var(--muted); border-left: 3px solid #86efac; padding-left: 6px; }
+  .nchip b { color: #15803d; }
+  .teaser { display: flex; gap: 5px; align-items: baseline; font-size: 12px; min-width: 0; white-space: nowrap; }
+  .teaser b { flex: none; }
+  .teaser .ago { color: var(--muted); flex: none; }
+  .teaser .body { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+  .teaser .chev { flex: none; color: var(--blue-ink); margin-left: auto; padding-left: 4px; }
+  .teaser.c { background: var(--orange-tint); border-radius: 0 6px 6px 0; box-shadow: inset 3px 0 0 var(--orange-ink); padding: 1px 6px; }
+  .teaser.c b { color: var(--orange-deep); }
+  .teaser .ch { color: var(--orange-ink); font-size: 10.5px; flex: none; }
+
+  /* ---------- Job activity ---------- */
+  .ja { width: 100%; min-width: 580px; max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .ja .hd { padding: 10px 14px; border-bottom: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: center; }
+  .ja .hd b { font-size: 15px; }
+  .ja .hd .x { color: var(--muted); font-size: 18px; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 14px 4px; }
+  .pl { border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; font-size: 12px; color: var(--ink-2); background: #fff; white-space: nowrap; }
+  .pl .c { font-weight: 700; margin-left: 4px; color: var(--muted); }
+  .pl.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .pl.on .c { color: #fff; }
+  .pl.cu { border-color: var(--orange-line); color: var(--orange-ink); }
+  .pl.cu.on { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .day { padding: 8px 14px 2px; font-size: 11px; font-weight: 700; color: var(--muted); }
+  .day span { font-weight: 500; }
+  .jl { display: grid; grid-template-columns: 24px 44px 64px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 3px 14px; font-size: 12.5px; border-bottom: 1px dashed var(--line-2); }
+  .jl .nn { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line-strong); color: var(--muted); font-size: 10.5px; font-weight: 700; }
+  .jl .tm { color: var(--muted); font-size: 11.5px; }
+  .jl .wh { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jl .bd { min-width: 0; color: var(--ink-2); }
+  .jl .chw { font-size: 11px; color: var(--orange-ink); margin-right: 5px; }
+  .jl .sw { font-size: 10.5px; color: var(--muted); margin-left: 5px; }
+  .jl.sys .wh, .jl.sys .bd { color: var(--muted); font-weight: 500; }
+  .jl.in { background: var(--orange-tint); box-shadow: inset 4px 0 0 var(--orange-ink); border-bottom-color: transparent; }
+  .jl.in .wh { color: var(--orange-deep); }
+  .jl.out { border-bottom-color: transparent; }
+  .jl .tagb { font-size: 10px; font-weight: 700; color: var(--blue-ink); background: var(--blue-tint); border-radius: 4px; padding: 0 5px; margin-right: 5px; }
+  .act { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 10px; white-space: nowrap; background: #fff; }
+  .act.reply { color: var(--orange-ink); border: 1px solid var(--orange); }
+  .act.tie { color: var(--blue-ink); border: 1px solid var(--blue); }
+  .act.lit { outline: 2px dashed var(--orange); outline-offset: 2px; }
+  .composer { margin: 10px 14px 12px; border: 1px solid #3b82f6; border-radius: 999px; padding: 5px 7px 5px 14px; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12.5px; }
+  .composer .sp { flex: 1; }
+  .composer .post { background: #3b82f6; color: #fff; font-weight: 700; border-radius: 999px; padding: 3px 14px; }
+  .toast { margin: 0 14px 12px; background: var(--ink); color: #fff; border-radius: 8px; padding: 7px 12px; font-size: 12.5px; display: flex; justify-content: space-between; gap: 10px; }
+  .toast u { color: #93c5fd; text-decoration: none; font-weight: 700; }
+
+  /* the customer's box (ReplyBox) */
+  .cbox { margin: 10px 14px 12px; border: 1.5px solid var(--orange); border-radius: 10px; background: #fff; padding: 8px 10px; }
+  .cbox .rh { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 700; color: var(--orange-ink); margin-bottom: 6px; }
+  .cbox .rh .x { color: var(--muted); font-weight: 400; font-size: 15px; }
+  .kinds { display: flex; gap: 6px; margin: 0 0 6px; align-items: center; }
+  .kinds .k { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink-2); }
+  .kinds .k.on { border-color: var(--orange); background: var(--orange); color: #fff; }
+  .strip { border: 1px solid var(--line); border-radius: 8px; background: var(--subtle); padding: 6px 8px; margin: 0 0 6px; }
+  .strip .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 5px; }
+  .qchips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qchips span { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; background: #fff; color: var(--ink-2); }
+  .qchips span.lit { border-color: var(--orange); background: var(--orange-tint); color: var(--orange-ink); font-weight: 700; }
+  .qchips span.more { color: var(--muted); border-style: dashed; }
+  .ta { background: #fff7ed; border: 1.5px solid var(--orange); border-radius: 8px; min-height: 64px; padding: 7px 9px; color: var(--ink); font-size: 12.5px; line-height: 1.45; }
+  .ta .lnk { color: var(--blue-ink); text-decoration: underline; }
+  .ta .ph { color: var(--faint); }
+  .bfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11.5px; color: var(--muted); gap: 8px; flex-wrap: wrap; }
+  .bfoot .btns { display: flex; gap: 6px; }
+  .send { background: var(--blue); color: #fff; font-weight: 700; border-radius: 8px; padding: 5px 12px; font-size: 12.5px; white-space: nowrap; }
+  .send.dim { background: var(--faint); }
+  .ghost { border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: #fff; white-space: nowrap; }
+  .tieto { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .held { font-size: 11.5px; color: var(--red-ink); }
+
+  /* the phone's Job activity */
+  .pja { background: #fff; border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; }
+  .pja .hd { padding: 8px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; display: flex; justify-content: space-between; }
+  .pja .pills { padding: 6px 10px 2px; }
+  .pjl { padding: 5px 12px; border-bottom: 1px dashed var(--line-2); font-size: 12.5px; }
+  .pjl .m { display: flex; gap: 6px; align-items: baseline; font-size: 11.5px; color: var(--muted); }
+  .pjl .m .nn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line-strong); font-size: 10px; font-weight: 700; }
+  .pjl .m b { color: var(--ink); font-size: 12.5px; }
+  .pjl.in { background: var(--orange-tint); box-shadow: inset 4px 0 0 var(--orange-ink); border-bottom-color: transparent; }
+  .pjl.in .m b { color: var(--orange-deep); }
+  .pjl .w { color: var(--ink-2); margin-top: 2px; }
+  .pjl .opened { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .pjl .opened .lk { color: var(--blue-ink); font-weight: 600; font-size: 12px; }
+  .sheet { margin-top: 10px; background: #fff; border: 1px solid var(--line-strong); border-radius: 16px 16px 10px 10px; box-shadow: 0 -4px 16px rgba(0,0,0,.08); padding: 6px 10px 10px; }
+  .sheet .grab { width: 36px; height: 4px; border-radius: 4px; background: var(--line); margin: 0 auto 8px; }
+  .sheet .cbox { margin: 0; border: 0; padding: 0; }
+
+  /* ---------- doors ---------- */
+  .win { width: 100%; max-width: 560px; min-width: 300px; margin: 0 auto; background: #fff; border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .win .bar { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; gap: 8px; }
+  .win .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .win .body { padding: 10px 14px 14px; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .sentence { background: var(--subtle); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; color: var(--ink-2); margin: 8px 0; }
+  .btnrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .b { border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: #fff; white-space: nowrap; }
+  .b.p { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .b.bad { border: 2px dashed var(--red); color: var(--red-ink); }
+  .b.good { border: 2px solid var(--orange); color: var(--orange-ink); }
+  .away { margin-top: 8px; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--red-ink); background: var(--red-tint); border-radius: 8px; padding: 6px 10px; }
+  .field { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 6px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid var(--line-2); }
+  .field span:first-child { color: var(--muted); }
+  .emailbody { font-size: 12.5px; color: var(--ink-2); padding: 8px 0; line-height: 1.5; }
+  .chiprow { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12.5px; margin-top: 6px; }
+  .cchip { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 10px; background: #fff; }
+  .cchip.bad { border: 2px dashed var(--red); }
+  .cchip.good { border: 2px solid var(--orange); color: var(--orange-ink); }
+  .cchip .cp { color: var(--muted); font-size: 11px; border-left: 1px solid var(--line); padding-left: 6px; }
+  .jm { background: #fff; border: 1px solid var(--line-strong); border-radius: 12px; padding: 10px 12px; }
+  .jm .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .jm .line { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line-2); font-size: 13px; }
+  .jm .line:last-child { border-bottom: 0; }
+  .jm .big { display: block; text-align: center; background: var(--orange); color: #fff; font-weight: 700; border-radius: 10px; padding: 9px; margin-top: 8px; }
+  table.doors { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; font-size: 12.5px; }
+  table.doors th, table.doors td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line-2); }
+  table.doors th { background: var(--subtle); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); }
+  table.doors td.today { color: var(--red-ink); }
+  table.doors td.after { color: var(--green-ink); }
+  .tablewrap { overflow-x: auto; }
+  .tablewrap table { min-width: 720px; }
+
+  .dead { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .dead .d { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .dead .d .t { font-weight: 700; margin: 0 0 4px; }
+  .cost { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 10px; }
+  .cost .c { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .cost .c .t { font-weight: 800; margin: 0 0 4px; }
+  .cost .c.pick { border-color: var(--orange); box-shadow: 0 0 0 3px var(--orange-tint); }
+  .cost .c .r { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-2); color: var(--muted); font-size: 12px; }
+  .today3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .today3 .d { background: var(--surface); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .today3 .d .t { font-weight: 800; margin: 0 0 4px; display: flex; gap: 6px; align-items: center; }
+  .today3 .d .has { color: var(--green-ink); }
+  .today3 .d .not { color: var(--red-ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #125 · three options for the row's box, the Customer filter, Reply and Tie, the six doors · nothing built</p>
+  <h1>The customer's conversation on the Pipeline row and in its Job activity</h1>
+  <p>A review of the Pipeline's Job activity on 2026-10-19 found the customer's side of a job in three places, none of them whole. The row's box has the team's notes and the bill sends, but no call, text or email. The expanded Job activity has the calls, texts and emails, but its Customer pill leaves out the bill, the contract and the release. The bubble's sheet has the last three lines and no notes. Job activity cannot answer or tie a line it shows, and six doors still send from someone's own phone. Texting through Quo has been live since 2026-10-16, so all of it can go from the company number now.</p>
+</header>
+
+<section>
+  <h2><span class="num">0</span> Where the customer's side reads today</h2>
+  <div class="today3">
+    <div class="d"><p class="t">The row's activity box</p><span class="has">Notes, reports, a bill sent (unnumbered Sent).</span><br><span class="not">No call, text or email.</span><br><span class="sub">JobsStagesActivityBox over buildJobActivityBoxFeed · 1100 px and wider. The phone card's one teaser line leaves out the same.</span></div>
+    <div class="d"><p class="t">Job activity, expanded</p><span class="has">Everything, the customer's lines in orange.</span><br><span class="not">Customer counts only the Messages lines. No Reply, no Tie.</span><br><span class="sub">JobActivityView · jobActivityLineMatches</span></div>
+    <div class="d"><p class="t">The bubble's sheet</p><span class="has">The last three lines, Waiting on us, the dot.</span><br><span class="not">No notes, no bill or contract sends.</span><br><span class="sub">lastLinesOnJob · boardDotsByJob over loadBoardDotRows</span></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">1</span> The row's box: three options</h2>
+  <p class="lede">The same job in each: Dana texted last night asking to move Thursday's inspection, and nobody has answered. Tanya had texted her the inspection day the afternoon before. Each option is drawn as the desktop row (the box shows at 1100 px and wider) and as the phone card. All three read once per board load, never once per row; the box's own pointer load stays notes, reports and events.</p>
+
+  <h3><span class="opt">a</span> Their lines in the box, unnumbered <span class="pick">recommended</span></h3>
+  <div class="pair">
+    <div>
+      <div class="cap orange">Desktop · the Pipeline row <span class="w">the box keeps its height</span></div>
+      <div class="fit"><div class="board">
+        <div class="sec">Working <span style="font-weight:500;color:var(--muted)">· 6 jobs</span></div>
+        <div class="prow">
+          <div class="ident">
+            <div class="jn"><span class="jnum">2148</span> Whitfield re-pipe</div>
+            <div class="cust">👤 Dana Whitfield <span class="tel">☎</span> <span class="bub">💬<i class="dot"></i></span></div>
+            <div class="addr">15638 Mission Crest, San Antonio</div>
+          </div>
+          <div class="boxcol">
+            <div class="abox">
+              <div class="next"><b>Next</b> · Thu Oct 23 8–10a · Marcus</div>
+              <div class="feed">
+                <div class="ent"><span class="n">5</span><span class="tx"><span class="meta">Mon 3:12 PM (2d)</span> <span class="who">Marcus</span><span class="sep">|</span>Rough-in done. Waiting on the city for the inspection.</span></div>
+                <div class="ent fresh"><span class="tag">Text</span><span class="tx"><span class="meta">Mon 4:40 PM (2d)</span> <span class="who">Tanya</span><span class="sep">|</span>Dana, the city set your inspection for Thursday 8 to 10. Marcus will meet them.</span></div>
+                <div class="ent"><span class="n">6</span><span class="tx"><span class="meta">Tue 9:02 AM (1d)</span> <span class="who">Rosa</span><span class="sep">|</span>Inspector confirmed. Gate code is 4471.</span></div>
+                <div class="ent in fresh"><span class="tag in">Text</span><span class="tx"><span class="meta">Tue 6:15 PM (1d)</span> <span class="who">Dana</span><span class="sep">|</span>Can you do Thursday after 10 instead? I have a meeting until then.</span></div>
+              </div>
+            </div>
+            <div class="astrip"><span class="seeall">⤢ See all · 1 report</span><span class="sp"></span><span class="add">+ Add</span><span class="rp">📋</span></div>
+          </div>
+          <div class="cols"><span class="stage">Working</span><span class="money">$4,820</span><span class="sub">60% · j: 2 b: 1</span></div>
+        </div>
+      </div></div>
+      <p class="note"><b>The orange tag holds the number's place</b>, as v2.5633's blue <i>Sent</i> does, so <i>check note 6</i> never moves. A line from Dana carries the orange bar and her name; ours carries the sender, or <i>the app</i>. The newest three only, the sheet's three, so the box and the sheet show the same lines and a chatty thread cannot bury the notes. Older lines are See all's.</p>
+    </div>
+    <div>
+      <div class="cap orange">Phone · the card's foot <span class="w">360 px</span></div>
+      <div class="fit center"><div class="phone">
+        <div class="pbar"><span>9:41</span><span>Pipeline</span><span>▮▮▮</span></div>
+        <div class="card">
+          <div class="top"><span class="nm"><span class="jnum">2148</span> Whitfield re-pipe</span><span class="stage">Working</span></div>
+          <div class="cust">👤 Dana Whitfield <span class="tel">☎</span> <span class="bub">💬<i class="dot"></i></span></div>
+          <div class="chips"><span>$4,820</span><span>60%</span><span>j: 2</span><span>b: 1</span></div>
+          <div class="acts"><span class="seeall">⤢ See all</span><span class="sp"></span><span class="tel">☎</span><span>⋯</span></div>
+          <div class="pulse">
+            <span class="nchip"><b>NEXT</b> · Thu 8–10a · Marcus</span>
+            <div class="teaser c new"><b>Dana</b><span class="ch">text</span><span class="ago">1d</span><span class="body">— Can you do Thursday after 10 instead? I have a meeting until then.</span><span class="chev">▸</span></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="note">The card's one teaser line is the newest of the note, the report and the line. Here Dana's text is newest, so it reads in orange with its channel word.</p>
+    </div>
+  </div>
+
+  <h3><span class="opt">b</span> One newest-line strip under the box</h3>
+  <div class="pair">
+    <div>
+      <div class="cap">Desktop · the Pipeline row <span class="w">about 18 px taller where a line shows</span></div>
+      <div class="fit"><div class="board">
+        <div class="sec">Working <span style="font-weight:500;color:var(--muted)">· 6 jobs</span></div>
+        <div class="prow">
+          <div class="ident">
+            <div class="jn"><span class="jnum">2148</span> Whitfield re-pipe</div>
+            <div class="cust">👤 Dana Whitfield <span class="tel">☎</span> <span class="bub">💬<i class="dot"></i></span></div>
+            <div class="addr">15638 Mission Crest, San Antonio</div>
+          </div>
+          <div class="boxcol">
+            <div class="abox">
+              <div class="next"><b>Next</b> · Thu Oct 23 8–10a · Marcus</div>
+              <div class="feed">
+                <div class="ent"><span class="n">4</span><span class="tx"><span class="meta">Fri 11:20 AM (5d)</span> <span class="who">Rosa</span><span class="sep">|</span>Permit pulled, #BP-22-0415.</span></div>
+                <div class="ent"><span class="n">5</span><span class="tx"><span class="meta">Mon 3:12 PM (2d)</span> <span class="who">Marcus</span><span class="sep">|</span>Rough-in done. Waiting on the city for the inspection.</span></div>
+                <div class="ent"><span class="n">6</span><span class="tx"><span class="meta">Tue 9:02 AM (1d)</span> <span class="who">Rosa</span><span class="sep">|</span>Inspector confirmed. Gate code is 4471.</span></div>
+              </div>
+            </div>
+            <div class="custstrip new"><span class="lab">💬</span><span class="who">Dana</span><span class="sub">text · 1d</span><span class="body">— Can you do Thursday after 10 instead? I have a meeting until then.</span><span class="st">Nobody has answered.</span></div>
+            <div class="astrip"><span class="seeall">⤢ See all · 1 report</span><span class="sp"></span><span class="add">+ Add</span><span class="rp">📋</span></div>
+          </div>
+          <div class="cols"><span class="stage">Working</span><span class="money">$4,820</span><span class="sub">60% · j: 2 b: 1</span></div>
+        </div>
+      </div></div>
+      <p class="note"><b>The box stays the team's.</b> One line under it carries the newest call, text or email either way, ours or theirs, with the dot's words when it waits on us. A press on it opens the bubble's sheet. Tanya's text of Monday is not on the row: only the newest shows.</p>
+    </div>
+    <div>
+      <div class="cap">Phone · the card's foot <span class="w">360 px</span></div>
+      <div class="fit center"><div class="phone">
+        <div class="pbar"><span>9:41</span><span>Pipeline</span><span>▮▮▮</span></div>
+        <div class="card">
+          <div class="top"><span class="nm"><span class="jnum">2148</span> Whitfield re-pipe</span><span class="stage">Working</span></div>
+          <div class="cust">👤 Dana Whitfield <span class="tel">☎</span> <span class="bub">💬<i class="dot"></i></span></div>
+          <div class="chips"><span>$4,820</span><span>60%</span><span>j: 2</span><span>b: 1</span></div>
+          <div class="acts"><span class="seeall">⤢ See all</span><span class="sp"></span><span class="tel">☎</span><span>⋯</span></div>
+          <div class="pulse">
+            <span class="nchip"><b>NEXT</b> · Thu 8–10a · Marcus</span>
+            <div class="teaser"><b>Rosa</b><span class="ago">1d</span><span class="body">— Inspector confirmed. Gate code is 4471.</span><span class="chev">▸</span></div>
+            <div class="teaser c new"><b>Dana</b><span class="ch">text</span><span class="ago">1d</span><span class="body">— Can you do Thursday after 10 instead?</span></div>
+          </div>
+        </div>
+      </div></div>
+      <p class="note">A second line at the foot, under the team's teaser. Every card with a line grows by one line.</p>
+    </div>
+  </div>
+
+  <h3><span class="opt grey">c</span> The box stays the team's; the bubble carries the customer</h3>
+  <div class="pair">
+    <div>
+      <div class="cap">Desktop · the Pipeline row <span class="w">a line under the name only while someone waits</span></div>
+      <div class="fit"><div class="board">
+        <div class="sec">Working <span style="font-weight:500;color:var(--muted)">· 6 jobs</span></div>
+        <div class="prow">
+          <div class="ident">
+            <div class="jn"><span class="jnum">2148</span> Whitfield re-pipe</div>
+            <div class="cust">👤 Dana Whitfield <span class="tel">☎</span> <span class="bub">💬<i class="dot"></i></span></div>
+            <div class="waitline new"><b>Dana</b> · text · Tue 6:15 PM · <span class="q">Can you do Thursday after 10 instead?</span></div>
+            <div class="addr">15638 Mission Crest, San Antonio</div>
+          </div>
+          <div class="boxcol">
+            <div class="abox">
+              <div class="next"><b>Next</b> · Thu Oct 23 8–10a · Marcus</div>
+              <div class="feed">
+                <div class="ent"><span class="n">4</span><span class="tx"><span class="meta">Fri 11:20 AM (5d)</span> <span class="who">Rosa</span><span class="sep">|</span>Permit pulled, #BP-22-0415.</span></div>
+                <div class="ent"><span class="n">5</span><span class="tx"><span class="meta">Mon 3:12 PM (2d)</span> <span class="who">Marcus</span><span class="sep">|</span>Rough-in done. Waiting on the city for the inspection.</span></div>
+                <div class="ent"><span class="n">6</span><span class="tx"><span class="meta">Tue 9:02 AM (1d)</span> <span class="who">Rosa</span><span class="sep">|</span>Inspector confirmed. Gate code is 4471.</span></div>
+              </div>
+            </div>
+            <div class="astrip"><span class="seeall">⤢ See all · 1 report</span><span class="sp"></span><span class="add">+ Add</span><span class="rp">📋</span></div>
+          </div>
+          <div class="cols"><span class="stage">Working</span><span class="money">$4,820</span><span class="sub">60% · j: 2 b: 1</span></div>
+        </div>
+        <div class="prow">
+          <div class="ident">
+            <div class="jn"><span class="jnum">2131</span> Park water heater</div>
+            <div class="cust">👤 Lee Park <span class="tel">☎</span> <span class="bub">💬</span></div>
+            <div class="addr">902 Ridgeway Ln, Helotes</div>
+          </div>
+          <div class="boxcol">
+            <div class="abox">
+              <div class="feed">
+                <div class="ent"><span class="n">2</span><span class="tx"><span class="meta">Mon 10:05 AM (2d)</span> <span class="who">Marcus</span><span class="sep">|</span>Old tank out, new one set and lit.</span></div>
+                <div class="ent"><span class="n">3</span><span class="tx"><span class="meta">Tue 8:40 AM (1d)</span> <span class="who">Rosa</span><span class="sep">|</span>Haul-away receipt filed.</span></div>
+              </div>
+            </div>
+            <div class="astrip"><span class="seeall">⤢ See all</span><span class="sp"></span><span class="add">+ Add</span><span class="rp">📋</span></div>
+          </div>
+          <div class="cols"><span class="stage">Working</span><span class="money">$1,890</span><span class="sub">90% · j: 1</span></div>
+        </div>
+      </div></div>
+      <p class="note"><b>No new read.</b> The dot's read already holds Dana's line; the words under her name are the dot's hover drawn on the row. <b>What it leaves</b>: on the Park row Tanya answered Lee yesterday, so nobody waits and the row says nothing of the customer at all.</p>
+    </div>
+    <div>
+      <div class="cap">Phone · under the card's customer name <span class="w">360 px</span></div>
+      <div class="fit center"><div class="phone">
+        <div class="pbar"><span>9:41</span><span>Pipeline</span><span>▮▮▮</span></div>
+        <div class="card">
+          <div class="top"><span class="nm"><span class="jnum">2148</span> Whitfield re-pipe</span><span class="stage">Working</span></div>
+          <div class="cust">👤 Dana Whitfield <span class="tel">☎</span> <span class="bub">💬<i class="dot"></i></span></div>
+          <div class="waitline new"><b>Dana</b> · text · Tue 6:15 PM · <span class="q">Can you do Thursday after 10 instead?</span></div>
+          <div class="chips"><span>$4,820</span><span>60%</span><span>j: 2</span><span>b: 1</span></div>
+          <div class="acts"><span class="seeall">⤢ See all</span><span class="sp"></span><span class="tel">☎</span><span>⋯</span></div>
+          <div class="pulse">
+            <span class="nchip"><b>NEXT</b> · Thu 8–10a · Marcus</span>
+            <div class="teaser"><b>Rosa</b><span class="ago">1d</span><span class="body">— Inspector confirmed. Gate code is 4471.</span><span class="chev">▸</span></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="cost">
+    <div class="c pick"><p class="t">(a) In the box</p>A new read-only function, <code>pipeline_customer_lines(p_job_ids, 3)</code>, called beside <code>jobs_ledger_thread_note_stats</code> in the same slices of jobs. At most three rows a job, one round trip more per slice, one migration (a function, no table). It applies Job activity's rule for the job's lines and the sheet's rule for which lines count.<div class="r">Without a migration: the boardDotsIo shape, three reads per slice and up to 1,000 rows to keep three a job.</div></div>
+    <div class="c"><p class="t">(b) A strip under it</p>The same function with <code>p_per_job = 1</code>: one row a job, the same round trip and migration.<div class="r">On screen: about 18 px on every row with a line, and the conversation still in two places on the row.</div></div>
+    <div class="c"><p class="t">(c) The bubble</p>No new read: the dot's <code>loadBoardDotRows</code> already holds the waiting line. No rows more, no migration.<div class="r">Leaves the split: a job whose last line was ours shows nothing of the customer.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">2</span> The Customer filter: everything the customer got or sent</h2>
+  <p class="lede">Today Customer counts only the Messages lines; the bill sent, the contract sent, viewed and signed, the release sent and <i>They said</i> sit under Billing. Drawn: Customer as a lens across the buckets. Those events show under Customer and stay under Billing, so Billing's count does not move. The payment itself stays Billing's only (question 2).</p>
+  <div class="row wide">
+    <div>
+      <div class="cap">Today · Job activity on #2148, Customer pressed</div>
+      <div class="fit"><div class="ja">
+        <div class="hd"><b>Job activity · Whitfield re-pipe</b><span class="x">×</span></div>
+        <div class="pills"><span class="pl">All<span class="c">31</span></span><span class="pl">Notes<span class="c">9</span></span><span class="pl">Reports<span class="c">1</span></span><span class="pl">Status<span class="c">6</span></span><span class="pl">Billing<span class="c">9</span></span><span class="pl">Crew<span class="c">4</span></span><span class="pl cu on">Customer<span class="c">4</span></span></div>
+        <div class="day">Thu, Oct 9 <span>· 2w ago</span></div>
+        <div class="jl in"><span class="nn">8</span><span class="tm">11:30a</span><span class="wh">Dana</span><span class="bd"><span class="chw">call · 2:10</span>Asked if the deposit can be split in two.</span><span></span></div>
+        <div class="day">Mon, Oct 20 <span>· 2d ago</span></div>
+        <div class="jl out"><span class="nn">22</span><span class="tm">4:40p</span><span class="wh">Tanya</span><span class="bd"><span class="chw">text</span>Dana, the city set your inspection for Thursday 8 to 10.</span><span></span></div>
+        <div class="day">Tue, Oct 21 <span>· 1d ago</span></div>
+        <div class="jl in"><span class="nn">27</span><span class="tm">6:15p</span><span class="wh">Dana</span><span class="bd"><span class="chw">text</span>Can you do Thursday after 10 instead?</span><span></span></div>
+        <div class="day">Wed, Oct 22 <span>· today</span></div>
+        <div class="jl in"><span class="nn">28</span><span class="tm">7:58a</span><span class="wh">Dana</span><span class="bd"><span class="chw">voicemail · 0:24</span>Hi, it's Dana again about Thursday.<span class="sw">not tied yet</span></span><span></span></div>
+        <div class="day" style="color:var(--red-ink)">Not under Customer: the contract she was sent, opened and signed, the deposit bill Stripe emailed her, and what she said she would pay. All five sit under Billing only.</div>
+        <div style="height:10px"></div>
+      </div></div>
+    </div>
+    <div>
+      <div class="cap orange">Drawn · Customer means everything to or from them</div>
+      <div class="fit"><div class="ja">
+        <div class="hd"><b>Job activity · Whitfield re-pipe</b><span class="x">×</span></div>
+        <div class="pills"><span class="pl">All<span class="c">31</span></span><span class="pl">Notes<span class="c">9</span></span><span class="pl">Reports<span class="c">1</span></span><span class="pl">Status<span class="c">6</span></span><span class="pl">Billing<span class="c">9</span></span><span class="pl">Crew<span class="c">4</span></span><span class="pl cu on">Customer<span class="c">9</span></span></div>
+        <div class="day">Wed, Oct 8 <span>· 2w ago</span></div>
+        <div class="jl sys"><span class="nn">3</span><span class="tm">10:02a</span><span class="wh">Rosa</span><span class="bd"><span class="tagb">Contract</span>Contract sent to dana@example.com</span><span></span></div>
+        <div class="jl sys"><span class="nn">4</span><span class="tm">7:48p</span><span class="wh">Dana</span><span class="bd"><span class="tagb">Contract</span>Contract viewed</span><span></span></div>
+        <div class="jl sys"><span class="nn">5</span><span class="tm">7:55p</span><span class="wh">Dana</span><span class="bd"><span class="tagb">Contract</span>Contract signed</span><span></span></div>
+        <div class="day">Thu, Oct 9 <span>· 2w ago</span></div>
+        <div class="jl sys"><span class="nn">7</span><span class="tm">9:15a</span><span class="wh">The app</span><span class="bd"><span class="tagb">Emailed</span>Deposit bill emailed through Stripe</span><span></span></div>
+        <div class="jl in"><span class="nn">8</span><span class="tm">11:30a</span><span class="wh">Dana</span><span class="bd"><span class="chw">call · 2:10</span>Asked if the deposit can be split in two.</span><span></span></div>
+        <div class="jl sys"><span class="nn">9</span><span class="tm">11:34a</span><span class="wh">Tanya</span><span class="bd"><span class="tagb">They said</span>Half Friday, half on rough-in</span><span></span></div>
+        <div class="day">Mon, Oct 20 <span>· 2d ago</span></div>
+        <div class="jl out"><span class="nn">22</span><span class="tm">4:40p</span><span class="wh">Tanya</span><span class="bd"><span class="chw">text</span>Dana, the city set your inspection for Thursday 8 to 10.</span><span></span></div>
+        <div class="day">Tue, Oct 21 <span>· 1d ago</span></div>
+        <div class="jl in"><span class="nn">27</span><span class="tm">6:15p</span><span class="wh">Dana</span><span class="bd"><span class="chw">text</span>Can you do Thursday after 10 instead?</span><span></span></div>
+        <div class="day">Wed, Oct 22 <span>· today</span></div>
+        <div class="jl in"><span class="nn">28</span><span class="tm">7:58a</span><span class="wh">Dana</span><span class="bd"><span class="chw">voicemail · 0:24</span>Hi, it's Dana again about Thursday.<span class="sw">not tied yet</span></span><span></span></div>
+        <div style="height:10px"></div>
+      </div></div>
+      <p class="note">The numbers are the thread's, assigned before any filter, so they still never move. Billing stays <b>9</b>: the events show in both. The count runs in its own pass, since the other buckets stay disjoint.</p>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <div>
+      <div class="cap">Phone · the pills wrap, Customer last</div>
+      <div class="fit center"><div class="phone">
+        <div class="pja">
+          <div class="hd"><span>Job activity</span><span style="color:var(--muted);font-weight:400">×</span></div>
+          <div class="pills"><span class="pl">All<span class="c">31</span></span><span class="pl">Notes<span class="c">9</span></span><span class="pl">Reports<span class="c">1</span></span><span class="pl">Status<span class="c">6</span></span><span class="pl">Billing<span class="c">9</span></span><span class="pl">Crew<span class="c">4</span></span><span class="pl cu on">Customer<span class="c">9</span></span></div>
+          <div class="pjl"><div class="m"><span class="nn">5</span>7:55p <b>Dana</b></div><div class="w"><span class="jl" style="display:inline;padding:0;border:0"><span class="tagb">Contract</span></span>Contract signed</div></div>
+          <div class="pjl"><div class="m"><span class="nn">7</span>9:15a <b>The app</b></div><div class="w"><span class="jl" style="display:inline;padding:0;border:0"><span class="tagb">Emailed</span></span>Deposit bill emailed through Stripe</div></div>
+          <div class="pjl in"><div class="m"><span class="nn">27</span>6:15p <b>Dana</b> <span style="color:var(--orange-ink)">text</span></div><div class="w">Can you do Thursday after 10 instead?</div></div>
+        </div>
+      </div></div>
+    </div>
+    <div>
+      <div class="dead" style="grid-template-columns:1fr">
+        <div class="d"><p class="t">In Customer, drawn</p>Their calls, texts and emails · the bill sent and Stripe's email · the contract sent, shared, viewed and signed · a release they were asked to sign, and a release sent · <i>They said</i>.</div>
+        <div class="d"><p class="t">Left out on purpose</p>A bill made or billed (ours until it goes) · a void (ours unless it was sent) · a release issued or signed by us · the payment itself (money, not words; question 2).</div>
+        <div class="d"><p class="t">One set, three readers</p><code>CUSTOMER_EVENT_TYPES</code> in jobActivityEvent.ts: the filter, the box's unnumbered rule (replacing SENT_EVENT_TYPES) and the sheet all read it, so they agree on what reached the customer.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">3</span> Reply and Tie in place</h2>
+  <p class="lede">Dana's text shows in Job activity, and so does a voicemail she left on the company number before anyone tied it to this job. Today both need the bubble or Messages. Drawn: a <b>Reply</b> on her line opens the customer's box in the composer's place, and a <b>Tie to this job</b> on the untied line ties it in one press. The note pill stays a note.</p>
+  <div class="pair">
+    <div>
+      <div class="cap orange">Desktop · the expanded Job activity, Reply pressed</div>
+      <div class="fit"><div class="ja">
+        <div class="hd"><b>Job activity · Whitfield re-pipe</b><span class="x">×</span></div>
+        <div class="pills"><span class="pl on">All<span class="c">31</span></span><span class="pl">Notes<span class="c">9</span></span><span class="pl">Reports<span class="c">1</span></span><span class="pl">Status<span class="c">6</span></span><span class="pl">Billing<span class="c">9</span></span><span class="pl">Crew<span class="c">4</span></span><span class="pl cu">Customer<span class="c">9</span></span></div>
+        <div class="day">Tue, Oct 21 <span>· 1d ago</span></div>
+        <div class="jl"><span class="nn">26</span><span class="tm">9:02a</span><span class="wh">Rosa</span><span class="bd">Inspector confirmed. Gate code is 4471.</span><span></span></div>
+        <div class="jl in"><span class="nn">27</span><span class="tm">6:15p</span><span class="wh">Dana</span><span class="bd"><span class="chw">text</span>Can you do Thursday after 10 instead? I have a meeting until then.</span><span class="act reply lit">Reply</span></div>
+        <div class="day">Wed, Oct 22 <span>· today</span></div>
+        <div class="jl in"><span class="nn">28</span><span class="tm">7:58a</span><span class="wh">Dana</span><span class="bd"><span class="chw">voicemail · 0:24</span>Hi, it's Dana again about Thursday, call me back when you can.<span class="sw">not tied yet</span></span><span class="act tie lit">Tie to this job</span></div>
+        <div class="cbox new">
+          <div class="rh"><span>Replying to Dana's text · Tue 6:15 PM</span><span class="x">✕</span></div>
+          <div class="kinds"><span class="k on">Text</span><span class="k">Email</span></div>
+          <div class="strip"><div class="t">For this stage</div><div class="qchips"><span class="lit">Moving your visit</span><span>Running late</span><span class="more">Find a reply…</span></div></div>
+          <div class="ta">Dana, this is Tanya with Click Plumbing. We can move the inspection to Thursday after 10. I will text you the new window once the city confirms.</div>
+          <div class="bfoot"><span>146 / 320 · from the company number</span><span class="btns"><span class="ghost">Attach</span><span class="send">Send text…</span></span></div>
+          <div class="tieto">Tie to: #2148 Whitfield re-pipe</div>
+        </div>
+      </div></div>
+      <p class="note"><b>Reply</b> is on a line from the customer, office only. An email is answered by Email with <i>Re:</i> and its subject; a text, a call or a voicemail by Text. The stage's quick replies come first. ✕ brings the note pill back. The sent text lands at the bottom of the feed in orange.</p>
+    </div>
+    <div>
+      <div class="cap orange">Phone · the line opened, then the box as a sheet</div>
+      <div class="fit center"><div class="phone">
+        <div class="pja">
+          <div class="hd"><span>Job activity</span><span style="color:var(--muted);font-weight:400">×</span></div>
+          <div class="pjl in"><div class="m"><span class="nn">27</span>Tue 6:15p <b>Dana</b> <span style="color:var(--orange-ink)">text</span></div><div class="w">Can you do Thursday after 10 instead? I have a meeting until then.</div><div class="opened"><span class="act reply lit">Reply</span><span class="lk">Open the thread with Dana ›</span></div></div>
+          <div class="pjl in"><div class="m"><span class="nn">28</span>7:58a <b>Dana</b> <span style="color:var(--orange-ink)">voicemail · 0:24</span> <span>not tied yet</span></div><div class="w">Hi, it's Dana again about Thursday, call me back when you can.</div><div class="opened"><span class="act tie">Tie to this job</span><span class="lk">Another job…</span></div></div>
+        </div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="cbox">
+            <div class="rh"><span>Replying to Dana's text</span><span class="x">✕</span></div>
+            <div class="strip"><div class="t">For this stage</div><div class="qchips"><span class="lit">Moving your visit</span><span>Running late</span><span class="more">Find…</span></div></div>
+            <div class="ta">Dana, this is Tanya with Click Plumbing. We can move the inspection to Thursday after 10.</div>
+            <div class="bfoot"><span>Tie to: #2148</span><span class="send">Send text…</span></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <div>
+      <div class="cap green">After Tie to this job</div>
+      <div class="fit"><div class="ja" style="min-width:0">
+        <div class="jl in"><span class="nn">28</span><span class="tm">7:58a</span><span class="wh">Dana</span><span class="bd"><span class="chw">voicemail · 0:24</span>Hi, it's Dana again about Thursday, call me back when you can.</span><span class="act reply">Reply</span></div>
+        <div class="toast"><span>Tied to #2148 Whitfield re-pipe.</span><u>Undo</u></div>
+      </div></div>
+      <p class="note"><code>tieMessage(id, jobBoxJobKey(jobId))</code>. The line loses <i>not tied yet</i>, the job goes on Dana's rail, and Undo unties it. <b>Another job…</b> opens the job picker, as the thread does.</p>
+    </div>
+    <div>
+      <div class="dead" style="grid-template-columns:1fr">
+        <div class="d"><p class="t">The note pill stays a note</p>Post writes a team note the customer never sees, with its words <i>Add a note to …</i> unchanged. Reply sits on the customer's line, so the two presses never mix.</div>
+        <div class="d"><p class="t">Who sees the presses</p>The office (<code>canOpenMessages</code>), as the bubble. A tech reading the job's lines (R5) sees neither; Job Mode's own Message the customer is theirs.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">4</span> The phone-app doors, through the company</h2>
+  <p class="lede">Six doors hand a send to someone's own phone or mail app. Nothing lands in Dana's thread or the job's activity, and her answer goes to that person's phone or inbox. Drawn: each one through <code>quo-send</code> or <code>messages-email</code> from the company number and the office's box. The text doors open the customer's box filled, so the confirm shows what she sees and the box's holds apply.</p>
+  <div class="tablewrap"><table class="doors">
+    <thead><tr><th>Door</th><th>Where</th><th>Today</th><th>Through the company</th></tr></thead>
+    <tbody>
+      <tr><td><b>Text link</b>, contract window</td><td><code>JobContractModal.tsx</code> ~565</td><td class="today"><code>sms:</code> on the person's phone</td><td class="after">The customer's box on Text, filled with the agreement's words and link</td></tr>
+      <tr><td><b>Send link</b> with text too, or no email</td><td><code>JobContractModal.tsx</code> ~872</td><td class="today">Emails through send-contract, then <code>sms:</code></td><td class="after">quo-send in the same press: one press, both go</td></tr>
+      <tr><td><b>Text link</b>, signed rail</td><td><code>JobContractSignedRail.tsx</code> ~143</td><td class="today"><code>sms:</code> on the person's phone</td><td class="after">The customer's box on Text, filled</td></tr>
+      <tr><td><b>Open in mail app</b>, bill share</td><td><code>StripeInvoiceSharePanel.tsx</code> ~110</td><td class="today"><code>mailto:</code> with subject and body</td><td class="after">messages-email: <b>Send as email</b>, tied to the job, the sent copy filed</td></tr>
+      <tr><td><b>Copy</b> the text draft, bill share</td><td><code>SmsBillDraftModal</code></td><td class="today">Paste into the phone's texts</td><td class="after">The customer's box on Text, <code>{bill}</code> filled</td></tr>
+      <tr><td>The customer's <b>email chip</b>, job window</td><td><code>DetailJobModal.tsx</code> ~337</td><td class="today"><code>mailto:</code> with the address</td><td class="after">The bubble's sheet, opened on Email; a copy press beside it</td></tr>
+      <tr><td>The customer's <b>email</b>, Job Mode</td><td><code>JobModeDetailsSection.tsx</code> ~232</td><td class="today"><code>mailto:</code> on the tech's phone</td><td class="after">The address to copy; the press opens <b>Message the customer</b> (a text)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The contract window's Text link</h3>
+  <div class="pair">
+    <div>
+      <div class="cap">Desktop · today, and drawn</div>
+      <div class="fit"><div class="row" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));min-width:600px">
+        <div class="win">
+          <div class="bar"><span>Service agreement · #2148</span><span class="x">×</span></div>
+          <div class="body">
+            <div class="sub">To Dana Whitfield · (555) 014-2290 · dana@example.com</div>
+            <div class="sentence">Emails the signing link to dana@example.com.</div>
+            <div class="btnrow"><span class="b p">Send link</span><span class="b">Copy link</span><span class="b bad">Text link</span><span class="b">Sign in person</span></div>
+            <div class="away">↗ Opens Messages on Tanya's phone. No line in Dana's thread; her answer goes to Tanya's phone.</div>
+          </div>
+        </div>
+        <div class="win">
+          <div class="bar"><span>Service agreement · #2148</span><span class="x">×</span></div>
+          <div class="body">
+            <div class="btnrow"><span class="b p">Send link</span><span class="b">Copy link</span><span class="b good">Text link</span><span class="b">Sign in person</span></div>
+            <div class="cbox new" style="margin:10px 0 0">
+              <div class="rh"><span>Text Dana · (555) 014-2290</span><span class="x">✕</span></div>
+              <div class="ta">Here is your service agreement for 15638 Mission Crest. Review and sign here: <span class="lnk">clicktooling.com/sign/q7m2x</span></div>
+              <div class="bfoot"><span>from the company number</span><span class="send">Send text…</span></div>
+              <div class="tieto">Tie to: #2148 Whitfield re-pipe</div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <p class="note"><b>Send link with text too</b> sends both in its one press: the window's sentence already says <i>Emails the signing link to dana@example.com and texts it to (555) 014-2290 from the company number.</i> The signed rail's Text link is the same box with <i>Here is your signed agreement…</i></p>
+    </div>
+    <div>
+      <div class="cap">Phone · the box as a sheet over the window</div>
+      <div class="fit center"><div class="phone">
+        <div class="win" style="min-width:0">
+          <div class="bar" style="font-size:14px"><span>Service agreement</span><span class="x">×</span></div>
+          <div class="body"><div class="btnrow"><span class="b p">Send link</span><span class="b">Copy link</span><span class="b good">Text link</span></div></div>
+        </div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="cbox">
+            <div class="rh"><span>Text Dana</span><span class="x">✕</span></div>
+            <div class="ta">Here is your service agreement for 15638 Mission Crest. Review and sign here: <span class="lnk">clicktooling.com/sign/q7m2x</span></div>
+            <div class="bfoot"><span>Tie to: #2148</span><span class="send">Send text…</span></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <h3>The bill share's email and text drafts</h3>
+  <div class="pair">
+    <div>
+      <div class="cap">Desktop · the email draft</div>
+      <div class="fit"><div class="row" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));min-width:600px">
+        <div class="win">
+          <div class="bar"><span>Email the bill</span><span class="x">×</span></div>
+          <div class="body">
+            <div class="field"><span>Subject</span><span>Your bill for Whitfield re-pipe</span></div>
+            <div class="emailbody">Hi Dana, here is your bill for $2,410.00. Pay here: clicktooling.com/pay/8f3k2q</div>
+            <div class="btnrow"><span class="b">Copy</span><span class="b bad">Open in mail app</span></div>
+            <div class="away">↗ Opens Mail on this computer, from Tanya's own address. No sent copy, no line.</div>
+          </div>
+        </div>
+        <div class="win">
+          <div class="bar"><span>Email the bill</span><span class="x">×</span></div>
+          <div class="body">
+            <div class="field"><span>From</span><span>Click Plumbing</span></div>
+            <div class="field"><span>To</span><span>dana@example.com</span></div>
+            <div class="field"><span>Replies</span><span>come to the office's box</span></div>
+            <div class="field"><span>Subject</span><span>Your bill for Whitfield re-pipe</span></div>
+            <div class="emailbody">Hi Dana, here is your bill for $2,410.00. Pay here: <span style="color:var(--blue-ink);text-decoration:underline">clicktooling.com/pay/8f3k2q</span></div>
+            <div class="btnrow"><span class="b">Copy</span><span class="b p good" style="color:#fff">Send as email</span></div>
+            <div class="tieto">Tie to: #2148 Whitfield re-pipe · the sent copy is filed on the job</div>
+          </div>
+        </div>
+      </div></div>
+      <p class="note">Stripe's own email (<i>Bill emailed through Stripe</i>, with Resend) stays as it is. This is the door for the office's own words.</p>
+    </div>
+    <div>
+      <div class="cap">Phone · the text draft opens the box</div>
+      <div class="fit center"><div class="phone">
+        <div class="win" style="min-width:0">
+          <div class="bar" style="font-size:14px"><span>Text the bill</span><span class="x">×</span></div>
+          <div class="body">
+            <div class="sub" style="text-decoration:line-through">Copy, then paste into Messages</div>
+          </div>
+        </div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="cbox">
+            <div class="kinds"><span class="k on">Text</span><span class="k">Email</span></div>
+            <div class="strip"><div class="t">For this stage</div><div class="qchips"><span class="lit">Payment reminder</span><span>Your bill went out</span></div></div>
+            <div class="ta">Dana, this is Tanya with Click Plumbing. Here is your bill: <span class="lnk">clicktooling.com/pay/8f3k2q</span>. Let us know if you need any help.</div>
+            <div class="bfoot"><span>Tie to: #2148</span><span class="send">Send text…</span></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <h3>The job window's email chip, and Job Mode's</h3>
+  <div class="pair">
+    <div>
+      <div class="cap">Desktop · the job window's customer line</div>
+      <div class="fit"><div class="row" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));min-width:600px">
+        <div class="win">
+          <div class="bar"><span>Whitfield re-pipe</span><span class="x">×</span></div>
+          <div class="body">
+            <div>👤 Dana Whitfield <span class="bub">💬</span></div>
+            <div class="chiprow"><span class="cchip">☎ (555) 014-2290</span><span class="cchip bad">✉ dana@example.com</span></div>
+            <div class="away">↗ Opens Mail with the address. Whatever Tanya writes leaves no line.</div>
+          </div>
+        </div>
+        <div class="win">
+          <div class="bar"><span>Whitfield re-pipe</span><span class="x">×</span></div>
+          <div class="body">
+            <div>👤 Dana Whitfield <span class="bub">💬</span></div>
+            <div class="chiprow"><span class="cchip">☎ (555) 014-2290</span><span class="cchip good">✉ dana@example.com <span class="cp">⧉</span></span></div>
+            <div class="cbox new" style="margin:10px 0 0">
+              <div class="kinds"><span class="k">Text</span><span class="k on">Email</span></div>
+              <div class="ta"><span class="ph">Write to Dana…</span></div>
+              <div class="bfoot"><span>Replies come to the office's box</span><span class="send">Send email…</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <p class="note">The chip opens the bubble's sheet on Email; the small ⧉ copies the address for anyone who needs it elsewhere. The ☎ chip is a <code>tel:</code> door and is not drawn here.</p>
+    </div>
+    <div>
+      <div class="cap">Phone · Job Mode, the tech's screen</div>
+      <div class="fit center"><div class="phone">
+        <div class="ptitle">Whitfield re-pipe</div>
+        <div class="jm">
+          <div class="t">Customer</div>
+          <div class="line"><span>Dana Whitfield</span><span></span></div>
+          <div class="line"><span>(555) 014-2290</span><span class="tel">☎</span></div>
+          <div class="line"><span>dana@example.com</span><span class="sub">⧉ copy</span></div>
+          <span class="big new">💬 Message Dana</span>
+        </div>
+        <p class="note" style="margin:8px 4px 0">The address is text to copy, not a mail link. <b>Message Dana</b> is Job Mode's own sheet: the team's lines, sent from the company number by <code>quo-send</code>'s job_mode path. <code>messages-email</code> is the office's only, so a tech emailing at all is question 4.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The holds, the same everywhere</h2>
+  <div class="dead">
+    <div class="d"><p class="t">Texts off, paused, or not approved yet</p>The box's own words, and <b>Copy link</b> beside them. Never the phone's own app.</div>
+    <div class="d"><p class="t">STOP, or a prospect not asked</p>Text greys with the reason, as today; Email beside it when there is an address.</div>
+    <div class="d"><p class="t">The contract's typed number is not on file</p><code>quo-send</code> texts only a number on Dana's contact. The box says so and offers the numbers on file; adding the typed one is question 5.</div>
+    <div class="d"><p class="t">No email on file</p>The email doors grey with <i>No email for Dana</i>; Text is offered.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Cost and the recommendation</h2>
+  <div class="cost">
+    <div class="c pick"><p class="t">PR 1 · the read</p><b>S.</b> <code>pipeline_customer_lines</code>, its SQL bed against <code>loadJobMessages</code>, the call beside the stats. Nothing drawn.</div>
+    <div class="c pick"><p class="t">PR 2 · the box and the card (a)</p><b>S.</b> The unnumbered orange tag in the box, the newest of three kinds on the card and the teaser.</div>
+    <div class="c pick"><p class="t">PR 3 · the Customer filter</p><b>XS.</b> <code>CUSTOMER_EVENT_TYPES</code>, the filter and its count, the box's rule on the same set.</div>
+    <div class="c pick"><p class="t">PR 4 · Reply and Tie in place</p><b>S.</b> The box in the composer's place, the Tie press with Undo.</div>
+    <div class="c pick"><p class="t">PRs 5 to 7 · the doors</p><b>3 × S.</b> The contract window and signed rail; the bill share; the job window and Job Mode.</div>
+  </div>
+  <p class="note"><b>Why (a)</b>: the office reads the box to see what happened last on a job, and the owner's own call in v2.5633 put the bill's send there. The customer's text belongs beside it. Three lines matches the sheet, the cap keeps the notes in view, and the read is one function in the board's slices. PRs 3 to 7 do not wait on the box's pick.</p>
+</section>
+</div>
+</body>
+</html>
