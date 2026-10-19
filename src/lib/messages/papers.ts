@@ -19,6 +19,7 @@
 import { computeBillTruth, jobIsUncollectible, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../billing/billTruth'
 import { isPayLinkId, payLinkUrl } from '../billing/payLink'
 import { billMoney } from '../followUp/theyOweUs'
+import { shortDate } from '../gc/words'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
@@ -165,4 +166,69 @@ export function defaultPaperFills(papers: readonly Paper[], jobId: string | null
   if (!bill) return {}
   const fills = paperFills(bill)
   return { bill: fills.bill, amount: fills.amount, number: fills.number }
+}
+
+// ---------- a paper in the / list (#127 PR 2) ----------
+
+/**
+ * Whether the `/` list offers estimates yet. Their link is made by PR 3 (a second link per share, the owner's pick B);
+ * until then an estimate picked would leave `{estimate}` to fill, so none is offered.
+ */
+export const ESTIMATE_LINKS_ON = false
+
+/** How many paid bills the list shows under the open ones: a long-standing customer has dozens. */
+export const PAID_BILLS_SHOWN = 3
+
+/** The app's own words for a paper, when the team has no line for it (the to-do's table, taken as drawn). */
+export const PAPER_LINES = {
+  openBill: '{first}, here is your bill {number} for {job}. {amount} is open. You can pay it here: {bill}',
+  paidBill: '{first}, here is a copy of your paid bill {number} for {job}: {bill}',
+  estimate: '{first}, here is your estimate {number} for {job}, {amount}. Open it to choose the option you want: {estimate}',
+} as const
+
+/** The app's words for a paper: an open bill's, a paid bill's or an estimate's. */
+export function paperLineWords(paper: Paper): string {
+  if (paper.kind === 'estimate') return PAPER_LINES.estimate
+  return paper.open ? PAPER_LINES.openBill : PAPER_LINES.paidBill
+}
+
+/** The papers the list offers for a kind: the job's first; bills open then the newest few paid; estimates while their links are on. */
+export function listedPapers(papers: readonly Paper[], kind: 'bill' | 'estimate', jobId: string | null, estimatesOn = ESTIMATE_LINKS_ON): Paper[] {
+  if (kind === 'estimate') return estimatesOn ? papersFor(papers.filter((p) => p.kind === 'estimate'), jobId) : []
+  const bills = papersFor(
+    papers.filter((p): p is BillPaper => p.kind === 'bill'),
+    jobId,
+  )
+  const open = bills.filter((b) => b.open)
+  const paid = bills.filter((b) => !b.open).slice(0, PAID_BILLS_SHOWN)
+  return [...open, ...paid]
+}
+
+/** A paper's row in the list: its number, what it is for, and its money and state. */
+export function paperRowWords(paper: Paper): { number: string; what: string; when: string; money: string; state: string; tone: 'open' | 'paid' | 'sent' | 'approved' } {
+  const day = (ymd: string | null) => (ymd ? shortDate(ymd) : '')
+  if (paper.kind === 'estimate') {
+    return {
+      number: paper.number ? `Estimate ${paper.number}` : 'Estimate',
+      what: paper.job || 'An estimate',
+      when: paper.sentYmd ? `sent ${day(paper.sentYmd)}` : 'sent',
+      money: billMoney(paper.amount),
+      state: paper.approved ? 'approved' : 'not approved yet',
+      tone: paper.approved ? 'approved' : 'sent',
+    }
+  }
+  return {
+    number: paper.number ? `#${paper.number}` : 'A bill',
+    what: paper.job || 'A bill',
+    when: paper.billedYmd ? `billed ${day(paper.billedYmd)}` : 'billed',
+    money: billMoney(paper.amount),
+    state: paper.open ? 'open' : 'paid',
+    tone: paper.open ? 'open' : 'paid',
+  }
+}
+
+/** The list's title for a kind's papers: "Dana's bills". */
+export function papersTitle(first: string | null, kind: 'bill' | 'estimate'): string {
+  const whose = first?.trim() ? `${first.trim()}'s` : 'Their'
+  return `${whose} ${kind === 'bill' ? 'bills' : 'estimates'}`
 }

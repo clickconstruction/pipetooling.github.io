@@ -8,7 +8,8 @@
  * with a space straight after it. The list is the strip's lines in the strip's order (`qrGroups`), so the step they
  * are on and the job's stage come first, and a pick counts as a press, as the strip's does.
  */
-import { qrGroups, type QrGroupsInput, type QuickReply } from './kernel'
+import { qrGroups, qrOrder, qrVisible, qrKindOf, type QrGroupsInput, type QuickReply } from './kernel'
+import type { ContactKind } from '../contacts/names'
 
 /** The box's placeholder gains this while a text or an email is written. */
 export const SLASH_HINT = 'Type / for a quick reply.'
@@ -91,4 +92,44 @@ export function slashPick(text: string, word: SlashWord, filled: string): { text
 export function slashMove(active: number, count: number, step: 1 | -1): number {
   if (count <= 0) return 0
   return (((active + step) % count) + count) % count
+}
+
+// ---------- the customer's papers (#127 PR 2) ----------
+
+/** What a paper is: a bill or an estimate. */
+export type PaperKind = 'bill' | 'estimate'
+
+/** The words that call a customer's papers after the `/`, beside the lines whose words hold them. */
+export const PAPER_WORDS: Readonly<Record<PaperKind, readonly string[]>> = {
+  bill: ['bill', 'bills', 'invoice', 'invoices', 'pay', 'owe', 'owed', 'owes'],
+  estimate: ['estimate', 'estimates', 'quote', 'quotes', 'price'],
+}
+
+/**
+ * The papers the words after the `/` call for, or null: two letters or more that start one of the words (`/bi`,
+ * `/est`, `/qu`), or a word that starts them (`/billing`).
+ */
+export function slashPaperKind(words: string): PaperKind | null {
+  const typed = words.trim().toLowerCase()
+  if (typed.length < 2) return null
+  for (const kind of ['bill', 'estimate'] as const) {
+    if (PAPER_WORDS[kind].some((w) => w.startsWith(typed) || typed.startsWith(w))) return kind
+  }
+  return null
+}
+
+/**
+ * The team's line for a paper: the line for their kind or anyone that holds the paper's blank (`{bill}`, or
+ * `{estimate}`), the person's most used first. A paid bill takes the app's own words, since the team's bill line speaks
+ * of an open one. Null when there is none.
+ */
+export function paperTeamLine(lines: readonly QuickReply[], kind: ContactKind, paper: { kind: PaperKind; open?: boolean }, me: string): QuickReply | null {
+  if (paper.kind === 'bill' && paper.open === false) return null
+  const blank = paper.kind === 'bill' ? '{bill}' : '{estimate}'
+  const forKind = qrKindOf(kind)
+  return (
+    qrVisible(lines, me)
+      .filter((q) => (q.for === forKind || q.for === 'any') && q.text.includes(blank))
+      .sort(qrOrder(me))[0] ?? null
+  )
 }

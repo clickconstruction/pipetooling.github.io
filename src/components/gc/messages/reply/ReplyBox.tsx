@@ -15,7 +15,7 @@ import { appLinesForStage, isAppLine } from '../../../../lib/messages/stageLines
 import { lineWords } from '../../../../lib/quickReplies/spanish'
 import { customerLang } from '../../../../lib/messages/customerLang'
 import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
-import { SLASH_HINT, slashHead, slashLines, slashMove, slashPick, slashTotal, slashWordAt } from '../../../../lib/quickReplies/slash'
+import { paperTeamLine, SLASH_HINT, slashHead, slashLines, slashMove, slashPaperKind, slashPick, slashTotal, slashWordAt } from '../../../../lib/quickReplies/slash'
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
   boxPlaceholder,
@@ -33,7 +33,7 @@ import {
 } from '../../../../lib/messages/compose'
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { jobRefOf } from '../../../../lib/messages/jobKeys'
-import { defaultPaperFills } from '../../../../lib/messages/papers'
+import { defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
 import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
@@ -353,7 +353,11 @@ export function ReplyBox({
   const slashKey = slashWord ? `${slashWord.start}:${slashWord.words}` : ''
   const slashInput = { kind: contact.kind, nowStepId, stageStepIds, steps: kindSteps, me }
   const slashRows = slashOpen && stripLines ? slashLines(stripLines, slashInput, slashWord.words) : []
-  const lit = slashLit.key === slashKey ? Math.min(slashLit.at, Math.max(0, slashRows.length - 1)) : 0
+  // #127 PR 2: words that call their papers (`/bill`, `/estimate`) list them after the lines, the job's first.
+  const paperKind = slashOpen ? slashPaperKind(slashWord.words) : null
+  const slashPapers = paperKind && papers ? listedPapers(papers, paperKind, pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null) : []
+  const slashCount = slashRows.length + slashPapers.length
+  const lit = slashLit.key === slashKey ? Math.min(slashLit.at, Math.max(0, slashCount - 1)) : 0
   useEffect(() => {
     // After a pick the caret lands after the line, in the box, as typing would leave it.
     const at = caretAfter.current
@@ -376,6 +380,18 @@ export function ReplyBox({
     setPeek(false)
     if (!isAppLine(q)) quick.press(q, contact.id)
   }
+  /** A paper picked: the team's line for it when there is one, else the app's words, filled for that paper. */
+  const pickPaper = (p: Paper) => {
+    if (!slashWord) return
+    const team = paperTeamLine(stripLines ?? [], contact.kind, p.kind === 'bill' ? { kind: 'bill', open: p.open } : { kind: 'estimate' }, me)
+    const words = team ? lineWords(team, lang) : paperLineWords(p)
+    const next = slashPick(body, slashWord, fillLine(words, { ...fills, ...paperFills(p) }).text)
+    caretAfter.current = next.caret
+    setBody(next.text)
+    setCaret(next.caret)
+    setPeek(false)
+    if (team && !isAppLine(team)) quick.press(team, contact.id)
+  }
   const slashKeys = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (!slashOpen || !slashWord || e.nativeEvent.isComposing) return
     if (e.key === 'Escape') {
@@ -385,13 +401,14 @@ export function ReplyBox({
       setSlashShut(slashWord.start)
       return
     }
-    if (!slashRows.length) return
+    if (!slashCount) return
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
-      setSlashLit({ key: slashKey, at: slashMove(lit, slashRows.length, e.key === 'ArrowDown' ? 1 : -1) })
+      setSlashLit({ key: slashKey, at: slashMove(lit, slashCount, e.key === 'ArrowDown' ? 1 : -1) })
     } else if ((e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) || (e.key === 'Tab' && !e.shiftKey)) {
       e.preventDefault()
-      pickSlash(slashRows[lit]!)
+      if (lit < slashRows.length) pickSlash(slashRows[lit]!)
+      else pickPaper(slashPapers[lit - slashRows.length]!)
     }
   }
 
@@ -481,6 +498,9 @@ export function ReplyBox({
           reading={!stripLines && !quick.problem}
           problem={quick.problem}
           onPick={pickSlash}
+          papers={slashPapers}
+          papersTitle={paperKind ? papersTitle(contact.kind === 'unknown' ? null : first, paperKind) : ''}
+          onPickPaper={pickPaper}
           onHover={(at) => setSlashLit({ key: slashKey, at })}
         />
       )}
@@ -491,8 +511,8 @@ export function ReplyBox({
             ref={boxRef}
             aria-label={shown === 'note' ? 'A note for the team' : `Write to ${contact.name}`}
             aria-autocomplete={goesOut(shown) ? 'list' : undefined}
-            aria-controls={slashOpen && slashRows.length ? listId : undefined}
-            aria-activedescendant={slashOpen && slashRows.length ? `${listId}-${lit}` : undefined}
+            aria-controls={slashOpen && slashCount ? listId : undefined}
+            aria-activedescendant={slashOpen && slashCount ? `${listId}-${lit}` : undefined}
             value={body}
             onChange={(e) => {
               setBody(e.target.value)

@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
+keywords: gc mode, messages, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
 order: 117
 ---
 The reply box sits at the foot of every thread in Messages. Write a text, an email or a team note to the person there.
@@ -55,6 +55,21 @@ A line can have its own shortcut, like **/bill**. Type it in full and that line 
 
 :::example answer a customer who asks for the bill
 Dana texts that the bill email is lost. Type **/pay** in the box. Light the bill line and press **Enter**. The box now holds the line with the bill's pay link. Press **Send text…** and read it once more in the send window.
+:::
+
+## Put in a bill
+
+A customer's own bills sit in the same list. Type **/bill**, **/invoice**, **/pay** or **/owe** in the box.
+
+Under the quick replies, the list shows their bills. The open ones come first, then the three newest paid ones. In a job's window, that job's bills come first. Each row shows the job's number, what is open and the day it was billed.
+
+1. Press **↓** to light the bill.
+2. Press **Enter**. A line about that bill goes in the box, with its amount and its pay link. Nothing sends.
+
+An open bill uses the team's own bill line when there is one. A paid bill goes in as a copy.
+
+:::example send the bill a customer asks for
+Dana texts that a bill went missing. Type **/bill** and light the open bill. Press **Enter** and read the line. Then press **Send text…**.
 :::
 
 ## Find a reply

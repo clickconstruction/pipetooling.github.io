@@ -45,6 +45,8 @@ const REMIND: QuickReply = {
 const PAPERS: Paper[] = [
   { kind: 'bill', id: 'b-other', jobId: 'j-water', job: 'Water heater', number: '1400', open: true, amount: 420, billedYmd: '2026-10-18', payUrl: 'https://clicktooling.com/pay/b-other' },
   { kind: 'bill', id: 'b-1042', jobId: 'j-helotes', job: 'Helotes re-pipe', number: '1312', open: true, amount: 1440, billedYmd: '2026-10-12', payUrl: 'https://clicktooling.com/pay/b-1042' },
+  { kind: 'bill', id: 'b-paid', jobId: 'j-helotes', job: 'Helotes re-pipe', number: '1312', open: false, amount: 300, billedYmd: '2026-09-01', payUrl: 'https://clicktooling.com/pay/b-paid' },
+  { kind: 'estimate', id: 'e-1044', jobId: null, job: 'Kitchen re-pipe', number: '1044', approved: false, amount: 3200, sentYmd: '2026-10-14' },
 ]
 
 // Cast, so the fake reads the same before and after the shortcut's io lands beside it.
@@ -110,5 +112,44 @@ describe('a line about money fills from the right bill (#127)', () => {
     const { papersIo, el } = draw({ contact: { ...DANA, kind: 'trade', customerId: null } })
     await waitFor(() => expect(el.querySelector('[data-qr-strip]')).toBeTruthy())
     expect(papersIo.load).not.toHaveBeenCalled()
+  })
+})
+
+const paperIds = (el: HTMLElement) => [...el.querySelectorAll('[data-slash-paper]')].map((r) => r.getAttribute('data-slash-paper'))
+const type = (box: HTMLTextAreaElement, value: string) => fireEvent.change(box, { target: { value } })
+
+describe('/bill lists the customer’s bills after the lines (#127 PR 2)', () => {
+  it('lists the job’s open bills first, then the other job’s, then the paid one, under “Dana’s bills”', async () => {
+    const { el, textbox } = draw()
+    type(textbox, '/bill')
+    await waitFor(() => expect(paperIds(el)).toEqual(['b-1042', 'b-other', 'b-paid']))
+    expect(el.querySelector('[data-slash-papers]')?.textContent).toBe("Dana's bills")
+    expect(el.querySelector('[data-slash-paper="b-1042"]')?.textContent).toContain('$1,440')
+  })
+
+  it('Enter on a bill puts in the team’s bill line, filled for that bill', async () => {
+    const { el, textbox } = draw()
+    type(textbox, '/bill')
+    await waitFor(() => expect(paperIds(el)).toHaveLength(3))
+    // The line that holds {bill} comes first, then the papers: ↓ twice lights the second bill, the other job's.
+    fireEvent.keyDown(textbox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textbox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textbox, { key: 'Enter' })
+    expect(textbox.value).toBe('Dana, $420 is still open on job 1400. You can pay it here: https://clicktooling.com/pay/b-other')
+  })
+
+  it('a paid bill takes the app’s copy words, with its own amount and pay page', async () => {
+    const { el, textbox } = draw()
+    type(textbox, '/owe')
+    await waitFor(() => expect(paperIds(el)).toHaveLength(3))
+    fireEvent.mouseDown(el.querySelector('[data-slash-paper="b-paid"]')!)
+    expect(textbox.value).toBe('Dana, here is a copy of your paid bill 1312 for Helotes re-pipe: https://clicktooling.com/pay/b-paid')
+  })
+
+  it('offers no estimate until estimates can be shared by link', async () => {
+    const { el, textbox } = draw()
+    type(textbox, '/estimate')
+    await waitFor(() => expect(el.querySelector('[data-slash-list]')).toBeTruthy())
+    expect(paperIds(el)).toEqual([])
   })
 })

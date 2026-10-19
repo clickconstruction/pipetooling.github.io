@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billPapers, defaultPaperFills, estimatePapers, paperFills, papersFor, type PaperEstimateRow, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from './papers'
+import { billPapers, defaultPaperFills, estimatePapers, listedPapers, PAPER_LINES, paperFills, paperLineWords, paperRowWords, papersFor, papersTitle, type PaperEstimateRow, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from './papers'
 
 // Made-up jobs, bills and estimates for one customer (Dana Whitfield's, as the mock-ups say).
 const BILL_A = '0000000a-0000-4000-8000-000000001042'
@@ -146,3 +146,26 @@ function billsOpenFirstAmount(papers: ReturnType<typeof billPapers>): string {
   const first = papers.find((p) => p.open)!
   return paperFills(first).amount!
 }
+
+describe('a paper in the / list (#127 PR 2)', () => {
+  const open = (id: string, jobId: string, ymd: string) => ({ kind: 'bill' as const, id, jobId, job: `Job ${jobId}`, number: '1312', open: true, amount: 100, billedYmd: ymd, payUrl: null })
+  const paid = (id: string, ymd: string) => ({ ...open(id, 'j-old', ymd), open: false })
+  const est = { kind: 'estimate' as const, id: 'e1', jobId: null, job: 'Kitchen re-pipe', number: '1044', approved: false, amount: 3200, sentYmd: '2026-10-14' }
+  const papers = [open('o1', 'j-a', '2026-10-17'), open('o2', 'j-b', '2026-10-12'), paid('p1', '2026-09-30'), paid('p2', '2026-09-20'), paid('p3', '2026-09-10'), paid('p4', '2026-09-01'), est]
+
+  it('lists bills open first, the job’s first, then the newest three paid; estimates only while their links are on', () => {
+    expect(listedPapers(papers, 'bill', 'j-b').map((p) => p.id)).toEqual(['o2', 'o1', 'p1', 'p2', 'p3'])
+    expect(listedPapers(papers, 'estimate', null)).toEqual([])
+    expect(listedPapers(papers, 'estimate', null, true).map((p) => p.id)).toEqual(['e1'])
+  })
+
+  it('gives each paper the app’s words and its row', () => {
+    expect(paperLineWords(papers[0]!)).toBe(PAPER_LINES.openBill)
+    expect(paperLineWords(papers[2]!)).toBe(PAPER_LINES.paidBill)
+    expect(paperLineWords(est)).toBe(PAPER_LINES.estimate)
+    expect(paperRowWords({ ...papers[0]!, amount: 1440 })).toEqual({ number: '#1312', what: 'Job j-a', when: 'billed Oct 17', money: '$1,440', state: 'open', tone: 'open' })
+    expect(paperRowWords(papers[2]!)).toMatchObject({ state: 'paid', tone: 'paid', when: 'billed Sep 30' })
+    expect(paperRowWords(est)).toEqual({ number: 'Estimate 1044', what: 'Kitchen re-pipe', when: 'sent Oct 14', money: '$3,200', state: 'not approved yet', tone: 'sent' })
+    expect([papersTitle('Dana', 'bill'), papersTitle(null, 'estimate')]).toEqual(["Dana's bills", 'Their estimates'])
+  })
+})

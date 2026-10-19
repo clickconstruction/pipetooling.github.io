@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { QuickReply, StepRef } from './kernel'
-import { SLASH_WORDS_MAX, slashHead, slashLines, slashMove, slashPick, slashTotal, slashWordAt, type SlashInput } from './slash'
+import { paperTeamLine, SLASH_WORDS_MAX, slashHead, slashLines, slashMove, slashPaperKind, slashPick, slashTotal, slashWordAt, type SlashInput } from './slash'
 
 const line = (id: string, text: string, set: Partial<QuickReply> = {}): QuickReply => ({
   id,
@@ -153,5 +153,24 @@ describe('slashMove and slashHead', () => {
   it('names whose lines they are and how many fit', () => {
     expect(slashHead('Dana', 3, 11)).toEqual({ title: 'Quick replies for Dana', count: '3 of 11' })
     expect(slashHead(null, 0, 2)).toEqual({ title: 'Quick replies', count: '0 of 2' })
+  })
+})
+
+describe('the customer’s papers (#127 PR 2)', () => {
+  it('slashPaperKind: two letters or more that start a paper word, or a paper word that starts them', () => {
+    expect([slashPaperKind('bi'), slashPaperKind('bill'), slashPaperKind('billing'), slashPaperKind('inv'), slashPaperKind('pay'), slashPaperKind('owe')]).toEqual(['bill', 'bill', 'bill', 'bill', 'bill', 'bill'])
+    expect([slashPaperKind('es'), slashPaperKind('estimate'), slashPaperKind('quo'), slashPaperKind('price')]).toEqual(['estimate', 'estimate', 'estimate', 'estimate'])
+    expect([slashPaperKind(''), slashPaperKind('b'), slashPaperKind('late'), slashPaperKind('thanks')]).toEqual([null, null, null, null])
+  })
+
+  it('paperTeamLine: the person’s most used line holding the paper’s blank, none for a paid bill', () => {
+    const own = line('own-bill', 'Your bill: {bill}', { uses: { 'u-rosa': 2 } })
+    const team = line('team-bill', 'Pay here: {bill}', { uses: { 'u-lee': 9 } })
+    const est = line('est', 'Your estimate: {estimate}')
+    const lines = [team, own, est, line('trade-bill', 'Draw: {bill}', { for: 'trade' })]
+    expect(paperTeamLine(lines, 'customer', { kind: 'bill', open: true }, 'u-rosa')?.id).toBe('own-bill')
+    expect(paperTeamLine(lines, 'customer', { kind: 'bill', open: false }, 'u-rosa')).toBeNull()
+    expect(paperTeamLine(lines, 'customer', { kind: 'estimate' }, 'u-rosa')?.id).toBe('est')
+    expect(paperTeamLine([team], 'trade', { kind: 'estimate' }, 'u-rosa')).toBeNull()
   })
 })
