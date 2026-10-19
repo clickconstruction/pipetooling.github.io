@@ -129,7 +129,7 @@ describe('JobsStagesActivityBox', () => {
     expect(sent.textContent).toContain('Sent')
     expect(sent.textContent).toContain('The app')
     expect(sent.textContent).toContain('Bill emailed through Stripe')
-    expect(screen.getByLabelText('A bill sent to the customer').textContent).toBe('Sent')
+    expect(screen.getByLabelText('Sent to the customer').textContent).toBe('Sent')
     expect(screen.queryByText(/Payment \$1,200/)).toBeNull()
     const kinds = [...document.querySelectorAll('[data-activity-entry-kind]')].map((e) => e.getAttribute('data-activity-entry-kind'))
     expect(kinds).toEqual(['note', 'sent', 'note'])

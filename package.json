@@ -85,6 +85,7 @@
     "test:pg:messages-notify-cron": "bash scripts/pgtest-messages-notify-cron.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
+    "test:pg:customer-sends-trail": "bash scripts/pgtest-customer-sends-trail.sh",
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",
     "test:pg:stripe-email-sends-trail": "bash scripts/pgtest-stripe-email-sends-trail.sh",
