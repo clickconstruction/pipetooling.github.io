@@ -24,6 +24,8 @@ export interface QuickReplyRow {
   phone_name?: string | null
   /** Job Mode's big button this line is (v2.5573): on_my_way | im_here; a row read without it leaves null. */
   phone_press?: string | null
+  /** Punch list #126: the line's `/` word; a row read without it leaves null. */
+  shortcut?: string | null
 }
 
 export interface QuickReplyUseRow {
@@ -51,7 +53,7 @@ export interface QuickReplyVersionRow {
 }
 
 const FOR_KINDS: ReadonlySet<string> = new Set<QuickReplyFor>(QR_KIND_ORDER)
-const CHANGES: ReadonlySet<string> = new Set<QuickReplyChange>(['added', 'words', 'tags', 'es', 'phone', 'removed', 'restored'])
+const CHANGES: ReadonlySet<string> = new Set<QuickReplyChange>(['added', 'words', 'tags', 'es', 'phone', 'shortcut', 'removed', 'restored'])
 
 const forKind = (v: string | null): QuickReplyFor | null => (v && FOR_KINDS.has(v) ? (v as QuickReplyFor) : null)
 const ms = (iso: string): number => {
@@ -87,6 +89,7 @@ export function quickRepliesFromRows(lines: readonly QuickReplyRow[], uses: read
       phoneOrder: r.phone_order ?? null,
       phoneName: r.phone_name ?? null,
       phonePress: phonePressOf(r.phone_press),
+      shortcut: r.shortcut ?? null,
     }
     return [line]
   })

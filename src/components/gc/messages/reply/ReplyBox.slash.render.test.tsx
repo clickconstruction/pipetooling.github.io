@@ -48,6 +48,7 @@ function fakeQuick(lines: QuickReply[] = LINES): QuickRepliesIo {
     remove: vi.fn(() => Promise.resolve()),
     restore: vi.fn(() => Promise.resolve()),
     setPress: vi.fn(() => Promise.resolve(1)),
+    setShortcut: vi.fn(() => Promise.resolve(1)),
   }
 }
 
@@ -135,6 +136,18 @@ describe('quick replies by keyboard: the / list in the reply box (punch list #12
     fireEvent.keyDown(textbox, { key: 'ArrowUp' })
     expect(litId(el)).toBe('q14')
     fireEvent.keyDown(textbox, { key: 'Tab' })
+    expect(textbox.value).toBe('Got it, thank you.')
+  })
+
+  it('puts the line whose shortcut is typed first, with its / word (C)', async () => {
+    const keyed = LINES.map((q) => (q.id === 'q14' ? { ...q, shortcut: 'thx' } : q))
+    const { el, textbox } = box(fakeQuick(keyed))
+    type(textbox, '/th')
+    await waitFor(() => expect(rowIds(el)[0]).toBe('q14'))
+    expect(el.querySelector('[data-slash-line="q14"] [data-slash-shortcut]')?.textContent).toBe('/thx')
+    type(textbox, '/thx')
+    await waitFor(() => expect(rowIds(el)).toEqual(['q14']))
+    fireEvent.keyDown(textbox, { key: 'Enter' })
     expect(textbox.value).toBe('Got it, thank you.')
   })
 

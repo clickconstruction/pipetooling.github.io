@@ -22,6 +22,7 @@ import type { ContactKind } from '../contacts/names.ts'
 import { flowContactKind, type FlowKind } from '../flows/facts.ts'
 import type { FlowDef, FlowStep } from '../flows/state.ts'
 import type { PhonePress } from '../../../../../../src/lib/quickReplies/press.ts'
+import { shortcutWord } from './shortcut.ts'
 
 // ---------- the line ----------
 
@@ -56,6 +57,8 @@ export interface QuickReply {
   phoneName?: string | null
   /** Job Mode's big button this line is (v2.5573, `quick_replies.phone_press`): On my way or I'm here, one live line each. */
   phonePress?: PhonePress | null
+  /** Its one-word shortcut for the reply box's `/` list (punch list #126, `quick_replies.shortcut`), or null; absent on a line read before it. */
+  shortcut?: string | null
 }
 
 /** A step of a kind's flow as a line names it: the flow's own step, by its id and name, and the flow it is on. */
@@ -475,8 +478,8 @@ export function editorFoot(count: number, search: string): string[] {
 
 // ---------- versions ----------
 
-/** What a version changed. `es` and `phone` are R3's: the Spanish, and the line's place or name on the tech's phone. */
-export type QuickReplyChange = 'added' | 'words' | 'tags' | 'es' | 'phone' | 'removed' | 'restored'
+/** What a version changed. `es` and `phone` are R3's: the Spanish, and the line's place or name on the tech's phone. `shortcut` is #126's `/` word. */
+export type QuickReplyChange = 'added' | 'words' | 'tags' | 'es' | 'phone' | 'shortcut' | 'removed' | 'restored'
 
 export interface QuickReplyTags {
   for: QuickReplyFor
@@ -551,6 +554,8 @@ export interface QuickReplyEdit {
   phoneName?: string | null
   /** v2.5573: the big button this line is, or null for none. Saved apart, through `set_quick_reply_press`. */
   phonePress?: PhonePress | null
+  /** Punch list #126: the line's `/` word as typed, blank for none. Saved apart, through `set_quick_reply_shortcut`. */
+  shortcut?: string | null
 }
 
 /** The refusal when a line that is not the team's for customers is put on the phone, in `edit_quick_reply`'s words. */
@@ -575,6 +580,8 @@ export function editQuickReply(q: QuickReply, change: QuickReplyEdit, by: string
   const place = change.phoneOrder === undefined ? (q.phoneOrder ?? null) : change.phoneOrder && change.phoneOrder > 0 ? change.phoneOrder : null
   const name = change.phoneName === undefined ? (q.phoneName ?? null) : change.phoneName?.trim() || null
   const press = change.phonePress === undefined ? (q.phonePress ?? null) : change.phonePress
+  const word = change.shortcut === undefined ? { word: q.shortcut ?? null } : shortcutWord(change.shortcut ?? '')
+  if ('error' in word) return { error: word.error }
   if (name && name.length > PHONE_NAME_MAX) return { error: `A name on the phone holds ${PHONE_NAME_MAX} characters at most.` }
   if (place != null && (q.scope !== 'team' || tags.for !== 'customer')) return { error: PHONE_ONLY_CUSTOMERS }
   if (press != null && place == null) return { error: PRESS_NEEDS_PHONE }
@@ -588,8 +595,10 @@ export function editQuickReply(q: QuickReply, change: QuickReplyEdit, by: string
   const wasPlace = q.phoneOrder ?? null
   if (place !== wasPlace) versions.push({ by, at, kind: 'phone', fromPhoneOrder: wasPlace, toPhoneOrder: place })
   else if (name !== (q.phoneName ?? null) || press !== (q.phonePress ?? null)) versions.push({ by, at, kind: 'phone' })
+  const wasWord = q.shortcut ?? null
+  if (word.word !== wasWord) versions.push({ by, at, kind: 'shortcut', ...(wasWord ? { fromText: wasWord } : {}), ...(word.word ? { toText: word.word } : {}) })
   return {
-    line: { ...q, text, for: tags.for, stepId: tags.stepId, textEs: es, phoneOrder: place, phoneName: name, phonePress: press },
+    line: { ...q, text, for: tags.for, stepId: tags.stepId, textEs: es, phoneOrder: place, phoneName: name, phonePress: press, shortcut: word.word },
     versions,
     words: versions.length ? 'Saved, with your name and today in its history.' : 'Nothing changed.',
   }
@@ -648,6 +657,12 @@ export function versionWords(v: QuickReplyVersion, steps: StepsByKind): VersionW
       const from = placeWords(v.fromPhoneOrder)
       const to = placeWords(v.toPhoneOrder)
       const did = !from && !to ? 'renamed it on the phone' : !from ? 'put it on the phone' : !to ? 'took it off the phone' : 'moved it on the phone'
+      return { did, struck: from, added: to, note: null }
+    }
+    case 'shortcut': {
+      const from = v.fromText ? `/${v.fromText}` : null
+      const to = v.toText ? `/${v.toText}` : null
+      const did = !from && to ? 'gave it a shortcut' : from && !to ? 'cleared its shortcut' : 'changed its shortcut'
       return { did, struck: from, added: to, note: null }
     }
     case 'removed':

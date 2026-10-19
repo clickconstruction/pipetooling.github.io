@@ -66,6 +66,7 @@ function fakeQuick(lines: QuickReply[] = LINES): QuickRepliesIo {
     remove: vi.fn(() => Promise.resolve()),
     restore: vi.fn(() => Promise.resolve()),
     setPress: vi.fn(() => Promise.resolve(1)),
+    setShortcut: vi.fn(() => Promise.resolve(1)),
   }
 }
 

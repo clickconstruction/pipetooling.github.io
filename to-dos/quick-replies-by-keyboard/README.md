@@ -2,7 +2,7 @@
 name: "Quick replies by keyboard, and a starter set for the office"
 number: 126
 group: gated
-status: DRAFTED 2026-10-19 — the ask, what exists, three ways to reach a line by keyboard, eleven starter lines and the plan beside this file for the owner's pick; nothing built
+status: BUILDING 2026-10-19 — the owner picked A with C; the / list shipped as v2.5637 with the guide's door, and a shortcut per line as v2.5638 (migration 20261019040000); left: the starter lines, on the owner's words
 summary: >
   The office sends the same few messages to customers every day. The app already holds them as
   quick replies: the strip above every reply box, Find a reply, the editor, and blanks that fill
@@ -10,14 +10,18 @@ summary: >
   hotkeys. No key reaches a line, it ships with only two customer lines, and its guide points at
   GC projects. This to-do draws a / shortcut in the reply box, a one-word shortcut per line, and
   eleven starter lines placed so that no automatic send changes.
-next: The owner reads the mock-up, picks the shortcut and the starter lines' words; PR 1 is the guide's door.
-size: XS (the guide) + S (the / list) + XS (shortcuts per line) + XS (the starter lines)
-blocker: The owner's pick, and the owner's words for the starter lines.
-opinion: build the / list with a shortcut per line; seed the eight any-time lines now and the three step lines once the owner has read them
+next: The owner sends the starter lines' words; then PR 4 seeds them in one migration, after a read of what the office has already saved.
+size: XS (the starter lines) left
+blocker: The owner's words for the starter lines.
+opinion: seed the eight any-time lines with their shortcuts as soon as the words come, and the three step lines once the morning run can fill blanks
 mockup: to-dos/quick-replies-by-keyboard/mockup.html
 ---
 
 # Quick replies by keyboard, and a starter set (#126)
+
+## Where it stands
+
+The owner picked **A with C** on 2026-10-19 and asked for the starter lines' words to come separately. Built: the guide's door with the / list (PR 1 and 2 of the plan, v2.5637) and a shortcut per line (PR 3, v2.5638, migration `20261019040000_quick_replies_shortcut.sql`). B was not picked. Left: PR 4, the starter lines, with the owner's words and a shortcut each.
 
 ## The ask, in the owner's words
 

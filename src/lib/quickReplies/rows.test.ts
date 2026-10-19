@@ -50,6 +50,7 @@ describe('quick replies read from the tables', () => {
       phoneOrder: null,
       phoneName: null,
       phonePress: null,
+      shortcut: null,
     })
   })
 

@@ -71,6 +71,39 @@ describe('the quick replies’ reads and presses', () => {
     ])
   })
 
+  it('reads each line’s shortcut apart, and sets or clears it through its own function (#126)', async () => {
+    const { client, calls } = fakeClient(
+      { quick_replies: [{ id: 'q1', text: 'Here is your bill.', for_kind: 'customer', step_key: null, scope: 'team', added_by: 'u-rosa', added_at: '2026-10-19T14:00:00.000Z', removed_at: null, shortcut: 'bill' }] },
+      () => ({ data: 1, error: null }),
+    )
+    const io = supabaseQuickRepliesIo(client)
+    expect((await io.loadLines())[0]?.shortcut).toBe('bill')
+    expect(await io.setShortcut('q1', 'pay')).toBe(1)
+    await io.setShortcut('q1', null)
+    expect(calls).toEqual([
+      { fn: 'set_quick_reply_shortcut', args: { p_id: 'q1', p_shortcut: 'pay' } },
+      { fn: 'set_quick_reply_shortcut', args: { p_id: 'q1', p_shortcut: '' } },
+    ])
+  })
+
+  it('still reads the lines before the shortcut column is on the database', async () => {
+    const row = { id: 'q1', text: 'Here is your bill.', for_kind: 'customer', step_key: null, scope: 'team', added_by: 'u-rosa', added_at: '2026-10-19T14:00:00.000Z', removed_at: null }
+    const client = {
+      from: (table: string) => ({
+        select: (columns: string) => {
+          const result: Result =
+            columns === 'id, shortcut'
+              ? { data: null, error: { code: '42703', message: 'column quick_replies.shortcut does not exist' } }
+              : { data: table === 'quick_replies' ? [row] : [], error: null }
+          return { then: (ok: (r: Result) => unknown) => Promise.resolve(result).then(ok) }
+        },
+      }),
+      rpc: () => Promise.resolve({ data: null, error: null }),
+    }
+    const lines = await supabaseQuickRepliesIo(client).loadLines()
+    expect(lines.map((q) => [q.id, q.shortcut])).toEqual([['q1', null]])
+  })
+
   it('rejects a refusal with the function’s own words kept on the error', async () => {
     const { client } = fakeClient({}, () => ({ data: null, error: { message: 'Nothing changed.', code: 'P0001' } }))
     const failed = await supabaseQuickRepliesIo(client).edit('q3', 'Same words.', { for: 'trade', stepId: null }).catch((e: unknown) => e)

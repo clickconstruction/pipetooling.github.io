@@ -35,6 +35,8 @@ export interface QuickRepliesIo {
   restore(id: string): Promise<void>
   /** v2.5573: points a big button at the line (or clears it with null) through `set_quick_reply_press`. Returns how many lines changed. */
   setPress(id: string, press: PhonePress | null): Promise<number>
+  /** Punch list #126: sets the line's `/` word (or clears it with null) through `set_quick_reply_shortcut`. Returns 1, or 0 when nothing changed. */
+  setShortcut(id: string, shortcut: string | null): Promise<number>
 }
 
 const LINE_COLUMNS = 'id, text, for_kind, step_key, scope, added_by, added_at, removed_at, text_es, phone_order, phone_name'
@@ -65,18 +67,22 @@ export function supabaseQuickRepliesIo(client: unknown = supabase): QuickReplies
   const tagArgs = (tags: QuickReplyTags) => ({ p_for: tags.for, p_step: tags.for === 'any' ? null : tags.stepId })
   return {
     async loadLines() {
-      const [lines, uses, presses] = await Promise.all([
+      const [lines, uses, presses, words] = await Promise.all([
         db.from('quick_replies').select(LINE_COLUMNS),
         db.from('quick_reply_uses').select(USE_COLUMNS),
-        // The press column (v2.5573) is read apart, so a client ahead of the push still reads the lines.
+        // The press column (v2.5573) and the shortcut (#126) are read apart, so a client ahead of a push still reads the lines.
         db.from('quick_replies').select('id, phone_press'),
+        db.from('quick_replies').select('id, shortcut'),
       ])
       checkSupabaseError(lines, 'load the quick replies')
       checkSupabaseError(uses, 'load how often each is used')
       const pressOf = new Map<string, string | null>()
       if (!presses.error) for (const r of (presses.data ?? []) as Array<{ id: string; phone_press: string | null }>) pressOf.set(r.id, r.phone_press)
       else if (!isNotThereYetError(presses.error)) checkSupabaseError(presses, 'load the phone’s big buttons')
-      const rows = ((lines.data ?? []) as QuickReplyRow[]).map((r) => ({ ...r, phone_press: pressOf.get(r.id) ?? null }))
+      const wordOf = new Map<string, string | null>()
+      if (!words.error) for (const r of (words.data ?? []) as Array<{ id: string; shortcut: string | null }>) wordOf.set(r.id, r.shortcut)
+      else if (!isNotThereYetError(words.error)) checkSupabaseError(words, 'load the quick replies’ shortcuts')
+      const rows = ((lines.data ?? []) as QuickReplyRow[]).map((r) => ({ ...r, phone_press: pressOf.get(r.id) ?? null, shortcut: wordOf.get(r.id) ?? null }))
       return quickRepliesFromRows(rows, (uses.data ?? []) as QuickReplyUseRow[])
     },
     async loadVersions() {
@@ -98,6 +104,9 @@ export function supabaseQuickRepliesIo(client: unknown = supabase): QuickReplies
     },
     async setPress(id, press) {
       return call<number>('set_quick_reply_press', { p_id: id, p_press: press }, 'point the big button at a line')
+    },
+    async setShortcut(id, shortcut) {
+      return call<number>('set_quick_reply_shortcut', { p_id: id, p_shortcut: shortcut ?? '' }, 'set the line’s shortcut')
     },
     async restore(id) {
       await call('restore_quick_reply', { p_id: id }, 'bring a quick reply back')

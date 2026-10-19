@@ -51,6 +51,8 @@ Press **Esc** to close the list. Your words stay in the box.
 
 A **/** inside a word opens nothing. So **1/2 inch** and **and/or** stay as you typed them. The list holds the same lines as **Quick replies**, in the same order. A line you pick this way counts like a press.
 
+A line can have its own shortcut, like **/bill**. Type it in full and that line comes first. The guide [edit the quick replies](/help/edit-the-quick-replies#give-a-line-a-shortcut) shows how to give one.
+
 :::example answer a customer who asks for the bill
 Dana texts that the bill email is lost. Type **/pay** in the box. Light the bill line and press **Enter**. The box now holds the line with the bill's pay link. Press **Send text…** and read it once more in the send window.
 :::

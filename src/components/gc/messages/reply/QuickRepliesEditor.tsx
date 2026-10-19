@@ -325,11 +325,13 @@ export function QuickRepliesEditor({
                               onSave={async (text: string, tags: QuickReplyTags, r3) => {
                                 // The big button (v2.5573) saves through its own function; the rest through edit_quick_reply,
                                 // which refuses Nothing changed, so it is skipped when only the button moved.
-                                const { phonePress, ...rest } = r3
+                                const { phonePress, shortcut, ...rest } = r3
                                 const wordsOrTags = text !== q.text || tags.for !== q.for || (tags.stepId ?? null) !== (q.stepId ?? null)
                                 // A Save of words and tags alone stays the four named arguments.
                                 if (wordsOrTags || Object.keys(rest).length) await (Object.keys(rest).length ? io.edit(q.id, text, tags, rest) : io.edit(q.id, text, tags))
                                 if (phonePress !== undefined) await io.setPress(q.id, phonePress)
+                                // The / word (#126) saves through its own function too.
+                                if (shortcut !== undefined) await io.setShortcut(q.id, shortcut)
                                 await changed()
                               }}
                               onRemove={async () => {
@@ -372,6 +374,11 @@ function LineMarkChips({ line }: { line: QuickReply }) {
   const chip = { marginLeft: '0.35rem', fontSize: '0.7rem', borderRadius: 999, padding: '0 0.4rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' } as const
   return (
     <>
+      {line.shortcut && (
+        <span data-qr-mark="shortcut" title={`Type /${line.shortcut} in the reply box.`} style={{ ...chip, color: 'var(--text-blue-700)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          /{line.shortcut}
+        </span>
+      )}
       {marks.phone && (
         <span data-qr-mark="phone" title={SPANISH_WORDS.phoneTip} style={{ ...chip, color: 'var(--text-blue-700)', borderColor: 'var(--border-blue)' }}>
           ☎ phone

@@ -98,6 +98,38 @@ describe('slashLines: the strip’s lines in the strip’s order, narrowed by th
   })
 })
 
+describe('slashLines with shortcuts (C): the word first, then the words that start it, then the lines’ words', () => {
+  const KEYED: QuickReply[] = [
+    ...LINES.filter((q) => q.id !== 'bill' && q.id !== 'remind' && q.id !== 'late'),
+    line('bill', '{first}, here is your bill for {job}. You can pay it here: {bill}', { uses: { 'u-rosa': 4 }, shortcut: 'bill' }),
+    line('remind', '{first}, a reminder that {amount} for {job} is still open. You can pay it here: {bill}', { stepId: 'paid', shortcut: 'remind' }),
+    line('late', '{first}, we are running behind. The new window is {window}.', { shortcut: 'late' }),
+    line('back', '{first}, we will be back {back day} to finish.', { shortcut: 'back' }),
+  ]
+
+  it('puts the line whose shortcut is the words first, then the shortcuts that start with them', () => {
+    expect(ids(slashLines(KEYED, input(), 'back')).slice(0, 1)).toEqual(['back'])
+    expect(ids(slashLines(KEYED, input(), 'b'))[0]).toBe('bill')
+    expect(ids(slashLines(KEYED, input(), 'b')).slice(0, 2)).toEqual(['bill', 'back'])
+  })
+
+  it('finds a line by its shortcut even when its words do not hold them', () => {
+    expect(ids(slashLines(KEYED, input(), 'remind'))).toEqual(['remind'])
+    expect(ids(slashLines(KEYED, input(), 'lat'))).toEqual(['late'])
+  })
+
+  it('reads the typed words in any case, and lists each line once', () => {
+    const rows = ids(slashLines(KEYED, input(), 'BILL'))
+    expect(rows[0]).toBe('bill')
+    expect(new Set(rows).size).toBe(rows.length)
+    expect(rows).toContain('remind')
+  })
+
+  it('leaves the order alone when nothing is typed', () => {
+    expect(ids(slashLines(KEYED, input(), ''))).toEqual(ids(slashLines(KEYED.map((q) => ({ ...q, shortcut: null })), input(), '')))
+  })
+})
+
 describe('slashPick: the / word gives way to the line', () => {
   it('fills an empty box with the line and puts the caret after it', () => {
     expect(slashPick('/pay', { start: 0, end: 4, words: 'pay' }, 'Dana, here is your bill.')).toEqual({ text: 'Dana, here is your bill.', caret: 24 })
