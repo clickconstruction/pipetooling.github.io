@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billPapers, defaultPaperFills, estimatePapers, listedPapers, PAPER_LINES, paperFills, paperLineWords, paperRowWords, papersFor, papersTitle, type PaperEstimateRow, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from './papers'
+import { billPapers, defaultEstimatePaper, defaultPaperFills, estimatePapers, listedPapers, PAPER_LINES, paperFills, paperLineWords, paperRowWords, papersFor, papersTitle, type PaperEstimateRow, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from './papers'
 
 // Made-up jobs, bills and estimates for one customer (Dana Whitfield's, as the mock-ups say).
 const BILL_A = '0000000a-0000-4000-8000-000000001042'
@@ -139,6 +139,23 @@ describe('papersFor, paperFills and defaultPaperFills', () => {
     expect(defaultPaperFills(all, null).amount).toBe(billsOpenFirstAmount(all))
     expect(defaultPaperFills(bills.filter((p) => !p.open), null)).toEqual({})
   })
+
+  const sent = { kind: 'estimate' as const, id: 'e-sent', jobId: null, job: 'Kitchen re-pipe', number: '1044', approved: false, amount: 3200, sentYmd: '2026-10-14' }
+  const made = { ...sent, id: 'e-made', jobId: 'j-helotes', job: 'Helotes re-pipe', number: '900', approved: true, sentYmd: '2026-09-20' }
+  const withEstimates = [...all, sent, made]
+
+  it('a job’s box speaks of its own estimate and no other job’s (v2.5645)', () => {
+    expect(defaultEstimatePaper(withEstimates, 'j-helotes', true)?.id).toBe('e-made')
+    expect(defaultEstimatePaper(withEstimates, 'j-sink', true)).toBeNull()
+    expect(defaultEstimatePaper(all, 'j-helotes', true)).toBeNull()
+  })
+
+  it('a thread speaks of the tied job’s estimate, else their newest sent one', () => {
+    expect(defaultEstimatePaper(withEstimates, 'j-helotes')?.id).toBe('e-made')
+    expect(defaultEstimatePaper(withEstimates, 'j-sink')?.id).toBe('e-sent')
+    expect(defaultEstimatePaper(withEstimates, null)?.id).toBe('e-sent')
+    expect(defaultEstimatePaper(all, null)).toBeNull()
+  })
 })
 
 /** The first open bill's amount as the fills say it. */
@@ -163,6 +180,7 @@ describe('a paper in the / list (#127 PR 2)', () => {
     expect(paperLineWords(papers[0]!)).toBe(PAPER_LINES.openBill)
     expect(paperLineWords(papers[2]!)).toBe(PAPER_LINES.paidBill)
     expect(paperLineWords(est)).toBe(PAPER_LINES.estimate)
+    expect(paperLineWords({ ...est, approved: true })).toBe(PAPER_LINES.approvedEstimate)
     expect(paperRowWords({ ...papers[0]!, amount: 1440 })).toEqual({ number: '#1312', what: 'Job j-a', when: 'billed Oct 17', money: '$1,440', state: 'open', tone: 'open' })
     expect(paperRowWords(papers[2]!)).toMatchObject({ state: 'paid', tone: 'paid', when: 'billed Sep 30' })
     expect(paperRowWords(est)).toEqual({ number: 'Estimate 1044', what: 'Kitchen re-pipe', when: 'sent Oct 14', money: '$3,200', state: 'not approved yet', tone: 'sent' })
