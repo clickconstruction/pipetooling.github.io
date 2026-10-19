@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { buildJobActivityBoxFeed, stripRedundantStampBody } from './jobActivityBoxFeed'
+import { buildJobActivityBoxFeed, SENT_BY_APP, sentLineBody, stripRedundantStampBody } from './jobActivityBoxFeed'
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
+import type { JobThreadEventActivityItem } from '../jobActivityEvent'
 import type { JobThreadNoteRow } from '../../components/JobThreadNotesPanel'
 
 const note = (id: string, at: string, body: string, author: string | null = 'Roxi'): JobThreadActivityItem => ({
@@ -87,5 +88,39 @@ describe('stripRedundantStampBody', () => {
     expect(stripRedundantStampBody('As we all like to say, “take the win”')).toBe(
       'As we all like to say, “take the win”',
     )
+  })
+})
+
+describe('a bill sent to the customer (v2.5633)', () => {
+  const event = (id: string, at: string, type: 'invoice_sent' | 'invoice_stripe_email_sent' | 'payment_added', over: Partial<JobThreadEventActivityItem['event']> = {}): JobThreadActivityItem => ({
+    kind: 'event',
+    event: { dedupeKey: `ev:${id}`, type, occurredAt: at, actorName: null, summary: '', financial: true, ...over },
+  })
+
+  it('sits in its place in time with no number, so the notes keep theirs, and other events stay out', () => {
+    const feed = buildJobActivityBoxFeed([
+      note('n1', '2026-08-07T20:00:00Z', 'Punch list done'),
+      event('e-pay', '2026-08-09T15:00:00Z', 'payment_added', { summary: 'Payment $1,200.00 (check)' }),
+      event('e-sent', '2026-08-08T21:02:18Z', 'invoice_sent', { summary: 'Invoice sent to customer (stripe)', detail: { channel: 'stripe' } }),
+      note('n2', '2026-08-10T15:00:00Z', 'Called about the bill'),
+    ])
+    expect(feed.map((e) => [e.kind, e.number])).toEqual([
+      ['note', 1],
+      ['sent', null],
+      ['note', 2],
+    ])
+    expect(feed[1]).toMatchObject({ authorName: SENT_BY_APP, body: 'Bill emailed through Stripe', atIso: '2026-08-08T21:02:18Z' })
+  })
+
+  it('names the sender off the row when the event has one', () => {
+    const [sent] = buildJobActivityBoxFeed([event('e', '2026-08-08T21:02:18Z', 'invoice_sent', { actorName: 'Taunya', summary: 'Invoice sent to customer (email)' })])
+    expect(sent).toMatchObject({ kind: 'sent', authorName: 'Taunya', body: 'Bill emailed to the customer' })
+  })
+
+  it('reads the channel from the detail, else the summary, and knows the backfill’s Stripe kind', () => {
+    expect(sentLineBody({ type: 'invoice_sent', summary: 'Invoice sent to customer (stripe)', detail: undefined })).toBe('Bill emailed through Stripe')
+    expect(sentLineBody({ type: 'invoice_sent', summary: 'Invoice sent to customer', detail: { channel: 'email' } })).toBe('Bill emailed to the customer')
+    expect(sentLineBody({ type: 'invoice_sent', summary: 'Invoice sent to customer (mail)', detail: undefined })).toBe('Bill sent to the customer')
+    expect(sentLineBody({ type: 'invoice_stripe_email_sent', summary: 'Stripe emailed the invoice', detail: undefined })).toBe('Bill emailed through Stripe')
   })
 })
