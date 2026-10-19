@@ -49,12 +49,12 @@ function fakeIo(): ReplyIo {
   }
 }
 
-function draw(over: { kind?: 'text' | 'email'; customerId?: string | null; load?: (id: string) => Promise<Contact> } = {}) {
+function draw(over: { kind?: 'text' | 'email'; customerId?: string | null; jobStatus?: string | null; load?: (id: string) => Promise<Contact> } = {}) {
   const io = fakeIo()
   const load = vi.fn(over.load ?? (async (_id: string) => DANA))
   const onSent = vi.fn()
   const loadBill = vi.fn(async (_jobId: string) => 'https://clicktooling.com/pay/8f3k2q')
-  const props = { jobId: 'j-helotes', jobName: 'Helotes', customerId: over.customerId === undefined ? 'cust-dana' : over.customerId, onSent, load, loadBill, io }
+  const props = { jobId: 'j-helotes', jobName: 'Helotes', customerId: over.customerId === undefined ? 'cust-dana' : over.customerId, jobStatus: over.jobStatus ?? null, onSent, load, loadBill, io }
   const r = renderWithProviders(<JobCustomerBox kind={over.kind ?? 'text'} {...props} />)
   return { io, load, loadBill, onSent, rerender: (kind: 'text' | 'email') => r.rerender(<JobCustomerBox kind={kind} {...props} />) }
 }
@@ -117,5 +117,21 @@ describe('JobCustomerBox', () => {
     await box()
     expect(loadBill).toHaveBeenCalledTimes(1)
     expect(loadBill).toHaveBeenCalledWith('j-helotes')
+  })
+  it('opens on the stage’s lines: a Ready to Bill job leads with the app’s Done words, and a press fills the box (v2.5629)', async () => {
+    draw({ jobStatus: 'ready_to_bill' })
+    const el = await box()
+    await waitFor(() => expect(document.querySelector('[data-qr-strip="open"]')).toBeTruthy())
+    expect(screen.getAllByText(/For this stage/).length).toBeGreaterThan(0)
+    const chip = within(el).getByRole('button', { name: /The work on .* is done/ })
+    fireEvent.click(chip)
+    expect((within(el).getByRole('textbox') as HTMLTextAreaElement).value).toContain('The work on Helotes is done. Your bill follows by email.')
+  })
+
+  it('keeps the strip folded on a Waiting job, whose stage has no line of its own', async () => {
+    draw({ jobStatus: 'waiting' })
+    await box()
+    expect(document.querySelector('[data-qr-strip="folded"]')).toBeTruthy()
+    expect(screen.queryByText(/For this stage/)).toBeNull()
   })
 })

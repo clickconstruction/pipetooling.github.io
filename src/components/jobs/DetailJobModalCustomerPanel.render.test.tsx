@@ -57,4 +57,17 @@ describe('DetailJobModalCustomerPanel — the portal globe', () => {
     await waitFor(() => expect(onLeave).toHaveBeenCalledTimes(1))
     expect(io.contactForCustomer).toHaveBeenCalledWith('cust-1')
   })
+
+  it('with the customer’s door given (v2.5629), the bubble opens it and neither leaves the window nor reads the thread', () => {
+    const onLeave = vi.fn()
+    const onOpenCustomerDoor = vi.fn()
+    io.contactForCustomer.mockClear()
+    renderWithProviders(
+      <DetailJobModalCustomerPanel customerName="Done Right Foundation" customerId="cust-1" customerPhone={null} customerEmail={null} onLeave={onLeave} onOpenCustomerDoor={onOpenCustomerDoor} />,
+    )
+    fireEvent.click(screen.getByLabelText('Open Done Right Foundation’s messages'))
+    expect(onOpenCustomerDoor).toHaveBeenCalledTimes(1)
+    expect(onLeave).not.toHaveBeenCalled()
+    expect(io.contactForCustomer).not.toHaveBeenCalled()
+  })
 })

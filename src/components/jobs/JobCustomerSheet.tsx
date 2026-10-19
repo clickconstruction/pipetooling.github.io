@@ -196,7 +196,7 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
                 ‹ Back
               </button>
             </div>
-            <JobCustomerBox kind={kind} jobId={job.id} jobName={jobName} customerId={customerId} onSent={onSent} load={load} io={io} quickIo={quickIo} />
+            <JobCustomerBox kind={kind} jobId={job.id} jobName={jobName} customerId={customerId} jobStatus={job.status ?? null} onSent={onSent} load={load} io={io} quickIo={quickIo} />
           </div>
         )}
       </div>

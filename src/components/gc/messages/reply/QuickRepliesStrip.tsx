@@ -40,6 +40,7 @@ export function Marked({ text, needle }: { text: string; needle: string }) {
  * (`customerLang`), and the count says so while that is Spanish.
  */
 export function QuickRepliesStrip({
+  stageStepIds = [],
   kind,
   lines,
   me,
@@ -59,6 +60,8 @@ export function QuickRepliesStrip({
   lines: readonly QuickReply[] | null
   me: string
   nowStepId: string | null
+  /** A job's box (v2.5629): the steps its stage speaks to; their lines lead under *For this stage*. */
+  stageStepIds?: readonly string[]
   steps: readonly StepRef[]
   /** What the box fills on a press (R3's `replyFills`); a blank it leaves is lit. */
   fills?: BlankFills
@@ -77,7 +80,7 @@ export function QuickRepliesStrip({
   const [filter, setFilter] = useState('')
   const [lit, setLit] = useState(0)
   const box = useRef<HTMLDivElement>(null)
-  const groups = qrGroups(lines ?? [], { kind, nowStepId, steps, me, filter, place: 'strip' })
+  const groups = qrGroups(lines ?? [], { kind, nowStepId, steps, me, filter, place: 'strip', stageStepIds })
   const count = `${qrStripCount(groups, kind)}${lang === 'es' ? ` · ${IN_SPANISH}` : ''}`
 
   if (!open) {
