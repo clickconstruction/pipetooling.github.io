@@ -137,3 +137,30 @@ describe('JobCustomerSheet', () => {
     expect(onOpenRecord).toHaveBeenCalledWith('cust-dana')
   })
 })
+
+describe('the thread’s last lines (v2.5632)', () => {
+  it('shows the newest three words between us and them, oldest first, theirs marked, and leaves the notes out', async () => {
+    const ours: JobActivityMessage = { ...HER_LINE, id: 'm-us', direction: 'out', who: 'Tanya', at: '2026-10-17T22:00:00.000Z', body: 'We will be there at 8.' }
+    const older: JobActivityMessage = { ...HER_LINE, id: 'm-older', at: '2026-10-16T15:00:00.000Z', body: 'Is Friday still on?' }
+    const oldest: JobActivityMessage = { ...HER_LINE, id: 'm-oldest', at: '2026-10-15T15:00:00.000Z', body: 'Hi, this is Dana.' }
+    const note: JobActivityMessage = { ...HER_LINE, id: 'm-note', channel: 'note', direction: 'team', who: 'Rosa', at: '2026-10-18T09:00:00.000Z', body: 'Call her about the gate.' }
+    draw({}, [note, oldest, HER_LINE, older, ours])
+    await waitFor(() => expect(document.querySelectorAll('[data-customer-door-line]')).toHaveLength(3))
+    const lines = [...document.querySelectorAll<HTMLElement>('[data-customer-door-line]')]
+    expect(lines.map((l) => l.dataset.customerDoorLine)).toEqual(['them', 'them', 'us'])
+    expect(lines.map((l) => l.textContent)).toEqual([
+      'Dana · text · last FridayIs Friday still on?',
+      'Dana · text · yesterdayGreat, I will leave the side gate open.',
+      'Tanya · text · yesterdayWe will be there at 8.',
+    ])
+    expect(screen.queryByText('Call her about the gate.')).toBeNull()
+    // The line under the job still says whose word came last, ours here.
+    expect(document.querySelector('[data-customer-door-last]')?.textContent).toBe('You wrote last, yesterday.')
+  })
+
+  it('draws no list with no word between us', async () => {
+    draw({}, [])
+    await waitFor(() => expect(screen.getByText('Open their thread')).toBeTruthy())
+    expect(document.querySelector('[data-customer-door-lines]')).toBeNull()
+  })
+})

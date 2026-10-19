@@ -1,8 +1,9 @@
 /**
  * The customer's door on the Pipeline (v2.5626, punch list #123): the sheet the speech bubble beside a customer's name
  * opens over the board, so the office writes to a job's customer without opening the job's window or leaving the page.
- * It names the job and the customer, says whose word came last on the job, and offers Call, Text, Email, Open their
- * thread and Their record. Text and Email draw the job window's own box (`JobCustomerBox`) in place of the rows, in the
+ * It names the job and the customer, says whose word came last on the job, shows the thread's last lines (v2.5632, so
+ * the office knows where the conversation stands before it writes), and offers Call, Text, Email, Open their thread and
+ * Their record. Text and Email draw the job window's own box (`JobCustomerBox`) in place of the rows, in the
  * customer's orange, tied to the job; a send asks the board to read the job again. The bubble is the office team's
  * already, so the sheet gates nothing itself.
  */
@@ -13,7 +14,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { Contact } from '../../lib/contacts/kernel'
 import type { JobActivityMessage } from '../../lib/jobs/jobActivityMessages'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
-import { customerDoorRows, lastWordOnJob, lastWordWords, type CustomerDoorRow } from '../../lib/messages/customerDoor'
+import { customerDoorRows, lastLineMeta, lastLinesOnJob, lastWordOnJob, lastWordWords, type CustomerDoorRow } from '../../lib/messages/customerDoor'
 import { messagesThreadHref } from '../../lib/messages/customerThread'
 import { contactForCustomer, loadJobMessages } from '../../lib/messages/messagesIo'
 import type { ReplyIo } from '../../lib/messages/replyIo'
@@ -99,7 +100,9 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
     }
   }, [job.id, job.status, job.created_at, loadLines])
 
-  const lastWord = lines ? lastWordWords(lastWordOnJob(lines), nowIso ?? new Date().toISOString()) : null
+  const now = nowIso ?? new Date().toISOString()
+  const lastWord = lines ? lastWordWords(lastWordOnJob(lines), now) : null
+  const lastLines = lines ? lastLinesOnJob(lines) : []
 
   const goToThread = async () => {
     if (!customerId || busy) return
@@ -162,6 +165,18 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
             <p style={{ ...quiet, color: lastWord.startsWith('Waiting') ? 'var(--text-orange-700)' : quiet.color }} data-customer-door-last>
               {lastWord}
             </p>
+          ) : null}
+          {lastLines.length ? (
+            // The thread's last lines, oldest first down to the newest: theirs with the customer's orange bar, as the
+            // job's activity draws a line from them. Open their thread is the door to the rest.
+            <ol data-customer-door-lines aria-label="Their last lines" style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {lastLines.map((line) => (
+                <li key={line.id} data-customer-door-line={line.who} style={{ borderLeft: `3px solid ${line.who === 'them' ? 'var(--border-orange)' : 'var(--border)'}`, paddingLeft: '0.5rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{lastLineMeta(line, now)}</div>
+                  <div style={{ fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>{line.words}</div>
+                </li>
+              ))}
+            </ol>
           ) : null}
         </div>
 

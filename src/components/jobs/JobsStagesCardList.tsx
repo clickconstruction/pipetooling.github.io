@@ -710,6 +710,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     jobContractCoverageByJobId: props.jobContractCoverageByJobId,
     onOpenJobContract: props.onOpenJobContract,
     onOpenCustomerDoor: props.onOpenCustomerDoor,
+    boardDotByJobId: props.boardDotByJobId,
   }
 
   const openCrew = useStagesCrewModalOpener()
@@ -1026,6 +1027,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     jobContractCoverageByJobId: props.jobContractCoverageByJobId,
     onOpenJobContract: props.onOpenJobContract,
     onOpenCustomerDoor: props.onOpenCustomerDoor,
+    boardDotByJobId: props.boardDotByJobId,
   }
 
   const openCrew = useStagesCrewModalOpener()
