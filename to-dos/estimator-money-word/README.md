@@ -2,7 +2,7 @@
 name: "The estimator's word on money"
 number: 129
 group: ready
-status: PLANNED 2026-10-19 — the flow traced, the mock-up drawn and re-drawn once; PR 1 (the job's people) starts now on the owner's word
+status: BUILDING 2026-10-19 — PR 1 (the job's people, v2.5646), PR 2 (the money line, v2.5647) and PR 3a (Write down their word, one sheet for a day or they say they paid, v2.5648, 20261019080000) built the day the plan was drawn; next PR 3b, the Messages bridge
 summary: >
   On a job an estimator bid, the estimator often talks to the owner more than anyone, so they
   are the one who hears "the check goes out the 25th" or "I paid it Tuesday", and today they
@@ -12,7 +12,7 @@ summary: >
   people, the office, the job's account manager and the bid's estimator, the job's money and
   one press for the customer's word on paying: a day, or that they say they paid. Paid stays
   the bank's word; the claim meets the deposit when it lands.
-next: PR 1, the job's people and the gates; then the money line with Send the pay page and the door on the won bid's row.
+next: PR 3b, the bridge from the Messages slot (a day, or they say they paid) to the customer's open billed job; push 20261019060000, 20261019070000 and 20261019080000 after PRs 1, 2 and 3a merge.
 size: S (the people) + M (the line and the door) + M (their word and the bridge) + S (the office side) + M (the lens, the card, the trail) + XS (primary)
 blocker: none
 opinion: the scope is the job's, not the role's; one sheet for both kinds of word; the paid claim does work for the office at allocation and makes none in Needs you
@@ -25,7 +25,10 @@ mockup: to-dos/estimator-money-word/mockup.html
 
 Drawn 2026-10-19 after a trace of the flow (below), re-drawn once on the question *is this the
 best we can do* (the mock-up's last box records what moved). The owner said *we may build it right
-now*; PR 1 starts from this to-do.
+now*. **PR 1 is built** (v2.5646, `20261019060000_job_people.sql`): `is_job_people`, the three promise
+writers and the per-job read on it, the job opened from a bid carrying the bid's account manager or
+estimator as its account manager, and the SQL bed `job-people`. Held from it for the owner: narrowing
+`estimator_can_reach_job_account` (the calls below).
 
 ## The ask, in the owner's words
 
@@ -138,9 +141,10 @@ reads who is talking to whom. The Dashboard's Needs you gets the card.
 
 | PR | What | Server |
 |---|---|---|
-| 1 · the job's people | `is_job_people(job)`; the promise read and write gates on it; `list_job_payment_promises(p_job_id)` scoped, the company-wide read retired; the job opened from a bid copies the account manager; `estimator_can_reach_job_account` uses it | one migration + SQL bed |
-| 2 · the line + the door | `list_bid_money_strip`; the money line, read-only, with Send the pay page; the customer's door on the won bid's row | one migration |
-| 3 · their word | the bridge from the Messages slot to the job, a day or they say they paid; the one sheet from the line; the `paid_claim` kind with its method | one migration |
+| 1 · the job's people | **built v2.5646**: `is_job_people(job)`; the promise writers and `list_job_payment_promises_for(job)` on it, the company-wide read kept for the office's readers; the job opened from a bid copies the bid's account manager or estimator as its account manager | one migration + SQL bed |
+| 2 · the line + the door | **built v2.5647**: `list_bid_money_strip`; the money line under Edit Bid's Job block, read-only, with Send the pay page; the customer's door from the line (the board row's line rides the lens's one read in PR 5) | one migration |
+| 3a · their word | **built v2.5648**: the `paid_claim` kind with its method and amount, `add_job_payment_claim`, the one sheet with its switch from the money line, the trail's They said for a claim; the company-wide reads promises only, the per-job read both | one migration |
+| 3b · the thread | the bridge from the Messages slot to the job, a day or they say they paid | none |
 | 4 · the office side | the allocation suggestion in AR; the stale claim back to the estimator; the amber on the row | none |
 | 5 · the lens, the card, the trail | Money on my bids; the Dashboard card; read-only Job activity for the job's people | none |
 | 6 · primary | primary's paid verbs narrowed to the job's people, the same predicate | one migration |
@@ -170,3 +174,6 @@ reads who is talking to whom. The Dashboard's Needs you gets the card.
   this way; for an estimator it is new. The office changes the account manager on the job when it
   wants the customer back, a control that exists today.
 - **The stale day.** Seven days is the mock-up's number; a mailed check is usually in by then.
+- **The job-accounts gate.** `estimator_can_reach_job_account(job)` opens any bid-born job's supply-house
+  account to any estimator. Narrowing it to the job's people is one line, but it changes the Job accounts
+  lens for an estimator working another's bids (*Only my bids* off); held until the owner says.

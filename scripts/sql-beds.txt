@@ -28,6 +28,9 @@ quick-replies
 quick-replies-phone-tech
 quick-replies-shortcut
 estimate-share-links
+job-people
+bid-money-strip
+paid-claim
 messages-follow-up
 messages-spine
 messages-flows
