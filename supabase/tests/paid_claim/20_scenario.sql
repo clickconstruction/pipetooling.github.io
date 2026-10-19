@@ -50,10 +50,11 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', coalesce(p_user::text, ''), true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
--- The job's words as the signed-in person: "paid_claim Oct 20 check_mailed - by text heard by Claim Theo; promise Oct 25 - - ...".
+-- The job's words as the signed-in person, the latest day first (every row of one transaction shares its created_at):
+-- "promise Oct 25 - - by text heard by Claim Theo; paid_claim Oct 20 check_mailed - by text heard by Claim Theo".
 CREATE FUNCTION pcl.words() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce((
-    SELECT string_agg((e->>'kind') || ' ' || to_char((e->>'promisedYmd')::date, 'Mon DD') || ' ' || coalesce(e->>'method', '-') || ' ' || coalesce(e->>'amount', '-') || ' by ' || (e->>'channel') || ' heard by ' || (e->>'heardByName'), '; ' ORDER BY e->>'createdAt' DESC)
+    SELECT string_agg((e->>'kind') || ' ' || to_char((e->>'promisedYmd')::date, 'Mon DD') || ' ' || coalesce(e->>'method', '-') || ' ' || coalesce(e->>'amount', '-') || ' by ' || (e->>'channel') || ' heard by ' || (e->>'heardByName'), '; ' ORDER BY e->>'promisedYmd' DESC)
     FROM jsonb_array_elements(public.list_job_payment_promises_for('00000000-0000-0000-0000-0000000e6f01')) e), 'NULL')
 $$;
 -- The company-wide reads, as text: how many rows each holds for the job.
@@ -64,8 +65,8 @@ $$;
 CREATE FUNCTION pcl.board() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
   SELECT coalesce((SELECT promised_date::text FROM public.job_promised_pay_dates WHERE job_id = '00000000-0000-0000-0000-0000000e6f01'), 'none')
 $$;
-CREATE FUNCTION pcl.pid(p_kind text) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS $$
-  SELECT id FROM public.job_payment_promises WHERE job_id = '00000000-0000-0000-0000-0000000e6f01' AND kind = p_kind AND voided_at IS NULL ORDER BY created_at DESC LIMIT 1
+CREATE FUNCTION pcl.pid(p_method text) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT id FROM public.job_payment_promises WHERE job_id = '00000000-0000-0000-0000-0000000e6f01' AND method = p_method AND voided_at IS NULL LIMIT 1
 $$;
 GRANT USAGE ON SCHEMA pcl TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pcl TO anon, authenticated, service_role;
@@ -77,7 +78,7 @@ SELECT pcl.as_user('00000000-0000-0000-0000-0000000e6a01');
 SELECT pcl.same('Theo writes the promise', (public.add_job_payment_promise('00000000-0000-0000-0000-0000000e6f01', DATE '2026-10-25', 'Dana', 'text'))->>'promisedDate', '2026-10-25');
 SELECT pcl.same('the board follows the promise', pcl.board(), '2026-10-25');
 SELECT pcl.same('Theo writes the claim', (public.add_job_payment_claim('00000000-0000-0000-0000-0000000e6f01', DATE '2026-10-20', 'check_mailed', NULL, 'Dana', 'text', 'Check #1187, she says'))->>'paidDate', '2026-10-20');
-SELECT pcl.same('the job''s words, the claim first, each with its kind', pcl.words(), 'paid_claim Oct 20 check_mailed - by text heard by Claim Theo; promise Oct 25 - - by text heard by Claim Theo');
+SELECT pcl.same('the job''s words, each with its kind', pcl.words(), 'promise Oct 25 - - by text heard by Claim Theo; paid_claim Oct 20 check_mailed - by text heard by Claim Theo');
 SELECT pcl.same('a claim leaves the board''s date alone', pcl.board(), '2026-10-25');
 SELECT pcl.same('a claim with an amount keeps it', (public.add_job_payment_claim('00000000-0000-0000-0000-0000000e6f01', DATE '2026-10-21', 'paid_online', 1500, NULL, NULL, NULL))->>'paidDate', '2026-10-21');
 SELECT pcl.same('the amount reads back', (SELECT e->>'amount' FROM jsonb_array_elements(public.list_job_payment_promises_for('00000000-0000-0000-0000-0000000e6f01')) e WHERE e->>'method' = 'paid_online'), '1500');
@@ -99,7 +100,7 @@ SELECT pcl.refused('Pat, a primary on nothing, is refused', $q$SELECT public.add
 
 -- 4 · A claim voids as a promise does.
 SELECT pcl.as_user('00000000-0000-0000-0000-0000000e6a01');
-SELECT pcl.same('Theo voids the online claim', (public.void_job_payment_promise(pcl.pid('paid_claim')))->>'voided', 'true');
+SELECT pcl.same('Theo voids the online claim', (public.void_job_payment_promise(pcl.pid('paid_online')))->>'voided', 'true');
 SELECT pcl.same('two words stay', (SELECT count(*)::text FROM jsonb_array_elements(public.list_job_payment_promises_for('00000000-0000-0000-0000-0000000e6f01'))), '2');
 
 -- 5 · Below the functions: the shape holds.
