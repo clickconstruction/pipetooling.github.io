@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-10-17
+last_updated: 2026-10-19
 ---
 
 ## What it is, in one paragraph
@@ -115,7 +115,7 @@ and reads again when the tab comes back to focus. On a phone the header folds (`
 **Tie this message to** (`tieSheet.ts`).
 
 The **reply box** (`reply/ReplyBox.tsx`) is one component for the thread's foot and the job's box: the kinds row
-(Text · Email · Note, or one kind), the quick replies strip (`QuickRepliesStrip.tsx`, the editor with its phone block's **Big button on Job Mode**, **Find a reply**; on a job's box since v2.5629 the lines on the job's stage lead under **For this stage**, `stageStepIds` from `messages/stageLines.ts`, the app's own words standing in for a step with no team line, and the strip opens on its own unless folded by hand),
+(Text · Email · Note, or one kind), the quick replies strip (`QuickRepliesStrip.tsx`, the editor with its phone block's **Big button on Job Mode**, **Find a reply**; on a job's box since v2.5629 the lines on the job's stage lead under **For this stage**, `stageStepIds` from `messages/stageLines.ts`, the app's own words standing in for a step with no team line, and the strip opens on its own unless folded by hand; a line's `{bill}` fills with the pay page of the job's newest bill billed through Stripe, `billing/billLink.ts`'s `newestBillLink` read once per job by `JobCustomerBox`, v2.5628),
 the textarea with the opt-out line and the count, **Attach** (`AttachPicker.tsx` over `attachIo.ts`, `replyFiles.ts`),
 **Tie to**, and the send window (`SendWindow.tsx`). What it sends is one interface, `replyIo.ts`, so the smokes hand it
 a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in place of the composer (`TextsWaitLine`: the switch is the first card on Settings → Phone and texts, a link for the owner or a dev; v2.5538).

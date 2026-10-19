@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-10-14
+last_updated: 2026-10-19
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -211,7 +211,7 @@ None of the three v2.3530 dialogs has a render test.
 ### 7. [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx) (529 lines — job-only sections)
 
 - Callers: the Waiting / Working / Paid sites (§4) and the deck (§4b), via `StagesSectionList`. 69 prop fields — the former `renderStagesTable` params + the shared bundle.
-- `colgroup` 14rem / flex / 14.5rem / 140 (298–303; Crew & Dates 9rem → 14rem in v2.4128), `tableLayout: fixed`, `minWidth: STAGES_TABLE_MIN_WIDTH` (880). No Supabase. The ham-mode assigned-edit dropdown the old map named is gone; team edits go through `ManageJobPeopleModal`.
+- `colgroup` 14rem / flex / 14.5rem / 140 (298–303; Crew & Dates 9rem → 14rem in v2.4128), `tableLayout: fixed`, `minWidth: STAGES_TABLE_MIN_WIDTH` (880). The job cell's identity block takes `maxWidth: 'min(100%, 30rem)'` here and in `StagesUnifiedJobRow` (v2.5630), so no engine sizes it past where Chromium already wraps and the activity box takes the rest. No Supabase. The ham-mode assigned-edit dropdown the old map named is gone; team edits go through `ManageJobPeopleModal`.
 - Tests: `JobsStagesTable.render.test.tsx` (9).
 - **Open:** consume the shared bundle as one typed prop.
 
@@ -247,7 +247,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | 1114–1118 / 1123–1158 | `shouldSuppressStagesRowJobThreadToggle` / `renderStagesThreadExpandButton` | 5 / 36 | Table, CardList, both unified rows | |
 | 1169–1204 | `renderStagesSeeAllButton` (was `renderStagesViewReportsButton` + the Sessions link, v2.4324) | 36 | CardList, UnifiedJobRow (+ footer) | the trail's door where no activity box draws; words from `lib/jobs/stagesRowDoors.ts` |
 | — | [`StagesQuickActionsStack`](../src/components/jobs/StagesQuickActionsStack.tsx) (was `renderStagesQuickActionsStack`; v2.5109) | 194 | Table, UnifiedTable | schedule, week dispatch, call, Dispatch, task (`showTaskDispatchButton`); 3 render cases |
-| — | [`StagesJobCellActivityFooter`](../src/components/jobs/StagesJobCellActivityFooter.tsx) (was `renderStagesJobCellActivityFooter`; v2.5109) | 211 | Table, UnifiedTable | 5 render cases; inner `renderStagesInvoiceJumpChips` 1426–1473, `renderStagesStripeEmailedCustomerHint` 1475–1528, `renderStagesContractChip` 1425–1454 (contract + ⚖ legal chip; since v2.4342 its words and door come from `stagesContractChipFor` → `contractRowChip`, shared with the phone card and the phone row's chip) |
+| — | [`StagesJobCellActivityFooter`](../src/components/jobs/StagesJobCellActivityFooter.tsx) (was `renderStagesJobCellActivityFooter`; v2.5109) | 211 | Table, UnifiedTable | 5 render cases; inner `renderStagesInvoiceJumpChips` 1426–1473, `renderStagesStripeEmailedCustomerHint` 1475–1528 (since v2.5631 its row takes `contain: 'inline-size'` and `minWidth: 0`, so the sent line wraps under its button and adds nothing to the identity block's width), `renderStagesContractChip` 1425–1454 (contract + ⚖ legal chip; since v2.4342 its words and door come from `stagesContractChipFor` → `contractRowChip`, shared with the phone card and the phone row's chip) |
 | 1579–1584 / 1586–1608 | `stagesRowHasProjectBanner` / `renderStagesProjectBannerRow` | 6 / 23 | Table, both unified rows | |
 | 1611–1629 | `renderStagesJobColumnEstimateFooter` | 19 | Table, CardList, both unified rows | |
 | 1632 | `stagesActionMoveStackStyle` | — | Table, CardList, both unified rows | the Send back / Collections stack under the icons (v2.4147) |

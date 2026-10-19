@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-17
+last_updated: 2026-10-19
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -66,7 +66,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - See or set who gets a new text, call or email first → `/settings?tab=settings-phone-texts` (Phone and texts: the office reads the rule, the owner or a dev sets the seats; guide `choose-who-gets-a-new-message`), and which company phone seat is whose (Company phone seats, the owner or a dev; guide `match-each-company-phone-seat-to-a-person`)
 - Type the two inboxes' addresses and numbers, the team inbox and the bids inbox → `/settings?tab=settings-phone-texts` (Inboxes, under Company phone seats: the office reads, the owner or a dev saves; the app uses them once the inboxes are switched on; guide `set-up-the-two-inboxes`)
 - Turn on the reply push, so a customer's, a lead's or a sub's reply reaches whoever has it as a phone alert within a minute → `/settings?tab=settings-phone-texts` (Reply push, the owner or a dev, off as it ships; guide `turn-on-the-reply-push`)
-- Change the steps a customer, trade partner, architect, residential customer or sub goes through → `/settings?tab=settings-flows` (Flows: the office edits; guide `set-up-the-steps-a-person-goes-through`)
+- Change the steps a customer, trade partner, architect, residential customer or sub goes through → `/settings?tab=settings-flows` (Flows: the office edits; the owner or a dev turns the app's reminders and the Pipeline's ask on a move; guide `set-up-the-steps-a-person-goes-through`)
 - Turn a training course on, say which roles must take it or open it to everyone, how long a pass is good for, see where everyone stands, preview the course and clear a retake day → `/settings?tab=settings-training` (Training: a dev; guide `take-a-training-course`)
 - Where the company stands this week, the weakest link, the Monday sheet → `/bridge` (dev only)
 - How-do-I articles → `/help` (search) or `/help?g=<slug>`
@@ -121,7 +121,7 @@ Follow up for every kind of person, from **Messages** in the header (its count i
 with the sort card at its top; guide `/help?g=sort-new-messages`), then **Needs you**, **Needs a reply** and **We owe them** (with the call tasks since v2.5596, guide `call-a-customer-from-a-task`),
 with pills for Customers, Trade partners, Architects, Leads and Subs (`?kind=`), and **Supply houses and candidates**,
 which never count on Follow up and show as a people list. A row opens the person's thread over the page
-(`?thread=<contactId>&at=<messageId>`), the thread window described under `/gc`. Other doors to a customer's thread: the speech bubble beside a customer's name on `/customers`, the customer's page, `/jobs`, the job window and `/estimates` (`/messages?thread=<contact>`), and the Dashboard's **Customers** line (`?kind=customer`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
+(`?thread=<contactId>&at=<messageId>`), the thread window described under `/gc`. Other doors to a customer's thread: the speech bubble beside a customer's name on `/customers`, the customer's page and `/estimates` (`/messages?thread=<contact>`), the customer's door behind the same bubble on `/jobs` rows and in the job window (its **Open their thread**), and the Dashboard's **Customers** line (`?kind=customer`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.
 Roles: dev, master_technician, assistant, controller, estimator.
 
 
@@ -242,8 +242,13 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
 - `?tab=stages` — **Stages**: pipeline sections Waiting / Working / Ready to Bill / Billed
   Awaiting Payment / Collections. Job rows: activity thread, % complete, dispatch, Edit Job,
   Bill Customer on RTB. New Job button (imports from a bid — multi-GC bids ask which GC won).
+  The customer's speech bubble opens the customer's door over the board: Call, Text, Email,
+  Open their thread, Their record, the thread's last three lines, and an orange dot while they
+  wait on us (`/help?g=text-a-customer-from-the-job`). A forward move to Working, Ready to Bill
+  or Billed asks before it texts the customer when that step is set to Asks in Settings → Flows
+  (`/help?g=set-up-the-steps-a-person-goes-through`).
 - `?tab=reports` — field job reports (create/review); dispatch items (e.g. site-not-ready).
-- The job window, for the office team: **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens their thread on `/messages`.
+- The job window, for the office team: **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens the customer's door over the window, as on the Pipeline's rows but with no Their record row, and its **Open their thread** goes to `/messages`. The box opens on the lines for the job's stage, and `{bill}` in a quick reply fills with the pay page of the job's newest Stripe bill.
 - `?tab=billing` — invoices, payments, billing flows per job.
 - `?tab=job-summary` — one job's charges-vs-payments timeline chart + % complete.
 - `?tab=teams-summary` — Crew P&L (hours-weighted billing credit per crew).
