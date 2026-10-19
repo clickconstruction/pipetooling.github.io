@@ -374,7 +374,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   {/* Wide screens: identity keeps its natural width and the Job
                       activity box (v2.1587) absorbs the cell's dead middle. */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', justifyContent: 'space-between' }}>
-                  <div style={{ minWidth: 0 }}>
+                  {/* The identity block never claims more than it uses (v2.5630); see StagesUnifiedJobRow. */}
+                  <div style={{ minWidth: 0, maxWidth: 'min(100%, 30rem)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
                     {renderStagesOpenDetailJobName(j)}
                     {/* The activity box already carries the trail on wide screens —
