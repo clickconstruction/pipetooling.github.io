@@ -1,22 +1,26 @@
 ---
 name: "Bills and estimates in a message: /bill, /estimate and their fills"
 number: 127
-group: gated
-status: DRAFTED 2026-10-19 — the ask, what the box reaches today, the papers in the / list, the {amount} and {estimate} fills, three ways to share an estimate's link, and the plan beside this file for the owner's pick; nothing built
+group: ready
+status: BUILDING 2026-10-19 — the owner picked B (a second link per share) and the rest as drawn; PR 1, the papers read and the fills, is v2.5641; left: PR 2 (the papers in the / list) and PR 3 (the estimate's second link)
 summary: >
   The office should be able to drop a customer's own bill or estimate into a text in a press or two. Today the
   reply box knows one paper: {bill}, the newest Stripe bill's pay page, and only in a job's box. {amount} is never
   filled there, and an estimate's link cannot be had at all once the email is out, because only its hash is kept.
   This to-do draws /bill and /estimate listing that customer's actual papers in the / list (#126), each pick putting
   in a line about that paper, and the {amount} and a new {estimate} blank filling on their own.
-next: The owner reads the mock-up and picks the estimate link's way, the words a paper puts in and where paid bills and drafts go.
+next: PR 2, /bill and /estimate listing the papers in the / list; then PR 3, the estimate's second link.
 size: S (the papers read and the fills) + S (the papers in the / list) + M (a second estimate link, if picked)
-blocker: The owner's pick, above all the estimate link's way.
+blocker: none
 opinion: build the papers in the / list and the fills, and give an estimate a second link for texts so the emailed one keeps working
 mockup: to-dos/bills-and-estimates-in-a-message/mockup.html
 ---
 
 # Bills and estimates in a message (#127)
+
+## Where it stands
+
+The owner picked **B** on 2026-10-19 (a second, separately hashed link per share, so the emailed link keeps working) and took the rest as drawn: the app's words for each paper, paid bills offered as a copy, drafts left out, and the words that call papers. One correction to the draft: a bill has no number of its own, so it goes by its job's number, as They owe us names it. PR 1 (v2.5641) reads the papers and fills `{amount}`, `{number}` and `{bill}`. A long-standing customer has many paid bills (21 for one read on prod), so PR 2 shows the newest few paid ones under the open ones.
 
 ## The ask, in the owner's words
 

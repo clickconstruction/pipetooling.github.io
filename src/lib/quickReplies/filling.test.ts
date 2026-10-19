@@ -8,7 +8,7 @@ const FOUND = '{first}, here is what we found: {found}. {me} will send you the e
 
 describe('the chips under a line’s words', () => {
   it('lists the app’s blanks, then the two the person fills', () => {
-    expect(BLANK_CHIPS.map((c) => c.label)).toEqual(['{first}', '{me}', '{address}', '{job}', '{minutes}', '{window}', '{back day}', '{back time}', '{day}', '{tech}', '{link}', '{amount}', '{bill}', '{thing}', '{found}'])
+    expect(BLANK_CHIPS.map((c) => c.label)).toEqual(['{first}', '{me}', '{address}', '{job}', '{minutes}', '{window}', '{back day}', '{back time}', '{day}', '{tech}', '{link}', '{amount}', '{bill}', '{number}', '{estimate}', '{thing}', '{found}'])
     expect(BLANK_CHIPS.filter((c) => c.theirs).map((c) => c.words)).toEqual(['what you want a photo of, yours to fill', 'what you found, yours to fill'])
   })
 
@@ -57,5 +57,30 @@ describe('the bill’s pay page (v2.5628)', () => {
     const without = replyFills({ first: 'Dana', myName: 'Tanya Reyes', jobName: 'Oakridge sewer line' })
     expect(preview(line, without, 'Dana').note).toBe('As it would go to Dana. Fill {bill} in the box before it sends.')
     expect(sendWaits(preview(line, without, 'Dana').text)).toBe('Fill {bill} first. The app does not know it.')
+  })
+})
+
+describe('the bill a line about money speaks of (#127)', () => {
+  const line = '{first}, {amount} is still open on job {number}. You can pay it here: {bill}'
+
+  it('fills {amount}, {number} and {bill} from the same bill, its pay page over the job’s newest', () => {
+    const fills = replyFills({
+      first: 'Dana',
+      myName: 'Rosa',
+      jobName: 'Helotes re-pipe',
+      billLink: 'https://clicktooling.com/pay/newest',
+      paper: { bill: 'https://clicktooling.com/pay/open-one', amount: '$1,440', number: '1312' },
+    })
+    expect(preview(line, fills, 'Dana').text).toBe('Dana, $1,440 is still open on job 1312. You can pay it here: https://clicktooling.com/pay/open-one')
+  })
+
+  it('never pairs an amount with another bill’s page: an open bill with no pay page leaves {bill} to fill', () => {
+    const fills = replyFills({ first: 'Dana', myName: 'Rosa', jobName: null, billLink: 'https://clicktooling.com/pay/newest', paper: { bill: null, amount: '$420', number: '1312' } })
+    expect(fills.bill).toBeUndefined()
+    expect(sendWaits(preview(line, fills, 'Dana').text)).toBe('Fill {bill} first. The app does not know it.')
+  })
+
+  it('keeps the job’s newest bill when no paper is known', () => {
+    expect(replyFills({ first: 'Dana', myName: 'Rosa', jobName: null, billLink: 'https://clicktooling.com/pay/newest', paper: {} }).bill).toBe('https://clicktooling.com/pay/newest')
   })
 })

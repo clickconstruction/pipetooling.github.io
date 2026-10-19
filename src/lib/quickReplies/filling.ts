@@ -44,11 +44,31 @@ export function preview(text: string, fills: BlankFills, to: string | null): { t
 /**
  * What the reply box fills on a press: their first name, the signed-in person's first name, the job's name and, where
  * the box knows the job, its newest bill's pay page for `{bill}` (v2.5628).
+ *
+ * Punch list #127: `paper` is the bill a line about money speaks of (`messages/papers.ts`, `defaultPaperFills`): its
+ * pay page, what is open on it and its number. Its pay page wins over `billLink`, so `{bill}` and `{amount}` name the
+ * same bill.
  */
-export function replyFills(input: { first: string | null; myName: string | null; jobName: string | null; billLink?: string | null }): BlankFills {
+export function replyFills(input: {
+  first: string | null
+  myName: string | null
+  jobName: string | null
+  billLink?: string | null
+  paper?: { bill?: string | null; amount?: string | null; number?: string | null }
+}): BlankFills {
   const firstWord = (name: string | null) => name?.trim().split(/\s+/)[0] || null
-  const bill = input.billLink?.trim() || null
-  return { first: input.first?.trim() || null, me: firstWord(input.myName), job: input.jobName?.trim() || null, ...(bill ? { bill } : {}) }
+  const paperBill = input.paper?.bill?.trim() || null
+  const bill = paperBill ?? (input.paper?.amount ? null : input.billLink?.trim() || null)
+  const amount = input.paper?.amount?.trim() || null
+  const number = input.paper?.number?.trim() || null
+  return {
+    first: input.first?.trim() || null,
+    me: firstWord(input.myName),
+    job: input.jobName?.trim() || null,
+    ...(bill ? { bill } : {}),
+    ...(amount ? { amount } : {}),
+    ...(number ? { number } : {}),
+  }
 }
 
 /** Why the box will not send while a blank is left in it, or null when none is. Braces with a word in them are a blank. */
