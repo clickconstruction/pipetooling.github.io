@@ -8,6 +8,7 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { shortDate } from '../gc/words'
 import { claimWords, parsePaymentPromisesRpc, promiseSaidLine, promisesOnJob, type PaymentPromise } from '../jobs/paymentPromises'
+import { STALE_AFTER_DAYS } from '../jobs/paidClaims'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { billPapers, type BillPaper, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from '../messages/papers'
 
@@ -74,6 +75,8 @@ export interface BidMoneyLine {
   promise: PaymentPromise | null
   /** Days today is past the promised day while money is open; null otherwise, and null for a paid claim. */
   pastDays: number | null
+  /** A paid claim with nothing landed on the job since the day they named: the days since, once `STALE_AFTER_DAYS` or more (v2.5650). */
+  staleDays: number | null
   tone: BidMoneyTone
 }
 
@@ -114,7 +117,11 @@ export function bidMoneyLine(entry: BidMoneyStripEntry, today: string): BidMoney
   const moneyOpen = open != null && open > 0
   const past = promise && promise.kind !== 'paid_claim' && moneyOpen ? daysBetween(promise.promisedYmd, today) : 0
   const pastDays = past > 0 ? past : null
-  const tone: BidMoneyTone = !billed ? 'quiet' : !moneyOpen ? 'green' : pastDays ? 'red' : promise ? 'quiet' : 'amber'
+  // A claim with nothing landed since the day they named comes back amber after a week (punch list #129 PR 4).
+  const landedSince = promise?.kind === 'paid_claim' ? entry.payments.some((p) => (p.paid_on ?? '') >= promise.promisedYmd) : true
+  const since = promise?.kind === 'paid_claim' && moneyOpen && !landedSince ? daysBetween(promise.promisedYmd, today) : 0
+  const staleDays = since >= STALE_AFTER_DAYS ? since : null
+  const tone: BidMoneyTone = !billed ? 'quiet' : !moneyOpen ? 'green' : pastDays ? 'red' : staleDays ? 'amber' : promise ? 'quiet' : 'amber'
   return {
     bidId: entry.bidId,
     job: {
@@ -134,6 +141,7 @@ export function bidMoneyLine(entry: BidMoneyStripEntry, today: string): BidMoney
     payUrl: openBills.find((b) => b.payUrl)?.payUrl ?? null,
     promise,
     pastDays,
+    staleDays,
     tone,
   }
 }
@@ -162,7 +170,10 @@ export function bidMoneyWords(line: BidMoneyLine): BidMoneyWords {
   const p = line.promise
   if (!p) return { stage: line.stage, money, word: 'no word yet', by: null }
   const day = shortDate(p.promisedYmd)
-  if (p.kind === 'paid_claim') return { stage: line.stage, money, word: `They say they paid \u00b7 ${claimWords(p)} \u00b7 ${day}`, by: promiseSaidLine(p) || null }
+  if (p.kind === 'paid_claim') {
+    const stale = line.staleDays ? ` \u00b7 nothing landed in ${line.staleDays === 1 ? '1 day' : `${line.staleDays} days`}` : ''
+    return { stage: line.stage, money, word: `They say they paid \u00b7 ${claimWords(p)} \u00b7 ${day}${stale}`, by: promiseSaidLine(p) || null }
+  }
   const word = line.pastDays ? `Said ${day} · ${line.pastDays === 1 ? '1 day' : `${line.pastDays} days`} past` : `They said ${day}`
   return { stage: line.stage, money, word, by: promiseSaidLine(p) || null }
 }

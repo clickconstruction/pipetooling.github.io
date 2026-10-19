@@ -96,6 +96,7 @@ export type NeedsYouItem = {
     | 'tally-team'
     | 'lost-bids'
     | 'bid-followups'
+    | 'paid-claims-stale'
     | 'team-reviews'
     | 'statement-round'
     | 'roadmap-needs-person'
@@ -187,6 +188,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'claim-dev': 0,
   'customer-waiting': 0,
   'ar-deposits': 10,
+  // A customer's word that they paid with nothing landed in a week: the hearer asks the customer before the office chases.
+  'paid-claims-stale': 12,
   // Money tier: a returned check still counted as paid overstates the job, the Pipeline and the lien claim.
   'returned-check': 10,
   'lien-unconditional': 20,
@@ -367,6 +370,12 @@ export type NeedsYouInputs = {
    * prices and sends. Null = nothing waiting / loading. Action opens Jobs →
    * Work Orders on the Drafts filter.
    */
+  /**
+   * The paid claims the signed-in person heard with nothing landed in a week (v2.5650, punch list #129): the count and
+   * the oldest one's words, from `useMyStaleClaims`.
+   */
+  staleClaimsEnabled?: boolean
+  staleClaims?: { count: number; firstLine: string } | null
   unpricedWorkOrdersEnabled?: boolean
   unpricedWorkOrders?: { count: number; subNames: string[]; oldestDays: number | null } | null
   jobFollowupCount: number | null
@@ -1114,6 +1123,18 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
+  if (inputs.staleClaimsEnabled && inputs.staleClaims != null && inputs.staleClaims.count > 0) {
+    const { count, firstLine } = inputs.staleClaims
+    items.push({
+      key: 'paid-claims-stale',
+      severity: 'amber',
+      kicker: 'Money on your bids',
+      title: count === 1 ? 'A customer said they paid, and nothing landed' : `${count} customers said they paid, and nothing landed`,
+      detail: `${firstLine}. Ask them before the office chases.`,
+      figure: String(count),
+      actionLabel: 'Open the bid',
+    })
+  }
   if (inputs.bidFollowupsDue != null && inputs.bidFollowupsDue.count > 0) {
     const { count, overdueCount, value, names } = inputs.bidFollowupsDue
     const late = overdueCount === 0 ? '' : overdueCount === count ? (count === 1 ? ' The day has passed.' : ' Every day has passed.') : ` ${overdueCount} ${overdueCount === 1 ? 'is' : 'are'} past the day.`

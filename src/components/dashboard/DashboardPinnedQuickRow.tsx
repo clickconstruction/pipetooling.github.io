@@ -1,4 +1,4 @@
-import { lazy, Suspense, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
@@ -27,6 +27,8 @@ import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useBidFollowupsDue } from '../../hooks/useBidFollowupsDue'
+import { useMyStaleClaims } from '../../hooks/useMyStaleClaims'
+import { staleClaimLine } from '../../lib/jobs/paidClaims'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBulkHoursNudge } from '../../hooks/useBulkHoursNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
@@ -388,6 +390,10 @@ export function DashboardPinnedQuickRow({
   const { nudge: lostBidNudge, loading: lostBidNudgeLoading } = useLostBidNudge(lostBidNudgeEnabled)
   // Promised bid calls due or missed (v2.4426): the Call queue's audience (a primary is not on Followup).
   const { due: bidFollowupsDue } = useBidFollowupsDue(Boolean(authUserId) && (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'))
+  // A paid claim the signed-in person heard with nothing landed in a week (v2.5650): the read gates itself, the hearer is the filter.
+  const staleClaimsEnabled = Boolean(authUserId) && (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary')
+  const { stale: staleClaims } = useMyStaleClaims(staleClaimsEnabled, authUserId)
+  const staleClaimsInput = useMemo(() => (staleClaims.length ? { count: staleClaims.length, firstLine: staleClaimLine(staleClaims[0]!, todayYmdInAppTz()) } : null), [staleClaims])
   const {
     peopleCount: tallyStaffStalePeopleCount,
     transactionCount: tallyStaffStaleTxCount,
@@ -610,6 +616,8 @@ export function DashboardPinnedQuickRow({
     priceMatrixReady,
     priceRequestsLateEnabled: priceMatrixEnabled,
     priceRequestsLate,
+    staleClaimsEnabled,
+    staleClaims: staleClaimsInput,
     gcFollowUpEnabled,
     gcFollowUp,
     customerMessagesEnabled,
@@ -781,6 +789,10 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=why-we-lost')
             } else if (item.key === 'bid-followups') {
               navigate('/bids?tab=call-queue')
+            } else if (item.key === 'paid-claims-stale') {
+              // The estimator's door is the won bid's Job block; the office's the Pipeline.
+              const first = staleClaims[0]
+              navigate(role === 'estimator' && first?.bidId ? `/bids?tab=bid-board&bidId=${first.bidId}` : role === 'estimator' ? '/bids?tab=bid-board' : '/jobs?tab=stages')
             } else if (item.key === 'job-followups') {
               navigate('/jobs?tab=stages&followups=1')
             } else if (item.key === 'contract-missing') {

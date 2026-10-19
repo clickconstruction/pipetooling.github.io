@@ -378,6 +378,7 @@ describe('Write down their word under their line (v2.5649)', () => {
     payUrl: null,
     promise: null,
     pastDays: null,
+  staleDays: null,
     tone: 'quiet',
   })
   const theirText = (patch: Partial<ThreadMessage> = {}): ThreadMessage => sentText({ id: 'm-in', contactId: 'dana', direction: 'in', who: 'Dana Whitfield', body: 'Check goes out the 25th.', ...patch })
