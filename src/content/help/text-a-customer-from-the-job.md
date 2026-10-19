@@ -31,6 +31,8 @@ The window also offers **Call**, **Open their thread** and **Their record**. A c
 
 A small orange dot on the speech bubble means the customer wrote last on this job and nobody has answered. Hold the mouse over the bubble to read who wrote, how and when. Press the bubble and the window shows their words. The dot goes once anyone answers them. It reads the same Needs a reply list as Follow up.
 
+The dot comes on as their message lands. You do not need to reload the board. Their reply also shows in the job's activity and in the open window as it lands.
+
 ## Write to the customer
 
 1. Press {{button:outline|Text}} or {{button:outline|Email}}. The box turns orange, since orange is the customer's.

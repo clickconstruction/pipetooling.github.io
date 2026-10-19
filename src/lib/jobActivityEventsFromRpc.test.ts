@@ -56,4 +56,15 @@ describe('jobActivityEventsFromRpc', () => {
     expect(it0!.event.actorName).toBeNull()
     expect(it0!.event.detail).toEqual({ source: 'bid', bid_number: '398', backfilled: true })
   })
+
+  it('keeps the hazmat fee’s rows and its notice email (v2.5635), which it used to drop', () => {
+    const items = jobActivityEventsFromRpc([
+      row({ id: 'edit', event_type: 'hazmat_fee_edited', summary: 'Hazmat fee changed $500.00 → $650.00', financial: true }),
+      row({ id: 'void', event_type: 'hazmat_fee_voided', summary: 'Hazmat fee voided ($650.00)', financial: true }),
+      row({ id: 'gone', event_type: 'hazmat_fee_deleted', summary: 'Hazmat fee deleted ($650.00)', financial: false }),
+      row({ id: 'mail', event_type: 'hazmat_notice_emailed', summary: 'Biohazard fee notice emailed to dana@whitfield.example', financial: false }),
+    ])
+    expect(items.map((i) => i.event.type)).toEqual(['hazmat_fee_edited', 'hazmat_fee_voided', 'hazmat_fee_deleted', 'hazmat_notice_emailed'])
+    expect(items[3]!.event.summary).toBe('Biohazard fee notice emailed to dana@whitfield.example')
+  })
 })

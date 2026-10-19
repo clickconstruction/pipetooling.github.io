@@ -42,7 +42,7 @@ Their answer comes back to you. The office sees it too.
 
 **Job updates** on the Job Mode card lists the texts and emails with the customer. They are orange, beside the notes. Press {{button:outline|Customer}} to see only those.
 
-The job's **Job detail** window shows them the same way. You see the lines of a job you worked this week or last.
+The job's **Job detail** window shows them the same way. You see the lines of a job you worked this week or last. A new text from the customer shows as it lands.
 
 ## Say something else
 

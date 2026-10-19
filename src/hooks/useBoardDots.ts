@@ -2,9 +2,12 @@
  * The Pipeline's waiting dots (v2.5632): one read of the open customers' lines in, mapped to the jobs whose customer
  * waits on us (`boardDotsByJob`). The office only; anyone else reads nothing and every row draws no dot. It reads again
  * when `refreshKey` changes (the board's jobs, so a load of the board refreshes the dots) and on `reload` (a send from
- * the customer's sheet). A read that fails keeps the last dots and says nothing: the dot is a courtesy.
+ * the customer's sheet). A read that fails keeps the last dots and says nothing: the dot is a courtesy. Since v2.5635
+ * it reads again when a line lands or a contact changes, on the page's one Messages channel (`useMessagesLive`, one
+ * hook per board and no channel per row), so a row's dot lights without a reload of the board; the newest read wins.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMessagesLive } from '../components/gc/messages/useMessagesLive'
 import type { BoardDotHover } from '../lib/flows/stageSends'
 import { boardDotsByJob } from '../lib/messages/boardDots'
 import { loadBoardDotRows, type BoardDotRows } from '../lib/messages/boardDotsIo'
@@ -38,11 +41,13 @@ export function useBoardDots({ enabled, refreshKey, load = loadBoardDotRows, tod
     }
   }, [])
 
+  const reads = useRef(0)
   const reload = useCallback(async () => {
     if (!enabled) return
+    const mine = ++reads.current
     try {
       const got = await load()
-      if (live.current) setRows(got)
+      if (live.current && mine === reads.current) setRows(got)
     } catch {
       // A courtesy dot: the last dots stand.
     }
@@ -51,6 +56,7 @@ export function useBoardDots({ enabled, refreshKey, load = loadBoardDotRows, tod
   useEffect(() => {
     void reload()
   }, [reload, refreshKey])
+  useMessagesLive(enabled, () => void reload())
 
   const dotByJobId = useMemo(() => {
     if (!enabled || !rows) return NONE

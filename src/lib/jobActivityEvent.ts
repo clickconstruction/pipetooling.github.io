@@ -47,6 +47,10 @@ export type JobActivityEventType =
   | 'discount_removed'
   | 'payment_promise'
   | 'running_late'
+  | 'hazmat_fee_edited'
+  | 'hazmat_fee_voided'
+  | 'hazmat_fee_deleted'
+  | 'hazmat_notice_emailed'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -143,6 +147,14 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   // A tech's Running late move (v2.5431, residential R8 · 3) — written by running_late_move on the late
   // block's job: the new window and the reason ("said to Dana, 9:02 AM"); not financial.
   running_late: { tag: 'Running late', ...CREW_INDIGO, bucket: 'crew' },
+  // A hazmat fee's edit, void and delete (v2.1038) — written by update_/void_/delete_hazmat_fee_incident; an edit is
+  // financial only when the amount moved, a delete only when the fee was not voided first. Shown since v2.5635.
+  hazmat_fee_edited: { tag: 'Hazmat', ...STATUS_AMBER, bucket: 'billing' },
+  hazmat_fee_voided: { tag: 'Hazmat', ...DANGER_RED, bucket: 'billing' },
+  hazmat_fee_deleted: { tag: 'Hazmat', ...DANGER_RED, bucket: 'billing' },
+  // The fee's notice emailed to the customer (v2.1039) — written by send-hazmat-notice-email after Resend takes it;
+  // not financial, so the job's crew sees it too. Shown since v2.5635, as the Stripe bill email is.
+  hazmat_notice_emailed: { tag: 'Emailed', ...BILLING_BLUE, bucket: 'billing' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {
