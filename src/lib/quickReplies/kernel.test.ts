@@ -699,3 +699,20 @@ describe('plain words', () => {
     expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
   })
 })
+
+describe('the stage’s lines first (v2.5629)', () => {
+  it('leads with the lines on the job’s stage steps, in the stage’s order, and keeps them out of the groups after', () => {
+    const groups = qrGroups(LINES, { kind: 'customer', nowStepId: 'start', steps: STEPS.customer ?? [], me: 'rosa', stageStepIds: ['co', 'payapp'] })
+    expect(groups.map((g) => [g.key, g.title, g.tag, ids(g.rows)])).toEqual([
+      ['stage', 'For this stage', 'the job’s stage', ['q15', 'q9']],
+      ['step', 'Start date', 'the step they are on', ['q16']],
+      ['kind', 'Other customers', null, ['q4']],
+      ['any', 'Anyone', null, ['q14', 'q5']],
+    ])
+  })
+
+  it('draws no stage group with no line on those steps, and Find a reply words the tag its own way', () => {
+    expect(qrGroups(LINES, { kind: 'customer', nowStepId: null, steps: STEPS.customer ?? [], me: 'rosa', stageStepIds: ['paid'] }).map((g) => g.key)).toEqual(['kind', 'any'])
+    expect(qrGroups(LINES, { kind: 'customer', nowStepId: null, steps: STEPS.customer ?? [], me: 'rosa', stageStepIds: ['co'], place: 'find' })[0]).toMatchObject({ key: 'stage', tag: 'fits the job’s stage' })
+  })
+})

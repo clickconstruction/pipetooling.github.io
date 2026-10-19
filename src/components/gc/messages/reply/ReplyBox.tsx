@@ -11,6 +11,7 @@ import { SettlingNote } from '../../../followUp/SettlingNote'
 import { useOwedSettling } from '../../../followUp/useOwedSettling'
 import { fillLine } from '../../../../lib/quickReplies/blanks'
 import { replyFills, sendWaits } from '../../../../lib/quickReplies/filling'
+import { appLinesForStage, isAppLine } from '../../../../lib/messages/stageLines'
 import { lineWords } from '../../../../lib/quickReplies/spanish'
 import { customerLang } from '../../../../lib/messages/customerLang'
 import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
@@ -69,6 +70,14 @@ const readOpen = (): boolean => {
     return false
   }
 }
+/** The person folded the strip themselves, so a job's box leaves it folded (v2.5629). */
+const foldedByHand = (): boolean => {
+  try {
+    return localStorage.getItem(QR_OPEN_KEY) === '0'
+  } catch {
+    return false
+  }
+}
 const keepOpen = (open: boolean) => {
   try {
     localStorage.setItem(QR_OPEN_KEY, open ? '1' : '0')
@@ -104,6 +113,8 @@ export function ReplyBox({
   quickIo,
   job,
   billLink = null,
+  stageStepIds = [],
+  openStrip = false,
   kinds,
   attachIo,
   loadBoxes = loadBoxSettings,
@@ -115,6 +126,10 @@ export function ReplyBox({
   job?: { key: string; name: string }
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628): the job's box and the Pipeline's sheet read it; the thread's foot has no one job. */
   billLink?: string | null
+  /** A job's box (v2.5629): the steps the job's stage speaks to; their lines lead the strip, the app's own words standing in for a step with no team line. */
+  stageStepIds?: readonly string[]
+  /** A job's box opens the strip on its own, unless the person folded it by hand. */
+  openStrip?: boolean
   /** The kinds it offers, in `REPLY_KINDS`' order. All three when left out. */
   kinds?: readonly ReplyKind[]
   /** What Attach reads (cut 7f): the job's files, their portal, a file from this computer. */
@@ -125,7 +140,8 @@ export function ReplyBox({
   const open = useOpenThread()
   const reread = useMessagesReread()
   const { showToast } = useToastContext()
-  const me = useOptionalAuth()?.user?.id ?? ''
+  const auth = useOptionalAuth()
+  const me = auth?.user?.id ?? ''
   const io = useMemo(() => ioGiven ?? supabaseReplyIo(), [ioGiven])
   const qio = useMemo(() => quickIo ?? supabaseQuickRepliesIo(), [quickIo])
   const aio = attachIo ?? supabaseAttachIo
@@ -276,7 +292,7 @@ export function ReplyBox({
   // The live flow names the step; the seed names the rest of their kind's steps.
   const kindSteps = flowNow ? [{ id: flowNow.stepId, name: flowNow.stepName }, ...(STEPS[qrKindOf(contact.kind)] ?? [])] : (STEPS[qrKindOf(contact.kind)] ?? [])
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
-  const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink })
+  const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? auth?.profileName ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink })
   const waits = goesOut(shown) ? sendWaits(body) : null
   const lang = customerLang(contact)
   const where =
@@ -293,8 +309,13 @@ export function ReplyBox({
     setBody(fillLine(lineWords(q, lang), fills).text)
     setFinding(false)
     setPeek(false)
-    quick.press(q, contact.id)
+    if (!isAppLine(q)) quick.press(q, contact.id)
   }
+  // The strip's lines on a job's box: the app's own for a stage step the team has no line on, then the team's.
+  const stripLines = useMemo(
+    () => (stageStepIds.length ? [...appLinesForStage(stageStepIds, quick.lines ?? []), ...(quick.lines ?? [])] : quick.lines),
+    [stageStepIds, quick.lines],
+  )
 
   return (
     <div
@@ -335,13 +356,14 @@ export function ReplyBox({
       {goesOut(shown) && !textWaits && (
         <QuickRepliesStrip
           kind={contact.kind}
-          lines={quick.lines}
+          lines={stripLines}
           me={me}
           nowStepId={nowStepId}
+          stageStepIds={stageStepIds}
           steps={kindSteps}
           fills={fills}
           lang={lang}
-          open={stripOpen && (!body.trim() || peek)}
+          open={(stripOpen || (openStrip && !foldedByHand())) && (!body.trim() || peek)}
           problem={quick.problem}
           onOpen={(o) => {
             setStripOpen(o)

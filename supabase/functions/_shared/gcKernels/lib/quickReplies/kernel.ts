@@ -160,7 +160,7 @@ export function qrStepName(steps: StepsByKind, kind: QuickReplyFor, id: string |
 
 export interface QrGroup {
   /** `step`: the lines for the step they are on. `kind`: the rest of their kind. `any`: anyone's. */
-  key: 'step' | 'kind' | 'any'
+  key: 'stage' | 'step' | 'kind' | 'any'
   title: string
   /** The words after the title, in italics. */
   tag: string | null
@@ -171,6 +171,8 @@ export interface QrGroupsInput {
   kind: ContactKind
   /** The step they are on now, the flow's read; null when nothing is on. */
   nowStepId: string | null
+  /** A job's box (v2.5629): the steps its stage speaks to, first first; their lines lead the strip under *For this stage*. */
+  stageStepIds?: readonly string[]
   /** The flow's steps for their kind, to name the step they are on. */
   steps: readonly StepRef[]
   me: string
@@ -200,11 +202,18 @@ export function qrGroups(lines: readonly QuickReply[], input: QrGroupsInput): Qr
     .filter((q) => (q.for === kind || q.for === 'any') && (!needle || q.text.toLowerCase().includes(needle) || (q.textEs ?? '').toLowerCase().includes(needle)) && !otherFlow(q))
     .sort(qrOrder(input.me))
   const now = input.nowStepId
-  const onStep = (q: QuickReply) => Boolean(now) && q.stepId === now
+  const stage = input.stageStepIds ?? []
+  const onStage = (q: QuickReply) => Boolean(q.stepId) && stage.includes(q.stepId ?? '')
+  const onStep = (q: QuickReply) => Boolean(now) && q.stepId === now && !onStage(q)
   const groups: QrGroup[] = []
+  if (kind !== 'any' && stage.length) {
+    const order = qrOrder(input.me)
+    const forStage = rows.filter((q) => q.for === kind && onStage(q)).sort((a, b) => stage.indexOf(a.stepId ?? '') - stage.indexOf(b.stepId ?? '') || order(a, b))
+    if (forStage.length) groups.push({ key: 'stage', title: 'For this stage', tag: input.place === 'find' ? 'fits the job’s stage' : 'the job’s stage', rows: forStage })
+  }
   if (kind !== 'any') {
     const step = rows.filter((q) => q.for === kind && onStep(q))
-    const others = rows.filter((q) => q.for === kind && !onStep(q))
+    const others = rows.filter((q) => q.for === kind && !onStep(q) && !onStage(q))
     if (step.length) {
       groups.push({
         key: 'step',

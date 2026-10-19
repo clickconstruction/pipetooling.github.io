@@ -22,14 +22,17 @@ The speech bubble beside the customer's name is a shorter way in. It sits on the
 1. Press the speech bubble. A small window opens over the board.
 2. The window names the job and the customer. It says who wrote last.
 3. Press {{button:outline|Text}} or {{button:outline|Email}}. The same orange box opens in the window.
-4. Write the message. Press {{button:blue|Send text…}} or {{button:blue|Send email…}}.
+4. The quick replies open on their own. The lines for the job's stage come first, under **For this stage**. Press one and the box fills.
+5. Read the words. Press {{button:blue|Send text…}} or {{button:blue|Send email…}}.
+
+On a job in Billed Awaiting Payment the payment reminder comes first. Then comes the line that says the bill went out. On a job in Working the Working line comes first. Where the office has not written a line for a stage yet, the app's own words stand in.
 
 The window also offers **Call**, **Open their thread** and **Their record**. A customer with no mobile number sees Text greyed out, with the reason under it. A job with no customer has no bubble.
 
 ## Write to the customer
 
 1. Press {{button:outline|Text}} or {{button:outline|Email}}. The box turns orange, since orange is the customer's.
-2. Write the message, or press a line in **Quick replies** to fill the box.
+2. Write the message, or press a line in **Quick replies** to fill the box. The lines for the job's stage come first, under **For this stage**.
 3. Press {{button:blue|Send text…}} or {{button:blue|Send email…}}.
 4. Check the message in the window that opens. It shows what the customer sees.
 5. Press **Send as email** to send it.

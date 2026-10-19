@@ -6,10 +6,11 @@
  * the send window, `messages-email` for an email, and the text's wait while Send texts is off. A send asks the
  * job's window to read its activity again (`onSent`).
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
 import { loadNewestBillLink } from '../../lib/billing/billLinkIo'
 import { jobBoxJobKey, NO_CUSTOMER_WORDS } from '../../lib/messages/jobBox'
+import { stageStepIds } from '../../lib/messages/stageLines'
 import { loadCustomerContact } from '../../lib/messages/messagesIo'
 import type { ReplyIo } from '../../lib/messages/replyIo'
 import type { QuickRepliesIo } from '../../lib/quickReplies/quickRepliesIo'
@@ -23,6 +24,8 @@ export interface JobCustomerBoxProps {
   jobName: string
   /** The job's customer. Null: the job has none yet. */
   customerId: string | null
+  /** The job's status (v2.5629): the box opens on the quick replies for its stage, the Paid reminder first on a billed job. */
+  jobStatus?: string | null
   /** After a text, an email or a note to them goes: the job's window reads its activity again. */
   onSent?: () => void
   /** For a smoke: the customer's contact, the box's sends and its quick replies, and the job's newest bill's pay page. */
@@ -34,7 +37,8 @@ export interface JobCustomerBoxProps {
 
 const quiet = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 } as const
 
-export function JobCustomerBox({ kind, jobId, jobName, customerId, onSent, load = loadCustomerContact, loadBill = loadNewestBillLink, io, quickIo }: JobCustomerBoxProps) {
+export function JobCustomerBox({ kind, jobId, jobName, customerId, jobStatus = null, onSent, load = loadCustomerContact, loadBill = loadNewestBillLink, io, quickIo }: JobCustomerBoxProps) {
+  const stageSteps = useMemo(() => stageStepIds(jobStatus), [jobStatus])
   const [read, setRead] = useState<{ customerId: string; contact: Contact | null; problem: string | null } | null>(null)
   // `{bill}` (v2.5628): the job's newest billed bill's pay page, read once; a read that fails leaves the blank for the person.
   const [billLink, setBillLink] = useState<string | null>(null)
@@ -77,7 +81,7 @@ export function JobCustomerBox({ kind, jobId, jobName, customerId, onSent, load 
     )
   return (
     <MessagesRereadContext.Provider value={onSent ?? (() => {})}>
-      <ReplyBox contact={got.contact} io={io} quickIo={quickIo} job={{ key: jobBoxJobKey(jobId), name: jobName }} billLink={billLink} kinds={[kind]} />
+      <ReplyBox contact={got.contact} io={io} quickIo={quickIo} job={{ key: jobBoxJobKey(jobId), name: jobName }} billLink={billLink} stageStepIds={stageSteps} openStrip={stageSteps.length > 0} kinds={[kind]} />
     </MessagesRereadContext.Provider>
   )
 }

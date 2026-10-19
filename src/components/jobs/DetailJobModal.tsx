@@ -86,6 +86,9 @@ import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
 import { JobCustomerBox } from './JobCustomerBox'
+import { JobCustomerSheet } from './JobCustomerSheet'
+import { contactForCustomer } from '../../lib/messages/messagesIo'
+import { messagesThreadHref } from '../../lib/messages/customerThread'
 import JobReportsModal from '../JobReportsModal'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -304,6 +307,7 @@ export function DetailJobModalCustomerPanel({
   developmentName,
   customerId,
   onLeave,
+  onOpenCustomerDoor,
 }: {
   customerName: string | null | undefined
   customerPhone: string | null | undefined
@@ -314,6 +318,8 @@ export function DetailJobModalCustomerPanel({
   customerId?: string | null
   /** The window closes before the Messages button opens the customer's thread (residential R2). */
   onLeave?: () => void
+  /** The customer's door (v2.5629, punch list #124): the bubble opens the customer's sheet over the window instead of leaving. */
+  onOpenCustomerDoor?: () => void
 }) {
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
@@ -369,7 +375,7 @@ export function DetailJobModalCustomerPanel({
         {customerId && name ? (
           <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', flexShrink: 0 }}>
             <CustomerPortalGlobeButton customerId={customerId} customerName={name} size={15} />
-            <MessagesButton customerId={customerId} customerName={name} size={15} {...(onLeave ? { onOpen: onLeave } : {})} />
+            <MessagesButton customerId={customerId} customerName={name} size={15} {...(onLeave ? { onOpen: onLeave } : {})} {...(onOpenCustomerDoor ? { onPressInstead: onOpenCustomerDoor } : {})} />
           </span>
         ) : null}
       </div>
@@ -1235,6 +1241,8 @@ export default function DetailJobModal({
   )
 
   const navigate = useNavigate()
+  // The customer's door (v2.5629): the header's bubble opens the customer's sheet over the window; Open their thread closes the window first, as the bubble's own press did.
+  const [customerDoorOpen, setCustomerDoorOpen] = useState(false)
   // Mirrors Jobs.tsx canOpenJobScheduleModal — the roles that can use the Dispatch job-week grid.
   const showWeekDispatchButton =
     Boolean(jobId) &&
@@ -1955,6 +1963,7 @@ export default function DetailJobModal({
                     gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
                     developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
                     onLeave={onClose}
+                    onOpenCustomerDoor={fullJob ? () => setCustomerDoorOpen(true) : undefined}
                   />
                 </div>
               ) : (
@@ -2069,6 +2078,19 @@ export default function DetailJobModal({
           onKeyDown={(e) => e.stopPropagation()}
           role="presentation"
         >
+          {customerDoorOpen && fullJob ? (
+            <JobCustomerSheet
+              job={fullJob}
+              onClose={() => setCustomerDoorOpen(false)}
+              onSent={threadNotes.reload}
+              openThread={async (customerId) => {
+                const contactId = await contactForCustomer(customerId)
+                setCustomerDoorOpen(false)
+                onClose()
+                navigate(messagesThreadHref(contactId))
+              }}
+            />
+          ) : null}
           <JobThreadNotesPanel
             activity={threadNotes.activity}
             loading={threadNotes.loading}
@@ -2105,6 +2127,7 @@ export default function DetailJobModal({
                         jobId={fullJob.id}
                         jobName={jobBoxJobName(fullJob)}
                         customerId={fullJob.customer_id ?? null}
+                        jobStatus={fullJob.status ?? null}
                         onSent={threadNotes.reload}
                       />
                     ),
