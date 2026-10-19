@@ -82,6 +82,18 @@ CREATE FUNCTION jpp.promises(p_job uuid) RETURNS text LANGUAGE sql AS $$
     SELECT string_agg(to_char((e->>'promisedYmd')::date, 'Mon DD') || ' by ' || (e->>'channel') || ', ' || (e->>'saidBy') || ', heard by ' || (e->>'heardByName'), '; ' ORDER BY e->>'createdAt' DESC)
     FROM jsonb_array_elements(public.list_job_payment_promises_for(p_job)) e), 'NULL')
 $$;
+-- The rows themselves are the dev's alone under RLS (job_payment_promises, job_promised_pay_dates), so the bed reads
+-- them through definer helpers, as the app reads them through its functions.
+CREATE FUNCTION jpp.heard(p_job uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT u.name || ' / ' || p.source FROM public.job_payment_promises p JOIN public.users u ON u.id = p.heard_by
+  WHERE p.job_id = p_job AND p.voided_at IS NULL ORDER BY p.created_at LIMIT 1
+$$;
+CREATE FUNCTION jpp.board(p_job uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT promised_date::text FROM public.job_promised_pay_dates WHERE job_id = p_job
+$$;
+CREATE FUNCTION jpp.pid(p_job uuid, p_date date) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT id FROM public.job_payment_promises WHERE job_id = p_job AND promised_date = p_date AND voided_at IS NULL LIMIT 1
+$$;
 GRANT USAGE ON SCHEMA jpp TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA jpp TO anon, authenticated, service_role;
 
@@ -107,8 +119,8 @@ SELECT jpp.same('a job that is not there is nobody''s', public.is_job_people('00
 -- 2 · Theo writes Dana's word on his job, and reads it.
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a01');
 SELECT jpp.same('Theo writes the promise on J1', (public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f01', DATE '2026-10-25', 'Dana', 'text'))->>'promisedDate', '2026-10-25');
-SELECT jpp.same('the promise is heard by Theo, from the office side', (SELECT u.name || ' / ' || p.source FROM public.job_payment_promises p JOIN public.users u ON u.id = p.heard_by WHERE p.job_id = '00000000-0000-0000-0000-0000000e4f01'), 'People Theo / office');
-SELECT jpp.same('the board''s date follows', (SELECT promised_date::text FROM public.job_promised_pay_dates WHERE job_id = '00000000-0000-0000-0000-0000000e4f01'), '2026-10-25');
+SELECT jpp.same('the promise is heard by Theo, from the office side', jpp.heard('00000000-0000-0000-0000-0000000e4f01'), 'People Theo / office');
+SELECT jpp.same('the board''s date follows', jpp.board('00000000-0000-0000-0000-0000000e4f01'), '2026-10-25');
 SELECT jpp.same('Theo reads J1''s promises', jpp.promises('00000000-0000-0000-0000-0000000e4f01'), 'Oct 25 by text, Dana, heard by People Theo');
 SELECT jpp.same('Theo reads nothing of J2', jpp.promises('00000000-0000-0000-0000-0000000e4f02'), 'NULL');
 SELECT jpp.same('the company-wide read still answers Theo nothing', coalesce(public.list_job_payment_promises()::text, 'NULL'), 'NULL');
@@ -121,8 +133,8 @@ SELECT jpp.same('Rosa writes a second word on J1', (public.add_job_payment_promi
 SELECT jpp.same('Rosa writes one on J2', (public.add_job_payment_promise('00000000-0000-0000-0000-0000000e4f02', DATE '2026-11-02', 'Dana', 'phone'))->>'promisedDate', '2026-11-02');
 SELECT jpp.as_user('00000000-0000-0000-0000-0000000e4a01');
 SELECT jpp.same('Theo reads both of J1''s, newest first', jpp.promises('00000000-0000-0000-0000-0000000e4f01'), 'Oct 28 by phone, Dana, heard by People Rosa; Oct 25 by text, Dana, heard by People Theo');
-SELECT jpp.same('Theo voids the office''s word on his job', (public.void_job_payment_promise((SELECT id FROM public.job_payment_promises WHERE job_id = '00000000-0000-0000-0000-0000000e4f01' AND promised_date = DATE '2026-10-28')))->>'voided', 'true');
-SELECT jpp.refused('Theo is refused voiding a word on Kim''s job', $q$SELECT public.void_job_payment_promise((SELECT id FROM public.job_payment_promises WHERE job_id = '00000000-0000-0000-0000-0000000e4f02'))$q$, 'Not allowed to void payment promises');
+SELECT jpp.same('Theo voids the office''s word on his job', (public.void_job_payment_promise(jpp.pid('00000000-0000-0000-0000-0000000e4f01', DATE '2026-10-28')))->>'voided', 'true');
+SELECT jpp.refused('Theo is refused voiding a word on Kim''s job', $q$SELECT public.void_job_payment_promise(jpp.pid('00000000-0000-0000-0000-0000000e4f02', DATE '2026-11-02'))$q$, 'Not allowed to void payment promises');
 SELECT jpp.refused('voiding a promise that is not there is refused', $q$SELECT public.void_job_payment_promise('00000000-0000-0000-0000-0000000e4f99')$q$, 'Not allowed to void payment promises');
 SELECT jpp.same('Theo clears the board''s date on J1', (public.set_job_promised_pay_date('00000000-0000-0000-0000-0000000e4f01', NULL))->>'cleared', 'true');
 SELECT jpp.refused('Theo is refused clearing J2''s', $q$SELECT public.set_job_promised_pay_date('00000000-0000-0000-0000-0000000e4f02', NULL)$q$, 'Not allowed to set promised pay dates');
