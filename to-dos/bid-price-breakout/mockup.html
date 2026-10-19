@@ -44,6 +44,10 @@
   table.lines tr.total td { border-top: 2px solid var(--ink); font-weight: 800; }
   table.lines tr.rest td { background: var(--amber-tint); }
   table.lines tr.margin td { background: var(--green-tint); }
+  table.lines.cols td.n { font-weight: 500; }
+  table.lines.cols tr.total td.n { font-weight: 800; }
+  table.lines.cols tr.head td { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding-bottom: 2px; border-bottom: 1px solid var(--line); }
+  table.lines.cols td.n .rule { font-weight: 400; }
   .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
   .sw.mat { background: #64748b; } .sw.mk { background: #94a3b8; } .sw.tax { background: #a78bfa; } .sw.eq { background: #f59e0b; } .sw.lab { background: #0ea5e9; } .sw.mg { background: var(--green); }
   .stack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin: 10px 0 4px; }
@@ -85,53 +89,65 @@
 <header class="top">
   <p class="eyebrow">Punch list #128 · Bids → Pricing</p>
   <h1>What the price is made of: material, markup, tax, equipment, labor</h1>
-  <p>One card on the Pricing Workbench that takes the ★ price apart with the takeoff, the tax rate and the equipment rows, and says what is left for labor. A second card adds up the estimator's own tags. Made-up bid throughout: Ridgeway Builders, Oak Hollow Apartments Building C (B2210), 48 units, priced at $186,400.</p>
+  <p>One card on the Pricing Workbench that puts cost, price and profit side by side for material, tax, equipment and labor, and says plainly when labor is only what is left. A kind on each row so equipment stops being a guess, and the estimator's own tags adding up to the price. Second pass of 2026-10-19. Made-up bid throughout: Ridgeway Builders, Oak Hollow Apartments Building C (B2210), 48 units, priced at $186,400.</p>
 </header>
 
-<h2><span class="num pick">1</span> The card on the Workbench: the price, taken apart</h2>
-<p class="lede">Under the sticky Revenue · Cost · Profit · Margin strip. Every line names its rule and the screen that sets it. The lines always add to the ★ price, so nothing is hidden inside a fixture's price any more. <b>Recommended.</b></p>
+<h2><span class="num pick">0</span> Before any card: the crew rate is the bid's rate until someone types one</h2>
+<p class="lede">The labor book already fills a bid's hours the first time Labor or Takeoffs opens. The rate never fills: it stays blank, labor costs $0, and the Workbench calls the bid uncosted. The crew rate card on the Labor tab already computes the number (the last 90 days' field wage × the burden factor) and only shows it. The smallest change with the most effect: the card's number is the bid's rate until a person types one, and every reader says which it is. <b>Recommended first (PR 0, the owner's D5).</b></p>
+<div class="fit" style="border:1px solid #cbd5e1;border-radius:8px"><div class="card">
+  <div class="bar"><b>Labor · B2210 Oak Hollow Building C</b><span class="sub">Plans · 1,284 h from the book</span></div>
+  <div class="body">
+    <table class="lines">
+      <tr><td>Labor rate<span class="rule">the crew rate, $48.33 wage × 1.20 burden, from the last 90 days · type one to override</span></td><td class="n"><span style="border:1px dashed var(--line);border-radius:6px;padding:2px 8px;color:var(--ink-2)">$58.00</span></td><td class="pct"><span class="chip guess">crew rate</span></td></tr>
+      <tr><td>Labor<span class="rule">1,284 h × $58.00</span></td><td class="n">$74,472.00</td><td class="pct"></td></tr>
+    </table>
+    <p class="note">A dashed box is the stand-in; typing makes it the bid's own and the chip reads <i>typed</i>. Existing bids with hours and no rate gain a labor cost the day this ships, so their Workbench margins drop to the truth: the one reason it is the owner's call.</p>
+  </div>
+</div></div>
+
+<h2><span class="num pick">1</span> The card on the Workbench: cost, price and profit, line by line</h2>
+<p class="lede">Under the sticky Revenue · Cost · Profit · Margin strip. The same five lines in two columns: what each costs us and what the price carries for it, with the profit between them. The columns add to the strip's cost and revenue to the cent, so nothing is hidden inside a fixture's price and nothing is invented. <b>Recommended</b> (the second pass; the first drew markup and margin as two more lines).</p>
 <div class="row">
   <div>
-    <div class="cap green">A · Hours on the Labor tab <span class="r">labor is the book's hours × the rate, margin is what is left</span></div>
+    <div class="cap green">With hours on the Labor tab <span class="r">labor at cost; its profit is what is left</span></div>
     <div class="fit"><div class="card">
       <div class="strip"><div>Revenue<b>$186,400</b></div><div>Cost<b>$139,467</b></div><div>Profit<b>$46,933</b></div><div>Margin<b>25.2%</b></div></div>
       <div class="bar"><b>What the price is made of</b><span class="sub">★ Plans · the price to Ridgeway Builders</span></div>
       <div class="body">
-        <div class="stack"><span style="width:28%;background:#64748b"></span><span style="width:11.2%;background:#94a3b8"></span><span style="width:2.3%;background:#a78bfa"></span><span style="width:3.6%;background:#f59e0b"></span><span style="width:40%;background:#0ea5e9"></span><span style="width:14.9%;background:#16a34a"></span></div>
-        <table class="lines">
-          <tr><td><span class="sw mat"></span>Material<span class="rule">The takeoff's part lines at the catalog's price · <a>Takeoffs</a></span></td><td class="n">$52,300.00</td><td class="pct">28.1%</td></tr>
-          <tr><td><span class="sw mk"></span>Material markup<span class="rule">40% on material, the company number · <a>Settings</a> · this bid: default</span></td><td class="n">$20,920.00</td><td class="pct">11.2%</td></tr>
-          <tr><td><span class="sw tax"></span>Sales tax on material<span class="rule">8.25% on material, saved on the bid · <a>Takeoffs</a></span></td><td class="n">$4,314.75</td><td class="pct">2.3%</td></tr>
-          <tr><td><span class="sw eq"></span>Equipment<span class="rule">The 2 rows tagged Equipment, at their price · <a>Counts</a></span></td><td class="n">$6,800.00</td><td class="pct">3.6%</td></tr>
-          <tr><td><span class="sw lab"></span>Labor<span class="rule">1,284 h on the Labor tab × $58.00 crew rate · <a>Labor</a></span></td><td class="n">$74,472.00</td><td class="pct">40.0%</td></tr>
-          <tr class="margin"><td><span class="sw mg"></span>Margin<span class="rule">What is left of the price</span></td><td class="n">$27,593.25</td><td class="pct">14.8%</td></tr>
-          <tr class="total"><td>Price</td><td class="n">$186,400.00</td><td class="pct">100%</td></tr>
+        <table class="lines cols">
+          <tr class="head"><td></td><td class="n">Cost</td><td class="n">Price</td><td class="n">Profit</td></tr>
+          <tr><td><span class="sw mat"></span>Material<span class="rule">the takeoff at the catalog's price · sold at <span class="chip" style="padding:0 6px">+40% ▾</span> the company number</span></td><td class="n">$52,300.00</td><td class="n">$73,220.00</td><td class="n">$20,920.00<span class="rule">28.6%</span></td></tr>
+          <tr><td><span class="sw tax"></span>Sales tax on material<span class="rule">8.25%, saved on the bid · passed through</span></td><td class="n">$4,314.75</td><td class="n">$4,314.75</td><td class="n">$0.00</td></tr>
+          <tr><td><span class="sw eq"></span>Equipment<span class="rule">the Labor tab's rentals · the 2 rows tagged Equipment</span></td><td class="n">$5,900.00</td><td class="n">$6,800.00</td><td class="n">$900.00<span class="rule">13.2%</span></td></tr>
+          <tr><td><span class="sw lab"></span>Labor<span class="rule">1,284 h × $58.00 crew rate · the price's rest</span></td><td class="n">$74,472.00</td><td class="n">$102,065.25</td><td class="n">$25,113.00<span class="rule">24.6%</span></td></tr>
+          <tr><td><span class="sw" style="background:#cbd5e1"></span>Driving, travel, permits, subs<span class="rule">at cost; the price carries them inside labor</span></td><td class="n">$2,480.25</td><td class="n" style="color:var(--muted);font-weight:400">—</td><td class="n" style="color:var(--muted);font-weight:400">in labor</td></tr>
+          <tr class="total"><td>The bid</td><td class="n">$139,467.00</td><td class="n">$186,400.00</td><td class="n">$46,933.00<span class="rule">25.2%</span></td></tr>
         </table>
-        <p class="note">Driving, travel, permits and subs stay in the strip's Cost; this card is about the price, not every cost. Hover a line for the rows behind it.</p>
+        <p class="note">Hover a line for the rows behind it. Material earns 28.6% and labor 24.6%: the two numbers the owner asked for, side by side.</p>
       </div>
     </div></div>
   </div>
   <div>
-    <div class="cap orange">A · No hours yet <span class="r">labor is what is left, and the card says so</span></div>
+    <div class="cap orange">No hours yet <span class="r">labor's cost is blank, and the card says what that hides</span></div>
     <div class="fit"><div class="card">
-      <div class="strip"><div>Revenue<b>$186,400</b></div><div>Cost<b>$63,415</b></div><div>Profit<b>—</b></div><div>Margin<b>—</b></div></div>
+      <div class="strip"><div>Revenue<b>$186,400</b></div><div>Cost<b>$64,995</b></div><div>Profit<b>—</b></div><div>Margin<b>—</b></div></div>
       <div class="bar"><b>What the price is made of</b><span class="sub">★ Plans · the price to Ridgeway Builders</span></div>
       <div class="body">
-        <div class="stack"><span style="width:28%;background:#64748b"></span><span style="width:11.2%;background:#94a3b8"></span><span style="width:2.3%;background:#a78bfa"></span><span style="width:3.6%;background:#f59e0b"></span><span style="width:54.9%;background:#fcd34d"></span></div>
-        <table class="lines">
-          <tr><td><span class="sw mat"></span>Material<span class="rule">The takeoff's part lines at the catalog's price · <a>Takeoffs</a></span></td><td class="n">$52,300.00</td><td class="pct">28.1%</td></tr>
-          <tr><td><span class="sw mk"></span>Material markup<span class="rule">40% on material, the company number · <a>Settings</a></span></td><td class="n">$20,920.00</td><td class="pct">11.2%</td></tr>
-          <tr><td><span class="sw tax"></span>Sales tax on material<span class="rule">8.25% on material, saved on the bid · <a>Takeoffs</a></span></td><td class="n">$4,314.75</td><td class="pct">2.3%</td></tr>
-          <tr><td><span class="sw eq"></span>Equipment<span class="rule">The 2 rows tagged Equipment, at their price · <a>Counts</a></span></td><td class="n">$6,800.00</td><td class="pct">3.6%</td></tr>
-          <tr class="rest"><td><span class="sw" style="background:#fcd34d"></span>Labor and margin<span class="rule">What is left of the price. No hours on the Labor tab yet, so the two cannot be told apart.</span></td><td class="n">$102,065.25</td><td class="pct">54.8%</td></tr>
-          <tr class="total"><td>Price</td><td class="n">$186,400.00</td><td class="pct">100%</td></tr>
+        <table class="lines cols">
+          <tr class="head"><td></td><td class="n">Cost</td><td class="n">Price</td><td class="n">Profit</td></tr>
+          <tr><td><span class="sw mat"></span>Material<span class="rule">the takeoff at the catalog's price · sold at <span class="chip" style="padding:0 6px">+40% ▾</span></span></td><td class="n">$52,300.00</td><td class="n">$73,220.00</td><td class="n">$20,920.00<span class="rule">28.6%</span></td></tr>
+          <tr><td><span class="sw tax"></span>Sales tax on material<span class="rule">8.25%, saved on the bid · passed through</span></td><td class="n">$4,314.75</td><td class="n">$4,314.75</td><td class="n">$0.00</td></tr>
+          <tr><td><span class="sw eq"></span>Equipment<span class="rule">the Labor tab's rentals · the 2 rows tagged Equipment</span></td><td class="n">$5,900.00</td><td class="n">$6,800.00</td><td class="n">$900.00<span class="rule">13.2%</span></td></tr>
+          <tr class="rest"><td><span class="sw" style="background:#fcd34d"></span>Labor and margin<span class="rule">no hours on the Labor tab, so the two cannot be told apart</span></td><td class="n" style="color:var(--amber-ink)">no hours</td><td class="n">$102,065.25</td><td class="n" style="color:var(--muted);font-weight:400">—</td></tr>
+          <tr><td><span class="sw" style="background:#cbd5e1"></span>Driving, travel, permits, subs<span class="rule">at cost</span></td><td class="n">$2,480.25</td><td class="n" style="color:var(--muted);font-weight:400">—</td><td class="n" style="color:var(--muted);font-weight:400">in labor</td></tr>
+          <tr class="total"><td>The bid</td><td class="n">$64,995.00</td><td class="n">$186,400.00</td><td class="n" style="color:var(--muted)">—</td></tr>
         </table>
-        <p class="warn"><b>The labor book knows 41 of these 46 fixtures.</b> Open Labor once and the hours fill in from the book: about 1,284 h × $58.00 = $74,472, which would leave $27,593 margin (14.8%). <span class="door" style="margin-left:6px">Open Labor</span></p>
+        <p class="warn"><b>The labor book knows 41 of these 46 fixtures.</b> Open Labor once and the hours fill in from the book: about 1,284 h × $58.00 = $74,472, which would leave $25,113 on labor (24.6%). <span class="door" style="margin-left:6px">Open Labor</span></p>
       </div>
     </div></div>
   </div>
 </div>
-<p class="note"><b>Wendi's rule is the right-hand card.</b> Material, 40% on it, tax on it, equipment on its own line, and the rest called labor. The left-hand card is the same five lines once hours exist: the book's hours turn "labor and margin" into labor and margin. One card, one rule; the hours decide which it shows. The 40% is the company number (today's schedule-of-values factor, 1.5, becomes the one material markup; the owner sets it to 1.4) with a per-bid override under the line.</p>
+<p class="note"><b>Wendi's rule is the Price column.</b> Material sold at +40%, tax on it, equipment on its own line, and the rest called labor. The Cost column is what the Workbench already knows, and the hours decide whether labor's cost is a number or a blank. The +40% is one company number (today's schedule-of-values factor, 1.5, becomes the material markup; the owner set it to 1.4) and the chip on the line overrides it for this bid. Driving, travel, permits and subs have no price of their own: Wendi's rule leaves them inside labor, so the card does too, and says so.</p>
 
 <h2><span class="num">2</span> The other ways, and why not</h2>
 <div class="row">
@@ -185,13 +201,13 @@
   </div>
 </div></div>
 
-<h2><span class="num pick">4</span> Tags are the estimator's own, and they add up</h2>
-<p class="lede">A tag is a word on a row, as many as wanted, typed once and offered again on the next row. They are never on paper. A card on the Workbench adds them up so an estimator can see that the bathrooms, the kitchen and the site work make the whole price.</p>
+<h2><span class="num pick">4</span> Tags are the estimator's own, and they add up: one card, two views</h2>
+<p class="lede">A tag is a word on a row, as many as wanted, typed once and offered again on the next row. They are never on paper. The composition bar (<i>What the bid is made of</i>: fixtures · pipe · fittings · other) becomes this card's <b>By kind</b> view, now with Equipment and Allowance from proposal 3; <b>By tag</b> is the estimator's own cut. One card, not three.</p>
 <div class="row">
   <div>
     <div class="cap">The card <span class="r">under the composition bar</span></div>
     <div class="fit"><div class="card">
-      <div class="bar"><b>By tag</b><span class="sub">4 tags · 7 rows untagged</span></div>
+      <div class="bar"><b><span class="chip" style="margin-right:4px">By kind</span><span class="chip" style="background:var(--ink);color:#fff;border-color:var(--ink)">By tag</span></b><span class="sub">4 tags · 7 rows untagged</span></div>
       <div class="body">
         <table class="lines">
           <tr><td><span class="chip tag">Bldg C bathrooms</span><span class="rule">31 rows · cost $71,900 · margin 26.9%</span></td><td class="n">$98,400.00</td><td class="pct">52.8%</td></tr>
@@ -220,20 +236,19 @@
   </div>
 </div>
 
-<h2><span class="num">5</span> The same lines on one row</h2>
-<p class="lede">The row's breakdown window (the ⓘ on a Workbench row) already shows material, tax and labor at cost. It takes the card's lines so a row reads the same way the bid does.</p>
-<div class="fit" style="border-top:1px solid #cbd5e1;border-radius:8px"><div class="card">
+<h2><span class="num">5</span> The same columns on one row</h2>
+<p class="lede">The row's breakdown window (the ⓘ on a Workbench row) already shows material, tax and labor at cost. It takes the card's columns so a row reads the way the bid does.</p>
+<div class="fit" style="border:1px solid #cbd5e1;border-radius:8px"><div class="card">
   <div class="bar"><b>Water Closet · 48</b><span class="sub">$1,150.00 each · ★ Plans</span></div>
   <div class="body">
-    <table class="lines">
-      <tr><td><span class="sw mat"></span>Material<span class="rule">$412.00 × 48 from the takeoff</span></td><td class="n">$19,776.00</td><td class="pct">35.8%</td></tr>
-      <tr><td><span class="sw mk"></span>Material markup<span class="rule">40%</span></td><td class="n">$7,910.40</td><td class="pct">14.3%</td></tr>
-      <tr><td><span class="sw tax"></span>Sales tax on material<span class="rule">8.25%</span></td><td class="n">$1,631.52</td><td class="pct">3.0%</td></tr>
-      <tr><td><span class="sw lab"></span>Labor<span class="rule">7.5 h × 48 = 360 h × $58.00</span></td><td class="n">$20,880.00</td><td class="pct">37.8%</td></tr>
-      <tr class="margin"><td><span class="sw mg"></span>Margin<span class="rule">What is left</span></td><td class="n">$5,002.08</td><td class="pct">9.1%</td></tr>
-      <tr class="total"><td>Price</td><td class="n">$55,200.00</td><td class="pct">100%</td></tr>
+    <table class="lines cols">
+      <tr class="head"><td></td><td class="n">Cost</td><td class="n">Price</td><td class="n">Profit</td></tr>
+      <tr><td><span class="sw mat"></span>Material<span class="rule">$412.00 × 48 · sold at +40%</span></td><td class="n">$19,776.00</td><td class="n">$27,686.40</td><td class="n">$7,910.40</td></tr>
+      <tr><td><span class="sw tax"></span>Sales tax<span class="rule">8.25%</span></td><td class="n">$1,631.52</td><td class="n">$1,631.52</td><td class="n">$0.00</td></tr>
+      <tr><td><span class="sw lab"></span>Labor<span class="rule">7.5 h × 48 = 360 h × $58.00 · the rest</span></td><td class="n">$20,880.00</td><td class="n">$25,882.08</td><td class="n">$5,002.08<span class="rule">19.3%</span></td></tr>
+      <tr class="total"><td>The row</td><td class="n">$42,287.52</td><td class="n">$55,200.00</td><td class="n">$12,912.48<span class="rule">23.4%</span></td></tr>
     </table>
-    <p class="ok">The bid's margin is 14.8% and this row's is 9.1%: the water closets carry less than their share. The margin brush can raise them without touching the rest.</p>
+    <p class="ok">The bid's labor earns 24.6% and this row's 19.3%: the water closets carry less than their share. The margin brush can raise them without touching the rest.</p>
   </div>
 </div></div>
 

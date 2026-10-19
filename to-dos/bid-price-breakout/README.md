@@ -2,7 +2,7 @@
 name: "What the price is made of: material, markup, tax, equipment, labor"
 number: 128
 group: gated
-status: proposed 2026-10-19 — the owner picked D1 (one markup number, the SOV factor set to 1.4) and D2 (hours × rate with margin left over; the residual only with no hours) the same day; D3 and D4 open; PR 1 can start
+status: proposed 2026-10-19 — the owner picked D1 (one markup number, the SOV factor set to 1.4) and D2 (hours × rate with margin left over; the residual only with no hours) the same day; a second pass the same evening turned the card into Cost · Price · Profit columns and put PR 0 (the crew rate stands in) first; D3, D4 and D5 open
 summary: >
   A bid's price is the price book's all-in number per fixture, so some estimators skip the Labor
   tab and let the fixture's price carry its material. Then the Workbench's margin lies, tax is a
@@ -11,10 +11,10 @@ summary: >
   ★ price apart into material, the company markup on it, sales tax on it, the equipment rows and
   labor, and says plainly when labor is only what is left; a kind on each count row so equipment
   stops being a guess; and tags of the estimator's own that add up to the price.
-next: PR 1, the tax rate on the bid; the owner still picks D3 (whether the lines reach the cover letter) and D4 (free tags, or kinds only) before PR 4 and 5.
+next: The owner's D5 (the crew rate stands in for an untyped rate, which changes existing bids' margins); then PR 0 and PR 1. D3 (paper) and D4 (free tags) gate PR 5 and PR 4.
 size: S (PR 1 and 2) · M (PR 3) · S (PR 4) · S (PR 5, if picked)
-blocker: None for PR 1–3; D3 gates PR 5 and D4 gates PR 4.
-opinion: build — PR 1 to 3 in one week; the card answers the owner's ask and Wendi's in one place, and the labor book fills the hours it needs
+blocker: D5 for PR 0; none for PR 1–3; D3 gates PR 5 and D4 gates PR 4.
+opinion: build — PR 0 first, it is a one-line rule that costs every bid; then PR 1 to 3 in one week; the card answers the owner's ask and Wendi's in one place
 mockup: to-dos/bid-price-breakout/mockup.html
 ---
 
@@ -26,7 +26,7 @@ Proposed 2026-10-19 after a read of the Pricing, Labor and Takeoffs code and the
 schedule of values. The owner picked **D1** and **D2** the same day, as recommended: one material
 markup number (the schedule-of-values factor, set to 1.4), and when hours exist Labor is hours ×
 rate with Margin what is left, Wendi's residual rule only on a bid with no hours. D3 and D4 are
-open. Nothing is built. The mock-up draws the recommended card in both of its
+open. The second pass (the section below) redrew the card and added PR 0 and D5. Nothing is built. The mock-up draws the recommended card in both of its
 states, the two ways not taken, the kind chip, the tag card and the paper question.
 
 ## The ask, in the owner's words
@@ -111,27 +111,27 @@ Each is drawn in the mock-up.
 ### 1 · One card on the Workbench: *What the price is made of* — recommended
 
 Under the sticky Revenue · Cost · Profit · Margin strip, for the ★ price (every price option has
-its own). Six lines, each with its rule and the screen that sets it:
+its own). Five lines in three columns, **Cost · Price · Profit**, the columns adding to the
+strip's cost and revenue to the cent:
 
-| Line | Rule | Set on |
-|---|---|---|
-| Material | the takeoff's part lines at the catalog's price (what the cost rail calls *What Pricing sees*) | Takeoffs |
-| Material markup | the company number on material (D1: the schedule-of-values factor becomes *the* material markup, 1.4 for 40%) with a per-bid override under the line | Settings, the bid |
-| Sales tax on material | the rate saved on the bid, the company default 8.25 | Takeoffs' Tax box, now saved |
-| Equipment | the rows tagged Equipment, at their price (proposal 3) | Counts |
-| Labor | with hours: the Labor tab's hours × the rate, the crew rate standing in when none is typed and the line saying so · without hours: **Labor and margin**, what is left, on an amber line | Labor |
-| Margin | what is left of the price, only when labor has hours | — |
+| Line | Cost | Price | Set on |
+|---|---|---|---|
+| Material | the takeoff's part lines at the catalog's price (the cost rail's *What Pricing sees*) | cost × the material markup (D1: the schedule-of-values factor is the one markup, 1.4) with a chip on the line that overrides it for this bid | Takeoffs, Settings |
+| Sales tax on material | the rate saved on the bid × material (company default 8.25) | the same, passed through | Takeoffs' Tax box, now saved |
+| Equipment | the Labor tab's Equipment & Tool Rental rows | the rows tagged Equipment at their price (proposal 3); with none tagged, the cost, and the line says the rentals sit inside the fixtures' prices | Labor, Counts |
+| Labor | hours × the rate (the crew rate standing in, PR 0) · with no hours, blank, the line reading **Labor and margin** on amber | what is left of the price (Wendi's rule) | Labor |
+| Driving, travel, permits, subs | at cost | none of its own: inside labor, and the line says so | Labor |
 
-A stacked bar over the table; a hover on a line lists the rows behind it; the Labor line with no
-hours carries *The labor book knows 41 of these 46 fixtures* and an **Open Labor** door, since
-one visit fills the hours from the book. The lines always add to the price. Driving, travel,
-permits and subs stay in the strip's cost: the card is about the price, not every cost, and says
-so under the table.
+Profit per line is price − cost, with its margin beside it, so *material earns 28.6% and labor
+24.6%* reads straight off the card; the bid's row is the strip's four numbers. A hover on a line
+lists the rows behind it. With no hours the Labor line carries *The labor book knows 41 of these
+46 fixtures* and an **Open Labor** door, since one visit fills the hours from the book.
 
-The strip's profit and the card's margin differ on purpose: the strip's profit is price − every
-cost; the card's margin is what is left after the markup line is counted as the material's own
-earning. The card's note says *Markup and margin together are the strip's profit, less driving,
-travel, permits and subs.*
+The first pass drew the same card as six price lines, *Material · Material markup · Tax ·
+Equipment · Labor · Margin*. The second pass dropped it: markup and margin are two words for
+profit on one card, the strip's profit and the card's margin disagreed by design, and driving,
+travel, permits and subs had no home. Two columns put every cost the Workbench knows on the card
+and leave one word for profit.
 
 ### 2 · Not taken
 
@@ -156,7 +156,7 @@ tags 46 rows. Equipment rows leave Material alone (their part lines, if any, are
 
 `bids_count_rows.tags text[]`: lowercase words, 40 letters at most, typed on a row in the
 Workbench or on Counts, the bid's own tags offered first and the office's recent ones after.
-Never on paper. A **By tag** card under the composition bar lists each tag with its price, cost,
+Never on paper. The composition bar (*What the bid is made of*, fixtures · pipe · fittings · other) becomes one card with two views, **By kind** (now with Equipment and Allowance from proposal 3) and **By tag**; By tag lists each tag with its price, cost,
 margin, row count and share, then *No tag*, then the price. A row with two tags counts in both
 and the card says so under the total rather than pretending the lines add. A press on a tag
 lights its rows in the table. Copying a bid version copies the rows' tags and kinds.
@@ -171,6 +171,32 @@ Sales tax on material · Equipment · Labor* beside or instead of the per-stage 
 split. Margin never prints; on paper it sits inside labor, as Wendi's rule has it. Nothing in
 PR 1–4 reaches the GC.
 
+## The second pass: is this the best we can do?
+
+Asked the same evening. Four things changed, one was kept on purpose.
+
+- **A card that mirrors a problem does not fix it.** The root cause is a bid with hours and no
+  rate: the book fills the hours, nothing fills the rate, labor costs $0 and the Workbench calls
+  the bid uncosted, so the margin strip, the solver and the schedule of values all run blind. The
+  crew rate card already computes the number and only shows it. So **PR 0**: the crew rate is the
+  bid's rate until a person types one, every reader says which it is (a dashed box and a *crew
+  rate* chip on the Labor tab; *crew rate* under the card's Labor line). One rule, no screen of
+  its own, and every bid priced from a per-fixture book gets a cost the day it ships. It changes
+  the numbers on existing bids with hours and no rate, which is why it is the owner's D5.
+- **Cost · Price · Profit, not markup and margin.** Above.
+- **Three cards became one.** The composition bar, the By tag card and the kind buckets are one
+  card with a By kind / By tag switch, so the Workbench gains one card, not three.
+- **The markup is on the card.** A chip on the Material line sets this bid's markup; nobody opens
+  Settings to price one bid.
+- **Kept: the price-down rule for labor.** Labor's price as "what is left" is the only honest
+  number when a fixture's price is all-in; splitting the price book (proposal 2) was looked at
+  again and refused for the same reason as before.
+
+What the pass did not find a better answer for: a bid whose rows are priced by typed overrides
+with no book entry (the card still works, since revenue is the row's and cost is the takeoff's);
+and sales tax on a separated contract, where the GC pays tax on material. The second is a paper
+question under D3.
+
 ## Decisions for the owner
 
 - **D1 · One material markup number or two? — picked: one** (2026-10-19). Today's schedule-of-values factor (1.5, per-bid
@@ -183,6 +209,9 @@ PR 1–4 reaches the GC.
 - **D3 · Do the lines reach the cover letter?** Proposal 5, or stay internal.
 - **D4 · Free tags, or kinds only?** Proposal 4 is the owner's "internally tag line items";
   proposal 3 alone covers Wendi's equipment ask.
+- **D5 · Does the crew rate stand in for an untyped labor rate?** PR 0. Yes gives every bid a
+  labor cost and lowers the Workbench margin of existing bids that had hours and no rate to the
+  truth; no keeps today's $0 and the card's amber line does the telling.
 
 ## Where it plugs in
 
@@ -213,6 +242,12 @@ PR 1–4 reaches the GC.
 
 ## The plan
 
+0. **PR 0 — the crew rate stands in** (D5). `crewRate.ts`'s number is the bid's labor rate wherever
+   `cost_estimates.labor_rate` is null: the engine's rate (`useBidPricingEngine.ts`), the
+   Workbench, `computeBidCostBreakdown`'s callers, the schedule of values' labor cost and the Bid
+   Board's `hours_only` chip, each saying *crew rate* beside the number; the Labor tab's rate box
+   draws it dashed with a chip. No migration. Kernel: `effectiveLaborRate(bid, crew)` with tests;
+   a render test for the box. **XS.**
 1. **PR 1 — the tax rate lives on the bid.** Migration: `bids.tax_rate_pct numeric` (null = the
    company default) and `app_settings` `bid_tax_rate_pct_v1` seeded 8.25, dev writes. The
    Takeoffs box reads and writes the bid's; `computeBidCostBreakdown` takes the rate and the
@@ -222,15 +257,17 @@ PR 1–4 reaches the GC.
    the five words; `clone_count_rows_to_bid_version` carries it when a version is copied. `compositionKind`
    reads it first; the chip on Counts and in the Workbench row; `pricingComposition` gains an
    equipment bucket. **S.**
-3. **PR 3 — the card.** `priceBreakdown.ts` and `PriceBreakdownCard.tsx` under the strip, for
-   the ★ price option; D1's one markup (the setting's words change from *schedule of values
-   factor* to *material markup*; the per-bid override moves under the card's line); the crew
-   rate standing in for an untyped rate, said on the line; the no-hours state with the book's
+3. **PR 3 — the card.** `priceBreakdown.ts` (the five lines in three columns from the rows, the
+   takeoff, the rate, the direct costs, the markup and the kinds; the two states; the add-up to
+   the strip) and `PriceBreakdownCard.tsx` under the strip, for the ★ price option; D1's one
+   markup (the setting's words change from *schedule of values factor* to *material markup*; the
+   per-bid override becomes the chip on the Material line); the no-hours state with the book's
    count and the Open Labor door; the row's breakdown window takes the same lines. Kernel tests
    for both states and the add-up; a render test per state. Glossary and `BIDS_SYSTEM.md`'s
    Pricing section. **M.**
-4. **PR 4 — tags and the By tag card.** Migration: `bids_count_rows.tags text[]`; the editor on
-   a row; `byTag.ts`; the card; copying a version copies them. **S.**
+4. **PR 4 — tags, and the composition bar becomes the By kind / By tag card.** Migration:
+   `bids_count_rows.tags text[]`; the editor on a row; `byTag.ts`; `PricingCompositionBar.tsx`
+   grows the switch; copying a version copies them. **S.**
 5. **PR 5 — the lines on paper**, only on D3: the schedule of values' split takes the four lines
    as a shape beside the per-stage one. **S.**
 
@@ -239,9 +276,12 @@ Estimating category), and *edit the quick replies* is not touched.
 
 ## How to verify
 
-- A bid with a takeoff, a ★ price and no Labor visit: the card's last line is amber *Labor and
-  margin*, the lines add to the strip's revenue to the cent, the note names the book's coverage.
-  Open Labor once; back on Pricing the line splits into Labor and Margin and the sum still holds.
+- A bid with hours and no typed rate: the Labor tab's rate box is dashed and reads *crew rate*,
+  the Workbench's cost is no longer material alone, and typing a rate makes it the bid's own.
+- A bid with a takeoff, a ★ price and no Labor visit: the card's Labor line is amber *Labor and
+  margin* with a blank cost, the Price column adds to the strip's revenue and the Cost column to
+  its cost, to the cent, the note names the book's coverage. Open Labor once; back on Pricing
+  the line has a cost and a profit and both columns still add.
 - Set the tax box to 0 and to 10: the tax line and the strip's cost follow; reload; the rate is
   still there (today it is not).
 - Tag a rental row Equipment: the Material line drops by its part lines, the Equipment line takes
