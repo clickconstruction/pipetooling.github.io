@@ -248,7 +248,7 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
   or Billed asks before it texts the customer when that step is set to Asks in Settings → Flows
   (`/help?g=set-up-the-steps-a-person-goes-through`).
 - `?tab=reports` — field job reports (create/review); dispatch items (e.g. site-not-ready).
-- The job window, for the office team: **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens the customer's door over the window, as on the Pipeline's rows but with no Their record row, and its **Open their thread** goes to `/messages`. The box opens on the lines for the job's stage, and `{bill}` in a quick reply fills with the pay page of the job's newest Stripe bill.
+- The job window, for the office team: **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens the customer's door over the window, as on the Pipeline's rows but with no Their record row, and its **Open their thread** goes to `/messages`. The box opens on the lines for the job's stage, and `{bill}` in a quick reply fills with the pay page of the job's newest Stripe bill; a slash typed in any reply box lists the quick replies by keyboard, and the words bill or estimate after it the customer's own bills and estimates, a pick putting in a line about that paper with its link (guide `reply-to-a-person-from-their-thread`).
 - `?tab=billing` — invoices, payments, billing flows per job.
 - `?tab=job-summary` — one job's charges-vs-payments timeline chart + % complete.
 - `?tab=teams-summary` — Crew P&L (hours-weighted billing credit per crew).
