@@ -133,9 +133,13 @@ export function StagesJobCellActivityFooter({
           fontSize: '0.6875rem',
           color: 'var(--text-muted)',
           lineHeight: 1.2,
+          // The line never widens the identity block (v2.5631, the owner's call): its width comes from the name, the
+          // address and the customer line, and the time, then "Email sent", wrap under the button inside it.
+          contain: 'inline-size',
+          minWidth: 0,
         }}
       >
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem' }}>
           <StripeInvoiceSendFromStripeButton
             jobsLedgerInvoiceId={line.id}
             stripeInvoiceId={String(line.stripe_invoice_id).trim()}
@@ -151,7 +155,7 @@ export function StagesJobCellActivityFooter({
             sendDisabled={stripePaid}
             sendDisabledTitle="This Stripe invoice is paid; Stripe will not send another email."
           />
-          <span>Email sent</span>
+          <span style={{ whiteSpace: 'nowrap' }}>Email sent</span>
         </span>
         <span style={{ whiteSpace: 'nowrap' }}>
           {formatDispatchNoteWeekdayShortTimeChicago(String(sentRaw))} (
