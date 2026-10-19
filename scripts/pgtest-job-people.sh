@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs supabase/tests/job_people against a throwaway copy of the WHOLE schema (the job's people, punch list #128
+# Runs supabase/tests/job_people against a throwaway copy of the WHOLE schema (the job's people, punch list #129
 # PR 1: the customer's word on paying opens to the office, the job's account manager and the bid's estimator or
 # account manager).
 #

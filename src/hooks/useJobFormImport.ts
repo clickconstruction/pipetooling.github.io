@@ -274,7 +274,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
           }
         }
         setBidId(b.id)
-        // The job's people (punch list #128, v2.5646): the bid's account manager, else its estimator, is the job's
+        // The job's people (punch list #129, v2.5646): the bid's account manager, else its estimator, is the job's
         // account manager from the start, on the team as the picker requires; the office unticks them if it wants.
         const accountMan = bidImportAccountMan(b, accountManagerUserId)
         if (accountMan) {

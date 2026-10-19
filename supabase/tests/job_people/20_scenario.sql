@@ -1,4 +1,4 @@
--- The job's people (punch list #128 PR 1, migration *_job_people): is_job_people answers true for the office, the
+-- The job's people (punch list #129 PR 1, migration *_job_people): is_job_people answers true for the office, the
 -- job's account manager and the bid's estimator or account manager, and false for a stranger, an estimator on another
 -- bid, a helper on the team and nobody signed in; the estimator writes a promise on their job with heard_by
 -- themselves, is refused in words on another's, reads their job's promises and no other job's, voids their own and
@@ -9,25 +9,28 @@
 BEGIN;
 
 -- Theo (estimator, bid B1), Kim (estimator, bid B2's estimator and account manager), Rosa (assistant), Luis (primary,
--- J1's and J3's account manager), Pat (primary on nothing), Marcus (helper on J1's team).
+-- J1's and J3's account manager), Pat (primary on nothing), Marcus (helper on J1's team), Mo (the master the customer
+-- belongs to, since a customer's master must be a master or a dev).
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000e4a01', 'theo@people.test'),
   ('00000000-0000-0000-0000-0000000e4a02', 'kim@people.test'),
   ('00000000-0000-0000-0000-0000000e4a03', 'rosa@people.test'),
   ('00000000-0000-0000-0000-0000000e4a04', 'luis@people.test'),
   ('00000000-0000-0000-0000-0000000e4a05', 'pat@people.test'),
-  ('00000000-0000-0000-0000-0000000e4a06', 'marcus@people.test');
+  ('00000000-0000-0000-0000-0000000e4a06', 'marcus@people.test'),
+  ('00000000-0000-0000-0000-0000000e4a07', 'mo@people.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-0000000e4a01', 'theo@people.test', 'People Theo', 'estimator', false, false),
   ('00000000-0000-0000-0000-0000000e4a02', 'kim@people.test', 'People Kim', 'estimator', false, false),
   ('00000000-0000-0000-0000-0000000e4a03', 'rosa@people.test', 'People Rosa', 'assistant', false, false),
   ('00000000-0000-0000-0000-0000000e4a04', 'luis@people.test', 'People Luis', 'primary', false, false),
   ('00000000-0000-0000-0000-0000000e4a05', 'pat@people.test', 'People Pat', 'primary', false, false),
-  ('00000000-0000-0000-0000-0000000e4a06', 'marcus@people.test', 'People Marcus', 'helpers', false, false)
+  ('00000000-0000-0000-0000-0000000e4a06', 'marcus@people.test', 'People Marcus', 'helpers', false, false),
+  ('00000000-0000-0000-0000-0000000e4a07', 'mo@people.test', 'People Mo', 'master_technician', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000e4b01', 'People Plumbing');
-INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000000e4c01', '00000000-0000-0000-0000-0000000e4a03', 'Dana Whitfield');
+INSERT INTO public.customers (id, master_user_id, name) VALUES ('00000000-0000-0000-0000-0000000e4c01', '00000000-0000-0000-0000-0000000e4a07', 'Dana Whitfield');
 
 -- B1 is Theo's bid; B2 is Kim's, Kim its account manager too.
 INSERT INTO public.bids (id, created_by, estimator_id, account_manager_id, service_type_id, project_name, customer_id) VALUES

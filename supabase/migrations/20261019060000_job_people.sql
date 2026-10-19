@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- The job's people (punch list #128, PR 1; to-dos/estimator-money-word/README.md). On a job an estimator bid, the
+-- The job's people (punch list #129, PR 1; to-dos/estimator-money-word/README.md). On a job an estimator bid, the
 -- estimator often hears first when the customer will pay or that they paid, and today phones the assistant to have
 -- it marked: the promise gates name roles (dev, assistant, master, controller, primary for the read), and an
 -- estimator is none of them. The scope here is the job's, not the role's: the office, the job's account manager
@@ -41,7 +41,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.is_job_people(uuid) IS
-  'The job''s people (punch list #128): the office (dev, master, assistant, controller), or an estimator or primary who is the job''s account manager or the estimator or account manager of the bid the job came from. The scope for the customer''s word on paying.';
+  'The job''s people (punch list #129): the office (dev, master, assistant, controller), or an estimator or primary who is the job''s account manager or the estimator or account manager of the bid the job came from. The scope for the customer''s word on paying.';
 
 REVOKE ALL ON FUNCTION public.is_job_people(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_job_people(uuid) TO authenticated, service_role;

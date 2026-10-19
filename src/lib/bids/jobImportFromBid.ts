@@ -168,7 +168,7 @@ export function bidImportWinWrite(
 }
 
 /**
- * Who the job opened from a bid gets as its account manager (punch list #128, v2.5646): the
+ * Who the job opened from a bid gets as its account manager (punch list #129, v2.5646): the
  * bid's account manager, else its estimator, so the person who sold the job is the job's person
  * from the first day (`is_job_people`); null when the bid names neither or the form already has
  * one. The caller adds them to the team too — an account manager is always a team member.
