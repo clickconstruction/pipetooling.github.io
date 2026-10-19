@@ -38,10 +38,10 @@ INSERT INTO public.bids (id, created_by, estimator_id, account_manager_id, servi
   ('00000000-0000-0000-0000-0000000e4d02', '00000000-0000-0000-0000-0000000e4a03', '00000000-0000-0000-0000-0000000e4a02', '00000000-0000-0000-0000-0000000e4a02', '00000000-0000-0000-0000-0000000e4b01', 'Park water heater', '00000000-0000-0000-0000-0000000e4c01');
 
 -- J1 came from B1 with Luis as its account manager; J2 from B2; J3 from no bid, Luis its account manager.
-INSERT INTO public.jobs_ledger (id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status, bid_id, account_manager_user_id, account_manager_relationship) VALUES
-  ('00000000-0000-0000-0000-0000000e4f01', '1032', 'Whitfield repipe', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 4200, 0, 'billed', '00000000-0000-0000-0000-0000000e4d01', '00000000-0000-0000-0000-0000000e4a04', 'primary'),
-  ('00000000-0000-0000-0000-0000000e4f02', '1040', 'Park water heater', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 2900, 0, 'billed', '00000000-0000-0000-0000-0000000e4d02', NULL, NULL),
-  ('00000000-0000-0000-0000-0000000e4f03', '1037', 'Ortega gas line', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 4800, 0, 'billed', NULL, '00000000-0000-0000-0000-0000000e4a04', 'primary');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status, bid_id, account_manager_user_id, account_manager_relationship) VALUES
+  ('00000000-0000-0000-0000-0000000e4f01', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1032', 'Whitfield repipe', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 4200, 0, 'billed', '00000000-0000-0000-0000-0000000e4d01', '00000000-0000-0000-0000-0000000e4a04', 'primary'),
+  ('00000000-0000-0000-0000-0000000e4f02', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1040', 'Park water heater', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 2900, 0, 'billed', '00000000-0000-0000-0000-0000000e4d02', NULL, NULL),
+  ('00000000-0000-0000-0000-0000000e4f03', '00000000-0000-0000-0000-0000000e4a07', '00000000-0000-0000-0000-0000000e4b01', '1037', 'Ortega gas line', 'Dana Whitfield', '00000000-0000-0000-0000-0000000e4c01', 'customer', 4800, 0, 'billed', NULL, '00000000-0000-0000-0000-0000000e4a04', 'primary');
 INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES
   ('00000000-0000-0000-0000-0000000e4f01', '00000000-0000-0000-0000-0000000e4a04'),
   ('00000000-0000-0000-0000-0000000e4f01', '00000000-0000-0000-0000-0000000e4a06'),
