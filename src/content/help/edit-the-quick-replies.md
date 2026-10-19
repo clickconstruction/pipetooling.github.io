@@ -2,14 +2,14 @@
 title: edit the quick replies
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, quick reply, quick replies, edit, edit quick replies, add a line, change a line, remove, removed, bring it back, history, used by, mine, just for me, step
+keywords: gc mode, messages, quick reply, quick replies, macro, canned reply, template, saved reply, shortcut, hotkey, edit, edit quick replies, add a line, change a line, remove, removed, bring it back, history, used by, mine, just for me, step
 order: 118
 ---
 The quick replies window holds every line the office types every day. Change a line, add one, take one off the list, or read who changed it.
 
 ## Open the window
 
-1. Open a person's thread from [GC projects](/gc) under {{button:outline|Messages}}.
+1. Open a person's thread in [Messages](/messages). A trade partner's thread is in [GC projects](/gc) under {{button:outline|Messages}}.
 2. Choose **Text** or **Email** in the reply box.
 3. Press **Quick replies** above the box, then press **Edit**.
 

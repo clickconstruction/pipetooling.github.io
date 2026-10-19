@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useToastContext } from '../../../../contexts/ToastContext'
 import { useOptionalAuth } from '../../../../hooks/useAuth'
 import { openFlowStep, useFlowNow } from '../../../../hooks/useFlowNow'
@@ -15,6 +15,7 @@ import { appLinesForStage, isAppLine } from '../../../../lib/messages/stageLines
 import { lineWords } from '../../../../lib/quickReplies/spanish'
 import { customerLang } from '../../../../lib/messages/customerLang'
 import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
+import { SLASH_HINT, slashHead, slashLines, slashMove, slashPick, slashTotal, slashWordAt } from '../../../../lib/quickReplies/slash'
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
   boxPlaceholder,
@@ -52,6 +53,7 @@ import { QuickRepliesEditor } from './QuickRepliesEditor'
 import { CUSTOMER_BAR, CUSTOMER_LOOK, KIND_LOOK, RING } from './kindLook'
 import { QuickRepliesStrip } from './QuickRepliesStrip'
 import { SendWindow } from './SendWindow'
+import { SlashList } from './SlashList'
 import { useQuickReplies } from './useQuickReplies'
 import { useTextsOn } from './useTextsOn'
 
@@ -104,6 +106,10 @@ const keepOpen = (open: boolean) => {
  * person fills it (`sendWaits`). A line goes in the language the person reads (`customerLang`), which stays English
  * until the owner's one switch for Spanish, `PORTAL_SPANISH_ON`, is on.
  *
+ * Quick replies by keyboard (punch list #126): a `/` at the start of the box, or after a space or a line break, opens
+ * `SlashList` above the box, narrowed by the words after it (`quickReplies/slash.ts`). ↑ ↓ move, Enter or Tab puts the
+ * line in place of the `/` word, Escape closes the list and nothing else, and a pick counts as a press.
+ *
  * Cut 5's switch: while Send texts reads off (`useTextsOn`), the Text tab draws `TextsWaitLine` in place of the strip, the
  * box and the send row, so nobody writes a text the server would refuse. The kinds row stays, to choose an email.
  */
@@ -154,8 +160,11 @@ export function ReplyBox({
   const [finding, setFinding] = useState(false)
   // The quick replies editor is open; its add row starts with these words when there are any (the prototype's editQuick).
   const [adding, setAdding] = useState<string | null>(null)
-  const quick = useQuickReplies(qio, me, goesOut(kind) && (stripOpen || finding))
   const [body, setBody] = useState('')
+  // Punch list #126: where the caret is, so a `/` word at it opens the list; the lines are read the first time it does.
+  const [caret, setCaret] = useState(0)
+  const slashTyped = slashWordAt(body, caret)
+  const quick = useQuickReplies(qio, me, goesOut(kind) && (stripOpen || finding || slashTyped !== null))
   const [tie, setTie] = useState<ReplyTie>(undefined)
   const [picking, setPicking] = useState(false)
   const [sending, setSending] = useState<'text' | 'email' | null>(null)
@@ -317,6 +326,60 @@ export function ReplyBox({
     [stageStepIds, quick.lines],
   )
 
+  // Punch list #126: the `/` list. Escape shuts it for the `/` word it was on (`slashShut`, that word's start) until the
+  // word is gone; ↑ ↓ light a row (`slashLit`, kept with the words it was lit for, so new words light the first row).
+  const listId = useId()
+  const boxRef = useRef<HTMLTextAreaElement>(null)
+  const caretAfter = useRef<number | null>(null)
+  const [slashShut, setSlashShut] = useState<number | null>(null)
+  const [slashLit, setSlashLit] = useState<{ key: string; at: number }>({ key: '', at: 0 })
+  const slashWord = goesOut(shown) && !textWaits && !settling.active ? slashTyped : null
+  const slashOpen = slashWord !== null && slashWord.start !== slashShut
+  const slashKey = slashWord ? `${slashWord.start}:${slashWord.words}` : ''
+  const slashInput = { kind: contact.kind, nowStepId, stageStepIds, steps: kindSteps, me }
+  const slashRows = slashOpen && stripLines ? slashLines(stripLines, slashInput, slashWord.words) : []
+  const lit = slashLit.key === slashKey ? Math.min(slashLit.at, Math.max(0, slashRows.length - 1)) : 0
+  useEffect(() => {
+    // After a pick the caret lands after the line, in the box, as typing would leave it.
+    const at = caretAfter.current
+    if (at === null) return
+    caretAfter.current = null
+    boxRef.current?.focus()
+    boxRef.current?.setSelectionRange(at, at)
+  }, [body])
+  /** The caret moved or the words changed: a `/` word gone takes Escape's shut with it. */
+  const caretAt = (text: string, at: number) => {
+    setCaret(at)
+    if (slashShut !== null && slashWordAt(text, at)?.start !== slashShut) setSlashShut(null)
+  }
+  const pickSlash = (q: QuickReply) => {
+    if (!slashWord) return
+    const next = slashPick(body, slashWord, fillLine(lineWords(q, lang), fills).text)
+    caretAfter.current = next.caret
+    setBody(next.text)
+    setCaret(next.caret)
+    setPeek(false)
+    if (!isAppLine(q)) quick.press(q, contact.id)
+  }
+  const slashKeys = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!slashOpen || !slashWord || e.nativeEvent.isComposing) return
+    if (e.key === 'Escape') {
+      // The list closes, and the window around the box stays open.
+      e.preventDefault()
+      e.stopPropagation()
+      setSlashShut(slashWord.start)
+      return
+    }
+    if (!slashRows.length) return
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSlashLit({ key: slashKey, at: slashMove(lit, slashRows.length, e.key === 'ArrowDown' ? 1 : -1) })
+    } else if ((e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) || (e.key === 'Tab' && !e.shiftKey)) {
+      e.preventDefault()
+      pickSlash(slashRows[lit]!)
+    }
+  }
+
   return (
     <div
       data-reply-box
@@ -390,16 +453,40 @@ export function ReplyBox({
         />
       )}
 
+      {slashOpen && slashWord && (
+        <SlashList
+          id={listId}
+          rows={slashRows}
+          active={lit}
+          words={slashWord.words}
+          fills={fills}
+          lang={lang}
+          steps={kindSteps}
+          head={slashHead(contact.kind === 'unknown' ? null : first, slashRows.length, stripLines ? slashTotal(stripLines, slashInput) : 0)}
+          reading={!stripLines && !quick.problem}
+          problem={quick.problem}
+          onPick={pickSlash}
+          onHover={(at) => setSlashLit({ key: slashKey, at })}
+        />
+      )}
+
       {!textWaits && (
         <div style={{ position: 'relative' }}>
           <textarea
+            ref={boxRef}
             aria-label={shown === 'note' ? 'A note for the team' : `Write to ${contact.name}`}
+            aria-autocomplete={goesOut(shown) ? 'list' : undefined}
+            aria-controls={slashOpen && slashRows.length ? listId : undefined}
+            aria-activedescendant={slashOpen && slashRows.length ? `${listId}-${lit}` : undefined}
             value={body}
             onChange={(e) => {
               setBody(e.target.value)
+              caretAt(e.target.value, e.target.selectionStart ?? e.target.value.length)
               if (settleProblem) setSettleProblem(null)
             }}
-            placeholder={settling.active ? OWED_DONE_PLACEHOLDER : boxPlaceholder(shown, contact.name)}
+            onSelect={(e) => caretAt(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)}
+            onKeyDown={slashKeys}
+            placeholder={settling.active ? OWED_DONE_PLACEHOLDER : goesOut(shown) ? `${boxPlaceholder(shown, contact.name)} ${SLASH_HINT}` : boxPlaceholder(shown, contact.name)}
             disabled={Boolean(blocked) || busy}
             rows={3}
             data-reply-look={orange ? 'customer' : shown}
