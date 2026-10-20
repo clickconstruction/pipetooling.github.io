@@ -18,6 +18,44 @@ export const AGING_BUCKETS: Array<{ key: AgingBucketKey; label: string }> = [
 const EPSILON = 0.005
 const MS_PER_DAY = 86_400_000
 
+/** A cell of the aging map: one bucket, the Owed column, or the Credits open column. */
+export type AgingCellKey = AgingBucketKey | 'owed' | 'credits'
+
+/** The cell's name as the modal titles it ("60–90 days past due", "every unpaid invoice"). */
+export function agingCellTitle(cell: AgingCellKey): string {
+  if (cell === 'owed') return 'every unpaid invoice'
+  if (cell === 'credits') return 'credits open'
+  if (cell === 'current') return 'current (not yet due)'
+  if (cell === 'noDueDate') return 'no due date recorded'
+  const label = AGING_BUCKETS.find((b) => b.key === cell)?.label ?? cell
+  return `${label} days past due`
+}
+
+/**
+ * The invoices behind one cell of the aging map (v2.5673) — the same routing
+ * `buildSupplyHouseAgingMatrix` uses, so the modal's rows always sum to the cell. `houseId`
+ * null reads the footer row (every house). A credit (stored negative, v2.3500) appears only
+ * under 'credits'; 'owed' is the Owed column, invoices only. Sorted oldest due first, the
+ * no-due-date rows last.
+ */
+export function invoicesForAgingCell<T extends { supply_house_id: string; amount: number | null; due_date: string | null }>(
+  unpaidInvoices: readonly T[],
+  houseId: string | null,
+  cell: AgingCellKey,
+  todayYmd: string,
+): T[] {
+  return unpaidInvoices
+    .filter((inv) => houseId == null || inv.supply_house_id === houseId)
+    .filter((inv) => {
+      const amount = Number(inv.amount ?? 0)
+      if (cell === 'credits') return amount < 0
+      if (amount < 0) return false
+      if (cell === 'owed') return true
+      return agingBucketFor(inv.due_date, todayYmd) === cell
+    })
+    .sort((a, b) => (a.due_date ?? '9999-12-31').localeCompare(b.due_date ?? '9999-12-31'))
+}
+
 function ymdToUtcMs(ymd: string): number {
   const [y, m, d] = ymd.split('-').map(Number)
   return Date.UTC(y!, (m ?? 1) - 1, d ?? 1)
