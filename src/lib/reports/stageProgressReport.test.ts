@@ -1,15 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  defaultStageToReport,
-  jobPercentFromStages,
-  stageEffectivePct,
-  stageModeAvailable,
-  stagePickerNumber,
-  stageProgressFieldValue,
-  stageProgressRowsFromRpc,
-  stageReportSummary,
-  type StageProgressRow,
-} from './stageProgressReport'
+import { jobPercentFromStages, stageEffectivePct, stagePickerNumber, stageProgressRowsFromRpc, type StageProgressRow } from './stageProgressReport'
 
 /** Heron: Underground 25 (paid) · Rough-in 35 (60%) · Top-out 15 · Trim 25. */
 const heron: StageProgressRow[] = [
@@ -52,33 +42,11 @@ describe('jobPercentFromStages', () => {
   })
 })
 
-describe('defaultStageToReport + numbering', () => {
-  it('opens on the first Order stage not done, then Any, then the last', () => {
-    expect(defaultStageToReport(heron)?.fixtureId).toBe('r')
-    const allDone = heron.map((s) => ({ ...s, progressPct: 100 }))
-    expect(defaultStageToReport(allDone)?.fixtureId).toBe('m')
-    const withAny: StageProgressRow[] = [
-      { ...heron[0]!, drawPaid: true },
-      { fixtureId: 'co', name: 'Change order', kind: 'any', sequenceOrder: 9, weightPct: 75, progressPct: 10, drawPaid: false },
-    ]
-    expect(defaultStageToReport(withAny)?.fixtureId).toBe('co')
-    expect(defaultStageToReport([])).toBeNull()
-  })
+describe('numbering', () => {
   it('numbers Order rows 1..N and marks Any rows with a diamond', () => {
     expect(heron.map((s) => stagePickerNumber(heron, s))).toEqual(['1', '2', '3', '4'])
     const any: StageProgressRow = { fixtureId: 'co', name: 'CO', kind: 'any', sequenceOrder: 9, weightPct: 10, progressPct: null, drawPaid: false }
     expect(stagePickerNumber([...heron, any], any)).toBe('◆')
-  })
-})
-
-describe('stageReportSummary + the report field', () => {
-  it('writes the arithmetic out', () => {
-    const s = stageReportSummary(heron, 'r', 60)
-    expect(s).toMatchObject({ before: 46, after: 46, contributionPts: 21 })
-    expect(s.line).toBe('Rough-in 60% × 35% of the job = 21 pts · job 46% → 46%')
-    expect(stageReportSummary(heron, 'r', 100).line).toBe('Rough-in 100% × 35% of the job = 35 pts · job 46% → 60%')
-    expect(stageProgressFieldValue(heron, 'r', 100)).toBe('Rough-in: 100% (35% of the job) → job 60%')
-    expect(stageProgressFieldValue(heron, 'nope', 50)).toBe('')
   })
 })
 
@@ -91,9 +59,7 @@ describe('stageProgressRowsFromRpc recognition (v2.3417)', () => {
       { fixture_id: 'c', name: 'Change order: hose bib', stage_kind: 'any', sequence_order: 3, weight_pct: 5, progress_pct: null, draw_paid: false },
     ])
     expect(rows.map((r) => r.kind)).toEqual(['order', 'order', 'order', 'any'])
-    expect(stageModeAvailable(rows)).toBe(true)
     expect(rows.map((r) => stagePickerNumber(rows, r))).toEqual(['1', '2', '3', '◆'])
-    expect(defaultStageToReport(rows)?.fixtureId).toBe('r')
   })
   it('leaves a service job alone', () => {
     const rows = stageProgressRowsFromRpc([
@@ -101,18 +67,5 @@ describe('stageProgressRowsFromRpc recognition (v2.3417)', () => {
       { fixture_id: 'b', name: 'Parts and labor', stage_kind: 'any', sequence_order: 1, weight_pct: 70, progress_pct: null, draw_paid: false },
     ])
     expect(rows.map((r) => r.kind)).toEqual(['any', 'any'])
-    expect(stageModeAvailable(rows)).toBe(false)
-  })
-})
-
-describe('stageModeAvailable', () => {
-  it('needs at least one Order row — legacy any-only jobs keep the plain slider', () => {
-    expect(stageModeAvailable(heron)).toBe(true)
-    const legacy: StageProgressRow[] = [
-      { fixtureId: 'a', name: 'Water heater', kind: 'any', sequenceOrder: 1, weightPct: 70, progressPct: null, drawPaid: false },
-      { fixtureId: 'b', name: 'Expansion tank', kind: 'any', sequenceOrder: 2, weightPct: 30, progressPct: null, drawPaid: false },
-    ]
-    expect(stageModeAvailable(legacy)).toBe(false)
-    expect(stageModeAvailable([])).toBe(false)
   })
 })
