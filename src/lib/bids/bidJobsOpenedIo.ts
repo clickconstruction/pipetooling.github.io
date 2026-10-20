@@ -37,7 +37,7 @@ export async function loadJobsOpenedFromBids(bidIds: ReadonlyArray<string>): Pro
     }
   }
   const [fn, table] = await Promise.all([
-    safe(() => supabase.rpc('list_bid_jobs_opened' as never, { p_bid_ids: ids } as never)),
+    safe(() => supabase.rpc('list_bid_jobs_opened', { p_bid_ids: ids })),
     safe(() => supabase.from('jobs_ledger').select('id, bid_id, hcp_number, click_number, job_name, created_at').in('bid_id', ids)),
   ])
   return mergeJobsOpened([...fn, ...table])

@@ -35357,6 +35357,17 @@ export type Database = {
           supply_house_id: string
         }[]
       }
+      list_bid_jobs_opened: {
+        Args: { p_bid_ids: string[] }
+        Returns: {
+          bid_id: string
+          click_number: string
+          created_at: string
+          hcp_number: string
+          job_id: string
+          job_name: string
+        }[]
+      }
       list_bid_money_strip: { Args: { p_bid_ids: string[] }; Returns: Json }
       list_bid_removed_rows: {
         Args: { p_bid_id: string }

@@ -1135,6 +1135,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "list_bid_estimators_window_hours": [{"args":{"p_end_date":"string","p_start_date":"string","p_user_ids":"string[]"},"returns":"{ bid_id: string hours: number user_id: string work_date: string }[]"}],
   "list_bid_history": [{"args":{"p_bid_id":"string","p_limit?":"number"},"returns":"{ action: string archive_id: string bid_id: string bid_number: string by_app: boolean changed: string[] changed_at: string changed_by: string changed_by_name: s…"}],
   "list_bid_job_account_strip": [{"args":{"p_bid_ids":"string[]"},"returns":"{ account_ref: string bid_id: string house_name: string job_address: string job_click_number: string job_hcp_number: string job_id: string job_name: string open…"}],
+  "list_bid_jobs_opened": [{"args":{"p_bid_ids":"string[]"},"returns":"{ bid_id: string click_number: string created_at: string hcp_number: string job_id: string job_name: string }[]"}],
   "list_bid_money_strip": [{"args":{"p_bid_ids":"string[]"},"returns":"Json"}],
   "list_bid_removed_rows": [{"args":{"p_bid_id":"string"},"returns":"{ archive_id: string changed: string[] changed_at: string changed_by: string changed_by_name: string count_row_id: string in_ledger: boolean label: string old_v…"}],
   "list_bulk_deletion_alerts": [{"args":{},"returns":"{ actor_id: string actor_name: string bundles: number row_count: number tables: string[] window_end: string window_start: string }[]"}],
