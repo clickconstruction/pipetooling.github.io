@@ -18,6 +18,8 @@ import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useBidPricingEngine } from '../hooks/useBidPricingEngine'
 import { useBidPricingRows } from '../hooks/useBidPricingRows'
+import { useBidCrewRate } from '../hooks/useBidCrewRate'
+import { effectiveLaborRate } from '../lib/bids/crewRate'
 import { useBidCustomCosts } from '../hooks/useBidCustomCosts'
 import { useToastContext } from '../contexts/ToastContext'
 import { useRoleGate } from '../hooks/useRoleGate'
@@ -1432,6 +1434,11 @@ export default function Bids() {
 
   const { customCosts: bidCountRowCustomCosts, reloadCustomCosts: reloadBidCustomCosts } = useBidCustomCosts(selectedBidForPricing?.id ?? null, selectedBidVersionId)
 
+  // The crew rate stands in for a bid with no typed labor rate (punch list #128, PR 0): a bid whose
+  // hours came from the book has a labor cost before anyone opens Labor. `effectiveLaborRate` was
+  // the Labor tab's own read; Pricing, the print and the letter now read the same number.
+  const { crewRate: pricingCrewRate } = useBidCrewRate(!!selectedBidForPricing)
+  const pricingLaborRateEffective = effectiveLaborRate({ override: pricingLaborRate, companyRate: pricingCrewRate?.companyRate ?? null })
   const { pricingRowsForGrid, pricingPackageSource, coverLetterPricingRows } = useBidPricingRows({
     selectedBidForPricing,
     selectedPricingVersionId,
@@ -1440,7 +1447,7 @@ export default function Bids() {
     pricingMaterialTotalRoughIn,
     pricingMaterialTotalTopOut,
     pricingMaterialTotalTrimSet,
-    pricingLaborRate,
+    pricingLaborRate: pricingLaborRateEffective.rate,
     costEstimatePOModalTaxPercent,
     bidPricingAssignments,
     bidCountRowCustomPrices,
@@ -2301,7 +2308,8 @@ export default function Bids() {
           pricingMaterialTotalRoughIn={pricingMaterialTotalRoughIn}
           pricingMaterialTotalTopOut={pricingMaterialTotalTopOut}
           pricingMaterialTotalTrimSet={pricingMaterialTotalTrimSet}
-          pricingLaborRate={pricingLaborRate}
+          pricingLaborRate={pricingLaborRateEffective.rate}
+          pricingLaborRateSource={pricingLaborRateEffective.source}
           pricingFixtureMaterialsFromTakeoff={pricingFixtureMaterialsFromTakeoff}
           teamLaborDataForBids={teamLaborDataForBids}
           templatePriceBookVersions={templatePriceBookVersions}
