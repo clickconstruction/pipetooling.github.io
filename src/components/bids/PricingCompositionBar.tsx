@@ -3,7 +3,7 @@ import {
   buildPricingComposition,
   compositionHeadline,
   type CompositionBucket,
-  type CompositionKind,
+  type CompositionBucketKind,
   type CompositionRowInput,
 } from '../../lib/bids/pricingComposition'
 
@@ -19,10 +19,12 @@ type Props = {
 type Lens = 'revenue' | 'cost'
 const LENS_KEY = 'pt.pricing.composition.lens'
 
-const COLORS: Record<CompositionKind, { bg: string; ink: string }> = {
+const COLORS: Record<CompositionBucketKind, { bg: string; ink: string }> = {
   fixture: { bg: '#3b82f6', ink: '#ffffff' },
   pipe: { bg: '#0d9488', ink: '#ffffff' },
   fitting: { bg: '#f59e0b', ink: 'var(--text-strong)' },
+  equipment: { bg: '#d97706', ink: '#ffffff' },
+  allowance: { bg: '#a78bfa', ink: '#ffffff' },
   other: { bg: '#94a3b8', ink: '#ffffff' },
 }
 
@@ -51,7 +53,7 @@ export function PricingCompositionBar({ rows, marginColor, onJumpToRow }: Props)
       /* per-device convenience only */
     }
   }, [lens])
-  const [hover, setHover] = useState<CompositionKind | null>(null)
+  const [hover, setHover] = useState<CompositionBucketKind | null>(null)
 
   const comp = useMemo(() => buildPricingComposition(rows), [rows])
   if (comp.buckets.length === 0) return null

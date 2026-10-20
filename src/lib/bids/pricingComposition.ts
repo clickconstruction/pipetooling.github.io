@@ -17,12 +17,17 @@ import { parseRowSignature } from './takeoffDiff'
 
 export type CompositionKind = 'fixture' | 'pipe' | 'fitting' | 'other'
 
-export const COMPOSITION_ORDER: CompositionKind[] = ['fixture', 'pipe', 'fitting', 'other']
+/** #128 (spike): the row's saved kind splits `other` into equipment and allowance. */
+export type CompositionBucketKind = CompositionKind | 'equipment' | 'allowance'
 
-export const COMPOSITION_LABELS: Record<CompositionKind, { name: string; unit: string }> = {
+export const COMPOSITION_ORDER: CompositionBucketKind[] = ['fixture', 'pipe', 'fitting', 'equipment', 'allowance', 'other']
+
+export const COMPOSITION_LABELS: Record<CompositionBucketKind, { name: string; unit: string }> = {
   fixture: { name: 'Fixtures', unit: 'ea' },
   pipe: { name: 'Pipe', unit: 'ft' },
   fitting: { name: 'Fittings', unit: 'ea' },
+  equipment: { name: 'Equipment', unit: 'ea' },
+  allowance: { name: 'Allowances', unit: 'ea' },
   other: { name: 'Other', unit: 'ea' },
 }
 
@@ -57,10 +62,17 @@ export interface CompositionRowInput {
   cost: number
   /** count × effective unit price; 0 when unpriced. */
   revenue: number
+  /** #128: the row's saved kind; the guess from the name when absent. */
+  kind?: CompositionBucketKind | null
+  /** #128: the estimator's own tags on the row. */
+  tags?: ReadonlyArray<string> | null
+  /** #128: the row's material at cost and as sold, for the weighted markup by tag. */
+  materialCost?: number | null
+  materialPrice?: number | null
 }
 
 export interface CompositionBucket {
-  kind: CompositionKind
+  kind: CompositionBucketKind
   name: string
   unit: string
   rows: number
@@ -85,7 +97,7 @@ export interface PricingComposition {
 }
 
 export function buildPricingComposition(rows: ReadonlyArray<CompositionRowInput>): PricingComposition {
-  const acc = new Map<CompositionKind, CompositionBucket>()
+  const acc = new Map<CompositionBucketKind, CompositionBucket>()
   for (const kind of COMPOSITION_ORDER) {
     acc.set(kind, { kind, name: COMPOSITION_LABELS[kind].name, unit: COMPOSITION_LABELS[kind].unit, rows: 0, count: 0, revenue: 0, cost: 0, profit: 0, margin: null, revenueShare: 0, costShare: 0, top: [] })
   }
@@ -93,7 +105,7 @@ export function buildPricingComposition(rows: ReadonlyArray<CompositionRowInput>
   let totalCost = 0
   for (const r of rows) {
     if (!(r.count > 0)) continue
-    const b = acc.get(compositionKind(r.name)) as CompositionBucket
+    const b = acc.get(r.kind ?? compositionKind(r.name)) as CompositionBucket
     b.rows++
     b.count += r.count
     b.revenue += r.revenue > 0 ? r.revenue : 0
@@ -127,4 +139,38 @@ export function compositionHeadline(c: PricingComposition): string {
     else parts.push(`${n} ${b.kind === 'fixture' ? (b.count === 1 ? 'fixture' : 'fixtures') : b.count === 1 ? 'fitting' : 'fittings'}`)
   }
   return parts.join(' · ')
+}
+
+/** #128 (spike): the same buckets by the estimator's own tags; a row with two tags counts in both, an untagged row under "No tag". */
+export type TagBucket = { tag: string; rows: number; revenue: number; cost: number; profit: number; margin: number | null; revenueShare: number; materialCost: number; materialPrice: number; /** Σ material sold ÷ Σ material cost − 1; null with no material. */ markup: number | null }
+export const NO_TAG = 'No tag'
+export function buildTagComposition(rows: ReadonlyArray<CompositionRowInput>): { buckets: TagBucket[]; totalRevenue: number; rowsWithManyTags: number } {
+  const acc = new Map<string, TagBucket>()
+  let totalRevenue = 0
+  let rowsWithManyTags = 0
+  for (const r of rows) {
+    if (!(r.count > 0)) continue
+    const rev = r.revenue > 0 ? r.revenue : 0
+    const cost = r.cost > 0 ? r.cost : 0
+    totalRevenue += rev
+    const tags = (r.tags ?? []).filter((x) => x.trim() !== '')
+    if (tags.length > 1) rowsWithManyTags++
+    for (const tag of tags.length ? tags : [NO_TAG]) {
+      const b = acc.get(tag) ?? { tag, rows: 0, revenue: 0, cost: 0, profit: 0, margin: null, revenueShare: 0, materialCost: 0, materialPrice: 0, markup: null }
+      b.rows++
+      b.revenue += rev
+      b.cost += cost
+      b.materialCost += r.materialCost != null && r.materialCost > 0 ? r.materialCost : 0
+      b.materialPrice += r.materialPrice != null && r.materialPrice > 0 ? r.materialPrice : 0
+      acc.set(tag, b)
+    }
+  }
+  const buckets = [...acc.values()].sort((a, b) => (a.tag === NO_TAG ? 1 : b.tag === NO_TAG ? -1 : b.revenue - a.revenue || a.tag.localeCompare(b.tag)))
+  for (const b of buckets) {
+    b.profit = b.revenue - b.cost
+    b.margin = b.revenue > 0 && b.cost > 0 ? b.profit / b.revenue : null
+    b.revenueShare = totalRevenue > 0 ? b.revenue / totalRevenue : 0
+    b.markup = b.materialCost > 0 ? b.materialPrice / b.materialCost - 1 : null
+  }
+  return { buckets, totalRevenue, rowsWithManyTags }
 }
