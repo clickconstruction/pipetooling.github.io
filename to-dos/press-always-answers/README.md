@@ -1,6 +1,6 @@
 ---
 name: "Tell the customer: the press always answers — a send that fails says so in the sheet, a sent estimate offers its link again, and what went out shows where the office looks"
-number: 133
+number: 139
 group: gated
 status: proposed 2026-10-20 after Taunya's stuck send on a live estimate (pressed Send both, the sheet stayed, Messages showed nothing); awaiting the owner's go
 summary: >
@@ -20,7 +20,7 @@ opinion: build — the sheet made every send a person's press; a press the app a
 mockup: to-dos/press-always-answers/mockup.html
 ---
 
-# The press always answers (#133)
+# The press always answers (#139)
 
 ## The ask, in the office's words
 

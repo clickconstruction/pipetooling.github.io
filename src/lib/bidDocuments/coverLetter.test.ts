@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   breakAmountOntoOwnLineForPreview,
+  buildAddressedCopiesDocument,
   buildCoverLetterHtml,
   buildCoverLetterText,
   numberToWords,
@@ -516,5 +517,22 @@ describe('options (v2.4723): one amount line per option, its alternates under it
 
   it('an empty options block changes nothing', () => {
     expect(buildCoverLetterHtml(...args, { intro: 'x', sharedFixtures: true, items: [] })).toBe(buildCoverLetterHtml(...args, null))
+  })
+})
+
+describe('buildAddressedCopiesDocument', () => {
+  it('a page break between copies and no heading above them — each copy is a letter that is mailed', () => {
+    const out = buildAddressedCopiesDocument(['<p>to Ridgeway</p>', '<p>to Harbor Point</p>', '<p>to Caldwell</p>'])
+    expect(out).toContain('<p>to Ridgeway</p>')
+    expect(out).toContain('<p>to Harbor Point</p>')
+    expect(out).toContain('<p>to Caldwell</p>')
+    expect(out.match(/page-break-after: always;/g)).toHaveLength(2)
+    expect(out.indexOf('to Ridgeway')).toBeLessThan(out.indexOf('to Harbor Point'))
+    expect(out).not.toContain('<h2')
+  })
+
+  it('a single copy returns its html unchanged; none returns the empty string', () => {
+    expect(buildAddressedCopiesDocument(['<p>only</p>'])).toBe('<p>only</p>')
+    expect(buildAddressedCopiesDocument([])).toBe('')
   })
 })

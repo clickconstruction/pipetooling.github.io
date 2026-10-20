@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AGING_BUCKETS,
+  agingCellTitle,
   countSupplyHousesPastDue60,
   supplyHouseAgingPhoneNote,
   agingBucketFor,
   buildSupplyHouseAgingMatrix,
   daysPastDue,
+  invoicesForAgingCell,
   nextMonthlyPaymentDueYmd,
 } from './supplyHouseAging'
 
@@ -233,5 +236,65 @@ describe('job-account invoices in the aging matrix (B — shade, decided 2026-09
     expect(m.rows[0]!.jobAccountTotal).toBe(0)
     expect(m.jobAccountInvoiceCount).toBe(0)
     expect(m.rows[0]!.creditsOpen).toBe(-50)
+  })
+})
+
+describe('invoicesForAgingCell', () => {
+  // A seeded book covering every bucket, credits, and two houses — the invariant under test:
+  // for EVERY cell of the matrix, the helper's rows sum to exactly what the cell shows.
+  const houses = [
+    { id: 'h1', name: 'Bluebonnet' },
+    { id: 'h2', name: 'Caldwell' },
+  ]
+  const book = [
+    { id: 'i1', supply_house_id: 'h1', amount: 4812.07, due_date: '2026-07-20' }, // current
+    { id: 'i2', supply_house_id: 'h1', amount: 2210, due_date: '2026-07-03' }, // due today → current
+    { id: 'i3', supply_house_id: 'h1', amount: 3118.4, due_date: '2026-06-20' }, // 1–30
+    { id: 'i4', supply_house_id: 'h1', amount: 6420.18, due_date: '2026-05-20' }, // 30–60
+    { id: 'i5', supply_house_id: 'h1', amount: 9814.22, due_date: '2026-04-20' }, // 60–90
+    { id: 'i6', supply_house_id: 'h1', amount: 3401.86, due_date: '2026-01-05' }, // 90+
+    { id: 'i7', supply_house_id: 'h1', amount: 271.16, due_date: null }, // no due date
+    { id: 'c1', supply_house_id: 'h1', amount: -212.4, due_date: null }, // credit
+    { id: 'i8', supply_house_id: 'h2', amount: 7569.33, due_date: '2026-06-10' }, // 1–30
+    { id: 'i9', supply_house_id: 'h2', amount: 1742.65, due_date: '2026-07-09' }, // current
+    { id: 'c2', supply_house_id: 'h2', amount: -88, due_date: '2026-06-01' }, // credit with a date: still never bucketed
+  ]
+  const matrix = buildSupplyHouseAgingMatrix(houses, book, TODAY)
+  const cellSum = (houseId: string | null, cell: Parameters<typeof invoicesForAgingCell>[2]) =>
+    invoicesForAgingCell(book, houseId, cell, TODAY).reduce((s, r) => s + Number(r.amount ?? 0), 0)
+
+  it('every bucket cell of every house equals its rows', () => {
+    for (const row of matrix.rows) {
+      for (const b of AGING_BUCKETS) {
+        expect(cellSum(row.supplyHouseId, b.key)).toBeCloseTo(row.buckets[b.key], 6)
+      }
+      expect(cellSum(row.supplyHouseId, 'owed')).toBeCloseTo(row.total, 6)
+      expect(cellSum(row.supplyHouseId, 'credits')).toBeCloseTo(row.creditsOpen, 6)
+    }
+  })
+
+  it('the footer row (houseId null) equals the matrix totals', () => {
+    for (const b of AGING_BUCKETS) {
+      expect(cellSum(null, b.key)).toBeCloseTo(matrix.totals[b.key], 6)
+    }
+    expect(cellSum(null, 'owed')).toBeCloseTo(matrix.grandTotal, 6)
+    expect(cellSum(null, 'credits')).toBeCloseTo(matrix.creditsTotal, 6)
+  })
+
+  it('sorts oldest due first with no-due-date rows last, and a credit never leaves its column', () => {
+    expect(invoicesForAgingCell(book, 'h1', 'owed', TODAY).map((r) => r.id)).toEqual([
+      'i6', 'i5', 'i4', 'i3', 'i2', 'i1', 'i7',
+    ])
+    // the dated credit is under credits, not 1–30
+    expect(invoicesForAgingCell(book, 'h2', 'past1_30', TODAY).map((r) => r.id)).toEqual(['i8'])
+    expect(invoicesForAgingCell(book, 'h2', 'credits', TODAY).map((r) => r.id)).toEqual(['c2'])
+  })
+
+  it('titles the cells the way the modal speaks', () => {
+    expect(agingCellTitle('past60_90')).toBe('60–90 days past due')
+    expect(agingCellTitle('current')).toBe('current (not yet due)')
+    expect(agingCellTitle('noDueDate')).toBe('no due date recorded')
+    expect(agingCellTitle('owed')).toBe('every unpaid invoice')
+    expect(agingCellTitle('credits')).toBe('credits open')
   })
 })

@@ -9,6 +9,8 @@ import {
   jobAccountsForJob,
   openedViaPhrase,
   type JobSupplyHouseAccountRow,
+  agingCellBandWords,
+  agingCellChipState,
 } from './jobSupplyHouseAccounts'
 
 function account(overrides: Partial<JobSupplyHouseAccountRow> & { job_id: string; supply_house_id: string }): JobSupplyHouseAccountRow {
@@ -138,5 +140,45 @@ describe('jobAccountsForJob', () => {
   it('reads not_needed as its own state', () => {
     const views = jobAccountsForJob('j1', houses, [account({ job_id: 'j1', supply_house_id: 'ferguson', status: 'not_needed' })])
     expect(views[0]?.state).toBe('not_needed')
+  })
+})
+
+describe('agingCellChipState', () => {
+  const acct = (status: string): JobSupplyHouseAccountRow => ({
+    id: 'a1', job_id: 'j1', supply_house_id: 'h1', status, account_ref: 'JA-1',
+    opened_via: 'phone', rep_contact_id: null, requested_by: null, requested_at: null,
+    requested_from_counter: false, opened_by: null, opened_at: null, note: '',
+  })
+  const one = [{ job_id: 'j1' }]
+
+  it('a credit never carries the chip, whatever else is true', () => {
+    expect(agingCellChipState({ amount: -50, on_job_account: true }, one, acct('open')).kind).toBe('credit')
+  })
+
+  it('a flagged invoice is ON even with no or many jobs — taking it off is always allowed', () => {
+    expect(agingCellChipState({ amount: 100, on_job_account: true }, [], undefined).kind).toBe('on')
+    expect(agingCellChipState({ amount: 100, on_job_account: true }, [{ job_id: 'j1' }, { job_id: 'j2' }], undefined).kind).toBe('on')
+  })
+
+  it('an unflagged invoice needs exactly one job', () => {
+    expect(agingCellChipState({ amount: 100, on_job_account: false }, [], null).kind).toBe('no_job')
+    const split = agingCellChipState({ amount: 100, on_job_account: false }, [{ job_id: 'j1' }, { job_id: 'j2' }], null)
+    expect(split).toEqual({ kind: 'split', jobCount: 2 })
+  })
+
+  it('one job routes on the account: open = one tap, anything else = the band, loading = wait', () => {
+    expect(agingCellChipState({ amount: 100, on_job_account: false }, one, acct('open')).kind).toBe('off_open')
+    expect(agingCellChipState({ amount: 100, on_job_account: false }, one, acct('requested')).kind).toBe('off_no_account')
+    expect(agingCellChipState({ amount: 100, on_job_account: false }, one, acct('not_needed')).kind).toBe('off_no_account')
+    expect(agingCellChipState({ amount: 100, on_job_account: false }, one, null).kind).toBe('off_no_account')
+    expect(agingCellChipState({ amount: 100, on_job_account: false }, one, undefined).kind).toBe('off_loading')
+  })
+
+  it('the band leads with the form\'s own words per account state', () => {
+    expect(agingCellBandWords(null, 'Reece')).toContain('No job account at Reece on record')
+    expect(agingCellBandWords(acct('requested'), 'Reece')).toContain('asked for, not open yet')
+    const nn = acct('not_needed')
+    nn.note = 'cash account'
+    expect(agingCellBandWords(nn, 'Reece')).toBe('Marked not needed at Reece — cash account.')
   })
 })

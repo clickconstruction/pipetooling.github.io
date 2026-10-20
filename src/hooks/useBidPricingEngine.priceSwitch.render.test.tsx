@@ -34,8 +34,16 @@ function holdNextRead(table: string, eqs: Record<string, unknown>): () => void {
   return release
 }
 
-// Filter-aware Supabase stand-in (as in the put back and Cover Letter ★ tests), with two additions:
-// a read can be held back to land late, and an abortSignal turns it into PostgREST's AbortError result.
+/** Reads that come back with an error (v2.5671): a table plus the eq() filters, and the message. */
+type Fail = { table: string; eqs: Record<string, unknown>; message: string }
+let fails: Fail[] = []
+function failNextRead(table: string, eqs: Record<string, unknown>, message: string) {
+  fails.push({ table, eqs, message })
+}
+
+// Filter-aware Supabase stand-in (as in the put back and Cover Letter ★ tests), with three additions:
+// a read can be held back to land late, an abortSignal turns it into PostgREST's AbortError result,
+// and a read can fail.
 vi.mock('../lib/supabase', () => {
   function makeBuilder(table: string) {
     let single = false
@@ -61,6 +69,11 @@ vi.mock('../lib/supabase', () => {
         await hold!.gate
       }
       if (signal?.aborted) return { data: null, error: { message: 'AbortError: signal is aborted without reason', code: '' }, status: 0 }
+      const f = fails.findIndex((x) => x.table === table && Object.entries(x.eqs).every(([k, v]) => eqs[k] === v))
+      if (f >= 0) {
+        const [fail] = fails.splice(f, 1)
+        return { data: null, error: { message: fail!.message, code: '42501' }, status: 403 }
+      }
       const rows = (tableData[table] ?? []).filter((r) => filters.every((f) => f(r)))
       return { data: single ? rows[0] ?? null : rows, error: null, count: rows.length }
     }
@@ -83,7 +96,7 @@ import type { BidWithBuilder } from '../types/bidWithBuilder'
 
 const bid = { id: 'b1', selected_bid_version_id: 'ver-A', selected_price_book_version_id: 'pbv-wendi', materials_model: 'exact' } as unknown as BidWithBuilder
 
-function mount() {
+function mount(setError: (message: string | null) => void = () => {}) {
   return renderHook(() => {
     const engine = useBidPricingEngine({
       selectedBidForCounts: null,
@@ -93,7 +106,7 @@ function mount() {
       activeTab: 'pricing',
       selectedServiceTypeId: '',
       authUser: { id: 'u1' },
-      setError: () => {},
+      setError,
       loadBids: async () => [],
     })
     // What the open card and the Revenue tile read: the open price priced on its own rows (prices only).
@@ -127,6 +140,7 @@ const ALT_TOTAL = 3 * 50 + 2 * 50
 describe('useBidPricingEngine · switching price cards keeps the open price\'s own prices', () => {
   beforeEach(() => {
     holds = []
+    fails = []
     for (const k of Object.keys(tableData)) delete tableData[k]
     tableData.bid_versions = [{ id: 'ver-A', bid_id: 'b1', name: 'WENDI', sort_order: 0, starred_price_book_version_id: 'pbv-wendi' }]
     tableData.price_book_versions = [
@@ -235,5 +249,53 @@ describe('useBidPricingEngine · switching price cards keeps the open price\'s o
     viewPrice(hook, 'pbv-blank')
     await waitFor(() => expect(hook.result.current.engine.pricingPricesReady).toBe(true))
     expect(hook.result.current.onScreenRevenue).toBe(0)
+  })
+
+  // v2.5671: a read that fails settles the price too, its error on screen. Left loading, the open price would
+  // read … and refuse every price write, and nothing would read it again until another card was clicked.
+  it('a failed read of the open price\'s book settles it: ready, with the error said', async () => {
+    const errors: Array<string | null> = []
+    const hook = mount((m) => errors.push(m))
+    await waitFor(() => expect(hook.result.current.onScreenRevenue).toBe(WENDI_TOTAL))
+    // Both the card's own read and the book effect's read of the alternate fail.
+    failNextRead('price_book_entries', { version_id: 'pbv-alt' }, 'permission denied for table price_book_entries')
+    failNextRead('price_book_entries', { version_id: 'pbv-alt' }, 'permission denied for table price_book_entries')
+    viewPrice(hook, 'pbv-alt')
+    await waitFor(() => expect(hook.result.current.engine.pricingPricesReady).toBe(true))
+    expect(hook.result.current.engine.selectedPricingVersionId).toBe('pbv-alt')
+    expect(hook.result.current.engine.priceBookEntries).toEqual([])
+    expect(errors).toContain('Failed to load price book entries: permission denied for table price_book_entries')
+  })
+
+  it('a failed read of the open price\'s rows settles it: ready, with the error said', async () => {
+    const errors: Array<string | null> = []
+    const hook = mount((m) => errors.push(m))
+    await waitFor(() => expect(hook.result.current.onScreenRevenue).toBe(WENDI_TOTAL))
+    failNextRead('bid_pricing_assignments', { price_book_version_id: 'pbv-alt' }, 'permission denied for table bid_pricing_assignments')
+    viewPrice(hook, 'pbv-alt')
+    await waitFor(() => expect(hook.result.current.engine.pricingPricesReady).toBe(true))
+    expect(hook.result.current.engine.bidPricingAssignments).toEqual([])
+    expect(errors.some((m) => m?.startsWith('Failed to load pricing assignments:'))).toBe(true)
+  })
+
+  it('a failed read of the price you left changes nothing on the open one', async () => {
+    const errors: Array<string | null> = []
+    const hook = mount((m) => errors.push(m))
+    await waitFor(() => expect(hook.result.current.onScreenRevenue).toBe(WENDI_TOTAL))
+    const releaseSaveReload = holdNextRead('bid_pricing_assignments', { price_book_version_id: 'pbv-wendi' })
+    failNextRead('bid_pricing_assignments', { price_book_version_id: 'pbv-wendi' }, 'permission denied for table bid_pricing_assignments')
+    let saveReload: Promise<void> = Promise.resolve()
+    act(() => {
+      saveReload = hook.result.current.engine.loadBidPricingAssignments('b1', 'pbv-wendi')
+    })
+    viewPrice(hook, 'pbv-alt')
+    await waitFor(() => expect(hook.result.current.onScreenRevenue).toBe(ALT_TOTAL))
+    await act(async () => {
+      releaseSaveReload()
+      await saveReload
+    })
+    expect(hook.result.current.engine.pricingPricesReady).toBe(true)
+    expect(hook.result.current.onScreenRevenue).toBe(ALT_TOTAL)
+    expect(errors.some((m) => m?.startsWith('Failed to load pricing assignments:'))).toBe(false)
   })
 })
