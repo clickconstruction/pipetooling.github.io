@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createPriceReadGate, openPricePricesReady } from './priceReadGate'
+import { plainWordsFailures } from '../plainWords'
+import { createPriceReadGate, figureWhileLoading, OPEN_PRICE_LOADING_MESSAGE, OPEN_PRICE_LOADING_TITLE, openPriceLoading, openPricePricesReady } from './priceReadGate'
 
 describe('createPriceReadGate', () => {
   it('a read of the price on screen writes', () => {
@@ -48,5 +49,33 @@ describe('openPricePricesReady', () => {
 
   it('no price open is never ready', () => {
     expect(openPricePricesReady({ selectedPricingVersionId: null, entriesReadFor: null, rowsReadFor: null })).toBe(false)
+  })
+})
+
+describe('openPriceLoading (v2.5671)', () => {
+  it('a price open whose prices have not landed is loading', () => {
+    expect(openPriceLoading({ selectedPricingVersionId: 'alt', pricesReady: false })).toBe(true)
+  })
+
+  it('once they land it is not', () => {
+    expect(openPriceLoading({ selectedPricingVersionId: 'alt', pricesReady: true })).toBe(false)
+  })
+
+  it('no price open is nothing to wait for: the Workbench has its own empty state', () => {
+    expect(openPriceLoading({ selectedPricingVersionId: null, pricesReady: false })).toBe(false)
+  })
+})
+
+describe('figureWhileLoading (v2.5671)', () => {
+  it('reads … while the open price loads and the figure once it lands', () => {
+    expect(figureWhileLoading(true, '$1,250')).toBe('…')
+    expect(figureWhileLoading(false, '$1,250')).toBe('$1,250')
+  })
+})
+
+describe('the loading words', () => {
+  it('are plain words', () => {
+    expect(plainWordsFailures(OPEN_PRICE_LOADING_MESSAGE)).toEqual([])
+    expect(plainWordsFailures(OPEN_PRICE_LOADING_TITLE)).toEqual([])
   })
 })
