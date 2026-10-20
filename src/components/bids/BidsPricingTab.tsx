@@ -41,6 +41,7 @@ import { useAlternateVersionData, useGcNamesById, useScenarioCardRevenues } from
 import { AddPriceDoorButton, PricingCardsRow } from './PricingCardsRow'
 import { PricingStartPanel } from './PricingStartPanel'
 import { pricingStartChoices } from '../../lib/bids/pricingStartChoices'
+import { laborCountsOutOfStep } from '../../lib/bids/laborCountsDrift'
 import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../../lib/bids/pricingCardsRow'
 import { figureWhileLoading, LOADING_FIGURE, OPEN_PRICE_LOADING_MESSAGE, OPEN_PRICE_LOADING_TITLE, openPriceLoading } from '../../lib/bids/priceReadGate'
 import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
@@ -3329,6 +3330,22 @@ export function BidsPricingTab({
                           </div>
                           {altLine}
                           <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} />
+                          {laborCountsOutOfStep({ countRows: pricingCountRows, laborRows: pricingLaborRows }) ? (
+                            // #137 PR 2: labor rows are bid-wide and follow whichever version last
+                            // opened Labor — when they disagree with THIS version's counts, say so
+                            // instead of quietly misreading our cost and the margin.
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.45rem', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', borderRadius: 8, padding: '0.35rem 0.7rem', fontSize: '0.78rem' }}>
+                              <span>⚠ Labor hours don't match this version's counts, so our cost and the margin may be off.</span>
+                              <button
+                                type="button"
+                                onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'labor') }}
+                                style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                              >
+                                Open Labor
+                              </button>
+                              <span>to refresh them.</span>
+                            </div>
+                          ) : null}
                           </>
                         )
                       })()}
