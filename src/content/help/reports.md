@@ -2,7 +2,7 @@
 title: file and review field reports
 category: Office
 roles: assistant, master_technician, primary, estimator
-keywords: stage, stage progress, which stage, weighted percent, reports, job complete, status report, leave report, review, notifications
+keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, review, notifications
 order: 20
 ---
 Field reports turn what happened on site into something the office can act on. Techs file them in under a minute, and the office reviews them in one place.
@@ -36,14 +36,16 @@ The slider opens on the job's **current %**. The line under it says where that n
 {{button:outline|Not yet}} &nbsp; {{button:green|Move to Ready to Bill}}
 :::
 
-### On a job split into stages
+### On a job with more than one line
 
-A job can be split into **stages**. That happens when the office set an **Order** row on the Bill tab. See *split a job into stages and bill stage by stage*. It also happens when the line items already read like a plan. That means **Rough In**, **Top Out**, **Trim Set**, in that order. The app recognizes the plumbing stages by name. On such a job, the percent-complete question turns into a stage list. You tap the stage you worked on. You slide how far along **that stage** is. The app does the weighting. Each stage is worth its share of the job's value. So 60% of a stage worth 35% of the job moves the job 21 points. The green box shows the job's new percent and the arithmetic. A stage whose draw is already paid reads {{chip:green|✓ 100%}}. Lines marked *—*, like permits, aren't stages and don't count.
+Many jobs have more than one priced line on the Bill tab. Those lines are often the stages, like **Rough In**, **Top Out** and **Trim Set**. On such a job the percent question becomes a list of the job's lines. The question reads **How far along is each line?**. You move the lines you worked on. The rest stay as they are. The first line not yet done is open when the form opens. Tap another line to open it. The open line shows four quick picks and a slider. The picks are {{button:outline|25}} {{button:outline|50}} {{button:outline|75}} {{button:outline|Done ✓}}. A line you moved shows the old number and the new one. A line whose draw is already paid reads {{chip:green|✓ Paid}} and cannot be moved. A stage set as **In order** on the Bill tab carries its number. Any other line carries a diamond.
 
-{{button:outline-blue|Set the whole-job % instead}} brings back the plain slider if you'd rather call the whole job. Jobs with one line item never see the list. They report exactly as before.
+The app works out the job's percent from the lines. Each line counts by its share of the job. The **Job** line under the list shows the job's new percent. Tap **how?** to see each line's share and points. No prices are shown. The job's percent is what the report saves as *How complete is the job?*. So the Pipeline, the Dashboard cards and the activity feed read the same number as before. The report also lists each line you moved under **Stage progress**. The office reads it on the report card.
 
-:::example Rough-in day
-Job: Underground ✓ · Rough-in 60% · Top-out · Trim. You finish rough-in → tap **Rough-in**, tap **Done ✓** → "60% of the job · was 46% · Rough-in 100% × 35% = 35 pts". Post. The office sees stage 2 at 100% on the Bill tab and the job at 60% everywhere else.
+{{button:outline-blue|Set the whole-job % instead}} brings back the plain slider. Use it when you would rather call the whole job. Jobs with one priced line never see the list. They report exactly as before. The **Additional report** window on a job's reports list asks the same way.
+
+:::example Halfway through rough-in
+Job: Underground ✓ Paid · Rough In 35% · Top Out — · Trim Set — · Water heater —. You tap **50** on Rough In. The Job line reads 32% → 38%. You set the water heater too, so you tap its line and **Done ✓**. The Job line reads 32% → 43%. Save. The office sees Rough In at 50% on the Bill tab and the job at 43% everywhere else. The report card reads *Rough In 35% → 50% · Water heater — → 100% · job 32% → 43%*.
 :::
 
 ## Reviewing reports (office side)
