@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Addressed to — cover letter mock-up</title>
+<style>
+  :root {
+    --surface: #ffffff;
+    --bg-muted: #f3f4f6;
+    --bg-subtle: #f9fafb;
+    --bg-blue-tint: #eff6ff;
+    --bg-green-tint: #ecfdf5;
+    --bg-amber-tint: #fffbeb;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text-strong: #111827;
+    --text-700: #374151;
+    --text-600: #4b5563;
+    --text-muted: #6b7280;
+    --text-link: #2563eb;
+    --blue: #3b82f6;
+    --green-600: #16a34a;
+    --amber-700: #b45309;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #eef1f5; color: var(--text-strong); }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  .sub { color: var(--text-600); font-size: 0.9rem; margin: 0 0 24px; max-width: 70ch; }
+  .state { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 28px; }
+  .state h2 { font-size: 1rem; margin: 0 0 2px; }
+  .state .cap { font-size: 0.82rem; color: var(--text-600); margin: 0 0 14px; max-width: 78ch; }
+  .studio { display: grid; grid-template-columns: minmax(300px, 390px) minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
+
+  .stepcard { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--bg-subtle); }
+  .stephead { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; }
+  .stepnum { width: 20px; height: 20px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 0.75rem; display: inline-flex; align-items: center; justify-content: center; }
+
+  .addr-label { font-size: 0.75rem; font-weight: 700; color: var(--text-700); margin: 2px 0 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .chip { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: 0.8rem; cursor: default; text-align: left; line-height: 1.2; }
+  .chip .sub2 { display: block; font-size: 0.64rem; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
+  .chip b { font-size: 0.82rem; }
+  .chip.on { border-color: var(--blue); background: var(--bg-blue-tint); box-shadow: inset 0 0 0 1px var(--blue); }
+  .chip.shared { border-style: dashed; background: var(--bg-subtle); }
+  .chip.add { border-style: dashed; color: var(--text-link); font-weight: 600; }
+  .chip .sent { color: var(--green-600); }
+  .note { font-size: 0.74rem; color: var(--text-muted); margin: 6px 0 0; max-width: 46ch; }
+  .note b { color: var(--text-700); }
+  .linklike { color: var(--text-link); text-decoration: underline; text-underline-offset: 2px; }
+
+  .amountband { display: flex; align-items: baseline; gap: 10px; background: var(--bg-green-tint); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin-top: 12px; font-size: 0.78rem; color: var(--text-muted); }
+  .amountband .amt { font-size: 1.2rem; font-weight: 700; color: var(--green-600); }
+
+  .btnrow { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .btn { border: none; border-radius: 6px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: default; }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .btn.ghost { background: var(--surface); color: var(--text-700); border: 1px solid var(--border-strong); }
+  .btn small { display: block; font-weight: 400; font-size: 0.68rem; opacity: 0.9; }
+
+  .letter { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 26px 30px; font-size: 0.82rem; line-height: 1.5; white-space: pre-wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .letter .swap { background: #fef3c7; border-radius: 3px; padding: 0 2px; }
+  .pagebreak { border: none; border-top: 2px dashed var(--border-strong); margin: 18px -30px; position: relative; overflow: visible; }
+  .pagebreak::after { content: "page break"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--bg-muted); border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text-600); font-size: 0.66rem; line-height: 1; padding: 3px 10px; white-space: nowrap; }
+
+  .callout { border-left: 3px solid var(--blue); background: var(--bg-blue-tint); border-radius: 0 8px 8px 0; padding: 8px 12px; font-size: 0.78rem; color: var(--text-700); margin-top: 12px; max-width: 60ch; }
+
+  .picker { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); box-shadow: 0 4px 10px rgba(0,0,0,0.12); width: 280px; font-size: 0.8rem; margin-top: 8px; }
+  .picker input { width: 100%; border: none; border-bottom: 1px solid var(--border); padding: 8px 10px; font-size: 0.8rem; border-radius: 6px 6px 0 0; }
+  .picker { flex: 0 0 300px; width: 300px; }
+  .picker .row { display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--border); align-items: start; text-align: left; }
+  .picker .row input { margin: 2px 0 0; }
+  .picker .row span { min-width: 0; }
+  .picker .row span b { display: block; }
+  .picker .row span small { display: block; color: var(--text-muted); font-size: 0.7rem; }
+  .pickerwrap { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .pickerwrap .callout { margin-top: 0; flex: 1; min-width: 260px; }
+  .picker .new { padding: 7px 10px; color: var(--text-link); font-weight: 600; }
+  .picker .foot { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--bg-muted); border-radius: 0 0 6px 6px; font-size: 0.72rem; color: var(--text-muted); }
+  .picker .foot .go { background: var(--blue); color: #fff; border-radius: 4px; padding: 4px 10px; font-weight: 600; font-size: 0.76rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Addressed to — pick the GC the letter is for</h1>
+  <p class="sub">To-do #133. Grace retypes the other builders' names by hand after pasting the letter. The bid already lists every GC it goes to; this row puts that list on the letter's address block. All data below is made up.</p>
+
+  <!-- STATE A -->
+  <div class="state">
+    <h2>State A — the bid's GC, as today</h2>
+    <p class="cap">The row appears only when the bid goes to two or more GCs. The bid's own GC is selected by default, so nothing moves for anyone until a chip is clicked. Single-GC bids never see the row.</p>
+    <div class="studio">
+      <div class="stepcard">
+        <div class="stephead"><span class="stepnum">1</span> Scope &amp; pricing</div>
+        <div class="addr-label">Addressed to</div>
+        <div class="chips">
+          <div class="chip on"><b>Ridgeway Builders</b><span class="sub2">★ bid's GC · <span class="sent">sent 10/18</span></span></div>
+          <div class="chip shared"><b>Harbor Point Construction</b><span class="sub2">same letter</span></div>
+          <div class="chip shared"><b>Caldwell &amp; Sons</b><span class="sub2">same letter</span></div>
+          <div class="chip add">+ GC</div>
+        </div>
+        <p class="note">Cedar Bend Medical Office. The letter is headed with the GC you pick.</p>
+        <div class="amountband"><span class="amt">$184,350.00</span> from Pricing · WENDI</div>
+        <div class="btnrow">
+          <button class="btn primary">Print</button>
+          <button class="btn ghost">Copy letter</button>
+        </div>
+      </div>
+      <div class="letter"><b>Ridgeway Builders</b>
+214 W. Alder Street
+Dripping Springs, TX 78620
+
+<b>Cedar Bend Medical Office</b>
+4012 Pecan Loop
+Dripping Springs, TX 78620
+
+As per plumbing plans and specifications, we propose to do the plumbing in the amount of:
+<b>ONE HUNDRED EIGHTY FOUR THOUSAND THREE HUNDRED FIFTY 00/100 DOLLARS ($184,350.00)</b>
+
+<b>Inclusions:</b>
+     • Fixtures provided and installed by us per plan:
+            • [2] WC-1 WATER CLOSET
+            • [2] LAV-1 LAVATORY
+            • [1] EWC-1 ELECTRIC WATER COOLER
+            • [3] FD-1 FLOOR DRAIN
+            • [1] EWH-1 ELECTRIC WATER HEATER
+…</div>
+    </div>
+  </div>
+
+  <!-- STATE B -->
+  <div class="state">
+    <h2>State B — a same-letter GC selected</h2>
+    <p class="cap">One click re-addresses the preview, Print and Copy. Only the name and address change (highlighted). The caption is honest about what a same-letter GC's copy does and does not track, and <i>track separately</i> stays one click away for a GC who needs their own prices.</p>
+    <div class="studio">
+      <div class="stepcard">
+        <div class="stephead"><span class="stepnum">1</span> Scope &amp; pricing</div>
+        <div class="addr-label">Addressed to</div>
+        <div class="chips">
+          <div class="chip"><b>Ridgeway Builders</b><span class="sub2">★ bid's GC · <span class="sent">sent 10/18</span></span></div>
+          <div class="chip shared on"><b>Harbor Point Construction</b><span class="sub2">same letter</span></div>
+          <div class="chip shared"><b>Caldwell &amp; Sons</b><span class="sub2">same letter</span></div>
+          <div class="chip add">+ GC</div>
+        </div>
+        <p class="note"><b>Harbor Point Construction</b> gets the same letter as Ridgeway Builders. Only the name and address change. Their copy rides the bid's sent date. For their own prices, press <span class="linklike">track separately</span>.</p>
+        <div class="amountband"><span class="amt">$184,350.00</span> from Pricing · WENDI</div>
+        <div class="btnrow">
+          <button class="btn primary">Print<small>to Harbor Point Construction</small></button>
+          <button class="btn ghost">Copy letter<small>to Harbor Point Construction</small></button>
+        </div>
+      </div>
+      <div class="letter"><b><span class="swap">Harbor Point Construction</span></b>
+<span class="swap">900 Lakeway Commons, Suite 210</span>
+<span class="swap">Marble Falls, TX 78654</span>
+
+<b>Cedar Bend Medical Office</b>
+4012 Pecan Loop
+Dripping Springs, TX 78620
+
+As per plumbing plans and specifications, we propose to do the plumbing in the amount of:
+<b>ONE HUNDRED EIGHTY FOUR THOUSAND THREE HUNDRED FIFTY 00/100 DOLLARS ($184,350.00)</b>
+
+<b>Inclusions:</b>
+     • Fixtures provided and installed by us per plan:
+            • [2] WC-1 WATER CLOSET
+            • [2] LAV-1 LAVATORY
+            • [1] EWC-1 ELECTRIC WATER COOLER
+            • [3] FD-1 FLOOR DRAIN
+            • [1] EWH-1 ELECTRIC WATER HEATER
+…</div>
+    </div>
+    <div class="pickerwrap">
+    <div class="callout"><b>+ GC</b> opens the same tick-list picker Edit Bid uses, right here — search, tick several builders, ＋ New GC without leaving. A builder picked here is recorded on the bid's "Also sent to" list as they're addressed, so Followup and the board see them too.</div>
+    <div class="picker" aria-hidden="true">
+      <input value="" placeholder="Search customers — tick all that apply" readonly>
+      <div class="row"><input type="checkbox" checked> <span><b>Summit Peak Contractors</b><small>188 FM 2325, Wimberley, TX</small></span></div>
+      <div class="row"><input type="checkbox"> <span><b>Trinity Oak Builders</b><small>75 River Bend Rd, Kyle, TX</small></span></div>
+      <div class="new">＋ New GC — create without leaving this page</div>
+      <div class="foot"><span>1 ticked</span><span class="go">Add 1 GC</span></div>
+    </div>
+    </div>
+  </div>
+
+  <!-- STATE C -->
+  <div class="state">
+    <h2>State C (PR 2) — print every copy at once</h2>
+    <p class="cap">When two or more GCs share the letter, one more button prints one addressed copy per GC with a page break between them. The button says exactly what it will do. A GC with no address on file still prints, name line alone — one missing address never holds the batch.</p>
+    <div class="studio">
+      <div class="stepcard">
+        <div class="stephead"><span class="stepnum">1</span> Scope &amp; pricing</div>
+        <div class="addr-label">Addressed to</div>
+        <div class="chips">
+          <div class="chip on"><b>Ridgeway Builders</b><span class="sub2">★ bid's GC · <span class="sent">sent 10/18</span></span></div>
+          <div class="chip shared"><b>Harbor Point Construction</b><span class="sub2">same letter</span></div>
+          <div class="chip shared"><b>Caldwell &amp; Sons</b><span class="sub2">same letter · no address on file</span></div>
+          <div class="chip add">+ GC</div>
+        </div>
+        <div class="btnrow">
+          <button class="btn primary">Print<small>to Ridgeway Builders</small></button>
+          <button class="btn ghost">Print 3 letters<small>one per GC</small></button>
+        </div>
+      </div>
+      <div class="letter"><b>Ridgeway Builders</b>
+214 W. Alder Street
+Dripping Springs, TX 78620
+
+<b>Cedar Bend Medical Office</b>
+4012 Pecan Loop
+…
+<hr class="pagebreak"><b>Harbor Point Construction</b>
+900 Lakeway Commons, Suite 210
+Marble Falls, TX 78654
+
+<b>Cedar Bend Medical Office</b>
+4012 Pecan Loop
+…
+<hr class="pagebreak"><b>Caldwell &amp; Sons</b>
+
+<b>Cedar Bend Medical Office</b>
+4012 Pecan Loop
+…</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 ---
 name: "Pricing strip: the Revenue number carries its cents"
-number: 133
+number: 134
 group: close
 status: BUILT 2026-10-20 — the go came the same day, defaults taken; v2.5678 swaps the strip, the alternates line and the tooltips as drawn
 summary: >
@@ -20,7 +20,7 @@ mockup: to-dos/pricing-strip-cents/mockup.html
 ver: v2.2208 · v2.2246 · v2.4194 · v2.5678
 ---
 
-# Pricing strip: the Revenue number carries its cents (#133)
+# Pricing strip: the Revenue number carries its cents (#134)
 
 ## The ask, in Wendi's words
 

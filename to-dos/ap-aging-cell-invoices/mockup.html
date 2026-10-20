@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AP aging: a cell opens onto its invoices</title>
+<style>
+  /* Same look as the other to-do mock-ups: dark page, each "app" panel a desk-wide render of the real screen. All data made up. */
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --teal: #2dd4bf; --mono: ui-monospace, Menlo, monospace; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 20px 60px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--line2); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; text-wrap: balance; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 17px; margin: 30px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.calls { background: #3a2f10; color: #fcd34d; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+  .callouts li b { display: block; color: var(--ink); }
+  .callouts.good li { border-left-color: var(--green); } .callouts.calls li { border-left-color: var(--amber); }
+  .try { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; } .try kbd { font: 11px var(--mono); border: 1px solid var(--line2); border-radius: 4px; padding: 0 5px; color: var(--ink); }
+  .app { background: #131a24; border: 1px solid var(--line2); border-radius: 10px; padding: 14px 16px; min-width: 0; overflow-x: auto; }
+  .app .name { font-size: 12px; color: var(--muted); margin: 0 0 10px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .app .name b { color: var(--ink); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; align-items: start; }
+
+  /* the aging table, as the app draws it (dark theme) */
+  .ap-head { text-align: center; font-weight: 600; font-size: 14px; margin: 2px 0 2px; }
+  .ap-intro { text-align: center; font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
+  .ap-toggles { text-align: right; font-size: 11.5px; color: var(--muted); margin: -34px 0 10px; line-height: 1.7; }
+  .ap-toggles .cb { display: inline-block; width: 11px; height: 11px; border: 1px solid var(--line2); border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .ap-toggles .cb.on { background: var(--blue); border-color: var(--blue); }
+  table.aging { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.aging th { padding: 7px 9px; font-size: 11.5px; color: var(--muted); border-bottom: 1px solid var(--line2); text-align: right; white-space: nowrap; }
+  table.aging th:first-child { text-align: left; }
+  table.aging td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; vertical-align: top; }
+  table.aging td:first-child { text-align: left; font-weight: 500; }
+  table.aging tbody tr { cursor: pointer; } table.aging tbody tr:hover td:first-child { text-decoration: underline; }
+  table.aging tfoot td { border-top: 2px solid var(--line2); border-bottom: none; font-weight: 600; }
+  .dash { color: #4a5668; font-weight: 400; }
+  .ja { display: block; font-size: 10.5px; font-weight: 600; color: var(--teal); }
+  /* bucket tints, dark */
+  .c-current { background: #11301d; color: #86efac; } .c-past1_30 { background: #332a0e; color: #fcd34d; }
+  .c-past30_60 { background: #37230e; color: #fdba74; } .c-past60_90 { background: #3b1a1a; color: #fca5a5; }
+  .c-past90plus { background: #471414; color: #fecaca; } .c-noDueDate { background: #232b37; color: #9aa7b8; }
+  .c-credits { color: #86efac; }
+  /* AFTER: cells with money are buttons */
+  td.cellbtn { cursor: pointer; position: relative; }
+  td.cellbtn:hover { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: 3px; }
+  .aging .owed { font-weight: 600; }
+
+  /* the modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--panel2); border: 1px solid var(--line2); border-radius: 10px; width: min(820px, 100%); max-height: min(86vh, 100%); overflow: auto; box-shadow: 0 18px 60px rgba(0,0,0,.5); }
+  .modal.inline { position: static; width: auto; max-height: none; box-shadow: none; }
+  .m-head { position: sticky; top: 0; background: var(--panel2); display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line2); }
+  .m-head h3 { margin: 0; font-size: 15px; }
+  .m-head .sub { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+  .m-x { border: 1px solid var(--line2); background: var(--panel); color: var(--muted); border-radius: 6px; width: 26px; height: 26px; line-height: 1; font-size: 15px; cursor: pointer; flex-shrink: 0; }
+  table.inv { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.inv th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; padding: 7px 10px 5px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+  table.inv th.r, table.inv td.r { text-align: right; }
+  table.inv td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.inv td.r { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.inv td:nth-child(1), table.inv td:nth-child(3) { white-space: nowrap; }
+  td.demo-hover { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: 3px; }
+  .ghouse td { padding: 9px 10px 3px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-bottom: none; }
+  .pd { display: inline-block; margin-left: 5px; padding: 0 6px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+  .pd.warm { background: #37230e; color: #fdba74; } .pd.hot { background: #471414; color: #fca5a5; }
+  .chip-ja { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 600; background: #0b312c; color: var(--teal); margin-right: 5px; white-space: nowrap; }
+  .chip-ja.tap { cursor: pointer; } .chip-ja.tap:hover { outline: 1px solid var(--teal); }
+  .chip-add { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 600; border: 1px solid #1f5f57; color: var(--teal); background: transparent; margin-right: 5px; cursor: pointer; white-space: nowrap; }
+  .chip-add:hover { background: #0b312c; }
+  .chip-add.ghost { border: 1px dashed var(--line2); color: var(--muted); cursor: default; }
+  .acctnote { display: block; font-size: 10px; color: #4fd1c5; opacity: .85; }
+  .pop { margin-top: 6px; max-width: 380px; background: var(--panel); border: 1px solid #6b5416; border-left: 4px solid var(--amber); border-radius: 8px; padding: 9px 11px; font-size: 11.5px; color: var(--muted); }
+  .pop b { color: var(--ink); } .pop .btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .pop button { font: inherit; font-size: 11px; border-radius: 4px; padding: 2px 9px; cursor: pointer; border: 1px solid var(--line2); background: var(--panel2); color: var(--ink); }
+  .pop button.teal { background: #0f766e; border-color: #0f766e; color: #fff; } .pop button.quiet { color: var(--muted); }
+  table.inv td.jobscell { position: relative; }
+  .sheet-ov { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 70; }
+  .sheet-ov.open { display: flex; }
+  .sheet { background: var(--panel2); border: 1px solid var(--line2); border-radius: 10px; width: min(420px, 100%); padding: 14px 16px; box-shadow: 0 18px 60px rgba(0,0,0,.55); }
+  .sheet h4 { margin: 0 0 2px; font-size: 14px; } .sheet .sub { font-size: 11.5px; color: var(--muted); margin: 0 0 10px; }
+  .sheet .sec { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 8px 0 4px; }
+  .sheet .opt { display: inline-block; border: 1px solid var(--line2); border-radius: 999px; padding: 2px 11px; margin: 0 5px 5px 0; font-size: 12px; cursor: pointer; }
+  .sheet .opt.on { border-color: #0f766e; background: #0b312c; color: var(--teal); }
+  .sheet input { width: 100%; font: inherit; font-size: 12.5px; background: var(--panel); border: 1px solid var(--line2); border-radius: 6px; color: var(--ink); padding: 6px 8px; }
+  .sheet .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .sheet .foot button { font: inherit; font-size: 12px; border-radius: 6px; padding: 5px 12px; cursor: pointer; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); }
+  .sheet .foot button.save { background: #0f766e; border-color: #0f766e; color: #fff; }
+  .jobline { color: var(--muted); font-size: 11px; }
+  .mov { display: inline-block; margin-left: 5px; padding: 0 6px; border-radius: 999px; font-size: 9.5px; font-weight: 700; letter-spacing: .02em; border: 1px solid #1f5f57; color: #4fd1c5; white-space: nowrap; }
+  .mov-strip { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; padding: 7px 12px; border: 1px solid #1f5f57; border-left: 4px solid var(--teal); border-radius: 8px; background: #0b2724; font-size: 12px; color: #a7e8df; }
+  .mov-strip b { color: #e6fffb; font-variant-numeric: tabular-nums; }
+  .mov-strip .left { color: var(--amber); font-weight: 600; }
+  .mov-strip button { font: inherit; font-size: 11.5px; font-weight: 600; border-radius: 5px; padding: 3px 11px; cursor: pointer; border: none; background: #0f766e; color: #fff; }
+  .rep { font-weight: 500; text-transform: none; letter-spacing: 0; color: #4fd1c5; }
+  .m-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 12.5px; }
+  .chip-asked { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 600; background: #3a2f10; color: #fcd34d; margin-right: 5px; cursor: pointer; white-space: nowrap; }
+  .chip-asked:hover { outline: 1px solid var(--amber); }
+  .gmail { font: inherit; font-size: 10.5px; font-weight: 600; margin-left: 8px; border: 1px solid #1f5f57; background: transparent; color: #4fd1c5; border-radius: 4px; padding: 1px 8px; cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .gmail:hover { background: #0b312c; }
+  .sheet.move { width: min(560px, 100%); max-height: min(88vh, 100%); overflow: auto; }
+  #move-ov { z-index: 65; } #sheet-ov { z-index: 80; }
+  .mv-acct { margin: 8px 0 2px; padding: 7px 10px; border-radius: 6px; font-size: 12px; }
+  .mv-acct.ok { background: #0b312c; color: #7ee7d8; }
+  .mv-acct.warn { background: #332a0e; color: #fcd34d; }
+  .mv-acct.asked { background: #332a0e; color: #fcd34d; border-left: 3px solid var(--amber); }
+  .mv-acct .mini { font: inherit; font-size: 11px; font-weight: 600; border: none; border-radius: 4px; padding: 1px 8px; margin-left: 6px; cursor: pointer; background: #0f766e; color: #fff; }
+  .attest { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; cursor: pointer; justify-content: flex-start; text-align: left; }
+  .attest span { flex: 1; min-width: 0; }
+  .attest input { margin-top: 2px; accent-color: #0f766e; width: auto; flex: 0 0 auto; }
+  .sheet .foot button.save:disabled { opacity: .45; cursor: default; }
+  .mailprev { border: 1px solid var(--line2); border-radius: 8px; background: var(--panel); padding: 9px 11px; font-size: 11.5px; color: var(--muted); margin: 6px 0 8px; }
+  .mailprev b { color: var(--ink); } .mailprev .bodyl { margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 6px; line-height: 1.5; }
+  .credline { display: block; font-size: 10.5px; color: var(--muted); }
+  a.view { color: #93c5fd; text-decoration: underline; cursor: pointer; }
+  .adddue { display: inline-block; border: 1px solid #93c5fd; color: #93c5fd; background: #1a2942; border-radius: 4px; padding: 0 7px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+  .m-foot { position: sticky; bottom: 0; background: var(--panel2); border-top: 1px solid var(--line2); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .m-foot .sum { font-size: 12.5px; } .m-foot .sum b { font-variant-numeric: tabular-nums; }
+  .m-foot .sum .jl { display: block; font-size: 11px; color: var(--teal); }
+  .m-foot .doors { display: flex; gap: 8px; }
+  .door { border: 1px solid var(--line2); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  .door.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .door.ghost { color: var(--muted); border-style: dashed; cursor: default; }
+  .pr2 { font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--amber); margin-left: 5px; }
+  footer { margin-top: 36px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">To-do #132 · proposal · data made up</p>
+    <h1>Accounts payable: an aging cell opens onto the invoices behind it</h1>
+  </div>
+  <div class="stamp">Materials → Supply Houses → Accounts payable<br>drawn 2026-10-20 · “today” in this mock-up is 2026-10-20</div>
+</header>
+
+<h2><span class="tag before">Before</span> A number with no door</h2>
+<ul class="callouts">
+  <li><b>The cell knows, the person re-derives.</b> “Why is Bluebonnet’s 60–90 at $13,216?” means: click the row, the whole house expands below, scan every invoice’s past-due chip and rebuild the bucket by eye.</li>
+  <li><b>The nudge has no handle.</b> The intro sentence says “1 unpaid invoice has no due date — open the house and add one.” The column it points at is painted on.</li>
+  <li><b>The teal line stops short.</b> “$9,814.22 job acct” says most of a cell is the owner’s debt — but not which papers.</li>
+</ul>
+<div class="app">
+  <div class="name"><span><b>Today.</b> Rows open the house; cells are paint.</span><span>desk width</span></div>
+  <div id="before-table"></div>
+</div>
+
+<h2><span class="tag after">After</span> Press a cell, see its papers</h2>
+<ul class="callouts good">
+  <li><b>Exactly the cell’s invoices.</b> The modal lists what the kernel summed — same EPSILON, footer total always equals the cell. Oldest due first, the vocabulary of the house’s own Invoices table.</li>
+  <li><b>Totals click too.</b> The footer row opens the bucket across houses, grouped; the Owed cell is the house’s whole unpaid book; Credits open lists the memos with their pairing lines.</li>
+  <li><b>The nudge gets its handle.</b> The No due date cell’s rows each carry <i>Add a due date ›</i> (PR 4). Row-click still opens the house; a dash stays a dash.</li>
+</ul>
+<p class="try">Try it: <kbd>click</kbd> any colored cell, a Total cell, an Owed or Credits cell below. <kbd>Esc</kbd> closes.</p>
+<div class="app">
+  <div class="name"><span><b>Proposed.</b> Every money cell is a button (focusable; Enter opens).</span><span>desk width</span></div>
+  <div id="after-table"></div>
+</div>
+
+<h2><span class="tag after">PR 2</span> The Job acct chip is the act</h2>
+<ul class="callouts good">
+  <li><b>Recording stays one tap.</b> On a past-due row whose job has an open account (the “we forgot to mark it” case), <i>+ Job acct</i> flags the invoice in one press — recording the truth is never blocked, and the teal lines re-sum everywhere at once. Tap <i>Job acct ✓</i> to take it off. A <b>current</b> row instead opens the move workflow (PR 3 below).</li>
+  <li><b>No account → the form’s own words.</b> The tap unfolds the invoice form’s amber band under the row, verbatim, with its doors: <i>Mark opened…</i> (the shared sheet — saved as open, the account is on record from then on) or <i>Flag anyway</i> (the roster’s <i>bought, no account</i> row keeps telling the truth).</li>
+  <li><b>The flag is per property.</b> A split invoice shows no chip (the form’s own sentence as the tooltip); a row with no job reads <i>Pick a job ›</i> and opens the invoice form (PR 4) — the modal never forks the allocation flow.</li>
+</ul>
+<p class="try">Try it in the <b>Bluebonnet · 60–90</b> panel below: BS-19344 is past due with no account on record — its <kbd>+ Job acct</kbd> unfolds the amber band (Mark opened… / Flag anyway); flag it and watch the cell’s teal line above change. BS-19210’s <kbd>Job acct ✓</kbd> taps off.</p>
+
+<h2><span class="tag after">PR 3</span> The move window: a charge moves only while it is current</h2>
+<ul class="callouts good">
+  <li><b>The rule, as the owner set it.</b> A charge can be moved onto the job account only while the invoice is <i>Current</i> — once it is past due, the window is closed. Each invoice has its own clock (its due date); the teal strip counts the still-movable dollars and names the soonest window to close.</li>
+  <li><b>The move is a workflow, not a flag.</b> Pressing <i>+ Job acct</i> on a current charge opens the <b>move modal</b>: either tick <i>“I called the house — this charge was moved onto the job account”</i> and press <i>Mark it moved ✓</i> (dead until the box is ticked), or send the request by email from the app — the drafted email to the house’s job-accounts rep is previewed, and a sent ask turns the row amber: <i>asked 10/20 · follow up ☎</i>.</li>
+  <li><b>Worked as a list, by house.</b> <i>Work the list ›</i> groups every still-movable charge by house with the rep’s phone on the group line, and <i>✉ Email the list ›</i> asks for the whole group in one send. The footer counts <i>to ask · asked · dollars</i>; past-due rows stay honest (“past its window — flag it only if it is already on the account”).</li>
+</ul>
+<p class="try">Try it: press <kbd>Work the list ›</kbd> in the teal strip above — on BS-21004, send the email (the row turns <i>asked · follow up</i>), reopen it and tick the call box to mark it moved; on CP-8903 tick the box straight away. The strip reaches ✓.</p>
+
+<h2>The modal, three ways</h2>
+<p class="lede">Live renders of the same component the clicks above open — the chips work here too. <b>Open house ›</b> is today’s <code style="font-family:var(--mono);font-size:12px">openHouseFromAging</code>; the dashed doors ship in PR 4.</p>
+<div class="pair">
+  <div class="app"><div class="name"><span><b>A house’s bucket</b> — Bluebonnet Supply · 60–90</span></div><div id="inline-house"></div></div>
+  <div class="app"><div class="name"><span><b>The fix-it cell</b> — No due date</span></div><div id="inline-nodue"></div></div>
+</div>
+<div class="pair" style="margin-top:18px">
+  <div class="app"><div class="name"><span><b>A footer total</b> — every house’s 90+, grouped</span></div><div id="inline-total"></div></div>
+  <div class="app"><div class="name"><span><b>Credits open</b> — the memos, with their pairing</span></div><div id="inline-credits"></div></div>
+</div>
+
+<h2><span class="tag calls">Calls</span> The owner’s decisions (defaults recommended)</h2>
+<ul class="callouts calls">
+  <li><b>1 · Which cells click?</b> Default: every money cell — buckets, Credits, Owed, the footer row. Alternative: bucket cells only.</li>
+  <li><b>2 · What can PR 1 do?</b> Default: read-only + View + Open house; edit / due date / payment doors are PR 2. Alternative: ship both at once.</li>
+  <li><b>3 · The phone bars?</b> Default: nothing now — a bar already opens the house’s phone screen. Alternative: a segment tap opens this modal as a sheet.</li>
+  <li><b>4 · Job names in the modal?</b> Default: yes, one allocations fetch on open (PR 2’s chips need them anyway). Alternative: chip only, zero extra queries.</li>
+  <li><b>5 · Flag with no account on record?</b> Default: <i>Flag anyway</i> stays — the invoice form’s checkbox ticks regardless, and the roster’s amber evidence row carries the truth. Alternative: the band offers only <i>Mark opened…</i>.</li>
+  <li><b>6 · Per-row taps or a batch?</b> Default: per-row — a cell holds a handful and an open account makes each tap one press. Alternative: tick-boxes + “Flag N as job account”.</li>
+  <li><b>7 · The email.</b> Default: sent from the app’s mailbox to the house’s job-accounts rep, reply-to the sender — one invoice from the move modal, or the house’s whole list from the group line. Alternative: a mailto draft the office sends from their own mail.</li>
+  <li><b>8 · Where does the nudge live?</b> Default: the strip on this screen only. Alternative: a Dashboard / Quickfill line when a window is about to close (“$2,210 still movable, soonest closes Friday”).</li>
+  <li><b>9 · When does an unanswered ask escalate?</b> Default: the app’s waiting convention — amber at 3 days, red at 7, red asks lead the worked list. Alternative: no aging; the office just sees “asked”.</li>
+</ul>
+
+<footer>to-dos/ap-aging-cell-invoices · houses, jobs, amounts and dates invented for this page · the real screen’s kernel is <span style="font-family:var(--mono)">src/lib/supplyHouseAging.ts</span></footer>
+</div>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="overlay-modal"></div></div>
+<div class="sheet-ov" id="move-ov" onclick="if(event.target===this)closeMove()"><div class="sheet move" id="move-body"></div></div>
+<div class="sheet-ov" id="sheet-ov" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet-body"></div></div>
+
+<script>
+// ---- made-up book ------------------------------------------------------------
+const TODAY = '2026-10-20';
+// the (job, house) account record — job_supply_house_accounts in the real app
+const ACCOUNTS = {
+  'Bluebonnet Supply|4007': { status: 'open', ref: 'JA-4114', via: 'opened by phone 9/14/2026' },
+  'Bluebonnet Supply|4019': { status: 'none' },
+  'Caldwell Pipe & Fittings|4031': { status: 'open', ref: 'C-2201', via: 'opened at the counter 8/28/2026' },
+};
+const acctOf = (house, jobNum) => ACCOUNTS[house + '|' + jobNum] ?? { status: 'none' };
+// the move window, as the owner set it: a charge can be moved onto the job account only while it is CURRENT (not yet due)
+const inWindow = i => i.amount > 0 && i.dueDate != null && bucketOf(i) === 'current';
+const windowDaysLeft = i => -days(i.dueDate); // days until the due date closes the window
+const movableRows = () => INVOICES.filter(i => !i.jobAcct && i.jobCount === 1 && inWindow(i));
+const REPS = {
+  'Bluebonnet Supply': { line: 'Darla · job accounts desk · (512) 555-0144', name: 'Darla', email: 'darla@bluebonnetsupply.example' },
+  'Caldwell Pipe & Fittings': { line: 'Manny · credit desk · (512) 555-0187', name: 'Manny', email: 'manny@caldwellpipe.example' },
+};
+const fmt = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtDate = ymd => new Date(ymd + 'T12:00:00').toLocaleDateString('en-US');
+const BUCKETS = [
+  {key:'current', label:'Current'}, {key:'past1_30', label:'1–30'}, {key:'past30_60', label:'30–60'},
+  {key:'past60_90', label:'60–90'}, {key:'past90plus', label:'90+'}, {key:'noDueDate', label:'No due date'},
+];
+const BUCKET_TITLE = {current:'not yet due', past1_30:'1–30 days past due', past30_60:'30–60 days past due',
+  past60_90:'60–90 days past due', past90plus:'90+ days past due', noDueDate:'no due date recorded'};
+const HOUSES = ['Bluebonnet Supply','Caldwell Pipe & Fittings','Lamar Plumbing Supply','Armadillo Electric Supply','Pecan Valley Rentals'];
+// inv: [house, number, po, invDate, dueDate|null, amount (neg = credit), jobAcct, job, link, credits]
+const INVOICES = [
+  ['Bluebonnet Supply','BS-20991','41512','2026-10-14','2026-11-15', 4812.07, true,  '4007 · Ridgeway Builders — 964 Pondhill (100%)', true,  null],
+  ['Bluebonnet Supply','BS-21004','',     '2026-10-16','2026-10-25', 2210.00, false, '4019 · Kestrel Homes — 1210 Mesa Verde (100%)',  false, null],
+  ['Bluebonnet Supply','BS-20412','41388','2026-09-02','2026-10-02', 3118.40, true,  '4019 · Kestrel Homes — 1210 Mesa Verde (100%)',   true,  null],
+  ['Bluebonnet Supply','BS-19877','41200','2026-08-08','2026-09-08', 6420.18, false, null,                                              true,  null],
+  ['Bluebonnet Supply','BS-19902','',     '2026-08-12','2026-09-12', 1933.75, false, '4007 · Ridgeway (60%), 4019 · Kestrel (40%)',    false, null, 2],
+  ['Bluebonnet Supply','BS-19210','41045','2026-07-05','2026-08-05', 9814.22, true,  '4007 · Ridgeway Builders — 964 Pondhill (100%)', true,  null],
+  ['Bluebonnet Supply','BS-19344','',     '2026-07-18','2026-08-18', 3401.86, false, '4019 · Kestrel Homes — 1210 Mesa Verde (100%)',  false, null],
+  ['Bluebonnet Supply','CM-1120','',      '2026-09-20', null,        -212.40, false, null,                                              false, 'credits BS-19877'],
+  ['Caldwell Pipe & Fittings','CP-8812','41490','2026-10-01','2026-11-01', 5204.90, true, '4031 · Harrell Custom — 88 Cibolo Bend (100%)', false, null],
+  ['Caldwell Pipe & Fittings','CP-8903','41533','2026-10-09','2026-11-09', 1742.65, false, '4031 · Harrell Custom — 88 Cibolo Bend (100%)', false, null],
+  ['Caldwell Pipe & Fittings','CP-8711','41366','2026-08-28','2026-09-28', 7569.33, true, '4031 · Harrell Custom — 88 Cibolo Bend (100%)', true,  null],
+  ['Lamar Plumbing Supply','LP-30118','40911','2026-06-10','2026-07-10', 6230.50, false, null, true,  null],
+  ['Lamar Plumbing Supply','LP-30240','',     '2026-06-18','2026-07-18', 2118.09, false, null, false, null],
+  ['Lamar Plumbing Supply','LP-30944','',     '2026-09-30', null,         271.16, false, null, false, null],
+  ['Armadillo Electric Supply','AE-4471','',  '2026-08-15','2026-09-15',  974.15, false, null, false, null],
+  ['Pecan Valley Rentals','PV-7730','',       '2026-10-01','2026-10-31', 1580.44, false, null, false, null],
+  ['Pecan Valley Rentals','PV-7641','',       '2026-09-12','2026-10-12',   24.36, false, null, false, null],
+].map(([house, number, po, invDate, dueDate, amount, jobAcct, job, link, credits, jobCount]) =>
+  ({house, number, po, invDate, dueDate, amount, jobAcct, job, link, credits,
+    jobCount: jobCount ?? (job ? 1 : 0), jobNum: job ? job.split(' ·')[0] : null,
+    asked: null})); // {at, via} once a move request has been sent to the house
+
+// ---- the kernel, as the real one works --------------------------------------
+const days = (due) => Math.round((Date.parse(TODAY) - Date.parse(due)) / 86400000);
+function bucketOf(inv) {
+  if (inv.amount < 0) return 'credits';
+  if (!inv.dueDate) return 'noDueDate';
+  const d = days(inv.dueDate);
+  if (d <= 0) return 'current';
+  if (d < 30) return 'past1_30';
+  if (d < 60) return 'past30_60';
+  if (d < 90) return 'past60_90';
+  return 'past90plus';
+}
+// invoicesForAgingCell: house (or null = every house), cell = bucket | 'owed' | 'credits'
+function cellInvoices(house, cell) {
+  if (cell === 'movable') return movableRows().sort((a, b) => a.house.localeCompare(b.house) || a.invDate.localeCompare(b.invDate));
+  return INVOICES
+    .filter(i => (house == null || i.house === house))
+    .filter(i => cell === 'owed' ? i.amount > 0 : bucketOf(i) === cell)
+    .sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') || a.number.localeCompare(b.number));
+}
+const sum = rows => rows.reduce((s, i) => s + i.amount, 0);
+
+// ---- the table --------------------------------------------------------------
+function drawTable(el, interactive) {
+  const rows = HOUSES.map(h => {
+    const b = {}; let owed = 0, credits = 0; const ja = {};
+    for (const inv of INVOICES.filter(i => i.house === h)) {
+      const k = bucketOf(inv);
+      if (k === 'credits') { credits += inv.amount; continue; }
+      b[k] = (b[k] ?? 0) + inv.amount; owed += inv.amount;
+      if (inv.jobAcct) ja[k] = (ja[k] ?? 0) + inv.amount;
+    }
+    return {h, b, owed, credits, ja, jaTotal: Object.values(ja).reduce((s, v) => s + v, 0)};
+  }).sort((a, b) => b.owed - a.owed);
+  const totals = {}; const jaTotals = {}; let grand = 0, creditsTotal = 0;
+  for (const r of rows) { grand += r.owed; creditsTotal += r.credits;
+    for (const k in r.b) totals[k] = (totals[k] ?? 0) + r.b[k];
+    for (const k in r.ja) jaTotals[k] = (jaTotals[k] ?? 0) + r.ja[k]; }
+  const housesPastDue60 = rows.filter(r => (r.b.past60_90 ?? 0) + (r.b.past90plus ?? 0) > 0).length;
+  const noDueCount = INVOICES.filter(i => i.amount > 0 && !i.dueDate).length;
+  const cell = (amt, cls, jaAmt, onclick, title, demoHover) => amt
+    ? `<td class="${cls}${onclick ? ' cellbtn' : ''}${demoHover ? ' demo-hover' : ''}" ${onclick ? `tabindex="0" role="button" onclick="event.stopPropagation();${onclick}" title="${title}"` : ''}>${fmt(amt)}${jaAmt ? `<span class="ja">${fmt(jaAmt)} job acct</span>` : ''}</td>`
+    : `<td><span class="dash">—</span></td>`;
+  let html = `<div class="ap-head">Supply Houses: ${fmt(grand + creditsTotal)}</div>
+    <div class="ap-toggles"><span><span class="cb"></span>Show paid invoices</span><br><span><span class="cb"></span>Show last payment</span><br><span><span class="cb on"></span>Mark job-account invoices</span></div>
+    <p class="ap-intro">Unpaid dollars by days past due (from invoice due dates). ${housesPastDue60} houses 60+ past due. ${noDueCount} unpaid invoice has no due date — ${interactive ? 'press its cell to place it' : 'open the house and add one to place it'}.</p>
+    ${interactive ? (() => {
+      const mv = movableRows();
+      if (!mv.length) return `<div class="mov-strip">Every current charge that belongs on a job account is on one. ✓</div>`;
+      const askedN = mv.filter(i => i.asked).length;
+      const soonest = mv.map(i => i.dueDate).sort()[0];
+      return `<div class="mov-strip"><span><b>${fmt(sum(mv))}</b> on ${mv.length} current invoice${mv.length === 1 ? '' : 's'} is not on a job account yet — a charge moves only while it is current.${askedN ? ` <b>${askedN}</b> asked, awaiting the house.` : ''} <span class="left">Soonest window closes ${fmtDate(soonest)}.</span></span><button onclick="openCell(null,'movable')">Work the list ›</button></div>`;
+    })() : ''}
+    <table class="aging"><thead><tr><th>Supply House</th>${BUCKETS.map(b => `<th>${b.label}</th>`).join('')}<th>Credits open</th><th>Owed</th></tr></thead><tbody>`;
+  for (const r of rows) {
+    html += `<tr onclick="log('row → opens ${r.h.replace(/'/g, '')} (unchanged)')" title="Open this supply house">`
+      + `<td>${r.h}</td>`
+      + BUCKETS.map(b => cell(r.b[b.key], 'c-' + b.key, r.ja[b.key],
+          interactive && `openCell('${r.h}','${b.key}')`, `${r.h} — ${BUCKET_TITLE[b.key]}`,
+          interactive && r.h === 'Bluebonnet Supply' && b.key === 'past60_90')).join('')
+      + (r.credits < 0
+          ? `<td class="c-credits${interactive ? ' cellbtn' : ''}" ${interactive ? `tabindex="0" role="button" onclick="event.stopPropagation();openCell('${r.h}','credits')" title="${r.h} — open credits"` : ''}>−${fmt(-r.credits)}</td>`
+          : `<td><span class="dash">—</span></td>`)
+      + cell(r.owed, 'owed', r.jaTotal, interactive && `openCell('${r.h}','owed')`, `${r.h} — every unpaid invoice`)
+      + `</tr>`;
+  }
+  html += `</tbody><tfoot><tr><td style="text-align:left">Total</td>`
+    + BUCKETS.map(b => cell(totals[b.key], '', null, interactive && `openCell(null,'${b.key}')`, `Every house — ${BUCKET_TITLE[b.key]}`)).join('')
+    + `<td class="c-credits${interactive ? ' cellbtn' : ''}" ${interactive ? `tabindex="0" role="button" onclick="openCell(null,'credits')"` : ''}>−${fmt(-creditsTotal)}</td>`
+    + cell(grand, '', null, interactive && `openCell(null,'owed')`, `Every house — every unpaid invoice`)
+    + `</tr></tfoot></table>`;
+  el.innerHTML = html;
+}
+function log() {}
+
+// ---- the modal --------------------------------------------------------------
+function jobsCell(i, live) {
+  if (i.amount < 0) return '<span class="dash">—</span>';
+  if (i.jobCount === 2) return `<span class="jobline" title="Job accounts are per property — this invoice is split across 2 jobs">${i.job}</span>`;
+  if (i.jobCount === 0) return `<span class="chip-add ghost" title="Job accounts are per property — pick the job first (opens the invoice · PR 4)">Pick a job ›</span>`;
+  const acct = acctOf(i.house, i.jobNum);
+  const chip = i.jobAcct
+    ? `<span class="chip-ja${live ? ' tap' : ''}" ${live ? `onclick="toggleJA('${i.number}')"` : ''} title="On the house’s job account — tap to take it off">Job acct ✓</span>`
+    : i.asked && inWindow(i)
+      ? `<span class="chip-asked" ${live ? `onclick="openMove('${i.number}')"` : ''} title="The move was requested by ${i.asked.via} — follow up with a call, then mark it moved">asked ${fmtDate(i.asked.at)} · follow up ☎</span>`
+      : `<span class="chip-add" ${live ? `onclick="tapAdd('${i.number}', this)"` : ''} title="${inWindow(i) ? 'Still current — start the move (call or email the house)' : 'Put this invoice on the job account'}">+ Job acct</span>`;
+  const movTag = !i.jobAcct && !i.asked && inWindow(i) ? `<span class="mov" title="Still current — the house will move it onto the job account until it is past due">movable until ${fmtDate(i.dueDate)}</span>` : '';
+  const note = i.jobAcct && acct.status === 'open' ? `<span class="acctnote">on the account · ref ${acct.ref} · ${acct.via}</span>` : '';
+  return chip + `<span class="jobline">${i.job}</span>` + movTag + note;
+}
+const invRow = (cellKey, live) => i => {
+  const d = i.dueDate ? days(i.dueDate) : null;
+  const chip = d > 0 ? `<span class="pd ${d >= 60 ? 'hot' : 'warm'}">${d}d past due</span>` : '';
+  return `<tr>
+    <td>${i.number}${i.credits ? `<span class="credline">${i.credits}</span>` : ''}</td>
+    <td>${i.po || '<span class="dash">—</span>'}</td>
+    <td>${fmtDate(i.invDate)}</td>
+    <td>${i.dueDate ? fmtDate(i.dueDate) + chip : (cellKey === 'noDueDate' ? '<span class="adddue" title="PR 4 — opens the invoice form">Add a due date ›</span>' : '<span class="dash">—</span>')}</td>
+    <td class="jobscell">${jobsCell(i, live)}</td>
+    <td class="r" ${i.amount < 0 ? 'style="color:#86efac;font-weight:600"' : ''}>${i.amount < 0 ? '−' + fmt(-i.amount) : fmt(i.amount)}</td>
+    <td>${i.link ? '<a class="view">View</a>' : '<span class="dash">—</span>'}</td></tr>`;
+};
+function modalHtml(house, cellKey, live) {
+  const rows = cellInvoices(house, cellKey);
+  const total = sum(rows);
+  const jaTotal = sum(rows.filter(i => i.jobAcct));
+  const isCredits = cellKey === 'credits';
+  const isMovable = cellKey === 'movable';
+  const cellName = isMovable ? 'still movable' : isCredits ? 'Credits open' : cellKey === 'owed' ? 'every unpaid invoice' : BUCKET_TITLE[cellKey];
+  const noun = isCredits ? (rows.length === 1 ? 'credit memo' : 'credit memos') : (rows.length === 1 ? 'invoice' : 'invoices');
+  const groups = house == null ? HOUSES.map(h => ({h, rows: rows.filter(i => i.house === h)})).filter(g => g.rows.length) : [{h: null, rows}];
+  if (isMovable) {
+    const askedRows = rows.filter(i => i.asked), toAskRows = rows.filter(i => !i.asked);
+    return `
+    <div class="m-head"><div>
+      <h3>Still movable — current charges not on a job account</h3>
+      <p class="sub">A charge moves onto the job account only while it is current. Call the rep — or email the request and follow up — then mark each one moved.</p>
+    </div><button class="m-x" onclick="closeModal()" aria-label="Close">×</button></div>
+    ${rows.length === 0
+      ? `<div class="m-empty">Nothing left to move — every current charge that belongs on a job account is on one. ✓</div>`
+      : `<table class="inv"><thead><tr><th>Invoice #</th><th>PO #</th><th>Date</th><th>Due</th><th>Jobs</th><th class="r">Amount</th><th>Link</th></tr></thead><tbody>
+          ${groups.map(g => `<tr class="ghouse"><td colspan="7">${g.h} · ${fmt(sum(g.rows))}${REPS[g.h] ? ` — <span class="rep">☎ ${REPS[g.h].line}</span>` : ''}${REPS[g.h] && g.rows.some(i => !i.asked) ? ` <button class="gmail" onclick="emailHouseList('${g.h}')">✉ Email ${REPS[g.h].name} the list ›</button>` : ''}</td></tr>` + g.rows.map(invRow(cellKey, live)).join('')).join('')}
+        </tbody></table>`}
+    <div class="m-foot">
+      <span class="sum">${rows.length === 0 ? 'All moved or marked.' : `${toAskRows.length} to ask · ${askedRows.length} asked, awaiting the house · <b>${fmt(total)}</b>`}</span>
+      <span class="doors"></span>
+    </div>`;
+  }
+  const row = invRow(cellKey, live);
+  return `
+    <div class="m-head"><div>
+      <h3>${house ?? 'Every house'} — ${cellName}</h3>
+      <p class="sub">${rows.length} ${noun} · as of today · unpaid only, exactly what the cell sums</p>
+    </div><button class="m-x" onclick="closeModal()" aria-label="Close">×</button></div>
+    <table class="inv"><thead><tr><th>Invoice #</th><th>PO #</th><th>Date</th><th>Due</th><th>Jobs</th><th class="r">Amount</th><th>Link</th></tr></thead><tbody>
+      ${groups.map(g => (g.h ? `<tr class="ghouse"><td colspan="7">${g.h} · ${fmt(Math.abs(sum(g.rows)))}</td></tr>` : '') + g.rows.map(row).join('')).join('')}
+    </tbody></table>
+    <div class="m-foot">
+      <span class="sum">${isCredits ? 'Open credits' : 'Cell total'}: <b>${total < 0 ? '−' + fmt(-total) : fmt(total)}</b>${jaTotal > 0 ? `<span class="jl">of this, ${fmt(jaTotal)} on a job account — the owner’s debt, not ours</span>` : ''}</span>
+      <span class="doors">${house ? `<button class="door ghost">Make a payment ›<span class="pr2">PR 4</span></button><button class="door primary">Open ${house.split(' ')[0]} ›</button>` : `<button class="door ghost">Row press opens the invoice<span class="pr2">PR 4</span></button>`}</span>
+    </div>`;
+}
+let CURRENT = null;
+function openCell(house, cellKey) {
+  CURRENT = { house, cellKey };
+  document.getElementById('overlay-modal').innerHTML = modalHtml(house, cellKey, true);
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal() { CURRENT = null; closePop(); document.getElementById('overlay').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.getElementById('sheet-ov').classList.contains('open')) closeSheet(); else if (document.getElementById('move-ov').classList.contains('open')) closeMove(); else if (document.querySelector('.pop')) closePop(); else closeModal(); } });
+
+// ---- the Job acct flow (PR 2) -----------------------------------------------
+const invByNumber = n => INVOICES.find(i => i.number === n);
+function refresh() {
+  drawTable(document.getElementById('after-table'), true); // the Before table stays as the day started
+  if (CURRENT) document.getElementById('overlay-modal').innerHTML = modalHtml(CURRENT.house, CURRENT.cellKey, true);
+  renderInlines();
+}
+function toggleJA(number) { const i = invByNumber(number); i.jobAcct = !i.jobAcct; closePop(); refresh(); }
+function closePop() { document.querySelectorAll('.pop').forEach(p => p.remove()); }
+function tapAdd(number, el) {
+  const i = invByNumber(number);
+  if (inWindow(i)) { openMove(number); return; } // still current — the move workflow (the call, or the email + follow-up)
+  const acct = acctOf(i.house, i.jobNum);
+  if (acct.status === 'open') { i.jobAcct = true; refresh(); return; } // we forgot to mark it — recording the truth is never blocked
+  closePop();
+  // past its window: the band says why, and offers recording only
+  const windowLine = `<b>Due ${fmtDate(i.dueDate)} — past its window.</b> A charge moves only while it is current; flag it only if the house already carries it on the account. `;
+  const words = windowLine + (acct.status === 'requested'
+    ? '<b>Job account asked for, not open yet.</b> If the house opened one, mark it — the flag will default on from then.'
+    : acct.status === 'not_needed'
+      ? `Marked <b>not needed</b> at ${i.house}${acct.note ? ' — ' + acct.note : ''}.`
+      : `No job account at ${i.house} on record for this job. If the house opened one, mark it — the flag will default on from then.`);
+  const pop = document.createElement('div');
+  pop.className = 'pop';
+  pop.innerHTML = `${words}<div class="btns">
+    <button class="teal" onclick="openSheet('${number}')">Mark opened…</button>
+    <button onclick="toggleJA('${number}')">Flag anyway</button>
+    <button class="quiet" onclick="closePop()">Cancel</button></div>`;
+  el.closest('td').appendChild(pop);
+}
+let SHEET_FOR = null, SHEET_VIA = 'By phone';
+function openSheet(number) {
+  closePop();
+  SHEET_FOR = number; SHEET_VIA = 'By phone';
+  const i = invByNumber(number);
+  document.getElementById('sheet-body').innerHTML = `
+    <h4>Mark the job account opened</h4>
+    <p class="sub">${i.job} · at ${i.house}</p>
+    <div class="sec">How it was opened</div>
+    <div id="sheet-via">${['By phone', 'Packet emailed', 'At the counter'].map(v => `<span class="opt${v === 'By phone' ? ' on' : ''}" onclick="pickVia(this,'${v}')">${v}</span>`).join('')}</div>
+    <div class="sec">Account ref</div><input id="sheet-ref" placeholder="e.g. JA-4120">
+    <div class="sec">Rep</div><input value="Darla — job accounts desk" disabled>
+    <div class="foot"><button onclick="closeSheet()">Cancel</button><button class="save" onclick="saveSheet()">Save</button></div>`;
+  document.getElementById('sheet-ov').classList.add('open');
+}
+function pickVia(el, v) { SHEET_VIA = v; el.parentElement.querySelectorAll('.opt').forEach(o => o.classList.remove('on')); el.classList.add('on'); }
+function closeSheet() { SHEET_FOR = null; document.getElementById('sheet-ov').classList.remove('open'); }
+function saveSheet() {
+  const i = invByNumber(SHEET_FOR);
+  const ref = document.getElementById('sheet-ref').value.trim() || 'JA-4120';
+  ACCOUNTS[i.house + '|' + i.jobNum] = { status: 'open', ref, via: `opened ${SHEET_VIA.toLowerCase()} today` };
+  closeSheet(); refresh();
+  if (MOVE_FOR) renderMove(); // the move modal's account line reads open now; the charge still needs the call or the email
+}
+
+// ---- the move modal (PR 3): attest the call, or email the request ----------
+let MOVE_FOR = null;
+function openMove(number) {
+  closePop(); MOVE_FOR = number; renderMove();
+  document.getElementById('move-ov').classList.add('open');
+}
+function closeMove() { MOVE_FOR = null; document.getElementById('move-ov').classList.remove('open'); }
+function markMoved() { const i = invByNumber(MOVE_FOR); i.jobAcct = true; closeMove(); refresh(); }
+function sendMoveEmail() { const i = invByNumber(MOVE_FOR); i.asked = { at: TODAY, via: 'email' }; refresh(); renderMove(); }
+function emailHouseList(house) {
+  for (const i of movableRows()) if (i.house === house && !i.asked) i.asked = { at: TODAY, via: 'email' };
+  refresh();
+}
+function renderMove() {
+  const i = invByNumber(MOVE_FOR);
+  const acct = acctOf(i.house, i.jobNum);
+  const rep = REPS[i.house];
+  const dleft = windowDaysLeft(i);
+  document.getElementById('move-body').innerHTML = `
+    <h4>Move ${i.number} onto the job account</h4>
+    <p class="sub">${i.house} · ${i.job} · ${fmt(i.amount)} · due ${fmtDate(i.dueDate)} — <b style="color:var(--amber)">${dleft} day${dleft === 1 ? '' : 's'} left in the window</b></p>
+    ${acct.status === 'open'
+      ? `<div class="mv-acct ok">Job account open · ref ${acct.ref} · ${acct.via}</div>`
+      : `<div class="mv-acct warn">No job account on record for this job — ask ${rep ? rep.name : 'the house'} to open one on the same call. <button class="mini" onclick="openSheet('${i.number}')">Mark opened…</button></div>`}
+    ${i.asked ? `<div class="mv-acct asked">Asked by ${i.asked.via} ${fmtDate(i.asked.at)} — follow up with a call${rep ? `: ☎ ${rep.line}` : ''}.</div>` : ''}
+    <div class="sec">The call${rep ? ` — ☎ ${rep.line}` : ''}</div>
+    <label class="attest"><input type="checkbox" id="move-attest" onchange="document.getElementById('move-done').disabled=!this.checked">
+      <span>I called ${i.house}${rep ? ` (${rep.name})` : ''} — this charge was moved onto the job account.</span></label>
+    <div class="foot" style="justify-content:flex-start;margin-top:8px"><button class="save" id="move-done" disabled onclick="markMoved()">Mark it moved ✓</button></div>
+    ${i.asked ? '' : `
+    <div class="sec" style="margin-top:14px">Or ask by email — we follow up with a call</div>
+    <div class="mailprev">
+      <div><b>To:</b> ${rep ? `${rep.name} — job accounts · ${rep.email}` : 'the house'}</div>
+      <div><b>Subject:</b> Move invoice ${i.number} to the ${i.jobNum} job account</div>
+      <div class="bodyl">Please move this charge onto the job account for ${i.job}:<br>
+      ${i.number} · ${fmtDate(i.invDate)} · ${fmt(i.amount)}${i.po ? ` · PO ${i.po}` : ''}${acct.status === 'open' ? `<br>Account ref ${acct.ref}.` : '<br>No account on this job yet — please open one with it.'}<br>We’ll call to confirm. — Click Plumbing &amp; Electrical · (512) 555-0100</div>
+    </div>
+    <div class="foot" style="justify-content:flex-start"><button class="save" onclick="sendMoveEmail()">Send the request ›</button></div>`}
+    <div class="foot"><button onclick="closeMove()">Close</button></div>`;
+}
+
+// ---- render -----------------------------------------------------------------
+drawTable(document.getElementById('before-table'), false);
+drawTable(document.getElementById('after-table'), true);
+// the inline panels are live too — a tap on a chip re-renders every view from the same book
+const INLINE = [
+  ['inline-house', 'Bluebonnet Supply', 'past60_90'],
+  ['inline-nodue', null, 'noDueDate'],
+  ['inline-total', null, 'past90plus'],
+  ['inline-credits', null, 'credits'],
+];
+function renderInlines() {
+  for (const [id, house, cell] of INLINE) {
+    const host = document.getElementById(id);
+    host.innerHTML = '';
+    const m = document.createElement('div');
+    m.className = 'modal inline';
+    m.innerHTML = modalHtml(house, cell, true);
+    host.appendChild(m);
+  }
+}
+renderInlines();
+</script>
+</body>
+</html>

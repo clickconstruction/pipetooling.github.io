@@ -5,7 +5,9 @@
  * pointer, so a stroke crosses real `wb-row-…` rows. Pins: arming loads the last margin and
  * folds the solver; a stroke drafts only the rows the brush may price; pointer-up saves the
  * changed rows, reloads, freezes, remembers the margin and leaves an undo; a pending solver
- * preview loses the brushed rows; undo writes the old prices back; Escape puts the brush down.
+ * preview loses the brushed rows; undo writes the old prices back; Escape puts the brush down;
+ * a guard that says no (the sent-bid lock, or the open price still loading, v2.5671) starts no
+ * stroke, and one refused at pointer-up is dropped, never left painting.
  */
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -145,6 +147,37 @@ describe('useMarginBrush', () => {
     click('arm')
     expect(state()).toContain('armed:false')
     expect(calls.folds).toBe(0)
+  })
+
+  // v2.5671: the guard also says no while a just-clicked price card's prices are still loading.
+  it('a press while the guard says no starts no stroke: nothing drafted, nothing written', async () => {
+    render(<Probe />)
+    click('arm')
+    guardAllows = false
+    click('down on r1')
+    click('over r3')
+    click('up')
+    await act(async () => {})
+    expect(drafts()).toEqual({})
+    expect(state()).toContain('painting:0')
+    expect(calls.writes).toEqual([])
+  })
+
+  it('a stroke the guard refuses at pointer-up is dropped: its drafts go and the brush stops painting', async () => {
+    render(<Probe />)
+    stroke('r3')
+    expect(drafts()).toEqual({ r1: '250', r3: '250' })
+    guardAllows = false
+    click('up')
+    await act(async () => {})
+    expect(drafts()).toEqual({})
+    expect(state()).toContain('painting:0')
+    expect(calls.writes).toEqual([])
+    expect(state()).toContain('undo:none')
+    // Not left painting: once the guard allows again, moving over a row drafts nothing until a new press.
+    guardAllows = true
+    click('over r3')
+    expect(drafts()).toEqual({})
   })
 
   it('a stroke drafts only the rows the brush may price, counts only real changes, and clears the landing chip', () => {

@@ -46,3 +46,26 @@ export function openPricePricesReady(args: {
   const { selectedPricingVersionId: open } = args
   return open != null && args.entriesReadFor === open && args.rowsReadFor === open
 }
+
+/**
+ * The open price's prices are still landing (v2.5671): a price is open and its book or rows are not on
+ * screen yet — the short window after a card click. The rows in state are still the price you left, so
+ * the figures read … and a write that looks up the open price's rows or book waits.
+ */
+export function openPriceLoading(args: { selectedPricingVersionId: string | null; pricesReady: boolean }): boolean {
+  return args.selectedPricingVersionId != null && !args.pricesReady
+}
+
+/** What a price write says when it waits for the open price's prices. Plain words (`lib/plainWords`). */
+export const OPEN_PRICE_LOADING_MESSAGE = 'This price is still loading. Try again in a moment.'
+
+/** The hover on a figure that reads … while the open price loads. */
+export const OPEN_PRICE_LOADING_TITLE = 'This price is still loading.'
+
+/** What a figure reads while the open price loads, as the open card does. */
+export const LOADING_FIGURE = '…'
+
+/** A figure made from the open price's prices: … while they load, the figure once they land. */
+export function figureWhileLoading(loading: boolean, figure: string): string {
+  return loading ? LOADING_FIGURE : figure
+}
