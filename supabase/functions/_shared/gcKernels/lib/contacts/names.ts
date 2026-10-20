@@ -18,7 +18,9 @@ export function greetingName(fullName: string): string {
   const words = fullName.trim().split(/\s+/).filter(Boolean)
   if (words.length === 0) return ''
   const titled = words.length > 1 && TITLE.test(words[0]!)
-  return titled ? `${words[0]} ${words[words.length - 1]}` : words[0]!
+  // A company's record name reads "Structura, Inc."; its first word keeps no comma, or the greeting reads "Structura,,".
+  const word = (w: string) => w.replace(/[,;:]+$/, '')
+  return titled ? `${words[0]} ${word(words[words.length - 1]!)}` : word(words[0]!)
 }
 
 /**
