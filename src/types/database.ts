@@ -18062,12 +18062,15 @@ export type Database = {
       }
       job_payment_promises: {
         Row: {
+          amount: number | null
           channel: string | null
           created_at: string
           customer_id: string | null
           heard_by: string | null
           id: string
           job_id: string
+          kind: string
+          method: string | null
           note: string | null
           promised_date: string
           said_by: string | null
@@ -18076,12 +18079,15 @@ export type Database = {
           voided_by: string | null
         }
         Insert: {
+          amount?: number | null
           channel?: string | null
           created_at?: string
           customer_id?: string | null
           heard_by?: string | null
           id?: string
           job_id: string
+          kind?: string
+          method?: string | null
           note?: string | null
           promised_date: string
           said_by?: string | null
@@ -18090,12 +18096,15 @@ export type Database = {
           voided_by?: string | null
         }
         Update: {
+          amount?: number | null
           channel?: string | null
           created_at?: string
           customer_id?: string | null
           heard_by?: string | null
           id?: string
           job_id?: string
+          kind?: string
+          method?: string | null
           note?: string | null
           promised_date?: string
           said_by?: string | null
@@ -32541,6 +32550,18 @@ export type Database = {
         }
         Returns: Json
       }
+      add_job_payment_claim: {
+        Args: {
+          p_amount?: number
+          p_channel?: string
+          p_date: string
+          p_job_id: string
+          p_method: string
+          p_note?: string
+          p_said_by?: string
+        }
+        Returns: Json
+      }
       add_job_payment_promise: {
         Args: {
           p_channel?: string
@@ -34849,6 +34870,7 @@ export type Database = {
       is_dispatch_group_member: { Args: never; Returns: boolean }
       is_estimator: { Args: never; Returns: boolean }
       is_estimator_group_member: { Args: never; Returns: boolean }
+      is_job_people: { Args: { p_job_id: string }; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_office_or_estimator: { Args: never; Returns: boolean }
       is_office_staff: { Args: never; Returns: boolean }
@@ -35317,6 +35339,7 @@ export type Database = {
           supply_house_id: string
         }[]
       }
+      list_bid_money_strip: { Args: { p_bid_ids: string[] }; Returns: Json }
       list_bid_removed_rows: {
         Args: { p_bid_id: string }
         Returns: {
@@ -35390,6 +35413,10 @@ export type Database = {
           status: string
           viewer_can_sort: boolean
         }[]
+      }
+      list_customer_money_strip: {
+        Args: { p_customer_id: string }
+        Returns: Json
       }
       list_customer_review_customer_sessions: {
         Args: { p_customer_id?: string; p_gc_builder_id?: string }
@@ -35548,6 +35575,10 @@ export type Database = {
         }[]
       }
       list_job_payment_promises: { Args: never; Returns: Json }
+      list_job_payment_promises_for: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       list_job_promised_pay_dates: { Args: never; Returns: Json }
       list_job_schedule_blocks_for_schedule_email: {
         Args: { p_recipient: string; p_work_date: string }
@@ -35830,6 +35861,7 @@ export type Database = {
           tally_user_note: string
         }[]
       }
+      list_my_money_strip: { Args: never; Returns: Json }
       list_my_reports: {
         Args: never
         Returns: {
@@ -35850,6 +35882,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_paid_claims: { Args: never; Returns: Json }
       list_payment_chase_touches: { Args: never; Returns: Json }
       list_payment_promise_records: { Args: never; Returns: Json }
       list_people_for_banking_attribution: {
