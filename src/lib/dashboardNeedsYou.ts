@@ -97,6 +97,7 @@ export type NeedsYouItem = {
     | 'lost-bids'
     | 'bid-followups'
     | 'paid-claims-stale'
+    | 'money-on-my-bids'
     | 'team-reviews'
     | 'statement-round'
     | 'roadmap-needs-person'
@@ -190,6 +191,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'ar-deposits': 10,
   // A customer's word that they paid with nothing landed in a week: the hearer asks the customer before the office chases.
   'paid-claims-stale': 12,
+  // The estimator's own chase list: the money open on the jobs they sold, past their word first.
+  'money-on-my-bids': 14,
   // Money tier: a returned check still counted as paid overstates the job, the Pipeline and the lien claim.
   'returned-check': 10,
   'lien-unconditional': 20,
@@ -376,6 +379,9 @@ export type NeedsYouInputs = {
    */
   staleClaimsEnabled?: boolean
   staleClaims?: { count: number; firstLine: string } | null
+  /** Money on my bids (v2.5651): the lens's rollup and counts for the signed-in person's jobs, from `useMyMoney`. */
+  myMoneyEnabled?: boolean
+  myMoney?: { open: number; rollup: string; pastWord: number; stale: number } | null
   unpricedWorkOrdersEnabled?: boolean
   unpricedWorkOrders?: { count: number; subNames: string[]; oldestDays: number | null } | null
   jobFollowupCount: number | null
@@ -1123,6 +1129,18 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
+  if (inputs.myMoneyEnabled && inputs.myMoney != null && inputs.myMoney.open > 0) {
+    const m = inputs.myMoney
+    items.push({
+      key: 'money-on-my-bids',
+      severity: m.pastWord > 0 ? 'red' : 'amber',
+      kicker: 'Money on your bids',
+      title: m.open === 1 ? 'One job you sold has money open' : `${m.open} jobs you sold have money open`,
+      detail: `${m.rollup}.${m.pastWord > 0 ? ' A day they named has gone by.' : ''}`,
+      figure: String(m.open),
+      actionLabel: 'Open the Money lens',
+    })
+  }
   if (inputs.staleClaimsEnabled && inputs.staleClaims != null && inputs.staleClaims.count > 0) {
     const { count, firstLine } = inputs.staleClaims
     items.push({

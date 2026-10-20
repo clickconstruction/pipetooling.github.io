@@ -96,6 +96,7 @@ import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
 import { BidsCallQueueTab } from '../components/bids/BidsCallQueueTab'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
+import { BidsMoneyLens } from '../components/bids/BidsMoneyLens'
 import { BidsJobAccountsLens } from '../components/bids/BidsJobAccountsLens'
 import { useBidGcPackets } from '../hooks/useBidGcPackets'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
@@ -336,6 +337,8 @@ export default function Bids() {
     bidBoardCountSources,
     jobAccountStrips,
     jobAccountsMissingCount,
+    moneyStrips,
+    moneyPastWordCount,
     linkJobToBidFromBoard,
   } = useBidBoardScope({ bids, twinUserIds, selectedServiceTypeId, serviceTypes, gcPacketsByBid, myRole, showToast })
   // Who a bid's call-again day asks for (v2.4421): the board prints the name beside the day.
@@ -1912,7 +1915,7 @@ export default function Bids() {
 
       {/* Builder Review Tab */}
       {isFollowupLens(activeTab) && (
-        <BidsLensBar lenses={followupLenses({ role: myRole, jobAccountsMissing: jobAccountsMissingCount })} activeKey={activeTab} onSelect={selectBidsTab}>
+        <BidsLensBar lenses={followupLenses({ role: myRole, jobAccountsMissing: jobAccountsMissingCount, moneyPastWord: moneyPastWordCount })} activeKey={activeTab} onSelect={selectBidsTab}>
           {followupNeedsReasonChipShows({ role: myRole, activeTab, lostNeedingReason: lostBidsNeedingReasonCount }) ? (
             <button
               type="button"
@@ -1984,6 +1987,15 @@ export default function Bids() {
         <BidsJobAccountsLens
           bids={peopleBids}
           strips={jobAccountStrips}
+          ledgerPrefixMap={ledgerPrefixMap}
+          authUserId={authUser?.id ?? null}
+          narrowViewport640={narrowViewport640}
+        />
+      )}
+      {activeTab === 'money' && (
+        <BidsMoneyLens
+          bids={peopleBids}
+          strips={moneyStrips}
           ledgerPrefixMap={ledgerPrefixMap}
           authUserId={authUser?.id ?? null}
           narrowViewport640={narrowViewport640}

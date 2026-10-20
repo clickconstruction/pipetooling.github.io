@@ -19,6 +19,7 @@ import type { BidWithBuilder } from '../types/bidWithBuilder'
 import { useBidBoardBudgetChips } from './useBidBoardBudgetChips'
 import { useBidCountSourcesByBid } from './useBidCountSourcesByBid'
 import { useBidBoardJobAccountStrips } from './useBidBoardJobAccountStrips'
+import { useBidBoardMoneyStrips } from './useBidBoardMoneyStrips'
 import type { useBidGcPackets } from './useBidGcPackets'
 
 export function useBidBoardScope(input: {
@@ -74,6 +75,9 @@ export function useBidBoardScope(input: {
     [peopleBids, robotBids],
   )
   const jobAccountStrips = useBidBoardJobAccountStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
+  // Money on my bids (v2.5651): the same won bids' jobs with their money, one read, for the Money lens and its badge.
+  const moneyStrips = useBidBoardMoneyStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
+  const moneyPastWordCount = useMemo(() => moneyStrips.lines.filter((l) => l.pastDays != null && l.pastDays > 0).length, [moneyStrips.lines])
   const jobAccountsMissingCount = useMemo(
     () => (jobAccountStrips.loaded ? countBidsMissingAccounts(jobAccountBidIds, jobAccountStrips.byBid) : 0),
     [jobAccountStrips.loaded, jobAccountStrips.byBid, jobAccountBidIds],
@@ -134,6 +138,8 @@ export function useBidBoardScope(input: {
     bidBoardCountSources,
     jobAccountStrips,
     jobAccountsMissingCount,
+    moneyStrips,
+    moneyPastWordCount,
     linkJobToBidFromBoard,
   }
 }

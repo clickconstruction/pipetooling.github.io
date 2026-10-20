@@ -29,7 +29,7 @@ The tabs are switched on a single `activeTab` state (195), typed `BidsTabKey` fr
 'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console'
 | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'day-book' | 'estimators'
 | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup'
-| 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'rfi' | 'change-order' | 'lien-release'
+| 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'money' | 'rfi' | 'change-order' | 'lien-release'
 ```
 
 ### Header / tab navigation (v2.1331)
@@ -121,6 +121,7 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 | `why-we-lost` | Followup → Why we lost | 1902–1914 | `BidsWhyWeLostLens` (900) | extracted | — | low | No | Done |
 | `waiting-to-hear` | Followup → Waiting to hear | 1915–1930 | `BidsWaitingToHearLens` (1,082) | extracted | — | low | No | Done |
 | `job-accounts` | Followup → Job accounts | 1931–1939 | `BidsJobAccountsLens` (379) | extracted | — (`jobAccountStrips` is `useBidBoardScope`'s) | low | No | Done |
+| `money` | Followup → Money (v2.5651, punch list #129) | after the stamp | `BidsMoneyLens` over `lib/bids/moneyLens.ts` | extracted | — (`moneyStrips` is `useBidBoardScope`'s, one `list_bid_money_strip` read) | low | No | Done |
 | `working` | Unsent/Working | 1966–1987 | `BidsWorkingBoard` (898) | extracted | archive confirm + busy id, the three memos (the deep-link id is `useBidsDeepLinks`') | low-med | No | Done |
 | `day-book` | Day book | 1990–1994 | `PeopleDayBookTab` (486, shared with People) | extracted | `dayBookMemoryRef` | low | No | Done |
 | `bid-costs` | Bid Costs | 1997–2010 | `BidsBidCostsTab` (538) | extracted | — | low | reads engine data | Done |

@@ -13,6 +13,7 @@ import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalCont
 import { useBidMoneyStrip } from '../../hooks/useBidMoneyStrip'
 import { bidMoneyWords, canSendPayPage, payPageKind, type BidMoneyLine as Line, type BidMoneyTone } from '../../lib/bids/bidMoneyLine'
 import { JobCustomerSheet } from '../jobs/JobCustomerSheet'
+import { BidMoneyTrail } from './BidMoneyTrail'
 import SetPromisedPayDateModal from '../jobs/SetPromisedPayDateModal'
 import { MessagesButton } from '../messages/MessagesButton'
 
@@ -29,18 +30,23 @@ const muted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 
 export interface BidMoneyLineProps {
   bidId: string
-  /** For a smoke: the line, in place of the read. */
+  /** For a smoke, and for the Money lens (v2.5651): the line, in place of the read. */
   line?: Line | null
   loaded?: boolean
+  /** The lens's page-wide read, told after a word is written. */
+  onChanged?: () => void
+  /** The lens draws its own first column; the line then leaves the stage and the number to it. */
+  compact?: boolean
 }
 
-export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded }: BidMoneyLineProps) {
+export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded, onChanged, compact = false }: BidMoneyLineProps) {
   const strip = useBidMoneyStrip(given === undefined ? bidId : null)
   const line = given === undefined ? strip.line : given
   const loaded = given === undefined ? strip.loaded : (givenLoaded ?? true)
   const customerProfile = useCustomerProfileModal()
   const [door, setDoor] = useState<{ kind?: 'text' | 'email' } | null>(null)
   const [word, setWord] = useState(false)
+  const [trail, setTrail] = useState(false)
   const loadBill = useCallback(async () => line?.payUrl ?? null, [line])
   if (!loaded || !line) return null
   const words = bidMoneyWords(line)
@@ -59,9 +65,13 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded }: BidMon
   }
   return (
     <div data-bid-money-line={bidId} data-bid-money-tone={line.tone} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.5rem', width: '100%', padding: '0.3rem 0.6rem', borderRadius: 8, border: `1px solid ${tone.border}`, background: tone.bg, fontSize: '0.8125rem' }}>
-      <span style={pill}>{line.job.number || '—'}</span>
-      <span style={{ fontWeight: 600 }}>{words.stage}</span>
-      <span style={muted}>·</span>
+      {compact ? null : (
+        <>
+          <span style={pill}>{line.job.number || '—'}</span>
+          <span style={{ fontWeight: 600 }}>{words.stage}</span>
+          <span style={muted}>·</span>
+        </>
+      )}
       <span style={{ fontWeight: line.open ? 700 : 500, color: line.open ? tone.strong : 'var(--text-muted)' }} data-bid-money-open>
         {words.money}
       </span>
@@ -95,9 +105,18 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded }: BidMon
           jobLabel={`${line.job.number ? `#${line.job.number} \u00b7 ` : ''}${line.job.name || 'Job'}`}
           initialYmd={line.promise && line.promise.kind !== 'paid_claim' ? line.promise.promisedYmd : null}
           onClose={() => setWord(false)}
-          onSaved={() => strip.reload()}
+          onSaved={() => {
+            strip.reload()
+            onChanged?.()
+          }}
         />
       ) : null}
+      {line.bills.length > 0 ? (
+        <button type="button" onClick={() => setTrail(true)} style={{ ...btn, border: 'none', color: 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 3, padding: '0.15rem 0.3rem' }} data-bid-money-trail-press title="The bills, the payments, the customer's words and their lines on this job, on one timeline">
+          Trail
+        </button>
+      ) : null}
+      {trail ? <BidMoneyTrail line={line} onClose={() => setTrail(false)} /> : null}
       {door ? (
         <JobCustomerSheet
           job={sheetJob}

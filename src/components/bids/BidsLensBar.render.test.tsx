@@ -14,7 +14,7 @@ afterEach(() => cleanup())
 describe('BidsLensBar', () => {
   it('draws the Followup pills in order, with "Old:" before By builder', () => {
     render(<BidsLensBar lenses={followupLenses({ role: 'estimator', jobAccountsMissing: 0 })} activeKey="call-queue" onSelect={() => {}} />)
-    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Call queue new', 'By builder', 'By status', 'Why we lost', 'Waiting to hear', 'Job accounts'])
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Call queue new', 'By builder', 'By status', 'Why we lost', 'Waiting to hear', 'Job accounts', 'Money'])
     const old = screen.getByText('Old:')
     expect(old.nextElementSibling?.textContent).toBe('By builder')
   })

@@ -43,6 +43,7 @@ export const BIDS_TABS = [
   'why-we-lost',
   'waiting-to-hear',
   'job-accounts',
+  'money',
   'rfi',
   'change-order',
   'lien-release',
@@ -68,7 +69,7 @@ export const ROBOT_LENS_KEYS: ReadonlySet<string> = new Set(['robot-board', 'aud
 export const isRobotLens = (tab: string): boolean => ROBOT_LENS_KEYS.has(tab)
 
 /** The Followup group: By builder · Call queue · By status · Why we lost · Waiting to hear · Job accounts. */
-export const FOLLOWUP_LENS_KEYS: ReadonlySet<string> = new Set(['builder-review', 'call-queue', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts'])
+export const FOLLOWUP_LENS_KEYS: ReadonlySet<string> = new Set(['builder-review', 'call-queue', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'money'])
 export const isFollowupLens = (tab: string): boolean => FOLLOWUP_LENS_KEYS.has(tab)
 
 /**
@@ -79,7 +80,7 @@ export const isFollowupLens = (tab: string): boolean => FOLLOWUP_LENS_KEYS.has(t
 export const PRIMARY_BIDS_TABS = ['bid-board', 'rfi', 'change-order', 'lien-release'] as const
 
 /** The office tabs a superintendent is turned away from; By builder is the one Followup lens they keep. */
-export const SUPERINTENDENT_OFFICE_BIDS_TABS = ['pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'call-queue'] as const
+export const SUPERINTENDENT_OFFICE_BIDS_TABS = ['pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'money', 'call-queue'] as const
 
 export type BidsRole = 'dev' | 'master_technician' | 'assistant' | 'controller' | 'estimator' | 'primary' | 'superintendent'
 

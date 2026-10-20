@@ -28,6 +28,7 @@ import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcRevie
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useBidFollowupsDue } from '../../hooks/useBidFollowupsDue'
 import { useMyStaleClaims } from '../../hooks/useMyStaleClaims'
+import { useMyMoney } from '../../hooks/useMyMoney'
 import { staleClaimLine } from '../../lib/jobs/paidClaims'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBulkHoursNudge } from '../../hooks/useBulkHoursNudge'
@@ -393,6 +394,10 @@ export function DashboardPinnedQuickRow({
   // A paid claim the signed-in person heard with nothing landed in a week (v2.5650): the read gates itself, the hearer is the filter.
   const staleClaimsEnabled = Boolean(authUserId) && (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary')
   const { stale: staleClaims } = useMyStaleClaims(staleClaimsEnabled, authUserId)
+  // Money on my bids (v2.5651): the estimator's and the account manager's own chase list, one read.
+  const myMoneyEnabled = Boolean(authUserId) && (role === 'estimator' || role === 'primary')
+  const { lens: myMoneyLens, rollup: myMoneyRollup } = useMyMoney(myMoneyEnabled)
+  const myMoneyInput = useMemo(() => (myMoneyLens && myMoneyRollup ? { open: myMoneyLens.open, rollup: myMoneyRollup, pastWord: myMoneyLens.pastWord, stale: myMoneyLens.stale } : null), [myMoneyLens, myMoneyRollup])
   const staleClaimsInput = useMemo(() => (staleClaims.length ? { count: staleClaims.length, firstLine: staleClaimLine(staleClaims[0]!, todayYmdInAppTz()) } : null), [staleClaims])
   const {
     peopleCount: tallyStaffStalePeopleCount,
@@ -618,6 +623,8 @@ export function DashboardPinnedQuickRow({
     priceRequestsLate,
     staleClaimsEnabled,
     staleClaims: staleClaimsInput,
+    myMoneyEnabled,
+    myMoney: myMoneyInput,
     gcFollowUpEnabled,
     gcFollowUp,
     customerMessagesEnabled,
@@ -789,6 +796,8 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=why-we-lost')
             } else if (item.key === 'bid-followups') {
               navigate('/bids?tab=call-queue')
+            } else if (item.key === 'money-on-my-bids') {
+              navigate('/bids?tab=money')
             } else if (item.key === 'paid-claims-stale') {
               // The estimator's door is the won bid's Job block; the office's the Pipeline.
               const first = staleClaims[0]
