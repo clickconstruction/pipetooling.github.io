@@ -91,11 +91,12 @@ import EstimateCustomerDocument, {
 } from '../components/estimates/EstimateCustomerDocument'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkPanel'
-import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
+import { canResendEstimateLink, estimateLinkResendBlockMessage } from '../../supabase/functions/_shared/estimateLinkResend'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_OFFICE_TEAM } from '../lib/gc/access'
 import { formatCurrency } from '../lib/format'
 import { TellCustomerSheet } from '../components/customers/TellCustomerSheet'
+import type { TellSendEmailAnswer } from '../lib/tellCustomer/tellCustomer'
 import { estimateDraftFormSnapshot, shouldDiscardFreshEstimateDraftOnLeave } from '../lib/estimateFreshDraftDiscard'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import { SearchableMultiSelect } from '../components/SearchableMultiSelect'
@@ -2828,32 +2829,41 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     await sendEstimateEmail(payloadEmail)
   }
 
-  /** The estimate's email through `send-estimate-to-customer`; answers the accept link, or null after a failure it already said. */
-  async function sendEstimateEmail(payloadEmail: string): Promise<{ acceptUrl: string | null; emailed: boolean } | null> {
-    if (!row) return null
+  /**
+   * The estimate's email as the sheet hears it (v2.5681, punch list #133): ok with the accept link, or why not — never
+   * a bare null, never a toast (the sheet owns the words). Mode `resend` is Send the link again on an estimate that
+   * already went: a fresh link, the old one dead. The refresh after a send stands apart: a page that fails to reload
+   * never reads as a send that failed.
+   */
+  async function sendEstimateEmailAnswer(payloadEmail: string, mode: 'send' | 'resend'): Promise<TellSendEmailAnswer> {
+    if (!row) return { ok: false, kind: 'refused', why: 'The estimate is not open.' }
     setSending(true)
     try {
-      await saveDraft()
+      if (mode === 'send') await saveDraft()
       const { data: sess } = await supabase.auth.getSession()
       const jwt = sess.session?.access_token
-      if (!jwt) {
-        showToast('Not signed in', 'error')
-        return null
-      }
+      if (!jwt) return { ok: false, kind: 'refused', why: 'Not signed in. Sign in again and retry.' }
       const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${jwt}`,
-          apikey: anon,
-        },
-        body: JSON.stringify({
-          estimate_id: row.id,
-          customer_email: payloadEmail,
-          public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-        }),
-      })
+      let res: Response
+      try {
+        res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwt}`,
+            apikey: anon,
+          },
+          body: JSON.stringify({
+            estimate_id: row.id,
+            public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+            ...(mode === 'resend' ? { mode: 'resend' as const } : { customer_email: payloadEmail }),
+          }),
+          signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(20_000) : undefined,
+        })
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'TimeoutError') return { ok: false, kind: 'slow', why: 'No answer after 20 seconds.' }
+        throw e
+      }
       const json = (await res.json()) as {
         ok?: boolean
         accept_url?: string
@@ -2861,12 +2871,21 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         email_error?: string
         warning?: string
         error?: string
+        code?: string
+        sent_at?: string | null
+        estimate_status?: string
       }
       if (!res.ok || !json.ok) {
-        showToast(json.error || 'Send failed', 'error')
-        return null
+        if (json.code === 'already_sent') {
+          const sentAtMs = json.sent_at ? Date.parse(json.sent_at) : NaN
+          return { ok: false, kind: 'already-went', why: json.error || 'This estimate already went to the customer.', sentAtMs: Number.isNaN(sentAtMs) ? null : sentAtMs }
+        }
+        if (json.code === 'not_draft' && json.estimate_status) {
+          const verdict = canResendEstimateLink(json.estimate_status, null)
+          return { ok: false, kind: 'refused', why: verdict.ok ? json.error || 'Send failed' : estimateLinkResendBlockMessage(verdict.reason) }
+        }
+        return { ok: false, kind: 'refused', why: json.error || 'Send failed' }
       }
-      showToast(json.emailed ? 'Email sent.' : `Link ready. ${json.warning || json.email_error || ''}`, 'success')
       if (json.accept_url) {
         setLastAcceptUrl(json.accept_url)
         try {
@@ -2880,14 +2899,28 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       if (!json.emailed && json.accept_url) {
         void navigator.clipboard.writeText(json.accept_url)
       }
-      await load()
-      return { acceptUrl: json.accept_url ?? null, emailed: Boolean(json.emailed) }
+      try {
+        await load()
+      } catch {
+        /* the page is stale; the send stands */
+      }
+      return { ok: true, acceptUrl: json.accept_url ?? null, emailed: Boolean(json.emailed), warning: json.warning || json.email_error || null }
     } catch (e) {
-      showToast(formatErrorMessage(e, 'Send failed'), 'error')
-      return null
+      return { ok: false, kind: 'refused', why: formatErrorMessage(e, 'Send failed') }
     } finally {
       setSending(false)
     }
+  }
+
+  /** The same send with the page's own toasts, for the asks that have no sheet (a change order, a $0 total). */
+  async function sendEstimateEmail(payloadEmail: string): Promise<{ acceptUrl: string | null; emailed: boolean } | null> {
+    const a = await sendEstimateEmailAnswer(payloadEmail, 'send')
+    if (!a.ok) {
+      showToast(a.why, 'error')
+      return null
+    }
+    showToast(a.emailed ? 'Email sent.' : `Link ready. ${a.warning || ''}`, 'success')
+    return { acceptUrl: a.acceptUrl, emailed: a.emailed }
   }
 
   const checkCustomerAttachmentUrl = useCallback(async () => {
@@ -3069,7 +3102,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           moment="estimate"
           jobId={tellEstimate.jobId}
           jobLabel={`Estimate #${tellEstimate.number}${tellEstimate.title ? ` · ${tellEstimate.title}` : ''}`}
-          estimate={{ customerId: tellEstimate.customerId, email: tellEstimate.email, amount: `$${formatCurrency(tellEstimate.totalCents / 100)}`, title: tellEstimate.title, jobId: tellEstimate.jobId, sendEmail: () => sendEstimateEmail(tellEstimate.email) }}
+          estimate={{
+            customerId: tellEstimate.customerId,
+            email: tellEstimate.email,
+            amount: `$${formatCurrency(tellEstimate.totalCents / 100)}`,
+            title: tellEstimate.title,
+            jobId: tellEstimate.jobId,
+            sendEmail: () => sendEstimateEmailAnswer(tellEstimate.email, 'send'),
+            sendEmailAgain: () => sendEstimateEmailAnswer(tellEstimate.email, 'resend'),
+          }}
           userId={user.id}
           role={role}
           onClose={() => setTellEstimate(null)}
