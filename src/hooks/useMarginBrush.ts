@@ -27,7 +27,11 @@ import {
 } from '../lib/bids/marginBrush'
 
 export type MarginBrushArgs = {
-  /** The pricing lock (v2.3591): false refuses the write and has already said why. */
+  /**
+   * The pricing lock (v2.3591), and the open price still loading after a card click (v2.5671): false
+   * refuses the write and has already said why. Asked to pick up the brush, to start a stroke, to
+   * commit it and to undo it.
+   */
   guardPricingWrite: () => boolean
   /** One tool at a time: picking up the brush folds the solver ring away. */
   foldSolver: () => void
@@ -101,8 +105,12 @@ export function useMarginBrush(args: MarginBrushArgs) {
   }
   /** Pointer-up: write every changed row through the typed-price save, then reload once. */
   async function endBrushStroke() {
-    if (!guardPricingWrite()) return
     if (!brushPaintingRef.current) return
+    // Refused at the end (v2.5671): the stroke and its drafts go, so the brush is never left painting.
+    if (!guardPricingWrite()) {
+      cancelBrushStroke()
+      return
+    }
     brushPaintingRef.current = false
     const stroke = brushStrokeRef.current
     brushStrokeRef.current = null
@@ -194,6 +202,8 @@ export function useMarginBrush(args: MarginBrushArgs) {
         if (!brushArmed || brushCommitting) return
         e.preventDefault()
         e.stopPropagation()
+        // v2.5671: no stroke while the open price loads — each touch keeps the row's saved price for Undo.
+        if (!guardPricingWrite()) return
         const m = brushMarginVal()
         if (m == null) {
           showToast('Load the brush first — margin between 1 and 95.', 'error')
