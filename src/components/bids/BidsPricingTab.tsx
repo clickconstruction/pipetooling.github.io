@@ -3331,7 +3331,7 @@ export function BidsPricingTab({
                           {altLine}
                           <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} />
                           {laborCountsOutOfStep({ countRows: pricingCountRows, laborRows: pricingLaborRows }) ? (
-                            // #135 PR 2: labor rows are bid-wide and follow whichever version last
+                            // #137 PR 2: labor rows are bid-wide and follow whichever version last
                             // opened Labor — when they disagree with THIS version's counts, say so
                             // instead of quietly misreading our cost and the margin.
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.45rem', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', borderRadius: 8, padding: '0.35rem 0.7rem', fontSize: '0.78rem' }}>

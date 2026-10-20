@@ -1,6 +1,6 @@
 /**
  * Bids → Pricing: does the bid-wide labor estimate match the ACTIVE version's counts?
- * (punch list #135 PR 2.) Labor rows belong to the bid and are re-synced to a version's
+ * (punch list #137 PR 2.) Labor rows belong to the bid and are re-synced to a version's
  * counts only when Labor or Takeoffs loads, so on a bid whose versions carry different
  * counts the margin can silently read against the other version's labor. The detector is
  * `planLaborSync` itself with nothing parked: after any Labor visit the plan is empty by
