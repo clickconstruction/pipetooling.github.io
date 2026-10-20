@@ -39,6 +39,8 @@ import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../l
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { useAlternateVersionData, useGcNamesById, useScenarioCardRevenues } from '../../hooks/usePricingCardsData'
 import { AddPriceDoorButton, PricingCardsRow } from './PricingCardsRow'
+import { PricingStartPanel } from './PricingStartPanel'
+import { pricingStartChoices } from '../../lib/bids/pricingStartChoices'
 import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../../lib/bids/pricingCardsRow'
 import { figureWhileLoading, LOADING_FIGURE, OPEN_PRICE_LOADING_MESSAGE, OPEN_PRICE_LOADING_TITLE, openPriceLoading } from '../../lib/bids/priceReadGate'
 import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
@@ -1937,15 +1939,19 @@ export function BidsPricingTab({
       // onto THIS packet's rows by fixture name or the copy is invisible (v2.2405).
       const rekey = await rekeyClonedPricingToVersion(bid.id, newId, sourceVersionId, selectedBidVersionId)
       await Promise.all([loadBidPricingAssignments(bid.id, newId), reloadPricingForBid(bid.id)])
-      const gcFrom = gcNameForVersion(sourceVersionId)
-      const gcTo = gcNameForVersion(selectedBidVersionId)
+      // Two versions of the SAME GC (#137): the GC's name twice says nothing — name the versions.
+      const target = bidVersions.find((v) => v.id === selectedBidVersionId)
+      const sameGc = (src?.customer_id ?? null) === (target?.customer_id ?? null)
+      const gcFrom = sameGc ? src?.name || gcNameForVersion(sourceVersionId) : gcNameForVersion(sourceVersionId)
+      const gcTo = sameGc ? target?.name || gcNameForVersion(selectedBidVersionId) : gcNameForVersion(selectedBidVersionId)
+      const copiedWhat = sameGc ? `Copied the prices from ${gcFrom}` : `Copied ${gcFrom}'s base price`
       if (rekey && rekey.dropped > 0) {
         showToast(
-          `Copied ${gcFrom}'s base price into ${gcTo} — ${rekey.matched} price${rekey.matched === 1 ? '' : 's'} matched this packet's counts; ${rekey.dropped} had no matching row here.`,
+          `${copiedWhat} into ${gcTo} — ${rekey.matched} price${rekey.matched === 1 ? '' : 's'} matched this packet's counts; ${rekey.dropped} had no matching row here.`,
           'info',
         )
       } else {
-        showToast(`Copied ${gcFrom}'s base price into ${gcTo} — now its base.`, 'success')
+        showToast(`${copiedWhat} into ${gcTo} — now its base.`, 'success')
       }
     } finally {
       setCopyingGcPrice(false)
@@ -2624,28 +2630,32 @@ export function BidsPricingTab({
                 }
                 const derived = derivePricingWorkbench()
                 if (!derived) {
-                  // G1: a GC with no prices yet can start from another GC's base price.
-                  const donors = bidVersions.filter((v) => v.id !== selectedBidVersionId && v.starred_price_book_version_id && priceBookVersions.some((p) => p.id === v.starred_price_book_version_id))
-                  const noPricingHere = selectedBidVersionId != null && !priceBookVersions.some((p) => p.bid_version_id === selectedBidVersionId)
+                  // #137: a version with no prices starts here — from a book (the Old grid's
+                  // select, inline since v2.2707 retired it) or a copy of prices on the bid.
+                  const choices = pricingStartChoices({
+                    selectedBidVersionId,
+                    bidVersions,
+                    bidPricings: priceBookVersions,
+                    templates: templatePriceBookVersions,
+                    defaultTemplateId: defaultPriceBookTemplateId,
+                    gcName: gcNameForVersion,
+                    hasCounts: pricingCountRows.length > 0,
+                    hasCostEstimate: pricingCostEstimate != null,
+                  })
                   return (
-                    <div style={{ padding: '1rem', border: '1px dashed var(--border-strong)', borderRadius: 8, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                      {noPricingHere && donors.length > 0 ? (
-                        <>
-                          <div style={{ color: 'var(--text-strong)', fontWeight: 600, marginBottom: '0.3rem' }}>No prices yet for {gcNameForVersion(selectedBidVersionId)}.</div>
-                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            Start from another GC's base price:
-                            {donors.map((d) => (
-                              <button key={d.id} type="button" disabled={copyingGcPrice} onClick={() => void copyBasePriceFromVersion(d.id)} style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
-                                {copyingGcPrice ? 'Copying…' : `Copy ${shortGc(gcNameForVersion(d.id))}'s base price`}
-                              </button>
-                            ))}
-                            <span>or pick a price book in Old and price from there.</span>
-                          </div>
-                        </>
-                      ) : (
-                        <>The Workbench needs Counts, an active Pricing, and a cost estimate. Set those up on the Counts / Labor tabs, then come back.</>
-                      )}
-                    </div>
+                    <PricingStartPanel
+                      choices={choices}
+                      busyBook={pricebookSwitchBusy}
+                      busyCopy={copyingGcPrice}
+                      onPickBook={(templateId) => void onSelectPriceBookTemplate(templateId)}
+                      onBrowseBooks={() => {
+                        setWbBookDrawerOpen(true)
+                        setWbBooksExpanded(true)
+                        const t = (choices.kind === 'start' ? choices.bookTemplateId : null) ?? templatePriceBookVersions[0]?.id ?? null
+                        if (t) selectPanelVersion(t)
+                      }}
+                      onCopyFrom={(versionId) => void copyBasePriceFromVersion(versionId)}
+                    />
                   )
                 }
                 const { rows, totalCost, uncostedRevenue, openRowBreakdown } = derived
