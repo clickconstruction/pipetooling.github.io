@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taking the GC off hands the bid to the alternate</title>
+<style>
+  /* Punch list #136. Light only, like every to-do mock-up. Everything made up: bid BP612
+     Cypress Creek Middle School; GCs Caldwell Builders, Rio Grande Commercial, Mesa & Stone;
+     estimator Wendi. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--red); }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--subtle); color: var(--ink-2); border: 1px solid var(--line); border-bottom: 0; }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; overflow: auto; }
+  /* lenses */
+  .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0 0; }
+  .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .lens p { margin: 0; color: var(--ink-2); font-size: 13px; }
+
+  /* ----- the Edit Bid "People" panel, mocked ----- */
+  .panel { width: 520px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 16px; box-shadow: 0 8px 24px rgba(15,23,42,.10); }
+  .panel .sec { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .panel .lbl { font-weight: 600; margin: 0 0 8px; }
+  .gc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--subtle); border: 1px solid var(--line-2); border-radius: 10px; padding: 9px 12px; margin-bottom: 7px; }
+  .gc .who { flex: 1; min-width: 180px; }
+  .gc .who b { display: block; font-size: 13.5px; }
+  .gc .who .addr { font-size: 12px; color: var(--muted); }
+  .gc .who .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+  .gc .who .chips span { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line-2); color: var(--ink-2); }
+  .role { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  .role.star { background: var(--amber-tint); color: var(--amber-ink); }
+  .role.same { background: var(--blue-tint); color: var(--blue-ink); }
+  .role.packet { background: var(--green-tint); color: var(--green-ink); }
+  .act { font-size: 12px; font-weight: 600; color: var(--blue); white-space: nowrap; background: none; border: none; font-family: inherit; }
+  .x { color: var(--muted); font-size: 15px; line-height: 1; padding: 0 2px; background: none; border: none; }
+  .x.new { color: var(--red); font-weight: 700; }
+  .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .addgc { display: inline-block; font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px dashed var(--line); color: var(--blue); margin-top: 2px; }
+  .tag { position: absolute; top: 0; transform: translateY(-55%); right: 10px; background: var(--ink); color: #fff; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .callout { font-size: 12px; background: var(--red-tint); color: var(--red-ink); border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
+  .callout.ok { background: var(--green-tint); color: var(--green-ink); border-color: #bbf7d0; }
+
+  /* dropdown mock */
+  .dd { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); box-shadow: 0 6px 16px rgba(15,23,42,.14); margin-top: 6px; overflow: hidden; }
+  .dd .grp { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 3px; background: var(--subtle); }
+  .dd .opt { padding: 7px 10px; border-top: 1px solid var(--line-2); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .dd .opt small { color: var(--muted); }
+  .dd .opt.hot { background: var(--blue-tint); }
+
+  /* confirm dialog mock */
+  .confirm { width: 440px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 40px rgba(15,23,42,.22); overflow: hidden; }
+  .confirm .hd { padding: 13px 16px 0; font-weight: 700; font-size: 15px; }
+  .confirm .bd { padding: 8px 16px 2px; color: var(--ink-2); font-size: 13.5px; }
+  .confirm .bd p { margin: 0 0 8px; }
+  .confirm .pick { border: 1px solid var(--line-2); border-radius: 8px; margin: 2px 0 10px; }
+  .confirm .pick label { display: flex; gap: 9px; align-items: flex-start; padding: 8px 10px; border-top: 1px solid var(--line-2); font-size: 13px; }
+  .confirm .pick label:first-child { border-top: 0; }
+  .confirm .pick input { margin-top: 3px; }
+  .confirm .pick b { display: block; }
+  .confirm .pick small { color: var(--muted); }
+  .confirm .ft { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding: 10px 16px 14px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; font: inherit; font-size: 13px; font-weight: 700; border-radius: 8px; padding: 8px 13px; border: 1px solid var(--line); background: #fff; color: var(--ink-2); }
+  .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.ghost { border: none; background: none; color: var(--muted); font-weight: 500; }
+  .mut { color: var(--muted); }
+
+  /* note ledger line */
+  .ledger { border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--ink-2); background: var(--subtle); margin-top: 10px; }
+  .ledger b { color: var(--ink); }
+  .ledger small { display: block; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #136 · Edit Bid → People · proposal mock-up (made-up data)</p>
+  <h1>Taking the GC off hands the bid to the alternate</h1>
+  <p>Wendi: <i>"When taking the primary GC off of a project in bids, I would like it to auto select
+  the alternate GC as the primary."</i> The ★ card gets an ×. One confirmed press takes the lead GC
+  off, the alternate becomes the bid's GC, and every letter, note and date stays with the GC it
+  really belongs to.</p>
+  <div class="lenses">
+    <div class="lens"><h3>Wendi's seat</h3><p>The lead GC drops the project. Today the only door is
+    change ▸ — a search over every customer in the system, to find a GC already on the bid one card
+    down. She wants the press, not the search.</p></div>
+    <div class="lens"><h3>The job behind it</h3><p>The ★ is just who runs the bid. When the lead
+    drops, the record must say "Caldwell out, Rio Grande leads" — and keep Caldwell's letters and
+    dates as Caldwell's. Today they silently re-badge onto the new GC.</p></div>
+    <div class="lens"><h3>The whole office</h3><p>The board, Followup, Waiting to hear and the
+    robots' backtests all read these tables. One atomic swap keeps every reader truthful with zero
+    changes to any of them.</p></div>
+  </div>
+</header>
+
+<h2><span class="num today">1</span> Today — no way off, and a silent re-badge</h2>
+<p class="lede">The ★ card only offers <b>change ▸</b>, which searches all customers. Picking the
+alternate leaves its old card behind, and the departing GC's packet, dues and sent line re-attach
+to the new name.</p>
+<div class="row">
+  <div>
+    <div class="cap red">Edit bid · People <span class="r">today</span></div>
+    <div class="fit"><div class="panel">
+      <p class="sec">People</p>
+      <p class="lbl">GCs on this bid</p>
+      <div class="gc">
+        <div class="who"><b>Caldwell Builders</b><div class="addr">2209 Nolana Ave., McAllen, TX 78504</div>
+          <div class="chips"><span>☎ 9565550144</span><span>✉ bids@caldwellbuilders.com</span></div></div>
+        <span class="role star">★ Bid's GC</span>
+        <button class="act">change ▸</button>
+      </div>
+      <div class="gc">
+        <div class="who"><b>Rio Grande Commercial</b><div class="addr">808 W. Expressway 83, Pharr, TX 78577</div>
+          <div class="chips"><span>☎ 9565550199</span><span>✉ estimating@rgcommercial.com</span></div></div>
+        <span class="role packet">own packet</span>
+        <button class="x">×</button>
+      </div>
+      <span class="addgc">+ Add GCs</span>
+      <div class="callout">Caldwell stopped returning calls. There is no "take them off" — change ▸
+      opens a search over <b>every customer</b>, and after the pick, "Sent Jun 17 at $110,746.77"
+      reads as sent to Rio Grande. The letter went to Caldwell.</div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num">2</span> Proposed — the ★ card gets an ×, the alternate gets a door up</h2>
+<p class="lede">The × shows only when another GC is on the bid (a bid keeps a GC). Each alternate
+card offers <b>make bid's GC ▸</b> — the same swap from the other side. change ▸ stays, and its
+dropdown now leads with the GCs already on the bid.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Edit bid · People <span class="r">proposed</span></div>
+    <div class="fit"><div class="panel">
+      <p class="sec">People</p>
+      <p class="lbl">GCs on this bid</p>
+      <div class="gc" style="position:relative">
+        <div class="who"><b>Caldwell Builders</b><div class="addr">2209 Nolana Ave., McAllen, TX 78504</div>
+          <div class="chips"><span>☎ 9565550144</span><span>✉ bids@caldwellbuilders.com</span></div></div>
+        <span class="role star">★ Bid's GC</span>
+        <button class="act">change ▸</button>
+        <button class="x new" title="Take off this bid">×</button>
+        <span class="tag">new</span>
+      </div>
+      <div class="gc" style="position:relative">
+        <div class="who"><b>Rio Grande Commercial</b><div class="addr">808 W. Expressway 83, Pharr, TX 78577</div>
+          <div class="chips"><span>☎ 9565550199</span><span>✉ estimating@rgcommercial.com</span></div></div>
+        <span class="role packet">own packet</span>
+        <button class="act">make bid's GC ▸</button>
+        <button class="x">×</button>
+        <span class="tag">new</span>
+      </div>
+      <span class="addgc">+ Add GCs</span>
+      <p class="hint">× on the ★ card appears only while another GC is on the bid.</p>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap blue">change ▸ dropdown <span class="r">On this bid comes first</span></div>
+    <div class="fit"><div class="panel" style="width:360px">
+      <p class="lbl" style="margin-bottom:4px">GC/Builder (customer)</p>
+      <div style="border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--muted);font-size:13px">Search customers…</div>
+      <div class="dd">
+        <div class="grp">On this bid</div>
+        <div class="opt hot"><b>Rio Grande Commercial</b> <small>own packet · one press, no retyping</small></div>
+        <div class="grp">All customers</div>
+        <div class="opt">Alamo City Builders <small>San Antonio</small></div>
+        <div class="opt">Borderland Construction <small>El Paso</small></div>
+        <div class="opt" style="color:var(--blue);font-weight:600">+ Add new customer</div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num">3</span> The confirm — one sentence, both outcomes on the table</h2>
+<p class="lede">One alternate: no list, just the story. Two or more: the same confirm asks who
+steps up, with the recommended pick preselected (the own-packet GC with the latest send, else the
+first added).</p>
+<div class="row">
+  <div>
+    <div class="cap">One alternate <span class="r">after × on Caldwell</span></div>
+    <div class="fit"><div class="confirm">
+      <div class="hd">Take Caldwell Builders off this bid?</div>
+      <div class="bd">
+        <p><b>Rio Grande Commercial</b> becomes the bid's GC — the letter, the board and Followup
+        run in their name. Letters, notes and dates each stay with the GC they belong to, and the
+        bid's notes record the handoff.</p>
+      </div>
+      <div class="ft">
+        <button class="btn ghost">Cancel</button>
+        <button class="btn">Keep as an alternate instead</button>
+        <button class="btn blue">Take off — Rio Grande leads</button>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Two or more alternates <span class="r">same confirm, plus a pick</span></div>
+    <div class="fit"><div class="confirm">
+      <div class="hd">Take Caldwell Builders off this bid?</div>
+      <div class="bd">
+        <p>Who runs the bid now?</p>
+        <div class="pick">
+          <label><input type="radio" name="p" checked><span><b>Rio Grande Commercial</b>
+            <small>own packet · sent 9/30 at $108,900.00</small></span></label>
+          <label><input type="radio" name="p"><span><b>Mesa &amp; Stone GC</b>
+            <small>same letter · added 10/2</small></span></label>
+        </div>
+      </div>
+      <div class="ft">
+        <button class="btn ghost">Cancel</button>
+        <button class="btn">Keep as an alternate instead</button>
+        <button class="btn blue">Take off — they lead</button>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num pick">4</span> After — the record reads like what happened</h2>
+<p class="lede">Rio Grande wears the ★. Caldwell is off the bid (or an alternate card, if Wendi
+chose keep). Caldwell's packet, due dates and sent line stay Caldwell's — re-keyed in one atomic
+RPC, never re-badged — and a method-less note tells the story without moving last-contact.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Edit bid · People <span class="r">after</span></div>
+    <div class="fit"><div class="panel">
+      <p class="sec">People</p>
+      <p class="lbl">GCs on this bid</p>
+      <div class="gc">
+        <div class="who"><b>Rio Grande Commercial</b><div class="addr">808 W. Expressway 83, Pharr, TX 78577</div>
+          <div class="chips"><span>☎ 9565550199</span><span>✉ estimating@rgcommercial.com</span></div></div>
+        <span class="role star">★ Bid's GC</span>
+        <button class="act">change ▸</button>
+      </div>
+      <span class="addgc">+ Add GCs</span>
+      <div class="ledger"><b>Caldwell Builders came off the bid — Rio Grande Commercial is the bid's GC now.</b>
+        <small>Oct 20 · Wendi · whole-bid note, no contact method — last-contact does not move</small></div>
+      <div class="callout ok">The Send to strip, the board row and Followup all show Rio Grande —
+      and Caldwell's "sent 6/17" line still belongs to Caldwell.</div>
+    </div></div>
+  </div>
+</div>
+
+<p class="note"><b>Decisions on the README</b> (defaults recommended): off-the-bid vs demote ·
+ask vs auto-pick with 2+ alternates · whole-bid notes stay whole-bid · change ▸ reroutes through
+the same swap · the alternate-card door ships too.</p>
+
+</div>
+</body>
+</html>

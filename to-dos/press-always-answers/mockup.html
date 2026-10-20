@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The press always answers</title>
+<style>
+  /* Punch list #139. Light only, like every to-do mock-up. Made-up customer and estimate: Dana Whitfield, Estimate #212 Whitfield water heater, $4,860.00, dana.whitfield@gmail.com, (830) 555-0121. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--red); }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--subtle); color: var(--ink-2); border: 1px solid var(--line); border-bottom: 0; }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 18px 14px; display: flex; justify-content: center; overflow: auto; }
+  /* lenses */
+  .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0 0; }
+  .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .lens p { margin: 0; color: var(--ink-2); font-size: 13px; }
+  /* desktop sheet frame */
+  .sheet { width: 520px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(15,23,42,.22); overflow: hidden; }
+  .sheet .bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; }
+  .sheet .bar b { font-size: 19px; }
+  .sheet .bar .x { color: var(--muted); font-size: 20px; line-height: 1; }
+  .sheet .inner { padding: 0 18px 14px; }
+  .who { border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; display: grid; gap: 1px; }
+  .who b { font-size: 14px; }
+  .who span { font-size: 12.5px; color: var(--muted); }
+  .lab { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 13px 0 5px; }
+  .chanrow { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; padding: 7px 0; }
+  .tick { width: 18px; height: 18px; border-radius: 4px; background: var(--green); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; margin-top: 2px; }
+  .chanrow .nm { font-weight: 700; font-size: 13.5px; }
+  .chanrow .nm span { font-weight: 400; color: var(--muted); }
+  .mailbox { border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: 12.5px; background: var(--subtle); margin: 5px 0 0; }
+  .bubble { background: #fff7ed; border: 1px dashed #fdba74; color: var(--ink); border-radius: 10px; padding: 9px 11px; white-space: pre-wrap; font-size: 13px; line-height: 1.45; margin: 6px 0 0; }
+  .hint { font-size: 12px; color: var(--muted); margin: 5px 0 0; }
+  /* the problem band */
+  .band { border: 1.5px solid var(--red); background: var(--red-tint); border-radius: 10px; padding: 10px 12px; margin: 13px 0 0; display: grid; gap: 3px; }
+  .band b { color: var(--red-ink); font-size: 13.5px; }
+  .band p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+  .band.amber { border-color: var(--amber); background: var(--amber-tint); }
+  .band.amber b { color: var(--amber-ink); }
+  .acts { margin: 13px 0 0; display: grid; gap: 6px; }
+  .act { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--line-2); margin-top: 14px; }
+  .btn { border-radius: 10px; font-weight: 700; font-size: 13.5px; padding: 11px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .btn.go { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn.quiet { border: 0; background: none; color: var(--blue-ink); font-weight: 600; padding: 11px 8px; }
+  .toast { position: relative; margin: 0 auto 10px; width: fit-content; max-width: 420px; background: #1f2937; color: #fff; font-size: 12.5px; border-radius: 8px; padding: 7px 12px; opacity: .55; }
+  .toast::after { content: "gone in 4 seconds"; position: absolute; right: -8px; top: 50%; transform: translate(100%, -50%); font-size: 10.5px; color: var(--red-ink); background: var(--red-tint); border: 1px solid var(--red); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+  .callout { font-size: 11px; color: var(--red-ink); background: var(--red-tint); border: 1px solid var(--red); border-radius: 6px; padding: 1px 6px; display: inline-block; }
+  .callout.g { color: var(--green-ink); background: var(--green-tint); border-color: var(--green); }
+  /* page frames */
+  .pagecard { width: 640px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(15,23,42,.12); overflow: hidden; }
+  .pagecard .ph { padding: 10px 16px; border-bottom: 1px solid var(--line-2); display: flex; gap: 10px; align-items: baseline; }
+  .pagecard .ph b { font-size: 16px; }
+  .pagecard .ph .status { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--green-ink); background: var(--green-tint); border-radius: 999px; padding: 2px 10px; }
+  .pagecard .pb { padding: 12px 16px 16px; }
+  .went { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .went .wh { padding: 7px 11px; background: var(--subtle); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+  .went .wr { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline; padding: 9px 11px; border-bottom: 1px solid var(--line-2); font-size: 13px; }
+  .went .wr:last-child { border-bottom: 0; }
+  .went .wr .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .went .wr a { color: var(--blue-ink); font-weight: 600; text-decoration: none; font-size: 12.5px; }
+  .went .wr .why { color: var(--amber-ink); font-size: 12.5px; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 12.5px; color: var(--ink-2); }
+  .pill.on { border-color: var(--blue); color: var(--blue-ink); font-weight: 700; }
+  .q h4 { margin: 14px 0 2px; font-size: 14.5px; }
+  .q h4 span { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  .empty { border: 1px solid var(--line); border-radius: 10px; padding: 12px; color: var(--muted); font-size: 13px; }
+  .sentrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; margin-top: 6px; background: var(--surface); }
+  .sentrow .l b { font-size: 13.5px; }
+  .sentrow .l .step { font-size: 10.5px; font-weight: 700; color: var(--blue-ink); background: var(--blue-tint); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+  .sentrow .l p { margin: 1px 0 0; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 430px; }
+  .sentrow .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  /* decision strip */
+  .dec { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 14px; }
+  .d { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; }
+  .d h3 { margin: 0 0 3px; font-size: 13px; }
+  .d p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+  .d .rec { color: var(--green-ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #139 · follows Tell the customer (#115, v2.5593–v2.5597)</p>
+  <h1>The press always answers</h1>
+  <p>Taunya pressed <b>Send both</b> on a live estimate. The email went, the badge flipped to Sent — and the sheet sat unchanged, because a failure after the send reads back as "failed", said only in a toast. Then she looked for proof on the estimate and on Messages and found none, because no surface keeps what <i>we</i> sent. Three pieces: the sheet answers every press inside the sheet, the sent estimate shows what went, and Messages shows what went out today.</p>
+  <div class="lenses">
+    <div class="lens"><h3>Her seat</h3><p>Every press of the green button answers where she is looking: a receipt, or a band with the reason and her next move. Never a silent stay, never a dead X.</p></div>
+    <div class="lens"><h3>The job behind the ask</h3><p>Did the estimate reach Dana, by which doors, when — and one safe way to send it again that cannot double-text a real customer.</p></div>
+    <div class="lens"><h3>The whole office</h3><p>#115 made every send a person's press. An office that cannot see what went out re-sends, or stops trusting the sheet. One Went out lane pays for every send surface.</p></div>
+  </div>
+</header>
+
+<h2><span class="num today">1</span>Today — six roads to "nothing happened"</h2>
+<p class="lede">The sheet's email leg answers <code>null</code> after any failure, and <code>go()</code> returns silently. The words live in a toast that is gone before she looks up. Worst leg: the send <b>succeeds</b>, the page's refresh after it fails, and the sheet hears "failed" — email gone, badge Sent, no text, no receipt.</p>
+<div class="row">
+  <div>
+    <div class="cap red">The stuck sheet <span class="r">recreated — estimate already Sent behind it</span></div>
+    <div class="fit">
+      <div>
+        <div class="toast">Only draft estimates can be sent</div>
+        <div class="sheet">
+          <div class="bar"><b>Tell Dana</b><span class="x">✕</span></div>
+          <div class="inner">
+            <div class="who"><b>Estimate #212 · Whitfield water heater</b><span>$4,860.00 · dana.whitfield@gmail.com</span></div>
+            <p class="lab">What goes</p>
+            <div class="chanrow"><span class="tick">✓</span><div><div class="nm">Email to dana.whitfield@gmail.com</div><p class="mailbox">The estimate with its link to approve, as the page previews it.</p></div></div>
+            <div class="chanrow"><span class="tick">✓</span><div><div class="nm">Text to (830) 555-0121 <span>· Dana reads English</span></div><p class="bubble">Dana, this is Taunya with Click Plumbing. Your estimate for the water heater is ready, $4,860.00. Open it to approve the option you want: {link}</p></div></div>
+          </div>
+          <div class="foot"><span><button class="btn">Skip</button> <button class="btn quiet">Email only</button></span><button class="btn go">Send both to Dana</button></div>
+        </div>
+        <p class="note"><span class="callout">the press lands here again and again — the sheet never changes</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>The other legs look the same:</b> fetch failed, session expired, no email on record, a hung send (no timeout — and the ✕ is refused silently while it hangs), and the refresh-after-success failure that started this. One more answers <i>wrong</i>: when the email service is down but the link is minted, the receipt still says "Emailed to…".</p>
+
+<h2><span class="num pick">2</span>The sheet answers — a problem band with the reason and the move</h2>
+<p class="lede">The email leg's answer widens to <code>ok / why / code</code>; the sheet owns the words. A failure is a band that stays, names the reason, and keeps her typed words. The refusal she actually hit — already sent — flips the primary to the resend the page already knows how to do.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Already went <span class="r">code: already_sent — the primary becomes the resend</span></div>
+    <div class="fit">
+      <div class="sheet">
+        <div class="bar"><b>Tell Dana</b><span class="x">✕</span></div>
+        <div class="inner">
+          <div class="who"><b>Estimate #212 · Whitfield water heater</b><span>$4,860.00 · dana.whitfield@gmail.com</span></div>
+          <div class="band"><b>This estimate already went to Dana — Mon Oct 20, 1:31 PM.</b><p>Sending again makes a fresh link and emails it; the old link stops working. The text carries the fresh link.</p></div>
+          <div class="chanrow" style="margin-top:9px"><span class="tick">✓</span><div><div class="nm">Text to (830) 555-0121 <span>· Dana reads English</span></div><p class="bubble">Dana, this is Taunya with Click Plumbing. Your estimate for the water heater is ready, $4,860.00. Open it to approve the option you want: {link}</p></div></div>
+          <div class="acts">
+            <p class="lab" style="margin:4px 0 0">What happens</p>
+            <div class="act"><span>📧</span><span>Emails Dana a fresh link to the same estimate. The old link stops working.</span></div>
+            <div class="act"><span>💬</span><span>Texts Dana the fresh link from the company number.</span></div>
+          </div>
+        </div>
+        <div class="foot"><span><button class="btn">Close</button></span><button class="btn go">Send the link again</button></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">A send that failed <span class="r">the band stays; her words stay; Try again</span></div>
+    <div class="fit">
+      <div class="sheet">
+        <div class="bar"><b>Tell Dana</b><span class="x">✕</span></div>
+        <div class="inner">
+          <div class="who"><b>Estimate #212 · Whitfield water heater</b><span>$4,860.00 · dana.whitfield@gmail.com</span></div>
+          <div class="band"><b>The email did not go.</b><p>The send was refused: this customer has no email on record. Add one on the estimate, or send the text alone from Dana's thread.</p></div>
+          <div class="chanrow" style="margin-top:9px"><span class="tick">✓</span><div><div class="nm">Text to (830) 555-0121 <span>· Dana reads English</span></div><p class="bubble">Dana, this is Taunya with Click Plumbing. Your estimate for the water heater is ready, $4,860.00. Open it to approve the option you want: {link}</p></div></div>
+          <div class="band amber" style="margin-top:10px"><b>Taking long? After 20 seconds a send says so:</b><p>"Still sending — it may have gone. Open Dana's thread before pressing again." — and Close works. Before that, pressing ✕ answers <i>Still sending…</i> instead of nothing.</p></div>
+        </div>
+        <div class="foot"><span><button class="btn">Close</button></span><button class="btn go">Try again</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>Receipt honesty:</b> when the link was minted but the email service failed, the receipt says <i>The email did not go — the link was made and copied</i> instead of "Emailed to…". <span class="callout g">no leg answers wrong, no leg answers nothing</span></p>
+
+<h2><span class="num pick">3</span>What went — kept on the estimate</h2>
+<p class="lede">The receipt closes; the facts should not close with it. A sent estimate keeps a What went card where she looked first — with the resend door beside it, so "send it again" lives where "what went" is read.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Estimate #212, sent <span class="r">above Customer activity</span></div>
+    <div class="fit">
+      <div class="pagecard">
+        <div class="ph"><b>#212 · Whitfield water heater</b><span class="status">Sent</span></div>
+        <div class="pb">
+          <div class="went">
+            <div class="wh">What went</div>
+            <div class="wr"><span>📧</span><span>Emailed to dana.whitfield@gmail.com</span><span class="when">Mon Oct 20, 1:31 PM</span></div>
+            <div class="wr"><span>💬</span><span>Texted the link to (830) 555-0121 · <a href="#">Open the thread</a></span><span class="when">Mon Oct 20, 1:31 PM</span></div>
+            <div class="wr"><span>👀</span><span>Dana opened the link</span><span class="when">Mon Oct 20, 2:04 PM</span></div>
+          </div>
+          <p class="hint" style="margin-top:8px">Send the link again — a fresh link goes by email and text; the old link stops working.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">When a door did not go <span class="r">the hold, said in its row</span></div>
+    <div class="fit">
+      <div class="pagecard">
+        <div class="ph"><b>#214 · Softener install</b><span class="status">Sent</span></div>
+        <div class="pb">
+          <div class="went">
+            <div class="wh">What went</div>
+            <div class="wr"><span>📧</span><span>Emailed to m.calloway@gmail.com</span><span class="when">Mon Oct 20, 9:12 AM</span></div>
+            <div class="wr"><span>💬</span><span class="why">No text went — their number sent STOP. The email carries the link.</span><span class="when"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">4</span>Went out today — on Messages, where she looked</h2>
+<p class="lede">Messages' three queues are all inbound; a text the office just pressed shows in none of them. A fourth section, office only, reads outbound from the rows that already exist: the texts a person pressed today and the morning run's sends, newest first, each opening the thread.</p>
+<div class="row">
+  <div>
+    <div class="cap green">/messages with the new section <span class="r">texts only, today only — decision 2</span></div>
+    <div class="fit">
+      <div class="pagecard" style="width:680px">
+        <div class="ph"><b>Messages</b></div>
+        <div class="pb">
+          <div class="pills"><span class="pill on">All</span><span class="pill">Customers</span><span class="pill">Trade partners</span><span class="pill">Architects</span><span class="pill">Leads</span><span class="pill">Subs</span><span class="pill">Our team</span></div>
+          <div class="q">
+            <h4>New (0) <span>What came in and still needs sorting.</span></h4>
+            <div class="empty">Nothing to sort. Every line that came in has a person, a job and someone on it.</div>
+            <h4>Needs a reply (0) <span>Texts, voicemails, missed calls and emails nobody has answered.</span></h4>
+            <div class="empty">Nobody is waiting on us.</div>
+            <h4>We owe them (0) <span>What we still have to do for someone, with its day.</span></h4>
+            <div class="empty">Nothing we owe anyone.</div>
+            <h4>Went out today (3) <span>Every text we sent today, newest first. A row opens the thread.</span></h4>
+            <div class="sentrow"><div class="l"><b>Dana Whitfield</b><span class="step">Estimate sent</span><p>Dana, this is Taunya with Click Plumbing. Your estimate for the water heater is ready, $4,860.00…</p></div><span class="when">1:31 PM · Taunya</span></div>
+            <div class="sentrow"><div class="l"><b>Marcus Calloway</b><span class="step">Booked</span><p>Marcus, this is Taunya with Click Plumbing. You're on the schedule Thursday, Oct 22, 10 AM to noon…</p></div><span class="when">11:05 AM · Taunya</span></div>
+            <div class="sentrow"><div class="l"><b>Priya Natarajan</b><span class="step">Approved</span><p>Priya, a reminder from Click Plumbing: your approved job is ready to schedule. Reply here and we'll…</p></div><span class="when">9:00 AM · the morning run</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">Empty state: <i>Nothing has gone out today.</i> The section sits under We owe them so the queues that need action stay on top.</p>
+
+<h2><span class="num">5</span>The four decisions</h2>
+<div class="dec">
+  <div class="d"><h3>1 · Resend from the sheet?</h3><p><span class="rec">Recommended: yes</span> — on already_sent the primary becomes Send the link again. Lighter cut: the band points at the page's existing Resend link instead.</p></div>
+  <div class="d"><h3>2 · Went out today scope</h3><p><span class="rec">Recommended: texts only, today only.</span> Estimate emails and a 7-day lookback are follow-ons if the office asks.</p></div>
+  <div class="d"><h3>3 · Busy timeout</h3><p><span class="rec">Recommended: 20 s</span>, then the "may have gone — check the thread" band with Close alive. Alternative: no timeout, ✕ always alive with a warning.</p></div>
+  <div class="d"><h3>4 · Booking moment too?</h3><p><span class="rec">Recommended: yes</span> — the same band on a booking's failed text in the same PR; same kernel, one behavior everywhere.</p></div>
+</div>
+
+</div>
+</body>
+</html>
