@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-10-14
+last_updated: 2026-10-20
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -109,7 +109,7 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 Bids now carry an **optional `project_id`** (FK → `projects`, `ON DELETE SET NULL`) alongside the historical free-text `project_name`. It links a bid to a Project for the Projects-card **Bids pill** ([`Projects.tsx`](../src/pages/Projects.tsx)); it is set via the New/Edit Bid modal's **Project** picker ([`BidFormModal.tsx`](../src/components/bids/BidFormModal.tsx), with a one-tap "Suggested" link when `project_name` exactly matches a project) or pre-filled by the `/bids?newBid=true&project=<id>` deep link from a project card's "+ Bid" segment. Nothing else keys off it — `project_name` remains the display/grouping field everywhere.
 
 ### Key Features
-- **Integrated tabs** covering the complete bid lifecycle (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): board strip **Bid Board, Followup, Unsent/Working (kanban), Bid Costs, Estimators** plus the workflow/document strip **Counts, Takeoffs, Labor, Pricing, Cover Letter, RFI, Change Order, Lien Release**. **Followup** is one tab with **four lenses** — **By builder** (the old Builder Review, tab key `builder-review`), **By status** (the old Submission & Followup, key `submission-followup`), **Why we lost** (key `why-we-lost`, v2.1797), and **Waiting to hear** (key `waiting-to-hear`, v2.1990) — the lens toggle sits inside the tab; all four keys still deep-link. **Estimators** (**v2.530+**) is a cross-bid pivot, and **Unsent/Working** / **Bid Costs** are list/analytics surfaces — none of these are part of the linear per-bid workflow below.
+- **Integrated tabs** covering the complete bid lifecycle (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): board strip **Bid Board, Followup, Unsent/Working (kanban), Bid Costs, Estimators** plus the workflow/document strip **Counts, Takeoffs, Labor, Pricing, Cover Letter, RFI, Change Order, Lien Release**. **Followup** is one tab with **seven lenses** — **By builder** (the old Builder Review, tab key `builder-review`), **Call queue** (key `call-queue`, v2.2105), **By status** (the old Submission & Followup, key `submission-followup`), **Why we lost** (key `why-we-lost`, v2.1797), **Waiting to hear** (key `waiting-to-hear`, v2.1990), **Job accounts** (key `job-accounts`) and **Money** (key `money`, v2.5651, punch list #129: every won job with money open, in chase order, each row the won bid's money line) — the lens toggle sits inside the tab; all seven keys deep-link. **Estimators** (**v2.530+**) is a cross-bid pivot, and **Unsent/Working** / **Bid Costs** are list/analytics surfaces — none of these are part of the linear per-bid workflow below.
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates
 - **Bid Versions** — named per-bid variants, each owning its own takeoff materials and optional pricing (see [Bid Versions & Pricings](#bid-versions--pricings))
 - **Automatic cost calculations** including driving costs
@@ -140,7 +140,7 @@ The page gate (see the `UserRole` union and the render guard in [`Bids.tsx`](../
 9. **Change Order** - Generate change-order documents (see [Change Order Tab](#change-order-tab))
 10. **Lien Release** - Generate conditional waiver and lien release documents
 
-Outside this linear workflow: the **Followup** tab's four lenses — **By builder** (per-customer call-queue cards), **By status** (outcome tables), **Why we lost** (loss-reason call mode), **Waiting to hear** (recent pending-bid chase with per-GC recipient expansion, v2.1990/v2.1992/v2.1995) — plus **Unsent/Working** (per-user kanban), **Bid Costs** (dev-only clocked-cost rollup), and **Estimators** (cross-bid clock-time pivot). Multi-GC sends are recorded in **`bid_gc_recipients`** (v2.1994, Edit Bid "Also sent to" row + version-GC sync) and expand the followup queues per GC.
+Outside this linear workflow: the **Followup** tab's seven lenses — **By builder** (per-customer call-queue cards), **Call queue** (the calls to make as one list), **By status** (outcome tables), **Why we lost** (loss-reason call mode), **Waiting to hear** (recent pending-bid chase with per-GC recipient expansion, v2.1990/v2.1992/v2.1995), **Job accounts** (the won jobs' supply-house accounts) and **Money** (the won jobs' open money for the job's people, v2.5651) — plus **Unsent/Working** (per-user kanban), **Bid Costs** (dev-only clocked-cost rollup), and **Estimators** (cross-bid clock-time pivot). Multi-GC sends are recorded in **`bid_gc_recipients`** (v2.1994, Edit Bid "Also sent to" row + version-GC sync) and expand the followup queues per GC.
 
 ---
 

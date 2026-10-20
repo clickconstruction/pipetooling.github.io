@@ -8,7 +8,7 @@ covers:
   - src/pages/Bids.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-19
+last_updated: 2026-10-20
 ---
 
 > **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `Bids.tsx` reads `bid_count_sources` once for every bid on the board (`useBidCountSourcesByBid`, chunked) and hands the projects to the board's links cluster and to the Counts tab's *From* tile and column (`BidsCountsTab.tsx`, `sheetFromFilter`, `countRowFrom`), both drawn only once the bid has a project (`docs/recent-features/v2.5520.md`).
@@ -86,7 +86,7 @@ What the 2,642 lines are at `mapped_at` (f423bd6e5), top to bottom. Regions that
 | Bid Board | 1806–1857 | 52 | `BidsBidBoardTab` |
 | Robot overlays | 1859 | 1 | `BidsRobotOverlays` (v2.3953) |
 | Followup lens bar | 1862–1885 | 24 | `BidsLensBar` over `followupLenses`; the "N need a reason" chip and the caption are its children — v2.3931. The day to call again (`bids.next_followup_on`, kernel `lib/bids/bidNextFollowup.ts`, v2.4420) is the Call queue's; the page hands the Bid Board `contactPersonNameById` (1808) and the Call queue `contactPersons` / `onReloadContactPersons` (1898–1899) for the chip (v2.4421) |
-| Followup lens bodies | 1886–1939 | ~54 | `BidsCallQueueTab`, `BidsWhyWeLostLens`, `BidsWaitingToHearLens`, `BidsJobAccountsLens` |
+| Followup lens bodies | 1886–1939 | ~54 | `BidsCallQueueTab`, `BidsWhyWeLostLens`, `BidsWaitingToHearLens`, `BidsJobAccountsLens`, `BidsMoneyLens` (after the stamp, v2.5651) |
 | Builder Review / Working / Day book / Bid Costs / Estimators | 1940–2023 | ~84 | extracted children |
 | Counts / Takeoffs / Labor / Pricing / Cover Letter | 2026–2328 | ~303 | prop bags; all but Labor open with `renderBidVersionPicker` (v2.3931) |
 | Submittals / Submission & Followup / RFI / CO / Lien | 2331–2417 | ~87 | extracted children |
@@ -170,10 +170,10 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 - **Data:** in `useBidsLoadGates` (called at 963–968) the all-trades effect runs `loadBids(null)` while this tab is active; the reload-on-trade effect skips it. The trade segments grey out on this tab (`bidsTradeSegments`, 1471–1514).
 - **Status:** extracted; the child regrew to 1,524 lines → **[`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md)**.
 
-### Followup lenses — `call-queue` · `why-we-lost` · `waiting-to-hear` · `job-accounts`
+### Followup lenses — `call-queue` · `why-we-lost` · `waiting-to-hear` · `job-accounts` · `money`
 
 - **Render location:** lens bar 1862–1885; bodies 1886–1939. Superintendents are bounced off all four plus `submission-followup`, `pricing`, `cover-letter`, `submittals` (`SUPERINTENDENT_OFFICE_BIDS_TABS` in `bidsTabAccess`).
-- **Parent-owned state:** none of their own. They read `peopleBids`, `sentScope`, `gcPacketsByBid`, `lastMethodContactFromEntries` (method entries only, v2.2413), `bidGcRecipientsByBidId`, `roomStatesByBid`, `jobAccountStrips`; the Call queue also takes `customerContactPersons` and its reloader (v2.4420); three take `onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}`.
+- **Parent-owned state:** none of their own. They read `peopleBids`, `sentScope`, `gcPacketsByBid`, `lastMethodContactFromEntries` (method entries only, v2.2413), `bidGcRecipientsByBidId`, `roomStatesByBid`, `jobAccountStrips`, `moneyStrips` (v2.5651, one `list_bid_money_strip` read for the board's won bids in `useBidBoardScope`); the Call queue also takes `customerContactPersons` and its reloader (v2.4420); three take `onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}`.
 - **Chip:** "N need a reason" (1864–1882) shows by `followupNeedsReasonChipShows` and prints `lostBidsNeedingReasonCount` (from `useBidBoardScope`).
 - **Status:** all extracted; the lens bar is `BidsLensBar` (v2.3931). The bar keeps its own role rule (`followupLenses`: a superintendent gets By builder alone), not `bidsTabOpenFor`. The two doors that enter By status by state alone — the Bid Board's Last contact and By builder's View submissions, where the router's gates never run — are handed to the children only when `bidsTabOpenFor('submission-followup', role)` (v2.3982; `Bids.followupDoors.render.test.tsx`).
 

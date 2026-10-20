@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-20
 ---
 
 ## Overview
@@ -133,7 +133,7 @@ Render regions in JSX order (all line ranges @ `a05cef4c4`). Status legend: `ext
 | New Job discard guard | `currentNewJobSnapshot` 1601–1622, arm/capture 1626–1633, `confirmDiscardNewJobIfDirty` 1640–1657 | — | `ui_nav_clicks` via `recordNavClick` | `newJobDraftDirty` tested | Stays |
 | Close guard | `finishClose` 1660–1676, `closeFormWithoutSaving` 1684–1688, `editCloseSideEffectsNeeded` 1703–1714, `runEditCloseSideEffects` 1717–1751, `closeForm` 1753–1790, visibility flush 1795–1801 | `closeFlushState` | `customers`, rpc `update_job_status` | `jobFormCloseFlush` tested; guard **untested** | Save-engine seam |
 | Hydrate / reset | `applyEditJob` 1803–1880 (41 setters), `resetNewForm` 1882–1930 (43 setters) | — | — | none | Stays |
-| ~~Bid / estimate import~~ | **`hooks/useJobFormImport.ts`** (v2.3949): `cancelBidImport`, `applyPrefillFromBid`, `handleWinningGcPick`, `applyPrefillFromEstimate` | the shell's form setters, handed in (20) + `closeFormRef`, `newJobSnapshotArmedRef`; `winningGcPick` stays the shell's | `bids`, `jobs_ledger`, `bid_versions`, `bid_version_sends`, `bid_gc_recipients`, `customers`, `estimates` | hook render test (22) over a per-table client; `jobImportFromBid` + `jobImportFromEstimate` tested | Done (order #7) |
+| ~~Bid / estimate import~~ | **`hooks/useJobFormImport.ts`** (v2.3949): `cancelBidImport`, `applyPrefillFromBid`, `handleWinningGcPick`, `applyPrefillFromEstimate`; since v2.5646 (punch list #129) `bidImportAccountMan` in `lib/bids/jobImportFromBid.ts` puts the bid's account manager, else its estimator, on the team as the job's account manager (relationship *primary*) when the form has none, so a job opened from a won bid carries its person from the first day — the office unticks them in the form if that is wrong | the shell's form setters, handed in (20) + `closeFormRef`, `newJobSnapshotArmedRef`; `winningGcPick` stays the shell's | `bids`, `jobs_ledger`, `bid_versions`, `bid_version_sends`, `bid_gc_recipients`, `customers`, `estimates` | hook render test (22) over a per-table client; `jobImportFromBid` + `jobImportFromEstimate` tested | Done (order #7) |
 | Init | effect 2286–2427 (writes 20), prefill timing 2429–2438, bid-summary backfill 2440–2453 | 20 | `customers`, `projects`, `bids` (800), `service_types`, `users`, `developments`, rpc `next_job_number_suggestion` | none | Stays |
 | ~~Labor loader~~ | **done v2.3871** — `hooks/useJobFormLabor.ts` (the team read as before; the sub half on `useJobDetailSubLaborCost` + `lib/jobs/subLaborSummary.ts`, the shared `laborJobSubCost`) | the six names come back from the hook | `loadTeamLaborData`; the sub reads are the detail hook's | the hand copy of the drive-cost formula is gone; `subLaborSummary.test.ts` + `useJobFormLabor.render.test.tsx` | keyed on the job id alone (the number deps were pre-v2.3060) |
 | Highlight / focus effects | 2572–2680 (9 effects) | 5 highlight flags, `customerSearch`, `dateMet` | — | none | Stays |
