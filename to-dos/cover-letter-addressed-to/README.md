@@ -2,7 +2,7 @@
 name: "Cover letter: address the letter to any GC on the bid"
 number: 133
 group: ready
-status: building 2026-10-20 — owner's go ("Build it") on the recommended defaults; PR 1 the Addressed to row claimed v2.5679 on claude/cover-letter-addressed-to-pr1; PR 2 print-all follows in the same stream; PR 3 falls away under the defaults (same-letter sends ride the bid, the room folds)
+status: building 2026-10-20 — owner's go ("Build it") on the recommended defaults; PR 1 the Addressed to row v2.5679 (#5919, armed) on claude/cover-letter-addressed-to-pr1; PR 2 Print all v2.5685 built on claude/cover-letter-print-all-pr2 (stacked, opens after PR 1 merges); PR 3 falls away under the defaults (same-letter sends ride the bid, the room folds); left after merge: the ZZ Test live walk
 summary: >
   Grace: when she makes the cover page the letter is addressed to the bid's first GC only, and for
   every other builder on the proposal she retypes the name by hand after pasting. The bid already
@@ -157,8 +157,10 @@ to subs (`RfqComposeModal`) are a different surface.
 
 ## Where it stands
 
-Proposed and approved 2026-10-20 (owner: "Build it", recommended defaults stand). PR 1 (v2.5679)
-built the same day on `claude/cover-letter-addressed-to-pr1`: the kernel + 7 tests, the Addressed
-to row with + GC and the honest note, the room fold, the Print/Copy sub-lines, the
-`bid-default` tab-key translation fix, both help guides. PR 2 (Print all) is next, then the ZZ
+Proposed and approved 2026-10-20 (owner: "Build it", recommended defaults stand). PR 1 (v2.5679,
+#5919) built the same day on `claude/cover-letter-addressed-to-pr1`: the kernel + 7 tests, the
+Addressed to row with + GC and the honest note, the room fold, the Print/Copy sub-lines, the
+`bid-default` tab-key translation fix, both help guides. PR 2 (v2.5685, Print all) built on
+`claude/cover-letter-print-all-pr2`, stacked, opens once PR 1 merges: the no-heading copies
+document, the per-addressee letter builders, the "no address on file" chip flag. Then the ZZ
 Test live walk from How to verify.
