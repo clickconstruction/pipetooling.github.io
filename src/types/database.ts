@@ -3590,6 +3590,7 @@ export type Database = {
           submittals_not_needed_at: string | null
           submittals_not_needed_by: string | null
           submitted_to: string | null
+          tax_rate_pct: number | null
           twin_source_bid_id: string | null
           updated_at: string | null
           working_board_archived_at: string | null
@@ -3692,6 +3693,7 @@ export type Database = {
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null
+          tax_rate_pct?: number | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
           working_board_archived_at?: string | null
@@ -3794,6 +3796,7 @@ export type Database = {
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null
+          tax_rate_pct?: number | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
           working_board_archived_at?: string | null
@@ -3986,9 +3989,14 @@ export type Database = {
           fixture: string
           group_tag: string | null
           id: string
+          kind: string | null
           page: string | null
           sequence_order: number
           source_shares: Json | null
+          split_markup_pct: number | null
+          split_material_cents: number | null
+          split_taxable: boolean | null
+          tags: string[]
           unit: string | null
         }
         Insert: {
@@ -3999,9 +4007,14 @@ export type Database = {
           fixture: string
           group_tag?: string | null
           id?: string
+          kind?: string | null
           page?: string | null
           sequence_order?: number
           source_shares?: Json | null
+          split_markup_pct?: number | null
+          split_material_cents?: number | null
+          split_taxable?: boolean | null
+          tags?: string[]
           unit?: string | null
         }
         Update: {
@@ -4012,9 +4025,14 @@ export type Database = {
           fixture?: string
           group_tag?: string | null
           id?: string
+          kind?: string | null
           page?: string | null
           sequence_order?: number
           source_shares?: Json | null
+          split_markup_pct?: number | null
+          split_material_cents?: number | null
+          split_taxable?: boolean | null
+          tags?: string[]
           unit?: string | null
         }
         Relationships: [
