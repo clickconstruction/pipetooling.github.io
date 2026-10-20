@@ -611,7 +611,10 @@ export function BidVersionPicker({
               >
                 {bidVersions.map((v) => <option key={v.id} value={v.id}>{(v.customer_id ? gcNamesById[v.customer_id] ?? '…' : bidGcName ?? 'bid GC')} · {v.name}{starNameOf(v) ? ` · ★ ${starNameOf(v)}` : ' · no prices'}</option>)}
               </select>
-              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>copies its counts, takeoff and prices</span>
+              {/* #135 PR 3: the sub-line follows the checkbox below — unchecked, prices do NOT come along. */}
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                {clonePricing ? 'copies its counts, takeoff and prices' : 'copies its counts and takeoff — the new version starts unpriced; the Pricing tab will offer your books'}
+              </span>
             </label>
           )}
           {isUnsplit && (
