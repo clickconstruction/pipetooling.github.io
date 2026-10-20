@@ -7,7 +7,8 @@
  * changed rows, reloads, freezes, remembers the margin and leaves an undo; a pending solver
  * preview loses the brushed rows; undo writes the old prices back; Escape puts the brush down;
  * a guard that says no (the sent-bid lock, or the open price still loading, v2.5671) starts no
- * stroke, and one refused at pointer-up is dropped, never left painting.
+ * stroke, and one refused at pointer-up is dropped, never left painting; a sweep's undo is
+ * offered only on the price it was painted on (v2.5672).
  */
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -273,6 +274,41 @@ describe('useMarginBrush', () => {
     ])
     expect(calls.events).toEqual(['write r1', 'write r3', 'reload b359/pv1', 'freeze'])
     expect(toasts[toasts.length - 1]).toEqual(['Sweep undone.', 'success'])
+  })
+
+  // v2.5672: Undo writes to the open price, so a sweep's undo is offered only on the price it was painted on.
+  it('after a switch to another price the sweep has no undo there, and Undo writes nothing into it', async () => {
+    const { rerender } = render(<Probe />)
+    stroke('r3')
+    click('up')
+    await waitFor(() => expect(state()).toContain('undo:r1=∅,r3=180'))
+    calls.writes = []
+    calls.events = []
+    rerender(<Probe over={{ pricingVersionId: 'pv2' }} />)
+    expect(state()).toContain('undo:none')
+    click('undo')
+    await act(async () => {})
+    expect(calls.writes).toEqual([])
+    expect(calls.events).toEqual([])
+  })
+
+  it('back on the price it was painted on, the undo is there again and writes to that price', async () => {
+    const { rerender } = render(<Probe />)
+    stroke('r3')
+    click('up')
+    await waitFor(() => expect(state()).toContain('undo:r1=∅,r3=180'))
+    calls.writes = []
+    calls.events = []
+    rerender(<Probe over={{ pricingVersionId: 'pv2' }} />)
+    rerender(<Probe over={{ pricingVersionId: 'pv1' }} />)
+    expect(state()).toContain('undo:r1=∅,r3=180')
+    click('undo')
+    await waitFor(() => expect(state()).toContain('undo:none'))
+    expect(calls.writes).toEqual([
+      ['r1', null],
+      ['r3', 180],
+    ])
+    expect(calls.events).toEqual(['write r1', 'write r3', 'reload b359/pv1', 'freeze'])
   })
 
   it('Escape mid-stroke drops the stroke’s drafts and puts the brush down', () => {
