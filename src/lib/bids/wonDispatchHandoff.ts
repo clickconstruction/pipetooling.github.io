@@ -14,6 +14,7 @@
  * Won lands. This kernel holds the pure parts: titles, notes, the decision,
  * and the sweep that retires rows once a job exists.
  */
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { wonHandoffMode } from './wonMomentActions'
 
 export const OPEN_JOB_FROM_BID_ACTION = 'open_job_from_bid'
@@ -125,6 +126,20 @@ export function bidIdsForOpenJobSweep(rows: readonly OpenJobFromBidSweepRow[]): 
     if (r.status === 'open' && r.pending_action === OPEN_JOB_FROM_BID_ACTION && r.bid_id) out.add(r.bid_id)
   }
   return [...out]
+}
+
+/**
+ * The job each bid now carries, from `jobs_ledger` rows read newest first: the newest job per bid, numbered the way the
+ * board numbers it (HCP, else C#). A job with only a C# closed its to-do as "A job opened" until v2.5670 (J1085 on B398).
+ */
+export function openJobSweepJobsByBidId(
+  jobRows: ReadonlyArray<{ bid_id: string | null; hcp_number: string | null; click_number?: string | null }>,
+): Map<string, { hcpNumber: string | null }> {
+  const out = new Map<string, { hcpNumber: string | null }>()
+  for (const r of jobRows) {
+    if (r.bid_id && !out.has(r.bid_id)) out.set(r.bid_id, { hcpNumber: effectiveJobLedgerNumber(r.hcp_number, r.click_number) || null })
+  }
+  return out
 }
 
 /**

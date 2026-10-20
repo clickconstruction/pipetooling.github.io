@@ -12,6 +12,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useAuth } from '../hooks/useAuth'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
+import { canCreateJobFromBid } from '../lib/bids/wonMomentActions'
 import { jobDraftFromPayload, jobDraftWords } from '../lib/bids/jobDraft'
 import { CustomerWaitingRequestCard } from './CustomerWaitingRequestCard'
 import { RequestPrioritySheet } from './RequestPrioritySheet'
@@ -311,7 +312,9 @@ export function DispatchInboxSection({
                     {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
                   </button>
                 )
-                const openJobBidId = !isClosed && req.pending_action === OPEN_JOB_FROM_BID_ACTION && jobFormModal ? (req.bid_id ?? null) : null
+                // Only a role that may save a job gets the door (v2.5670): an estimator in Dispatch reads the draft but cannot create the job.
+                const openJobBidId =
+                  !isClosed && req.pending_action === OPEN_JOB_FROM_BID_ACTION && jobFormModal && canCreateJobFromBid(role) ? (req.bid_id ?? null) : null
                 // An estimator's draft of the job (v2.5659): its words on the row, laid over the bid's import on press.
                 const jobDraft = req.pending_action === OPEN_JOB_FROM_BID_ACTION ? jobDraftFromPayload(req.pending_payload) : null
                 const openJobFromBidBtn = openJobBidId ? (

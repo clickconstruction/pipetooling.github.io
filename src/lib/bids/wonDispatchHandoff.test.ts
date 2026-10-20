@@ -5,6 +5,7 @@ import {
   decideWonHandoff,
   dispatchAskedLabel,
   OPEN_JOB_FROM_BID_ACTION,
+  openJobSweepJobsByBidId,
   pickOpenJobRequestsToClose,
   shouldAutoAskDispatchOnWon,
   wonHandoffClosedNote,
@@ -12,6 +13,7 @@ import {
   wonHandoffTitle,
 } from './wonDispatchHandoff'
 import { wonHandoffMode } from './wonMomentActions'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 describe('labels', () => {
   it('spells the bid the way every bid surface does', () => {
@@ -33,6 +35,10 @@ describe('labels', () => {
     expect(wonHandoffClosedNote({ hcpNumber: '1007', bidLabel: 'B398 · ZZ Test', elsewhere: false })).toBe('J1007 opened from B398 · ZZ Test')
     expect(wonHandoffClosedNote({ hcpNumber: 'J1007', bidLabel: 'B398', elsewhere: true })).toBe('J1007 was opened from B398 elsewhere — nothing left to do')
     expect(wonHandoffClosedNote({ hcpNumber: '', bidLabel: 'B398', elsewhere: false })).toBe('A job opened from B398')
+    // New Job passes the number the board shows, HCP else C# (v2.5670: J1085 on B398 has only a C#).
+    expect(wonHandoffClosedNote({ hcpNumber: effectiveJobLedgerNumber('', '1085'), bidLabel: 'B398 · ZZ Test', elsewhere: false })).toBe(
+      'J1085 opened from B398 · ZZ Test',
+    )
   })
   it('the asked chip reads who and how long ago', () => {
     const now = Date.parse('2026-09-07T20:00:00Z')
@@ -86,5 +92,27 @@ describe('the inbox sweep', () => {
     const jobs = new Map([['b1', { hcpNumber: '1007' }]])
     expect(pickOpenJobRequestsToClose(rows, jobs)).toEqual([{ bidId: 'b1', hcpNumber: '1007' }])
     expect(pickOpenJobRequestsToClose(rows, new Map())).toEqual([])
+  })
+  it('v2.5670: the newest job per bid, named by its C# when it has no HCP number', () => {
+    const jobs = openJobSweepJobsByBidId([
+      { bid_id: 'b1', hcp_number: '', click_number: '1085' },
+      { bid_id: 'b1', hcp_number: '1007', click_number: null },
+      { bid_id: 'b2', hcp_number: ' 1090 ', click_number: '1091' },
+      { bid_id: 'b3', hcp_number: null, click_number: '  ' },
+      { bid_id: null, hcp_number: '1100', click_number: null },
+    ])
+    expect([...jobs.entries()]).toEqual([
+      ['b1', { hcpNumber: '1085' }],
+      ['b2', { hcpNumber: '1090' }],
+      ['b3', { hcpNumber: null }],
+    ])
+    const toClose = pickOpenJobRequestsToClose(rows, jobs)
+    expect(toClose).toEqual([
+      { bidId: 'b1', hcpNumber: '1085' },
+      { bidId: 'b2', hcpNumber: '1090' },
+    ])
+    expect(wonHandoffClosedNote({ hcpNumber: toClose[0]?.hcpNumber, bidLabel: 'B398 · ZZ Test', elsewhere: true })).toBe(
+      'J1085 was opened from B398 · ZZ Test elsewhere — nothing left to do',
+    )
   })
 })

@@ -98,7 +98,7 @@ Nobody is asked for the reviewer here. The reviewer turns up later in the GC's e
 
 ## Who sees the button
 
-Dev, leaders, assistants and controllers can open a job from a bid. Estimators send Dispatch a draft instead. See [Estimators send Dispatch a draft](#estimators-send-dispatch-a-draft). Superintendents keep their read-only board and see no button. The **J####** chip opens an existing job for the roles that can open Jobs. An estimator sees the chip but cannot open the job from it.
+Dev, leaders, assistants and controllers can open a job from a bid. Estimators send Dispatch a draft instead. See [Estimators send Dispatch a draft](#estimators-send-dispatch-a-draft). Superintendents keep their read-only board and see no button. The **J####** chip opens an existing job for the roles that can open Jobs. An estimator sees the chip but cannot open the job from it. An estimator in the Dispatch inbox sees the draft but no {{button:outline|Open the job}}.
 
 ## Reference
 

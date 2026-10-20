@@ -71,6 +71,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { JOB_CREATED_FROM_BID_EVENT, jobCreatedTelemetryTarget, type JobCreatedFromBidDetail } from '../../lib/bids/wonMomentActions'
 import { closeOpenJobFromBidRequests } from '../../lib/bids/openJobFromBidDispatchRequest'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   resolveDevelopmentIdForJobPayload,
   validateNewDevelopmentName,
@@ -2303,7 +2304,16 @@ export default function JobFormModal({
         }
         // v2.3143: the Dispatch "open the job" to-do for this bid is done — close it and tell the requester
         // (a role RLS keeps from updating leaves it for the inbox's own sweep).
-        if (bidId) void closeOpenJobFromBidRequests({ bidId, hcpNumber: hcpNumber.trim(), userId: authUser?.id, role: authRole, elsewhere: false })
+        // The note names the job the way the board does, HCP else C# (v2.5670: a C#-only job closed it as "A job opened").
+        if (bidId) {
+          void closeOpenJobFromBidRequests({
+            bidId,
+            hcpNumber: effectiveJobLedgerNumber(hcpNumber, clickNumber),
+            userId: authUser?.id,
+            role: authRole,
+            elsewhere: false,
+          })
+        }
         if (bidId) announceDerivedBidOutcome(bidBefore, await readBidOutcomeForToast(bidId))
       }
       if (customerId && dateMet.trim()) {
