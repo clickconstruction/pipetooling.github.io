@@ -2,7 +2,7 @@
 title: update how done a job is from my dashboard
 category: Field Work
 roles: subcontractor, helpers
-keywords: percent done, % done, progress, my schedule, update progress, how done, field progress
+keywords: percent done, % done, progress, my schedule, update progress, how done, field progress, each line, how far along
 order: 66
 ---
 Every job card on your Dashboard **My Schedule** shows the job's **% done**. Now you can move that number yourself, with no call to the office.
@@ -26,6 +26,10 @@ What got done? (optional) &nbsp; {{button:blue|Save 65%}}
 - You tap the **+** and **−** chips to step the number. The big figure and the ▲/▼ readout always show exactly how far you're moving it from where it was.
 - The bar underneath previews the move the same way your schedule card draws it. Blue is where the job started. Green is the gain you're adding. Amber shows if you're correcting it downward.
 - You can add a quick note about what got done. The note lands on the job's activity thread with your name and the new percent. The office then sees *65% complete — set fixtures in units 3–5* instead of a bare number.
+
+## On a job with more than one line
+
+Many jobs have more than one priced line. On such a job the stepper opens a list instead of the counter. The list reads **How far along is each line?**. It is the same list Leave Report shows. Tap a line to open it. Then tap {{button:outline|25}} {{button:outline|50}} {{button:outline|75}} or {{button:outline|Done ✓}}, or move the slider. Move only the lines you worked on. The rest stay as they are. The **Job** line under the list shows the job's new percent. The button reads {{button:blue|Save · job 38%}}, so you see what gets written. The plus and minus chips stay for a job with one line. Press **Set the whole-job % instead** to get them back on any job. See [file and review field reports](/help/reports) for how the lines add up.
 
 ## What happens when you save
 
