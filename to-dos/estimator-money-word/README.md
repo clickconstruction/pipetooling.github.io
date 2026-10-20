@@ -1,179 +1,61 @@
 ---
-name: "The estimator's word on money"
+name: "The estimator's word on money: the leftovers"
 number: 129
-group: ready
-status: BUILDING 2026-10-19 — PR 1 (the job's people, v2.5646), PR 2 (the money line, v2.5647) and PRs 1 to 6 (v2.5646 to v2.5651, v2.5655) built the day the plan was drawn; left: the pushes of the last two migrations and one types regen PR, then the to-do retires
+group: gated
+status: SHIPPED 2026-10-20 — all six PRs and the types regen live (v2.5646–v2.5651, v2.5655, v2.5656; migrations 20261019060000–20261019120000 pushed); what is left is three owner calls and four small follow-ups
 summary: >
-  On a job an estimator bid, the estimator often talks to the owner more than anyone, so they
-  are the one who hears "the check goes out the 25th" or "I paid it Tuesday", and today they
-  phone the assistant to have it marked. The estimator reads no job row, so no job window, no
-  Pipeline, no bill, no promise chip and no Job activity; the Messages thread they already have
-  can write down a heard day, and the day never reaches the job. This to-do gives the job's
-  people, the office, the job's account manager and the bid's estimator, the job's money and
-  one press for the customer's word on paying: a day, or that they say they paid. Paid stays
-  the bank's word; the claim meets the deposit when it lands.
-next: push 20261019110000 and 20261019120000 after PRs 5 and 6 merge (the first five are pushed), then one types regen PR, then retire the to-do.
-size: S (the people) + M (the line and the door) + M (their word and the bridge) + S (the office side) + M (the lens, the card, the trail) + XS (primary)
-blocker: none
-opinion: the scope is the job's, not the role's; one sheet for both kinds of word; the paid claim does work for the office at allocation and makes none in Needs you
-mockup: to-dos/estimator-money-word/mockup.html
+  The estimator who sold a job can now see its money and write down the customer's word on
+  paying, from the won bid, the Money lens, the Dashboard and the customer's line in Messages.
+  A word that they paid meets the deposit at allocation, or comes back to whoever heard it after
+  a week. A primary's paid verbs hold to their own jobs. This to-do keeps only what the train
+  left: three calls for the owner and four small follow-ups.
+next: The owner answers the three calls below; the live check as an estimator is running in its own session.
+size: XS each
+blocker: The owner's three calls.
+opinion: yes to the estimate's author, hold the job-accounts gate, keep seven days; build the Pipeline chip first
+mockup: not required — the leftovers are owner calls and small follow-ups to screens that shipped; the train's mock-up is in git history at the retiring commit
 ---
 
-# The estimator's word on money (#129)
+# The estimator's word on money: the leftovers (#129)
 
-## Where it stands
+## What shipped
 
-Drawn 2026-10-19 after a trace of the flow (below), re-drawn once on the question *is this the
-best we can do* (the mock-up's last box records what moved). The owner said *we may build it right
-now*. **PR 1 is built** (v2.5646, `20261019060000_job_people.sql`): `is_job_people`, the three promise
-writers and the per-job read on it, the job opened from a bid carrying the bid's account manager or
-estimator as its account manager, and the SQL bed `job-people`. Held from it for the owner: narrowing
-`estimator_can_reach_job_account` (the calls below).
-
-## The ask, in the owner's words
-
-> Sometimes on a job that was bid by an estimator, the estimator is in better communication with
-> the owners than the people doing the job, as such sometimes the estimator is keeping up with
-> when the customer is paying, when they are going to pay, and they have to tell the assistant
-> these things to mark it. I would like to figure out how the flow works and the best way to offer
-> the estimator the tools to mark when jobs are paid and are going to pay.
-
-And then: *this makes me think we should expose the text and calling tools to the estimators as
-well as the assistants, so an estimator can see communication with the client.*
-
-## What the trace found
-
-**The estimator stands on no job.** `jobs_ledger`'s read policy is the office (dev, master,
-assistant, controller) and primary; an estimator reads zero rows, by design
-(`20260914280000_estimator_job_accounts.sql`). So no `/jobs`, no `/accounts-receivable`, money
-hidden on Customers, and the read-only Job Detail pane the role is routed to does a plain
-`jobs_ledger` select and loads nothing. The only door into a job is the Bid Board's job-accounts
-strip (`list_bid_job_account_strip`, v2.3451), a SECURITY DEFINER read that names the newest job
-on each bid.
-
-**The money verbs were built for people who have a job.** The promise (`add_job_payment_promise`,
-the Pipeline's *They said* sheet with the day, who said it and how) is gated by
-`can_write_payment_promises()`: dev, assistant, master, controller. `can_read_payment_promises()`
-adds primary. `mark_job_paid`, `mark_invoice_paid` and the bank allocation admit the same roles
-plus primary, on any job.
-
-**A job attaches to a bid one way.** `jobs_ledger.bid_id → bids`; bids carry no job. It is set by
-the New Job form opened from a won bid (`prefillBidId`), by `snapshot_job_budget_from_bid`, by the
-`estimates_link_job_stamps_bid` trigger and by `auto_create_job_from_signed_estimate`. Nothing is
-keyed on the estimator: no view, RPC or policy says *jobs whose bid I estimated*. The job opened
-from a bid copies neither `bids.estimator_id` nor `bids.account_manager_id`, so a primary who
-estimated the bid loses the job under `primary_scope`, which runs on
-`jobs_ledger.account_manager_user_id`.
-
-**The estimator already has the conversation.** Estimators are on `gc_office_team()`, so they
-have `/messages`, the thread with every text, email and Quo-recorded call, the reply box, take and
-hand, mark owed, and Follow up's slot that writes down a heard day (`write_down`, kind
-*payment*). The day lands in `message_promises` and stops: the bridge to the job
-(`messages/promiseWrites.ts`) is a kernel nothing imports, GC projects only, money team only.
-
-**Two things found on the way.** `estimator_can_reach_job_account(job)` checks that the job has
-a bid, not that the bid is theirs. `list_job_payment_promises()` takes no job and returns every
-live promise company-wide to any primary; and primary's paid verbs are not scoped to their jobs
-while the Stages promise chip hides from them.
-
-## The job's people
-
-The scope is the job's, not the role's. The app already has the field that means *whose customer
-this is*: `jobs_ledger.account_manager_user_id`, the one `primary_scope` runs on. One predicate:
-
-> **`is_job_people(job)`** — the office, the job's account manager, and the bid's estimator or
-> account manager (`bids.estimator_id`, `bids.account_manager_id` through `jobs_ledger.bid_id`).
-
-It gates the promise read and write, the money strip, the trail, and later primary's paid verbs.
-Opening a job from a bid copies the bid's estimator in as the job's account manager (the account
-manager when the bid has one), so from then on the field says what it means and the office changes
-it on the job when it wants the customer back. No policy on `jobs_ledger` changes: the estimator
-still reads no row, and reads the money through one scoped RPC, as the job-accounts strip does.
-
-## The word, one record
-
-**Write down their word** is one press and one sheet, the Pipeline's own `SetPromisedPayDateModal`
-with a switch at the top:
-
-- **They'll pay by…** — the promise as today: the day, who said it, how. `heard_by` is the
-  estimator. The board's chip, Job activity's *They said*, the pay-speed record, red when broken.
-- **They say they paid…** — the same record, a `paid_claim` kind: how they say they paid (check
-  in the mail, paid online, bank transfer, card by phone, not sure), the day they name, the amount
-  (all of it unless typed), who said it, a note. The job stays Billed.
-
-Both are `job_payment_promises` rows, so both show as *They said* in the trail, both void with
-*Never said that*, and the Pipeline's row reads either as its chip. The Messages slot gains the
-*They say they paid* reading beside the day, and the bridge lands both on the customer's open
-billed job under the bill-payer rule, the job named in the thread first; two open jobs ask which.
-Most of the estimator's words arrive in the thread; the Bid Board's press is for what was heard in
-person.
-
-## The office side
-
-The claim does work for the office and makes none. A `paid_claim` is useful at one moment, when
-the deposit lands: the Accounts Receivable bank-deposit allocation names the job whose live claim
-fits the amount and the payer (*Theo wrote Oct 21: Dana says she paid, check #1187 in the mail
-Oct 20*), so the press that allocates is one, and the word then reads *kept*. A check that comes
-to the office goes through the Bill pane's Record payment as today, with the claim shown under the
-amount. Nothing reaches Needs you for the office. A claim with nothing landed behind it after
-seven days turns amber on the row, where the office leaves it alone, and comes back to the person
-who heard it, as a Needs you line and the money line's amber: *Text Dana*, *Write down their
-word*, *Never said that*.
-
-## The line, the door, the lens
-
-Under a won bid on the Bid Board, for the job's people: the job's number and stage, the bill day
-and what is still open after the payment rule (the AR page's bill truth), the latest live word with
-who said it, how and who heard it, and the payer's record from the pay-speed kernel (*keeps 3 of
-4 · slips ~6 d*). One read per page, `list_bid_money_strip(p_bid_ids)` beside the job-accounts
-strip. Its presses: **Send the pay page** (the customer's door with the job's box and the `{bill}`
-line lit, so the papers read works for these jobs), **Write down their word**, and past their word
-**Text Dana**. The won bid's row gets the customer's speech bubble the Pipeline row has (Call ·
-Text · Email · Open their thread, who wrote last, the waiting dot), and a **Trail** press opens
-Job activity read-only for the job's people: the bill, the sends, every *They said* and the
-conversation on one timeline.
-
-**Money on my bids**, beside Job accounts: every job born of my bids with money open, past their
-word first, then no word, then waiting, then they-say-paid. With *Only my bids* off the office
-reads who is talking to whom. The Dashboard's Needs you gets the card.
-
-## The plan
-
-| PR | What | Server |
-|---|---|---|
-| 1 · the job's people | **built v2.5646**: `is_job_people(job)`; the promise writers and `list_job_payment_promises_for(job)` on it, the company-wide read kept for the office's readers; the job opened from a bid copies the bid's account manager or estimator as its account manager | one migration + SQL bed |
-| 2 · the line + the door | **built v2.5647**: `list_bid_money_strip`; the money line under Edit Bid's Job block, read-only, with Send the pay page; the customer's door from the line (the board row's line rides the lens's one read in PR 5) | one migration |
-| 3a · their word | **built v2.5648**: the `paid_claim` kind with its method and amount, `add_job_payment_claim`, the one sheet with its switch from the money line, the trail's They said for a claim; the company-wide reads promises only, the per-job read both | one migration |
-| 3b · the thread | **built v2.5649**: cut 2's heard-day offer was never drawn, so the door is the sheet itself under a customer's line (the line's job, else the one with money open, else a pick), over `list_customer_money_strip` | one migration |
-| 4 · the office side | **built v2.5650**: `list_paid_claims`; the claim that fits a deposit leads the AR allocation pane; a week with nothing landed comes back to who heard it as a Needs you line and amber on the money line; the Pipeline row's own claim chip left | one migration |
-| 5 · the lens, the card, the trail | **built v2.5651**: the Followup bar's Money lens over the board's one read; the Dashboard's Money on your bids card over `list_my_money_strip`; Trail on a money line, the money's story from the line's own read and the job's lines (the office's Job activity stays the office's) | one migration |
-| 6 · primary | **built v2.5655** on the owner's word: the six paid verbs (`mark_job_paid` ×2, `mark_invoice_paid`, `apply_mercury_bank_payment_allocations` with its three per-line checks, `remove_jobs_ledger_payment_and_reconcile`, `record_job_tip_from_deposit`) pasted whole from the repo with the job's check narrowed to `is_job_people` for a primary, generated by a script that asserted one clause per check | one migration |
-
-## How to verify
-
-- PR 1: the SQL bed seeds an estimator on a bid with a job, an office user, a primary who is the
-  job's account manager, and a stranger; `is_job_people` answers true, true, true, false;
-  `add_job_payment_promise` by the estimator writes with `heard_by` them and the stranger's
-  refuses in words; `list_job_payment_promises(job)` returns the row to the three and nothing to
-  the fourth; a job opened from a bid carries the estimator as its account manager.
-- PR 2: signed in as an estimator on prod (the dev-login recipe), the won bid's row shows the line
-  with the bill truth the AR page shows for that job and no other job's; a bid of another
-  estimator shows no line unless the person is office.
-- PR 3: a day written from the thread shows on the Pipeline row's chip and in Job activity with
-  the estimator as who heard it; *Never said that* on the Pipeline voids it.
-- PR 4: a Mercury deposit of the claim's amount offers the claim's job first in the allocation;
-  seven days with none, the estimator's Needs you carries the line.
+Seven PRs, 2026-10-19 to 2026-10-20, each with its release note and `docs/recent-features/` fragment:
+v2.5646 the job's people (`is_job_people`), v2.5647 the money line under a won bid, v2.5648 the
+customer's word as one sheet (a day they will pay by, or that they say they paid), v2.5649 the
+same press under a customer's line in Messages, v2.5650 the claim at the deposit allocation and a
+week with nothing landed back to whoever heard it, v2.5651 the Money lens, the Dashboard card and
+the trail, v2.5655 a primary's paid verbs held to the job's people, v2.5656 the types. The guide is
+*see where a job you bid stands on money*.
 
 ## The owner's calls
 
 - **Jobs from an estimate with no bid.** Should the estimate's author count among the job's
   people when the job is made from a signed estimate (`estimates.created_by`, copied by
-  `auto_create_job_from_signed_estimate`)? The opinion is yes; it widens the rule to
+  `auto_create_job_from_signed_estimate`)? The opinion is yes; it widens `is_job_people` to
   residential jobs the estimator wrote the estimate for.
-- **Becoming the account manager on open.** A primary who bids as estimator already gets the job
-  this way; for an estimator it is new. The office changes the account manager on the job when it
-  wants the customer back, a control that exists today.
-- **The stale day.** Seven days is the mock-up's number; a mailed check is usually in by then.
-- **The job-accounts gate.** `estimator_can_reach_job_account(job)` opens any bid-born job's supply-house
-  account to any estimator. Narrowing it to the job's people is one line, but it changes the Job accounts
-  lens for an estimator working another's bids (*Only my bids* off); held until the owner says.
+- **The job-accounts gate.** `estimator_can_reach_job_account(job)` opens any bid-born job's
+  supply-house account to any estimator. Narrowing it to the job's people is one line, but it
+  changes the Job accounts lens for an estimator working another's bids. The opinion is to hold.
+- **The stale day.** A paid claim with nothing landed comes back after seven days
+  (`STALE_AFTER_DAYS` in `src/lib/jobs/paidClaims.ts`). A mailed check is usually in by then.
+
+## The follow-ups
+
+- **The Pipeline row's chip for a paid claim.** The board reads `job_promised_pay_dates`, which a
+  claim never touches, so the office sees a claim only in Job activity and at allocation. A
+  *They say paid* chip on the Billed row, from `list_paid_claims`, would close that.
+- **The live check as an estimator.** Running in its own session: every surface signed in as an
+  estimator, and two suspected breaks from the trace — the Bid Board offers estimators *Open the
+  job* while the `jobs_ledger` insert policy has no estimator branch, and the read-only Job Detail
+  pane they are routed to reads no row.
+- **The heard-day offer in Messages.** Cut 2's offer under a line (`message_promises`,
+  `write_down`) was never drawn; a voicemail's *Keep the day* writes an offered row nobody reads
+  back. When it is drawn, its press should open the same sheet with the day filled in.
+- **The untyped calls.** The seven new functions are in `src/types/database.ts` since v2.5656; the
+  client still calls them `as never`. Type each on the next change that touches it.
+
+## Retire when
+
+The three calls are answered and built or declined, and the four follow-ups are shipped or moved
+to their own to-dos.
