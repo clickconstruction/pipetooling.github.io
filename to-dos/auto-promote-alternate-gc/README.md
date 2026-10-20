@@ -1,6 +1,6 @@
 ---
 name: "Bids: taking the GC off hands the bid to the alternate"
-number: 134
+number: 136
 group: close
 status: BUILT 2026-10-20 — the owner took the five defaults the same day; migration 20261020100000 + client in one PR (v2.5682); left: the live walk (renumbered from 133, which PR #5912 took while this folder sat uncommitted)
 summary: >
@@ -21,7 +21,7 @@ mockup: to-dos/auto-promote-alternate-gc/mockup.html
 ver: v2.2383 · v2.2416 · v2.3130 base · v2.5682
 ---
 
-# Taking the GC off hands the bid to the alternate (#134)
+# Taking the GC off hands the bid to the alternate (#136)
 
 ## The ask, in Wendi's words
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the promote/take-off confirm (punch list #134): one alternate gets the
+ * Render smoke for the promote/take-off confirm (punch list #136): one alternate gets the
  * plain sentence and both doors; two alternates get the radio with the recommended pick
  * preselected; the promote mode keeps the old GC and says so; a legacy-builder primary
  * loses the keep door. The swap itself is the promote_bid_gc RPC, pinned by the kernel

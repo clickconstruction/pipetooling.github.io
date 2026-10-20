@@ -1,5 +1,5 @@
 /**
- * Promote a GC on a bid (punch list #134, Wendi's report): the pure pieces behind the ×
+ * Promote a GC on a bid (punch list #136, Wendi's report): the pure pieces behind the ×
  * on the ★ Bid's-GC card and "make bid's GC" on alternate cards — when the × shows, who
  * is recommended to step up, and what the confirm says. The swap itself is the
  * `promote_bid_gc` RPC (migration 20261020100000), which re-keys the departing GC's sent

@@ -148,11 +148,11 @@ export type BidGcRecipientsRowProps = {
   onCreateNew?: (onCreated: (customer: Customer | null) => void) => void
   /** Per-GC due / submitted-to / ITB editor slot (Phase 4) — rendered under each card. */
   renderGcDetails?: (customerId: string) => ReactNode
-  /** Bump to reload the rows after an outside write (the promote swap, #134). */
+  /** Bump to reload the rows after an outside write (the promote swap, #136). */
   refreshToken?: number
-  /** The parent's mirror of the rows — feeds the ★ card's × and the promote confirm (#134). */
+  /** The parent's mirror of the rows — feeds the ★ card's × and the promote confirm (#136). */
   onRowsChange?: (rows: BidGcRecipientRow[]) => void
-  /** "make bid's GC" on each card (#134) — opens the promote confirm for that GC. */
+  /** "make bid's GC" on each card (#136) — opens the promote confirm for that GC. */
   onMakePrimary?: (customerId: string) => void
 }
 
@@ -202,7 +202,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, o
   }, [bidId, refreshToken])
 
   // Mirror the rows up so the parent can gate the ★ card's × and fill the promote
-  // confirm (#134). `onRowsChange` is a parent setState — stable, no loop.
+  // confirm (#136). `onRowsChange` is a parent setState — stable, no loop.
   useEffect(() => {
     onRowsChange?.(rows)
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -231,7 +231,7 @@ export function BidFormModal(props: BidFormModalProps) {
   // sent value — the Won section asks which the GC took.
   const [bidVersionRows, setBidVersionRows] = useState<OptionVersion[]>([])
   const [versionSentValues, setVersionSentValues] = useState<Record<string, number | null>>({})
-  // #134 (v2.5682): the promote swap — the alternates mirrored up from BidGcRecipientsRow,
+  // #136 (v2.5682): the promote swap — the alternates mirrored up from BidGcRecipientsRow,
   // the open confirm, and the latest send date per version (feeds the recommended pick).
   const [alternateRows, setAlternateRows] = useState<BidGcRecipientRow[]>([])
   const [gcRowsRefresh, setGcRowsRefresh] = useState(0)
@@ -431,7 +431,7 @@ export function BidFormModal(props: BidFormModalProps) {
     })()
   }
 
-  // #134 (v2.5682): the other GCs on the bid, shaped for the promote confirm. The ★ card's
+  // #136 (v2.5682): the other GCs on the bid, shaped for the promote confirm. The ★ card's
   // × and "make bid's GC" on the alternate cards both end in the promote_bid_gc RPC, which
   // re-keys the departing GC's sent versions, per-GC state and rooms so history never
   // re-badges onto the new GC.
@@ -1333,7 +1333,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     const value = e.target.value
                     setGcCustomerSearch(value)
                     setGcCustomerDropdownOpen(true)
-                    // #134: on a saved bid the pick itself swaps the GC (promote RPC), so
+                    // #136: on a saved bid the pick itself swaps the GC (promote RPC), so
                     // typing is just searching — clearing the id here would let autosave
                     // write customer_id NULL mid-search.
                     if (gcCustomerId && !editingBid) {
@@ -1365,7 +1365,7 @@ export function BidFormModal(props: BidFormModalProps) {
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     }}
                   >
-                    {/* #134: the GCs already on this bid come first — one press, no retyping.
+                    {/* #136: the GCs already on this bid come first — one press, no retyping.
                         In edit mode the pick runs the promote swap (attribution re-keys). */}
                     {editingBid && promoteAlternates.length > 0 ? (() => {
                       const q = gcCustomerSearch.toLowerCase()
@@ -1434,7 +1434,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     )}
                     {customers
                       .filter((c) => {
-                        // Alternates already listed under "On this bid" above (#134).
+                        // Alternates already listed under "On this bid" above (#136).
                         if (editingBid && promoteAlternates.some((a) => a.customerId === c.id)) return false
                         const searchLower = gcCustomerSearch.toLowerCase()
                         const nameLower = c.name.toLowerCase()

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { promoteConfirmCopy, type PromoteAlternate, type PromoteConfirmMode } from '../../lib/bids/promoteBidGc'
 
 /**
- * The promote/take-off confirm (punch list #134): one sentence, both outcomes on the
+ * The promote/take-off confirm (punch list #136): one sentence, both outcomes on the
  * table. Opened by the × on the ★ Bid's-GC card (mode 'remove' — the departing GC off
  * the bid, "keep as an alternate" one click away; with 2+ alternates a radio asks who
  * steps up) and by "make bid's GC" on an alternate card (mode 'promote' — the old GC
