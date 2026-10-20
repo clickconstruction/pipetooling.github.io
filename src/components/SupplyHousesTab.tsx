@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { summarizeSupplyHouseBalances, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
 import { SupplyHousePhoneScreen } from './materials/SupplyHousePhoneScreen'
 import { CreditPairPick } from './materials/CreditPairPick'
@@ -19,12 +19,15 @@ import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import {
   AGING_BUCKETS,
+  agingCellTitle,
   buildSupplyHouseAgingMatrix,
   countSupplyHousesPastDue60,
   supplyHouseAgingPhoneNote,
   daysPastDue,
+  invoicesForAgingCell,
   nextMonthlyPaymentDueYmd,
   type AgingBucketKey,
+  type AgingCellKey,
 } from '../lib/supplyHouseAging'
 import { SupplyHouseDirectory } from './materials/SupplyHouseDirectory'
 import { useSupplyHouseEditor } from './materials/useSupplyHouseEditor'
@@ -93,6 +96,23 @@ type SupplyHouseSummaryRow = {
   monthlyPaymentDay: number | null
   lastInvoiceUpdatedAt: string | null
   lastInvoicePaidAt: string | null
+}
+
+/**
+ * The aging fetch's rows (v2.5673): enough to draw the matrix AND to list a cell's invoices
+ * in the drill-down modal, still one slim select — never the whole table row.
+ */
+type AgingInvoiceRow = {
+  id: string
+  supply_house_id: string
+  invoice_number: string
+  purchase_order_number: string | null
+  invoice_date: string
+  amount: number
+  due_date: string | null
+  on_job_account: boolean | null
+  link: string | null
+  credits_invoice_id: string | null
 }
 
 /**
@@ -184,9 +204,14 @@ export function SupplyHousesTab({
 
   const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
   const [supplyHouseSummaryLoading, setSupplyHouseSummaryLoading] = useState(false)
-  const [agingUnpaidInvoices, setAgingUnpaidInvoices] = useState<
-    Array<{ supply_house_id: string; amount: number; due_date: string | null }>
-  >([])
+  const [agingUnpaidInvoices, setAgingUnpaidInvoices] = useState<AgingInvoiceRow[]>([])
+  /** The open aging-cell drill-down (v2.5673): which cell's invoices the modal lists. */
+  const [agingCellModal, setAgingCellModal] = useState<{ houseId: string | null; cell: AgingCellKey } | null>(null)
+  /** The open cell's job allocations and job names, fetched once per modal open. */
+  const [agingCellJobs, setAgingCellJobs] = useState<{
+    allocations: Record<string, InvoiceJobAllocation[]>
+    jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }>
+  }>({ allocations: {}, jobs: {} })
   const [selectedSupplyHouseForDetail, setSelectedSupplyHouseForDetail] = useState<SupplyHouse | null>(null)
   const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoiceWithAllocations[]>([])
   const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
@@ -371,13 +396,9 @@ export function SupplyHousesTab({
     }
     const { data: invoices } = await supabase
       .from('supply_house_invoices')
-      .select('supply_house_id, amount, is_paid, updated_at, paid_at, due_date, on_job_account')
-    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean; updated_at: string | null; paid_at: string | null; due_date: string | null; on_job_account: boolean | null }[]
-    setAgingUnpaidInvoices(
-      invoicesList
-        .filter((inv) => !inv.is_paid)
-        .map((inv) => ({ supply_house_id: inv.supply_house_id, amount: inv.amount, due_date: inv.due_date, on_job_account: inv.on_job_account })),
-    )
+      .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id')
+    const invoicesList = (invoices ?? []) as (AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null })[]
+    setAgingUnpaidInvoices(invoicesList.filter((inv) => !inv.is_paid))
     // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
     const rows: SupplyHouseSummaryRow[] = summarizeSupplyHouseBalances(housesList, invoicesList)
     setSupplyHouseSummary(rows)
@@ -505,6 +526,45 @@ export function SupplyHousesTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenHouseId, supplyHousesList])
 
+  // The aging-cell modal's Jobs column (v2.5673): one allocations read for just the listed
+  // invoices, then the job names — fetched once per open, never for the whole book.
+  useEffect(() => {
+    if (!agingCellModal) {
+      setAgingCellJobs({ allocations: {}, jobs: {} })
+      return
+    }
+    const ids = invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz()).map((r) => r.id)
+    if (ids.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('supply_house_invoice_job_allocations')
+        .select('invoice_id, job_id, pct')
+        .in('invoice_id', ids)
+      if (cancelled) return
+      const allocations: Record<string, InvoiceJobAllocation[]> = {}
+      for (const a of (data ?? []) as { invoice_id: string; job_id: string; pct: number }[]) {
+        ;(allocations[a.invoice_id] ??= []).push({ job_id: a.job_id, pct: Number(a.pct) })
+      }
+      const jobIds = [...new Set(Object.values(allocations).flat().map((a) => a.job_id))]
+      if (jobIds.length === 0) {
+        setAgingCellJobs({ allocations, jobs: {} })
+        return
+      }
+      const { data: jobRows } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds })
+      if (cancelled) return
+      const jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }> = {}
+      for (const r of (jobRows ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
+        jobs[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
+      }
+      setAgingCellJobs({ allocations, jobs })
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agingCellModal])
+
   useEffect(() => {
     if (!invoiceFormOpen || !invoiceJobSearchText.trim()) {
       setInvoiceJobSearchResults([])
@@ -558,7 +618,7 @@ export function SupplyHousesTab({
   // provider (this tab also lives on /materials).
   const narrowAging = useNarrowViewport640()
   // The invoice form is taller than a phone screen — freeze the page behind it so the panel is the only scroller.
-  useBodyScrollLock(invoiceFormOpen)
+  useBodyScrollLock(invoiceFormOpen || agingCellModal != null)
   const housesPastDue60 = countSupplyHousesPastDue60(agingMatrix)
   const houseEditor = useSupplyHouseEditor({
     myRole,
@@ -807,6 +867,29 @@ export function SupplyHousesTab({
     loadSupplyHouseDetail(sh)
   }
 
+  /**
+   * A money cell of the aging map is a door (v2.5673): click or Enter opens the invoices
+   * behind it. Spread onto the `<td>`; stops the row's own open-the-house click.
+   */
+  function agingCellDoorProps(houseId: string | null, cell: AgingCellKey, title: string) {
+    const open = () => setAgingCellModal({ houseId, cell })
+    return {
+      role: 'button' as const,
+      tabIndex: 0,
+      title,
+      onClick: (e: ReactMouseEvent<HTMLTableCellElement>) => {
+        e.stopPropagation()
+        open()
+      },
+      onKeyDown: (e: ReactKeyboardEvent<HTMLTableCellElement>) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        e.stopPropagation()
+        open()
+      },
+    }
+  }
+
   return (
     <div>
       {showTitle && (
@@ -993,12 +1076,13 @@ export function SupplyHousesTab({
                             return (
                               <td
                                 key={b.key}
+                                {...(has ? agingCellDoorProps(row.supplyHouseId, b.key, `${row.name} — ${agingCellTitle(b.key)}: see the invoices`) : {})}
                                 style={{
                                   padding: '0.6rem 0.75rem',
                                   textAlign: 'right',
                                   fontVariantNumeric: 'tabular-nums',
                                   whiteSpace: 'nowrap',
-                                  ...(has ? AGING_CELL_STYLES[b.key] : { color: 'var(--text-faint-300)' }),
+                                  ...(has ? { ...AGING_CELL_STYLES[b.key], cursor: 'pointer' } : { color: 'var(--text-faint-300)' }),
                                 }}
                               >
                                 {has ? `$${formatCurrency(amount)}` : '—'}
@@ -1009,11 +1093,17 @@ export function SupplyHousesTab({
                             )
                           })}
                           {agingHasCredits ? (
-                            <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.creditsOpen < -0.005 ? { color: 'var(--text-green-700)' } : { color: 'var(--text-faint-300)' }) }}>
+                            <td
+                              {...(row.creditsOpen < -0.005 ? agingCellDoorProps(row.supplyHouseId, 'credits', `${row.name} — open credits: see the memos`) : {})}
+                              style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.creditsOpen < -0.005 ? { color: 'var(--text-green-700)', cursor: 'pointer' } : { color: 'var(--text-faint-300)' }) }}
+                            >
                               {row.creditsOpen < -0.005 ? `−$${formatCurrency(Math.abs(row.creditsOpen))}` : '—'}
                             </td>
                           ) : null}
-                          <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                          <td
+                            {...(row.total > 0.005 ? agingCellDoorProps(row.supplyHouseId, 'owed', `${row.name} — every unpaid invoice`) : {})}
+                            style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.total > 0.005 ? { cursor: 'pointer' } : {}) }}
+                          >
                             ${formatCurrency(row.total)}
                             {markJobAccountInvoices && row.jobAccountTotal > 0.005 ? (
                               <span title={JOB_ACCOUNT_LINE_TITLE} style={JOB_ACCOUNT_LINE_STYLE}>${formatCurrency(row.jobAccountTotal)} job acct</span>
@@ -1030,17 +1120,27 @@ export function SupplyHousesTab({
                         const amount = agingMatrix.totals[b.key]
                         const has = amount > 0.005
                         return (
-                          <td key={b.key} style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : 'var(--text-faint-300)' }}>
+                          <td
+                            key={b.key}
+                            {...(has ? agingCellDoorProps(null, b.key, `Every house — ${agingCellTitle(b.key)}: see the invoices`) : {})}
+                            style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : 'var(--text-faint-300)', ...(has ? { cursor: 'pointer' } : {}) }}
+                          >
                             {has ? `$${formatCurrency(amount)}` : '—'}
                           </td>
                         )
                       })}
                       {agingHasCredits ? (
-                        <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: 'var(--text-green-700)' }}>
+                        <td
+                          {...agingCellDoorProps(null, 'credits', 'Every house — open credits: see the memos')}
+                          style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: 'var(--text-green-700)', cursor: 'pointer' }}
+                        >
                           −${formatCurrency(Math.abs(agingMatrix.creditsTotal))}
                         </td>
                       ) : null}
-                      <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      <td
+                        {...(agingMatrix.grandTotal > 0.005 ? agingCellDoorProps(null, 'owed', 'Every house — every unpaid invoice') : {})}
+                        style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(agingMatrix.grandTotal > 0.005 ? { cursor: 'pointer' } : {}) }}
+                      >
                         ${formatCurrency(agingMatrix.grandTotal)}
                       </td>
                     </tr>
@@ -1447,6 +1547,162 @@ export function SupplyHousesTab({
       ) : null}
 
       <SupplyHouseJobAccountsSection />
+
+      {/* The aging-cell drill-down (v2.5673): exactly the invoices the cell sums, in the
+          vocabulary of the expanded house's own Invoices table. Read-only in this PR. */}
+      {agingCellModal && (() => {
+        const { houseId, cell } = agingCellModal
+        const cellRows = invoicesForAgingCell(agingUnpaidInvoices, houseId, cell, agingTodayYmd)
+        const houseName = houseId
+          ? supplyHouseSummary.find((r) => r.supply_house_id === houseId)?.name ??
+            supplyHousesList.find((s: SupplyHouse) => s.id === houseId)?.name ??
+            'This house'
+          : 'Every house'
+        const total = cellRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+        const jobAcctTotal = cellRows.reduce(
+          (s, r) => s + (r.on_job_account === true && Number(r.amount ?? 0) > 0 ? Number(r.amount ?? 0) : 0),
+          0,
+        )
+        const isCredits = cell === 'credits'
+        const noun = isCredits
+          ? cellRows.length === 1 ? 'credit memo' : 'credit memos'
+          : cellRows.length === 1 ? 'invoice' : 'invoices'
+        // The footer row's modal groups by house, in the matrix's own order (owed desc).
+        const groups = houseId
+          ? [{ key: houseId, name: null as string | null, rows: cellRows }]
+          : agingMatrix.rows
+              .map((r) => ({ key: r.supplyHouseId, name: r.name as string | null, rows: cellRows.filter((inv) => inv.supply_house_id === r.supplyHouseId) }))
+              .filter((g) => g.rows.length > 0)
+        return (
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setAgingCellModal(null)
+            }}
+            style={{ position: 'fixed', inset: 0, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}
+          >
+            <div role="dialog" aria-modal="true" aria-label={`${houseName} — ${agingCellTitle(cell)}`} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(800) }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>{houseName} — {agingCellTitle(cell)}</h3>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                    {cellRows.length} {noun} · unpaid only — exactly what the cell sums
+                  </p>
+                </div>
+                <button type="button" onClick={() => setAgingCellModal(null)} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
+                    <tr>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>{isCredits ? 'Credit #' : 'Invoice #'}</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>PO #</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Due</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Jobs</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Amount</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cellRows.length === 0 ? (
+                      <tr><td colSpan={7} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>Nothing here any more.</td></tr>
+                    ) : (
+                      groups.map((g) => (
+                        <Fragment key={g.key}>
+                          {g.name ? (
+                            <tr>
+                              <td colSpan={7} style={{ padding: '0.6rem 0.75rem 0.25rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                                {g.name} · {(() => { const s = g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0); return s < 0 ? `−$${formatCurrency(Math.abs(s))}` : `$${formatCurrency(s)}` })()}
+                              </td>
+                            </tr>
+                          ) : null}
+                          {g.rows.map((inv) => {
+                            const allocations = agingCellJobs.allocations[inv.id] ?? []
+                            return (
+                              <tr key={inv.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                  {inv.invoice_number}
+                                  {(() => {
+                                    const pair = creditPairingLine(inv, agingUnpaidInvoices)
+                                    return pair ? <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{pair}</span> : null
+                                  })()}
+                                </td>
+                                <td style={{ padding: '0.5rem 0.75rem' }}>{inv.purchase_order_number?.trim() ? inv.purchase_order_number : '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>{formatYmdLocal(inv.invoice_date)}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                  {inv.due_date ? formatYmdLocal(inv.due_date) : '—'}
+                                  {(() => {
+                                    // A credit never wears an age chip — it has a size, not an age (v2.3500).
+                                    if (!inv.due_date || isSupplyCredit(inv.amount)) return null
+                                    const days = daysPastDue(inv.due_date, agingTodayYmd)
+                                    if (days <= 0) return null
+                                    return (
+                                      <span style={{ marginLeft: '0.4rem', padding: '0.1rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)', color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)' }}>
+                                        {days}d past due
+                                      </span>
+                                    )
+                                  })()}
+                                </td>
+                                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
+                                  {inv.on_job_account === true && (
+                                    <span title={JOB_ACCOUNT_LINE_TITLE} style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap' }}>
+                                      Job acct
+                                    </span>
+                                  )}
+                                  {allocations.length > 0
+                                    ? allocations
+                                        .map((a) => {
+                                          const d = agingCellJobs.jobs[a.job_id]
+                                          return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name} (${a.pct}%)` : a.job_id.slice(0, 8)
+                                        })
+                                        .join(', ')
+                                    : inv.on_job_account === true
+                                      ? ''
+                                      : '—'}
+                                </td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(isSupplyCredit(inv.amount) ? { color: 'var(--text-green-700)', fontWeight: 600 } : {}) }}>
+                                  {isSupplyCredit(inv.amount) ? `−$${formatCurrency(Math.abs(inv.amount))}` : `$${formatCurrency(inv.amount)}`}
+                                </td>
+                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                  {inv.link ? (
+                                    <a href={inv.link} target="_blank" rel="noreferrer" title="The invoice" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>View</a>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </Fragment>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '0.6rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ fontWeight: 600 }}>
+                  {isCredits ? 'Open credits' : 'Cell total'}: {total < 0 ? `−$${formatCurrency(Math.abs(total))}` : `$${formatCurrency(total)}`}
+                  {markJobAccountInvoices && jobAcctTotal > 0.005 ? (
+                    <span title={JOB_ACCOUNT_LINE_TITLE} style={{ ...JOB_ACCOUNT_LINE_STYLE, whiteSpace: 'normal' }}>${formatCurrency(jobAcctTotal)} job acct — the owner's debt, not Click's</span>
+                  ) : null}
+                </div>
+                {houseId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAgingCellModal(null)
+                      openHouseFromAging(houseId)
+                    }}
+                    style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Open {houseName} ›
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {houseEditor.modal}
 
