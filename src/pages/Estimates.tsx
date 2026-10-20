@@ -96,6 +96,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_OFFICE_TEAM } from '../lib/gc/access'
 import { formatCurrency } from '../lib/format'
 import { TellCustomerSheet } from '../components/customers/TellCustomerSheet'
+import { EstimateWhatWent } from '../components/estimates/EstimateWhatWent'
 import type { TellSendEmailAnswer } from '../lib/tellCustomer/tellCustomer'
 import { estimateDraftFormSnapshot, shouldDiscardFreshEstimateDraftOnLeave } from '../lib/estimateFreshDraftDiscard'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
@@ -4638,6 +4639,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
       {!isDraft && (
         <div style={{ marginTop: '1rem' }}>
+          {row.customer_id && row.sent_at && (row.status === 'sent' || row.status === 'customer_accepted') ? (
+            // What went (v2.5683, punch list #133 PR 2): the receipt's facts, kept where the estimate is read.
+            <EstimateWhatWent
+              customerId={row.customer_id}
+              customerName={customers.find((c) => c.id === row.customer_id)?.name ?? null}
+              email={row.customer_email ?? null}
+              sentAt={row.sent_at}
+            />
+          ) : null}
           <div
             style={{
               marginBottom: '1rem',
