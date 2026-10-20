@@ -67,7 +67,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
 import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
-import { openedViaPhrase, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
+import { agingCellBandWords, agingCellChipState, openedViaPhrase, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -212,6 +212,17 @@ export function SupplyHousesTab({
     allocations: Record<string, InvoiceJobAllocation[]>
     jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }>
   }>({ allocations: {}, jobs: {} })
+  /**
+   * PR 2 (punch list #132): the (job, house) account rows behind the modal's chips, keyed
+   * `${jobId}:${houseId}` (an entry of null = checked, none on record), the job-accounts reps
+   * per house for the Mark opened sheet, which row's amber band is unfolded, and which row's
+   * Mark opened sheet is up. All cleared when the modal closes.
+   */
+  const [agingCellAccounts, setAgingCellAccounts] = useState<Record<string, JobSupplyHouseAccountRow | null>>({})
+  const [agingCellAccountsLoaded, setAgingCellAccountsLoaded] = useState(false)
+  const [agingCellReps, setAgingCellReps] = useState<Record<string, JobAccountRep[]>>({})
+  const [agingCellBandFor, setAgingCellBandFor] = useState<string | null>(null)
+  const [agingCellMarkOpenedFor, setAgingCellMarkOpenedFor] = useState<AgingInvoiceRow | null>(null)
   const [selectedSupplyHouseForDetail, setSelectedSupplyHouseForDetail] = useState<SupplyHouse | null>(null)
   const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoiceWithAllocations[]>([])
   const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
@@ -531,10 +542,20 @@ export function SupplyHousesTab({
   useEffect(() => {
     if (!agingCellModal) {
       setAgingCellJobs({ allocations: {}, jobs: {} })
+      setAgingCellAccounts({})
+      setAgingCellAccountsLoaded(false)
+      setAgingCellReps({})
+      setAgingCellBandFor(null)
+      setAgingCellMarkOpenedFor(null)
       return
     }
-    const ids = invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz()).map((r) => r.id)
-    if (ids.length === 0) return
+    const cellRows = invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz())
+    const ids = cellRows.map((r) => r.id)
+    if (ids.length === 0) {
+      setAgingCellAccountsLoaded(true)
+      return
+    }
+    const houseByInvoice = new Map(cellRows.map((r) => [r.id, r.supply_house_id]))
     let cancelled = false
     void (async () => {
       const { data } = await supabase
@@ -547,23 +568,73 @@ export function SupplyHousesTab({
         ;(allocations[a.invoice_id] ??= []).push({ job_id: a.job_id, pct: Number(a.pct) })
       }
       const jobIds = [...new Set(Object.values(allocations).flat().map((a) => a.job_id))]
-      if (jobIds.length === 0) {
-        setAgingCellJobs({ allocations, jobs: {} })
-        return
+      // PR 2: the chips need the (job, house) account rows — only the single-job pairs can
+      // carry the flag — and each involved house's job-accounts reps for the Mark opened sheet.
+      const pairs: Array<{ jobId: string; houseId: string }> = []
+      for (const [invoiceId, list] of Object.entries(allocations)) {
+        const houseId = houseByInvoice.get(invoiceId)
+        if (list.length === 1 && houseId) pairs.push({ jobId: list[0]!.job_id, houseId })
       }
-      const { data: jobRows } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds })
+      const pairJobIds = [...new Set(pairs.map((p) => p.jobId))]
+      const pairHouseIds = [...new Set(pairs.map((p) => p.houseId))]
+      const [jobRes, accRes, repRes] = await Promise.all([
+        jobIds.length > 0 ? supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
+        pairs.length > 0
+          ? supabase
+              .from('job_supply_house_accounts')
+              .select('id, job_id, supply_house_id, status, account_ref, opened_via, rep_contact_id, requested_by, requested_at, requested_from_counter, opened_by, opened_at, note')
+              .in('job_id', pairJobIds)
+              .in('supply_house_id', pairHouseIds)
+          : Promise.resolve({ data: [] }),
+        pairHouseIds.length > 0
+          ? supabase
+              .from('supply_house_contacts')
+              .select('id, supply_house_id, name, email, phone')
+              .in('supply_house_id', pairHouseIds)
+              .eq('role', 'job_accounts')
+              .is('archived_at', null)
+          : Promise.resolve({ data: [] }),
+      ])
       if (cancelled) return
       const jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }> = {}
-      for (const r of (jobRows ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
+      for (const r of (jobRes.data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
         jobs[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
       }
+      const accounts: Record<string, JobSupplyHouseAccountRow | null> = {}
+      for (const p of pairs) accounts[`${p.jobId}:${p.houseId}`] = null
+      for (const row of (accRes.data ?? []) as JobSupplyHouseAccountRow[]) {
+        accounts[`${row.job_id}:${row.supply_house_id}`] = row
+      }
+      const reps: Record<string, JobAccountRep[]> = {}
+      for (const c of (repRes.data ?? []) as Array<JobAccountRep & { supply_house_id: string }>) {
+        ;(reps[c.supply_house_id] ??= []).push(c)
+      }
       setAgingCellJobs({ allocations, jobs })
+      setAgingCellAccounts(accounts)
+      setAgingCellReps(reps)
+      setAgingCellAccountsLoaded(true)
     })()
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agingCellModal])
+
+  /**
+   * PR 2's one write: the flag flips, every reader re-derives from the same state (the
+   * matrix, the teal lines, the open modal's footer), and an expanded house showing the
+   * same invoice reloads so its table agrees.
+   */
+  async function setInvoiceJobAcct(inv: AgingInvoiceRow, on: boolean) {
+    const { error } = await supabase.from('supply_house_invoices').update({ on_job_account: on }).eq('id', inv.id)
+    if (error) {
+      setError(`Could not ${on ? 'flag' : 'unflag'} ${inv.invoice_number}: ${error.message}`)
+      return
+    }
+    setAgingUnpaidInvoices((prev) => prev.map((r) => (r.id === inv.id ? { ...r, on_job_account: on } : r)))
+    setAgingCellBandFor(null)
+    if (selectedSupplyHouseForDetail?.id === inv.supply_house_id) void loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+  }
 
   useEffect(() => {
     if (!invoiceFormOpen || !invoiceJobSearchText.trim()) {
@@ -1553,11 +1624,11 @@ export function SupplyHousesTab({
       {agingCellModal && (() => {
         const { houseId, cell } = agingCellModal
         const cellRows = invoicesForAgingCell(agingUnpaidInvoices, houseId, cell, agingTodayYmd)
-        const houseName = houseId
-          ? supplyHouseSummary.find((r) => r.supply_house_id === houseId)?.name ??
-            supplyHousesList.find((s: SupplyHouse) => s.id === houseId)?.name ??
-            'This house'
-          : 'Every house'
+        const houseNameOf = (id: string) =>
+          supplyHouseSummary.find((r) => r.supply_house_id === id)?.name ??
+          supplyHousesList.find((s: SupplyHouse) => s.id === id)?.name ??
+          'this house'
+        const houseName = houseId ? houseNameOf(houseId) : 'Every house'
         const total = cellRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
         const jobAcctTotal = cellRows.reduce(
           (s, r) => s + (r.on_job_account === true && Number(r.amount ?? 0) > 0 ? Number(r.amount ?? 0) : 0),
@@ -1618,8 +1689,17 @@ export function SupplyHousesTab({
                           ) : null}
                           {g.rows.map((inv) => {
                             const allocations = agingCellJobs.allocations[inv.id] ?? []
+                            const singleJobId = allocations.length === 1 ? allocations[0]!.job_id : null
+                            const accountKey = singleJobId ? `${singleJobId}:${inv.supply_house_id}` : null
+                            const chip = agingCellChipState(
+                              inv,
+                              allocations,
+                              agingCellAccountsLoaded ? (accountKey ? agingCellAccounts[accountKey] ?? null : null) : undefined,
+                            )
+                            const bandOpen = agingCellBandFor === inv.id && chip.kind === 'off_no_account'
                             return (
-                              <tr key={inv.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <Fragment key={inv.id}>
+                              <tr style={{ borderBottom: bandOpen ? 'none' : '1px solid var(--border)' }}>
                                 <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
                                   {inv.invoice_number}
                                   {(() => {
@@ -1644,21 +1724,57 @@ export function SupplyHousesTab({
                                   })()}
                                 </td>
                                 <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
-                                  {inv.on_job_account === true && (
-                                    <span title={JOB_ACCOUNT_LINE_TITLE} style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap' }}>
-                                      Job acct
-                                    </span>
-                                  )}
-                                  {allocations.length > 0
-                                    ? allocations
-                                        .map((a) => {
-                                          const d = agingCellJobs.jobs[a.job_id]
-                                          return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name} (${a.pct}%)` : a.job_id.slice(0, 8)
-                                        })
-                                        .join(', ')
-                                    : inv.on_job_account === true
-                                      ? ''
-                                      : '—'}
+                                  {/* PR 2: the chip is the act — press it to flag or unflag; no account on record unfolds the band below. */}
+                                  {chip.kind === 'on' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => void setInvoiceJobAcct(inv, false)}
+                                      title={`${JOB_ACCOUNT_LINE_TITLE} Press to take it off.`}
+                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                                    >
+                                      Job acct ✓
+                                    </button>
+                                  ) : chip.kind === 'off_open' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => void setInvoiceJobAcct(inv, true)}
+                                      title={`Job account open at this house${chip.account.account_ref ? ` · ref ${chip.account.account_ref}` : ''}${chip.account.opened_at ? ` · ${openedViaPhrase(chip.account.opened_via)} ${new Date(chip.account.opened_at).toLocaleDateString()}` : ''} — one press puts this invoice on it.`}
+                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: 'transparent', color: '#0f766e', whiteSpace: 'nowrap', border: '1px solid #0f766e', cursor: 'pointer', font: 'inherit' }}
+                                    >
+                                      + Job acct
+                                    </button>
+                                  ) : chip.kind === 'off_no_account' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setAgingCellBandFor(bandOpen ? null : inv.id)}
+                                      title="Put this invoice on the job account"
+                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: 'transparent', color: '#0f766e', whiteSpace: 'nowrap', border: '1px dashed #0f766e', cursor: 'pointer', font: 'inherit' }}
+                                    >
+                                      + Job acct
+                                    </button>
+                                  ) : chip.kind === 'off_loading' ? (
+                                    <span style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', border: '1px solid var(--border)', opacity: 0.6 }}>+ Job acct</span>
+                                  ) : null}
+                                  <span
+                                    title={
+                                      chip.kind === 'split'
+                                        ? `Job accounts are per property — this invoice is split across ${chip.jobCount} jobs.`
+                                        : chip.kind === 'no_job'
+                                          ? 'Job accounts are per property — open the house and put the invoice on its job first.'
+                                          : undefined
+                                    }
+                                  >
+                                    {allocations.length > 0
+                                      ? allocations
+                                          .map((a) => {
+                                            const d = agingCellJobs.jobs[a.job_id]
+                                            return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name} (${a.pct}%)` : a.job_id.slice(0, 8)
+                                          })
+                                          .join(', ')
+                                      : chip.kind === 'on' || chip.kind === 'credit'
+                                        ? ''
+                                        : '—'}
+                                  </span>
                                 </td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(isSupplyCredit(inv.amount) ? { color: 'var(--text-green-700)', fontWeight: 600 } : {}) }}>
                                   {isSupplyCredit(inv.amount) ? `−$${formatCurrency(Math.abs(inv.amount))}` : `$${formatCurrency(inv.amount)}`}
@@ -1671,6 +1787,38 @@ export function SupplyHousesTab({
                                   )}
                                 </td>
                               </tr>
+                              {bandOpen && chip.kind === 'off_no_account' ? (
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td colSpan={7} style={{ padding: '0 0.75rem 0.6rem' }}>
+                                    <div style={{ padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                                      <span style={{ flex: '1 1 16rem' }}>{agingCellBandWords(chip.account, houseNameOf(inv.supply_house_id))}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAgingCellMarkOpenedFor(inv)}
+                                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
+                                      >
+                                        Mark opened…
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => void setInvoiceJobAcct(inv, true)}
+                                        title="Set the flag without an account on record — the roster's bought-no-account row will keep saying so"
+                                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-amber-800)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
+                                      >
+                                        Flag anyway
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setAgingCellBandFor(null)}
+                                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', background: 'none', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', font: 'inherit' }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ) : null}
+                              </Fragment>
                             )
                           })}
                         </Fragment>
@@ -1699,6 +1847,32 @@ export function SupplyHousesTab({
                   </button>
                 ) : null}
               </div>
+              {/* PR 2: the band's Mark opened… — the shared v2.3423 sheet, stacked above (z 1100). */}
+              {agingCellMarkOpenedFor && (() => {
+                const inv = agingCellMarkOpenedFor
+                const alloc = agingCellJobs.allocations[inv.id] ?? []
+                const jobId = alloc.length === 1 ? alloc[0]!.job_id : null
+                if (!jobId) return null
+                const d = agingCellJobs.jobs[jobId]
+                const key = `${jobId}:${inv.supply_house_id}`
+                return (
+                  <MarkJobAccountOpenedModal
+                    jobId={jobId}
+                    jobLabel={d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—'} · ${d.job_name || '—'}` : 'this job'}
+                    house={{ id: inv.supply_house_id, name: houseNameOf(inv.supply_house_id) }}
+                    existing={agingCellAccounts[key] ?? null}
+                    reps={agingCellReps[inv.supply_house_id] ?? []}
+                    onClose={() => setAgingCellMarkOpenedFor(null)}
+                    onSaved={(row) => {
+                      setAgingCellMarkOpenedFor(null)
+                      setAgingCellAccounts((prev) => ({ ...prev, [key]: row }))
+                      // The form's own behavior: saved as open, the invoice the press was about is flagged too.
+                      if (row.status === 'open') void setInvoiceJobAcct(inv, true)
+                      else setAgingCellBandFor(null)
+                    }}
+                  />
+                )
+              })()}
             </div>
           </div>
         )
