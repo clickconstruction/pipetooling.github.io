@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cover letter: deselect alternates on the letter itself</title>
+<style>
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --red: #dc2626; --red-tint: #fee2e2; --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --green: #15803d; --green-tint: #dcfce7; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #fff; --page: #f3f4f6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  .lenses { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .lens { flex: 1 1 260px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 12.5px; color: var(--ink-2); }
+  .lens b { display: block; color: var(--ink); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  h2 .num.pick { background: var(--blue); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 105ch; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; }
+  .cap.old { background: var(--line-2); color: var(--ink-2); }
+  .cap.new { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .w { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; overflow-x: auto; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  .note b { color: var(--ink); }
+  ul.moves { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  ul.moves li { margin: 2px 0; }
+  ul.moves b { color: var(--ink); }
+  .muted { color: var(--muted); }
+
+  .duo { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* Step 1 panel */
+  .panel { flex: 0 1 430px; min-width: 310px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .panel .step { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; margin-bottom: 8px; }
+  .panel .step i { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 999px; background: var(--blue); color: #fff; font-style: normal; font-size: 11.5px; flex: none; }
+  .flabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; }
+  .oneline { font-size: 12.5px; color: var(--ink-2); }
+  .oneline b { color: var(--ink); }
+  .prow { display: flex; align-items: baseline; gap: 7px; padding: 5px 0 2px; flex-wrap: wrap; }
+  .prow .cb { width: 13px; height: 13px; border: 1.5px solid #94a3b8; border-radius: 3px; flex: none; position: relative; top: 2px; background: var(--surface); }
+  .prow .cb.on { background: var(--blue); border-color: var(--blue); }
+  .prow .cb.on::after { content: "✓"; position: absolute; inset: -3px 0 0 1px; color: #fff; font-size: 11px; font-weight: 800; }
+  .prow .nm { font-weight: 600; }
+  .prow .pen { color: var(--blue-ink); font-size: 11px; }
+  .prow .sub { font-size: 11.5px; color: var(--muted); }
+  .warn { display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--amber); background: var(--amber-tint); border-radius: 4px; padding: 0 6px; }
+  .pcap { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .btnrow { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .bbtn { display: inline-flex; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; background: var(--blue); color: #fff; }
+  .bcap { font-size: 10.5px; color: var(--muted); }
+
+  /* the letter sheet */
+  .sheet { flex: 1 1 480px; min-width: 310px; background: #fff; border: 1px solid #c9ced6; border-radius: 8px; box-shadow: 0 6px 18px rgba(15,23,42,.1); padding: 22px 26px; font-size: 12.5px; line-height: 1.55; color: #1f2937; }
+  .sheet .addr { margin-bottom: 10px; }
+  .sheet .proj b { display: block; }
+  .sheet p.amt { margin: 12px 0 10px; }
+  .sheet .alt-h { font-weight: 700; margin: 10px 0 2px; }
+  .sheet ul { margin: 0 0 10px; padding-left: 22px; }
+  .sheet li { margin: 1px 0; }
+  .dashed { border-bottom: 1.5px dashed #93b4e8; }
+  .sheet .inc b { display: block; margin-top: 8px; }
+  .sheet .inc span { color: #4b5563; }
+
+  /* wording editor card (PR 2) */
+  .editor { background: var(--surface); border: 1px solid var(--blue); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; max-width: 560px; font-size: 13px; margin-bottom: 14px; }
+  .editor .t { font-size: 12.5px; font-weight: 600; }
+  .editor .inp { border: 1px solid #94a3b8; border-radius: 5px; padding: 6px 9px; font-size: 13px; color: var(--ink); background: #fff; }
+  .editor .inp.ph { color: var(--muted); }
+  .editor .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .editor .sv { border-radius: 5px; padding: 5px 14px; font-size: 12.5px; font-weight: 600; background: var(--blue); color: #fff; }
+  .editor .cn { border-radius: 5px; padding: 5px 11px; font-size: 12.5px; border: 1px solid var(--line); color: var(--ink-2); background: var(--surface); }
+  .editor .off { border-radius: 5px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; border: 1px solid #fca5a5; color: #b91c1c; background: #fff; }
+  .editor .rst { margin-left: auto; font-size: 12px; color: var(--muted); text-decoration: underline; }
+  .editor .why { font-size: 11px; color: var(--muted); }
+
+  /* follower list */
+  .follow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .fcard { flex: 1 1 215px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; font-size: 12px; color: var(--ink-2); }
+  .fcard b { display: block; color: var(--ink); font-size: 12px; }
+
+  .calls { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: var(--ink-2); max-width: 110ch; }
+  .calls li { margin: 5px 0; }
+  .calls b { color: var(--ink); }
+  .calls .d { color: var(--green); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #133 · Bids → Cover Letter · proposal, nothing built</p>
+  <h1>Deselect alternates on the letter itself</h1>
+  <p>Wendi: <i>“i want the ability to deselect alternates from the cover page in click tooling.”</i>
+  On a bid with no versions, a price offered to the GC rides the letter as an alternate, and the studio’s only advice is
+  “manage offers on the Pricing tab”. Every number and name below is made up.</p>
+  <div class="lenses">
+    <div class="lens"><b>Her seat</b> She grooms the letter with the preview beside her. The alternates she wants gone are named in Step&nbsp;1 and printed in the preview — neither spot can remove them.</div>
+    <div class="lens"><b>The job behind the ask</b> Offers pile up: ＋&nbsp;Add price offers the new price by default, so a copy made to compare rides the letter. Twin alternate lines in a contract document read as carelessness.</div>
+    <div class="lens"><b>The whole office</b> Split-bid packets and group alternates already have Step&nbsp;1 checkboxes. The deselect writes the one offered flag the room, the Approval PDF and the Pricing card all read.</div>
+  </div>
+</header>
+
+<h2><span class="num">1</span> Today — the letter carries a twin, and the panel sends her to another tab</h2>
+<p class="lede">A one-bid letter: ★ MARCY is the base, and two offered prices ride as alternates — one real (copper water lines), one a copy of it. The letter prints the same add twice, and Step 1 has nothing to click.</p>
+<div class="cap old"><span>Before</span><span class="w">Step 1 · Scope &amp; pricing — and the letter beside it</span></div>
+<div class="fit">
+  <div class="duo">
+    <div class="panel">
+      <div class="step"><i>1</i> Scope &amp; pricing</div>
+      <div class="oneline">To <b>Ridgeway Builders</b> · Oak Hollow Retail Shell</div>
+      <span class="flabel">In this cover letter</span>
+      <div class="oneline">One bid — the letter shows ★ <b>MARCY</b>, plus <b>Copper water lines, Copper water lines copy</b> offered as alternates — manage offers on the Pricing tab.</div>
+      <div class="btnrow"><span class="bbtn">Move sent date to today</span><span class="bcap">sent 09/12 · sending the room link keeps this date</span></div>
+    </div>
+    <div class="sheet">
+      <div class="addr"><b>Ridgeway Builders</b><br>2209 Brazos Bend Dr.<br>Waco, TX 76701</div>
+      <div class="proj"><b>Oak Hollow Retail Shell</b>4410 Mesquite Bend<br>San Marcos, TX 78666</div>
+      <p class="amt">As per plumbing plans and specifications, we propose to do the plumbing in the amount of:<br>
+      <b>FORTY EIGHT THOUSAND SEVEN HUNDRED FIFTY AND 00/100 DOLLARS ($48,750.00)</b></p>
+      <div class="alt-h">Alternates:</div>
+      <ul>
+        <li><span class="dashed"><b>Alternate 1</b></span>: <b>Add $6,240.00</b> ($54,990.00)</li>
+        <li><span class="dashed"><b>Alternate 2</b></span>: <b>Add $6,240.00</b> ($54,990.00)</li>
+      </ul>
+      <div class="inc"><b>Inclusions:</b><span>• Fixtures provided and installed by us per plan: [2] FD · [1] Lav-1 · [1] WC-1 · [4] FCO …</span></div>
+    </div>
+  </div>
+</div>
+<p class="note">The GC reads two alternates that add the same $6,240.00 — the second says nothing and invites a question. The offer switch lives on the Pricing tab, on the price card’s bottom bar; a standalone offered price prints as a bare <b>Alternate N</b> until its wording is written on the preview.</p>
+
+<h2><span class="num pick">2</span> PR 1 — the offer rows, where the sentence was</h2>
+<p class="lede">The version-less branch gets what the split-bid branch has had since v2.2117: one row per other price, a checkbox that is the offer. A second alternate at the same amount gets an amber note naming its twin.</p>
+<div class="cap new"><span>After · PR 1</span><span class="w">as it opens — the nudge names the copy</span></div>
+<div class="fit">
+  <div class="duo">
+    <div class="panel">
+      <div class="step"><i>1</i> Scope &amp; pricing</div>
+      <div class="oneline">To <b>Ridgeway Builders</b> · Oak Hollow Retail Shell</div>
+      <span class="flabel">In this cover letter</span>
+      <div class="oneline">One bid — the letter shows ★ <b>MARCY</b> · $48,750.00</div>
+      <div class="prow"><span class="cb on"></span><span class="nm">Copper water lines</span><span class="pen">✎</span><span class="sub">alternate · $54,990.00</span></div>
+      <div class="prow"><span class="cb on"></span><span class="nm">Copper water lines copy</span><span class="pen">✎</span><span class="sub">alternate · $54,990.00</span><span class="warn">same amount as “Copper water lines” — probably a copy</span></div>
+      <div class="pcap">Ticked prices are offered to Ridgeway Builders as alternates on this letter — the bid room follows. Change a price on the Pricing tab; word an alternate on the preview.</div>
+    </div>
+    <div class="sheet">
+      <div class="alt-h">Alternates:</div>
+      <ul>
+        <li><span class="dashed"><b>Alternate 1</b></span>: <b>Add $6,240.00</b> ($54,990.00)</li>
+        <li><span class="dashed"><b>Alternate 2</b></span>: <b>Add $6,240.00</b> ($54,990.00)</li>
+      </ul>
+      <p class="muted" style="font-size:11px; margin:4px 0 0;">(the rest of the letter is unchanged)</p>
+    </div>
+  </div>
+</div>
+<ul class="moves">
+  <li>The ★ base keeps its sentence — it <b>is</b> the letter, not an offer.</li>
+  <li>Checkbox = <b>price_book_versions.include_in_submission</b>, the same write as the Pricing card’s toggle (<b>setScenarioOffered</b>, already in the tab).</li>
+  <li>✎ renames the price (the panel’s name); the letter’s wording stays the dashed click-to-edit on the preview.</li>
+  <li>An unpriced offer reads <b>alternate · unpriced — left off the letter</b>, as in the split-bid branch.</li>
+</ul>
+
+<h2><span class="num pick">3</span> PR 1 — one click later, the letter follows</h2>
+<p class="lede">She unticks the copy. The row stays, reading “not offered”, so the way back is one click — and the junk stays visible until someone deletes it on the Pricing tab.</p>
+<div class="cap new"><span>After · PR 1</span><span class="w">the copy unticked</span></div>
+<div class="fit">
+  <div class="duo">
+    <div class="panel">
+      <div class="step"><i>1</i> Scope &amp; pricing</div>
+      <div class="oneline">To <b>Ridgeway Builders</b> · Oak Hollow Retail Shell</div>
+      <span class="flabel">In this cover letter</span>
+      <div class="oneline">One bid — the letter shows ★ <b>MARCY</b> · $48,750.00</div>
+      <div class="prow"><span class="cb on"></span><span class="nm">Copper water lines</span><span class="pen">✎</span><span class="sub">alternate · $54,990.00</span></div>
+      <div class="prow"><span class="cb"></span><span class="nm" style="color:var(--muted); font-weight:500;">Copper water lines copy</span><span class="pen">✎</span><span class="sub">not offered</span></div>
+      <div class="pcap">Ticked prices are offered to Ridgeway Builders as alternates on this letter — the bid room follows.</div>
+    </div>
+    <div class="sheet">
+      <div class="alt-h">Alternates:</div>
+      <ul>
+        <li><span class="dashed"><b>Alternate 1</b></span>: <b>Add $6,240.00</b> ($54,990.00)</li>
+      </ul>
+      <p class="muted" style="font-size:11px; margin:4px 0 0;">Unticking the last alternate returns the plain single letter — no Alternates block at all.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">4</span> PR 2 — “Take off this letter”, from the preview</h2>
+<p class="lede">The alternate lines are already click-to-edit. The wording editor gains one button, shown only when the line is an alternate — never on a base, an option, or the heading.</p>
+<div class="cap new"><span>After · PR 2</span><span class="w">the wording editor, opened from the dashed line</span></div>
+<div class="fit">
+  <div class="editor">
+    <span class="t">Letter wording — Copper water lines</span>
+    <span class="inp">Alternate 1 — Copper water lines</span>
+    <span class="inp ph">Optional note under this alternate (e.g. what the alternate covers)</span>
+    <div class="row">
+      <span class="sv">Save</span>
+      <span class="cn">Cancel</span>
+      <span class="off">Take off this letter</span>
+      <span class="rst">Reset to auto</span>
+    </div>
+    <span class="why">Stops offering this price to Ridgeway Builders — its row under <b>In this cover letter</b> reads “not offered”; tick it to bring it back. The bid room follows.</span>
+  </div>
+  <div class="sheet" style="max-width:560px;">
+    <div class="alt-h">Alternates:</div>
+    <ul>
+      <li><span class="dashed"><b>Alternate 1</b></span>: <b>Add $6,240.00</b> ($54,990.00) <span class="muted">← click opens the editor above</span></li>
+    </ul>
+  </div>
+</div>
+<ul class="moves">
+  <li>One button, three kinds — it routes by the edit key to the write that kind already has: an offered price → <b>setScenarioOffered(false)</b>; a group alternate → <b>groups[key].offered = false</b>; an in-lieu packet → its include checkbox’s own write.</li>
+  <li>This is the ask as spoken: deselect <b>from the cover page</b>.</li>
+</ul>
+
+<h2><span class="num">5</span> What one deselect changes — and the owner’s calls</h2>
+<p class="lede">The deselect writes the one offered flag, so every reader follows by itself. Nothing is stored twice; a sent bid is no special case (the Pricing tab’s toggle already changes a live room today, and the stamped send record never recomputes).</p>
+<div class="follow">
+  <div class="fcard"><b>The letter + print + Google Docs copy</b>the Alternates block drops the line; the last one gone returns the plain letter</div>
+  <div class="fcard"><b>The bid room</b>the signable page loses that option / add-on</div>
+  <div class="fcard"><b>The Approval PDF</b>its letter page plans through the same kernel</div>
+  <div class="fcard"><b>Pricing tab + Version picker</b>the card’s caption flips to “not offered”; the badge reads “not in letter”</div>
+</div>
+<ol class="calls">
+  <li><b>Both doors, or just the panel?</b> <span class="d">Default: both</span> — PR 1 is the discoverable, symmetric fix; PR 2 is the ask as spoken.</li>
+  <li><b>What a deselect means.</b> <span class="d">Default: stop offering</span> (the shared flag). Rejected: a letter-only hide — the letter and the Pricing card would disagree.</li>
+  <li><b>Do unticked prices stay listed?</b> <span class="d">Default: yes</span>, as “not offered” rows — one click to re-offer, junk stays visible.</li>
+  <li><b>＋ Add price keeps “Offer it right away” checked?</b> <span class="d">Default: keep</span> — that door exists to offer; a wrong offer is now one click to take back.</li>
+  <li><b>The same-amount nudge.</b> <span class="d">Default: include in PR 1</span> — it names the exact mistake on Wendi’s screen.</li>
+</ol>
+
+</div>
+</body>
+</html>
