@@ -35,6 +35,8 @@ import {
 } from '../../lib/bidDocuments/coverLetter'
 import { COVER_LETTER_ORG_DEFAULT_KEYS, coverLetterOrgDefaultsFrom, effectiveCoverLetterWording, letterWording, type CoverLetterOrgDefaults } from '../../lib/bidDocuments/coverLetterWording'
 import { resolveSingleLetterGc, letterGcDiffersFromBid, versionGcOverrideMap, type BidVersionGcRow, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
+import { addresseeRowVisible, bidDefaultPacketKey, coverLetterAddressees, resolveAddressedCustomer, type AddresseeRecipientRow } from '../../lib/bids/coverLetterAddressees'
+import { addGcsButtonLabel, filterPickableGcs, tickedSummary } from '../../lib/bids/gcRecipientPicker'
 import {
   DEFAULT_PAYMENT_SCHEDULE_ROWS,
   PAYMENT_SCHEDULE_TIMINGS,
@@ -60,8 +62,8 @@ import type {
   BidPaymentScheduleRow,
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
-import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
-import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout, type SamePageOption, type SamePagePlan, type SamePageSection, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
+import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion, unsplitStarPricingId } from '../../lib/bids/coverLetterVersionBundle'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, sameAmountTwinNames, type CoverLetterAltTexts, type CoverLetterAltsLayout, type SamePageOption, type SamePagePlan, type SamePageSection, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
 import { roomSectionsForPacket } from '../../lib/bids/wonOption'
 import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
 import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../../lib/bids/coverLetterDocument'
@@ -785,8 +787,48 @@ export function BidsCoverLetterTab({
   // which GC packet the preview/Print/Copy act on when there are several.
   const [versionGcById, setVersionGcById] = useState<Record<string, GcPacketCustomer | null>>({})
   const [selectedGcPacketKey, setSelectedGcPacketKey] = useState<string | null>(null)
+  // Addressed to (to-do #133): the same-letter GC whose name-and-address block the letter carries.
+  const [addressedGcId, setAddressedGcId] = useState<string | null>(null)
+  // The bid's recorded recipients (bid_gc_recipients) with their addresses — the same rows the
+  // Send to strip shows as "same letter" chips.
+  const [letterRecipients, setLetterRecipients] = useState<AddresseeRecipientRow[]>([])
+  // + GC picker state: the lazily loaded customer list and the tick-list popover.
+  const [addresseePickerOpen, setAddresseePickerOpen] = useState(false)
+  const [addresseeSearch, setAddresseeSearch] = useState('')
+  const [addresseeTicked, setAddresseeTicked] = useState<Set<string>>(new Set())
+  const [addresseeBusy, setAddresseeBusy] = useState(false)
+  const [pickableCustomers, setPickableCustomers] = useState<Array<{ id: string; name: string; address: string | null }> | null>(null)
+  useEffect(() => {
+    if (!addresseePickerOpen || pickableCustomers !== null) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('customers').select('id, name, address').order('name')
+      if (!cancelled) setPickableCustomers((data ?? []).map((c) => ({ id: c.id, name: c.name ?? '—', address: c.address ?? null })))
+    })()
+    return () => { cancelled = true }
+  }, [addresseePickerOpen, pickableCustomers])
+  useEffect(() => {
+    setLetterRecipients([])
+    const bid = selectedBidForPricing
+    if (!bid) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('bid_gc_recipients').select('customer_id, customers(name, address)').eq('bid_id', bid.id)
+      if (cancelled) return
+      type RecRow = { customer_id: string; customers: { name: string | null; address: string | null } | { name: string | null; address: string | null }[] | null }
+      setLetterRecipients(((data ?? []) as RecRow[]).map((r) => {
+        const c = Array.isArray(r.customers) ? r.customers[0] : r.customers
+        return { customerId: r.customer_id, name: c?.name ?? null, address: c?.address ?? null }
+      }))
+    })()
+    return () => { cancelled = true }
+  }, [selectedBidForPricing?.id, bidVersions])
   useEffect(() => {
     setSelectedGcPacketKey(null)
+    setAddressedGcId(null)
+    setAddresseePickerOpen(false)
+    setAddresseeSearch('')
+    setAddresseeTicked(new Set())
     const bid = selectedBidForPricing
     if (!bid) {
       setVersionGcById({})
@@ -1217,6 +1259,18 @@ export function BidsCoverLetterTab({
           name: customerName,
           address: customerAddress,
         }
+        // Addressed to (to-do #133): the bid GC plus every recorded same-letter recipient; a GC
+        // with a packet is not offered here because their letter follows their tab. The studio's
+        // bid-default tab key translates through bidDefaultPacketKey before it reaches
+        // letterDocument — untranslated it misses the packet and the letter silently stays on the
+        // active version's.
+        const addressees = coverLetterAddressees({
+          bidGc: bidGcPacketCustomer,
+          recipients: letterRecipients,
+          packetGcIds: Object.values(versionGcById).map((c) => c?.id),
+        })
+        const addressedCustomer = resolveAddressedCustomer(addressees, addressedGcId)
+        const packetKeyOf = (studioKey: string | null) => (studioKey === 'bid-default' ? bidDefaultPacketKey(bidGcPacketCustomer) : studioKey)
         // The document (`letterDocument` — the Approval PDF plans its letter with it too):
         //  • v2.2213 (owner): a $0 section never reaches the letter — unpriced bids are listed in
         //    the studio (grayed) and rejoin the letter the moment they're priced.
@@ -1232,7 +1286,7 @@ export function BidsCoverLetterTab({
           versionGcById,
           bidGc: bidGcPacketCustomer,
           activeBidVersionId,
-          pickedPacketKey: selectedGcPacketKey,
+          pickedPacketKey: packetKeyOf(selectedGcPacketKey),
           layout: altsLayout,
         })
         const unpricedLeftOff = bundlePricings.length - pricedBundle.length
@@ -1314,10 +1368,15 @@ export function BidsCoverLetterTab({
         // override when set, else the bid GC — so the letterhead always matches
         // the amount and fixtures below it (which come from the active Pricing).
         // include_in_submission only matters for the multi-pricing bundle above.
-        const letterCustomer = selectedGcPacket
+        // Addressed to (to-do #133): a selected same-letter GC swaps ONLY the name-and-address
+        // block; the amount, prices and wording stay the selected letter's. The CONTENT GC (the
+        // packet's) keeps feeding the option-label swap — a packet named after its GC prints
+        // under the project's name, judged against the packet's GC, never the addressee.
+        const contentGcCustomer = selectedGcPacket
           ? selectedGcPacket.customer
           : resolveSingleLetterGc(activeBidVersionId, versionGcById, bidGcPacketCustomer)
-        const letterGcIsNotBidGc = letterGcDiffersFromBid(letterCustomer, bidGcPacketCustomer)
+        const letterCustomer = addressedCustomer ?? contentGcCustomer
+        const letterGcIsNotBidGc = !addressedCustomer && letterGcDiffersFromBid(letterCustomer, bidGcPacketCustomer)
         const letterCustomerName = letterCustomer.name
         const letterCustomerAddress = letterCustomer.address
         const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(false))
@@ -1335,7 +1394,7 @@ export function BidsCoverLetterTab({
         const showAltsLayoutToggle = selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
         const samePageHtml = (editable: boolean) =>
           samePagePlan
-            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(editable, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, editable, { gcName: letterCustomerName, projectName: projectNameVal }))
+            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: contentGcCustomer.name, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(editable, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, editable, { gcName: contentGcCustomer.name, projectName: projectNameVal }))
             : null
         const finalCoverLetterHtml = selectedGcPacket
           ? samePagePlan
@@ -1348,7 +1407,7 @@ export function BidsCoverLetterTab({
         const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : combinedHtmlEditable && !selectedGcPacket ? combinedHtmlEditable : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
           ? samePagePlan
-            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(false, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, false, { gcName: letterCustomerName, projectName: projectNameVal }))
+            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: contentGcCustomer.name, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(false, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, false, { gcName: contentGcCustomer.name, projectName: projectNameVal }))
             : selectedGcPacket.sections.length > 1
               ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
               : packetSectionText(selectedGcPacket.sections[0]!)
@@ -1466,10 +1525,11 @@ export function BidsCoverLetterTab({
                   onClick={() => printCoverLetterDocument(finalCoverLetterHtml, bid)}
                   disabled={!totalsResolved}
                   aria-busy={!totalsResolved || undefined}
-                  title={totalsResolved ? 'Print combined document' : totalsPendingTitle}
+                  title={totalsResolved ? (addressedCustomer ? `Print — addressed to ${addressedCustomer.name}` : 'Print combined document') : totalsPendingTitle}
                   style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                 >
                   Print
+                  {addressedCustomer ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400 }}>to {addressedCustomer.name}</span> : null}
                 </button>
                 {!narrowViewport640 ? (
                   <button
@@ -1501,7 +1561,7 @@ export function BidsCoverLetterTab({
                       </div>
                       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
                         To <strong style={{ color: 'var(--text-strong)' }}>{letterCustomerName}</strong>
-                        {letterGcIsNotBidGc ? <> (this version's GC — bid default is {customerName})</> : null}
+                        {addressedCustomer ? <> (same letter as {customerName})</> : letterGcIsNotBidGc ? <> (this version's GC — bid default is {customerName})</> : null}
                         {' · '}
                         {projectNameVal}
                       </div>
@@ -1521,20 +1581,175 @@ export function BidsCoverLetterTab({
                         const rowsVersions = [...bidVersions].sort((a, b) => a.sort_order - b.sort_order).filter((v) => !multi || gcKeyOf(v.id) === selectedKey)
                         const gcName = gcTabs.find((t) => t.key === selectedKey)?.name ?? customerName
                         const gcShort = gcName
-                        const packet = gcPackets.find((pk) => pk.key === selectedKey) ?? null
+                        const packet = gcPackets.find((pk) => pk.key === packetKeyOf(selectedKey)) ?? null
                         const gcSections = multi ? (packet?.sections ?? []) : pricedBundle
                         const gcBase = letterTotal(gcSections)
                         const gcAlts = gcSections.filter((x) => x.isAlternate).length
                         const latestForGc = (key: string) => { const vids = bidVersions.filter((v) => gcKeyOf(v.id) === key).map((v) => v.id); let best: string | null = null; for (const vid of vids) { const sOn = latestSends[vid]?.sentOn; if (sOn && (!best || sOn > best)) best = sOn } return best }
+                        // Addressed to (to-do #133): one row — the packet tabs (split bids) or the
+                        // bid-GC chip, then every same-letter addressee, then + GC. A shared chip
+                        // swaps only the letter's address block; on a split bid it also lands the
+                        // letter on the bid GC's packet, whose letter is the one they got.
+                        const sharedAddressees = addressees.filter((a) => a.kind === 'shared')
+                        const showAddresseeRow = multi || addresseeRowVisible(addressees)
+                        const bidDefaultPacketExists = gcPackets.some((pk) => pk.isBidDefault)
+                        const sharedChipDisabled = multi && !bidDefaultPacketExists
+                        const recipientGcIds = new Set(letterRecipients.map((r) => r.customerId))
+                        const packetGcIdSet = new Set(Object.values(versionGcById).map((c) => c?.id).filter((id): id is string => !!id))
+                        const addresseePickable = filterPickableGcs(pickableCustomers ?? [], {
+                          bidCustomerId: bidGcPacketCustomer.id,
+                          recipientIds: new Set([...recipientGcIds, ...packetGcIdSet]),
+                          search: addresseeSearch,
+                        })
+                        const closeAddresseePicker = () => {
+                          setAddresseePickerOpen(false)
+                          setAddresseeSearch('')
+                          setAddresseeTicked(new Set())
+                        }
+                        // + GC records same-letter recipients (bid_gc_recipients, source 'manual' —
+                        // exactly Edit Bid's + Add GCs) right where the letter is addressed.
+                        const addSameLetterGcs = async () => {
+                          const customerIds = [...addresseeTicked].filter((id) => !recipientGcIds.has(id))
+                          if (addresseeBusy || customerIds.length === 0) {
+                            closeAddresseePicker()
+                            return
+                          }
+                          setAddresseeBusy(true)
+                          try {
+                            await withSupabaseRetry(
+                              async () => supabase.from('bid_gc_recipients').insert(customerIds.map((customerId) => ({ bid_id: bid.id, customer_id: customerId, source: 'manual' }))),
+                              'add bid recipients',
+                            )
+                            setLetterRecipients((prev) => [
+                              ...prev,
+                              ...customerIds.map((customerId) => {
+                                const c = pickableCustomers?.find((x) => x.id === customerId)
+                                return { customerId, name: c?.name ?? null, address: c?.address ?? null }
+                              }),
+                            ])
+                            closeAddresseePicker()
+                            // The Send to strip re-reads its "same letter" chips off the versions reload.
+                            void reloadBidVersions()
+                            showToast(customerIds.length === 1 ? 'Added to Also sent to — their chip is on the letter.' : `Added ${customerIds.length} GCs to Also sent to — their chips are on the letter.`, 'success')
+                          } finally {
+                            setAddresseeBusy(false)
+                          }
+                        }
+                        const fmtSentShort = (ymd: string) => ymd.slice(5).replace('-', '/').replace(/^0/, '')
                         return (
                         <div style={{ marginBottom: '0.7rem' }}>
-                          {multi ? (
-                            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                              {gcTabs.map((t) => { const sOn = latestForGc(t.key); const on = t.key === selectedKey; return (
-                                <button key={t.key} type="button" onClick={() => setSelectedGcPacketKey(t.key)} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.6rem', borderRadius: 6, border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', textAlign: 'left' }}>
-                                  {t.name}<span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: sOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{sOn ? `sent ${sOn.slice(5).replace('-', '/').replace(/^0/, '')}` : 'not sent'}</span>
+                          {showAddresseeRow ? (
+                            <div data-testid="cover-letter-addressed-to" style={{ marginBottom: '0.5rem' }}>
+                              <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-700)', marginBottom: '0.3rem' }}>Addressed to</span>
+                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
+                              {multi ? (
+                                gcTabs.map((t) => { const sOn = latestForGc(t.key); const on = t.key === selectedKey && !addressedCustomer; return (
+                                  <button key={t.key} type="button" onClick={() => { setAddressedGcId(null); setSelectedGcPacketKey(t.key) }} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.6rem', borderRadius: 6, border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', textAlign: 'left' }}>
+                                    {t.name}<span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: sOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{sOn ? `sent ${fmtSentShort(sOn)}` : 'not sent'}</span>
+                                  </button>
+                                ) })
+                              ) : (
+                                <button type="button" onClick={() => setAddressedGcId(null)} title="The bid runs in their name — their letter is the letter" style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.6rem', borderRadius: 6, border: !addressedCustomer ? '1px solid #3b82f6' : '1px solid var(--border-strong)', background: !addressedCustomer ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', textAlign: 'left' }}>
+                                  {customerName}<span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: bid.bid_date_sent ? 'var(--text-green-600)' : 'var(--text-muted)' }}>★ bid's GC{bid.bid_date_sent ? ` · sent ${fmtSentShort(bid.bid_date_sent)}` : ''}</span>
+                                </button>
+                              )}
+                              {sharedAddressees.map((a) => { const on = addressedGcId === a.gcId; return (
+                                <button
+                                  key={a.gcId}
+                                  type="button"
+                                  disabled={sharedChipDisabled}
+                                  onClick={() => { setAddressedGcId(a.gcId); if (multi) setSelectedGcPacketKey('bid-default') }}
+                                  title={sharedChipDisabled ? `${a.name} rides ${customerName}'s letter — nothing of ${customerName}'s is in the letter yet` : `Address this letter to ${a.name} — same letter, their name and address`}
+                                  style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.6rem', borderRadius: 6, border: on ? '1px solid #3b82f6' : '1px dashed var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)', color: 'var(--text-strong)', cursor: sharedChipDisabled ? 'not-allowed' : 'pointer', textAlign: 'left', opacity: sharedChipDisabled ? 0.55 : 1 }}
+                                >
+                                  {a.name}<span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: 'var(--text-muted)' }}>same letter</span>
                                 </button>
                               ) })}
+                              <span style={{ position: 'relative' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => (addresseePickerOpen ? closeAddresseePicker() : setAddresseePickerOpen(true))}
+                                  disabled={addresseeBusy}
+                                  title="Send this same letter to another builder — adds them to the bid's Also sent to list"
+                                  style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px dashed var(--border-strong)', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', height: '100%' }}
+                                >
+                                  + GC
+                                </button>
+                                {addresseePickerOpen ? (
+                                  <div style={{ position: 'absolute', top: '110%', left: 0, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, zIndex: 120, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                                    <input
+                                      type="text"
+                                      value={addresseeSearch}
+                                      onChange={(e) => setAddresseeSearch(e.target.value)}
+                                      placeholder="Search customers — tick all that apply"
+                                      aria-label="Search recipients to add"
+                                      autoFocus
+                                      onKeyDown={(e) => { if (e.key === 'Escape') closeAddresseePicker() }}
+                                      style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.5rem', border: 'none', borderBottom: '1px solid var(--border)', borderRadius: '4px 4px 0 0', fontSize: '0.8125rem' }}
+                                    />
+                                    <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                                      {pickableCustomers === null ? (
+                                        <div style={{ padding: '0.45rem 0.5rem', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.8125rem' }}>Loading…</div>
+                                      ) : (
+                                        <>
+                                          {addresseePickable.slice(0, 30).map((c) => (
+                                            <div
+                                              key={c.id}
+                                              onClick={() => setAddresseeTicked((prev) => { const next = new Set(prev); if (next.has(c.id)) next.delete(c.id); else next.add(c.id); return next })}
+                                              style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.45rem 0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={addresseeTicked.has(c.id)}
+                                                onChange={() => setAddresseeTicked((prev) => { const next = new Set(prev); if (next.has(c.id)) next.delete(c.id); else next.add(c.id); return next })}
+                                                onClick={(e) => e.stopPropagation()}
+                                                aria-label={`Add ${c.name}`}
+                                                style={{ marginTop: 2 }}
+                                              />
+                                              <span>
+                                                <span style={{ display: 'block', fontWeight: 500 }}>{c.name}</span>
+                                                {c.address ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.address}</span> : null}
+                                              </span>
+                                            </div>
+                                          ))}
+                                          {addresseePickable.length === 0 ? (
+                                            <div style={{ padding: '0.45rem 0.5rem', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.8125rem' }}>No customers found</div>
+                                          ) : null}
+                                        </>
+                                      )}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.4rem 0.5rem', borderTop: '1px solid var(--border)', background: 'var(--bg-muted)', borderRadius: '0 0 4px 4px' }}>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tickedSummary(addresseeTicked.size)}</span>
+                                      <span style={{ display: 'flex', gap: '0.4rem' }}>
+                                        <button type="button" onClick={closeAddresseePicker} disabled={addresseeBusy} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                                          Cancel
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => void addSameLetterGcs()}
+                                          disabled={addresseeBusy || addresseeTicked.size === 0}
+                                          style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, padding: '0.28rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, cursor: addresseeBusy || addresseeTicked.size === 0 ? 'default' : 'pointer', opacity: addresseeBusy || addresseeTicked.size === 0 ? 0.5 : 1 }}
+                                        >
+                                          {addresseeBusy ? 'Adding…' : addGcsButtonLabel(addresseeTicked.size)}
+                                        </button>
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </span>
+                              </div>
+                              {addressedCustomer ? (
+                                <div data-testid="cover-letter-addressed-note" style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '52ch' }}>
+                                  <strong style={{ color: 'var(--text-700)' }}>{addressedCustomer.name}</strong> gets the same letter as {customerName}. Only the name and address change. Their copy rides the bid's sent date. For their own prices, press{' '}
+                                  <button
+                                    type="button"
+                                    onClick={() => window.dispatchEvent(new CustomEvent('bid-version-picker-open-add-gc', { detail: { gcId: addressedGcId } }))}
+                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.74rem', color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                                  >
+                                    track separately
+                                  </button>.
+                                </div>
+                              ) : null}
                             </div>
                           ) : null}
                           {/* v2.3234: the step between the letter's amount and Mark sent — record the number
@@ -1551,19 +1766,65 @@ export function BidsCoverLetterTab({
                           {addAltRows}
                           {bidVersions.length === 0 ? (
                             <>
-                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}
-                                {(() => {
-                                  // v2.2392: offered non-★ pricings ride this letter as alternates — say so.
-                                  const offered = bundlePricings.filter((x) => x.offeredPricingId)
-                                  if (offered.length === 0) return <>. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).</>
-                                  return (
-                                    <>
-                                      , plus <strong style={{ color: 'var(--text-strong)' }}>{offered.map((x) => x.name).join(', ')}</strong> offered as {offered.length === 1 ? 'an alternate' : 'alternates'} — manage offers on the Pricing tab.
-                                    </>
-                                  )
-                                })()}
-                              </div>
+                              {(() => {
+                                // v2.5680 (#133, Wendi): the version-less bid's other prices get the same offer
+                                // checkboxes the split-bid branch has had since v2.2117 — the sentence that sent
+                                // her to the Pricing tab retires. The checkbox IS the offer (G1's flag), so the
+                                // room, the Approval PDF and the Pricing card follow by themselves.
+                                const unsplitStarId = unsplitStarPricingId(bidPricings, bid.selected_price_book_version_id ?? null)
+                                const unsplitOthers = bidPricings.filter((p) => p.bid_version_id == null && p.id !== unsplitStarId).sort((a, b) => a.sort_order - b.sort_order)
+                                const baseSec = bundlePricings.find((x) => !x.offeredPricingId)
+                                const offeredOthers = unsplitOthers.filter((p) => p.include_in_submission)
+                                const twinNames = sameAmountTwinNames(offeredOthers.map((p) => {
+                                  const s = bundlePricings.find((x) => x.offeredPricingId === p.id)
+                                  return { name: p.name, revenueSum: s?.revenueSum ?? 0 }
+                                }))
+                                const twinByPricingId = new Map(offeredOthers.map((p, i) => [p.id, twinNames[i] ?? null]))
+                                return (
+                                  <>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                      One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong>{baseSec && baseSec.revenueSum > 0 ? <> · ${formatCurrency(baseSec.revenueSum)}</> : null}</> : null}
+                                      {unsplitOthers.length === 0 ? <>. To offer an alternate, add a price on the Pricing tab, or make it a bid to send (＋ Another bid to send… at the top).</> : null}
+                                    </div>
+                                    {unsplitOthers.length > 0 ? (
+                                      <div data-testid="cover-letter-unsplit-offers" style={{ display: 'grid', gap: '0.15rem', marginTop: '0.25rem' }}>
+                                        {unsplitOthers.map((op) => {
+                                          const osec = bundlePricings.find((x) => x.offeredPricingId === op.id)
+                                          const twin = twinByPricingId.get(op.id) ?? null
+                                          return (
+                                            <div key={op.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', flexWrap: 'wrap' }}>
+                                              <input type="checkbox" checked={op.include_in_submission} onChange={() => void setScenarioOffered(op, !op.include_in_submission)} style={{ margin: 0, cursor: 'pointer' }} aria-label={`Offer ${op.name} as an alternate`} />
+                                              {renameKey === `p:${op.id}` ? (
+                                                renameEditBox(() => void commitRenameOption(op, bid.id))
+                                              ) : (
+                                                <>
+                                                  <span style={{ color: op.include_in_submission ? 'var(--text-600)' : 'var(--text-muted)' }}>{op.name}</span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => { setRenameKey(`p:${op.id}`); setRenameDraft(op.name) }}
+                                                    title="Rename this price — the letter's own wording is the dashed line on the preview"
+                                                    aria-label={`Rename ${op.name}`}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: '0.7rem', padding: '0 0.25rem' }}
+                                                  >
+                                                    ✎
+                                                  </button>
+                                                </>
+                                              )}
+                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? `alternate · $${formatCurrency(osec.revenueSum)}` : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
+                                              {twin ? (
+                                                <span data-testid="cover-letter-same-amount" style={{ fontSize: '0.64rem', fontWeight: 600, color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.35rem' }}>same amount as “{twin}” — probably a copy</span>
+                                              ) : null}
+                                            </div>
+                                          )
+                                        })}
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                                          Ticked prices are offered to {letterCustomerName} as alternates on this letter — the bid room follows. Change a price on the Pricing tab; word an alternate on the preview.
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </>
+                                )
+                              })()}
                               {showAltsLayoutToggle ? (
                                 <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>Alternates in the letter</span>
@@ -1586,7 +1847,7 @@ export function BidsCoverLetterTab({
                                   {/* Tier-2 #20: on a bid that already has a sent day this is the explicit re-stamp — it asks first. */}
                                   {markingSent ? 'Marking…' : bid.bid_date_sent ? 'Move sent date to today' : 'Mark sent today'}
                                 </button>
-                                {roomPresenceByKey[`${bid.id}:own`] === false && !roomOpenByKey[`${bid.id}:own`] ? (
+                                {roomPresenceByKey[`${bid.id}:own`] === false && !roomOpenByKey[`${bid.id}:own`] && !addressedCustomer ? (
                                   <BidRoomSetupButton gcShort={letterCustomerName} onClick={() => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:own`]: true }))} />
                                 ) : null}
                                 <OpenRfiChip bidId={bid.id} />
@@ -1596,6 +1857,11 @@ export function BidsCoverLetterTab({
                                     : <>stamps the bid with today as its sent date and {letterOptions ? "Option 1's amount" : "this letter's amount"} as its value — or the bid room's first link send does it for you</>}
                                 </span>
                               </div>
+                              {addressedCustomer ? (
+                                <div data-testid="cover-letter-room-folded" style={{ marginTop: '0.5rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                                  The bid room stays {customerName}'s. A room carries its own opens and signature, so {addressedCustomer.name} does not share it. Pick {customerName} on Addressed to to open it.
+                                </div>
+                              ) : (
                               <BidRoomPanel
                                 bidId={bid.id}
                                 gcCustomerId={null}
@@ -1614,6 +1880,7 @@ export function BidsCoverLetterTab({
                                 onOpenChange={(v) => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:own`]: v }))}
                                 onRoomPresence={(has) => setRoomPresenceByKey((m) => (m[`${bid.id}:own`] === has ? m : { ...m, [`${bid.id}:own`]: has }))}
                               />
+                              )}
                             </>
                           ) : (
                             <>
@@ -1722,7 +1989,7 @@ export function BidsCoverLetterTab({
                                 >
                                   {markingSent ? 'Marking…' : multi ? `Mark sent to ${gcShort}` : 'Mark sent today'}
                                 </button>
-                                {roomPresenceByKey[`${bid.id}:${selectedKey}`] === false && !roomOpenByKey[`${bid.id}:${selectedKey}`] ? (
+                                {roomPresenceByKey[`${bid.id}:${selectedKey}`] === false && !roomOpenByKey[`${bid.id}:${selectedKey}`] && !addressedCustomer ? (
                                   <BidRoomSetupButton gcShort={gcShort} onClick={() => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:${selectedKey}`]: true }))} />
                                 ) : null}
                                   <OpenRfiChip bidId={bid.id} />
@@ -1733,6 +2000,11 @@ export function BidsCoverLetterTab({
                                     : "stamps every bid in the letter with today + its ★ value, and sets the bid's sent date and value"}
                                 </span>
                               </div>
+                              {addressedCustomer ? (
+                                <div data-testid="cover-letter-room-folded" style={{ marginTop: '0.5rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                                  The bid room stays {customerName}'s. A room carries its own opens and signature, so {addressedCustomer.name} does not share it. Pick {customerName} on Addressed to to open it.
+                                </div>
+                              ) : (
                               <BidRoomPanel
                                 bidId={bid.id}
                                 gcCustomerId={selectedKey === 'bid-default' ? null : selectedKey}
@@ -1751,6 +2023,7 @@ export function BidsCoverLetterTab({
                                 onOpenChange={(v) => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:${selectedKey}`]: v }))}
                                 onRoomPresence={(has) => setRoomPresenceByKey((m) => (m[`${bid.id}:${selectedKey}`] === has ? m : { ...m, [`${bid.id}:${selectedKey}`]: has }))}
                               />
+                              )}
                             </>
                           )}
                         </div>
@@ -2296,16 +2569,18 @@ export function BidsCoverLetterTab({
                         style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                       >
                         Copy &amp; open in Google Docs
+                        {addressedCustomer ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400 }}>to {addressedCustomer.name}</span> : null}
                       </button>
                       <button
                         type="button"
                         onClick={() => printCoverLetterDocument(finalCoverLetterHtml, bid)}
                         disabled={!totalsResolved}
                         aria-busy={!totalsResolved || undefined}
-                        title={totalsResolved ? 'Print combined document' : totalsPendingTitle}
+                        title={totalsResolved ? (addressedCustomer ? `Print — addressed to ${addressedCustomer.name}` : 'Print combined document') : totalsPendingTitle}
                         style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                       >
                         Print
+                        {addressedCustomer ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400 }}>to {addressedCustomer.name}</span> : null}
                       </button>
                       {coverLetterBidSubmissionQuickAddBidId === bid.id && (
                         <>

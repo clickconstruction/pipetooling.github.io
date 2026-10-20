@@ -19,11 +19,13 @@ import {
   brushPriceFor,
   brushSweptMessage,
   brushUndoOf,
+  brushUndoOnScreen,
   draftsWithout,
   previewWithoutRows,
   workbenchRowIdAt,
   type BrushRow,
   type BrushTouch,
+  type BrushUndo,
 } from '../lib/bids/marginBrush'
 
 export type MarginBrushArgs = {
@@ -60,8 +62,11 @@ export function useMarginBrush(args: MarginBrushArgs) {
   const [brushMarginInput, setBrushMarginInput] = useState('50')
   const [brushCommitting, setBrushCommitting] = useState(false)
   const [brushStrokeCount, setBrushStrokeCount] = useState(0)
-  /** Last committed sweep: [rowId, previous saved price (null = was unpriced)] — one-level undo. */
-  const [brushUndo, setBrushUndo] = useState<Array<[string, number | null]> | null>(null)
+  /** Last committed sweep and the price it was painted on: [rowId, previous saved price (null = was unpriced)] — one-level undo. */
+  const [brushUndoSweep, setBrushUndo] = useState<BrushUndo | null>(null)
+  // v2.5672: the undo is the open price's only if the sweep was painted on it — Undo writes to the open
+  // price, so after a card switch it used to write the old price's earlier prices into the new one.
+  const brushUndo = brushUndoOnScreen(brushUndoSweep, pricingVersionId)
   /* ---- Price by margin (v2.1769; row-by-row Margin mode v2.1772) ---- */
   const [recentMargins, setRecentMargins] = useState<number[]>(() => loadRecentMargins(window.localStorage))
   const brushStrokeRef = useRef<Map<string, BrushTouch> | null>(null)
@@ -148,7 +153,7 @@ export function useMarginBrush(args: MarginBrushArgs) {
         setRecentMargins(nextRec)
         saveRecentMargins(window.localStorage, nextRec)
       }
-      setBrushUndo(brushUndoOf(changed))
+      setBrushUndo({ pricingId: versionId, rows: brushUndoOf(changed) })
       showToast(brushSweptMessage(changed.length, m), 'success')
     } finally {
       clearStrokeDrafts()
@@ -156,9 +161,9 @@ export function useMarginBrush(args: MarginBrushArgs) {
     }
   }
   async function undoBrushSweep() {
-    if (!guardPricingWrite()) return
     const undo = brushUndo
     if (!undo || brushCommitting) return
+    if (!guardPricingWrite()) return
     const versionId = pricingVersionId
     if (!bidId || !versionId) return
     setBrushCommitting(true)

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { pricingStartChoices } from './pricingStartChoices'
 
 /**
- * The start panel for a version with no prices (punch list #135): the side-by-side rebid
+ * The start panel for a version with no prices (punch list #137): the side-by-side rebid
  * (same GC, own counts) leads with the sibling's book and names versions, the original G1
  * cross-GC case keeps its GC words, and anything the Workbench could not render afterward
  * stays on the setup sentence.

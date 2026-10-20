@@ -1,6 +1,6 @@
 ---
 name: "Pricing: price a fresh version from the book, right in the Workbench"
-number: 135
+number: 137
 group: gated
 status: proposed 2026-10-20 — researched, mock-up beside this file; not started, waiting on the owner's go and the four calls below
 summary: >

@@ -11,6 +11,7 @@ import {
   optionsAlternateCount,
   optionsShareFixtures,
   planSamePageLetter,
+  sameAmountTwinNames,
   type SamePageSection,
 } from './coverLetterSamePage'
 
@@ -281,5 +282,39 @@ describe('options (v2.4723) — two or more base bids are proposals the GC picks
   it('one base keeps the single-headline plan (null options), as before', () => {
     expect(planSamePageLetter([toPlans, toPlansNoMg])!.options).toBeNull()
     expect(buildOptionsBlock(planSamePageLetter([toPlans, toPlansNoMg])!, {}, formatCurrency, String)).toBeNull()
+  })
+})
+
+describe('sameAmountTwinNames (v2.5680, #133)', () => {
+  it('names the earliest offered alternate at the same amount; the first of a pair stays clean', () => {
+    expect(
+      sameAmountTwinNames([
+        { name: 'Copper water lines', revenueSum: 54990 },
+        { name: 'Copper water lines copy', revenueSum: 54990 },
+        { name: 'PEX upgrade', revenueSum: 51200.5 },
+      ]),
+    ).toEqual([null, 'Copper water lines', null])
+  })
+
+  it('three at one amount all point at the first; matching is to the cent', () => {
+    expect(
+      sameAmountTwinNames([
+        { name: 'A', revenueSum: 100.004 },
+        { name: 'B', revenueSum: 100.0 },
+        { name: 'C', revenueSum: 99.99 },
+        { name: 'D', revenueSum: 100.001 },
+      ]),
+    ).toEqual([null, 'A', null, 'A'])
+  })
+
+  it('unpriced rows (0, negative, NaN) never match — each reads its own unpriced caption instead', () => {
+    expect(
+      sameAmountTwinNames([
+        { name: 'A', revenueSum: 0 },
+        { name: 'B', revenueSum: 0 },
+        { name: 'C', revenueSum: Number.NaN },
+        { name: 'D', revenueSum: -5 },
+      ]),
+    ).toEqual([null, null, null, null])
   })
 })

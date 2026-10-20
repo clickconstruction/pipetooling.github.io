@@ -18,6 +18,7 @@ You press {{button:outline|🖌 Margin ›}} on the totals strip, left of {{butt
 - **Press and sweep across rows.** Every row the brush crosses is priced at that margin the instant it is touched. The price is cost divided by one minus the margin, rounded to whole dollars. The Revenue / Profit / Margin totals move as you go. One motion, many rows.
 - Rows you have held with 📌, fixed-price rows, and rows with no Takeoffs cost are never painted. There is nothing to price from. You set those by hand.
 - You let go and the sweep saves in one batch. {{button:outline|↩ Undo sweep}} takes the whole stroke back.
+- The undo belongs to the price card you swept. Open another price card and the button hides. Come back and it is there again.
 - **‹** or Esc puts the brush down.
 
 Your three most recent margins follow you from bid to bid on that device, most recent first. The margin you just swept with becomes the top chip.
