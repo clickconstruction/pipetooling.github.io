@@ -12,6 +12,7 @@ import { loadNewestBillLink } from '../../lib/billing/billLinkIo'
 import { jobBoxJobKey, NO_CUSTOMER_WORDS } from '../../lib/messages/jobBox'
 import { stageStepIds } from '../../lib/messages/stageLines'
 import { loadCustomerContact } from '../../lib/messages/messagesIo'
+import type { PapersIo } from '../../lib/messages/papersIo'
 import type { ReplyIo } from '../../lib/messages/replyIo'
 import type { QuickRepliesIo } from '../../lib/quickReplies/quickRepliesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -31,13 +32,16 @@ export interface JobCustomerBoxProps {
   /** For a smoke: the customer's contact, the box's sends and its quick replies, and the job's newest bill's pay page. */
   load?: (customerId: string) => Promise<Contact>
   loadBill?: (jobId: string) => Promise<string | null>
+  /** Send the pay page (v2.5657): the words the box opens with, and the bills `/bill` lists, from the money line's own read. */
+  startWords?: string | null
+  papersIo?: PapersIo
   io?: ReplyIo
   quickIo?: QuickRepliesIo
 }
 
 const quiet = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 } as const
 
-export function JobCustomerBox({ kind, jobId, jobName, customerId, jobStatus = null, onSent, load = loadCustomerContact, loadBill = loadNewestBillLink, io, quickIo }: JobCustomerBoxProps) {
+export function JobCustomerBox({ kind, jobId, jobName, customerId, jobStatus = null, onSent, load = loadCustomerContact, loadBill = loadNewestBillLink, startWords = null, papersIo, io, quickIo }: JobCustomerBoxProps) {
   const stageSteps = useMemo(() => stageStepIds(jobStatus), [jobStatus])
   const [read, setRead] = useState<{ customerId: string; contact: Contact | null; problem: string | null } | null>(null)
   // `{bill}` (v2.5628): the job's newest billed bill's pay page, read once; a read that fails leaves the blank for the person.
@@ -81,7 +85,7 @@ export function JobCustomerBox({ kind, jobId, jobName, customerId, jobStatus = n
     )
   return (
     <MessagesRereadContext.Provider value={onSent ?? (() => {})}>
-      <ReplyBox contact={got.contact} io={io} quickIo={quickIo} job={{ key: jobBoxJobKey(jobId), name: jobName }} billLink={billLink} stageStepIds={stageSteps} openStrip={stageSteps.length > 0} kinds={[kind]} />
+      <ReplyBox contact={got.contact} io={io} quickIo={quickIo} job={{ key: jobBoxJobKey(jobId), name: jobName }} billLink={billLink} startWords={startWords} papersIo={papersIo} stageStepIds={stageSteps} openStrip={stageSteps.length > 0} kinds={[kind]} />
     </MessagesRereadContext.Provider>
   )
 }

@@ -19,6 +19,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { customerDoorRows, lastLineMeta, lastLinesOnJob, lastWordOnJob, lastWordWords, type CustomerDoorRow } from '../../lib/messages/customerDoor'
 import { messagesThreadHref } from '../../lib/messages/customerThread'
 import { contactForCustomer, loadJobMessages } from '../../lib/messages/messagesIo'
+import type { PapersIo } from '../../lib/messages/papersIo'
 import type { ReplyIo } from '../../lib/messages/replyIo'
 import { telHrefFor } from '../../lib/phoneContact'
 import type { QuickRepliesIo } from '../../lib/quickReplies/quickRepliesIo'
@@ -52,6 +53,9 @@ export interface JobCustomerSheetProps {
    */
   initialKind?: 'text' | 'email'
   loadBill?: (jobId: string) => Promise<string | null>
+  /** Send the pay page (v2.5657): the box opens on the open bill's words, and `/bill` lists the line's own bills. */
+  startWords?: string | null
+  papersIo?: PapersIo
 }
 
 type Kind = 'text' | 'email'
@@ -78,7 +82,7 @@ const rowStyle = (enabled: boolean) =>
 
 const quiet = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 } as const
 
-export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, loadLines = loadJobMessages, load, io, quickIo, openThread, initialKind, loadBill }: JobCustomerSheetProps) {
+export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, loadLines = loadJobMessages, load, io, quickIo, openThread, initialKind, loadBill, startWords, papersIo }: JobCustomerSheetProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const customerProfile = useCustomerProfileModal()
@@ -209,7 +213,7 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
                 ‹ Back
               </button>
             </div>
-            <JobCustomerBox kind={kind} jobId={job.id} jobName={jobName} customerId={customerId} jobStatus={job.status ?? null} onSent={onSent} load={load} loadBill={loadBill} io={io} quickIo={quickIo} />
+            <JobCustomerBox kind={kind} jobId={job.id} jobName={jobName} customerId={customerId} jobStatus={job.status ?? null} onSent={onSent} load={load} loadBill={loadBill} startWords={startWords} papersIo={papersIo} io={io} quickIo={quickIo} />
           </div>
         )}
       </div>

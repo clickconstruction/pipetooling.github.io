@@ -10,7 +10,8 @@ import { shortDate } from '../gc/words'
 import { claimWords, parsePaymentPromisesRpc, promiseSaidLine, promisesOnJob, type PaymentPromise } from '../jobs/paymentPromises'
 import { STALE_AFTER_DAYS } from '../jobs/paidClaims'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
-import { billPapers, type BillPaper, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from '../messages/papers'
+import { billPapers, PAPER_LINES, paperFills, type BillPaper, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from '../messages/papers'
+import { fillLine } from '../quickReplies/blanks'
 
 /** One entry, as the reads return it: a bid's (`list_bid_money_strip`) or a customer's job's (`list_customer_money_strip`, v2.5649, `bidId` the job's bid or null). */
 export interface BidMoneyStripEntry {
@@ -198,4 +199,19 @@ export function canSendPayPage(line: BidMoneyLine): boolean {
 /** The kind the door opens in for the pay page: a text when they have a number, else an email. */
 export function payPageKind(line: BidMoneyLine): 'text' | 'email' {
   return (line.job.customerPhone ?? '').trim() ? 'text' : 'email'
+}
+
+/**
+ * The words Send the pay page opens the box with (live check 2026-10-20): the app's own open-bill line, with the bill's
+ * number, what is open, the job and its pay page filled from the line's own read. The job's people read no bill row, so
+ * the box's own papers read finds nothing for them, and no team line carries `{bill}`. `{first}` is left for the box,
+ * which knows who it writes to. Null when no open bill has a pay page.
+ */
+export function payPageWords(line: BidMoneyLine): string | null {
+  const bill = line.bills.find((b) => b.open && b.payUrl)
+  if (!bill) return null
+  const fills = paperFills(bill)
+  // A job with no number yet reads "your bill for SPACEX", not a blank the person must fill before it sends.
+  const words = fills.number ? PAPER_LINES.openBill : PAPER_LINES.openBill.replace(' {number}', '')
+  return fillLine(words, { bill: fills.bill, amount: fills.amount, number: fills.number, job: fills.job || line.job.name || null }).text
 }

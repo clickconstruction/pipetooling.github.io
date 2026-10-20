@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bidMoneyLine, bidMoneyLinesByBid, bidMoneyWords, canSendPayPage, parseBidMoneyStrip, payPageKind, type BidMoneyStripEntry } from './bidMoneyLine'
+import { bidMoneyLine, bidMoneyLinesByBid, bidMoneyWords, canSendPayPage, parseBidMoneyStrip, payPageKind, payPageWords, type BidMoneyStripEntry } from './bidMoneyLine'
 
 const PAY_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -132,5 +132,23 @@ describe('a stale claim on the line (v2.5650)', () => {
     const landed = bidMoneyLine(entry({ promises: [claim], payments: [{ invoice_id: PAY_ID, job_id: 'j1032', amount: 1000, paid_on: '2026-10-22', sequence_order: 0 }] }), '2026-11-10')
     expect(landed.staleDays).toBeNull()
     expect(landed.tone).toBe('quiet')
+  })
+})
+
+describe('the words Send the pay page opens with (v2.5657)', () => {
+  it('the open bill: its number, the job, what is open and its pay page; {first} left for the box', () => {
+    const line = bidMoneyLine(entry({ payments: [{ invoice_id: PAY_ID, job_id: 'j1032', amount: 1200, paid_on: '2026-10-02', sequence_order: 0 }] }), '2026-10-19')
+    const words = payPageWords(line)!
+    expect(words).toMatch(/^\{first\}, here is your bill 1032 for Whitfield repipe\. \$3,000 is open\. You can pay it here: /)
+    expect(words).toContain(PAY_ID)
+  })
+  it('a progress bill on a job still working, with no number yet, reads without the number', () => {
+    const line = bidMoneyLine(entry({}, { status: 'working', hcp_number: '', click_number: null }), '2026-10-19')
+    expect(payPageWords(line)).toMatch(/^\{first\}, here is your bill for Whitfield repipe\. \$4,200 is open\./)
+  })
+  it('nothing open, or no pay page: none', () => {
+    expect(payPageWords(bidMoneyLine(entry({ invoices: [] }), '2026-10-19'))).toBeNull()
+    const paid = entry({ payments: [{ invoice_id: PAY_ID, job_id: 'j1032', amount: 4200, paid_on: '2026-10-02', sequence_order: 0 }] })
+    expect(payPageWords(bidMoneyLine(paid, '2026-10-19'))).toBeNull()
   })
 })

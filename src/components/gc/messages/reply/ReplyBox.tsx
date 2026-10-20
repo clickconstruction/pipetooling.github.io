@@ -126,6 +126,7 @@ export function ReplyBox({
   estimateLinkIo,
   job,
   billLink = null,
+  startWords = null,
   stageStepIds = [],
   openStrip = false,
   kinds,
@@ -143,6 +144,8 @@ export function ReplyBox({
   job?: { key: string; name: string }
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628): the job's box and the Pipeline's sheet read it; the thread's foot has no one job. */
   billLink?: string | null
+  /** Words the box opens with, its blanks filled from what it knows, once (Send the pay page under a won bid, v2.5657). */
+  startWords?: string | null
   /** A job's box (v2.5629): the steps the job's stage speaks to; their lines lead the strip, the app's own words standing in for a step with no team line. */
   stageStepIds?: readonly string[]
   /** A job's box opens the strip on its own, unless the person folded it by hand. */
@@ -323,6 +326,14 @@ export function ReplyBox({
   const pipelineJobId = pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null
   const paper = papers ? defaultPaperFills(papers, pipelineJobId, Boolean(job)) : undefined
   const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? auth?.profileName ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink, paper })
+  // The caller's opening words go in once, and only into an empty box, so nothing the person typed is lost.
+  const startText = startWords ? fillLine(startWords, fills).text : null
+  const started = useRef(false)
+  useEffect(() => {
+    if (!startText || started.current) return
+    started.current = true
+    setBody((was) => was || startText)
+  }, [startText])
   // While an estimate's link is being made the line is in the box with its blank, so the send waits on the link, not the person.
   const [linking, setLinking] = useState(false)
   const waits = goesOut(shown) ? (linking ? ESTIMATE_LINK_MAKING : sendWaits(body)) : null

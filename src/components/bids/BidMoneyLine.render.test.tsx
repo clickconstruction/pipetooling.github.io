@@ -19,6 +19,15 @@ vi.mock('../../hooks/useAuth', async () => {
   return useAuthModuleMock({ role: 'estimator' })
 })
 
+vi.mock('../../lib/messages/messagesIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/messages/messagesIo')>()),
+  loadCustomerContact: async () => ({
+    id: 'c-dana', kind: 'customer', name: 'Dana Whitfield', goesBy: null, company: '', record: { table: 'customers', id: 'c-dana' },
+    channels: [{ id: 'ch-dana-email', kind: 'email', value: 'dana@example.com', optedOutAt: null }],
+    jobIds: ['pipeline:j1032'], defaultJobId: null, customerId: 'c-dana', gcCompanyId: null,
+  }),
+}))
+
 afterEach(() => cleanup())
 
 const PAY_ID = '11111111-1111-4111-8111-111111111111'
@@ -72,5 +81,25 @@ describe('BidMoneyLine', () => {
     await settle()
     expect(screen.getByRole('radiogroup', { name: 'Write as' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'Text' }).getAttribute('aria-checked')).toBe('true')
+  })
+  it("Send the pay page opens the box on the open bill's words and its pay page (v2.5657)", async () => {
+    renderWithProviders(<BidMoneyLine bidId="b512" line={bidMoneyLine(entry({}, { customer_phone: null }), '2026-10-19')} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Send the pay page' }))
+    await settle()
+    const box = document.querySelector('textarea') as HTMLTextAreaElement | null
+    expect(box?.value).toMatch(/^Dana, here is your bill 1032 for Whitfield repipe\. \$4,200 is open\. You can pay it here: /)
+    expect(box?.value).toContain(PAY_ID)
+  })
+  it('the speech bubble opens the box empty', async () => {
+    renderWithProviders(<BidMoneyLine bidId="b512" line={bidMoneyLine(entry({}, { customer_phone: null }), '2026-10-19')} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Dana Whitfield/ }))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /^Email/ }))
+    await settle()
+    const box = document.querySelector('textarea') as HTMLTextAreaElement | null
+    expect(box).toBeTruthy()
+    expect(box!.value).toBe('')
   })
 })
