@@ -300,6 +300,42 @@ describe('useJobFormImport — a bid', () => {
     expect(spies.pickGcCustomerId).toHaveBeenCalledWith('gc-a')
   })
 
+  it("v2.5659: an estimator's draft answers both questions — its GC with no picker, its figure with no ask — and its words win", async () => {
+    db.singles.bids = { data: bidRow({ service_type_id: 'st-plumb' }), error: null }
+    db.lists.bid_versions = { data: [versionRow('v1', null), versionRow('v2', 'gc-a')], error: null }
+    db.lists.bid_version_sends = { data: [sendRow('v1', 12_000), sendRow('v2', 11_000)], error: null }
+    db.lists.customers = { data: [{ id: 'gc-a', name: 'Acme' }], error: null }
+    const draft = { v: 1 as const, jobName: 'Oak Ridge phase 2', address: '14 Main St', gcKey: 'gc-a', gcName: 'Acme', carry: 10_500, serviceTypeId: 'st-elec', wantedBy: '2026-10-30', note: 'Slab pour is the 3rd' }
+    const { result, spies, held } = mount({ serviceTypes: [{ id: 'st-plumb', name: 'Plumbing', billing_only: false }, { id: 'st-elec', name: 'Electrical', billing_only: false }] as JobFormImportArgs['serviceTypes'] })
+    await act(() => result.current.applyPrefillFromBid('bid-1', undefined, { closeOnCancel: true, draft, draftFrom: 'Wendi' }))
+    expect(spies.setWinningGcPick).not.toHaveBeenCalled()
+    expect(ui.confirmDialog).not.toHaveBeenCalled()
+    expect(held.fixtures[0]).toMatchObject({ line_unit_price: 10_500, line_description: 'B482 · Oak Ridge — as sent' })
+    expect(spies.setLinkedBidGc).toHaveBeenCalledWith({ id: 'gc-a', name: 'Acme' })
+    expect(spies.setJobName).toHaveBeenCalledWith('Oak Ridge phase 2')
+    expect(spies.setJobAddress).toHaveBeenCalledWith('14 Main St')
+    expect(spies.setFormServiceTypeId).toHaveBeenCalledWith('st-elec')
+    expect(spies.setAccountManagerUserId).toHaveBeenCalledWith('theo')
+    expect(toasts().some((t) => t.startsWith("Imported from the bid. Wendi's draft: GC Acme · starts at $10,500.00 · wanted by Oct 30"))).toBe(true)
+  })
+
+  it('v2.5659: a draft that starts at $0 adds no line and asks nothing; a GC it names that is gone falls back to the picker', async () => {
+    db.singles.bids = { data: bidRow({ agreed_value: '15000' }), error: null }
+    const zero = { v: 1 as const, jobName: '', address: '', gcKey: null, gcName: null, carry: null, serviceTypeId: null, wantedBy: null, note: null }
+    const one = mount()
+    await act(() => one.result.current.applyPrefillFromBid('bid-1', undefined, { draft: zero }))
+    expect(ui.confirmDialog).not.toHaveBeenCalled()
+    expect(one.spies.setFixtures).not.toHaveBeenCalled()
+    expect(one.spies.setJobName).toHaveBeenCalledWith('Oak Ridge')
+    cleanup()
+    db.singles.bids = { data: bidRow(), error: null }
+    db.lists.bid_versions = { data: [versionRow('v1', null), versionRow('v2', 'gc-a')], error: null }
+    db.lists.customers = { data: [{ id: 'gc-a', name: 'Acme' }], error: null }
+    const two = mount()
+    await act(() => two.result.current.applyPrefillFromBid('bid-1', undefined, { draft: { ...zero, gcKey: 'gc-gone' } }))
+    expect(two.spies.setWinningGcPick).toHaveBeenCalledTimes(1)
+  })
+
   it('a forced GC (the picker’s pick) skips the second-conversion check and the packet reads', async () => {
     db.singles.bids = { data: bidRow(), error: null }
     db.lists.jobs_ledger = { data: [{ id: 'job-9', hcp_number: '1042' }], error: null }

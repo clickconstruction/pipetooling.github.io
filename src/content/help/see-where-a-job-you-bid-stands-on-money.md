@@ -13,6 +13,8 @@ You bid the job and you still talk to the customer. The won bid now shows you wh
 2. Press {{button:outline|✎}} to open Edit Bid.
 3. Look under the Job block. The money line sits under the job accounts.
 
+No job yet? Press {{button:green|Send to Dispatch}} on the Job block. Dispatch opens the job from your draft and schedules it. See [turn a won bid into a job](/help/turn-a-won-bid-into-a-job#estimators-send-dispatch-a-draft). The money line shows once the job is billed.
+
 :::example The money line
 {{chip:green|1032}} Billed Sep 30 · **$4,200 open** · They said Oct 25 · Dana, by text, heard by Theo
 :::

@@ -4,6 +4,7 @@
  */
 
 import { supabase } from './supabase'
+import type { Json } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatCurrency } from './format'
 
@@ -45,6 +46,8 @@ export async function createDispatchRequest(args: {
   bidId?: string | null
   referenceSummary?: string | null
   pendingAction?: string | null
+  /** The pending action's own context (`pending_payload`, v2.1615): an estimator's job draft rides here (v2.5659). */
+  pendingPayload?: Record<string, unknown> | null
 }): Promise<CreateDispatchRequestResult> {
   const title = args.title.trim()
   if (!title) throw new Error('Title is required')
@@ -77,6 +80,7 @@ export async function createDispatchRequest(args: {
           bid_id: args.bidId ?? null,
           reference_summary: args.referenceSummary?.trim() || null,
           pending_action: args.pendingAction ?? null,
+          ...(args.pendingPayload ? { pending_payload: args.pendingPayload as Json } : {}),
         })
         .select('id')
         .single(),

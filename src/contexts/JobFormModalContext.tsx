@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState } from 'react'
+import type { JobDraft } from '../lib/bids/jobDraft'
 import type { JobFormFocusRow } from '../lib/jobs/jobFormFocusRow'
 import JobFormModal from '../components/jobs/JobFormModal'
 import JobContractAfterCreatePrompt from '../components/jobs/JobContractAfterCreatePrompt'
@@ -34,6 +35,10 @@ export type OpenNewJobOptions = {
   projectId?: string | null
   /** After New Job init, run the same prefill as Import → bid (links bid, customer, name, address, links). */
   prefillBidId?: string | null
+  /** An estimator's draft from the Dispatch inbox (v2.5659): laid over the bid's import. Needs `prefillBidId`. */
+  prefillDraft?: JobDraft | null
+  /** Who sent the draft, for the words New Job shows. */
+  prefillDraftFrom?: string | null
 }
 
 type JobFormModalContextValue = {
@@ -64,6 +69,8 @@ type InternalOpenState =
       kind: 'new'
       projectId: string | null
       prefillBidId: string | null
+      prefillDraft: JobDraft | null
+      prefillDraftFrom: string | null
       onSaved: (() => void) | null
       onCreatedJobId: ((jobId: string) => void) | null
     }
@@ -129,6 +136,8 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
       kind: 'new',
       projectId: options?.projectId ?? null,
       prefillBidId: options?.prefillBidId?.trim() ? options.prefillBidId.trim() : null,
+      prefillDraft: options?.prefillDraft ?? null,
+      prefillDraftFrom: options?.prefillDraftFrom ?? null,
       onSaved: options?.onSaved ?? null,
       onCreatedJobId: options?.onCreatedJobId ?? null,
     })
@@ -173,6 +182,8 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           initialJob={null}
           newJobProjectId={openState.projectId}
           newJobPrefillBidId={openState.prefillBidId}
+          newJobPrefillDraft={openState.prefillDraft}
+          newJobPrefillDraftFrom={openState.prefillDraftFrom}
           billingCustomerHighlightInitial={false}
           fixturesSectionHighlightInitial={false}
           jobPicturesLinkHighlightInitial={false}

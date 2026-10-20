@@ -5,8 +5,11 @@
  *
  * Renders in two shapes: the full Job block (Edit Bid Win/Loss row, Waiting-to-hear win strip) and a
  * `compact` inline link beside a GC pill that reads won (board lines, Followup's per-GC panel).
- * Who sees which button is `wonMomentActions` — nothing here reads `bid_versions.outcome`.
+ * Who sees which button is `wonMomentActions` — nothing here reads `bid_versions.outcome`. An estimator gets
+ * **Send to Dispatch** in place of New Job (v2.5659): the draft sheet (`JobDraftSheet`), then "Sent to Dispatch Oct 20 ·
+ * waiting", then the job's chip, read through `list_bid_jobs_opened` since they read no job row.
  */
+import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
@@ -15,11 +18,13 @@ import { useOpenJobFromBidRequest } from '../../hooks/useOpenJobFromBidRequest'
 import { askDispatchToOpenJob } from '../../lib/bids/openJobFromBidDispatchRequest'
 import { dispatchAskedLabel } from '../../lib/bids/wonDispatchHandoff'
 import type { BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
-import { bidJobLinkLabel, wonMomentActions, type WonMomentAction } from '../../lib/bids/wonMomentActions'
+import { bidJobLinkLabel, sendsJobDraft, wonMomentActions, type WonMomentAction } from '../../lib/bids/wonMomentActions'
 import { bidBoardJobLinkLabel } from '../../lib/bids/bidBoardJobLinks'
 import { BidVisitsRehomeRow } from './BidVisitsRehomeRow'
 import { BidJobAccountsRow } from './BidJobAccountsRow'
 import { BidMoneyLine } from './BidMoneyLine'
+import { JobDraftSheet } from './JobDraftSheet'
+import { draftSentLabel } from '../../lib/bids/jobDraft'
 import { BidSubmittalChip } from './BidSubmittalChip'
 
 type Props = {
@@ -89,11 +94,19 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
   // v2.3143: the open "open the job" to-do, if any (full variant only — the board's compact link stays one query per bid).
   const handoff = useOpenJobFromBidRequest(compact ? null : bidId)
   const actions = wonMomentActions({ hasJob: newest != null, role, dispatchAsked: !compact && handoff.request != null })
+  // An estimator's Send to Dispatch (v2.5659): the draft sheet, over the block.
+  const [drafting, setDrafting] = useState(false)
+  const draftSheet = drafting ? <JobDraftSheet bidId={bidId} onClose={() => setDrafting(false)} onSent={() => handoff.refetch()} /> : null
 
   // No provider (partial trees, tests) → no door to offer.
   if (!jobFormModal) return null
 
   const run = (a: WonMomentAction) => {
+    if (a.key === 'send_draft') {
+      setDrafting(true)
+      onOpenedForm?.()
+      return
+    }
     if (a.key === 'ask_dispatch') {
       void askDispatchToOpenJob(user?.id, showToast, bidId).then(() => handoff.refetch())
       return
@@ -105,16 +118,18 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
 
   if (compact) {
     // Beside a won pill: only the create door (the row's Links column already shows the J#### chip).
-    const create = actions.find((a) => a.key === 'create')
+    const create = actions.find((a) => a.key === 'create' || a.key === 'send_draft')
     if (!create) return null
     return (
+      <>
+      {draftSheet}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation()
           run(create)
         }}
-        title="You won it — open a job from this bid with the customer, address and links filled in"
+        title={create.key === 'send_draft' ? "You won it — send Dispatch a draft of the job; they open it and schedule it" : 'You won it — open a job from this bid with the customer, address and links filled in'}
         style={{
           fontFamily: 'inherit',
           fontSize: '0.7rem',
@@ -129,8 +144,9 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
           textUnderlineOffset: 3,
         }}
       >
-        open the job →
+        {create.key === 'send_draft' ? 'send to Dispatch →' : 'open the job →'}
       </button>
+      </>
     )
   }
 
@@ -143,7 +159,7 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
           style={{ ...CHIP_STYLE, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }}
           title="Dispatch has this in their inbox — one press there opens New Job filled in from this bid"
         >
-          {dispatchAskedLabel({ senderName: handoff.request.senderName, createdAtIso: handoff.request.createdAt })}
+          {sendsJobDraft(role) ? draftSentLabel(handoff.request.createdAt) : dispatchAskedLabel({ senderName: handoff.request.senderName, createdAtIso: handoff.request.createdAt })}
         </span>
       ) : null}
       {newest ? (
@@ -163,6 +179,12 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
           {a.label}
         </button>
       ))}
+      {draftSheet}
+      {!newest && won && actions.some((a) => a.key === 'send_draft') ? (
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+          You won it. Send Dispatch the job's name, GC and figure. They open it and put it on the schedule.
+        </span>
+      ) : null}
       {!newest && won && actions.some((a) => a.key === 'create') ? (
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
           You won it — the job opens with the customer, address and links filled in, and the bid linked on the job.
