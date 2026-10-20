@@ -175,10 +175,21 @@ serve(async (req) => {
         })
       }
     } else if (est.status !== 'draft') {
-      return new Response(JSON.stringify({ error: 'Only draft estimates can be sent' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      // The press always answers (v2.5681, punch list #133): a first-send on a sent row names itself, with the
+      // first send's time, so the sheet can offer the resend instead of a dead end. Other statuses say which.
+      const sentAt = (est as { sent_at?: string | null }).sent_at ?? null
+      const already = est.status === 'sent' && sentAt
+      return new Response(
+        JSON.stringify(
+          already
+            ? { error: 'This estimate already went to the customer.', code: 'already_sent', sent_at: sentAt }
+            : { error: 'Only draft estimates can be sent', code: 'not_draft', estimate_status: est.status },
+        ),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
     }
     const customer_email = requestedEmail || String((est as { customer_email?: string | null }).customer_email ?? '').trim()
     if (!customer_email || !emailRegex.test(customer_email)) {

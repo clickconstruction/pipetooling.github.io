@@ -270,11 +270,57 @@ export function unfillLine(text: string, fills: BlankFills): string {
   return out
 }
 
+// ---------- the send's answer (v2.5681, punch list #133) ----------
+
+/**
+ * What the page's email send answers the sheet (v2.5681): the link, or why not — never a bare null. `already-went`
+ * carries the first send's time when the server knows it; `slow` is a send that gave no answer in 20 seconds and may
+ * still land; `refused` is every other no, with the reason as the server or the page said it.
+ */
+export type TellSendEmailAnswer =
+  | { ok: true; acceptUrl: string | null; emailed: boolean; warning?: string | null }
+  | { ok: false; kind: TellProblemKind; why: string; sentAtMs?: number | null }
+
+export type TellProblemKind = 'already-went' | 'refused' | 'slow'
+
+/** The band the sheet draws when a send cannot finish: the reason and the move, in place of a toast (v2.5681). */
+export interface TellProblem {
+  kind: TellProblemKind
+  title: string
+  detail: string
+}
+
+/** The band's words for a send that answered no. The sheet keeps the typed words and the presses under it. */
+export function tellProblem(answer: Extract<TellSendEmailAnswer, { ok: false }>, first: string | null): TellProblem {
+  const who = first ?? 'the customer'
+  if (answer.kind === 'already-went') {
+    const when = answer.sentAtMs ? ` It went ${clockDay(answer.sentAtMs)} at ${clockHm(answer.sentAtMs)}.` : ''
+    return {
+      kind: 'already-went',
+      title: `This estimate already went to ${who}.${when}`,
+      detail: 'Send the link again makes a fresh link and emails it. The old link stops working. The text carries the fresh link.',
+    }
+  }
+  if (answer.kind === 'slow') {
+    return {
+      kind: 'slow',
+      title: 'No answer after 20 seconds.',
+      detail: `The email may still have gone. Open ${first ? `${first}’s` : 'their'} thread before you press again.`,
+    }
+  }
+  return { kind: 'refused', title: TELL_WORDS.emailNotGo, detail: answer.why }
+}
+
 // ---------- the receipt ----------
 
 /** An instant as the clock says it in the app's time zone: "2:41 PM". */
 export function clockHm(ms: number): string {
   return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ })
+}
+
+/** A day as the band says it in the app's time zone: "Mon, Oct 20". */
+export function clockDay(ms: number): string {
+  return new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: APP_CALENDAR_TZ })
 }
 
 /** The receipt's line under the text: *Text · from the company number · 2:41 PM · in Dana’s thread*. */
@@ -285,6 +331,11 @@ export function sentLine(first: string | null, atMs: number): string {
 /** The receipt's line for the estimate's email: *Email · dana@example.com · 3:05 PM*. */
 export function emailSentLine(email: string, atMs: number): string {
   return `Email · ${email} · ${clockHm(atMs)}`
+}
+
+/** The receipt's honest line when the link was made but the email did not go (v2.5681): the page copied the link. */
+export function emailNotSentLine(email: string): string {
+  return `The email to ${email} did not go. The link was made and copied. Paste it into an email yourself.`
 }
 
 /** The call's script, filled for this customer, in the office's language: the step's own (`flow_steps.call_script`, v2.5596) when the office wrote one, else the app's. */
@@ -325,6 +376,11 @@ export const TELL_WORDS = {
   bothSentToast: (first: string | null) => `Emailed and texted ${first ?? 'the customer'}.`,
   emailOnlyToast: 'The email went. No link came back, so no text went.',
   textFailed: 'The email went. The text did not. Send it from the thread.',
+  emailNotGo: 'The email did not go.',
+  textNotGo: 'The text did not go.',
+  sendAgain: 'Send the link again',
+  tryAgain: 'Try again',
+  stillSending: 'Still sending. One moment.',
   skipped: 'Nothing sent.',
   officeLine: 'Make this the office’s line',
   officeLineHint: 'The words with the blanks back, as the step’s line for everyone. Change any blank before you save.',
