@@ -1,6 +1,6 @@
 /**
  * Bids → Pricing: what the Workbench offers a version with NO prices yet — the start panel
- * (punch list #135). Until v2.2707 the Old grid's "Price book" select was how a fresh version
+ * (punch list #137). Until v2.2707 the Old grid's "Price book" select was how a fresh version
  * got priced from a book; the empty state's words still pointed there after it retired, so a
  * side-by-side rebid (own counts, no prices) was left with only the ★ copy. The panel's
  * primary door prices from a book through `onSelectPriceBookTemplate`, which already clones

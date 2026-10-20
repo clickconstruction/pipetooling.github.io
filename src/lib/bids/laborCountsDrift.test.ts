@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { laborCountsOutOfStep } from './laborCountsDrift'
 
 /**
- * The Pricing strip's labor honesty line (punch list #135 PR 2): it shows exactly when the
+ * The Pricing strip's labor honesty line (punch list #137 PR 2): it shows exactly when the
  * Labor tab's own load sync would change something for this version's counts, and never
  * otherwise — the detector IS `planLaborSync`, so the two can't disagree.
  */

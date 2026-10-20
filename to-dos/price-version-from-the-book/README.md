@@ -1,6 +1,6 @@
 ---
 name: "Pricing: price a fresh version from the book, right in the Workbench"
-number: 135
+number: 137
 group: close
 status: built 2026-10-20 on the owner's go, all four defaults taken — PR 1 v2.5687, PR 2 v2.5689, PR 3 v2.5690; merges + the live walk left
 summary: >

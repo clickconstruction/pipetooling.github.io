@@ -1,6 +1,6 @@
 /**
  * Bids → Pricing: the panel the Workbench shows for a version with no prices yet (punch
- * list #135). Pure render — the words come from `pricingStartChoices`, the doors from the
+ * list #137). Pure render — the words come from `pricingStartChoices`, the doors from the
  * tab: the book press runs `onSelectPriceBookTemplate` (clone, stamp the version, star),
  * "another book ▸" opens the price book drawer, the copy runs `copyBasePriceFromVersion`.
  */

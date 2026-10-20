@@ -5,7 +5,7 @@ import { PricingStartPanel } from './PricingStartPanel'
 import type { PricingStartChoices } from '../../lib/bids/pricingStartChoices'
 
 /**
- * The start panel for an unpriced version (punch list #135): the book door leads, the drawer
+ * The start panel for an unpriced version (punch list #137): the book door leads, the drawer
  * door is always there, the copy row keeps its honest caption — and the setup sentence stays
  * for a bid the Workbench could not render anyway.
  */

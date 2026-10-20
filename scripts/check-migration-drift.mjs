@@ -78,7 +78,8 @@ function remoteVersionsViaCli() {
   // Newer CLI versions emit JSON when stdout is not a TTY:
   //   {"migrations":[{"local":"20260619120000","remote":"20260619120000","time":"..."}, ...]}
   // Older ones print a table: "   20260619120000 | 20260619120000 | 2026-06-19 12:00:00"
-  // with either side blank for local-only / remote-only versions.
+  // with either side blank for local-only / remote-only versions; CLI 2.117+ wraps each cell in
+  // backticks: "   `20260619120000` | `20260619120000` | `2026-06-19 12:00:00`".
   try {
     const parsed = JSON.parse(raw)
     for (const row of parsed.migrations ?? []) {
@@ -86,7 +87,7 @@ function remoteVersionsViaCli() {
     }
   } catch {
     for (const line of raw.split('\n')) {
-      const m = /^\s*(\d{14})?\s*\|\s*(\d{14})?\s*\|/.exec(line)
+      const m = /^\s*`?(\d{14})?`?\s*\|\s*`?(\d{14})?`?\s*\|/.exec(line)
       if (m && m[2]) versions.add(m[2])
     }
   }

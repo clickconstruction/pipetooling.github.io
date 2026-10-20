@@ -68,6 +68,18 @@ export function brushUndoOf(changed: ReadonlyArray<[string, BrushTouch]>): Array
   return changed.map(([rowId, v]) => [rowId, v.prev])
 }
 
+/** A sweep's undo and the price it was painted on (v2.5672). */
+export type BrushUndo = { pricingId: string; rows: Array<[string, number | null]> }
+
+/**
+ * The undo the open price may use (v2.5672): a sweep's undo belongs to the price it was painted on.
+ * Undo writes to whichever price is open, so with another card open it is hidden and does nothing.
+ * Before, it wrote the old price's earlier prices into the price now open. Back on its own card, it returns.
+ */
+export function brushUndoOnScreen(undo: BrushUndo | null, openPricingId: string | null): Array<[string, number | null]> | null {
+  return undo != null && openPricingId != null && undo.pricingId === openPricingId ? undo.rows : null
+}
+
 export function brushSweptMessage(rows: number, m: number | null): string {
   return `Swept ${rows} row${rows === 1 ? '' : 's'} at ${m}% — sweep again, or Esc puts the brush down.`
 }
