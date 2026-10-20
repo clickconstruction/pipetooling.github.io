@@ -34,7 +34,10 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { bidAutosaveStatusLine, bidFormFooterLabels, type BidAutosaveStatus } from '../../lib/bids/bidFormAutosave'
 
 type Bid = Database['public']['Tables']['bids']['Row']
-import { BidGcRecipientsRow, GcCard } from './BidGcRecipientsRow'
+import { BidGcRecipientsRow, GcCard, type BidGcRecipientRow } from './BidGcRecipientsRow'
+import { PromoteBidGcModal } from './PromoteBidGcModal'
+import { canTakeOffBidGc, latestSendByGcFromVersions, recommendedSuccessor, type PromoteAlternate } from '../../lib/bids/promoteBidGc'
+import { useToastContext } from '../../contexts/ToastContext'
 import { BidGcDetailsEditor } from './BidGcDetailsEditor'
 import { BidLogContactControl } from './BidLogContactControl'
 import { BidGcSentPanel } from './BidGcSentPanel'
@@ -228,6 +231,14 @@ export function BidFormModal(props: BidFormModalProps) {
   // sent value — the Won section asks which the GC took.
   const [bidVersionRows, setBidVersionRows] = useState<OptionVersion[]>([])
   const [versionSentValues, setVersionSentValues] = useState<Record<string, number | null>>({})
+  // #134 (v2.5682): the promote swap — the alternates mirrored up from BidGcRecipientsRow,
+  // the open confirm, and the latest send date per version (feeds the recommended pick).
+  const [alternateRows, setAlternateRows] = useState<BidGcRecipientRow[]>([])
+  const [gcRowsRefresh, setGcRowsRefresh] = useState(0)
+  const [promoteState, setPromoteState] = useState<null | { mode: 'remove' } | { mode: 'promote'; customerId: string }>(null)
+  const [promoteBusy, setPromoteBusy] = useState(false)
+  const [versionSentDates, setVersionSentDates] = useState<Record<string, string>>({})
+  const { showToast } = useToastContext()
   const [wonOptionBusy, setWonOptionBusy] = useState(false)
   const [wonOptionError, setWonOptionError] = useState<string | null>(null)
   useEffect(() => {
@@ -236,6 +247,9 @@ export function BidFormModal(props: BidFormModalProps) {
       setBidHasVersions(false)
       setBidVersionRows([])
       setVersionSentValues({})
+      setVersionSentDates({})
+      setPromoteState(null)
+      setAlternateRows([])
       return
     }
     setBidHasVersions(null)
@@ -252,11 +266,12 @@ export function BidFormModal(props: BidFormModalProps) {
       setBidVersionRows(list)
       const latest = latestSendByVersion((sends ?? []) as Parameters<typeof latestSendByVersion>[0])
       setVersionSentValues(Object.fromEntries(Object.entries(latest).map(([k, v]) => [k, v.value])))
+      setVersionSentDates(Object.fromEntries(Object.entries(latest).map(([k, v]) => [k, v.sentOn])))
     })()
     return () => {
       cancelled = true
     }
-  }, [props.editingBid?.id])
+  }, [props.editingBid?.id, gcRowsRefresh])
   useEffect(() => {
     setChangingPrimary(false)
   }, [props.editingBid?.id])
@@ -414,6 +429,58 @@ export function BidFormModal(props: BidFormModalProps) {
       setBidDueDate(d.bid_due_date ?? '')
       setBidDueTime(d.bid_due_time ? d.bid_due_time.slice(0, 5) : '')
     })()
+  }
+
+  // #134 (v2.5682): the other GCs on the bid, shaped for the promote confirm. The ★ card's
+  // × and "make bid's GC" on the alternate cards both end in the promote_bid_gc RPC, which
+  // re-keys the departing GC's sent versions, per-GC state and rooms so history never
+  // re-badges onto the new GC.
+  const canEditPeople = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator'
+  const promoteAlternates: PromoteAlternate[] = alternateRows.map((r) => ({
+    customerId: r.customer_id,
+    name: customers.find((c) => c.id === r.customer_id)?.name ?? 'Unknown customer',
+    source: r.source === 'version' ? 'version' : 'manual',
+  }))
+  const promoteOldCustomer = customers.find((c) => c.id === gcCustomerId) ?? null
+  const promoteOldName = promoteOldCustomer?.name ?? (editingBid?.gc_builder_id ? editingBid?.bids_gc_builders?.name ?? null : null)
+  const promoteLatestSendByGc = latestSendByGcFromVersions(
+    bidVersionRows,
+    Object.fromEntries(Object.entries(versionSentDates).map(([k, sentOn]) => [k, { sentOn }])),
+  )
+
+  /** The swap itself — both confirm doors and the edit-mode GC dropdown land here. */
+  async function runPromote(newGcId: string, oldStays: boolean) {
+    const id = editingBid?.id
+    if (!id || promoteBusy) return
+    if (newGcId === (gcCustomerId || editingBid?.customer_id || '')) {
+      setPromoteState(null)
+      setChangingPrimary(false)
+      setGcCustomerDropdownOpen(false)
+      return
+    }
+    setPromoteBusy(true)
+    try {
+      // Cast until gen-types runs post-push (the BidGcRecipientsRow pattern).
+      const { error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>)(
+        'promote_bid_gc',
+        { p_bid_id: id, p_new_gc_id: newGcId, p_old_gc_stays: oldStays },
+      )
+      if (error) {
+        showToast(`Could not hand the bid over: ${error.message}`, 'error')
+        return
+      }
+      const next = customers.find((c) => c.id === newGcId) ?? null
+      setGcCustomerId(newGcId)
+      setGcCustomerSearch(next ? getCustomerDisplay(next) : '')
+      setChangingPrimary(false)
+      setGcCustomerDropdownOpen(false)
+      setPromoteState(null)
+      setGcRowsRefresh((n) => n + 1)
+      refreshDerivedDue()
+      showToast(`${next?.name ?? 'The alternate'} is the bid’s GC now.`, 'success')
+    } finally {
+      setPromoteBusy(false)
+    }
   }
 
   /** Auto-fill Distance to Office: routed Google miles, straight-line estimate as fallback. */
@@ -1221,6 +1288,12 @@ export function BidFormModal(props: BidFormModalProps) {
                             change {'\u25b8'}
                           </button>
                         }
+                        onRemove={
+                          editingBid && canEditPeople && canTakeOffBidGc(promoteAlternates)
+                            ? () => setPromoteState({ mode: 'remove' })
+                            : undefined
+                        }
+                        removeBusy={promoteBusy}
                         details={
                           editingBid ? (
                             <BidGcDetailsEditor
@@ -1260,7 +1333,10 @@ export function BidFormModal(props: BidFormModalProps) {
                     const value = e.target.value
                     setGcCustomerSearch(value)
                     setGcCustomerDropdownOpen(true)
-                    if (gcCustomerId) {
+                    // #134: on a saved bid the pick itself swaps the GC (promote RPC), so
+                    // typing is just searching — clearing the id here would let autosave
+                    // write customer_id NULL mid-search.
+                    if (gcCustomerId && !editingBid) {
                       const selected = customers.find((c) => c.id === gcCustomerId)
                       if (!selected || !value || getCustomerDisplay(selected).toLowerCase() !== value.toLowerCase()) {
                         setGcCustomerId('')
@@ -1289,6 +1365,37 @@ export function BidFormModal(props: BidFormModalProps) {
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     }}
                   >
+                    {/* #134: the GCs already on this bid come first — one press, no retyping.
+                        In edit mode the pick runs the promote swap (attribution re-keys). */}
+                    {editingBid && promoteAlternates.length > 0 ? (() => {
+                      const q = gcCustomerSearch.toLowerCase()
+                      const onBid = promoteAlternates.filter((a) => a.name.toLowerCase().includes(q))
+                      if (onBid.length === 0) return null
+                      return (
+                        <>
+                          <div style={{ padding: '0.3rem 0.5rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)' }}>
+                            On this bid
+                          </div>
+                          {onBid.map((a) => (
+                            <div
+                              key={a.customerId}
+                              onClick={() => void runPromote(a.customerId, false)}
+                              style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
+                            >
+                              <div style={{ fontWeight: 500 }}>{a.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                {a.source === 'version' ? 'own packet on this bid' : 'got the same letter'}
+                              </div>
+                            </div>
+                          ))}
+                          <div style={{ padding: '0.3rem 0.5rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)' }}>
+                            All customers
+                          </div>
+                        </>
+                      )
+                    })() : null}
                     {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator') && (
                       <div
                         onClick={() => {
@@ -1296,6 +1403,10 @@ export function BidFormModal(props: BidFormModalProps) {
                             onCreated: (c) => {
                               void loadCustomers()
                               if (!c) return
+                              if (editingBid) {
+                                void runPromote(c.id, false)
+                                return
+                              }
                               setGcCustomerId(c.id)
                               setGcCustomerSearch(getCustomerDisplay(c))
                               setChangingPrimary(false)
@@ -1323,6 +1434,8 @@ export function BidFormModal(props: BidFormModalProps) {
                     )}
                     {customers
                       .filter((c) => {
+                        // Alternates already listed under "On this bid" above (#134).
+                        if (editingBid && promoteAlternates.some((a) => a.customerId === c.id)) return false
                         const searchLower = gcCustomerSearch.toLowerCase()
                         const nameLower = c.name.toLowerCase()
                         const addressLower = (c.address || '').toLowerCase()
@@ -1332,6 +1445,10 @@ export function BidFormModal(props: BidFormModalProps) {
                         <div
                           key={c.id}
                           onClick={() => {
+                            if (editingBid) {
+                              void runPromote(c.id, false)
+                              return
+                            }
                             setGcCustomerId(c.id)
                             setGcCustomerSearch(getCustomerDisplay(c))
                             setGcCustomerDropdownOpen(false)
@@ -1364,6 +1481,19 @@ export function BidFormModal(props: BidFormModalProps) {
               </div>
                 ) : null}
               
+              {promoteState && editingBid ? (
+                <PromoteBidGcModal
+                  mode={promoteState.mode}
+                  oldGcName={promoteOldName ?? 'the current GC'}
+                  oldIsCustomer={!!(gcCustomerId || editingBid.customer_id)}
+                  alternates={promoteAlternates}
+                  targetCustomerId={promoteState.mode === 'promote' ? promoteState.customerId : undefined}
+                  recommendedId={recommendedSuccessor(promoteAlternates, promoteLatestSendByGc)}
+                  busy={promoteBusy}
+                  onConfirm={(newGcId, oldStays) => void runPromote(newGcId, oldStays)}
+                  onClose={() => setPromoteState(null)}
+                />
+              ) : null}
               <CustomerTermsBar warning={customerTerms.warning} onEditTerms={canEditTerms && termsCustomerId ? () => setTermsModalOpen(true) : undefined} />
               {termsModalOpen && termsCustomerId ? (
                 <CustomerTermsModal
@@ -1379,6 +1509,9 @@ export function BidFormModal(props: BidFormModalProps) {
                 bidCustomerId={gcCustomerId || editingBid?.customer_id || null}
                 customers={customers}
                 canEdit={myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator'}
+                refreshToken={gcRowsRefresh}
+                onRowsChange={setAlternateRows}
+                onMakePrimary={editingBid ? (customerId) => setPromoteState({ mode: 'promote', customerId }) : undefined}
                 onCreateNew={
                   (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator') && openNewCustomerModal
                     ? (onCreated) =>

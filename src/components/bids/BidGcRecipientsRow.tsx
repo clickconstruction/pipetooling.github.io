@@ -148,6 +148,12 @@ export type BidGcRecipientsRowProps = {
   onCreateNew?: (onCreated: (customer: Customer | null) => void) => void
   /** Per-GC due / submitted-to / ITB editor slot (Phase 4) — rendered under each card. */
   renderGcDetails?: (customerId: string) => ReactNode
+  /** Bump to reload the rows after an outside write (the promote swap, #134). */
+  refreshToken?: number
+  /** The parent's mirror of the rows — feeds the ★ card's × and the promote confirm (#134). */
+  onRowsChange?: (rows: BidGcRecipientRow[]) => void
+  /** "make bid's GC" on each card (#134) — opens the promote confirm for that GC. */
+  onMakePrimary?: (customerId: string) => void
 }
 
 /**
@@ -158,7 +164,7 @@ export type BidGcRecipientsRowProps = {
  * every read degrades to an empty list so a client deployed ahead of the
  * migration renders nothing instead of crashing (Banking quirk-#17 pattern).
  */
-export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, onCreateNew, renderGcDetails }: BidGcRecipientsRowProps) {
+export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, onCreateNew, renderGcDetails, refreshToken = 0, onRowsChange, onMakePrimary }: BidGcRecipientsRowProps) {
   const [rows, setRows] = useState<BidGcRecipientRow[]>([])
   const [available, setAvailable] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -193,7 +199,14 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, o
     return () => {
       cancelled = true
     }
-  }, [bidId])
+  }, [bidId, refreshToken])
+
+  // Mirror the rows up so the parent can gate the ★ card's × and fill the promote
+  // confirm (#134). `onRowsChange` is a parent setState — stable, no loop.
+  useEffect(() => {
+    onRowsChange?.(rows)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows])
 
   if (!available) return null
 
@@ -291,6 +304,18 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, o
                 email={contact.email}
                 role={r.source === 'version' ? 'packet' : 'same'}
                 sameAsName={bidGcName}
+                action={
+                  canEdit && onMakePrimary ? (
+                    <button
+                      type="button"
+                      onClick={() => onMakePrimary(r.customer_id)}
+                      title="They run the bid — the letter, the board and Followup go to their name"
+                      style={{ fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      make bid&rsquo;s GC {'▸'}
+                    </button>
+                  ) : undefined
+                }
                 onRemove={canEdit ? () => void removeRecipient(r.customer_id) : undefined}
                 removeBusy={busy}
                 details={renderGcDetails?.(r.customer_id)}
