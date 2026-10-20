@@ -23,7 +23,7 @@ import {
   pickOrphanedRequestIds,
   SELF_HEALING_REQUESTS,
 } from '../lib/picturesDispatchRequests'
-import { bidIdsForOpenJobSweep, pickOpenJobRequestsToClose } from '../lib/bids/wonDispatchHandoff'
+import { bidIdsForOpenJobSweep, openJobSweepJobsByBidId, pickOpenJobRequestsToClose } from '../lib/bids/wonDispatchHandoff'
 import { closeOpenJobFromBidRequests } from '../lib/bids/openJobFromBidDispatchRequest'
 import type { RequestPriority } from '../lib/requestPriority'
 
@@ -87,13 +87,11 @@ export function useDispatchInbox() {
       openJobSweepRunningRef.current = true
       try {
         const jobRows = await withSupabaseRetry(
-          async () => supabase.from('jobs_ledger').select('bid_id, hcp_number, created_at').in('bid_id', bidIds).order('created_at', { ascending: false }),
+          async () =>
+            supabase.from('jobs_ledger').select('bid_id, hcp_number, click_number, created_at').in('bid_id', bidIds).order('created_at', { ascending: false }),
           'dispatch inbox open-job sweep',
         )
-        const jobsByBidId = new Map<string, { hcpNumber: string | null }>()
-        for (const r of (jobRows ?? []) as Array<{ bid_id: string | null; hcp_number: string | null }>) {
-          if (r.bid_id && !jobsByBidId.has(r.bid_id)) jobsByBidId.set(r.bid_id, { hcpNumber: r.hcp_number })
-        }
+        const jobsByBidId = openJobSweepJobsByBidId(jobRows ?? [])
         const toClose = pickOpenJobRequestsToClose(rows.filter((r) => bidIds.includes(r.bid_id ?? '')), jobsByBidId)
         if (toClose.length === 0) return
         for (const c of toClose) sweptOpenJobBidIdsRef.current.add(c.bidId)
