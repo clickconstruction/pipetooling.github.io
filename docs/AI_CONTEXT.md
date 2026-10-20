@@ -13,7 +13,7 @@
 - **Users**: 9 roles with layered access control — dev, master_technician, assistant, controller (assistant-like + payroll access), subcontractor, helpers (UI "Helper"), estimator, primary, superintendent
 - **Major systems**:
   1. **Projects/Workflows** — ongoing work tracking: customers → projects → workflow stages → line items
-  2. **Bids** — estimation: 26 tabs (`BIDS_TABS` in `src/lib/bids/bidsTabAccess.ts`) from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
+  2. **Bids** — estimation: 27 tabs (`BIDS_TABS` in `src/lib/bids/bidsTabAccess.ts`) from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
   3. **Materials** — supply houses, price book, templates, purchase orders, PO Generator ledger
   4. **Checklist** — recurring tasks: Today / History / Review / Manage / Roadmap
 - **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (the cold-call deck in three lanes, customers, jobs to GC and subs for the bench, + the Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally, GC mode (`/gc`: we are the general contractor and trades quote to us; PROJECT_DOCUMENTATION §20, every GC table's door in `src/lib/gc/doors.ts`; the Messages system's map is `docs/MESSAGES_ARCHITECTURE.md`, its kernels and tables listed in the Glossary's **Messages** entry), Messages for the company's own customers (`/messages`: Follow up's lanes for every kind of person, the thread window, the job box, Job Mode's door and its On my way press with the tech's bio (`src/lib/bio/`), the two inboxes, the reply push, and since punch list #115 Tell the customer (every text or email to a customer pressed or seen by a person: the sheet on a booking and an estimate, Today's sends, call tasks) — the plan is `docs/MESSAGES_RESIDENTIAL_BUILD_PLAN.md`, its row in `docs/README.md` → Plans), Training (`/training/<slug>`: courses the crew takes at their own pace, each with a clock, the policy a dev's in Settings → Training; PROJECT_DOCUMENTATION §23)
@@ -223,8 +223,8 @@ type Customer = Database['public']['Tables']['customers']['Row']
 - **controller**: assistant-like + dev-level money visibility and payroll access
 - **subcontractor** (Sub): external worker, sees only assigned work; optional service-type restriction
 - **helpers** (UI "Helper"): field helper, subcontractor-like access
-- **estimator**: bid specialist — Bids, Materials, Map, Calendar; optional service-type restriction
-- **primary**: client-side principal with billing visibility (Dashboard, Estimates, Jobs, Bids)
+- **estimator**: bid specialist — Bids, Materials, Map, Calendar; optional service-type restriction; the money of a job opened from their bid as one of the job's people (`is_job_people`, punch list #129), never a `jobs_ledger` row
+- **primary**: client-side principal with billing visibility (Dashboard, Estimates, Jobs, Bids); scoped to their own jobs, the paid verbs too since v2.5655
 - **superintendent**: site supervisor; assigned projects only
 
 ### Project Management
@@ -302,4 +302,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-10-19
+last_updated: 2026-10-20

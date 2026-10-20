@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-17
+last_updated: 2026-10-20
 ---
 
 ## Overview
@@ -466,6 +466,8 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | v2.5285 (after `mapped_at`) | `contract-clauses` | `contractClausesEnabled` (a dev or the controller, `canApproveClause`; `useClauseNeeds` over `contracts/approval.ts` → `clauseNeeds`, empty for anyone else; the Dashboard host only; kicker **Contracts**, **Review** opens the oldest change's paper on Settings → Contracts and clauses) | amber |
 | v2.5392 (after `mapped_at`) | `customer-messages` | `customerMessagesEnabled` (the GC office team, `canOpenGcProjects`, behind `CUSTOMER_MESSAGES_LINE_ON`, `true` since v2.5451; `useCustomerMessagesCounts` over `lib/followUp/customerCounts.ts`: each customer once on Needs a reply plus one who wrote on their page, the customers' rows on We owe them and their open call tasks (v2.5596), the customers waiting in **New** to sort (since v2.5500, `customerCountsIo.ts` building the lane as `useFollowUpQueue` does, so the line, the New the press lands on and Sort all say one number; a sender nobody has named waits under All and is not counted), off Follow up's own queue, the file loading on demand while the line is on; the Dashboard host only; kicker **Messages**, title **Customers**, **Messages** opens `/messages?kind=customer`) | amber; rank 40 beside `job-followups` |
 | v2.5595 (after `mapped_at`) | `todays-sends` | `todaysSendsEnabled` (the GC office team, as the Customers line; `useTodaysSends` over `lib/offers/offers.ts` → `todaysSendsLine`, the open `nudge_offers` rows: ready, the morning's and held; **Open** mounts `TodaysSendsWindow` lazily over the Dashboard; kicker **Messages**) | amber |
+| v2.5650 (after `mapped_at`) | `paid-claims-stale` | `staleClaimsEnabled` (whoever heard a customer's claim that they paid — the office, an estimator, a primary; `useMyStaleClaims` over `lib/jobs/paidClaims.ts` → `myStaleClaims` / `staleClaimLine`, the live `list_paid_claims` rows with nothing landed in seven days; the Dashboard host only; kicker **Money on your bids**, title *A customer said they paid, and nothing landed*, **Open the bid** → the won bid's Job block for an estimator, the Pipeline for the office) | amber; rank 12 beside the deposits |
+| v2.5651 (after `mapped_at`) | `money-on-my-bids` | `myMoneyEnabled` (an estimator or a primary; `useMyMoney` over `list_my_money_strip` with `lib/bids/moneyLens.ts`'s rollup; the Dashboard host only; kicker **Money on your bids**, title *N jobs you sold have money open*, **Open the Money lens** → `/bids?tab=money`) | red when a day they named has gone by, else amber; rank 14 |
 | 1458–1493 | `legal-firm-activity`, `legal-review` | each `…Enabled` | amber or blue |
 | 1495–1521 | `robot-backlog` | `robotBacklogEnabled` | amber when stuck or a request is over a week old, else blue; snooze / dismiss secondaries |
 | 1523–1540 | `test-reports-ready` | `testReportsEnabled` | blue when one is ready, else gray |

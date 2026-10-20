@@ -9,10 +9,12 @@ covers:
   - src/components/jobs/CollectPaymentModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-20
 ---
 
 > **Line numbers are as of `f423bd6e5`** (read from `npm run map` fact sheets generated at that commit). They rot — **search the symbol**, then trust the range only as a hint. Regenerate with `npm run map -- <file>`.
+
+> **v2.5650 (after `mapped_at`) — They said they paid:** `BankPaymentsModal` reads the live paid claims once per open (`paidClaimsIo.ts`, fail-soft, over `list_paid_claims`) and, for the selected deposit, the first claim whose job has open bills on the board and fits (`claimFitsDeposit` in `lib/jobs/paidClaims.ts`: open, the amount they named or the job's open money within a dollar, on or after the day they named; the customer's name in the counterparty a second sign, never a requirement) leads B7's pane under **They said they paid** — the claim's words (`claimSuggestionWords`), *the deposit names them* when it does, and the job's open bills as the payer's rows, so the press that allocates is the one the office already makes; a claim closes on its own when the deposit is allocated (`docs/recent-features/v2.5650.md`, punch list #129).
 
 ## What this surface is
 
@@ -141,7 +143,7 @@ Two sibling modals on the money-in path. They share **no client state and neithe
 
 - **Memos:** `bankPaymentQuickMatchTargets` 510–522 (deposit untouched, window on **`|amount|`**), `depositPayerMatch` 529–539 (`matchArDepositToPayer`), `depositPayerTargets` 542–558 (window on **`remaining_available`**, amount-matches first, top 8), `quickMatchTargetsOutsidePayer` 561–565, `depositAmountMatchKeys` 699–709, `payerBillCombo` 739–747 (`findExactBillCombos`; only when ≥ 2 payer bills, none equals the deposit, exactly one combo); `targetSelectOptions` 717–730 (`orderArBilledLineTargets`, JSX option content) — shared with B10.
 - **Callbacks:** `pickTargetIntoLines` 754–771 (first empty billed line or a new line; same amount math as B10), `applyComboAllocation` 774–783 (**replaces** all lines with one per combo bill at full `remaining`).
-- **Render:** `ArPayerMatches` 2908–2918 (filters out bills already on a line; combo only when exactly one untouched line).
+- **Render:** `ArPayerMatches` 2908–2918 (filters out bills already on a line; combo only when exactly one untouched line). Since v2.5650 the pane leads with **They said they paid** when a live claim fits the deposit (the note atop).
 - **Tests:** `arDepositCustomerMatch` (13), `arPayerBillCombos` (8), `arBilledLineOptions` (9), `jobsStagesBoard.test.ts` (target builders); render smokes: chip row (`render.test`), combo fills two lines (`Combo.render.test`). The three inline amount windows are untested.
 - **Approach:** Stage A the windows (inventory B-3), then a `useArMatchAssists({ selected, targets, targetByKey })` hook or keep memos in parent — they feed B10 and B11 labels.
 

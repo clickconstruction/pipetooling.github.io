@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-10-19
+last_updated: 2026-10-20
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -189,7 +189,7 @@ None of the three v2.3530 dialogs has a render test.
 | 4336 | `forecastShareModalOpen` | `PaymentForecastShareModal` | |
 | 4337 | `chaseModalOpen` | `PaymentChaseModal` | `chaseFullQueue`; recorded → reload touches + promises; Move to Collections → `collectionsConfirm` (z 80 over call mode z 70) |
 | 4370 | `fixBillLinesOpen` | `FixBillLinesModal` | **filtered** `stagesBoardLists.billedActiveRows` |
-| 4377 | `promisedPayModalJob` | `SetPromisedPayDateModal` | saved → reload promises + records |
+| 4377 | `promisedPayModalJob` | `SetPromisedPayDateModal` (**Write down their word** since v2.5648, punch list #129: a switch between a pay-by day and *they say they paid* with the method, the day and the amount, `add_job_payment_claim`; its record reads the job's own `list_job_payment_promises_for`, both kinds; open to the job's people, `is_job_people`, v2.5646) | saved → reload promises + records |
 | 4389 | `paidProfitChartOpen` | `PaidProfitChartModal` | **filtered** `stagesBoardLists.paid` (see quirk 4) |
 | 4399 | `billedShareModalOpen` | `BilledReportShareModal` | print = filtered billed rows + search |
 | 4406 | `legalDesk` | `LegalDeskModal` (always mounted; `canEditFirm={authRole === 'dev'}` since v2.4711 — the firm window from the firm's name; `uncollectibleJobs` since v2.4794 — the rail's *Given up on* group) | **filtered** `stagesBoardLists.collectionsJobs` (4409, see quirk 4), contract coverage, `legalMatters`; many doors back into the board |
