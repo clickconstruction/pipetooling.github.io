@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Report by line</title>
+<style>
+  /* Punch list #130. Light only, like every to-do mock-up. Made-up builder and job: Harlow Custom Homes, Pecan Grove lot 14 (J1204); made-up tech Marco; made-up counts. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  h2 .num.pick { background: var(--green); }
+  h2 .num.today { background: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--subtle); color: var(--ink-2); border: 1px solid var(--line); border-bottom: 0; }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; overflow: auto; }
+  /* lenses */
+  .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0 0; }
+  .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .lens p { margin: 0; color: var(--ink-2); font-size: 13px; }
+  /* phone */
+  .phone { width: 375px; flex: 0 0 375px; background: #fff; border: 8px solid #111; border-radius: 30px; overflow: hidden; font-size: 14px; color: var(--ink); box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .status { height: 22px; background: #fff; }
+  .phone .title { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px 10px; border-bottom: 1px solid var(--line-2); font-weight: 700; font-size: 16px; }
+  .phone .title .x { font-weight: 400; color: var(--muted); font-size: 20px; }
+  .phone .body { padding: 12px 14px 0; }
+  .phone .foot { padding: 10px 14px 14px; border-top: 1px solid var(--line-2); background: #fff; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-weight: 700; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--line); background: #fff; color: var(--ink-2); }
+  .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; width: 100%; font-size: 15px; }
+  .btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn.outline { color: var(--ink-2); }
+  .reporting { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .reporting .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .reporting b { display: block; font-size: 14px; }
+  .reporting small { color: var(--muted); }
+  .reporting .chg { color: var(--blue-ink); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .types { display: flex; gap: 6px; margin-bottom: 14px; }
+  .types span { flex: 1; text-align: center; padding: 7px 0; border-radius: 8px; border: 1px solid var(--line); font-weight: 600; font-size: 13px; color: var(--ink-2); }
+  .types span.on { border-color: var(--blue); color: var(--blue-ink); background: var(--blue-tint); }
+  .q { font-weight: 600; margin: 0 0 2px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .q .val { font-weight: 700; color: var(--ink-2); font-size: 14px; }
+  .hint { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  .picks { display: flex; gap: 5px; margin-bottom: 8px; }
+  .picks span { flex: 1; text-align: center; padding: 8px 0; border-radius: 6px; border: 1px solid var(--line); font-weight: 700; font-size: 13px; color: var(--ink-2); background: #fff; }
+  .picks span.on { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-ink); }
+  .picks span.solid { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .slider { position: relative; height: 22px; margin: 2px 0 10px; }
+  .slider .track { position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 2px; background: var(--line); }
+  .slider .fill { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 2px; background: var(--blue); }
+  .slider .thumb { position: absolute; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--blue); margin-left: -9px; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .seed { font-size: 12px; color: var(--muted); margin: -4px 0 10px; }
+  .notebox { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; color: var(--muted); font-size: 13px; min-height: 44px; margin: 10px 0 0; }
+  /* the lines list */
+  .lines { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .ln { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; border-top: 1px solid var(--line-2); }
+  .ln:first-child { border-top: 0; }
+  .ln.open { background: var(--blue-tint); }
+  .ln .n { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--subtle); color: var(--muted); }
+  .ln.open .n { background: var(--blue); color: #fff; }
+  .ln.done .n { background: var(--green-tint); color: var(--green-ink); }
+  .ln .name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ln .name small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+  .ln .pct { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--muted); white-space: nowrap; font-size: 13px; }
+  .ln.open .pct { color: var(--blue-ink); }
+  .ln.done .pct { color: var(--green-ink); }
+  .ln .pct.moved { color: var(--green-ink); }
+  .ln .pct.moved.down { color: var(--amber-ink); }
+  .ln .pct .was { color: var(--muted); font-weight: 500; }
+  .ln .pct .arrow { margin: 0 3px; }
+  .ln .chev { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .ctl { grid-column: 1 / -1; padding: 2px 0 0; }
+  .ctl .picks { margin-bottom: 6px; }
+  .ctl .picks span { padding: 9px 0; }
+  .ctl .slider { margin-bottom: 2px; }
+  .jobline { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--green-tint); border: 1px solid #86efac; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .jobline .big { font-size: 18px; font-weight: 800; color: var(--green-ink); font-variant-numeric: tabular-nums; }
+  .jobline .big .was { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+  .jobline .big .arrow { margin: 0 4px; }
+  .jobline.quiet { background: var(--subtle); border-color: var(--line); }
+  .jobline.quiet .big { color: var(--ink); }
+  .jobline a, .link { color: var(--blue-ink); font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .escape { display: block; font-size: 12px; color: var(--blue-ink); font-weight: 600; margin: 8px 0 0; }
+  .how { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff; border: 1px dashed var(--line); font-size: 12px; color: var(--ink-2); }
+  .how table { width: 100%; border-collapse: collapse; }
+  .how td { padding: 2px 0; }
+  .how td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .how tr.t td { border-top: 1px solid var(--line); font-weight: 700; }
+  /* office */
+  .card { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .card.wide { max-width: 860px; }
+  .card .bar { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--line-2); gap: 10px; }
+  .card .bar b { font-size: 15px; }
+  .card .bar .sub { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .card .body { padding: 10px 14px 12px; }
+  .rep { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .rep .f { display: grid; grid-template-columns: 150px 1fr; gap: 8px; border-bottom: 1px solid var(--line-2); padding: 6px 0; }
+  .rep .f:last-child { border-bottom: 0; }
+  .rep .f .k { color: var(--muted); }
+  .chip { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--subtle); color: var(--ink-2); }
+  .chip.green { background: var(--green-tint); color: var(--green-ink); border-color: #86efac; }
+  .chip.gray { background: var(--subtle); color: var(--muted); }
+  .chip.orange { background: var(--amber-tint); color: var(--amber-ink); border-color: #fcd34d; }
+  /* pipeline cell */
+  .cell { width: 176px; }
+  .cell .chips { display: flex; gap: 3px; margin-bottom: 4px; }
+  .cell .chips span { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: #fff; }
+  .cell .chips span.done { background: var(--green-tint); border-color: #86efac; color: var(--green-ink); }
+  .cell .chips span.live { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .seg { display: flex; gap: 2px; height: 14px; }
+  .seg div { position: relative; background: var(--line-2); border-radius: 3px; overflow: hidden; }
+  .seg div i { position: absolute; left: 0; top: 0; bottom: 3px; background: var(--blue); }
+  .seg div i.g { background: var(--green); }
+  .seg div u { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--green); }
+  .seg div u.b { background: #93c5fd; }
+  .cell .words { font-size: 11px; color: var(--ink-2); margin-top: 4px; line-height: 1.3; }
+  .tbl { width: 100%; border-collapse: collapse; }
+  .tbl th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  .tbl td { padding: 8px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .tbl td.num { white-space: nowrap; font-weight: 700; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cmp .h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+  /* decisions */
+  .dec { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+  .d { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .d b { display: block; margin-bottom: 2px; }
+  .d .def { color: var(--green-ink); font-weight: 600; }
+  ol.crit { margin: 8px 0 0; padding-left: 20px; color: var(--ink-2); max-width: 100ch; }
+  ol.crit li { margin: 4px 0; }
+  @media (max-width: 420px) { .phone { width: 100%; flex-basis: auto; border-width: 4px; border-radius: 18px; } .cmp { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #130 · field reports · mock-up, made-up data</p>
+  <h1>Report by line: how far along each line is, not the job</h1>
+  <p>A tech is halfway through the rough-in and the report asks how complete the <em>job</em> is. They type 50. The job reads half done everywhere money is counted. The question should be the size of the work: each line of the job, no amounts, the job's number worked out behind it.</p>
+</header>
+
+<div class="lenses">
+  <div class="lens"><h3>The tech's seat</h3><p>Marco files from Job Mode before he drives off. He has a number for the rough-in, not for the job. Fewest taps, honest answer. The same on the My Schedule stepper.</p></div>
+  <div class="lens"><h3>The job behind the ask</h3><p>The question is wrong-sized. The job's percent feeds the Pipeline bar, the AR and Not Billed Out cards, Burn, the Bridge, capable-to-bill and the Ready-to-bill prompt. A fifty for the rough-in makes the job look half unbilled.</p></div>
+  <div class="lens"><h3>The whole office</h3><p>The office already names the lines on the Bill tab, the Pipeline cell already draws one segment per line, the GC portal shows the shared stages. Every one gets truer when the number per line is the tech's own.</p></div>
+</div>
+
+<h2><span class="num today">1</span>Today — the whole-job slider on a four-line job</h2>
+<p class="lede">Status Report on <b>J1204 · Pecan Grove lot 14</b> for Harlow Custom Homes, four priced lines, no Order row. The stage picker of v2.3192 never opens here. Marco is halfway through the rough-in.</p>
+<div class="row">
+  <div>
+    <div class="cap red">Today · Leave Report <span class="r">what Marco sees</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="status"></div>
+        <div class="title">New report <span class="x">×</span></div>
+        <div class="body">
+          <div class="reporting"><div><div class="k">Reporting on</div><b>J1204 · Pecan Grove lot 14</b><small>Harlow Custom Homes · from your last report</small></div><span class="chg">Change</span></div>
+          <div class="types"><span class="on">Status</span><span>Walk</span><span>Note</span></div>
+          <p class="q">How complete is the job? <span class="val">50%</span></p>
+          <p class="seed">Was 32% · crew report Oct 14</p>
+          <div class="picks"><span>0</span><span>25</span><span class="on">50</span><span>75</span><span>100</span></div>
+          <div class="slider"><div class="track"></div><div class="fill" style="width:50%"></div><div class="thumb" style="left:50%"></div></div>
+          <div class="notebox">Halfway through rough-in, inspection Thursday.</div>
+        </div>
+        <div class="foot"><span class="btn blue">Save report</span></div>
+      </div>
+    </div>
+    <p class="note"><b>What goes wrong.</b> Marco means <i>the rough-in is half done</i>. The job was 32%; half a rough-in makes it 38%. He taps 50 because 50 is the number he has. The job now reads 50%, and so do the bar, the cards, Burn and the Bridge.</p>
+  </div>
+</div>
+
+<h2><span class="num pick">2</span>Proposed — the lines, one open at a time</h2>
+<p class="lede">The same job, the same report. The percent question becomes the job's lines in plan order. No amounts, no shares on the rows. The first line not yet done is open; the rest are one line each.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Proposed · Leave Report <span class="r">opens on the likely line</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="status"></div>
+        <div class="title">New report <span class="x">×</span></div>
+        <div class="body">
+          <div class="reporting"><div><div class="k">Reporting on</div><b>J1204 · Pecan Grove lot 14</b><small>Harlow Custom Homes · from your last report</small></div><span class="chg">Change</span></div>
+          <div class="types"><span class="on">Status</span><span>Walk</span><span>Note</span></div>
+          <p class="q">How far along is each line?</p>
+          <p class="hint">Move the ones you worked on. The rest stay as they are.</p>
+          <div class="lines">
+            <div class="ln done"><span class="n">1</span><span class="name">Underground<small>paid</small></span><span class="pct">✓ Paid</span></div>
+            <div class="ln open"><span class="n">2</span><span class="name">Rough In</span><span class="pct">35% <span class="chev">⌃</span></span>
+              <div class="ctl">
+                <div class="picks"><span>25</span><span>50</span><span>75</span><span>Done ✓</span></div>
+                <div class="slider"><div class="track"></div><div class="fill" style="width:35%"></div><div class="thumb" style="left:35%"></div></div>
+              </div>
+            </div>
+            <div class="ln"><span class="n">3</span><span class="name">Top Out</span><span class="pct">— <span class="chev">⌄</span></span></div>
+            <div class="ln"><span class="n">4</span><span class="name">Trim Set</span><span class="pct">— <span class="chev">⌄</span></span></div>
+            <div class="ln"><span class="n">◆</span><span class="name">Water heater<small>any time</small></span><span class="pct">— <span class="chev">⌄</span></span></div>
+          </div>
+          <div class="jobline quiet"><div class="big">Job 32% <span class="was">nothing moved yet</span></div><a href="#">how?</a></div>
+          <span class="escape">Set the whole-job % instead</span>
+          <div class="notebox">What got done? (optional)</div>
+        </div>
+        <div class="foot"><span class="btn blue">Save report</span></div>
+      </div>
+    </div>
+    <p class="note"><b>Why the rows carry no share.</b> v2.3192 prints <i>35% of the job</i> on every stage. It is not money, but it is money-shaped, and it invites doing the math instead of answering. The share waits behind <b>how?</b> (D1).</p>
+  </div>
+  <div>
+    <div class="cap green">Proposed · after two moves <span class="r">three taps</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="status"></div>
+        <div class="title">New report <span class="x">×</span></div>
+        <div class="body">
+          <div class="reporting"><div><div class="k">Reporting on</div><b>J1204 · Pecan Grove lot 14</b><small>Harlow Custom Homes · from your last report</small></div><span class="chg">Change</span></div>
+          <div class="types"><span class="on">Status</span><span>Walk</span><span>Note</span></div>
+          <p class="q">How far along is each line?</p>
+          <p class="hint">Move the ones you worked on. The rest stay as they are.</p>
+          <div class="lines">
+            <div class="ln done"><span class="n">1</span><span class="name">Underground<small>paid</small></span><span class="pct">✓ Paid</span></div>
+            <div class="ln"><span class="n">2</span><span class="name">Rough In</span><span class="pct moved"><span class="was">35%</span><span class="arrow">→</span>50% <span class="chev">⌄</span></span></div>
+            <div class="ln"><span class="n">3</span><span class="name">Top Out</span><span class="pct">— <span class="chev">⌄</span></span></div>
+            <div class="ln"><span class="n">4</span><span class="name">Trim Set</span><span class="pct">— <span class="chev">⌄</span></span></div>
+            <div class="ln open done"><span class="n">◆</span><span class="name">Water heater<small>any time</small></span><span class="pct moved"><span class="was">—</span><span class="arrow">→</span>✓ Done <span class="chev">⌃</span></span>
+              <div class="ctl">
+                <div class="picks"><span>25</span><span>50</span><span>75</span><span class="solid">Done ✓</span></div>
+                <div class="slider"><div class="track"></div><div class="fill" style="width:100%"></div><div class="thumb" style="left:100%;margin-left:-18px"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="jobline"><div class="big">Job 32% <span class="arrow">→</span> 43% <span class="was">was 32%</span></div><a href="#">how?</a></div>
+          <div class="how">
+            <table>
+              <tr><td>Underground · paid</td><td class="r">20% of the job · done</td><td class="r">20</td></tr>
+              <tr><td>Rough In</td><td class="r">35% of the job · 50%</td><td class="r">18</td></tr>
+              <tr><td>Top Out</td><td class="r">25% of the job · —</td><td class="r">0</td></tr>
+              <tr><td>Trim Set</td><td class="r">15% of the job · —</td><td class="r">0</td></tr>
+              <tr><td>Water heater</td><td class="r">5% of the job · done</td><td class="r">5</td></tr>
+              <tr class="t"><td>Job</td><td></td><td class="r">43%</td></tr>
+            </table>
+          </div>
+          <span class="escape">Set the whole-job % instead</span>
+          <div class="notebox">Halfway through rough-in. Set the water heater while the inspector was late.</div>
+        </div>
+        <div class="foot"><span class="btn blue">Save report</span></div>
+      </div>
+    </div>
+    <p class="note"><b>Three taps.</b> 50 on Rough In, the Water heater row, Done ✓. The job line moves with each tap. A moved row reads <span class="chip green">35% → 50%</span>; a row moved back reads amber. <b>how?</b> is shown unfolded here; it is folded until tapped.</p>
+  </div>
+</div>
+
+<h2><span class="num pick">3</span>The rule, in one table</h2>
+<p class="lede">Which jobs get the list, what a row shows, what the job's number is.</p>
+<div class="row">
+  <div class="card wide">
+    <div class="body">
+      <table class="tbl">
+        <tr><th>When</th><th>The percent question is</th><th>The job's number</th></tr>
+        <tr><td class="num">One priced line</td><td>today's slider, <i>How complete is the job?</i></td><td>the slider</td></tr>
+        <tr><td class="num">Two or more priced lines</td><td>the lines in plan order, each with its own percent; a number on an In-order stage (declared on the Bill tab or recognized by name), ◆ on an Any-time line; a discount row never lists</td><td>Σ share × line percent, worked out by the server (no price reaches the phone), written into <i>How complete is the job?</i> as v2.3192 already does, so nothing downstream changes</td></tr>
+        <tr><td class="num">A line's draw is paid</td><td><span class="chip green">✓ Paid</span>, no controls</td><td>counts as 100 whatever was said, the Stage Plan's rule</td></tr>
+        <tr><td class="num">Set the whole-job % instead</td><td>the slider comes back; the report says so</td><td>the slider; the lines keep their own numbers</td></tr>
+        <tr><td class="num">The office types a job %</td><td>unchanged on the Pipeline and in Edit Job</td><td>the typed number wins until the next line report re-derives, today's precedence</td></tr>
+        <tr><td class="num">The RPC is missing or fails</td><td>today's slider, as v2.3192 falls back</td><td>the slider</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">4</span>The other door — Update % done on My Schedule</h2>
+<p class="lede">The stepper files the same Status Report (v2.2078). On a multi-line job it opens the same list in its sheet. The ± chips stay for a one-line job.</p>
+<div class="row">
+  <div>
+    <div class="cap red">Today · the stepper <span class="r">whole job, ± chips</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="status"></div>
+        <div class="title">Update % done <span class="x">×</span></div>
+        <div class="body">
+          <p class="hint" style="margin-bottom:4px">J1204 · Pecan Grove lot 14</p>
+          <p class="q" style="font-size:22px;margin-bottom:6px"><span>32% <span style="color:var(--muted)">→</span> 52%</span> <span class="chip green">▲ 20</span></p>
+          <div class="slider"><div class="track"></div><div class="fill" style="width:32%"></div><div class="fill" style="left:32%;width:20%;background:var(--green)"></div></div>
+          <div class="picks"><span>−20</span><span>−5</span><span>−1</span><span>+1</span><span>+5</span><span class="on">+20</span></div>
+          <div class="notebox">What got done? (optional)</div>
+        </div>
+        <div class="foot"><span class="btn blue">Save 52%</span></div>
+      </div>
+    </div>
+    <p class="note">The fast door. The same fifty gets typed here, twenty at a time.</p>
+  </div>
+  <div>
+    <div class="cap green">Proposed · the stepper on a multi-line job <span class="r">same list, same chips</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="status"></div>
+        <div class="title">Update % done <span class="x">×</span></div>
+        <div class="body">
+          <p class="hint" style="margin-bottom:4px">J1204 · Pecan Grove lot 14</p>
+          <p class="q">How far along is each line?</p>
+          <div class="lines">
+            <div class="ln done"><span class="n">1</span><span class="name">Underground</span><span class="pct">✓ Paid</span></div>
+            <div class="ln open"><span class="n">2</span><span class="name">Rough In</span><span class="pct moved"><span class="was">35%</span><span class="arrow">→</span>50% <span class="chev">⌃</span></span>
+              <div class="ctl">
+                <div class="picks"><span>25</span><span class="solid">50</span><span>75</span><span>Done ✓</span></div>
+                <div class="slider"><div class="track"></div><div class="fill" style="width:50%"></div><div class="thumb" style="left:50%"></div></div>
+              </div>
+            </div>
+            <div class="ln"><span class="n">3</span><span class="name">Top Out</span><span class="pct">— <span class="chev">⌄</span></span></div>
+            <div class="ln"><span class="n">4</span><span class="name">Trim Set</span><span class="pct">— <span class="chev">⌄</span></span></div>
+            <div class="ln"><span class="n">◆</span><span class="name">Water heater<small>any time</small></span><span class="pct">— <span class="chev">⌄</span></span></div>
+          </div>
+          <div class="jobline"><div class="big">Job 32% <span class="arrow">→</span> 38% <span class="was">was 32%</span></div><a href="#">how?</a></div>
+          <div class="notebox">What got done? (optional)</div>
+        </div>
+        <div class="foot"><span class="btn blue">Save · job 38%</span></div>
+      </div>
+    </div>
+    <p class="note">One tap to say the rough-in is half done. The job's number is on the button, so nobody is surprised by what gets written.</p>
+  </div>
+</div>
+
+<h2><span class="num pick">5</span>What the office reads</h2>
+<p class="lede">Nothing new to learn. The report card's text names the lines; the Pipeline cell fills each line with its own number instead of pouring the job's percent down all of them; the Bill tab's stage line reads the number it already reads.</p>
+<div class="row">
+  <div class="card">
+    <div class="bar"><b>Status Report · J1204 Pecan Grove lot 14</b><span class="sub">Marco R. · today 4:12 pm</span></div>
+    <div class="body">
+      <div class="rep">
+        <div class="f"><span class="k">How complete is the job?</span><span><b>43%</b> <span class="chip gray">was 32%</span></span></div>
+        <div class="f"><span class="k">Stage progress</span><span>Rough In 35% → 50% · Water heater — → 100% · job 32% → 43%</span></div>
+        <div class="f"><span class="k">Notes</span><span>Halfway through rough-in. Set the water heater while the inspector was late.</span></div>
+        <div class="f"><span class="k">Location</span><span>on the job · 4:12 pm</span></div>
+      </div>
+      <p class="note" style="margin-top:8px">The job's activity reads <i>43% complete — from field report</i>, as it does today. The notification email carries the same sentence.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="bar"><b>Pipeline · Progress &amp; payment</b><span class="sub">the 176px column</span></div>
+    <div class="body">
+      <div class="cmp">
+        <div>
+          <div class="h">Today · job % poured down the lines</div>
+          <div class="cell">
+            <div class="chips"><span class="done">1</span><span class="live">2 Rough In</span><span>3</span><span>4</span><span>◆</span></div>
+            <div class="seg"><div style="width:20%"><i class="g" style="width:100%"></i><u style="width:100%"></u></div><div style="width:35%"><i style="width:86%"></i><u class="b" style="width:100%"></u></div><div style="width:25%"><i style="width:0"></i></div><div style="width:15%"></div><div style="width:5%"></div></div>
+            <div class="words">Rough In · Marco on site today · 50% · crew report Oct 20</div>
+          </div>
+        </div>
+        <div>
+          <div class="h">Proposed · each line its own fill</div>
+          <div class="cell">
+            <div class="chips"><span class="done">1</span><span class="live">2 Rough In</span><span>3</span><span>4</span><span class="done">◆</span></div>
+            <div class="seg"><div style="width:20%"><i class="g" style="width:100%"></i><u style="width:100%"></u></div><div style="width:35%"><i style="width:50%"></i><u class="b" style="width:100%"></u></div><div style="width:25%"><i style="width:0"></i></div><div style="width:15%"></div><div style="width:5%"><i style="width:100%"></i></div></div>
+            <div class="words">Rough In 50% · Marco on site today · 43% · crew report Oct 20</div>
+          </div>
+        </div>
+      </div>
+      <p class="note" style="margin-top:8px">Left: the fifty, poured down the lines, so the rough-in reads nearly done. Right: the rough-in at half, the water heater done, the job at 43. The money channel under each segment is unchanged.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">6</span>A one-line job changes nothing</h2>
+<p class="lede">A service call with one priced line keeps the slider it has. Nothing to split, nothing to list.</p>
+<div class="row">
+  <div>
+    <div class="cap">Unchanged · one line <span class="r">J1210 · water heater swap</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="status"></div>
+        <div class="title">New report <span class="x">×</span></div>
+        <div class="body">
+          <div class="reporting"><div><div class="k">Reporting on</div><b>J1210 · 40-gal water heater</b><small>Sawyer, Dana · from your last report</small></div><span class="chg">Change</span></div>
+          <div class="types"><span class="on">Status</span><span>Walk</span><span>Note</span></div>
+          <p class="q">How complete is the job? <span class="val">100%</span></p>
+          <p class="seed">Was 0% · set by office</p>
+          <div class="picks"><span>0</span><span>25</span><span>50</span><span>75</span><span class="on">100</span></div>
+          <div class="slider"><div class="track"></div><div class="fill" style="width:100%"></div><div class="thumb" style="left:100%;margin-left:-18px"></div></div>
+          <div class="notebox">Swapped, tested, old unit hauled.</div>
+        </div>
+        <div class="foot"><span class="btn blue">Save report</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">7</span>Is this the best we can do? What the second pass changed</h2>
+<ol class="crit">
+  <li><b>Chips on every row</b> made a six-line job a wall on a phone. Now one row is open at a time; done rows are one line with a check.</li>
+  <li><b>The share on each row</b> read as value. It moved behind <b>how?</b> on the job line, percentages only, folded until tapped.</li>
+  <li><b>A separate stepper design</b> was two idioms for one answer. The stepper opens the same list; its ± chips stay only where there is nothing to list.</li>
+  <li><b>"Which line did you work on?" then a slider</b> reports one line per report. The list lets a tech move two rows in three taps and is faster for one, since the likely row is already open.</li>
+  <li><b>Gating on the Order flag</b> was the whole gap. The list keys on two or more priced lines, what the Pipeline bar already keys on, so the report and the bar agree on what a job's pieces are.</li>
+  <li><b>One text field per row</b> cluttered the report card. One <i>Stage progress</i> field, one sentence per moved line, keeps today's readers working.</li>
+</ol>
+
+<h2><span class="num">8</span>Decisions for the owner</h2>
+<div class="dec">
+  <div class="d"><b>D1 · the share</b><span class="def">Default: behind how?, percentages only.</span><br>Or print <i>35% of the job</i> on each row as v2.3192 does.</div>
+  <div class="d"><b>D2 · which rows list</b><span class="def">Default: every priced line that is not a discount, in plan order.</span><br>Or only lines the office marks as work, which needs a third choice on the Bill tab's chooser.</div>
+  <div class="d"><b>D3 · the escape hatch</b><span class="def">Default: Set the whole-job % instead stays, no note required.</span><br>Or require a note on a multi-line job.</div>
+  <div class="d"><b>D4 · the stepper door</b><span class="def">Default: PR 3 in the same train.</span><br>Or leave it whole-job and watch whether the fifties stop with PR 2 alone.</div>
+  <div class="d"><b>D5 · the office's windows</b><span class="def">Default: the Additional report gets the list; Edit report edits the stored text only.</span><br>Or leave both as they are.</div>
+</div>
+<p class="note" style="margin-top:18px">The plan, the kernels and the PR train are in <b>to-dos/report-by-line/README.md</b>. PR 1 is the write RPC and the kernel; PR 2 the field on the report; PR 3 the stepper; PR 4 the Pipeline cell; PR 5 retires the one-stage field.</p>
+</div>
+</body>
+</html>
