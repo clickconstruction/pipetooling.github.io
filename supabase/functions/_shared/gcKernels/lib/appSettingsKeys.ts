@@ -366,6 +366,24 @@ export const APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1 = 'bid_sov_material_fac
 export const APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1 = 'bid_sov_labor_share_pct_v1' as const
 
 /**
+ * `value_num` — the company sales tax rate on a bid's material, percent (punch list #128 PR 1,
+ * v2.5653): the rate a bid taxes its takeoff material at when `bids.tax_rate_pct` is null. Seeded
+ * at 8.25 (the Takeoffs box's old constant); the rate varies by city, so a bid keeps its own. Dev
+ * writes (Settings → Bid Cover Letter Defaults); every bid reads it. Parse: `parseBidTaxRatePct`.
+ */
+export const APP_SETTINGS_KEY_BID_TAX_RATE_PCT_V1 = 'bid_tax_rate_pct_v1' as const
+
+export const DEFAULT_BID_TAX_RATE_PCT = 8.25
+
+/** Parse a tax rate, percent: missing, garbage, or outside 0–100 falls back. */
+export function parseBidTaxRatePct(value: number | string | null | undefined, fallback = DEFAULT_BID_TAX_RATE_PCT): number {
+  if (value === null || value === undefined || value === '') return fallback
+  const n = typeof value === 'number' ? value : Number(String(value).replace(/[%,\s]/g, ''))
+  if (!Number.isFinite(n) || n < 0 || n > 100) return fallback
+  return Math.round(n * 1000) / 1000
+}
+
+/**
  * `value_num` — the contract floor in cents (Contract sweep PR 0): a live job whose amount is
  * under it is not counted as a contract gap by the Needs You item, the Pipeline card, the
  * No-contract filter or the sweep. 0 / missing = no floor (every live job counts). Dev writes

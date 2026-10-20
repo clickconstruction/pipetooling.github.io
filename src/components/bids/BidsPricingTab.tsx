@@ -2133,7 +2133,10 @@ export function BidsPricingTab({
                     margin: r.margin,
                     materialsFromTakeoff: r.materialsFromTakeoff,
                   })
-    return { totalMaterials, rate, totalLaborHours, taxPercent, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost, assignmentsForVersion, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown }
+    // The bid's cost carries the tax on its material (punch list #128 PR 1), as every row's cost already did —
+    // until now the overhead line absorbed it (the map's tax fallback duality).
+    const taxCost = totalMaterials * (taxPercent / 100)
+    return { totalMaterials, rate, totalLaborHours, taxPercent, taxCost, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost: totalCost + taxCost, assignmentsForVersion, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown }
   }
 
   // v2.5043: what the priced-margin stamp reads when a price write settles: the strip's numbers over

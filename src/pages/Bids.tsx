@@ -21,6 +21,8 @@ import { useBidPricingRows } from '../hooks/useBidPricingRows'
 import { useBidCrewRate } from '../hooks/useBidCrewRate'
 import { effectiveLaborRate } from '../lib/bids/crewRate'
 import { useBidCustomCosts } from '../hooks/useBidCustomCosts'
+import { bidTaxRateToSave, effectiveBidTaxRate } from '../lib/bids/bidTaxRate'
+import { loadBidTaxRateDefault, saveBidTaxRate } from '../lib/bids/bidTaxRateIo'
 import { useToastContext } from '../contexts/ToastContext'
 import { useRoleGate } from '../hooks/useRoleGate'
 import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
@@ -1439,6 +1441,45 @@ export default function Bids() {
   // the Labor tab's own read; Pricing, the print and the letter now read the same number.
   const { crewRate: pricingCrewRate } = useBidCrewRate(!!selectedBidForPricing)
   const pricingLaborRateEffective = effectiveLaborRate({ override: pricingLaborRate, companyRate: pricingCrewRate?.companyRate ?? null })
+
+  // The sales tax rate lives on the bid (punch list #128 PR 1, v2.5653): the box on Takeoffs reads
+  // `bids.tax_rate_pct`, else the company default, and writes the bid on blur. Before the migration
+  // is pushed the column is absent from the row and the default stands, as it always did.
+  const [bidTaxRateDefault, setBidTaxRateDefault] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void loadBidTaxRateDefault(supabase).then((pct) => {
+      if (!cancelled) setBidTaxRateDefault(pct)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const taxRateBid = selectedBidForTakeoff ?? selectedBidForPricing ?? selectedBidForCostEstimate
+  const taxRateBidOwn = (taxRateBid as (BidWithBuilder & { tax_rate_pct?: number | null }) | null)?.tax_rate_pct ?? null
+  useEffect(() => {
+    setCostEstimatePOModalTaxPercent(String(effectiveBidTaxRate(taxRateBidOwn, bidTaxRateDefault).pct))
+  }, [taxRateBid?.id, taxRateBidOwn, bidTaxRateDefault])
+  const commitBidTaxPercent = async (text: string) => {
+    const bid = taxRateBid
+    if (!bid) return
+    const next = bidTaxRateToSave(text, bidTaxRateDefault)
+    if (next === undefined) {
+      setCostEstimatePOModalTaxPercent(String(effectiveBidTaxRate(taxRateBidOwn, bidTaxRateDefault).pct))
+      showToast('The tax rate is a number from 0 to 100.', 'warning')
+      return
+    }
+    if (next === taxRateBidOwn) return
+    const { error } = await saveBidTaxRate(supabase, bid.id, next)
+    if (error) {
+      showToast(`Could not save the tax rate: ${error}`, 'error')
+      return
+    }
+    const patch = (b: BidWithBuilder) => (b.id === bid.id ? ({ ...b, tax_rate_pct: next } as BidWithBuilder) : b)
+    setBids((prev) => prev.map(patch))
+    setSharedBid(patch(bid))
+  }
+
   const { pricingRowsForGrid, pricingPackageSource, coverLetterPricingRows } = useBidPricingRows({
     selectedBidForPricing,
     selectedPricingVersionId,
@@ -2146,6 +2187,7 @@ export default function Bids() {
           activeTab={activeTab}
           costEstimatePOModalTaxPercent={costEstimatePOModalTaxPercent}
           setCostEstimatePOModalTaxPercent={setCostEstimatePOModalTaxPercent}
+          onCommitTaxPercent={(text) => void commitBidTaxPercent(text)}
           takeoffCountRows={takeoffCountRows}
           takeoffRoughPartLines={takeoffRoughPartLines}
           setTakeoffRoughPartLines={setTakeoffRoughPartLines}

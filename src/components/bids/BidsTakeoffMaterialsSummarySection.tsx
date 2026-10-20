@@ -15,6 +15,8 @@ export type BidsTakeoffMaterialsSummarySectionProps = {
   /** Shared controlled tax value — parent-owned; the Labor tab reads the same value. */
   costEstimatePOModalTaxPercent: string
   setCostEstimatePOModalTaxPercent: Dispatch<SetStateAction<string>>
+  /** Saves the bid's own rate on blur or Enter (punch list #128 PR 1); absent = the box is the page's state alone. */
+  onCommitTaxPercent?: (text: string) => void
 }
 
 /**
@@ -31,6 +33,7 @@ export function BidsTakeoffMaterialsSummarySection({
   costEstimateMaterialTotalRoughIn,
   costEstimatePOModalTaxPercent,
   setCostEstimatePOModalTaxPercent,
+  onCommitTaxPercent,
 }: BidsTakeoffMaterialsSummarySectionProps) {
   if (!selectedBidForTakeoff || !selectedBidForCostEstimate || costEstimateCountRows.length === 0) return null
   return (
@@ -41,14 +44,21 @@ export function BidsTakeoffMaterialsSummarySection({
           Takeoff totals: the sum of the part lines above (quantity × unit price).
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Tax %</label>
+          <label htmlFor="bid-tax-rate-pct" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="The sales tax rate on this bid's material. Saved on the bid; blank goes back to the company default.">
+            Tax %
+          </label>
           <input
+            id="bid-tax-rate-pct"
             type="number"
             min={0}
             max={100}
             step={0.01}
             value={costEstimatePOModalTaxPercent}
             onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+            onBlur={(e) => onCommitTaxPercent?.(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
             style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
           />
         </div>
