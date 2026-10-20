@@ -2352,6 +2352,13 @@ export default function Bids() {
           pricingMaterialTotalTrimSet={pricingMaterialTotalTrimSet}
           pricingLaborRate={pricingLaborRateEffective.rate}
           pricingLaborRateSource={pricingLaborRateEffective.source}
+          setCostEstimatePOModalTaxPercent={setCostEstimatePOModalTaxPercent}
+          onCommitTaxPercent={(text) => void commitBidTaxPercent(text)}
+          onPatchBid={(bidId, patch) => {
+            const apply = (b: BidWithBuilder) => (b.id === bidId ? ({ ...b, ...patch } as BidWithBuilder) : b)
+            setBids((prev) => prev.map(apply))
+            if (selectedBidForPricing?.id === bidId) setSharedBid(apply(selectedBidForPricing))
+          }}
           pricingFixtureMaterialsFromTakeoff={pricingFixtureMaterialsFromTakeoff}
           teamLaborDataForBids={teamLaborDataForBids}
           templatePriceBookVersions={templatePriceBookVersions}

@@ -8,6 +8,7 @@
  */
 import type { CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
+import { AmountSmallCents } from '../AmountSmallCents'
 import { alternateCardNumbers } from '../../lib/bids/ownTakeoffAlternates'
 import { cardFigures, cardOwnedByVersion, type CardsRowMode } from '../../lib/bids/pricingCardsRow'
 import type { AlternateVersionCardData } from '../../hooks/usePricingCardsData'
@@ -263,7 +264,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
             </>
           ) : (
             <>
-              <b style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>{rev != null ? fmtM(rev) : '…'}</b>
+              <b style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>{rev != null ? <AmountSmallCents value={rev} /> : '…'}</b>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                 {m == null ? '' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
               </span>
@@ -334,7 +335,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
                   <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
                 ) : null}
               </div>
-              <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpriced ? 'var(--text-muted)' : undefined }}>{rev != null ? fmtM(rev) : '…'}</div>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpriced ? 'var(--text-muted)' : undefined }}>{rev != null ? <AmountSmallCents value={rev} /> : '…'}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginBottom: '0.4rem' }}>
                 {m == null ? '—' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
               </div>
@@ -428,7 +429,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
                 ) : null}
               </div>
               <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpricedAlt ? 'var(--text-muted)' : undefined }}>
-                {d == null ? '…' : d.revenue != null ? fmtM(d.revenue) : '—'}
+                {d == null ? '…' : d.revenue != null ? <AmountSmallCents value={d.revenue} /> : '—'}
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                 {nums.margin != null ? (

@@ -2,7 +2,7 @@
 name: "What the price is made of: material, markup, tax, equipment, labor"
 number: 128
 group: gated
-status: BUILDING 2026-10-19 — the owner walked the spike on B505 and said build it all; PR 0 shipped as v2.5652 (the crew rate stands in); PR 1 (the tax rate on the bid), PR 2 (the row's kind, tags and split) and PR 3 (the Workbench split, the three cards, the Markup and Tax tools) follow in that order
+status: BUILT 2026-10-20 — the owner walked the spike on B505 and said build it all; shipped as v2.5652 (the crew rate stands in), v2.5653 (the tax rate on the bid), v2.5654 (a row's kind, tags and split) and v2.5660 (the Workbench's split rows, the three cards, the kind chip, tags, the Markup and Tax tools); left: D3, whether the lines reach the cover letter
 summary: >
   A bid's price is the price book's all-in number per fixture, so some estimators skip the Labor
   tab and let the fixture's price carry its material. Then the Workbench's margin lies, tax is a
@@ -11,9 +11,9 @@ summary: >
   ★ price apart into material, the company markup on it, sales tax on it, the equipment rows and
   labor, and says plainly when labor is only what is left; a kind on each count row so equipment
   stops being a guess; and tags of the estimator's own that add up to the price.
-next: The owner's D5 (the crew rate stands in for an untyped rate, which changes existing bids' margins); then PR 0 and PR 1. D3 (paper) and D4 (free tags) gate PR 5 and PR 4.
-size: S (PR 1 and 2) · M (PR 3) · S (PR 4) · S (PR 5, if picked)
-blocker: D5 for PR 0; none for PR 1–3; D3 gates PR 5 and D4 gates PR 4.
+next: The owner's D3 — whether Material · Sales tax · Equipment · Labor print on the cover letter's schedule of values; PR 5 builds it if yes, else retire the to-do.
+size: S (PR 5, if D3 is yes)
+blocker: The owner's D3.
 opinion: build — PR 0 first, it is a one-line rule that costs every bid; then PR 1 to 3 in one week; the card answers the owner's ask and Wendi's in one place
 mockup: to-dos/bid-price-breakout/mockup.html
 ---
