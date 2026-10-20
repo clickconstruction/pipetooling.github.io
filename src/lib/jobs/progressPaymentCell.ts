@@ -10,7 +10,10 @@
  *                    payments cover in order is done) with the crew on the
  *                    first stage after it — not the first unpaid draw.
  *   mode `lines`   — no stages: the priced line items in order (one line =
- *                    one segment), fill = the job's percent poured down them.
+ *                    one segment); since v2.5665 (punch list #130) a line the
+ *                    crew has given its own number fills with it, a paid line
+ *                    reads full, and only a job with no such number pours the
+ *                    job's percent down the lines as before.
  *   mode `nobid`   — nothing priced: no bar; the words say what is missing.
  *
  * Every segment's top channel is WORK (fill = percent) and its 3 px bottom
@@ -89,6 +92,8 @@ export type ProgressPaymentFixture = {
   line_unit_price: number | null
   sequence_order: number | null
   invoice_id: string | null
+  /** The crew's own number for the line (a field report by line, v2.5663); read loosely — a row loaded before the column reads as none. */
+  progress_pct?: number | null
 }
 
 export type ProgressPaymentInput = {
@@ -378,7 +383,12 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
   const priced = [...input.fixtures]
     .filter((f) => (Number(f.count) || 0) * (Number(f.line_unit_price) || 0) > 0)
     .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
-  const lines = priced.length > 0 ? priced.map((f) => ({ key: f.id, name: (f.name ?? '').trim() || 'Line item', amount: round2((Number(f.count) || 0) * (Number(f.line_unit_price) || 0)), invoiceId: f.invoice_id })) : [{ key: 'job', name: 'Job', amount: money.total, invoiceId: null }]
+  const lines = priced.length > 0
+    ? priced.map((f) => ({ key: f.id, name: (f.name ?? '').trim() || 'Line item', amount: round2((Number(f.count) || 0) * (Number(f.line_unit_price) || 0)), invoiceId: f.invoice_id, progressPct: f.progress_pct ?? null }))
+    : [{ key: 'job', name: 'Job', amount: money.total, invoiceId: null, progressPct: null }]
+  // Report by line (v2.5665): once any line carries the crew's own number, every line fills with its own
+  // (none said = 0, a paid line full) and the job's percent is no longer poured down them.
+  const ownNumbers = lines.some((l) => l.progressPct != null)
   const widths = widthsOf(lines.map((l) => l.amount))
   const shares = (() => {
     const t = lines.reduce((s, l) => s + Math.max(0, l.amount), 0)
@@ -388,13 +398,15 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
   const pct = percent && !stale ? percent.pct : null
   let poured = 0
   const segments: ProgressPaymentSegment[] = lines.map((l, i) => {
+    const m = pour.get(l.key) ?? { paidFrac: 0, billedFrac: 0, unbilledFrac: 0 }
     let fill = 0
-    if (pct != null && shares[i]! > 0) {
+    if (ownNumbers) {
+      fill = m.paidFrac >= 0.995 ? 100 : Math.round(clampPct(l.progressPct ?? 0))
+    } else if (pct != null && shares[i]! > 0) {
       fill = Math.round(clampPct(((pct - poured) / shares[i]!) * 100))
       poured += shares[i]!
     }
     const state: ProgressPaymentSegment['state'] = fill >= 100 ? 'done' : fill > 0 || i === 0 ? 'live' : 'later'
-    const m = pour.get(l.key) ?? { paidFrac: 0, billedFrac: 0, unbilledFrac: 0 }
     const label = lines.length === 1 ? (fill > 0 ? `${l.name} · ${fill}%` : l.name) : fill >= 100 ? `${l.name} ✓` : fill > 0 ? `${l.name} ${fill}%` : l.name
     return {
       key: l.key,
