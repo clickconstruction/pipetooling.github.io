@@ -31,7 +31,7 @@ After the money comes the customer's last word on paying. **They said Oct 25** i
 
 ## Send the pay page
 
-A bill sent through Stripe has a pay page. Press {{button:outline|Send the pay page}} on the line. A text to the customer opens with the pay page filled in. If the customer has no mobile number, an email opens instead. Read it over and press Send.
+A bill sent through Stripe has a pay page. Press {{button:outline|Send the pay page}} on the line. A text to the customer opens with the bill's number, what is still open and its pay page. Type /bill in the box to put the bill in again. If the customer has no mobile number, an email opens instead. Read it over and press Send.
 
 ## Reach the customer
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kindWord, unnamedWords } from './names'
+import { firstName, kindWord, unnamedWords } from './names'
 
 describe('unnamedWords: the line under a contact nobody has named', () => {
   it('names the way they reached us, a number before an address', () => {
@@ -17,5 +17,13 @@ describe('unnamedWords: the line under a contact nobody has named', () => {
       expect(unnamedWords(reach)).not.toMatch(/who is this/i)
     }
     expect(kindWord('unknown')).toBe('who is this?')
+  })
+})
+
+describe('firstName: the word a greeting opens on', () => {
+  it("a company's record name keeps no comma (live check 2026-10-20: \"Structura,, this is Wendi\")", () => {
+    expect(firstName({ name: 'Structura, Inc. – Austin', kind: 'customer' })).toBe('Structura')
+    expect(firstName({ name: 'Dana Whitfield', kind: 'customer' })).toBe('Dana')
+    expect(firstName({ name: 'Dr. Priya Raman', kind: 'customer' })).toBe('Dr. Raman')
   })
 })

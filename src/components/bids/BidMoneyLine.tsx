@@ -8,10 +8,11 @@
  * open bill's pay page as the box's `{bill}`, since the bill rows are not the person's to read. **Write down their
  * word** (v2.5648) opens the Pipeline's own sheet on the job: a day they will pay by, or that they say they paid.
  */
-import { useCallback, useState, type CSSProperties } from 'react'
+import { useCallback, useMemo, useState, type CSSProperties } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useBidMoneyStrip } from '../../hooks/useBidMoneyStrip'
-import { bidMoneyWords, canSendPayPage, payPageKind, type BidMoneyLine as Line, type BidMoneyTone } from '../../lib/bids/bidMoneyLine'
+import { bidMoneyWords, canSendPayPage, payPageKind, payPageWords, type BidMoneyLine as Line, type BidMoneyTone } from '../../lib/bids/bidMoneyLine'
+import type { PapersIo } from '../../lib/messages/papersIo'
 import { JobCustomerSheet } from '../jobs/JobCustomerSheet'
 import { BidMoneyTrail } from './BidMoneyTrail'
 import SetPromisedPayDateModal from '../jobs/SetPromisedPayDateModal'
@@ -44,10 +45,12 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded, onChange
   const line = given === undefined ? strip.line : given
   const loaded = given === undefined ? strip.loaded : (givenLoaded ?? true)
   const customerProfile = useCustomerProfileModal()
-  const [door, setDoor] = useState<{ kind?: 'text' | 'email' } | null>(null)
+  const [door, setDoor] = useState<{ kind?: 'text' | 'email'; pay?: boolean } | null>(null)
   const [word, setWord] = useState(false)
   const [trail, setTrail] = useState(false)
   const loadBill = useCallback(async () => line?.payUrl ?? null, [line])
+  // The line's own bills are the papers `/bill` lists: the job's people read no bill row, so the box's own read finds none.
+  const papersIo = useMemo<PapersIo>(() => ({ load: async () => line?.bills ?? [] }), [line])
   if (!loaded || !line) return null
   const words = bidMoneyWords(line)
   const tone = TONES[line.tone]
@@ -87,7 +90,7 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded, onChange
       {line.job.customerId ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginLeft: 'auto' }}>
           {canSendPayPage(line) ? (
-            <button type="button" onClick={() => setDoor({ kind: payPageKind(line) })} style={{ ...btn, borderColor: 'var(--border-orange)', color: 'var(--text-orange-700)' }} data-bid-money-pay-page title="Open a text or an email to the customer with the open bill's pay page filled in">
+            <button type="button" onClick={() => setDoor({ kind: payPageKind(line), pay: true })} style={{ ...btn, borderColor: 'var(--border-orange)', color: 'var(--text-orange-700)' }} data-bid-money-pay-page title="Open a text or an email to the customer with the open bill's pay page filled in">
               Send the pay page
             </button>
           ) : null}
@@ -124,6 +127,8 @@ export function BidMoneyLine({ bidId, line: given, loaded: givenLoaded, onChange
           onOpenRecord={customerProfile?.openCustomerProfile}
           initialKind={door.kind}
           loadBill={loadBill}
+          startWords={door.pay ? payPageWords(line) : null}
+          papersIo={papersIo}
           onSent={() => setDoor(null)}
         />
       ) : null}
