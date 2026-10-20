@@ -1,6 +1,6 @@
 ---
 name: "Cover letter: deselect alternates on the letter itself"
-number: 133
+number: 138
 group: gated
 status: proposed 2026-10-20 — nothing built; mock-up rendered
 summary: >
@@ -16,7 +16,7 @@ blocker: The owner's go.
 opinion: build — the gap is one branch of Step 1, and every write it needs already exists in the tab
 ---
 
-# Cover letter: deselect alternates on the letter itself (#133)
+# Cover letter: deselect alternates on the letter itself (#138)
 
 ## The ask, in her words
 
