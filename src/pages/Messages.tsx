@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { GcMessages } from '../components/gc/GcMessages'
+import { WentOutToday } from '../components/messages/WentOutToday'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useMessagesHost } from '../components/gc/messages/useMessagesHost'
 import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
@@ -95,6 +96,9 @@ export default function Messages() {
           <GcMessages view={listView} problem={host.problem} nowIso={host.nowIso} onOpenThread={(id) => thread.openThread(id)} filters={false} />
         </div>
       )}
+
+      {/* Went out today (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
+      <WentOutToday pill={pill} onOpenThread={thread.openThread} />
 
       {thread.contactId && (
         <MessagesRereadContext.Provider value={host.reread}>
