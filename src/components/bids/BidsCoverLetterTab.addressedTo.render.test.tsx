@@ -117,7 +117,11 @@ describe('BidsCoverLetterTab → Addressed to', () => {
     const row = await screen.findByTestId('cover-letter-addressed-to')
     expect(row.textContent).toContain('Harbor Point Construction')
     expect(row.textContent).toContain('Caldwell & Sons')
+    // A rider with no address on file says so on its chip; nothing holds the batch.
+    expect(row.textContent).toContain('no address on file')
     expect(screen.getByTestId('room-props')).toBeTruthy()
+    // Print all (PR 2): one addressed copy per GC — the bid GC plus the two riders.
+    expect(screen.getByRole('button', { name: /Print 3 letters/ })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /Harbor Point Construction/ }))
     await settle()
@@ -143,6 +147,7 @@ describe('BidsCoverLetterTab → Addressed to', () => {
     renderWithProviders(<BidsCoverLetterTab {...makeProps()} />)
     await settle()
     expect(screen.queryByTestId('cover-letter-addressed-to')).toBeNull()
+    expect(screen.queryByRole('button', { name: /letters/ })).toBeNull()
     expect(screen.getByTestId('room-props')).toBeTruthy()
   })
 })

@@ -432,3 +432,15 @@ export function buildCombinedCoverLetterText(sections: { label: string; text: st
   if (sections.length <= 1) return sections[0]?.text ?? ''
   return sections.map((s) => `===== ${s.label} =====\n\n${s.text}`).join('\n\n\n')
 }
+
+/**
+ * One addressed copy per GC in a single print (to-do #133 PR 2): the same letter re-addressed,
+ * a page break between copies and NO heading above them — each copy is the letter a builder is
+ * mailed, so nothing but the letter may print. A single copy returns its html unchanged.
+ */
+export function buildAddressedCopiesDocument(copies: string[]): string {
+  if (copies.length <= 1) return copies[0] ?? ''
+  return copies
+    .map((html, i) => `<section style="${i < copies.length - 1 ? 'page-break-after: always;' : ''}">\n  ${html}\n</section>`)
+    .join('\n')
+}
