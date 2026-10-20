@@ -1,8 +1,8 @@
 ---
 name: "Report by line: how far along each line is, not the job"
 number: 130
-group: ready
-status: PROPOSED 2026-10-20 — the plan and the mock-up are here; the owner walks the mock-up, picks D1 and D2 (or takes the defaults), then PR 1 starts
+group: close
+status: SHIPPED 2026-10-20 — the owner took the defaults and said build it all; the five PRs landed the same day (v2.5661, v2.5663, v2.5664, v2.5665 inside #5900's squash, v2.5666); what is left is the live walk and the count
 summary: >
   A field report asks "How complete is the job?" and a tech who just finished the rough-in types
   50, meaning the piece they stood in, so the job reads 50% everywhere money is counted. The
@@ -12,12 +12,12 @@ summary: >
   multi-line job: the lines in plan order, each with its own percent, no amounts and no shares
   on the rows, the job's percent derived by the server the way it already is, and the same list
   behind the My Schedule stepper so the fast door stops minting whole-job fifties.
-next: The owner walks mockup.html and says yes, or picks on D1 (shares shown or not) and D2 (every priced line or work lines only); then PR 1, the RPCs and the kernel.
-size: S (PR 1) · M (PR 2) · S (PR 3) · S (PR 4) · XS (PR 5)
-blocker: None for the defaults; D1 and D2 change wording, not structure.
-opinion: build — PR 1 and PR 2 in one week fix the number every money reader uses; PR 3 closes the other door the same week; PR 4 and PR 5 follow
+next: A live walk as a helper on a ZZ job with four priced lines and no Order row (the recipe under How to verify), then the count of reports whose job percent is exactly 50, before and after; then delete the folder.
+size: XS
+blocker: A live walk, and a read-only count on prod from the owner's seat (the session's classifier refused it).
+opinion: your call — the code is done; the walk and the count are yours
 mockup: to-dos/report-by-line/mockup.html
-ver: v2.3192
+ver: v2.3192 · v2.5661 · v2.5663 · v2.5664 · v2.5665 · v2.5666
 ---
 
 # Report by line (#130)
@@ -199,34 +199,36 @@ tab's draw rules.
 | Piece | Exists | New |
 |---|---|---|
 | The lines and their weights | `list_job_stage_progress(job)` returns priced rows with `weight_pct`, `progress_pct`, `draw_paid` behind `can_report_stage_progress` | drop the Order gate on the client side (`linesModeAvailable`: two or more rows); the RPC already returns Any rows |
-| Writing a line's percent | `record_stage_progress(job, fixture, pct, report)` — one row | `record_line_progress(job, rows jsonb, report)` writes every moved row in one call, same gate, same columns |
-| The kernel | `lib/reports/stageProgressReport.ts`: `jobPercentFromStages`, `stageEffectivePct`, `defaultStageToReport`, `stagePickerNumber`, `stageProgressFieldValue` | `lib/reports/lineProgressReport.ts` beside it: `linesModeAvailable`, `movedLines`, `jobPercentFromLines` (the same Σ with many overrides), `lineProgressFieldValue` (one sentence per moved line), `defaultOpenLine` |
-| The field | `ReportStageProgressField.tsx` (one stage, the green box) | `ReportLinesProgressField.tsx`: the accordion list, the job line with **how?**, the escape; `ReportStageProgressField` retires once it ships |
-| The doors | `NewReportModal` (stage mode when available), `AdditionalReportModal` (plain), `FieldPctUpdateModal` (± stepper) | `NewReportModal` and `AdditionalReportModal` mount the list on two or more lines; `FieldPctUpdateModal` mounts it in its sheet and keeps ± for one line |
+| Writing a line's percent | `record_stage_progress(job, fixture, pct, report)` — one row | no new RPC: the one that exists already gates, validates and filters by kind, so `stampMovedLines` (in `hooks/useJobLineProgress.ts`) calls it once per moved line, best-effort, after the report saves (v2.5663) |
+| The kernel | `lib/reports/stageProgressReport.ts`: the row shape, the parse with the v2.3417 recognition, `stageEffectivePct`, `jobPercentFromStages`, `stagePickerNumber` (pruned to these in v2.5666) | `lib/reports/lineProgressReport.ts` beside it (v2.5661): `linesModeAvailable`, `linePct`, `jobPercentFromLines`, `defaultOpenLine`, `movedLines`, `jobLine`, `lineProgressFieldValue`, `lineWords`, `howRows` |
+| The field | `ReportStageProgressField.tsx` (one stage, the green box) — deleted in v2.5666 | `ReportLinesProgressField.tsx` (v2.5663): the accordion list, the job line with **how?**, the escape |
+| The doors | `NewReportModal` (stage mode when available), `AdditionalReportModal` (plain), `FieldPctUpdateModal` (± stepper) | one hook, `useJobLineProgress`, behind all three: the two report windows mount the list on two or more lines (v2.5663); the stepper mounts it in its sheet and keeps ± for one line (v2.5664) |
 | The job's percent | `propagateReportPctToJob` → `set_job_pct_from_field`; `job_pct_events` | unchanged |
 | The report's text | field *Stage progress* (`REPORT_FIELD_LABEL_STAGE_PROGRESS`) | same label, many lines in one value |
 | The Pipeline cell | `progressPaymentCell.ts` `lines` mode pours the job percent | `lines` mode takes each row's `progress_pct` for its fill when present; `list_job_crew_position` already carries the newest report percent and date |
 | Guides | `reports.md` (*On a job split into stages*), `update-percent-done-from-my-dashboard.md`, `set-job-progress-on-stages.md` | the three rewritten in plain words; the Glossary's Stage Plan line |
 
-## The plan
+## The plan — as built, 2026-10-20
 
-1. **PR 1 — the rule and the write.** Migration: `record_line_progress(p_job_id, p_rows jsonb,
-   p_report_id)` (each `{fixture_id, pct}`; refuses a row whose draw is paid; stamps
-   `progress_at / progress_by / progress_report_id`), `SET lock_timeout`, idempotent, the three
-   read-only and twin fences do not apply (no new table). Kernel `lineProgressReport.ts` with
-   tests; a SQL bed `scripts/pgtest-line-progress.sh` (the gate, many rows, a paid row refused,
-   a stranger refused). Docs: `docs/migrations/`.
-2. **PR 2 — the field on the report.** `ReportLinesProgressField` and its render smoke;
-   `NewReportModal` and `AdditionalReportModal` mount it when `linesModeAvailable`; the whole-job
-   escape; the text field; the fallback to the plain slider on any RPC error, as today. Release
-   note, fragment, the `reports.md` guide.
-3. **PR 3 — the stepper door.** `FieldPctUpdateModal` loads the lines on open and mounts the same
-   field in its sheet; ± chips stay for one line; the guide
-   `update-percent-done-from-my-dashboard.md`.
-4. **PR 4 — the Pipeline cell reads the lines.** `progressPaymentCell.ts` `lines` mode fills from
-   `progress_pct`; the `StagesProgressPaymentCell` smoke; the guide `set-job-progress-on-stages.md`.
-5. **PR 5 — retire the one-stage field.** Delete `ReportStageProgressField`, its test and the
-   *Report by stage instead* link; the Glossary and the maps' rows.
+1. **PR 1 — the rule** (v2.5661, #5895). The plan called for a batch RPC `record_line_progress`
+   with a migration and a SQL bed; it was not needed — `record_stage_progress` already gates on
+   `can_report_stage_progress`, validates 0..100 and filters to Order / Any rows, and
+   `list_job_stage_progress` already returns every priced Order and Any row with its share — so
+   PR 1 is the kernel `lineProgressReport.ts` and its nine tests, nothing on prod.
+2. **PR 2 — the field on the report** (v2.5663, #5897). `useJobLineProgress` + `stampMovedLines`,
+   `ReportLinesProgressField` and its smoke; `NewReportModal` and `AdditionalReportModal` mount
+   it when `linesModeAvailable`; the whole-job escape; the *Stage progress* text; the plain
+   slider on any RPC error, as before. A report that moves nothing files the job's own number.
+   The `reports.md` guide.
+3. **PR 3 — the stepper door** (v2.5664, #5898). `FieldPctUpdateModal` mounts the same field;
+   `submitStatusReportFromStepper` takes `extraFields` and returns the report id; ± chips stay for
+   one line; the guide `update-percent-done-from-my-dashboard.md`.
+4. **PR 4 — the Pipeline cell reads the lines** (v2.5665; its PR #5899 was stacked under PR 5 and
+   the queue took #5900 first, so the change landed inside that squash and #5899 closed empty).
+   `progressPaymentCell.ts` `lines` mode fills from `progress_pct` once any line has one; the
+   guide `set-job-progress-on-stages.md`.
+5. **PR 5 — retire the one-stage field** (v2.5666, #5900). `ReportStageProgressField` and its
+   test deleted; `stageProgressReport.ts` pruned; the Glossary's *Report by line* entry.
 
 ## How to verify
 
@@ -248,9 +250,16 @@ tab's draw rules.
 
 ## Where it stands
 
-Proposed 2026-10-20 from a read of the code and the 2026-09-21 census. A live count was drafted
-(how many reports in the last 120 days carried 25/50/75 as the job's number, how many Working
-jobs have two or more priced lines and no stage plan, how many line rows ever got a
-`progress_pct`) but the session's classifier refused the production read; run it from the owner's
-seat before PR 1 so the release note can say what changed. Count after PR 2: the share of
-reports whose job percent is exactly 50, before and after.
+Proposed and built 2026-10-20 (the owner: "take the defaults, build it all"); the five PRs are on
+main, D1 to D5 as the defaults. Two things are left, both the owner's:
+
+- **The live walk** (How to verify above). The session could not seed a ZZ job on prod (a write)
+  and the deploy landed after the build; any real job with two or more priced lines shows the
+  list on Leave Report and on Update % done now.
+- **The count.** A live count was drafted (how many reports in the last 120 days carried 25/50/75
+  as the job's number, how many Working jobs have two or more priced lines and no stage plan, how
+  many line rows ever got a `progress_pct`) but the session's classifier refused the production
+  read. Run it from the owner's seat, then again a month on: the share of reports whose job
+  percent is exactly 50, before and after, is the number that says whether this worked.
+
+Delete the folder when both are done; the release notes and the fragments carry the record.
