@@ -60,8 +60,8 @@ import type {
   BidPaymentScheduleRow,
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
-import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
-import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout, type SamePageOption, type SamePagePlan, type SamePageSection, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
+import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion, unsplitStarPricingId } from '../../lib/bids/coverLetterVersionBundle'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, sameAmountTwinNames, type CoverLetterAltTexts, type CoverLetterAltsLayout, type SamePageOption, type SamePagePlan, type SamePageSection, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
 import { roomSectionsForPacket } from '../../lib/bids/wonOption'
 import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
 import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../../lib/bids/coverLetterDocument'
@@ -1551,19 +1551,65 @@ export function BidsCoverLetterTab({
                           {addAltRows}
                           {bidVersions.length === 0 ? (
                             <>
-                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}
-                                {(() => {
-                                  // v2.2392: offered non-★ pricings ride this letter as alternates — say so.
-                                  const offered = bundlePricings.filter((x) => x.offeredPricingId)
-                                  if (offered.length === 0) return <>. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).</>
-                                  return (
-                                    <>
-                                      , plus <strong style={{ color: 'var(--text-strong)' }}>{offered.map((x) => x.name).join(', ')}</strong> offered as {offered.length === 1 ? 'an alternate' : 'alternates'} — manage offers on the Pricing tab.
-                                    </>
-                                  )
-                                })()}
-                              </div>
+                              {(() => {
+                                // v2.5680 (#133, Wendi): the version-less bid's other prices get the same offer
+                                // checkboxes the split-bid branch has had since v2.2117 — the sentence that sent
+                                // her to the Pricing tab retires. The checkbox IS the offer (G1's flag), so the
+                                // room, the Approval PDF and the Pricing card follow by themselves.
+                                const unsplitStarId = unsplitStarPricingId(bidPricings, bid.selected_price_book_version_id ?? null)
+                                const unsplitOthers = bidPricings.filter((p) => p.bid_version_id == null && p.id !== unsplitStarId).sort((a, b) => a.sort_order - b.sort_order)
+                                const baseSec = bundlePricings.find((x) => !x.offeredPricingId)
+                                const offeredOthers = unsplitOthers.filter((p) => p.include_in_submission)
+                                const twinNames = sameAmountTwinNames(offeredOthers.map((p) => {
+                                  const s = bundlePricings.find((x) => x.offeredPricingId === p.id)
+                                  return { name: p.name, revenueSum: s?.revenueSum ?? 0 }
+                                }))
+                                const twinByPricingId = new Map(offeredOthers.map((p, i) => [p.id, twinNames[i] ?? null]))
+                                return (
+                                  <>
+                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                      One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong>{baseSec && baseSec.revenueSum > 0 ? <> · ${formatCurrency(baseSec.revenueSum)}</> : null}</> : null}
+                                      {unsplitOthers.length === 0 ? <>. To offer an alternate, add a price on the Pricing tab, or make it a bid to send (＋ Another bid to send… at the top).</> : null}
+                                    </div>
+                                    {unsplitOthers.length > 0 ? (
+                                      <div data-testid="cover-letter-unsplit-offers" style={{ display: 'grid', gap: '0.15rem', marginTop: '0.25rem' }}>
+                                        {unsplitOthers.map((op) => {
+                                          const osec = bundlePricings.find((x) => x.offeredPricingId === op.id)
+                                          const twin = twinByPricingId.get(op.id) ?? null
+                                          return (
+                                            <div key={op.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', flexWrap: 'wrap' }}>
+                                              <input type="checkbox" checked={op.include_in_submission} onChange={() => void setScenarioOffered(op, !op.include_in_submission)} style={{ margin: 0, cursor: 'pointer' }} aria-label={`Offer ${op.name} as an alternate`} />
+                                              {renameKey === `p:${op.id}` ? (
+                                                renameEditBox(() => void commitRenameOption(op, bid.id))
+                                              ) : (
+                                                <>
+                                                  <span style={{ color: op.include_in_submission ? 'var(--text-600)' : 'var(--text-muted)' }}>{op.name}</span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => { setRenameKey(`p:${op.id}`); setRenameDraft(op.name) }}
+                                                    title="Rename this price — the letter's own wording is the dashed line on the preview"
+                                                    aria-label={`Rename ${op.name}`}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: '0.7rem', padding: '0 0.25rem' }}
+                                                  >
+                                                    ✎
+                                                  </button>
+                                                </>
+                                              )}
+                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? `alternate · $${formatCurrency(osec.revenueSum)}` : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
+                                              {twin ? (
+                                                <span data-testid="cover-letter-same-amount" style={{ fontSize: '0.64rem', fontWeight: 600, color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.35rem' }}>same amount as “{twin}” — probably a copy</span>
+                                              ) : null}
+                                            </div>
+                                          )
+                                        })}
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                                          Ticked prices are offered to {letterCustomerName} as alternates on this letter — the bid room follows. Change a price on the Pricing tab; word an alternate on the preview.
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </>
+                                )
+                              })()}
                               {showAltsLayoutToggle ? (
                                 <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>Alternates in the letter</span>

@@ -248,6 +248,24 @@ export function buildOptionsBlock(
 }
 
 /**
+ * v2.5680 (#133, Wendi): for each offered alternate, in letter order, the name of the EARLIEST
+ * one before it at the same amount — the Step 1 nudge that names a probable copy ("same amount
+ * as X"). Matching is to the cent; a row priced at 0 or less never matches (unpriced reads its
+ * own caption). An alternate equal to the BASE is not this helper's job — the letter already
+ * prints "no change" for it (`formatAlternateDeltaText`).
+ */
+export function sameAmountTwinNames(alternates: ReadonlyArray<{ name: string; revenueSum: number }>): Array<string | null> {
+  const firstByCents = new Map<number, string>()
+  return alternates.map((a) => {
+    if (!Number.isFinite(a.revenueSum) || a.revenueSum <= 0) return null
+    const cents = Math.round(a.revenueSum * 100)
+    const twin = firstByCents.get(cents) ?? null
+    if (twin == null) firstByCents.set(cents, a.name)
+    return twin
+  })
+}
+
+/**
  * Delta-first lead (v2.2422, owner-approved mockup): "Deduct $5,287" / "Add $4,100" — the
  * Add/Deduct convention builders read — or "no change" when the alternate matches the
  * headline. Null only when there is no headline to compare against (amount renders alone).
