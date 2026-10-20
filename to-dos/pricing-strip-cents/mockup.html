@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pricing strip cents</title>
+<style>
+  /* Punch list #133. Light only, like every to-do mock-up. Made-up GC and bid: Riverbend Commercial, BP512 shell; made-up estimator Dana; made-up totals. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  h2 .num.pick { background: var(--green); }
+  h2 .num.today { background: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--subtle); color: var(--ink-2); border: 1px solid var(--line); border-bottom: 0; }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px; overflow: auto; }
+  .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0 0; }
+  .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .lens p { margin: 0; color: var(--ink-2); font-size: 13px; }
+
+  /* the pricing panel */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 740px; max-width: 920px; margin: 0 auto; }
+  .cardrow { display: flex; gap: 12px; align-items: stretch; margin-bottom: 12px; }
+  .pcard { border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; width: 230px; position: relative; background: var(--surface); }
+  .pcard.viewing { border: 2px solid var(--green); }
+  .pcard .chips { position: absolute; top: -9px; left: 10px; display: flex; gap: 5px; }
+  .pcard .chips span { font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: #fff; }
+  .pcard .chips .v { background: var(--blue); }
+  .pcard .chips .s { background: var(--green); }
+  .pcard .nm { font-weight: 700; font-size: 13px; margin: 4px 0 1px; }
+  .pcard .rev { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  .pcard .rev small { font-size: 70%; }
+  .pcard .sub { font-size: 11.5px; color: var(--muted); }
+  .pcard .letter { margin: 7px -11px -9px; padding: 4px 11px; background: var(--green-tint); color: var(--green-ink); font-size: 11px; font-weight: 600; border-radius: 0 0 8px 8px; }
+  .ghostcard { border: 1px dashed var(--line); border-radius: 9px; width: 150px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+  .sentline { font-size: 12.5px; color: var(--amber-ink); background: var(--amber-tint); border: 1px solid #f3dca4; border-radius: 7px; padding: 5px 10px; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+  .sentline b { font-family: var(--mono); font-weight: 600; }
+
+  .strip { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; border-top: 1px solid var(--line-2); padding-top: 11px; }
+  .stat { display: inline-flex; flex-direction: column; align-items: center; text-align: center; }
+  .stat .k { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .stat .v { font-size: 15.5px; font-weight: 700; font-variant-numeric: tabular-nums; font-family: var(--mono); line-height: 1.2; }
+  .stat .v small { font-size: 70%; }
+  .stat .v.green { color: var(--green-ink); }
+  .cov { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--green-ink); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tools { margin-left: auto; display: inline-flex; gap: 7px; }
+  .tools span { font-size: 12.5px; font-weight: 700; padding: 5px 11px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-2); background: var(--surface); white-space: nowrap; }
+  .tools .solver { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .altline { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--line); }
+  .stat .v.amber { color: var(--amber-ink); }
+
+  .flag { position: relative; }
+  .roomy { padding-top: 46px !important; }
+  .flag .tag { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+  .flag .tag::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -4px; border: 4px solid transparent; }
+  .flag .tag.bad { background: var(--red-tint); color: var(--red-ink); border: 1px solid #f1b8b8; }
+  .flag .tag.bad::after { border-top-color: #f1b8b8; }
+  .flag .tag.good { background: var(--green-tint); color: var(--green-ink); border: 1px solid #b5e3c2; }
+  .flag .tag.good::after { border-top-color: #b5e3c2; }
+
+  .tip { display: inline-block; background: #1f2937; color: #e5e7eb; font-size: 11.5px; border-radius: 6px; padding: 4px 9px; font-variant-numeric: tabular-nums; }
+  .tiprow { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; margin-top: 10px; }
+  .tiprow .lab { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 3px; }
+  .strike { text-decoration: line-through; opacity: .55; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #133 · Bids → Pricing · gated on the owner</p>
+  <h1>The strip's Revenue carries its cents</h1>
+  <p>Wendi: "i want the revenue number to include cents as well on the pricing page." The scoreboard strip is the only money on the Pricing tab that rounds — the cards, the rows, the sent-vs-today line and the strip's own tooltips all price to the cent. The pick is the house pattern the cards already use: full-size dollars, cents at 70% (<code>AmountSmallCents</code>, v2.2246).</p>
+  <div class="lenses">
+    <div class="lens"><h3>Her seat</h3><p>Revising a sent bid, she reads the strip's big number against the card and the GC's letter. The headline is the one number on the page that is wrong by design; the real figure hides in a tooltip.</p></div>
+    <div class="lens"><h3>The job</h3><p>Does today's book still land exactly where the letter says? The cents are the checksum — and half-up rounding can make the strip name a dollar that exists nowhere on the page.</p></div>
+    <div class="lens"><h3>The office</h3><p>AmountSmallCents settled glance-vs-exact in v2.2246 and runs on the price cards, payroll, pay stubs and Job Summary. The strip and its alternates line are the last money on this page outside the pattern.</p></div>
+  </div>
+</header>
+
+<h2><span class="num today">1</span> Today — the strip disagrees with the card in the dollars column</h2>
+<p class="lede">Made-up bid BP512 for Riverbend Commercial, Dana's price. The book totals <b>$83,117.65</b>; <code>Math.round</code> shows <b>$83,118</b> — a figure no card, row or letter carries. Profit rounds the same way.</p>
+<div class="cap red"><span>Today</span><span class="r">whole dollars (owner, v2.2208) — cents only in the tooltip</span></div>
+<div class="fit">
+  <div class="panel">
+    <div class="cardrow">
+      <div class="pcard viewing">
+        <div class="chips"><span class="v">Viewing</span><span class="s">★ Submittal</span></div>
+        <div class="nm">DANA ✎</div>
+        <div class="rev">$83,117<small>.65</small></div>
+        <div class="sub">78% margin · profit $64,833.56</div>
+        <div class="letter">★ The price on their letter</div>
+      </div>
+      <div class="ghostcard">+ Add price</div>
+    </div>
+    <div class="sentline">✎ Revising a bid sent Jun 17 · sent at <b>$96,210.40</b> · the book prices it at <b>$83,117.65</b> today (<b>−$13,092.75</b>)</div>
+    <div class="strip roomy">
+      <span class="stat flag"><span class="tag bad">$83,118? the card says .65</span><span class="k">Revenue</span><span class="v">$83,118</span></span>
+      <span class="stat"><span class="k">Profit</span><span class="v green">$64,834</span></span>
+      <span class="stat"><span class="k">Margin</span><span class="v green">78%</span></span>
+      <span class="stat"><span class="k">Multiple</span><span class="v green">4.5×</span></span>
+      <span class="cov">12/12 ✓</span>
+      <span class="tools"><span>🖌 Margin ›</span><span>+% Markup ›</span><span>tx Tax ›</span><span class="solver">Solver ›</span></span>
+    </div>
+  </div>
+</div>
+<p class="note"><b>Where the dollar comes from.</b> .65 rounds up. The card above, the rows below and the sent-line beside all read $83,117.65 — the tech checking the letter sees $83,118 vs $83,117.65 and wonders which is right.</p>
+
+<h2><span class="num pick">2</span> The pick — same strip, cents at 70%</h2>
+<p class="lede">Revenue and Profit through <code>AmountSmallCents</code>: the dollars don't move, the scoreboard still reads at a glance, and the number equals the card and the letter to the cent. Margin and Multiple are untouched.</p>
+<div class="cap green"><span>The pick</span><span class="r">Revenue − Profit = our cost, to the cent</span></div>
+<div class="fit">
+  <div class="panel">
+    <div class="cardrow">
+      <div class="pcard viewing">
+        <div class="chips"><span class="v">Viewing</span><span class="s">★ Submittal</span></div>
+        <div class="nm">DANA ✎</div>
+        <div class="rev">$83,117<small>.65</small></div>
+        <div class="sub">78% margin · profit $64,833.56</div>
+        <div class="letter">★ The price on their letter</div>
+      </div>
+      <div class="ghostcard">+ Add price</div>
+    </div>
+    <div class="sentline">✎ Revising a bid sent Jun 17 · sent at <b>$96,210.40</b> · the book prices it at <b>$83,117.65</b> today (<b>−$13,092.75</b>)</div>
+    <div class="strip roomy">
+      <span class="stat flag"><span class="tag good">matches the card and the letter</span><span class="k">Revenue</span><span class="v">$83,117<small>.65</small></span></span>
+      <span class="stat"><span class="k">Profit</span><span class="v green">$64,833<small>.56</small></span></span>
+      <span class="stat"><span class="k">Margin</span><span class="v green">78%</span></span>
+      <span class="stat"><span class="k">Multiple</span><span class="v green">4.5×</span></span>
+      <span class="cov">12/12 ✓</span>
+      <span class="tools"><span>🖌 Margin ›</span><span>+% Markup ›</span><span>tx Tax ›</span><span class="solver">Solver ›</span></span>
+    </div>
+  </div>
+</div>
+<p class="note"><b>The tooltip slims with it.</b> Its leading figure existed only to carry the cents the strip dropped; our-cost and the crew-rate note stay:</p>
+<div class="tiprow">
+  <div><div class="lab">Hover Revenue, today</div><span class="tip"><span class="strike">$83,117.65&nbsp;·</span>&nbsp;our cost $18,284.09</span></div>
+  <div><div class="lab">Hover Revenue, after</div><span class="tip">our cost $18,284.09</span></div>
+</div>
+
+<h2><span class="num pick">3</span> The alternates line foots again</h2>
+<p class="lede">A bid carrying an alternate gets the second line (v2.4194). Rounded, it can fail its own arithmetic: $62,450 + $9,212 = $71,662, but the line reads $71,663. With cents it sums exactly.</p>
+<div class="cap green"><span>The pick</span><span class="r">Base + the alternate = the whole, to the cent</span></div>
+<div class="fit">
+  <div class="panel">
+    <div class="strip" style="border-top: 0; padding-top: 0;">
+      <span class="stat"><span class="k">Revenue</span><span class="v">$62,450<small>.35</small></span></span>
+      <span class="stat"><span class="k">Profit</span><span class="v green">$48,710<small>.26</small></span></span>
+      <span class="stat"><span class="k">Margin</span><span class="v green">78%</span></span>
+      <span class="stat"><span class="k">Multiple</span><span class="v green">4.5×</span></span>
+      <span class="cov">9/9 ✓</span>
+      <span class="tools"><span>🖌 Margin ›</span><span>+% Markup ›</span><span>tx Tax ›</span><span class="solver">Solver ›</span></span>
+    </div>
+    <div class="altline roomy">
+      <span class="stat"><span class="k">Base</span><span class="v">$62,450<small>.35</small></span></span>
+      <span class="stat"><span class="k">+ Break room</span><span class="v amber">$9,212<small>.30</small></span></span>
+      <span class="stat flag"><span class="tag good">today this read $71,663 over a $71,662 sum</span><span class="k">With the alternate</span><span class="v">$71,662<small>.65</small></span></span>
+    </div>
+  </div>
+</div>
+<p class="note"><b>Not touched:</b> row prices, the solver's whole-dollar solves, the margin brush, the cards, and every other scoreboard in the app (Jobs, AR, weekly totals) — each has its own owner's convention.</p>
+
+</div>
+</body>
+</html>
