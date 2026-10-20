@@ -8,6 +8,9 @@ import {
   buildSupplyHouseAgingMatrix,
   daysPastDue,
   invoicesForAgingCell,
+  isMovableAgingInvoice,
+  movableCandidates,
+  moveStripSummary,
   nextMonthlyPaymentDueYmd,
 } from './supplyHouseAging'
 
@@ -296,5 +299,41 @@ describe('invoicesForAgingCell', () => {
     expect(agingCellTitle('noDueDate')).toBe('no due date recorded')
     expect(agingCellTitle('owed')).toBe('every unpaid invoice')
     expect(agingCellTitle('credits')).toBe('credits open')
+  })
+})
+
+describe('the move window (punch list #132 PR 3)', () => {
+  it('a candidate is positive, unflagged, and due today or later — the window edge is the due date', () => {
+    const rows = [
+      { id: 'a', amount: 100, due_date: TODAY, on_job_account: false }, // due today → still current
+      { id: 'b', amount: 100, due_date: '2026-07-02', on_job_account: false }, // due yesterday → closed
+      { id: 'c', amount: 100, due_date: '2026-08-01', on_job_account: true }, // already flagged
+      { id: 'd', amount: -40, due_date: '2026-08-01', on_job_account: false }, // a credit
+      { id: 'e', amount: 100, due_date: null, on_job_account: false }, // no due date — never movable
+      { id: 'f', amount: 100, due_date: '2026-08-01', on_job_account: false },
+    ]
+    expect(movableCandidates(rows, TODAY).map((r) => r.id)).toEqual(['a', 'f'])
+  })
+
+  it('movable needs exactly one job', () => {
+    const inv = { amount: 100, due_date: '2026-08-01', on_job_account: false }
+    expect(isMovableAgingInvoice(inv, 1, TODAY)).toBe(true)
+    expect(isMovableAgingInvoice(inv, 0, TODAY)).toBe(false)
+    expect(isMovableAgingInvoice(inv, 2, TODAY)).toBe(false)
+    expect(isMovableAgingInvoice(inv, null, TODAY)).toBe(false)
+    expect(isMovableAgingInvoice({ ...inv, due_date: '2026-07-02' }, 1, TODAY)).toBe(false)
+  })
+
+  it('the strip sums the movable rows, counts the asks, and names the soonest window', () => {
+    const movable = [
+      { id: 'a', amount: 2210, due_date: '2026-07-25' },
+      { id: 'b', amount: 1742.65, due_date: '2026-07-09' },
+    ]
+    const s = moveStripSummary(movable, new Set(['b']))
+    expect(s.count).toBe(2)
+    expect(s.dollars).toBeCloseTo(3952.65, 2)
+    expect(s.askedCount).toBe(1)
+    expect(s.soonestDueYmd).toBe('2026-07-09')
+    expect(moveStripSummary([], new Set())).toEqual({ count: 0, dollars: 0, askedCount: 0, soonestDueYmd: null })
   })
 })

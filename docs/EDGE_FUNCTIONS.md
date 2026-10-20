@@ -136,6 +136,7 @@ when_to_read:
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
    - [send-rfq-email](#send-rfq-email)
+   - [request-job-account-move](#request-job-account-move)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
    - [sign-owner-records](#sign-owner-records)
@@ -1981,6 +1982,29 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 **v2.3512 (What customers see PR 6):** the request and reminder emails are built by `_shared/rfqEmail.ts` → `buildRfqEmail` (wording moved verbatim), re-exported by `src/lib/rfqEmail.ts` so the tab renders the same email over the sample.
+
+### request-job-account-move
+
+The move window's emailed ask (punch list #132 PR 3, v2.5677). A supply house moves a charge
+onto a job account only while the invoice is current; this sends the house's job-accounts rep
+one email asking for the move and records each ask as an open
+`supply_house_invoice_move_requests` row, which the aging screen wears as *asked · follow up*
+until someone attests the house confirmed.
+
+- **Body**: `{ invoice_ids: string[], include_asked?: boolean }` — 1–20 ids, all one house
+  (the client loops houses). `include_asked` lets the move modal re-send an open ask
+  (refreshing its stamp); the worked list's per-house send leaves asked rows alone.
+- **"Do what is ready"**: a charge that is paid, a credit, already flagged, past due, split
+  or job-less, or already asked is HELD with its reason in the response; the ready ones send.
+  Nothing ready → 400 with the held list.
+- **The email**: one per call, the charges grouped by job with the account ref (or "please
+  open one with the move"), from `COMPANY_EMAIL_FROM` with the sender as Reply to, catalog id
+  `job_account_move_request`, filed as a sent copy and logged on `email_send_log`. The rep is
+  the house's first `job_accounts` contact with an email; none → 400 naming the fix.
+- **Auth**: user JWT verified in-handler (`config.toml` sets `verify_jwt = false`); dev /
+  master_technician / assistant / controller, real accounts only, training accounts refused.
+- **Response**: `{ sent_to, asked: string[], held: [{ invoice_id, invoice_number, reason }] }`.
+
 
 ### send-bid-room-link
 

@@ -36,6 +36,8 @@ export const HR_PENDING_REPORT_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
 export const ONE_OFF_TASK_AGE: AgeThresholds = { amberDays: 7, redDays: 31 }
 /** Field "Collect Payment" waiting on office approval — same-day is the norm. */
 export const FIELD_APPROVAL_WAIT_AGE: AgeThresholds = { amberDays: 1, redDays: 3 }
+/** An unanswered job-account move ask (punch list #132 PR 3) — follow up with a call. */
+export const SUPPLY_MOVE_ASK_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
 
 /** Needs-You min ages (the v2.2671 shape): the card only nags once the OLDEST item is this old. */
 export const DISPATCH_REQUESTS_MIN_AGE_DAYS = 3

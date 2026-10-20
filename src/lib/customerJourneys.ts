@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'job-account-move' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
 
 /** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
 export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate'
@@ -775,6 +775,16 @@ export function customerJourneys(): Journey[] {
           guide: 'share-job-with-supply-house',
           reflects: ['Job account email wording', 'Company particulars'],
           render: { kind: 'email', email: 'job-account' },
+        },
+        {
+          id: 'job-account-move-email',
+          label: 'Move request email',
+          sublabel: 'Materials → Supply Houses → the move modal, or Work the list',
+          when: 'While a charge is still current and belongs on a job account',
+          customerCan: 'Read which charges to move onto which job accounts, with the refs, and reply straight to the office.',
+          guide: 'mark-an-invoice-on-a-job-account',
+          reflects: ['Company particulars'],
+          render: { kind: 'email', email: 'job-account-move' },
         },
       ],
     },

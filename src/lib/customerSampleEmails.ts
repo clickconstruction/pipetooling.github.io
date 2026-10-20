@@ -25,6 +25,7 @@ import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailS
 import type { GcReviewGroup } from './gcReviewRollup'
 import { buildRfqEmail } from './rfqEmail'
 import { composeJobAccountEmail } from './supplyHouseJobAccount'
+import { buildJobAccountMoveEmail } from '../../supabase/functions/_shared/jobAccountMoveEmail'
 import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail, buildLegalWelcomeEmail } from './legalEmails'
 import { SAMPLE_FIRM, SAMPLE_HOUSE, SAMPLE_RFQ_LINES } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { LEGAL_CONFIRMED_SAMPLE_PATH, LEGAL_PORTAL_SAMPLE_PATH, PAY_SAMPLE_PATH } from './customerJourneys'
@@ -452,6 +453,32 @@ export function buildSampleMessagesReplyEmail(ctx: SampleEmailContext): BuiltEma
   return buildMessagesEmail(draft, company.name)
 }
 
+/** The move window's ask (punch list #132 PR 3): the same body request-job-account-move sends, over made-up charges. */
+export function buildSampleJobAccountMoveEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildJobAccountMoveEmail({
+    repName: SAMPLE_HOUSE.contact,
+    senderName: ctx.sender?.name?.trim() || 'The office',
+    companyName: PORTAL_COMPANY.name,
+    jobs: [
+      {
+        label: `J1042 — ${SAMPLE_BID.projectName}`,
+        accountOpen: true,
+        accountRef: 'JA-4114',
+        charges: [
+          { number: 'S123456789.001', dateMdY: '10/14/2026', money: '$2,210.00', po: '41512' },
+          { number: 'S123456790.001', dateMdY: '10/16/2026', money: '$384.75', po: null },
+        ],
+      },
+      {
+        label: 'J1055 — Sample Office Remodel',
+        accountOpen: false,
+        accountRef: null,
+        charges: [{ number: 'S123456801.001', dateMdY: '10/17/2026', money: '$1,742.65', po: '41533' }],
+      },
+    ],
+  })
+}
+
 function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
@@ -464,6 +491,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-statement') return buildSampleGcStatementEmail(ctx)
   if (id === 'rfq-request') return buildSampleRfqEmail(ctx)
   if (id === 'job-account') return buildSampleJobAccountEmail(ctx)
+  if (id === 'job-account-move') return buildSampleJobAccountMoveEmail(ctx)
   if (id === 'legal-welcome' || id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)

@@ -417,6 +417,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Bid room — {{project}}',
   },
   {
+    id: 'job_account_move_request',
+    name: 'Job-account move request to supply house',
+    group: 'billing',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'request-job-account-move',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Move invoice {{number}} to the {{job}} job account',
+  },
+  {
     id: 'rfq_price_request',
     name: 'RFQ price request to supply house',
     group: 'bids',

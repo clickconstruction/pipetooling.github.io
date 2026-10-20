@@ -1002,3 +1002,8 @@ verify_jwt = false
 # a dev's dry run is checked in the function.
 [functions.messages-nudge-dispatch]
 verify_jwt = false
+
+# The move window's emailed ask (punch list #132 PR 3): JWT validated in the function body
+# (getUser), same as the other senders; gateway verify_jwt has caused 401s for browser sessions.
+[functions.request-job-account-move]
+verify_jwt = false
