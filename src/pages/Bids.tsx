@@ -556,7 +556,7 @@ export default function Bids() {
     bidCountRowSubmissionHides,
     bidVersions, selectedBidVersionId, setSelectedBidVersionId, selectedBidVersionIdRef, switchActiveVersion,
     pricingResolve, retryPricingResolve, costEstimateResolve,
-    selectedPricingVersionId, setSelectedPricingVersionId,
+    selectedPricingVersionId, setSelectedPricingVersionId, pricingPricesReady,
     pricingCountRows,
     pricingCostEstimate,
     pricingLaborRows,
@@ -2344,6 +2344,7 @@ export default function Bids() {
           selectedBidVersionId={selectedBidVersionId}
           selectedPricingVersionId={selectedPricingVersionId}
           setSelectedPricingVersionId={setSelectedPricingVersionId}
+          pricingPricesReady={pricingPricesReady}
           pricingCountRows={pricingCountRows}
           pricingCostEstimate={pricingCostEstimate}
           pricingLaborRows={pricingLaborRows}

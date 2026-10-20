@@ -160,7 +160,9 @@ type BidsPricingTabProps = {
   /** Refresh the versions list after this tab creates one (v2.2404). */
   reloadBidVersions: () => Promise<void>
   selectedPricingVersionId: string | null
-  setSelectedPricingVersionId: Dispatch<SetStateAction<string | null>>
+  setSelectedPricingVersionId: (pricingId: string | null) => void
+  /** The open price's own book and rows are on screen (v2.5669) — until then its card reads …, not "No prices yet". */
+  pricingPricesReady: boolean
   pricingCountRows: BidCountRow[]
   bidCountRowCustomCosts: Array<{ id: string; count_row_id: string; unit_materials_cents: number; house_name: string | null; lot_group_id: string | null; applied_at: string }>
   reloadBidCustomCosts: () => Promise<void>
@@ -244,6 +246,7 @@ export function BidsPricingTab({
   reloadBidVersions,
   selectedPricingVersionId,
   setSelectedPricingVersionId,
+  pricingPricesReady,
   pricingCountRows,
   bidCountRowCustomCosts,
   reloadBidCustomCosts,
@@ -2786,7 +2789,7 @@ export function BidsPricingTab({
                 // price door while a solo bid is unpriced (artifact 0a627c7c) — `lib/bids/pricingCardsRow`.
                 const cardScenarios = cardsRowScenarios({ priceBookVersions, selectedBidVersionId, selectedPricingVersionId })
                 const cardAltVersions = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
-                const cardRevenueOf = (id: string) => cardRevenue(id, { selectedPricingVersionId, effRevenue, scenarioRevenue: wbScenarioRevenue })
+                const cardRevenueOf = (id: string) => cardRevenue(id, { selectedPricingVersionId, openPriceReady: pricingPricesReady, effRevenue, scenarioRevenue: wbScenarioRevenue })
                 const cardsMode = cardsRowMode({
                   scenarioCount: cardScenarios.length,
                   alternateCount: cardAltVersions.length,

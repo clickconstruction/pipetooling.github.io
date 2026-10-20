@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BID_ACTIONS, withBidAction, withBidActionIf, type BidAction } from '../lib/bids/bidActionHeader'
 import { jobScopeRows } from '../lib/bids/alternateAcceptance'
 import { supabase } from '../lib/supabase'
@@ -19,6 +19,7 @@ import { laborHoursOf, planLaborSync } from '../lib/bids/laborSyncPlan'
 import { oneLaborSyncAtATime } from '../lib/bids/laborSyncQueue'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
 import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
+import { createPriceReadGate, openPricePricesReady } from '../lib/bids/priceReadGate'
 import type { BidCountRow } from '../types/bids'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import type {
@@ -161,7 +162,20 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
   const [bidCountRowCustomPrices, setBidCountRowCustomPrices] = useState<BidCountRowCustomPrice[]>([])
   const [bidCountRowSubmissionHides, setBidCountRowSubmissionHides] = useState<BidCountRowSubmissionHide[]>([])
-  const [selectedPricingVersionId, setSelectedPricingVersionId] = useState<string | null>(null)
+  const [selectedPricingVersionId, setSelectedPricingVersionIdState] = useState<string | null>(null)
+  // v2.5669 (Grace): the price open on screen, mirrored the moment it is set, and the gates that let only
+  // the newest read of the open price write its book and its rows — a read of the price just left (a
+  // typed price's save reloads it, and clicking the other card is the blur) used to land last and empty
+  // the screen. The two "read for" ids say which price the book and the rows on screen belong to.
+  const selectedPricingVersionIdRef = useRef<string | null>(null)
+  const setSelectedPricingVersionId = useCallback((pricingId: string | null) => {
+    selectedPricingVersionIdRef.current = pricingId
+    setSelectedPricingVersionIdState(pricingId)
+  }, [])
+  const [entriesReadGate] = useState(createPriceReadGate)
+  const [rowsReadGate] = useState(createPriceReadGate)
+  const [priceBookEntriesReadFor, setPriceBookEntriesReadFor] = useState<string | null>(null)
+  const [bidPricingRowsReadFor, setBidPricingRowsReadFor] = useState<string | null>(null)
   const pricingBidIdRef = useRef<string | null>(null)
   // Bid Versions (named variants). The active Version drives BOTH the takeoff and pricing.
   // selectedBidVersionId === null means the bid is unsplit (its takeoff/pricing rows are
@@ -904,20 +918,26 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   async function loadPriceBookEntries(versionId: string | null) {
     if (!versionId) {
       setPriceBookEntries([])
+      setPriceBookEntriesReadFor(null)
       return
     }
+    const ticket = entriesReadGate.begin(versionId)
     const { data, error } = await supabase
       .from('price_book_entries')
       .select('*, fixture_types(name)')
       .eq('version_id', versionId)
+    // v2.5669: a read of a price no longer open, or an older read of this one, never writes.
+    if (!entriesReadGate.mayWrite(versionId, ticket, selectedPricingVersionIdRef.current)) return
     if (error) {
       setError(`Failed to load price book entries: ${error.message}`)
       setPriceBookEntries([])
+      setPriceBookEntriesReadFor(null)
       return
     }
     const entries = (data as PriceBookEntryWithFixture[]) ?? []
     entries.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
     setPriceBookEntries(entries)
+    setPriceBookEntriesReadFor(versionId)
   }
 
   /**
@@ -958,8 +978,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
       setBidCountRowSubmissionHides([])
+      setBidPricingRowsReadFor(null)
       return
     }
+    const ticket = rowsReadGate.begin(versionId)
     try {
       const [assignmentsData, customPricesData, submissionHidesData] = await Promise.all([
         withSupabaseRetry(
@@ -999,18 +1021,25 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           'fetch bid count row submission hides'
         ),
       ])
+      // v2.5669 (Grace): the reload a price write makes is for the price it was typed into, and goes out
+      // after the switch's own read when the click on the other card is what saved it. Only the newest
+      // read of the price on screen writes.
+      if (!rowsReadGate.mayWrite(versionId, ticket, selectedPricingVersionIdRef.current)) return
       setBidPricingAssignments((assignmentsData as BidPricingAssignment[]) ?? [])
       setBidCountRowCustomPrices((customPricesData as BidCountRowCustomPrice[]) ?? [])
       setBidCountRowSubmissionHides((submissionHidesData as BidCountRowSubmissionHide[]) ?? [])
+      setBidPricingRowsReadFor(versionId)
     } catch (e) {
       const isAbort = (x: unknown) =>
         (x && typeof x === 'object' && 'name' in x && (x as { name: string }).name === 'AbortError') ||
         (x instanceof Error && /abort/i.test(x.message))
       if (isAbort(e)) return
+      if (!rowsReadGate.mayWrite(versionId, ticket, selectedPricingVersionIdRef.current)) return
       setError(`Failed to load pricing assignments: ${e instanceof Error ? e.message : String(e)}`)
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
       setBidCountRowSubmissionHides([])
+      setBidPricingRowsReadFor(null)
     }
   }
 
@@ -1390,6 +1419,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
       setBidCountRowSubmissionHides([])
+      setBidPricingRowsReadFor(null)
       setPricingCountRows([])
       setPricingCostEstimate(null)
       setPricingLaborRows([])
@@ -1527,10 +1557,18 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   useEffect(() => {
     if (!selectedPricingVersionId) {
       setPriceBookEntries([])
+      setPriceBookEntriesReadFor(null)
       return
     }
     loadPriceBookEntries(selectedPricingVersionId)
   }, [selectedPricingVersionId])
+
+  // v2.5669: the open price's book and rows have both landed — until then the Workbench is loading, not empty.
+  const pricingPricesReady = openPricePricesReady({
+    selectedPricingVersionId,
+    entriesReadFor: priceBookEntriesReadFor,
+    rowsReadFor: bidPricingRowsReadFor,
+  })
 
   return {
     // counts
@@ -1644,6 +1682,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setBidCountRowSubmissionHides,
     selectedPricingVersionId,
     setSelectedPricingVersionId,
+    pricingPricesReady,
     pricingBidIdRef,
     pricingCountRows,
     setPricingCountRows,
