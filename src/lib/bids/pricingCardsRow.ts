@@ -33,9 +33,15 @@ export function cardOwnedByVersion(card: { bid_version_id?: string | null }, sel
   return (card.bid_version_id ?? null) === selectedBidVersionId
 }
 
-/** A card's revenue: the open price reads the Workbench's live total; the others their loaded card revenue, null while it loads. */
-export function cardRevenue(id: string, args: { selectedPricingVersionId: string | null; effRevenue: number; scenarioRevenue: Readonly<Record<string, number>> }): number | null {
-  return id === args.selectedPricingVersionId ? args.effRevenue : (args.scenarioRevenue[id] ?? null)
+/**
+ * A card's revenue: the open price reads the Workbench's live total; the others their loaded card revenue, null while it loads.
+ * The open price is null too until its own book and rows are on screen (`openPriceReady`, v2.5669): before they land the
+ * Workbench still holds the price you left, which prices nothing here — read as $0 it said "No prices yet" and offered
+ * to copy prices over a price that has them (Grace's alternate).
+ */
+export function cardRevenue(id: string, args: { selectedPricingVersionId: string | null; openPriceReady: boolean; effRevenue: number; scenarioRevenue: Readonly<Record<string, number>> }): number | null {
+  if (id === args.selectedPricingVersionId) return args.openPriceReady ? args.effRevenue : null
+  return args.scenarioRevenue[id] ?? null
 }
 
 /** A card's margin (null with no revenue to divide by) and whether it is unpriced — a revenue of exactly $0, not one still loading. */

@@ -344,6 +344,7 @@ Numbers are stable; closed quirks stay struck so older references still resolve.
 18. **Two one-shot URL doors, in `usePricingQuoteDesk` since v2.3945:** `?robot=price&bidId=` (`useSearchParams`, `replace: true`) and `?d22audit=1` (`window.history.replaceState`, mount-only). Both need `canPackageAndSendBidPricing`. Keep the two mechanisms as they are.
 19. **Pricing locks per session:** `revisedBidIds` lives in sessionStorage (`readRevisedBids` / `writeRevisedBid`), never on the bid — a reload in a new tab re-locks.
 20. **`rekeyClonedPricingToVersion` is not atomic:** per-child UPDATE/DELETE across three tables from the client; a mid-run error leaves a half-rekeyed clone (the error surfaces via `setError`).
+21. **Only the newest read of the open price writes its book and rows (v2.5669):** `loadPriceBookEntries` and `loadBidPricingAssignments` take a ticket from `createPriceReadGate` and write only if it is their price's newest and that price is open (`selectedPricingVersionIdRef`, set inside the wrapped `setSelectedPricingVersionId`); `pricingPricesReady` says both landed, and the open card reads … until then. Keep the wrapper as the only setter — a raw `useState` setter would leave the ref behind and every read of the new price would be dropped.
 
 ---
 
