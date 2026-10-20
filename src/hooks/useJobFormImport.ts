@@ -6,12 +6,13 @@ import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../utils/error
 import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { UserRole } from './useAuth'
-import { groupVersionsByGc, type GcPacket } from '../lib/bids/gcPackets'
-import { latestSendByVersion, type VersionSendRow } from '../lib/bids/versionSends'
+import type { GcPacket } from '../lib/bids/gcPackets'
+import { loadBidImportGcs } from '../lib/bids/bidImportGcIo'
+import { jobDraftWords, type JobDraft } from '../lib/bids/jobDraft'
 import { setGcPacketOutcome } from '../lib/bids/gcPacketOutcome'
 import { bidBoardJobLinkLabel } from '../lib/bids/bidBoardJobLinks'
 import { secondConversionMessage } from '../lib/bids/wonMomentActions'
-import { bidImportAccountMan, bidImportCarry, bidImportCarryQuestion, bidImportEffectiveGc, bidImportFirstLine, bidImportGcOptions, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../lib/bids/jobImportFromBid'
+import { bidImportAccountMan, bidImportCarry, bidImportCarryQuestion, bidImportEffectiveGc, bidImportFirstLine, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../lib/bids/jobImportFromBid'
 import { estimateImportCustomerFields, estimateImportFixtureRows } from '../lib/jobs/jobImportFromEstimate'
 import { visibleServiceTypesForJobForm } from '../lib/jobs/jobFormServiceTypes'
 import { pickableServiceTypes } from '../lib/serviceTypePickers'
@@ -80,7 +81,7 @@ export type JobFormImportArgs = {
 
 export type JobFormImport = {
   cancelBidImport: (closeTheForm: boolean, message: string) => void
-  applyPrefillFromBid: (bidRowId: string, forcedGc?: WinningGcOption, opts?: { closeOnCancel?: boolean }) => Promise<void>
+  applyPrefillFromBid: (bidRowId: string, forcedGc?: WinningGcOption, opts?: { closeOnCancel?: boolean; draft?: JobDraft | null; draftFrom?: string | null }) => Promise<void>
   handleWinningGcPick: (opt: WinningGcOption) => Promise<void>
   applyPrefillFromEstimate: (estimateId: string) => Promise<void>
 }
@@ -144,7 +145,9 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
   )
 
   const applyPrefillFromBid = useCallback(
-    async (bidRowId: string, forcedGc?: WinningGcOption, opts?: { closeOnCancel?: boolean }) => {
+    async (bidRowId: string, forcedGc?: WinningGcOption, opts?: { closeOnCancel?: boolean; draft?: JobDraft | null; draftFrom?: string | null }) => {
+      // An estimator's draft from the Dispatch inbox (v2.5659): their choices lay over the bid's own import.
+      const draft = opts?.draft ?? null
       try {
         const row = await withSupabaseRetry(
           async () =>
@@ -213,35 +216,16 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         // below, never written on its own (v2.2909, J15-F8).
         let sentValue: number | null = forcedGc?.value ?? null
         if (!chosen) {
-          const [vRes, sRes, rRes] = await Promise.all([
-            supabase.from('bid_versions').select('id, name, customer_id, sort_order, created_at, outcome').eq('bid_id', b.id).order('sort_order'),
-            supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', b.id),
-            supabase.from('bid_gc_recipients').select('customer_id, customers(name)').eq('bid_id', b.id),
-          ])
-          const versions = (vRes.data ?? []) as Array<{ id: string; name: string; customer_id: string | null; sort_order: number; created_at: string | null; outcome: string | null }>
-          const gcIds = [...new Set(versions.map((v) => v.customer_id).filter((x): x is string => !!x))]
-          let gcNames: Record<string, string> = {}
-          if (gcIds.length > 0) {
-            const { data } = await supabase.from('customers').select('id, name').in('id', gcIds)
-            gcNames = Object.fromEntries(((data ?? []) as Array<{ id: string; name: string }>).map((c) => [c.id, c.name]))
-          }
-          const recipients = ((rRes.data ?? []) as Array<{ customer_id: string; customers: { name: string } | null }>).map((r) => ({ customerId: r.customer_id, name: r.customers?.name ?? '…' }))
-          const packets = groupVersionsByGc(versions, {
-            bidGcName: b.customers?.name ?? null,
-            gcNames,
-            latestSends: latestSendByVersion((sRes.data ?? []) as VersionSendRow[]),
-            bidDateSent: b.bid_date_sent ?? null,
-            recipients,
-          })
-          // A bid with recipients but no versions has no own packet — the bid's GC is still a choice.
-          const options: WinningGcOption[] = bidImportGcOptions({
-            packets,
+          const { packets, options } = await loadBidImportGcs({
+            bidId: b.id,
             bidCustomerId: b.customer_id,
-            cachedBidGcName: customers.find((c) => c.id === b.customer_id)?.name,
-            embeddedBidGcName: b.customers?.name,
+            bidGcName: b.customers?.name ?? null,
             bidDateSent: b.bid_date_sent ?? null,
+            cachedBidGcName: customers.find((c) => c.id === b.customer_id)?.name,
           })
-          const decision = decideBidImportGc(packets, options)
+          // The estimator named the GC on their draft: that one, with no question.
+          const draftGc = draft?.gcKey != null ? (options.find((o) => o.key === draft.gcKey) ?? null) : null
+          const decision = draftGc ? ({ kind: 'proceed', chosen: draftGc, sentValue: draftGc.value } as const) : decideBidImportGc(packets, options)
           if (decision.kind === 'ask') {
             setWinningGcPick({
               bidId: b.id,
@@ -261,9 +245,11 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         // onto the bid behind the office's back. Now one question: carry the figure over as the
         // job's first line item (and, when the bid has no agreed value yet, record it there too)
         // or start at $0 — and "No" writes nothing anywhere.
-        const { agreedValue, carryValue } = bidImportCarry({ agreedValueRaw: b.agreed_value, sentValue })
+        const { agreedValue, carryValue: bidCarry } = bidImportCarry({ agreedValueRaw: b.agreed_value, sentValue })
+        // A draft already answered the question: its figure (or $0), asked of nobody.
+        const carryValue = draft ? draft.carry : bidCarry
         if (carryValue != null) {
-          const carry = await confirmDialog(bidImportCarryQuestion({ carryValue, agreedValue, bid: b, gcName: chosen?.name ?? b.customers?.name }))
+          const carry = draft ? true : await confirmDialog(bidImportCarryQuestion({ carryValue, agreedValue, bid: b, gcName: chosen?.name ?? b.customers?.name }))
           if (carry) {
             setFixtures([{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }) }])
             setFixtureScopeExpandedById({})
@@ -282,8 +268,8 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
           setAccountManagerUserId(accountMan)
           setAccountManagerRelationship((rel) => rel ?? 'primary')
         }
-        setJobName((b.project_name ?? '').trim())
-        setJobAddress((b.address ?? '').trim())
+        setJobName(draft?.jobName || (b.project_name ?? '').trim())
+        setJobAddress(draft?.address || (b.address ?? '').trim())
         setLinkedBidSummary({
           project_name: b.project_name,
           bid_number: b.bid_number,
@@ -303,9 +289,10 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         })
         const vis = visibleServiceTypesForJobForm(pickableServiceTypes(serviceTypes), meServiceTypeColumns)
         const allowed = new Set(vis.map((s) => s.id))
-        if (b.service_type_id && allowed.has(b.service_type_id)) {
-          setFormServiceTypeId(b.service_type_id)
-        } else if (b.service_type_id) {
+        const serviceTypeId = draft?.serviceTypeId ?? b.service_type_id
+        if (serviceTypeId && allowed.has(serviceTypeId)) {
+          setFormServiceTypeId(serviceTypeId)
+        } else if (serviceTypeId) {
           showToast('Bid trade is not available for your role in this form; choose a service type.', 'info')
         }
         // Creating a job FROM a bid: the WINNING GC is the job's GC (per-GC Phase 3; the bid's own
@@ -325,7 +312,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         if (effGcId) setBillToParty('gc')
         setGoogleDriveLink((prev) => (prev.trim() ? prev : (b.drive_link ?? '').trim()))
         setJobPlansLink((prev) => (prev.trim() ? prev : (b.plans_link ?? '').trim()))
-        showToast('Imported from bid.', 'success')
+        showToast(draft ? `Imported from the bid. ${jobDraftWords(draft, opts?.draftFrom)}.` : 'Imported from bid.', 'success')
         // The import is the new baseline for the discard guard, not the user's typing.
         newJobSnapshotArmedRef.current = true
       } catch (e) {

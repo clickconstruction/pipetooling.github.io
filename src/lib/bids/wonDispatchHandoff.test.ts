@@ -56,8 +56,9 @@ describe('decideWonHandoff', () => {
 })
 
 describe('who sends, and when it sends itself', () => {
-  it('roles with the New Job door get the button; primary gets the automatic send; the rest nothing', () => {
-    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) expect(wonHandoffMode(role)).toBe('button')
+  it('roles with the New Job door get the button; the estimator a draft (v2.5659); primary the automatic send; the rest nothing', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) expect(wonHandoffMode(role)).toBe('button')
+    expect(wonHandoffMode('estimator')).toBe('draft')
     expect(wonHandoffMode('primary')).toBe('auto')
     for (const role of ['superintendent', 'subcontractor', 'helpers', null, undefined]) expect(wonHandoffMode(role)).toBe('none')
   })

@@ -8,8 +8,8 @@ summary: >
   paying, from the won bid, the Money lens, the Dashboard and the customer's line in Messages.
   A word that they paid meets the deposit at allocation, or comes back to whoever heard it after
   a week. A primary's paid verbs hold to their own jobs. This to-do keeps only what the train
-  left: three calls for the owner and four small follow-ups.
-next: The owner answers the three calls below; the live check as an estimator is running in its own session.
+  left: three calls for the owner and the small follow-ups.
+next: The owner answers the three calls below; push 20261020090000 once v2.5659 merges and check BP166 as an estimator.
 size: XS each
 blocker: The owner's three calls.
 opinion: yes to the estimate's author, hold the job-accounts gate, keep seven days; build the Pipeline chip first
@@ -45,10 +45,16 @@ the trail, v2.5655 a primary's paid verbs held to the job's people, v2.5656 the 
 - **The Pipeline row's chip for a paid claim.** The board reads `job_promised_pay_dates`, which a
   claim never touches, so the office sees a claim only in Job activity and at allocation. A
   *They say paid* chip on the Billed row, from `list_paid_claims`, would close that.
-- **The live check as an estimator.** Running in its own session: every surface signed in as an
-  estimator, and two suspected breaks from the trace — the Bid Board offers estimators *Open the
-  job* while the `jobs_ledger` insert policy has no estimator branch, and the read-only Job Detail
-  pane they are routed to reads no row.
+- **The live check as an estimator.** Done 2026-10-20 as Wendi through the app's Imitate, on prod
+  data: the Money lens, the trail, the word sheet, the Dashboard card and the money line work. It
+  found three breaks, each fixed in its own PR: *Send the pay page* opened an empty box (v2.5657),
+  *Their record* told an estimator a customer owed $0 (v2.5658), and the Job block offered an
+  estimator *Open the job* on a bid with a job while Save was refused by the insert policy. On the
+  owner's call that last one became **Send to Dispatch**, a draft of the job the inbox opens as
+  New Job (v2.5659, `20261020090000_job_draft.sql`). Left: push that migration after it merges, then
+  check BP166 reads *J878 opened from this bid* as an estimator. No customer has written in yet,
+  so *Write down their word* under a customer's line in Messages waits for a real inbound line. No
+  surface opens the read-only Job Detail pane for an estimator.
 - **The heard-day offer in Messages.** Cut 2's offer under a line (`message_promises`,
   `write_down`) was never drawn; a voicemail's *Keep the day* writes an offered row nobody reads
   back. When it is drawn, its press should open the same sheet with the day filled in.

@@ -35,6 +35,7 @@ customer-money-strip
 paid-claims-read
 my-money-strip
 primary-paid-verbs
+bid-jobs-opened
 messages-follow-up
 messages-spine
 messages-flows

@@ -12,6 +12,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useAuth } from '../hooks/useAuth'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
+import { jobDraftFromPayload, jobDraftWords } from '../lib/bids/jobDraft'
 import { CustomerWaitingRequestCard } from './CustomerWaitingRequestCard'
 import { RequestPrioritySheet } from './RequestPrioritySheet'
 import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib/requestPriority'
@@ -311,14 +312,20 @@ export function DispatchInboxSection({
                   </button>
                 )
                 const openJobBidId = !isClosed && req.pending_action === OPEN_JOB_FROM_BID_ACTION && jobFormModal ? (req.bid_id ?? null) : null
+                // An estimator's draft of the job (v2.5659): its words on the row, laid over the bid's import on press.
+                const jobDraft = req.pending_action === OPEN_JOB_FROM_BID_ACTION ? jobDraftFromPayload(req.pending_payload) : null
                 const openJobFromBidBtn = openJobBidId ? (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      jobFormModal?.openNewJob({ prefillBidId: openJobBidId })
+                      jobFormModal?.openNewJob(jobDraft ? { prefillBidId: openJobBidId, prefillDraft: jobDraft, prefillDraftFrom: fromLabel } : { prefillBidId: openJobBidId })
                     }}
-                    title="Open New Job filled in from the bid — customer, address, links and the price question. Press Create Job and this to-do closes itself."
+                    title={
+                      jobDraft
+                        ? `Open New Job filled in from the bid and ${fromLabel}'s draft — the GC, the figure and the trade as they chose. Add the team and the schedule, press Create Job and this to-do closes itself.`
+                        : 'Open New Job filled in from the bid — customer, address, links and the price question. Press Create Job and this to-do closes itself.'
+                    }
                     aria-label="Open the job from this bid"
                     style={{
                       padding: '0.35rem 0.75rem',
@@ -682,6 +689,11 @@ export function DispatchInboxSection({
                         {req.reference_summary?.trim() ? (
                           <div style={{ marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                             Ref: {req.reference_summary.trim()}
+                          </div>
+                        ) : null}
+                        {jobDraft ? (
+                          <div data-dispatch-job-draft={req.id} style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                            {jobDraftWords(jobDraft, fromLabel)}
                           </div>
                         ) : null}
                         {jobAccountLines}

@@ -2,7 +2,7 @@
 title: turn a won bid into a job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: won, win, bid, job, scheduled visits, move visits, schedule blocks, open the job, convert, import, new job, J number, opened from this bid, cancel import, which GC gave you this job, ask dispatch, dispatch inbox, hand off, to-do
+keywords: won, win, bid, job, send to dispatch, draft, wanted by, estimator, scheduled visits, move visits, schedule blocks, open the job, convert, import, new job, J number, opened from this bid, cancel import, which GC gave you this job, ask dispatch, dispatch inbox, hand off, to-do
 order: 72
 ---
 1. Mark the bid **Won**, then press **Open the job**.
@@ -44,6 +44,23 @@ On the Dashboard's Dispatch inbox (and Dispatch Mode → Inbox) the to-do carrie
 
 Three more cases are under [Reference](#when-you-hand-it-to-dispatch): asking twice, a job opened another way, and primaries.
 
+## Estimators send Dispatch a draft
+
+An estimator cannot open a job. Their Job block shows {{button:green|Send to Dispatch}} instead. It opens a short sheet filled in from the bid.
+
+1. Check the **Job name** and the **Address**.
+2. On a bid sent to more than one GC, pick the GC that won it.
+3. Check **The job starts at**. It holds the bid's figure. Leave it blank to start the job at $0.
+4. Pick the **Trade**.
+5. Add a **Wanted by** day and **A note for Dispatch** if they help.
+6. Press **Send to Dispatch**.
+
+:::example What the estimator sees next
+The Job block reads {{chip:yellow|Sent to Dispatch Oct 20 · waiting}}. Once Dispatch opens the job, it reads {{chip:green|J878 opened from this bid}}, with the money line under it.
+:::
+
+Dispatch's row shows the draft in one line, like *Wendi's draft: GC Southern Post · starts at $38,625.00 · wanted by Oct 30*. Its {{button:outline|Open the job}} opens New Job with the estimator's choices. New Job asks no GC question and no price question. The assistant adds the crew and the schedule. Then they press **Create Job**. Scheduling stays with the assistant.
+
 ## The bid shows its job
 
 Once a job exists from a bid, the Job block in Edit Bid reads {{chip:green|J1007 opened from this bid}}. {{button:green|Open the job}} sits beside it and opens the job window. **Create another job** sits beside that. The Bid Board's **Links** column shows the same green **J1007** chip. So "did we already open this one?" has an answer on the bid itself.
@@ -81,7 +98,7 @@ Nobody is asked for the reviewer here. The reviewer turns up later in the GC's e
 
 ## Who sees the button
 
-Dev, leaders, assistants, controllers, and **estimators** can open a job from a bid. Estimators get the New Job form even though they do not have the Jobs page. Superintendents keep their read-only board and see no button. The **J####** chip that opens an existing job shows for the roles that can open Jobs. Estimators don't see that chip.
+Dev, leaders, assistants and controllers can open a job from a bid. Estimators send Dispatch a draft instead. See [Estimators send Dispatch a draft](#estimators-send-dispatch-a-draft). Superintendents keep their read-only board and see no button. The **J####** chip opens an existing job for the roles that can open Jobs. An estimator sees the chip but cannot open the job from it.
 
 ## Reference
 
