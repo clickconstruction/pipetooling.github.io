@@ -1,8 +1,8 @@
 ---
 name: "Cover letter: address the letter to any GC on the bid"
 number: 133
-group: gated
-status: proposed 2026-10-20 — researched, mock-up beside this file; not started, waiting on the owner's go and the three calls below
+group: ready
+status: building 2026-10-20 — owner's go ("Build it") on the recommended defaults; PR 1 the Addressed to row claimed v2.5679 on claude/cover-letter-addressed-to-pr1; PR 2 print-all follows in the same stream; PR 3 falls away under the defaults (same-letter sends ride the bid, the room folds)
 summary: >
   Grace: when she makes the cover page the letter is addressed to the bid's first GC only, and for
   every other builder on the proposal she retypes the name by hand after pasting. The bid already
@@ -13,13 +13,13 @@ summary: >
   carry the addressed copy. Nothing else changes: same prices, same amount, same tracking. A
   follow-up PR adds "Print all — one letter per GC".
 next: >
-  Owner's go, and the three calls below: (1) does a same-letter GC keep riding the bid's one sent
-  date (recommended) or get a send stamp of its own; (2) when a same-letter GC is addressed, is the
-  bid room hidden with a note (recommended) or does each recipient get a room of their own; (3) does
-  the Addressed to row also appear on split bids' GC tabs (recommended) or only on unsplit bids.
-  Then PR 1 builds with the recommended defaults.
+  The owner said "Build it" on 2026-10-20 — the three calls go by their recommended defaults:
+  same-letter copies ride the bid's one sent date, the room folds to a note while one is
+  addressed, and the row serves split bids too. PR 1 (v2.5679) builds the row; PR 2 adds Print
+  all, one addressed letter per GC with page breaks; then the ZZ Test live walk from How to
+  verify. Per-recipient sends or rooms (the old PR 3) return only if real use asks for them.
 size: M (PR 1 the Addressed to row) + S (PR 2 print all) + S (PR 3 per-recipient sends or rooms, gated on calls 1–2)
-blocker: Owner's go; calls 1–3 picked (defaults proposed).
+blocker: None.
 ---
 
 # Cover letter: address the letter to any GC on the bid
@@ -157,6 +157,8 @@ to subs (`RfqComposeModal`) are a different surface.
 
 ## Where it stands
 
-Proposed 2026-10-20 from Grace's report. Research done against the live surface (BP-class bid with
-a same-letter GC confirmed the gap). Mock-up rendered and checked. Nothing built; waiting on the
-owner's go and calls 1–3.
+Proposed and approved 2026-10-20 (owner: "Build it", recommended defaults stand). PR 1 (v2.5679)
+built the same day on `claude/cover-letter-addressed-to-pr1`: the kernel + 7 tests, the Addressed
+to row with + GC and the honest note, the room fold, the Print/Copy sub-lines, the
+`bid-default` tab-key translation fix, both help guides. PR 2 (Print all) is next, then the ZZ
+Test live walk from How to verify.

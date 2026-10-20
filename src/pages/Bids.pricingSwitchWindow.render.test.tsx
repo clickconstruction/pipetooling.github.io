@@ -215,8 +215,9 @@ const fillButton = () => screen.getByRole('button', { name: /matching from book|
 const assignmentInserts = () => page.writes.filter((w) => w.table === 'bid_pricing_assignments' && w.op === 'insert')
 
 // WENDI: 3 × $100 + 2 × $100 + the floor drain at its book's $40 by name. Alternate 1: 3 × $50 + 2 × $50 + $20.
-const WENDI_REVENUE = '$540'
-const ALT_REVENUE = '$270'
+// The strip prices to the cent since v2.5678 (AmountSmallCents — textContent carries the full figure).
+const WENDI_REVENUE = '$540.00'
+const ALT_REVENUE = '$270.00'
 
 async function openOnWendi() {
   renderPricing()

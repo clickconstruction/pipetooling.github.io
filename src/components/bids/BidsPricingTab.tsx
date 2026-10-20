@@ -3,6 +3,7 @@ import { BID_ACTIONS, withBidAction, withBidActionIf, type BidAction } from '../
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
+import { AmountSmallCents, SignedAmountSmallCents } from '../AmountSmallCents'
 import { formatRevenueMultiple } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
 import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
@@ -2899,14 +2900,14 @@ export function BidsPricingTab({
                           runWorkbenchSolve({ targetTotal: v })
                         }
                         const labelStyle: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
-                        const stat = (k: string, v: string, c: string, title?: string) => (
+                        const stat = (k: string, v: React.ReactNode, c: string, title?: string) => (
                           <span key={k} title={title} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', flex: '0 0 auto' }}>
                             <span style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</span>
                             <span style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, color: c }}>{v}</span>
                           </span>
                         )
                         // v2.5671: a tile made from the open price's prices reads … while they load, as its card does.
-                        const priceStat = (k: string, v: string, c: string, title?: string) =>
+                        const priceStat = (k: string, v: React.ReactNode, c: string, title?: string) =>
                           pricesLoading ? stat(k, LOADING_FIGURE, 'var(--text-muted)', OPEN_PRICE_LOADING_TITLE) : stat(k, v, c, title)
                         // v2.2385 (Wendi): preview actions fuse into ONE segmented control — amber
                         // count chip · Apply · Discard, one shared height, wrapping as a unit and
@@ -3085,17 +3086,16 @@ export function BidsPricingTab({
                         )
                         // v2.4194: a second line under the scoreboard when the bid carries an alternate —
                         // the base, what each alternate adds (with its own margin on hover), and the whole.
-                        const whole = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
                         const altLine =
                           altRevenue && altCost ? (
                             <div data-testid="workbench-alternates" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap', marginTop: '0.45rem', paddingTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }}>
-                              {priceStat('Base', whole(altRevenue.base), 'var(--text-strong)', `$${formatCurrency(altRevenue.base)} · our cost $${formatCurrency(altCost.base)}`)}
+                              {priceStat('Base', <SignedAmountSmallCents value={altRevenue.base} />, 'var(--text-strong)', `our cost $${formatCurrency(altCost.base)}`)}
                               {altRevenue.alternates.map((a, i) => {
                                 const c = altCost.alternates[i]?.value ?? 0
                                 const m = a.value > 0 ? (a.value - c) / a.value : null
-                                return priceStat(`+ ${a.label}`, whole(a.value), 'var(--text-amber-700)', `$${formatCurrency(a.value)} · our cost $${formatCurrency(c)}${m != null ? ` · margin ${Math.round(m * 100)}%` : ''}`)
+                                return priceStat(`+ ${a.label}`, <SignedAmountSmallCents value={a.value} />, 'var(--text-amber-700)', `our cost $${formatCurrency(c)}${m != null ? ` · margin ${Math.round(m * 100)}%` : ''}`)
                               })}
-                              {priceStat(altRevenue.alternates.length === 1 ? 'With the alternate' : 'With every alternate', whole(altRevenue.total), 'var(--text-strong)', `$${formatCurrency(altRevenue.total)} · our cost $${formatCurrency(altCost.total)}`)}
+                              {priceStat(altRevenue.alternates.length === 1 ? 'With the alternate' : 'With every alternate', <SignedAmountSmallCents value={altRevenue.total} />, 'var(--text-strong)', `our cost $${formatCurrency(altCost.total)}`)}
                               {altRevenue.alternates.length === 1 && altRevenue.alternates[0]!.value > 0
                                 ? priceStat('Alternate margin', `${Math.round(((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value) * 100)}%`, mColor((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value))
                                 : null}
@@ -3104,9 +3104,9 @@ export function BidsPricingTab({
                         return (
                           <>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
-                            {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
-                            {priceStat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
-                            {priceStat('Profit', `${effProfit < 0 ? '-' : ''}$${Math.abs(Math.round(effProfit)).toLocaleString('en-US')}`, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `$${formatCurrency(effProfit)} · our cost $${formatCurrency(totalCost)}`)}
+                            {/* Exact to the cent, cents small (v2.5678, Wendi — amends the v2.2205 whole-dollars call): the strip must match the card and the letter, and half-up rounding named dollars no row carries. */}
+                            {priceStat('Revenue', <AmountSmallCents value={effRevenue} />, 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
+                            {priceStat('Profit', <SignedAmountSmallCents value={effProfit} />, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
                             {priceStat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
                             {/* v2.2423 (owner): margin's other dialect — revenue as a multiple of cost. */}
                             {priceStat('Multiple', formatRevenueMultiple(effRevenue, totalCost) ?? '—', mColor(effMargin), `Revenue ÷ our cost — $${formatCurrency(effRevenue)} ÷ $${formatCurrency(totalCost)}`)}
