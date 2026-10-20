@@ -17,7 +17,7 @@ import { parseRowSignature } from './takeoffDiff'
 
 export type CompositionKind = 'fixture' | 'pipe' | 'fitting' | 'other'
 
-/** #128 (spike): the row's saved kind splits `other` into equipment and allowance. */
+/** #128: the row's saved kind splits `other` into equipment and allowance. */
 export type CompositionBucketKind = CompositionKind | 'equipment' | 'allowance'
 
 export const COMPOSITION_ORDER: CompositionBucketKind[] = ['fixture', 'pipe', 'fitting', 'equipment', 'allowance', 'other']
@@ -141,7 +141,7 @@ export function compositionHeadline(c: PricingComposition): string {
   return parts.join(' · ')
 }
 
-/** #128 (spike): the same buckets by the estimator's own tags; a row with two tags counts in both, an untagged row under "No tag". */
+/** #128: the same buckets by the estimator's own tags; a row with two tags counts in both, an untagged row under "No tag". */
 export type TagBucket = { tag: string; rows: number; revenue: number; cost: number; profit: number; margin: number | null; revenueShare: number; materialCost: number; materialPrice: number; /** Σ material sold ÷ Σ material cost − 1; null with no material. */ markup: number | null }
 export const NO_TAG = 'No tag'
 export function buildTagComposition(rows: ReadonlyArray<CompositionRowInput>): { buckets: TagBucket[]; totalRevenue: number; rowsWithManyTags: number } {

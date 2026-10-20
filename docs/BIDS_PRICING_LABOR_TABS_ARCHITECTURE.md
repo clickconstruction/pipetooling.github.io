@@ -10,7 +10,7 @@ covers:
   - src/hooks/useBidPricingEngine.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-20
 sections:
   - What this surface is
   - The shared substrate
@@ -158,7 +158,7 @@ Refs (4): `bookOfferTokenRef` 334 and `freezingPricingRef` 337 (P4 / freeze chai
 | coverage row "N of M priced" + book-match bar (*Fill N matching*) | 4084–4140 | 57 | Book-match | `fillMatchingBookEntries` 2425–2445 | `bid_pricing_assignments` |
 | the grid rows proper (assign dropdown 4269–4353, preview ghost 4356–4389, ⓘ breakdown) | 4142–4489 | 348 | Assign search, `wbLocks`, drafts, `wbFlashRowId` | `commitWorkbenchTypedPrice` 2532–2587, `savePricingAssignment` 1118–1144, `removePricingAssignment` 1146–1159, `revertCustomCost` 2593–2604, `openAddEntryFromAssignSearch` 1401–1413, `renderAssign*` 386–457 | `bid_pricing_assignments`, `bid_count_row_custom_prices`, `bid_count_row_custom_costs` |
 | the profit bar + legend — **extracted v2.3990**: [`PricingProfitBar`](../src/components/bids/PricingProfitBar.tsx) (189 lines) over [`usePricingProfitBar`](../src/hooks/usePricingProfitBar.ts) (called in the tab, so a pin outlives the card) and the kernel's new half in [`lib/bids/profitBarLegend.ts`](../src/lib/bids/profitBarLegend.ts) (the warning, the pinned slice, the card's eight cells, the legend's fold; 18 tests) | 4491–4669 | 17 in the tab | — | `conc`, the effective rows mapped to `ProfitBarRow`, the palette, `mColor`, `jumpToWorksheetRow` as props | — |
-| the composition strip (`PricingCompositionBar`, v2.3239/v2.3458) | 4671–4685 | 15 | — (writes the grid filters + `wbFlashRowId`) | — | — |
+| the composition strip (`PricingCompositionBar`, v2.3239/v2.3458; **retired v2.5660** for the Kind breakdown card, below) | 4671–4685 | 15 | — (writes the grid filters + `wbFlashRowId`) | — | — |
 
 - **The 3566–3983 sticky `<div data-tour="workbench-summary">` holds the strip, the lock chip and the sent line** — cutting the strip means cutting that wrapper.
 - ~~**One effect serves two regions**~~ — split v2.3990: the outside-click effect 1006–1028 keeps the assign dropdown's half (grid); the pinned profit-bar slice's half, with Escape, is in `usePricingProfitBar`, called directly after it so the two run in the order they did as one.
@@ -186,6 +186,13 @@ Refs (4): `bookOfferTokenRef` 334 and `freezingPricingRef` 337 (P4 / freeze chai
 - **Render:** the RFQ chip in the header (2759–2800); modals 4964–5097 — `SpecSectionAuditModal` (4964), `PrepareFixtureCopyModal` 4966–4987, `RfqDeskModal` 4989–5006, `RfqComposeModal` 5008–5023, `PlugInQuotesModal` 5025–5038, `PlugInScheduleModal`, `PriceWithRobotModal` 5051–5070, `QuoteCompareModal` 5072–5097. Every modal is an extracted component, rendered by [`PricingQuoteModals`](../src/components/bids/PricingQuoteModals.tsx) (208 lines; `desk` + 9 props), which reads the open flags off the hook and calls its `bumpQuoteNonce` after writes.
 - **Coupling:** `QuoteCompareModal` reads `derivePricingWorkbench()` and the tax fallback (5088–5090) — the tab computes both at the `<PricingQuoteModals` call and passes values (`currentTotals`, `taxPercent`), the totals only with a bid in hand, as before; the modals cross-open each other through the hook's setters (Compare ↔ Plug-in ↔ Desk ↔ Compose); the Workbench header opens seven of them — the RFQ chip (`setRfqDeskOpen` / `setQuotesCompareOpen`, 2765–2766) and `PricingShareMenu`'s five doors (`setPrepareCopyOpen`, `setD22AuditOpen`, `setPlugInQuoteOpen`, `setPlugInScheduleOpen`, `setPriceWithRobotOpen`, 2818–2822).
 - **Extraction status:** **done v2.3945** — 4,988 → 4,757 lines, 96 → 84 `useState`, 16 → 13 effects. Both one-shot URL doors moved into the hook exactly as they were (quirk 18). Tests: `usePricingQuoteDesk.render.test.tsx` (13 — no bid / no permission reads nothing, the chip from quotes, requests, a bounce and a robot request, the reviewed write, the bump, both URL doors with and without the permission) and `PricingQuoteModals.render.test.tsx` (11 — the windows stubbed, the wrapper's own wiring). The six windows that had no smoke have one each since v2.4022 (55 cases: `SpecSectionAuditModal` 9, `PrepareFixtureCopyModal` 10, `RfqDeskModal` 10, `RfqComposeModal` 9, `PlugInQuotesModal` 9, `PlugInScheduleModal` 8); what they found in the windows is listed in `docs/recent-features/v2.4022.md`.
+
+### Region P8 — What the price is made of (v2.5660, after the stamp)
+
+- **Where it lives:** inside the Workbench block: the row's split as child rows after each `<tr>` (a `Fragment` per row, `splitOf` over `rowPriceSplit`), the kind chip and tags under the fixture name, `markupControl` / `taxControl` beside `brushControl`, and the three cards before `PricingProfitBar`. Components: `BreakdownCardShell`, `PriceBreakdownCard`, `KindBreakdownCard`, `TagBreakdownCard`, `RowKindChip`, `MarkupToolPopover`, `TaxToolPopover`, `RowScopePicker` (`ToolPopover`, `ToolFooter`) and the hook `useRowScope`.
+- **State:** `rowMarks` (seeded from `pricingCountRows`' `select('*')` by `rowMarksFromDbRow`, written per row by `rowMarksIo.saveRowMarks` in `persistRowMarks`, put back on failure), `bidSovFactor` (previewed by the card's chip as typed, written on leave by `commitBidMarkup` + `onPatchBid`), `wbSplitOpen` (per bid, localStorage), `wbMarkupDraft` (a row's markup cell; `rowMarkupPreview` feeds `splitOf` while typing), the two tools' open flags and Undo lists, `tagEditRowId`.
+- **The lock:** `updateRowMarks` / `updateManyRowMarks` call `guardPricingWrite` except for tags (`{ free: true }`); the tax rate cell guards before `onCommitTaxPercent`.
+- **Tests:** `PriceBreakdownCard.render.test.tsx`, `BreakdownCards.render.test.tsx`; kernels in PR 2's five test files.
 
 ### Region P7 — Share, print, CSV and the ★ chooser — extracted v2.3970
 

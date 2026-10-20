@@ -1178,6 +1178,8 @@ Profitability metric comparing revenue to cost.
 
 **Tab**: Analyzed in Pricing tab (5th tab)
 
+**What the price is made of** (v2.5660, punch list #128): the Pricing Workbench's split of a fixture's price into Material (the takeoff × 1 + the markup), Sales tax and Labor (what is left), shown as child rows under the row, and its three cards — **Traditional breakdown**, **Kind breakdown**, **Tag breakdown**. A row's **kind** (fixture · pipe · fitting · equipment · allowance; the app's guess until set; an Equipment row is one item, never split) and **tags** (the estimator's own words, never printed) live on `bids_count_rows` with the row's typed split (v2.5654). **+% Markup ›** and **Tax ›** beside Margin › set a markup or tax-free over a scope with one Undo. Kernels `rowPriceSplit.ts`, `priceBreakdown.ts`; map: `BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md` Region P8.
+
 **Priced margin** (v2.5043): the Workbench strip's margin kept on the bid (`bids.priced_*`, with the revenue, our cost, the revenue on rows with no cost and whether a labor rate was set). The workbench stamps it when its own price writes land, for the ★ price of the bid's own GC, and it freezes at send: the margin the bid went out at. The job's Costs verdict and Bids → Bid Costs → Bid vs actual read it beside the job's burn.
 
 ### Bid Assignment / Pricing Assignment
