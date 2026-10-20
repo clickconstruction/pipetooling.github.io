@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Kind column retires</title>
+<style>
+  /* Punch list #131. Light only, like every to-do mock-up. Every vendor, rep, count and date is made up. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1e40af; --blue-tint: #dbeafe; --teal-ink: #0f766e; --teal-tint: #ccfbf1; --amber-ink: #92400e; --amber-tint: #fef3c7; --amber-line: #fde68a; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --faint: #9ca3af; --line: #e5e7eb; --page: #f6f7f9; --card: #ffffff; --bg-subtle: #f9fafb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; }
+  .cap.gray { background: var(--line); color: var(--ink-2); }
+  .cap.green { background: #dcfce7; color: #166534; }
+  .frame { background: var(--card); border: 1px solid var(--line); border-radius: 0 0 10px 10px; padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); overflow-x: auto; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+
+  /* The table, drawn like the app's */
+  table.dir { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 760px; }
+  table.dir th { padding: 9px 11px; text-align: left; font-weight: 700; font-size: 13px; background: var(--bg-subtle); border-bottom: 1px solid var(--line); }
+  table.dir td { padding: 10px 11px; vertical-align: top; border-bottom: 1px solid var(--line); }
+  td.r, th.r { text-align: right; }
+  td.ph { white-space: nowrap; }
+  .vendor b { font-weight: 600; font-size: 14px; }
+  .addr { display: block; color: var(--muted); font-size: 12px; }
+  .caretr { color: var(--faint); font-size: 9px; margin-right: 6px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--line); background: var(--blue-tint); color: var(--blue-ink); }
+  .pill.wrapped { max-width: 52px; text-align: center; line-height: 1.25; padding: 3px 9px; }
+  .pill.nowrap { white-space: nowrap; }
+  .kchip { display: inline-block; margin-left: 7px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--line); background: var(--bg-subtle); color: var(--muted); white-space: nowrap; vertical-align: 1px; }
+  .star { color: #f59e0b; font-size: 11px; }
+  .rep { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  .rep .em { color: var(--muted); font-size: 12px; }
+  .jachip { font-size: 10.5px; font-weight: 700; color: var(--teal-ink); background: var(--teal-tint); border-radius: 999px; padding: 0 7px; white-space: nowrap; }
+  .warn { color: var(--amber-ink); font-size: 12px; }
+  .norep { color: var(--amber-ink); font-weight: 500; }
+  .norep a { color: var(--blue); text-decoration: none; font-weight: 400; margin-left: 5px; }
+  .m { color: var(--muted); font-size: 12px; }
+  .dash { color: var(--faint); }
+  .editb { padding: 3px 10px; font-size: 12px; border: 1px solid #d1d5db; border-radius: 4px; background: var(--bg-subtle); }
+  tr.band td { padding: 6px 11px; font-size: 12.5px; font-weight: 600; }
+  tr.band.amber td { color: var(--amber-ink); background: var(--amber-tint); border-bottom: 1px solid var(--amber-line); }
+  tr.band.grayb td { color: var(--ink-2); background: var(--line); border-bottom: 1px solid #d1d5db; }
+  tr.band .bandnote { font-weight: 400; color: inherit; opacity: .85; }
+  .cov { font-size: 13px; color: var(--ink-2); margin: 0 0 10px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .cov b { color: var(--ink); }
+  .cov .a { color: var(--amber-ink); }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+
+  /* The phone card */
+  .phone { max-width: 375px; border: 10px solid #111; border-radius: 34px; padding: 16px 12px 20px; background: var(--page); }
+  .pcard { background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+  .pcard .head { padding: 10px 12px; }
+  .pcard .head b { font-size: 15px; font-weight: 600; }
+  .pcard .sub { color: var(--muted); font-size: 12px; }
+  .pcard .rowline { border-top: 1px solid var(--line); padding: 8px 12px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #131 · a mock-up — every vendor, rep and count is made up</p>
+    <h1>The Kind column retires: a chip on the exceptions, a Ledger only band</h1>
+    <p>Materials → Supply houses, the office's Directory. Today a column repeats <i>Supply house</i> down most of the table, wrapped into a two-line oval. The proposal: the column goes, a ledger-only vendor carries a small chip beside its name, and a quiet band names the group the sort already builds. Estimators see no change.</p>
+  </header>
+
+  <h2><span class="num">1</span>Today — the box that prompted this</h2>
+  <p class="lede">Nothing holds the pill on one line and the column has no width, so the table squeezes <i>Supply house</i> into a tall oval — once per row, saying the default every time.</p>
+  <div class="cap gray">Before · the Kind column as it renders now</div>
+  <div class="frame">
+    <table class="dir">
+      <thead><tr><th style="width:30%">Vendor</th><th style="width:12%">Kind</th><th style="width:34%">Reps</th><th>Prices on file</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Brazos Pipe &amp; Supply</b><span class="addr" style="margin-left:15px">2900 Ranch Rd 12, San Marcos, TX</span></td>
+          <td><span class="pill wrapped">Supply house</span></td>
+          <td><div class="rep"><span class="star">★</span> primary <span class="em">· quotes@brazospipe.example</span></div></td>
+          <td>412 parts priced<div class="m">last request 2 weeks ago · Dana · answered</div></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Alamo Electric Supply</b><span class="addr" style="margin-left:15px">114 Commerce Loop, Seguin, TX</span></td>
+          <td><span class="pill wrapped">Supply house</span></td>
+          <td><div class="rep"><span class="star">★</span> primary <span class="em">· counter@alamoelec.example</span></div></td>
+          <td>56 parts priced<div class="m">last request today · Dana · no reply yet</div></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Longhorn Equipment Rentals</b></td>
+          <td><span class="pill wrapped" style="background:var(--bg-subtle);color:var(--ink-2)">Rental yard</span></td>
+          <td><span class="dash">—</span></td>
+          <td>no prices yet<div class="m">no price requests yet</div></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">Nine of sixteen rows carry the same blue oval. The one column that never varies is the tallest thing on the row.</p>
+  </div>
+
+  <h2><span class="num">2</span>After — the column gone, the groups named</h2>
+  <p class="lede">The office table takes the estimator's columns. The freed width goes to Reps. A ledger-only vendor says what it is beside its name; a supply house says nothing, because the line above the table and the bands already do. The <b>All kinds</b> select in the toolbar stays.</p>
+  <div class="cov"><span><b>7</b> supply houses</span><span><b>5</b> with a rep</span><span class="a"><b>2</b> need a rep — add one when you next call</span></div>
+  <div class="cap green">After · one look, three groups</div>
+  <div class="frame">
+    <table class="dir">
+      <thead><tr><th style="width:30%">Vendor</th><th style="width:36%">Reps</th><th>Phone</th><th>Prices on file</th><th class="r">Actions</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Alamo Electric Supply</b><span class="addr" style="margin-left:15px">114 Commerce Loop, Seguin, TX</span></td>
+          <td><div class="rep"><span class="star">★</span> primary <span class="em">· counter@alamoelec.example</span></div></td>
+          <td class="ph">(830) 555-0144</td>
+          <td>56 parts priced<div class="m">last request today · Dana · no reply yet</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Brazos Pipe &amp; Supply</b><span class="addr" style="margin-left:15px">2900 Ranch Rd 12, San Marcos, TX</span></td>
+          <td>
+            <div class="rep"><span class="star">★</span> primary <span class="em">· quotes@brazospipe.example</span> <span class="jachip">Job accounts · (512) 555-0180</span></div>
+            <div class="warn">expects a job account per property</div>
+          </td>
+          <td class="ph">(512) 555-0179</td>
+          <td>412 parts priced<div class="m">last request 2 weeks ago · Dana · answered</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Guadalupe Valley Supply</b><span class="addr" style="margin-left:15px">7 Mill St, New Braunfels, TX</span></td>
+          <td><div class="rep"><span class="star">★</span> sales desk <span class="em">· sales@gvsupply.example</span></div></td>
+          <td class="ph">(830) 555-0101</td>
+          <td>88 parts priced<div class="m">last request 3 weeks ago · Robert · answered</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr class="band grayb">
+          <td colspan="5">Ledger only · 4 vendors <span class="bandnote">— paid through Accounts payable, never quoted. Estimators don't see these.</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Lone Star Mutual</b><span class="kchip" title="Premiums and claims. Ledger only.">Insurer</span></td>
+          <td><span class="dash">—</span></td>
+          <td><span class="dash">—</span></td>
+          <td>no prices yet<div class="m">no price requests yet</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Longhorn Equipment Rentals</b><span class="kchip" title="Equipment rental. Ledger only.">Rental yard</span></td>
+          <td><span class="dash">—</span></td>
+          <td class="ph">(210) 555-0122</td>
+          <td>no prices yet<div class="m">no price requests yet</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Online Orders</b><span class="kchip" title="Fuel, online orders, price sources — anything else the office pays. Ledger only.">Other</span></td>
+          <td><span class="dash">—</span></td>
+          <td><span class="dash">—</span></td>
+          <td>12 parts priced<div class="m">no price requests yet</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Outside Subcontractors</b><span class="kchip" title="The bucket sub invoices post to. Ledger only.">Sub ledger</span></td>
+          <td><span class="dash">—</span></td>
+          <td><span class="dash">—</span></td>
+          <td>no prices yet<div class="m">no price requests yet</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr class="band amber">
+          <td colspan="5">Needs a rep · 2 houses <span class="bandnote">— a price request to one of these has to be addressed by hand until someone adds a rep</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Cypress Plumbing Supply</b><span class="addr" style="margin-left:15px">41 FM 306, Canyon Lake, TX</span></td>
+          <td><span class="norep">No rep on file<a href="#">add one</a></span></td>
+          <td class="ph">(830) 555-0167</td>
+          <td>no prices yet<div class="m">last request 4 weeks ago · Robert · no reply yet</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+        <tr>
+          <td class="vendor"><span class="caretr">▶</span><b>Kerr County Pipe</b><span class="addr" style="margin-left:15px">880 Junction Hwy, Kerrville, TX</span></td>
+          <td><span class="norep">No rep on file<a href="#">add one</a></span></td>
+          <td><span class="dash">—</span></td>
+          <td>6 parts priced<div class="m">last request 6 weeks ago · closed</div></td>
+          <td class="r"><span class="editb">Edit</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note"><b>The chip hovers its meaning</b> — the same one-line hints the vendor form's Kind chips already show (<i>Premiums and claims. Ledger only.</i>). The band only draws on the unfiltered view; searching, or narrowing the All kinds select, hides it the way the Needs a rep band hides when no row needs one.</p>
+  </div>
+
+  <h2><span class="num">3</span>The smaller fix — if the column stays</h2>
+  <p class="lede">The fallback is one line of code: hold the pill on one line and give the column a width. The oval is gone, but the column still repeats the default down the table.</p>
+  <div class="two">
+    <div>
+      <div class="cap gray">Fallback · the pill stops wrapping, nothing else moves</div>
+      <div class="frame">
+        <table class="dir" style="min-width:0">
+          <thead><tr><th>Vendor</th><th style="width:120px">Kind</th><th>Prices on file</th></tr></thead>
+          <tbody>
+            <tr><td class="vendor"><b>Brazos Pipe &amp; Supply</b></td><td><span class="pill nowrap">Supply house</span></td><td>412 parts priced</td></tr>
+            <tr><td class="vendor"><b>Alamo Electric Supply</b></td><td><span class="pill nowrap">Supply house</span></td><td>56 parts priced</td></tr>
+            <tr><td class="vendor"><b>Lone Star Mutual</b></td><td><span class="pill nowrap" style="background:var(--bg-subtle);color:var(--ink-2)">Insurer</span></td><td>no prices yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="cap gray">The phone card · the chip rides along</div>
+      <div class="frame" style="display:flex;justify-content:center">
+        <div class="phone">
+          <div class="pcard">
+            <div class="head"><b>Longhorn Equipment Rentals</b> <span class="kchip" style="margin-left:5px">Rental yard</span><div class="sub">no prices yet · no price requests yet</div></div>
+            <div class="rowline"><span class="m">Counter · (210) 555-0122</span><span class="editb">Edit</span></div>
+          </div>
+          <div class="pcard">
+            <div class="head"><b>Brazos Pipe &amp; Supply</b><div class="sub">2900 Ranch Rd 12 · Plumbing · 412 parts priced</div><div class="sub">last request 2 weeks ago · Dana · answered</div></div>
+            <div class="rowline"><span><span class="star">★</span> primary <span class="m">· quotes@brazospipe.example</span></span><span class="editb">✉</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="note">The office's cards show no kind at all today. A supply house's card stays as it is; only the ledger-only card gains the chip.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
