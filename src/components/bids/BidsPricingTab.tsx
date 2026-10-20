@@ -39,6 +39,7 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { useAlternateVersionData, useGcNamesById, useScenarioCardRevenues } from '../../hooks/usePricingCardsData'
 import { AddPriceDoorButton, PricingCardsRow } from './PricingCardsRow'
 import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../../lib/bids/pricingCardsRow'
+import { figureWhileLoading, LOADING_FIGURE, OPEN_PRICE_LOADING_MESSAGE, OPEN_PRICE_LOADING_TITLE, openPriceLoading } from '../../lib/bids/priceReadGate'
 import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
 import { sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { nextSortOrder } from '../../lib/bids/pickActivePricing'
@@ -298,6 +299,21 @@ export function BidsPricingTab({
   function guardPricingWrite(): boolean {
     if (pricingLock !== 'locked') return true
     showToast(pricingLockedMessage(selectedBidForPricing?.bid_date_sent ?? '', new Date().getFullYear()), 'warning')
+    return false
+  }
+  // v2.5671: the short window after a price card is clicked, before that price's book and rows land. The
+  // rows in state are still the price you left, so its figures read … and a price write waits.
+  const pricesLoading = openPriceLoading({ selectedPricingVersionId, pricesReady: pricingPricesReady })
+  /**
+   * A write that looks up the open price's own rows or book (an assignment, a custom price, an entry): the
+   * sent-bid lock, and then false (with the toast) while the open price is still loading (v2.5671). Looked
+   * up in that window, "existing" is the price you left, so the write would miss the open price's own row
+   * or point it at the other price's entry. Writes to the bid or its rows (markup, tax, kinds) ask only the lock.
+   */
+  function guardPriceRowsWrite(): boolean {
+    if (!guardPricingWrite()) return false
+    if (!pricesLoading) return true
+    showToast(OPEN_PRICE_LOADING_MESSAGE, 'warning')
     return false
   }
   function setPricingRevising(revising: boolean) {
@@ -764,7 +780,7 @@ export function BidsPricingTab({
     undoBrushSweep,
     gridPointerHandlers: brushGridPointerHandlers,
   } = useMarginBrush({
-    guardPricingWrite,
+    guardPricingWrite: guardPriceRowsWrite,
     // One tool at a time: picking up the brush folds the solver ring away. Read at click time
     // (the solver's state is declared further down).
     foldSolver: () => {
@@ -1033,7 +1049,7 @@ export function BidsPricingTab({
   }
 
   async function savePricingAssignment(countRowId: string, priceBookEntryId: string) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
@@ -1061,7 +1077,7 @@ export function BidsPricingTab({
   }
 
   async function removePricingAssignment(countRowId: string) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
@@ -1424,7 +1440,7 @@ export function BidsPricingTab({
    * entry simply starts turning up in the assign dropdowns.
    */
   async function applyPendingBookOffer() {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const pending = pendingBookOffer
     const versionId = selectedPricingVersionId
     if (!pending || !versionId || applyingBookOffer) return
@@ -1469,7 +1485,7 @@ export function BidsPricingTab({
 
   async function savePricingEntry(e: React.FormEvent) {
     // An entry added straight into the bid's own pricing is a pricing write; a shared-book edit is not.
-    if (entryFormTargetPricing && !editingPricingEntry && !guardPricingWrite()) {
+    if (entryFormTargetPricing && !editingPricingEntry && !guardPriceRowsWrite()) {
       e.preventDefault()
       return
     }
@@ -1945,7 +1961,7 @@ export function BidsPricingTab({
    * packet's rows by fixture name — same repair as copyBasePriceFromVersion (v2.2405).
    */
   async function copyPricesIntoViewedScenario(sourceId: string) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bid = selectedBidForPricing
     const targetId = selectedPricingVersionId
     if (!bid || !targetId || targetId === sourceId) return
@@ -2023,7 +2039,7 @@ export function BidsPricingTab({
   /** Iteration 2 — duplicate a Pricing as a fresh scenario and VIEW it (the ★ stays put). */
   /** Workbench: assign every exact-name book match in one batch (v2.2060). */
   async function fillMatchingBookEntries(matches: BookEntryMatch[]) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId || matches.length === 0) return
@@ -2119,7 +2135,7 @@ export function BidsPricingTab({
 
   /** Workbench: commit the preview via the existing per-row override write. */
   async function applyWorkbenchPreview() {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     const derived = derivePricingWorkbench()
@@ -2156,7 +2172,7 @@ export function BidsPricingTab({
     // nothing to refuse — the toast only when a draft exists (punch list #128).
     const raw = wbPriceDrafts[countRowId]
     if (raw == null) return
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const clearDraft = () =>
       setWbPriceDrafts((prev) => {
         const next = { ...prev }
@@ -2343,7 +2359,8 @@ export function BidsPricingTab({
   // saved prices, and whether this is the customer-facing price of the bid's own GC. Every commit.
   const pricedStampLatest: PricedMarginStampLatest | null = pricedMarginStampOnScreen({
     bid: selectedBidForPricing,
-    derived: selectedBidForPricing ? derivePricingWorkbench() : null,
+    // v2.5671: nothing to stamp while the open price loads — the strip still holds the price you left.
+    derived: selectedBidForPricing && !pricesLoading ? derivePricingWorkbench() : null,
     selectedBidVersionId,
     bidVersions,
     viewingPricingId: selectedPricingVersionId,
@@ -2717,8 +2734,16 @@ export function BidsPricingTab({
                   if (field === 'profit') return r.displayUnit != null ? `$${formatCurrency(r.displayRevenue - r.cost)}` : ''
                   return r.displayMargin == null ? '' : `${Math.round(r.displayMargin * 100)}%`
                 }
+                // v2.5671: a row's price cells read … while the open price loads. No box to type in, so no
+                // draft is made against the price you left; the write's own guard is the backstop.
+                const wbCellLoading = (
+                  <span title={OPEN_PRICE_LOADING_TITLE} style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                    {LOADING_FIGURE}
+                  </span>
+                )
                 /** One editable Revenue/Profit/Margin cell — typing solves the sale price/unit live (v2.2379). */
                 const wbCellInput = (r: (typeof eff)[number], field: WorkbenchCellField, width: string, extra?: React.CSSProperties) => {
+                  if (pricesLoading) return wbCellLoading
                   const id = r.countRow.id
                   const editingThis = wbCellDraft != null && wbCellDraft.rowId === id && wbCellDraft.field === field
                   return (
@@ -2870,6 +2895,9 @@ export function BidsPricingTab({
                             <span style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, color: c }}>{v}</span>
                           </span>
                         )
+                        // v2.5671: a tile made from the open price's prices reads … while they load, as its card does.
+                        const priceStat = (k: string, v: string, c: string, title?: string) =>
+                          pricesLoading ? stat(k, LOADING_FIGURE, 'var(--text-muted)', OPEN_PRICE_LOADING_TITLE) : stat(k, v, c, title)
                         // v2.2385 (Wendi): preview actions fuse into ONE segmented control — amber
                         // count chip · Apply · Discard, one shared height, wrapping as a unit and
                         // right-pinned even when it wraps to its own line. The long caption rides hover.
@@ -3051,15 +3079,15 @@ export function BidsPricingTab({
                         const altLine =
                           altRevenue && altCost ? (
                             <div data-testid="workbench-alternates" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap', marginTop: '0.45rem', paddingTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }}>
-                              {stat('Base', whole(altRevenue.base), 'var(--text-strong)', `$${formatCurrency(altRevenue.base)} · our cost $${formatCurrency(altCost.base)}`)}
+                              {priceStat('Base', whole(altRevenue.base), 'var(--text-strong)', `$${formatCurrency(altRevenue.base)} · our cost $${formatCurrency(altCost.base)}`)}
                               {altRevenue.alternates.map((a, i) => {
                                 const c = altCost.alternates[i]?.value ?? 0
                                 const m = a.value > 0 ? (a.value - c) / a.value : null
-                                return stat(`+ ${a.label}`, whole(a.value), 'var(--text-amber-700)', `$${formatCurrency(a.value)} · our cost $${formatCurrency(c)}${m != null ? ` · margin ${Math.round(m * 100)}%` : ''}`)
+                                return priceStat(`+ ${a.label}`, whole(a.value), 'var(--text-amber-700)', `$${formatCurrency(a.value)} · our cost $${formatCurrency(c)}${m != null ? ` · margin ${Math.round(m * 100)}%` : ''}`)
                               })}
-                              {stat(altRevenue.alternates.length === 1 ? 'With the alternate' : 'With every alternate', whole(altRevenue.total), 'var(--text-strong)', `$${formatCurrency(altRevenue.total)} · our cost $${formatCurrency(altCost.total)}`)}
+                              {priceStat(altRevenue.alternates.length === 1 ? 'With the alternate' : 'With every alternate', whole(altRevenue.total), 'var(--text-strong)', `$${formatCurrency(altRevenue.total)} · our cost $${formatCurrency(altCost.total)}`)}
                               {altRevenue.alternates.length === 1 && altRevenue.alternates[0]!.value > 0
-                                ? stat('Alternate margin', `${Math.round(((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value) * 100)}%`, mColor((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value))
+                                ? priceStat('Alternate margin', `${Math.round(((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value) * 100)}%`, mColor((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value))
                                 : null}
                             </div>
                           ) : null
@@ -3067,11 +3095,11 @@ export function BidsPricingTab({
                           <>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
                             {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
-                            {stat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
-                            {stat('Profit', `${effProfit < 0 ? '-' : ''}$${Math.abs(Math.round(effProfit)).toLocaleString('en-US')}`, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `$${formatCurrency(effProfit)} · our cost $${formatCurrency(totalCost)}`)}
-                            {stat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
+                            {priceStat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
+                            {priceStat('Profit', `${effProfit < 0 ? '-' : ''}$${Math.abs(Math.round(effProfit)).toLocaleString('en-US')}`, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `$${formatCurrency(effProfit)} · our cost $${formatCurrency(totalCost)}`)}
+                            {priceStat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
                             {/* v2.2423 (owner): margin's other dialect — revenue as a multiple of cost. */}
-                            {stat('Multiple', formatRevenueMultiple(effRevenue, totalCost) ?? '—', mColor(effMargin), `Revenue ÷ our cost — $${formatCurrency(effRevenue)} ÷ $${formatCurrency(totalCost)}`)}
+                            {priceStat('Multiple', formatRevenueMultiple(effRevenue, totalCost) ?? '—', mColor(effMargin), `Revenue ÷ our cost — $${formatCurrency(effRevenue)} ÷ $${formatCurrency(totalCost)}`)}
                             {/* v2.2378 (Wendi): coverage lives here as a chip — green ✓ when everything's
                                 priced, amber while work remains; the caret drops today's bar + filter row. */}
                             {costed.length > 0 ? (
@@ -3080,19 +3108,21 @@ export function BidsPricingTab({
                                 onClick={toggleWbCoverageOpen}
                                 aria-expanded={wbCoverageOpen}
                                 title={
-                                  pricedCount === costed.length
+                                  pricesLoading
+                                    ? OPEN_PRICE_LOADING_TITLE
+                                    : pricedCount === costed.length
                                     ? `All ${costed.length} costed rows have a sale price`
                                     : `${costed.length - pricedCount} costed row${costed.length - pricedCount === 1 ? '' : 's'} still unpriced${unpricedCost > 0 ? ` — $${formatCurrency(unpricedCost)} of cost has no sale price yet` : ''}`
                                 }
                                 style={{
                                   font: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.16rem 0.55rem', borderRadius: 999,
                                   fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', cursor: 'pointer', flex: '0 0 auto',
-                                  border: pricedCount === costed.length ? '1px solid var(--border-strong)' : '1px solid var(--text-amber-700)',
-                                  background: pricedCount === costed.length ? 'var(--surface)' : 'var(--bg-amber-tint)',
-                                  color: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)',
+                                  border: pricesLoading || pricedCount === costed.length ? '1px solid var(--border-strong)' : '1px solid var(--text-amber-700)',
+                                  background: pricesLoading || pricedCount === costed.length ? 'var(--surface)' : 'var(--bg-amber-tint)',
+                                  color: pricesLoading ? 'var(--text-muted)' : pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)',
                                 }}
                               >
-                                {pricedCount}/{costed.length}{pricedCount === costed.length ? ' ✓' : ''}
+                                {figureWhileLoading(pricesLoading, String(pricedCount))}/{costed.length}{!pricesLoading && pricedCount === costed.length ? ' ✓' : ''}
                                 <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{wbCoverageOpen ? '▾' : '▸'}</span>
                               </button>
                             ) : null}
@@ -3363,7 +3393,8 @@ export function BidsPricingTab({
                         `bid_value` (stamped at send) is the honest number; say both wherever the live one is read. */}
                     {(() => {
                       const cmp = compareSentVsToday({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidValue: selectedBidForPricing?.bid_value, today: effRevenue })
-                      if (!cmp) return null
+                      // v2.5671: no comparison while the open price loads — today's number is not its own yet.
+                      if (!cmp || pricesLoading) return null
                       const differs = cmp.kind === 'differs'
                       return (
                         <div
@@ -3401,10 +3432,10 @@ export function BidsPricingTab({
                     {(wbCoverageOpen || wbShowUnpricedOnly) && costed.length > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', marginBottom: '0.7rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }} title={unpricedCost > 0 ? `$${formatCurrency(unpricedCost)} of cost has no sale price yet` : undefined}>
-                        {pricedCount} of {costed.length} priced
+                        {figureWhileLoading(pricesLoading, String(pricedCount))} of {costed.length} priced
                       </span>
                       <div style={{ flex: 1, minWidth: 160, height: 8, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', borderRadius: 999, width: `${costed.length > 0 ? (pricedCount / costed.length) * 100 : 0}%`, background: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)', transition: 'width 0.25s' }} />
+                        <div style={{ height: '100%', borderRadius: 999, width: `${costed.length > 0 && !pricesLoading ? (pricedCount / costed.length) * 100 : 0}%`, background: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)', transition: 'width 0.25s' }} />
                       </div>
                       <button
                         type="button"
@@ -3743,7 +3774,8 @@ export function BidsPricingTab({
                                   )}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                                  {r.isPreview ? (
+                                  {/* v2.5671: … while the open price loads — no proposal, no box, no saving tag. */}
+                                  {!pricesLoading && r.isPreview ? (
                                     // The solver's proposal rides LEFT of the untouched saved price
                                     // (owner-approved prototype, v2.2379). Clicking it toggles this
                                     // row out of Apply: red + ✕ = clicked off, its price holds.
@@ -3777,6 +3809,7 @@ export function BidsPricingTab({
                                       ${formatCurrency(wbPreview?.[r.countRow.id] ?? 0)} {r.isVetoed ? '✕' : '→'}
                                     </button>
                                   ) : null}
+                                  {pricesLoading ? wbCellLoading : (
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -3839,7 +3872,8 @@ export function BidsPricingTab({
                                     }}
                                     aria-label={`Sale price per unit for ${r.countRow.fixture ?? 'row'}`}
                                   />
-                                  {savingUnitPriceOverride === r.countRow.id ? (
+                                  )}
+                                  {pricesLoading ? null : savingUnitPriceOverride === r.countRow.id ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>saving…</span>
                                   ) : wbJustSaved[r.countRow.id] ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-green-700)', fontWeight: 700 }}>saved ✓</span>
@@ -3856,7 +3890,7 @@ export function BidsPricingTab({
                                     wbCellInput(r, 'margin', '3.8rem', { fontWeight: 700, color: mColor(r.displayMargin) })
                                   ) : (
                                     <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
-                                      {r.displayUnit != null ? 'no cost' : '—'}
+                                      {pricesLoading ? LOADING_FIGURE : r.displayUnit != null ? 'no cost' : '—'}
                                     </span>
                                   )}
                                 </td>

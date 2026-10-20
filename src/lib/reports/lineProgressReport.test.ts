@@ -102,4 +102,19 @@ describe('lineProgressReport (punch list #130)', () => {
     ])
     expect(how.total).toBe(43)
   })
+
+  it('the points add up to the job exactly, whatever the shares round to (the live walk: 54.95 + 22.5 is 77, not 55 + 23)', () => {
+    const co: StageProgressRow = { fixtureId: 'c', name: 'CHANGE ORDER: Deep cleaning of 2 systems', kind: 'any', sequenceOrder: 0, weightPct: 54.95, progressPct: null, drawPaid: true }
+    const hvac: StageProgressRow = { fixtureId: 'h', name: 'HVAC to spec', kind: 'any', sequenceOrder: 1, weightPct: 45.05, progressPct: null, drawPaid: false }
+    const how = howRows([co, hvac], { h: 50 })
+    expect(how.total).toBe(77)
+    expect(how.rows.map((r) => r.points)).toEqual([55, 22])
+    expect(how.rows.reduce((s, r) => s + r.points, 0)).toBe(how.total)
+    // Rounding up: 55.37 + 22.315 is 78, and the row with the larger remainder takes the point.
+    const up = howRows([{ ...co, weightPct: 55.37 }, { ...hvac, weightPct: 44.63 }], { h: 50 })
+    expect(up.total).toBe(78)
+    expect(up.rows.map((r) => r.points)).toEqual([56, 22])
+    // Nothing said anywhere: every row 0, the total 0.
+    expect(howRows([{ ...co, drawPaid: false }, hvac], {}).rows.map((r) => r.points)).toEqual([0, 0])
+  })
 })

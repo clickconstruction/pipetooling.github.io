@@ -931,7 +931,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     if (error) {
       setError(`Failed to load price book entries: ${error.message}`)
       setPriceBookEntries([])
-      setPriceBookEntriesReadFor(null)
+      // v2.5671: a failed read still settles the price, its error on screen. Left unset, the open price
+      // would read … and refuse every price write, with no read on its way to clear it (the book effect
+      // reads again only when another price opens).
+      setPriceBookEntriesReadFor(versionId)
       return
     }
     const entries = (data as PriceBookEntryWithFixture[]) ?? []
@@ -1039,7 +1042,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
       setBidCountRowSubmissionHides([])
-      setBidPricingRowsReadFor(null)
+      // v2.5671: settled, as a failed book read is. An abort above is no failure: the read that replaced it lands.
+      setBidPricingRowsReadFor(versionId)
     }
   }
 

@@ -127,12 +127,28 @@ export function lineWords(row: StageProgressRow, picks: LinePicks): { text: stri
 
 export type HowRow = { fixtureId: string; name: string; sharePct: number; standing: string; points: number }
 
-/** The arithmetic behind the job line, for the tech who asks: each line's share, where it stands, its points. */
+/**
+ * The arithmetic behind the job line, for the tech who asks: each line's share,
+ * where it stands, its points. The points are whole numbers that add up to the
+ * job's number exactly (largest-remainder rounding — found on the live walk,
+ * where 55 + 23 sat over a total of 77), since the total is what the report
+ * saves and a table that does not add up is worse than none.
+ */
 export function howRows(rows: ReadonlyArray<StageProgressRow>, picks: LinePicks): { rows: HowRow[]; total: number } {
-  const out: HowRow[] = rows.map((r) => {
+  const total = jobPercentFromLines(rows, picks)
+  const raw = rows.map((r) => (r.weightPct / 100) * linePct(r, picks))
+  const points = raw.map((p) => Math.floor(p))
+  let left = total - points.reduce((s, n) => s + n, 0)
+  const byRemainder = raw.map((p, i) => ({ i, frac: p - Math.floor(p) })).sort((a, b) => b.frac - a.frac || a.i - b.i)
+  for (const { i } of byRemainder) {
+    if (left <= 0) break
+    points[i] = points[i]! + 1
+    left -= 1
+  }
+  const out: HowRow[] = rows.map((r, i) => {
     const pct = linePct(r, picks)
     const standing = r.drawPaid ? 'paid' : pct >= 100 ? 'done' : picks[r.fixtureId] == null && r.progressPct == null ? '—' : `${pct}%`
-    return { fixtureId: r.fixtureId, name: r.name, sharePct: Math.round(r.weightPct), standing, points: Math.round((r.weightPct / 100) * pct) }
+    return { fixtureId: r.fixtureId, name: r.name, sharePct: Math.round(r.weightPct), standing, points: points[i]! }
   })
-  return { rows: out, total: jobPercentFromLines(rows, picks) }
+  return { rows: out, total }
 }
