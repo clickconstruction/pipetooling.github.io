@@ -5,7 +5,7 @@ A count row's kind, tags and split (punch list #128, PR 2). The Pricing Workbenc
 ## What it does
 
 1. **Five columns on `bids_count_rows`**: `kind text` (checked: fixture, pipe, fitting, equipment, allowance; NULL = the app's guess from the name), `tags text[] NOT NULL DEFAULT '{}'`, `split_material_cents bigint` (≥ 0), `split_markup_pct numeric(7,3)` (0–1000, percent), `split_taxable boolean` (NULL = taxed when the row has material).
-2. **`clone_count_rows_to_bid_version` redefined** with its body as 20261002130000 left it and the five columns added to the copy's INSERT, so a copied bid version carries each row's marks. The function keeps its `LANGUAGE plpgsql` shape, ownership and grants (`CREATE OR REPLACE`).
+2. **Both copies redefined** with the five columns added to the copy's INSERT and nothing else changed, so a copy carries each row's marks: `clone_count_rows_to_bid_version` (a new bid version; its body as `20261014210000_bid_count_sources.sql` left it, `source_shares` included) and `duplicate_bid_to_service_type` (a bid copied to another trade; its body as `20261002130000` left it, `SET search_path` kept). `CREATE OR REPLACE` keeps ownership and grants; `bidCopySql.test.ts` holds both to every column.
 
 No table is created, so the three `apply_*` fences are not called. Idempotent: columns `IF NOT EXISTS`, constraints dropped and re-added.
 
