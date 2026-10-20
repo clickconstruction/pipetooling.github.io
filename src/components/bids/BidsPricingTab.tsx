@@ -3900,7 +3900,7 @@ export function BidsPricingTab({
                                           { key: 'tax', name: 'Sales tax', note: s.taxable ? `${taxPct}% on material` : 'tax-free', costEa: matCostEa * (taxPct / 100), priceEa: s.tax / n, typed: !s.taxable, editable: false, toggle: () => updateRowMarks(r.countRow.id, (m) => ({ ...m, split: { ...(m.split ?? {}), taxable: !s.taxable } })) },
                                           { key: 'labor', name: 'Labor', note: 'what is left', costEa: r.laborCost > 0 ? r.laborCost / n : null, priceEa: s.labor / n, typed: false, editable: false },
                                         ]
-                                    const childTd = (extra?: React.CSSProperties): React.CSSProperties => ({ padding: '0.15rem 0.7rem', borderBottom: '1px solid var(--border-faint, var(--border))', background: 'var(--bg-muted)', fontSize: '0.78rem', color: 'var(--text-700)', verticalAlign: 'middle', ...extra })
+                                    const childTd = (extra?: React.CSSProperties): React.CSSProperties => ({ padding: '0.15rem 0.7rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-muted)', fontSize: '0.78rem', color: 'var(--text-700)', verticalAlign: 'middle', ...extra })
                                     const money = (v: number | null, sign = false) => (v == null ? '—' : `${sign && v < 0 ? '−' : ''}$${formatCurrency(Math.abs(v))}`)
                                     if (!priced)
                                       return (
