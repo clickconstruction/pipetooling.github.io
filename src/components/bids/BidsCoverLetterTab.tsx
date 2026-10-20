@@ -1767,7 +1767,7 @@ export function BidsCoverLetterTab({
                           {bidVersions.length === 0 ? (
                             <>
                               {(() => {
-                                // v2.5680 (#133, Wendi): the version-less bid's other prices get the same offer
+                                // v2.5680 (#138, Wendi): the version-less bid's other prices get the same offer
                                 // checkboxes the split-bid branch has had since v2.2117 — the sentence that sent
                                 // her to the Pricing tab retires. The checkbox IS the offer (G1's flag), so the
                                 // room, the Approval PDF and the Pricing card follow by themselves.
@@ -2483,7 +2483,7 @@ export function BidsCoverLetterTab({
                         if (next.sections && Object.keys(next.sections).length === 0) delete next.sections
                         void saveAltTexts(bid.id, next)
                       }
-                      // v2.5684 (#133 PR 2, Wendi): the deselect from the cover page itself — one button
+                      // v2.5684 (#138 PR 2, Wendi): the deselect from the cover page itself — one button
                       // that stops offering the alternate under the editor, shown only when the line IS an
                       // alternate (never a base option, never the heading), routed to the write its kind
                       // already has. The row under "In this cover letter" then reads not offered / unticks,

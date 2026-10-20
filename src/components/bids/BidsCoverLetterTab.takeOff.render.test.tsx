@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the preview editor's "Take off this letter" (v2.5684, punch list #133 PR 2,
+ * Render smoke for the preview editor's "Take off this letter" (v2.5684, punch list #138 PR 2,
  * Wendi): the wording editor gains one button that stops offering the alternate it is open on.
  * The cheap-to-mount kind is a with-and-without group alternate (its split rides the
  * `coverLetterPricingRows` prop, no bundle pricing needed): the button writes

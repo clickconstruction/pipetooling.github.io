@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Step 1's version-less offer rows (v2.5680, punch list #133, Wendi): a bid with
+ * Render smoke for Step 1's version-less offer rows (v2.5680, punch list #138, Wendi): a bid with
  * no versions lists its other prices with a checkbox each — the checkbox IS the offer
  * (`price_book_versions.include_in_submission`), so unticking writes the flag and the letter,
  * the room and the Pricing card follow. The sentence that sent her to the Pricing tab is gone.
