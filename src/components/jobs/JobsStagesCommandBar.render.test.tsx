@@ -129,5 +129,22 @@ describe('JobsStagesCommandBar', () => {
   it('renders no chips at all on the default filters', () => {
     render(<JobsStagesCommandBar {...props()} />)
     expect(screen.queryByLabelText(/tap to (clear|restore)|hidden from the board/)).toBeNull()
+    expect(screen.queryByTestId('stages-zz-test-jobs-chip')).toBeNull()
+  })
+
+  it('a dev’s ZZ test jobs chip: quiet with the count while hidden, amber while shown; either opens Hide groups (punch list #61)', () => {
+    const base = props().filters
+    const hidden = props({ filters: { ...base, zzTestJobs: { count: 3, shown: false } } })
+    const { unmount } = render(<JobsStagesCommandBar {...hidden} />)
+    const chip = screen.getByTestId('stages-zz-test-jobs-chip')
+    expect(chip.textContent).toBe('3 ZZ test jobs hidden')
+    expect(chip.style.background).toBe('var(--surface)')
+    fireEvent.click(chip)
+    expect(hidden.onOpenHideGroups).toHaveBeenCalledTimes(1)
+    unmount()
+    render(<JobsStagesCommandBar {...props({ filters: { ...base, zzTestJobs: { count: 1, shown: true } } })} />)
+    const shown = screen.getByTestId('stages-zz-test-jobs-chip')
+    expect(shown.textContent).toBe('ZZ test jobs shown')
+    expect(shown.style.background).toBe('var(--bg-amber-100)')
   })
 })

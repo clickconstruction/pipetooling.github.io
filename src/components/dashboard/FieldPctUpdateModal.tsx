@@ -11,6 +11,10 @@ import {
 } from '../../lib/jobs/fieldPctUpdate'
 import { propagateReportPctToJob } from '../../lib/propagateReportPctToJob'
 import { submitStatusReportFromStepper } from '../../lib/reports/submitStatusReportFromStepper'
+import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../../lib/reports/stageProgressReport'
+import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../../lib/reports/lineProgressReport'
+import { stampMovedLines, useJobLineProgress } from '../../hooks/useJobLineProgress'
+import { ReportLinesProgressField } from '../ReportLinesProgressField'
 import { MarkJobReadyToBillPrompt } from '../jobs/MarkJobReadyToBillPrompt'
 import AutosizeTextarea from '../AutosizeTextarea'
 
@@ -37,6 +41,13 @@ const BAR_DROP_COLOR = '#d97706'
  *
  * The saved-from base is fetched fresh on open — the card's cached % can lag
  * another crew member's update.
+ *
+ * Report by line (punch list #130, v2.5664): on a job with two or more priced
+ * lines the stepper opens the same list Leave Report shows (`useJobLineProgress`,
+ * `ReportLinesProgressField`) — each line its own number, the job's number
+ * derived from their shares — and files the same Status Report with the moved
+ * lines named under "Stage progress". The ± chips stay for a one-line job, and
+ * behind "Set the whole-job % instead".
  */
 export default function FieldPctUpdateModal({
   job,
@@ -65,6 +76,9 @@ export default function FieldPctUpdateModal({
   const [error, setError] = useState<string | null>(null)
   const [rtbJob, setRtbJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [savedPct, setSavedPct] = useState<number | null>(null)
+  // Report by line (v2.5664): the job's priced lines, two or more; null = the ± chips as before.
+  const lineProgress = useJobLineProgress(job.id, true)
+  const linesActive = lineProgress.lines != null
 
   useEffect(() => {
     let cancelled = false
@@ -110,7 +124,7 @@ export default function FieldPctUpdateModal({
       async () =>
         supabase.rpc('set_job_pct_from_field', {
           p_job_id: job.id,
-          p_pct: next!,
+          p_pct: saveValue!,
           p_note: note.trim() || undefined,
         }),
       'field pct update',
@@ -119,20 +133,29 @@ export default function FieldPctUpdateModal({
     if (!r?.ok) throw new Error(r?.error || 'Could not save the update')
   }
 
+  // The number a save writes: by line, what the lines say once something moved (else the base, as a
+  // note-only save keeps today's number); by chips, the stepped value.
+  const linesNext = linesActive ? (lineProgress.moved.length > 0 ? lineProgress.derivedPct : base) : null
+  const saveValue = linesActive ? linesNext : next
+
   const save = async () => {
-    if (base == null || next == null || saving) return
+    if (base == null || saveValue == null || saving) return
     setSaving(true)
     setError(null)
     try {
       let effectiveStatus: string | null = jobStatus
       if (authUser?.id) {
+        const moves = linesActive && lineProgress.lines ? lineProgressFieldValue(lineProgress.lines, lineProgress.picks, base) : ''
         const res = await submitStatusReportFromStepper({
           authUserId: authUser.id,
           jobId: job.id,
-          pct: next,
+          pct: saveValue,
           note,
+          ...(moves ? { extraFields: { [REPORT_FIELD_LABEL_STAGE_PROGRESS]: moves } } : null),
         })
         if (res.ok) {
+          // Report by line: stamp each moved line on its row, best-effort.
+          if (linesActive && lineProgress.moved.length > 0) await stampMovedLines(job.id, lineProgress.moved, res.reportId)
           // Shared report pipeline: mirror the % into jobs_ledger (thread note,
           // Stages, day deltas). The report itself is already saved.
           const { jobStatus: freshStatus, pctError } = await propagateReportPctToJob(job.id, res.fieldValues)
@@ -140,23 +163,23 @@ export default function FieldPctUpdateModal({
             showToast(`Report saved, but the job's % done could not update: ${pctError}`, 'warning')
           }
           effectiveStatus = freshStatus ?? jobStatus
-          showToast(`Report saved — ${job.hcpNumber} is now ${next}% done.`, 'success')
+          showToast(`Report saved — ${job.hcpNumber} is now ${saveValue}% done.`, 'success')
         } else if (res.reason === 'no_template') {
           await saveLegacyPctOnly()
-          showToast(`Saved — ${job.hcpNumber} is now ${next}% done.`, 'success')
+          showToast(`Saved — ${job.hcpNumber} is now ${saveValue}% done.`, 'success')
         } else {
           throw new Error(res.message)
         }
       } else {
         await saveLegacyPctOnly()
-        showToast(`Saved — ${job.hcpNumber} is now ${next}% done.`, 'success')
+        showToast(`Saved — ${job.hcpNumber} is now ${saveValue}% done.`, 'success')
       }
-      if (next === 100 && effectiveStatus === 'working') {
-        setSavedPct(next)
+      if (saveValue === 100 && effectiveStatus === 'working') {
+        setSavedPct(saveValue)
         setRtbJob({ id: job.id, hcpNumber: job.hcpNumber, jobName: job.jobName })
         return
       }
-      onSaved(next)
+      onSaved(saveValue)
       onClose()
     } catch (e) {
       setError(formatErrorMessage(e, 'Could not save the update'))
@@ -180,7 +203,7 @@ export default function FieldPctUpdateModal({
 
   const delta = base != null && next != null ? fieldPctDeltaLabel(base, next) : null
   const loaded = base != null && next != null
-  const canSave = loaded && !saving && (next !== base || note.trim() !== '')
+  const canSave = loaded && !saving && (linesActive ? lineProgress.moved.length > 0 || note.trim() !== '' : next !== base || note.trim() !== '')
   const barBase = loaded ? Math.min(base, next) : 0
   const barChange = loaded ? Math.abs(next - base) : 0
 
@@ -213,7 +236,7 @@ export default function FieldPctUpdateModal({
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
           <div style={{ minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>How done is this job?</h2>
+            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{linesActive ? 'Update % done' : 'How done is this job?'}</h2>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{job.label}</p>
           </div>
           <button
@@ -226,7 +249,21 @@ export default function FieldPctUpdateModal({
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.6rem', marginTop: '1rem' }}>
+        {linesActive && lineProgress.lines && loaded ? (
+          <div style={{ marginTop: '1rem' }}>
+            <ReportLinesProgressField
+              rows={lineProgress.lines}
+              picks={lineProgress.picks}
+              openId={lineProgress.openId}
+              onOpen={lineProgress.setOpenId}
+              onPct={lineProgress.setPick}
+              recordedPct={base}
+              onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
+            />
+          </div>
+        ) : null}
+
+        <div style={{ display: linesActive ? 'none' : 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.6rem', marginTop: '1rem' }}>
           {loaded ? (
             <>
               <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{base}%</span>
@@ -256,12 +293,22 @@ export default function FieldPctUpdateModal({
 
         {/* Same bar idiom as the schedule card (v2.1567): blue = where it was,
             green = the gain being proposed (amber = a downward correction). */}
-        <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-muted)', marginTop: '0.75rem' }}>
+        <div style={{ display: linesActive ? 'none' : 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-muted)', marginTop: '0.75rem' }}>
           <span style={{ width: `${barBase}%`, background: BAR_BASE_COLOR }} />
           <span style={{ width: `${barChange}%`, background: loaded && next < base ? BAR_DROP_COLOR : BAR_GAIN_COLOR }} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem', marginTop: '1rem' }}>
+        {lineProgress.hasLines && !lineProgress.linesMode ? (
+          <button
+            type="button"
+            onClick={() => lineProgress.setLinesMode(true)}
+            style={{ marginTop: '0.5rem', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600 }}
+          >
+            {MARK_EACH_LINE_LINK}
+          </button>
+        ) : null}
+
+        <div style={{ display: linesActive ? 'none' : 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem', marginTop: '1rem' }}>
           {FIELD_PCT_STEPS.map((step) => (
             <button
               key={step}
@@ -326,7 +373,7 @@ export default function FieldPctUpdateModal({
               cursor: canSave ? 'pointer' : 'not-allowed',
             }}
           >
-            {saving ? 'Saving…' : loaded ? `Save ${next}%` : 'Save'}
+            {saving ? 'Saving…' : !loaded ? 'Save' : linesActive ? `Save · job ${saveValue}%` : `Save ${next}%`}
           </button>
         </div>
       </div>

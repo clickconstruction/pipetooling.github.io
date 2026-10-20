@@ -14,6 +14,7 @@ import {
   journeyCoverage,
   publicRoutesFromAppSource,
   resendSendersFromSources,
+  textSendersFromSources,
   surfaceRegistryProblems,
 } from './customerSurfaceRegistry'
 
@@ -31,7 +32,7 @@ function realFunctions(): { name: string; source: string }[] {
 describe('customerSurfaceRegistry — every outside surface has a place on What customers see', () => {
   const journeys = customerJourneys()
   const publicRoutes = publicRoutesFromAppSource(readFileSync(APP_TSX, 'utf8'))
-  const senders = resendSendersFromSources(realFunctions())
+  const senders = [...resendSendersFromSources(realFunctions()), ...textSendersFromSources(realFunctions())].sort()
 
   it('reads the real route table and the real functions folder', () => {
     expect(publicRoutes).toContain('/estimate/accept')
@@ -42,6 +43,8 @@ describe('customerSurfaceRegistry — every outside surface has a place on What 
     expect(senders).toContain('send-estimate-to-customer')
     expect(senders).toContain('legal-notify-dispatch')
     expect(senders.length).toBeGreaterThan(20)
+    // Messages cut 5: the two functions that text from the company number.
+    expect(textSendersFromSources(realFunctions())).toEqual(['messages-nudge-dispatch', 'quo-send', 'quo-webhook'])
   })
 
   it('the registry, the routes, the senders and the journeys agree', () => {
@@ -88,6 +91,17 @@ describe('customerSurfaceRegistry — every outside surface has a place on What 
       </Routes>`
     expect(publicRoutesFromAppSource(src)).toEqual(['/sign-in', '/room'])
     expect(publicRoutesFromAppSource('no routes here')).toEqual([])
+  })
+
+  it('finds text senders by the shared text path or a direct call to Quo', () => {
+    expect(
+      textSendersFromSources([
+        { name: 'quo-send', source: "import { sendText } from '../_shared/quoLines.ts'\nawait sendText(admin, input, tie)" },
+        { name: 'direct', source: "await fetch('https://api.quo.com/v1/messages', { method: 'POST' })" },
+        { name: 'reads-only', source: "import { loadSeats } from '../_shared/quoLines.ts'" },
+        { name: 'emailer', source: 'await sendEmailViaResend(x)' },
+      ]),
+    ).toEqual(['direct', 'quo-send'])
   })
 
   it('finds senders by the shared Resend helper or a direct Resend call', () => {

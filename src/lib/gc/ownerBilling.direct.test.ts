@@ -16,7 +16,7 @@ import {
   changeOrderScheduleWords,
   changeOrderWho,
   daysWords,
-  isChangeOrderLineId,
+  isChangeOrderLine,
   markupOnTop,
   OUR_COST_LINE_IDS,
   ourOwnerWaivers,
@@ -35,7 +35,7 @@ import {
   type OwnerPayApp,
 } from './ownerBilling'
 import { OWNER_INTEREST_DEFAULT_PCT, ownerInterestFrom, ownerInterestOnBill, ownerInterestWords } from './ownerBillingInterest'
-import { customerGreeting, latePayApps, PAY_REMINDER_DAYS, payReminderEmail, payReminderSentWords, payReminderStep } from './ownerBillingRemind'
+import { customerGreeting, helloLine, latePayApps, PAY_REMINDER_DAYS, payReminderEmail, payReminderSentWords, payReminderStep } from './ownerBillingRemind'
 import { initialGcState } from './schedule/testState'
 import type { ChangeOrder, GcState } from './types'
 import { money } from './words'
@@ -145,7 +145,7 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
   })
 
   it('spreads our costs and fee into the trades so every total stays the same', () => {
-    const lines = [{ id: 'a', worth: 100, doneBefore: 0, thisMonth: 50, doneToDate: 50 }, { id: 'b', worth: 300, doneBefore: 100, thisMonth: 50, doneToDate: 150 }, { id: 'gc', worth: 40, doneBefore: 10, thisMonth: 10, doneToDate: 20 }, { id: 'fee', worth: 20, doneBefore: 5, thisMonth: 5, doneToDate: 10 }, { id: 'co-1', worth: 30, doneBefore: 0, thisMonth: 15, doneToDate: 15 }]
+    const lines = [{ id: 'a', worth: 100, doneBefore: 0, thisMonth: 50, doneToDate: 50 }, { id: 'b', worth: 300, doneBefore: 100, thisMonth: 50, doneToDate: 150 }, { id: 'gc', worth: 40, doneBefore: 10, thisMonth: 10, doneToDate: 20 }, { id: 'fee', worth: 20, doneBefore: 5, thisMonth: 5, doneToDate: 10 }, { id: 'co-1', kind: 'changeOrder' as const, worth: 30, doneBefore: 0, thisMonth: 15, doneToDate: 15 }]
     expect([spreadMarkup(lines).map((l) => [l.id, cents(l.worth), cents(l.doneBefore), cents(l.doneToDate), cents(l.thisMonth), cents(l.tradeWorth), cents(l.ourShare)]), markupOnTop(lines), OUR_COST_LINE_IDS]).toEqual([
       [
         ['a', 115, 0, 57.5, 57.5, 100, 15],
@@ -159,7 +159,7 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
 
   it('says a change order\'s reason, its days and its starting price', () => {
     const s = initialGcState()
-    expect([CHANGE_ORDER_REASON_WORDS, daysWords(1), daysWords(5), changeOrderScheduleWords({ ...co, days: 5 }), changeOrderScheduleWords({ ...co, days: 0, schedule: 'none' }), changeOrderScheduleWords({ ...co, days: 0, schedule: '+2 working days' }), changeOrderPrice(job(s, 'fairoaksd'), 10000), isChangeOrderLineId('co-1'), isChangeOrderLineId('gc')]).toEqual([
+    expect([CHANGE_ORDER_REASON_WORDS, daysWords(1), daysWords(5), changeOrderScheduleWords({ ...co, days: 5 }), changeOrderScheduleWords({ ...co, days: 0, schedule: 'none' }), changeOrderScheduleWords({ ...co, days: 0, schedule: '+2 working days' }), changeOrderPrice(job(s, 'fairoaksd'), 10000), isChangeOrderLine({ kind: 'changeOrder' }), isChangeOrderLine({ kind: 'trade' }), isChangeOrderLine({})]).toEqual([
       { owner: 'Customer directive', field: 'Field condition', plans: 'Plan revision' },
       '1 day',
       '5 days',
@@ -168,6 +168,7 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
       'schedule: +2 working days',
       11000,
       true,
+      false,
       false,
     ])
   })
@@ -259,7 +260,14 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
 
   it('greets a contact by first name, a titled one by title and last name', () => {
     const s = initialGcState()
-    expect([customerGreeting(s.customers.find((c) => c.id === 'raman'), 'x'), customerGreeting(s.customers.find((c) => c.id === 'cibolo'), 'x'), customerGreeting(undefined, 'Cibolo Creek Partners')]).toEqual(['Dr. Raman', 'Elena', 'Cibolo'])
+    expect([customerGreeting(s.customers.find((c) => c.id === 'raman')), customerGreeting(s.customers.find((c) => c.id === 'cibolo'))]).toEqual(['Dr. Raman', 'Elena'])
+  })
+
+  it('with no contact it greets no one by name, never the company\'s first word (the walk\'s step 8)', () => {
+    const s = initialGcState()
+    const cibolo = s.customers.find((c) => c.id === 'cibolo')!
+    expect([customerGreeting({ ...cibolo, contact: '' }), customerGreeting({ ...cibolo, contact: '  ' }), customerGreeting(undefined), customerGreeting({ ...cibolo, contact: 'Dr.' })]).toEqual(['', '', '', 'Dr.'])
+    expect([helloLine('Elena'), helloLine('Dr. Raman'), helloLine('')]).toEqual(['Hello Elena,', 'Hello Dr. Raman,', 'Hello,'])
   })
 
   it('writes the reminder the customer reads', () => {

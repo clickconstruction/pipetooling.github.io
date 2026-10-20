@@ -12,6 +12,9 @@ import { moveRecord, planMove, undoMove } from '../../lib/gc/schedule/moves'
 import { partMoveOf, splitParts } from '../../lib/gc/schedule/splitBars'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
+import { WHAT_IF_NO_WHY } from '../../lib/gc/schedule/whatIf'
+import { plainWordsFailures } from '../../lib/plainWords'
+import type { ScheduleActivity, ScheduleMove } from '../../lib/gc/schedule/types'
 import type { GcProject } from '../../lib/gc/types'
 import { checkSupabaseError } from '../../utils/errorHandling'
 
@@ -169,5 +172,49 @@ describe('a part of a split line moved (PR 8b)', () => {
     const [move, , words] = onSave.mock.calls[0]! as unknown as [{ parts?: { id: string } }, unknown, string]
     expect(move.parts?.id).toBe('froof-1-p2')
     expect(words).toBe('Roofing · TPO membrane, West half now runs Fri Oct 2 to Fri Oct 9. Robert: Rain on the west side.')
+  })
+})
+
+describe('in the what-if copy (PR 11): trying', () => {
+  it('tries a move with no reason, marked as none yet, and says so in plain words', async () => {
+    const onSave = vi.fn((_move: ScheduleMove, _activities: ScheduleActivity[], _words: string) => Promise.resolve())
+    const onClose = vi.fn()
+    render(<GcMoveExplain state={s} project={fairOaks} pending={weekLater} by="Robert" today={s.today} onSave={onSave} onReload={vi.fn()} onClose={onClose} trying />)
+    const dialog = screen.getByRole('dialog', { name: 'Why it moved' })
+    expect(within(dialog).getByRole('heading').textContent).toBe('Try moving Roofing · TPO membrane')
+    const said = ['In the what-if, a reason is optional. Keep asks for one.', 'Tried with no reason yet, on the copy only.']
+    for (const words of said) expect(dialog.textContent).toContain(words)
+    for (const words of [...said, 'Tried with its reason, on the copy only.']) expect(plainWordsFailures(words), words).toEqual([])
+    const tryIt = within(dialog).getByRole('button', { name: 'Try it' }) as HTMLButtonElement
+    expect(tryIt.disabled).toBe(false)
+    fireEvent.click(tryIt)
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ lineId: 'froof-1', reason: WHAT_IF_NO_WHY.reason, note: WHAT_IF_NO_WHY.note, noWhy: true })
+  })
+
+  it('tries a move with its reason when one is given whole', async () => {
+    const onSave = vi.fn((_move: ScheduleMove, _activities: ScheduleActivity[], _words: string) => Promise.resolve())
+    render(<GcMoveExplain state={s} project={fairOaks} pending={weekLater} by="Robert" today={s.today} onSave={onSave} onReload={vi.fn()} onClose={vi.fn()} trying />)
+    const dialog = screen.getByRole('dialog', { name: 'Why it moved' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Weather' }))
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Rain kept the roof open a week.' } })
+    expect(dialog.textContent).toContain('Tried with its reason, on the copy only.')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try it' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    const move = onSave.mock.calls[0]![0]
+    expect([move.reason, move.note, move.noWhy]).toEqual(['weather', 'Rain kept the roof open a week.', undefined])
+  })
+
+  it('the copy’s record says what was tried, and how to keep it', () => {
+    const { container } = render(<GcMoveHistory project={fairOaks} trying />)
+    expect(container.textContent).toBe('Tried in the what-if Nothing tried yet. Drag a bar on the chart, or press one to change its dates.')
+    cleanup()
+    const plan = planMove(fairOaks, 'froof-1', weekLater.start, weekLater.finish)!
+    const move = { ...moveRecord(fairOaks.schedule!, 'froof-1', plan, { ...WHAT_IF_NO_WHY, by: 'Robert' }, s.today), noWhy: true }
+    const tried = { ...fairOaks, schedule: { ...fairOaks.schedule!, activities: plan.activities, moves: [move] } }
+    render(<GcMoveHistory project={tried} onUndo={vi.fn()} onRedo={vi.fn()} trying />)
+    expect(screen.getByText('Tried in the what-if (1)')).toBeTruthy()
+    expect(screen.getByText('Every move tried on the copy, newest first. Keep puts them on the real schedule.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy()
   })
 })

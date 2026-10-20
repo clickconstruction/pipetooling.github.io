@@ -9,6 +9,7 @@
  */
 import type { Json, TablesInsert, TablesUpdate } from '../../../types/database'
 import type { GcProject } from '../types'
+import type { ScheduleLetter } from './customerScheduleSend'
 import { moveActivityName } from './moves'
 import type { PlaceChange } from './places'
 import type { TheirDate } from './theirDates'
@@ -318,6 +319,14 @@ export function waitForRpc(
 /** A weekly walk (G-52) as its row. Who walked is the signed-in person, by the column's default. */
 export function walkRowOf(projectId: string, walk: Pick<ScheduleWalk, 'on' | 'kept' | 'moveIds' | 'skipped' | 'keptEarly'>): TablesInsert<'gc_schedule_walks'> {
   return { project_id: projectId, walked_on: walk.on, kept: walk.kept, move_ids: walk.moveIds, skipped: walk.skipped, kept_early: walk.keptEarly ?? [] }
+}
+
+/**
+ * The customer's letter as it is kept before it is emailed (G-94, PR 15a), dated the app's day. Who sent it is the
+ * signed-in person, by the column's default; `gc-customer-email` writes its log once it goes.
+ */
+export function scheduleSendRowOf(projectId: string, letter: ScheduleLetter, today: string): TablesInsert<'gc_schedule_sends'> {
+  return { project_id: projectId, sent_on: today, sent_to: letter.to, subject: letter.subject, lines: letter.lines }
 }
 
 /** A bar's real days (G-55): a day set, null to clear it, unset to leave it. */

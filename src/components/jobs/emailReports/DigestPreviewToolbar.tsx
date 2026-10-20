@@ -4,7 +4,7 @@ import { getAccessTokenForEdgeFunctions } from '../../../lib/supabaseAccessToken
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
-import { ACTIVITY_SCOPE_UI, CREW_FILTER_UI, calendarDayKeyWithZone, type ActivityScope, type CrewFilter } from '../../../lib/reports/digestScheduleFields'
+import { ACTIVITY_SCOPE_UI, calendarDayKeyWithZone, type ActivityScope } from '../../../lib/reports/digestScheduleFields'
 import type { RosterUser } from '../../../lib/reports/emailReportPeople'
 
 type CompactSelectStyle = CSSProperties & { fieldSizing?: 'content' }
@@ -14,8 +14,8 @@ const narrowSelect: CompactSelectStyle = { width: 'max-content', maxWidth: 'max-
 
 /**
  * Preview or send a test (v2.3595; the sandbox half of the retired `RecurringDigestsPanel`,
- * same controls, same edge functions): render a digest as HTML for any recipient / scope /
- * filter, or send one to your own login email. Never sends to anyone else.
+ * same controls, same edge functions): render a digest as HTML for any recipient / scope, or
+ * send one to your own login email. Never sends to anyone else.
  */
 export function DigestPreviewToolbar({
   scopeMasterChoices,
@@ -30,7 +30,6 @@ export function DigestPreviewToolbar({
   const [scopeMasterId, setScopeMasterId] = useState<string | null>(() => scopeMasterChoices[0]?.id ?? null)
   const [recipientUserId, setRecipientUserId] = useState<string | null>(authUserId ?? null)
   const [activityScope, setActivityScope] = useState<ActivityScope>('calendar_yesterday')
-  const [crewFilter, setCrewFilter] = useState<CrewFilter>('all_users')
   const [includeCosts, setIncludeCosts] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -57,7 +56,7 @@ export function DigestPreviewToolbar({
         scope_master_user_id: scopeMasterId,
         recipient_user_id: recipientUserId ?? undefined,
         activity_scope: activityScope,
-        crew_filter: crewFilter,
+        crew_filter: 'all_users',
         timezone: APP_CALENDAR_TZ,
         anchor_date: calendarDayKeyWithZone(Date.now(), APP_CALENDAR_TZ),
         include_costs: includeCosts,
@@ -99,14 +98,6 @@ export function DigestPreviewToolbar({
           <span>Scope</span>
           <select value={activityScope} onChange={(e) => setActivityScope(e.target.value as ActivityScope)} style={narrowSelect}>
             {ACTIVITY_SCOPE_UI.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
-        <label style={labelStyle}>
-          <span>Filter</span>
-          <select value={crewFilter} onChange={(e) => setCrewFilter(e.target.value as CrewFilter)} style={narrowSelect}>
-            {CREW_FILTER_UI.map(({ value, label }) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

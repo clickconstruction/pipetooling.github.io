@@ -2,14 +2,29 @@
  * GC mode, the trade partner portal's writes (P2b-i, to-dos/gc-mode/mockups/portal-p2b.md): the rules
  * `submit-gc-trade-portal` applies before it calls a `gc_trade_<verb>` (P2a). Pure, with no Deno or browser API,
  * so `src/lib/gc/gcTradeSubmit.test.ts` holds them:
- *   - the shape of each kind, read into the verb's call (the company is added by the function, from the link);
+ *   - the shape of each kind, read into the verb's call (the company is added by the function, from the link), and
+ *     for a signature (P2c-ii, and P5c-3b's waiver and change) the drawn image, the e-sign consent and the paper its
+ *     ledger row is keyed by, which the function handles around the verb;
  *   - the hourly cap on free-text writes;
  *   - the refusal keys, each with its status, as the page says them in the company's language (decision 11);
- *   - Spanish's hold, copied from `src/lib/gc/portalI18n.ts` (a test keeps the two equal).
+ *   - Spanish's hold, copied from `src/lib/gc/portalI18n.ts`, and the waiver's, copied from `src/lib/gc/drawEmail.ts` (a
+ *     test keeps each pair equal).
  */
+
+import { parseTradeFile, type TradeFileUpload } from './gcTradeFile.ts'
 
 /** Copy of `PORTAL_SPANISH_ON` in `src/lib/gc/portalI18n.ts`: the edge functions cannot import `src`. */
 export const PORTAL_SPANISH_ON = false
+
+/**
+ * Copy of `WAIVER_SIGN_LIVE` in `src/lib/gc/drawEmail.ts` (a test keeps the two equal): every lien waiver a trade signs in
+ * the portal, the unconditional one and the conditional one a pay application signs. On since the owner's call 2 in
+ * portal-p5.md (2026-10-10, v2.5178). Off, those kinds are refused as ones the page never sends.
+ */
+export const WAIVER_SIGN_LIVE = true
+
+/** The kinds that sign a lien waiver (P5c-3b, P5c-3c-ii): refused while `WAIVER_SIGN_LIVE` is off. */
+export const WAIVER_KINDS: ReadonlySet<string> = new Set(['unconditional_waiver', 'pay_app', 'final_pay_app'])
 
 /** Free-text writes a company may make in an hour (PORTAL_REAL_BUILD.md → The functions). */
 export const TRADE_HOURLY_CAP = 10
@@ -30,15 +45,53 @@ export const TRADE_SUBMIT_KINDS = [
   // P4b-i: a charge agreed or disputed, and a change asked for (P4a's verbs).
   'answer_back_charge',
   'ask_change',
+  // P2c-ii: the company signs its statement of work (P2c-i's verb).
+  'sign_sow',
+  // P5c-2: Building's punch list, submittals and questions while we build (U3b-i's, U4a's and U5a's verbs).
+  'punch_fixed',
+  'submittal_send',
+  'rfi_ask',
+  // P5c-3b: a line's percent reported, the unconditional waiver on a paid draw, and a change signed (U6a's verbs).
+  'sow_report',
+  'unconditional_waiver',
+  'sign_change',
+  // P5c-3c-ii: a pay application and the final one (U6a's and U6c's verbs), each signing its conditional waiver.
+  'pay_app',
+  'final_pay_app',
+  // P5a-1: a file into the job's Drive folder (gcTradeFile.ts); the function places it, with no verb.
+  'file',
+  // P5b-1: a company new to us sends its vetting form, and a company opens its master agreement or W-9 to sign (P5b-m's verbs).
+  'vetting_form',
+  'paper_link',
+  // P5d-ii: the trade's side of the schedule. New dates answered (13a's verb), and a bar late, the day kept after a push
+  // back, a crew count and a look-ahead mark (14a's).
+  'answer_dates',
+  'say_late',
+  'keep_day',
+  'crew_count',
+  'mark_lookahead',
+  // P5b-2: the company's insurance certificate, from its own upload (the file kind's answer), received until the office looks.
+  'coi',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
 
 /** The kinds that write a company's own words, under the hourly cap. The rest are clicks. */
-export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change'])
+export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change', 'submittal_send', 'rfi_ask', 'say_late'])
 
-/** The function's own refusals. */
-export const TRADE_FUNCTION_ERRORS = { badRequest: 400, linkOff: 404, spanishHeld: 400, tooMany: 429, failed: 500 } as const
+/** The function's own refusals. `consentNeeded`: a signature without the e-sign consent (P2c-ii), refused before any write. */
+export const TRADE_FUNCTION_ERRORS = {
+  badRequest: 400,
+  linkOff: 404,
+  spanishHeld: 400,
+  tooMany: 429,
+  consentNeeded: 400,
+  failed: 500,
+  // P5a-1: a file that is none the portal takes, one over 10 MB, and a job with no Drive folder yet.
+  fileType: 400,
+  fileTooBig: 400,
+  noJobFolder: 409,
+} as const
 
 /** The SQL's refusals (P2a's `gc_trade_<verb>`), raised as P0001 with the key as the message. */
 export const TRADE_SQL_ERRORS = {
@@ -56,6 +109,39 @@ export const TRADE_SQL_ERRORS = {
   everyKindNeedsSomeone: 409,
   alreadyAnswered: 409,
   notAwarded: 409,
+  // P2c-i's gc_trade_sign_sow. alreadySigned reads for any paper: U6's waiver and signed change raise it too.
+  sowNotSent: 409,
+  alreadySigned: 409,
+  msaFirst: 409,
+  // Messages, cut 4c (v2.5329): a statement of work built from clauses signs only at the revision its page showed.
+  paperChanged: 409,
+  // P5c-2: Building's punch list (U3b-i), submittals (U4a) and questions while we build (U5a). jobNotBuilding is raised by
+  // every verb on a job we are building, the report's and the pay application's too (P5c-3).
+  punchNotOpen: 409,
+  notYourMove: 409,
+  jobNotBuilding: 409,
+  // P5c-3b: Building's U6a, the report and the unconditional waiver.
+  sowNotSigned: 409,
+  splitLine: 409,
+  notPaidYet: 409,
+  // P5c-3c-ii: a pay application with us already, nothing new to bill, and the final one sent or not open yet (U6c).
+  drawWaiting: 409,
+  nothingToBill: 409,
+  finalSent: 409,
+  finalNotYet: 409,
+  // P5d-ii: the schedule's 13a (new dates taken back) and 14a (a bar done, a notice not pushed back or closed since, a
+  // week no longer open, a mark our superintendent checked).
+  datesTakenBack: 409,
+  workDone: 409,
+  notPushedBack: 409,
+  noticeClosed: 409,
+  weekClosed: 409,
+  alreadyChecked: 409,
+  dayNeeded: 400,
+  lateLaterDay: 400,
+  pickWhy: 400,
+  crewWhole: 400,
+  fileNeeded: 400,
   amountNeeded: 400,
   answerEach: 400,
   sovMustAdd: 400,
@@ -67,6 +153,15 @@ export const TRADE_SQL_ERRORS = {
   noteNeeded: 400,
   descriptionNeeded: 400,
   badRequest: 400,
+  // P5b-m's gc_trade_vetting_form and gc_trade_paper_open (P5b-1), and gc_trade_coi (its kind lands in P5b-2).
+  vetDecided: 409,
+  formIncomplete: 400,
+  msaNotSent: 409,
+  noW9Form: 409,
+  coiDayNeeded: 400,
+  coiPast: 400,
+  coiTooFar: 400,
+  certNeeded: 400,
 } as const
 
 export type TradeSubmitErrorKey = keyof typeof TRADE_FUNCTION_ERRORS | keyof typeof TRADE_SQL_ERRORS
@@ -100,11 +195,57 @@ export interface TradeCall {
   params: Record<string, unknown>
 }
 
-export type TradeSubmitParsed = { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall } | { ok: false }
+/**
+ * A signature's part the function handles around the verb (P2c-ii): the drawn image it stores before the verb and
+ * deletes if the verb refuses, or none for a typed one, and the e-sign consent words for the ledger row after, with the
+ * paper it is keyed by and the printed name. The statement of work's row is `gc_sow`; since P5c-3b the unconditional
+ * waiver's is `gc_draw`, keyed by the draw, and a change's is `gc_trade_change`, keyed by the change order; since P5c-3c-ii
+ * a pay application's is `gc_draw` too, keyed by the draw its verb makes, and its printed name is who signs the G702.
+ */
+export interface TradeSignature {
+  png: Uint8Array | null
+  consent: Record<string, unknown>
+  /** The paper the row is keyed by. A null id is the draw the verb makes and returns: a pay application (P5c-3c-ii). */
+  record: { type: 'gc_sow' | 'gc_draw' | 'gc_trade_change'; id: string | null }
+  printedName: string
+}
+
+/**
+ * The request read. A signature carries `sign`; a file (P5a-1) carries `file` and no verb (its `call` is empty), since
+ * the function places it in Drive itself.
+ */
+export type TradeSubmitParsed =
+  | { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall; sign?: TradeSignature; file?: TradeFileUpload }
+  | { ok: false; key?: 'consentNeeded' | 'fileType' | 'fileTooBig' }
+
+/** The most a drawn signature may weigh, as `accept-contract` holds it. */
+export const SIGNATURE_PNG_MAX_BYTES = 512 * 1024
+
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+/** A drawn signature as the pad sends it (a data URL or bare base64), or null when it is not a PNG of a size we keep. */
+export function signaturePngOf(v: string): Uint8Array | null {
+  const raw = v.trim()
+  const b64 = /^data:image\/png;base64,/i.test(raw) ? raw.slice(raw.indexOf(',') + 1) : raw.startsWith('data:') ? '' : raw
+  if (b64 === '') return null
+  let bytes: Uint8Array
+  try {
+    const bin = atob(b64)
+    bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  } catch {
+    return null
+  }
+  if (bytes.length > SIGNATURE_PNG_MAX_BYTES || bytes.length < PNG_MAGIC.length || PNG_MAGIC.some((m, i) => bytes[i] !== m)) return null
+  return bytes
+}
 
 const MAIL_GROUPS = ['quotes', 'job', 'contracts', 'pay']
 const CHANGE_REASONS = ['owner', 'field', 'plans']
+/** Copy of `LATE_REASONS` in `src/lib/gc/schedule/lateNotices.ts` (a test keeps the two equal): why a bar is late or not done. */
+export const SCHEDULE_REASONS: readonly string[] = ['weather', 'trade before', 'materials', 'crew', 'other']
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const HTTPS = /^https:\/\/\S+$/i
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 
 function isObject(v: unknown): v is Record<string, unknown> {
@@ -130,6 +271,20 @@ function text(v: unknown, max: number): string {
   return v.trim()
 }
 
+/** A week's Monday, as the look-ahead and the crew counts key a week. */
+function monday(v: unknown): string {
+  const day = ymd(v)
+  if (new Date(`${day}T00:00:00Z`).getUTCDay() !== 1) throw new Bad()
+  return day
+}
+
+/** A reason from the five, or none: the SQL says pickWhy for none where one is needed. */
+function reasonOrNull(v: unknown): string | null {
+  if (v === undefined || v === null || v === '') return null
+  if (typeof v !== 'string' || !SCHEDULE_REASONS.includes(v)) throw new Bad()
+  return v
+}
+
 function num(v: unknown): number | null {
   if (v === undefined || v === null) return null
   if (typeof v !== 'number' || !Number.isFinite(v)) throw new Bad()
@@ -140,6 +295,42 @@ function list(v: unknown, max: number): unknown[] {
   if (v === undefined || v === null) return []
   if (!Array.isArray(v) || v.length > max) throw new Bad()
   return v
+}
+
+/**
+ * A pay application as the window sends it (P5c-3c-ii): who signs it and where from, the last day it covers, and on a
+ * new one each line's percent and its stored materials by the kernels' line ids. The SQL reads what the numbers mean;
+ * a blank period or name reaches it, which says badRequest or nameNeeded.
+ */
+function payAppOf(v: unknown, withLines: boolean): Record<string, unknown> {
+  if (!isObject(v)) throw new Bad()
+  const periodTo = text(v.periodTo, 10)
+  if (periodTo !== '') ymd(periodTo)
+  const out: Record<string, unknown> = {
+    periodTo,
+    address: text(v.address, 300),
+    license: text(v.license, 120),
+    signedBy: text(v.signedBy, 200),
+    signedTitle: text(v.signedTitle, 120),
+  }
+  if (withLines) {
+    out.lines = list(v.lines, 200).map((l) => {
+      if (!isObject(l)) throw new Bad()
+      const toPct = num(l.toPct)
+      const stored = num(l.stored)
+      if (toPct === null || toPct < 0 || toPct > 100 || (stored !== null && stored < 0)) throw new Bad()
+      return { line: uuid(l.line), toPct, ...(stored === null ? {} : { stored }) }
+    })
+  }
+  return out
+}
+
+/** A Drive link the company types until P5a's upload: an https link, or none. */
+function httpsOrNull(v: unknown): string | null {
+  const t = text(v, 2000)
+  if (t === '') return null
+  if (!HTTPS.test(t)) throw new Bad()
+  return t
 }
 
 /** The kinds of email, the known ones only, in the portal's order. */
@@ -179,6 +370,9 @@ function quote(v: unknown): Record<string, unknown> {
     note: text(v.note, 2000),
     alternates: labelAmounts(v.alternates, 20),
   }
+  // P5a-1: its PDF's link, the file kind's answer (P5a-m reads it into quote_file).
+  const file = httpsOrNull(v.file)
+  if (file) out.file = file
   const good = num(v.goodForDays)
   if (good !== null) out.goodForDays = good
   if (v.sov !== undefined && v.sov !== null) out.sov = labelAmounts(v.sov, 40)
@@ -240,12 +434,138 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
       if (typeof b.reason !== 'string' || !CHANGE_REASONS.includes(b.reason)) throw new Bad()
       const days = num(b.days) ?? 0
       if (!Number.isInteger(days)) throw new Bad()
+      // P5a-1: its photo or ticket's link, the file kind's answer or a link the trade typed (P5a-m's p_file_url).
+      const fileUrl = httpsOrNull(b.fileUrl)
       return {
         rpc: 'gc_trade_ask_change',
-        params: { p_package_id: uuid(b.packageId), p_description: text(b.description, 2000), p_reason: b.reason, p_amount: num(b.amount), p_days: days },
+        params: {
+          p_package_id: uuid(b.packageId),
+          p_description: text(b.description, 2000),
+          p_reason: b.reason,
+          p_amount: num(b.amount),
+          p_days: days,
+          ...(fileUrl ? { p_file_url: fileUrl } : {}),
+        },
       }
     }
+    case 'punch_fixed':
+      return { rpc: 'gc_trade_punch_fixed', params: { p_item_id: uuid(b.itemId) } }
+    case 'submittal_send':
+      // A blank file name reaches the SQL, which says fileNeeded in the company's words.
+      return {
+        rpc: 'gc_trade_submittal_send',
+        params: { p_submittal_id: uuid(b.submittalId), p_file_name: text(b.fileName, 200), p_drive_url: httpsOrNull(b.driveUrl), p_note: text(b.note, 2000) },
+      }
+    case 'rfi_ask':
+      return {
+        rpc: 'gc_trade_rfi_ask',
+        params: { p_package_id: uuid(b.packageId), p_question: text(b.question, 2000), p_sheets: list(b.sheets, 20).map((x) => text(x, 20)).filter((x) => x !== '') },
+      }
+    case 'sow_report': {
+      // The SQL holds the percent at what was billed already; a percent past 0 to 100 is not the picker's.
+      const pct = num(b.pct)
+      if (pct === null || pct < 0 || pct > 100) throw new Bad()
+      return { rpc: 'gc_trade_sow_report', params: { p_package_id: uuid(b.packageId), p_line: uuid(b.line), p_pct: pct } }
+    }
+    case 'unconditional_waiver':
+      return { rpc: 'gc_trade_unconditional_waiver', params: { p_draw_id: uuid(b.drawId) } }
+    case 'sign_change':
+      return { rpc: 'gc_trade_sign_change', params: { p_change_order_id: uuid(b.changeOrderId) } }
+    case 'pay_app':
+      return { rpc: 'gc_trade_pay_app', params: { p_package_id: uuid(b.packageId), p_app: payAppOf(b.app, true) } }
+    case 'final_pay_app':
+      return { rpc: 'gc_trade_final_pay_app', params: { p_package_id: uuid(b.packageId), p_app: payAppOf(b.app, false) } }
+    case 'file':
+      // Read by parseTradeFile before callOf; never reached.
+      throw new Bad()
+    case 'vetting_form': {
+      // A blank line or no years reaches the SQL, which says formIncomplete; years in part is not the form's.
+      const years = num(b.years)
+      if (years !== null && !Number.isInteger(years)) throw new Bad()
+      return {
+        rpc: 'gc_trade_vetting_form',
+        params: {
+          p_license: text(b.license, 2000),
+          p_insurance: text(b.insurance, 2000),
+          p_years: years,
+          p_references: text(b.references, 2000),
+          p_past_jobs: text(b.pastJobs, 2000),
+        },
+      }
+    }
+    case 'coi': {
+      // No day or no link reaches the SQL, which says coiDayNeeded or certNeeded in the company's words.
+      const day = text(b.expiresOn, 10)
+      return { rpc: 'gc_trade_coi', params: { p_expires_on: day === '' ? null : ymd(day), p_file_url: httpsOrNull(b.fileUrl) } }
+    }
+    case 'paper_link':
+      // The function adds the token's hash and expiry it mints (gcTradePaper.ts) before the verb.
+      if (b.paper !== 'msa' && b.paper !== 'w9') throw new Bad()
+      return { rpc: 'gc_trade_paper_open', params: { p_paper: b.paper } }
+    case 'answer_dates':
+      // The dates work, or another day: the SQL says dayNeeded for none and dayPassed for one gone.
+      if (typeof b.ok !== 'boolean') throw new Bad()
+      return {
+        rpc: 'gc_trade_answer_dates',
+        params: { p_move_id: uuid(b.moveId), p_ok: b.ok, p_day: b.ok || b.day === undefined || b.day === null || b.day === '' ? null : ymd(b.day), p_note: text(b.note, 2000) },
+      }
+    case 'say_late':
+      // The day's order, a missing reason and a short sentence are the SQL's to say, in the kernel's order.
+      return { rpc: 'gc_trade_say_late', params: { p_activity_id: uuid(b.activityId), p_day: ymd(b.day), p_reason: reasonOrNull(b.reason), p_note: text(b.note, 2000) } }
+    case 'keep_day':
+      return { rpc: 'gc_trade_keep_day', params: { p_notice_id: uuid(b.noticeId) } }
+    case 'crew_count': {
+      // A whole number outside 0 to 50 reaches the SQL, which says crewWhole; part of a person is not the form's.
+      const count = num(b.count)
+      if (count === null || !Number.isInteger(count)) throw new Bad()
+      return { rpc: 'gc_trade_set_crew_count', params: { p_package_id: uuid(b.packageId), p_week_of: monday(b.weekOf), p_count: count } }
+    }
+    case 'mark_lookahead':
+      if (typeof b.done !== 'boolean') throw new Bad()
+      return { rpc: 'gc_trade_mark_lookahead', params: { p_activity_id: uuid(b.activityId), p_week_of: monday(b.weekOf), p_done: b.done, p_reason: reasonOrNull(b.reason) } }
+    case 'sign_sow': {
+      // The function fills the image's path, the IP and the browser from what it stored and the request. One built from
+      // clauses (v2.5329) also sends the revision its page showed and the language it read; the SQL signs only at that
+      // revision. Without them it signs as before, and the SQL refuses one built from clauses (paperChanged).
+      const revision = num(b.paperRevision)
+      if (revision !== null && !Number.isInteger(revision)) throw new Bad()
+      const paper = revision === null ? {} : { p_paper_revision: revision, p_paper_lang: b.paperLang === 'es' ? 'es' : 'en' }
+      return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null, ...paper } }
+    }
   }
+}
+
+/** The kinds that sign a paper, and what each signature's ledger row is keyed by. */
+const SIGNED: Partial<Record<TradeSubmitKind, (call: TradeCall) => TradeSignature['record']>> = {
+  sign_sow: (call) => ({ type: 'gc_sow', id: String(call.params.p_sow_id) }),
+  unconditional_waiver: (call) => ({ type: 'gc_draw', id: String(call.params.p_draw_id) }),
+  sign_change: (call) => ({ type: 'gc_trade_change', id: String(call.params.p_change_order_id) }),
+  pay_app: () => ({ type: 'gc_draw', id: null }),
+  final_pay_app: () => ({ type: 'gc_draw', id: null }),
+}
+
+/**
+ * A signature's image and consent (P2c-ii). The consent is required, as `sign-owner-records` requires it: without it the
+ * press is refused with consentNeeded. The function reads its words again with `parseEsignConsent` for the ledger row.
+ * An image that is not a PNG we keep is a shape the portal never sends. The waiver and a change (P5c-3b) are typed only,
+ * since their verbs keep no image, and their name is required here because the verb never reads it; the statement of
+ * work's blank name reaches its verb, which says nameNeeded. A pay application (P5c-3c-ii) is typed too, and its printed
+ * name is the G702's signer, whose blank its verb refuses the same way.
+ */
+function signatureOf(kind: TradeSubmitKind, b: Record<string, unknown>, record: TradeSignature['record']): TradeSignature | 'consentNeeded' {
+  const raw = b.signaturePngBase64
+  let png: Uint8Array | null = null
+  if (raw !== undefined && raw !== null && raw !== '') {
+    if (typeof raw !== 'string' || kind !== 'sign_sow') throw new Bad()
+    png = signaturePngOf(raw)
+    if (!png) throw new Bad()
+  }
+  const payApp = kind === 'pay_app' || kind === 'final_pay_app'
+  const printedName = text(payApp ? (isObject(b.app) ? b.app.signedBy : '') : b.printedName, 200)
+  if ((kind === 'unconditional_waiver' || kind === 'sign_change') && printedName === '') throw new Bad()
+  const consent = b.esignConsent
+  if (!isObject(consent) || typeof consent.clauseText !== 'string' || consent.clauseText.trim() === '') return 'consentNeeded'
+  return { png, consent, record, printedName }
 }
 
 /** The request read: its token, its kind and the verb's call, or not a shape the portal sends. */
@@ -255,11 +575,27 @@ export function parseTradeSubmit(body: unknown): TradeSubmitParsed {
   const kind = body.kind
   if (token === '' || typeof kind !== 'string' || !(TRADE_SUBMIT_KINDS as readonly string[]).includes(kind)) return { ok: false }
   try {
-    return { ok: true, token, kind: kind as TradeSubmitKind, call: callOf(kind as TradeSubmitKind, body) }
+    const k = kind as TradeSubmitKind
+    if (k === 'file') {
+      const file = parseTradeFile(body)
+      if (file === null) return { ok: false }
+      if (typeof file === 'string') return { ok: false, key: file }
+      return { ok: true, token, kind: 'file', call: { rpc: '', params: {} }, file }
+    }
+    const call = callOf(k, body)
+    const record = SIGNED[k]
+    if (!record) return { ok: true, token, kind: k, call }
+    const sign = signatureOf(k, body, record(call))
+    return sign === 'consentNeeded' ? { ok: false, key: 'consentNeeded' } : { ok: true, token, kind: k, call, sign }
   } catch (e) {
     if (e instanceof Bad) return { ok: false }
     throw e
   }
+}
+
+/** A kind that signs a lien waiver while `WAIVER_SIGN_LIVE` is off. */
+export function waiverHeld(kind: TradeSubmitKind): boolean {
+  return !WAIVER_SIGN_LIVE && WAIVER_KINDS.has(kind)
 }
 
 /** A Spanish choice while Spanish is held (decision 8). */

@@ -14,7 +14,7 @@ export function SampleModeBanner({ text = SAMPLE_BANNER_TEXT }: { text?: string 
         margin: '0 0 0.9rem',
         padding: '0.45rem 0.75rem',
         borderRadius: 6,
-        background: 'var(--bg-amber-50)',
+        background: 'var(--bg-amber-tint)',
         border: '1px solid var(--border-amber)',
         color: 'var(--text-amber-800)',
         fontSize: '0.8rem',

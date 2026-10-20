@@ -8,6 +8,20 @@ import { customersListRollup, type CustomerListRollup, type LcvInvoiceRow, type 
 
 export type CustomerListCounts = { projects: number; jobs: number; bids: number; notes: number }
 
+/**
+ * The bundle without ZZ test jobs (punch list #61, v2.5122): its rows carry only ids, so the shared ZZ ids
+ * drop each job with its bills and payments before the counts and the money are derived.
+ */
+export function withoutZzTestJobsInBundle(bundle: CustomersListBundle, zzJobIds: ReadonlySet<string>): CustomersListBundle {
+  if (zzJobIds.size === 0) return bundle
+  return {
+    ...bundle,
+    jobs: bundle.jobs.filter((j) => !zzJobIds.has(j.id)),
+    invoices: bundle.invoices.filter((i) => !zzJobIds.has(i.job_id)),
+    payments: bundle.payments.filter((p) => !zzJobIds.has(p.job_id)),
+  }
+}
+
 export type CustomersListBundle = {
   jobs: LcvJobRow[]
   invoices: LcvInvoiceRow[]

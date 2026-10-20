@@ -30,8 +30,11 @@ export type LienFootChipItem = {
   signed_at?: string | null
 }
 
-/** The chip's word on the signature (v2.5082): null = no word (the row does not carry the column yet), 'signed' with the day, or 'unsigned'. */
-export type LienFootChipSigned = { at: string } | 'unsigned' | null
+/**
+ * The chip's word on the signature (v2.5082): null = no word (the row does not carry the column yet), 'signed' with the day, or 'unsigned'.
+ * The pen train: a pen record says so, names who wrote it down, and whether the leader has confirmed it.
+ */
+export type LienFootChipSigned = { at: string; mode?: 'type' | 'draw' | 'pen'; recordedByName?: string | null; confirmedAt?: string | null } | 'unsigned' | null
 
 /** "Oct 7" from an instant (company calendar) or a day. */
 export function shortDay(iso: string | null | undefined): string {
@@ -68,6 +71,12 @@ export function readyChip(
   if (signed === 'unsigned') return { ...chip, tone: 'amber', words: `${chip.words} · unsigned`, title: `${chip.title} Unsigned: the run holds it until the leader signs.` }
   if (signed && typeof signed === 'object') {
     const day = shortDay(signed.at)
+    if (signed.mode === 'pen') {
+      // The pen train: signed on the paper, written down by the office; confirmed once the leader says so from his own sign-in.
+      const who = (signed.recordedByName ?? '').trim() || 'the office'
+      const confirmed = signed.confirmedAt ? ' · confirmed' : ''
+      return { ...chip, words: `${chip.words} · signed by pen${day ? ` ${day}` : ''} · recorded by ${who}${confirmed}`, title: `${chip.title} Signed by pen ${longDay(signed.at) ?? ''}, on the paper as printed; recorded by ${who}.${signed.confirmedAt ? ` Confirmed by the leader ${longDay(signed.confirmedAt) ?? ''}.` : ' The leader has not confirmed it yet; nothing waits on that.'}`.replace(/\s+\./g, '.').replace(/\s+;/g, ';') }
+    }
     return { ...chip, words: `${chip.words} · signed${day ? ` ${day}` : ''}`, title: `${chip.title} Signed ${longDay(signed.at) ?? ''}.`.replace(/\s+\./, '.') }
   }
   return chip

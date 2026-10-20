@@ -5,6 +5,9 @@
  * `tradePortalSlice` like every real one, so the sample can never show what a trade may not see. Its own file, never
  * `customerSampleFixtures.ts`, which most functions import.
  */
+import type { PortalSchedule, PortalTodo } from './gcKernels/index.ts'
+import type { ScheduleWork } from './gcTradePortalSchedule.ts'
+import { NO_FLOW_EXTRA, tradeFlowRowsOf, type TradeFlowRows } from './gcTradeFlow.ts'
 import { tradePortalSlice, type TradePortalRows, type TradePortalSlice } from './gcTradePortalSlice.ts'
 
 /** The sample's ids: real uuids, so a press on the sample passes the submit function's shape check (P2b-ii). */
@@ -37,6 +40,22 @@ export const SAMPLE_TRADE_IDS = {
   charge: '00000000-5a00-4000-8000-000000000025',
   request: '00000000-5a00-4000-8000-000000000026',
   changeOrder: '00000000-5a00-4000-8000-000000000027',
+  msa: '00000000-5a00-4000-8000-000000000028',
+  w9: '00000000-5a00-4000-8000-000000000029',
+  coi: '00000000-5a00-4000-8000-000000000030',
+  // The job's scope and its statement of work's lines (P2c-ii).
+  jobLine1: '00000000-5a00-4000-8000-000000000031',
+  jobLine2: '00000000-5a00-4000-8000-000000000032',
+  sowLine1: '00000000-5a00-4000-8000-000000000033',
+  sowLine2: '00000000-5a00-4000-8000-000000000034',
+  // The job's work (P5c-1): a paid draw, a punch item, a submittal and a question while we build.
+  draw1: '00000000-5a00-4000-8000-000000000035',
+  punch1: '00000000-5a00-4000-8000-000000000036',
+  submittal1: '00000000-5a00-4000-8000-000000000037',
+  rfi1: '00000000-5a00-4000-8000-000000000038',
+  // The schedule's side (P5d-ii): a move it was told of, and its late notice.
+  move1: '00000000-5a00-4000-8000-000000000039',
+  notice1: '00000000-5a00-4000-8000-000000000040',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -47,9 +66,23 @@ function addDays(ymd: string, n: number): string {
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + n)).toISOString().slice(0, 10)
 }
 
+/** "Mon Oct 12 to Fri Oct 16", as the dates email words a span. */
+function span(from: string, to: string): string {
+  const day = (ymd: string) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(`${ymd}T00:00:00Z`)).replace(',', '')
+  return `${day(from)} to ${day(to)}`
+}
+
+/** The Monday of a day's week. */
+function mondayOf(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const day = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()
+  return addDays(ymd, day === 0 ? -6 : 1 - day)
+}
+
 /**
  * The sample's rows: one company asked to quote one trade on one project, with what it has given and what we sent it,
- * one ask it passed on, and one job of ours it was awarded and signed for, with a charge to answer and a change it asked
+ * one ask it passed on, and one job of ours it was awarded and signed for, with its report, a paid draw, a punch item, a
+ * submittal and a question while we build (P5c-1), a charge to answer and a change it asked
  * for that is with the customer.
  */
 export function gcTradePortalSampleRows(today: string): TradePortalRows {
@@ -65,34 +98,36 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
     quotes: [
       { id: ID.jobQuote, invite_id: ID.jobAsk, amount: 48600, based_on_rev: 0, submitted_on: d(-52), includes: {}, note: '', good_for_days: 30, alternates: [], quote_file: '', sov: null, exclusions: null, exclusions_answered: null, source: 'trade', created_at: `${d(-52)}T15:00:00Z` },
     ],
-    contacts: [{ id: ID.quoteDay, company_id: COMPANY, invite_id: ID.ask, contacted_on: d(-3), how: 'portal', note: 'Sending it Friday.', promised_by: d(4) }],
+    contacts: [{ id: ID.quoteDay, company_id: COMPANY, invite_id: ID.ask, contacted_on: d(-3), how: 'portal', note: 'Sending it Friday.', promised_by: d(4), created_at: `${d(-3)}T15:00:00Z` }],
     promises: [],
     projects: [
       {
         project: { id: ID.project, name: 'Sample Retail Shell', address: '1 Sample Rd, Boerne' },
-        gc: { project_id: ID.project, stage: 'bidding', bid_due: d(14), size_note: '9,600 sq ft retail shell, four bays', lost_on: null, lost_why: null },
+        gc: { project_id: ID.project, stage: 'bidding', bid_due: d(14), size_note: '9,600 sq ft retail shell, four bays', lost_on: null, lost_why: null, created_at: `${d(-12)}T15:00:00Z` },
         team: [{ role: 'projectManager', name: 'Avery Lin', phone: '(210) 555-0199', email: 'avery@example.com' }],
       },
       {
         project: { id: ID.project2, name: 'Sample Clinic Finish Out', address: '2 Sample Ave, Helotes' },
-        gc: { project_id: ID.project2, stage: 'bidding', bid_due: d(5), size_note: '3,100 sq ft tenant finish out', lost_on: null, lost_why: null },
+        gc: { project_id: ID.project2, stage: 'bidding', bid_due: d(5), size_note: '3,100 sq ft tenant finish out', lost_on: null, lost_why: null, created_at: `${d(-22)}T15:00:00Z` },
         team: [],
       },
       {
         project: { id: ID.job, name: 'Sample Dental Office', address: '3 Sample Ln, Fair Oaks Ranch' },
-        gc: { project_id: ID.job, stage: 'building', bid_due: d(-45), size_note: '4,200 sq ft dental office', lost_on: null, lost_why: null },
+        gc: { project_id: ID.job, stage: 'building', bid_due: d(-45), size_note: '4,200 sq ft dental office', lost_on: null, lost_why: null, created_at: `${d(-70)}T15:00:00Z` },
         team: [{ role: 'superintendent', name: 'Jordan Reyes', phone: '(210) 555-0170', email: 'jordan@example.com' }],
       },
     ],
     packages: [
       { id: ID.trade, project_id: ID.project, trade: 'Electrical', position: 0 },
       { id: ID.trade2, project_id: ID.project2, trade: 'Electrical', position: 0 },
-      { id: ID.jobTrade, project_id: ID.job, trade: 'Electrical', position: 0, awarded_invite_id: ID.jobAsk },
+      { id: ID.jobTrade, project_id: ID.job, trade: 'Electrical', position: 0, awarded_invite_id: ID.jobAsk, carried_invite_id: ID.jobAsk, awarded_on: d(-36) },
     ],
     scopeItems: [
       { id: ID.line1, package_id: ID.trade, position: 0, label: 'Service and gear', sheets: ['E-101'], specs: null, added_in_set_id: null },
       { id: ID.line2, package_id: ID.trade, position: 1, label: 'Panels and feeders', sheets: ['E-201'], specs: null, added_in_set_id: null },
       { id: ID.line3, package_id: ID.trade, position: 2, label: 'Lighting', sheets: ['E-301'], specs: null, added_in_set_id: ID.set1 },
+      { id: ID.jobLine1, package_id: ID.jobTrade, position: 0, label: 'Rough-in', sheets: ['E-101'], specs: null, added_in_set_id: null },
+      { id: ID.jobLine2, package_id: ID.jobTrade, position: 1, label: 'Trim and fixtures', sheets: ['E-301'], specs: null, added_in_set_id: null },
     ],
     exclusions: [{ id: ID.exclusion, package_id: ID.trade, position: 0, label: 'Permits and fees', by: 'the owner' }],
     sets: [
@@ -119,7 +154,11 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       },
     ],
     setSends: [{ set_id: ID.set1, company_id: COMPANY, touched: true }],
-    sows: [{ id: ID.sow, package_id: ID.jobTrade, invite_id: ID.jobAsk, company_id: COMPANY, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 0, sent_on: d(-35), signed_on: d(-33) }],
+    sows: [{ id: ID.sow, package_id: ID.jobTrade, invite_id: ID.jobAsk, company_id: COMPANY, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 0, sent_on: d(-35), signed_on: d(-33), excluded: null }],
+    sowLines: [
+      { id: ID.sowLine1, sow_id: ID.sow, position: 0, label: 'Rough-in', amount: 29160, scope_item_id: ID.jobLine1 },
+      { id: ID.sowLine2, sow_id: ID.sow, position: 1, label: 'Trim and fixtures', amount: 19440, scope_item_id: ID.jobLine2 },
+    ],
     backCharges: [
       {
         id: ID.charge,
@@ -163,10 +202,152 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
     ],
     // Its price to the customer is here only to show the slice drops it: the company reads its part, $3,400.
     changeOrders: [{ id: ID.changeOrder, number: 2, status: 'sent', sent_on: d(-6), answered_on: null, cost: 3400, price: 3910 }],
+    // Its papers (B6-b-ii): the master agreement signed before its statement of work, its W-9, a certificate good for
+    // a year. The link is here only to show the slice drops it.
+    papers: [
+      { id: ID.msa, company_id: COMPANY, doc_type: 'agreement', status: 'signed', sent_at: `${d(-40)}T15:00:00Z`, signed_at: d(-38), expires_at: null, url: 'https://example.com/never-passes' },
+      { id: ID.w9, company_id: COMPANY, doc_type: 'w9', status: 'signed', sent_at: `${d(-40)}T15:00:00Z`, signed_at: d(-38), expires_at: null },
+      { id: ID.coi, company_id: COMPANY, doc_type: 'coi', status: 'signed', sent_at: null, signed_at: d(-38), expires_at: d(327) },
+    ],
+    // The job's work (P5c-1): the rough-in reported at 60% and billed to half, paid with its conditional waiver; a punch
+    // item to fix; a submittal waiting on the company; and a question it asked, answered by the architect.
+    lineReports: [
+      { sow_line_id: ID.sowLine1, pct: 60, reported_on: d(-2), seq: 2 },
+      { sow_line_id: ID.sowLine2, pct: 0, reported_on: d(-20), seq: 1 },
+    ],
+    draws: [
+      {
+        id: ID.draw1,
+        sow_id: ID.sow,
+        number: 1,
+        seq: 1,
+        requested_on: d(-14),
+        status: 'paid',
+        gross: 14580,
+        retainage: 1458,
+        net: 13122,
+        final: false,
+        waiver: 'conditional',
+        waiver_on: null,
+        approved_on: d(-12),
+        paid_on: d(-3),
+        asked: null,
+        sent_back_on: null,
+        sent_back_note: null,
+        period_to: d(-14),
+        address: '400 Sample St, Boerne',
+        license: 'TECL 00000',
+        signed_by: 'Dana Ortiz',
+        signed_title: 'Owner',
+        signed_on: d(-14),
+        file_name: null,
+        drive_url: null,
+      },
+    ],
+    drawLines: [{ draw_id: ID.draw1, sow_line_id: ID.sowLine1, to_pct: 50, stored: 0, we_see: null }],
+    changeSends: [],
+    punch: [
+      { id: ID.punch1, project_id: ID.job, package_id: ID.jobTrade, position: 0, text: 'Cover plate missing in operatory 2.', where_on: 'Operatory 2', added_on: d(-1), fixed_on: null, checked_on: null, sent_back_times: 0, sent_back_note: null, sent_back_on: null, removed_at: null },
+    ],
+    submittals: [
+      { id: ID.submittal1, project_id: ID.job, package_id: ID.jobTrade, number: '26 24 16-01', title: 'Panelboards', kind: 'product data', spec_section: '26 24 16', lead_days: 14, needed_by: d(10), asked_on: d(-5), created_at: `${d(-5)}T15:00:00Z` },
+    ],
+    submittalHolds: [{ submittal_id: ID.submittal1, scope_item_id: ID.jobLine1 }],
+    submittalRounds: [],
+    rfis: [
+      { id: ID.rfi1, project_id: ID.job, package_id: ID.jobTrade, number: 1, question: 'Is the panel in operatory 2 recessed or surface mounted?', sheets: ['E-201'], asked_by_company_id: COMPANY, asked_on: d(-4), needed_days: 3, sent_to_architect_on: d(-4), answered_on: d(-2), answer_text: 'Recessed, as the elevation on E-201 shows.', answered_by: 'architect', impact: 'none', days: null },
+    ],
+    rfiHolds: [{ rfi_id: ID.rfi1, scope_item_id: ID.jobLine1 }],
   }
 }
 
 /** The sample company's slice, as `gc-trade-portal` returns it for the sample token. */
 export function gcTradePortalSample(today: string): TradePortalSlice {
   return tradePortalSlice(gcTradePortalSampleRows(today), COMPANY)
+}
+
+/** The sample's trade flow rows (Messages cut 8c): the same made-up rows through the same builder, its link first opened six days ago. */
+export function gcTradePortalSampleFlow(today: string): TradeFlowRows {
+  return tradeFlowRowsOf(gcTradePortalSampleRows(today), { ...NO_FLOW_EXTRA, links: [{ revoked_at: null, first_opened_at: `${addDays(today, -6)}T15:00:00Z` }] }, COMPANY)
+}
+
+/**
+ * The sample company's chart on its job being built (the schedule's PR 14b), as `gc-trade-portal` returns it beside the
+ * slice: its two lines, the framing before them and the paint after, by made-up companies. The answer's own shape,
+ * with no row behind it, so it holds nothing a trade may not see.
+ */
+export function gcTradePortalSampleSchedules(today: string): Record<string, PortalSchedule> {
+  const d = (n: number) => addDays(today, n)
+  const bar = (lineId: string, label: string, company: string, start: number, finish: number, pct: number, mine: boolean) => ({ lineId, label, company, start: d(start), finish: d(finish), pct, slipDays: 0, mine })
+  return {
+    [ID.job]: {
+      before: [bar('sample-framing', 'Framing and drywall', 'Hill Country Framing', -20, -6, 100, false)],
+      mine: [bar(ID.jobLine1, 'Rough-in', 'Sample Electric Co.', -5, 4, 60, true), bar(ID.jobLine2, 'Trim and fixtures', 'Sample Electric Co.', 12, 18, 0, true)],
+      after: [bar('sample-paint', 'Paint and finishes', 'Brushline Painting', 19, 26, 0, false)],
+      first: d(-20),
+      last: d(26),
+    },
+  }
+}
+
+/**
+ * The sample company's side of the schedule on its job being built (the Portal's P5d-ii), as `gc-trade-portal` returns
+ * it: new dates to answer, a late notice we pushed back on its rough-in, its next three weeks to mark, and a crew count
+ * to give. The answer's own shape, with no row behind it, so a press on the sample writes nothing.
+ */
+export function gcTradePortalSampleScheduleWork(today: string): { scheduleWork: Record<string, ScheduleWork>; scheduleTodos: PortalTodo[] } {
+  const d = (n: number) => addDays(today, n)
+  const week = (n: number) => addDays(mondayOf(today), 7 * n)
+  const roughIn = { lineId: ID.jobLine1, packageId: ID.jobTrade, trade: 'Electrical', work: 'Rough-in', start: d(-5), finish: d(4) }
+  const trim = { lineId: ID.jobLine2, packageId: ID.jobTrade, trade: 'Electrical', work: 'Trim and fixtures', start: d(12), finish: d(18) }
+  return {
+    scheduleWork: {
+      [ID.job]: {
+        dates: [
+          {
+            moveId: ID.move1,
+            toldOn: d(-1),
+            subject: 'Your dates moved on Sample Dental Office',
+            lines: [
+              'The schedule on Sample Dental Office moved. Your work is now planned for these days.',
+              `Trim and fixtures: ${span(d(12), d(18))}, not ${span(d(9), d(15))}.`,
+              'Why: weather: Two days of rain held the drywall.',
+              'In your portal, tell us the dates work, or give us another day.',
+            ],
+          },
+        ],
+        late: [
+          {
+            lineId: ID.jobLine1,
+            start: d(-5),
+            finish: d(4),
+            started: true,
+            day: d(4),
+            notice: {
+              id: ID.notice1,
+              state: 'pushedBack',
+              on: d(-2),
+              toStart: d(-5),
+              toFinish: d(7),
+              reason: 'materials',
+              note: 'The panel ships three days late.',
+              pushedBack: { on: d(-1), note: 'The drywall starts right after. We need the rough-in done on its day.' },
+              keptOn: null,
+            },
+          },
+          { lineId: ID.jobLine2, start: d(12), finish: d(18), started: false, day: d(12), notice: null },
+        ],
+        lookAhead: [
+          { weekOf: week(0), when: 'this', items: [{ ...roughIn, mark: null, state: 'unmarked', canMark: true }] },
+          { weekOf: week(1), when: 'next', items: [{ ...roughIn, mark: null, state: 'unmarked', canMark: false }] },
+          { weekOf: week(2), when: 'later', items: [{ ...trim, mark: null, state: 'unmarked', canMark: false }] },
+        ],
+        crew: [
+          { weekOf: week(1), trades: [{ packageId: ID.jobTrade, trade: 'Electrical', count: 3 }] },
+          { weekOf: week(2), trades: [{ packageId: ID.jobTrade, trade: 'Electrical', count: null }] },
+        ],
+      },
+    },
+    scheduleTodos: [],
+  }
 }

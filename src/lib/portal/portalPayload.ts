@@ -2,8 +2,13 @@ import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/p
 import type { ChecksEventIn, ChecksJobIn } from '../jobs/gcChecksApplied'
 export type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransferDetails } from '../bankTransferDetails'
-import type { PortalGcChangeOrder, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
-export type { PortalGcChangeOrder, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
+import type { PortalGcChangeOrder, PortalGcContract, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
+export type { PortalGcChangeOrder, PortalGcContract, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
+import type { PortalGcSchedule, PortalGcScheduleBar, PortalGcScheduleDate, PortalGcScheduleGroup, PortalGcScheduleStage } from '../../../supabase/functions/_shared/gcCustomerSchedule'
+import { PORTAL_TAGLINE } from '../../../supabase/functions/_shared/portalLetterhead'
+export type { PortalGcSchedule } from '../../../supabase/functions/_shared/gcCustomerSchedule'
+import { parsePortalGcPage } from './customerPage'
+import { parsePortalThread, type PortalThreadLine } from './portalThread'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
  * receives this from the customer-portal edge function; the parser is
@@ -13,6 +18,8 @@ export type { PortalGcChangeOrder, PortalGcJob } from '../../../supabase/functio
 
 export type PortalCompany = {
   name: string
+  /** The line under the CLICK. mark (v2.5229): Click Construction's for a customer whose every job is a GC job we build. */
+  tagline: string
   cityLine: string
   licenseLine: string
   phone: string
@@ -122,9 +129,121 @@ export type PortalPayload = {
   ownerRecords: PortalOwnerRecords | null
   /** GC mode (O7c): the GC jobs we build for this customer, with the change orders waiting on them and the work to accept — `_shared/gcPortal.ts`; [] from an older function. */
   gcJobs: PortalGcJob[]
+  /** GC mode (O8b): the certified GC bills they may pay by card with its 3% fee, and the ones on card already — `_shared/gcCardBill.ts`; [] from an older function. */
+  cardBills: PortalCardBill[]
+  /** Messages cut 8b-i: every sentence of ours on the customer's page as the office keeps it (`customer_page_words`), laid over the code's words; [] from an older function. */
+  pageWords: { key: string; en: string; es: string }[]
+  /** Messages cut 8e: their thread for the page's Messages tab, held to what they may read; null from an older function or with no page. */
+  thread: PortalThreadLine[] | null
+}
+
+/** One bill's card offer (`state: 'offer'`) or its card bill (`'onCard'`): the bill as certified, the fee and what the card pays. */
+export type PortalCardBill = { invoiceId: string; state: 'offer' | 'onCard'; base: number; fee: number; total: number }
+
+/** Tolerant of a malformed row: a bad one is dropped, never the page. */
+export function parsePortalCardBill(raw: unknown): PortalCardBill | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (typeof r.invoiceId !== 'string' || !r.invoiceId.trim()) return null
+  if (r.state !== 'offer' && r.state !== 'onCard') return null
+  const base = Number(r.base)
+  const fee = Number(r.fee)
+  const total = Number(r.total)
+  if (![base, fee, total].every((n) => Number.isFinite(n) && n > 0)) return null
+  return { invoiceId: r.invoiceId, state: r.state, base, fee, total }
 }
 
 const isYmd = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+
+/** Our contract on a GC job (B6-d-iii), or null when a field is off: a contract they could sign wrongly never shows. */
+export function parsePortalGcContract(raw: unknown): PortalGcContract | null {
+  if (!raw || typeof raw !== 'object') return null
+  const c = raw as Record<string, unknown>
+  const fileName = typeof c.fileName === 'string' ? c.fileName : ''
+  const fileUrl = typeof c.fileUrl === 'string' && /^https:\/\//.test(c.fileUrl) ? c.fileUrl : null
+  if (c.state === 'signed') return isYmd(c.signedOn) ? { state: 'signed', signedOn: c.signedOn, signer: typeof c.signer === 'string' && c.signer ? c.signer : null, fileName, fileUrl } : null
+  if (c.state !== 'toSign' || typeof c.sendId !== 'string' || !c.sendId || !isYmd(c.signBy) || !fileName) return null
+  const total = Number(c.total)
+  if (!Number.isFinite(total) || total < 0) return null
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  const step = c.retainageStep && typeof c.retainageStep === 'object' ? (c.retainageStep as Record<string, unknown>) : null
+  const at = num(step?.atPct)
+  const to = num(step?.toPct)
+  return {
+    state: 'toSign',
+    sendId: c.sendId,
+    signBy: c.signBy,
+    total,
+    fileName,
+    fileUrl,
+    ...(c.priceChanged === true ? { priceChanged: true } : {}),
+    retainagePct: num(c.retainagePct),
+    retainageStep: at !== null && to !== null ? { atPct: at, toPct: to, way: step?.way === 'all' ? 'all' : 'rest' } : null,
+    payDays: num(c.payDays),
+    lateInterestPctPerMonth: num(c.lateInterestPctPerMonth),
+    lateFinishPerDay: num(c.lateFinishPerDay),
+  }
+}
+
+const words = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+const DATE_STATES: readonly PortalGcScheduleDate['state'][] = ['hit', 'missed', 'late', 'due']
+const STAGE_STATES: readonly PortalGcScheduleStage['state'][] = ['done', 'underway', 'behind', 'notStarted']
+const TONES: readonly PortalGcScheduleBar['tone'][] = ['green', 'red', 'amber', 'blue', 'grey']
+
+function scheduleDate(raw: unknown): PortalGcScheduleDate | null {
+  if (!raw || typeof raw !== 'object') return null
+  const d = raw as Record<string, unknown>
+  if (typeof d.label !== 'string' || !isYmd(d.due) || !DATE_STATES.includes(d.state as PortalGcScheduleDate['state'])) return null
+  return { label: d.label, due: d.due, state: d.state as PortalGcScheduleDate['state'], daysLate: Number(d.daysLate) || 0 }
+}
+
+/**
+ * A job's schedule as the page draws it (the schedule's PR 15b), each field read by name, or null when its finish words
+ * are missing: a broken schedule never reaches the page, and the job draws as before.
+ */
+export function parsePortalGcSchedule(raw: unknown): PortalGcSchedule | null {
+  if (!raw || typeof raw !== 'object') return null
+  const s = raw as Record<string, unknown>
+  if (typeof s.finishWords !== 'string' || !isYmd(s.today)) return null
+  const stages = Array.isArray(s.stages)
+    ? s.stages.flatMap((raw): PortalGcScheduleStage[] => {
+        const g = raw as Record<string, unknown> | null
+        if (!g || typeof g.label !== 'string' || !isYmd(g.start) || !isYmd(g.finish) || !STAGE_STATES.includes(g.state as PortalGcScheduleStage['state'])) return []
+        return [{ label: g.label, start: g.start, finish: g.finish, pct: Number(g.pct) || 0, state: g.state as PortalGcScheduleStage['state'] }]
+      })
+    : []
+  const groups = Array.isArray(s.groups)
+    ? s.groups.flatMap((raw): PortalGcScheduleGroup[] => {
+        const g = raw as Record<string, unknown> | null
+        if (!g || typeof g.title !== 'string' || !isYmd(g.start) || !isYmd(g.finish) || !Array.isArray(g.bars)) return []
+        const bars = g.bars.flatMap((raw): PortalGcScheduleBar[] => {
+          const b = raw as Record<string, unknown> | null
+          if (!b || typeof b.label !== 'string' || !isYmd(b.start) || !isYmd(b.finish) || typeof b.words !== 'string') return []
+          return [{ label: b.label, start: b.start, finish: b.finish, words: b.words, tone: TONES.includes(b.tone as PortalGcScheduleBar['tone']) ? (b.tone as PortalGcScheduleBar['tone']) : 'grey' }]
+        })
+        return [{ title: g.title, start: g.start, finish: g.finish, now: g.now === true, open: g.open === true, bars }]
+      })
+    : []
+  return {
+    today: s.today,
+    finish: isYmd(s.finish) ? s.finish : null,
+    contract: isYmd(s.contract) ? s.contract : null,
+    late: Number(s.late) || 0,
+    finishWords: s.finishWords,
+    donePct: Number(s.donePct) || 0,
+    plannedPct: Number(s.plannedPct) || 0,
+    doneWords: typeof s.doneWords === 'string' ? s.doneWords : null,
+    next: scheduleDate(s.next),
+    contractDays: words(s.contractDays),
+    lateWords: words(s.lateWords),
+    stages,
+    dates: Array.isArray(s.dates) ? s.dates.map(scheduleDate).filter((d): d is PortalGcScheduleDate => d != null) : [],
+    everyBar: s.everyBar === true,
+    groups: s.everyBar === true ? groups : [],
+    changes: words(s.changes),
+    asks: words(s.asks),
+  }
+}
 
 /** One GC job's section, or null when a field is off: a broken row never reaches the page. */
 export function parsePortalGcJob(raw: unknown): PortalGcJob | null {
@@ -140,9 +259,15 @@ export function parsePortalGcJob(raw: unknown): PortalGcJob | null {
       })
     : []
   const a = j.accepted && typeof j.accepted === 'object' ? (j.accepted as Record<string, unknown>) : null
+  const contract = parsePortalGcContract(j.contract)
+  const schedule = parsePortalGcSchedule(j.schedule)
+  const page = parsePortalGcPage(j.page)
   return {
     projectId: j.projectId,
     name: j.name,
+    ...(contract ? { contract } : {}),
+    ...(schedule ? { schedule } : {}),
+    ...(page ? { page } : {}),
     changeOrders,
     canAccept: j.canAccept === true,
     accepted: a && isYmd(a.on) ? { on: a.on, how: a.how === 'portal' ? 'portal' : 'office' } : null,
@@ -396,6 +521,8 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
   return {
     company: {
       name: str(companyRaw.name, 'Click Plumbing and Electrical'),
+      // A function deployed before v2.5229 sends no tagline: the plumbing company's, as the page always drew it.
+      tagline: str(companyRaw.tagline, PORTAL_TAGLINE),
       cityLine: str(companyRaw.cityLine),
       licenseLine: str(companyRaw.licenseLine),
       phone: str(companyRaw.phone),
@@ -421,6 +548,14 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     promise: parsePortalPromise(r.promise),
     checks: parsePortalChecks(r.checks),
     gcJobs: Array.isArray(r.gcJobs) ? r.gcJobs.map(parsePortalGcJob).filter((x): x is PortalGcJob => x != null) : [],
+    cardBills: Array.isArray(r.cardBills) ? r.cardBills.map(parsePortalCardBill).filter((x): x is PortalCardBill => x != null) : [],
+    pageWords: Array.isArray(r.pageWords)
+      ? r.pageWords.flatMap((w): { key: string; en: string; es: string }[] => {
+          const o = w && typeof w === 'object' ? (w as Record<string, unknown>) : null
+          return o && typeof o.key === 'string' && typeof o.en === 'string' && typeof o.es === 'string' && o.en.trim() && o.es.trim() ? [{ key: o.key, en: o.en, es: o.es }] : []
+        })
+      : [],
+    thread: parsePortalThread(r.thread),
   }
 }
 

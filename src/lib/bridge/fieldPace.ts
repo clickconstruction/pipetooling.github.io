@@ -1,0 +1,53 @@
+/**
+ * The field's pace by hours (the Bridge, link follow-up A): the dollars the
+ * field earned per week on recorded time over the window, the way the top
+ * line reads the week. Recorded time counts every closed session not rejected
+ * or revoked, so hours still waiting on approval count; approved-only reads
+ * low while a pile waits, and the stage cards must not inherit that. Pure.
+ */
+import type { VectorSession } from './vectors'
+
+export type FieldPaceInput = {
+  sessions: ReadonlyArray<VectorSession>
+  /** Earned $ per field hour, per job (contract ÷ expected hours). */
+  ratePerHourByJob: ReadonlyMap<string, number>
+  windowStart: string
+  todayYmd: string
+  /** Weeks in the window; the paces divide by it. */
+  weeks: number
+}
+
+export type FieldPace = {
+  /** Dollars a week the field earned on recorded time. */
+  earnedPerWeekUsd: number
+  /** Field hours a week on recorded time. */
+  hoursPerWeek: number
+  /** Earned dollars on the same sessions counted approved only, for the card's note. */
+  approvedEarnedPerWeekUsd: number
+  pendingHours: number
+}
+
+/** A session counts when it is a closed field session in the window: approved, or still waiting on approval. */
+export function fieldPaceByHours(input: FieldPaceInput): FieldPace | null {
+  const weeks = Math.max(1, input.weeks)
+  let earned = 0
+  let approvedEarned = 0
+  let hours = 0
+  let pending = 0
+  let any = false
+  for (const s of input.sessions) {
+    if (!(s.approved || s.pending)) continue
+    if (s.onBid || s.officeJob || !s.jobId) continue
+    if (s.workDate < input.windowStart || s.workDate > input.todayYmd) continue
+    if (!(s.hours > 0)) continue
+    any = true
+    const rate = input.ratePerHourByJob.get(s.jobId) ?? 0
+    const usd = s.hours * rate
+    earned += usd
+    hours += s.hours
+    if (s.approved) approvedEarned += usd
+    else pending += s.hours
+  }
+  if (!any) return null
+  return { earnedPerWeekUsd: earned / weeks, hoursPerWeek: hours / weeks, approvedEarnedPerWeekUsd: approvedEarned / weeks, pendingHours: pending }
+}

@@ -11,9 +11,12 @@ import { partnersToVet, vettingOf, vettingWords } from '../../lib/gc/vetting'
 import { shortDate } from '../../lib/gc/words'
 import { GcBoardStrip, type BoardStripItem } from './GcBoardStages'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
+import { GcCallScriptWindow } from './GcCallScriptWindow'
+import { CALL_SCRIPT_BUTTON } from '../../lib/gc/callScript'
 import { useJumpStrip } from './useJumpStrip'
 import { PartnerName } from './GcPartnerName'
 import { benchAnchor } from '../../lib/gc/tradeViews'
+import { subsLaneHref } from '../../lib/prospects/subsLane'
 
 /**
  * GC mode, the real build (the Board's B3-b): Trade partners on real data, from the design spike's
@@ -55,6 +58,8 @@ export function GcTradePartners({
   onOpenProject,
   onAsk,
   trades = [],
+  scriptOpenAtStart = false,
+  onFind,
 }: {
   state: GcState
   writes: TradePartnerWrites
@@ -63,8 +68,13 @@ export function GcTradePartners({
   onAsk?: AskFor
   /** Trades on our projects that no company does yet, so each still gets a card to add one to. */
   trades?: string[]
+  /** Open with the call script showing (v2.5556): the page passes `?script=1`, the window's own Open in a new tab. */
+  scriptOpenAtStart?: boolean
+  /** Prospects → Subs on one trade (v2.5560): the bench's Find N more opens the lane of companies we have not called. Missing: a plain link. */
+  onFind?: (trade: string) => void
 }) {
   const [addingTrade, setAddingTrade] = useState<string | null>(null)
+  const [scriptOpen, setScriptOpen] = useState(scriptOpenAtStart)
   const known = tradeBenches(state)
   // A trade on a project with no company yet still needs a card, so the first company can be added.
   const benches: TradeBench[] = [
@@ -101,11 +111,20 @@ export function GcTradePartners({
   return (
     <section aria-label="Trade partners" style={{ display: 'grid', gap: '0.9rem' }}>
       <VetQueue state={state} writes={writes} />
-      {benches.length > 0 ? (
-        <GcBoardStrip items={tradeItems} active={active} onJump={jumpTo} label="Jump to a trade" />
-      ) : (
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No trade yet. A trade shows here once a project has it.</span>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          {benches.length > 0 ? (
+            <GcBoardStrip items={tradeItems} active={active} onJump={jumpTo} label="Jump to a trade" />
+          ) : (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No trade yet. A trade shows here once a project has it.</span>
+          )}
+        </div>
+        {/* The call script (v2.5556): what to say when phoning a company new to us, the caller's name set in. */}
+        <Btn kind="quiet" onClick={() => setScriptOpen(true)} title="What to say when you phone a company new to us">
+          {CALL_SCRIPT_BUTTON}
+        </Btn>
+      </div>
+      {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} />}
       {rules.length > 0 && benches.length > 0 && (
         <AssistantActions
           rules={rules}
@@ -113,8 +132,7 @@ export function GcTradePartners({
           onAdd={(trade) => {
             setAddingTrade(trade)
             document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }}
-        />
+          }} onFind={onFind} />
       )}
       {benches.map((bench) => (
         <BenchCard
@@ -277,7 +295,7 @@ function VetRow({ partner, writes }: { partner: Partner; writes: TradePartnerWri
 }
 
 /** Each standard the office holds itself to: the ideal, where we are, and what closes the gap. Read only here but for adding a company. */
-function AssistantActions({ rules, onAdd, onAsk }: { rules: AssistantRule[]; onAdd: (trade: string) => void; onAsk?: AskFor }) {
+function AssistantActions({ rules, onAdd, onAsk, onFind }: { rules: AssistantRule[]; onAdd: (trade: string) => void; onAsk?: AskFor; onFind?: (trade: string) => void }) {
   const [folded, setFolded] = useState(false)
   const [open, setOpen] = useState<AssistantRule['key'] | null>('bench')
   const todo = rules.reduce((n, r) => n + r.items.length, 0)
@@ -386,9 +404,21 @@ function AssistantActions({ rules, onAdd, onAsk }: { rules: AssistantRule[]; onA
                           <span style={{ flex: '1 1 20rem' }}>{item.text}</span>
                           {item.doneNote && <Chip tone="blue">{item.doneNote}</Chip>}
                           {item.action?.kind === 'add' && !item.doneNote && (
-                            <Btn kind="quiet" onClick={() => item.action?.kind === 'add' && onAdd(item.action.trade)}>
-                              {item.actionLabel}
-                            </Btn>
+                            <>
+                              {/* The door into Prospects → Subs on this trade (v2.5560): the companies we have not called yet. */}
+                              {onFind ? (
+                                <Btn kind="quiet" onClick={() => item.action?.kind === 'add' && onFind(item.action.trade)}>
+                                  Find on Prospects →
+                                </Btn>
+                              ) : (
+                                <a href={subsLaneHref(item.action.trade)} style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.85rem' }}>
+                                  Find on Prospects →
+                                </a>
+                              )}
+                              <Btn kind="quiet" onClick={() => item.action?.kind === 'add' && onAdd(item.action.trade)}>
+                                {item.actionLabel}
+                              </Btn>
+                            </>
                           )}
                           {item.action?.kind === 'ask' && !item.doneNote && onAsk && (
                             <Btn kind="quiet" onClick={() => item.action?.kind === 'ask' && onAsk(item.action.projectId, item.action.packageId, item.action.partnerIds)}>

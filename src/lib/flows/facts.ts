@@ -1,0 +1,826 @@
+/**
+ * The flow's facts: the one list in code a flow step picks from (Messages cut 4, `BUILD_PLAN.md` §3).
+ *
+ * A step is finished by a fact the app keeps, never by a typed word. Each fact names the column it
+ * reads, whether its stamp sits on the person, on one job or on one round of a loop, and the paper
+ * it reads when it reads one. A fact that is not in this list cannot be picked in Settings → Flows.
+ *
+ * Lifted from the Messages prototype v1.178 (`FACTS`, `PAPER_NAMES`, `PAPER_SHORT`, `PAPER_LABEL`,
+ * `A_PAPER`), with each column checked against main's schema. `kept` says how well main keeps the
+ * stamp today; `gap` names what cut 4's SQL adds where it does not.
+ */
+import type { ContactKind } from '../contacts/names'
+
+/**
+ * The kind of person a flow is for. An unknown number has a one-step flow until someone names it. A residential
+ * customer's flow came in R4 (`RESIDENTIAL_BUILD_PLAN.md`), and a sub's in R8 · 12.
+ */
+export type FlowKind = 'customer' | 'trade' | 'arch' | 'residential' | 'sub' | 'unknown'
+
+/**
+ * The kinds the flows tables allow, pinned to the `flows_kind_known` check by `flowsSql.test.ts`. `residential` and
+ * `sub` joined with the residential flow's migration, which widened that check.
+ */
+export const FLOW_KINDS: readonly FlowKind[] = ['customer', 'trade', 'arch', 'unknown', 'residential', 'sub']
+
+/** Who a flow's person is as a contact: a residential customer is a customer; every other flow is its kind's own. */
+export function flowContactKind(kind: FlowKind): ContactKind {
+  return kind === 'residential' ? 'customer' : kind
+}
+
+/** The flow a contact of this kind goes through. A lead, a supply house, a candidate or a teammate has no flow, so the unknown one. */
+export function contactFlowKind(kind: ContactKind): FlowKind {
+  return kind === 'lead' || kind === 'supply_house' || kind === 'candidate' || kind === 'team' ? 'unknown' : kind
+}
+
+export type FactId =
+  | 'invite_sent'
+  | 'portal_opened'
+  | 'w9_signed'
+  | 'coi_current'
+  | 'msa_signed'
+  | 'quote_in'
+  | 'quote_declined'
+  | 'tab_seen'
+  | 'carried'
+  | 'not_carried'
+  | 'sow_signed'
+  | 'draw_requested'
+  | 'draw_approved'
+  | 'draw_paid'
+  | 'final_waiver'
+  | 'asked_us'
+  | 'bid_sent'
+  | 'said_yes'
+  | 'declined'
+  | 'contract_signed'
+  | 'start_sent'
+  | 'started'
+  | 'payapp_paid'
+  | 'closed'
+  | 'warranty_over'
+  | 'co_answered'
+  | 'plans_in'
+  | 'question_answered'
+  | 'addendum_filed'
+  | 'addendum_sent'
+  | 'submittal_reviewed'
+  | 'certified'
+  | 'named'
+  | 'booked'
+  | 'on_way'
+  | 'arrived'
+  | 'found'
+  | 'estimate_sent'
+  | 'estimate_approved'
+  | 'working'
+  | 'done'
+  | 'billed'
+  | 'paid'
+  | 'review_asked'
+  | 'sub_asked'
+  | 'sub_said_yes'
+  | 'sub_declined'
+  | 'sub_on_site'
+  | 'sub_done'
+  | 'sub_paid'
+
+export type PaperId =
+  | 'invitation'
+  | 'w9'
+  | 'coi'
+  | 'msa'
+  | 'quote'
+  | 'sow'
+  | 'waiver'
+  | 'final_waiver'
+  | 'bid'
+  | 'contract'
+  | 'schedule'
+  | 'payapp'
+  | 'co'
+  | 'plans'
+  | 'addendum'
+  | 'submittal'
+  | 'certificate'
+  | 'estimate'
+  | 'bill'
+
+/** The fact picker's groups, in the order the picker lists them. */
+export type FactGroup = 'Their portal' | 'Papers' | 'Our number' | 'Money' | 'On the job'
+
+export const FACT_GROUPS: readonly FactGroup[] = ['Their portal', 'Papers', 'Our number', 'Money', 'On the job']
+
+/** Where a fact's stamp lives: on the person (the Once lane), on one job, or on one round of a loop. */
+export type FactScope = 'person' | 'job' | 'round'
+
+/**
+ * How well main keeps the stamp today. `yes`: a column holds it. `half`: it is read another way
+ * (inferred, a press that stands in, a join, a sum), so it can be true with no day of its own.
+ * `not_yet`: nothing to read until cut 4's SQL adds `gap`; the fact reads `no` until then.
+ */
+export type FactKept = 'yes' | 'half' | 'not_yet'
+
+/**
+ * A fact's reading for one person. `ok`: true. `no`: not yet. `wait`: it went and waits on them
+ * (a paper of ours out for their signature). `bad`: it was true and is not now (insurance ran out).
+ */
+export type FactMark = 'ok' | 'no' | 'wait' | 'bad'
+
+export type FlowFact = {
+  id: FactId
+  /** The fact in words, as the editor and the step card show it. */
+  text: string
+  /** Where the app reads it, in words; the hover card's middle line. */
+  small: string
+  group: FactGroup
+  /** The table and column the loader reads, for the developer. */
+  reads: string
+  scope: FactScope
+  kept: FactKept
+  /** What cut 4's SQL adds so the fact is kept in full; null when nothing is missing. */
+  gap: string | null
+  /** The paper this fact reads, when it reads one. */
+  paper?: PaperId
+  /** The paper is one we send (Send it, Remind them), not one they hand us (Ask for it). */
+  ours?: true
+  /** A way out: when it finishes the step the job's lane ends there (they declined to quote, we did not carry it, they declined). */
+  endsLane?: true
+  /**
+   * Whose doing it is, where a step mixes sides: the architect files an addendum and we send it on. While it is the
+   * first of its step's facts still open, the step is that side's move (`moverOf` in `state.ts`). Unset: the step's own.
+   */
+  side?: 'us' | 'them'
+}
+
+export const FLOW_FACTS: readonly FlowFact[] = [
+  {
+    id: 'invite_sent',
+    text: 'the invitation email went',
+    small: 'the welcome email to their portal went',
+    group: 'Their portal',
+    reads: "gc_trade_messages.sent_on where kind = 'invite'",
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+    paper: 'invitation',
+    ours: true,
+  },
+  {
+    id: 'portal_opened',
+    text: 'they opened their portal',
+    small: 'their press on Got it in their portal stands in for their first visit',
+    group: 'Their portal',
+    reads: 'gc_trade_portal_links.first_opened_at, else gc_companies.portal_opened_on',
+    scope: 'person',
+    kept: 'half',
+    gap: 'gc_trade_portal_links.first_opened_at, the first visit to their link',
+  },
+  {
+    id: 'w9_signed',
+    text: 'their W-9 is signed',
+    small: "a W-9 on the company's Documents, signed",
+    group: 'Papers',
+    reads: "person_contract_documents.signed_at where doc_type = 'w9'",
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+    paper: 'w9',
+  },
+  {
+    id: 'coi_current',
+    text: 'their insurance is current',
+    small: 'a certificate on file whose expiry is ahead of today',
+    group: 'Papers',
+    reads: "person_contract_documents.expires_at where doc_type = 'coi' (gc_company_paper_states)",
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+    paper: 'coi',
+  },
+  {
+    id: 'msa_signed',
+    text: 'the master agreement is signed',
+    small: "the agreement on the company's Documents, signed. A customer signs one only when they come back for more work",
+    group: 'Papers',
+    reads: "person_contract_documents.signed_at where doc_type = 'agreement'",
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+    paper: 'msa',
+    ours: true,
+  },
+  {
+    id: 'quote_in',
+    text: 'their quote is in the portal',
+    small: 'a quote submitted on the ask',
+    group: 'Their portal',
+    reads: 'gc_quotes.submitted_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'quote',
+  },
+  {
+    id: 'quote_declined',
+    text: 'they declined to quote',
+    small: 'their no on the ask, pressed in their portal or taken by the office',
+    group: 'Their portal',
+    reads: "gc_invites.status = 'declined', declined_on",
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    endsLane: true,
+  },
+  {
+    id: 'tab_seen',
+    text: 'they saw the bid results',
+    small: 'the shared bid results opened',
+    group: 'Their portal',
+    reads: 'gc_bid_tab_views',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'carried',
+    text: 'we carried their quote',
+    small: 'their quote in our number',
+    group: 'Our number',
+    reads: 'gc_trade_packages.carried_invite_id',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'not_carried',
+    text: 'we did not carry it',
+    small: 'another quote carried, or none. Read from the package today, since no lost mark is kept',
+    group: 'Our number',
+    reads: 'gc_invites.lost_on, else gc_trade_packages.carried_invite_id names another invite',
+    scope: 'job',
+    kept: 'half',
+    gap: 'a lost mark per invite: gc_invites.lost_on',
+    endsLane: true,
+  },
+  {
+    id: 'sow_signed',
+    text: 'the statement of work is signed',
+    small: "the job's statement of work with this company, signed",
+    group: 'Papers',
+    reads: 'gc_sows.signed_on',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    paper: 'sow',
+    ours: true,
+  },
+  {
+    id: 'draw_requested',
+    text: 'their pay application is in',
+    small: 'a draw of theirs asked for, with its conditional waiver',
+    group: 'Money',
+    reads: 'gc_draws.requested_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'waiver',
+    side: 'them',
+  },
+  {
+    id: 'draw_approved',
+    text: 'the draw is approved',
+    small: 'a draw of theirs approved by us',
+    group: 'Money',
+    reads: 'gc_draws.approved_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'draw_paid',
+    text: 'the draw is paid',
+    small: 'a draw of theirs paid',
+    group: 'Money',
+    reads: 'gc_draws.paid_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    side: 'us',
+  },
+  {
+    id: 'final_waiver',
+    text: 'the unconditional final waiver is in',
+    small: "the final draw's waiver, unconditional",
+    group: 'Papers',
+    reads: "gc_draws.waiver_on where waiver = 'unconditional' on the final draw; gc_trade_files.paper = 'unconditional_final'",
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    paper: 'final_waiver',
+  },
+  {
+    id: 'asked_us',
+    text: 'they asked us',
+    small: 'the ask or the plans came in for this job. The day is the day we entered the job, until the plans give one',
+    group: 'Their portal',
+    reads: 'gc_projects.created_at, or the first gc_plan_sets.issued_on',
+    scope: 'job',
+    kept: 'half',
+    gap: 'the day they asked: gc_projects.created_at is the day we entered it',
+  },
+  {
+    id: 'bid_sent',
+    text: 'our bid went',
+    small: 'our bid sent to the customer',
+    group: 'Papers',
+    reads: 'gc_projects.our_bid_sent_on',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    paper: 'bid',
+    ours: true,
+  },
+  {
+    id: 'said_yes',
+    text: 'they said yes',
+    small: 'the job moved to buyout. No day is kept for the yes',
+    group: 'Our number',
+    reads: "gc_projects.won_on, else stage in ('buyout', 'building', 'closed') with no lost_on",
+    scope: 'job',
+    kept: 'half',
+    gap: 'the day they said yes: gc_projects.won_on',
+  },
+  {
+    id: 'declined',
+    text: 'they declined',
+    small: 'the job marked lost, with its reason',
+    group: 'Our number',
+    reads: 'gc_projects.lost_on',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    endsLane: true,
+  },
+  {
+    id: 'contract_signed',
+    text: 'our contract is signed',
+    small: 'the contract with the customer, signed',
+    group: 'Papers',
+    reads: 'gc_projects.owner_contract_signed_on (gc_owner_contract_sends.signed_on)',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    paper: 'contract',
+    ours: true,
+  },
+  {
+    id: 'start_sent',
+    text: 'the start date went',
+    small: 'the schedule letter sent',
+    group: 'Papers',
+    reads: 'gc_schedule_sends.sent_on',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    paper: 'schedule',
+    ours: true,
+  },
+  {
+    id: 'started',
+    text: 'the job started',
+    small: 'the first day on site',
+    group: 'Money',
+    reads: 'gc_projects.started_on',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'payapp_paid',
+    text: 'the pay application is paid',
+    small: 'the pay application paid, read through its invoice. The pay application keeps no paid day',
+    group: 'Money',
+    reads: "gc_owner_pay_apps.paid_on, else its invoice's paid day (invoice_id)",
+    scope: 'round',
+    kept: 'half',
+    gap: 'a paid day on the pay application: gc_owner_pay_apps.paid_on',
+    paper: 'payapp',
+    ours: true,
+  },
+  {
+    id: 'closed',
+    text: 'the job is closed',
+    small: 'the job closed out',
+    group: 'Money',
+    reads: 'gc_projects.closed_on',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'warranty_over',
+    text: 'the warranty year ended',
+    small: 'a year after the customer accepted the work. No column holds the end',
+    group: 'Money',
+    reads: 'gc_owner_acceptances.accepted_on plus a year',
+    scope: 'job',
+    kept: 'half',
+    gap: null,
+  },
+  {
+    id: 'co_answered',
+    text: 'the change order is signed or declined',
+    small: 'the change order answered',
+    group: 'Papers',
+    reads: 'gc_change_orders.status, gc_change_orders.answered_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'co',
+    ours: true,
+  },
+  {
+    id: 'plans_in',
+    text: 'the plan set is filed',
+    small: 'the plan set issued and filed',
+    group: 'Papers',
+    reads: 'gc_plan_sets.issued_on',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    paper: 'plans',
+  },
+  {
+    id: 'question_answered',
+    text: 'their answer came',
+    small: 'an answer to a question while bidding, or to an RFI while building',
+    group: 'Their portal',
+    reads: 'gc_plan_questions.answered_on, gc_rfis.answered_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'addendum_filed',
+    text: 'the addendum is filed',
+    small: "the architect's addendum filed with the job's plan sets",
+    group: 'Papers',
+    reads: "gc_plan_sets where kind = 'addendum' (issued_on)",
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'addendum',
+    side: 'them',
+  },
+  {
+    id: 'addendum_sent',
+    text: 'the addendum went to the trades',
+    small: 'the addendum sent to the trade partners on the job',
+    group: 'Papers',
+    reads: 'gc_plan_set_sends.sent_at',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    side: 'us',
+  },
+  {
+    id: 'submittal_reviewed',
+    text: 'the submittal is reviewed',
+    small: 'the architect answered the submittal',
+    group: 'Papers',
+    reads: 'gc_submittal_rounds.answered_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'submittal',
+  },
+  {
+    id: 'certified',
+    text: 'the certificate is recorded',
+    small: "the architect's certificate on the pay application",
+    group: 'Papers',
+    reads: 'gc_owner_pay_apps.certified_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'certificate',
+  },
+  {
+    id: 'named',
+    text: 'someone said who this is',
+    small: 'the number or address named as one of our people',
+    group: 'Their portal',
+    reads: 'contacts, once Who is this? points it at a person',
+    scope: 'person',
+    kept: 'not_yet',
+    gap: 'the contacts table (cut 1)',
+  },
+  // The residential flow's (R4, RESIDENTIAL_BUILD_PLAN.md): a service job from the booking to the review ask, each read
+  // from what dispatch, the clock, the reports, the estimate, the job's status and the bills already keep.
+  {
+    id: 'booked',
+    text: 'the visit is on the board',
+    small: 'a block on dispatch for this job, with its day and its tech',
+    group: 'On the job',
+    reads: 'job_schedule_blocks.created_at, the first block with this job_id',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'on_way',
+    text: 'we texted that we are on the way',
+    small: 'the On our way text sent to them. A sent text keeps no line of its own, so its words stand in',
+    group: 'On the job',
+    reads: "an out text in messages on this job that starts with their first name and 'this is' and says on our way, on the way or minutes out (isOnOurWayText)",
+    scope: 'job',
+    kept: 'half',
+    gap: 'messages.quick_reply_id, so a sent text names its line (R3)',
+  },
+  {
+    id: 'arrived',
+    text: 'we arrived',
+    small: 'the first clock in on this job',
+    group: 'On the job',
+    reads: 'clock_sessions.clocked_in_at, the first with this job_ledger_id that is not revoked or rejected',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'found',
+    text: 'we said what we found',
+    small: 'a status report on this job that says what was found',
+    group: 'On the job',
+    reads: 'reports.created_at, the first with this job_ledger_id whose answers have words, since a percent alone is not a finding',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'estimate_sent',
+    text: 'the estimate went',
+    small: 'the estimate sent to the customer',
+    group: 'Papers',
+    reads: "estimates.sent_at, the newest with this job_ledger_id and doc_kind = 'estimate'",
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    paper: 'estimate',
+    ours: true,
+  },
+  {
+    id: 'estimate_approved',
+    text: 'they approved the estimate',
+    small: 'their yes on the estimate page',
+    group: 'Papers',
+    reads: "estimates.acceptor_consented_at where status = 'customer_accepted'",
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'working',
+    text: 'the work started',
+    small: 'the job moved to Working',
+    group: 'On the job',
+    reads: "job_status_events.changed_at, the first move to 'working', else jobs_ledger.status past 'waiting' with no day",
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'done',
+    text: 'the work is done',
+    small: 'the job moved to Ready to Bill and stayed. A move back to Working takes it back',
+    group: 'On the job',
+    reads: "jobs_ledger.status at 'ready_to_bill' or past, dated by the first job_status_events move there after the last move back to 'working'",
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'billed',
+    text: 'the bill went',
+    small: 'a bill on this job sent to the customer. Each bill is a round',
+    group: 'Money',
+    reads: 'jobs_ledger_invoices.billed_at, else sent_to_customer_at, one round per bill',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'bill',
+    ours: true,
+  },
+  {
+    id: 'paid',
+    text: 'they paid the bill',
+    small: 'a bill on this job paid in full, by its own payments or by money on the job. Each bill is a round',
+    group: 'Money',
+    reads: "a sent bill covered by attributeJobPayments, its own jobs_ledger_payments first and then the job's unlinked money oldest bill first, else jobs_ledger_invoices.status = 'paid'. The day is the newest paid_on it took",
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'review_asked',
+    text: 'we asked for a review',
+    small: 'the review ask sent to them. A sent text keeps no line of its own, so its words stand in',
+    group: 'Their portal',
+    reads: "an out text in messages on this job that says a review or review us (isReviewAskText)",
+    scope: 'job',
+    kept: 'half',
+    gap: 'messages.quick_reply_id, so a sent text names its line (R3)',
+  },
+  // The sub's flow (R8 · 12, RESIDENTIAL_BUILD_PLAN.md): one labor job (`people_labor_jobs`, the sub sheet) from the
+  // work order offered to the sheet paid, each read from what the work order and the sheet already keep.
+  {
+    id: 'sub_asked',
+    text: 'we offered them the work',
+    small: 'the work order offered to them, on the sheet or on its job before the sheet exists',
+    group: 'On the job',
+    reads: 'step_commitments.offered_at on the order for this sheet (labor_job_id), else on its job. Withdraw clears it. A sheet with no work order reads asked on the day it was made (subStampsFor)',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_said_yes',
+    text: 'they took the work',
+    small: 'their yes on the work order, signed in their portal, pressed in the app, or marked by the office',
+    group: 'On the job',
+    reads: 'step_commitments.accepted_at. A sheet with no work order reads said yes with no day (subStampsFor)',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_declined',
+    text: 'they turned the work down',
+    small: 'their no on the work order, with its reason',
+    group: 'On the job',
+    reads: "step_commitments.declined_at, with decline_reason, while status is 'declined'. A re-offer clears it",
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+    endsLane: true,
+  },
+  {
+    id: 'sub_on_site',
+    text: 'they are on site',
+    small: 'their first report of real progress from their portal stands in for arriving. No clock in is tied to a sheet',
+    group: 'On the job',
+    reads: 'people_labor_jobs.on_site_at: the first report of a percent above 0 while Working, never a 0% report, a note or the done press (v2.5429)',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_done',
+    text: 'their work is done',
+    small: 'the sheet moved past Working to the walkthrough',
+    group: 'On the job',
+    reads: 'people_labor_jobs.done_at: the first move out of Working, cleared by a move back (v2.5429)',
+    scope: 'job',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_paid',
+    text: 'we paid them',
+    small: 'the sheet paid in full: its payments cover its lines, less any back charge',
+    group: 'Money',
+    reads: 'subLaborJobBalance at 0 or less with money paid on it: people_labor_job_items less people_labor_job_payments, where a negative payment is a back charge. A sheet with nothing on it is not paid. Dated by the newest payment_date. people_labor_jobs.paid_at is never written',
+    scope: 'job',
+    kept: 'half',
+    gap: null,
+  },
+]
+
+export type FlowPaper = {
+  id: PaperId
+  /** In a sentence: "Send their W-9", "waiting on the master agreement". */
+  name: string
+  /** On a paper mark: "W-9 ✓", "insurance !". */
+  short: string
+  /** As a heading or a column: "Insurance certificate". */
+  label: string
+  /** With its article: "A W-9", "An addendum". */
+  aName: string
+}
+
+export const FLOW_PAPERS: Readonly<Record<PaperId, FlowPaper>> = {
+  invitation: { id: 'invitation', name: 'the invitation', short: 'email', label: 'Invitation', aName: 'An invitation' },
+  w9: { id: 'w9', name: 'their W-9', short: 'W-9', label: 'W-9', aName: 'A W-9' },
+  coi: { id: 'coi', name: 'their certificate of insurance', short: 'insurance', label: 'Insurance certificate', aName: 'A certificate' },
+  msa: { id: 'msa', name: 'the master agreement', short: 'MSA', label: 'Master agreement', aName: 'An agreement' },
+  quote: { id: 'quote', name: 'their quote', short: 'quote', label: 'Quote', aName: 'A quote' },
+  sow: { id: 'sow', name: 'the statement of work', short: 'SOW', label: 'Statement of work', aName: 'A statement of work' },
+  waiver: { id: 'waiver', name: 'the waiver', short: 'waiver', label: 'Lien waiver', aName: 'A waiver' },
+  final_waiver: { id: 'final_waiver', name: 'the final waiver', short: 'final waiver', label: 'Final lien waiver', aName: 'A final waiver' },
+  bid: { id: 'bid', name: 'our bid', short: 'bid', label: 'Our bid', aName: 'A bid' },
+  contract: { id: 'contract', name: 'our contract', short: 'contract', label: 'Our contract', aName: 'A contract' },
+  schedule: { id: 'schedule', name: 'the schedule', short: 'schedule', label: 'Start date letter', aName: 'A schedule' },
+  payapp: { id: 'payapp', name: 'the pay application', short: 'pay app', label: 'Pay application', aName: 'A pay application' },
+  co: { id: 'co', name: 'the change order', short: 'CO', label: 'Change order', aName: 'A change order' },
+  plans: { id: 'plans', name: 'the plan set', short: 'plans', label: 'Plan set', aName: 'A plan set' },
+  addendum: { id: 'addendum', name: 'the addendum', short: 'addendum', label: 'Addendum', aName: 'An addendum' },
+  submittal: { id: 'submittal', name: 'the submittal', short: 'submittal', label: 'Submittal', aName: 'A submittal' },
+  certificate: { id: 'certificate', name: 'the certificate', short: 'certificate', label: "Architect's certificate", aName: 'A certificate' },
+  estimate: { id: 'estimate', name: 'the estimate', short: 'estimate', label: 'Estimate', aName: 'An estimate' },
+  bill: { id: 'bill', name: 'the bill', short: 'bill', label: 'Bill', aName: 'A bill' },
+}
+
+const FACT_BY_ID: ReadonlyMap<string, FlowFact> = new Map(FLOW_FACTS.map((f) => [f.id, f]))
+
+export function factById(id: string): FlowFact | null {
+  return FACT_BY_ID.get(id) ?? null
+}
+
+export function isFactId(id: string): id is FactId {
+  return FACT_BY_ID.has(id)
+}
+
+export function isPaperId(id: string): id is PaperId {
+  return Object.prototype.hasOwnProperty.call(FLOW_PAPERS, id)
+}
+
+/** The fact that reads a paper; the first in the list when two do (a draw's waiver is read by `draw_requested`). */
+export function factForPaper(paper: PaperId): FlowFact | null {
+  return FLOW_FACTS.find((f) => f.paper === paper) ?? null
+}
+
+/** The fact picker's list: each group in order with its facts. */
+export function factGroups(): { group: FactGroup; facts: FlowFact[] }[] {
+  return FACT_GROUPS.map((group) => ({ group, facts: FLOW_FACTS.filter((f) => f.group === group) }))
+}
+
+/** A step's facts in one phrase: "their W-9 is signed and their insurance is current"; `or` on a fork. */
+export function factsWords(facts: readonly string[], join: 'and' | 'or'): string {
+  return facts.map((id) => stepFactById(id)?.text ?? id).join(join === 'or' ? ' or ' : ' and ')
+}
+
+// ---------- papers made at runtime: the Contract library's documents ----------
+
+/** A paper the editor's New paper window made: its Contract library document, `doc:<uuid>`. */
+export type DocPaperId = `doc:${string}`
+
+/** What a library paper's row says: on file, current (its last day ahead), signed, or sent. */
+export type DocFactKind = 'on_file' | 'current' | 'signed' | 'sent'
+
+export const DOC_FACT_KINDS: readonly DocFactKind[] = ['on_file', 'current', 'signed', 'sent']
+
+/** A fact on a library paper: `doc:<uuid>:signed`. */
+export type DocFactId = `doc:${string}:${DocFactKind}`
+
+/** What a step may pick: a fact from the list or one on a library paper; a paper from the list or a library one. */
+export type StepFactId = FactId | DocFactId
+export type StepPaperId = PaperId | DocPaperId
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+const DOC_PAPER = new RegExp(`^doc:(${UUID})$`)
+const DOC_FACT = new RegExp(`^doc:(${UUID}):(on_file|current|signed|sent)$`)
+
+export function isDocPaperId(id: string): id is DocPaperId {
+  return DOC_PAPER.test(id)
+}
+
+/** The library document and the kind a `doc:<uuid>:<kind>` fact reads; null for any other id. */
+export function docFactOf(id: string): { docId: string; kind: DocFactKind } | null {
+  const m = DOC_FACT.exec(id)
+  return m ? { docId: m[1] ?? '', kind: (m[2] ?? 'on_file') as DocFactKind } : null
+}
+
+export const docFactId = (docId: string, kind: DocFactKind): DocFactId => `doc:${docId}:${kind}`
+
+const DOC_WORDS: Readonly<Record<DocFactKind, (name: string) => string>> = {
+  on_file: (name) => `${name} is on file`,
+  current: (name) => `${name} is current`,
+  signed: (name) => `${name} is signed`,
+  sent: (name) => `${name} went`,
+}
+
+/**
+ * A fact on a library paper, read like the list's: a Papers fact on the person, kept in full. `name` is the library
+ * document's, "the paper" until the caller knows it. Its `id` is the runtime id; it borrows `FactId`'s type, since a
+ * reading names its fact by the step's id and nothing indexes the list by a runtime one.
+ */
+export function docFact(id: DocFactId, name = 'the paper'): FlowFact {
+  const of = docFactOf(id)
+  const kind = of?.kind ?? 'on_file'
+  return {
+    id: id as unknown as FactId,
+    text: DOC_WORDS[kind](name),
+    small: `${name}, from the Contract library, as its row on their Documents says`,
+    group: 'Papers',
+    reads: `person_contract_documents where applied_contract_template_document_id = ${of?.docId ?? '?'}`,
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+  }
+}
+
+/** A step's fact by its id: from the list, or one on a library paper; null for neither. */
+export function stepFactById(id: string, docName?: string): FlowFact | null {
+  return factById(id) ?? (docFactOf(id) ? docFact(id as DocFactId, docName) : null)
+}

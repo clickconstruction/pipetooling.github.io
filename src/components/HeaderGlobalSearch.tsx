@@ -16,7 +16,11 @@ import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { supabase } from '../lib/supabase'
 import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
-import type { UserRole } from '../hooks/useAuth'
+import { useAuth, type UserRole } from '../hooks/useAuth'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { withoutZzTestJobRows } from '../lib/jobs/zzTestJobVisibility'
+import { isZzTestName } from '../lib/jobs/zzTestJobSweep'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import {
   escapeLike,
@@ -110,6 +114,9 @@ export function HeaderGlobalSearchProvider({
 }) {
   const navigate = useNavigate()
   const location = useLocation()
+  /** ZZ test jobs (punch list #61, v2.5122): job hits drop by name and the shared ids, customer hits by name. */
+  const { role: authRole } = useAuth()
+  const hideZz = useZzTestJobsHidden(authRole)
   const bidPreview = useBidPreview()
   const jobDetailModal = useJobDetailModal()
   const { prefixMap } = useLedgerDisplayPrefixes()
@@ -297,10 +304,17 @@ export function HeaderGlobalSearchProvider({
       )
         .then((r) => (r.data ?? []) as CustomerSearchResult[])
         .catch((): CustomerSearchResult[] => [])
+      // Search is a lookup, not a total: a failed ZZ read degrades to names alone (a ZZ customer's job whose
+      // own name is real can then show) rather than wiping every result.
+      const zzIdsPromise: Promise<ReadonlySet<string> | null> = hideZz
+        ? loadZzTestJobIds(authUserId).catch(() => null)
+        : Promise.resolve(null)
+      const shownJobs = (jobs: JobSearchResult[], zzIds: ReadonlySet<string> | null) =>
+        hideZz ? withoutZzTestJobRows(jobs, (j) => j.id, zzIds) : jobs
       if (fieldLookup) {
         // Field lookup: jobs only. Bids, estimates and customers are office surfaces.
-        void supabase.rpc('search_jobs_ledger', { search_text: q }).then((jobsRes) => {
-          const jobs = (jobsRes.data ?? []) as JobSearchResult[]
+        void Promise.all([supabase.rpc('search_jobs_ledger', { search_text: q }), zzIdsPromise]).then(([jobsRes, zzIds]) => {
+          const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
           setResults(jobs.map((j) => ({ source: 'job' as const, ...j })))
           setActiveResultIndex(-1)
         })
@@ -312,8 +326,10 @@ export function HeaderGlobalSearchProvider({
         supabase.rpc('search_bids_for_clock', bidsParams),
         supabase.rpc('search_estimates_for_nav', { search_text: q }),
         customersPromise,
-      ]).then(([jobsRes, bidsRes, estRes, customers]) => {
-        const jobs = (jobsRes.data ?? []) as JobSearchResult[]
+        zzIdsPromise,
+      ]).then(([jobsRes, bidsRes, estRes, customersRead, zzIds]) => {
+        const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
+        const customers = hideZz ? customersRead.filter((c) => !isZzTestName(c.name)) : customersRead
         const bids = (bidsRes.data ?? []) as BidSearchResult[]
         const estimates = (estRes.data ?? []) as EstimateNavSearchResult[]
         const merged: UnifiedSearchResult[] = [
@@ -340,7 +356,7 @@ export function HeaderGlobalSearchProvider({
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup])
+  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, hideZz, authUserId])
 
   /** Rich-row evidence for job and bid results. `enabled` is already the office gate
    * (dev/master/assistant-like), so job evidence always uses money mode here. */

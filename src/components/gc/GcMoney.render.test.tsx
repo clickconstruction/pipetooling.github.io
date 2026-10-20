@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcMoney } from './GcMoney'
 import { allJobsMoney } from '../../lib/gc/ownerBilling'
 import { ownerInterest } from '../../lib/gc/ownerBillingInterest'
+import { jobMargin } from '../../lib/gc/ownerBillingMargin'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { money } from '../../lib/gc/words'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -11,6 +12,39 @@ import { installDomShims } from '../../test/renderSmokeMocks'
 installDomShims()
 
 describe('GcMoney', () => {
+  it('counts our own crew at its Pipeline job’s pace in Our own work, and says where it comes from (O11a)', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+    const crew = jobMargin(state, fairOaks).trades.find((t) => t.packageId === 'fplumb')!
+    const pct = fairOaks.packages.find((k) => k.id === 'fplumb')!.selfPerform!.pctDone!
+    const spent = ((crew.signed + 3_000) * pct) / 100
+    const own = { payAccess: true, crewJobs: { fplumb: 'j-crew' }, byJob: { 'j-crew': { jobId: 'j-crew', label: 'J 1071', name: 'Fair Oaks plumbing', spentUsd: spent, teamUsd: spent, subUsd: 0, partsUsd: 0, fieldDays: 30, finished: false } } }
+    render(<GcMoney state={state} own={own} />)
+    const rows = [...document.querySelectorAll('tr')].filter((tr) => tr.querySelector('strong')?.textContent === 'Fair Oaks Shops, Building D' && tr.textContent?.includes('See each trade'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.textContent).toContain('−$3,000')
+    fireEvent.click(rows[0]!.querySelector('button') as HTMLElement)
+    expect(rows[0]!.querySelector('[data-gc-margin-crew="fplumb"]')?.textContent).toContain('at today\'s pace on Pipeline job J 1071')
+    expect(document.body.textContent).toContain('Our own crew counts at its Pipeline job’s cost at today’s pace, and at what it cost once done.')
+  })
+
+  it('counts general conditions at their Pipeline job’s spend as Our own work, and says where it comes from (O11b)', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+    const budget = jobMargin(state, fairOaks).generalConditions
+    const named = { ...state, projects: state.projects.map((p) => (p.id === 'fairoaksd' ? { ...p, generalConditionsJobId: 'j-gc' } : p)) }
+    const own = { payAccess: true, byJob: { 'j-gc': { jobId: 'j-gc', label: 'J 1080', name: 'Fair Oaks general conditions', spentUsd: budget + 4_300, teamUsd: budget, subUsd: 0, partsUsd: 4_300, fieldDays: 30, finished: false } } }
+    render(<GcMoney state={named} own={own} />)
+    expect(screen.getByRole('columnheader', { name: 'Our own work' })).toBeTruthy()
+    const rows = [...document.querySelectorAll('tr')].filter((tr) => tr.querySelector('strong')?.textContent === 'Fair Oaks Shops, Building D' && tr.textContent?.includes('See each trade'))
+    expect(rows).toHaveLength(1)
+    const row = rows[0]!
+    expect(row.textContent).toContain('−$4,300')
+    fireEvent.click(row.querySelector('button') as HTMLElement)
+    expect(row.querySelector('[data-gc-margin-general-conditions]')?.textContent).toContain(`General conditions ${money(budget)}: ${money(budget + 4_300)} spent so far on Pipeline job J 1080, $4,300 over their budget.`)
+    expect(document.body.textContent).toContain('General conditions count at their Pipeline job’s spend once it passes their budget, and at what they cost once the job closes.')
+  })
+
   it('reads money across every job that is ours: the headline, who owes us, each job, and what comes later', () => {
     const state = initialGcState()
     const m = allJobsMoney(state)
@@ -72,5 +106,21 @@ describe('GcMoney', () => {
     expect(screen.getByText('Paid in counts once customers pay our bills in the app. Paid out counts once the trades draw in the app.')).toBeTruthy()
     expect(screen.getByText('Nobody owes us right now.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Bill the customer' })).toBeNull()
+  })
+
+  it('switches Bill day between To the owner and From the trades (Messages cut 9)', () => {
+    const onSwitch = vi.fn()
+    const { rerender } = render(<GcMoney state={initialGcState()} fromTheTrades={{ open: false, onSwitch, view: <div data-testid="trades-view">the trades</div> }} />)
+    expect(screen.getByRole('button', { name: 'To the owner' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByTestId('trades-view')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'From the trades' }))
+    expect(onSwitch).toHaveBeenCalledWith(true)
+    rerender(<GcMoney state={initialGcState()} fromTheTrades={{ open: true, onSwitch, view: <div data-testid="trades-view">the trades</div> }} />)
+    expect(screen.getByTestId('trades-view')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'From the trades' }).getAttribute('aria-pressed')).toBe('true')
+    cleanup()
+    // Without it, Bill day reads as it did: no switch.
+    render(<GcMoney state={initialGcState()} />)
+    expect(screen.queryByRole('button', { name: 'From the trades' })).toBeNull()
   })
 })

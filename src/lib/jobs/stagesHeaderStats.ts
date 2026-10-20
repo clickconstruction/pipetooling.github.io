@@ -127,7 +127,7 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
  * sort comparator dereferences them).
  */
 export const LEAN_STATS_JOB_COLUMNS =
-  'id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party'
+  'id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party, job_name, customer_name'
 export const LEAN_STATS_INVOICE_COLUMNS =
   'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date, billed_at, bill_to_party, bill_to_email'
 export const LEAN_STATS_PAYMENT_COLUMNS = 'id, job_id, invoice_id, amount, paid_on'
@@ -149,6 +149,9 @@ export type LeanStatsJobRow = {
   gc_customer_id: string | null
   /** Who pays (v2.4367): the chase queue files a bill under its payer (`listPayer`). */
   bill_to_party?: string | null
+  /** The ZZ test-job rule reads both names (punch list #61, v2.5116); optional so older fixtures stand. */
+  job_name?: string | null
+  customer_name?: string | null
 }
 export type LeanStatsInvoiceRow = {
   id: string

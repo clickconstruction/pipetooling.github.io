@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { carriedAmount, proposalTotals, packageCoverage } from './bids'
-import { boardStateFromRows, stageOf } from './boardRows'
-import { awardedClinicBoardRows, clinicBoardRows as rows } from './boardTestRows'
+import { bidIsStale, carriedAmount, proposalTotals, packageCoverage } from './bids'
+import { boardStateFromRows, customerContactsOf, stageOf, type BoardRows } from './boardRows'
+import { awardedClinicBoardRows, clinicBoardRows as rows, clinicProjectRows } from './boardTestRows'
 import { followUps, wordRecord } from './followUp'
 import { travelFor } from './map'
 import { priceStanding } from './priceStanding'
+import { gcProjectFromRows } from './projectRows'
 import { answerRecord } from './reliability'
+import { staleChange, staleWords } from './stale'
 import { awardGate } from './vetting'
 
 describe('the board read from its rows', () => {
@@ -85,6 +87,58 @@ describe('the board read from its rows', () => {
     const pointed = boardStateFromRows(rows({ points: { '4410 Boerne Stage Rd, San Antonio': { lat: 29.4241, lng: -98.4936 }, '12 Oak St, Boerne': { lat: 29.7947, lng: -98.732 } } }))
     expect(pointed.partners[0]!.basePoint?.lat).toBe(29.4241)
     expect(travelFor(pointed, pointed.partners[0]!, pointed.projects[0]!).miles).toBe(35)
+  })
+
+  it('a company’s papers come from its own rows (B6-b-ii): the master agreement as the msaFirst gate reads it, the W-9, the certificate', () => {
+    expect(boardStateFromRows(rows()).partners.map((p) => [p.company, p.msa, p.w9, p.coiExpires])).toEqual([
+      ['Lonestar Earthworks', 'none', false, null],
+      ['Hillside Excavation', 'none', false, null],
+    ])
+    const papers = [
+      { id: 'd1', company_id: 'lonestar', doc_type: 'agreement', status: 'signed', sent_at: '2026-10-01T15:00:00Z', signed_at: '2026-10-02', expires_at: null, created_at: '2026-10-01T15:00:00Z' },
+      { id: 'd2', company_id: 'lonestar', doc_type: 'w9', status: 'signed', sent_at: '2026-10-01T15:00:00Z', signed_at: '2026-10-03', expires_at: null, created_at: '2026-10-01T15:00:00Z' },
+      { id: 'd3', company_id: 'lonestar', doc_type: 'coi', status: 'signed', sent_at: null, signed_at: '2026-10-04', expires_at: '2027-04-30', created_at: '2026-10-04T15:00:00Z' },
+      { id: 'd4', company_id: 'hillside', doc_type: 'agreement', status: 'sent', sent_at: '2026-10-07T16:00:00Z', signed_at: null, expires_at: null, created_at: '2026-10-07T16:00:00Z' },
+    ]
+    const s = boardStateFromRows(rows({ papers }))
+    const [lonestar, hillside] = s.partners
+    expect([lonestar!.msa, lonestar!.msaSignedOn, lonestar!.w9, lonestar!.coiExpires]).toEqual(['signed', '2026-10-02', true, '2027-04-30'])
+    expect([hillside!.msa, hillside!.msaSentOn, hillside!.w9, hillside!.coiExpires]).toEqual(['sent', '2026-10-07', false, null])
+  })
+
+  it('every send of a paper reads oldest first as the kernels’ PaperSend, and a company counts the trades it won', () => {
+    expect(boardStateFromRows(rows()).paperSends).toBeUndefined()
+    const sends = [
+      { id: 'ps2', company_id: 'hillside', paper: 'msa', project_id: null, package_id: null, sent_on: '2026-10-07', due_on: '2026-10-14', note: '', first: false, draws: null, created_at: '2026-10-07T16:00:00Z' },
+      { id: 'ps1', company_id: 'hillside', paper: 'msa', project_id: null, package_id: null, sent_on: '2026-10-03', due_on: '2026-10-10', note: 'Call me with questions.', first: true, draws: null, created_at: '2026-10-03T16:00:00Z' },
+    ]
+    expect(boardStateFromRows(rows({ paperSends: sends })).paperSends).toEqual([
+      { id: 'ps1', partnerId: 'hillside', paper: 'msa', on: '2026-10-03', by: '2026-10-10', note: 'Call me with questions.', first: true },
+      { id: 'ps2', partnerId: 'hillside', paper: 'msa', on: '2026-10-07', by: '2026-10-14', note: '', first: false },
+    ])
+    expect(boardStateFromRows(rows()).partners.map((p) => p.won)).toEqual([0, 0])
+    expect(boardStateFromRows(awardedClinicBoardRows()).partners.map((p) => [p.company, p.won])).toEqual([
+      ['Lonestar Earthworks', 1],
+      ['Hillside Excavation', 0],
+    ])
+  })
+
+  it('Start anyway reads who by name, why and what was owed; a plain Start reads none (B6-c-ii)', () => {
+    const base = rows()
+    const anyway = boardStateFromRows(rows({ userNames: { u1: 'Rosa' }, boardDates: { p1: { ...base.boardDates.p1!, started_on: '2026-10-10', started_anyway_by: 'u1', started_anyway_reason: 'The owner needs the pad poured.', started_anyway_missing: ['Sitework: Send the master agreement.'] } } }))
+    expect(anyway.projects[0]!.startedAnyway).toEqual({ by: 'Rosa', reason: 'The owner needs the pad poured.', missing: ['Sitework: Send the master agreement.'] })
+    const plain = boardStateFromRows(rows({ boardDates: { p1: { ...base.boardDates.p1!, started_on: '2026-10-10' } } }))
+    expect(plain.projects[0]!.startedAnyway).toBeUndefined()
+  })
+
+  it('our own crew is priced from its Trades mode bid once it is above 0 (call C), else our budget, not priced', () => {
+    const own = (r: ReturnType<typeof rows>) => boardStateFromRows(r).projects[0]!.packages.find((k) => k.trade === 'Plumbing')!.selfPerform
+    const base = rows()
+    const bidId = base.projects[0]!.trades.find((t) => t.ours)!.ownBidId
+    expect(own(base)).toMatchObject({ priced: false })
+    expect(bidId).toBeTruthy()
+    expect(own(rows({ ownBids: [{ id: bidId!, bid_value: '48250', bid_number: 'BP464' }] }))).toMatchObject({ ref: 'BP464', value: 48250, priced: true })
+    expect(own(rows({ ownBids: [{ id: bidId!, bid_value: 0, bid_number: 'BP464' }] }))).toMatchObject({ priced: false })
   })
 
   it('a company new to us carries the form it sent, and who decided an approval reads by name', () => {
@@ -182,5 +236,73 @@ describe('the board read from its rows', () => {
     expect(boardStateFromRows(rows()).tradePromises).toEqual([
       { id: 'tp1', partnerId: 'lonestar', kind: 'insurance', what: 'the renewed insurance certificate', by: '2026-10-12', madeOn: '2026-10-06', from: 'office', moved: [{ by: '2026-10-09', on: '2026-10-07' }] },
     ])
+  })
+})
+
+describe('a customer’s call log (the Board’s B2b-v-ii)', () => {
+  it('reads each customer’s own lines, newest first, as GcCustomer.contacts', () => {
+    const withLog = {
+      ...rows(),
+      customerContacts: [
+        { customer_id: 'c1', contacted_on: '2026-10-06', by_name: 'Rosa', note: 'Older.', created_at: '2026-10-06T15:00:00Z' },
+        { customer_id: 'c1', contacted_on: '2026-10-08', by_name: 'Abe', note: 'Newest.', created_at: '2026-10-08T09:00:00Z' },
+        { customer_id: 'c1', contacted_on: '2026-10-08', by_name: 'Rosa', note: 'Same day, earlier.', created_at: '2026-10-08T08:00:00Z' },
+        { customer_id: 'zz', contacted_on: '2026-10-09', by_name: 'Rosa', note: 'Another customer.', created_at: '2026-10-09T08:00:00Z' },
+      ],
+    }
+    expect(boardStateFromRows(withLog).customers.find((c) => c.id === 'c1')?.contacts).toEqual([
+      { on: '2026-10-08', by: 'Abe', note: 'Newest.' },
+      { on: '2026-10-08', by: 'Rosa', note: 'Same day, earlier.' },
+      { on: '2026-10-06', by: 'Rosa', note: 'Older.' },
+    ])
+    expect(customerContactsOf([], 'c1')).toEqual([])
+  })
+})
+
+describe('which trades a set touches, on the board (the Board’s B2b-vi-b)', () => {
+  /** The clinic with an addendum that revised the site plan, which paving names and grading reads as the trade as a whole. */
+  const withAddendum = (over: Partial<BoardRows> = {}): BoardRows => {
+    const project = clinicProjectRows()
+    project.sets.push({ id: 'set1', rev: 1, label: 'Addendum 1', kind: 'Addendum', issued_on: '2026-10-06', note: '', checked_by_user_id: 'u1', drive_url: '', drive_access: null, drive_checked_on: null })
+    project.setItems.push({ id: 'si1', set_id: 'set1', position: 0, kind: 'sheet', number: 'C-101', title: 'Site plan', change: 'revised', was_title: null, discipline: null, page: null })
+    project.scopeItems[0] = { ...project.scopeItems[0]!, sheets: [] }
+    project.scopeItems[1] = { ...project.scopeItems[1]!, sheets: ['C-101'] }
+    return rows({ projects: [gcProjectFromRows(project)], ...over })
+  }
+  const clinicOf = (rows: BoardRows) => boardStateFromRows(rows).projects[0]!
+
+  it('guesses for a set not sent yet, so a quote on the older plans needs confirming', () => {
+    const p = clinicOf(withAddendum({ planSetSends: [] }))
+    expect(p.planSets.map((s) => [s.label, s.touches, s.changedSheets])).toEqual([
+      ['Bid set', [], []],
+      ['Addendum 1', ['k1'], ['C-101']],
+    ])
+    expect(bidIsStale(p, p.packages[0]!, p.packages[0]!.invites[0]!)).toBe(true)
+    expect(staleWords(p.packages[0]!, staleChange(p, p.packages[0]!, p.packages[0]!.invites[0]!)!)).toBe('Addendum 1 changed paving, and the trade as a whole.')
+  })
+
+  it('takes the office’s word where the set went out, as the trade portal does', () => {
+    const p = clinicOf(withAddendum({ planSetSends: [{ set_id: 'set1', company_id: 'lonestar', touched: false }, { set_id: 'set1', company_id: 'hillside', touched: false }] }))
+    expect(p.planSets[1]!.touches).toEqual([])
+    expect(bidIsStale(p, p.packages[0]!, p.packages[0]!.invites[0]!)).toBe(false)
+    const told = clinicOf(withAddendum({ planSetSends: [{ set_id: 'set1', company_id: 'hillside', touched: true }] }))
+    expect(told.planSets[1]!.touches).toEqual(['k1'])
+  })
+
+  it('touches nothing when the sends were not read, as before', () => {
+    expect(clinicOf(withAddendum()).planSets.map((s) => s.touches)).toEqual([[], []])
+  })
+
+  it('carries each line’s sheets as the office said them, the sets’ changes and the index as it stands', () => {
+    const p = clinicOf(withAddendum({ planSetSends: [] }))
+    expect(p.packages[0]!.scope).toEqual([
+      { id: 's1', label: 'Clearing and grading', sheets: [] },
+      { id: 's2', label: 'Paving', sheets: ['C-101'] },
+    ])
+    expect(p.packages[1]!.scope).toEqual([{ id: 's3', label: 'Foundations' }])
+    expect(p.planSets[1]).not.toHaveProperty('changedSpecs')
+    expect(p.planSets[1]).not.toHaveProperty('addedLines')
+    expect(p.index?.sheets.map((s) => s.id)).toEqual(['C-101'])
+    expect(p.index?.specs).toEqual([])
   })
 })

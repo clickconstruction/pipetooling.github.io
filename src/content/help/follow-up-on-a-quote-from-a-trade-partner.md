@@ -2,23 +2,24 @@
 title: follow up on a quote from a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner
+keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner, by people, by urgency
 order: 97
 ---
-After we ask a trade partner for a quote, we wait for their answer. Follow up shows every company we are waiting on, with the ones to call first at the top.
+After we ask a trade partner for a quote, we wait for their answer. Follow up shows every company we are waiting on. The ones to call first are at the top of their list.
 
 The office and estimators see Follow up.
 
 ## Open Follow up
 
 1. Open [GC projects](/gc).
-2. Press {{button:outline|Follow up}} at the top of the board. The number on the button counts the companies to call.
+2. Press {{button:outline|Follow up}} at the top of the board.
+3. Scroll down to **We are waiting on them**. The number beside it counts everyone we wait on.
 
-The Dashboard's **Needs you** shows the same count on a **GC projects** line. Press {{button:outline|Follow up}} on that line to come straight here.
+The top of the tab lists the people waiting on us. [See who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them) covers that part.
 
 Each card is one company on one job. The chip on the card names the job, the trade and the day our bid is due.
 
-:::example A card at the top of Follow up
+:::example A card on Follow up
 {{chip:red|promised Mon Oct 5, 3 days past}} {{button:outline|Log a contact}} {{button:outline|Will not do it}} {{button:outline|Cannot do it}} {{button:outline|Who else?}}
 :::
 
@@ -33,6 +34,17 @@ The cards come in groups, and the most urgent group is first.
 - **Waiting on their word** means they gave a day that has not come yet. You have nothing to do yet.
 
 A card with their phone number has a button to call them.
+
+## See everyone we wait on
+
+Follow up opens on **By urgency**, with a card for each quote. **By people** shows everyone we wait on instead. Each person shows once, even when they are on two jobs.
+
+1. Press {{button:outline|By people}} under **We are waiting on them**. The number on **By people** matches the one beside that heading.
+2. Each person shows every reason we need them. A reason about one job starts with that job's name.
+3. Press {{button:outline|Call}} to call that person. Press {{button:outline|Follow up}} to open the Follow up sheet at them.
+4. Press {{button:outline|By urgency}} to go back to the cards.
+
+By people also lists what the cards do not show. A company's insurance may have run out. A customer may not have signed our contract yet.
 
 ## Log a call
 
@@ -75,4 +87,4 @@ Each project card below the board lists its trades. Each trade also lists every 
 
 ## What comes next
 
-To ask more companies, see [Ask trade partners for a quote](/help/ask-trade-partners-for-a-quote). A list to work through every call in one sitting comes in a later step.
+To ask more companies, see [Ask trade partners for a quote](/help/ask-trade-partners-for-a-quote). To work through every call in one sitting, see [Work through everyone we wait on in one sitting](/help/work-through-everyone-we-wait-on).

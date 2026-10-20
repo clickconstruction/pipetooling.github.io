@@ -8,6 +8,8 @@ import {
   type BankReturnedTxRow,
 } from '../lib/jobs/bankReturnedDeposits'
 import type { ArReturnCaseRow } from '../lib/jobs/arReturnCase'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { isZzTestJob } from '../lib/jobs/zzTestJobSweep'
 
 /**
  * The Dashboard's "N deposits the bank returned are still counted as paid"
@@ -19,7 +21,15 @@ import type { ArReturnCaseRow } from '../lib/jobs/arReturnCase'
  * RLS scopes `mercury_transactions` to dev / master / assistant-like; a
  * role that cannot read it gets no card.
  */
-export function useBankReturnedPaymentsNudge(enabled: boolean): { returned: BankReturnedPayments | null; cases: ArReturnCaseRow[] | null; reload: () => void } {
+// `hideZzTestJobs` (punch list #61, v2.5122): a returned payment on a ZZ test job leaves the count, by the job's
+// names and the shared ids. A returned deposit warns about real money (and feeds the Pipeline's Billed badges),
+// so a failed id read falls back to the names rather than emptying the card (review on #5246). The open return
+// cases (`list_ar_return_cases`) carry no job, so they are left as they are.
+export function useBankReturnedPaymentsNudge(
+  enabled: boolean,
+  hideZzTestJobs = false,
+  userId?: string | null,
+): { returned: BankReturnedPayments | null; cases: ArReturnCaseRow[] | null; reload: () => void } {
   const [returned, setReturned] = useState<BankReturnedPayments | null>(null)
   /** v2.4325: every open case of a check that came back, on a job or not (`list_ar_return_cases`); null when the read is refused. */
   const [cases, setCases] = useState<ArReturnCaseRow[] | null>(null)
@@ -62,11 +72,18 @@ export function useBankReturnedPaymentsNudge(enabled: boolean): { returned: Bank
         if (jobError) throw jobError
         for (const j of (jobRows ?? []) as BankReturnedJobRow[]) jobsById.set(j.id, j)
       }
-      setReturned(summarizeBankReturnedPayments(payments, txById, jobsById))
+      const zzIds = hideZzTestJobs && payments.length > 0 ? await loadZzTestJobIds(userId).catch(() => null) : null
+      const shown = hideZzTestJobs
+        ? payments.filter((p) => {
+            const job = jobsById.get(p.job_id)
+            return !((job && isZzTestJob(job)) || zzIds?.has(p.job_id))
+          })
+        : payments
+      setReturned(summarizeBankReturnedPayments(shown, txById, jobsById))
     } catch {
       setReturned(null)
     }
-  }, [enabled])
+  }, [enabled, hideZzTestJobs, userId])
 
   const loadCases = useCallback(async () => {
     if (!enabled) {

@@ -6,9 +6,10 @@
  * and the one write; the window and the kernels decide the rest.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding, canUseGcSchedule } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule } from '../lib/gc/access'
+import { pageGate } from '../lib/roleGate'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -22,26 +23,62 @@ import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestions'
-import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
+import { GcChangeOrdersWindow, type FromMessageLink } from '../components/gc/GcChangeOrders'
+import { fromMessageLine } from '../lib/changeOrders/fromMessage'
+import { loadSourceMessages, priceChangeOrder } from '../lib/changeOrders/fromMessageIo'
 import { GcScheduleWindow } from '../components/gc/GcScheduleWindow'
 import { withChangeOrders, withChangeRequests, type ChangeOrderRow, type ChangeRequestRow } from '../lib/gc/changeOrderRows'
 import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
-import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dailyLogRows'
-import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { dailyLogPayload, withCrewClockIns, withDailyLogs, type CrewOnSiteRow, type DailyLogRow } from '../lib/gc/dailyLogRows'
+import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { crewJobsHeld, generalConditionsHolder, heldByOthers, withCrewPercents, type CrewJobRead } from '../lib/gc/crewJobRows'
+import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs, type CrewJobLink } from '../lib/gc/crewJobIo'
+import type { OwnCrewWrites } from '../components/gc/GcOwnCrew'
 import { GcSubmittalsWindow } from '../components/gc/GcSubmittalsWindow'
 import { submittalRoundExtras, tradeSpecSections, withSubmittals, type SubmittalTables } from '../lib/gc/submittalRows'
 import { addSubmittal, answerSubmittal, loadGcSubmittals, markSubmittalSent, sendSubmittalToArchitect, submittalCameIn } from '../lib/gc/submittalsIo'
 import { GcRfisWindow } from '../components/gc/GcRfisWindow'
 import { rfiExtras, withRfis, type RfiTables } from '../lib/gc/rfiRows'
 import { addRfi, answerRfi, loadGcRfis, markRfiSent, sendRfiToArchitect, startRfiChangeOrder } from '../lib/gc/rfisIo'
+import { GcDrawsWindow } from '../components/gc/GcDrawsWindow'
+import { drawExtras, NO_DRAWS, withDraws, withTradeChanges, type DrawTables } from '../lib/gc/drawRows'
+import { NO_WAIVER_FILES, waiverFilesByDraw, type WaiverFile } from '../lib/gc/tradeFiles'
+import { loadGcWaiverFiles } from '../lib/gc/tradeFilesIo'
+import {
+  approveDraw,
+  approveDrawLess,
+  chargeTrade,
+  drawCameIn,
+  drawWaiverIn,
+  emailTheTrade,
+  loadGcDraws,
+  payDraw,
+  sendDrawBack,
+  sendTradeChange,
+  settleBackCharge,
+  takeBackCharge,
+} from '../lib/gc/drawsIo'
+import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type DrawEmail, type DrawEmailTo } from '../lib/gc/drawEmail'
+import { retainageHeldNow } from '../lib/gc/building'
+import { acceptedEmail, finalInEmail } from '../lib/gc/closeoutEmail'
+import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
+import { GcStartWindow, type StartPresses, type StartTold } from '../components/gc/GcStartWindow'
+import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
+import { addPunchItem, checkPunchItem, loadGcPunch, punchFixedIn, removePunchItem } from '../lib/gc/punchIo'
+import { GcPunchWindow } from '../components/gc/GcPunchWindow'
+import type { PunchWrites } from '../components/gc/GcPunchList'
+import { withPunch, type PunchRow } from '../lib/gc/punchRows'
 import type { ScheduleRead } from '../lib/gc/schedule/rows'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
 import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoneyMondayEmail'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
-import { loadSchedule } from '../lib/gc/scheduleIo'
-import { ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
+import { keepRoughAt, loadRough, loadSchedule, type ScheduleReads } from '../lib/gc/scheduleIo'
+import type { WeeklyReportWrites } from '../components/gc/GcWeeklyReport'
+import { weeklyReportRetryRow, withWeeklyReports, type WeeklyReportRow, type WeeklyReportSend } from '../lib/gc/weeklyReportRows'
+import { loadGcWeeklyReports, recordWeeklyReport, sendWeeklyReport } from '../lib/gc/weeklyReportsIo'
+import { ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
 import { payAppFileName } from '../lib/gc/payAppFile'
 import {
@@ -50,6 +87,8 @@ import {
   certifyAskMail,
   changeOrderMail,
   changeOrderMailFacts,
+  contractMail,
+  contractMailFacts,
   gcCustomerEmailRefusal,
   interestBillMail,
   interestBillMailFacts,
@@ -66,22 +105,61 @@ import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
-import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
+import { emailTheAnswer, sendGcTradeEmail, sendGcTradeEmailTest } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
+import { useRingLayers } from '../components/gc/useRingLayers'
+import { GcBand, GcStageHealth } from '../components/gc/GcStageHealth'
+import { GcTradeRows, GcTradeRowsKey } from '../components/gc/GcTradeRows'
+import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
+import { GcFlowBoard } from '../components/gc/flows/GcFlowBoard'
+import { GcCustomersList } from '../components/gc/GcCustomersList'
+import { GcJobPapersWindow } from '../components/gc/flows/GcJobPapersWindow'
+import { GcRoundWindow } from '../components/gc/flows/GcRoundWindow'
+import { GcRoundOpenerContext, type RoundOpener, type RoundSpec } from '../components/gc/flows/gcRoundOpener'
+import { companyAtForStep, customerAtForStep } from '../lib/flows/boardOpen'
+import { roundDetailFromProject } from '../lib/flows/roundDetail'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
+import { GcCardHead } from '../components/gc/GcCardHead'
+import { cardStageOf, plansWords, type DoorKey } from '../lib/gc/cardHead'
+import { stageHealth, type StageHealth } from '../lib/gc/stageHealth'
+import { tradeRow, tradesWords } from '../lib/gc/tradeRows'
+import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
+import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
+import { ClauseNeedRows } from '../components/contracts/ClauseNeedRows'
+import { useClauseNeeds } from '../hooks/useClauseNeeds'
+import type { ClauseNeedRow } from '../lib/contracts/approval'
+import { supabaseFollowUpIo } from '../lib/followUp/followUpIo'
+import { followUpTeamOf } from '../lib/followUp/team'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
 import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
 import { GcBidTabs } from '../components/gc/GcBidTabs'
 import { GcOurNumber } from '../components/gc/GcOurNumber'
+import { ownWorkJobIds, type OwnWorkCosts } from '../lib/gc/ownWorkCost'
+import { loadOwnWorkCosts } from '../lib/gc/ownWorkCostIo'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
-import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
-import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
+import { loadCompanyPaperEntries, loadReceivedCoiLink, markCompanyCoiGood, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
+import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
+import { BillDayCardLine } from '../components/gc/GcBillDayCardLine'
+import { GcBillDayClaims } from '../components/gc/GcBillDayClaims'
+import { GcBillDayTrades } from '../components/gc/GcBillDayTrades'
+import { billDayJobs, useBillDayCards } from '../components/gc/useBillDayCards'
+import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
+import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
+import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
+import { openOwnerContractFile, sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { setOwnerContractPaper } from '../lib/contracts/clausesIo'
+import { customerBilledJobIds, customerMoneyView } from '../lib/gc/customerMoney'
+import { newestContractSend } from '../lib/gc/customerContract'
+import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
+import { benchAnchor } from '../lib/gc/tradeViews'
+import { boardFollowPeople } from '../lib/gc/schedule/counts'
+import type { FollowUpWriters } from '../lib/gc/followUpWrites'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
 import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEmailRecipient, type SetEmailResult } from '../lib/gc/setEmail'
@@ -122,6 +200,8 @@ import {
   loadGcProjects,
   loadScopeBookStore,
   logGcAskContact,
+  logGcCustomerContact,
+  recordGcTradePromise,
   makeDriveFolders,
   markGcBidSent,
   markGcLost,
@@ -133,6 +213,8 @@ import {
   setGcAskPlugs,
   setGcAskTakenAlternates,
   setGcProjectMoney,
+  setGcGeneralConditionsJob,
+  searchPipelineJobs,
   shareGcBidTab,
   setGcCompanyCoverage,
   setGcCompanyLanguage,
@@ -155,8 +237,15 @@ import {
   sendOwnerPayApp,
   setOwnerRetainage,
   sendGcSow,
+  takeBillOffCard,
+  loadGcStartTold,
+  setGcProjectStartItem,
+  signGcOwnerContract,
+  startGcProject,
 } from '../lib/gc/gcIo'
+import { fetchGcCardBillOn } from '../lib/gc/cardBillSetting'
 import { sowEmailRequest } from '../lib/gc/sowEmail'
+import { startEmailRequest, startRecipients } from '../lib/gc/startEmail'
 import { gcTradeEmailRefusal, type ChangeAskEmailStage } from '../lib/gc/tradeEmail'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
@@ -164,17 +253,41 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
-import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
+import { billDayFromSearch, billDayHref, GC_WAITING_ON_THEM_ID, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, type BoardBy, type GcView } from '../lib/gc/links'
+import { GcMessages } from '../components/gc/GcMessages'
+import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
+import { useThreadWindow, withThread } from '../components/gc/messages/useThreadWindow'
+import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
+import type { MessagesWrites } from '../components/gc/messages/messagesWrites'
+import { useCustomerProfileModal } from '../contexts/CustomerProfileModalContext'
+import { useBidPreview } from '../contexts/BidPreviewModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import type { Contact } from '../lib/contacts/kernel'
+import { jobRefOf } from '../lib/messages/load'
+import { subsLaneHref } from '../lib/prospects/subsLane'
+import type { NewProjectSeed } from '../lib/prospects/gcLeadLane'
+import { sendLostOwnerToProspects } from '../lib/prospects/gcLeadLaneIo'
+import { canAccessProspectPipeline } from '../lib/prospects/prospectConversion'
+import { supabase } from '../lib/supabase'
+import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
+import {
+  addContactJob,
+  answerPaper,
+  loadMessagesView,
+  nameContact as nameMessagesContact,
+  removeContactJob,
+  searchContactRecords,
+  searchJobs,
+  setDefaultJob,
+  tieMessage,
+  type MessagesView,
+} from '../lib/messages/messagesIo'
 
 interface Loaded {
   customers: GcPickerCustomer[]
   projects: GcProjectView[]
   store: ScopeBookStore
   team: GcTeamMember[]
-}
-
-function money(n: number): string {
-  return `$${Math.round(n).toLocaleString('en-US')}`
 }
 
 /** The Monday money email's reads and writes (O7b), gcIo's, one object for the page's life; each is read when called. */
@@ -184,6 +297,9 @@ const MONEY_MONDAY_IO: MoneyMondayIo = {
   preview: () => previewMoneyMonday(),
   test: () => sendMoneyMondayTest(),
 }
+
+/** Follow up's reads and presses (Messages, cut 2), one for the page. */
+const FOLLOW_UP_IO = supabaseFollowUpIo()
 
 export default function GcProjects() {
   const { user, role, profileName, loading: authLoading } = useAuth()
@@ -199,6 +315,8 @@ export default function GcProjects() {
   const tourFurthest = useRef(0)
   const { showToast } = useToastContext()
   const [params, setParams] = useSearchParams()
+  // The call script's new tab (v2.5556): `?script=1` is read once on mount, before any write to the URL drops it.
+  const [scriptAtStart] = useState(() => params.get('script') === '1')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [loadProblem, setLoadProblem] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -208,6 +326,31 @@ export default function GcProjects() {
   const [checking, setChecking] = useState<string | null>(null)
   const today = todayYmdInAppTz()
   const windowOpen = params.get('new') === '1'
+  // Asked us ✓ on Prospects → Jobs to GC (v2.5561) opens the window with the lead's job filled in, through the router's state.
+  const newProjectSeed = (useLocation().state as { newProjectSeed?: NewProjectSeed } | null)?.newProjectSeed
+  /** Send the owner back to Prospects (v2.5561): a GC lead linked to the customer, the lost job on it, then the deck. */
+  const sendOwnerBack = async (p: GcProjectView) => {
+    const { data: who } = await supabase.auth.getUser()
+    const userId = who.user?.id
+    if (!userId) {
+      showToast('Your sign-in could not be read. Reload and try again.', 'error')
+      return
+    }
+    const masterUserId = (await resolveCompanyOwnerUserId(supabase, userId)) ?? userId
+    try {
+      const sent = await sendLostOwnerToProspects(p.id, { userId, masterUserId })
+      showToast(
+        sent.added
+          ? `${sent.customerName} is on Prospects → Jobs to GC, with ${p.name} marked lost.`
+          : `${sent.customerName} was already on Jobs to GC. ${p.name} is on that lead, marked lost.`,
+        'success',
+      )
+      navigate(`/prospects?tab=gc-leads&prospect_id=${sent.prospectId}`)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The owner was not sent to Prospects.'), 'error')
+    }
+  }
+
   /** The scope book's window: `book=1`, and `trade=<trade>&project=<id>` to save that scope as a set. */
   const bookOpen = params.get('book') === '1'
   const bookTrade = params.get('trade')
@@ -271,14 +414,14 @@ export default function GcProjects() {
 
   // The Project Board (the Board's B3): a dev sees it above the projects while it is built; door 1's
   // list stays for everyone until the board's own door opens it to the office.
-  const [board, setBoard] = useState<GcState | null>(null)
+  const [boardRead, setBoardRead] = useState<GcState | null>(null)
   const [boardProblem, setBoardProblem] = useState<string | null>(null)
   // Each company's language, for the invitation the Ask window draws (the kernels' company carries none yet).
   const [langs, setLangs] = useState<Record<string, PortalLang>>({})
   // Our number (B5-c): the money team reads it; anyone else sees each price as the trades alone.
   const [moneyShown, setMoneyShown] = useState(false)
   const takeRows = (rows: BoardRows) => {
-    setBoard(boardStateFromRows(rows))
+    setBoardRead(boardStateFromRows(rows))
     setMoneyShown(rows.moneyShown ?? false)
     setLangs(Object.fromEntries(rows.companies.map((c) => [c.id, c.lang === 'es' ? 'es' : 'en'])))
   }
@@ -298,12 +441,59 @@ export default function GcProjects() {
       live = false
     }
   }, [role, loaded, today])
+  // Our own crew's percent from its Pipeline job (Building's U8): read for a dev and the money team (O9's gate, gc 5's
+  // ask) and laid over the board itself, so every window reads one percent, the Schedule's among them (call 12).
+  const crewLinks = useMemo<CrewJobLink[]>(
+    () => (loaded ? loaded.projects.flatMap((p) => p.trades.flatMap((t) => (t.ours && t.jobLedgerId ? [{ packageId: t.id, jobId: t.jobLedgerId }] : []))) : []),
+    [loaded],
+  )
+  const [crewReads, setCrewReads] = useState<CrewJobRead[]>([])
+  useEffect(() => {
+    if (!canUseGcBuilding(role) && !canSeeGcMoney(role)) return
+    let live = true
+    loadCrewJobs(crewLinks)
+      .then((reads) => {
+        if (live) setCrewReads(reads)
+      })
+      .catch((e) => {
+        if (live) setBoardProblem(formatErrorMessage(e, 'Our own crew’s Pipeline jobs did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [crewLinks, role])
+  const board = useMemo(() => (boardRead ? withCrewPercents(boardRead, crewReads) : null), [boardRead, crewReads])
+  // What the Schedule reads over the board (its PR 16): the job's daily logs and our crew's clock-ins, Building's, for
+  // whoever may use Building; Ask for the days and the money lines for the money team; the trades' percents behind the
+  // draws gate (O9). Memoized, since a new one reads the schedule again.
+  const scheduleReads = useMemo<ScheduleReads>(
+    () => ({ logs: canUseGcBuilding(role), money: canSeeGcMoney(role), draws: canUseGcBuilding(role) || canSeeGcMoney(role), today }),
+    [role, today],
+  )
+  /** Each linked trade our own crew does, by its id, to its Pipeline job's number (null until read). */
+  const crewJobLabels = useMemo(
+    () => Object.fromEntries(crewLinks.map((l) => [l.packageId, crewReads.find((r) => r.packageId === l.packageId)?.label ?? null])),
+    [crewLinks, crewReads],
+  )
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
-  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'money'>(() => gcViewFromSearch(params))
-  const refreshBoard = async () => {
-    if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) }))
+  const [devView, setDevView] = useState<GcView>(() => gcViewFromSearch(params))
+  // The view follows `?view=`, so a link on the page (Bill day's `billDayHref` from Follow up, a flow card or By step)
+  // switches it as a fresh load would. The pills write it back.
+  const viewParam = params.get('view')
+  useEffect(() => {
+    setDevView(gcViewFromSearch(new URLSearchParams(viewParam ? `view=${viewParam}` : '')))
+  }, [viewParam])
+  // How Trade partners and Customers show their companies (Messages cut 4). `?by=` opens on one.
+  const [partnersBy, setPartnersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'list')
+  const [customersBy, setCustomersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'list')
+  /** Read the board again; answers what it read, for a press that emails from the rows as they are now (P5c-4). */
+  const refreshBoard = async (): Promise<GcState | null> => {
+    if (!loaded) return null
+    const rows = await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) })
+    takeRows(rows)
+    return boardStateFromRows(rows)
   }
   // What a trade carries sits on the trade (`gc_trade_packages`), which only the projects' load reads.
   // A new `loaded` reloads the board too (the effect above).
@@ -353,7 +543,7 @@ export default function GcProjects() {
         const project = board.projects.find((p) => p.packages.some((k) => k.id === packageId))
         const pkg = project?.packages.find((k) => k.id === packageId)
         const companyId = pkg?.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
-        const req = project && companyId ? sowEmailRequest(board, project.id, packageId, sowId, langs[companyId] ?? 'en') : null
+        const req = project && companyId ? sowEmailRequest(board, project.id, packageId, sowId, tradeMailLang(langs[companyId])) : null
         const answer = req ? await sendGcTradeEmail(req) : null
         if (answer && !answer.ok) refused = `Sent to their portal. The email did not go: ${gcTradeEmailRefusal(answer.key)}`
       }
@@ -363,12 +553,71 @@ export default function GcProjects() {
   }
   // Our number (the Board's B5-c), opened on a project's card for the money team; its inputs reload the board.
   const [numberOpen, setNumberOpen] = useState<string | null>(null)
+  // Weeks to build on Our number (G-45, the schedule's PR 12b, gc 2's nod): the open job's rough, read for the money team
+  // alone when Our number opens, laid on the board's job the way the money lens lays the schedules. A failed read: no weeks.
+  const [numberRough, setNumberRough] = useState<{ id: string; rough: GcProject['rough'] | null } | null>(null)
+  useEffect(() => {
+    if (!numberOpen || !canSeeGcMoney(role)) return
+    let live = true
+    loadRough(numberOpen)
+      .then((rough) => live && setNumberRough({ id: numberOpen, rough }))
+      .catch(() => live && setNumberRough({ id: numberOpen, rough: null }))
+    return () => {
+      live = false
+    }
+  }, [numberOpen, role])
+  // The rough kept at the Board's two presses (PR 12b, call 5): its one line beside the outcome strip when it did not happen.
+  const [roughKeepLines, setRoughKeepLines] = useState<Record<string, string>>({})
   const saveMoney = async (projectId: string, values: { generalConditions: number; contingencyPct: number; feePct: number }) => {
     await setGcProjectMoney(projectId, values)
     await refreshBoard()
   }
+  // Our own work's Pipeline jobs (Owner Billing's O11b and O11a): the job general conditions are spent on, named on Our
+  // number, and each crew trade's (U8's links), read the Costs tab's own way for the money team, so Money's margin and
+  // Closeout count what they really cost. Labor dollars only with pay access (loadOwnWorkCosts asks); a failed read
+  // leaves them at their price and budget.
+  const nameGcJob = async (projectId: string, jobId: string | null) => {
+    await setGcGeneralConditionsJob(projectId, jobId)
+    await refreshBoard()
+  }
+  const crewJobs = useMemo(() => Object.fromEntries(crewLinks.map((l) => [l.packageId, l.jobId])), [crewLinks])
+  const ownWorkKey = useMemo(() => (board && canSeeGcMoney(role) ? ownWorkJobIds(board.projects, crewJobs).sort().join(',') : ''), [board, role, crewJobs])
+  const [ownWorkRead, setOwnWorkRead] = useState<OwnWorkCosts | undefined>(undefined)
+  useEffect(() => {
+    if (!ownWorkKey) {
+      setOwnWorkRead(undefined)
+      return
+    }
+    const ids = ownWorkKey.split(',')
+    let live = true
+    loadOwnWorkCosts(ids)
+      .then((read) => {
+        if (live) setOwnWorkRead(read)
+      })
+      .catch(() => {
+        if (live) setOwnWorkRead({ payAccess: true, byJob: Object.fromEntries(ids.map((id) => [id, 'error' as const])) })
+      })
+    return () => {
+      live = false
+    }
+  }, [ownWorkKey])
+  // What the margin reads: the spend, and which Pipeline job each crew trade runs on. The money team's alone. While the
+  // read is out, the links stand with no spend, so a linked crew says it waits for its job rather than that it has none.
+  const ownWork = useMemo<OwnWorkCosts | undefined>(() => {
+    if (!canSeeGcMoney(role) || !ownWorkKey) return undefined
+    return ownWorkRead ? { ...ownWorkRead, crewJobs } : { payAccess: true, byJob: {}, crewJobs }
+  }, [ownWorkRead, ownWorkKey, crewJobs, role])
+  // Each project's general conditions job, for the pickers that hold a job once (U8's and Our number's). Only the money
+  // team's board carries them.
+  const gcJobsOf = useMemo(() => Object.fromEntries((board?.projects ?? []).filter((p) => p.generalConditionsJobId).map((p) => [p.id, p.generalConditionsJobId ?? null])), [board])
+  const ownWorkLabel = (jobId: string | null | undefined): string | null => {
+    const read = jobId ? ownWork?.byJob[jobId] : undefined
+    return read && read !== 'error' ? read.label : null
+  }
   // Bid tabs (the Board's B5-d), opened on a project's card for a dev; sharing reloads the board.
   const [tabsOpen, setTabsOpen] = useState<string | null>(null)
+  /** Which card's trades key is on (to-do #108, PR 3): the stripes' colours. */
+  const [tradeKeyOn, setTradeKeyOn] = useState<string | null>(null)
   const shareTab = async (packageId: string, showNames: boolean) => {
     await shareGcBidTab(packageId, showNames)
     await refreshBoard()
@@ -378,10 +627,13 @@ export default function GcProjects() {
     bidSent: async () => {
       await markGcBidSent(projectId)
       await reloadProjects()
+      // The rough's weeks kept as they went with the bid (G-45, PR 12b): after the press, never throwing into it.
+      if (board) void keepRoughAt(board, projectId, 'bid').then((line) => setRoughKeepLines((was) => ({ ...was, [projectId]: line ?? '' })))
     },
     won: async () => {
       await markGcWon(projectId)
       await reloadProjects()
+      if (board) void keepRoughAt(board, projectId, 'award').then((line) => setRoughKeepLines((was) => ({ ...was, [projectId]: line ?? '' })))
     },
     lost: async (why, wonBy, note) => {
       await markGcLost(projectId, why, wonBy, note)
@@ -394,8 +646,164 @@ export default function GcProjects() {
   })
   // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for the GC office (door 2).
   const [companyId, setCompanyId] = useState<string | null>(null)
-  const companyOpener: CompanyOpener | null = canOpenGcProjects(role) && board ? { openPartner: setCompanyId } : null
+  // Where it opens (B6-b-ii's follow-up): a tab and a paper with its send, as a not-ready bar on the schedule asks.
+  const [companyAt, setCompanyAt] = useState<CompanyAt | null>(null)
+  const companyOpener: CompanyOpener | null =
+    canOpenGcProjects(role) && board
+      ? {
+          openPartner: (id, at) => {
+            setCompanyId(id)
+            setCompanyAt(at ?? null)
+          },
+        }
+      : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
+  // The customer's window (the Board's B6-d-ii): a dev's while the Board is built, opened from Get started's contract
+  // row and the board's customer names. Our contract's send goes with Our number's price by line, so it needs that read.
+  const [customerWin, setCustomerWin] = useState<{ id: string; at: CustomerAt | null } | null>(null)
+  const customerOpener: CustomerOpener | null = canUseGcBoardWrites(role) && board ? { openCustomer: (id, at) => setCustomerWin({ id, at: at ?? null }) } : null
+  const openCustomer = customerWin && board ? (board.customers.find((c) => c.id === customerWin.id) ?? null) : null
+  // Messages (cut 1's screens): every person the office talks with and their lines, read while the view or a thread is
+  // open and again after each press. A thread opens as a window over any view (`?thread=<id>&at=<message id>`).
+  const navigate = useNavigate()
+  const thread = useThreadWindow()
+  const customerProfile = useCustomerProfileModal()
+  const jobDetail = useJobDetailModal()
+  const bidPreview = useBidPreview()
+  const [messagesView, setMessagesView] = useState<MessagesView | null>(null)
+  const [messagesProblem, setMessagesProblem] = useState<string | null>(null)
+  const [messagesNow, setMessagesNow] = useState(() => new Date().toISOString())
+  const [messagesTick, setMessagesTick] = useState(0)
+  const messagesOpen = canOpenGcProjects(role) && (devView === 'messages' || thread.contactId !== null)
+  useEffect(() => {
+    if (!messagesOpen) return
+    let live = true
+    const now = new Date().toISOString()
+    setMessagesProblem(null)
+    loadMessagesView(now)
+      .then((v) => {
+        if (!live) return
+        setMessagesView(v)
+        setMessagesNow(now)
+      })
+      .catch((e) => {
+        if (live) setMessagesProblem(formatErrorMessage(e, 'The messages did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [messagesOpen, messagesTick])
+  // A later cut's slot that writes on its own (the reply box, a note) asks for the read through `useMessagesReread`.
+  const rereadMessages = useCallback(() => setMessagesTick((t) => t + 1), [])
+  const messagesWrites = useMemo<MessagesWrites>(() => {
+    const after = async <T,>(press: Promise<T>): Promise<T> => {
+      const answer = await press
+      rereadMessages()
+      return answer
+    }
+    return {
+      nameContact: (contactId, target) => after(nameMessagesContact(contactId, target)),
+      tieMessage: (messageId, jobKey) => after(tieMessage(messageId, jobKey)),
+      setDefaultJob: (contactId, jobKey) => after(setDefaultJob(contactId, jobKey)),
+      addJob: (contactId, jobKey) => after(addContactJob(contactId, jobKey)),
+      removeJob: (contactId, jobKey) => after(removeContactJob(contactId, jobKey)),
+      searchRecords: searchContactRecords,
+      searchJobs: (words) => searchJobs(words, new Date().toISOString()),
+    }
+  }, [rereadMessages])
+  // ⧉ on a job: a GC project's card on this page, a Pipeline job in its job window, a bid in its preview, each over
+  // the page (Bids or Jobs when the window is not there). The thread closes first.
+  const openMessagesJob = (key: string) => {
+    const ref = jobRefOf(key)
+    if (!ref) return
+    thread.closeThread()
+    if (ref.kind === 'project') requestAnimationFrame(() => openProjectCard(ref.id))
+    else if (ref.kind === 'pipeline') {
+      if (jobDetail) jobDetail.openJobDetail({ jobId: ref.id })
+      else navigate('/jobs')
+    } else if (bidPreview) bidPreview.openBidPreview(ref.id)
+    else navigate(`/bids?bidId=${encodeURIComponent(ref.id)}`)
+  }
+  // Open their record, from the thread's ⋯: a trade partner's company window, else the customer's.
+  const openMessagesRecord = (c: Contact) => {
+    thread.closeThread()
+    if (c.gcCompanyId && board?.partners.some((p) => p.id === c.gcCompanyId)) {
+      setCompanyId(c.gcCompanyId)
+      setCompanyAt(null)
+    } else if (c.customerId) {
+      if (customerOpener) customerOpener.openCustomer(c.customerId)
+      else customerProfile?.openCustomerProfile(c.customerId)
+    }
+  }
+  // With its tick (B6-d-iii-b), the send emails them: their portal link made first if they have none (call D6, the
+  // merged link, as every door makes one), then gc-customer-email's contract kind, which attaches the send's own file.
+  // A refusal is said after the board reads the send, which stays on record either way.
+  const sendContract =
+    canUseGcBoardWrites(role) && canSeeGcMoney(role) && moneyShown
+      ? async (projectId: string, input: ContractSendInput): Promise<ContractSendOutcome> => {
+          // Email it now (Owner Billing's call): the newest send as it is, emailed with nothing sent anew.
+          const sendId = input.sendId ?? (await sendGcOwnerContract({ projectId, ...input }))
+          // The paper the window picked (Messages, cut 4c, v2.5334), set on the new send before any email names it. A
+          // refusal leaves the send on our contract file, and the words say so.
+          let paperWords = ''
+          if (!input.sendId && input.paperId) {
+            try {
+              await setOwnerContractPaper(sendId, input.paperId)
+            } catch (e) {
+              paperWords = ` The paper did not save, so it goes on our contract file alone: ${formatErrorMessage(e, 'try again')}`
+            }
+          }
+          let outcome: ContractSendOutcome = { words: 'On record with its price and file. No email went: they find it when they open their portal.' }
+          const project = board?.projects.find((x) => x.id === projectId)
+          if (input.email && board && project) {
+            try {
+              await mintCustomerPortalLink(project.customerId, 'all')
+              const mail = contractMail(contractMailFacts(board, project, { mode: input.mode, price: input.total, signBy: input.signBy, note: input.note }))
+              const answer = await sendGcCustomerEmail({ projectId, kind: 'contract', sourceId: sendId, subject: mail.subject, lines: mail.lines, pdf: null })
+              if (answer.ok) outcome = { words: `On record, and sent to ${answer.to || answer.email}.` }
+              else {
+                const why = gcCustomerEmailRefusal(answer.key)
+                outcome = { words: `On record. The email did not go: ${why}`, notEmailed: why }
+              }
+            } catch (e) {
+              const why = `Their portal link was not made: ${formatErrorMessage(e, 'try again')}`
+              outcome = { words: `On record. No email went. ${why}`, notEmailed: why }
+            }
+          }
+          await refreshBoard()
+          return paperWords ? { ...outcome, words: `${outcome.words}${paperWords}` } : outcome
+        }
+      : undefined
+  // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
+  const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
+  // The Drive link of a certificate the open company sent from its portal (P5b-2), read from its upload when the window
+  // opens on one: the board's paper states carry no link. A reader who cannot read the uploads sees the row with no link.
+  const receivedCoiId = openCompany?.coiReceived?.id ?? null
+  const [coiLink, setCoiLink] = useState<{ id: string; url: string | null } | null>(null)
+  useEffect(() => {
+    if (!receivedCoiId) return
+    let live = true
+    loadReceivedCoiLink(receivedCoiId)
+      .then((url) => {
+        if (live) setCoiLink({ id: receivedCoiId, url })
+      })
+      .catch(() => {
+        if (live) setCoiLink({ id: receivedCoiId, url: null })
+      })
+    return () => {
+      live = false
+    }
+  }, [receivedCoiId])
+  useEffect(() => {
+    if (!openCompany || !canUseGcBoardWrites(role) || paperEntries) return
+    let live = true
+    loadCompanyPaperEntries()
+      .then((e) => live && setPaperEntries(e))
+      .catch(() => live && setPaperEntries({ msa: null, w9: null }))
+    return () => {
+      live = false
+    }
+  }, [openCompany, role, paperEntries])
   const partnerWrites: TradePartnerWrites = {
     addCompany: async (draft) => {
       await addGcCompany(draft)
@@ -420,19 +828,94 @@ export default function GcProjects() {
       await refreshBoard()
     },
   }
+  // The Follow up sheet (the Board's B2b-viii-a): one person at a time, a draft from me, Call, and the log. Its writes are
+  // main's presses; nothing is sent from Click. Opened from Follow up (everyone it counts), a board row (that job's people)
+  // or the schedule's call list, each at a person when one was pressed.
+  const followUpWriters: FollowUpWriters = {
+    logAsk: (line) => logGcAskContact({ ...line, on: today, byName: profileName ?? '' }),
+    logCustomer: (line) => logGcCustomerContact({ ...line, on: today, byName: profileName ?? '' }),
+    recordPromise: async (promise) => {
+      await recordGcTradePromise(promise)
+    },
+  }
+  // The email from Click (B2b-viii-b): whoever may send a trade email, a dev until the portal's door.
+  const followUpFromCompany: FollowUpFromCompany | null = canSendGcTradeEmail(role) ? { send: (req) => sendGcTradeEmail(req), test: (req) => sendGcTradeEmailTest(req) } : null
+  const [followSheet, setFollowSheet] = useState<{ projectId?: string; partnerId?: string; calling: boolean } | null>(null)
+  const followSheetJob = followSheet?.projectId ? (board?.projects.find((p) => p.id === followSheet.projectId) ?? null) : null
   // Who else? on a Follow up card: Trade partners, at that trade's card.
   const showTrade = (trade: string) => {
     setDevView('partners')
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   }
-  const toCall = board ? followUpsToCall(board) : 0
-  const devPill = (view: 'board' | 'partners' | 'followUp' | 'money', label: string) => {
+  // Follow up's badge is the one count (call E1), the Dashboard's Follow up line's too: since v2.5289 the people waiting on
+  // us, once a person (`follow_up_count`, cut 2), read on load and kept fresh by the tab while it is open. Everyone we
+  // wait on (`allPeople`, the Board's B2b-ii-b) heads the asks list on the tab instead; each board row shows its job's share.
+  const [followUpCount, setFollowUpCount] = useState(0)
+  useEffect(() => {
+    if (!canOpenGcProjects(role)) return
+    let live = true
+    void FOLLOW_UP_IO.count().then(
+      (n) => live && setFollowUpCount(n),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [role])
+  // Who a conversation can be handed to: the office team, never a superintendent, who cannot open Follow up.
+  const followUpTeam = useMemo(() => followUpTeamOf((loaded?.team ?? []).map((t) => ({ id: t.id, name: t.name, role: t.role }))), [loaded?.team])
+  // A profile with no name still reads its own rows as *You have this*.
+  const followUpMe = useMemo(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
+  // The clause changes waiting on the viewer's approval (cut 4c), in Follow up's Needs you: a controller's or a dev's.
+  const clauseNeeds = useClauseNeeds(canApproveClause(role))
+  // A pill, or a board's press that moves the page: the view and `?view=` together, so a reload opens where it is.
+  const showView = (view: GcView) => {
+    setDevView(view)
+    const next = new URLSearchParams(params)
+    if (view === 'board') next.delete('view')
+    else next.set('view', view)
+    if (view !== 'money') next.delete('billday')
+    setParams(next, { replace: true })
+  }
+  // A board's Needs a hand today: the late companies, on Follow up's We are waiting on them below the people waiting on
+  // us. The hash carries it, and the page scrolls there once the list is drawn. A pill's `?view=` drops the hash.
+  const boardNeedsAHand = () => {
+    setDevView('followUp')
+    const next = new URLSearchParams(params)
+    next.set('view', 'followUp')
+    next.delete('billday')
+    navigate({ search: `?${next.toString()}`, hash: GC_WAITING_ON_THEM_ID }, { replace: true })
+  }
+  const { hash } = useLocation()
+  const waitingScrolled = useRef(false)
+  useEffect(() => {
+    if (hash !== `#${GC_WAITING_ON_THEM_ID}`) {
+      waitingScrolled.current = false
+      return
+    }
+    if (waitingScrolled.current || devView !== 'followUp' || !board) return
+    waitingScrolled.current = true
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(GC_WAITING_ON_THEM_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+  }, [hash, devView, board])
+  // A board's Open the compare: the project's card on the Board, where Compare quotes is (Messages cut 4).
+  const boardOpenProject = (projectId: string) => {
+    showView('board')
+    requestAnimationFrame(() => requestAnimationFrame(() => openProjectCard(projectId)))
+  }
+  // A board's Bill day: Money → Bill day → From the trades for that job (`billDayHref`, cut 9). The view follows
+  // `?view=`, and anyone off the money team sees Follow up in Money's place.
+  const boardBillDay = (projectId: string) => {
+    const next = new URLSearchParams(params)
+    new URLSearchParams(billDayHref(projectId).split('?')[1]).forEach((v, k) => next.set(k, v))
+    setParams(next, { replace: true })
+  }
+  const devPill = (view: GcView, label: string) => {
     const on = devView === view
     return (
       <button
         type="button"
         aria-pressed={on}
-        onClick={() => setDevView(view)}
+        onClick={() => showView(view)}
         style={{
           padding: '0.3rem 0.8rem',
           borderRadius: 999,
@@ -524,11 +1007,93 @@ export default function GcProjects() {
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
+  // The trades' draws (Building's U6b), read for every job on the board so Money, Bill the customer and Closeout read the
+  // same draws the Draws window shows. A dev writes them while Building is built; the money team reads them since O9, so
+  // a leader's or the controller's bill bills each trade's reported work. Anyone else reads none.
+  const [drawTables, setDrawTables] = useState<DrawTables>(NO_DRAWS)
+  const [drawProblem, setDrawProblem] = useState<string | null>(null)
+  const loadDraws = useCallback(async (): Promise<DrawTables> => {
+    if (!board || !(canUseGcBuilding(role) || canSeeGcMoney(role))) return NO_DRAWS
+    const tables = await loadGcDraws(board.projects.flatMap((p) => p.packages.map((k) => k.id)))
+    setDrawTables(tables)
+    return tables
+  }, [board, role])
+  useEffect(() => {
+    void loadDraws().catch((e) => setDrawProblem(formatErrorMessage(e, 'The draws did not load.')))
+  }, [loadDraws])
+  // The draws lie innermost, so the change orders' trade side (`withTradeChanges`) lands on the change orders
+  // `withChangeOrders` lays over whole, and every reader of the board below reads the trades' money.
   const boardWithChanges = useMemo(
-    () => (board ? withChangeRequests(withChangeOrders(board, changeOrderRows), changeRequestRows) : null),
-    [board, changeOrderRows, changeRequestRows],
+    () => (board ? withChangeRequests(withTradeChanges(withChangeOrders(withDraws(board, drawTables), changeOrderRows), drawTables), changeRequestRows) : null),
+    [board, drawTables, changeOrderRows, changeRequestRows],
   )
   const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
+  // Messages cut 4b: each change order started from a customer's message, with its line back, read while its window is open.
+  const [changeFromMessages, setChangeFromMessages] = useState<Record<string, FromMessageLink>>({})
+  const changeSources = changesProject ? projectChangeOrders(changesProject).flatMap((co) => (co.sourceMessageId ? [`${co.id}=${co.sourceMessageId}`] : [])).join(',') : ''
+  useEffect(() => {
+    if (!changeSources) {
+      setChangeFromMessages({})
+      return
+    }
+    let live = true
+    const pairs = changeSources.split(',').map((pair) => pair.split('=') as [string, string])
+    loadSourceMessages(pairs.map(([, messageId]) => messageId))
+      .then((got) => {
+        if (!live) return
+        const links = pairs.flatMap(([coId, messageId]) => {
+          const source = got.get(messageId)
+          return source ? [[coId, { line: fromMessageLine(source.message, source.contact), contactId: source.message.contactId, messageId }] as const] : []
+        })
+        setChangeFromMessages(Object.fromEntries(links))
+      })
+      // The line back waits for a read that works; the change orders still draw.
+      .catch(() => live && setChangeFromMessages({}))
+    return () => {
+      live = false
+    }
+  }, [changeSources])
+  // The customer window's money (the Board's B2b-v-iii, gc 5's read): for the money team only, their billed jobs' billing
+  // read when the window opens, laid over the board with its change orders, each job keeping its own copy of the customer.
+  // Anyone else reads none, so their window makes no money call.
+  const [customerMoneyRows, setCustomerMoneyRows] = useState<{ customerId: string; rows: BillingRows } | null>(null)
+  const [customerMoneyProblem, setCustomerMoneyProblem] = useState<string | null>(null)
+  const customerMoneyId = customerWin && canSeeGcMoney(role) ? customerWin.id : null
+  useEffect(() => {
+    if (!customerMoneyId || !board) return
+    let live = true
+    setCustomerMoneyRows(null)
+    setCustomerMoneyProblem(null)
+    loadGcBillingRows(customerBilledJobIds(board, customerMoneyId))
+      .then((rows) => {
+        if (live) setCustomerMoneyRows({ customerId: customerMoneyId, rows })
+      })
+      .catch((e) => {
+        if (live) setCustomerMoneyProblem(formatErrorMessage(e, 'What they owe us did not read.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [customerMoneyId, board])
+  const customerMoney = useMemo(() => {
+    const customer = customerMoneyId ? boardWithChanges?.customers.find((c) => c.id === customerMoneyId) : undefined
+    return customer && boardWithChanges && customerMoneyRows?.customerId === customer.id ? customerMoneyView(boardWithChanges, customerMoneyRows.rows, customer) : null
+  }, [customerMoneyId, boardWithChanges, customerMoneyRows])
+  // The rings' read (the Board's B2b-vi-c): the board with what each stage's ring counts laid over it, read after the board
+  // paints and only for the stages this reader may see (`ringStages`). One state, so the ring on each row and How the stage
+  // is going under a project's title (B2b-vii) never give two answers.
+  const ringState = useRingLayers(board, role, crewLinks, today)
+  // Each project's stage health on the ring's own state, the same read the strip makes, for the trade rows' tiles (PR 3).
+  const healthByProject = useMemo(() => {
+    const map = new Map<string, StageHealth>()
+    if (!ringState) return map
+    for (const project of ringState.state.projects) {
+      if (!ringState.ready.has(project.stage)) continue
+      const h = stageHealth(ringState.state, project)
+      if (h) map.set(project.id, h)
+    }
+    return map
+  }, [ringState])
   const changeEmailed = useMemo(() => {
     const out: Record<string, { to: string; on: string }[]> = {}
     for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
@@ -591,15 +1156,22 @@ export default function GcProjects() {
   const [dailyLogRows, setDailyLogRows] = useState<DailyLogRow[]>([])
   const [logBusy, setLogBusy] = useState(false)
   const [logProblem, setLogProblem] = useState<string | null>(null)
+  // Our own crew's clock-ins (Building's U8): for a job with a linked crew, from its first day to today, read with the
+  // logs and laid in right after them, so the log window and the chart read one count.
+  const [crewRows, setCrewRows] = useState<CrewOnSiteRow[]>([])
   const loadDailyLogs = useCallback(async () => {
     // Building is a dev's while it is built (canUseGcBuilding): nobody else reads its tables.
-    if (!board || !canUseGcBuilding(role)) return
-    setDailyLogRows(await loadGcDailyLogs(board.projects.filter((p) => p.stage === 'building').map((p) => p.id)))
-  }, [board, role])
+    if (!boardRead || !canUseGcBuilding(role)) return
+    const building = boardRead.projects.filter((p) => p.stage === 'building')
+    setDailyLogRows(await loadGcDailyLogs(building.map((p) => p.id)))
+    const linked = new Set(crewLinks.map((l) => l.packageId))
+    const counted = building.flatMap((p) => (p.startedOn && p.packages.some((k) => linked.has(k.id)) ? [{ id: p.id, from: p.startedOn }] : []))
+    setCrewRows((await Promise.all(counted.map((p) => loadGcCrewOnSite(p.id, p.from, today)))).flat())
+  }, [boardRead, role, crewLinks, today])
   useEffect(() => {
     void loadDailyLogs().catch((e) => setLogProblem(formatErrorMessage(e, 'The daily logs did not load.')))
   }, [loadDailyLogs])
-  const boardWithLogs = useMemo(() => (board ? withDailyLogs(board, dailyLogRows) : null), [board, dailyLogRows])
+  const boardWithLogs = useMemo(() => (board ? withCrewClockIns(withDailyLogs(board, dailyLogRows), crewRows) : null), [board, dailyLogRows, crewRows])
   const logProject = logProjectId ? (boardWithLogs?.projects.find((p) => p.id === logProjectId) ?? null) : null
   const setLogWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
@@ -621,6 +1193,107 @@ export default function GcProjects() {
       return false
     } finally {
       setLogBusy(false)
+    }
+  }
+
+  // The weekly report (Building's U7c): a card on the Daily log window. When the window opens it reads what the report
+  // reads: the job's sent reports, submittals and schedule, and for the money team its customer's bills (the late
+  // finish's words); the logs and the change orders are on the page already. Each send reads the reports again.
+  const [weeklyRows, setWeeklyRows] = useState<{ id: string; rows: WeeklyReportRow[] } | null>(null)
+  const [weeklyRead, setWeeklyRead] = useState<{ id: string; submittals: SubmittalTables; schedule: GcProject['schedule'] | null; bills: BillingRows | null } | null>(null)
+  const loadWeekly = useCallback(async () => {
+    if (!logProjectId || !canUseGcBuilding(role)) return
+    setWeeklyRows({ id: logProjectId, rows: await loadGcWeeklyReports([logProjectId]) })
+  }, [logProjectId, role])
+  useEffect(() => {
+    void loadWeekly().catch((e) => setLogProblem(formatErrorMessage(e, 'The weekly reports did not load.')))
+  }, [loadWeekly])
+  useEffect(() => {
+    if (!logProjectId || !board || !canUseGcBuilding(role)) return
+    let live = true
+    Promise.all([loadGcSubmittals([logProjectId]), loadSchedule(board, logProjectId).catch(() => null), canSeeGcMoney(role) ? loadGcBillingRows([logProjectId]) : Promise.resolve(null)])
+      .then(([submittals, read, bills]) => {
+        if (live) setWeeklyRead({ id: logProjectId, submittals, schedule: read?.project.schedule ?? null, bills })
+      })
+      .catch((e) => {
+        if (live) setLogProblem(formatErrorMessage(e, 'What the weekly report reads did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [logProjectId, board, role])
+  const weeklyState = useMemo(() => {
+    if (!boardWithLogs || !logProjectId) return null
+    let s = withChangeOrders(boardWithLogs, changeOrderRows)
+    if (weeklyRead && weeklyRead.id === logProjectId) {
+      s = withSubmittals(s, weeklyRead.submittals)
+      if (weeklyRead.bills) s = billingStateFor(s, logProjectId, weeklyRead.bills)
+      s = withSchedules(s, new Map([[logProjectId, weeklyRead.schedule]]))
+    }
+    return weeklyRows && weeklyRows.id === logProjectId ? withWeeklyReports(s, weeklyRows.rows) : s
+  }, [boardWithLogs, logProjectId, changeOrderRows, weeklyRead, weeklyRows])
+  const weeklyProject = logProjectId ? (weeklyState?.projects.find((p) => p.id === logProjectId) ?? null) : null
+  /** A company row not sent yet that this send goes again on, else a new one. */
+  const weeklyRowFor = async (s: WeeklyReportSend): Promise<string> => weeklyReportRetryRow(weeklyRows?.id === s.projectId ? weeklyRows.rows : [], s)?.id ?? recordWeeklyReport(s, today)
+  const weeklyWrites: WeeklyReportWrites = {
+    onSentFromMe: (s) => {
+      void recordWeeklyReport(s, today)
+        .then(loadWeekly)
+        .catch((e) => setLogProblem(formatErrorMessage(e, 'The weekly report was not kept.')))
+    },
+    onSendFromCompany: async (s) => {
+      const answer = await sendWeeklyReport(s, await weeklyRowFor(s))
+      await loadWeekly()
+      return answer
+    },
+    onTest: async (s) => {
+      const answer = await sendWeeklyReport(s, await weeklyRowFor(s), true)
+      await loadWeekly()
+      return answer
+    },
+  }
+
+  // The punch list (Building's U3b-ii): a dev's on a job being built, opened at `punch=<projectId>`, behind Building's gate
+  // alone, since at Building's door it goes to the schedule's team while Closeout stays the money team's. It reads the
+  // job's punch list when the window opens. Closeout shows the same lists and reads them with its own.
+  const punchProjectId = params.get('punch')
+  const [punchRowsRead, setPunchRowsRead] = useState<{ id: string; rows: PunchRow[] } | null>(null)
+  const [punchBusy, setPunchBusy] = useState<string | null>(null)
+  const [punchProblem, setPunchProblem] = useState<string | null>(null)
+  const loadPunch = useCallback(async () => {
+    if (!punchProjectId || !canUseGcBuilding(role)) return
+    setPunchRowsRead({ id: punchProjectId, rows: await loadGcPunch([punchProjectId]) })
+  }, [punchProjectId, role])
+  useEffect(() => {
+    void loadPunch().catch((e) => setPunchProblem(formatErrorMessage(e, 'The punch list did not load.')))
+  }, [loadPunch])
+  const punchBoard = useMemo(
+    () => (board && punchProjectId ? withPunch(board, punchRowsRead && punchRowsRead.id === punchProjectId ? punchRowsRead.rows : []) : null),
+    [board, punchProjectId, punchRowsRead],
+  )
+  const punchProject = punchProjectId ? (punchBoard?.projects.find((p) => p.id === punchProjectId) ?? null) : null
+  const setPunchWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('punch', projectId)
+    else next.delete('punch')
+    setParams(next, { replace: true })
+    setPunchProblem(null)
+  }
+  /** The punch list's presses for a window: each runs, then that window's own reads run again, and a refusal shows there. */
+  const punchWritesFor = (setBusy: (id: string | null) => void, setProblem: (problem: string | null) => void, reread: () => Promise<unknown>): PunchWrites => {
+    const run = (busyId: string, work: () => Promise<unknown>, failed: string) => {
+      setBusy(busyId)
+      setProblem(null)
+      void work()
+        .then(reread)
+        .catch((e) => setProblem(formatErrorMessage(e, failed)))
+        .finally(() => setBusy(null))
+    }
+    return {
+      onAdd: (packageId, item) => run(packageId, () => addPunchItem(packageId, item), 'The item was not added.'),
+      onRemove: (itemId) => run(itemId, () => removePunchItem(itemId), 'The item was not taken off.'),
+      onFixedIn: (itemId) => run(itemId, () => punchFixedIn(itemId), 'The item was not recorded fixed.'),
+      onCheck: (itemId, fixed, note) => run(itemId, () => checkPunchItem(itemId, fixed, note), fixed ? 'The item was not checked.' : 'The item was not sent back.'),
     }
   }
 
@@ -697,6 +1370,174 @@ export default function GcProjects() {
       .finally(() => setRfiBusy(null))
   }
 
+  // Draws (Building's U6b): the trades' money on a job being built, opened at `draws=<projectId>`, and at a back-charge
+  // with `&charge=<id>`, for a dev on the money team. Each press reads the draws again. It emails the trade only with
+  // the window's tick on, which starts off (the sends start off), and from the rows just read.
+  const drawsProjectId = params.get('draws')
+  const drawsChargeId = params.get('charge')
+  const drawsProject = drawsProjectId ? (boardWithChanges?.projects.find((p) => p.id === drawsProjectId) ?? null) : null
+  const [drawBusy, setDrawBusy] = useState<string | null>(null)
+  const [drawEmailOn, setDrawEmailOn] = useState(false)
+  /** Our own crew's Pipeline job, picked on Draws (Building's U8): a dev's while Building is built. A link reads the trades again. */
+  const ownCrewWrites = useMemo<OwnCrewWrites>(
+    () => ({
+      onLink: async (packageId, jobId) => {
+        setDrawBusy(packageId)
+        setDrawProblem(null)
+        try {
+          await linkCrewJob(packageId, jobId)
+          const projects = await loadGcProjects()
+          setLoaded((was) => (was ? { ...was, projects } : was))
+          return true
+        } catch (e) {
+          setDrawProblem(formatErrorMessage(e, 'Our crew’s Pipeline job was not saved.'))
+          return false
+        } finally {
+          setDrawBusy(null)
+        }
+      },
+      onSearch: searchCrewJobs,
+      onSuggest: (packageId) => {
+        const project = loaded?.projects.find((p) => p.trades.some((t) => t.id === packageId))
+        const trade = project?.trades.find((t) => t.id === packageId)
+        return project && trade ? suggestCrewJobs(project.id, trade.ownBidId) : Promise.resolve([])
+      },
+    }),
+    [loaded],
+  )
+  const setDrawsWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('draws', projectId)
+    else {
+      next.delete('draws')
+      next.delete('charge')
+    }
+    setParams(next, { replace: true })
+    setDrawProblem(null)
+  }
+  /**
+   * A draw press: run it, read the draws again, then send the email it makes from the fresh rows when the tick is on.
+   * A refused email is said in the window after the press is saved.
+   */
+  const drawWrite = <T,>(busyId: string, packageId: string, work: Promise<T>, failed: string, email?: (project: GcProject, to: DrawEmailTo, done: T) => DrawEmail | null) => {
+    setDrawBusy(busyId)
+    setDrawProblem(null)
+    void work
+      .then(async (done) => {
+        const tables = await loadDraws()
+        if (!email || !drawEmailOn || !canSendGcTradeEmail(role) || !board || !drawsProjectId) return
+        const state = withTradeChanges(withChangeOrders(withDraws(board, tables), changeOrderRows), tables)
+        const project = state.projects.find((p) => p.id === drawsProjectId)
+        const to = project ? drawEmailFor(project, packageId) : null
+        if (!project || !to) return
+        const answer = await emailTheTrade(to.companyId, (lang) => email(project, { ...to, lang }, done))
+        if (answer && !answer.ok) throw new Error(`It is saved. The email did not go: ${gcTradeEmailRefusal(answer.key)}`)
+      })
+      .catch((e) => setDrawProblem(formatErrorMessage(e, failed)))
+      .finally(() => setDrawBusy(null))
+  }
+  const sowOf = (project: GcProject, packageId: string) => project.packages.find((k) => k.id === packageId)?.sow
+  const drawOf = (project: GcProject, packageId: string, drawId: string) => sowOf(project, packageId)?.draws.find((d) => d.id === drawId)
+  const chargeOf = (project: GcProject, packageId: string, chargeId: string) => sowOf(project, packageId)?.backCharges?.find((c) => c.id === chargeId)
+
+  // Closeout (Building's U6d): each trade's last steps and closing the job, opened at `closeout=<projectId>` for a dev on
+  // the money team. It reads the customer's bills, since their retainage on us opens the trades', and the job's punch
+  // list, which holds Accept the work. Both lie over the board with the draws. Each press reads again what it wrote.
+  const closeoutProjectId = params.get('closeout')
+  const [closeoutBills, setCloseoutBills] = useState<{ id: string; rows: BillingRows } | null>(null)
+  const [closeoutPunch, setCloseoutPunch] = useState<{ id: string; rows: PunchRow[] } | null>(null)
+  const [closeoutBusy, setCloseoutBusy] = useState<string | null>(null)
+  const [closeoutProblem, setCloseoutProblem] = useState<string | null>(null)
+  const loadCloseout = useCallback(async () => {
+    if (!closeoutProjectId || !canUseGcBuilding(role) || !canSeeGcMoney(role)) return
+    const [rows, punch] = await Promise.all([loadGcBillingRows([closeoutProjectId]), loadGcPunch([closeoutProjectId])])
+    setCloseoutBills({ id: closeoutProjectId, rows })
+    setCloseoutPunch({ id: closeoutProjectId, rows: punch })
+  }, [closeoutProjectId, role])
+  useEffect(() => {
+    void loadCloseout().catch((e) => setCloseoutProblem(formatErrorMessage(e, 'The customer’s bills or the punch list did not load.')))
+  }, [loadCloseout])
+  const closeoutBillsRead = closeoutBills !== null && closeoutBills.id === closeoutProjectId
+  // The waivers a trade signed in its portal, as the PDFs the portal filed (Portal P5a-2): read for the job whose Draws
+  // or Closeout window is open, when it opens and again after each read of the draws. One that does not load links nothing.
+  const waiverFilesFor = drawsProjectId ?? closeoutProjectId
+  const [waiverFiles, setWaiverFiles] = useState<{ id: string; files: ReadonlyMap<string, WaiverFile[]> } | null>(null)
+  useEffect(() => {
+    if (!waiverFilesFor || !canUseGcBuilding(role) || !canSeeGcMoney(role)) return
+    let live = true
+    loadGcWaiverFiles(waiverFilesFor)
+      .then((rows) => {
+        if (live) setWaiverFiles({ id: waiverFilesFor, files: waiverFilesByDraw(rows) })
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [waiverFilesFor, drawTables, role])
+  const openWaiverFiles = waiverFiles && waiverFiles.id === waiverFilesFor ? waiverFiles.files : NO_WAIVER_FILES
+  const closeoutState = useMemo(() => {
+    if (!boardWithChanges || !closeoutProjectId) return null
+    const billed = closeoutBills && closeoutBills.id === closeoutProjectId ? billingStateFor(boardWithChanges, closeoutProjectId, closeoutBills.rows) : boardWithChanges
+    return withPunch(billed, closeoutPunch && closeoutPunch.id === closeoutProjectId ? closeoutPunch.rows : [])
+  }, [boardWithChanges, closeoutProjectId, closeoutBills, closeoutPunch])
+  const closeoutProject = closeoutProjectId ? (closeoutState?.projects.find((p) => p.id === closeoutProjectId) ?? null) : null
+  const setCloseoutWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('closeout', projectId)
+    else next.delete('closeout')
+    setParams(next, { replace: true })
+    setCloseoutProblem(null)
+  }
+  /** From Closeout to Bill the customer, where the customer's payment of our retainage is recorded. */
+  const closeoutToBill = (projectId: string) => {
+    const next = new URLSearchParams(params)
+    next.delete('closeout')
+    next.set('bill', projectId)
+    setParams(next, { replace: true })
+    setBillProblem(null)
+  }
+  /**
+   * A closeout press: run it, then read again the draws, the customer's bills and the punch list, and the board for an
+   * acceptance or the projects for a closed job. When the Draws window's tick is on it emails the trade: a release marked
+   * paid, and since the Portal's P5c-4 the work accepted and a final pay application that came in. Each email is built
+   * from the rows read again (the board as just read for an acceptance) and keyed once per record.
+   */
+  const closeoutWrite = <T,>(
+    busyId: string,
+    work: Promise<T>,
+    failed: string,
+    reread: { board?: boolean; projects?: boolean } = {},
+    mail?: { packageId: string; kind: 'paid'; drawId: string } | { packageId: string; kind: 'accepted' | 'finalIn' },
+  ) => {
+    setCloseoutBusy(busyId)
+    setCloseoutProblem(null)
+    void work
+      .then(async (result) => {
+        const [tables, , fresh] = await Promise.all([loadDraws(), loadCloseout(), reread.board ? refreshBoard() : null, reread.projects ? reloadProjects() : null])
+        if (!mail || !drawEmailOn || !canSendGcTradeEmail(role) || !board || !closeoutProjectId) return
+        const state = withTradeChanges(withChangeOrders(withDraws(fresh ?? board, tables), changeOrderRows), tables)
+        const project = state.projects.find((p) => p.id === closeoutProjectId)
+        const to = project ? drawEmailFor(project, mail.packageId) : null
+        const sow = project ? sowOf(project, mail.packageId) : undefined
+        if (!to || !sow) return
+        // The paid release by its id; the final that came in by the id its verb answered.
+        const drawId = mail.kind === 'paid' ? mail.drawId : String(result)
+        const draw = sow.draws.find((d) => d.id === drawId)
+        const build = (lang: PortalLang): DrawEmail | null =>
+          mail.kind === 'accepted'
+            ? acceptedEmail({ ...to, lang }, sow, retainageHeldNow(sow))
+            : !draw
+              ? null
+              : mail.kind === 'paid'
+                ? paidEmail({ ...to, lang }, draw)
+                : finalInEmail({ ...to, lang }, draw)
+        const answer = await emailTheTrade(to.companyId, build)
+        if (answer && !answer.ok) throw new Error(`It is saved. The email did not go: ${gcTradeEmailRefusal(answer.key)}`)
+      })
+      .catch((e) => setCloseoutProblem(formatErrorMessage(e, failed)))
+      .finally(() => setCloseoutBusy(null))
+  }
+
   // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
   // the board's projects and their change orders. Read only.
   const [moneyRows, setMoneyRows] = useState<BillingRows | null>(null)
@@ -741,6 +1582,25 @@ export default function GcProjects() {
     const laid = boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null
     return laid && moneySchedules ? withSchedules(laid, moneySchedules) : laid
   }, [boardWithChanges, moneyRows, ourIds, moneySchedules])
+  // Bill day's From the trades (Messages cut 9): the trades' draws against the bill day for one job being built with a
+  // signed trade, opened at `billday=<projectId>` beside To the owner. The money team's, as Money is.
+  const billDayProjectId = billDayFromSearch(params)
+  const billDayJobList = useMemo(() => billDayJobs(moneyState), [moneyState])
+  // Each building job's card: the "Bill day · 3 of 7" pill and its line, read for the money team on the board.
+  const billDayCards = useBillDayCards(boardWithChanges, drawTables, canSeeGcMoney(role) && devView === 'board')
+  const openBillDay = (projectId: string) => {
+    setDevView('money')
+    const next = new URLSearchParams(params)
+    next.set('view', 'money')
+    next.set('billday', projectId)
+    setParams(next, { replace: true })
+  }
+  const setBillDayJob = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('billday', projectId)
+    else next.delete('billday')
+    setParams(next, { replace: true })
+  }
 
   // Bill the customer (Owner Billing's O4a): the project's terms, its price as signed and its bills, read when
   // the window opens at `bill=<projectId>` and laid over the board's project with its change orders. The money
@@ -776,6 +1636,22 @@ export default function GcProjects() {
     }
   }, [billProjectId, board, role])
   const billScheduleRead = billSchedule !== null && billSchedule.id === billProjectId
+  // Pay by card's switch (O8c), the app_settings row the owner turns on: read when the window opens. Unknown is off.
+  const [billCardOfferOn, setBillCardOfferOn] = useState(false)
+  useEffect(() => {
+    if (!billProjectId || !canSeeGcMoney(role)) return
+    let live = true
+    fetchGcCardBillOn()
+      .then((on) => {
+        if (live) setBillCardOfferOn(on)
+      })
+      .catch(() => {
+        if (live) setBillCardOfferOn(false)
+      })
+    return () => {
+      live = false
+    }
+  }, [billProjectId, role])
   const billState = useMemo(() => {
     const laid = boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows) : null
     return laid && billSchedule && billSchedule.id === billProjectId ? withSchedules(laid, new Map([[billProjectId, billSchedule.schedule]])) : laid
@@ -819,6 +1695,17 @@ export default function GcProjects() {
     }
     return out
   }, [billOwn])
+  // Papers on this job (Messages cut 4): everyone on the job and each paper of their flow, opened at `papers=<projectId>`.
+  const papersProjectId = params.get('papers')
+  const setPapersWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('papers', projectId)
+    else next.delete('papers')
+    setParams(next, { replace: true })
+  }
+  // A round's window (Messages cut 4): the flow panel's round pills open it with the person's reading in hand.
+  const [roundSpec, setRoundSpec] = useState<RoundSpec | null>(null)
+  const roundOpener = useMemo<RoundOpener>(() => ({ openRound: setRoundSpec }), [])
   const setBillWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('bill', projectId)
@@ -826,6 +1713,88 @@ export default function GcProjects() {
     setParams(next, { replace: true })
     setBillProblem(null)
   }
+  // Get started (the Board's B6-c-ii): `start=<projectId>`, a dev's until award's door, as gc_start_project is. Its
+  // job's schedule is read when it opens, as Bill the customer's is, so the schedule step counts; who was told the job
+  // started comes from the trade messages under its key.
+  const startProjectId = params.get('start')
+  const setStartWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('start', projectId)
+    else next.delete('start')
+    setParams(next, { replace: true })
+  }
+  const [startRead, setStartRead] = useState<{ id: string; schedule: GcProject['schedule'] | null; told: string[] } | null>(null)
+  useEffect(() => {
+    if (!startProjectId || !board || role !== 'dev') return
+    let live = true
+    Promise.all([loadSchedule(board, startProjectId).catch(() => null), loadGcStartTold(startProjectId).catch(() => [])])
+      .then(([read, told]) => {
+        if (live) setStartRead({ id: startProjectId, schedule: read?.project.schedule ?? null, told })
+      })
+    return () => {
+      live = false
+    }
+  }, [startProjectId, board, role])
+  const startState = useMemo(
+    () => (board && startRead && startRead.id === startProjectId ? withSchedules(board, new Map([[startRead.id, startRead.schedule]])) : null),
+    [board, startRead, startProjectId],
+  )
+  const startProject = startState?.projects.find((x) => x.id === startProjectId && (x.stage === 'buyout' || x.stage === 'building')) ?? null
+  const startToldNames = useMemo(
+    () => (startRead && board ? startRead.told.map((id) => board.partners.find((x) => x.id === id)?.company ?? 'A company') : []),
+    [startRead, board],
+  )
+  /** Tell each company awarded on the job that it started, once each (the key), naming any the email did not reach. */
+  const tellStarted = async (projectId: string): Promise<StartTold> => {
+    if (!board) return { told: [], missed: [] }
+    const already = new Set(await loadGcStartTold(projectId))
+    const told: string[] = []
+    const missed: StartTold['missed'] = []
+    for (const r of startRecipients(board, projectId)) {
+      if (already.has(r.companyId)) {
+        told.push(r.company)
+        continue
+      }
+      const req = canSendGcTradeEmail(role) ? startEmailRequest(board, projectId, r.companyId, tradeMailLang(langs[r.companyId])) : null
+      const answer = req ? await sendGcTradeEmail(req) : null
+      if (answer?.ok) told.push(r.company)
+      else missed.push({ company: r.company, why: gcTradeEmailRefusal(answer?.key ?? 'officeOnly') })
+    }
+    return { told, missed }
+  }
+  const startPresses = (projectId: string): StartPresses => ({
+    start: async (anyway) => {
+      await startGcProject(projectId, anyway)
+      // Started is saved whatever the emails do; the window names any company they missed.
+      await reloadProjects()
+      return tellStarted(projectId)
+    },
+    tellAgain: () => tellStarted(projectId),
+    setPermit: async (done) => {
+      await setGcProjectStartItem(projectId, { permit_on: done ? today : null })
+      await reloadProjects()
+    },
+    setStartDate: async (date) => {
+      await setGcProjectStartItem(projectId, { start_date: date })
+      await reloadProjects()
+    },
+    // Our contract's price by line is Our number's, so Mark it signed is the money team's, with Our number read.
+    ...(canSeeGcMoney(role) && moneyShown
+      ? {
+          signContract: async (signed: boolean) => {
+            const project = board?.projects.find((x) => x.id === projectId)
+            await signGcOwnerContract(projectId, signed ? today : null, signed && project ? ownerContractWorthNow(project) : null)
+            await reloadProjects()
+          },
+        }
+      : {}),
+    award: (packageId) => setComparing({ projectId, packageId }),
+    // The statement of work is sent on the trade's card: the window steps aside and the card scrolls into view.
+    openSow: (packageId) => {
+      setStartWindow(null)
+      window.setTimeout(() => document.querySelector(`[data-gc-trade-sow="${packageId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
+    },
+  })
   /** A Bill the customer press: run it, read the bills again when it wrote, and say the problem in the window. */
   const billWrite = (id: string, work: () => Promise<unknown>, failed: string, reload = true) => {
     setBillBusy(id)
@@ -880,8 +1849,10 @@ export default function GcProjects() {
     )
   }
 
-  if (authLoading) return null
-  if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
+  // A hard load waits for the role before it decides (`pageGate`), so a typed or pushed link lands here.
+  const gate = pageGate({ loading: authLoading, user, role }, canOpenGcProjects)
+  if (gate === 'wait') return null
+  if (gate === 'away') return <Navigate to="/dashboard" replace />
 
   const setWindow = (open: boolean) => {
     const next = new URLSearchParams(params)
@@ -982,7 +1953,7 @@ export default function GcProjects() {
   }
 
   const page = (
-    <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
+    <div data-gc-page style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100, width: '100%', boxSizing: 'border-box', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <span data-tour="gc-mode-switch" style={{ display: 'inline-flex' }}>
           <BidsModeToggle mode="gc" />
@@ -1003,25 +1974,25 @@ export default function GcProjects() {
           </Btn>
         </div>
       </div>
-      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-        Each project as the window left it: its sets of plans, its sheets, its trades with their scope lines and the gaps. Who to ask comes with the company record.
-      </div>
-
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
       {/* Door 2: the Board for the GC office. Each company's portal link is in its window (Their portal), a dev's until the trade wave. */}
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
-            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Follow up or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'customers' ? 'Customers' : devView === 'messages' ? 'Messages' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
+            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Customers, Follow up, Messages or Money' : 'Project Board, Trade partners, Customers, Follow up or Messages'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
-              {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
+              {devPill('customers', 'Customers')}
+              {devPill('followUp', followUpCount > 0 ? `Follow up (${followUpCount})` : 'Follow up')}
+              {devPill('messages', 'Messages')}
               {/* Money is the money team's (the Owner Billing door). */}
               {canSeeGcMoney(role) && devPill('money', 'Money')}
             </div>
           </div>
-          {board ? (
+          {devView === 'messages' ? (
+            <GcMessages view={messagesView} problem={messagesProblem} nowIso={messagesNow} onOpenThread={(id) => thread.openThread(id)} />
+          ) : board ? (
             devView === 'board' ? (
               <GcBoard
                 state={board}
@@ -1030,13 +2001,55 @@ export default function GcProjects() {
                 onCompare={(projectId, packageId) => setComparing({ projectId, packageId })}
                 moneyShown={moneyShown}
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
+                onChase={() => setDevView('followUp')}
+                onFollowUpJob={(projectId, partnerId, calling) => setFollowSheet({ projectId, partnerId, calling })}
+                ring={ringState}
               />
             ) : devView === 'partners' ? (
-              <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
+              <GcFlowBoard
+                kind="trade"
+                by={partnersBy}
+                onBy={setPartnersBy}
+                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} onFind={(trade) => navigate(subsLaneHref(trade))} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} scriptOpenAtStart={scriptAtStart} />}
+                onFollowUp={boardNeedsAHand}
+                onOpenProject={boardOpenProject}
+                onBillDay={boardBillDay}
+              />
+            ) : devView === 'customers' ? (
+              <GcFlowBoard
+                kind="customer"
+                by={customersBy}
+                onBy={setCustomersBy}
+                list={<GcCustomersList customers={board.customers} projects={board.projects} onOpenProject={boardOpenProject} onBillDay={boardBillDay} />}
+                onFollowUp={boardNeedsAHand}
+                onOpenProject={boardOpenProject}
+                onBillDay={boardBillDay}
+              />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
-                  <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} />
+                  <GcMoney
+                    state={moneyState}
+                    schedulesRead={moneySchedules !== null}
+                    own={ownWork}
+                    fromTheTrades={{
+                      open: billDayProjectId !== null,
+                      onSwitch: (open) => setBillDayJob(open ? (billDayJobList[0]?.id ?? 'none') : null),
+                      view: (
+                        <GcBillDayTrades
+                          state={moneyState}
+                          jobs={billDayJobList}
+                          projectId={billDayProjectId}
+                          onPickJob={setBillDayJob}
+                          drawTables={drawTables}
+                          canWrite={canUseGcBuilding(role)}
+                          {...(canUseGcBuilding(role) ? { onOpenDraws: setDrawsWindow } : {})}
+                          onOpenBill={setBillWindow}
+                          onToOwner={() => setBillDayJob(null)}
+                        />
+                      ),
+                    }}
+                  />
                   {user && loaded && (
                     <GcMoneyMondayEmail
                       me={{ id: user.id, name: profileName ?? '' }}
@@ -1051,7 +2064,27 @@ export default function GcProjects() {
                 <div style={{ fontSize: '0.875rem' }}>Loading the money…</div>
               )
             ) : (
-              <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} />
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {/* Messages, cut 2: who is waiting on us and what we owe them, above the asks (v2.5289). */}
+                <FollowUpPanel
+                  me={followUpMe}
+                  team={followUpTeam}
+                  io={FOLLOW_UP_IO}
+                  onOpenThread={thread.openThread}
+                  say={showToast}
+                  onCount={setFollowUpCount}
+                  {...(canApproveClause(role)
+                    ? { clauses: { rows: clauseNeeds.rows, render: (rows: readonly ClauseNeedRow[]) => <ClauseNeedRows rows={rows} onDecided={clauseNeeds.reload} /> } }
+                    : {})}
+                  planQuestions={{
+                    record: recordQuestion,
+                    send: sendQuestionToArchitect,
+                    jobName: (projectId) => loaded.projects.find((p) => p.id === projectId)?.name ?? null,
+                    onAsked: () => void load(),
+                  }}
+                />
+                <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} onFollowUp={(partnerId, calling) => setFollowSheet({ ...(partnerId ? { partnerId } : {}), calling: calling ?? false })} />
+              </div>
             )
           ) : boardProblem ? (
             <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{boardProblem}</div>
@@ -1076,178 +2109,280 @@ export default function GcProjects() {
         const tabs = boardProject ? boardProject.packages.filter(packageHasTab).length : 0
         return (
           <div key={p.id} data-gc-project={p.id} data-tour={tour('gc-project-card')} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }}>
-            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: '1.02rem' }}>{p.name}</strong>
-              <Chip tone={justMade === p.id ? 'green' : 'grey'}>{p.stage}</Chip>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.address}</span>
-              {p.bidDue && <span style={{ fontSize: '0.85rem' }}>bid due {p.bidDue}</span>}
-              <Btn kind="quiet" dataTour={tour('gc-plans')} onClick={() => setPlansWindow(p.id)}>
-                The plans
-              </Btn>
-              <Btn kind="quiet" dataTour={tour('gc-questions')} onClick={() => setQuestionsWindow(p.id)}>
-                Questions about the plans{openQuestions(p).length > 0 ? ` · ${openQuestions(p).length} open` : ''}
-              </Btn>
-              {!p.lostOn && (
-                <Btn kind="quiet" dataTour={tour('gc-new-set')} onClick={() => setSetWindow(p.id)}>
-                  A new set of plans came in
-                </Btn>
-              )}
-              {canUseGcSchedule(role) && board && (
-                <Btn kind="quiet" onClick={() => setScheduleWindow(p.id)}>
-                  Schedule
-                </Btn>
-              )}
-              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
-                  {(() => {
-                    const count = changeOrderRows.filter((r) => r.project_id === p.id).length
-                    return count > 0 ? `Change orders · ${count}` : 'Change orders'
-                  })()}
-                </Btn>
-              )}
-              {/* The daily log (Building's U3a-ii): a dev's, on a job being built (the view's own stage, so a closed job has none). */}
-              {canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setLogWindow(p.id)}>
-                  {(() => {
-                    const project = boardWithLogs.projects.find((x) => x.id === p.id)
-                    const missed = project ? missingLogs(project, today).length : 0
-                    return missed > 0 ? `Daily log · ${missed} missed` : 'Daily log'
-                  })()}
-                </Btn>
-              )}
-              {/* The submittal register (Building's U4b): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setSubmittalsWindow(p.id)}>
-                  Submittals
-                </Btn>
-              )}
-              {/* RFIs (Building's U5b): a dev's, on a job being built. */}
-              {canUseGcBuilding(role) && board && p.stage === 'building' && (
-                <Btn kind="quiet" onClick={() => setRfisWindow(p.id)}>
-                  RFIs
-                </Btn>
-              )}
-              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
-                <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
-                  Bill the customer
-                </Btn>
-              )}
-              {(p.sqFt || p.sizeNote) && (
-                <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
-              )}
-              {showNumber && (
-                <Btn kind="quiet" onClick={() => setNumberOpen(numberOpen === p.id ? null : p.id)}>
-                  {numberOpen === p.id ? 'Hide our number' : 'Our number'}
-                </Btn>
-              )}
-              {tabs > 0 && (
-                <Btn kind="quiet" onClick={() => setTabsOpen(tabsOpen === p.id ? null : p.id)}>
-                  {tabsOpen === p.id ? 'Hide the bid tabs' : `Bid tabs (${tabs})`}
-                </Btn>
-              )}
-            </div>
-            {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
-            {showNumber && board && numberOpen === p.id && <GcOurNumber state={board} project={boardProject} onSave={(values) => saveMoney(p.id, values)} />}
-            {boardProject && board && tabs > 0 && tabsOpen === p.id && <GcBidTabs state={board} project={boardProject} share={shareTab} />}
-            <div style={{ fontSize: '0.85rem' }}>
-              {p.planSets.length} {p.planSets.length === 1 ? 'set' : 'sets'} of plans
-              {newest ? `, newest ${newest.label} of ${newest.issuedOn}` : ''}. {p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}
-              {p.specs.length > 0 ? `, ${p.specs.length} ${p.specs.length === 1 ? 'section' : 'sections'}` : ''}.
-            </div>
-            {(
-              <div data-tour={tour('gc-drive')} style={{ fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {p.driveFolderUrl ? (
-                  <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
-                    The job folder in Drive
-                  </a>
-                ) : (
-                  <Btn
-                    kind="quiet"
-                    disabled={checking === `${p.id}:folders`}
-                    onClick={() => {
-                      setChecking(`${p.id}:folders`)
-                      void makeDriveFolders(p.id)
-                        .then(async (folders) => {
-                          await load()
-                          if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
-                        })
-                        .catch((e) => showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error'))
-                        .finally(() => setChecking(null))
-                    }}
-                  >
-                    {checking === `${p.id}:folders` ? 'Making the folder…' : 'Make the Drive folder'}
-                  </Btn>
-                )}
-                {newest?.drive.url && (
-                  <>
-                    <a href={newest.drive.url} target="_blank" rel="noreferrer">
-                      {newest.label}'s plans
-                    </a>
-                    <span style={{ color: newest.drive.access === 'anyone' ? 'var(--text-green-700)' : newest.drive.access === 'restricted' || newest.drive.checkedOn ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-                      {newest.drive.access === 'anyone'
-                        ? `Anyone with the link can open it, checked ${newest.drive.checkedOn ?? ''}.`
-                        : newest.drive.access === 'restricted'
-                          ? `Only some people can open it, checked ${newest.drive.checkedOn ?? ''}. Please correct. ${DRIVE_RESTRICTED_WORDS}`
-                          : newest.drive.checkedOn
-                            ? `Our helper could not see this link on ${newest.drive.checkedOn}. Share it with the intake service account, or move the plans into the job folder.`
-                            : 'Who can open it is not checked yet.'}
-                    </span>
-                    <Btn
-                      kind="quiet"
-                      disabled={checking === `${p.id}:${newest.rev}`}
-                      onClick={() => {
-                        setChecking(`${p.id}:${newest.rev}`)
-                        void checkDriveAccess(newest.drive.url, { projectId: p.id, rev: newest.rev })
-                          .then(async (v) => {
-                            await load()
-                            if (!v.seen && v.note) showToast(v.note, 'error')
-                          })
-                          .catch((e) => showToast(formatErrorMessage(e, 'The link was not checked.'), 'error'))
-                          .finally(() => setChecking(null))
-                      }}
-                    >
-                      {checking === `${p.id}:${newest.rev}` ? 'Checking…' : newest.drive.access === null ? 'Check the link' : 'Check again'}
-                    </Btn>
-                  </>
-                )}
+            {/* The head in shape D (to-do #108, PR 1): the name and the stage, the facts line, and the doors as grouped sets,
+                each with the fact that says whether to open it. The words are `cardHead.ts`'s; the gates are the page's. */}
+            <GcCardHead
+              name={p.name}
+              stageWords={p.stage}
+              stageTone={justMade === p.id ? 'green' : 'grey'}
+              facts={{
+                address: p.address,
+                sqFt: p.sqFt,
+                sizeNote: p.sizeNote,
+                owner: boardProject?.owner ?? null,
+                architect: boardProject?.architect ?? null,
+                stage: cardStageOf(p.stage),
+                bidDue: p.bidDue,
+                startDate: boardProject?.startDate ?? null,
+                startedOn: boardProject?.startedOn ?? null,
+                lostOn: p.lostOn,
+                closedOn: boardProject?.closedOn ?? null,
+                today,
+              }}
+              doors={{
+                stage: cardStageOf(p.stage),
+                lost: Boolean(p.lostOn),
+                can: {
+                  // Papers on this job (Messages cut 4): the office team's, the flows' read's audience.
+                  papers: canOpenGcProjects(role),
+                  // Send the owner back to Prospects (v2.5561): the prospects staff, on a lost job.
+                  prospects: Boolean(p.lostOn) && canAccessProspectPipeline(role, false),
+                  schedule: canUseGcSchedule(role) && Boolean(board),
+                  // Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is.
+                  start: role === 'dev' && Boolean(board),
+                  // The daily log (Building's U3a-ii), the punch list (U3b-ii), the submittals (U4b) and RFIs (U5b): a dev's
+                  // on a job being built; Draws (U6b) and Closeout (U6d) a dev's on the money team.
+                  log: canUseGcBuilding(role) && Boolean(boardWithLogs),
+                  punch: canUseGcBuilding(role) && Boolean(board),
+                  submittals: canUseGcBuilding(role) && Boolean(board),
+                  rfis: canUseGcBuilding(role) && Boolean(board),
+                  draws: canUseGcBuilding(role) && canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  changes: canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  bill: canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  // Bill day (Messages cut 9): the money team's, on a job being built with a signed trade.
+                  billDay: canSeeGcMoney(role) && Boolean(billDayCards.get(p.id)),
+                  closeout: canUseGcBuilding(role) && canSeeGcMoney(role) && Boolean(boardWithChanges),
+                  number: Boolean(showNumber),
+                  tabs: tabs > 0,
+                },
+                counts: {
+                  questionsOpen: openQuestions(p).length,
+                  logMissed: (() => {
+                    const project = boardWithLogs?.projects.find((x) => x.id === p.id)
+                    return project ? missingLogs(project, today).length : 0
+                  })(),
+                  changeOrders: changeOrderRows.filter((r) => r.project_id === p.id).length,
+                  billDayOk: billDayCards.get(p.id)?.ok ?? 0,
+                  billDayGates: billDayCards.get(p.id)?.gates ?? 7,
+                  tabs,
+                },
+                open: { number: numberOpen === p.id, tabs: tabsOpen === p.id },
+              }}
+              tourOn={cardIndex === 0}
+              onDoor={(key) => {
+                const press: Record<DoorKey, () => void> = {
+                  plans: () => setPlansWindow(p.id),
+                  papers: () => setPapersWindow(p.id),
+                  questions: () => setQuestionsWindow(p.id),
+                  newSet: () => setSetWindow(p.id),
+                  schedule: () => setScheduleWindow(p.id),
+                  start: () => setStartWindow(p.id),
+                  log: () => setLogWindow(p.id),
+                  punch: () => setPunchWindow(p.id),
+                  submittals: () => setSubmittalsWindow(p.id),
+                  rfis: () => setRfisWindow(p.id),
+                  draws: () => setDrawsWindow(p.id),
+                  changes: () => setChangesWindow(p.id),
+                  bill: () => setBillWindow(p.id),
+                  billDay: () => openBillDay(p.id),
+                  closeout: () => setCloseoutWindow(p.id),
+                  number: () => setNumberOpen(numberOpen === p.id ? null : p.id),
+                  tabs: () => setTabsOpen(tabsOpen === p.id ? null : p.id),
+                  prospects: () => void sendOwnerBack(p),
+                }
+                press[key]()
+              }}
+            />
+            {/* How the stage is going (the Board's B2b-vii), under the title: the ring's own state (B2b-vi-c), drawn
+                only for a stage whose every layer this reader has read, so the strip and the ring give one answer. */}
+            {(() => {
+              const ringProject = ringState?.state.projects.find((x) => x.id === p.id)
+              // Bill day's line (Messages cut 9), the money team's: the verdict band's foot, or on its own while the strip is not drawn.
+              const billDay = canSeeGcMoney(role) && billDayCards.get(p.id) ? <BillDayCardLine facts={billDayCards.get(p.id)!} onOpen={() => openBillDay(p.id)} /> : null
+              if (!ringState || !ringProject || !ringState.ready.has(ringProject.stage)) return billDay
+              // Each next step opens what the card's own buttons open, behind the same doors; words alone otherwise.
+              const opens: Partial<Record<HealthTarget, () => void>> = {
+                trades: () => document.querySelector(`[data-gc-project="${CSS.escape(p.id)}"] [data-gc-trade-asks]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+                plans: () => setPlansWindow(p.id),
+                ...(showNumber ? { number: () => setNumberOpen(p.id) } : {}),
+                ...(tabs > 0 ? { bidTabs: () => setTabsOpen(p.id) } : {}),
+                ...(canUseGcSchedule(role) && board ? { schedule: () => setScheduleWindow(p.id) } : {}),
+                ...(role === 'dev' && board && (p.stage === 'buyout' || p.stage === 'building') && !p.lostOn ? { start: () => setStartWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' ? { log: () => setLogWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && board && p.stage === 'building' ? { submittals: () => setSubmittalsWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && p.stage === 'building' ? { draws: () => setDrawsWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && (p.stage === 'building' || p.stage === 'closed') ? { closeout: () => setCloseoutWindow(p.id) } : {}),
+                ...(canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn ? { bill: () => setBillWindow(p.id) } : {}),
+              }
+              return (
+                <GcStageHealth
+                  state={ringState.state}
+                  project={ringProject}
+                  canOpen={(tab) => Boolean(opens[healthTabTarget(tab)])}
+                  onTab={(tab) => opens[healthTabTarget(tab)]?.()}
+                  // Its one write is Get started's own press, behind Get started's door (a dev's until award's door).
+                  {...(role === 'dev'
+                    ? {
+                        onSetStartDate: async (date: string) => {
+                          await setGcProjectStartItem(p.id, { start_date: date })
+                          await reloadProjects()
+                        },
+                      }
+                    : {})}
+                  moneyShown={canSeeGcMoney(role) && moneyShown}
+                  foot={billDay ?? undefined}
+                />
+              )
+            })()}
+            {roughKeepLines[p.id] && (
+              <div role="status" data-rough-not-kept style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
+                {roughKeepLines[p.id]}
               </div>
             )}
-            <div style={{ display: 'grid', gap: '0.4rem' }}>
-              {p.trades.map((t) => (
-                <div key={t.id} style={{ display: 'grid', gap: '0.15rem', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <strong>{t.trade}</strong>
-                    {t.ours && <Chip tone="blue">ours</Chip>}
-                    {t.budget > 0 && <span style={{ color: 'var(--text-muted)' }}>{money(t.budget)}</span>}
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {t.scope.length} scope {t.scope.length === 1 ? 'line' : 'lines'}
-                      {t.excludes.length > 0 ? `, leaves out ${t.excludes.length}` : ''}
-                    </span>
-                    {t.scope.length > 0 && (
-                      <Btn kind="quiet" onClick={() => setBook({ trade: t.trade, projectId: p.id })}>
-                        Save as a set
-                      </Btn>
-                    )}
-                  </div>
-                  <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)' }}>
-                    {t.scope.map((s) => (
-                      <li key={s.id}>
-                        {s.label}
-                        {s.sheets && s.sheets.length > 0 ? ` · ${s.sheets.join(', ')}` : ''}
-                        {s.specs && s.specs.length > 0 ? ` · ${s.specs.join(', ')}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                  {/* The trade's statement of work once it is awarded (B6-a-ii): only a dev reads one while the Board is built. */}
-                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canEmail={canSendGcTradeEmail(role)} />}
-                  {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
-                  {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
-                </div>
-              ))}
-            </div>
+            {showNumber && board && numberOpen === p.id && (
+              <GcOurNumber
+                state={board}
+                project={numberRough?.id === p.id && numberRough.rough ? { ...boardProject, rough: numberRough.rough } : boardProject}
+                onSave={(values) => saveMoney(p.id, values)}
+                gcJob={{
+                  jobLabel: ownWorkLabel(boardProject.generalConditionsJobId),
+                  heldBy: loaded ? heldByOthers(crewJobsHeld(loaded.projects, p.id, gcJobsOf), generalConditionsHolder(p.id)) : {},
+                  onName: (jobId) => nameGcJob(p.id, jobId),
+                  search: searchPipelineJobs,
+                }}
+              />
+            )}
+            {boardProject && board && tabs > 0 && tabsOpen === p.id && <GcBidTabs state={board} project={boardProject} share={shareTab} />}
+            {/* The trades (to-do #108, shape D, PR 3): one row a trade from `tradeRows.ts`, the tile's colour as its stripe,
+                with the scope lines, the statement of work and the asks under it, open by default and folded by a press. */}
+            {(() => {
+              const stage = cardStageOf(p.stage)
+              const health = healthByProject.get(p.id) ?? null
+              const rows = p.trades.map((t) =>
+                tradeRow({
+                  stage,
+                  trade: t,
+                  pkg: boardProject?.packages.find((k) => k.id === t.id) ?? null,
+                  tile: health?.tiles.find((x) => x.packageId === t.id) ?? null,
+                  partners: board?.partners ?? [],
+                }),
+              )
+              return (
+                <GcBand title="The trades" words={tradesWords(rows)} keyOn={tradeKeyOn === p.id} onKey={() => setTradeKeyOn(tradeKeyOn === p.id ? null : p.id)}>
+                  {tradeKeyOn === p.id && <GcTradeRowsKey stage={stage} />}
+                  <GcTradeRows
+                    stage={stage}
+                    rows={rows}
+                    onNext={(row) => (row.next?.key === 'compare' ? setComparing({ projectId: p.id, packageId: row.id }) : openAsk(p.id, row.id))}
+                    details={(row) => {
+                      const t = p.trades.find((x) => x.id === row.id)
+                      if (!t) return null
+                      return (
+                        <>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                            <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)', flex: '1 1 16rem' }}>
+                              {t.scope.map((s) => (
+                                <li key={s.id}>
+                                  {s.label}
+                                  {s.sheets && s.sheets.length > 0 ? ` · ${s.sheets.join(', ')}` : ''}
+                                  {s.specs && s.specs.length > 0 ? ` · ${s.specs.join(', ')}` : ''}
+                                </li>
+                              ))}
+                            </ul>
+                            {t.scope.length > 0 && (
+                              <Btn kind="quiet" onClick={() => setBook({ trade: t.trade, projectId: p.id })}>
+                                Save as a set
+                              </Btn>
+                            )}
+                          </div>
+                          {/* The trade's statement of work once it is awarded (B6-a-ii): a dev and, since O9, the money team read one. Only
+                              a dev sends it until the award door. */}
+                          {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canSend={canUseGcBoardWrites(role)} canEmail={canSendGcTradeEmail(role)} />}
+                          {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
+                          {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
+                        </>
+                      )
+                    }}
+                  />
+                </GcBand>
+              )
+            })()}
             {gaps.length > 0 && (
               <div data-tour={tour('gc-gaps')} style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
                 {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}: {gaps.map((g) => `${g.trade} leaves out ${g.label} for ${g.by}`).join('. ')}.
+              </div>
+            )}
+            {/* The plans (to-do #108, shape D, PR 4): the newest set with its link and who can open it, and the job's Drive folder,
+                in one band under the trades. The walkthrough's Drive stop points at the band's rows. */}
+            <GcBand title="The plans" words={plansWords(p)}>
+              <div data-tour={tour('gc-drive')} style={{ display: 'grid', gridTemplateColumns: 'max-content minmax(0, 1fr)', gap: '0.3rem 0.9rem', fontSize: '0.85rem', alignItems: 'baseline' }}>
+                {newest?.drive.url && (
+                  <>
+                    <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Newest set</span>
+                    <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      <a href={newest.drive.url} target="_blank" rel="noreferrer">
+                        {newest.label}'s plans
+                      </a>
+                      <span style={{ color: newest.drive.access === 'anyone' ? 'var(--text-green-700)' : newest.drive.access === 'restricted' || newest.drive.checkedOn ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                        {newest.drive.access === 'anyone'
+                          ? `Anyone with the link can open it, checked ${newest.drive.checkedOn ?? ''}.`
+                          : newest.drive.access === 'restricted'
+                            ? `Only some people can open it, checked ${newest.drive.checkedOn ?? ''}. Please correct. ${DRIVE_RESTRICTED_WORDS}`
+                            : newest.drive.checkedOn
+                              ? `Our helper could not see this link on ${newest.drive.checkedOn}. Share it with the intake service account, or move the plans into the job folder.`
+                              : 'Who can open it is not checked yet.'}
+                      </span>
+                      <Btn
+                        kind="quiet"
+                        disabled={checking === `${p.id}:${newest.rev}`}
+                        onClick={() => {
+                          setChecking(`${p.id}:${newest.rev}`)
+                          void checkDriveAccess(newest.drive.url, { projectId: p.id, rev: newest.rev })
+                            .then(async (v) => {
+                              await load()
+                              if (!v.seen && v.note) showToast(v.note, 'error')
+                            })
+                            .catch((e) => showToast(formatErrorMessage(e, 'The link was not checked.'), 'error'))
+                            .finally(() => setChecking(null))
+                        }}
+                      >
+                        {checking === `${p.id}:${newest.rev}` ? 'Checking…' : newest.drive.access === null ? 'Check the link' : 'Check again'}
+                      </Btn>
+                    </span>
+                  </>
+                )}
+                <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Drive</span>
+                <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  {p.driveFolderUrl ? (
+                    <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
+                      The job folder in Drive
+                    </a>
+                  ) : (
+                    <Btn
+                      kind="quiet"
+                      disabled={checking === `${p.id}:folders`}
+                      onClick={() => {
+                        setChecking(`${p.id}:folders`)
+                        void makeDriveFolders(p.id)
+                          .then(async (folders) => {
+                            await load()
+                            if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
+                          })
+                          .catch((e) => showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error'))
+                          .finally(() => setChecking(null))
+                      }}
+                    >
+                      {checking === `${p.id}:folders` ? 'Making the folder…' : 'Make the Drive folder'}
+                    </Btn>
+                  )}
+                </span>
+              </div>
+            </GcBand>
+            {/* The stage's end (PR 4): the outcome as the card's foot, plain buttons under its caption; only Next is blue on the card. */}
+            {boardProject?.stage === 'pursuing' && (
+              <div data-gc-card-foot style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'flex', gap: '0.5rem 1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>When the bid ends</span>
+                <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />
               </div>
             )}
           </div>
@@ -1267,10 +2402,169 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
-      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={canUseGcSchedule(role)} onClose={() => setScheduleWindow(null)} />}
+      {startProject && startState && (
+        <GcStartWindow
+          key={startProject.id}
+          state={startState}
+          project={startProject}
+          presses={startPresses(startProject.id)}
+          told={startToldNames}
+          ownBidHref={(packageId) => {
+            // Our own crew's Trades mode bid, on its Pricing tab.
+            const bidId = loaded?.projects.find((x) => x.id === startProject.id)?.trades.find((t) => t.id === packageId)?.ownBidId
+            return bidId ? `/bids?tab=pricing&bidId=${encodeURIComponent(bidId)}` : null
+          }}
+          covered={comparing !== null || openCompany !== null || openCustomer !== null}
+          onOpenSchedule={() => {
+            const next = new URLSearchParams(params)
+            next.delete('start')
+            next.set('schedule', startProject.id)
+            setParams(next, { replace: true })
+          }}
+          onClose={() => setStartWindow(null)}
+        />
+      )}
+      {scheduleProject && board && (
+        <GcScheduleWindow
+          key={scheduleProject.id}
+          state={board}
+          project={scheduleProject}
+          by={profileName ?? 'The office'}
+          canMove={canUseGcSchedule(role)}
+          canPull={canUseGcBuilding(role)}
+          canTell={canSendGcTradeEmail(role)}
+          reads={scheduleReads}
+          {...(canOpenGcProjects(role) ? { followUp: { writes: followUpWriters, me: profileName ?? null, onLogged: async () => void (await refreshBoard()), ...(followUpFromCompany ? { fromCompany: followUpFromCompany } : {}) } } : {})}
+          onClose={() => setScheduleWindow(null)}
+        />
+      )}
+      {followSheet && board && canOpenGcProjects(role) && (!followSheet.projectId || followSheetJob) && (
+        <GcFollowUpSheet
+          key={`${followSheet.projectId ?? 'all'}:${followSheet.partnerId ?? ''}`}
+          state={board}
+          writes={followUpWriters}
+          {...(followUpFromCompany ? { fromCompany: followUpFromCompany } : {})}
+          me={profileName ?? null}
+          {...(followSheet.partnerId ? { startPartnerId: followSheet.partnerId } : {})}
+          startCalling={followSheet.calling}
+          onClose={() => setFollowSheet(null)}
+          onLogged={async () => void (await refreshBoard())}
+          {...(followSheetJob
+            ? {
+                // What the row counts (G-146): the call list's people with its items, then Follow up's others.
+                list: (s: GcState) => {
+                  const job = s.projects.find((x) => x.id === followSheetJob.id)
+                  return job ? boardFollowPeople(s, job) : []
+                },
+                title: followSheetJob.name,
+              }
+            : {})}
+        />
+      )}
+      {openCustomer && board && (
+        <GcCustomerWindow
+          key={`${openCustomer.id}:${customerWin?.at?.doc ?? ''}:${customerWin?.at?.send ? 'send' : ''}`}
+          state={board}
+          customer={openCustomer}
+          {...(customerWin?.at ? { at: customerWin.at } : {})}
+          {...(sendContract ? { sendContract } : {})}
+          canEmail={canSeeGcMoney(role)}
+          onOpenProject={(projectId) => {
+            setCustomerWin(null)
+            openProjectCard(projectId)
+          }}
+          // Log a contact on Activity (B2b-v-ii): a line in their call log, signed as Follow up signs its lines.
+          onLogContact={async (how, note) => {
+            await logGcCustomerContact({ customerId: openCustomer.id, on: today, byName: profileName ?? '', how, note })
+            await refreshBoard()
+          }}
+          // Their money (B2b-v-iii): the money team's alone. A row opens Bill the customer or the change orders, read
+          // only here; our contract's file opens for whoever the bucket lets read it (a dev today).
+          {...(canSeeGcMoney(role)
+            ? {
+                money: {
+                  view: customerMoney,
+                  problem: customerMoneyProblem,
+                  onOpenBill: (projectId: string) => {
+                    setCustomerWin(null)
+                    setBillWindow(projectId)
+                  },
+                  onOpenChanges: (projectId: string) => {
+                    setCustomerWin(null)
+                    setChangesWindow(projectId)
+                  },
+                  ...(canOpenOwnerContractFile(role)
+                    ? {
+                        onOpenContract: async (projectId: string) => {
+                          const project = board.projects.find((p) => p.id === projectId)
+                          const path = project ? newestContractSend(board, project)?.file?.path : undefined
+                          if (!path) throw new Error('no file went with it.')
+                          await openOwnerContractFile(path)
+                        },
+                      }
+                    : {}),
+                },
+              }
+            : {})}
+          onClose={() => setCustomerWin(null)}
+        />
+      )}
+      {canOpenGcProjects(role) && thread.contactId && (
+        <MessagesRereadContext.Provider value={rereadMessages}>
+          <ThreadWindow
+            contactId={thread.contactId}
+            at={thread.at}
+            onClose={thread.closeThread}
+            view={messagesView}
+            problem={messagesProblem}
+            nowIso={messagesNow}
+            writes={messagesWrites}
+            onOpenJob={openMessagesJob}
+            onOpenRecord={openMessagesRecord}
+            onShowContact={(id) => thread.openThread(id)}
+          />
+        </MessagesRereadContext.Provider>
+      )}
+      {papersProjectId &&
+        canOpenGcProjects(role) &&
+        board &&
+        (() => {
+          const proj = board.projects.find((x) => x.id === papersProjectId)
+          return proj ? (
+            <GcJobPapersWindow
+              projectId={proj.id}
+              project={{ name: proj.name, stage: proj.stage, bidDue: proj.bidDue, ourBidSentOn: proj.ourBidSentOn }}
+              onClose={() => setPapersWindow(null)}
+              onOpenProject={boardOpenProject}
+            />
+          ) : null
+        })()}
+      {roundSpec && (
+        <GcRoundWindow
+          // The panel opens a round with the reading only; the page fills the change order or the pay application it is about.
+          spec={
+            roundSpec.detail
+              ? roundSpec
+              : { ...roundSpec, detail: roundDetailFromProject((boardWithChanges ?? board)?.projects.find((x) => x.id === roundSpec.projectId), roundSpec.step, roundSpec.round, canSeeGcMoney(role)) }
+          }
+          onClose={() => setRoundSpec(null)}
+          onAction={(action, spec) => {
+            setRoundSpec(null)
+            const { partnerId, customerId } = spec.record
+            if (action === 'ask-again' || action === 'remind') {
+              if (partnerId) companyOpener?.openPartner(partnerId, companyAtForStep(spec.step, true))
+              else if (customerId) customerOpener?.openCustomer(customerId, customerAtForStep(spec.step, spec.projectId, true))
+            } else if (action === 'open' && spec.projectId && spec.step.facts.includes('co_answered')) setChangesWindow(spec.projectId)
+            else if (action === 'open' && spec.projectId && spec.step.facts.includes('payapp_paid')) setBillWindow(spec.projectId)
+            else if (action === 'open' && partnerId) companyOpener?.openPartner(partnerId, companyAtForStep(spec.step))
+            else if (action === 'open' && customerId) customerOpener?.openCustomer(customerId, customerAtForStep(spec.step, spec.projectId))
+            else if (action === 'the-trades' && spec.projectId) boardBillDay(spec.projectId)
+          }}
+        />
+      )}
       {openCompany && board && (
         <GcCompanyWindow
-          key={openCompany.id}
+          key={`${openCompany.id}:${companyAt?.tab ?? ''}:${companyAt?.doc ?? ''}:${companyAt?.send ? 'send' : ''}:${companyAt?.file?.attachmentId ?? ''}`}
           state={board}
           partner={openCompany}
           lang={langs[openCompany.id] ?? 'en'}
@@ -1278,9 +2572,50 @@ export default function GcProjects() {
             await setGcCompanyLanguage(openCompany.id, lang)
             await refreshBoard()
           }}
-          onClose={() => setCompanyId(null)}
+          {...(companyAt ? { at: companyAt } : {})}
+          onClose={() => {
+            setCompanyId(null)
+            setCompanyAt(null)
+          }}
           // Their portal stays a dev's until the trade wave: its links' table is dev only (door 2).
           portal={role === 'dev' ? <GcTheirPortal companyId={openCompany.id} /> : undefined}
+          // Its papers' sends and certificate (B6-b-ii): the Board's writes (canUseGcBoardWrites, O9), as B6-b-i's functions
+          // are a dev's today. Each reads the board again.
+          papers={
+            canUseGcBoardWrites(role)
+              ? {
+                  entries: paperEntries,
+                  onSend: async (step, by, note) => {
+                    const outcome = await sendCompanyPaper({ state: board, partner: openCompany, step, by, note, lang: langs[openCompany.id] ?? 'en', entries: paperEntries ?? { msa: null, w9: null } })
+                    if (outcome.ok || outcome.recorded) await refreshBoard()
+                    return outcome
+                  },
+                  onRecordInsurance: async (expiresOn, url) => {
+                    await recordCompanyInsurance(openCompany.id, expiresOn, url)
+                    await refreshBoard()
+                    // A certificate offered from a thread's line (Messages cut 6), filed with its own link: its offer is
+                    // answered, so the line says Filed. A link changed by hand files another file and leaves the offer.
+                    const offered = companyAt?.file
+                    if (offered && url.trim() === offered.link) {
+                      await answerPaper(offered.attachmentId, 'filed')
+                        .then(rereadMessages)
+                        .catch((e: unknown) => showToast(formatErrorMessage(e, 'The certificate is filed, but its line still offers it.'), 'error'))
+                    }
+                  },
+                  // A certificate from their portal, looked at (P5b-2m): marked good, then the board reads again.
+                  onMarkCoiGood: async (paperId) => {
+                    await markCompanyCoiGood(paperId)
+                    await refreshBoard()
+                  },
+                }
+              : undefined
+          }
+          coiReceivedLink={coiLink && coiLink.id === receivedCoiId ? coiLink.url : null}
+          // Log a contact on Activity (B2b-iv): a line of the company's own in the call log, as Follow up signs its lines.
+          onLogContact={async (how, note) => {
+            await logGcAskContact({ companyId: openCompany.id, inviteId: null, on: today, byName: profileName ?? '', how, note, promisedBy: null })
+            await refreshBoard()
+          }}
           onOpenProject={(projectId) => {
             setCompanyId(null)
             openProjectCard(projectId)
@@ -1332,8 +2667,17 @@ export default function GcProjects() {
           problem={changeProblem}
           emailed={changeEmailed}
           askEmailed={askEmailed}
+          fromMessages={changeFromMessages}
+          onOpenMessage={(contactId, messageId) => {
+            // One step: the window closes and their thread opens at the message, so Back comes back to it.
+            const next = withThread(params, contactId, messageId)
+            next.delete('changes')
+            setParams(next)
+            setChangeProblem(null)
+          }}
           onClose={() => setChangesWindow(null)}
           writes={{
+            onPrice: (id, cost, price) => changeWrite(id, priceChangeOrder(id, cost, price), 'The change order was not priced.'),
             onDraft: (draft) => changeWrite('new', draftChangeOrder(changesProject.id, draft), 'The change order was not drafted.'),
             onSend: (id, email) => {
               // The tick (off to start) also emails it to the customer to sign by reply (O4b-2). The change orders are
@@ -1414,7 +2758,25 @@ export default function GcProjects() {
           busy={logBusy}
           problem={logProblem}
           onSave={(log) => saveLog(logProject.id, log)}
+          weekly={weeklyState && weeklyProject ? { state: weeklyState, project: weeklyProject, me: profileName ?? null, writes: weeklyWrites } : null}
+          ourCrew={{ rows: crewRows, jobs: crewJobLabels }}
+          claims={
+            canUseGcBuilding(role) && boardWithChanges && boardWithChanges.projects.some((x) => x.id === logProject.id) ? (
+              <GcBillDayClaims state={boardWithChanges} project={boardWithChanges.projects.find((x) => x.id === logProject.id) ?? logProject} drawTables={drawTables} />
+            ) : null
+          }
           onClose={() => setLogWindow(null)}
+        />
+      )}
+
+      {canUseGcBuilding(role) && punchProject && punchBoard && (
+        <GcPunchWindow
+          state={punchBoard}
+          project={punchProject}
+          writes={punchWritesFor(setPunchBusy, setPunchProblem, loadPunch)}
+          busy={punchBusy}
+          problem={punchProblem}
+          onClose={() => setPunchWindow(null)}
         />
       )}
 
@@ -1475,6 +2837,100 @@ export default function GcProjects() {
         />
       )}
 
+      {canUseGcBuilding(role) && canSeeGcMoney(role) && drawsProject && boardWithChanges && (
+        <GcDrawsWindow
+          state={boardWithChanges}
+          project={drawsProject}
+          extras={drawExtras(drawTables)}
+          waiverFiles={openWaiverFiles}
+          chargeId={drawsChargeId}
+          checkLink={async (url) => (await checkDriveAccess(url)).access}
+          emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
+          busy={drawBusy}
+          problem={drawProblem}
+          ownCrew={{
+            reads: crewReads,
+            linked: crewLinks.map((l) => l.packageId),
+            held: loaded ? crewJobsHeld(loaded.projects, drawsProject.id, gcJobsOf) : [],
+            ...(canUseGcBuilding(role) ? { writes: ownCrewWrites } : {}),
+          }}
+          onClose={() => setDrawsWindow(null)}
+          writes={{
+            onCameIn: (d) => drawWrite(d.packageId, d.packageId, drawCameIn(d), 'The pay application was not recorded.'),
+            onApprove: (packageId, drawId) => drawWrite(drawId, packageId, approveDraw(drawId), 'It was not approved.'),
+            onApproveLess: (packageId, drawId, weApprove, note) =>
+              drawWrite(drawId, packageId, approveDrawLess(drawId, weApprove, note), 'It was not approved.', (project, to) => {
+                const draw = drawOf(project, packageId, drawId)
+                return draw ? lessEmail(to, draw) : null
+              }),
+            onSendBack: (packageId, drawId, weSee, note) => drawWrite(drawId, packageId, sendDrawBack(drawId, weSee, note), 'It was not sent back.'),
+            onPay: (packageId, drawId) =>
+              drawWrite(drawId, packageId, payDraw(drawId), 'It was not marked paid.', (project, to) => {
+                const draw = drawOf(project, packageId, drawId)
+                return draw ? paidEmail(to, draw) : null
+              }),
+            onWaiverIn: (packageId, drawId) => drawWrite(drawId, packageId, drawWaiverIn(drawId), 'The waiver was not recorded.'),
+            onCharge: (packageId, c) =>
+              drawWrite(packageId, packageId, chargeTrade(packageId, c.amount, c.reason, c.photoUrl), 'They were not charged.', (project, to, chargeId) => {
+                const charge = chargeOf(project, packageId, chargeId)
+                return charge ? chargeEmail(to, charge, 'sent') : null
+              }),
+            onSettleCharge: (packageId, chargeId, keep, note) =>
+              drawWrite(chargeId, packageId, settleBackCharge(chargeId, keep, note), keep ? 'The charge was not kept.' : 'The charge was not dropped.', (project, to) => {
+                const charge = chargeOf(project, packageId, chargeId)
+                return charge ? chargeEmail(to, charge, 'settled') : null
+              }),
+            onTakeCharge: (packageId, chargeId, drawId) =>
+              drawWrite(chargeId, packageId, takeBackCharge(chargeId, drawId), 'The charge was not taken off the draw.', (project, to) => {
+                const charge = chargeOf(project, packageId, chargeId)
+                return charge ? chargeEmail(to, charge, 'taken', drawOf(project, packageId, drawId)?.number ?? null) : null
+              }),
+            onSendChange: (packageId, changeOrderId) =>
+              drawWrite(changeOrderId, packageId, sendTradeChange(changeOrderId), 'The change was not sent.', (project, to) => {
+                const co = project.changeOrders?.find((x) => x.id === changeOrderId)
+                return co ? changeEmail(to, co) : null
+              }),
+            // U6d: their signature on paper adds a line to their statement of work, which the board reads.
+            onChangeSignedIn: (packageId, changeOrderId, file) =>
+              drawWrite(
+                changeOrderId,
+                packageId,
+                changeSignedIn(changeOrderId, file).then(async (line) => {
+                  await refreshBoard()
+                  return line
+                }),
+                'Their signature was not recorded.',
+              ),
+          }}
+        />
+      )}
+
+      {canUseGcBuilding(role) && canSeeGcMoney(role) && closeoutProject && closeoutState && (
+        <GcCloseoutWindow
+          state={closeoutState}
+          project={closeoutProject}
+          own={ownWork}
+          extras={drawExtras(drawTables)}
+          waiverFiles={openWaiverFiles}
+          checkLink={async (url) => (await checkDriveAccess(url)).access}
+          emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
+          billsRead={closeoutBillsRead}
+          busy={closeoutBusy}
+          problem={closeoutProblem}
+          onSeeBill={() => closeoutToBill(closeoutProject.id)}
+          punchWrites={punchWritesFor(setCloseoutBusy, setCloseoutProblem, loadCloseout)}
+          onClose={() => setCloseoutWindow(null)}
+          writes={{
+            onAccept: (packageId) => closeoutWrite(packageId, acceptWork(packageId), 'The work was not accepted.', { board: true }, { packageId, kind: 'accepted' }),
+            onFinalCameIn: (d) => closeoutWrite(d.packageId, finalPayAppCameIn(d), 'The final pay application was not recorded.', {}, { packageId: d.packageId, kind: 'finalIn' }),
+            onApproveRelease: (_packageId, drawId) => closeoutWrite(drawId, approveRetainage(drawId), 'The release was not approved.'),
+            onPay: (packageId, drawId) => closeoutWrite(drawId, payDraw(drawId), 'It was not marked paid.', {}, { packageId, kind: 'paid', drawId }),
+            onWaiverIn: (_packageId, drawId) => closeoutWrite(drawId, drawWaiverIn(drawId), 'Their final release was not recorded.'),
+            onCloseJob: () => closeoutWrite(closeoutProject.id, closeJob(closeoutProject.id), 'The job was not closed.', { projects: true }),
+          }}
+        />
+      )}
+
       {/* The waiver window sits below ours (z 1100), so Bill the customer steps aside while it is open. */}
       {canSeeGcMoney(role) && billProject && billState && !waiverFor && (
         <GcBillCustomerWindow
@@ -1489,6 +2945,7 @@ export default function GcProjects() {
           emailed={billEmailed}
           interestEmailed={billInterestEmailed}
           scheduleRead={billScheduleRead}
+          cardOfferOn={billCardOfferOn}
           onClose={() => setBillWindow(null)}
           writes={{
             onSend: (email) => {
@@ -1651,6 +3108,11 @@ export default function GcProjects() {
               const invoiceId = billInvoiceOf(number)
               if (invoiceId) billWrite(`pay-${number}`, () => recordGcPayment(invoiceId, amount, today), 'The payment was not recorded.')
             },
+            // Back to a check bill (O8c): gc-card-bill's undo door voids the Stripe invoice and takes the fee off.
+            onCardUndo: (number) => {
+              const invoiceId = billInvoiceOf(number)
+              if (invoiceId) billWrite(`card-${number}`, () => takeBillOffCard(invoiceId), 'The bill did not go back to a check bill.')
+            },
             onPromise: (number, by, note, channel) => {
               if (billJobId) billWrite(`promise-${number}`, () => recordGcPromise(billJobId, by, note, channel), 'When they said they will pay was not recorded.')
             },
@@ -1789,6 +3251,7 @@ export default function GcProjects() {
 
       {windowOpen && loaded && bookInput && (
         <GcNewProjectWindow
+          initial={newProjectSeed}
           customers={loaded.customers}
           book={book}
           setsFor={(trade) => scopeSetsFor(bookInput, trade)}
@@ -1827,5 +3290,11 @@ export default function GcProjects() {
     </div>
   )
   // A company's name opens its window wherever it shows (the Board's B3-c), for a dev.
-  return <GcCompanyOpenerContext.Provider value={companyOpener}>{page}</GcCompanyOpenerContext.Provider>
+  return (
+    <GcCompanyOpenerContext.Provider value={companyOpener}>
+      <GcCustomerOpenerContext.Provider value={customerOpener}>
+        <GcRoundOpenerContext.Provider value={roundOpener}>{page}</GcRoundOpenerContext.Provider>
+      </GcCustomerOpenerContext.Provider>
+    </GcCompanyOpenerContext.Provider>
+  )
 }

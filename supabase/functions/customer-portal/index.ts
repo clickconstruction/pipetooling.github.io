@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { gcPortalStages, loadGcStageInputs, type GcPortalStages } from '../_shared/gcStages.ts'
+import { gcPortalStages, loadGcStageInputs, type GcPortalStages, type GcStageAdmin } from '../_shared/gcStages.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { portalLetterhead } from '../_shared/portalLetterhead.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleCustomerPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -27,6 +28,8 @@ import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
 import { framesWaitingLine, signerNamesLine } from '../_shared/jobContractSigners.ts'
 import { loadGcPortalJobs, type PortalGcJob } from '../_shared/gcPortal.ts'
+import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn, gcPortalCardBills, type PortalCardBill, type PortalCardRow } from '../_shared/gcCardBill.ts'
+import { customerBillingEmail } from '../_shared/billToParty.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -42,6 +45,12 @@ import { loadGcPortalJobs, type PortalGcJob } from '../_shared/gcPortal.ts'
  * ?slug= resolves my.clickplumbing.com/<slug> → customer_portal_slugs → the
  * active 'all' link. First public resolve locks the slug (belt and
  * suspenders with the modal's Copy — catches links shared by screenshot).
+ *
+ * GC mode, the schedule's PR 15b: each GC job being built with a schedule drawn
+ * carries the customer's schedule (`schedule`, G-90 to G-93), words and dates
+ * only, worked out by `_shared/gcCustomerSchedule.ts` with the generated copy of
+ * the kernels. That file loads with a dynamic import only for a customer with a
+ * GC job of ours, so a homeowner's portal boots as before.
  */
 
 const corsHeaders = {
@@ -144,7 +153,7 @@ serve(async (req) => {
 
     const { data: customer } = await admin
       .from('customers')
-      .select('id, name')
+      .select('id, name, billing_email, contact_info')
       .eq('id', link.customer_id)
       .maybeSingle()
     if (!customer) return jsonResponse({ error: 'Not found' }, 404)
@@ -155,6 +164,29 @@ serve(async (req) => {
     // carrying a verified staff session does NOT count — every "view" on record had been
     // staff. The shared predicate lives in `_shared/publicViewCounting.ts`.
     const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+
+    // Messages cut 8b-i: a paper opened on the customer's page (`?paper=<kind>:<id>`): one portal_paper row for the
+    // office's read-back, counted by the same rule as a page load (outside opens only), and only for a paper on one of
+    // this customer's GC jobs. Answers at once; the statement is not built.
+    const paperParam = url.searchParams.get('paper')
+    if (paperParam) {
+      const [kind, paperId] = paperParam.split(':')
+      const table = kind === 'contract' ? 'gc_owner_contract_sends' : kind === 'change_order' ? 'gc_change_orders' : kind === 'pay_app' ? 'gc_owner_pay_apps' : null
+      if (table && paperId && /^[0-9a-f-]{36}$/i.test(paperId) && viewDecision.count) {
+        const { data: paper } = await admin.from(table).select('project_id').eq('id', paperId).maybeSingle()
+        const projectId = (paper as { project_id?: string } | null)?.project_id
+        if (projectId) {
+          const { data: project } = await admin.from('projects').select('customer_id').eq('id', projectId).maybeSingle()
+          if ((project as { customer_id?: string | null } | null)?.customer_id === link.customer_id) {
+            await admin
+              .from('public_page_views')
+              .insert({ surface: 'portal_paper', entity_id: link.customer_id, via: rawToken ? 'token' : 'slug', paper_kind: kind, paper_id: paperId })
+              .then(() => {}, () => {})
+          }
+        }
+      }
+      return jsonResponse({ ok: true })
+    }
     if (viewDecision.count) {
       void admin
         .from('public_page_views')
@@ -182,7 +214,7 @@ serve(async (req) => {
     }
 
     const jobSelect =
-      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, lien_retainage_held, service_types:service_type_id(name)'
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, lien_retainage_held, billing_only, service_types:service_type_id(name)'
     let jobs: PortalJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
@@ -190,7 +222,7 @@ serve(async (req) => {
         .select(jobSelect)
         .or(`customer_id.eq.${link.customer_id},gc_customer_id.eq.${link.customer_id}`)
         .limit(500)
-      jobs = dedupeJobsById((jobsRaw ?? []) as PortalJobRow[])
+      jobs = dedupeJobsById((jobsRaw ?? []) as unknown as PortalJobRow[])
     } else {
       const jobFilterColumn = link.audience === 'gc' ? 'gc_customer_id' : 'customer_id'
       const { data: jobsRaw } = await admin
@@ -198,7 +230,7 @@ serve(async (req) => {
         .select(jobSelect)
         .eq(jobFilterColumn, link.customer_id)
         .limit(500)
-      jobs = (jobsRaw ?? []) as PortalJobRow[]
+      jobs = (jobsRaw ?? []) as unknown as PortalJobRow[]
     }
 
     // Billed invoices on jobs of ANY non-paid status (working, waiting,
@@ -586,7 +618,7 @@ serve(async (req) => {
     if (link.audience === 'gc' || link.audience === 'all') {
       const sharing = jobs.filter((j) => j.gc_shares_stage_dates === true && j.gc_customer_id === link.customer_id)
       if (sharing.length > 0) {
-        const inputs = await loadGcStageInputs(admin, sharing.map((j) => j.id))
+        const inputs = await loadGcStageInputs(admin as unknown as GcStageAdmin, sharing.map((j) => j.id))
         const todayYmd = todayYmdInAppTz()
         for (const j of sharing) {
           const forJob = inputs.byJob(j.id)
@@ -694,9 +726,65 @@ serve(async (req) => {
     // GC mode (Owner Billing O7c, v2.5025): the GC jobs we build for this customer, with the change orders waiting on
     // them and the work to accept. The customer's link only: a GC's link is Trades mode's.
     const gcJobs: PortalGcJob[] = link.audience === 'gc' ? [] : await loadGcPortalJobs(admin, link.customer_id)
+    // The schedule's PR 15b: their schedule on each GC job being built (G-90 to G-93), worked out with the generated
+    // copy of the kernels. Loaded only for a customer with a GC job of ours, so a homeowner's portal boots as before.
+    if (gcJobs.length > 0) {
+      try {
+        const { loadCustomerSchedules } = await import('../_shared/gcCustomerSchedule.ts')
+        const schedules = await loadCustomerSchedules(admin, link.customer_id, todayYmdInAppTz())
+        for (const job of gcJobs) if (schedules[job.projectId]) job.schedule = schedules[job.projectId]
+      } catch (e) {
+        console.error('customer-portal: the schedule did not load', e)
+      }
+    }
+    // Messages cut 8b-i: the customer's page (shape B) on each GC job, the money, this week's line, the people, the
+    // schedule's moves and the switches, and every sentence of ours as the office keeps it. A failed read leaves the
+    // page as it was.
+    let pageWords: { key: string; en: string; es: string }[] = []
+    if (gcJobs.length > 0) {
+      try {
+        const { loadGcPortalPages, loadCustomerPageWords } = await import('../_shared/gcPortalPage.ts')
+        await loadGcPortalPages(admin, gcJobs)
+        pageWords = await loadCustomerPageWords(admin)
+      } catch (e) {
+        console.error('customer-portal: the page did not load', e)
+      }
+    }
+    // Messages cut 8e: their thread for the page's Messages tab, only the lines between us and them by text, email or
+    // their page (`_shared/gcPortalThread.ts`). Null: no page, or a read that failed, and the page draws no tab.
+    let thread: unknown[] | null = null
+    if (gcJobs.some((j) => j.page)) {
+      try {
+        const { loadPortalThread } = await import('../_shared/gcPortalThread.ts')
+        thread = await loadPortalThread(admin, link.customer_id)
+      } catch (e) {
+        console.error('customer-portal: the thread did not load', e)
+      }
+    }
+
+    // GC mode (Owner Billing O8b, v2.5123): the certified GC bills they may pay by card, with its 3% fee, and the
+    // ones on card already (their fee shown under the bill). The offer needs the switch, the app_settings row
+    // `gc_card_bill_on_v1` the owner turns on in Settings (O8c), off to start.
+    let cardBills: PortalCardBill[] = []
+    const billIds = bills.map((b) => b.invoiceId).filter((id): id is string => typeof id === 'string')
+    if (billIds.length > 0 && link.audience !== 'gc') {
+      const [{ data: certified }, { data: cardRows }, { data: setting }] = await Promise.all([
+        admin.from('gc_owner_pay_apps').select('invoice_id').in('invoice_id', billIds),
+        admin.from('gc_owner_card_bills').select('invoice_id, status, base, fee').in('invoice_id', billIds),
+        admin.from('app_settings').select('value_text').eq('key', GC_CARD_BILL_SETTING_KEY).maybeSingle(),
+      ])
+      cardBills = gcPortalCardBills({
+        on: gcCardBillOn((setting as { value_text?: string | null } | null)?.value_text),
+        hasEmail: customerBillingEmail(customer as Parameters<typeof customerBillingEmail>[0]) !== '',
+        bills,
+        certifiedInvoiceIds: new Set(((certified ?? []) as Array<{ invoice_id: string | null }>).flatMap((r) => (r.invoice_id ? [r.invoice_id] : []))),
+        cardRows: (cardRows ?? []) as PortalCardRow[],
+      })
+    }
 
     return jsonResponse({
-      company: PORTAL_COMPANY,
+      // Whose letterhead (v2.5229): Click Construction for a customer whose every job is a GC job we build.
+      company: portalLetterhead({ audience: link.audience, gcJobCount: gcJobs.length, jobs }),
       customerName: (customer as { name: string | null }).name ?? 'Customer',
       customerPhone,
       audience: link.audience,
@@ -721,6 +809,9 @@ serve(async (req) => {
       bankTransfer,
       ownerRecords,
       gcJobs,
+      pageWords,
+      thread,
+      cardBills,
     })
   } catch (e) {
     console.error('customer-portal error', e)

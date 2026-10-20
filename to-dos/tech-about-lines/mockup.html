@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The tech's bio</title>
+<style>
+  /* Punch list #114. Light only, like every to-do mock-up. Phone frames at 375 px, the sheet as ResponsiveModalShell draws it. Made-up people: Luis Ortega and Michael Reyes on the job, Dana Whitfield at 1208 Mesquite Ln, Rosa Delgado who reads Spanish. The bios are made up too. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-mid: #d97706; --amber: #92400e; --amber-tint: #fef3c7; --orange: #c2410c; --orange-tint: #fff7ed; --orange-line: #fdba74; --orange-ink: #9a3412; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--line-2); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; }
+
+  /* the sheet (ResponsiveModalShell, full screen on a phone) */
+  .sheet { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; font-size: 13px; overflow: hidden; }
+  .sheet .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; }
+  .sheet .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .sheet .body { padding: 12px; }
+  .sheet .foot { padding: 10px 12px; border-top: 1px solid var(--line-2); display: flex; gap: 8px; justify-content: space-between; }
+  .lab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+  .lab:first-child { margin-top: 0; }
+  .dest { border: 1.5px solid var(--green); background: var(--green-tint); border-radius: 10px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .dest b { font-size: 13.5px; }
+  .dest .sub { color: var(--ink-2); font-size: 12px; grid-column: 1; }
+  .dest .sug { color: var(--green-ink); font-weight: 700; font-size: 11px; align-self: center; }
+  .bubble { background: var(--orange-tint); border: 1px solid var(--orange-line); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 14.5px; line-height: 1.4; }
+  .bubble b { background: #fed7aa; border-radius: 4px; padding: 0 3px; }
+  .bubble.intro { font-size: 13.5px; margin-top: 6px; border-style: dashed; }
+  .first { margin-top: 12px; font-size: 12.5px; color: var(--orange-ink); font-weight: 600; }
+  .mins { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }
+  .mins button { height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-size: 18px; font-weight: 700; }
+  .mins .n { height: 44px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; gap: 6px; }
+  .mins .n small { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .from { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .pickrow { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12.5px; }
+  .pickrow .q { color: var(--muted); font-weight: 600; }
+  .pickrow .edit { min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: 12.5px; }
+  .acts { display: grid; gap: 6px; margin-top: 2px; }
+  .act { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 13px; color: var(--ink-2); }
+  .act .i { font-size: 15px; line-height: 1.3; }
+  .p { min-height: 46px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--green); color: #fff; font: inherit; font-weight: 800; font-size: 14px; }
+  .s { min-height: 46px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 13px; }
+
+  /* the Edit bio window on top of the sheet */
+  .over { position: relative; width: 343px; }
+  .over > .sheet { filter: brightness(.6); }
+  .win { position: absolute; left: 12px; right: 12px; top: 52px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; box-shadow: 0 14px 36px rgba(0,0,0,.28); font-size: 13px; overflow: hidden; }
+  .win .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; }
+  .win .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .win .body { padding: 12px; }
+  .win .foot { padding: 10px 12px; border-top: 1px solid var(--line-2); display: flex; gap: 8px; justify-content: space-between; }
+  .win .hint { margin: 0 0 8px; color: var(--muted); font-size: 12.5px; }
+  .win .usual { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+  .win .p.blue { background: var(--blue); }
+  .tk { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line-2); font-size: 13px; }
+  .tk.off { color: var(--muted); }
+  .box { width: 20px; height: 20px; border: 1.5px solid var(--line); border-radius: 5px; margin-top: 1px; }
+  .box.on { background: var(--green); border-color: var(--green); color: #fff; text-align: center; font-size: 13px; line-height: 18px; font-weight: 800; }
+
+  /* what the customer gets: their phone */
+  .their { width: 300px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; padding: 12px; font-size: 13px; }
+  .their .who { text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .their .day { text-align: center; font-size: 10.5px; color: var(--muted); margin: 10px 0 4px; }
+  .sms { background: #e5e7eb; color: var(--ink); border-radius: 16px 16px 16px 4px; padding: 8px 12px; font-size: 13.5px; line-height: 1.35; max-width: 92%; }
+  .sms + .sms { margin-top: 4px; }
+  .sms.card { background: #f3f4f6; border: 1px solid var(--line); }
+
+  /* the desk's block and the Settings block */
+  .block { width: 520px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 14px; font-size: 13px; }
+  .block h3 { margin: 0 0 2px; font-size: 15px; }
+  .block .hint { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
+  .prev { background: #f9fafb; border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--ink-2); }
+  .prev .l { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; display: flex; justify-content: space-between; }
+  .ln { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line-2); }
+  .ln .n { color: var(--muted); font-weight: 700; font-size: 12px; padding-top: 2px; }
+  .ln .en { font-size: 13.5px; }
+  .ln .es { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
+  .ln .es.none { color: var(--amber); font-style: italic; }
+  .ln .off .en { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+  .ln .act2 { display: grid; gap: 4px; justify-items: end; font-size: 12px; }
+  .ln .act2 span { color: var(--blue-ink); font-weight: 600; }
+  .tag { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--amber-tint); color: var(--amber); }
+  .add { border: 1px dashed var(--line); border-radius: 10px; padding: 10px; margin-top: 10px; }
+  .add .l { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+  .add textarea, .add input { width: 100%; font: inherit; font-size: 13px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; margin-top: 3px; }
+  .add .cnt { text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-size: 12px; background: #fafafa; color: var(--ink-2); }
+  .sw { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; font-size: 11.5px; font-weight: 700; }
+  .sw span { padding: 3px 9px; color: var(--muted); }
+  .sw span.on { background: var(--green-tint); color: var(--green-ink); }
+  .sw span.off { background: var(--line-2); color: var(--ink-2); }
+  .btn { display: inline-block; min-height: 34px; padding: 6px 12px; border-radius: 8px; border: 0; background: var(--blue); color: #fff; font: inherit; font-weight: 700; font-size: 13px; margin-top: 8px; }
+
+  /* the lists */
+  ol.alts, ol.pass, ol.calls { padding-left: 22px; max-width: 100ch; }
+  ol.alts li, ol.pass li, ol.calls li { margin: 6px 0; color: var(--ink-2); }
+  ol.alts li b, ol.pass li b, ol.calls li b { color: var(--ink); }
+  .pick { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--green-tint); color: var(--green-ink); margin-left: 6px; vertical-align: 1px; }
+  .no { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--line-2); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #114 · mock-up, third draft · 2026-10-16</p>
+  <h1>The tech's bio: a short resume that rides the first On my way a tech sends a customer</h1>
+  <p>The office writes a short bio for Luis, the way a resume reads when you hand it over: years in the trade, the license, what he is best at, a personal line. The first time Luis presses <b>On my way</b> to Dana, his text goes as today and his bio follows it as a second text. Every later On my way from Luis to Dana is just the line. When Michael takes the next visit, Dana gets Michael's. On the sheet Luis reads the bio before it goes, holds it with <b>Not this time</b>, or presses <b>Edit bio</b> to pick the lines for this customer. The people, the job and the bios are made up.</p>
+</header>
+
+<h2><span class="num">1</span> The sheet: the first time, and every time after</h2>
+<p class="lede">Left: Luis presses On my way to Dana, who has never heard from him. The On my way bubble is unchanged; under it the sheet says this is her first time and shows the bio that follows, with <b>Not this time</b> on the left and <b>Edit bio</b> on the right. Right: the next visit, the sheet as v2.5573 draws it. Nothing new, because Dana has Luis's bio.</p>
+<div class="row">
+  <div>
+    <div class="cap green">The first time · Dana has not heard from Luis</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="sug">Suggested</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+        <div class="lab">This is what Dana gets.</div>
+        <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+        <div class="mins"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+        <div class="from">Guessed from your phone to the job, 9.4 mi. Change it if you know better.</div>
+        <div class="first">Dana hears from you for the first time. This goes right after:</div>
+        <div class="bubble intro">A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+        <div class="pickrow"><span class="q">Not this time</span><button class="edit">Edit bio</button></div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">⏱</span><span>Clocks you in on PLUM 512 · Whitfield water heater as on the way.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Dana from the company number. Her answer comes back to you.</span></div>
+          <div class="act"><span class="i">👋</span><span>Then texts your bio, 3 of 4 lines, since Dana has not heard from you before.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Dana</button></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Every time after · as today</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="sug">Suggested</span><span class="sub">8:30 AM · 1208 Mesquite Ln</span></div>
+        <div class="lab">This is what Dana gets.</div>
+        <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>15</b> minutes out.</div>
+        <div class="mins"><button>−</button><div class="n">15 <small>minutes</small></div><button>+</button></div>
+        <div class="from">Guessed from your phone to the job, 6.1 mi. Change it if you know better.</div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">⏱</span><span>Clocks you in on PLUM 512 · Whitfield water heater as on the way.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Dana from the company number. Her answer comes back to you.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Dana</button></div>
+    </div></div>
+  </div>
+</div>
+<p class="note"><b>The order.</b> The press clocks in first, texts the line second, and the bio third. A bio that cannot go leaves the first two standing and says so. <b>Not this time</b> holds the bio for a customer who clearly knows Luis; the line still goes, and the next first-time press offers it again, since none went. The phone never sends the bio's words: it asks for the send by kind with the picked lines' ids, and the server composes it from the office's lines in the office's order.</p>
+
+<h2><span class="num">2</span> Edit bio: the lines for this customer</h2>
+<p class="lede">Grace's ask. <b>Edit bio</b> opens a window on top of the sheet: the bio as Dana gets it, the count, then every line with a tick, pre-ticked from Luis's usual picks in Settings. Luis knows Dana is an Astros fan, so he ticks that line on for her and the Little League line off. <b>Use these</b> brings the pick back to the sheet; Settings is untouched. Esc closes only the window.</p>
+<div class="row">
+  <div>
+    <div class="cap blue">Edit bio · on top of the sheet</div>
+    <div class="fit"><div class="over">
+      <div class="sheet">
+        <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+        <div class="body">
+          <div class="lab">Where to</div>
+          <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="sug">Suggested</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+          <div class="lab">This is what Dana gets.</div>
+          <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+          <div class="mins"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+          <div class="from">Guessed from your phone to the job, 9.4 mi. Change it if you know better.</div>
+          <div class="first">Dana hears from you for the first time. This goes right after:</div>
+          <div class="bubble intro">A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+          <div class="pickrow"><span class="q">Not this time</span><button class="edit">Edit bio</button></div>
+          <div class="lab">What happens</div>
+          <div class="acts">
+            <div class="act"><span class="i">⏱</span><span>Clocks you in on PLUM 512 · Whitfield water heater as on the way.</span></div>
+            <div class="act"><span class="i">💬</span><span>Texts Dana from the company number. Her answer comes back to you.</span></div>
+            <div class="act"><span class="i">👋</span><span>Then texts your bio, 3 of 4 lines, since Dana has not heard from you before.</span></div>
+          </div>
+        </div>
+        <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Dana</button></div>
+      </div>
+      <div class="win">
+        <div class="bar"><span>Your bio for Dana</span><span class="x">✕</span></div>
+        <div class="body">
+          <p class="hint">Tick what goes this time. The office wrote the lines.</p>
+          <div class="prev"><div class="l"><span>As Dana gets it</span><span>147 left of 320</span></div>A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. He is an Astros fan, win or lose.</div>
+          <div style="height:8px"></div>
+          <div class="tk"><span class="box on">✓</span><span>He has been a plumber for twelve years and holds a Texas journeyman license.</span></div>
+          <div class="tk"><span class="box on">✓</span><span>Water heaters and repipes are his specialty.</span></div>
+          <div class="tk off"><span class="box"></span><span>Off the clock he coaches Little League in Seguin.</span></div>
+          <div class="tk"><span class="box on">✓</span><span>He is an Astros fan, win or lose.</span></div>
+          <p class="usual">Your usual picks are in Settings → Your account. A change here is for Dana only.</p>
+        </div>
+        <div class="foot"><button class="s">Back</button><button class="p blue">Use these</button></div>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap green">After Use these · the sheet reads the pick</div>
+    <div class="fit"><div class="sheet">
+      <div class="bar"><span>On my way</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="lab">Where to</div>
+        <div class="dest"><b>PLUM 512 · Whitfield water heater</b><span class="sug">Suggested</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+        <div class="lab">This is what Dana gets.</div>
+        <div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+        <div class="mins"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+        <div class="from">Guessed from your phone to the job, 9.4 mi. Change it if you know better.</div>
+        <div class="first">Dana hears from you for the first time. This goes right after:</div>
+        <div class="bubble intro">A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. He is an Astros fan, win or lose.</div>
+        <div class="pickrow"><span class="q">Not this time</span><button class="edit">Edit bio</button></div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">⏱</span><span>Clocks you in on PLUM 512 · Whitfield water heater as on the way.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Dana from the company number. Her answer comes back to you.</span></div>
+          <div class="act"><span class="i">👋</span><span>Then texts your bio, 3 of 4 lines, since Dana has not heard from you before.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Dana</button></div>
+    </div></div>
+    <p class="note">Untick every line and the sheet says no bio will go, the same as <b>Not this time</b>. The window is a window on top: it registers on the modal stack, stops its backdrop click, and Esc closes it alone, as every inner window does.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span> What the customer gets</h2>
+<p class="lede">Dana's water heater took three visits and two techs. Tuesday Luis introduces himself with the lines he picked for her; Thursday he is just Luis; Monday Michael takes the job and introduces himself once. Rosa reads Spanish: she gets the Spanish bio, and the line the office has not translated yet is left out of hers.</p>
+<div class="row">
+  <div>
+    <div class="cap orange">Dana · three visits, two techs</div>
+    <div class="fit"><div class="their">
+      <div class="who">Click Plumbing · (830) 555‑0100</div>
+      <div class="day">Tuesday 10:12 AM</div>
+      <div class="sms">Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out.</div>
+      <div class="sms card">A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. He is an Astros fan, win or lose.</div>
+      <div class="day">Thursday 8:41 AM</div>
+      <div class="sms">Dana, this is Luis with Click Plumbing. I am on my way, about 15 minutes out.</div>
+      <div class="day">Monday 1:05 PM</div>
+      <div class="sms">Dana, this is Michael with Click Plumbing. I am on my way, about 10 minutes out.</div>
+      <div class="sms card">A little about Michael: he joined Click Plumbing three years ago after four years in the Navy. Drains and gas lines are what he does best. He and his wife are expecting their first baby this winter.</div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap blue">Rosa · reads Spanish</div>
+    <div class="fit"><div class="their">
+      <div class="who">Click Plumbing · (830) 555‑0100</div>
+      <div class="day">miércoles 9:30 AM</div>
+      <div class="sms">Rosa, soy Luis de Click Plumbing. Voy en camino, llego en unos 20 minutos.</div>
+      <div class="sms card">Un poco sobre Luis: es plomero desde hace doce años y tiene licencia de oficial en Texas. Su especialidad son los calentadores de agua y las retuberías.</div>
+      <div class="day">viernes 2:15 PM</div>
+      <div class="sms">Rosa, soy Luis de Click Plumbing. Voy en camino, llego en unos 10 minutos.</div>
+    </div></div>
+    <p class="note">The Little League line has no Spanish yet, so Rosa's bio stops after the specialty. With no Spanish line at all, no bio goes rather than an English one.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span> The office writes it; the tech sets the usual picks</h2>
+<p class="lede">People → Users → Open desk, under the name, title and phone the office already shapes: <b>Luis's bio</b>. The office writes in the company's words about Luis, with the pronoun written in, like a resume. The preview reads as a customer gets it, and the count is for the whole bio, two text segments at most. In Settings → Your account Luis sees the same, and one switch per line sets his usual picks, the ones Edit bio opens with.</p>
+<div class="row">
+  <div>
+    <div class="cap">The desk · the office</div>
+    <div class="fit"><div class="block">
+      <h3>Luis's bio</h3>
+      <p class="hint">Goes as a second text the first time Luis presses On my way to a customer. Write it as a customer should read it: Luis has…, He coaches…</p>
+      <div class="prev"><div class="l"><span>As a customer gets it</span><span>129 left of 320</span></div>A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+      <div class="ln" style="margin-top:8px"><span class="n">1</span><div><div class="en">He has been a plumber for twelve years and holds a Texas journeyman license.</div><div class="es">Es plomero desde hace doce años y tiene licencia de oficial en Texas.</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
+      <div class="ln"><span class="n">2</span><div><div class="en">Water heaters and repipes are his specialty.</div><div class="es">Su especialidad son los calentadores de agua y las retuberías.</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
+      <div class="ln"><span class="n">3</span><div><div class="en">Off the clock he coaches Little League in Seguin.</div><div class="es none">No Spanish yet</div></div><div class="act2"><span>Edit</span><span>Remove</span></div></div>
+      <div class="ln"><span class="n">4</span><div class="off"><div class="en">He is an Astros fan, win or lose.</div><div class="es">Es aficionado de los Astros, ganen o pierdan.</div></div><div class="act2"><span class="tag">Luis turned this off</span><span>Remove</span></div></div>
+      <div class="add">
+        <div class="l">Add a line <small style="font-weight:400;color:var(--muted)">· start from one, or write your own</small></div>
+        <div class="chips"><span class="chip">Years in the trade</span><span class="chip">License</span><span class="chip">Best at</span><span class="chip">Family</span><span class="chip">Off the clock</span><span class="chip">Hometown</span></div>
+        <textarea rows="2" placeholder="He …"></textarea>
+        <input placeholder="The same in Spanish (optional)">
+        <div class="cnt">129 left of 320 for the whole bio</div>
+        <button class="btn">Add the line</button>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Settings → Your account · the tech</div>
+    <div class="fit"><div class="block" style="width:420px">
+      <h3>Your bio</h3>
+      <p class="hint">The office wrote this. A customer gets it with your first On my way to them, and never again. These are your usual picks; Edit bio on the sheet changes them for one customer. Ask the office to change the words.</p>
+      <div class="prev"><div class="l"><span>As a customer gets it</span></div>A little about Luis: he has been a plumber for twelve years and holds a Texas journeyman license. Water heaters and repipes are his specialty. Off the clock he coaches Little League in Seguin.</div>
+      <div class="ln" style="margin-top:8px"><span class="n">1</span><div class="en">He has been a plumber for twelve years and holds a Texas journeyman license.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
+      <div class="ln"><span class="n">2</span><div class="en">Water heaters and repipes are his specialty.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
+      <div class="ln"><span class="n">3</span><div class="en">Off the clock he coaches Little League in Seguin.</div><div class="sw"><span class="on">Say it</span><span>Don't</span></div></div>
+      <div class="ln"><span class="n">4</span><div class="off"><div class="en">He is an Astros fan, win or lose.</div></div><div class="sw"><span>Say it</span><span class="off">Don't</span></div></div>
+    </div></div>
+    <p class="note">The tech does not write or edit a line (call 4). The switches are theirs: the line is about them, and the desk shows the office what was turned off.</p>
+  </div>
+</div>
+
+<h2><span class="num">5</span> The calls</h2>
+<p class="lede">Five, Grace's. The recommendation is first in each.</p>
+<ol class="calls">
+  <li><b>One text or two.</b> The bio as its own text right after the On my way line <span class="pick">recommended</span>, or one longer text with the bio under a blank line. Two reads like a card handed over after the greeting, keeps the On my way line exactly the office's words, and lets the line go even when the bio cannot.</li>
+  <li><b>What counts as introduced.</b> A line in the customer's thread that introduces this tech <span class="pick">recommended</span>, so a tech whose first text was <i>Running late</i> still introduces themself on their first On my way; or any earlier text from this tech to this customer. And whether a tech is introduced again after a long gap: never <span class="pick">recommended</span>, or after a year with no texts to that customer.</li>
+  <li><b>The voice.</b> The company's words about the tech, third person, opened by <i>A little about Luis:</i> <span class="pick">recommended</span>, or the tech's first person, <i>A little about me: I have…</i>. Third person matches the handover; the office writes the pronoun in, so there is nothing to guess.</li>
+  <li><b>May a tech write?</b> Pick lines only, in Settings and in Edit bio <span class="pick">recommended</span>, or suggest a line the office approves, or write freely. The pick keeps the company's voice and ships smallest; a suggestion door is one later cut.</li>
+  <li><b>Where the office edits.</b> The person's desk <span class="pick">recommended</span>, or a card on Settings → Phone and texts listing every tech. The desk is where the office already shapes who a person is, one person at a time.</li>
+</ol>
+
+<h2><span class="num">6</span> Alternatives weighed</h2>
+<ol class="alts">
+  <li><b>One fact rotated into every On my way</b> (the first mock-up).<span class="no">rejected</span> Grace: the bio is a handover, not a running feature; a customer who knows the tech needs no fact.</li>
+  <li><b>The bio inside the On my way line, through a new blank.</b><span class="no">rejected</span> It ties the resume to one line's wording, needs an optional blank in the fill system, and lengthens the line. A second text leaves both alone.</li>
+  <li><b>One bio field, free text, appended whole.</b><span class="no">rejected</span> No Spanish beside each line, no pick on a line, no count the office can see.</li>
+  <li><b>The tech writes their own bio in Settings.</b><span class="no">rejected for now</span> The voice customers hear is the company's. The tech picks lines instead, in Settings and for each customer.</li>
+  <li><b>Fields the app composes</b> (years, license, specialty) into sentences.<span class="no">rejected</span> Stiff grammar and the pronoun problem; the office writes a better sentence than a template fills.</li>
+  <li><b>Edit bio as ticks in place on the sheet</b>, with no window.<span class="no">rejected</span> The sheet is already the destination, the minutes and the acts; a tick list in the middle buries the one press the day turns on. A window on top is read once and closed.</li>
+  <li><b>The office's lines about each tech, joined into one bio, sent as a second text the first time a tech texts On my way to a customer, remembered in the thread, the usual picks in Settings and the picks for this customer in Edit bio.</b><span class="pick">picked</span></li>
+  <li><b>A link to a "Meet Luis" page with a photo</b> (Housecall Pro's way).<span class="no">not now</span> The customer's page link is off the phone and there is no photo column. The first follow-on once the On my way customer-page card exists: the bio then ends with the link.</li>
+</ol>
+
+<h2><span class="num">7</span> Is this the best we can do? The second pass</h2>
+<p class="lede">The first pass after Grace's correction kept the resume inside the On my way text through a blank and asked "has this tech texted this customer?" Read back against the customer who gets the text, the tech it introduces, and the office that writes it, six things changed; Grace's Edit bio added the last two.</p>
+<ol class="pass">
+  <li><b>Inside the line became a second text.</b> The On my way line goes exactly as the office wrote it every time; the bio follows as its own bubble the first time, like a card after the greeting. The thread shows <i>Luis's bio</i> as its own line.</li>
+  <li><b>"Has texted before" became "has been introduced".</b> A tech whose first text was <i>Running late</i> still gets introduced on their first On my way; an office text does not count as the tech; one column on the message is the memory, read the same way on the phone and the server.</li>
+  <li><b>First person became the company's third person.</b> A resume is handed over by someone else. <i>A little about Luis: he has…</i> is the handover's frame, and the office writes the pronoun in.</li>
+  <li><b>Prompts for facts became prompts shaped like a resume.</b> Years in the trade, license, best at, then the personal lines: what makes a customer comfortable before the truck pulls up.</li>
+  <li><b>A cap per line became a cap on the whole.</b> One text, 320 characters, two segments; the desk counts down on the whole, and the tech's picks change the count.</li>
+  <li><b>Nothing on the sheet became the bio read before it goes.</b> The tech sees what Dana gets, and <b>Not this time</b> holds the bio for a customer who clearly knows them, while the line still goes.</li>
+  <li><b>One fixed card became a pick for this customer.</b> Edit bio opens on top of the sheet with the tech's usual picks from Settings already ticked; a change there is for this one customer, the preview and the count follow, and the What happens row says how many lines go.</li>
+  <li><b>The pick rides as ids.</b> The phone never sends the bio's words. Edit bio sends the picked lines' ids; the server checks each is the sender's own live line and composes in the office's order, so what the tech read is what goes, as every text from the phone.</li>
+</ol>
+</div>
+</body>
+</html>

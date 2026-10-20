@@ -21,6 +21,10 @@ import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureF
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
+import { ReportLinesProgressField } from './ReportLinesProgressField'
+import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
+import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
+import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import JobReportsModal from './JobReportsModal'
@@ -87,6 +91,17 @@ export default function AdditionalReportModal({
   const [customerFilesUrl, setCustomerFilesUrl] = useState('')
   const [customerPicturesUrl, setCustomerPicturesUrl] = useState('')
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  // Report by line (punch list #130, v2.5663): the job's priced lines, two or more; null = the plain slider.
+  const lineProgress = useJobLineProgress(jobId, open)
+  const linesActive = lineProgress.lines != null
+  const percentFieldLabel = (templateFields[selectedTemplateId] ?? []).find((f) => f.input_type === 'percent_0_100')?.label ?? null
+  // The percent the report files: what the lines say once something moved; until then the job's own number.
+  const lineDerivedPct = linesActive ? (lineProgress.moved.length > 0 ? lineProgress.derivedPct : (lineProgress.recordedPct ?? lineProgress.derivedPct)) : null
+  useEffect(() => {
+    if (lineDerivedPct == null || !percentFieldLabel) return
+    const next = String(lineDerivedPct)
+    setFieldValues((prev) => (prev[percentFieldLabel] === next ? prev : { ...prev, [percentFieldLabel]: next }))
+  }, [lineDerivedPct, percentFieldLabel])
 
   useEffect(() => {
     if (!open) {
@@ -198,6 +213,12 @@ export default function AdditionalReportModal({
     for (const f of fields) {
       fv[f.label] = fieldValueForSubmit(f, fieldValues)
     }
+    // Report by line (v2.5663): the number the lines add up to is the percent field, the moved lines in words beside it.
+    if (linesActive && lineProgress.lines && percentFieldLabel && lineDerivedPct != null) {
+      fv[percentFieldLabel] = String(lineDerivedPct)
+      const moves = lineProgressFieldValue(lineProgress.lines, lineProgress.picks, lineProgress.recordedPct)
+      if (moves) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = moves
+    }
 
     let reportedAtLat: number | null = null
     let reportedAtLng: number | null = null
@@ -261,6 +282,10 @@ export default function AdditionalReportModal({
       void supabase.functions
         .invoke('send-report-email', { body: { report_id: inserted.id } })
         .catch(() => { /* report email is best-effort */ })
+    }
+    // Report by line (v2.5663): stamp each moved line on its row, best-effort.
+    if (linesActive && lineProgress.moved.length > 0) {
+      await stampMovedLines(jobId, lineProgress.moved, inserted?.id ?? null)
     }
     // Mirror the report's completion percent into jobs_ledger.pct_complete
     // (best-effort), then offer Ready to bill when a 100% report lands on a
@@ -527,14 +552,38 @@ export default function AdditionalReportModal({
               {fields.map((f) => {
                 const t = f.input_type ?? 'long_text'
                 if (t === 'percent_0_100') {
+                  if (linesActive && lineProgress.lines) {
+                    return (
+                      <ReportLinesProgressField
+                        key={f.id}
+                        rows={lineProgress.lines}
+                        picks={lineProgress.picks}
+                        openId={lineProgress.openId}
+                        onOpen={lineProgress.setOpenId}
+                        onPct={lineProgress.setPick}
+                        recordedPct={lineProgress.recordedPct}
+                        onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
+                      />
+                    )
+                  }
                   return (
-                    <ReportTemplatePercentField
-                      key={f.id}
-                      id={`additional-report-pct-${f.id}`}
-                      label={f.label}
-                      value={fieldValues[f.label] ?? '0'}
-                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
-                    />
+                    <div key={f.id}>
+                      <ReportTemplatePercentField
+                        id={`additional-report-pct-${f.id}`}
+                        label={f.label}
+                        value={fieldValues[f.label] ?? '0'}
+                        onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                      />
+                      {lineProgress.hasLines && !lineProgress.linesMode ? (
+                        <button
+                          type="button"
+                          onClick={() => lineProgress.setLinesMode(true)}
+                          style={{ marginTop: -4, marginBottom: '0.75rem', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem' }}
+                        >
+                          {MARK_EACH_LINE_LINK}
+                        </button>
+                      ) : null}
+                    </div>
                   )
                 }
                 if (t === 'signature_png') {

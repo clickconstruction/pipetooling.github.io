@@ -9,6 +9,7 @@ import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import type { CustomerAddressRow } from '../lib/jobs/lienProperty'
 import { buildLienTimelineBook, type LienTimelineBook } from '../lib/jobs/lienTimelineBook'
 import { LIEN_BOOK_JOB_COLUMNS, assembleLienBookInput, type LienBookRaw, type LienBookRawGc, type LienBookRawJob } from '../lib/jobs/lienTimelineBookAssemble'
+import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
 
 /** Wide enough that every open month and every affidavit window is inside it — the book is the whole path, not this month's. */
 export const LIEN_BOOK_WINDOW_DAYS = 400
@@ -23,8 +24,17 @@ export const LIEN_BOOK_WINDOW_DAYS = 400
  * fold from rows to the kernel's input is `assembleLienBookInput` — shared
  * with the firm's portal (#41 PR 2), which reads the same rows through
  * `legal-portal`.
+ *
+ * `hideZzTestJobs` (punch list #61, PR 3): ZZ test jobs leave the months, the affidavit windows and the
+ * jobs right after the jobs join, by the joined rows' own names (the desk's items handed in are already
+ * without them).
  */
-export function useLienTimelineBook(enabled: boolean, todayYmd: string, items: ReadonlyArray<LienDeskItemRow> | null): { book: LienTimelineBook | null; loading: boolean; error: string; refetch: () => void } {
+export function useLienTimelineBook(
+  enabled: boolean,
+  todayYmd: string,
+  items: ReadonlyArray<LienDeskItemRow> | null,
+  hideZzTestJobs = false,
+): { book: LienTimelineBook | null; loading: boolean; error: string; refetch: () => void } {
   const [book, setBook] = useState<LienTimelineBook | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -43,17 +53,23 @@ export function useLienTimelineBook(enabled: boolean, todayYmd: string, items: R
           withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_BOOK_WINDOW_DAYS } as never), 'lien book: affidavit windows').catch(() => []),
         ])
         if (cancelled) return
-        const rows = (rowsRaw ?? []) as unknown as LienNoticeMonthRow[]
-        const affidavitRows = (affRaw ?? []) as unknown as LienAffidavitRow[]
-        const jobIds = [...new Set([...rows.map((r) => r.job_id), ...affidavitRows.map((r) => r.job_id)])]
+        const rowsRead = (rowsRaw ?? []) as unknown as LienNoticeMonthRow[]
+        const affidavitRowsRead = (affRaw ?? []) as unknown as LienAffidavitRow[]
+        const jobIdsRead = [...new Set([...rowsRead.map((r) => r.job_id), ...affidavitRowsRead.map((r) => r.job_id)])]
 
-        const jobs: LienBookRawJob[] = []
-        for (const chunk of chunkIds(jobIds)) {
+        const jobsRead: LienBookRawJob[] = []
+        for (const chunk of chunkIds(jobIdsRead)) {
           if (chunk.length === 0) continue
           const part = await withSupabaseRetry(() => supabase.from('jobs_ledger').select(LIEN_BOOK_JOB_COLUMNS).in('id', chunk), 'lien book: jobs')
-          jobs.push(...((part ?? []) as LienBookRawJob[]))
+          jobsRead.push(...((part ?? []) as LienBookRawJob[]))
         }
         if (cancelled) return
+        const zzJobIds = hideZzTestJobs ? zzTestJobIds(jobsRead) : null
+        const kept = (jobId: string) => !zzJobIds?.has(jobId)
+        const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
+        const affidavitRows = zzJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
+        const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
+        const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
         const gcIds = [...new Set(jobs.map((j) => j.gc_customer_id).filter((v): v is string => Boolean(v)))]
         const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
         const filings: JobLienFilingRow[] = []
@@ -106,7 +122,7 @@ export function useLienTimelineBook(enabled: boolean, todayYmd: string, items: R
     return () => {
       cancelled = true
     }
-  }, [enabled, todayYmd, items, tick])
+  }, [enabled, todayYmd, items, hideZzTestJobs, tick])
 
   return useMemo(() => ({ book, loading, error, refetch }), [book, loading, error, refetch])
 }

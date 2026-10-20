@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { testReportSendBlockers, testReportShortLabel, type TestReportData } from '../lib/jobs/testReport'
 import { testReportDataFromRow, type TestReportRow } from '../lib/jobs/testReportRow'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { isZzTestJob } from '../lib/jobs/zzTestJobSweep'
 
 /**
  * The Dashboard's "N test reports ready to send" (v2.3301, dial A): every
@@ -44,7 +46,15 @@ export function summarizeTestReportDrafts(rows: DraftRow[]): TestReportsReady {
   }
 }
 
-export function useTestReportsReadyNudge(enabled: boolean): { drafts: TestReportsReady | null; reload: () => void } {
+/**
+ * `hideZzTestJobs` (punch list #61, v2.5122): a draft on a ZZ test job leaves the card, by the job's name and
+ * the shared ids; a failed id read empties the card like any other failed read.
+ */
+export function useTestReportsReadyNudge(
+  enabled: boolean,
+  hideZzTestJobs = false,
+  userId?: string | null,
+): { drafts: TestReportsReady | null; reload: () => void } {
   const [drafts, setDrafts] = useState<TestReportsReady | null>(null)
   const [nonce, setNonce] = useState(0)
 
@@ -54,18 +64,23 @@ export function useTestReportsReadyNudge(enabled: boolean): { drafts: TestReport
       return
     }
     try {
-      const { data, error } = await supabase
+      // The ZZ ids leave in the query (review on #5246), so test drafts cannot fill the 200-row read and push
+      // real ones out; the embedded name catches any the ids missed.
+      const zzIds = hideZzTestJobs ? await loadZzTestJobIds(userId) : null
+      let query = supabase
         .from('job_test_reports')
         .select('*, jobs_ledger:job_id(hcp_number, job_name)')
         .eq('status', 'draft')
-        .order('created_at', { ascending: false })
-        .limit(200)
+      if (zzIds && zzIds.size > 0) query = query.not('job_id', 'in', `(${[...zzIds].join(',')})`)
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(200)
       if (error) throw error
-      setDrafts(summarizeTestReportDrafts((data ?? []) as unknown as DraftRow[]))
+      const read = (data ?? []) as unknown as DraftRow[]
+      const rows = hideZzTestJobs ? read.filter((r) => !isZzTestJob(r.jobs_ledger ?? {})) : read
+      setDrafts(summarizeTestReportDrafts(rows))
     } catch {
       setDrafts(null)
     }
-  }, [enabled])
+  }, [enabled, hideZzTestJobs, userId])
 
   useEffect(() => {
     void load()

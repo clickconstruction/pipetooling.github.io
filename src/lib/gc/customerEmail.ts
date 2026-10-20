@@ -8,7 +8,7 @@
  */
 import { CUSTOMER_EMAIL_ERRORS, type CustomerEmailErrorKey } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import { changeOrderDays, daysWords, ownerExpectPaidOn } from './ownerBilling'
-import { customerGreeting } from './ownerBillingRemind'
+import { customerGreeting, helloLine } from './ownerBillingRemind'
 import { isTimeExtension } from './timeExtension'
 import type { ChangeOrder, GcProject, GcState, OwnerPayAppSent } from './types'
 import { money, shortDate, weekdayDate } from './words'
@@ -30,7 +30,7 @@ export interface PayAppMailFacts {
 
 /** The customer as every email greets them: "Dr. Raman", "Elena". */
 function greetingOf(state: GcState, project: GcProject): string {
-  return customerGreeting(state.customers.find((c) => c.id === project.customerId), project.owner || 'there')
+  return customerGreeting(state.customers.find((c) => c.id === project.customerId))
 }
 
 export function payAppMailFacts(state: GcState, project: GcProject, app: OwnerPayAppSent): PayAppMailFacts {
@@ -58,7 +58,7 @@ export function payAppMail(f: PayAppMailFacts): { subject: string; lines: string
   return {
     subject: `${Name} for ${f.job}, ${money(f.due)}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       f.final
         ? `${Name} for ${f.job} asks for the ${money(f.due)} you held. Every line is done.`
         : `${Name} for ${f.job} asks for ${money(f.due)}. It bills the work done through ${shortDate(f.periodTo)}, less the ${f.retainagePct}% you hold and the bills before it.`,
@@ -122,7 +122,7 @@ export function certifiedMail(f: CertifiedMailFacts): { subject: string; lines: 
   return {
     subject: `${architect} certified ${name}, ${money(f.certified)}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       `${architect} certified ${name} for ${f.job} at ${money(f.certified)}.`,
       ...(less > 0.5
         ? [f.final ? `That is ${money(less)} less than we asked.` : `That is ${money(less)} less than we asked. It comes back on the next bill once the work is done.`]
@@ -166,7 +166,7 @@ export function changeOrderMail(f: ChangeOrderMailFacts): { subject: string; lin
   return {
     subject: `Change order ${f.number} for ${f.job}, ${f.timeOnly ? `${daysWords(f.days)} more` : `${credit ? '−' : '+'}${money(Math.abs(f.price))}`}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       `Change order ${f.number} for ${f.job} is ready for your signature: ${what}.`,
       f.timeOnly ? 'It does not change your price.' : `It ${credit ? 'takes' : 'adds'} ${money(Math.abs(f.price))} ${credit ? 'off' : 'to'} your price.`,
       ...(f.days > 0 ? [`It adds ${daysWords(f.days)} to the job.`] : []),
@@ -195,10 +195,49 @@ export function interestBillMail(f: InterestBillMailFacts): { subject: string; l
   return {
     subject: `Interest on late bills for ${f.job}, ${money(f.amount)}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       `Some of your bills on ${f.job} went past the day they were due by the contract.`,
       `The interest on them comes to ${money(f.amount)}${f.pctPerMonth ? `, at ${f.pctPerMonth}% a month` : ''}.`,
       'Reply with the day you will pay.',
+    ],
+  }
+}
+
+/** What our contract's email says (the Board's B6-d-iii-b): the job, its price as one number, and the day to sign by. */
+export interface ContractMailFacts {
+  job: string
+  greeting: string
+  /** The price the send went with, as one number: never by line. */
+  price: number
+  /** The first send, a reminder at the same price, or a new price after ours moved. */
+  mode: 'first' | 'reminder' | 'newPrice'
+  signBy: string
+  /** The office's own line, kept with the send. */
+  note: string
+}
+
+export function contractMailFacts(state: GcState, project: GcProject, send: { mode: ContractMailFacts['mode']; price: number; signBy: string; note: string }): ContractMailFacts {
+  return { job: project.name, greeting: greetingOf(state, project), ...send }
+}
+
+/**
+ * Our contract to sign in their portal, in the design spike's words (`contractEmail`, gcCustomerSend.ts): the file goes
+ * with it, and the portal line under it is the function's, always on, since they sign it there.
+ */
+export function contractMail(f: ContractMailFacts): { subject: string; lines: string[] } {
+  const price = money(f.price)
+  return {
+    subject: f.mode === 'reminder' ? `Reminder: your contract for ${f.job}` : f.mode === 'newPrice' ? `Your contract for ${f.job}, with our new price` : `Your contract for ${f.job}`,
+    lines: [
+      helloLine(f.greeting),
+      f.mode === 'first'
+        ? `Thank you for choosing us for ${f.job}. Here is our contract for it: ${price}.`
+        : f.mode === 'newPrice'
+          ? `Our price for ${f.job} changed. Here is our contract with the new price: ${price}. It takes the place of the one we sent before.`
+          : `Our contract for ${f.job} is still waiting on your signature: ${price}.`,
+      `Please sign it by ${weekdayDate(f.signBy)}.`,
+      ...(f.note.trim() ? [f.note.trim()] : []),
+      'The contract is attached. Your bills and change orders for the job will be in your portal too.',
     ],
   }
 }
@@ -222,8 +261,13 @@ export function emailedWords(emailed: BillEmailed[]): string[] {
   )
 }
 
-/** What `gc-customer-email` answered: who it went to, or the refusal's key. */
-export type CustomerEmailAnswer = { ok: true; to: string; email: string } | { ok: false; key: CustomerEmailErrorKey | 'failed'; detail?: string }
+/**
+ * What `gc-customer-email` answered: who it went to (`copied`: the architect copied too; `test`: a test copy to the sender,
+ * U7b), or the refusal's key.
+ */
+export type CustomerEmailAnswer =
+  | { ok: true; to: string; email: string; copied?: boolean; test?: boolean }
+  | { ok: false; key: CustomerEmailErrorKey | 'failed'; detail?: string }
 
 const KEYS: readonly string[] = Object.keys(CUSTOMER_EMAIL_ERRORS)
 
@@ -234,9 +278,9 @@ export function readCustomerEmailAnswer(data: unknown, errorBody: unknown): Cust
     const key = typeof e.error === 'string' && KEYS.includes(e.error) ? (e.error as CustomerEmailErrorKey) : 'failed'
     return { ok: false, key, ...(typeof e.detail === 'string' ? { detail: e.detail } : {}) }
   }
-  const d = data as { to?: unknown; email?: unknown } | null
+  const d = data as { to?: unknown; email?: unknown; copied?: unknown; test?: unknown } | null
   if (!d || typeof d.email !== 'string') return { ok: false, key: 'failed' }
-  return { ok: true, to: typeof d.to === 'string' ? d.to : '', email: d.email }
+  return { ok: true, to: typeof d.to === 'string' ? d.to : '', email: d.email, ...(d.copied === true ? { copied: true } : {}), ...(d.test === true ? { test: true } : {}) }
 }
 
 const REFUSALS: Record<CustomerEmailErrorKey, string> = {
@@ -250,6 +294,11 @@ const REFUSALS: Record<CustomerEmailErrorKey, string> = {
   notSent: 'That change order is not waiting on their signature.',
   alreadySent: 'That reminder went already.',
   noEmail: 'There is no email address on file for them. Add one on the customer, then send it again.',
+  noPortal: 'They have no portal link yet. Send it from their window first.',
+  fileChanged: 'The contract file changed after it was sent. Send it again with the file.',
+  notNewest: 'A newer contract went after this one. Send the newest one.',
+  alreadySigned: 'They signed our contract already.',
+  tooLarge: 'The contract is too large to email. Their portal has it.',
   sendFailed: 'The email service said no. Try again in a minute.',
   failed: 'The email was not sent.',
 }

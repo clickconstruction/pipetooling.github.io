@@ -1,6 +1,6 @@
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
 import type { UserRole } from '../../hooks/useAuth'
-import { activityItemMatchesFilter, type ActivityFilter } from '../jobActivityFilter'
+import { activityItemMatchesFilter, type JobActivityFilter } from '../jobActivityFilter'
 import { allReportFieldLinesForThread } from '../reportForViewFromJobLedgerRow'
 import { displayReportTemplateName } from '../reportTemplateDisplayName'
 import { formatDecimalWorkHoursToHhMm } from '../formatDecimalWorkHoursHhMm'
@@ -15,6 +15,7 @@ import {
   jobActivityItemTimeIso,
   stripRedundantStampBody,
 } from './jobActivityBoxFeed'
+import { isCustomerSide, messageLineParts, type JobActivityMessage, type JobActivityMessageFacts } from './jobActivityMessages'
 
 /**
  * One compact line per activity item — the shape the unified Job activity view
@@ -38,12 +39,14 @@ import {
 
 export type JobActivityDetailLine = { label?: string; value: string }
 
-export type JobActivityLine = {
+/** An activity item's kind, or a message (Messages cut 10): a call, a text or an email tied to the job. */
+export type JobActivityLineKind = JobThreadActivityItem['kind'] | 'message'
+
+type JobActivityLineBase = {
   /** Stable React key. */
   key: string
   /** Thread number, 1 = oldest; every line has one. */
   number: number
-  kind: JobThreadActivityItem['kind']
   atIso: string
   /** Clock time only, e.g. "9:45a" / "2:47p". */
   timeLabel: string
@@ -55,9 +58,18 @@ export type JobActivityLine = {
   pending: boolean
   /** Revealed when the line is opened; empty when there's nothing more. */
   detail: JobActivityDetailLine[]
-  /** The source item, so filtering can reuse the panel's buckets. */
-  item: JobThreadActivityItem
 }
+
+/**
+ * A line from the job's own activity, whose source item lets filtering reuse the panel's buckets, or a message from
+ * Messages (cut 10), whose facts say how it reads (`jobActivityMessages.ts`).
+ */
+export type JobActivityLine =
+  | (JobActivityLineBase & { kind: JobThreadActivityItem['kind']; item: JobThreadActivityItem; message?: undefined })
+  | (JobActivityLineBase & { kind: 'message'; item: null; message: JobActivityMessageFacts })
+
+/** A line before the numbering, kind by kind. */
+type Unnumbered<T> = T extends unknown ? Omit<T, 'number'> : never
 
 /**
  * "9:45 AM" → "9:45a". Newer ICU builds separate the meridiem with a narrow
@@ -76,7 +88,7 @@ function detailFromNote(note: string): JobActivityDetailLine[] {
 function lineFromItem(
   item: JobThreadActivityItem,
   viewerRole: UserRole | null | undefined,
-): Omit<JobActivityLine, 'number'> {
+): Unnumbered<Extract<JobActivityLine, { kind: JobThreadActivityItem['kind'] }>> {
   const atIso = jobActivityItemTimeIso(item)
   const base = {
     atIso,
@@ -161,16 +173,32 @@ function lineFromItem(
   }
 }
 
+/** A message as a line (cut 10): its who, words and facts from `messageLineParts`, at its own time. */
+function lineFromMessage(m: JobActivityMessage): Unnumbered<Extract<JobActivityLine, { kind: 'message' }>> {
+  return {
+    ...messageLineParts(m),
+    key: `m-${m.id}`,
+    kind: 'message',
+    atIso: m.at,
+    timeLabel: Number.isNaN(Date.parse(m.at)) ? '—' : compactChicagoClockTime(m.at),
+    pending: false,
+    item: null,
+  }
+}
+
 /**
- * Notes and reports are a person talking to the reader; everything else is
- * system-recorded texture the renderer mutes.
+ * Notes, reports and messages are a person talking to the reader; everything else is
+ * system-recorded texture the renderer mutes, a message's event included.
  */
-export function isConversationalLine(line: Pick<JobActivityLine, 'kind'>): boolean {
+export function isConversationalLine(line: { kind: JobActivityLineKind; message?: { tone: string } | undefined }): boolean {
+  if (line.kind === 'message') return line.message?.tone !== 'event'
   return line.kind === 'note' || line.kind === 'report'
 }
 
 export type BuildJobActivityLinesOptions = {
   viewerRole?: UserRole | null
+  /** The job's messages (cut 10), numbered with everything else. */
+  messages?: readonly JobActivityMessage[]
 }
 
 /**
@@ -181,23 +209,55 @@ export function buildJobActivityLines(
   items: JobThreadActivityItem[],
   options: BuildJobActivityLinesOptions = {},
 ): JobActivityLine[] {
-  const { viewerRole } = options
-  const ordered = items
-    .map((item, inputIndex) => ({ item, inputIndex, t: Date.parse(jobActivityItemTimeIso(item)) }))
+  const { viewerRole, messages = [] } = options
+  // The job's own items first and then the messages, so a tie in time keeps that order.
+  const unnumbered: Unnumbered<JobActivityLine>[] = [
+    ...items.map((item) => lineFromItem(item, viewerRole)),
+    ...messages.map(lineFromMessage),
+  ]
+  const ordered = unnumbered
+    .map((line, inputIndex) => ({ line, inputIndex, t: Date.parse(line.atIso) }))
     .sort((a, b) =>
       a.t === b.t || Number.isNaN(a.t) || Number.isNaN(b.t) ? a.inputIndex - b.inputIndex : a.t - b.t,
     )
 
-  return ordered.map(({ item }, i) => ({ ...lineFromItem(item, viewerRole), number: i + 1 }))
+  return ordered.map(({ line }, i) => ({ ...line, number: i + 1 }) as JobActivityLine)
+}
+
+/**
+ * A line's bucket. A message is the customer's when it is with her (cut 10), and a note when it is a team note written
+ * in her thread. A message with anyone else, and an event, shows under All only.
+ */
+export function jobActivityLineMatches(line: JobActivityLine, filter: JobActivityFilter): boolean {
+  if (filter === 'all') return true
+  if (line.kind === 'message') {
+    if (filter === 'customer') return isCustomerSide(line.message.tone)
+    return filter === 'notes' && line.message.tone === 'teamNote'
+  }
+  return filter !== 'customer' && activityItemMatchesFilter(line.item, filter)
 }
 
 /** Narrow to one of the panel's buckets. Numbers were assigned pre-filter, so they don't move. */
 export function filterJobActivityLines(
   lines: JobActivityLine[],
-  filter: ActivityFilter,
+  filter: JobActivityFilter,
 ): JobActivityLine[] {
   if (filter === 'all') return lines
-  return lines.filter((l) => activityItemMatchesFilter(l.item, filter))
+  return lines.filter((l) => jobActivityLineMatches(l, filter))
+}
+
+/** Each bucket's count for the filter pills, from the same lines the filter narrows. 'all' is every line. */
+export function countJobActivityLines(lines: JobActivityLine[]): Record<JobActivityFilter, number> {
+  const counts: Record<JobActivityFilter, number> = { all: lines.length, notes: 0, reports: 0, status: 0, billing: 0, crew: 0, customer: 0 }
+  for (const line of lines) {
+    for (const f of ['notes', 'reports', 'status', 'billing', 'crew', 'customer'] as const) {
+      if (jobActivityLineMatches(line, f)) {
+        counts[f]++
+        break // buckets are disjoint, so a line lives in at most one
+      }
+    }
+  }
+  return counts
 }
 
 export type JobActivityDayGroup = {

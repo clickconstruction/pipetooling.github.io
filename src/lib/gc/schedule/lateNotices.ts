@@ -1,16 +1,18 @@
 /**
  * GC mode, the real build, the schedule's PR 1b: a trade's late notice (G-117), moved word for word from the GC mode prototype
- * (branch spike/gc-mode, `gcLateNotices.ts`).
+ * (branch spike/gc-mode, `gcLateNotices.ts`). `lateNoticeProblem` moved with the schedule's PR 14a, for the portal's form
+ * to check what `gc_trade_say_late` checks before it sends.
  */
 import { addDays } from '../building'
 import { GC_COMPANY } from '../company'
 import { partnerById } from '../lookups'
-import { moveActivityName, moveReasonLabel, planMove } from './moves'
+import { MOVE_NOTE_MIN, moveActivityName, moveReasonLabel, planMove } from './moves'
 import type { ScheduleRow } from './schedule'
 import { daysBetween, scheduleRows } from './schedule'
 import type { LateNotice, LookAheadReason, ScheduleActivity, ScheduleMove, ScheduleMoveReason } from './types'
 import type { GcProject, GcState, Partner } from '../types'
 import { weekdayDate } from '../words'
+import type { PortalKey } from '../portalI18n'
 
 /** Why it will be late: the look-ahead's reasons, each a move's reason too, in the order offered. */
 export const LATE_REASONS: LookAheadReason[] = ['weather', 'trade before', 'materials', 'crew', 'other']
@@ -347,4 +349,14 @@ export function latePushBackLogWords(project: GcProject, partner: Partner, notic
 /** The log's line when the company answers a push back: "Summit Roofing will make Fri Oct 9 on TPO membrane." */
 export function lateKeepLogWords(project: GcProject, partner: Partner, notice: LateNotice): string {
   return `${partner.company} will make ${weekdayDate(lateDayChanged(notice))} on ${lineWork(project, notice.lineId)} at ${project.name}.`
+}
+
+/** What stops a notice from going, in the portal's words: the key, and the day it names. Null: it can go. */
+export function lateNoticeProblem(door: LateDoor, today: string, day: string, reason: LookAheadReason | null, note: string): { key: PortalKey; day?: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { key: 'latePickDay' }
+  if (day <= door.day) return { key: 'lateLaterDay', day: door.day }
+  if (day < today) return { key: 'lateFromToday' }
+  if (!reason || !LATE_REASONS.includes(reason)) return { key: 'latePickWhy' }
+  if (note.trim().length < MOVE_NOTE_MIN) return { key: 'lateNote' }
+  return null
 }

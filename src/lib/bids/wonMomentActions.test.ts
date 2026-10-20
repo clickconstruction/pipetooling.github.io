@@ -3,13 +3,15 @@ import {
   bidJobLinkLabel,
   canCreateJobFromBid,
   jobCreatedTelemetryTarget,
+  sendsJobDraft,
+  wonHandoffMode,
   secondConversionMessage,
   wonMomentActions,
 } from './wonMomentActions'
 
 describe('wonMomentActions (Tier-1 #8)', () => {
-  it('office roles and the estimator get "Open the job" + a quiet hand-off to Dispatch when no job exists yet', () => {
-    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) {
+  it('office roles get "Open the job" + a quiet hand-off to Dispatch when no job exists yet', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
       expect(wonMomentActions({ hasJob: false, role })).toEqual([
         { key: 'create', label: 'Open the job', primary: true },
         { key: 'ask_dispatch', label: 'Ask Dispatch to open it', primary: false },
@@ -22,13 +24,20 @@ describe('wonMomentActions (Tier-1 #8)', () => {
     expect(wonMomentActions({ hasJob: false, role: 'primary', dispatchAsked: true })).toEqual([])
     expect(wonMomentActions({ hasJob: true, role: 'primary' })).toEqual([])
   })
-  it('a job already exists: roles that can open Jobs get open + create-another; the estimator only create-another', () => {
+  it('the estimator sends Dispatch a draft in place of New Job (v2.5659): one press, gone once Dispatch has it or a job exists', () => {
+    expect(wonMomentActions({ hasJob: false, role: 'estimator' })).toEqual([{ key: 'send_draft', label: 'Send to Dispatch', primary: true }])
+    expect(wonMomentActions({ hasJob: false, role: 'estimator', dispatchAsked: true })).toEqual([])
+    expect(wonMomentActions({ hasJob: true, role: 'estimator' })).toEqual([])
+    expect(wonHandoffMode('estimator')).toBe('draft')
+    expect(sendsJobDraft('estimator')).toBe(true)
+    expect(sendsJobDraft('assistant')).toBe(false)
+  })
+  it('a job already exists: roles that can open Jobs get open + create-another', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
       expect(wonMomentActions({ hasJob: true, role }).map((a) => a.key)).toEqual(['open_existing', 'create_another'])
       expect(wonMomentActions({ hasJob: true, role }).find((a) => a.key === 'open_existing')?.primary).toBe(true)
       expect(wonMomentActions({ hasJob: true, role }).find((a) => a.key === 'create_another')?.primary).toBe(false)
     }
-    expect(wonMomentActions({ hasJob: true, role: 'estimator' })).toEqual([{ key: 'create_another', label: 'Create another job', primary: false }])
   })
   it('the read-only board roles get nothing', () => {
     for (const role of ['superintendent', 'subcontractor', 'helpers', null, undefined, '']) {
@@ -41,7 +50,9 @@ describe('wonMomentActions (Tier-1 #8)', () => {
     expect(wonMomentActions({ hasJob: false, role: 'dev', canCreateJobs: false })).toEqual([])
   })
   it('canCreateJobFromBid mirrors the create set', () => {
-    expect(canCreateJobFromBid('estimator')).toBe(true)
+    // v2.5659: an estimator may not insert a job row (the live walk found Save refused), so they draft one instead.
+    expect(canCreateJobFromBid('estimator')).toBe(false)
+    expect(canCreateJobFromBid('assistant')).toBe(true)
     expect(canCreateJobFromBid('superintendent')).toBe(false)
     expect(canCreateJobFromBid(null)).toBe(false)
   })

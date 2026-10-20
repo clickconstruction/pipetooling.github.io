@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
@@ -12,11 +12,12 @@ import {
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
 import { useJobFollowupNudge } from '../../hooks/useJobFollowupNudge'
+import { JOB_FOLLOWUP_IDLE_DAYS } from '../../lib/jobs/jobFollowupQueue'
 import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
-import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
+import { buildNeedsYouItems, CUSTOMER_MESSAGES_HREF, CUSTOMER_MESSAGES_LINE_ON } from '../../lib/dashboardNeedsYou'
 import { useCustomerWaitingOptional } from '../../contexts/CustomerWaitingContext'
 import { summarizeCustomerWaiting } from '../../lib/customerWaiting'
 import { roadmapPath } from '../../lib/roadmapVisibility'
@@ -26,6 +27,9 @@ import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useBidFollowupsDue } from '../../hooks/useBidFollowupsDue'
+import { useMyStaleClaims } from '../../hooks/useMyStaleClaims'
+import { useMyMoney } from '../../hooks/useMyMoney'
+import { staleClaimLine } from '../../lib/jobs/paidClaims'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBulkHoursNudge } from '../../hooks/useBulkHoursNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
@@ -39,13 +43,16 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
-import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { useCustomerMessagesCounts } from '../../hooks/useCustomerMessagesCounts'
+import { useTodaysSends } from '../../hooks/useTodaysSends'
+import { useClauseNeeds } from '../../hooks/useClauseNeeds'
+import { clausePaperHref } from '../../lib/contracts/clauseRows'
 import { canOpenGcProjects } from '../../lib/gc/access'
 import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
@@ -58,6 +65,7 @@ import { useSubmittalsNudge } from '../../hooks/useSubmittalsNudge'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
+import { useDocsmitSettings } from '../../hooks/useDocsmitSettings'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
@@ -80,11 +88,15 @@ import { DashboardArDepositsModal } from './DashboardArDepositsModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
 import type { UserRole } from '../../hooks/useAuth'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import {
   filterPinsToShow,
   getPinnedChipDisplay,
   getTallyLinkAccessibleName,
 } from '../../lib/dashboardPinnedRow'
+
+// Today's sends (v2.5595): the window behind the Needs you line, loaded when it opens so the Dashboard's chunk stays as it was.
+const TodaysSendsWindow = lazy(() => import('./TodaysSendsWindow').then((m) => ({ default: m.TodaysSendsWindow })))
 
 export interface DashboardPinnedQuickRowProps {
   authUserId: string | undefined
@@ -367,6 +379,7 @@ export function DashboardPinnedQuickRow({
     Boolean(authUserId) && role != null,
   )
   const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
+  const [todaysSendsOpen, setTodaysSendsOpen] = useState(false)
   /** Needs You "Match deposits" opens Accounts Receivable in place (Tier-2 #17; the v2.2751 pattern). */
   const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
   // Why-we-lost nudge (v2.1800): same audience as the lens — the superintendent gate on
@@ -378,6 +391,14 @@ export function DashboardPinnedQuickRow({
   const { nudge: lostBidNudge, loading: lostBidNudgeLoading } = useLostBidNudge(lostBidNudgeEnabled)
   // Promised bid calls due or missed (v2.4426): the Call queue's audience (a primary is not on Followup).
   const { due: bidFollowupsDue } = useBidFollowupsDue(Boolean(authUserId) && (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'))
+  // A paid claim the signed-in person heard with nothing landed in a week (v2.5650): the read gates itself, the hearer is the filter.
+  const staleClaimsEnabled = Boolean(authUserId) && (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary')
+  const { stale: staleClaims } = useMyStaleClaims(staleClaimsEnabled, authUserId)
+  // Money on my bids (v2.5651): the estimator's and the account manager's own chase list, one read.
+  const myMoneyEnabled = Boolean(authUserId) && (role === 'estimator' || role === 'primary')
+  const { lens: myMoneyLens, rollup: myMoneyRollup } = useMyMoney(myMoneyEnabled)
+  const myMoneyInput = useMemo(() => (myMoneyLens && myMoneyRollup ? { open: myMoneyLens.open, rollup: myMoneyRollup, pastWord: myMoneyLens.pastWord, stale: myMoneyLens.stale } : null), [myMoneyLens, myMoneyRollup])
+  const staleClaimsInput = useMemo(() => (staleClaims.length ? { count: staleClaims.length, firstLine: staleClaimLine(staleClaims[0]!, todayYmdInAppTz()) } : null), [staleClaims])
   const {
     peopleCount: tallyStaffStalePeopleCount,
     transactionCount: tallyStaffStaleTxCount,
@@ -392,9 +413,6 @@ export function DashboardPinnedQuickRow({
   })
 
   const officeEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
-  const { count: jobFollowupCount, stageCounts: jobFollowupStageCounts } = useJobFollowupNudge(
-    !hideBanners && officeEligible,
-  )
   const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(
     hideBanners ? undefined : authUserId,
   )
@@ -440,7 +458,9 @@ export function DashboardPinnedQuickRow({
 
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  /** ZZ test jobs off the nudges and the Lien desk's count for every role but a dev who shows them (punch list #61). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
+  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled, hideZzTestJobs)
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   // Lien waivers awaiting MY signature (v2.4276): the leader's seat. Signers only — the lanes hook
   // already scopes to me; the enable keeps the read off the roles that never sign.
@@ -448,10 +468,12 @@ export function DashboardPinnedQuickRow({
   const { lanes: lienSignatureLanes, refetch: refetchLienSignatureLanes } = useLienSignatureLanes(lienWaiversToSignEnabled)
   const lienWaiversToSign = lienWaiversToSignEnabled ? { count: lienSignatureLanes.toSign.length, total: lienSignatureLanes.toSign.reduce((sum, r) => sum + Number(r.amount ?? 0), 0) } : null
   const [lienWaiversToSignOpen, setLienWaiversToSignOpen] = useState(false)
-  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
-  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled, hideZzTestJobs, authUserId)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled, hideZzTestJobs)
+  // Docsmit's prepaid credit (the Docsmit train, 6b, the credit line): the balance the poll last read, against the warn line.
+  const docsmit = useDocsmitSettings()
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
-  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true })
+  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
   const contractNudgeEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
@@ -486,9 +508,14 @@ export function DashboardPinnedQuickRow({
   // Work Orders tab PR 3: drafts waiting for a price — the master's queue.
   const unpricedWorkOrdersEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
-  // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
+  // The quiet jobs (v2.2487) and, since v2.5512, the idle ones (v2.2825's card, now the Follow-ups deck's own
+  // count): one fetch, the deck's kernel, so the two cards and the deck say the same numbers.
+  const { count: jobFollowupCount, stageCounts: jobFollowupStageCounts, idle: jobFollowupIdle } = useJobFollowupNudge(
+    !hideBanners && officeEligible,
+    { userId: authUserId, hideZzTestJobs },
+  )
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
+  const staleOpen = jobFollowupIdle ? { ...jobFollowupIdle, minIdleDays: JOB_FOLLOWUP_IDLE_DAYS } : null
   // Field capacity under 60% three complete weeks running (Job Summary follow-up 3) — the roles that see Job Summary.
   const capacityUnderEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { streak: capacityUnder } = useCapacityUnderNudge(capacityUnderEnabled, authUserId)
@@ -503,9 +530,19 @@ export function DashboardPinnedQuickRow({
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
   // Price requests PR 4 (v2.3573): the same audience as the robot card — the people who price bids.
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
-  // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc.
+  // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc. Since v2.5289 it
+  // counts the people waiting on us, as the pill does.
   const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && canOpenGcProjects(role)
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
+  // The Customers line (residential build, R8 · 14): the same team, off until Messages has its page.
+  const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && gcFollowUpEnabled
+  const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled)
+  // Today's sends (v2.5595): the texts the morning run prepared for the office to press; the same team as the Customers line.
+  const todaysSendsEnabled = gcFollowUpEnabled
+  const todaysSends = useTodaysSends(todaysSendsEnabled)
+  // Contracts and clauses (Messages, cut 4c): the clause changes waiting on a controller's or a dev's approval.
+  const contractClausesEnabled = !hideBanners && Boolean(authUserId)
+  const { rows: contractClauses } = useClauseNeeds(contractClausesEnabled)
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
@@ -517,13 +554,13 @@ export function DashboardPinnedQuickRow({
   const { activity: legalFirmActivity } = useLegalFirmActivityNudge(legalFirmActivityEnabled)
   // Owners who signed for our records on their portal (punch list #86) — the office set that works the Lien desk.
   const ownerRecordsSignedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled)
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled, hideZzTestJobs, authUserId)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
+  const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled, hideZzTestJobs, authUserId)
   // Deposits the bank returned that jobs still count as paid (v2.3795) — the roles that can read the bank table; Edit Job is the door.
   const bankReturnedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const bankReturnedNudge = useBankReturnedPaymentsNudge(bankReturnedEnabled)
+  const bankReturnedNudge = useBankReturnedPaymentsNudge(bankReturnedEnabled, hideZzTestJobs, authUserId)
   // Submittals (stage 4b, v2.3488): the office and the estimators see the four cards.
   const submittalsEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const submittalsNudge = useSubmittalsNudge(submittalsEnabled)
@@ -584,8 +621,18 @@ export function DashboardPinnedQuickRow({
     priceMatrixReady,
     priceRequestsLateEnabled: priceMatrixEnabled,
     priceRequestsLate,
+    staleClaimsEnabled,
+    staleClaims: staleClaimsInput,
+    myMoneyEnabled,
+    myMoney: myMoneyInput,
     gcFollowUpEnabled,
     gcFollowUp,
+    customerMessagesEnabled,
+    customerMessages,
+    todaysSendsEnabled,
+    todaysSends: todaysSends.need,
+    contractClausesEnabled,
+    contractClauses,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
     legalReviewEnabled,
@@ -604,6 +651,8 @@ export function DashboardPinnedQuickRow({
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
     lienWatch,
+    docsmitCreditEnabled: lienUnconditionalEnabled && docsmit.setUp,
+    docsmitCredit: docsmit.loaded ? { ...docsmit.credit, warn: docsmit.settings.creditWarn, nowIso: new Date().toISOString() } : null,
     lienDeskEnabled: lienUnconditionalEnabled,
     lienDesk: lienDeskData?.summary ?? null,
     lienDeskLeader: role === 'dev' || role === 'master_technician',
@@ -741,10 +790,18 @@ export function DashboardPinnedQuickRow({
               navigate('/tally?tab=transactions')
             } else if (item.key === 'tally-team') {
               setTallyStaffFollowUpModalOpen(true)
+            } else if (item.key === 'todays-sends') {
+              setTodaysSendsOpen(true)
             } else if (item.key === 'lost-bids') {
               navigate('/bids?tab=why-we-lost')
             } else if (item.key === 'bid-followups') {
               navigate('/bids?tab=call-queue')
+            } else if (item.key === 'money-on-my-bids') {
+              navigate('/bids?tab=money')
+            } else if (item.key === 'paid-claims-stale') {
+              // The estimator's door is the won bid's Job block; the office's the Pipeline.
+              const first = staleClaims[0]
+              navigate(role === 'estimator' && first?.bidId ? `/bids?tab=bid-board&bidId=${first.bidId}` : role === 'estimator' ? '/bids?tab=bid-board' : '/jobs?tab=stages')
             } else if (item.key === 'job-followups') {
               navigate('/jobs?tab=stages&followups=1')
             } else if (item.key === 'contract-missing') {
@@ -754,7 +811,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'work-orders-unpriced') {
               navigate('/jobs?tab=subs&wof=drafts')
             } else if (item.key === 'jobs-stale-open') {
-              navigate('/jobs?tab=job-summary&view=cycle')
+              // v2.5512: the Follow-ups deck on its Idle lens — the same cards the figure counts.
+              navigate('/jobs?tab=stages&followups=idle')
             } else if (item.key === 'capacity-under') {
               navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-missing') {
@@ -789,6 +847,12 @@ export function DashboardPinnedQuickRow({
               navigate(priceRequestsLate ? `/bids?tab=pricing&bidId=${priceRequestsLate.first.bidId}` : '/bids?tab=pricing')
             } else if (item.key === 'gc-follow-up') {
               navigate(GC_FOLLOW_UP_HREF)
+            } else if (item.key === 'customer-messages') {
+              navigate(CUSTOMER_MESSAGES_HREF)
+            } else if (item.key === 'contract-clauses') {
+              // The oldest waiting change's paper, on Settings → Contracts and clauses, where Approve and Decline sit.
+              const first = contractClauses[0]
+              navigate(first ? clausePaperHref(first.proposal.paperId) : '/settings?tab=settings-clauses')
             } else if (item.key === 'price-matrix-ready') {
               // Land on the bid's Pricing tab; the green chip opens the compare (and stamps the review).
               navigate(priceMatrixReady ? `/bids?tab=pricing&bidId=${priceMatrixReady.first.bidId}` : '/bids?tab=pricing')
@@ -850,6 +914,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
             } else if (item.key === 'lien-tracking-owed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
+            } else if (item.key === 'docsmit-credit') {
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=ready')
             } else if (item.key === 'owner-records-signed') {
               // Records for an owner on the request that has waited longest (punch list #86); the desk's own door without a job.
               const jobId = ownerRecordsSigned?.first.jobId
@@ -966,6 +1032,11 @@ export function DashboardPinnedQuickRow({
             void refetchArBankUnallocatedCount()
           }}
         />
+      )}
+      {renderModals && todaysSendsOpen && (
+        <Suspense fallback={null}>
+          <TodaysSendsWindow onClose={() => setTodaysSendsOpen(false)} onChanged={() => todaysSends.reload()} />
+        </Suspense>
       )}
       {renderModals && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardStaleTallyStaffFollowUpModal

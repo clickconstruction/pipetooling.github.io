@@ -2,18 +2,31 @@
  * GC mode, the real build (the Board's B6-a-ii): a trade's statement of work on the trade's block of its project's card,
  * from the design spike's Contracts tab card (`GcOfficeTabs.tsx`, `GcContractsTab`) and `GcSovSideBySide`. Award in
  * Compare quotes drafts it (`gc_award`). **Send to their portal to sign** marks it sent; once the Portal's sign screen
- * is live (`SOW_SIGN_SCREEN_LIVE`), a dev may email it too, a box that starts off. The papers that must be in before
+ * is live (`SOW_SIGN_SCREEN_LIVE`), a dev may email it too, a box that starts off. The money team reads the card since
+ * O9, read only: the press is for those who write the statement of work (`canUseGcBoardWrites`). The papers that must be in before
  * it goes (the master agreement, insurance, the W-9) come with B6-b, and how far the money claimed reaches on their
- * lines with Building's draws (U6).
+ * lines with Building's draws (U6). Since B6-c-ii the send waits on those papers (`partnerBlockers`), saying "Cannot send
+ * yet." and what is missing, with **Send the master agreement** beside it while none has gone (the company window's send),
+ * and the company's paperwork chips beside its name, as the spike's Contracts tab has them.
+ *
+ * Messages, cut 4c (v2.5334): until it is signed, a dev picks the paper it is built from (**Paper**). Its lines are today's
+ * paper; a paper built from clauses reads in their portal as its clauses, with the exhibit for this trade after them.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { PaperChoice } from '../../lib/contracts/clauseRows'
+import { loadPaperChoices, loadSowPaper, setSowPaper } from '../../lib/contracts/clausesIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { partnerBlockers } from '../../lib/gc/bench'
 import { unitPriceWords } from '../../lib/gc/exclusions'
 import { partnerById, planLabel } from '../../lib/gc/lookups'
 import { SOW_SIGN_SCREEN_LIVE } from '../../lib/gc/sowEmail'
 import { theirSovGap } from '../../lib/gc/theirSov'
 import type { GcState, Sow } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
+import { useCompanyOpener } from './gcCompanyOpener'
+import { GcPaperPicker } from './GcPaperPicker'
 import { PartnerName } from './GcPartnerName'
+import { PaperworkChips } from './GcPaperworkChips'
 import { Btn, Chip, Stat, td, th as thBase, type Tone } from './gcUi'
 
 /** What the card writes. */
@@ -122,23 +135,80 @@ function SowExcluded({ excluded }: { excluded: NonNullable<Sow['excluded']> }) {
   )
 }
 
+/**
+ * The paper a dev builds the statement of work from, read when the card shows and saved on the pick (`gc_set_sow_paper`),
+ * which refuses once it is signed. With no paper built from clauses in the library and none picked, nothing shows.
+ */
+function SowPaper({ packageId, company, trade }: { packageId: string; company: { id: string; name: string }; trade: string }) {
+  const [choices, setChoices] = useState<PaperChoice[] | null>(null)
+  const [sowId, setSowId] = useState<string | null>(null)
+  const [value, setValue] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [said, setSaid] = useState<{ ok: boolean; words: string } | null>(null)
+  useEffect(() => {
+    let live = true
+    Promise.all([loadPaperChoices(), loadSowPaper(packageId)])
+      .then(([c, waiting]) => {
+        if (!live) return
+        setChoices(waiting ? c : [])
+        setSowId(waiting?.sowId ?? null)
+        setValue(waiting?.paperId ?? null)
+      })
+      .catch((e: unknown) => {
+        if (live) setSaid({ ok: false, words: `The papers did not load: ${formatErrorMessage(e, 'try again')}` })
+      })
+    return () => {
+      live = false
+    }
+  }, [packageId])
+  const line = said && (
+    <div role="status" style={{ fontSize: '0.85rem', color: said.ok ? 'var(--text-muted)' : 'var(--text-red-700)' }}>
+      {said.words}
+    </div>
+  )
+  // Nothing until the papers are read, then nothing more when none is built from clauses and none is picked.
+  if (choices === null || !sowId) return line || null
+  if (choices.length === 0 && value === null) return null
+  const pick = (paperId: string | null) => {
+    setBusy(true)
+    setSaid(null)
+    setSowPaper(sowId, paperId)
+      .then(() => {
+        setValue(paperId)
+        setSaid({ ok: true, words: paperId ? 'Saved. Their portal reads it as its clauses.' : 'Saved. Their portal reads its lines.' })
+      })
+      .catch((e: unknown) => setSaid({ ok: false, words: formatErrorMessage(e, 'That did not save.') }))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <div style={{ display: 'grid', gap: '0.25rem' }}>
+      <GcPaperPicker choices={choices} value={value} today="Today's paper: its lines" previewAs={{ id: company.id, name: company.name, trades: trade ? [trade] : [] }} disabled={busy} onPick={pick} />
+      {line}
+    </div>
+  )
+}
+
 export function GcTradeSow({
   state,
   projectId,
   packageId,
   writes,
+  canSend = false,
   canEmail = false,
 }: {
   state: GcState
   projectId: string
   packageId: string
   writes: SowWrites
+  /** The reader may send it (a dev until the award door). Without it the card is read only. */
+  canSend?: boolean
   /** The reader may email a trade (a dev). The box shows only once the Portal's sign screen is live. */
   canEmail?: boolean
 }) {
   const [email, setEmail] = useState(false)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const opener = useCompanyOpener()
   const project = state.projects.find((p) => p.id === projectId)
   const pkg = project?.packages.find((k) => k.id === packageId)
   const sow = pkg?.sow
@@ -146,6 +216,8 @@ export function GcTradeSow({
   const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
   const partner = invite ? partnerById(state, invite.partnerId) : undefined
   const offerEmail = SOW_SIGN_SCREEN_LIVE && canEmail
+  // The papers that must be in before it goes (the spike's Contracts tab): the master agreement signed, insurance current, a W-9.
+  const blockers = partner ? partnerBlockers(partner, state.today) : []
   const send = () => {
     setBusy(true)
     setProblem(null)
@@ -159,6 +231,7 @@ export function GcTradeSow({
       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
         {partner && <PartnerName partnerId={partner.id} company={partner.company} />}
         <Chip tone={STATUS_TONES[sow.status]}>Statement of work {statusWords(sow)}</Chip>
+        {partner && <PaperworkChips partner={partner} today={state.today} />}
         {pkg.awardedOn && (
           <span style={{ color: 'var(--text-muted)' }}>
             awarded {shortDate(pkg.awardedOn)}
@@ -173,9 +246,12 @@ export function GcTradeSow({
       </div>
       <SovSideBySide sow={sow} />
       <SowExcluded excluded={sow.excluded ?? []} />
-      {sow.status === 'draft' && (
+      {canSend && sow.status !== 'signed' && partner && <SowPaper packageId={pkg.id} company={{ id: partner.id, name: partner.company }} trade={pkg.trade} />}
+      {sow.status === 'draft' && !canSend && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>A dev sends it to their portal to sign.</div>}
+      {sow.status === 'draft' && canSend && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Btn kind="primary" disabled={busy} onClick={send}>
+          {partner?.msa === 'none' && opener && <Btn onClick={() => opener.openPartner(partner.id, { tab: 'documents', doc: 'msa', send: true })}>Send the master agreement</Btn>}
+          <Btn kind="primary" disabled={busy || blockers.length > 0} title={blockers.join(' ') || undefined} onClick={send}>
             Send to their portal to sign
           </Btn>
           {offerEmail && (
@@ -184,6 +260,7 @@ export function GcTradeSow({
               Email it now
             </label>
           )}
+          {blockers.length > 0 && <span style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>Cannot send yet. {blockers.join(' ')}</span>}
         </div>
       )}
       {problem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{problem}</div>}

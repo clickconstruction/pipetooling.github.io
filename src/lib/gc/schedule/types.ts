@@ -405,6 +405,8 @@ export interface ScheduleSend {
   subject: string
   /** The letter, one paragraph a line. */
   lines: string[]
+  /** Its email went (PR 15a): the row's log is set. Unset: kept, and not emailed yet. */
+  emailed?: true
 }
 
 /** Where a row of a schedule someone handed us lands (G-137): one of our lines, an inspection, or the job's own. */

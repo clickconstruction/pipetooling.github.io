@@ -1,9 +1,23 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+
+// The papers to build it from (v2.5334): none unless a test gives them, so the card reads as before.
+const paperIo = vi.hoisted(() => ({ choices: [] as unknown[], current: null as string | null, refuse: null as string | null }))
+vi.mock('../../lib/contracts/clausesIo', () => ({
+  loadPaperChoices: vi.fn(() => Promise.resolve(paperIo.choices)),
+  loadSowPaper: vi.fn(() => Promise.resolve({ sowId: 'w1', paperId: paperIo.current })),
+  setSowPaper: vi.fn(() => (paperIo.refuse ? Promise.reject(new Error(paperIo.refuse)) : Promise.resolve())),
+}))
+
 import { GcTradeSow, type SowWrites } from './GcTradeSow'
+import { loadSowPaper, setSowPaper } from '../../lib/contracts/clausesIo'
+import { paperChoices } from '../../lib/contracts/clauseRows'
+import { clauseLibraryRows } from '../../test/fixtures/clauseBookDemo'
 import { boardStateFromRows, type SowRow } from '../../lib/gc/boardRows'
-import { awardedClinicBoardRows, clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { awardedClinicBoardRows, clinicBoardRows, lonestarPapersInRows } from '../../lib/gc/boardTestRows'
+import type { CompanyPaperRow } from '../../lib/gc/companyPapers'
+import { GcCompanyOpenerContext } from './gcCompanyOpener'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
@@ -12,12 +26,17 @@ function writes(): SowWrites {
   return { send: vi.fn(() => Promise.resolve()) }
 }
 
-/** The clinic's sitework awarded to Lonestar, its statement of work in the given state (the bed's numbers). */
-function card(sow: Partial<SowRow> = {}, w = writes()) {
-  const base = awardedClinicBoardRows()
+/** The clinic's sitework awarded to Lonestar, its statement of work in the given state (the bed's numbers), its papers all in unless given. */
+function card(sow: Partial<SowRow> = {}, w = writes(), papers: CompanyPaperRow[] = lonestarPapersInRows()) {
+  const base = awardedClinicBoardRows({ papers })
   const state = boardStateFromRows({ ...base, sows: (base.sows ?? []).map((s) => ({ ...s, ...sow })) })
-  render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={w} canEmail />)
-  return { w, el: document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement }
+  const openPartner = vi.fn()
+  render(
+    <GcCompanyOpenerContext.Provider value={{ openPartner }}>
+      <GcTradeSow state={state} projectId="p1" packageId="k1" writes={w} canSend canEmail />
+    </GcCompanyOpenerContext.Provider>,
+  )
+  return { w, openPartner, el: document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement }
 }
 
 describe('GcTradeSow', () => {
@@ -39,12 +58,48 @@ describe('GcTradeSow', () => {
     expect(within(el).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
   })
 
-  it('a drafted one sends to their portal, with no email box until the portal can take a signature', async () => {
+  it('a drafted one sends to their portal, and emails it only when a dev ticks the box, which starts off (P2c-ii)', async () => {
     const { w, el } = card({ status: 'draft', sent_on: null })
     expect(within(el).getByText('Statement of work drafted')).toBeTruthy()
-    expect(within(el).queryByLabelText('Email it now')).toBeNull()
+    const box = within(el).getByLabelText('Email it now') as HTMLInputElement
+    expect(box.checked).toBe(false)
     fireEvent.click(within(el).getByRole('button', { name: 'Send to their portal to sign' }))
     await waitFor(() => expect(w.send).toHaveBeenCalledWith('k1', false))
+    fireEvent.click(box)
+    fireEvent.click(within(el).getByRole('button', { name: 'Send to their portal to sign' }))
+    await waitFor(() => expect(w.send).toHaveBeenLastCalledWith('k1', true))
+  })
+
+  it('waits on the papers: Cannot send yet with what is missing, and Send the master agreement while none has gone (B6-c-ii)', () => {
+    const { w, openPartner, el } = card({ status: 'draft', sent_on: null }, writes(), [])
+    const send = within(el).getByRole('button', { name: 'Send to their portal to sign' }) as HTMLButtonElement
+    expect(send.disabled).toBe(true)
+    expect(within(el).getByText('Cannot send yet. The master agreement is not signed. No insurance certificate is on file. No W-9 is on file.')).toBeTruthy()
+    fireEvent.click(send)
+    expect(w.send).not.toHaveBeenCalled()
+    // The chips beside the company say the same, and each opens its paper.
+    expect(within(el).getByText('No master agreement')).toBeTruthy()
+    expect(within(el).getByText('No insurance on file')).toBeTruthy()
+    expect(within(el).getByText('No W-9')).toBeTruthy()
+    fireEvent.click(within(el).getByRole('button', { name: 'Send the master agreement' }))
+    expect(openPartner).toHaveBeenCalledWith('lonestar', { tab: 'documents', doc: 'msa', send: true })
+  })
+
+  it('reads the papers all in on the chips, with no master agreement button', () => {
+    const { el } = card({ status: 'draft', sent_on: null })
+    expect(within(el).getByText('Master agreement signed')).toBeTruthy()
+    expect(within(el).getByText('Insured to Jun 30')).toBeTruthy()
+    expect(within(el).getByText('W-9')).toBeTruthy()
+    expect(within(el).queryByRole('button', { name: 'Send the master agreement' })).toBeNull()
+    expect(within(el).queryByText(/Cannot send yet/)).toBeNull()
+  })
+
+  it('shows no email box to a sender who may not email a trade', () => {
+    const base = awardedClinicBoardRows({ papers: lonestarPapersInRows() })
+    const state = boardStateFromRows({ ...base, sows: (base.sows ?? []).map((s) => ({ ...s, status: 'draft' as const, sent_on: null })) })
+    render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={writes()} canSend />)
+    expect(screen.queryByLabelText('Email it now')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Send to their portal to sign' })).toBeTruthy()
   })
 
   it('says the send’s refusal in its own words', async () => {
@@ -52,6 +107,17 @@ describe('GcTradeSow', () => {
     const { el } = card({ status: 'draft', sent_on: null }, w)
     fireEvent.click(within(el).getByRole('button', { name: 'Send to their portal to sign' }))
     expect(await within(el).findByText('That statement of work is not a draft any more. Read the board again.')).toBeTruthy()
+  })
+
+  it('a drafted one reads only to someone who may not send it, the money team since O9', () => {
+    const base = awardedClinicBoardRows()
+    const state = boardStateFromRows({ ...base, sows: (base.sows ?? []).map((s) => ({ ...s, status: 'draft', sent_on: null })) })
+    render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={writes()} />)
+    const el = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
+    expect(within(el).getByText('Statement of work drafted')).toBeTruthy()
+    expect(within(el).getByText('$66,500')).toBeTruthy()
+    expect(within(el).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
+    expect(within(el).getByText('A dev sends it to their portal to sign.')).toBeTruthy()
   })
 
   it('a signed one reads its day', () => {
@@ -63,5 +129,65 @@ describe('GcTradeSow', () => {
     render(<GcTradeSow state={boardStateFromRows(clinicBoardRows())} projectId="p1" packageId="k1" writes={writes()} />)
     expect(document.querySelector('[data-gc-trade-sow]')).toBeNull()
     expect(screen.queryByText(/Statement of work/)).toBeNull()
+  })
+})
+
+describe('GcTradeSow · the paper it is built from (Messages, cut 4c, v2.5334)', () => {
+  beforeEach(() => {
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    paperIo.current = null
+    paperIo.refuse = null
+    vi.mocked(setSowPaper).mockClear()
+  })
+  afterEach(() => {
+    paperIo.choices = []
+  })
+
+  it('a dev picks it while it is not signed: today’s paper first, the pick saves, and Preview puts it together for the company and this trade', async () => {
+    const { el } = card({ status: 'draft', sent_on: null })
+    const paper = (await within(el).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    expect(paper.value).toBe('')
+    expect(within(paper).getByRole('option', { name: "Today's paper: its lines" })).toBeTruthy()
+    expect(within(paper).getByRole('option', { name: 'Subs · Statement of work' })).toBeTruthy()
+    expect(within(el).queryByRole('button', { name: 'Preview' })).toBeNull()
+    fireEvent.change(paper, { target: { value: 'doc-sow' } })
+    await waitFor(() => expect(setSowPaper).toHaveBeenCalledWith('w1', 'doc-sow'))
+    expect(await within(el).findByText('Saved. Their portal reads it as its clauses.')).toBeTruthy()
+    expect(paper.value).toBe('doc-sow')
+    fireEvent.click(within(el).getByRole('button', { name: 'Preview' }))
+    const preview = await screen.findByRole('dialog', { name: 'Statement of work, put together per trade' })
+    expect(within(preview).getByText('As it would go to Lonestar Earthworks, Sitework')).toBeTruthy()
+    expect(within(preview).queryByRole('combobox')).toBeNull()
+  })
+
+  it('reads the paper it has, and says a refused pick in its words, keeping that paper', async () => {
+    paperIo.current = 'doc-msa'
+    paperIo.refuse = 'That statement of work is signed already.'
+    const { el } = card()
+    const paper = (await within(el).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    await waitFor(() => expect(paper.value).toBe('doc-msa'))
+    fireEvent.change(paper, { target: { value: '' } })
+    await waitFor(() => expect(setSowPaper).toHaveBeenCalledWith('w1', null))
+    expect(await within(el).findByText('That statement of work is signed already.')).toBeTruthy()
+    expect(paper.value).toBe('doc-msa')
+  })
+
+  it('shows none on a signed one, to a reader who may not send it, or with no paper built from clauses', async () => {
+    // A signed one and a reader who may not send it read nothing.
+    vi.mocked(loadSowPaper).mockClear()
+    const signed = card({ status: 'signed', signed_on: '2026-10-09' }).el
+    expect(within(signed).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    cleanup()
+    const state = boardStateFromRows(awardedClinicBoardRows({ papers: lonestarPapersInRows() }))
+    render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={writes()} />)
+    expect(screen.queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    expect(loadSowPaper).not.toHaveBeenCalled()
+    cleanup()
+    paperIo.choices = []
+    vi.mocked(loadSowPaper).mockClear()
+    const none = card({ status: 'draft', sent_on: null }).el
+    await waitFor(() => expect(loadSowPaper).toHaveBeenCalledWith('k1'))
+    await waitFor(() => expect(within(none).getByText('Statement of work drafted')).toBeTruthy())
+    expect(within(none).queryByRole('combobox', { name: 'Paper' })).toBeNull()
   })
 })

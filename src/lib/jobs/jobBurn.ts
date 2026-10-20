@@ -31,6 +31,14 @@ export type JobBurnBudget = {
 export const JOB_BURN_DEFAULT_TARGET_MARGIN_PCT = 35
 
 /**
+ * Too early to say what a job will cost at today's pace: under this percent done, or with fewer field days (days with
+ * team labor). GC mode's margin reads the same two (Owner Billing's O11a, `ownWorkCost.ts`), so the Costs tab and Money
+ * never disagree about a crew's job.
+ */
+export const JOB_BURN_EARLY_PCT = 10
+export const JOB_BURN_EARLY_FIELD_DAYS = 3
+
+/**
  * Bid estimate when the job came from a bid and the estimate was snapshotted
  * (not yet — always null today); else price × (1 − target margin). Null when
  * there is no price either — the section then says so instead of dividing by 0.
@@ -217,7 +225,7 @@ export function buildJobBurn(i: JobBurnInput): JobBurnModel {
   const budget = i.budget
   const spentPctOfBudget = budget && budget.usd > 0 ? (spent / budget.usd) * 100 : null
   const leadPts = spentPctOfBudget != null && percentDone != null ? spentPctOfBudget - percentDone : null
-  const tooEarly = percentDone == null || percentDone < 10 || fieldDays.length < 3
+  const tooEarly = percentDone == null || percentDone < JOB_BURN_EARLY_PCT || fieldDays.length < JOB_BURN_EARLY_FIELD_DAYS
   const eacUsd = !tooEarly && percentDone != null && percentDone > 0 ? spent / (percentDone / 100) : null
   const marginUsd = eacUsd != null && i.priceUsd != null ? i.priceUsd - eacUsd : null
   const marginPct = marginUsd != null && i.priceUsd != null && i.priceUsd > 0 ? (marginUsd / i.priceUsd) * 100 : null

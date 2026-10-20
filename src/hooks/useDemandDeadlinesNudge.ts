@@ -2,14 +2,23 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { demandLettersOverdue, type JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
 
 /**
  * Demand letters past their named deadline with money still open (v2.2640) —
  * the Needs You "deadline passed unpaid" watch. Three small queries (live sent
  * letters, covered invoice amounts, applied payments); null while loading,
  * zero on error so the card stays quiet.
+ *
+ * `hideZzTestJobs` (punch list #61, PR 3): a letter on a ZZ test job leaves the count, by the shared ids (the
+ * letters carry no names). A demand deadline warns about real money, so a failed id read counts every letter
+ * rather than none.
  */
-export function useDemandDeadlinesNudge(enabled: boolean): {
+export function useDemandDeadlinesNudge(
+  enabled: boolean,
+  hideZzTestJobs = false,
+  userId?: string | null,
+): {
   overdue: { count: number; total: number; jobIds: string[] } | null
 } {
   const [overdue, setOverdue] = useState<{ count: number; total: number; jobIds: string[] } | null>(null)
@@ -31,7 +40,9 @@ export function useDemandDeadlinesNudge(enabled: boolean): {
           .not('deadline_date', 'is', null)
           .lt('deadline_date', todayYmd)
         if (error) throw error
-        const letters = (letterRows ?? []) as JobDemandLetterRow[]
+        const lettersRead = (letterRows ?? []) as JobDemandLetterRow[]
+        const zzIds = hideZzTestJobs && lettersRead.length > 0 ? await loadZzTestJobIds(userId).catch(() => null) : null
+        const letters = zzIds ? lettersRead.filter((l) => !zzIds.has(l.job_id)) : lettersRead
         if (cancelled) return
         if (letters.length === 0) {
           setOverdue({ count: 0, total: 0, jobIds: [] })
@@ -62,7 +73,7 @@ export function useDemandDeadlinesNudge(enabled: boolean): {
     return () => {
       cancelled = true
     }
-  }, [enabled])
+  }, [enabled, hideZzTestJobs, userId])
 
   return { overdue }
 }

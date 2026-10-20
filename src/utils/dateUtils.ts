@@ -72,6 +72,18 @@ export function startOfYmdInAppTzMs(ymd: string): number {
 }
 
 /**
+ * UTC ms of a wall-clock time on the civil day `ymd` in `APP_CALENDAR_TZ` (DST-aware, as `startOfYmdInAppTzMs`): what
+ * an email's "Oct 1, 2026 at 4:02 PM" with no zone means here. NaN if malformed.
+ */
+export function appTzWallTimeMs(ymd: string, hour: number, minute: number, second = 0): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) return NaN
+  const naive = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), hour, minute, second)
+  const first = naive - tzOffsetMinutesAt(naive, APP_CALENDAR_TZ) * 60_000
+  return naive - tzOffsetMinutesAt(first, APP_CALENDAR_TZ) * 60_000
+}
+
+/**
  * Last ms of the civil day `ymd` in `APP_CALENDAR_TZ` — the "valid through end of day" instant.
  * Replaces `new Date(ymd + 'T23:59:59.999Z')`, which ends the day at 7 PM Central. NaN if malformed.
  */

@@ -5,15 +5,34 @@
  * and the company's templates, and lays them over the board's state through the mapper
  * (`schedule/rows.ts`). The job itself is the board's (`boardProjectFromView`): this never re-reads
  * it. Each press has one function here. It sends the kernel's answer (`schedule/writes.ts`) and returns
- * the job read back. Nothing here decides anything: the kernels in `src/lib/gc/schedule/` do.
+ * the job read back. Nothing here decides anything: the kernels in `src/lib/gc/schedule/` do. Since the schedule's
+ * PR 9d, the window reads the job's submittals and RFIs over the board first (`loadScheduleWithHolds`), so their holds
+ * stop a pull as they hold a start. Since the schedule's PR 16a, it reads the job's daily logs and our crew's clock-ins
+ * too, for whoever may (`ScheduleReads`), so the log against the chart, the days lost, the crew projection, people on
+ * site and the walk's lost days read them (to-dos/gc-mode/mockups/schedule-pr16.md).
  */
 import { supabase } from '../supabase'
 import type { Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import type { PlaceChange } from './schedule/places'
-import { withScheduleRows, type ScheduleRead, type ScheduleRows } from './schedule/rows'
+import { roughFromRow, withScheduleRows, type ScheduleRead, type ScheduleRows } from './schedule/rows'
+import { roughToKeep } from './schedule/scheduleWindow'
+import { withRfis } from './rfiRows'
+import { withCrewClockIns, withDailyLogs } from './dailyLogRows'
+import { loadGcCrewOnSite, loadGcDailyLogs } from './dailyLogIo'
+import { withOfficeChangeOrders } from './changeOrderOfficeRows'
+import { loadGcChangeOrdersOffice } from './changeOrderOfficeIo'
+import { withDraws, withTradeChanges } from './drawRows'
+import { loadGcDraws } from './drawsIo'
+import { loadGcBillingRows, loadGcChangeOrders } from './gcIo'
+import type { ScheduleMoney } from './scheduleMoney'
+import { loadGcRfis } from './rfisIo'
+import { withSubmittals } from './submittalRows'
+import { loadGcSubmittals } from './submittalsIo'
 import { TEMPLATE_NAME_TAKEN, cleanTemplateName, templateNameProblem, templateSaveProblem, templateShape } from './schedule/templates'
 import type { TheirDate } from './schedule/theirDates'
+import type { MovedLine } from './schedule/tellTrades'
+import type { ScheduleLetter } from './schedule/customerScheduleSend'
 import type {
   ActivityPart,
   InspectionFailure,
@@ -40,6 +59,7 @@ import {
   placesForRpc,
   pushBackOf,
   roughRowOf,
+  scheduleSendRowOf,
   templateRowOf,
   theirDatesForRpc,
   verifiedMarkOf,
@@ -71,6 +91,60 @@ async function rowsIn<T>(ids: string[], read: (chunk: string[]) => PromiseLike<{
   const out: T[] = []
   for (let i = 0; i < ids.length; i += IN_CHUNK) out.push(...taken(await read(ids.slice(i, i + IN_CHUNK)), operation))
   return out
+}
+
+/** What one reader may read over the schedule (the schedule's PR 16): the page says, from the role, and memoizes it. */
+export interface ScheduleReads {
+  /** The job's daily logs and our crew's clock-ins: Building's, so `canUseGcBuilding`. */
+  logs?: boolean
+  /** The company's day, the clock-ins' last day. */
+  today?: string
+  /** The money team's: Ask for the days drafts a change order (PR 16b-ii), and the money lines read the bills (16c). */
+  money?: boolean
+  /** The trades' reported percents on their bars (16c): the draws gate, `canUseGcBuilding || canSeeGcMoney` (O9). */
+  draws?: boolean
+}
+
+/**
+ * The board with what the schedule reads over it, before its own rows: the job's daily logs with our crew's clock-ins
+ * laid in (U8's `withDailyLogs`, then `withCrewClockIns`, as the log window lays them), its change orders' non-money
+ * half through `gc_change_orders_office` (PR 16b-ii; the view returns none to anyone outside the office), then its
+ * submittals and RFIs. A reader without `logs` reads no logs, and its logs read empty as before.
+ */
+export async function scheduleHoldsState(state: GcState, projectId: string, reads: ScheduleReads = {}): Promise<GcState> {
+  const startedOn = state.projects.find((p) => p.id === projectId)?.startedOn ?? null
+  const packageIds = state.projects.find((p) => p.id === projectId)?.packages.map((k) => k.id) ?? []
+  const [submittals, rfis, changeOrders, draws, logs, clockIns] = await Promise.all([
+    loadGcSubmittals([projectId]),
+    loadGcRfis([projectId]),
+    loadGcChangeOrdersOffice([projectId]),
+    reads.draws ? loadGcDraws(packageIds) : Promise.resolve(null),
+    reads.logs ? loadGcDailyLogs([projectId]) : Promise.resolve(null),
+    reads.logs && startedOn && reads.today ? loadGcCrewOnSite(projectId, startedOn, reads.today) : Promise.resolve([]),
+  ])
+  const logged = logs ? withCrewClockIns(withDailyLogs(state, logs), clockIns) : state
+  const ordered = withOfficeChangeOrders(logged, changeOrders)
+  // A hired trade's reported percent and our sent-back percent on its bar (16c), behind the draws gate.
+  const drawn = draws ? withTradeChanges(withDraws(ordered, draws), draws) : ordered
+  return withRfis(withSubmittals(drawn, submittals), rfis)
+}
+
+/**
+ * What the money team's lines read beside the chart (16c): the customer's bills, the full change orders and the trades'
+ * money. Only for `reads.money`; the money team reads the change orders' table, which the office's view leaves out.
+ */
+export async function loadScheduleMoney(projectId: string, packageIds: string[]): Promise<ScheduleMoney> {
+  const [bills, changeOrders, draws] = await Promise.all([loadGcBillingRows([projectId]), loadGcChangeOrders([projectId]), loadGcDraws(packageIds)])
+  return { bills, changeOrders, draws }
+}
+
+/**
+ * One job's schedule with what it reads over the board (catch 2 of the schedule's PR 9, `mockups/schedule-pr9.md`, and
+ * its PR 16): the job's daily logs, submittals and RFIs laid over the board as their own windows read them, then the
+ * schedule. Building's tables are a dev's until its door, so anyone else reads none and their holds read empty.
+ */
+export async function loadScheduleWithHolds(state: GcState, projectId: string, reads: ScheduleReads = {}): Promise<ScheduleRead | null> {
+  return loadSchedule(await scheduleHoldsState(state, projectId, reads), projectId)
 }
 
 /**
@@ -348,6 +422,24 @@ export async function passScheduleInspection(state: GcState, projectId: string, 
   return loadSchedule(state, projectId)
 }
 
+/**
+ * The companies told of moves (Tell the trades, the schedule's PR 13b): once `gc-trade-email` has sent one company its
+ * dates, its tells, each move's lines it was shown, and the send's log row. A row already there stays, so a press again
+ * after a send that went records it once. A record: no version. Answers how many rows it added.
+ */
+export async function recordScheduleTells(projectId: string, companyId: string, emailSendLogId: string | null, tells: { moveId: string; shown: MovedLine[] }[]): Promise<number> {
+  return taken(
+    await supabase.rpc('gc_schedule_record_tells', {
+      p_project_id: projectId,
+      p_company_id: companyId,
+      // Null when the send kept no log row: the column takes it.
+      p_email_send_log_id: emailSendLogId as unknown as string,
+      p_tells: tells as unknown as Json,
+    }),
+    'record who was told',
+  )
+}
+
 /** Their dates to meet from a file (G-145): the ticked dates, and the dates to meet as `withTheirDates` left them. */
 export async function takeTheirDates(state: GcState, projectId: string, dates: TheirDate[], milestones: ScheduleMilestone[]): Promise<ScheduleRead | null> {
   taken(await supabase.rpc('gc_schedule_their_dates', { p_project_id: projectId, p_dates: theirDatesForRpc(dates, milestones) as unknown as Json }), 'take their dates')
@@ -366,6 +458,13 @@ export async function addScheduleWait(state: GcState, projectId: string, wait: S
 export async function recordScheduleWalk(state: GcState, projectId: string, walk: Pick<ScheduleWalk, 'on' | 'kept' | 'moveIds' | 'skipped' | 'keptEarly'>): Promise<ScheduleRead | null> {
   taken(await supabase.from('gc_schedule_walks').insert(walkRowOf(projectId, walk)), 'keep the walk')
   return loadSchedule(state, projectId)
+}
+
+/** The customer's letter kept before it is emailed (G-94, PR 15a): its row's id, for `gc-customer-email` to send. */
+export async function recordScheduleSend(projectId: string, letter: ScheduleLetter, today: string): Promise<string> {
+  const result = await supabase.from('gc_schedule_sends').insert(scheduleSendRowOf(projectId, letter, today)).select('id').single()
+  checkSupabaseError(result, 'keep the letter')
+  return result.data!.id
 }
 
 /** A bar's real days (G-55, after `actualProblem`): a day set, null to clear it, unset to leave it. */
@@ -479,6 +578,54 @@ export async function setAsideScheduleTemplate(state: GcState, projectId: string
 export async function setRoughSchedule(state: GcState, projectId: string, rough: RoughSchedule): Promise<ScheduleRead | null> {
   const by = await signedIn()
   taken(await supabase.from('gc_rough_schedules').upsert({ ...roughRowOf(projectId, rough, by), updated_at: new Date().toISOString() }, { onConflict: 'project_id' }), 'keep the rough schedule')
+  return loadSchedule(state, projectId)
+}
+
+/** The keep's one line when it did not happen (PR 12b, call 5): beside the outcome strip, never in place of its words. */
+export const ROUGH_NOT_KEPT = 'The rough schedule’s weeks were not kept with the bid. Press Keep the weeks as sent on its Schedule.'
+
+/** The job's rough alone (G-45, PR 12b): for Our number's weeks and the keep at the Board's presses. Null: none drawn, or none the reader may see. */
+export async function loadRough(projectId: string): Promise<RoughSchedule | null> {
+  const { data, error } = await supabase.from('gc_rough_schedules').select('*').eq('project_id', projectId).maybeSingle()
+  checkSupabaseError({ data, error }, 'read the rough schedule')
+  return roughFromRow(data as ScheduleRows['rough'], new Map())
+}
+
+/**
+ * The rough's weeks kept as they went (G-45, PR 12b): only the four kept columns, and only while none are kept, so a keep
+ * never rewrites who drew the rough and two keeps never stack. Answers whether it wrote.
+ */
+export async function keepRoughWeeks(projectId: string, kept: NonNullable<RoughSchedule['kept']>): Promise<boolean> {
+  const result = await supabase
+    .from('gc_rough_schedules')
+    .update({ kept_on: kept.on, kept_weeks: kept.weeks, kept_finish: kept.finish, kept_at: kept.at, updated_at: new Date().toISOString() })
+    .eq('project_id', projectId)
+    .is('kept_on', null)
+    .select('project_id')
+  checkSupabaseError(result, 'keep the rough schedule’s weeks')
+  return result.data.length > 0
+}
+
+/**
+ * After the Board's We sent our bid or We won this (PR 12b, call 5, gc 2's conditions): the job's rough read alone, laid on
+ * the board's job, kept as it went (`roughToKeep`), and written only when that changes it. It never throws: it answers
+ * null when kept or when there was nothing to keep, else the one line the page shows beside the outcome strip.
+ */
+export async function keepRoughAt(state: GcState, projectId: string, at: 'bid' | 'award'): Promise<string | null> {
+  try {
+    const rough = await loadRough(projectId)
+    if (!rough) return null
+    const kept = roughToKeep({ ...jobOf(state, projectId), rough }, state.today, at)
+    if (kept) await keepRoughWeeks(projectId, kept)
+    return null
+  } catch {
+    return ROUGH_NOT_KEPT
+  }
+}
+
+/** A missed keep kept later from the rough's own card (PR 12b, `roughKeepPress`): the kept weeks, then the schedule read again. */
+export async function keepRoughLater(state: GcState, projectId: string, kept: NonNullable<RoughSchedule['kept']>): Promise<ScheduleRead | null> {
+  if (!(await keepRoughWeeks(projectId, kept))) throw new Error('The rough’s weeks are kept already. Reload the schedule to see them.')
   return loadSchedule(state, projectId)
 }
 

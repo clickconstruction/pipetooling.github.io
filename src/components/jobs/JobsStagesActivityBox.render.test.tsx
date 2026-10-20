@@ -100,6 +100,41 @@ describe('JobsStagesActivityBox', () => {
     expect(screen.getByText(/newer note/)).toBeTruthy()
   })
 
+  it('a bill sent to the customer sits in the feed unnumbered with a Sent tag, and the notes keep their numbers (v2.5633)', async () => {
+    const job = makeJob({ job_name: 'Calvin Barrett Pump' })
+    renderWithProviders(
+      <JobsStagesActivityBox
+        job={job}
+        ctx={makeCtx({
+          jobThreadActivityByJobId: {
+            [job.id]: [
+              note('n1', '2026-08-10T12:00:00Z', 'older note'),
+              {
+                kind: 'event' as const,
+                event: { dedupeKey: 'ev:sent', type: 'invoice_sent' as const, occurredAt: '2026-08-11T12:00:00Z', actorName: null, summary: 'Invoice sent to customer (stripe)', detail: { channel: 'stripe' }, financial: true },
+              },
+              {
+                kind: 'event' as const,
+                event: { dedupeKey: 'ev:pay', type: 'payment_added' as const, occurredAt: '2026-08-12T12:00:00Z', actorName: 'Taunya', summary: 'Payment $1,200.00 (check)', financial: true },
+              },
+              note('n2', '2026-08-13T12:00:00Z', 'newer note'),
+            ],
+          } as StagesRowRenderContext['jobThreadActivityByJobId'],
+        })}
+      />,
+    )
+    await settle()
+    expect(screen.getAllByLabelText(/^Entry /).map((n) => n.textContent)).toEqual(['1', '2'])
+    const sent = document.querySelector('[data-activity-entry-kind="sent"]') as HTMLElement
+    expect(sent.textContent).toContain('Sent')
+    expect(sent.textContent).toContain('The app')
+    expect(sent.textContent).toContain('Bill emailed through Stripe')
+    expect(screen.getByLabelText('Sent to the customer').textContent).toBe('Sent')
+    expect(screen.queryByText(/Payment \$1,200/)).toBeNull()
+    const kinds = [...document.querySelectorAll('[data-activity-entry-kind]')].map((e) => e.getAttribute('data-activity-entry-kind'))
+    expect(kinds).toEqual(['note', 'sent', 'note'])
+  })
+
   it('+ Add pill opens the composer; Escape closes it and brings the pill back', async () => {
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(

@@ -9,7 +9,7 @@ export const PENDING_APPROVALS_FETCH_CAP = 2000
 /**
  * Every closed clock session still waiting on approval, oldest first, with no
  * week window — the approvals queue's one read. Caller RLS applies: pay roles
- * see the company, a team lead sees their members.
+ * see the company, anyone else their own.
  */
 export async function fetchAllPendingClockSessions(opts: { userId?: string | null } = {}): Promise<ClockSessionRow[]> {
   const data = await withSupabaseRetry(

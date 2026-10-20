@@ -44,6 +44,15 @@ export interface ChangeOrderWrites {
   onTurnDown: (requestId: string, note: string) => void
   /** Email the company where its ask stands, when that email has not gone: sent to the customer, or the customer said no. */
   onTell: (requestId: string, stage: 'sent' | 'no') => void
+  /** Price a draft in whole dollars: one drafted from a customer's message comes in at 0 (Messages cut 4b). */
+  onPrice?: (changeOrderId: string, cost: number, price: number) => void
+}
+
+/** A change order started from a customer's message: its line back, and the thread and line it opens. */
+export interface FromMessageLink {
+  line: string
+  contactId: string
+  messageId: string
 }
 
 interface Props {
@@ -59,12 +68,16 @@ interface Props {
   emailed?: Record<string, { to: string; on: string }[]>
   /** The day each email about a trade's ask went to its company, by its key `<request id>:<stage>` (O3b). */
   askEmailed?: Record<string, string>
+  /** Each change order started from a customer's message, by id (Messages cut 4b). */
+  fromMessages?: Readonly<Record<string, FromMessageLink>>
+  /** Opens the customer's thread at the message a change order came from. */
+  onOpenMessage?: (contactId: string, messageId: string) => void
   onClose: () => void
 }
 
 const PCT_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
-export function GcChangeOrdersWindow({ state, project, today, writes, busy, problem, emailed = {}, askEmailed = {}, onClose }: Props) {
+export function GcChangeOrdersWindow({ state, project, today, writes, busy, problem, emailed = {}, askEmailed = {}, fromMessages = {}, onOpenMessage, onClose }: Props) {
   const [adding, setAdding] = useState(false)
   const all = projectChangeOrders(project)
   const signed = all.filter((co) => co.status === 'signed').reduce((s, co) => s + co.price, 0)
@@ -157,6 +170,8 @@ export function GcChangeOrdersWindow({ state, project, today, writes, busy, prob
                 emailed={emailed[co.id] ?? []}
                 askEmailed={askEmailed}
                 busy={busy === co.id}
+                fromMessage={fromMessages[co.id]}
+                {...(onOpenMessage ? { onOpenMessage } : {})}
               />
             ))}
           </div>
@@ -309,6 +324,8 @@ function ChangeOrderRow({
   emailed,
   askEmailed,
   busy,
+  fromMessage,
+  onOpenMessage,
 }: {
   state: GcState
   project: GcProject
@@ -318,8 +335,15 @@ function ChangeOrderRow({
   emailed: { to: string; on: string }[]
   askEmailed: Record<string, string>
   busy: boolean
+  fromMessage?: FromMessageLink | undefined
+  onOpenMessage?: (contactId: string, messageId: string) => void
 }) {
   const [answerOn, setAnswerOn] = useState(today)
+  // The money team's price on a draft (Messages cut 4b): open under the row, with what it costs us and adds to their price.
+  const [pricing, setPricing] = useState<{ cost: string; price: string } | null>(null)
+  const priceCost = Math.round(Number(pricing?.cost))
+  const pricePrice = Math.round(Number(pricing?.price))
+  const priceReady = pricing !== null && pricing.cost.trim() !== '' && pricing.price.trim() !== '' && Number.isFinite(priceCost) && Number.isFinite(pricePrice) && priceCost !== 0
   // Off to start, as Bill the customer's: Send emails no one until it is ticked (O4b-2).
   const [emailIt, setEmailIt] = useState(false)
   const emailedLine = emailedTo(emailed)
@@ -364,6 +388,22 @@ function ChangeOrderRow({
           Asked for by {askedBy} on {shortDate(asked.askedOn)}: {money(asked.amount)}.
         </div>
       )}
+      {fromMessage && (
+        <div data-from-message={fromMessage.messageId} style={{ color: 'var(--text-muted)' }}>
+          {onOpenMessage ? (
+            <button
+              type="button"
+              title="Opens their thread at the message this change order was started from."
+              onClick={() => onOpenMessage(fromMessage.contactId, fromMessage.messageId)}
+              style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', padding: 0, font: 'inherit' }}
+            >
+              {fromMessage.line}
+            </button>
+          ) : (
+            fromMessage.line
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {co.status === 'draft' && (
           <>
@@ -372,6 +412,11 @@ function ChangeOrderRow({
               <input type="checkbox" checked={emailIt} onChange={(e) => setEmailIt(e.target.checked)} />
               Email it to the customer now
             </label>
+            {writes.onPrice && (
+              <Btn disabled={busy} onClick={() => setPricing(pricing ? null : { cost: co.cost ? String(co.cost) : '', price: co.price ? String(co.price) : '' })}>
+                {co.price === 0 && co.cost === 0 ? 'Price it' : 'Change the price'}
+              </Btn>
+            )}
             <Btn kind="primary" disabled={busy} onClick={() => writes.onSend(co.id, emailIt)}>
               Send for signature
             </Btn>
@@ -418,6 +463,32 @@ function ChangeOrderRow({
           </>
         )}
       </div>
+      {co.status === 'draft' && pricing && writes.onPrice && (
+        <div data-price-change-order={co.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <label style={{ display: 'grid', gap: '0.15rem' }}>
+            What it costs us
+            <input type="number" inputMode="numeric" value={pricing.cost} onChange={(e) => setPricing({ ...pricing, cost: e.target.value })} style={{ ...input, width: '8rem' }} />
+          </label>
+          <label style={{ display: 'grid', gap: '0.15rem' }}>
+            What it adds to their price
+            <input type="number" inputMode="numeric" value={pricing.price} onChange={(e) => setPricing({ ...pricing, price: e.target.value })} style={{ ...input, width: '8rem' }} />
+          </label>
+          <Btn
+            kind="primary"
+            disabled={busy || !priceReady}
+            onClick={() => {
+              writes.onPrice?.(co.id, priceCost, pricePrice)
+              setPricing(null)
+            }}
+          >
+            Save the price
+          </Btn>
+          <Btn kind="quiet" disabled={busy} onClick={() => setPricing(null)}>
+            Cancel
+          </Btn>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Whole dollars. A credit is a cost below zero.</span>
+        </div>
+      )}
       {emailedLine && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{emailedLine}</div>}
       {asked && tellStage && toldOn && (
         <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -435,7 +506,7 @@ function ChangeOrderRow({
         </div>
       )}
       {co.status === 'sent' && !emailedLine && (
-        <div style={{ background: 'var(--surface-2, var(--surface))', border: '1px dashed var(--border)', borderRadius: 6, padding: '0.45rem 0.6rem' }}>
+        <div style={{ background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 6, padding: '0.45rem 0.6rem' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>It went without an email. Send these words from your own email.</div>
           <div style={{ userSelect: 'all' }}>{sendWords(project, co)}</div>
         </div>

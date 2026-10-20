@@ -5,21 +5,105 @@ roles: dev
 keywords: bridge, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Type today's bank balance in **Cash on hand today** and press **Set**. The cash line starts from it.
-2. Read the cash readout: the lowest cash point in the next 8 weeks, and whether it clears your floor.
+1. Read the top line. The big number is this week's field contribution. The two lights under it say whether net position is up and whether cash clears your floor.
+2. Read the cash readout: the lowest cash point in the next 8 weeks, and whether it clears your floor. Cash on hand comes from the bank.
 3. Read the Truth check verdict: *steer by the profit rate*, *bill it to see it*, or *not a number to steer by yet*.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
 The Bridge is for devs only for now. You open it from the compass icon in the header, or **Bridge** in the ☰ menu. The page's address is `/bridge`.
 
-## First, type cash on hand
+## A card behind every bar
 
-The app doesn't sync a bank balance, so the cash line starts from a number you type. Under the cash chart, you enter today's bank balance in **Cash on hand today** and press {{button:outline|Set}}. The number is remembered with the date. On later days the page rolls it forward through the bank transactions since. The Data Gaps strip says which day you typed it. You retype it whenever you look at the bank.
+Hover over any of the eight bars, or tab to it, or press it. A card opens under the bar. It shows what the week earned less field wages, the hours, the sessions, the people and the dollars an hour. It names the three jobs that made the week. The last line reads the week against the 8-week average. A week still waiting on approvals says what it reads now and what approved only reads. Press the bar to pin the card. Press it again to let it go.
+
+## The rule, and where the work piles up
+
+The page opens on one line. Find the slowest step. Everything waits on it. Press the {{button:outline|?}} beside it to read why, in five points.
+
+Under the top line sit five cards in the order work flows. Market, Sales, Build, Bill, Collect. Each card reads one stage. The bar is the pile waiting in front of it. The two lines under the bar say what comes in and what goes out each week. The last line says how many weeks it would take to clear the pile at today's pace.
+
+The Market card counts the asks that came in: bids invited and estimates requested, by value. The Sales card shows what went out and what came back, bids and estimates on their own lines. Won counts the bids marked won and the bids that became jobs. Both cards read by pace against the field, not by weeks of pile.
+
+The Build card reads the jobs' percent complete. Built per week is each job's change in percent times its contract. Sold per week is the contract on the jobs created. The pile is the contract left to build on open jobs. A job with no percent is read as half done and drawn grey. Set its percent to make the reading true.
+
+Under the cards, the **Jobs with no %** strip counts the open jobs with a contract and no percent. Press {{button:outline-amber|Set the %s}} to open the list, biggest contract first. Press {{button:outline|Set}} on a row to open the percent window the crews use on their schedule. Saving files a status report on the job, the way a crew's does. The Build card's grey shrinks right away, and the row moves to the bottom marked set. A set row stays on the list until the page reloads. When every open job with a contract has a percent, the strip says so.
+
+The field's pace is read a second way, by hours. That is what the field earned on recorded time, the way the top line reads the week. The card uses the larger of the two and names the other. The Bill card's first line reads the same hours. When over a third of Build's pile is grey, Build takes the link only by a clear margin. Until then its badge says it reads on a thin percent.
+
+The stage with the most weeks reads red. That is the weakest link. A stage within a tenth of it reads as its pair. The stages after the link say they move with it. A card that says **not readable yet** waits on a later step of the app.
+
+Press a card to read it. The pressed card has the red border.
+
+## The dial
+
+Under the cards sits a slider for the pressed stage. It reads that stage's pace in dollars a week. Drag it and the cards above move with it. Marks on the track show today and where the pile stops growing. Other marks show where the link moves to another stage and where exploiting ends. The blue part of the track is what we can do with what we have. The amber part means spending.
+
+The number beside the slider has a plain unit under it, such as jobs a week. The small chart shows the pile over the next twelve weeks at the chosen pace. The dotted line is today's pace. Three boxes read the pile, the link and the money. Press {{button:outline|back to today}} to put the slider back.
+
+## The three resources
+
+Under the dial sit Decision, Capital and Talent. A stage is slow because one of these is short. Decision counts the piles that wait on you. Capital reads the bank against the floor. Talent counts who is in the field and who bills. Each card says whether it throttles the link or shows its symptom. Press a card to open its desk.
+
+## What to deal with first
+
+Every card ends in a badge. Press any badge and a list opens. The list puts the link first. What throttles it comes with it. The stage that would be the link after it comes next. What moves when the link moves follows. What is ahead of the field waits. Each row shows the reading that put it there and its first move. The badge you pressed is marked. Press {{button:outline|×}} or the Escape key to close it.
+
+## Everything else waits
+
+A card under the desk lists the four fixes people reach for first. Hire another plumber. Push for more bids. Add a field day. Cut overhead. Press one and the dial and the cards above show what it would do. One line under the press says what changed and whether the link moved. Cut overhead moves nothing above. That is the point. Press {{button:outline|back to today}} to put things back. The {{button:outline|?}} in the corner lists the other links' levers.
+
+## The week's call
+
+Under the cards sits the desk of the pressed stage. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Below that are the moves the week would make. Tick the ones you mean and type an owner beside each. Press {{button:green|This is the link this week}} to record the call. The call keeps today's numbers, so Friday can read them again.
+
+A recorded call holds the red on its stage for the week. Another stage takes it only when it reads clearly longer.
+
+**Last week's call, against what moved** sits under the desk. It names the link, who called it and how many weeks running. Each move shows its number then and now, and whether it got done. The last line says what that means for this week. From Friday the card asks whether the link moved. Press {{button:green|It moved}} or {{button:red|It did not}}. The chip beside the date carries the answer.
+
+## The Daily profit rate, opened
+
+Press the **Daily profit rate** card. A panel opens under the row. The chart shows earned against costs by pay week. The bar is the net. A hatched week is missing hours that wait for approval. Under it, a waterfall shows where a day's money goes, from earned to the number on the card. A table says where each input is read from and what can make it wrong. Each row ends in its door. The last line is break-even. Press the card again or the {{button:outline|×}} to close it.
+
+## Money owed and Crew hours, opened
+
+Press **Money owed**. Owed to you reads by how late it is. Owed by you reads by when it falls due. A waterfall walks from cash through what is owed each way to net position. It then adds the finished work not yet billed. Press **Crew hours**. The chart stacks each week by what the app has read. Approved field hours are blue. Hours waiting for approval are hatched. Office hours are grey. A waterfall walks this week's hours from clocked to what the page reads. Both panels end in the table of sources. One line ties each to the link.
+
+## The two charts, broken down
+
+Press {{button:outline|break it down}} on the net position chart. A waterfall shows what moved it since the window opened. Cash, owed to you and owed by you each show their change. The cash row reads red when the chart's figure and the bank's disagree. Press {{button:outline|break it down}} on the cash chart. The waterfall walks from the bank today through the receipts and the bills to where the line ends. Each table ends in its doors.
+
+## The people tables
+
+Vectors reads in two groups. Field is who makes the contribution. Office & estimators is who does the billing, collecting and bids. A dev counts as office. Each group ends in a subtotal row. Rows sort by contribution, then by hours waiting.
+
+Vectors by the day has three readings. Press {{button:outline|Profit}} for earned at the job's rate less the wage. Press {{button:outline|Revenue}} for what the day earned. Press {{button:outline|Cost}} for what the day cost in wages. The week column, the totals and the Field crew row follow the reading.
+
+## The Monday sheet
+
+Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. A tile for the weakest link carries the rule, the lit link, this week's call and last week's verdict. Under them sit the five moves for the week and the people lines. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
+
+## Cash on hand comes from the bank
+
+The page reads the bank's balance when it opens. Under the cash chart, the cash row says the balance and the time it was read. The accounts with money are named beside it. Accounts at zero are only counted. Press {{button:outline|Read again}} to read the bank once more. The cash line and the net position line start from that figure.
+
+When the bank cannot be read, the row shows the reason. You then type today's balance in **Cash on hand today** and press {{button:outline|Set}}. The number is remembered with the date. On later days the page rolls it forward through the bank transactions since. Once the bank answers again, the typed figure steps aside. An amber line then says how far the typed figure drifted from the bank, if it did.
 
 You set the **Floor** the same way. The floor is the cash level you never want to go under. The floor starts at $5,000.
 
-## The three numbers on top
+## The top line: contribution per week
+
+The page opens on **field contribution this week**. That is the number the company maximizes. Field contribution is what field hours earned minus what those hours cost in wages. The big number reads recorded time, so hours still waiting on approval count. An amber **≈** beside it means some of those hours still wait. Under it, **approved only** is the same week on what payroll paid.
+
+The bars are the last eight pay weeks. A hatched bar is a week still waiting on approvals. The **Verdict** line reads the bars for you. It names the range the settled weeks ran. It also says when a low week is the approval pile and not the field.
+
+Two lights sit under the bars. **Net position rises over 8 weeks** is green when the line is up since the window started. **Cash stays above the floor** is green when the forecast never dips under your floor. The cash light turns amber when the cash figure you typed is a week or more old.
+
+:::example Reading the top line
++$38.3k ≈ this week so far on 317h recorded, approved only +$9.7k on 80h. The verdict says contribution ran $13.8k to $46.8k a week over the six settled weeks, and the last two read low only because 564h still wait on approval.
+:::
+
+## The three numbers under it
 
 - **Daily profit rate**: earned per day minus costs per day, over the last 14 days. Costs are job costs plus overhead, the office's running cost, at the 90-day rate from People → Overhead. Job costs are field labor, purchases and supply invoices on jobs, and sub sheets. A sub sheet is a subcontractor's labor sheet.
 - **Money owed**: owed to you, owed by you, finished work not yet billed, and the collections balance. Owed to you leaves collections out. The collections balance is written off for planning.
@@ -44,9 +128,13 @@ Profit on paper +$194k · net position moved −$3.4k · the $197k between them:
 
 A loan or an owner deposit is money in that isn't a customer payment. The Bridge shows that money as a negative cost. Payroll and sub labor count when the bank pays them, not when the hours are worked.
 
+## People — who moved the number
+
+Under the Truth check, a **People** strip holds the two person tables. The strip is closed when you first open the page. While closed, one line reads the pay week. It names the top two people on approved hours and who has hours waiting. It also says what was billed and collected. Press {{button:outline|Show the rows and the days}} to open it. This browser remembers your choice.
+
 ## Vectors — who moved the number
 
-Under the Truth check, **Vectors** lists one row per person for one pay week. A pay week runs Sunday–Saturday. You step back through the eight weeks on the page with ‹ ›. The current week reads *so far*. The headline is the week's **field contribution**. Field contribution is what approved field hours earned minus what those hours cost in wages.
+Inside the People strip, **Vectors** lists one row per person for one pay week. A pay week runs Sunday–Saturday. You step back through the eight weeks on the page with ‹ ›. The current week reads *so far*. The headline is the week's **field contribution**. Field contribution is what approved field hours earned minus what those hours cost in wages.
 
 - **Field people** carry Field h, Earned, Labor, **Contribution** and $/h. Field h also shows hours still {{chip:yellow|waiting}} on approval. Earned uses the Bridge's own rate: the job's contract ÷ its expected hours. With this rate, a person's earned dollars add up to the company's.
 - **Office people** carry Billed and Collected. Billed is the invoices they sent. Collected is the payments they recorded. Everyone carries **% reports**: job % updates plus field reports filed.
@@ -64,7 +152,7 @@ Materials and sub sheets are job costs, not anyone's vector, so contribution her
 
 ## Vectors by the day — was each person's day worth it
 
-Under the Vectors table, the same rule runs one day at a time. The view is a grid with one row per field person and one cell per day of the month. Each cell is **green when the day's hours earned more than they cost, red when they cost more**. The shade is set by dollars per hour. A **wk** column after every Saturday sums the week. The month's total sits at the end, with the hours and $/h under it.
+Under the Vectors table, inside the same strip, the same rule runs one day at a time. The view is a grid with one row per field person and one cell per day of the month. Each cell is **green when the day's hours earned more than they cost, red when they cost more**. The shade is set by dollars per hour. A **wk** column after every Saturday sums the week. The month's total sits at the end, with the hours and $/h under it.
 
 - You click a cell and a card opens under the grid. The card lists the jobs worked, each at its earned rate beside the wage. The card also shows the labor line and the contribution. A sentence says why the day reads the way it does. The card has doors to open the job, set its % complete, or see that day on People → Review. The {{chip:yellow|≈}} hatch means part of it rests on a job with no % complete.
 - Under each name, a **Why** line counts the red days by job. *7 red · all on 990* is a pricing problem, not a slow person.
@@ -77,25 +165,48 @@ Tristen's Tuesday reads −53: 7.5 h on J1044 at $31 an hour, against a $38 wage
 
 ## Cash — next 8 weeks
 
-The dashed line starts at cash today. The line **drops on the day each bill is due**. Supply invoices count on their due date. Sub labor counts on its payable-after date. Payroll counts every Friday, at the 8-week average. The line **rises on the day each receipt is expected**. The expected day is a promised pay date if the customer named one. Without a promise, the app uses that customer's usual pay speed. Next comes the company's usual pay speed, and last of all 45 days. An invoice already past its expected day is assumed to arrive within 14 days. An invoice more than 60 days late isn't counted at all and is listed as doubtful. Collections never count. Office parts drain a little every day at the 90-day rate. Office parts are materials bought for the office, not for a job.
+The dashed line starts at cash today. The line **drops on the day each bill is due**. Supply invoices count on their due date. Sub labor counts on its payable-after date. Payroll counts every Friday, at the 8-week average. The line **rises on the day each receipt is expected**. The expected day is a promised pay date if the customer named one. Without a promise, the app uses that customer's usual pay speed. Next comes the company's usual pay speed, and last of all 45 days. A late invoice is assumed to arrive within that customer's own pay pace, between 7 and 45 days. With no pay pace on record, the app uses 14 days. An invoice more than 60 days late isn't counted at all and is listed as doubtful. Collections never count. Office parts drain a little every day at the 90-day rate. Office parts are materials bought for the office, not for a job.
 
 The readout is a date and a number. The readout shows **the lowest cash point in the window and whether it clears your floor.** The dot on the line marks that point.
 
-:::example What the lists under the chart are
-**Bills coming due** and **Receipts expected** are the same events the chart uses, day by day, with the reason for each receipt date. **What would change it** sizes the levers — billing finished work, approving pending hours, trimming overhead, an extra field day, a bid due soon.
+Under the chart, a band shows **how sure the receipts are**. Green is money a customer promised on a date. Blue is money expected by that customer's pay pace or the company's. Hatched yellow is late invoices assumed to land. When one day carries most of the window's receipts, an amber line names it. The line also says what else falls due that day. That is the day to watch.
+
+:::example The day that carries the window
+87% of the window's receipts land on Oct 24, most of it late invoices assumed to land. That day also owes $54.1k of sub labor. If the invoices slip, that is the day cash is tested.
 :::
 
-## Data gaps
+:::example What the lists under the chart are
+**Bills coming due** and **Receipts expected** are the same events the chart uses, day by day, with the reason for each receipt date.
+:::
 
-When the amber strip shows, the numbers read low or thin. The gaps are these:
+## This week
 
-- unapproved hours
+Beside Fix the reading, **This week** lists the moves that change the two lines. The biggest lever is first. Each move is sized on the right where it can be. Each move ends in the door that does it. The moves are these:
+
+- bill the finished work, which opens Stages
+- chase the late invoices the forecast leans on, which opens Billing
+- approve the pending hours, which opens the approvals queue
+- price the worked jobs with no contract price
+- set % complete on the jobs assumed half done
+- one more field day a week, and cut overhead 10%
+- win a bid that is due soon
+
+## Fix the reading
+
+Under the top line, **Fix the reading** lists what makes the page read low or thin. Each row has three parts. The amber chip names the gap. The middle says what the gap moves. The link at the end opens the place that fixes it. The biggest mover is first. The gaps are these:
+
+- unapproved hours, which move the top line and payroll
+- a typed cash figure that drifted from the bank, or one typed when the bank could not be read
+- jobs worked this window with no % complete, which are assumed half done
+- worked jobs with no contract price, which earn $0
 - unsorted bank transfers or card purchases
-- open jobs with no % complete, which are assumed half done
-- worked jobs with no contract price
-- a typed cash figure that's a few days old
+- bids sent with no value
 
 Insurance, rent, and card bills aren't scheduled as bills yet. These bills arrive as bank transfers and only show once sorted.
+
+:::example Reading a row
+{{chip:yellow|585h unapproved}} moves the headline from +$9.7k to ≈ +$38.3k this week. Press **Approve** and the queue opens.
+:::
 
 ## Reference
 

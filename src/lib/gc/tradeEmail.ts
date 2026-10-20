@@ -53,7 +53,27 @@ export type TradeEmailAnswer =
   | { ok: true; companyId: string; messageId: string; emailSendLogId: string | null; to: string[]; already: boolean }
   | { ok: false; key: TradeEmailErrorKey; detail: string | null }
 
+/** A test copy's answer (B2b-viii-b): the address it went to, and who the real send would reach. Nothing was recorded. */
+export interface TradeEmailTestAnswer {
+  ok: true
+  test: true
+  email: string
+  wouldGo: { name: string; email: string }[]
+}
+
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+
+/** A test copy's answer from what came back, or the refusal. */
+export function readTradeEmailTestAnswer(data: unknown, errorBody: unknown): TradeEmailTestAnswer | Extract<TradeEmailAnswer, { ok: false }> {
+  if (isObject(data) && data.test === true && typeof data.email === 'string' && !isObject(errorBody)) {
+    const wouldGo = Array.isArray(data.wouldGo)
+      ? data.wouldGo.flatMap((r) => (isObject(r) && typeof r.name === 'string' && typeof r.email === 'string' ? [{ name: r.name, email: r.email }] : []))
+      : []
+    return { ok: true, test: true, email: data.email, wouldGo }
+  }
+  const a = readTradeEmailAnswer(data, errorBody)
+  return a.ok ? { ok: false, key: 'failed', detail: 'A test copy was asked for, and the answer was not one.' } : a
+}
 
 /** The function's answer from what came back: the body of a success, or the body of a refusal. */
 export function readTradeEmailAnswer(data: unknown, errorBody: unknown): TradeEmailAnswer {

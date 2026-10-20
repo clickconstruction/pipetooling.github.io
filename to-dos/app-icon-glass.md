@@ -9,13 +9,13 @@ summary: >
   glass sits above their art instead of on it. A web clip cannot opt out, so the fix is art that
   survives the glass: exact-size renders, heavier ink, and possibly a dark tile.
 size: S
-ver: v2.4227 · 5097
+ver: v2.4227 · 5097 · 5117
 mockup: not required — the proof is a photo of the home screen; the generator renders the candidate PNGs to compare
-group: gated
-status: PR 1 shipped v2.4227 (exact-size renders, black ink, fatter wrench) · the owner 2026-10-09: it still does not look great · PR 2 v2.5097, the candidate sheet — nine icons under drawn glass at to-dos/app-icon-glass-candidates.html (a .png beside it) — awaits the owner's letter
-next: The owner picks a letter from `to-dos/app-icon-glass-candidates.html` (on a phone, `/to-dos/app-icon-glass-candidates.html` once deployed); then PR 3 runs `TILE=<tile> MARK=<mark> npm run gen-app-icon` with the pair printed under that letter and commits the five touch icons.
-blocker: The owner's letter from the sheet.
-opinion: your call — the sheet is built; the letter is yours.
+group: close
+status: PR 1 shipped v2.4227 (exact-size renders, black ink, fatter wrench) · the owner 2026-10-09: it still does not look great · PR 2 v2.5097, the candidate sheet — nine icons under drawn glass at to-dos/app-icon-glass-candidates.html (a .png beside it) · the owner picked B on 2026-10-09 (yellow tile, heavier ink) · PR 3 v2.5117 re-rendered the five touch icons as B and made it the generator's default; the heavier stroke's bottom teeth 2 px nearer the edge at 180 px (15.6% against v2.4095's 17%) accepted with the pick
+next: After the deploy, remove the app from an iOS 26 home screen and add it again, then photograph it beside a native icon. If B reads crisp under the glass, retire this card; if not, the sheet's other letters are one `TILE=… MARK=…` run away.
+blocker: None — the client deploy, then a re-added icon on a phone.
+opinion: close it on the photo.
 ---
 
 # The home-screen icon reads crisp under iOS 26's glass

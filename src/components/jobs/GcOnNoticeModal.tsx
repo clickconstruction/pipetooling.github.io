@@ -9,6 +9,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { useGcOnNoticeData, type GcOnNoticeData } from '../../hooks/useGcOnNoticeData'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { lienSupplierLetterParagraphFor } from '../../lib/jobs/lienJobSuppliers'
 import { legalRpc } from '../../hooks/useLegalMatters'
@@ -202,7 +203,9 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('gc-on-notice')
   // What this does: its words open under the title line (they were a <details> on a line of their own until v2.4539).
   const [whatOpen, setWhatOpen] = useState(false)
-  const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd)
+  /** ZZ test jobs off the run for every role but a dev who shows them (punch list #61, PR 3). */
+  const hideZzTestJobs = useZzTestJobsHidden(authRole)
+  const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd, hideZzTestJobs)
   // The supply houses on the run's jobs (v2.4725): the letter's last paragraph names the ones still owed.
   const supplierJobIds = useMemo(() => data?.jobs.map((j) => j.jobId) ?? [], [data])
   const suppliers = useLienJobSuppliers(supplierJobIds, open)

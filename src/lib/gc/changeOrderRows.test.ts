@@ -28,6 +28,9 @@ const row = (over: Partial<ChangeOrderRow>): ChangeOrderRow => ({
   plan_set_id: null,
   created_by: null,
   created_at: '2026-10-08T15:00:00Z',
+  description_es: null,
+  signer_contact_id: null,
+  source_message_id: null,
   ...over,
 })
 
@@ -53,6 +56,14 @@ describe('a change order from its row', () => {
   it('names a time extension’s moves, and reads money that comes back as text', () => {
     const co = changeOrderFromRow(row({ cost: '0' as unknown as number, price: '0' as unknown as number, days_on_chart: ['move-1', 'move-2'] }))
     expect([co.cost, co.price, co.daysOnChart]).toEqual([0, 0, ['move-1', 'move-2']])
+  })
+
+  it('reads the customer message one was started from and who signs it, and neither on one drafted here (Messages cut 4b)', () => {
+    const fromMessage = changeOrderFromRow({ ...row({}), source_message_id: 'm-priya-sink', signer_contact_id: 'c-priya' } as ChangeOrderRow)
+    expect(fromMessage).toMatchObject({ sourceMessageId: 'm-priya-sink', signerContactId: 'c-priya' })
+    const drafted = changeOrderFromRow({ ...row({}), source_message_id: null, signer_contact_id: null } as ChangeOrderRow)
+    expect(drafted).not.toHaveProperty('sourceMessageId')
+    expect(drafted).not.toHaveProperty('signerContactId')
   })
 
   it('reads an answer pressed in their portal and a decline’s reason, trimmed (O7c)', () => {

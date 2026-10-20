@@ -3,8 +3,9 @@
  * (branch spike/gc-mode, `gcBoardGroups.ts`).
  */
 import type { CustomerSummary } from './customers'
-import type { GcCustomer, GcProject, GcStage } from './types'
+import type { GcCustomer, GcProject, GcStage, GcState } from './types'
 import { money } from './words'
+import { customerSummary, priceToOwner } from './customers'
 
 export type BoardGroupBy = 'stage' | 'customer'
 
@@ -31,6 +32,30 @@ export function customerMoneyWords(summary: CustomerSummary): string {
     parts.push(`under contract ${money(summary.underContract)}`)
     parts.push(summary.billed > 0 ? `owes us ${money(summary.owed)}` : 'nothing billed yet')
   }
+  return parts.join(' · ')
+}
+
+/**
+ * A customer's open jobs on the board's By customer (the Board's B2b-iii; gc 5, Owner Billing's read): what we are
+ * bidding them and what they have us under contract for, each job at `priceToOwner` as the board's sections price it.
+ * A closed or lost job counts in neither, so the customers' numbers add up to the sections' "priced so far" and "under
+ * contract". `customerSummary` stays the customer window's, which counts a closed job as under contract.
+ */
+export function customerWorth(open: readonly GcProject[]): { bidding: number; underContract: number } {
+  const sum = (stages: readonly GcStage[]) => open.filter((p) => isOpen(p) && stages.includes(p.stage)).reduce((t, p) => t + priceToOwner(p).price, 0)
+  return { bidding: sum(['pursuing']), underContract: sum(['buyout', 'building']) }
+}
+
+/**
+ * The customer's band on By customer: "bidding $977,823 · under contract $1,488,762", `customerMoneyWords`' first two
+ * parts on the open jobs alone. What they owe comes with Owner Billing's rows on the board, for the money team (B2b-v),
+ * so the band never says "nothing billed yet". Empty when nothing is in front of them or under contract.
+ */
+export function customerWorthWords(open: readonly GcProject[]): string {
+  const worth = customerWorth(open)
+  const parts: string[] = []
+  if (worth.bidding > 0) parts.push(`bidding ${money(worth.bidding)}`)
+  if (worth.underContract > 0) parts.push(`under contract ${money(worth.underContract)}`)
   return parts.join(' · ')
 }
 
@@ -70,4 +95,55 @@ export function boardSectionElementId(key: BoardSection): string {
 /** The element id a customer's heading carries on By customer. */
 export function boardCustomerElementId(customerId: string): string {
   return `gc-board-customer-${customerId}`
+}
+
+const STAGE_ORDER: Record<GcStage, number> = { pursuing: 0, buyout: 1, building: 2 }
+
+/** The day that matters next on an open job: our bid due while bidding, the start while buying out. */
+function nextDay(project: GcProject): string | null {
+  if (project.stage === 'pursuing') return project.bidDue
+  if (project.stage === 'buyout') return project.startDate ?? null
+  return null
+}
+
+function isOpen(project: GcProject): boolean {
+  return !project.closedOn && !project.lostOn
+}
+
+/**
+ * One group per customer we build for (the project's owner, not its architect). Customers sort by
+ * the soonest day due on their open jobs, so one with a bid due Thursday comes first; customers
+ * with nothing due follow, then those with only closed or lost jobs, each by name.
+ */
+export function customerGroups(state: GcState): CustomerGroup[] {
+  const groups: CustomerGroup[] = []
+  for (const customer of state.customers) {
+    const theirs = state.projects.filter((p) => p.customerId === customer.id)
+    if (theirs.length === 0) continue
+    groups.push({
+      customer,
+      open: theirs
+        .filter(isOpen)
+        .sort((a, b) => STAGE_ORDER[a.stage] - STAGE_ORDER[b.stage] || (nextDay(a) ?? '9999').localeCompare(nextDay(b) ?? '9999')),
+      closed: theirs.filter((p) => p.closedOn).sort((a, b) => (b.closedOn ?? '').localeCompare(a.closedOn ?? '')),
+      lost: theirs.filter((p) => p.lostOn).sort((a, b) => (b.lostOn ?? '').localeCompare(a.lostOn ?? '')),
+      summary: customerSummary(state, customer),
+    })
+  }
+  const rank = (g: CustomerGroup) => {
+    const days = g.open.map(nextDay).filter((d): d is string => Boolean(d)).sort()
+    return days[0] ?? (g.open.length > 0 ? '9998' : '9999')
+  }
+  return groups.sort((a, b) => rank(a).localeCompare(rank(b)) || a.customer.name.localeCompare(b.customer.name))
+}
+
+/**
+ * The stage strip at the top of the board (the owner, 2026-10-04: "just like on jobs stages … a
+ * header … so it's easy for a user to jump to a stage"): each section's job count and worth.
+ */
+export function boardSectionCounts(state: GcState): BoardSectionCount[] {
+  return BOARD_SECTION_ORDER.map((key) => {
+    const jobs = state.projects.filter((p) => boardSectionOf(p) === key)
+    return { key, count: jobs.length, worth: jobs.reduce((t, p) => t + priceToOwner(p).price, 0) }
+  })
 }

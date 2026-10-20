@@ -30,6 +30,7 @@ import {
 import { stripeInvoiceFooter } from '../_shared/stripeInvoiceFooterPortalLink.ts'
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
 import { ensurePortalShortAddress } from '../_shared/portalShortAddress.ts'
+import { GC_BILL_PORTAL_CARD_ONLY } from '../_shared/gcCardBill.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -309,6 +310,19 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey)
+
+    // GC mode (Owner Billing O8b, v2.5123): a GC bill (one a pay application's certificate or an interest bill made)
+    // goes on card only from the customer's portal (gc-card-bill), with its 3% card fee. Staff never turn one: the
+    // owner's word, 2026-10-09. Read as the service role, so a caller who cannot see the GC rows is refused too.
+    {
+      const [{ data: gcPayApp }, { data: gcInterest }] = await Promise.all([
+        admin.from('gc_owner_pay_apps').select('id').eq('invoice_id', jobs_ledger_invoice_id).maybeSingle(),
+        admin.from('gc_owner_interest_bills').select('id').eq('invoice_id', jobs_ledger_invoice_id).maybeSingle(),
+      ])
+      if (gcPayApp || gcInterest) {
+        return jsonResponse({ error: GC_BILL_PORTAL_CARD_ONLY }, 409)
+      }
+    }
 
     const { data: jobRow, error: jobErr } = await admin
       .from('jobs_ledger')

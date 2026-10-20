@@ -49,7 +49,7 @@ From Mike T · Wed, 7/9, 8:14 AM
 2. The amount is pre-filled from Settings for that reason. Adjust it if this job warrants something different.
 3. Confirm with {{button:amber|Create trip charge}}. The charge lands in **Ready to Bill** as its own line. The inbox item closes itself with a record of what was created.
 
-The trip charge is **extra money, not a slice of the job**. The job's total goes up by the same amount. So the job's own remainder bill, the bill for what is left, stays exactly what it was. The trip charge bills on its own line whenever you're ready, whatever stage the job is in.
+The trip charge is **extra money, not a slice of the job**. The job's total goes up by the same amount. It stays in the total when you change the line items later. So the job's own remainder bill, the bill for what is left, stays exactly what it was. The trip charge bills on its own line whenever you're ready, whatever stage the job is in.
 
 The job itself is untouched. The job stays in its normal pipeline and gets rescheduled. When you bill the trip charge through {{button:blue|Bill Customer}}, the invoice shows one clean line. The line reads like *Trip charge — client not home*.
 

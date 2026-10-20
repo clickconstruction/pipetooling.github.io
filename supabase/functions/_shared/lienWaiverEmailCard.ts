@@ -6,6 +6,17 @@
  * vitest (`src/lib/jobs/lienWaiverEmailCard.test.ts`).
  */
 import { portalAccountCardHtml } from './portalAccountCard.ts'
+import { GC_CUSTOMER_EMAIL_FROM_NAME } from './gcCustomerEmails.ts'
+import { PORTAL_COMPANY } from './portalCompany.ts'
+
+/**
+ * The name the waiver email is from. GC mode's billing job (`jobs_ledger.billing_only`) sends as our GC
+ * entity, as every GC customer email does. Every other job sends as the company, a sub job that bills a
+ * GC (`gc_customer_id`) included.
+ */
+export function waiverEmailFromName(billingOnly: boolean): string {
+  return billingOnly ? GC_CUSTOMER_EMAIL_FROM_NAME : PORTAL_COMPANY.name
+}
 
 /** The sentence under the address: the waiver email's own. */
 export const WAIVER_EMAIL_CARD_BLURB = 'Every lien waiver and bill for your jobs, with no login.'

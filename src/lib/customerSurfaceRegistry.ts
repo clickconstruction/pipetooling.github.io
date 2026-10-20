@@ -1,6 +1,6 @@
 /**
  * The registry of every outside-facing surface — each public route in `App.tsx` and each edge
- * function that sends email — and where it appears on Settings → What customers see (v2.3505).
+ * function that sends email or a text — and where it appears on Settings → What customers see (v2.3505).
  *
  * The tab drifted for a month because nothing asked "is it on What customers see?" when a room
  * or a sender shipped. `customerSurfaceRegistry.test.ts` reads the real route table and the real
@@ -45,18 +45,20 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/reset-password-confirm', audience: 'staff', exempt: 'Staff password reset, second step.' },
   { kind: 'route', ref: '/accept-invite', audience: 'staff', exempt: 'A new staff account accepting its invite.' },
   { kind: 'route', ref: '/task', audience: 'staff', exempt: 'The iOS home-screen install helper for task-capable staff.' },
+  { kind: 'route', ref: '/files/:source/:id', audience: 'staff', exempt: 'A kept file\'s lasting link for the office team: it signs in on its own and opens nothing for anyone else.' },
   { kind: 'route', ref: '/estimate/accept', audience: 'homeowner', steps: [H('estimate-page'), H('estimate-thankyou')] },
   { kind: 'route', ref: '/estimate/terms', audience: 'homeowner', steps: [H('estimate-terms')] },
   { kind: 'route', ref: '/contract/sign', audience: 'homeowner', steps: [H('job-contract-page'), H('job-contract-signed')] },
   { kind: 'route', ref: '/hazmat-notice', audience: 'homeowner', steps: [H('hazmat-notice')] },
-  { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
-  { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
+  { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
+  { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
   { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },
   { kind: 'route', ref: '/sub', audience: 'sub', steps: [S('sub-portal')] },
   { kind: 'route', ref: '/s/:slug', audience: 'sub', steps: [S('sub-portal')] },
   { kind: 'route', ref: '/t/:token', audience: 'sub', steps: [S('gc-trade-portal')] },
+  { kind: 'route', ref: '/f/:link', audience: 'sub', steps: [S('gc-file-link')] },
   { kind: 'route', ref: '/contract/accept', audience: 'sub', steps: [S('sub-contract'), S('sub-contract-signed')] },
   { kind: 'route', ref: '/q/:token', audience: 'house', steps: [HS('quote-page'), HS('quote-submitted')] },
   { kind: 'route', ref: '/legal', audience: 'firm', steps: [F('firm-portal')] },
@@ -97,7 +99,15 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // GC mode (P3-a): every email to a trade partner company, from one sender.
   { kind: 'sender', ref: 'gc-trade-email', audience: 'sub', steps: [S('gc-trade-email')] },
   // GC mode (O4b): our emails to a GC project's customer and its architect, from one sender.
-  { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email'), G('gc-reminder-email'), G('gc-interest-bill-email')] },
+  { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email'), G('gc-reminder-email'), G('gc-interest-bill-email'), G('gc-weekly-report-email'), G('gc-schedule-email'), G('gc-contract-email')] },
+  // Messages (cut 3): an email from the reply box in a person's thread, to a customer, an architect or a trade partner.
+  { kind: 'sender', ref: 'messages-email', audience: 'owner', steps: [G('gc-reply-email'), S('sub-reply-email')] },
+  // Messages cut 5: a text from the company number, through Quo. The reply box's text and the webhook's answer to HELP.
+  { kind: 'sender', ref: 'quo-send', audience: 'owner', steps: [G('gc-text'), S('sub-text'), H('booked-text'), H('estimate-text')] },
+  { kind: 'sender', ref: 'quo-webhook', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
+  // Messages cut 5: the morning reminders the app sends itself from the company number, one step at a time, off until the
+  // owner turns a step on. The same text, opt-out line and thread as the office's own.
+  { kind: 'sender', ref: 'messages-nudge-dispatch', audience: 'owner', steps: [G('gc-text'), S('sub-text')] },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },
@@ -105,6 +115,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'invite-user', audience: 'staff', exempt: 'Staff account invites.' },
   { kind: 'sender', ref: 'money-waiting-email-dispatch', audience: 'staff', exempt: 'The office\'s Money waiting list.' },
   { kind: 'sender', ref: 'notify-lien-approval', audience: 'staff', exempt: 'Tells the leader a lien notice awaits his approval, by push or else email.' },
+  { kind: 'sender', ref: 'messages-notify', audience: 'staff', exempt: 'Tells the approvers a contract clause change waits on them, by push and email, and the editor how it was decided.' },
   { kind: 'sender', ref: 'payment-forecast-email-dispatch', audience: 'staff', exempt: 'The office\'s Payment forecast.' },
   { kind: 'sender', ref: 'schedule-share-dispatch', audience: 'staff', exempt: 'Schedule shares go to app users.' },
   { kind: 'sender', ref: 'paid-job-email', audience: 'staff', exempt: 'Internal paid-job notice to three staff ids, never the payer.' },
@@ -120,6 +131,10 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-workflow-notification', audience: 'staff', exempt: 'Workflow step notifications to app users.' },
   { kind: 'sender', ref: 'statement-round-email-dispatch', audience: 'staff', exempt: 'The office\'s "Your statement round" email.' },
   { kind: 'sender', ref: 'gc-money-monday-email', audience: 'staff', exempt: 'The money team\'s Monday email about our GC jobs.' },
+  { kind: 'sender', ref: 'bridge-sheet-email', audience: 'staff', exempt: 'The Bridge\'s Monday sheet, mailed to the dev who pressed Email me this sheet (v2.5224).' },
+  // The office's GC notices (O10b): the architect's reminder is outside; the project manager's two are staff mail. The
+  // customer's notice before a bill is due (O12b) is outside too.
+  { kind: 'sender', ref: 'gc-office-notices', audience: 'owner', steps: [G('gc-certify-reminder-email'), G('gc-due-soon-email')] },
   { kind: 'sender', ref: 'gc-word-ask', audience: 'staff', exempt: 'The ask-by-link email to an account man — the office asking its own people.' },
   { kind: 'sender', ref: 'send-lien-desk-summary', audience: 'staff', exempt: 'Where the liens stand — the Lien desk’s Share emailing the people who use the desk.' },
   { kind: 'sender', ref: 'sync-resend-emails', audience: 'staff', exempt: 'Dev tooling: mirrors the Resend log.' },
@@ -154,6 +169,17 @@ export function publicRoutesFromAppSource(src: string): string[] {
 export function resendSendersFromSources(functions: ReadonlyArray<{ name: string; source: string }>): string[] {
   return functions
     .filter((f) => f.source.includes('sendEmailViaResend') || f.source.includes('sendResendHtmlEmail') || f.source.includes('resend.com/emails'))
+    .map((f) => f.name)
+    .sort()
+}
+
+/**
+ * Functions that text someone from the company number (Messages cut 5): through the shared text path
+ * (`_shared/quoLines.ts`'s `sendText`), or straight to Quo's send endpoint.
+ */
+export function textSendersFromSources(functions: ReadonlyArray<{ name: string; source: string }>): string[] {
+  return functions
+    .filter((f) => (f.source.includes('quoLines.ts') && f.source.includes('sendText(')) || f.source.includes('api.quo.com/v1/messages'))
     .map((f) => f.name)
     .sort()
 }
@@ -197,7 +223,7 @@ export function journeyCoverage(journeys: Journey[]): JourneyCoverage {
   return {
     audiences: journeys.length,
     steps: steps.length,
-    rendered: count('page') + count('email'),
+    rendered: count('page') + count('email') + count('text'),
     paper: count('paper'),
     soon: count('soon'),
     external: count('external'),

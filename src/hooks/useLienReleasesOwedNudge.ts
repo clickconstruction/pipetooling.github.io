@@ -4,13 +4,15 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import {
   appliedByInvoiceIdFromPayments,
   buildLienUnconditionalQueue,
-  computeLienUnconditionalOwed,
+  owedLienReleasesByJob,
+  summarizeLienUnconditionalOwed,
   liveLienReleases,
   type JobLienReleaseRow,
   type LienQueueJob,
   type LienQueuePayment,
   type LienUnconditionalQueueRow,
 } from '../lib/jobs/lienReleaseTracking'
+import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
 
 export type LienReleasesOwed = { count: number; total: number; jobIds: string[] }
 
@@ -27,7 +29,11 @@ export type LienReleasesOwed = { count: number; total: number; jobIds: string[] 
  * rows as the count, so the two can't disagree. `refetch` re-runs the load
  * after a release is issued from the queue.
  */
-export function useLienReleasesOwedNudge(enabled: boolean): {
+/**
+ * `hideZzTestJobs` (punch list #61, PR 3): a release on a ZZ test job leaves the count, the dollars and the
+ * queue, by the owed jobs' own names once they are read.
+ */
+export function useLienReleasesOwedNudge(enabled: boolean, hideZzTestJobs = false): {
   owed: LienReleasesOwed | null
   queue: LienUnconditionalQueueRow[]
   refetch: () => void
@@ -66,19 +72,26 @@ export function useLienReleasesOwedNudge(enabled: boolean): {
         }
         if (cancelled) return
         const todayYmd = todayYmdInAppTz()
-        const next = computeLienUnconditionalOwed(releases, appliedByInvoiceIdFromPayments(payments), { payments, todayYmd })
+        // The owed releases per job, worked out once (review on #5250); the ZZ test jobs leave the map before it is summed.
+        const owedByJob = owedLienReleasesByJob(releases, appliedByInvoiceIdFromPayments(payments), { payments, todayYmd })
         const jobsById = new Map<string, LienQueueJob>()
-        if (next.jobIds.length > 0) {
+        if (owedByJob.size > 0) {
           const { data: jobRows, error: jobError } = await supabase
             .from('jobs_ledger')
             .select('id, hcp_number, click_number, job_name, customer_name, job_address')
-            .in('id', next.jobIds)
+            .in('id', [...owedByJob.keys()])
           if (jobError) throw jobError
           for (const j of (jobRows ?? []) as LienQueueJob[]) jobsById.set(j.id, j)
         }
         if (cancelled) return
+        // Only an owed job can count, so the owed jobs' names are enough to find the ZZ ones.
+        const zzJobIds = hideZzTestJobs ? zzTestJobIds([...jobsById.values()]) : null
+        const hasZz = zzJobIds != null && zzJobIds.size > 0
+        const shownReleases = hasZz ? releases.filter((r) => !zzJobIds.has(r.job_id)) : releases
+        const shownOwed = hasZz ? new Map([...owedByJob].filter(([jobId]) => !zzJobIds.has(jobId))) : owedByJob
+        const next = summarizeLienUnconditionalOwed(shownOwed)
         setOwed(next)
-        setQueue(buildLienUnconditionalQueue(releases, payments, jobsById, todayYmd))
+        setQueue(buildLienUnconditionalQueue(shownReleases, payments, jobsById, todayYmd))
       } catch {
         if (!cancelled) {
           setOwed({ count: 0, total: 0, jobIds: [] })
@@ -89,7 +102,7 @@ export function useLienReleasesOwedNudge(enabled: boolean): {
     return () => {
       cancelled = true
     }
-  }, [enabled, loadKey])
+  }, [enabled, hideZzTestJobs, loadKey])
 
   return { owed, queue, refetch }
 }

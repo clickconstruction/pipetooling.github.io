@@ -12,6 +12,12 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+const profile = vi.hoisted(() => ({ open: vi.fn() }))
+vi.mock('../../contexts/CustomerProfileModalContext', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../contexts/CustomerProfileModalContext')>()),
+  useCustomerProfileModal: () => ({ openCustomerProfile: profile.open }),
+}))
+
 import JobsStagesUnifiedTable, { type JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import { JobsStagesUnifiedCardList } from './JobsStagesCardList'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
@@ -472,5 +478,16 @@ describe('one door for each thing on the row (v2.4324)', () => {
     renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows: paid.rows, billedLienRunway: () => null })} />)
     await settle()
     expect(crewLineLabels()).toContain('Paid')
+  })
+})
+
+describe('a customer’s name on a unified phone card (v2.5441)', () => {
+  it('opens their profile, as the desktop table does', async () => {
+    const job = makeJob({ job_name: 'Named Job', status: 'ready_to_bill', customer_id: 'cust-dana', customer_name: 'Dana Whitfield' })
+    profile.open.mockClear()
+    renderWithProviders(<JobsStagesUnifiedCardList {...makeProps({ rows: [{ kind: 'job', job }] })} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Open customer profile for Dana Whitfield'))
+    expect(profile.open).toHaveBeenCalledWith('cust-dana')
   })
 })

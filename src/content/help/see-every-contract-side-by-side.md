@@ -2,7 +2,7 @@
 title: see every contract we offer side by side
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: contracts, contract, terms, terms of service, website terms, housecall pro, terms and conditions, legal wording, agreement, service agreement, standard terms, bid terms, warranty, exclusions, estimate terms, electronic signature, esign consent, lien waiver, demand letter, notice, compare contracts, side by side, what we send, when to update, contracts and terms, settings
+keywords: contracts, contract, terms, terms of service, website terms, housecall pro, terms and conditions, legal wording, agreement, service agreement, standard terms, bid terms, warranty, exclusions, estimate terms, electronic signature, esign consent, lien waiver, demand letter, notice, compare contracts, side by side, what we send, when to update, contracts and terms, settings, papers on the flows, flow papers, new paper, bond, their paper
 order: 66
 ---
 Settings → Contracts & terms puts every contract a customer accepts or signs on one page. It shows the wording as it stands today.
@@ -13,7 +13,7 @@ It is the same set of pages as **What customers see**. Here they are sorted by t
 
 ## Find a contract
 
-The page is an index first. It has seven sections in the order a customer meets them: ***Website · Estimates · Bids · Jobs · Every signing page · Billing · Liens & collections***. Each contract has one line. The line shows its name, who it is for and whose wording it is. It shows when it last changed, when it was reviewed and what last went out. Press a line to open its card. {{button:outline|Open all}} opens every card on the page and turns into **Close all**. **Jump to** at the top lands a section.
+The page is an index first. It has seven sections in the order a customer meets them: ***Website · Estimates · Bids · Jobs · Every signing page · Billing · Liens & collections***. An eighth, **Papers on the flows**, shows once the office adds a paper to a flow. Each contract has one line. The line shows its name, who it is for and whose wording it is. It shows when it last changed, when it was reviewed and what last went out. Press a line to open its card. {{button:outline|Open all}} opens every card on the page and turns into **Close all**. **Jump to** at the top lands a section.
 
 The lens chips narrow the list: {{chip:blue|All · 19}} {{chip:yellow|Needs a look · 3}} {{chip:green|Your wording · 4}}. More follow: {{chip:blue|Built-in wording · 2}} {{chip:gray|Hosted elsewhere · 1}} and more. **Needs a look** keeps the contracts where what went out is not what the card says. It also keeps those where nothing is set, or a review is due. The never-reviewed ones stay on the top line, since on the first day that is every card. The find box reads the names and the wording itself. So *interest* finds every clause that charges it.
 
@@ -31,10 +31,11 @@ Each contract is a card under its line. The chips say where it is used, who it i
 - {{chip:gray|Fixed in the app}} means it changes only with an app update.
 - {{chip:gray|Typed each time}} means it is written on each estimate or bid. So there is no one wording to show.
 - {{chip:gray|Hosted elsewhere}} means a page another company hosts for us. The card holds a copy made on the day it says, and opens the live page.
+- {{chip:gray|Their paper}} means a paper they hand us, like a bond. There is no wording of ours to show.
 
 Under the wording, these lines answer the questions that matter when a contract needs an update:
 
-- **The customer** says how they take it on: a signature, a checkbox, or by accepting the document it rides on.
+- **The customer** says how they take it on: a signature, a checkbox, or by accepting the document it rides on. On a trade partner's paper the line is **The trade partner**.
 - **Kept in** says where the wording lives.
 - **Last changed** says the day it last changed and who changed it. Wording fixed in the app changes only with an app update.
 - **Their copy** says where the wording a customer agreed to is kept, or *None is kept*.
@@ -132,6 +133,17 @@ Our **Estimate Terms and Conditions** started from this document. Tick {{button:
 
 The second group, **Notices customers receive**, is wording we send that a customer does not sign. That means lien waivers, the notice to a property owner, the demand letter and the biohazard fee notice. A lien is a legal claim on a property for unpaid work. A lien waiver gives that claim up. The group also holds invoice footers and the test report certification. Most are written around the facts of one job. So the card points to the sample instead of printing a text.
 
+## Papers on the flows
+
+A flow can wait on a paper the office added in the **New paper** window. Each such paper gets a line in **Papers on the flows**. The section shows once there is one.
+
+- {{chip:gray|Trade partner}} or {{chip:gray|Customer or architect}} says whose flow the paper is on.
+- {{chip:gray|Their paper}} is a paper they give us, like a bond. The card says how many days ahead we ask for the next one.
+- A contract reads as its clauses, in English and then in Spanish. A clause kept to one trade says so. {{button:outline|Open its clauses →}} opens it on **Contracts and clauses**.
+- A notice reads as its words in both languages.
+
+These papers never join the job service agreement's standard terms or a work order's documents.
+
 ## What is not here
 
-Paperwork for staff and subcontractors is in **People → Contracts → Contract library**. That means the W-9, the I-9, work orders and the sub's agreement. A sub is a subcontractor, a company hired to do part of the work.
+Paperwork for staff and subcontractors is in **People → Contracts → Contract library**. That means the W-9, the I-9, work orders and the sub's agreement. Papers added to the trade partner flow show here too, under **Papers on the flows**. A sub is a subcontractor, a company hired to do part of the work.

@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Punch list #128: a prototype to play with. The same page is published as a claude.ai artifact; this copy is served at /to-dos/bid-price-breakout/prototype.html. Made-up bid and numbers. -->
+<title>What the Price Is Made Of</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a workbench — controls in a rail on the left, the rows in the middle, the card that answers on the right; stacks on a phone. */
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --surface-2: #eeece6; --fg: #1d1c19; --fg-2: #4b4a44; --muted: #7a7872; --line: #d8d5cc; --line-2: #e8e6df;
+    --accent: #0b6e4f; --accent-tint: #dcefe6; --amber: #9a5b00; --amber-tint: #fbefd4; --red: #a1302a; --red-tint: #f8dedb;
+    --mat: #5b6670; --tax: #7b5ea7; --eq: #c47a1c; --lab: #1f7ab8; --other: #a7a39a;
+    --sans: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #16171a; --surface: #1f2126; --surface-2: #292c33; --fg: #ecebe6; --fg-2: #c4c2bb; --muted: #8e8d87; --line: #3a3d45; --line-2: #2e3138;
+    --accent: #4fc59b; --accent-tint: #1b3a30; --amber: #e4a94a; --amber-tint: #3c2d10; --red: #ef8a82; --red-tint: #43201d;
+    --mat: #9aa5ae; --tax: #b39ddb; --eq: #e5a04a; --lab: #63b3ed; --other: #6f6c66; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #16171a; --surface: #1f2126; --surface-2: #292c33; --fg: #ecebe6; --fg-2: #c4c2bb; --muted: #8e8d87; --line: #3a3d45; --line-2: #2e3138;
+    --accent: #4fc59b; --accent-tint: #1b3a30; --amber: #e4a94a; --amber-tint: #3c2d10; --red: #ef8a82; --red-tint: #43201d;
+    --mat: #9aa5ae; --tax: #b39ddb; --eq: #e5a04a; --lab: #63b3ed; --other: #6f6c66; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 48px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 600; text-wrap: balance; letter-spacing: -.01em; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  header p { margin: 6px 0 0; color: var(--fg-2); max-width: 70ch; }
+  .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr) 420px; gap: 16px; margin-top: 18px; align-items: start; }
+  @media (max-width: 1080px) { .layout { grid-template-columns: 250px minmax(0, 1fr); } .layout > .col-card { grid-column: 1 / -1; } }
+  @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .panel > .head { padding: 10px 14px; border-bottom: 1px solid var(--line-2); display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .panel > .head b { font-weight: 600; font-size: 14px; }
+  .panel > .head .sub { font-size: 12px; color: var(--muted); }
+  .panel > .body { padding: 10px 14px 14px; }
+  /* the rail */
+  .field { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-2); }
+  .field:last-child { border-bottom: 0; }
+  .field label { font-weight: 500; }
+  .field .hint { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); }
+  input[type="number"], input[type="text"], select { font: 13px var(--mono); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+  input[type="number"] { width: 92px; text-align: right; }
+  input[type="number"].standin { border-style: dashed; color: var(--fg-2); }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .toggle { display: flex; align-items: center; gap: 8px; }
+  .toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+  button { font: 500 12.5px var(--sans); color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font: 500 11.5px var(--sans); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-2); white-space: nowrap; }
+  .chip.guess { border-style: dashed; color: var(--muted); }
+  .chip.k-equipment { background: var(--amber-tint); color: var(--amber); border-color: transparent; }
+  .chip.tag { background: var(--accent-tint); color: var(--accent); border-color: transparent; cursor: pointer; }
+  .chip.tag .x { color: var(--muted); }
+  /* the rows */
+  .rows-wrap { overflow-x: auto; }
+  table.rows { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 640px; }
+  table.rows th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 6px; border-bottom: 1px solid var(--line); font-weight: 600; white-space: nowrap; }
+  table.rows td { padding: 5px 6px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+  table.rows td.n, table.rows th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.rows input[type="number"] { width: 76px; padding: 2px 4px; font-size: 12px; }
+  table.rows input.tagin { width: 96px; font-size: 11.5px; padding: 2px 5px; }
+  table.rows select { font-size: 11.5px; padding: 2px 4px; }
+  table.rows select.guess { border-style: dashed; color: var(--muted); }
+  table.rows tr.sel td { background: var(--accent-tint); }
+  table.rows td.name { font-weight: 500; cursor: pointer; }
+  table.rows td.name:hover { color: var(--accent); }
+  /* the strip and the card */
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line-2); background: var(--surface-2); border-radius: 10px 10px 0 0; }
+  .strip div { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .strip div b { display: block; font: 600 16px var(--mono); color: var(--fg); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+  table.lines { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.lines td { padding: 6px 4px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  table.lines tr:last-child td { border-bottom: 0; }
+  table.lines td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.lines tr.head td { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding-bottom: 2px; border-bottom: 1px solid var(--line); font-family: var(--sans); }
+  table.lines td .rule { display: block; font-size: 11px; color: var(--muted); font-family: var(--sans); }
+  table.lines tr.total td { border-top: 2px solid var(--fg); font-weight: 600; }
+  table.lines tr.rest td { background: var(--amber-tint); }
+  table.lines td.dim { color: var(--muted); }
+  .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+  .stack { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin: 8px 0 6px; background: var(--line-2); }
+  .stack span { display: block; height: 100%; }
+  .warn { margin: 10px 0 0; font-size: 12px; padding: 7px 10px; border-radius: 8px; background: var(--amber-tint); color: var(--amber); }
+  .ok { margin: 10px 0 0; font-size: 12px; padding: 7px 10px; border-radius: 8px; background: var(--accent-tint); color: var(--accent); }
+  .note { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+  .pills { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .pills button { border: 0; border-radius: 0; background: transparent; padding: 3px 10px; }
+  .pills button.on { background: var(--fg); color: var(--bg); }
+  .stackcol { display: grid; gap: 16px; }
+  .rowwin td.n { font-family: var(--mono); }
+  .inline-mk { font-family: var(--mono); font-size: 11px; width: 54px; padding: 0 4px; text-align: right; }
+  @media (prefers-reduced-motion: no-preference) { table.lines td.n { transition: color .2s; } }
+</style>
+
+<header>
+  <p class="eyebrow">Punch list #128 · Bids → Pricing · a prototype to play with</p>
+  <h1>What the price is made of</h1>
+  <p>A made-up bid: Ridgeway Builders, Oak Hollow Apartments Building C. Change anything on the left or in a row and the card on the right recomputes. Nothing here is saved or real.</p>
+</header>
+
+<div class="layout">
+  <aside class="panel col-rail">
+    <div class="head"><b>The bid's numbers</b><span class="sub">what the app holds</span></div>
+    <div class="body">
+      <div class="field"><label for="markup">Material markup</label><div><input type="number" id="markup" value="40" min="0" max="300" step="1"> %</div><span class="hint">The company number (Settings). The chip on the card's Material line overrides it for this bid.</span></div>
+      <div class="field"><label for="tax">Sales tax on material</label><div><input type="number" id="tax" value="8.25" min="0" max="100" step="0.25"> %</div><span class="hint">Saved on the bid (today it is a box that forgets).</span></div>
+      <div class="field"><label for="rate">Labor rate</label><div>$ <input type="number" id="rate" placeholder="58.00" min="0" step="0.5" class="standin"> /h</div><span class="hint" id="rateHint">Blank: the crew rate stands in, $58.00 (the last 90 days' wage × 1.20 burden). Type one to make it the bid's own.</span></div>
+      <div class="field"><label class="toggle"><input type="checkbox" id="hours" checked> Hours on the Labor tab</label><span></span><span class="hint">Off = the estimator never opened Labor: labor's cost is blank and the card says what that hides.</span></div>
+      <div class="field"><label for="eqcost">Equipment &amp; tool rental</label><div>$ <input type="number" id="eqcost" value="5900" min="0" step="50"></div><span class="hint">The Labor tab's direct cost, at cost.</span></div>
+      <div class="field"><label for="othercost">Driving, travel, permits, subs</label><div>$ <input type="number" id="othercost" value="2480.25" min="0" step="10"></div><span class="hint">At cost; the price carries them inside labor.</span></div>
+      <div class="field"><span></span><button id="reset">Reset the sample</button></div>
+    </div>
+  </aside>
+
+  <section class="panel col-rows">
+    <div class="head"><b>The rows</b><span class="sub">★ Plans · price each is the book's all-in number · press a name for its own card</span></div>
+    <div class="body rows-wrap">
+      <table class="rows" id="rows">
+        <thead><tr><th>Fixture</th><th class="n">Count</th><th>Kind</th><th>Tags</th><th class="n">Price each</th><th class="n">Material each</th><th class="n">Hours each</th><th class="n">Price</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="note">A dashed kind is the app's guess from the name; pick one to make it the row's own. Material each is the takeoff's part lines at the catalog's price. Hours each is the labor book's number. Tags are the estimator's own words; type one and press Enter.</p>
+    </div>
+  </section>
+
+  <div class="col-card stackcol">
+    <section class="panel">
+      <div class="strip"><div>Revenue<b id="sRev">—</b></div><div>Cost<b id="sCost">—</b></div><div>Profit<b id="sProfit">—</b></div><div>Margin<b id="sMargin">—</b></div></div>
+      <div class="head"><b>What the price is made of</b><span class="sub">★ Plans · the price to Ridgeway Builders</span></div>
+      <div class="body">
+        <div class="stack" id="stack"></div>
+        <table class="lines" id="card"></table>
+        <div id="cardNote"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><b id="byTitle">By kind</b><span class="pills"><button id="pKind" class="on">By kind</button><button id="pTag">By tag</button></span></div>
+      <div class="body"><table class="lines" id="by"></table><div id="byNote"></div></div>
+    </section>
+
+    <section class="panel" id="rowwin" hidden>
+      <div class="head"><b id="rwTitle">Row</b><span class="sub" id="rwSub"></span></div>
+      <div class="body"><table class="lines rowwin" id="rwTable"></table><div id="rwNote"></div></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const CREW_RATE = 58;
+  const KINDS = ['fixture', 'pipe', 'fitting', 'equipment', 'allowance'];
+  const KIND_WORDS = { fixture: 'Fixture', pipe: 'Pipe', fitting: 'Fitting', equipment: 'Equipment', allowance: 'Allowance' };
+  const SAMPLE = () => [
+    { name: 'Water Closet', count: 48, price: 1150, mat: 412, hrs: 7.5, kind: null, tags: ['bldg c bathrooms'] },
+    { name: 'Lavatory', count: 48, price: 660, mat: 190, hrs: 4, kind: null, tags: ['bldg c bathrooms'] },
+    { name: 'Tub / shower valve', count: 48, price: 540, mat: 165, hrs: 3.5, kind: null, tags: ['bldg c bathrooms'] },
+    { name: 'Kitchen Sink', count: 48, price: 646, mat: 230, hrs: 4.5, kind: null, tags: ['kitchen'] },
+    { name: 'Water heater, 50 gal', count: 12, price: 960, mat: 620, hrs: 3, kind: null, tags: [] },
+    { name: 'Floor drain', count: 24, price: 310, mat: 88, hrs: 2, kind: null, tags: [] },
+    { name: 'Hose bibb', count: 16, price: 145, mat: 28, hrs: 1, kind: null, tags: [] },
+    { name: 'Cleanout', count: 10, price: 210, mat: 42, hrs: 1.2, kind: null, tags: ['site utilities'] },
+    { name: '4" PVC sewer, ft', count: 1250, price: 33.76, mat: 9.2, hrs: 0.09, kind: null, tags: ['site utilities'] },
+    { name: 'Trench shoring rental, 2 wk', count: 1, price: 4800, mat: 0, hrs: 0, kind: null, tags: [] },
+    { name: 'Scissor lift, 1 wk', count: 1, price: 2000, mat: 0, hrs: 0, kind: null, tags: [] },
+  ];
+  let rows = SAMPLE();
+  let selected = null;
+  let byView = 'kind';
+  let bidMarkup = null; // the chip's per-bid override, null = the company number
+
+  // --- the kernels (pure) ---
+  function guessKind(name) {
+    const n = name.toLowerCase();
+    if (/\b(rental|rentals|equipment|lift|shoring|excavator|machine)\b/.test(n)) return 'equipment';
+    if (/\b(allowance|permit|bond|contingency|mobilization|per diem|travel)\b/.test(n)) return 'allowance';
+    if (/\b(ft|feet|foot|lf|linear)\b/.test(n)) return 'pipe';
+    if (/\b(valve|wye|tee|cleanout|elbow|coupling|fitting)\b/.test(n)) return 'fitting';
+    return 'fixture';
+  }
+  const kindOf = (r) => r.kind || guessKind(r.name);
+  const rowPrice = (r) => r.price * r.count;
+  const rowMat = (r) => (kindOf(r) === 'equipment' ? 0 : r.mat * r.count);
+  const rowHours = (r) => r.hrs * r.count;
+
+  function readInputs() {
+    const markup = bidMarkup != null ? bidMarkup : (Number(document.getElementById('markup').value) || 0);
+    const tax = Number(document.getElementById('tax').value) || 0;
+    const typed = document.getElementById('rate').value;
+    const rate = typed === '' ? CREW_RATE : (Number(typed) || 0);
+    const hours = document.getElementById('hours').checked;
+    const eqCost = Number(document.getElementById('eqcost').value) || 0;
+    const other = Number(document.getElementById('othercost').value) || 0;
+    return { markup, tax, rate, rateStandIn: typed === '', hours, eqCost, other };
+  }
+
+  /** The five lines in three columns. Pure: rows + inputs → lines, totals, state. */
+  function priceBreakdown(rows, inp) {
+    const price = rows.reduce((s, r) => s + rowPrice(r), 0);
+    const matCost = rows.reduce((s, r) => s + rowMat(r), 0);
+    const matPrice = matCost * (1 + inp.markup / 100);
+    const taxAmt = matCost * inp.tax / 100;
+    const eqRows = rows.filter((r) => kindOf(r) === 'equipment');
+    const eqPrice = eqRows.length ? eqRows.reduce((s, r) => s + rowPrice(r), 0) : inp.eqCost;
+    const laborPrice = price - matPrice - taxAmt - eqPrice;
+    const hrs = inp.hours ? rows.reduce((s, r) => s + rowHours(r), 0) : null;
+    const laborCost = hrs == null ? null : hrs * inp.rate;
+    const cost = matCost + taxAmt + inp.eqCost + (laborCost || 0) + inp.other;
+    const lines = [
+      { key: 'mat', name: 'Material', cost: matCost, price: matPrice, profit: matPrice - matCost, rule: `the takeoff at the catalog's price · sold at +${fmtPct(inp.markup)}` },
+      { key: 'tax', name: 'Sales tax on material', cost: taxAmt, price: taxAmt, profit: 0, rule: `${inp.tax}% on material · passed through` },
+      { key: 'eq', name: 'Equipment', cost: inp.eqCost, price: eqPrice, profit: eqPrice - inp.eqCost, rule: eqRows.length ? `the Labor tab's rentals · ${eqRows.length} row${eqRows.length > 1 ? 's' : ''} tagged Equipment` : 'the Labor tab\'s rentals · no row carries them, so the price carries them inside the fixtures' },
+      { key: 'lab', name: hrs == null ? 'Labor and margin' : 'Labor', cost: laborCost, price: laborPrice, profit: hrs == null ? null : laborPrice - laborCost - inp.other, rule: hrs == null ? 'no hours on the Labor tab, so the two cannot be told apart' : `${fmtNum(hrs)} h × $${inp.rate.toFixed(2)} ${inp.rateStandIn ? 'crew rate' : 'typed rate'} · the price's rest` },
+      { key: 'other', name: 'Driving, travel, permits, subs', cost: inp.other, price: null, profit: null, rule: 'at cost; the price carries them inside labor' },
+    ];
+    return { lines, price, cost, profit: hrs == null ? null : price - cost, hrs, eqRows: eqRows.length, laborPrice };
+  }
+
+  function byKind(rows, inp) { return group(rows, inp, (r) => [KIND_WORDS[kindOf(r)]]); }
+  function byTag(rows, inp) { return group(rows, inp, (r) => (r.tags.length ? r.tags : ['No tag'])); }
+  function group(rows, inp, keysOf) {
+    const m = new Map();
+    for (const r of rows) {
+      const lc = inp.hours ? rowHours(r) * inp.rate : 0;
+      const c = rowMat(r) * (1 + inp.tax / 100) + lc;
+      for (const k of keysOf(r)) {
+        const g = m.get(k) || { name: k, rows: 0, price: 0, cost: 0 };
+        g.rows += 1; g.price += rowPrice(r); g.cost += c; m.set(k, g);
+      }
+    }
+    const list = [...m.values()].sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
+    const multi = rows.filter((r) => keysOf(r).length > 1).length;
+    return { list, multi };
+  }
+
+  // --- format ---
+  const fmt = (n) => (n == null ? '—' : (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  const fmtNum = (n) => n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const fmtPct = (n) => (Math.round(n * 10) / 10).toLocaleString('en-US') + '%';
+  const pct = (a, b) => (b > 0 ? fmtPct((a / b) * 100) : '—');
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // --- render ---
+  function renderRows() {
+    const tb = document.querySelector('#rows tbody');
+    const allTags = [...new Set(rows.flatMap((r) => r.tags))].sort();
+    tb.innerHTML = rows.map((r, i) => {
+      const k = kindOf(r);
+      return `<tr data-i="${i}" class="${selected === i ? 'sel' : ''}">
+        <td class="name" data-act="pick">${esc(r.name)}</td>
+        <td class="n"><input type="number" data-f="count" value="${r.count}" min="0" step="1" aria-label="Count of ${esc(r.name)}"></td>
+        <td><select data-f="kind" class="${r.kind ? '' : 'guess'}" aria-label="Kind of ${esc(r.name)}">${KINDS.map((x) => `<option value="${x}" ${x === k ? 'selected' : ''}>${KIND_WORDS[x]}${r.kind ? '' : ' (guess)'}</option>`).join('')}</select></td>
+        <td>${r.tags.map((t) => `<span class="chip tag" data-act="untag" data-t="${esc(t)}">${esc(t)} <span class="x">×</span></span>`).join(' ')} <input class="tagin" type="text" data-f="tag" list="tags" placeholder="+ tag" aria-label="Add a tag to ${esc(r.name)}"></td>
+        <td class="n"><input type="number" data-f="price" value="${r.price}" min="0" step="1" aria-label="Price each of ${esc(r.name)}"></td>
+        <td class="n"><input type="number" data-f="mat" value="${r.mat}" min="0" step="1" aria-label="Material each of ${esc(r.name)}" ${k === 'equipment' ? 'disabled title="An equipment row carries no material"' : ''}></td>
+        <td class="n"><input type="number" data-f="hrs" value="${r.hrs}" min="0" step="0.1" aria-label="Hours each of ${esc(r.name)}"></td>
+        <td class="n">${fmt(rowPrice(r))}</td>
+      </tr>`;
+    }).join('');
+    let dl = document.getElementById('tags');
+    if (!dl) { dl = document.createElement('datalist'); dl.id = 'tags'; document.body.appendChild(dl); }
+    dl.innerHTML = allTags.map((t) => `<option value="${esc(t)}">`).join('');
+  }
+
+  const SW = { mat: 'var(--mat)', tax: 'var(--tax)', eq: 'var(--eq)', lab: 'var(--lab)', other: 'var(--other)' };
+  function renderCard() {
+    const inp = readInputs();
+    const b = priceBreakdown(rows, inp);
+    document.getElementById('sRev').textContent = fmt(b.price);
+    document.getElementById('sCost').textContent = fmt(b.cost);
+    document.getElementById('sProfit').textContent = b.profit == null ? '—' : fmt(b.profit);
+    document.getElementById('sMargin').textContent = b.profit == null ? '—' : pct(b.profit, b.price);
+    const rateEl = document.getElementById('rate');
+    rateEl.classList.toggle('standin', inp.rateStandIn);
+    document.getElementById('rateHint').textContent = inp.rateStandIn ? 'Blank: the crew rate stands in, $58.00 (the last 90 days’ wage × 1.20 burden). Type one to make it the bid’s own.' : 'Typed: the bid’s own rate. Clear it and the crew rate stands in again.';
+    // the stacked bar over the price
+    document.getElementById('stack').innerHTML = b.lines.filter((l) => l.price != null && l.price > 0).map((l) => `<span style="width:${(l.price / b.price) * 100}%;background:${l.key === 'lab' && b.hrs == null ? 'var(--amber)' : SW[l.key]}" title="${esc(l.name)}"></span>`).join('');
+    const mkChip = `<span class="chip" style="padding:0 2px 0 6px">+ <input class="inline-mk" id="mkChip" type="number" value="${inp.markup}" min="0" max="300" step="1" aria-label="This bid's material markup">%</span>`;
+    const head = `<tr class="head"><td></td><td class="n">Cost</td><td class="n">Price</td><td class="n">Profit</td></tr>`;
+    const body = b.lines.map((l) => {
+      const amber = l.key === 'lab' && b.hrs == null;
+      const rule = l.key === 'mat' ? `the takeoff at the catalog’s price · sold at ${mkChip}${bidMarkup != null ? ' this bid’s number' : ' the company number'}` : esc(l.rule);
+      const costCell = l.cost == null ? `<td class="n" style="color:var(--amber);font-family:var(--sans)">no hours</td>` : `<td class="n">${fmt(l.cost)}</td>`;
+      const priceCell = l.price == null ? `<td class="n dim">—</td>` : `<td class="n">${fmt(l.price)}</td>`;
+      const profitCell = l.key === 'other' ? `<td class="n dim" style="font-family:var(--sans)">in labor</td>` : l.profit == null ? `<td class="n dim">—</td>` : `<td class="n" style="${l.profit < 0 ? 'color:var(--red)' : ''}">${fmt(l.profit)}${l.price > 0 && l.key !== 'tax' ? `<span class="rule">${pct(l.profit, l.price)}</span>` : ''}</td>`;
+      return `<tr class="${amber ? 'rest' : ''}"><td><span class="sw" style="background:${amber ? 'var(--amber)' : SW[l.key]}"></span>${esc(l.name)}<span class="rule">${rule}</span></td>${costCell}${priceCell}${profitCell}</tr>`;
+    }).join('');
+    const total = `<tr class="total"><td>The bid</td><td class="n">${fmt(b.cost)}</td><td class="n">${fmt(b.price)}</td><td class="n">${b.profit == null ? '—' : fmt(b.profit) + `<span class="rule">${pct(b.profit, b.price)}</span>`}</td></tr>`;
+    document.getElementById('card').innerHTML = head + body + total;
+    const mk = document.getElementById('mkChip');
+    mk.addEventListener('change', () => { const v = Number(mk.value); bidMarkup = Number.isFinite(v) && v >= 0 ? v : null; if (bidMarkup === Number(document.getElementById('markup').value)) bidMarkup = null; render(); });
+    const noteEl = document.getElementById('cardNote');
+    if (b.hrs == null) {
+      const known = rows.filter((r) => r.hrs > 0).length;
+      const hrs = rows.reduce((s, r) => s + rowHours(r), 0);
+      const lc = hrs * inp.rate; const left = b.laborPrice - lc - inp.other;
+      noteEl.innerHTML = `<p class="warn"><b>The labor book knows ${known} of these ${rows.length} rows.</b> Open Labor once and the hours fill in from the book: about ${fmtNum(hrs)} h × $${inp.rate.toFixed(2)} = ${fmt(lc)}, which would leave ${fmt(left)} on labor (${pct(left, b.laborPrice)}). <button id="openLabor" class="primary" style="margin-left:6px">Open Labor</button></p>`;
+      document.getElementById('openLabor').addEventListener('click', () => { document.getElementById('hours').checked = true; render(); });
+    } else {
+      const lab = b.lines[3], mat = b.lines[0];
+      const laborNeg = lab.profit != null && lab.profit < 0;
+      noteEl.innerHTML = laborNeg
+        ? `<p class="warn"><b>Labor is under water.</b> The price leaves ${fmt(lab.price)} for ${fmtNum(b.hrs)} hours that cost ${fmt(lab.cost)} plus ${fmt(inp.other)} of small costs. Either the hours are high, the material markup is eating the price, or the book’s prices are low.</p>`
+        : `<p class="ok">Material earns ${pct(mat.profit, mat.price)} and labor ${pct(lab.profit, lab.price)}. The strip’s profit is the two plus equipment’s, and nothing else.</p>`;
+    }
+    renderBy(inp);
+    renderRowWin(inp);
+  }
+
+  function renderBy(inp) {
+    const g = byView === 'kind' ? byKind(rows, inp) : byTag(rows, inp);
+    const price = rows.reduce((s, r) => s + rowPrice(r), 0);
+    document.getElementById('byTitle').textContent = byView === 'kind' ? 'By kind' : 'By tag';
+    document.getElementById('pKind').classList.toggle('on', byView === 'kind');
+    document.getElementById('pTag').classList.toggle('on', byView === 'tag');
+    const head = `<tr class="head"><td></td><td class="n">Price</td><td class="n">Margin</td><td class="n">Share</td></tr>`;
+    const body = g.list.map((x) => `<tr><td>${x.name === 'No tag' ? `<span class="chip guess">No tag</span>` : byView === 'tag' ? `<span class="chip tag">${esc(x.name)}</span>` : `<span class="chip ${x.name === 'Equipment' ? 'k-equipment' : ''}">${esc(x.name)}</span>`}<span class="rule">${x.rows} row${x.rows > 1 ? 's' : ''} · cost ${fmt(x.cost)}</span></td><td class="n">${fmt(x.price)}</td><td class="n">${inp.hours ? pct(x.price - x.cost, x.price) : '—'}</td><td class="n">${pct(x.price, price)}</td></tr>`).join('');
+    const sum = g.list.reduce((s, x) => s + x.price, 0);
+    const total = `<tr class="total"><td>${byView === 'tag' && g.multi ? 'The lines' : 'The bid'}</td><td class="n">${fmt(sum)}</td><td></td><td class="n">${pct(sum, price)}</td></tr>`;
+    document.getElementById('by').innerHTML = head + body + total;
+    document.getElementById('byNote').innerHTML = byView === 'tag'
+      ? (g.multi ? `<p class="note">${g.multi} row${g.multi > 1 ? 's carry' : ' carries'} two tags, so the lines add to more than the price (${fmt(price)}).</p>` : `<p class="note">Every row counts once; the lines add to the price. Margin here is the row’s price against its own material, tax and hours.</p>`)
+      : `<p class="note">The composition bar’s buckets, with Equipment and Allowance from the row’s kind. A dashed kind on a row is the app’s guess; the card counts it the same.</p>`;
+  }
+
+  function renderRowWin(inp) {
+    const win = document.getElementById('rowwin');
+    if (selected == null || !rows[selected]) { win.hidden = true; return; }
+    const r = rows[selected];
+    win.hidden = false;
+    const k = kindOf(r);
+    const price = rowPrice(r);
+    document.getElementById('rwTitle').textContent = `${r.name} · ${fmtNum(r.count)}`;
+    document.getElementById('rwSub').textContent = `${fmt(r.price)} each · ${KIND_WORDS[k]}${r.kind ? '' : ' (guess)'}`;
+    const matC = rowMat(r), matP = matC * (1 + inp.markup / 100), taxA = matC * inp.tax / 100;
+    const hrs = inp.hours ? rowHours(r) : null;
+    const labC = hrs == null ? null : hrs * inp.rate;
+    const labP = k === 'equipment' ? 0 : price - matP - taxA;
+    const eqP = k === 'equipment' ? price : 0;
+    const head = `<tr class="head"><td></td><td class="n">Cost</td><td class="n">Price</td><td class="n">Profit</td></tr>`;
+    const lines = [];
+    if (k !== 'equipment') {
+      lines.push(`<tr><td><span class="sw" style="background:var(--mat)"></span>Material<span class="rule">${fmt(r.mat)} × ${fmtNum(r.count)} · sold at +${fmtPct(inp.markup)}</span></td><td class="n">${fmt(matC)}</td><td class="n">${fmt(matP)}</td><td class="n">${fmt(matP - matC)}</td></tr>`);
+      lines.push(`<tr><td><span class="sw" style="background:var(--tax)"></span>Sales tax<span class="rule">${inp.tax}%</span></td><td class="n">${fmt(taxA)}</td><td class="n">${fmt(taxA)}</td><td class="n">$0.00</td></tr>`);
+      lines.push(`<tr class="${hrs == null ? 'rest' : ''}"><td><span class="sw" style="background:${hrs == null ? 'var(--amber)' : 'var(--lab)'}"></span>${hrs == null ? 'Labor and margin' : 'Labor'}<span class="rule">${hrs == null ? 'no hours' : `${r.hrs} h × ${fmtNum(r.count)} = ${fmtNum(hrs)} h × $${inp.rate.toFixed(2)}`} · the rest</span></td>${hrs == null ? `<td class="n" style="color:var(--amber);font-family:var(--sans)">no hours</td>` : `<td class="n">${fmt(labC)}</td>`}<td class="n">${fmt(labP)}</td><td class="n" style="${labC != null && labP - labC < 0 ? 'color:var(--red)' : ''}">${labC == null ? '—' : fmt(labP - labC) + `<span class="rule">${pct(labP - labC, labP)}</span>`}</td></tr>`);
+    } else {
+      lines.push(`<tr><td><span class="sw" style="background:var(--eq)"></span>Equipment<span class="rule">this row’s price; its cost is on the Labor tab’s rentals</span></td><td class="n dim">on Labor</td><td class="n">${fmt(eqP)}</td><td class="n dim">—</td></tr>`);
+    }
+    const cost = k === 'equipment' ? null : matC + taxA + (labC || 0);
+    const total = `<tr class="total"><td>The row</td><td class="n">${cost == null ? '—' : fmt(cost)}</td><td class="n">${fmt(price)}</td><td class="n">${cost == null || hrs == null ? '—' : fmt(price - cost) + `<span class="rule">${pct(price - cost, price)}</span>`}</td></tr>`;
+    document.getElementById('rwTable').innerHTML = head + lines.join('') + total;
+    document.getElementById('rwNote').innerHTML = `<p class="note">The same columns as the bid’s card, for one row. Press another name to switch; press this one again to close.</p>`;
+  }
+
+  function render() { renderRows(); renderCard(); }
+
+  // --- wiring ---
+  document.getElementById('rows').addEventListener('change', (e) => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    const i = Number(tr.dataset.i); const r = rows[i]; const f = e.target.dataset.f;
+    if (f === 'kind') r.kind = e.target.value;
+    else if (f === 'count' || f === 'price' || f === 'mat' || f === 'hrs') r[f] = Math.max(0, Number(e.target.value) || 0);
+    else return;
+    render();
+  });
+  document.getElementById('rows').addEventListener('keydown', (e) => {
+    if (e.target.dataset.f === 'tag' && e.key === 'Enter') {
+      e.preventDefault();
+      const tr = e.target.closest('tr'); const r = rows[Number(tr.dataset.i)];
+      const t = e.target.value.trim().toLowerCase().slice(0, 40);
+      if (t && !r.tags.includes(t)) r.tags.push(t);
+      render();
+      const again = document.querySelector(`#rows tr[data-i="${tr.dataset.i}"] input[data-f="tag"]`); if (again) again.focus();
+    }
+  });
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]'); if (!act) return;
+    const tr = act.closest('tr'); const i = Number(tr.dataset.i);
+    if (act.dataset.act === 'pick') { selected = selected === i ? null : i; render(); }
+    if (act.dataset.act === 'untag') { rows[i].tags = rows[i].tags.filter((t) => t !== act.dataset.t); render(); }
+  });
+  for (const id of ['markup', 'tax', 'rate', 'hours', 'eqcost', 'othercost']) document.getElementById(id).addEventListener('input', () => { if (id === 'markup') bidMarkup = null; renderCard(); });
+  document.getElementById('pKind').addEventListener('click', () => { byView = 'kind'; renderCard(); });
+  document.getElementById('pTag').addEventListener('click', () => { byView = 'tag'; renderCard(); });
+  document.getElementById('reset').addEventListener('click', () => {
+    rows = SAMPLE(); selected = null; bidMarkup = null;
+    document.getElementById('markup').value = 40; document.getElementById('tax').value = 8.25; document.getElementById('rate').value = '';
+    document.getElementById('hours').checked = true; document.getElementById('eqcost').value = 5900; document.getElementById('othercost').value = 2480.25;
+    render();
+  });
+  render();
+})();
+</script>
+
+</html>

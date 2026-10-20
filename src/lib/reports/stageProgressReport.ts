@@ -1,15 +1,17 @@
 /**
- * Stage-weighted field reports (v2.3192, owner idea 2026-09-09).
- *
- * A job split into stages on the Bill tab reports progress stage by stage:
- * the tech says which stage they worked on and how far along it is; the job's
+ * Stage-weighted field reports (v2.3192, owner idea 2026-09-09): the job's
  * percent is Σ weight × stage percent, where a stage's weight is its share of
  * the stage lines' value (the `list_job_stage_progress` RPC computes it — no
- * prices reach the field). 60% of a 35% stage moves the job 21 points.
+ * prices reach the field). 60% of a 35% stage moves the job 21 points, and the
+ * derived number goes into the report's "How complete is the job?" field, so
+ * nothing downstream changes.
  *
- * The derived job percent still goes into the report's "How complete is the
- * job?" field, so nothing downstream changes. Jobs with no priced stage rows
- * have no stage mode and keep the plain slider. Pure.
+ * Since v2.5663 (punch list #130) the report asks about every line at once —
+ * `lineProgressReport.ts` holds that rule over the rows this file parses — and
+ * the one-stage picker retired in v2.5666. What stays here is the row shape,
+ * the RPC parse with the v2.3417 recognition, a stage's effective percent, the
+ * Σ with one override (the line kernel's test keeps it honest) and the
+ * picker's numbering. Pure.
  */
 
 import { recognizeStages } from '../jobs/stageRecognition'
@@ -65,18 +67,6 @@ export function stageProgressRowsFromRpc(
   return out.map((s) => (ids.has(s.fixtureId) ? { ...s, kind: 'order' as const } : s))
 }
 
-/**
- * Stage mode needs a plan: at least one Order row — set on the Bill tab, or
- * recognized from the line names by `stageProgressRowsFromRpc` (v2.3417).
- * Every legacy line item is kind `any` (the v2.3083 backfill), so keying on
- * "any priced row" would turn a three-line service job into a three-stage
- * report nobody asked for; recognition needs two rows in the plumbing
- * vocabulary, in order. Any rows join the picker beside the Order rows.
- */
-export function stageModeAvailable(stages: ReadonlyArray<StageProgressRow>): boolean {
-  return stages.some((s) => s.kind === 'order')
-}
-
 /** A stage's effective percent: paid draw = 100, else the crew's number, else 0. */
 export function stageEffectivePct(s: Pick<StageProgressRow, 'progressPct' | 'drawPaid'>): number {
   if (s.drawPaid) return 100
@@ -93,16 +83,6 @@ export function jobPercentFromStages(stages: ReadonlyArray<StageProgressRow>, ov
   return Math.max(0, Math.min(100, Math.round(sum)))
 }
 
-/**
- * Which stage the picker opens on: the first Order stage not yet done, else
- * the first Any stage not yet done, else the last stage in plan order.
- */
-export function defaultStageToReport(stages: ReadonlyArray<StageProgressRow>): StageProgressRow | null {
-  if (stages.length === 0) return null
-  const notDone = (s: StageProgressRow) => !s.drawPaid && stageEffectivePct(s) < 100
-  return stages.find((s) => s.kind === 'order' && notDone(s)) ?? stages.find((s) => s.kind === 'any' && notDone(s)) ?? stages[stages.length - 1] ?? null
-}
-
 /** Plan-order numbering for the picker: 1..N over Order rows, "—" for Any rows. */
 export function stagePickerNumber(stages: ReadonlyArray<StageProgressRow>, s: StageProgressRow): string {
   if (s.kind !== 'order') return '◆'
@@ -116,24 +96,5 @@ export function stagePickerNumber(stages: ReadonlyArray<StageProgressRow>, s: St
   return String(n)
 }
 
-/** "Rough-in 60% × 35% = 21 pts · job 40% → 46%". */
-export function stageReportSummary(stages: ReadonlyArray<StageProgressRow>, fixtureId: string, pct: number): { before: number; after: number; contributionPts: number; line: string } {
-  const s = stages.find((x) => x.fixtureId === fixtureId)
-  const before = jobPercentFromStages(stages)
-  const after = jobPercentFromStages(stages, { fixtureId, pct })
-  const contributionPts = s ? Math.round((s.weightPct / 100) * pct) : 0
-  const line = s
-    ? `${s.name} ${pct}% × ${Math.round(s.weightPct)}% of the job = ${contributionPts} pts · job ${before}% → ${after}%`
-    : `job ${before}% → ${after}%`
-  return { before, after, contributionPts, line }
-}
-
-/** The report's extra field: a compact, human-readable record of the stage move. */
+/** The report's extra field: a compact, human-readable record of the lines moved (`lineProgressFieldValue` writes it since v2.5663). */
 export const REPORT_FIELD_LABEL_STAGE_PROGRESS = 'Stage progress'
-
-export function stageProgressFieldValue(stages: ReadonlyArray<StageProgressRow>, fixtureId: string, pct: number): string {
-  const s = stages.find((x) => x.fixtureId === fixtureId)
-  if (!s) return ''
-  const { after } = stageReportSummary(stages, fixtureId, pct)
-  return `${s.name}: ${pct}% (${Math.round(s.weightPct)}% of the job) → job ${after}%`
-}

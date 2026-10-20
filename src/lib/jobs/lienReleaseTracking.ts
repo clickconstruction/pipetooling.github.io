@@ -117,10 +117,18 @@ export function computeLienUnconditionalOwed(
   appliedByInvoiceId: ReadonlyMap<string, number>,
   clearing?: LienCheckClearing,
 ): { count: number; total: number; jobIds: string[] } {
+  return summarizeLienUnconditionalOwed(owedLienReleasesByJob(releases, appliedByInvoiceId, clearing))
+}
+
+/**
+ * The roll-up from the owed releases per job: how many, how much, which jobs. The Dashboard nudge drops ZZ test
+ * jobs from the map before it sums (punch list #61), so the owed releases are worked out once.
+ */
+export function summarizeLienUnconditionalOwed(owedByJob: ReadonlyMap<string, JobLienReleaseRow[]>): { count: number; total: number; jobIds: string[] } {
   let count = 0
   let total = 0
   const jobIds: string[] = []
-  for (const [jobId, owed] of owedLienReleasesByJob(releases, appliedByInvoiceId, clearing)) {
+  for (const [jobId, owed] of owedByJob) {
     count += owed.length
     total += owed.reduce((s, r) => s + Number(r.amount ?? 0), 0)
     jobIds.push(jobId)
@@ -223,7 +231,7 @@ export function appliedByInvoiceIdFromPayments(
 export type LienCheckClearing = { payments: ReadonlyArray<ClearingPayment>; todayYmd: string }
 
 /** Owed releases per job — the shared core of the roll-up and the queue. */
-function owedLienReleasesByJob(
+export function owedLienReleasesByJob(
   releases: JobLienReleaseRow[],
   appliedByInvoiceId: ReadonlyMap<string, number>,
   clearing?: LienCheckClearing,

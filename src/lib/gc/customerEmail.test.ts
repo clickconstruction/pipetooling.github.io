@@ -2,11 +2,27 @@
  * Our emails to a GC customer and its architect (O4b): the words (./customerEmail.ts), and what `gc-customer-email`
  * reads from a request and wraps around them (supabase/functions/_shared/gcCustomerEmails.ts).
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildGcCustomerEmail,
+  bytesBase64,
+  gcContractAttachmentName,
+  gcJobsPortalUrl,
+  GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
+  gcCustomerEmailCc,
   gcCustomerEmailCopyKinds,
+  gcCustomerEmailMaxLines,
+  gcCustomerEmailPortalOn,
+  gcCustomerEmailPortalWords,
+  gcCustomerEmailTestSubject,
+  gcWeeklyReportLines,
+  GC_CUSTOMER_EMAIL_ADDRESS,
   GC_CUSTOMER_EMAIL_FILED_AS,
+  GC_CUSTOMER_EMAIL_FRAMED,
+  GC_CUSTOMER_EMAIL_GATE,
+  GC_CUSTOMER_EMAIL_TEST_TYPE,
   GC_CUSTOMER_EMAIL_FROM_NAME,
   GC_CUSTOMER_EMAIL_KINDS,
   GC_CUSTOMER_EMAIL_MAX_PDF_BASE64,
@@ -21,6 +37,8 @@ import {
   certifyAskMail,
   changeOrderMail,
   changeOrderMailFacts,
+  contractMail,
+  contractMailFacts,
   emailedWords,
   gcCustomerEmailRefusal,
   interestBillMail,
@@ -89,6 +107,28 @@ describe('the words of a pay application\'s emails', () => {
     const f = payAppMailFacts(state, project, app)
     expect([f.job, f.owner, f.architect, f.number, f.due]).toEqual([project.name, project.owner, project.architect, app.number, app.due])
     expect(f.greeting.length).toBeGreaterThan(0)
+  })
+})
+
+describe('the greeting on every email to the customer (the walk\'s step 8)', () => {
+  const firstLines = (contact: string) => {
+    const state = initialGcState()
+    const project = state.projects.find((p) => p.id === 'fairoaksd')!
+    const laid = { ...state, customers: state.customers.map((c) => (c.id === project.customerId ? { ...c, contact } : c)) }
+    const app = project.ownerBilling!.payApps![0]!
+    const co: ChangeOrder = { id: 'co-2', number: 2, description: 'Move the grease trap', reason: 'owner', schedule: '+2 days', packageId: null, cost: 900, price: 990, pctDone: 0, status: 'sent', sentOn: '2026-10-01', answeredOn: null, days: 2 }
+    return [
+      payAppMail(payAppMailFacts(laid, project, app)).lines[0],
+      certifiedMail(certifiedMailFacts(laid, project, app, app.due, '2026-10-01')).lines[0],
+      changeOrderMail(changeOrderMailFacts(laid, project, co)).lines[0],
+      interestBillMail(interestBillMailFacts(laid, project, 100)).lines[0],
+      contractMail(contractMailFacts(laid, project, { mode: 'first', price: 1000, signBy: '2026-10-09', note: '' })).lines[0],
+    ]
+  }
+
+  it('greets their contact by first name, and with no contact names no one: never the company\'s first word', () => {
+    expect(new Set(firstLines('Elena Ruiz'))).toEqual(new Set(['Hello Elena,']))
+    expect(new Set(firstLines(''))).toEqual(new Set(['Hello,']))
   })
 })
 
@@ -218,6 +258,9 @@ describe('what gc-customer-email reads and sends', () => {
       ['change_order', 'customer', 'gc_change_orders', 'job_contract_gc_change_order', 'contracts'],
       ['reminder', 'customer', 'gc_owner_pay_reminders', 'bill_gc_reminder', 'bills'],
       ['interest_bill', 'customer', 'gc_owner_interest_bills', 'bill_gc_interest', 'bills'],
+      ['weekly', 'customer', 'gc_weekly_reports', 'field_report_gc_weekly', 'statements'],
+      ['contract', 'customer', 'gc_owner_contract_sends', 'gc_owner_contract', 'other'],
+      ['schedule', 'customer', 'gc_schedule_sends', 'field_report_gc_schedule', 'statements'],
     ])
     // Never the Pipeline's G702 workbook copy, whose history reads its own kind.
     expect(GC_CUSTOMER_EMAIL_KINDS.some((k) => isPayApplicationCopy({ kind: GC_CUSTOMER_EMAIL_FILED_AS[k] }))).toBe(false)
@@ -225,7 +268,171 @@ describe('what gc-customer-email reads and sends', () => {
     expect(gcCustomerEmailCopyKinds('gc_change_orders')).toEqual(['job_contract_gc_change_order'])
     expect(gcCustomerEmailCopyKinds('gc_owner_pay_reminders')).toEqual(['bill_gc_reminder'])
     expect(gcCustomerEmailCopyKinds('gc_owner_interest_bills')).toEqual(['bill_gc_interest'])
-    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill'])
+    expect(gcCustomerEmailCopyKinds('gc_weekly_reports')).toEqual(['field_report_gc_weekly'])
+    expect(gcCustomerEmailCopyKinds('gc_owner_contract_sends')).toEqual(['gc_owner_contract'])
+    expect(gcCustomerEmailCopyKinds('gc_schedule_sends')).toEqual(['field_report_gc_schedule'])
+    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill', 'weekly', 'contract', 'schedule'])
+  })
+
+  it('sends the weekly report as Building’s (U7b): its row decides who may, to the contact first, unframed, its portal line since PR 15b', () => {
+    const others = GC_CUSTOMER_EMAIL_KINDS.filter((k) => k !== 'weekly' && k !== 'contract' && k !== 'schedule')
+    expect(others.every((k) => GC_CUSTOMER_EMAIL_GATE[k] === 'moneyTeam' && GC_CUSTOMER_EMAIL_ADDRESS[k] === 'billing' && GC_CUSTOMER_EMAIL_FRAMED[k])).toBe(true)
+    expect([GC_CUSTOMER_EMAIL_GATE.weekly, GC_CUSTOMER_EMAIL_ADDRESS.weekly, GC_CUSTOMER_EMAIL_FRAMED.weekly, GC_CUSTOMER_EMAIL_PORTAL_LINE.weekly]).toEqual(['row', 'contact', false, true])
+    const read = parseCustomerEmail({ ...ok, kind: 'weekly' })
+    expect(read.ok && read.req.kind).toBe('weekly')
+  })
+
+  it('sends the customer’s schedule as the Schedule’s (PR 15a): its row decides who may, to the contact, unframed, its portal line since PR 15b', () => {
+    expect([GC_CUSTOMER_EMAIL_GATE.schedule, GC_CUSTOMER_EMAIL_ADDRESS.schedule, GC_CUSTOMER_EMAIL_FRAMED.schedule, GC_CUSTOMER_EMAIL_PORTAL_LINE.schedule]).toEqual(['row', 'contact', false, true])
+    expect(parseCustomerEmail({ ...ok, kind: 'schedule' })).toMatchObject({ ok: true, req: { kind: 'schedule', pdf: null } })
+    // A line a stage and a date to meet: a long job's letter goes, where a bill's 31 lines do not.
+    const long = Array.from({ length: 31 }, (_, i) => `Line ${i + 1}.`)
+    expect(gcCustomerEmailMaxLines('schedule')).toBe(80)
+    expect(parseCustomerEmail({ ...ok, kind: 'schedule', lines: long }).ok).toBe(true)
+    expect(parseCustomerEmail({ ...ok, kind: 'weekly', lines: long }).ok).toBe(false)
+    expect(parseCustomerEmail({ ...ok, kind: 'schedule', lines: [...long, ...long, ...long] }).ok).toBe(false)
+    // The function reads the letter's row as the caller, sends the row's words, and writes its log back on the row.
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id, created_at')")
+    expect(fn).toContain("if (letter.email_send_log_id && !m.test) return refuse('alreadySent')")
+    expect(fn).toContain("source === 'gc_weekly_reports' || source === 'gc_schedule_sends') && sent.resendEmailId")
+  })
+
+  it('links their schedule from the letter and the Friday report (PR 15b), on Building’s two conditions, in its own words', () => {
+    // Never when the row copies the architect, and only on a job with a schedule drawn.
+    expect(gcCustomerEmailPortalOn({ kind: 'weekly', copyArchitect: false, scheduleDrawn: true })).toBe(true)
+    expect(gcCustomerEmailPortalOn({ kind: 'weekly', copyArchitect: true, scheduleDrawn: true })).toBe(false)
+    expect(gcCustomerEmailPortalOn({ kind: 'weekly', copyArchitect: false, scheduleDrawn: false })).toBe(false)
+    expect(gcCustomerEmailPortalOn({ kind: 'schedule', copyArchitect: false, scheduleDrawn: true })).toBe(true)
+    expect(gcCustomerEmailPortalOn({ kind: 'schedule', copyArchitect: false, scheduleDrawn: false })).toBe(false)
+    // The bills keep their line as before, and the kinds with none have none.
+    expect(gcCustomerEmailPortalOn({ kind: 'certified', copyArchitect: false, scheduleDrawn: false })).toBe(true)
+    expect(gcCustomerEmailPortalOn({ kind: 'pay_app', copyArchitect: false, scheduleDrawn: true })).toBe(false)
+    expect([gcCustomerEmailPortalWords('schedule'), gcCustomerEmailPortalWords('weekly'), gcCustomerEmailPortalWords('contract'), gcCustomerEmailPortalWords('certified')]).toEqual([
+      'You can see your schedule in your portal:',
+      'You can see your schedule in your portal:',
+      GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
+      undefined,
+    ])
+    // Unframed, the line lands after the letter's own sign-off, and never with a card's offer.
+    const email = buildGcCustomerEmail({ subject: 'Your schedule on Fair Oaks', lines: ['Hello Elena,', 'Call me with any question.', 'Robert Douglas, Click Construction'], signer: 'Robert', gc: 'Click Construction', framed: false, portalUrl: 'https://my.clickplumbing.com/fair-oaks', portalWords: gcCustomerEmailPortalWords('schedule'), cardFee: 8666.37 })
+    expect(email.text).toBe('Hello Elena,\n\nCall me with any question.\n\nRobert Douglas, Click Construction\n\nYou can see your schedule in your portal: https://my.clickplumbing.com/fair-oaks')
+    expect(email.text).not.toMatch(/card/i)
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("admin.from('gc_schedules').select('project_id').eq('project_id', m.projectId).maybeSingle()")
+    expect(fn).toContain("if (m.kind === 'contract' || gcCustomerEmailPortalOn({ kind: m.kind, copyArchitect, scheduleDrawn })) {")
+  })
+
+  it('sends our contract (B6-d-iii-b): the money team’s, to the contact first, framed, its portal line required, never a PDF from the window', () => {
+    expect([GC_CUSTOMER_EMAIL_GATE.contract, GC_CUSTOMER_EMAIL_ADDRESS.contract, GC_CUSTOMER_EMAIL_FRAMED.contract, GC_CUSTOMER_EMAIL_PORTAL_LINE.contract]).toEqual(['moneyTeam', 'contact', true, true])
+    expect(parseCustomerEmail({ ...ok, kind: 'contract' })).toMatchObject({ ok: true, req: { kind: 'contract', pdf: null } })
+    expect(parseCustomerEmail({ ...ok, kind: 'contract', pdf: { filename: 'c.pdf', base64: 'JVBERi0xLjQK' } })).toEqual({ ok: false })
+    const email = buildGcCustomerEmail({ subject: 'Your contract for Fair Oaks', lines: ['Hello Elena,'], signer: 'Rosa', gc: 'Click Construction', portalUrl: 'https://my.clickplumbing.com/fair-oaks', portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS })
+    expect(email.text).toContain('Read it and sign it in your portal: https://my.clickplumbing.com/fair-oaks')
+  })
+
+  it('links a GC job’s email only where their GC jobs show: the merged link first, then a customer view, never a GC view', () => {
+    const app = 'https://clicktooling.com'
+    const short = 'https://my.clickplumbing.com/'
+    expect(gcJobsPortalUrl([{ audience: 'all', token: 'tok-all' }], 'fair-oaks', app, short)).toBe('https://my.clickplumbing.com/fair-oaks')
+    expect(gcJobsPortalUrl([{ audience: 'all', token: 'tok-all' }], null, app, short)).toBe('https://clicktooling.com/portal?t=tok-all')
+    expect(gcJobsPortalUrl([{ audience: 'customer', token: 'tok-c' }, { audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBe('https://clicktooling.com/portal?t=tok-c')
+    expect(gcJobsPortalUrl([{ audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBeNull()
+    expect(gcJobsPortalUrl([{ audience: 'all', token: 'tok-all', revoked_at: '2026-10-01T00:00:00Z' }], 'x', app, short)).toBeNull()
+  })
+
+  it('a bill to a customer whose only link is a GC view goes with no portal line, never a link to a page without it', () => {
+    const only = gcJobsPortalUrl([{ audience: 'gc', token: 'tok-g' }], 'oak-ridge', 'https://clicktooling.com', 'https://my.clickplumbing.com/')
+    expect(only).toBeNull()
+    const email = buildGcCustomerEmail({ subject: 'Hart Architects certified pay application 3, $288,879', lines: ['Hello Elena,'], signer: 'Rosa', gc: 'Click Construction', portalUrl: only, cardFee: 8666.37 })
+    expect(email.text).not.toContain('portal')
+    expect(email.text).not.toContain('card fee')
+    // Both senders of a GC job's email read the link by that rule alone; only our contract refuses without one.
+    for (const path of ['../../../supabase/functions/gc-customer-email/index.ts', '../../../supabase/functions/gc-office-notices/index.ts']) {
+      const src = readFileSync(resolve(__dirname, path), 'utf8')
+      expect(src).not.toContain('loadPortalReturnUrl(')
+      expect(src).toContain('gcJobsPortalUrl(')
+    }
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("if (m.kind === 'contract' || gcCustomerEmailPortalOn({ kind: m.kind, copyArchitect, scheduleDrawn })) {")
+    expect(fn).toContain("if (m.kind === 'contract' && !portalUrl) return refuse('noPortal')")
+  })
+
+  it('attaches the contract under the office’s file name, always a PDF, and as base64 of its bytes', () => {
+    expect(gcContractAttachmentName('Clinic contract v2.pdf')).toBe('Clinic contract v2.pdf')
+    expect(gcContractAttachmentName('Owner/GC agreement: final!.PDF')).toBe('Owner GC agreement final.pdf')
+    expect(gcContractAttachmentName('***')).toBe('Our contract.pdf')
+    expect(bytesBase64(new TextEncoder().encode('abc'))).toBe('YWJj')
+  })
+
+  it('words our contract’s email: the first, a reminder and a new price, each with its day and the file', () => {
+    const base = { job: 'Fair Oaks', greeting: 'Elena', price: 187000, signBy: '2026-10-16', note: '' }
+    expect(contractMail({ ...base, mode: 'first' })).toEqual({
+      subject: 'Your contract for Fair Oaks',
+      lines: [
+        'Hello Elena,',
+        'Thank you for choosing us for Fair Oaks. Here is our contract for it: $187,000.',
+        `Please sign it by ${weekdayDate('2026-10-16')}.`,
+        'The contract is attached. Your bills and change orders for the job will be in your portal too.',
+      ],
+    })
+    expect(contractMail({ ...base, mode: 'reminder', note: ' Call me with questions. ' }).lines).toEqual([
+      'Hello Elena,',
+      'Our contract for Fair Oaks is still waiting on your signature: $187,000.',
+      `Please sign it by ${weekdayDate('2026-10-16')}.`,
+      'Call me with questions.',
+      'The contract is attached. Your bills and change orders for the job will be in your portal too.',
+    ])
+    expect(contractMail({ ...base, mode: 'newPrice' }).subject).toBe('Your contract for Fair Oaks, with our new price')
+  })
+
+  it('never puts a card line on our contract: it is not a bill, and the function offers the card only for a certified bill or a reminder', () => {
+    const email = buildGcCustomerEmail({ subject: 'Your contract for Fair Oaks', lines: ['Hello Elena,'], signer: 'Rosa', gc: 'Click Construction', portalUrl: 'https://my.clickplumbing.com/fair-oaks', portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, cardFee: 8666.37 })
+    expect(email.text).not.toMatch(/card/i)
+    expect(email.html).not.toMatch(/card/i)
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("if (portalUrl && billId && (m.kind === 'certified' || m.kind === 'reminder')) {")
+  })
+
+  it('says each new refusal of our contract’s email in the window’s words', () => {
+    expect(gcCustomerEmailRefusal('noPortal')).toBe('They have no portal link yet. Send it from their window first.')
+    expect(gcCustomerEmailRefusal('fileChanged')).toBe('The contract file changed after it was sent. Send it again with the file.')
+    expect(gcCustomerEmailRefusal('notNewest')).toBe('A newer contract went after this one. Send the newest one.')
+    expect(gcCustomerEmailRefusal('alreadySigned')).toBe('They signed our contract already.')
+    expect(gcCustomerEmailRefusal('tooLarge')).toBe('The contract is too large to email. Their portal has it.')
+  })
+
+  it('splits a weekly report into its paragraphs, each keeping its own lines', () => {
+    const body = 'Hi Dana,\n\nHere is where it stands.\r\n\r\nAt a glance\n- Finish: about Fri Dec 18.\n- 62% done.\n  \nThanks,\nRosa\nClick Construction'
+    expect(gcWeeklyReportLines(body)).toEqual(['Hi Dana,', 'Here is where it stands.', 'At a glance\n- Finish: about Fri Dec 18.\n- 62% done.', 'Thanks,\nRosa\nClick Construction'])
+  })
+
+  it('frames nothing around an unframed email, escapes its text and keeps its line breaks', () => {
+    const email = buildGcCustomerEmail({ subject: 'Fair Oaks · week of Oct 5', lines: ['Hi Dana,', 'At a glance\n- Under <budget> & on time.', 'Thanks,\nRosa\nClick Construction'], signer: 'Robert', gc: 'Click Construction', framed: false })
+    expect(email.text).toBe('Hi Dana,\n\nAt a glance\n- Under <budget> & on time.\n\nThanks,\nRosa\nClick Construction')
+    expect(email.html).toContain('At a glance<br>- Under &lt;budget&gt; &amp; on time.')
+    expect(email.html).not.toContain('Under <budget>')
+    expect(email.html).not.toContain('Thank you,')
+    // A framed one keeps the signature as before.
+    expect(buildGcCustomerEmail({ subject: 'S', lines: ['Hello Elena,'], signer: 'Robert', gc: 'Click Construction' }).text).toBe('Hello Elena,\n\nThank you,\nRobert\nClick Construction')
+  })
+
+  it('makes a test copy of any kind: [TEST] before the subject, its own email type, and nobody copied', () => {
+    expect(gcCustomerEmailTestSubject(' Fair Oaks · week of Oct 5 ')).toBe('[TEST] Fair Oaks · week of Oct 5')
+    expect(GC_CUSTOMER_EMAIL_TEST_TYPE).toBe('gc_customer_email_test')
+    const read = parseCustomerEmail({ ...ok, test: true })
+    expect(read.ok && read.req.test).toBe(true)
+    const plain = parseCustomerEmail({ ...ok, test: 'yes' })
+    expect(plain.ok && plain.req.test).toBeUndefined()
+    expect(gcCustomerEmailCc({ copyArchitect: true, test: true, architectAddress: 'arch@mesquite.com', address: 'dana@cibolo.com' })).toEqual([])
+  })
+
+  it('copies the architect on a weekly report that says so, at an address of its own', () => {
+    const base = { copyArchitect: true, test: false, architectAddress: ' arch@mesquite.com ', address: 'dana@cibolo.com' }
+    expect(gcCustomerEmailCc(base)).toEqual(['arch@mesquite.com'])
+    expect(gcCustomerEmailCc({ ...base, copyArchitect: false })).toEqual([])
+    expect(gcCustomerEmailCc({ ...base, architectAddress: '' })).toEqual([])
+    expect(gcCustomerEmailCc({ ...base, architectAddress: 'DANA@cibolo.com' })).toEqual([])
   })
 
   it('adds the customer’s portal link before the signature when there is one, and only an https one', () => {
@@ -254,6 +461,8 @@ describe('what gc-customer-email reads and sends', () => {
   it('reads the answer, or the refusal from the error body, and says each refusal in words', () => {
     expect(readCustomerEmailAnswer({ to: 'Cibolo Creek Partners', email: 'ap@cibolo.test' }, null)).toEqual({ ok: true, to: 'Cibolo Creek Partners', email: 'ap@cibolo.test' })
     expect(readCustomerEmailAnswer(null, { error: 'noEmail' })).toEqual({ ok: false, key: 'noEmail' })
+    // U7b: the architect copied, and a test copy to the sender.
+    expect(readCustomerEmailAnswer({ to: 'Cibolo', email: 'elena@cibolo.test', copied: true, test: true }, null)).toEqual({ ok: true, to: 'Cibolo', email: 'elena@cibolo.test', copied: true, test: true })
     expect(readCustomerEmailAnswer(null, { error: 'mystery', detail: 'x' })).toEqual({ ok: false, key: 'failed', detail: 'x' })
     expect(gcCustomerEmailRefusal('noEmail')).toBe('There is no email address on file for them. Add one on the customer, then send it again.')
     expect(readCustomerEmailAnswer(null, { error: 'notCertified' })).toEqual({ ok: false, key: 'notCertified' })
@@ -263,4 +472,15 @@ describe('what gc-customer-email reads and sends', () => {
       'That reminder went already.',
     ])
   })
+  it('looks for a row kind’s send in the log before it sends, so a failed write-back never emails twice (the double-send guard)', () => {
+    const fn = readFileSync(resolve(process.cwd(), 'supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    const guard = fn.indexOf('gcCustomerEmailLoggedAlready(logs')
+    const send = fn.indexOf('await sendEmailViaResend(')
+    expect(guard).toBeGreaterThan(0)
+    expect(guard).toBeLessThan(send)
+    expect(fn).toContain(".eq('email_type', GC_CUSTOMER_EMAIL_TYPE)")
+    expect(fn).toContain("if (rowKind && !m.test && rowMadeAt)")
+    for (const table of ['gc_weekly_reports', 'gc_schedule_sends', 'gc_owner_pay_reminders']) expect(fn).toMatch(new RegExp(`from\\('${table}'\\)\\.select\\('[^']*created_at'\\)`))
+  })
+
 })

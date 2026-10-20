@@ -58,6 +58,7 @@ import {
   jobContractChips,
   jobContractIsEditable,
   jobContractIsLive,
+  jobContractLinkOnRow,
   jobContractSignatureAuditLine,
   jobContractSignatureBlocks,
   jobContractSignersAuditLine,
@@ -66,6 +67,7 @@ import {
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
 import { isAwaitingPaperCopy, isHandedAwaitingPaper, jobContractSentChannel } from '../../lib/jobs/jobContractHandoff'
+import { freshJobContractLink } from '../../lib/jobs/jobContractLinkHandOut'
 import { CONTRACT_NOT_NEEDED_REASONS, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
 import { handoffBlocker, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
@@ -266,6 +268,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           .from('contract_template_documents')
           .select('id, document_name, book_body_html, book_body_format, book_version_date')
           .eq('audience', 'customer')
+          .is('flow_kind', null)
           .order('document_name')
         const list = (data ?? []) as TemplateRow[]
         setTemplates(list)
@@ -531,8 +534,20 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     [job, editable, unfinishedDateStops, flushDraft, liveRow, recipientEmail, recipientName, ccList, message, showToast, loadRows, onChanged],
   )
 
+  /**
+   * The link to hand out: the one this session made, else the one the sent row already carries
+   * (read again first, in case another tab moved it), else a send mints or renews it. Handing out a
+   * link the row has records nothing, so a PDF emailed to sign stays a PDF send (punch list #104,
+   * v2.5119).
+   */
+  const linkToHandOut = async (): Promise<string | null> => {
+    if (lastLink) return lastLink
+    const own = jobContractLinkOnRow(liveRow, window.location.origin) ? await freshJobContractLink(liveRow?.id, window.location.origin) : null
+    return own ?? (await invokeSend('link'))
+  }
+
   const copyLink = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
@@ -543,7 +558,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
 
   const textLink = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     const phone = recipientPhone.replace(/[^\d+]/g, '')
     const body = `Here is your service agreement for ${job?.job_address || 'your project'} — review and sign here: ${url}`
@@ -551,7 +566,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
 
   const signInPerson = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     window.open(`${url}&inperson=1`, '_blank', 'noopener')
   }
@@ -865,7 +880,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       return
     }
     if (phone) {
-      const url = lastLink ?? (await invokeSend('link'))
+      const url = await linkToHandOut()
       if (url) openSms(phone, url)
     }
   }

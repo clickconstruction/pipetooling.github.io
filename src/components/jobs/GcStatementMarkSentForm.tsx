@@ -132,7 +132,7 @@ export default function GcStatementMarkSentForm({
     fontWeight: on ? 700 : 500,
     borderRadius: 999,
     border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)',
-    background: on ? 'var(--bg-blue-100)' : 'var(--surface)',
+    background: on ? 'var(--bg-blue-200)' : 'var(--surface)',
     color: on ? 'var(--text-blue-800)' : 'var(--text-700)',
     cursor: 'pointer',
   })
@@ -144,7 +144,7 @@ export default function GcStatementMarkSentForm({
     textAlign: 'center',
     borderRadius: 6,
     border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)',
-    background: on ? 'var(--bg-blue-100)' : 'var(--surface)',
+    background: on ? 'var(--bg-blue-200)' : 'var(--surface)',
     color: on ? 'var(--text-blue-800)' : 'var(--text-700)',
     cursor: 'pointer',
   })
@@ -218,7 +218,7 @@ export default function GcStatementMarkSentForm({
                 fontWeight: active ? 700 : 500,
                 borderRadius: 999,
                 border: active ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)',
-                background: active ? 'var(--bg-blue-100)' : 'var(--surface)',
+                background: active ? 'var(--bg-blue-200)' : 'var(--surface)',
                 color: active ? 'var(--text-blue-800)' : 'var(--text-700)',
                 cursor: 'pointer',
               }}

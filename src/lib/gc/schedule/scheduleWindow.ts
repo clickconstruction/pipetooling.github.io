@@ -7,11 +7,14 @@
  * what the chart's hover card says, with what holds the bar, its parts and its place. A move's,
  * an undo's and a redo's lines in the log (the schedule's PR 8a) are the prototype's too, and so are
  * the job's own work's and a failed inspection's (PR 9a), and a split's, a join's and a new
- * baseline's (PR 9b), with a new wait as the reducer makes it.
+ * baseline's (PR 9b), with a new wait as the reducer makes it. A pull's and days got back's lines (PR 9d) are the
+ * reducer's too. A first draft from a template (PR 12a) draws as the reducer drew it, its line naming the template. The
+ * rough while we bid (PR 12b) draws and keeps as the reducer did, and a schedule they hand us and their dates to meet
+ * (PR 12c) are made and taken as it did.
  */
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { addDays } from '../building'
-import type { GcProject } from '../types'
+import type { GcProject, GcState } from '../types'
 import { shortDate, weekdayDate } from '../words'
 import { actualWords } from './actualDates'
 import { lastFinishDay, type GanttBar } from './gantt'
@@ -20,9 +23,15 @@ import { addedActivityProblem, nextOwnId } from './addedActivity'
 import { withNewBaseline } from './baseline'
 import { daysBetween, pushAfter, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
-import { mondayOf } from './schedule'
+import { pullCountWords, type PullOffer } from './pullEarlier'
+import { keepRough } from './rough'
+import { importRefusal, importedSchedule } from './import'
+import { theirDatesLogWords, theirDatesRefusal, withTheirDates, type TheirDate } from './theirDates'
+import type { RecoveryOffer } from './recovery'
+import { draftSchedule, mondayOf } from './schedule'
 import { movedParts, partFacts, splitParts } from './splitBars'
-import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason, ScheduleWait, WaitKind } from './types'
+import { templatesOffered } from './templates'
+import type { ActivityPart, InspectionFailure, ProjectSchedule, RoughSchedule, ScheduleActivity, ScheduleImport, ScheduleMilestone, ScheduleMove, ScheduleMoveReason, ScheduleWait, TemplateUse, WaitKind } from './types'
 import { nextWaitId, waitKind } from './waits'
 
 // ---------------------------------------------------------------------------------------------
@@ -49,6 +58,118 @@ export function draftWords(project: Pick<GcProject, 'name'>, schedule: ProjectSc
   return `Drew a first draft of the schedule on ${project.name}: ${schedule.activities.length} activities from ${weekdayDate(start)}.`
 }
 
+/** A first draft from a template that is no longer offered: someone set it aside while the window was open. */
+export const TEMPLATE_GONE = 'That template is not offered any more. Pick another, or draw without one.'
+
+/**
+ * The first draft as the prototype's reducer drew it (PR 12a, G-44): from the rough's own copy of a template's lines
+ * when the rough was drawn from that template, else from an offered template's lines, with the rough's stage days when
+ * we bid one (G-45). The schedule carries the template's name and today, which `gc_schedule_draft` keeps, and its line
+ * in the log names the template. No template: the usual first draft. One no longer offered: its problem.
+ */
+export function templateDraftPress(state: GcState, project: GcProject, start: string, templateId: string | null): { schedule: ProjectSchedule; words: string } | { problem: string } {
+  const own = templateId && project.rough?.template?.id === templateId && project.rough.like ? project.rough : undefined
+  const template = templateId && !own ? templatesOffered(state).find((t) => t.id === templateId) : undefined
+  if (templateId && !own && !template) return { problem: TEMPLATE_GONE }
+  const use: TemplateUse | null = own?.template ? { ...own.template, on: state.today } : template ? { id: template.id, name: template.name, on: state.today } : null
+  const drawn = draftSchedule(project, start, project.rough?.days, own?.like ?? template?.lines)
+  const schedule = use ? { ...drawn, template: use } : drawn
+  return { schedule, words: `${draftWords(project, schedule, start)}${use ? ` It is drawn from the template ${use.name}.` : ''}` }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The rough while we bid (PR 12b, G-45)
+// ---------------------------------------------------------------------------------------------
+
+/** Why the rough cannot be drawn or redrawn on this job, or null: only while we bid, not lost, before our bid goes in. */
+export function roughRefusal(project: Pick<GcProject, 'stage' | 'lostOn' | 'ourBidSentOn'>): string | null {
+  if (project.lostOn) return 'This job was lost.'
+  if (project.ourBidSentOn) return 'Our bid went in, so the rough stays as it went.'
+  if (project.stage !== 'pursuing') return 'The rough is drawn while we bid.'
+  return null
+}
+
+/**
+ * The rough drawn or redrawn, as the prototype's reducer drew it (`setRough`): from a start day and the stage days that
+ * differ from the usual ones (a length under one day, or not a number, is dropped). A template picked copies its lines,
+ * so no later edit to the template reaches the rough; `null` goes back to the stage days alone; left out, a redraw keeps
+ * the rough's own copy. Refused while the job may not take one (`roughRefusal`), with no start, and for a template no
+ * longer offered.
+ */
+export function roughPress(
+  state: GcState,
+  project: GcProject,
+  input: { start: string; days: Record<string, number>; templateId?: string | null },
+  by: string,
+): { rough: RoughSchedule } | { problem: string } {
+  const refusal = roughRefusal(project)
+  if (refusal) return { problem: refusal }
+  if (!input.start) return { problem: 'Pick the day work would start.' }
+  const days = Object.fromEntries(Object.entries(input.days).filter(([, d]) => Number.isFinite(d) && d >= 1).map(([k, d]) => [k, Math.round(d)]))
+  const template = typeof input.templateId === 'string' ? templatesOffered(state).find((t) => t.id === input.templateId) : undefined
+  if (typeof input.templateId === 'string' && !template) return { problem: TEMPLATE_GONE }
+  const kept = input.templateId === undefined ? project.rough : undefined
+  const use = template ? { id: template.id, name: template.name, on: state.today } : kept?.template
+  const lines = template ? template.lines : kept?.like
+  return { rough: { start: input.start, days, by, on: state.today, ...(use && lines ? { template: use, like: lines } : {}) } }
+}
+
+/**
+ * The rough's weeks kept as they went, when the keep at the Board's press did not happen (PR 12b, gc 4's note): with the
+ * day our bid went, never today. `gc_mark_won` sets that day to the day we won when no bid was marked sent, so it reads
+ * true after an award too. Refused with no rough, once kept, and while our bid has not gone in.
+ */
+export function roughKeepPress(project: GcProject): { kept: NonNullable<RoughSchedule['kept']> } | { problem: string } {
+  if (!project.rough) return { problem: 'No rough schedule is drawn.' }
+  if (project.rough.kept) return { problem: 'The rough’s weeks are kept already.' }
+  if (!project.ourBidSentOn) return { problem: 'Our bid has not gone in yet.' }
+  const kept = keepRough(project, project.ourBidSentOn, 'bid')?.kept
+  return kept ? { kept } : { problem: 'No rough schedule is drawn.' }
+}
+
+/** The rough's weeks to keep at the Board's press (G-45, `keepRough`), or null when there is nothing to write: no rough, or kept already. */
+export function roughToKeep(project: GcProject, today: string, at: 'bid' | 'award'): NonNullable<RoughSchedule['kept']> | null {
+  if (!project.rough || project.rough.kept) return null
+  return keepRough(project, today, at)?.kept ?? null
+}
+
+// ---------------------------------------------------------------------------------------------
+// A schedule they hand us, and their dates to meet (PR 12c, G-137 and G-145)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A schedule a customer or the architect handed us made the job's schedule, as the prototype's reducer made it
+ * (`importSchedule`): through the first draft's own kernel (`importedSchedule`), the first schedule or one drawn before
+ * Start that nobody walked or moved (`importRefusal`). Its line in the log names the file and who handed it. Refused with
+ * no day work starts, and when nothing in it goes on the schedule.
+ */
+export function importPress(project: GcProject, imported: ScheduleImport): { schedule: ProjectSchedule; words: string } | { problem: string } {
+  const refusal = importRefusal(project)
+  if (refusal) return { problem: refusal }
+  if (!imported.workStarts) return { problem: 'Pick the day work starts.' }
+  const made = importedSchedule(project, imported)
+  if (made.kept === 0 && imported.dates.length === 0) return { problem: 'Nothing in it goes on the schedule yet. Pick where their activities go.' }
+  return { schedule: made.schedule, words: made.words }
+}
+
+/**
+ * Their dates to meet taken from a file (G-145), as the prototype's reducer took them (`takeTheirDates`): on a job being
+ * built with no what-if copy open, only the dates to meet change. Answers the dates to meet as they would be, which
+ * `takeTheirDates` reads to send each of ours by its id, and the line naming the file. Refused with nothing ticked, with
+ * no file or no one who handed it, and when a date cannot be taken as it is.
+ */
+export function theirDatesPress(project: GcProject, input: { file: string; from: string; dates: TheirDate[] }): { milestones: ScheduleMilestone[]; words: string } | { problem: string } {
+  const refusal = theirDatesRefusal(project)
+  if (refusal) return { problem: refusal }
+  if (input.dates.length === 0) return { problem: 'Tick a date to take it.' }
+  const file = input.file.trim()
+  const from = input.from.trim()
+  if (!file || !from) return { problem: 'Choose the file and who handed it.' }
+  const milestones = withTheirDates(project, input.dates)
+  if (!milestones) return { problem: 'One of the dates cannot be taken as it is. Pick again.' }
+  return { milestones, words: theirDatesLogWords(project, from, file, input.dates) }
+}
+
 // ---------------------------------------------------------------------------------------------
 // A move, an undo and a redo: their lines in the log
 // ---------------------------------------------------------------------------------------------
@@ -61,6 +182,16 @@ export function draftWords(project: Pick<GcProject, 'name'>, schedule: ProjectSc
 export function moveWords(project: GcProject, lineId: string, plan: Pick<MovePlan, 'to' | 'pushed'>, why: { by: string; note: string }): string {
   const moved = plan.pushed.map((p) => ({ lineId: p.lineId, label: p.label, start: p.to.start, finish: p.to.finish, days: p.days }))
   return `${moveActivityName(project, lineId)} now runs ${weekdayDate(plan.to.start)} to ${weekdayDate(plan.to.finish)}.${moved.length > 0 ? ` ${pushedAfterWords(moved)}` : ''} ${why.by}: ${why.note.trim()}`
+}
+
+/** A pull's line in the log (G-37, PR 9d), as the prototype's reducer wrote it: "Rosa pulled 2 earlier on Fair Oaks Shops, Building D. Footings finished …" */
+export function pullLogWords(project: Pick<GcProject, 'name'>, offer: PullOffer, by: string): string {
+  return `${by} pulled ${pullCountWords(offer)} earlier on ${project.name}. ${offer.note}`
+}
+
+/** Days got back's line in the log (G-82, PR 9d), as the prototype's reducer wrote it: "Rosa got 2 days back on … A second crew on …" */
+export function recoveryLogWords(project: Pick<GcProject, 'name'>, offer: Pick<RecoveryOffer, 'daysBack' | 'words'>, by: string): string {
+  return `${by} got ${offer.daysBack} ${offer.daysBack === 1 ? 'day' : 'days'} back on ${project.name}. ${offer.words.title}`
 }
 
 /** Undo's line in the log (G-40), as the prototype's reducer wrote it. */

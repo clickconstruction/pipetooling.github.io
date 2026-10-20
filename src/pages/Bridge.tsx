@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useToastContext } from '../contexts/ToastContext'
@@ -15,11 +16,59 @@ import { BridgeVectorsPanel } from '../components/bridge/BridgeVectorsPanel'
 import { loadBridgeVectorInputs, type BridgeVectorInputs } from '../lib/bridge/loadBridgeVectors'
 import { buildVectors } from '../lib/bridge/vectors'
 import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPanel'
+import type { VectorReading } from '../lib/bridge/vectorReading'
+import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
+import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
+import { loadMercuryCash, mercuryAccountsLine, type MercuryCash } from '../lib/bridge/mercuryCash'
+import { carryingDay, carryingSentence, lateWithinDays, receiptsConfidence, type ReceiptBasis } from '../lib/bridge/cashConfidence'
+import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
+import { buildReadingGaps } from '../lib/bridge/readingGaps'
+import { BridgeReadingGaps } from '../components/bridge/BridgeReadingGaps'
+import { buildThisWeek } from '../lib/bridge/thisWeek'
+import { BridgeThisWeek } from '../components/bridge/BridgeThisWeek'
+import { peopleSummary, readPeopleOpen, writePeopleOpen } from '../lib/bridge/peopleStrip'
+import { BridgePeople } from '../components/bridge/BridgePeople'
+import { buildMondaySheet, mondaySheetHtml, mondaySheetSubject, mondaySheetText, peopleLines } from '../lib/bridge/mondaySheet'
+import { BridgeMondaySheet } from '../components/bridge/BridgeMondaySheet'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
 import { ymdAddDays } from '../utils/dateUtils'
+import { buildStageFlow, withFieldPaces, type StageId } from '../lib/bridge/stageFlow'
+import { BridgeStages } from '../components/bridge/BridgeStages'
+import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
+import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
+import { BridgeRule } from '../components/bridge/BridgeRule'
+import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
+import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
+import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
+import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
+import { fieldPaceByHours } from '../lib/bridge/fieldPace'
+import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
+import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
+import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
+import { buildDialReading, dialSpec } from '../lib/bridge/dial'
+import type { StageFlowInput } from '../lib/bridge/stageFlow'
+import { BridgeDial } from '../components/bridge/BridgeDial'
+import { buildResources, type ResourceId } from '../lib/bridge/resources'
+import { BridgeResources } from '../components/bridge/BridgeResources'
+import { buildOrder } from '../lib/bridge/order'
+import { BridgeOrderModal } from '../components/bridge/BridgeOrderModal'
+import { buildReflexes, otherLevers, reflexLine, type ReflexId } from '../lib/bridge/waits'
+import { BridgeWaits } from '../components/bridge/BridgeWaits'
+import { buildWeekCards } from '../lib/bridge/weekCard'
+import { formatWeekRangeLabel } from '../lib/people/approvalsQueue'
+import { buildProfitPanel } from '../lib/bridge/profitPanel'
+import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
+import { buildOwedPanel } from '../lib/bridge/owedPanel'
+import { BridgeOwedPanel } from '../components/bridge/BridgeOwedPanel'
+import { buildHoursPanel } from '../lib/bridge/hoursPanel'
+import { BridgeHoursPanel } from '../components/bridge/BridgeHoursPanel'
+import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
+import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
+import { STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
+import { pageGate } from '../lib/roleGate'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -44,7 +93,7 @@ const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: 
 const listRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }
 
 export default function Bridge() {
-  const { user, role, loading: authLoading } = useAuth()
+  const { user, role, profileName, loading: authLoading } = useAuth()
   const { showToast } = useToastContext()
   const [data, setData] = useState<BridgeData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -58,11 +107,62 @@ export default function Bridge() {
   // Vectors by the day (v2.4217): the period drawn (a month of days, 13 pay weeks or 12 months — v2.4219), its sessions and job rates (cached per period on this page).
   const [daysZoom, setDaysZoom] = useState<VectorZoom>('days')
   const [daysMode, setDaysMode] = useState<VectorTimeMode>(() => readVectorDaysMode())
+  // The day grid's reading (link PR 12): profit as built, revenue at the job's rate, or cost in wages.
+  const [daysReading, setDaysReading] = useState<VectorReading>('profit')
   const [daysAnchor, setDaysAnchor] = useState<string | null>(null)
   const [daysInputs, setDaysInputs] = useState<VectorDaysInputs | null>(null)
   const [daysError, setDaysError] = useState<string | null>(null)
   const daysCacheRef = useRef(new Map<string, VectorDaysInputs>())
-  const fin = useDashboardFinancials(role === 'dev', refreshKey, role)
+  // The top line (v2.5216): the last 13 pay weeks' sessions, the Weeks zoom's own range, through the same cache.
+  const [weeksInputs, setWeeksInputs] = useState<VectorDaysInputs | null>(null)
+  const [weeksError, setWeeksError] = useState<string | null>(null)
+  // Cash on hand from the bank (v2.5218): Mercury's balances, read when the page loads; the typed figure is the fallback.
+  const [bank, setBank] = useState<MercuryCash | null>(null)
+  const [bankError, setBankError] = useState<string | null>(null)
+  const [bankLoading, setBankLoading] = useState(false)
+  // The People strip (v2.5222): Vectors and the day grid fold under it, closed by default and remembered per browser.
+  const [peopleOpen, setPeopleOpen] = useState<boolean>(() => readPeopleOpen())
+  // The Monday sheet (v2.5224): `?view=monday` draws the one-screen sheet; Email me this sheet mails it to the caller.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sheetView = searchParams.get('view') === 'monday'
+  const [emailing, setEmailing] = useState(false)
+  const [mailNote, setMailNote] = useState<string | null>(null)
+  // The weakest link (link PR 1): the stage pressed; the lit link until someone presses another.
+  const [pickedStage, setPickedStage] = useState<CallLink | null>(null)
+  // The order (link PR 6): the badge pressed, if any; null closes the modal.
+  const [orderFor, setOrderFor] = useState<CallLink | null>(null)
+  // Everything else waits (link PR 7): the usual fix pressed, if any; it sets the dial, and dragging the dial clears it.
+  const [reflexId, setReflexId] = useState<ReflexId | null>(null)
+  // The card panels (link PR 9): which of the three cards is open under the row, if any.
+  const [openCard, setOpenCard] = useState<'profit' | 'owed' | 'hours' | null>(null)
+  // The breakdowns behind the two charts (link PR 11).
+  const [netOpen, setNetOpen] = useState(false)
+  const [cashOpen, setCashOpen] = useState(false)
+  // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
+  const [calls, setCalls] = useState<BridgeCall[] | null>(null)
+  const [callsError, setCallsError] = useState<string | null>(null)
+  const [recording, setRecording] = useState(false)
+  const [answering, setAnswering] = useState(false)
+  const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
+
+  useEffect(() => {
+    if (role !== 'dev' || !user?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await loadBridgeCalls()
+        if (!cancelled) setCalls(rows)
+      } catch (e) {
+        if (!cancelled) {
+          setCalls([])
+          setCallsError(formatErrorMessage(e))
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, user?.id, refreshKey])
 
   useEffect(() => {
     if (role !== 'dev' || !user?.id) return
@@ -87,6 +187,29 @@ export default function Bridge() {
     }
   }, [role, user?.id, refreshKey])
 
+  useEffect(() => {
+    if (role !== 'dev' || !user?.id) return
+    let cancelled = false
+    setBankLoading(true)
+    setBankError(null)
+    void (async () => {
+      try {
+        const b = await loadMercuryCash()
+        if (!cancelled) setBank(b)
+      } catch (e) {
+        if (!cancelled) {
+          setBank(null)
+          setBankError(formatErrorMessage(e))
+        }
+      } finally {
+        if (!cancelled) setBankLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, user?.id, refreshKey])
+
   const profit = useMemo(
     () =>
       data
@@ -104,10 +227,11 @@ export default function Bridge() {
     [data],
   )
 
-  const cashToday = useMemo(() => {
+  const typedRolled = useMemo(() => {
     if (!data?.cashSetting) return null
     return cashTodayFromAsOf({ cashAsOfUsd: data.cashSetting.usd, asOfYmd: data.cashSetting.asOfYmd, todayYmd: data.todayYmd, bankFlowByDay: data.bankFlowByDay })
   }, [data])
+  const cashToday = useMemo(() => (bank ? bank.usd : typedRolled), [bank, typedRolled])
 
   const history = useMemo(() => {
     if (!data || cashToday == null || !fin.data) return null
@@ -126,10 +250,11 @@ export default function Bridge() {
   }, [data, cashToday, fin.data])
 
   // Receipts: each open AR item on its expected day — promise → customer median → company median → 45 days.
-  // Recently late waits the grace window; late past the doubtful line is not counted (listed with collections).
-  const { receipts, doubtful } = useMemo<{ receipts: Array<CashEvent & { source: string }>; doubtful: Array<{ label: string; usd: number; daysLate: number }> }>(() => {
+  // Recently late lands within its own pace from today (v2.5219: 7–45 days, 14 with no pace), so late invoices spread instead of piling on one day;
+  // late past the doubtful line is not counted (listed with collections).
+  const { receipts, doubtful } = useMemo<{ receipts: Array<CashEvent & { source: string; basis: ReceiptBasis }>; doubtful: Array<{ label: string; usd: number; daysLate: number }> }>(() => {
     if (!data || !fin.data) return { receipts: [], doubtful: [] }
-    const out: Array<CashEvent & { source: string }> = []
+    const out: Array<CashEvent & { source: string; basis: ReceiptBasis }> = []
     const doubtful: Array<{ label: string; usd: number; daysLate: number }> = []
     for (const item of fin.data.ar.items) {
       if (item.amount <= 0) continue
@@ -138,15 +263,20 @@ export default function Bridge() {
       const model = billedExpectedPayModel({ billedAtIso: null, estBillYmd: item.dateYmd, customerId: item.customerId ?? null }, data.paySpeeds, data.todayYmd, promise ?? null)
       let expectedYmd: string
       let source: string
+      let basis: ReceiptBasis
       if (model) {
         expectedYmd = model.expectedYmd
         source = model.source === 'promised' ? 'promised' : model.source === 'customer' ? `pays in ~${model.medianDays}d` : `company pace ~${model.medianDays}d`
+        basis = model.source
       } else {
         const base = item.dateYmd ?? data.todayYmd
         expectedYmd = new Date(Date.parse(`${base}T00:00:00Z`) + DEFAULT_PAY_DAYS * 86_400_000).toISOString().slice(0, 10)
         source = `no history · ${DEFAULT_PAY_DAYS}d default`
+        basis = 'default'
       }
-      const sched = scheduleReceipt(expectedYmd, data.todayYmd)
+      const pace = model && model.source !== 'promised' ? model.medianDays : null
+      const graceDays = lateWithinDays(pace)
+      const sched = scheduleReceipt(expectedYmd, data.todayYmd, { graceDays })
       if (sched.status === 'doubtful') {
         doubtful.push({ label: item.label, usd: item.amount, daysLate: sched.daysLate })
         continue
@@ -156,7 +286,8 @@ export default function Bridge() {
         usd: item.amount,
         label: item.label,
         kind: 'receipt',
-        source: sched.status === 'late' ? `${sched.daysLate}d late — assumed within ${LATE_RECEIPT_GRACE_DAYS}d` : source,
+        source: sched.status === 'late' ? `${sched.daysLate}d late — assumed within ${graceDays}d${pace != null ? ' by their pace' : ''}` : source,
+        basis: sched.status === 'late' ? 'late' : basis,
       })
     }
     return { receipts: out.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0)), doubtful }
@@ -178,6 +309,307 @@ export default function Bridge() {
     const events: CashEvent[] = [...bills.map((b) => ({ ymd: b.ymd, usd: b.usd, label: b.label, kind: 'bill' as const })), ...receipts]
     return buildCashForecast({ todayYmd: data.todayYmd, daysAhead: BRIDGE_DAYS_AHEAD, cashTodayUsd: cashToday, floorUsd: data.floorUsd, events, dailyDrainUsd: data.dailyDrainUsd })
   }, [data, cashToday, receipts, bills])
+
+  const confidence = useMemo(() => receiptsConfidence(receipts), [receipts])
+  const carry = useMemo(() => (forecast ? carryingSentence(carryingDay(forecast, receipts), md) : null), [forecast, receipts])
+
+  // Build by percent (link PR 3): the open jobs, the percent points and the jobs created, loaded once the Bridge data is in.
+  const [buildInputs, setBuildInputs] = useState<BuildPaceInput | null>(null)
+  const [buildError, setBuildError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    setBuildInputs(null)
+    setBuildError(null)
+    void (async () => {
+      try {
+        const v = await loadBuildPaceInputs({ windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        if (!cancelled) setBuildInputs(v)
+      } catch (e) {
+        if (!cancelled) setBuildError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data])
+  const buildPace = useMemo(() => (buildInputs ? buildBuildPace(buildInputs) : null), [buildInputs])
+  // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
+  const [pctSetThisVisit, setPctSetThisVisit] = useState<ReadonlyMap<string, number>>(() => new Map())
+  const pctPrompt = useMemo(() => (buildInputs ? buildPctPrompt(buildInputs.openJobs, pctSetThisVisit) : null), [buildInputs, pctSetThisVisit])
+  const savePct = useCallback((jobId: string, pct: number) => {
+    setPctSetThisVisit((m) => new Map(m).set(jobId, pct))
+    setBuildInputs((prev) => (prev ? withPctSet(prev, jobId, pct) : prev))
+  }, [])
+
+  // Market and Sales (link PR 4): the bids and estimates over the window and the awaiting span.
+  const [demandInputs, setDemandInputs] = useState<DemandInput | null>(null)
+  const [demandError, setDemandError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    setDemandInputs(null)
+    setDemandError(null)
+    void (async () => {
+      try {
+        const v = await loadDemandInputs({ windowStart: data.windowStart, todayYmd: data.todayYmd })
+        if (!cancelled) setDemandInputs(v)
+      } catch (e) {
+        if (!cancelled) setDemandError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data])
+  const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
+
+  // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
+  const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
+  const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
+
+  // The top line's weeks (the eight-week grid on recorded and approved time), read here because the stage cards take the field's pace from it.
+  const weeksRange = useMemo(() => (data ? vectorRangeFor('weeks', data.todayYmd) : null), [data])
+  useEffect(() => {
+    if (!data || !weeksRange) return
+    const key = `${weeksRange.start}:${weeksRange.end}`
+    const cached = daysCacheRef.current.get(key)
+    if (cached) {
+      setWeeksInputs(cached)
+      setWeeksError(null)
+      return
+    }
+    let cancelled = false
+    setWeeksInputs(null)
+    setWeeksError(null)
+    void (async () => {
+      try {
+        const v = await loadVectorDaysInputs({ start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        daysCacheRef.current.set(key, v)
+        if (!cancelled) setWeeksInputs(v)
+      } catch (e) {
+        if (!cancelled) setWeeksError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, weeksRange])
+  const headlineAndCards = useMemo(() => {
+    if (!data || !weeksRange || !weeksInputs || !vectorInputs) return null
+    const common = { zoom: 'weeks' as const, anchorYmd: weeksRange.end, todayYmd: data.todayYmd, people: vectorInputs.people, wages: vectorInputs.wages, sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, assumedHalfJobs: weeksInputs.assumedHalfJobs, jobLabels: weeksInputs.jobLabels }
+    const recorded = buildVectorGrid({ ...common, mode: 'recorded' })
+    const approved = buildVectorGrid({ ...common, mode: 'approved' })
+    const headline = buildHeadline({ recorded, approved })
+    // The week cards (link PR 8): sessions counted by the pay week they fall in.
+    const sessionsByWeek = new Map<string, number>()
+    for (const sess of weeksInputs.sessions) {
+      if (sess.officeJob || !(sess.hours > 0)) continue
+      const wk = payWeekContaining(sess.workDate).start
+      sessionsByWeek.set(wk, (sessionsByWeek.get(wk) ?? 0) + 1)
+    }
+    const cards = buildWeekCards({ headline, recorded, approved, sessionsByWeek, dateRange: formatWeekRangeLabel })
+    // The Crew hours panel (link PR 10): office and bid hours by pay week; the grid keeps only field people.
+    const officeByWeek = new Map<string, number>()
+    for (const sess of weeksInputs.sessions) {
+      if (!sess.officeJob || !(sess.hours > 0)) continue
+      const wk = payWeekContaining(sess.workDate).start
+      officeByWeek.set(wk, (officeByWeek.get(wk) ?? 0) + sess.hours)
+    }
+    return { headline, cards, recorded, approved, officeByWeek }
+  }, [data, weeksRange, weeksInputs, vectorInputs])
+  const headline = headlineAndCards?.headline ?? null
+  // The field's pace by hours (follow-up A): earned per week on recorded time, the way the top line reads it; approved-only reads low while hours wait.
+  const fieldPace = useMemo(() => (data && weeksInputs ? fieldPaceByHours({ sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, windowStart: data.windowStart, todayYmd: data.todayYmd, weeks: BRIDGE_DAYS_BACK / 7 }) : null), [data, weeksInputs])
+
+  // The weakest link (link PR 1): Bill and Collect from what the page already reads — the piles from the finance hook, the paces from the window's flows by day.
+  const stageInput = useMemo<StageFlowInput | null>(() => {
+    if (!data) return null
+    const weeks = BRIDGE_DAYS_BACK / 7
+    const sumWindow = (m: Map<string, number>): number => {
+      let s = 0
+      for (const [ymd, usd] of m) if (ymd >= data.windowStart && ymd <= data.todayYmd) s += usd
+      return s
+    }
+    const billedPerWeek = sumWindow(data.invoicesSentByDay) / weeks
+    const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
+    const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
+    const held = thisWeekCall && isStageLink(thisWeekCall.link) ? thisWeekCall.link : null
+    // Build's pace is the larger of built-by-percent and earned-by-hours; Bill's in-rate is what the field earned on recorded time.
+    const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
+    const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
+    return {
+      market: demand?.market ?? null,
+      sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
+      fieldPerWeekUsd: build?.outPerWeekUsd ?? null,
+      bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: finishedPerWeek, outPerWeekUsd: billedPerWeek } : null,
+      collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
+      build,
+      heldLinkId: held,
+    }
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace])
+  const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
+  // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
+  const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
+  const litStage: StageId | null = litLink && isStageLink(litLink) ? litLink : (stageFlow?.linkId ?? null)
+
+  // The dial (link PR 5): the pressed stage's pace, in dollars a week; the cards read the dial's flow while it is moved.
+  const [dialUsd, setDialUsd] = useState<Partial<Record<StageId, number>>>({})
+  const perUnitUsd = useMemo((): number | null => {
+    if (!litStage || !data) return null
+    const weeks = BRIDGE_DAYS_BACK / 7
+    if (litStage === 'bill') return fin.data && fin.data.unbilled.count > 0 ? fin.data.unbilled.total / fin.data.unbilled.count : null
+    if (litStage === 'collect') return fin.data && fin.data.ar.count > 0 ? fin.data.ar.total / fin.data.ar.count : null
+    if (litStage === 'build') {
+      const b = stageInput?.build
+      if (!b) return null
+      if (fieldPace && fieldPace.hoursPerWeek > 0) return b.outPerWeekUsd / fieldPace.hoursPerWeek
+      return data.crew.fieldHoursWindow > 0 ? b.outPerWeekUsd / (data.crew.fieldHoursWindow / weeks) : null
+    }
+    if (litStage === 'sales') return buildPace && buildPace.soldJobs > 0 ? buildPace.soldUsd / buildPace.soldJobs : null
+    const m = demand?.market
+    return m && m.bidsInvited + m.estimatesRequested > 0 ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / (m.bidsInvited + m.estimatesRequested) : null
+  }, [litStage, data, fin.data, stageInput, fieldPace, buildPace, demand])
+  const dialSpecNow = useMemo(() => (stageInput && litStage ? dialSpec(stageInput, litStage, { perUnitUsd }) : null), [stageInput, litStage, perUnitUsd])
+  const dialReading = useMemo(() => {
+    if (!dialSpecNow || !stageInput || !litStage || !data) return null
+    const usd = dialUsd[litStage] ?? dialSpecNow.todayUsd
+    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md, fieldHoursPerWeek: data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) })
+  }, [dialSpecNow, stageInput, litStage, data, dialUsd])
+  const dialMoved = !!(litStage && dialSpecNow && dialUsd[litStage] != null && dialUsd[litStage] !== dialSpecNow.todayUsd)
+  const shownFlow = dialMoved && dialReading ? dialReading.flow : stageFlow
+
+  // The three resources (link PR 6): what waits on the owner, the bank against the floor, who is in the field and who bills.
+  const fieldPeople = useMemo(() => {
+    if (!data) return 0
+    const since = ymdAddDays(data.todayYmd, -6)
+    return new Set((vectorInputs?.sessions ?? []).filter((x) => !x.officeJob && x.hours > 0 && x.workDate >= since).map((x) => x.userId)).size
+  }, [data, vectorInputs])
+  const resources = useMemo(() => {
+    if (!data || !shownFlow) return null
+    const sends = (vectorInputs?.invoiceSends ?? []).filter((x) => x.ymd >= data.windowStart)
+    const billers = new Set(sends.filter((x) => x.userId).map((x) => x.userId as string)).size
+    const billsWithoutSender = sends.filter((x) => !x.userId).length
+    return buildResources({
+      linkId: shownFlow.linkId,
+      pendingHours: data.crew.pendingClosedHours,
+      pendingSessions: data.crew.pendingClosedSessions,
+      unpricedJobs: data.earned.noRevenueJobs.length,
+      noPctJobs: buildPace?.pile.guessJobs ?? data.earned.assumedHalfJobs.length,
+      unsortedBankRows: (data.hygiene.unattributedNoncard ?? 0) + (data.hygiene.unlinkedCard ?? 0),
+      bidsNoValue: demand?.bidsNoValue ?? 0,
+      bankUsd: cashToday,
+      bankSynced: !!bank,
+      lowestUsd: forecast ? forecast.lowest.cashUsd : null,
+      lowestLabel: forecast ? md(forecast.lowest.ymd) : null,
+      floorUsd: data.floorUsd,
+      clearsFloor: forecast ? forecast.clearsFloor : null,
+      fieldPeople,
+      fieldHours7d: data.crew.fieldHours7d,
+      billers,
+      billsWithoutSender,
+    })
+  }, [data, shownFlow, vectorInputs, fieldPeople, buildPace, demand, cashToday, bank, forecast])
+  const order = useMemo(() => (orderFor && shownFlow && resources ? buildOrder({ flow: shownFlow, resources, pressedId: orderFor }) : null), [orderFor, shownFlow, resources])
+  const closeOrder = useCallback(() => setOrderFor(null), [])
+
+  // Everything else waits (link PR 7): the four presses sized from the page's numbers, and the pressed one's line.
+  const reflexes = useMemo(() => (stageInput && data ? buildReflexes({ stageInput, fieldHoursPerWeek: fieldPace && fieldPace.hoursPerWeek > 0 ? fieldPace.hoursPerWeek : data.crew.fieldHoursWindow > 0 ? data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) : null, fieldPeople }) : null), [stageInput, data, fieldPeople, fieldPace])
+  const reflexLineNow = useMemo(() => {
+    if (!reflexId || !reflexes || !stageFlow || !stageInput || !profit) return null
+    const r = reflexes.find((x) => x.id === reflexId)
+    if (!r) return null
+    const billPerJob = fin.data && fin.data.unbilled.count > 0 ? fin.data.unbilled.total / fin.data.unbilled.count : null
+    return reflexLine({ reflex: r, before: stageFlow, reading: r.stage && litStage === r.stage ? dialReading : null, stageInput, overheadPerDayUsd: profit.speed.overheadPerDay, billPerJobUsd: billPerJob })
+  }, [reflexId, reflexes, stageFlow, stageInput, profit, fin.data, litStage, dialReading])
+  const pressReflex = useCallback(
+    (id: ReflexId) => {
+      const r = reflexes?.find((x) => x.id === id)
+      if (!r) return
+      setReflexId(id)
+      if (r.stage && r.usd != null) {
+        setPickedStage(r.stage)
+        setDialUsd({ [r.stage]: r.usd })
+      } else setDialUsd({})
+    },
+    [reflexes],
+  )
+  const resetReflex = useCallback(() => {
+    setReflexId(null)
+    setDialUsd({})
+  }, [])
+
+  // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
+  const moveNumbers = useMemo(
+    () => ({
+      bill: fin.data ? fin.data.unbilled.total : null,
+      chase: receipts.filter((r) => r.basis === 'late').reduce((s, r) => s + r.usd, 0) + doubtful.reduce((s, d) => s + d.usd, 0),
+      approve: data ? data.crew.pendingClosedHours : null,
+      price: data ? data.earned.noRevenueJobs.length : null,
+      pct: data ? data.earned.assumedHalfJobs.length : null,
+    }),
+    [fin.data, receipts, doubtful, data],
+  )
+  const nowReading = useMemo(() => ({ stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>, keys: moveNumbers }), [stageFlow, moveNumbers])
+  const scorecard = useMemo(() => {
+    if (!data || !calls || !thisWeekStart) return null
+    const c = scoreCall(calls, thisWeekStart)
+    return c ? buildScorecard({ call: c, calls, now: nowReading, todayYmd: data.todayYmd, dayLabel: md }) : null
+  }, [data, calls, thisWeekStart, nowReading])
+  const chip = callChip(scorecard)
+  const deskReading = useMemo(() => {
+    if (litLink && !isStageLink(litLink)) {
+      const r = resources?.find((x) => x.id === litLink)
+      return r ? `${r.gauge}. ${r.oneLine.charAt(0).toUpperCase()}${r.oneLine.slice(1)}.` : ''
+    }
+    const s = stageFlow?.stages.find((x) => x.id === litLink)
+    if (!s) return ''
+    if (!s.readable) return 'The app does not read this stage yet.'
+    return `${s.pile.headline}${s.pile.sub.length ? `, ${s.pile.sub.join(', ')}` : ''}. ${s.flow.map((f) => `${f.who} ${f.usd} a week`).join('; ')}. ${s.weeksText}.`
+  }, [stageFlow, litLink, resources])
+
+  const recordCall = useCallback(
+    async (moves: CallMove[], note: string | null) => {
+      if (!data || !thisWeekStart || !litLink || !stageFlow) return
+      setRecording(true)
+      try {
+        await recordBridgeCall({
+          weekStart: thisWeekStart,
+          calledOn: data.todayYmd,
+          calledByName: profileName ?? '',
+          link: litLink,
+          moves,
+          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
+          note,
+        })
+        setCalls(await loadBridgeCalls())
+        showToast(`Recorded: ${litLink} is the link this week`, 'success', 2500)
+      } catch (e) {
+        showToast(formatErrorMessage(e), 'error', 4000)
+      } finally {
+        setRecording(false)
+      }
+    },
+    [data, thisWeekStart, litLink, stageFlow, nowReading, moveNumbers, profileName, showToast],
+  )
+  const answerCall = useCallback(
+    async (outcome: CallOutcome, note: string | null) => {
+      if (!calls || !thisWeekStart) return
+      const c = scoreCall(calls, thisWeekStart)
+      if (!c) return
+      setAnswering(true)
+      try {
+        await answerBridgeCall(c.id, outcome, note)
+        setCalls(await loadBridgeCalls())
+        showToast(outcome === 'moved' ? 'Recorded: the link moved' : 'Recorded: the link did not move', 'success', 2500)
+      } catch (e) {
+        showToast(formatErrorMessage(e), 'error', 4000)
+      } finally {
+        setAnswering(false)
+      }
+    },
+    [calls, thisWeekStart, showToast],
+  )
 
   const saveCash = useCallback(async () => {
     const v = Number(cashDraft.replace(/[^0-9.-]/g, ''))
@@ -241,7 +673,7 @@ export default function Bridge() {
   // Vectors by the day (v2.4217): the period's sessions + rates per zoom and anchor, loaded once the Bridge data is in.
   const daysRange = useMemo(() => (data ? vectorRangeFor(daysZoom, daysAnchor ?? data.todayYmd) : null), [data, daysZoom, daysAnchor])
   useEffect(() => {
-    if (!data || !daysRange) return
+    if (!data || !daysRange || !peopleOpen) return
     const key = `${daysRange.start}:${daysRange.end}`
     const cached = daysCacheRef.current.get(key)
     if (cached) {
@@ -264,7 +696,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, daysRange])
+  }, [data, daysRange, peopleOpen])
   const daysGrid = useMemo(() => {
     if (!data || !daysRange || !daysInputs || !vectorInputs) return null
     return buildVectorGrid({
@@ -281,6 +713,64 @@ export default function Bridge() {
       priorRatePerHourByJob: daysInputs.priorRatePerHourByJob,
     })
   }, [data, daysZoom, daysMode, daysRange, daysInputs, vectorInputs])
+
+
+  // The Daily profit rate panel (link PR 9): the trend by week, the waterfall, the sources, break-even.
+  const profitPanel = useMemo(() => {
+    if (!data || !profit) return null
+    return buildProfitPanel({
+      windowStart: data.windowStart,
+      todayYmd: data.todayYmd,
+      earnedByDay: data.earnedByDay,
+      directByDay: data.directByDay,
+      overheadByDay: data.overheadByDay,
+      speed: profit.speed,
+      contributionMargin: profit.contributionMargin,
+      totals: data.totals,
+      waitingWeeks: new Set((headline?.weeks ?? []).filter((w) => w.waiting).map((w) => w.start)),
+      pendingClosedHours: data.crew.pendingClosedHours,
+      unlinkedCard: data.hygiene.unlinkedCard,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      fieldEarnedPerHour: data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      weekLabel: md,
+    })
+  }, [data, profit, headline])
+
+  // The Money owed and Crew hours panels (link PR 10).
+  const owedPanel = useMemo(() => {
+    if (!data || !fin.data) return null
+    return buildOwedPanel({
+      todayYmd: data.todayYmd,
+      cashUsd: cashToday,
+      ar: { total: fin.data.ar.total, count: fin.data.ar.count, items: fin.data.ar.items },
+      arCollections: { total: fin.data.arCollections.total, count: fin.data.arCollections.count },
+      ap: { total: fin.data.ap.total, supplyTotal: fin.data.ap.supplyTotal, payrollTotal: fin.data.ap.payrollTotal, subLaborTotal: fin.data.ap.subLaborTotal, upcomingTotal: fin.data.ap.upcomingTotal },
+      unbilled: { total: fin.data.unbilled.total, count: fin.data.unbilled.count },
+      bills,
+      noContractJobs: data.earned.noRevenueJobs.length,
+      noPctJobs: buildPace?.pile.guessJobs ?? data.earned.assumedHalfJobs.length,
+      pendingClosedHours: data.crew.pendingClosedHours,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      dayLabel: md,
+    })
+  }, [data, fin.data, cashToday, bills, buildPace])
+  const hoursPanel = useMemo(() => {
+    if (!data || !headlineAndCards) return null
+    return buildHoursPanel({
+      recorded: headlineAndCards.recorded,
+      approved: headlineAndCards.approved,
+      officeByWeek: headlineAndCards.officeByWeek,
+      todayYmd: data.todayYmd,
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      officeBidHours7d: data.crew.officeBidHours7d,
+      jobsWorked: data.jobsWorked,
+      noContractJobs: data.earned.noRevenueJobs.length,
+      fieldEarnedPerHour: data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      thisWeekRecordedUsd: headlineAndCards.headline.thisWeek.recordedUsd,
+      weekLabel: md,
+    })
+  }, [data, headlineAndCards])
 
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
@@ -310,9 +800,7 @@ export default function Bridge() {
   }, [data])
 
 
-  if (authLoading) return null
-  if (role !== 'dev') return <Navigate to="/dashboard" replace />
-
+  const typedDaysAgo = data?.cashSetting ? Math.round((Date.parse(`${data.todayYmd}T00:00:00Z`) - Date.parse(`${data.cashSetting.asOfYmd}T00:00:00Z`)) / 86_400_000) : null
   const speed = profit?.speed
   const climbColor = speed && speed.climbPerDay >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)'
   const windowStartLabel = data ? md(data.windowStart) : ''
@@ -323,6 +811,152 @@ export default function Bridge() {
       ? `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — stays above your ${shortK(forecast.floorUsd)} floor`
       : `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — ${shortK(forecast.floorUsd - forecast.lowest.cashUsd)} under your ${shortK(forecast.floorUsd)} floor · ${forecast.daysUnderFloor} day${forecast.daysUnderFloor === 1 ? '' : 's'} below it`
     : ''
+  const netLight = netPositionLight(netToday != null && netStart != null ? { deltaUsd: netToday - netStart, todayUsd: netToday, startLabel: windowStartLabel, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null } : null)
+  const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: bank ? null : data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo: bank ? null : typedDaysAgo, synced: !!bank } : null)
+  const bankReadAt = bank ? new Date(bank.readAtIso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
+  const readingGaps = useMemo(() => {
+    if (!data) return []
+    const assumedHalfEarnedUsd = data.earned.assumedHalfJobs.reduce((s, id) => s + (data.earned.earnedByJob.get(id) ?? 0), 0)
+    const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
+    return buildReadingGaps({
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      headlineRecordedUsd: headline?.thisWeek.recordedUsd ?? null,
+      headlineApprovedUsd: headline?.thisWeek.approvedUsd ?? null,
+      bankUsd: bank?.usd ?? null,
+      typedRolledUsd: typedRolled,
+      typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null,
+      typedDaysAgo,
+      assumedHalfJobs: data.earned.assumedHalfJobs.length,
+      assumedHalfEarnedUsd,
+      noContractJobs: data.earned.noRevenueJobs.map((id) => ({ id, label: labelById.get(id) ?? id })),
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      unlinkedCard: data.hygiene.unlinkedCard,
+      overheadPerDayUsd: profit?.speed.overheadPerDay ?? data.overheadPerDayBaseline,
+      bidsNoValue: vectorInputs ? vectorInputs.bidsSent.filter((b) => b.ymd >= data.windowStart && b.usd <= 0).length : 0,
+    })
+  }, [data, headline, bank, typedRolled, typedDaysAgo, profit, vectorInputs])
+
+  const thisWeek = useMemo(() => {
+    if (!data) return []
+    const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
+    const late = receipts.filter((r) => r.basis === 'late')
+    return buildThisWeek({
+      unbilledUsd: fin.data?.unbilled.total ?? 0,
+      unbilledCount: fin.data?.unbilled.count ?? 0,
+      lateReceipts: { count: late.length, usd: late.reduce((sum, r) => sum + r.usd, 0) },
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      payrollWeeklyEstUsd: data.payrollWeeklyEstUsd,
+      noContractJobs: data.earned.noRevenueJobs.map((id) => ({ id, label: labelById.get(id) ?? id })),
+      assumedHalfJobs: data.earned.assumedHalfJobs.length,
+      assumedHalfEarnedUsd: data.earned.assumedHalfJobs.reduce((sum, id) => sum + (data.earned.earnedByJob.get(id) ?? 0), 0),
+      fieldEarnedPerHour: data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      contributionMargin: profit?.contributionMargin ?? null,
+      overheadPerDayUsd: profit?.speed.overheadPerDay ?? 0,
+      bidsDue: data.levers.bidsDue,
+      dayLabel: md,
+    })
+  }, [data, fin.data, receipts, profit])
+
+  const netPanel = useMemo(() => {
+    if (!history || !data) return null
+    return buildNetPanel({ history, startLabel: windowStartLabel, bankUsd: bank?.usd ?? null, typedRolledUsd: typedRolled, typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null, pendingClosedHours: data.crew.pendingClosedHours, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null, costGapUsd: truth?.costGapUsd ?? null })
+  }, [history, data, windowStartLabel, bank, typedRolled, truth])
+  const cashPanel = useMemo(() => {
+    if (!forecast || !data || cashToday == null) return null
+    const c = carryingDay(forecast, receipts)
+    return buildCashPanel({
+      cashTodayUsd: cashToday,
+      bankSynced: !!bank,
+      typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null,
+      confidence,
+      bills,
+      dailyDrainUsd: data.dailyDrainUsd,
+      daysAhead: BRIDGE_DAYS_AHEAD,
+      endUsd: forecast.endUsd,
+      lowestUsd: forecast.lowest.cashUsd,
+      lowestLabel: md(forecast.lowest.ymd),
+      floorUsd: forecast.floorUsd,
+      clearsFloor: forecast.clearsFloor,
+      daysUnderFloor: forecast.daysUnderFloor,
+      payrollWeeklyEstUsd: data.payrollWeeklyEstUsd,
+      pendingClosedHours: data.crew.pendingClosedHours,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      doubtfulUsd: doubtful.reduce((s, d) => s + d.usd, 0),
+      doubtfulCount: doubtful.length,
+      collectionsUsd: fin.data?.arCollections.total ?? 0,
+      collectionsCount: fin.data?.arCollections.count ?? 0,
+      carryLabel: c ? md(c.ymd) : null,
+      carryUsd: c ? c.receiptsUsd : null,
+    })
+  }, [forecast, data, cashToday, bank, confidence, bills, receipts, doubtful, fin.data])
+
+  // The sheet's link lines (link PR 11): the rule, the lit link, the call, the three readings at today's pace.
+  const sheetLink = useMemo((): string[] => {
+    if (!stageFlow || !stageFlow.linkId) return []
+    const s = stageFlow.stages.find((x) => x.id === stageFlow.linkId)
+    const out = [STAGE_RULE_LINE]
+    if (s) out.push(`${s.name}: ${s.badge}. ${s.pile.headline}. ${s.weeksText}.`)
+    if (thisWeekCall) out.push(`This week's call: ${thisWeekCall.link}, recorded ${md(thisWeekCall.calledOn)}${thisWeekCall.calledByName ? ` by ${thisWeekCall.calledByName}` : ''}.`)
+    else out.push('No call recorded for this week yet.')
+    if (scorecard) out.push(`Last week's call: ${scorecard.linkName}, ${scorecard.verdictText}. ${scorecard.consequence}`)
+    if (dialReading && !dialMoved) for (const l of dialReading.lines) out.push(`${l.head.charAt(0).toUpperCase()}${l.head.slice(1)}: ${l.text}`)
+    return out
+  }, [stageFlow, thisWeekCall, scorecard, dialReading, dialMoved])
+
+  const sheet = useMemo(() => {
+    if (!data) return null
+    const c = forecast ? carryingDay(forecast, receipts) : null
+    const cashRows = [
+      ...(c ? [{ label: `${md(c.ymd)} · receipts assumed`, value: `+${shortK(c.receiptsUsd)}` }, ...(c.billsUsd > 0 ? [{ label: `${md(c.ymd)} · bills due`, value: `−${shortK(c.billsUsd)}` }] : [])] : []),
+      { label: 'Receipts by a promise or pace', value: shortK(confidence.promisedUsd + confidence.paceUsd) },
+    ]
+    const netRows = truth
+      ? [
+          { label: 'Earned, not invoiced', value: `${truth.billingLagUsd >= 0 ? '+' : '−'}${shortK(Math.abs(truth.billingLagUsd))}` },
+          { label: 'Costs the paper misses', value: `${truth.costGapUsd >= 0 ? '−' : '+'}${shortK(Math.abs(truth.costGapUsd))}${truth.costGapShare != null ? ` · ${Math.round(truth.costGapShare * 100)}%` : ''}` },
+          ...(fin.data ? [{ label: 'Finished, unbilled', value: shortK(fin.data.unbilled.total) }] : []),
+        ]
+      : []
+    return buildMondaySheet({
+      todayLabel: md(data.todayYmd),
+      weekLabel: vectorWeek ? formatPayWeekLabel(vectorWeek) : '',
+      headline,
+      net: netLight,
+      cash: cashLightRead,
+      netRows,
+      cashRows,
+      moves: thisWeek,
+      people: peopleLines(vectorInputs ? vectors : null),
+      link: sheetLink,
+    })
+  }, [data, forecast, receipts, confidence, truth, fin.data, vectorWeek, headline, netLight, cashLightRead, thisWeek, vectorInputs, vectors, sheetLink])
+
+  const emailSheet = useCallback(async () => {
+    if (!sheet || emailing) return
+    setEmailing(true)
+    setMailNote(null)
+    try {
+      const url = `${window.location.origin}/bridge`
+      const { data: res, error: err } = await supabase.functions.invoke('bridge-sheet-email', { body: { subject: mondaySheetSubject(sheet), html: mondaySheetHtml(sheet, url), text: mondaySheetText(sheet, url) } })
+      if (err) throw new Error(err.message)
+      const r = res as { error?: string; to?: string } | null
+      if (r && typeof r.error === 'string') throw new Error(r.error)
+      setMailNote(`sent to ${r?.to ?? 'you'}`)
+      showToast('The Monday sheet is in your inbox', 'success', 2500)
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error', 4000)
+    } finally {
+      setEmailing(false)
+    }
+  }, [sheet, emailing, showToast])
+
+  // A hard load waits for the role before it decides (`pageGate`).
+  const gate = pageGate({ loading: authLoading, user, role }, (r) => r === 'dev')
+  if (gate === 'wait') return null
+  if (gate === 'away') return <Navigate to="/dashboard" replace />
+
   const billsByDay = groupByDay(bills)
   const receiptsByDay = groupByDay(receipts)
 
@@ -330,19 +964,114 @@ export default function Bridge() {
     <div style={{ padding: '0.25rem 0 3rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.25rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>The Bridge</h1>
-        <span style={det}>Where we stand, where cash is going, what would change it. Dev only.</span>
-        <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
+        {data ? (
+          <span style={det} data-testid="bridge-date">
+            {new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+            {vectorWeek ? ` · pay week ${formatPayWeekLabel(vectorWeek)}` : ''}
+          </span>
+        ) : (
+          <span style={det}>Where we stand, where cash is going, what would change it. Dev only.</span>
+        )}
+        {chip && (
+          <a
+            href="#bridge-last-call"
+            data-testid="bridge-call-chip"
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '3px 10px',
+              borderRadius: 999,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              border: `1px solid ${chip.tone === 'red' ? 'var(--text-red-700)' : chip.tone === 'green' ? 'var(--text-green-700)' : chip.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--border)'}`,
+              color: chip.tone === 'red' ? 'var(--text-red-700)' : chip.tone === 'green' ? 'var(--text-green-700)' : chip.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)',
+            }}
+          >
+            {chip.text}
+          </a>
+        )}
+        {!sheetView && (
+          <button type="button" onClick={() => setSearchParams({ view: 'monday' })} disabled={!sheet} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
+            Monday sheet
+          </button>
+        )}
+        <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: sheetView ? 'auto' : undefined, borderRadius: 6, padding: '0.25rem 0.7rem' }}>
           {loading ? 'Reading…' : 'Refresh'}
         </button>
       </div>
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!data || !profit || !speed ? (
         <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
+      ) : sheetView && sheet ? (
+        <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem' }}>
-            <div style={panel}>
-              <div style={label}>Daily profit rate</div>
+          {/* The rule (link PR 1): one line the page opens on, the longer reading behind its ? */}
+          <BridgeRule />
+
+          {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
+          <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
+
+          {/* Where the work piles up (link PR 1): the five stages, the link lit */}
+          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} />}
+          {/* The percents prompt (v2.5245): the Build card's grey jobs, set from the page */}
+          {pctPrompt && <BridgePctPrompt prompt={pctPrompt} onSaved={savePct} />}
+          {dialReading && litStage && (
+            <BridgeDial
+              reading={dialReading}
+              moved={dialMoved}
+              onChange={(usd) => {
+                setReflexId(null)
+                setDialUsd((d) => ({ ...d, [litStage]: usd }))
+              }}
+              onReset={() => {
+                setReflexId(null)
+                setDialUsd((d) => {
+                  const next = { ...d }
+                  delete next[litStage]
+                  return next
+                })
+              }}
+            />
+          )}
+
+          {/* What throttles the link (link PR 6): the three resources */}
+          {resources && <BridgeResources resources={resources} pickedId={litLink && !isStageLink(litLink) ? (litLink as ResourceId) : null} onPick={setPickedStage} onOrder={setOrderFor} />}
+
+          {/* The link's desk and the call (link PR 2): what the pressed link is, the moves with owners, the record; then last week's call against what moved */}
+          {stageFlow && litLink && (
+            <BridgeLinkDesk
+              link={litLink}
+              status={deskStatus({ link: litLink, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: thisWeekCall?.link === litLink })}
+              todayReading={deskReading}
+              moveNumbers={moveNumbers}
+              thisWeekCall={thisWeekCall}
+              recording={recording}
+              onRecord={(moves, note) => void recordCall(moves, note)}
+              dayLabel={md}
+            />
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem' }}>
+            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} />}
+            {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
+          </div>
+          {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}
+          {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
+          {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
+          {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}
+
+          {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+            <BridgeThisWeek moves={thisWeek} />
+            <BridgeReadingGaps gaps={readingGaps} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'profit' ? null : 'profit'))} aria-expanded={openCard === 'profit'} data-testid="bridge-card-profit" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'profit' ? '2px solid #2563eb' : panel.border, padding: openCard === 'profit' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Daily profit rate</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'profit' ? '▴ close' : '▾ chart'}</span>
+              </div>
               <div style={{ ...big, color: climbColor }}>
                 {speed.climbPerDay >= 0 ? '+' : '−'}
                 {money(Math.abs(speed.climbPerDay))} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>/day · {speed.days}-day avg</span>
@@ -351,9 +1080,12 @@ export default function Bridge() {
                 earned <b style={{ color: 'var(--text)' }}>{money(speed.earnedPerDay)}</b>/day · costs <b style={{ color: 'var(--text)' }}>{money(speed.burnPerDay)}</b>/day (jobs {money(speed.directPerDay)} + overhead {money(speed.overheadPerDay)} at the 90-day rate)
                 {profit.contributionMargin != null && <> · {Math.round(profit.contributionMargin * 100)}% of earned is margin</>}
               </div>
-            </div>
-            <div style={panel}>
-              <div style={label}>Money owed</div>
+            </button>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'owed' ? null : 'owed'))} aria-expanded={openCard === 'owed'} data-testid="bridge-card-owed" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'owed' ? '2px solid #2563eb' : panel.border, padding: openCard === 'owed' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Money owed</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'owed' ? '▴ close' : '▾ chart'}</span>
+              </div>
               {fin.data ? (
                 <>
                   <div style={big}>
@@ -366,23 +1098,34 @@ export default function Bridge() {
               ) : (
                 <div style={det}>{fin.loading ? 'Loading…' : fin.error ?? '—'}</div>
               )}
-            </div>
-            <div style={panel}>
-              <div style={label}>Crew hours · last 7 days</div>
+            </button>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'hours' ? null : 'hours'))} aria-expanded={openCard === 'hours'} data-testid="bridge-card-hours" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'hours' ? '2px solid #2563eb' : panel.border, padding: openCard === 'hours' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Crew hours · last 7 days</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'hours' ? '▴ close' : '▾ chart'}</span>
+              </div>
               <div style={big}>
                 {hrs(data.crew.fieldHours7d)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>approved field</span>
               </div>
               <div style={det}>
                 office + bid <b style={{ color: 'var(--text)' }}>{hrs(data.crew.officeBidHours7d)}</b> · awaiting approval <b style={{ color: data.crew.pendingClosedHours > 0 ? 'var(--text-amber-800)' : 'var(--text)' }}>{hrs(data.crew.pendingClosedHours)}</b> ({data.crew.pendingClosedSessions}) · {data.jobsWorked} jobs worked in 8 weeks
               </div>
-            </div>
+            </button>
           </div>
+          {openCard === 'profit' && profitPanel && <BridgeProfitPanel panel={profitPanel} onClose={() => setOpenCard(null)} />}
+          {openCard === 'owed' && owedPanel && <BridgeOwedPanel panel={owedPanel} onClose={() => setOpenCard(null)} />}
+          {openCard === 'hours' && hoursPanel && <BridgeHoursPanel panel={hoursPanel} onClose={() => setOpenCard(null)} />}
 
           {/* Net position */}
           <div style={{ ...panel, marginTop: '0.6rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span style={label}>Net position — last 8 weeks</span>
               <span style={det}>cash + owed to you (collections excluded) − owed by you</span>
+              {netPanel && (
+                <button type="button" onClick={() => setNetOpen((o) => !o)} aria-expanded={netOpen} data-testid="bridge-net-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
+                  {netOpen ? '▴ close' : '▾ break it down'}
+                </button>
+              )}
               {netToday != null && netStart != null && (
                 <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: netToday - netStart >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
                   Today: {shortK(netToday)} · {netToday - netStart >= 0 ? 'up' : 'down'} {shortK(Math.abs(netToday - netStart))} since {windowStartLabel}
@@ -392,15 +1135,26 @@ export default function Bridge() {
             {history ? (
               <BridgeNetPositionChart history={history} />
             ) : (
-              <div style={{ ...det, padding: '1.2rem 0' }}>{fin.data ? 'Type cash on hand below to anchor this line.' : 'Loading money owed…'}</div>
+              <div style={{ ...det, padding: '1.2rem 0' }}>{!fin.data ? 'Loading money owed…' : bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to anchor this line.'}</div>
             )}
             <div style={det}>Payroll and sub-labor owed are carried flat in the history (they turn over weekly); supply invoices move it on their invoice and payment dates.</div>
+            {netOpen && netPanel && <BridgeBreakdownPanel title={`What moved it, ${netPanel.startLabel} to today`} sub="the three parts of net position, each by how much it changed over the window" bars={netPanel.waterfall} sources={netPanel.sources} closing={netPanel.paper} testId="bridge-net-panel" />}
           </div>
 
           {/* Truth check (v2.3335) */}
           {truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
 
-          {/* Vectors (v2.3344) */}
+          {/* People (v2.5222): Vectors (v2.3344) and Vectors by the day (v2.4217) under one strip */}
+          <BridgePeople
+            summary={peopleSummary(vectorInputs ? vectors : null, vectorWeek ? formatPayWeekLabel(vectorWeek) : '', vectorWeek ? vectorWeek.end >= data.todayYmd : false)}
+            open={peopleOpen}
+            onToggle={() => {
+              setPeopleOpen((o) => {
+                writePeopleOpen(!o)
+                return !o
+              })
+            }}
+          >
           {vectors && vectorWeek && (
             <BridgeVectorsPanel
               vectors={vectors}
@@ -429,6 +1183,8 @@ export default function Bridge() {
                 setDaysMode(m)
                 writeVectorDaysMode(m)
               }}
+              reading={daysReading}
+              onReading={setDaysReading}
               periodLabel={vectorRangeLabel(daysZoom, daysRange)}
               isCurrent={daysRange.end >= data.todayYmd}
               canPrev={daysRange.start > monthStartOf(ymdAddDays(data.todayYmd, -730))}
@@ -439,34 +1195,62 @@ export default function Bridge() {
               error={daysError ?? vectorError}
             />
           )}
+          </BridgePeople>
 
           {/* Cash forecast */}
           <div style={{ ...panel, marginTop: '0.6rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span style={label}>Cash — next 8 weeks</span>
               <span style={det}>bank balance today, then every bill on the day it's due and every receipt on the day it's expected</span>
+              {cashPanel && (
+                <button type="button" onClick={() => setCashOpen((o) => !o)} aria-expanded={cashOpen} data-testid="bridge-cash-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
+                  {cashOpen ? '▴ close' : '▾ break it down'}
+                </button>
+              )}
               {forecast && (
                 <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: forecast.clearsFloor ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{cashRead}</span>
               )}
             </div>
-            {forecast && cashToday != null ? <BridgeCashChart forecast={forecast} cashTodayUsd={cashToday} /> : <div style={{ ...det, padding: '1.2rem 0' }}>Type cash on hand below to start the forecast.</div>}
+            {forecast && cashToday != null ? <BridgeCashChart forecast={forecast} cashTodayUsd={cashToday} /> : <div style={{ ...det, padding: '1.2rem 0' }}>{bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to start the forecast.'}</div>}
+            {forecast && <BridgeCashConfidence confidence={confidence} carry={carry} />}
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.3rem', ...det }}>
               <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dashed #8b5cf6', marginRight: 5, verticalAlign: 3 }} />Cash forecast</span>
               <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dotted var(--text-red-600)', marginRight: 5, verticalAlign: 3 }} />Cash floor</span>
               <span style={{ color: 'var(--text-red-600)' }}>▼ bill due</span>
               <span style={{ color: 'var(--text-green-700)' }}>▲ receipt expected</span>
-              <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <label htmlFor="bridge-cash" style={det}>Cash on hand today</label>
-                <input id="bridge-cash" value={cashDraft} onChange={(e) => setCashDraft(e.target.value)} placeholder="e.g. 164000" inputMode="numeric" style={inputStyle} />
-                <button type="button" onClick={() => void saveCash()} style={btnStyle}>Set</button>
-                {data.cashSetting && data.cashSetting.asOfYmd !== data.todayYmd && cashToday != null && (
-                  <span style={det}>typed {md(data.cashSetting.asOfYmd)} · rolled to {shortK(cashToday)} through bank flows since</span>
+              <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="bridge-cash-source">
+                {bank ? (
+                  <>
+                    <span style={det}>
+                      Cash on hand <b style={{ color: 'var(--text)' }}>{shortK(bank.usd)}</b> · the bank's balance at {bankReadAt}
+                      {bank.accounts.length > 1 ? ` · ${mercuryAccountsLine(bank.accounts)}` : ''}
+                    </span>
+                    {data.cashSetting && typedRolled != null && Math.abs(typedRolled - bank.usd) >= 1000 && (
+                      <span style={{ ...det, color: 'var(--text-amber-800)' }} data-testid="bridge-cash-typed-drift">
+                        the figure typed {md(data.cashSetting.asOfYmd)} rolled through the ledger would read {shortK(typedRolled)}: {shortK(Math.abs(typedRolled - bank.usd))} of flows since are not in the app
+                      </span>
+                    )}
+                    <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={bankLoading} style={btnStyle}>
+                      {bankLoading ? 'Reading…' : 'Read again'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="bridge-cash" style={det}>Cash on hand today</label>
+                    <input id="bridge-cash" value={cashDraft} onChange={(e) => setCashDraft(e.target.value)} placeholder="e.g. 164000" inputMode="numeric" style={inputStyle} />
+                    <button type="button" onClick={() => void saveCash()} style={btnStyle}>Set</button>
+                    {bankError && <span style={{ ...det, color: 'var(--text-amber-800)' }}>the bank could not be read ({bankError}) — the typed figure stands for now</span>}
+                    {data.cashSetting && data.cashSetting.asOfYmd !== data.todayYmd && cashToday != null && (
+                      <span style={det}>typed {md(data.cashSetting.asOfYmd)} · rolled to {shortK(cashToday)} through bank flows since</span>
+                    )}
+                  </>
                 )}
                 <label htmlFor="bridge-floor" style={{ ...det, marginLeft: '0.6rem' }}>Floor</label>
                 <input id="bridge-floor" value={floorDraft} onChange={(e) => setFloorDraft(e.target.value)} inputMode="numeric" style={{ ...inputStyle, width: 80 }} />
                 <button type="button" onClick={() => void saveFloor()} style={btnStyle}>Set</button>
               </span>
             </div>
+            {cashOpen && cashPanel && <BridgeBreakdownPanel title="Where the window's cash comes from, and where it goes" sub="today's bank, plus every receipt the forecast expects, less every bill it schedules, is where the line ends" bars={cashPanel.waterfall} sources={cashPanel.sources} closing={cashPanel.lowest} testId="bridge-cash-panel" />}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
@@ -487,7 +1271,7 @@ export default function Bridge() {
             </div>
             <div style={panel}>
               <div style={label}>Receipts expected · next 8 weeks</div>
-              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → company pace → {DEFAULT_PAY_DAYS} days · late invoices assumed within {LATE_RECEIPT_GRACE_DAYS}d · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
+              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → company pace → {DEFAULT_PAY_DAYS} days · a late invoice assumed within its own pace from today (7–45d, {LATE_RECEIPT_GRACE_DAYS}d with none) · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
               <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
                 {receiptsByDay.slice(0, 10).map((r) => (
                   <li key={r.ymd} style={listRow}>
@@ -516,67 +1300,10 @@ export default function Bridge() {
                 )}
               </ul>
             </div>
-            <div style={panel}>
-              <div style={label}>What would change it</div>
-              <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
-                {fin.data && fin.data.unbilled.total > 0 && (
-                  <li style={listRow}>
-                    <span>
-                      Bill the finished work<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{shortK(fin.data.unbilled.total)} not yet billed — the biggest lever on both lines · <Link to="/jobs?tab=stages">Open Stages</Link></span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+ receipts</span>
-                  </li>
-                )}
-                {data.crew.pendingClosedHours > 0 && (
-                  <li style={listRow}>
-                    <span>
-                      Approve the {hrs(data.crew.pendingClosedHours)} pending<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>the profit rate reads low until then · <Link to="/people?tab=hours">Open approvals</Link></span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>accuracy</span>
-                  </li>
-                )}
-                <li style={listRow}>
-                  <span>
-                    Cut overhead 10%<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>of {money(speed.overheadPerDay)}/day</span>
-                  </span>
-                  <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+{money(speed.overheadPerDay * 0.1)}/day</span>
-                </li>
-                {data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 && profit.contributionMargin != null && (
-                  <li style={listRow}>
-                    <span>
-                      One more field day a week<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>field earned {money(data.totals.earnedUsd / data.crew.fieldHoursWindow)} per approved hour; {Math.round(profit.contributionMargin * 100)}% of it is margin</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+{money(((data.totals.earnedUsd / data.crew.fieldHoursWindow) * profit.contributionMargin * 8) / 7)}/day</span>
-                  </li>
-                )}
-                {data.levers.bidsDue.slice(0, 3).map((b) => (
-                  <li key={b.id} style={listRow}>
-                    <span>
-                      Win {b.label}<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{money(b.bidValueUsd)} · due {md(b.dueYmd)}</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>
-                      {profit.contributionMargin == null ? '—' : `+${money((b.bidValueUsd * profit.contributionMargin) / 60)}/day over 60d`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
 
-          {(data.crew.pendingClosedHours > 0 || (data.hygiene.unattributedNoncard ?? 0) > 0 || (data.hygiene.unlinkedCard ?? 0) > 0 || data.earned.assumedHalfJobs.length > 0 || data.earned.noRevenueJobs.length > 0 || data.cashSetting) && (
-            <div style={{ marginTop: '0.6rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: 'var(--text-amber-900)', display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <strong style={{ letterSpacing: '0.12em', fontSize: '0.68rem' }}>DATA GAPS</strong>
-              {data.crew.pendingClosedHours > 0 && <span>{hrs(data.crew.pendingClosedHours)} unapproved</span>}
-              {(data.hygiene.unattributedNoncard ?? 0) > 0 && <span>{data.hygiene.unattributedNoncard} bank transfers unsorted</span>}
-              {(data.hygiene.unlinkedCard ?? 0) > 0 && <span>{data.hygiene.unlinkedCard} card purchases unsorted</span>}
-              {data.earned.assumedHalfJobs.length > 0 && <span>{data.earned.assumedHalfJobs.length} open job{data.earned.assumedHalfJobs.length === 1 ? '' : 's'} with no % complete — assumed half done</span>}
-              {data.earned.noRevenueJobs.length > 0 && <span>{data.earned.noRevenueJobs.length} worked job{data.earned.noRevenueJobs.length === 1 ? '' : 's'} with no contract $ — earning $0</span>}
-              {data.cashSetting && <span>cash on hand is typed ({md(data.cashSetting.asOfYmd)}), not synced</span>}
-            </div>
-          )}
-
           <p style={{ ...det, marginTop: '0.8rem', maxWidth: '92ch' }}>
-            <b>How it's counted:</b> profit rate = earned (each approved field hour × its job's contract ÷ expected hours) − job costs (field labor, purchases and supply invoices allocated to jobs, sub sheets) − overhead (the People → Overhead pool). Net position = cash + owed to you − owed by you, with history rebuilt from bank flows, invoices sent, payments received, and supply invoices dated and paid. Cash forecast = cash today, bills on due dates, receipts on expected dates, office parts as a daily drain. Window {data.windowStart} → {data.todayYmd}: earned {shortK(data.totals.earnedUsd)} · field labor {shortK(data.totals.fieldLaborUsd)} · materials {shortK(data.totals.materialsUsd)} · subs {shortK(data.totals.subLaborUsd)} · overhead {shortK(data.totals.overheadUsd)}.
+            <b>How it's counted</b> is in the guide <Link to="/help/the-bridge">read the Bridge</Link>. Window {data.windowStart} → {data.todayYmd}: earned {shortK(data.totals.earnedUsd)} · field labor {shortK(data.totals.fieldLaborUsd)} · materials {shortK(data.totals.materialsUsd)} · subs {shortK(data.totals.subLaborUsd)} · overhead {shortK(data.totals.overheadUsd)}.
           </p>
         </>
       )}
@@ -640,19 +1367,6 @@ function TruthCheckPanel({ truth, windowStartLabel }: { truth: TruthCheck; windo
           </div>
         </div>
       </div>
-      {truth.signals.length > 0 && (
-        <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0 }}>
-          {truth.signals.map((s) => (
-            <li key={s.key} style={listRow}>
-              <span>
-                {s.label}
-                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.detail}</span>
-              </span>
-              <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{s.usd != null ? `≈ ${shortK(s.usd)}` : `${s.count.toLocaleString('en-US')} rows`}</span>
-            </li>
-          ))}
-        </ul>
-      )}
       <div style={{ ...det, marginTop: '0.4rem' }}>
         Net side = invoices sent − (payments received − bank net flow + supply invoices dated − supply invoices paid), the flows the line above walks. Money in that isn't a customer payment (a loan, an owner deposit) reads here as a negative cost; payroll and sub labor count when the bank pays them, not when the hours are worked.
       </div>

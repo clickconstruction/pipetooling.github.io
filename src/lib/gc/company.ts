@@ -15,6 +15,11 @@ export const GC_COMPANY = {
   name: 'Click Construction',
   shortName: 'Click',
   /**
+   * The entity's legal name, as a statutory paper names it: our lien waiver's releasing party on a GC
+   * billing job (the owner's word, 2026-10-11).
+   */
+  legalName: 'Click Construction, LLC',
+  /**
    * The address on our pay application's "from the contractor" (Owner Billing's O2b). Empty until the
    * owner names our GC entity and its address (call 12); the prototype's made-up one stays there.
    */

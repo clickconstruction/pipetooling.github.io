@@ -39,7 +39,7 @@ export function progressPaymentForJob(job: ProgressPaymentJobLike, crew: JobCrew
   const view = buildProgressPaymentView({
     money: model,
     stageBar,
-    fixtures: job.fixtures.map((f) => ({ id: f.id, name: f.name, count: f.count, line_unit_price: f.line_unit_price, sequence_order: f.sequence_order, invoice_id: f.invoice_id })),
+    fixtures: job.fixtures.map((f) => ({ id: f.id, name: f.name, count: f.count, line_unit_price: f.line_unit_price, sequence_order: f.sequence_order, invoice_id: f.invoice_id, progress_pct: f.progress_pct ?? null })),
     // v2.4353: each invoice's amount and the payments linked to it, so a part-paid bill's lines read part paid.
     invoices: job.invoices.map((i) => ({ id: i.id, status: i.status, amount: i.amount ?? null, applied: appliedTo(job.payments, i.id) })),
     crew,

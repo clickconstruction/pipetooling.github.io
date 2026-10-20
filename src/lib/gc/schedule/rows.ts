@@ -118,7 +118,7 @@ export interface ScheduleRows {
   waits: { id: string; kind: string; title: string; package_id: string | null; who: string; asked_on: string | null; expected_on: string; shipped_on: string | null; done_on: string | null; note: string | null; created_at: string }[]
   waitHolds: { wait_id: string; activity_id: string }[]
   crewCounts: { package_id: string; company_id: string; week_of: string; count: number; said_on: string; created_at: string }[]
-  sends: { id: string; sent_on: string; sent_by: string | null; sent_to: string; subject: string; lines: string[]; created_at: string }[]
+  sends: { id: string; sent_on: string; sent_by: string | null; sent_to: string; subject: string; lines: string[]; email_send_log_id?: string | null; created_at: string }[]
   /** The reader's own what-if copy (decision 6). Null: none open. */
   whatIf: { user_id: string; made_on: string; base: unknown; copy: unknown } | null
   /** The rough schedule while we bid (G-45). Null: none drawn. */
@@ -436,7 +436,7 @@ function crewCountsOf(rows: ScheduleRows): CrewCount[] {
 
 /** The customer's schedule as sent on its own (G-94), oldest first. */
 function sendsOf(rows: ScheduleRows, names: PeopleNames): ScheduleSend[] {
-  return byMoment(rows.sends, (s) => s.created_at).map((s) => ({ id: s.id, on: s.sent_on, by: nameOf(names, s.sent_by), to: s.sent_to, subject: s.subject, lines: s.lines }))
+  return byMoment(rows.sends, (s) => s.created_at).map((s) => ({ id: s.id, on: s.sent_on, by: nameOf(names, s.sent_by), to: s.sent_to, subject: s.subject, lines: s.lines, ...(s.email_send_log_id ? { emailed: true as const } : {}) }))
 }
 
 /**
@@ -458,7 +458,14 @@ function whatIfOf(rows: ScheduleRows, names: PeopleNames): ScheduleWhatIf | null
 
 /** The rough schedule while we bid (G-45). */
 function roughOf(rows: ScheduleRows, names: PeopleNames): RoughSchedule | null {
-  const r = rows.rough
+  return roughFromRow(rows.rough, names)
+}
+
+/**
+ * One `gc_rough_schedules` row as the kernels keep the rough (G-45). Exported for the reads that want the rough alone
+ * (the schedule's PR 12b): the keep after the Board's bid presses, and Our number's weeks. Null: none drawn.
+ */
+export function roughFromRow(r: ScheduleRows['rough'], names: PeopleNames): RoughSchedule | null {
   if (!r) return null
   const days = (r.stage_days && typeof r.stage_days === 'object' ? r.stage_days : {}) as Record<string, number>
   return {

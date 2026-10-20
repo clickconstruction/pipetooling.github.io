@@ -7,16 +7,19 @@
  *
  * Read from the rows, never stored (BOARD_REAL_BUILD.md, decision 4): how many times a company was
  * asked and how many quotes it sent (every ask is here, so there is no history to add), the day an ask
- * was last chased (the newest office line on it), and a company's papers until B6 keys them to the
- * company (none on file yet).
+ * was last chased (the newest office line on it), how many trades it won (the awards on its asks), and its
+ * papers, from its own rows in person_contract_documents (B6-b-ii, `companyPapers`).
  */
 import type { Json } from '../../types/database'
 import { extractContactFromCustomer } from '../customerContactDisplay'
+import { companyPapers, type CompanyPaperRow } from './companyPapers'
 import { townFromAddress } from './map'
 import type { GcProjectView } from './projectRows'
+import { setTouches, type PlanSetSendRow } from './setTouches'
 import type {
   AskContact,
   BidTab,
+  CustomerSend,
   DeclineReason,
   GcCustomer,
   GcLostWhy,
@@ -26,6 +29,8 @@ import type {
   Includes,
   Invite,
   InviteStatus,
+  PaperKind,
+  PaperSend,
   Partner,
   PartnerVetting,
   PlanQuestion,
@@ -111,6 +116,15 @@ export interface ContactRow {
   created_at: string
 }
 
+/** `gc_customer_contacts` (B2b-v): a customer's call log, read for the customers the projects name. */
+export interface CustomerContactRow {
+  customer_id: string
+  contacted_on: string
+  by_name: string
+  note: string
+  created_at: string
+}
+
 /** `gc_trade_promises` and `gc_trade_promise_moves`. */
 export interface PromiseRow {
   id: string
@@ -141,6 +155,19 @@ export interface BoardDatesRow {
   started_on: string | null
   lost_why: string | null
   won_by: string | null
+  /** The day the job was closed (Building's U6c, `gc_close_job`). Null: still open. */
+  closed_on?: string | null
+  /** Start anyway (B6-c-i, `gc_start_project`): who pressed it, why, and what was still missing. Null: a plain Start. */
+  started_anyway_by?: string | null
+  started_anyway_reason?: string | null
+  started_anyway_missing?: string[] | null
+}
+
+/** `bids` behind our own trades (`gc_trade_packages.own_bid_id`): our own crew's number, as the Trades mode bid has it. */
+export interface OwnBidRow {
+  id: string
+  bid_value: number | string | null
+  bid_number: string | null
 }
 
 /** A company's vetting form (B1's `gc_company_vetting_forms`), as they wrote it. */
@@ -170,6 +197,8 @@ export interface ProjectMoneyRow {
   general_conditions: number | string
   contingency_pct: number | string
   fee_pct: number | string
+  /** O11b: the Pipeline job our general conditions are spent on. */
+  general_conditions_job_id?: string | null
 }
 
 /** `gc_bid_tabs` (B5): a trade's bid tab, shared with the companies that quoted. */
@@ -212,6 +241,39 @@ export interface SowLineRow {
   change_order_id: string | null
 }
 
+/** `gc_paper_sends` (B6-b-i): one send of a paper to a company, written by `gc_send_paper` with its promise. */
+export interface PaperSendRow {
+  id: string
+  company_id: string
+  paper: string
+  project_id: string | null
+  package_id: string | null
+  sent_on: string
+  due_on: string
+  note: string
+  first: boolean
+  draws: number[] | null
+  created_at: string
+}
+
+/** A send of our contract to the customer (B6-d-i's gc_owner_contract_sends): a dev's until award's door, then the money team's. */
+export interface OwnerContractSendRow {
+  id: string
+  project_id: string
+  customer_id: string | null
+  first: boolean
+  sent_on: string
+  sign_by: string
+  note: string
+  worth: Json
+  file_path: string
+  file_name: string
+  file_sha256: string
+  signed_on: string | null
+  signer_printed_name: string | null
+  created_at: string
+}
+
 export interface BoardRows {
   today: string
   projects: GcProjectView[]
@@ -246,6 +308,37 @@ export interface BoardRows {
   /** The statements of work (B6-a) and their lines. Missing: none read, so no trade has one. */
   sows?: SowRow[]
   sowLines?: SowLineRow[]
+  /**
+   * The companies' own papers (B6-b-ii): their rows in person_contract_documents with a company_id. Missing: none
+   * read, so every company reads as having none, as before B6-b.
+   */
+  papers?: CompanyPaperRow[]
+  /** Every send of a paper (B6-b-i's gc_paper_sends), dev only while the Board is built. Missing: none read. */
+  paperSends?: PaperSendRow[]
+  /** Every send of our contract to a customer (B6-d-i), for whoever its policy lets read them. Missing: none read. */
+  ownerContractSends?: OwnerContractSendRow[]
+  /** The customers' call log (B2b-v-ii, `gc_customer_contacts`), the office team's. Missing: none read. */
+  customerContacts?: CustomerContactRow[]
+  /**
+   * Which companies each set of plans went to, and whether it changed their trade (B2b-vi-b, `gc_plan_set_sends`), the office
+   * team's: what the sets' `touches` read (`setTouches`). Missing: none read, so no set touches a trade, as before B2b-vi-b.
+   */
+  planSetSends?: PlanSetSendRow[]
+  /** The sent copies of our contract's emails (B6-d-iii-b), by send: a real email went. A test copy is never filed. */
+  ownerContractEmails?: { source_id: string | null; sent_on: string; recipient_name: string }[]
+  /**
+   * Our own trades' Trades mode bids (B6-c-ii, call C). A trade we do ourselves is priced once its bid's value is above 0.
+   * Missing, or a bid this reader cannot see: our budget stands in, not priced.
+   */
+  ownBids?: OwnBidRow[]
+}
+
+/** One customer's call log as `GcCustomer.contacts` holds it: newest first, the line's day, who logged it and what was said. */
+export function customerContactsOf(rows: readonly CustomerContactRow[], customerId: string): GcCustomer['contacts'] {
+  return rows
+    .filter((r) => r.customer_id === customerId)
+    .sort((a, b) => b.contacted_on.localeCompare(a.contacted_on) || b.created_at.localeCompare(a.created_at))
+    .map((r) => ({ on: r.contacted_on, by: r.by_name, note: r.note }))
 }
 
 const num = (v: number | string | null | undefined): number => {
@@ -262,6 +355,8 @@ const INVITE_STATUSES: InviteStatus[] = ['invited', 'opened', 'bid', 'declined']
 const DECLINE_REASONS: DeclineReason[] = ['busy', 'far', 'size', 'scope', 'terms', 'other']
 const LOST_WHYS: GcLostWhy[] = ['price', 'other_builder', 'project_died', 'no_bid', 'no_answer']
 const PROMISE_KINDS: PromiseKind[] = ['insurance', 'w9', 'sow', 'start', 'submittals', 'delivery', 'payApp', 'punch', 'closeout', 'msa']
+// gc_paper_sends_paper_known's five.
+const PAPER_KINDS: PaperKind[] = ['msa', 'sow', 'insurance', 'w9', 'waiver']
 const HOWS: AskContact['how'][] = ['call', 'text', 'email', 'nudge', 'portal']
 const MAIL_GROUPS: PortalMailGroup[] = ['quotes', 'job', 'contracts', 'pay']
 
@@ -349,8 +444,16 @@ function vettingOf(c: CompanyRow, names: Record<string, string>, form: VettingFo
   }
 }
 
-/** A company as the kernels read it. Its counts come from its asks; its papers wait for B6. */
-export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people'> & { contacts?: ContactRow[] }): Partner {
+/**
+ * A company as the kernels read it. Its counts come from its asks and the awards on them (`awarded`, the asks that
+ * won a trade); its papers from its own rows (`companyPapers`).
+ */
+export function partnerFromRows(
+  c: CompanyRow,
+  invites: InviteRow[],
+  quotes: QuoteRow[],
+  rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people' | 'papers'> & { contacts?: ContactRow[]; awarded?: ReadonlySet<string> },
+): Partner {
   const asks = invites.filter((i) => i.company_id === c.id)
   const quoted = new Set(quotes.map((q) => q.invite_id))
   const basePoint = pointOf(rows as BoardRows, c.address)
@@ -370,14 +473,10 @@ export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: Quo
     base: c.address ? (townFromAddress(c.address) ?? c.address) : null,
     ...(basePoint ? { basePoint } : {}),
     maxMiles: c.max_miles,
-    msa: 'none',
-    msaSignedOn: null,
-    coiExpires: null,
-    w9: false,
+    ...companyPapers(rows.papers ?? [], c.id),
     invited: asks.length,
     bids: asks.filter((i) => quoted.has(i.id)).length,
-    // B6-a-ii counts the awards.
-    won: 0,
+    won: asks.filter((i) => rows.awarded?.has(i.id)).length,
     promisesMade: 0,
     promisesKept: 0,
     ...(c.address ? { address: c.address } : {}),
@@ -388,6 +487,48 @@ export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: Quo
     ...(people.length ? { people } : {}),
     ...(own.length ? { contacts: own } : {}),
     ...(c.contact_gets ? { contactGets: mailGroups(c.contact_gets) } : {}),
+  }
+}
+
+/** One send of a paper as the kernels read it (`PaperSend`). */
+/** A price by line from its jsonb: each line a number, anything else dropped. */
+function worthOf(j: Json): Record<string, number> {
+  if (!j || typeof j !== 'object' || Array.isArray(j)) return {}
+  return Object.fromEntries(Object.entries(j).filter((e): e is [string, number] => typeof e[1] === 'number'))
+}
+
+/** A send of our contract as the kernels read it (CustomerSend, paper contract), to the customer it went to. */
+export function ownerContractSendFromRow(s: OwnerContractSendRow, projectCustomer: string | undefined, emails: BoardRows['ownerContractEmails'] = []): CustomerSend {
+  const emailed = (emails ?? []).filter((e) => e.source_id === s.id).sort((a, b) => a.sent_on.localeCompare(b.sent_on))[0]
+  return {
+    id: s.id,
+    customerId: s.customer_id ?? projectCustomer ?? '',
+    projectId: s.project_id,
+    paper: 'contract',
+    first: s.first,
+    on: s.sent_on,
+    by: s.sign_by,
+    note: s.note,
+    worth: worthOf(s.worth),
+    file: { path: s.file_path, name: s.file_name, sha256: s.file_sha256 },
+    ...(s.signed_on ? { signedOn: s.signed_on } : {}),
+    ...(s.signer_printed_name ? { signer: s.signer_printed_name } : {}),
+    ...(emailed ? { emailed: { on: emailed.sent_on, to: emailed.recipient_name } } : {}),
+  }
+}
+
+export function paperSendFromRow(s: PaperSendRow): PaperSend {
+  return {
+    id: s.id,
+    partnerId: s.company_id,
+    paper: PAPER_KINDS.includes(s.paper as PaperKind) ? (s.paper as PaperKind) : 'msa',
+    ...(s.project_id ? { projectId: s.project_id } : {}),
+    ...(s.package_id ? { packageId: s.package_id } : {}),
+    on: s.sent_on,
+    by: s.due_on,
+    note: s.note,
+    first: s.first,
+    ...(s.draws?.length ? { draws: s.draws } : {}),
   }
 }
 
@@ -412,6 +553,14 @@ export function promiseFromRows(p: PromiseRow, moves: PromiseMoveRow[]): TradePr
   }
 }
 
+/** Our own crew's number (call C): the Trades mode bid's value once it is above 0, else our budget, not priced. */
+function selfPerformOf(ownBidId: string | null, budget: number, bids: OwnBidRow[] | undefined): NonNullable<TradePackage['selfPerform']> {
+  const bid = ownBidId ? bids?.find((b) => b.id === ownBidId) : undefined
+  const value = num(bid?.bid_value)
+  const ref = bid?.bid_number || ownBidId || ''
+  return value > 0 ? { ref, value, note: 'Our own crew.', priced: true } : { ref, value: budget, note: 'Our own crew.', priced: false }
+}
+
 /** One project as the board's kernels read it. */
 export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invitesByPackage: Map<string, Invite[]>): GcProject {
   const dates = rows.boardDates[view.id]
@@ -424,10 +573,11 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     id: t.id,
     trade: t.trade,
     bidTab: bidTabOf(rows, t.id),
-    scope: t.scope.map((s) => ({ id: s.id, label: s.label })),
+    // The sheets and sections a line reads from (B2b-vi-b): null is not said, so the guess stands; empty is the trade as a whole.
+    scope: t.scope.map((s) => ({ id: s.id, label: s.label, ...(s.sheets !== null ? { sheets: s.sheets } : {}), ...(s.specs !== null ? { specs: s.specs } : {}) })),
     budget: t.budget,
-    // Our own trade's number is its Trades mode bid; until the board reads that bid, our budget stands in, not priced.
-    selfPerform: t.ours ? { ref: t.ownBidId ?? '', value: t.budget, note: 'Our own crew.', priced: false } : null,
+    // Our own trade's number is its Trades mode bid once it is priced (call C); until then our budget stands in, not priced.
+    selfPerform: t.ours ? selfPerformOf(t.ownBidId, t.budget, rows.ownBids) : null,
     invites: invitesByPackage.get(t.id) ?? [],
     // What we carry (B5): our own trade, the quote on an ask, our budget, or nothing yet. An award carries
     // the ask it went to (B6-a), as the prototype's award does.
@@ -461,6 +611,10 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     permitOn: dates?.permit_on ?? null,
     startDate: dates?.start_date ?? null,
     startedOn: dates?.started_on ?? null,
+    // Start anyway (B6-c-i): who by name, why, and what was owed that day.
+    ...(dates?.started_on && dates.started_anyway_missing?.length
+      ? { startedAnyway: { by: (dates.started_anyway_by && rows.userNames?.[dates.started_anyway_by]) || 'Someone on our team', reason: dates.started_anyway_reason ?? '', missing: dates.started_anyway_missing } }
+      : {}),
     customerId: view.customerId,
     owner: name(view.customerId),
     customerRole: view.customerRole,
@@ -471,14 +625,29 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     stage: stageOf(view.stage),
     bidDue: view.bidDue,
     sizeNote: view.sizeNote,
-    planSets: view.planSets.map((s) => ({ rev: s.rev, label: s.label, issuedOn: s.issuedOn, touches: [] })),
+    planSets: view.planSets.map((s) => ({
+      rev: s.rev,
+      label: s.label,
+      issuedOn: s.issuedOn,
+      // The trades the set touches (B2b-vi-b, call T): the office's word where the set went out, as the trade portal reads
+      // it; for a set not sent yet, the New plans window's guess from the set's rows, until New project saves the office's
+      // touched trades on gc_plan_sets. The ring's Confirm quotes and Compare quotes lean on that guess for an unsent set.
+      touches: rows.planSetSends ? setTouches(view, s, rows.planSetSends, rows.invites) : [],
+      changedSheets: s.changedSheets,
+      ...(s.changedSpecs.length ? { changedSpecs: s.changedSpecs } : {}),
+      ...(s.addedLines.length ? { addedLines: s.addedLines } : {}),
+    })),
+    // The index and the manual as they stand after the newest set, for what changed under a quote (`stale.ts`'s `reachOf`).
+    index: { sheets: view.sheets, specs: view.specs },
     packages,
     generalConditions: num(money?.general_conditions),
+    generalConditionsJobId: money?.general_conditions_job_id ?? null,
     contingencyPct: num(money?.contingency_pct),
     feePct: num(money?.fee_pct),
     lostOn: view.lostOn,
     lostWhy,
     wonBy: dates?.won_by ?? null,
+    ...(dates?.closed_on ? { closedOn: dates.closed_on } : {}),
   }
 }
 
@@ -532,13 +701,40 @@ export function boardStateFromRows(rows: BoardRows): GcState {
     list.push(inviteFromRows(i, rows.quotes, rows.contacts))
     invitesByPackage.set(i.package_id, list)
   }
-  // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. No call log is kept for a customer yet.
-  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }), payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [] }))
+  // The asks that won a trade (B6-a's award), for each company's won count.
+  const awarded = new Set(rows.projects.flatMap((p) => p.trades.map((t) => t.awardedInviteId).filter((id): id is string => Boolean(id))))
+  // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. The customer's call log
+  // (B2b-v-ii), newest first, as a company's own lines read: the customer window's Activity and the call list read it.
+  // No past jobs with us before GC mode (`past`, which customerSummary reads, B2b-i).
+  const customers: GcCustomer[] = rows.customers.map((c) => ({
+    id: c.id,
+    name: c.name,
+    contact: c.contact ?? '',
+    ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }),
+    payDays: null,
+    portalOn: false,
+    retainagePct: null,
+    address: '',
+    contacts: customerContactsOf(rows.customerContacts ?? [], c.id),
+    past: [],
+  }))
   return {
     today: rows.today,
     customers,
     projects: rows.projects.map((p) => boardProjectFromView(p, rows, invitesByPackage)),
-    partners: rows.companies.map((c) => partnerFromRows(c, rows.invites, rows.quotes, rows)),
+    partners: rows.companies.map((c) => partnerFromRows(c, rows.invites, rows.quotes, { ...rows, awarded })),
     tradePromises: rows.promises.map((p) => promiseFromRows(p, rows.promiseMoves)),
+    // Oldest first, as the kernels read them (paperSendsFor, paperStep's history).
+    ...(rows.paperSends
+      ? { paperSends: [...rows.paperSends].sort((a, b) => a.sent_on.localeCompare(b.sent_on) || a.created_at.localeCompare(b.created_at)).map(paperSendFromRow) }
+      : {}),
+    // Oldest first too (customerSendsFor): the newest is the one their portal offers.
+    ...(rows.ownerContractSends
+      ? {
+          customerSends: [...rows.ownerContractSends]
+            .sort((a, b) => a.created_at.localeCompare(b.created_at))
+            .map((s) => ownerContractSendFromRow(s, rows.projects.find((p) => p.id === s.project_id)?.customerId, rows.ownerContractEmails)),
+        }
+      : {}),
   }
 }

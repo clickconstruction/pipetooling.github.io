@@ -93,10 +93,35 @@ describe('the primary query per scope', () => {
       expect(r).toEqual({ ok: true, jobs: [], hiddenByMinHcp: undefined })
       expect(primary()).toHaveLength(1)
       const q = primary()[0]!
-      expect(stepArgs(q, 'order')).toEqual([['hcp_number', { ascending: false }]])
+      expect(stepArgs(q, 'order')).toEqual([['hcp_number', { ascending: false }], ['id', { ascending: true }]])
+      expect(stepArgs(q, 'range')).toEqual([[0, 999]])
       check(q)
     })
   }
+
+  // v2.5571: PostgREST answers an un-ranged read with its first 1,000 rows and no error; the
+  // Paid in Full scope carried 767 on 2026-10-15. The read pages until a short page arrives.
+  it('reads a second page when the first is full, on a fresh query each time, so job 1,001 is not lost', async () => {
+    const all = Array.from({ length: 1400 }, (_, i) => row({ id: `j${String(i).padStart(4, '0')}`, status: 'paid' }))
+    route = (table, steps) => {
+      if (table !== 'jobs_ledger') return []
+      const r = steps.find((s) => s.method === 'range')
+      return r ? all.slice(r.args[0] as number, (r.args[1] as number) + 1) : all.slice(0, 1000)
+    }
+    const r = await fetchJobsLedgerWithDetailsForStages({ statusScope: 'paid', jobSummaryEnrich: true })
+    expect(primary().map((q) => stepArgs(q, 'range'))).toEqual([[[0, 999]], [[1000, 1999]]])
+    expect(primary()[0]).not.toBe(primary()[1])
+    for (const q of primary()) expect(stepArgs(q, 'eq')).toEqual([['status', 'paid']])
+    expect(r.ok && r.jobs).toHaveLength(1400)
+    expect(r.ok && r.jobs[1399]!.id).toBe('j1399')
+  })
+
+  it('reads one page when it comes back short', async () => {
+    route = (table) => (table === 'jobs_ledger' ? [row({ id: 'a' }), row({ id: 'b' })] : [])
+    const r = await fetchJobsLedgerWithDetailsForStages({ statusScope: 'paid', jobSummaryEnrich: true })
+    expect(primary()).toHaveLength(1)
+    expect(r.ok && r.jobs.map((j) => j.id)).toEqual(['a', 'b'])
+  })
 
   it('a customer filter is trimmed onto the query; a blank one is dropped', async () => {
     await fetchJobsLedgerWithDetailsForStages({ customerFilter: '  c1 ', statusScope: 'paid' })
@@ -130,6 +155,7 @@ describe('the primary query per scope', () => {
       ['rtb_gate.status', 'ready_to_bill'],
       ['customer_id', 'c1'],
     ])
+    expect(stepArgs(companion!, 'range')).toEqual([[0, 999]])
     expect(r.ok && r.jobs.map((j) => j.id)).toEqual(['a', 'b'])
     expect(r.ok && 'rtb_gate' in r.jobs[1]!).toBe(false) // the gate alias never reaches the board
   })
@@ -139,7 +165,8 @@ describe('the primary query per scope', () => {
     const r = await fetchJobsLedgerWithDetailsForStages({ ids: ['x', 'y'], statusScope: 'ready_to_bill' })
     expect(primary()).toHaveLength(1)
     expect(stepArgs(primary()[0]!, 'in')).toEqual([['id', ['x', 'y']]])
-    expect(stepArgs(primary()[0]!, 'order')).toEqual([['hcp_number', { ascending: false }]])
+    expect(stepArgs(primary()[0]!, 'order')).toEqual([['hcp_number', { ascending: false }], ['id', { ascending: true }]])
+    expect(stepArgs(primary()[0]!, 'range')).toEqual([[0, 999]])
     expect(r.ok && r.jobs.map((j) => j.id)).toEqual(['x'])
   })
 

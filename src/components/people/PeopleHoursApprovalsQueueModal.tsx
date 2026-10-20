@@ -19,6 +19,8 @@ import type { ClockSessionRow } from '../../types/clockSessions'
 import { denverCalendarDayKey, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { formatHoursShort } from '../../lib/myTeamApprovals'
 import { fetchAllPendingClockSessions, PENDING_APPROVALS_FETCH_CAP } from '../../lib/people/fetchAllPendingClockSessions'
+import { fetchScheduleBlocksForRange } from '../../lib/people/fetchScheduleBlocks'
+import { matchSessionsToSchedule, onScheduleIds, pendingDateRange, scheduleMatchTitle, ON_SCHEDULE_CHIP, type ScheduleBlockLite } from '../../lib/people/scheduleMatch'
 import {
   buildApprovalsQueue,
   describeApproveOutcome,
@@ -111,6 +113,8 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   const prefixMap = useLedgerPrefixMap()
   const { user: authUser, role } = useAuth()
   const [rows, setRows] = useState<ClockSessionRow[] | null>(null)
+  /** v2.5223: the dispatch schedule over the pending days, for the on-the-schedule rule; empty when the read fails (the chips are optional). */
+  const [blocks, setBlocks] = useState<ScheduleBlockLite[]>([])
   /** person_name → salary flags for the "salary — counts as flat hours" chip; empty when the read fails (chips are optional). */
   const [payFlagsByName, setPayFlagsByName] = useState<ReadonlyMap<string, SalariedPayConfigFlags>>(() => new Map())
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -134,6 +138,8 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
         supabase.from('people_pay_config').select('person_name, is_salary, record_hours_but_salary'),
       ])
       setRows(data)
+      const range = pendingDateRange(data)
+      void (range ? fetchScheduleBlocksForRange(range.from, range.to) : Promise.resolve([])).then(setBlocks, () => setBlocks([]))
       void loadTypedHoursWaiting().then((waiting) => {
         setTypedOntoApproved(waiting.filter((w) => w.state === 'approved' && (!pinUserId || w.userId === pinUserId)))
       })
@@ -332,6 +338,12 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
 
   const loading = rows == null
   const everything = batchOf(queue.sessionIds)
+  // On the schedule (v2.5223): the pending sessions dispatch had on that job that day, within an hour.
+  const scheduleMatches = useMemo(() => {
+    const lite = fullQueue.people.flatMap((p) => p.weeks.flatMap((w) => w.sessions.map((x) => ({ id: x.id, user_id: x.row.user_id, work_date: x.workDate, job_ledger_id: x.row.job_ledger_id, hours: x.hours, flagged: x.flags.long || x.flags.tiny }))))
+    return matchSessionsToSchedule(lite, blocks)
+  }, [fullQueue, blocks])
+  const onSchedule = batchOf(onScheduleIds(queue.sessionIds.map((id) => ({ id })), scheduleMatches))
   const capped = (rows?.length ?? 0) >= PENDING_APPROVALS_FETCH_CAP
 
   function renderSession(s: ApprovalsQueueSession<ClockSessionRow>) {
@@ -376,6 +388,15 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
               ⚠ no job
             </span>
           ) : null}
+          {(() => {
+            const m = scheduleMatches.get(s.id)
+            if (!m) return null
+            return (
+              <span style={m.within ? INFO_CHIP : FLAG_CHIP} title={scheduleMatchTitle(m)} data-testid={m.within ? 'on-schedule-chip' : 'off-schedule-chip'}>
+                {m.within ? ON_SCHEDULE_CHIP : '⚠ off the schedule'}
+              </span>
+            )
+          })()}
           {sessionApprovalChips({ payConfig: payFlagsByName.get((r.users?.name ?? '').trim()), clockedOutAt: r.clocked_out_at }).map((c) => (
             <span key={c.label} style={INFO_CHIP} title={c.title}>
               {c.label}
@@ -562,6 +583,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
                     </>
                   ) : null}
                   {typedCount > 0 ? ` · ${typedCount} typed by hand` : ''}
+                  {onSchedule.ids.length > 0 ? ` · ${onSchedule.ids.length} on the dispatch schedule` : ''}
                   {capped ? ` · showing the first ${PENDING_APPROVALS_FETCH_CAP}` : ''}
                 </>
               )}
@@ -608,13 +630,25 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
           <button type="button" disabled={loading || allWeekKeys.length === 0} onClick={() => (allOpen ? collapseAll() : expandAll())} style={{ ...BTN_QUIET, opacity: loading || allWeekKeys.length === 0 ? 0.55 : 1 }}>
             {allOpen ? 'Collapse all' : 'Expand all'}
           </button>
+          {onSchedule.ids.length > 0 ? (
+            <button
+              type="button"
+              disabled={busy || loading}
+              title="Dispatch had each of these people on that job that day, and the day's clocked hours land within an hour of the schedule. The rest stay for you to read."
+              onClick={() => void approve(onSchedule.ids, 'the sessions on the dispatch schedule', onSchedule.hours, true, onSchedule.setAside)}
+              style={{ ...BTN_APPROVE, marginLeft: 'auto', padding: '0.4rem 0.9rem', fontSize: '0.875rem', fontWeight: 600 }}
+              data-testid="approve-on-schedule"
+            >
+              {busy ? 'Approving…' : `Approve the ${onSchedule.ids.length} on the schedule · ${formatHoursShort(onSchedule.hours)}`}
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={busy || loading || everything.ids.length === 0}
             title={everything.setAside > 0 ? `${everything.setAside} typed by hand or held — approved one at a time, not by this button` : undefined}
             onClick={() => void approve(everything.ids, flaggedOnly ? 'every flagged session' : 'everyone', everything.hours, true, everything.setAside)}
             style={{
-              marginLeft: 'auto',
+              marginLeft: onSchedule.ids.length > 0 ? undefined : 'auto',
               padding: '0.4rem 0.9rem',
               fontSize: '0.875rem',
               fontWeight: 600,

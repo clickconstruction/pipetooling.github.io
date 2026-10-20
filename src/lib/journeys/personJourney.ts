@@ -232,6 +232,10 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
   const isGc = rows.jobs.some((j) => j.gc_customer_id === subject.id) || rows.bidRooms.length > 0 || rows.gcStatements.length > 0
   const jobIdsOfCustomer = new Set(rows.jobs.map((j) => j.id))
 
+  // Tell the customer (v2.5593): the Booked text is the office's press on the schedule; its line is read in their thread.
+  steps['booked-text'] = na('Schedule: pressed by the office when the first visit is booked; read in their thread')
+  steps['estimate-text'] = na('Estimates: pressed by the office with the email; read in their thread')
+
   // -- estimate lane --
   const sentEstimates = rows.estimates.filter((e) => e.sent_at)
   const est = latestBy(sentEstimates, (e) => e.sent_at)
@@ -478,18 +482,30 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
       : na('None')
     // GC mode (v2.4799): the question email goes to a GC project's architect; the GC projects' own record lands with the company record.
     steps['plan-question-email'] = na('GC mode: read on the GC project')
+    // Messages cut 5: a text from the company number is a line in their thread, read there.
+    steps['gc-text'] = na('Messages: read in their thread')
     steps['submittal-email'] = na('GC mode: read on the GC project')
     steps['rfi-email'] = na('GC mode: read on the GC project')
     // GC mode (O4b): our pay application and the ask to certify it go to a GC project's customer and architect.
     steps['gc-pay-app-email'] = na('GC mode: read on the GC project')
     steps['gc-certify-ask-email'] = na('GC mode: read on the GC project')
+    steps['gc-certify-reminder-email'] = na('GC mode: read on the GC project')
     steps['gc-certified-email'] = na('GC mode: read on the GC project')
+    steps['gc-due-soon-email'] = na('GC mode: read on the GC project')
     steps['gc-change-order-email'] = na('GC mode: read on the GC project')
     steps['gc-reminder-email'] = na('GC mode: read on the GC project')
     steps['gc-interest-bill-email'] = na('GC mode: read on the GC project')
+    steps['gc-weekly-report-email'] = na('GC mode: read on the GC project')
+    steps['gc-schedule-email'] = na('GC mode: read on the GC project')
+    steps['gc-contract-email'] = na('GC mode: read on the GC project')
+    // Messages (cut 3): an email from the reply box is a line in the person's thread.
+    steps['gc-reply-email'] = na('Messages: read in their thread')
     // GC mode (O7c): their change order answer and their acceptance, pressed in their portal.
+    steps['gc-portal-sign-contract'] = na('GC mode: read on the GC project')
+    steps['gc-portal-schedule'] = na('GC mode: read on the GC project')
     steps['gc-portal-change-order'] = na('GC mode: read on the GC project')
     steps['gc-portal-accept-work'] = na('GC mode: read on the GC project')
+    steps['gc-portal-pay-by-card'] = na('GC mode: read on the GC project')
   }
 
   const liveJobs = rows.jobs.filter((j) => jobIdsOfCustomer.has(j.id) && j.status && j.status !== 'paid' && j.status !== 'archived').length
@@ -513,6 +529,9 @@ export function subJourney(subject: Extract<PersonSubject, { kind: 'sub' }>, row
   // GC mode: a trade partner's portal belongs to a GC trade company, which is not a sub of ours.
   steps['gc-trade-portal'] = na('GC mode: read on the trade partner company')
   steps['gc-trade-email'] = na('GC mode: read on the trade partner company')
+  steps['gc-file-link'] = na('GC mode: read on the message that sent the file')
+  steps['sub-reply-email'] = na('Messages: read in their thread')
+  steps['sub-text'] = na('Messages: read in their thread')
   const c = latestBy(rows.contracts, (x) => x.sent_at ?? x.signed_at) ?? rows.contracts[0] ?? null
   if (!c) {
     steps['sub-contract-email'] = never('No contract sent', { label: 'Open People → Contracts', to: '/people?tab=contracts' })

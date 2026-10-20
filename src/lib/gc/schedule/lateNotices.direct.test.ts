@@ -11,9 +11,11 @@ import type { GcState } from '../types'
 import {
   companyLateNotice,
   lateAheadWords,
+  lateDoor,
   lateNoticeLogWords,
   lateNoticeMove,
   lateNoticeMoveWords,
+  lateNoticeProblem,
   lateNoticeReasons,
   lateNoticeRows,
   lateNoticesToAnswer,
@@ -225,5 +227,19 @@ describe('a newer notice replaces the open one; a bar moved another way closes i
     expect(lateNoticeRows(dragged, job(dragged))).toEqual([])
     expect(portalLateNotice(job(dragged), 'summit', TPO)).toBeNull()
     expect(companyLateNotice(job(dragged), 'coolbreeze', TPO)).toBeNull()
+  })
+})
+
+describe('lateNoticeProblem: what stops a notice, in the portal’s words (the schedule’s PR 14a)', () => {
+  const NOTE = 'The membrane ships Oct 12. We finish two days after it lands.'
+  it('checks the day, why and the words in the order gc_trade_say_late does', () => {
+    const state = initialGcState()
+    const door = lateDoor(state, state.projects.find((p) => p.id === 'fairoaksd')!, 'summit', 'froof-1')!
+    expect(lateNoticeProblem(door, state.today, '', 'materials', NOTE)).toEqual({ key: 'latePickDay' })
+    expect(lateNoticeProblem(door, state.today, '2026-10-09', 'materials', NOTE)).toEqual({ key: 'lateLaterDay', day: '2026-10-09' })
+    expect(lateNoticeProblem({ ...door, day: '2026-09-30' }, state.today, '2026-10-01', 'materials', NOTE)).toEqual({ key: 'lateFromToday' })
+    expect(lateNoticeProblem(door, state.today, '2026-10-14', null, NOTE)).toEqual({ key: 'latePickWhy' })
+    expect(lateNoticeProblem(door, state.today, '2026-10-14', 'materials', 'late')).toEqual({ key: 'lateNote' })
+    expect(lateNoticeProblem(door, state.today, '2026-10-14', 'materials', NOTE)).toBeNull()
   })
 })

@@ -17,7 +17,9 @@ import { bidSentCounts, type BidSentScope } from '../lib/bids/bidSentCounts'
 import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import { useBidBoardBudgetChips } from './useBidBoardBudgetChips'
+import { useBidCountSourcesByBid } from './useBidCountSourcesByBid'
 import { useBidBoardJobAccountStrips } from './useBidBoardJobAccountStrips'
+import { useBidBoardMoneyStrips } from './useBidBoardMoneyStrips'
 import type { useBidGcPackets } from './useBidGcPackets'
 
 export function useBidBoardScope(input: {
@@ -63,6 +65,8 @@ export function useBidBoardScope(input: {
   const [jobsByBidGen, setJobsByBidGen] = useState(0)
   // Won-row chips (v2.3302): the value-matched job and the estimate's state, for the board's job-link roles.
   const bidBoardBudgetChips = useBidBoardBudgetChips([...peopleBids, ...robotBids], canSeeBidBoardJobLinks(myRole), jobsByBidGen)
+  // The CountTooling projects behind each bid (v2.5520): the board draws one chip per link beyond the bid's own.
+  const bidBoardCountSources = useBidCountSourcesByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true)
   // Job accounts (v2.3520 / PR 1b): ONE `list_bid_job_account_strip` read for every won or started bid on the
   // page — the board's chips and header count, the Followup control's count, and the Job accounts lens all
   // read it. (The job-created trigger moves a bid to Started the moment its job opens, so both outcomes.)
@@ -71,6 +75,9 @@ export function useBidBoardScope(input: {
     [peopleBids, robotBids],
   )
   const jobAccountStrips = useBidBoardJobAccountStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
+  // Money on my bids (v2.5651): the same won bids' jobs with their money, one read, for the Money lens and its badge.
+  const moneyStrips = useBidBoardMoneyStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
+  const moneyPastWordCount = useMemo(() => moneyStrips.lines.filter((l) => l.pastDays != null && l.pastDays > 0).length, [moneyStrips.lines])
   const jobAccountsMissingCount = useMemo(
     () => (jobAccountStrips.loaded ? countBidsMissingAccounts(jobAccountBidIds, jobAccountStrips.byBid) : 0),
     [jobAccountStrips.loaded, jobAccountStrips.byBid, jobAccountBidIds],
@@ -128,8 +135,11 @@ export function useBidBoardScope(input: {
     lostBidsNeedingReasonCount,
     jobsByBidId,
     bidBoardBudgetChips,
+    bidBoardCountSources,
     jobAccountStrips,
     jobAccountsMissingCount,
+    moneyStrips,
+    moneyPastWordCount,
     linkJobToBidFromBoard,
   }
 }

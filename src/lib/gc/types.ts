@@ -5,6 +5,7 @@
  * to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md and SCHEDULE_REAL_BUILD.md on branch spike/gc-mode.
  */
 import type { CrewCount, LookAheadReason, ProjectSchedule, RoughSchedule, ScheduleSend, ScheduleTemplate, ScheduleWait, ScheduleWhatIf } from './schedule/types'
+import type { ClausePaperPair, SignedClauses } from '../../../supabase/functions/_shared/clausePaper'
 
 /** One drawing in a set: its number, like "E-201", and its title. */
 export interface PlanSheet {
@@ -275,13 +276,25 @@ export interface PlanSet {
   rev: number
   label: string
   issuedOn: string
+  changedSheets: string[]
   /** Package ids whose scope this set changed. A bid priced on an older set is stale for them. */
   touches: string[]
+  /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */
+  addedLines?: { packageId: string; scopeId: string }[]
+  /** Sections of the project manual this set revises, like "09 91 23". */
+  changedSpecs?: string[]
 }
 
 export interface ScopeItem {
   id: string
   label: string
+  /**
+   * The sheets this line reads from. Missing: not said, so a guess from the line's words is shown.
+   * Empty: the trade's sheets as a whole, no one sheet in particular.
+   */
+  sheets?: string[]
+  /** The sections of the project manual this line reads from. Missing: not said. */
+  specs?: string[]
 }
 
 /** A line of a trade's own schedule of values, as it wrote it (question 4): often rough-in, top out, trim. */
@@ -465,6 +478,8 @@ export interface Draw {
 }
 
 export interface Sow {
+  /** The row's id on main (`gc_sows.id`), which the trade's signature names (the Portal's P2c-ii). The prototype's had none. */
+  id?: string
   status: 'draft' | 'sent' | 'signed'
   price: number
   retainagePct: number
@@ -491,6 +506,14 @@ export interface Sow {
    * instead when we know. Set at award from their quote.
    */
   excluded?: { name: string; by: string | null; unitPrice?: { amount: number; unit: string } }[]
+  /**
+   * Messages, cut 4c (v2.5329): a statement of work built from clauses, as its portal reads it while it is sent to sign.
+   * The job's clauses come first, then the exhibit for its trade, in English and Spanish at one revision. Signing sends
+   * the revision back. Absent: its lines are the whole paper, as before.
+   */
+  clausePaper?: ClausePaperPair
+  /** Its clauses as signed (`clause_versions`), for the version line. Absent: it was not built from clauses. */
+  signedClauses?: SignedClauses
 }
 
 export interface TradePackage {
@@ -517,6 +540,11 @@ export interface TradePackage {
      * the trade is not a real number yet (the owner, 2026-10-02). Absent: priced.
      */
     priced?: boolean
+    /**
+     * Where the percent came from (Building's U8, `withCrewPercents`): the Pipeline job's stages, its crew report
+     * or its own percent, with the job's number and the day it was reported. Absent: not linked, or nothing read.
+     */
+    source?: { from: 'stages' | 'report' | 'job'; job: string; on: string | null }
   } | null
   invites: Invite[]
   /** An invite id, 'plug' (our budget) or 'self'. */
@@ -549,6 +577,8 @@ export interface Partner {
   maxMiles: number | null
   msa: 'none' | 'sent' | 'signed'
   msaSignedOn: string | null
+  /** The language the company chose in its portal; its messages go out in it too. Unset: English. */
+  lang?: 'en' | 'es'
   coiExpires: string | null
   w9: boolean
   invited: number
@@ -565,6 +595,13 @@ export interface Partner {
   portalOpenedOn?: string
   /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
   msaSentOn?: string
+  /** The day its newest W-9 went to sign (P5b-2): from the office's send, or from its portal when it started one there. */
+  w9SentOn?: string
+  /**
+   * A certificate it sent from its portal that waits for the office to look (P5b-2m, the owner's "Office looks first"):
+   * the paper, the day it came in and the day it says the policy runs out. It counts for nothing until it is marked good.
+   */
+  coiReceived?: { id: string; sentOn: string; expires: string | null }
   /** Whether we have checked them (question 3). Unset: a company we know, approved. */
   vetting?: PartnerVetting
   /** Calls and notes with the company itself, not about one ask (the company window, 2026-10-04). Newest first. */
@@ -619,6 +656,7 @@ export interface GcCustomer {
   portalOn: boolean
   /** One call log, whatever they are to us. */
   contacts: { on: string; by: string; note: string }[]
+  past: { name: string; year: number; outcome: 'built' | 'lost'; value: number; note: string }[]
 }
 
 export interface GcProject {
@@ -659,6 +697,8 @@ export interface GcProject {
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
+  /** Started before everything was in (question 7): who, why, and what was missing that day. */
+  startedAnyway?: { by: string; reason: string; missing: string[] }
   customerId: string
   /** The customer's name, kept on the row for display. */
   owner: string
@@ -683,8 +723,16 @@ export interface GcProject {
   bidDue: string | null
   sizeNote: string
   planSets: PlanSet[]
+  /**
+   * The plans' index and the project manual as they stand after the newest set (the real build: the view's own, the Board's
+   * B2b-vi), for what changed under a quote (`stale.ts`'s `reachOf`). Main's only: the prototype keeps the first set's index and
+   * walks its sets forward instead (`sheetsAtRev`). Absent: not mapped, so a line's guess reads no sheet.
+   */
+  index?: { sheets: PlanSheet[]; specs: SpecSection[] }
   packages: TradePackage[]
   generalConditions: number
+  /** The Pipeline job our general conditions are spent on (O11b), the money team's to name. Unset: none named. */
+  generalConditionsJobId?: string | null
   contingencyPct: number
   feePct: number
   /** The day we closed the job: every trade closed out and our own crew done. */
@@ -922,6 +970,32 @@ export interface OwnerPayAppSent {
    * `emailed` false: filed, but its email did not go (O5b: no log written back on it).
    */
   reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[]; emailed?: boolean }[]
+  /**
+   * The customer turned its bill to card in their portal (O8b): the bill as certified (`base`), the 3% card fee, what
+   * Stripe asks and its card page. `undone`: the office took it back to a check bill. Absent: never on card. The fee
+   * is a recovery of Stripe's cost: every figure reads the bill at its base (O8c).
+   */
+  card?: OwnerPayAppCard
+  /** The day the app reminded the architect to certify it (O10's office notices). Unset: not reminded. */
+  architectRemindedOn?: string
+  /** The day the app told the customer the bill was due soon, and the due day it named (O12). Unset: not told. */
+  customerToldDue?: { on: string; due: string }
+}
+
+/** A pay application's bill on card (O8b, O8c), as `gc_owner_card_bills` and the bill's row hold it. */
+export interface OwnerPayAppCard {
+  /** The bill's id (`jobs_ledger_invoices`), for its pay link and Back to a check bill. */
+  invoiceId: string
+  state: 'onCard' | 'undone'
+  base: number
+  fee: number
+  total: number
+  /** The day they chose card in their portal. */
+  chosenOn: string
+  /** The card page (`hosted_invoice_url`); null once taken back. */
+  payUrl: string | null
+  /** The day the office took it back to a check bill. */
+  undoneOn: string | null
 }
 
 /** Why the work changed, in the words the app's change orders already use. */
@@ -972,6 +1046,12 @@ export interface ChangeOrder {
    * is signed G-98 stops counting those moves as the customer's. Unset: an ordinary change order.
    */
   daysOnChart?: string[]
+  /**
+   * Messages cut 4b (migration 20261012180000): the customer message it was started from, and the contact who signs it.
+   * Absent on one drafted in the Change orders window.
+   */
+  sourceMessageId?: string
+  signerContactId?: string
 }
 
 /** What an RFI's answer changes: nothing, the plans (a new set follows from Plans), or cost and days. */
@@ -1021,4 +1101,51 @@ export interface CustomerSend {
   /** The day we asked them to sign by. */
   by: string
   note: string
+  /** Our contract's send on real rows (B6-d-i): the price by line it went with. */
+  worth?: Record<string, number>
+  /** The file it went with, in the gc-owner-contracts bucket, and a SHA-256 of its bytes. */
+  file?: { path: string; name: string; sha256: string }
+  /** The day the customer signed it in their portal, and the name they signed with. */
+  signedOn?: string
+  signer?: string
+  /** Its email went (B6-d-iii-b): the day and who got it, from its sent copy. Unset: not emailed yet. */
+  emailed?: { on: string; to: string }
+}
+
+/** Who and what the pay application is for: the parts of the form that are not numbers. */
+export interface PayAppParties {
+  project: string
+  /** "3", or "4, final". */
+  applicationNo: string
+  /** The bill day it is for (YYYY-MM-DD). */
+  periodTo: string
+  /** The day it went. Null: a draft. */
+  sentOn: string | null
+  contractDate: string | null
+  /** Who it goes to: our customer on ours, us on a trade's. */
+  to: { name: string; address: string }
+  /** The property's owner, when it is not the customer (`GcProject.propertyOwner`). */
+  propertyOwner?: string | null
+  /** Who sends it: us on ours, the trade's company on theirs. */
+  from: { name: string; address: string; license?: string }
+  architect: string | null
+  /** The change orders in line 2, each with whether it was signed in this period. A credit is negative. */
+  changeOrders: { amount: number; thisPeriod: boolean }[]
+  /** Line 5's words when retainage is not one plain percent. */
+  retainageWords?: string | null
+}
+
+/** What the book reads of a project: its scopes, which set added a line, what quotes left out, what each trade says it leaves out. */
+export interface ScopeBookProject {
+  id: string
+  name: string
+  planSets: { label: string; issuedOn: string; addedLines?: { packageId: string; scopeId: string }[] }[]
+  packages: {
+    id: string
+    trade: string
+    scope: { id: string; label: string; specs?: string[] }[]
+    invites: { bid?: { includes: Record<string, string>; exclusions?: { name: string }[] } | null }[]
+    excludes?: ScopeExclusion[]
+  }[]
+  changeOrders?: { packageId: string | null; description: string }[]
 }

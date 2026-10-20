@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcBillCustomerWindow } from './GcBillCustomer'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import type { GcProject, OwnerPayAppSent } from '../../lib/gc/types'
@@ -14,7 +14,7 @@ function setup(
   over: Partial<GcProject> = {},
   waived: number[] = [],
   lastApp: Partial<OwnerPayAppSent> = {},
-  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { what: 'payApp' | 'certified'; to: string; on: string }[]>; interestEmailed?: Record<number, { to: string; on: string }[]>; scheduleRead?: boolean } = {},
+  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { what: 'payApp' | 'certified'; to: string; on: string }[]>; interestEmailed?: Record<number, { to: string; on: string }[]>; scheduleRead?: boolean; cardOfferOn?: boolean } = {},
 ) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
@@ -27,8 +27,8 @@ function setup(
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn(), onSetLateFee: vi.fn(), onAccept: vi.fn(), onSendFinal: vi.fn() }
-  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} interestEmailed={extra.interestEmailed} scheduleRead={extra.scheduleRead} onClose={() => undefined} />)
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn(), onSetLateFee: vi.fn(), onAccept: vi.fn(), onSendFinal: vi.fn(), onCardUndo: vi.fn() }
+  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} interestEmailed={extra.interestEmailed} scheduleRead={extra.scheduleRead} cardOfferOn={extra.cardOfferOn} onClose={() => undefined} />)
   return { writes, last }
 }
 
@@ -51,6 +51,22 @@ describe('GcBillCustomerWindow', () => {
     expect(screen.getByText('Our final pay application went, so there is nothing more to bill.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: `Send pay application ${last.number + 1}` })).toBeNull()
     expect(screen.getByText(`Pay application ${last.number}, final`)).toBeTruthy()
+  })
+
+  it('a sent bill still with the architect says when the app reminded them (O10)', () => {
+    setup({}, [], { architectRemindedOn: '2026-10-05' })
+    expect(screen.getByText('We reminded the architect on Oct 5.')).toBeTruthy()
+    cleanup()
+    setup({}, [], { architectRemindedOn: '2026-10-05', certified: 1000, certifiedOn: '2026-10-08' })
+    expect(screen.queryByText('We reminded the architect on Oct 5.')).toBeNull()
+  })
+
+  it('a certified bill says when the app told the customer it was due soon (O12)', () => {
+    setup({}, [], { certified: 1000, certifiedOn: '2026-10-08', customerToldDue: { on: '2026-10-25', due: '2026-10-28' } })
+    expect(screen.getByText('We told them on Oct 25 it is due Oct 28.')).toBeTruthy()
+    cleanup()
+    setup({}, [], { customerToldDue: { on: '2026-10-25', due: '2026-10-28' } })
+    expect(screen.queryByText('We told them on Oct 25 it is due Oct 28.')).toBeNull()
   })
 
   it('records the architect\'s certificate, and asks why when it is less', () => {
@@ -249,6 +265,26 @@ describe('GcBillCustomerWindow', () => {
     expect(writes.onRemind).toHaveBeenCalledWith(last.number, '2026-10-09', 'Our lien deadline is close.')
   })
 
+  it('a bill that turns late while the window is open still starts its pay-by day five days out (the walk\'s step 8)', () => {
+    const last = lastSent()
+    const lay = (lastApp: Partial<OwnerPayAppSent>) => {
+      const state = initialGcState()
+      const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+      const apps = fairOaks.ownerBilling!.payApps!
+      const project: GcProject = { ...fairOaks, ownerBilling: { ...fairOaks.ownerBilling!, payApps: [...apps.slice(0, -1), { ...apps[apps.length - 1]!, ...lastApp }] } }
+      const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
+      const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn(), onSetLateFee: vi.fn(), onAccept: vi.fn(), onSendFinal: vi.fn(), onCardUndo: vi.fn() }
+      return <GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} onClose={() => undefined} />
+    }
+    // Certified and part paid, with their word still ahead: not late, so no reminder yet.
+    const { rerender } = render(lay({ ...partPaid(last), promises: [{ by: '2026-10-20', madeOn: '2026-09-28', note: '', who: 'office' }] }))
+    expect(screen.queryByRole('button', { name: 'Remind them to pay' })).toBeNull()
+    // Their word moves to a day gone by: it is late now, with the window still open.
+    rerender(lay(partPaid(last)))
+    fireEvent.click(screen.getByRole('button', { name: 'Remind them to pay' }))
+    expect((screen.getByLabelText(`The day to pay pay application ${last.number} by`) as HTMLInputElement).value).toBe('2026-10-07')
+  })
+
   it('says when a reminder went, and when its email did not', () => {
     const last = lastSent()
     setup({}, [], { ...partPaid(last), reminders: [{ on: '2026-10-01', by: '2026-10-06', note: '', emailed: false }] })
@@ -295,5 +331,34 @@ describe('GcBillCustomerWindow', () => {
     })
     expect(document.body.textContent).toContain('Emailed to Cibolo Creek Partners and Garza Architects on Jul 25.')
     expect(document.body.textContent).toContain('The certified bill was emailed to Cibolo Creek Partners on Aug 2.')
+  })
+
+  it('Pay by card (O8c): the same certified bill off card still takes a part payment here', () => {
+    setup({}, [], { certified: 900, certifiedOn: '2026-10-20', paidOn: null })
+    expect(screen.getByRole('button', { name: 'They paid part…' })).toBeTruthy()
+  })
+
+  it('Pay by card (O8c): Record the certificate says they can pay by card only when the switch is on', () => {
+    setup({}, [], {}, { cardOfferOn: true })
+    expect(screen.getByText('Recording it makes their bill. They pay it by check, or by card in their portal with a 3% fee.')).toBeTruthy()
+    cleanup()
+    setup()
+    expect(screen.queryByText(/by card in their portal/)).toBeNull()
+  })
+
+  it('Pay by card (O8c): a bill on card says what Stripe asks, offers its card page and Back to a check bill, and takes no part payment here', () => {
+    const { writes, last } = setup({}, [], { certified: 900, certifiedOn: '2026-10-20', paidOn: null, card: { invoiceId: 'inv-9', state: 'onCard', base: 900, fee: 27, total: 927, chosenOn: '2026-10-21', payUrl: 'https://invoice.stripe.com/i/test9', undoneOn: null } })
+    expect(screen.getByText('They chose card in their portal on Oct 21. Stripe asks $927.00 with the $27.00 card fee.')).toBeTruthy()
+    expect((screen.getByRole('link', { name: 'Their card page' }) as HTMLAnchorElement).href).toBe('https://invoice.stripe.com/i/test9')
+    expect(screen.getByTestId(`gc-bill-card-${last.number}`).textContent).toContain('on card')
+    // Stripe records a card payment: no part payment is typed for it here.
+    expect(screen.queryByRole('button', { name: 'They paid part…' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to a check bill' }))
+    expect(screen.getByText('This takes the card page down and the $27.00 fee off. The bill goes back to $900.00.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it on card' }))
+    expect(writes.onCardUndo).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to a check bill' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Back to a check bill' })).getByRole('button', { name: 'Back to a check bill' }))
+    expect(writes.onCardUndo).toHaveBeenCalledWith(last.number)
   })
 })

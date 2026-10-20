@@ -19,7 +19,7 @@ export type StageWindowEditorProps = {
   onCancel: () => void
 }
 
-const input = { padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-900)' } as const
+const input = { padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' } as const
 const btn = (primary: boolean, disabled = false) =>
   ({
     padding: '0.3rem 0.7rem',

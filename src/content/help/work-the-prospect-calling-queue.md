@@ -2,12 +2,22 @@
 title: work the prospect calling queue
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: prospects, follow up, cold call, calling queue, didn't answer, answered, converted, warmth, callback, next prospect, queue order
+keywords: prospects, follow up, cold call, customers, jobs to gc, subs, calling queue, didn't answer, answered, converted, warmth, callback, next prospect, queue order
 order: 70
 ---
 **Prospects → Follow Up** is the calling workstation, and it deals you one prospect at a time. You make the call, log how it ended, and hit {{button:blue|Next Prospect →}}.
 
-A prospect is a company that might become a customer. Everything you record feeds the Prospect List and the Activity report automatically. Your answers, notes and time on the phone all count.
+A prospect is a company we want something from. Everything you record feeds the Prospect List and the Activity report automatically. Your answers, notes and time on the phone all count.
+
+## Three kinds of prospect
+
+The top row picks what you are finding. **Customers** are GCs and owners who could send us plans for our trades. **Jobs to GC** are owners, developers and architects with a job we could build as the GC. **Subs** are trade companies for the bench. Each kind has its own queue and its own last press. Read [find jobs to build as the GC](/help/find-jobs-to-build-as-the-gc) and [find subs for the bench](/help/find-subs-for-the-bench). The rest of this guide is the same on every kind.
+
+## The person and the company
+
+New Prospect asks for the person first. Type their name, their title, their cell and their email. Pick their language. Say whether we may text them, once you have asked. The company goes under them. Leave the company empty for a person on their own. The card then names the person and dials their cell. The office line shows beside it.
+
+Ask on the call whether we may text them. Then press the texting chip on the card and pick Yes or No. Messages texts a prospect only after a Yes. Until then a text says who has not been asked.
 
 ## Make the call
 
@@ -31,7 +41,7 @@ Every **Answered** raises the prospect's warmth by one — the {{chip:yellow|�
 - The **queue rail** on the right shows where you are, like *14 of 92*, and who's next. You tap any row to jump to it. On a phone, you tap **show order** instead.
 - **Coldest / Never called** at the top of the rail picks the order: longest-since-contact first, or brand-new prospects first.
 - The {{button:blue|Next Prospect →}} bar at the bottom advances without logging anything. Or you check **Automatically move to the next prospect when I click Didn't Answer** and let it advance itself.
-- **Set callback** schedules a callback that shows on your Calendar and on this card.
+- **Set callback** schedules a callback that shows on your Calendar and on this card. A callback opened from the Calendar opens the prospect on its own tab.
 
 ## Two people, one prospect
 

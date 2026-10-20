@@ -4,12 +4,15 @@ import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
+import { readMailPiecesBySource } from '../lib/mail/lienMailPiecesIo'
 import { gcNoticeRowsWithBilledOpen } from '../lib/jobs/lienBilledOpen'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom } from '../lib/jobs/lienLetterTwo'
 import { ownerCallByJobFrom } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
+import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
+import { isZzTestName } from '../lib/jobs/zzTestJobSweep'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { envelopeKey } from '../lib/jobs/runEnvelopes'
@@ -77,7 +80,16 @@ function ownerStateFor(address: CustomerAddressRow | null, override: JobProperty
   return 'on_file'
 }
 
-export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data: GcOnNoticeData | null; loading: boolean; refetch: () => void } {
+/**
+ * `hideZzTestJobs` (punch list #61, PR 3): a ZZ test job under this GC leaves the run (its months, desk items,
+ * line items, bills and payments) right after the jobs are read, by the joined rows' own names; a ZZ test GC's
+ * run drops every job (review on #5250).
+ */
+export function useGcOnNoticeData(
+  gcId: string | null,
+  todayYmd: string,
+  hideZzTestJobs = false,
+): { data: GcOnNoticeData | null; loading: boolean; refetch: () => void } {
   const [data, setData] = useState<GcOnNoticeData | null>(null)
   const [loading, setLoading] = useState(false)
   const [tick, setTick] = useState(0)
@@ -93,21 +105,29 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
     setLoading(true)
     void (async () => {
       try {
-        const rowsRaw = await withSupabaseRetry(() => supabase.rpc('list_gc_unpaid_months' as never, { p_gc_customer_id: gcId } as never), 'GC on notice: unpaid months')
+        // ZZ test jobs (punch list #61, PR 3): a run for a ZZ test GC is a test run, so its GC's name is read with the
+        // months; then every list below is filtered into new arrays at the read (review on #5250), before the band is built.
+        const [rowsRaw, gcNameRows] = await Promise.all([
+          withSupabaseRetry(() => supabase.rpc('list_gc_unpaid_months' as never, { p_gc_customer_id: gcId } as never), 'GC on notice: unpaid months'),
+          hideZzTestJobs
+            ? withSupabaseRetry(() => supabase.from('customers').select('name').eq('id', gcId), 'GC on notice: the GC name').catch(() => [])
+            : Promise.resolve([] as { name: string | null }[]),
+        ])
         if (cancelled) return
-        const rows = ((rowsRaw ?? []) as unknown as GcUnpaidMonthRow[]).map((r) => ({
+        const zzGc = hideZzTestJobs && isZzTestName(((gcNameRows ?? []) as { name: string | null }[])[0]?.name)
+        const rowsRead = ((rowsRaw ?? []) as unknown as GcUnpaidMonthRow[]).map((r) => ({
           ...r,
           approved_hours: Number(r.approved_hours) || 0,
           open_balance: Number(r.open_balance) || 0,
         }))
-        const jobIds = [...new Set(rows.map((r) => r.job_id))]
-        const jobs: LienDeskJob[] = []
-        const items: LienDeskItemRow[] = []
-        const workByJob: Record<string, GcNoticeBandWork> = {}
-        const fixtureRows: FixtureRow[] = []
-        const invoiceRows: InvoiceRow[] = []
-        const paymentRows: PaymentRow[] = []
-        for (const chunk of chunkIds(jobIds)) {
+        const jobIdsRead = [...new Set(rowsRead.map((r) => r.job_id))]
+        const jobsRead: (LienDeskJob & { status?: string | null; pct_complete?: number | null })[] = []
+        const itemsRead: LienDeskItemRow[] = []
+        const fixtureRowsRead: FixtureRow[] = []
+        const invoiceRowsRead: InvoiceRow[] = []
+        const paymentRowsRead: PaymentRow[] = []
+        // A ZZ test GC's jobs all leave the run, so their lists are not read.
+        for (const chunk of chunkIds(zzGc ? [] : jobIdsRead)) {
           if (chunk.length === 0) continue
           const [part, itemPart, fixturePart, invoicePart, paymentPart] = await Promise.all([
             withSupabaseRetry(
@@ -127,15 +147,25 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
             withSupabaseRetry(() => supabase.from('jobs_ledger_invoices').select('*').in('job_id', chunk).order('sequence_order'), 'GC on notice: bills').catch(() => []),
             withSupabaseRetry(() => supabase.from('jobs_ledger_payments').select('*').in('job_id', chunk).order('sequence_order'), 'GC on notice: payments').catch(() => []),
           ])
-          const jobPart = (part ?? []) as (LienDeskJob & { status?: string | null; pct_complete?: number | null })[]
-          jobs.push(...jobPart)
-          items.push(...((itemPart ?? []) as LienDeskItemRow[]))
-          fixtureRows.push(...((fixturePart ?? []) as FixtureRow[]))
-          invoiceRows.push(...((invoicePart ?? []) as InvoiceRow[]))
-          paymentRows.push(...((paymentPart ?? []) as PaymentRow[]))
-          for (const j of jobPart) {
-            workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
-          }
+          jobsRead.push(...((part ?? []) as (LienDeskJob & { status?: string | null; pct_complete?: number | null })[]))
+          itemsRead.push(...((itemPart ?? []) as LienDeskItemRow[]))
+          fixtureRowsRead.push(...((fixturePart ?? []) as FixtureRow[]))
+          invoiceRowsRead.push(...((invoicePart ?? []) as InvoiceRow[]))
+          paymentRowsRead.push(...((paymentPart ?? []) as PaymentRow[]))
+        }
+        // A ZZ test GC's run drops every job (as a ZZ customer's page does); otherwise a job by its own or its customer's name.
+        const zzJobIds = zzGc ? new Set(jobIdsRead) : hideZzTestJobs ? zzTestJobIds(jobsRead) : null
+        const kept = (jobId: string) => !zzJobIds?.has(jobId)
+        const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
+        const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
+        const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
+        const items = zzJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
+        const fixtureRows = zzJobIds ? fixtureRowsRead.filter((f) => kept(f.job_id)) : fixtureRowsRead
+        const invoiceRows = zzJobIds ? invoiceRowsRead.filter((i) => kept(i.job_id)) : invoiceRowsRead
+        const paymentRows = zzJobIds ? paymentRowsRead.filter((p) => kept(p.job_id)) : paymentRowsRead
+        const workByJob: Record<string, GcNoticeBandWork> = {}
+        for (const j of jobs) {
+          workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
         }
         // A billed job's money is what its sent bills owe (v2.4970), as the desk counts it; a job not billed yet keeps what it will bill.
         const moneyRows = gcNoticeRowsWithBilledOpen(rows, new Map(jobs.map((j) => [j.id, { id: j.id, status: (j as { status?: string | null }).status ?? null, revenue: j.revenue, payments_made: j.payments_made }])), invoiceRows, paymentRows)
@@ -143,7 +173,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         for (const i of invoiceRows) workByJob[i.job_id]?.invoices.push(i)
         for (const p of paymentRows) workByJob[p.job_id]?.payments.push(p)
         const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
-        const [gcRows, addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, matterRows, correctionRows] = await Promise.all([
+        const [gcRows, addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, matterRows, correctionRows, mailPiecesByItem] = await Promise.all([
           withSupabaseRetry(
             () => supabase.from('customers').select('id, name, address, contact_info, lien_notice_policy, lien_notice_policy_note, payment_terms, payment_terms_note').eq('id', gcId),
             'GC on notice: the GC',
@@ -157,6 +187,8 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           withSupabaseRetry(() => supabase.from('job_lien_desk_items').select('job_id, jobs_ledger!inner(gc_customer_id)').eq('status', 'held').eq('jobs_ledger.gc_customer_id', gcId), 'GC on notice: prior holds').catch(() => []),
           withSupabaseRetry(() => supabase.from('legal_matters').select('id, legal_matter_jobs(job_id)').eq('payer_key', `c:${gcId}`), 'GC on notice: legal matter').catch(() => []),
           jobIds.length ? withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'GC on notice: claim corrections').catch(() => []) : Promise.resolve([]),
+          // The copies already mailed through Docsmit (v2.5532): the run builds them as mailed, so it never offers them again.
+          readMailPiecesBySource(items.filter((i) => i.status === 'approved').map((i) => i.id), 'GC on notice: pieces in the run'),
         ])
         if (cancelled) return
         const gcRow = ((gcRows ?? []) as { id: string; name: string | null; address: string | null; contact_info: unknown; lien_notice_policy: string | null; lien_notice_policy_note: string | null; payment_terms: string | null; payment_terms_note: string | null }[])[0] ?? null
@@ -201,7 +233,8 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           promisesByJob,
           gcsWithPriorNotice: new Set(gcHasPriorNotice && gc ? [gc.id] : []),
           gcsHeldBefore: new Set(gcHeldBefore && gc ? [gc.id] : []),
-          claimCorrectionsByJob, filingsByJob: {}
+          claimCorrectionsByJob, filingsByJob: {},
+          mailPiecesByItem,
         }
         const ownerStateOf = (jobId: string): GcNoticeOwnerState => {
           const job = jobsById[jobId]
@@ -278,7 +311,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
     return () => {
       cancelled = true
     }
-  }, [gcId, todayYmd, tick])
+  }, [gcId, todayYmd, tick, hideZzTestJobs])
 
   return useMemo(() => ({ data, loading, refetch }), [data, loading, refetch])
 }

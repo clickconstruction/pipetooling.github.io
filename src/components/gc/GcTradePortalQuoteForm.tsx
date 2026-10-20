@@ -8,6 +8,8 @@ import { HAIR } from '../../lib/portal/portalTheme'
 import { Btn, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePress } from './gcTradePortalPress'
+import { PortalFilePick } from './GcTradePortalFile'
+import { portalFileUpload, type PickedFile } from '../../lib/gc/tradePortalFile'
 
 /**
  * GC mode, the trade partner portal's quote form (P2b-ii), from the design spike's BidBlock in `GcTradePortal.tsx` and
@@ -24,7 +26,9 @@ type ExclusionDraft = { name: string; said?: string; on: boolean; amount: string
 
 export function QuoteForm({ pkg, invite, notVetted, onDone }: { pkg: TradePackage; invite: Invite; notVetted: boolean; onDone: () => void }) {
   const { lang, t } = usePortalLang()
-  const { busy, problem, run } = usePress()
+  const { busy, problem, runWithFile } = usePress()
+  // Its own quote file (P5a-1): it goes up first, into the job's Team only → From trades folder, and its link rides with the quote.
+  const [picked, setPicked] = useState<PickedFile | null>(null)
   const was = invite.bid
   const [amount, setAmount] = useState(was ? String(was.amount) : '')
   const [note, setNote] = useState(was?.note ?? '')
@@ -65,7 +69,7 @@ export function QuoteForm({ pkg, invite, notVetted, onDone }: { pkg: TradePackag
       ...(sovCheck.state === 'ok' ? { sov: sovCheck.lines } : {}),
       ...(exRows.length > 0 ? { exclusions, exclusionsAnswered: [...new Set(exRows.map((r) => exclusionName(r.said ?? r.name)))] } : {}),
     }
-    if (await run('submit_quote', { inviteId: invite.id, quote })) onDone()
+    if (await runWithFile(portalFileUpload('quote', invite.id, picked), 'submit_quote', (placed) => ({ inviteId: invite.id, quote: { ...quote, ...(placed ? { file: placed.url } : {}) } }))) onDone()
   }
   return (
     <div style={{ display: 'grid', gap: '0.5rem' }}>
@@ -94,6 +98,7 @@ export function QuoteForm({ pkg, invite, notVetted, onDone }: { pkg: TradePackag
       <input style={{ ...input, width: '100%', boxSizing: 'border-box' }} placeholder={t('anythingKnow')} aria-label={t('anythingKnow')} value={note} onChange={(e) => setNote(e.target.value)} />
       <SovEditor value={sov} onChange={setSov} words={sovCheck.words} bad={sovBad} help={t('sovHelp')} />
       <AlternatesEditor value={alternates} onChange={setAlternates} lang={lang} />
+      <PortalFilePick label={`${t('ownQuoteTitle')} ${t('ownQuoteHelp')}`} picked={picked} onPick={setPicked} disabled={busy} />
       {notVetted && <div style={{ fontSize: '0.85rem', opacity: 0.85 }}>{t('vetBidNote', { gc: GC_COMPANY.shortName })}</div>}
       {problem && <div style={PROBLEM}>{problem}</div>}
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

@@ -35,7 +35,9 @@ import { listArReturnCaseFees } from '../../lib/jobs/arReturnCaseFeeIo'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { ArDepositHeader } from './ar/ArDepositHeader'
-import { ArPayerMatches } from './ar/ArPayerMatches'
+import { ArPayerMatches, type ArClaimSuggestion } from './ar/ArPayerMatches'
+import { claimFitsDeposit, claimSuggestionWords, type PaidClaim } from '../../lib/jobs/paidClaims'
+import { loadPaidClaims } from '../../lib/jobs/paidClaimsIo'
 import { ArBilledLineOption, ArBilledLineTrigger } from './ar/ArBilledLineOption'
 import {
   AR_BILLED_LINE_MATCH_ROW_STYLE,
@@ -58,7 +60,7 @@ import {
   type StageRow,
 } from '../../lib/jobsStagesBoard'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
-import { APP_CALENDAR_TZ, denverCalendarDayKey, formatWorkDateYmdFriendly, todayYmdInAppTz } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, denverCalendarDayKey, formatWorkDateYmdFriendly, todayYmdInAppTz } from '../../utils/dateUtils'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -247,6 +249,16 @@ export default function BankPaymentsModal({
   const [debitCardChoices, setDebitCardChoices] = useState<string[]>([])
 
   const [candidates, setCandidates] = useState<MercuryCandidate[]>([])
+  /** The customers' live words that they paid (v2.5650): read once per open, fail-soft; a claim that fits the deposit leads the pane. */
+  const [paidClaims, setPaidClaims] = useState<PaidClaim[]>([])
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    void loadPaidClaims().then((rows) => live && setPaidClaims(rows))
+    return () => {
+      live = false
+    }
+  }, [open])
   const [bankTxSearchQuery, setBankTxSearchQuery] = useState('')
   const [includeHiddenArDeposits, setIncludeHiddenArDeposits] = useState(false)
   /**
@@ -579,6 +591,23 @@ export default function BankPaymentsModal({
       })
       .slice(0, 8)
   }, [depositPayerMatch, selected, targets])
+
+  /**
+   * A customer's word that they paid, when it fits the deposit (v2.5650, punch list #129): open, the amount they named
+   * or the job's open money within a dollar, on or after the day they named. Its job's open bills lead the pane.
+   */
+  const depositClaimSuggestion = useMemo<ArClaimSuggestion | null>(() => {
+    if (!selected || paidClaims.length === 0 || targets.length === 0) return null
+    const deposit = { amount: Number(selected.remaining_available), ymd: selected.posted_at ? calendarYmdInAppTzFromIso(selected.posted_at) || null : null, counterparty: selected.counterparty_name ?? null }
+    for (const claim of paidClaims) {
+      const jobTargets = targets.filter((t) => t.jobId === claim.jobId)
+      if (jobTargets.length === 0) continue
+      const jobOpen = jobTargets.reduce((sum, t) => sum + t.remaining, 0)
+      const fit = claimFitsDeposit(claim, deposit, jobOpen)
+      if (fit.fits) return { words: claimSuggestionWords(claim), nameToo: fit.nameToo, targets: jobTargets.slice().sort((a, b) => b.remaining - a.remaining) }
+    }
+    return null
+  }, [selected, paidClaims, targets])
 
   /** Amount-only quick picks not already shown in the payer section. */
   const quickMatchTargetsOutsidePayer = useMemo(() => {
@@ -3000,6 +3029,7 @@ export default function BankPaymentsModal({
                       {/* AR refresh PR 3 (v2.3381): the matches lead the pane as a list; bills already on a line are left out. */}
                       <ArPayerMatches
                         match={depositPayerMatch}
+                        claimSuggestion={depositClaimSuggestion ? { ...depositClaimSuggestion, targets: depositClaimSuggestion.targets.filter((t) => !allocLines.some((r) => r.kind === 'billed' && r.targetKey === t.key)) } : null}
                         payerTargets={depositPayerTargets.filter((t) => !allocLines.some((r) => r.kind === 'billed' && r.targetKey === t.key))}
                         amountMatchKeys={depositAmountMatchKeys}
                         combo={payerBillCombo && allocLines.length === 1 && !(allocLines[0]?.targetKey ?? '').trim() ? payerBillCombo : null}

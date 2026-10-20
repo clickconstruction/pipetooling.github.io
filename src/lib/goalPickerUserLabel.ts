@@ -1,5 +1,5 @@
-/** Goal/team-hours picker user row + display-label helper, shared between Settings.tsx,
- * the extracted Settings tab components, and the People → Users Team leads modal. */
+/** Goal/team-hours picker user row + display-label helper, shared between Settings.tsx and
+ * the extracted Settings tab components. */
 export type GoalPickerUserRow = { id: string; name: string | null; email: string | null }
 
 /** Display label for the Team Hours Sharing table (name → email → raw id fallback). */

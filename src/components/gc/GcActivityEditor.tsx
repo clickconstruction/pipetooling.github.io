@@ -6,7 +6,9 @@
  * cost (G-80), and the days it really ran (G-55). **Save, and say why** hands the change to the move's window
  * (`GcMoveExplain`), so a change is a move like a drag. The real days are a record and keep at once. Since PR 9a, the
  * job's own bar's buttons (G-38) and an inspection's pass or failure sit at its foot (`extra`, `check`); since 9b, its
- * place (G-83, `place`). Its trade's papers (G-77) come with PR 9d; the what-if copy with PR 11.
+ * place (G-83, `place`); since 9d, first under its name, its trade's papers when they hold its start (G-77, `ready`). In
+ * the what-if copy (PR 11) the form keeps its dates and waits; the real days, the place, and the own work's and an
+ * inspection's buttons record what happened, so the copy passes none of them.
  */
 import { useState, type ReactNode } from 'react'
 import { addDays } from '../../lib/gc/building'
@@ -34,6 +36,7 @@ export function GcActivityEditor({
   check,
   extra,
   place,
+  ready,
   onClose,
 }: {
   project: GcProject
@@ -50,6 +53,8 @@ export function GcActivityEditor({
   extra?: ReactNode
   /** Where its work is (G-83): the place line. Unset: none, as for an inspection or in a what-if copy. */
   place?: ReactNode
+  /** Its trade not ready to start, or at work uninsured (G-77, G-138): first, under its name. Unset: ready, or nobody's trade. */
+  ready?: ReactNode
   onClose: () => void
 }) {
   const a = row.activity
@@ -109,6 +114,7 @@ export function GcActivityEditor({
             Close
           </Btn>
         </div>
+        {ready}
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
             <span style={{ color: 'var(--text-muted)' }}>Starts</span>

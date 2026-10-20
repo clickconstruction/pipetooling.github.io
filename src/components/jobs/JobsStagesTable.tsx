@@ -32,12 +32,9 @@ import {
   accountManOnlyStripeStyle,
   renderJobAddressWithMap,
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
-  renderStagesFieldAndBillingLines as renderStagesFieldAndBillingLinesWithCtx,
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
-  renderStagesJobCellActivityFooter as renderStagesJobCellActivityFooterWithCtx,
   renderStagesThreadExpandButton,
-  renderStagesQuickActionsStack as renderStagesQuickActionsStackWithCtx,
   stagesOpenRowStyle,
   renderStagesProjectBannerRow,
   shouldSuppressStagesRowJobThreadToggle,
@@ -47,6 +44,9 @@ import {
   renderStagesEditModeRail,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
+import { StagesFieldAndBillingLines } from './StagesFieldAndBillingLines'
+import { StagesJobCellActivityFooter } from './StagesJobCellActivityFooter'
+import { StagesQuickActionsStack } from './StagesQuickActionsStack'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -142,6 +142,8 @@ export type JobsStagesTableProps = {
   propertyLinkByJobId?: StagesRowRenderContext['propertyLinkByJobId']
   onPropertyLinked?: StagesRowRenderContext['onPropertyLinked']
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
+  onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']
+  boardDotByJobId?: StagesRowRenderContext['boardDotByJobId']
 }
 
 export default function JobsStagesTable(props: JobsStagesTableProps) {
@@ -212,6 +214,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     propertyLinkByJobId,
     onPropertyLinked,
     onOpenJobContract,
+    onOpenCustomerDoor,
+    boardDotByJobId,
   } = props
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
@@ -258,15 +262,16 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     propertyLinkByJobId,
     onPropertyLinked,
     onOpenJobContract,
+    onOpenCustomerDoor,
+    boardDotByJobId,
   }
-  const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
-    renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
+  const renderStagesFieldAndBillingLines = (job: JobWithDetails) => <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} />
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
-  const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideSeeAllButton?: boolean }) =>
-    renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint, ...opts })
+  const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideSeeAllButton?: boolean }) => (
+    <StagesJobCellActivityFooter ctx={stagesRowSharedCtx} job={job} billingLineForStripeHint={billingLineForStripeHint} hideSeeAllButton={opts?.hideSeeAllButton} />
+  )
 
-  const renderStagesQuickActionsStack = (job: JobWithDetails) =>
-    renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
+  const renderStagesQuickActionsStack = (job: JobWithDetails) => <StagesQuickActionsStack ctx={stagesRowSharedCtx} job={job} />
 
   const stagesTableColCount = 4
   /** The expanded thread row's inputs, built once (Stages decomposition PR 9, v2.3541). */
@@ -372,7 +377,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   {/* Wide screens: identity keeps its natural width and the Job
                       activity box (v2.1587) absorbs the cell's dead middle. */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', justifyContent: 'space-between' }}>
-                  <div style={{ minWidth: 0 }}>
+                  {/* The identity block never claims more than it uses (v2.5630); see StagesUnifiedJobRow. */}
+                  <div style={{ minWidth: 0, maxWidth: 'min(100%, 30rem)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
                     {renderStagesOpenDetailJobName(j)}
                     {/* The activity box already carries the trail on wide screens —

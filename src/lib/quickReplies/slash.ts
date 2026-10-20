@@ -1,0 +1,136 @@
+/**
+ * Quick replies by keyboard (punch list #126, the owner's picks A and C): a `/` typed at the start of the reply box, or after a
+ * space or a line break, opens a short list of the person's quick replies under the box, narrowed by the words typed
+ * after it. ↑ ↓ move through it, Enter or Tab puts the line in the box in place of the `/` word, Escape closes it.
+ * Pure: the box hands the text and the caret in, and takes the list and the new text back.
+ *
+ * A `/` inside a word is just a `/`: *1/2 inch*, *and/or*, *10/19* and a link open nothing, and neither does a `/`
+ * with a space straight after it. The list is the strip's lines in the strip's order (`qrGroups`), so the step they
+ * are on and the job's stage come first, and a pick counts as a press, as the strip's does.
+ */
+import { qrGroups, qrOrder, qrVisible, qrKindOf, type QrGroupsInput, type QuickReply } from './kernel'
+import type { ContactKind } from '../contacts/names'
+
+/** The box's placeholder gains this while a text or an email is written. */
+export const SLASH_HINT = 'Type / for a quick reply.'
+
+/** The keys, said once under the list. */
+export const SLASH_KEYS = ['↑ ↓ pick', 'Enter or Tab fills', 'Esc closes'] as const
+
+/** No line holds the words typed after the `/`. */
+export const SLASH_NONE = 'No quick reply has those words. Esc closes, or keep writing.'
+
+/** The lines are being read, the first time the list opens. */
+export const SLASH_READING = 'Reading the quick replies…'
+
+/** The list's head: whose lines, and how many of them fit the words. */
+export function slashHead(first: string | null, shown: number, total: number): { title: string; count: string } {
+  const who = first?.trim()
+  return { title: who ? `Quick replies for ${who}` : 'Quick replies', count: `${shown} of ${total}` }
+}
+
+/** Words after a `/` longer than this are a sentence, not a line's name, so the list stays closed. */
+export const SLASH_WORDS_MAX = 40
+
+/** The `/` word the caret is in: where the `/` is, where the word ends, and the words after the `/`. */
+export interface SlashWord {
+  start: number
+  end: number
+  words: string
+}
+
+const isSpace = (ch: string | undefined) => ch !== undefined && /\s/.test(ch)
+
+/**
+ * The `/` word the caret sits in, or null. The word runs from the last space before the caret to the first space after
+ * it; it is a `/` word when it starts with the `/`, so the `/` opens the box or follows a space or a line break. A
+ * second `/` in it makes it a path or a date, not a reply.
+ */
+export function slashWordAt(text: string, caret: number): SlashWord | null {
+  if (caret < 1 || caret > text.length) return null
+  let start = caret
+  while (start > 0 && !isSpace(text[start - 1])) start--
+  if (text[start] !== '/') return null
+  let end = caret
+  while (end < text.length && !isSpace(text[end])) end++
+  const words = text.slice(start + 1, end)
+  if (words.includes('/') || words.length > SLASH_WORDS_MAX) return null
+  return { start, end, words }
+}
+
+/** The groups' input the strip already builds, less the narrow box's words and its place. */
+export type SlashInput = Omit<QrGroupsInput, 'filter' | 'place'>
+
+/**
+ * The lines the list offers for the words. A line whose shortcut is the words comes first, then the shortcuts that start
+ * with them (C, the owner's pick), then the lines whose words hold them, each in the strip's order: the job's stage, the
+ * step they are on, their kind, anyone.
+ */
+export function slashLines(lines: readonly QuickReply[], input: SlashInput, words: string): QuickReply[] {
+  const byWords = qrGroups(lines, { ...input, filter: words, place: 'strip' }).flatMap((g) => g.rows)
+  const typed = words.trim().toLowerCase()
+  if (!typed) return byWords
+  const every = qrGroups(lines, { ...input, filter: '', place: 'strip' }).flatMap((g) => g.rows)
+  const exact = every.filter((q) => q.shortcut === typed)
+  const starts = every.filter((q) => Boolean(q.shortcut) && q.shortcut !== typed && q.shortcut!.startsWith(typed))
+  const keyed = new Set([...exact, ...starts].map((q) => q.id))
+  return [...exact, ...starts, ...byWords.filter((q) => !keyed.has(q.id))]
+}
+
+/** Every line the strip would show them, for the head's count. */
+export function slashTotal(lines: readonly QuickReply[], input: SlashInput): number {
+  return slashLines(lines, input, '').length
+}
+
+/** The box once a line is picked: the `/` word gives way to the filled line, the rest stays, the caret after the line. */
+export function slashPick(text: string, word: SlashWord, filled: string): { text: string; caret: number } {
+  const before = text.slice(0, word.start)
+  return { text: before + filled + text.slice(word.end), caret: before.length + filled.length }
+}
+
+/** The next row with ↓ or ↑, round the ends. */
+export function slashMove(active: number, count: number, step: 1 | -1): number {
+  if (count <= 0) return 0
+  return (((active + step) % count) + count) % count
+}
+
+// ---------- the customer's papers (#127 PR 2) ----------
+
+/** What a paper is: a bill or an estimate. */
+export type PaperKind = 'bill' | 'estimate'
+
+/** The words that call a customer's papers after the `/`, beside the lines whose words hold them. */
+export const PAPER_WORDS: Readonly<Record<PaperKind, readonly string[]>> = {
+  bill: ['bill', 'bills', 'invoice', 'invoices', 'pay', 'owe', 'owed', 'owes'],
+  estimate: ['estimate', 'estimates', 'quote', 'quotes', 'price'],
+}
+
+/**
+ * The papers the words after the `/` call for, or null: two letters or more that start one of the words (`/bi`,
+ * `/est`, `/qu`), or a word that starts them (`/billing`).
+ */
+export function slashPaperKind(words: string): PaperKind | null {
+  const typed = words.trim().toLowerCase()
+  if (typed.length < 2) return null
+  for (const kind of ['bill', 'estimate'] as const) {
+    if (PAPER_WORDS[kind].some((w) => w.startsWith(typed) || typed.startsWith(w))) return kind
+  }
+  return null
+}
+
+/**
+ * The team's line for a paper: the line for their kind or anyone that holds the paper's blank (`{bill}`, or
+ * `{estimate}`), the person's most used first. A paid bill and an approved estimate take the app's own copy words,
+ * since the team's lines speak of an open bill and an estimate still to choose from. Null when there is none.
+ */
+export function paperTeamLine(lines: readonly QuickReply[], kind: ContactKind, paper: { kind: PaperKind; open?: boolean; approved?: boolean }, me: string): QuickReply | null {
+  if (paper.kind === 'bill' && paper.open === false) return null
+  if (paper.kind === 'estimate' && paper.approved === true) return null
+  const blank = paper.kind === 'bill' ? '{bill}' : '{estimate}'
+  const forKind = qrKindOf(kind)
+  return (
+    qrVisible(lines, me)
+      .filter((q) => (q.for === forKind || q.for === 'any') && q.text.includes(blank))
+      .sort(qrOrder(me))[0] ?? null
+  )
+}

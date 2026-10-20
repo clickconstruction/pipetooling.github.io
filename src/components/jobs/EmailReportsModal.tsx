@@ -109,7 +109,6 @@ function EmailReportsBody({
         roster={data.roster}
         schedules={data.schedules}
         subscriptions={data.subscriptions}
-        teamLeads={data.teamLeads}
         people={data.people}
         authUserId={authUserId}
         onDone={back}

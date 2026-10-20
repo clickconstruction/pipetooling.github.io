@@ -6,6 +6,10 @@ import {
   dropDeletedFollowupCandidates,
   followupStagesCoveredByScopes,
   jobFollowupQuietDays,
+  jobFollowupIdleDays,
+  jobFollowupIdleSummary,
+  jobFollowupNeed,
+  jobFollowupQuietEntries,
   jobFollowupQuietSeverity,
   jobFollowupReviewActionLabel,
   jobFollowupStageCounts,
@@ -199,5 +203,96 @@ describe('followupStagesCoveredByScopes', () => {
     // are never candidates — neither scope covers anything.
     expect(followupStagesCoveredByScopes(new Set(['paid']))).toEqual(new Set())
     expect(followupStagesCoveredByScopes(new Set())).toEqual(new Set())
+  })
+})
+
+describe('the idle rule (v2.5510): no field work in 21+ days joins the deck whatever the notes say', () => {
+  const s = DEFAULT_JOB_FOLLOWUP_SETTINGS
+
+  it('counts idle days from the last approved field day, else the day the job was made; only Working and Waiting have one', () => {
+    expect(jobFollowupIdleDays({ stage: 'working', lastWorkYmd: '2026-07-01', createdYmd: '2026-06-01' }, TODAY)).toBe(46)
+    expect(jobFollowupIdleDays({ stage: 'working', lastWorkYmd: null, createdYmd: '2026-08-01' }, TODAY)).toBe(15)
+    expect(jobFollowupIdleDays({ stage: 'working', lastWorkYmd: '2026-07-01T00:00:00Z', createdYmd: null }, TODAY)).toBe(46)
+    // A job still waiting to begin is queued, not idle; once a crew was on site it can go idle.
+    expect(jobFollowupIdleDays({ stage: 'waiting', lastWorkYmd: null, createdYmd: '2026-01-01' }, TODAY)).toBeNull()
+    expect(jobFollowupIdleDays({ stage: 'waiting', lastWorkYmd: '2026-07-20', createdYmd: '2026-01-01' }, TODAY)).toBe(27)
+    expect(jobFollowupIdleDays({ stage: 'billed', lastWorkYmd: '2026-01-01', createdYmd: '2026-01-01' }, TODAY)).toBeNull()
+    expect(jobFollowupIdleDays({ stage: 'working', lastWorkYmd: null, createdYmd: null }, TODAY)).toBeNull()
+  })
+
+  it('a Working job noted yesterday but with no crew on site for 46 days is an idle card, with the field-day words and a Next line', () => {
+    const queue = computeJobFollowupQueue(
+      [job({ id: 'idle', latestActivityAt: '2026-08-15T14:00:00Z', lastWorkYmd: '2026-07-01', pctComplete: 70, revenue: 41550 })],
+      [],
+      s,
+      TODAY,
+    )
+    expect(queue).toHaveLength(1)
+    const e = queue[0]!
+    expect([e.why, e.quietDays, e.idleDays]).toEqual(['idle', 0, 46])
+    expect(e.reason).toBe('No field work in 46 days · 70% done · $41,550 bid')
+    expect(e.need).toEqual({ kind: 'schedule_or_close', words: 'Schedule the next visit or close it' })
+  })
+
+  it('twenty days idle is not idle yet; a quiet card keeps its stage words and a Next line of its own', () => {
+    const queue = computeJobFollowupQueue(
+      [job({ id: 'q', latestActivityAt: '2026-08-05T14:00:00Z', lastWorkYmd: '2026-07-27', pctComplete: 100 })],
+      [],
+      s,
+      TODAY,
+    )
+    expect(queue).toHaveLength(1)
+    expect([queue[0]!.why, queue[0]!.idleDays]).toEqual(['quiet', 20])
+    expect(queue[0]!.reason).toMatch(/^Working quiet 10 days/)
+    expect(queue[0]!.need).toEqual({ kind: 'bill', words: 'Bill it, the work is done' })
+  })
+
+  it('a visit on the schedule, a Looks fine rest and a snooze keep an idle job out, the way they keep a quiet one out', () => {
+    const idle = job({ id: 'idle', latestActivityAt: '2026-08-15T14:00:00Z', lastWorkYmd: '2026-07-01' })
+    expect(computeJobFollowupQueue([{ ...idle, nextScheduledOn: '2026-08-20' }], [], s, TODAY)).toEqual([])
+    expect(computeJobFollowupQueue([idle], [{ jobId: 'idle', reviewedAt: '2026-08-15T09:00:00Z', snoozedUntil: null }], s, TODAY)).toEqual([])
+    expect(computeJobFollowupQueue([idle], [{ jobId: 'idle', reviewedAt: '2026-08-01T09:00:00Z', snoozedUntil: '2026-08-30' }], s, TODAY)).toEqual([])
+    // The rest over, the field-day clock has not moved: it is back.
+    expect(computeJobFollowupQueue([idle], [{ jobId: 'idle', reviewedAt: '2026-08-10T09:00:00Z', snoozedUntil: null }], s, TODAY).map((e) => e.why)).toEqual(['idle'])
+  })
+
+  it('idle cards rank by their field-day gap, so the longest-neglected job deals first', () => {
+    const queue = computeJobFollowupQueue(
+      [
+        job({ id: 'quiet9', hcpNumber: '100', latestActivityAt: '2026-08-07T00:00:00Z' }),
+        job({ id: 'idle30', hcpNumber: '200', latestActivityAt: '2026-08-15T00:00:00Z', lastWorkYmd: '2026-07-17' }),
+        job({ id: 'idle60', hcpNumber: '300', latestActivityAt: '2026-08-15T00:00:00Z', lastWorkYmd: '2026-06-17' }),
+      ],
+      [],
+      s,
+      TODAY,
+    )
+    expect(queue.map((e) => e.job.id)).toEqual(['idle60', 'idle30', 'quiet9'])
+  })
+
+  it('the Dashboard figures: idle cards alone, the contract behind them, and how many are the reader’s; the quiet card counts the rest', () => {
+    const queue = computeJobFollowupQueue(
+      [
+        job({ id: 'a', hcpNumber: '1', latestActivityAt: '2026-08-15T00:00:00Z', lastWorkYmd: '2026-07-01', revenue: 10000, masterUserId: 'u1' }),
+        job({ id: 'b', hcpNumber: '2', latestActivityAt: '2026-08-15T00:00:00Z', lastWorkYmd: '2026-07-10', revenue: 2500, masterUserId: 'u2' }),
+        job({ id: 'c', hcpNumber: '3', latestActivityAt: '2026-08-01T00:00:00Z', stage: 'billed' }),
+      ],
+      [],
+      s,
+      TODAY,
+    )
+    expect(jobFollowupIdleSummary(queue, 'u1')).toEqual({ count: 2, total: 12500, mine: 1 })
+    expect(jobFollowupIdleSummary(queue, null).mine).toBe(0)
+    expect(jobFollowupQuietEntries(queue).map((e) => e.job.id)).toEqual(['c'])
+  })
+
+  it('the Next line per stage', () => {
+    expect(jobFollowupNeed({ stage: 'ready_to_bill', pctComplete: null })?.words).toBe('Bill it')
+    expect(jobFollowupNeed({ stage: 'working', pctComplete: 100 })?.kind).toBe('bill')
+    expect(jobFollowupNeed({ stage: 'working', pctComplete: 40 })?.kind).toBe('schedule_or_close')
+    expect(jobFollowupNeed({ stage: 'working', pctComplete: null })?.kind).toBe('schedule_or_close')
+    expect(jobFollowupNeed({ stage: 'waiting', pctComplete: null })?.words).toBe('Put the next visit on the schedule')
+    expect(jobFollowupNeed({ stage: 'billed', pctComplete: null })?.kind).toBe('nudge')
+    expect(jobFollowupNeed({ stage: 'collections', pctComplete: null })?.kind).toBe('collect')
   })
 })

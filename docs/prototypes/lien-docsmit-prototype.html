@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien Desk Through Docsmit</title>
+<style>
+:root {
+  --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+  --border: #cfd4db; --border-strong: #aab2bd;
+  --text: #16283c; --text-700: #374151; --text-muted: #6b7280; --text-strong: #111827;
+  --link: #2563eb; --blue: #2563eb; --blue-tint: #eff6ff; --blue-200: #dbeafe;
+  --green: #15803d; --green-800: #166534; --green-tint: #f0fdf4;
+  --amber: #b45309; --amber-tint: #fffbeb; --amber-border: #f59e0b;
+  --red: #dc2626; --red-tint: #fef2f2;
+  --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg-page: #0f172a; --surface: #1e293b; --bg-subtle: #243247; --bg-muted: #2b3a52;
+  --border: #3b4a63; --border-strong: #556684;
+  --text: #e5e9f0; --text-700: #cbd5e1; --text-muted: #94a3b8; --text-strong: #f8fafc;
+  --link: #7cb3ff; --blue: #3b82f6; --blue-tint: #1e3a5f; --blue-200: #1d4ed8;
+  --green: #4ade80; --green-800: #bbf7d0; --green-tint: #14532d;
+  --amber: #fbbf24; --amber-tint: #44320a; --amber-border: #d97706;
+  --red: #f87171; --red-tint: #4c1d1d; color-scheme: dark;
+} }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-page); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 16px 16px 48px; }
+h1 { font-size: 1.05rem; margin: 0; color: var(--text-strong); }
+.lede { color: var(--text-muted); font-size: 0.8125rem; margin: 2px 0 10px; max-width: 76ch; }
+.proto { display: inline-block; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--amber); border: 1px solid var(--amber-border); border-radius: 999px; padding: 1px 8px; vertical-align: middle; margin-left: 6px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.tabs button { border: 1px solid transparent; border-bottom: none; background: none; color: var(--text-muted); font: inherit; font-size: 0.8125rem; font-weight: 600; padding: 7px 12px; border-radius: 8px 8px 0 0; cursor: pointer; }
+.tabs button.on { background: var(--surface); border-color: var(--border); color: var(--text-strong); margin-bottom: -1px; }
+.tabs button .n { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--bg-muted); color: var(--text-muted); font-size: 0.68rem; margin-left: 4px; }
+.pane { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.pane[hidden] { display: none; }
+@media (max-width: 900px) { .pane { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; min-width: 0; }
+.box > header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.box > header h2 { margin: 0; font-size: 0.95rem; color: var(--text-strong); }
+.box > header .where { color: var(--text-muted); font-size: 0.75rem; }
+.pad { padding: 12px 16px; }
+.stack { display: grid; gap: 14px; min-width: 0; }
+.btn { padding: 5px 11px; border-radius: 7px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+.btn.red { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.sm { font-size: 0.75rem; padding: 3px 9px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.lnk { background: none; border: none; padding: 0; color: var(--link); font: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+.lnk:hover { text-decoration: underline; }
+.chip { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+.chip.blue { background: var(--blue-tint); color: var(--link); border-color: var(--blue-200); }
+.chip.green { background: var(--green-tint); color: var(--green-800); }
+.chip.amber { background: var(--amber-tint); color: var(--amber); border-color: var(--amber-border); }
+.chip.red { background: var(--red-tint); color: var(--red); }
+.chip.gray { background: var(--bg-muted); color: var(--text-muted); }
+.muted { color: var(--text-muted); } .small { font-size: 0.75rem; } .mono { font-family: var(--mono); font-size: 0.78rem; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.note { padding: 8px 12px; border-radius: 8px; font-size: 0.8125rem; }
+.note.ok { background: var(--green-tint); color: var(--green-800); }
+.note.warn { background: var(--amber-tint); border-left: 4px solid var(--amber-border); }
+.note.bad { background: var(--red-tint); color: var(--red); }
+.note.info { background: var(--blue-tint); }
+select, input[type=text], input[type=date], textarea { font: inherit; font-size: 0.8125rem; padding: 4px 7px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: inherit; max-width: 100%; }
+input[type=text] { width: 100%; }
+textarea { width: 100%; min-height: 110px; resize: vertical; }
+/* rail */
+.rail { display: grid; gap: 12px; min-width: 0; position: sticky; top: 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 0.8125rem; }
+.card h3 { margin: 0 0 6px; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.card ul, .card ol { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+/* phone */
+.phone { border: 1px solid var(--border-strong); border-radius: 18px; padding: 12px 14px; background: var(--bg-subtle); max-width: 360px; }
+.phone .hdr { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); }
+.phone .t { font-weight: 700; margin-top: 4px; }
+.phone .list { display: grid; gap: 6px; margin-top: 8px; font-size: 0.8125rem; }
+.phone .it { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.phone .held { opacity: 0.55; text-decoration: line-through; }
+/* run table */
+table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+th { text-align: left; font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); padding: 6px 8px 5px 0; border-bottom: 1px solid var(--border); font-weight: 600; }
+td { padding: 6px 8px 6px 0; border-top: 1px solid var(--border); vertical-align: top; }
+tr.env td { background: var(--bg-subtle); }
+tr.copy td { padding-left: 16px; border-top: none; }
+td .nm { font-weight: 600; } td .ad { color: var(--text-muted); font-size: 0.72rem; } td .fx { color: var(--amber); font-size: 0.72rem; font-weight: 600; }
+.lock { font-size: 0.75rem; color: var(--text-muted); } .lock b { color: var(--text); }
+.tblwrap { overflow-x: auto; }
+@media (max-width: 640px) { table, tbody, tr, td { display: block; width: 100%; } thead { display: none; } tr.env { margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; } td { border-top: none; padding: 3px 0; } td[data-l]::before { content: attr(data-l); display: block; font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin: 4px 0 2px; } }
+.dpanel { margin: 8px 0; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-subtle); padding: 10px 12px; font-size: 0.8125rem; }
+.dpanel .grid { display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; font-variant-numeric: tabular-nums; max-width: 560px; }
+.dpanel .sum { font-weight: 700; border-top: 1px solid var(--border); padding-top: 3px; margin-top: 2px; }
+/* timeline */
+.tl { list-style: none; margin: 0; padding: 0; }
+.tl li { display: grid; grid-template-columns: 14px minmax(7rem, auto) 1fr; gap: 0 10px; font-size: 0.8125rem; position: relative; padding-bottom: 10px; }
+.tl li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); margin-top: 6px; z-index: 1; }
+.tl li::after { content: ""; position: absolute; left: 3.5px; top: 14px; bottom: -2px; width: 1px; background: var(--border); }
+.tl li:last-child::after { display: none; }
+.tl li.done::before { background: var(--green); } .tl li.now::before { background: var(--blue); box-shadow: 0 0 0 3px var(--blue-tint); } .tl li.bad::before { background: var(--red); } .tl li.soon::before { background: transparent; border: 1.5px solid var(--border-strong); }
+.tl .when { color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; } .tl .what b { color: var(--text-strong); } .tl .src { color: var(--text-muted); font-size: 0.7rem; }
+.sig { font-family: "Snell Roundhand", "Brush Script MT", cursive; font-size: 1.1rem; color: var(--text-strong); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 0.8125rem; margin: 0; } .kv dt { color: var(--text-muted); } .kv dd { margin: 0; }
+h3.sub { margin: 10px 0 6px; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.two { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 0; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+.two > div { padding: 12px 16px; min-width: 0; } .two > div + div { border-left: 1px solid var(--border); }
+@media (max-width: 760px) { .two > div + div { border-left: none; border-top: 1px solid var(--border); } }
+.queue { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-subtle); font-size: 0.8125rem; display: grid; gap: 4px; }
+.pay { border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; background: var(--surface); max-width: 420px; font-size: 0.8125rem; }
+.qr { width: 54px; height: 54px; background: repeating-conic-gradient(var(--text-strong) 0 25%, var(--surface) 0 50%) 0 0 / 12px 12px; border: 3px solid var(--surface); outline: 1px solid var(--border-strong); }
+
+/* The run, proposed: journey bar, envelope cards, one foot action, the live checklist, lanes, the desk door. */
+.deskbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.8125rem; color: var(--text-muted); padding: 6px 0; }
+.deskbar .k { font-weight: 700; color: var(--text-strong); }
+.runpill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px 3px 4px; font-size: 0.78rem; font-weight: 600; background: var(--surface); color: var(--text); cursor: pointer; font-family: inherit; }
+.runpill .bar { width: 70px; height: 8px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; display: inline-flex; }
+.runpill .bar i { display: block; height: 100%; }
+.runpill .bar .g { background: var(--green); } .runpill .bar .a { background: var(--amber-border); } .runpill .bar .b { background: var(--blue); }
+.journey { display: grid; grid-template-columns: repeat(6, 1fr); padding: 12px 16px 10px; border-bottom: 1px solid var(--border); position: relative; }
+.journey::before { content: ""; position: absolute; left: calc(16px + 8.3%); right: calc(16px + 8.3%); top: 30px; height: 3px; background: var(--border); }
+.journey .fill { position: absolute; left: calc(16px + 8.3%); top: 30px; height: 3px; background: var(--green); max-width: calc(83.4% - 32px); }
+.node { position: relative; text-align: center; font-size: 0.7rem; color: var(--text-muted); min-width: 0; }
+.node .dot { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--border); background: var(--surface); margin: 6px auto 4px; display: grid; place-items: center; font-weight: 700; font-size: 0.72rem; color: var(--text-muted); }
+.node.done .dot { border-color: var(--green); background: var(--green); color: #fff; }
+.node.now .dot { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 0 4px var(--blue-tint); }
+.node.block .dot { border-color: var(--amber-border); color: var(--amber); background: var(--amber-tint); }
+.node b { display: block; color: var(--text); font-size: 0.76rem; } .node.now b { color: var(--text-strong); }
+.node .c { display: block; } .node .c.warn { color: var(--amber); font-weight: 600; }
+@media (max-width: 640px) { .journey { grid-template-columns: repeat(3, 1fr); row-gap: 8px; } .journey::before, .journey .fill { display: none; } .node .dot { margin-top: 0; } }
+.cards { display: grid; gap: 10px; padding: 12px 16px; }
+.card2 { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 12px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); align-items: start; }
+.card2.held { border-color: var(--amber-border); background: var(--amber-tint); }
+.card2.sealed { border-color: var(--green); }
+.card2.off { opacity: 0.55; }
+.card2 .glyph { width: 54px; }
+.card2 .who { font-weight: 700; color: var(--text-strong); } .card2 .who .n { font-weight: 500; color: var(--text-muted); }
+.card2 .ad { color: var(--text-muted); font-size: 0.72rem; }
+.card2 .fx { color: var(--amber); font-size: 0.72rem; font-weight: 600; }
+.ministep { display: flex; gap: 0; align-items: center; margin: 6px 0 4px; flex-wrap: wrap; row-gap: 4px; }
+.ministep span { display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; }
+.ministep span::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--border-strong); background: var(--surface); flex: none; }
+.ministep span.ok::before { background: var(--green); border-color: var(--green); } .ministep span.ok { color: var(--green-800); }
+.ministep span.no::before { background: var(--amber-tint); border-color: var(--amber-border); } .ministep span.no { color: var(--amber); font-weight: 600; }
+.ministep span.now::before { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-tint); } .ministep span.now { color: var(--link); font-weight: 600; }
+.ministep em { width: 12px; height: 2px; background: var(--border); margin: 0 3px; flex: none; }
+.card2 .inside { display: grid; gap: 3px; font-size: 0.78rem; margin-top: 4px; }
+.card2 .inside label { display: flex; gap: 7px; align-items: baseline; cursor: pointer; } .card2 .inside .mm { color: var(--text-muted); font-size: 0.72rem; }
+.card2 .side { display: grid; gap: 6px; justify-items: end; min-width: 200px; }
+.card2 .side .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.card2 .next { font-size: 0.72rem; color: var(--text-muted); text-align: right; }
+.card2 .addon { font-size: 0.72rem; color: var(--text-muted); display: grid; gap: 2px; justify-items: end; }
+.card2 .addon label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.penmini { grid-column: 1 / -1; border-top: 1px dashed var(--border-strong); padding-top: 8px; font-size: 0.78rem; display: grid; gap: 6px; }
+@media (max-width: 700px) { .card2 { grid-template-columns: 44px minmax(0, 1fr); } .card2 .glyph { width: 44px; } .card2 .side { grid-column: 1 / -1; justify-items: start; min-width: 0; } .card2 .side .acts { justify-content: flex-start; } .card2 .next { text-align: left; } .card2 .addon { justify-items: start; } }
+.p-foot { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 16px 14px; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+.p-foot .status { flex: 1; min-width: 14rem; display: grid; gap: 2px; }
+.p-foot .status b { color: var(--text-strong); font-size: 0.9rem; } .p-foot .status span { font-size: 0.78rem; color: var(--text-muted); }
+.btn.big { font-size: 0.95rem; padding: 9px 16px; border-radius: 9px; }
+.more { grid-column: 1 / -1; flex-basis: 100%; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 0.78rem; color: var(--text-muted); padding-top: 6px; border-top: 1px dashed var(--border); }
+.dsheet { display: grid; gap: 6px; padding: 10px 16px 0; }
+.dsheet h3 { margin: 0; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.dsheet .row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.dsheet .boxes { display: flex; gap: 10px; font-size: 0.72rem; flex-wrap: wrap; } .dsheet .boxes label { display: inline-flex; gap: 4px; align-items: center; }
+@media (max-width: 700px) { .dsheet .row { grid-template-columns: 44px minmax(0, 1fr); } .dsheet .row > input { grid-column: 2; width: 100%; } }
+.lanes { display: grid; gap: 8px; padding: 10px 16px 0; }
+.lane { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: center; }
+.lane .lk { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+@media (max-width: 640px) { .lane { grid-template-columns: 1fr; gap: 2px; } }
+.devhint { padding-left: 7.5rem; }
+@media (max-width: 640px) { .devhint { padding-left: 0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The Lien desk through Docsmit <span class="proto">prototype</span></h1>
+  <p class="lede">A playable mock of what the plan builds. Nothing is wired to anything; the names and money are examples. Each tab has a notes box at the bottom. Your notes stay in this browser; press <b>Copy all notes</b> on the last tab to paste them back.</p>
+
+  <div class="tabs" id="tabs">
+    <button type="button" data-t="digest" class="on">1 &middot; The evening digest</button>
+    <button type="button" data-t="run">2 &middot; The run</button>
+    <button type="button" data-t="piece">3 &middot; A piece's life</button>
+    <button type="button" data-t="counsel">4 &middot; Counsel's packet</button>
+    <button type="button" data-t="dev">5 &middot; Dev settings &middot; Docsmit</button>
+    <button type="button" data-t="pen">6 &middot; Signed with a pen</button>
+    <button type="button" data-t="notes">Your notes <span class="n" id="noteCount">0</span></button>
+  </div>
+
+  <!-- TAB 1: digest -->
+  <div class="pane" id="tab-digest">
+    <div class="stack">
+      <section class="box">
+        <header><h2>6:00 pm, the day before the cron</h2><span class="where">the master's phone &middot; a push from the Lien desk</span></header>
+        <div class="pad" style="display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:16px;align-items:start">
+          <div class="phone">
+            <div class="hdr"><span>Lien desk</span><span>Oct 11, 6:00 pm</span></div>
+            <div class="t" id="digestTitle"></div>
+            <div class="small muted">Nothing to do unless you hold one.</div>
+            <div class="list" id="digestList"></div>
+            <div class="small muted" style="margin-top:8px">Not on the list: 688 Harlan Dental, our first notice to that GC. It waits for you on the desk.</div>
+          </div>
+          <div class="stack">
+            <div class="note info"><b>How this works.</b> On the 12th at 3:00 pm the cron builds, checks the address, sends through Docsmit and records every notice a standing rule approved. The 12th is two business days before the 15th, so a Docsmit outage still leaves the counter.</div>
+            <div id="holdBox"></div>
+            <div class="row"><button class="btn blue" type="button" id="runCron">It is now Oct 12, 3:00 pm &middot; run the cron</button><button class="btn" type="button" id="resetDigest">Reset</button></div>
+            <div id="cronResult"></div>
+          </div>
+        </div>
+      </section>
+      <section class="box"><header><h2>Notes on this screen</h2></header><div class="pad"><textarea id="note-digest" placeholder="What is wrong, what is missing, what would you change?"></textarea></div></section>
+    </div>
+    <aside class="rail">
+      <div class="card"><h3>Guards on an unattended send</h3><ul><li>A GC's first notice never rides the cron.</li><li>A live promise, a held notice and a claim set by hand come to the master, as today.</li><li>Hold on the digest drops a notice out; it then comes to him as a normal approval.</li><li>Every send is named under <b>Sent on your word</b> with <i>by Loberg Contracting's rule</i> beside it.</li></ul></div>
+      <div class="card"><h3>Questions</h3><ol><li>Is 3:00 pm the right hour, given Docsmit's cutoff?</li><li>Should the digest also go to the drafter?</li><li>One push a month, or one per run day?</li></ol></div>
+    </aside>
+  </div>
+
+
+  <!-- TAB 2: run (proposed design) -->
+  <div class="pane" id="tab-run" hidden>
+    <div class="stack">
+      <div class="deskbar"><span class="k">Lien desk</span><span class="chip gray">Do now &middot; 1</span><span class="chip gray">Deadlines</span><span class="chip gray">All filings</span><button class="runpill" id="runDoor" type="button" title="The door on the desk: the run's bar, without opening it"></button><span class="small muted">&larr; the door on the desk</span></div>
+      <section class="box">
+        <header><h2>Send the run</h2><span class="where" id="runSub"></span></header>
+        <div class="journey" id="journey"></div>
+        <div id="runLanes"></div>
+        <div id="runStatus"></div>
+        <div id="runSheet"></div>
+        <div class="cards" id="runCards"></div>
+        <div id="runHeld" class="small muted" style="padding:0 16px 8px"></div>
+        <div class="p-foot" id="runFoot"></div>
+      </section>
+      <section class="box"><header><h2>Notes on this screen</h2></header><div class="pad"><textarea id="note-run" placeholder="What is wrong, what is missing, what would you change?"></textarea></div></section>
+    </div>
+    <aside class="rail">
+      <div class="card"><h3>Try</h3><div class="stack" style="gap:6px"><label class="row"><input type="checkbox" id="tUnsigned" checked> <span>Robert has not signed 712 yet</span></label><label class="row"><input type="checkbox" id="tLateDay"> <span>It is 4:10 pm on the 15th, after the cutoff</span></label><label class="row"><input type="checkbox" id="tShort"> <span>Credit is short on the second envelope</span></label><label class="row"><input type="checkbox" id="tPlus"> <span>Plain First Class copy to the owner too</span></label></div></div>
+      <div class="card"><h3>What is shown, not told</h3><ul><li><b>The journey</b> on top: six nodes, a count under each, the blocker on the node it blocks.</li><li><b>Each envelope</b> is a card with an envelope that is open, sealed, postmarked or delivered, its own dots, one state chip and only the buttons that move it.</li><li><b>One button</b> at the foot names the next thing and its count. Everything else is under More.</li><li><b>Step 2 has a screen</b>: the printed checklist, live, once the paper envelopes print.</li><li><b>A mixed run</b> splits into two lanes after Signed.</li></ul></div>
+      <div class="card"><h3>Questions</h3><ol><li>Six nodes, or fewer? Built and Checked could be one.</li><li>Should the leader's card buttons show for the office at all, or only Sign here when he is beside you?</li><li>Is the live checklist for the phone, the desk, or both?</li></ol></div>
+    </aside>
+  </div>
+
+  <!-- TAB 3: piece -->
+  <div class="pane" id="tab-piece" hidden>
+    <div class="stack">
+      <section class="box">
+        <header><h2>650 &middot; ATI Schertz &middot; the owner's envelope</h2><span class="where">Lien desk &middot; Sent &middot; press the owner's chip</span>
+          <span style="margin-left:auto" class="row"><span class="small muted">Scenario</span><select id="scen"><option value="delivered">Delivered, read, paid</option><option value="unclaimed">Notice left, not picked up</option><option value="returned">Returned to sender</option></select></span></header>
+        <div class="pad row" style="border-bottom:1px solid var(--border)"><span class="small muted">Sent row:</span><span id="pieceChips" class="row"></span></div>
+        <div class="two">
+          <div>
+            <div id="pieceLegal"></div>
+            <ul class="tl" id="pieceTl"></ul>
+            <div class="row" style="margin-top:6px"><button class="btn blue" type="button" id="advance">Time passes &#9656;</button><button class="btn" type="button" id="rewind">Start over</button><span class="small muted" id="clock"></span></div>
+            <div id="pieceDoors" class="row" style="margin-top:8px"></div>
+          </div>
+          <div>
+            <h3 class="sub" style="margin-top:0">The desk reacts</h3>
+            <div class="queue" id="pieceQueue"></div>
+            <h3 class="sub">The owner's copy, page 1</h3>
+            <div class="pay"><div class="row" style="align-items:flex-start"><div class="qr" aria-hidden="true"></div><div><div><b>Pay or ask a question</b></div><div class="small muted">clicktooling.com/n/7Q4K-650</div><div class="small muted">One code per envelope. An open on this page is this piece's own event. Docsmit never sees it.</div></div></div></div>
+            <h3 class="sub">Papers</h3>
+            <div id="piecePapers" class="stack" style="gap:4px;font-size:0.8125rem"></div>
+            <h3 class="sub">Facts</h3>
+            <dl class="kv" id="pieceFacts"></dl>
+          </div>
+        </div>
+      </section>
+      <section class="box"><header><h2>Notes on this screen</h2></header><div class="pad"><textarea id="note-piece" placeholder="What is wrong, what is missing, what would you change?"></textarea></div></section>
+    </div>
+    <aside class="rail">
+      <div class="card"><h3>What is new here</h3><ul><li><b>Given on the mailed day.</b> The legal line counts from when USPS accepted it.</li><li><b>Day 3 after delivery</b> queues the owner call, not a ten-day wait.</li><li><b>The QR</b> says when the owner read it.</li><li><b>Letter two</b> takes the later of mailed and delivered, and says which.</li><li><b>Unclaimed and returned</b> are Needs you rows with one door each.</li></ul></div>
+      <div class="card"><h3>Questions</h3><ol><li>Three days after delivery, or a different count?</li><li>Whose queue: the drafter, the master, the office?</li><li>Unclaimed: plain copy at once, or wait for the return?</li></ol></div>
+    </aside>
+  </div>
+
+  <!-- TAB 4: counsel -->
+  <div class="pane" id="tab-counsel" hidden>
+    <div class="stack">
+      <section class="box">
+        <header><h2>650 &middot; ATI Schertz &middot; referred Oct 30</h2><span class="where">Legal portal &middot; the firm's view of a referred matter</span></header>
+        <div class="pad stack">
+          <div id="counselBody"></div>
+          <div class="small muted">Nothing typed. Every line is a mail piece or a recorded call. This tab reads the scenario on tab 3.</div>
+        </div>
+      </section>
+      <section class="box"><header><h2>Notes on this screen</h2></header><div class="pad"><textarea id="note-counsel" placeholder="What is wrong, what is missing, what would you change?"></textarea></div></section>
+    </div>
+    <aside class="rail">
+      <div class="card"><h3>Questions</h3><ol><li>Today the firm portal hides tracking on purpose. Show the delivered lines and the Certification PDF for referred matters?</li><li>Should the GC's portal say a notice was mailed to them and when it landed?</li></ol></div>
+    </aside>
+  </div>
+
+  <!-- TAB 5: dev settings -->
+  <div class="pane" id="tab-dev" hidden>
+    <div class="stack">
+      <section class="box">
+        <header><h2>Docsmit</h2><span class="where">Settings &middot; Developer &middot; seen by the dev role only</span><span id="devPill" style="margin-left:auto"></span></header>
+        <div class="two">
+          <div>
+            <h3 class="sub" style="margin-top:0">Connection</h3>
+            <div class="stack" style="gap:8px">
+              <div class="row"><span class="small muted" style="min-width:7rem">Environment</span><span class="seg" id="devEnv"><button type="button" data-env="tracksmit">Tracksmit sandbox</button><button type="button" data-env="prod">Production</button></span></div>
+              <div class="row"><label class="small muted" for="devEmail" style="min-width:7rem">Account email</label><input type="text" id="devEmail" placeholder="office@clickplumbing.com" style="flex:1;min-width:12rem"></div>
+              <div class="row"><label class="small muted" for="devPw" style="min-width:7rem">Password</label><input type="password" id="devPw" placeholder="typed once, never stored" style="flex:1;min-width:12rem"></div>
+              <div class="small muted devhint">Hashed in your browser before it leaves. Only the SHA-512 is kept, in the Vault. <span id="devHashPreview" class="mono"></span></div>
+              <div class="row"><label class="small muted" for="devSid" style="min-width:7rem">Software ID</label><input type="text" id="devSid" placeholder="from Docsmit, by email" style="flex:1;min-width:12rem"></div>
+              <div class="row devhint"><button class="btn blue" type="button" id="devSave">Save to the Vault</button><button class="btn" type="button" id="devTest">Test the connection</button><span class="small muted" id="devSaveMsg"></span></div>
+              <div id="devTestResult"></div>
+            </div>
+            <h3 class="sub">Sending</h3>
+            <div class="stack" style="gap:8px">
+              <div class="row"><span class="small muted" style="min-width:7rem">Docsmit sends</span><span class="seg" id="devPaused"><button type="button" data-p="on">On</button><button type="button" data-p="off">Paused &middot; runs fall back to paper</button></span></div>
+              <div class="row"><span class="small muted" style="min-width:7rem">A run opens on</span><span class="seg" id="devDefault"><button type="button" data-d="docsmit">Docsmit</button><button type="button" data-d="paper">paper</button><button type="button" data-d="last">what the GC got last time</button></span></div>
+              <div class="row"><span class="small muted" style="min-width:7rem">Return receipt</span><span class="seg" id="devRr"><button type="button" data-r="err">electronic</button><button type="button" data-r="card">green card</button></span><span class="small muted">per-envelope choice stays</span></div>
+              <div class="row"><label class="small muted" style="min-width:7rem"><input type="checkbox" id="devPlus"> plain copy</label><span class="small muted">also mail a plain First Class copy to every owner, unless the row says otherwise</span></div>
+              <div class="row"><label class="small muted" for="devCutoff" style="min-width:7rem">Docsmit cutoff</label><input type="text" id="devCutoff" value="3:00 pm" style="width:6rem"><span class="small muted">their daily production time, Central</span></div>
+              <div class="row"><label class="small muted" for="devBuffer" style="min-width:7rem">Send-by buffer</label><input type="text" id="devBuffer" value="1" style="width:4rem"><span class="small muted">business days before a window closes; the cron uses 2</span></div>
+              <div class="row"><label class="small muted" for="devCredit" style="min-width:7rem">Credit warning</label><input type="text" id="devCredit" value="$60" style="width:6rem"><span class="small muted">the Dashboard warns under this</span></div>
+            </div>
+          </div>
+          <div>
+            <h3 class="sub" style="margin-top:0">Reading back</h3>
+            <div class="stack" style="gap:8px">
+              <div class="row"><label class="small muted" for="devPoll" style="min-width:7rem">Poll every</label><input type="text" id="devPoll" value="60" style="width:4rem"><span class="small muted">minutes &middot; last poll Oct 12, 2:00 pm &middot; 7 pieces open</span><button class="btn sm" type="button" id="devPollNow">Poll now</button></div>
+              <div id="devPollMsg"></div>
+              <div class="row"><span class="small muted" style="min-width:7rem">Callbacks</span><span class="seg" id="devCb"><button type="button" data-c="off">Off &middot; poll only</button><button type="button" data-c="on">On</button></span></div>
+              <div class="small muted devhint" id="devCbNote"></div>
+            </div>
+            <h3 class="sub">Who sees what</h3>
+            <ul class="small" style="margin:0;padding-left:18px;display:grid;gap:4px">
+              <li><b>Dev</b> sees this page: the connection, the switches, the log.</li>
+              <li><b>Master</b> sees the standing rule per GC, which can override the run default and the plain-copy default.</li>
+              <li><b>Office</b> sees the run and the pieces. Never a token, never the hash.</li>
+            </ul>
+            <h3 class="sub">Recent calls</h3>
+            <div class="tblwrap"><table id="devLog"><thead><tr><th>When</th><th>Call</th><th>Result</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      </section>
+      <section class="box"><header><h2>Notes on this screen</h2></header><div class="pad"><textarea id="note-dev" placeholder="What is wrong, what is missing, what would you change?"></textarea></div></section>
+    </div>
+    <aside class="rail">
+      <div class="card"><h3>Where each thing lives</h3><ul><li><b>Secrets</b> (email, password hash, software ID): Supabase Vault, written by an edge function the dev calls from this page; read by the sending function at call time; never returned to a browser.</li><li><b>Switches and numbers</b>: <span class="mono">app_settings</span> rows, like the other dev settings.</li><li><b>Test the connection</b> asks the function to fetch a token and the account info, and returns only the account's name, balance and limits.</li><li><b>Paused</b> makes every run open on paper and hides the Docsmit button; nothing else changes.</li></ul></div>
+      <div class="card"><h3>Questions</h3><ol><li>Should the master see the balance and the paused switch too, or only the dev?</li><li>Two accounts, sandbox and production, both kept, with one switch between them?</li><li>Who gets the email when a test fails or the token is refused during a run?</li></ol></div>
+    </aside>
+  </div>
+
+  <!-- TAB 6: pen signature -->
+  <div class="pane" id="tab-pen" hidden>
+    <div class="stack">
+      <div class="note info"><b>Taunya&rsquo;s question.</b> The packet printed Oct 9. The leader signed the papers with a pen and she mailed them. Back from the post office she opens Record the mailing, types the numbers, and three envelopes are held: <i>Unsigned: the leader signs it from his phone, or draws it here.</i> There is no way to say he already signed the paper. This tab adds one.</div>
+      <section class="box">
+        <header><h2>Record the mailing &middot; 7 notices</h2><span class="where">Lien desk &middot; the run, step 3</span></header>
+        <div class="steps" style="display:flex;gap:6px;flex-wrap:wrap;padding:7px 16px;border-bottom:1px solid var(--border);font-size:0.72rem;color:var(--text-muted)"><span style="font-weight:700;letter-spacing:0.06em;text-transform:uppercase">Steps</span><span class="chip green">1 &middot; Printed October 9 &#10003;</span><span>&rarr;</span><span class="chip green">2 &middot; Mail them &#10003;</span><span>&rarr;</span><span class="chip blue">3 &middot; Record the mailing</span></div>
+        <div id="penStatus"></div>
+        <div class="pad tblwrap"><table><thead><tr><th colspan="2">Envelope</th><th>Method</th><th>Tracking #</th></tr></thead><tbody id="penRows"></tbody></table></div>
+        <div id="penPane"></div>
+        <div class="pad row" style="border-top:1px solid var(--border);background:var(--bg-subtle)" id="penFoot"></div>
+      </section>
+      <section class="box" id="penAfterBox" hidden>
+        <header><h2>What the record looks like afterwards</h2><span class="where">the leader&rsquo;s phone &middot; the Sent row &middot; counsel&rsquo;s packet</span></header>
+        <div class="two">
+          <div>
+            <h3 class="sub" style="margin-top:0">The leader&rsquo;s phone, that evening</h3>
+            <div class="phone" id="penPhone"></div>
+          </div>
+          <div>
+            <h3 class="sub" style="margin-top:0">The Sent row</h3>
+            <div id="penSentRow" class="stack" style="gap:6px;font-size:0.8125rem"></div>
+            <h3 class="sub">The audit line under the frame</h3>
+            <div class="small" id="penAudit" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-subtle)"></div>
+            <h3 class="sub">Counsel&rsquo;s packet</h3>
+            <div class="small muted" id="penCounsel"></div>
+          </div>
+        </div>
+      </section>
+      <section class="box"><header><h2>Notes on this screen</h2></header><div class="pad"><textarea id="note-pen" placeholder="What is wrong, what is missing, what would you change?"></textarea></div></section>
+    </div>
+    <aside class="rail">
+      <div class="card"><h3>The rule</h3><ul><li><b>A signature is the record, not the mark.</b> The app already says so for the electronic one. A pen signature is the leader&rsquo;s own act on the paper as printed; the record names who, when, who wrote it down, and how they know.</li><li><b>The paper is already tied to the row.</b> The frame prints a record id in its corner, like L878-4C2E91. A photo of the signed page carries it.</li><li><b>On his word, again.</b> This mirrors <i>Approve on his word</i>: the office writes it down, the leader sees it under <i>Signed by pen, as recorded</i>, and can say <i>Not what I signed</i>.</li><li><b>Paper path only.</b> Docsmit mails the PDF, so a Docsmit envelope still needs the electronic signature. Later: sign the signature page on paper, scan it, and it rides in the PDF.</li></ul></div>
+      <div class="card"><h3>Why it happened</h3><p style="margin:0">The packet printed Oct 9. The signing rule shipped the next day. Every packet printed before it is unsigned in the record and signed on the paper. This path records those too.</p></div>
+      <div class="card"><h3>Decided Oct 12</h3><ol><li>The photo is <b>asked for</b>, not required. Needs you nags until it is there.</li><li><i>He told me</i> <b>counts</b> on its own. The affidavit's served line says which of the three it was.</li><li>The leader's confirmation is <b>not needed</b>. It strengthens the record when it comes.</li></ol></div>
+      <div class="card"><h3>Still open</h3><ol><li>One pane for every held notice in the run, as drawn, or one per envelope?</li></ol></div>
+    </aside>
+  </div>
+
+  <!-- TAB 7: notes -->
+  <div class="pane" id="tab-notes" hidden>
+    <div class="stack">
+      <section class="box">
+        <header><h2>Your notes, all tabs</h2></header>
+        <div class="pad stack">
+          <div class="row"><button class="btn blue" type="button" id="copyNotes">Copy all notes</button><button class="btn" type="button" id="clearNotes">Clear</button><span class="small muted" id="copyMsg"></span></div>
+          <pre class="mono" id="allNotes" style="white-space:pre-wrap;margin:0;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-subtle);min-height:80px"></pre>
+          <textarea id="note-general" placeholder="Anything that does not belong to one screen"></textarea>
+        </div>
+      </section>
+    </div>
+    <aside class="rail"><div class="card"><h3>How to send them</h3><p style="margin:0">Press Copy all notes, then paste into the chat. The notes live only in this browser.</p></div></aside>
+  </div>
+</div>
+
+<style>
+/* Docsmit review modal: what Docsmit will mail, envelope by envelope, page by page. Paper is paper: the pages stay light in both themes. */
+.dsm { position: fixed; inset: 0; z-index: 50; background: rgba(10, 16, 28, 0.62); display: flex; align-items: center; justify-content: center; padding: 12px; }
+.dsm[hidden] { display: none; }
+.dsmBox { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); width: min(1180px, 100%); max-height: calc(100vh - 24px); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+.dsmHead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 12px 18px 10px; border-bottom: 1px solid var(--border); }
+.dsmHead h2 { margin: 0; font-size: 1rem; color: var(--text-strong); }
+.dsmHead .sub { color: var(--text-muted); font-size: 0.8125rem; flex-basis: 100%; }
+.dsmHead .x { margin-left: auto; border: none; background: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; }
+.dsmBody { display: grid; grid-template-columns: 230px minmax(0, 1fr) 260px; min-height: 0; overflow: hidden; }
+@media (max-width: 980px) { .dsmBody { grid-template-columns: 1fr; overflow: auto; } }
+.dsmEnvs { border-right: 1px solid var(--border); overflow: auto; padding: 10px; display: grid; gap: 6px; align-content: start; }
+.dsmEnvs button { text-align: left; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 0.78rem; padding: 7px 9px; cursor: pointer; }
+.dsmEnvs button.on { background: var(--blue-tint); border-color: var(--blue); }
+.dsmEnvs .k { color: var(--text-muted); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+.dsmEnvs .m { color: var(--text-muted); font-size: 0.72rem; }
+.dsmMain { overflow: auto; padding: 12px 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.dsmFacts { border-left: 1px solid var(--border); overflow: auto; padding: 12px 14px; font-size: 0.78rem; display: grid; gap: 10px; align-content: start; }
+.dsmFacts h3 { margin: 0 0 4px; font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.dsmFacts dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; } .dsmFacts dt { color: var(--text-muted); } .dsmFacts dd { margin: 0; }
+.dsmFacts ul { margin: 0; padding-left: 16px; display: grid; gap: 3px; }
+.dsmFacts .chk li::marker { content: "\2610  "; }
+.dsmFoot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid var(--border); background: var(--bg-subtle); font-size: 0.78rem; color: var(--text-muted); }
+.dsmFoot .sp { flex: 1; min-width: 10rem; }
+/* the envelope face */
+.dsmFace { background: #f6f3ea; color: #1b1b1b; border: 1px solid #c9c2ad; border-radius: 4px; padding: 14px 18px; aspect-ratio: 9 / 6; max-width: 560px; position: relative; font-family: var(--font); font-size: 0.75rem; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.dsmFace.flat { aspect-ratio: 12 / 9; }
+.dsmFace .win { position: absolute; border: 1px dashed #8d8468; background: #fffdf7; padding: 5px 7px; border-radius: 2px; line-height: 1.3; }
+.dsmFace .ret { left: 18px; top: 14px; width: 42%; font-size: 0.68rem; }
+.dsmFace .to { left: 12%; top: 46%; width: 56%; font-size: 0.8rem; }
+.dsmFace .cert { position: absolute; right: 18px; top: 14px; width: 40%; border: 1.5px solid #1b1b1b; padding: 5px 7px; font-size: 0.66rem; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; text-align: center; }
+.dsmFace .cert small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; color: #555; margin-top: 2px; }
+.dsmFace .stamp { position: absolute; right: 18px; bottom: 14px; font-size: 0.62rem; color: #666; text-align: right; }
+.dsmFace .fixed { color: #9a5b00; font-size: 0.66rem; }
+/* the page strip and the page */
+.dsmStrip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px; }
+.dsmStrip button { flex: none; width: 74px; border: 1px solid var(--border-strong); border-radius: 4px; background: #fff; color: #333; font: inherit; padding: 0; cursor: pointer; overflow: hidden; }
+.dsmStrip button.on { outline: 2px solid var(--blue); outline-offset: 1px; }
+.dsmStrip .th { height: 92px; padding: 6px 6px 0; font-size: 0.42rem; line-height: 1.25; text-align: left; color: #333; background: #fff; position: relative; }
+.dsmStrip .th b { display: block; font-size: 0.46rem; margin-bottom: 2px; }
+.dsmStrip .th .ln { height: 2px; background: #cfcfcf; margin: 2px 0; }
+.dsmStrip .n { display: block; font-size: 0.64rem; color: var(--text-muted); background: var(--bg-subtle); padding: 2px 0; border-top: 1px solid var(--border); }
+.dsmPage { background: #fff; color: #111; border: 1px solid #c8c8c8; border-radius: 3px; padding: 36px 44px; max-width: 640px; aspect-ratio: 8.5 / 11; font-family: Georgia, "Times New Roman", serif; font-size: 0.8rem; line-height: 1.45; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.dsmPage .lh { display: flex; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 14px; font-family: var(--font); }
+.dsmPage .lh b { font-size: 0.95rem; } .dsmPage .lh span { font-size: 0.66rem; color: #555; }
+.dsmPage h4 { margin: 10px 0 6px; font-size: 0.9rem; font-family: var(--font); }
+.dsmPage p { margin: 0 0 8px; }
+.dsmPage .winzone { border: 1px dashed #b8a66a; padding: 6px 8px; width: 60%; margin: 6px 0 10px; font-family: var(--font); position: relative; }
+.dsmPage .winzone .tag { position: absolute; right: -2px; top: -9px; font-size: 0.56rem; color: #9a5b00; background: #fff; padding: 0 3px; }
+.dsmPage .qr { display: flex; gap: 8px; align-items: center; font-family: var(--font); font-size: 0.7rem; color: #333; margin-bottom: 8px; }
+.dsmPage .qr i { flex: none; width: 40px; height: 40px; background: repeating-conic-gradient(#111 0 25%, #fff 0 50%) 0 0 / 10px 10px; border: 2px solid #fff; outline: 1px solid #999; }
+.dsmPage table { width: 100%; border-collapse: collapse; font-size: 0.74rem; font-family: var(--font); }
+.dsmPage td, .dsmPage th { border: 1px solid #999; padding: 3px 6px; text-align: left; }
+.dsmPage .frame { margin-top: 14px; border: 1px solid #111; padding: 8px 10px; position: relative; font-family: var(--font); font-size: 0.7rem; }
+.dsmPage .frame .sig { font-family: "Snell Roundhand", "Brush Script MT", cursive; font-size: 1.4rem; border-bottom: 1px solid #111; display: inline-block; min-width: 180px; padding: 0 4px 2px; }
+.dsmPage .frame .rid { position: absolute; right: 6px; top: 4px; font-family: var(--mono); font-size: 0.6rem; color: #555; }
+.dsmPage .stampinv { position: absolute; right: 30px; top: 60px; transform: rotate(-18deg); border: 3px solid #b00; color: #b00; font-family: var(--font); font-weight: 800; font-size: 1.6rem; letter-spacing: 0.12em; padding: 2px 10px; opacity: 0.8; }
+.dsmPage .foot { position: absolute; left: 44px; right: 44px; bottom: 16px; font-family: var(--font); font-size: 0.58rem; color: #666; display: flex; justify-content: space-between; border-top: 1px solid #ddd; padding-top: 4px; }
+.dsmNav { display: flex; gap: 8px; align-items: center; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; }
+.dsmMain > div { min-width: 0; max-width: 100%; }
+.dsmFace, .dsmPage { max-width: 100%; box-sizing: border-box; }
+@media (max-width: 640px) { .dsmFace { padding: 10px 12px; font-size: 0.62rem; } .dsmFace .to { font-size: 0.68rem; } .dsmPage { padding: 18px 16px; font-size: 0.7rem; } .dsmPage .foot { left: 16px; right: 16px; } .dsmHead h2 { font-size: 0.9rem; } }
+</style>
+<div class="dsm" id="dsmOverlay" hidden role="dialog" aria-modal="true" aria-label="Review before Docsmit mails it">
+  <div class="dsmBox">
+    <div class="dsmHead"><h2 id="dsmTitle">Review before Docsmit mails it</h2><button class="x" type="button" id="dsmClose" aria-label="Close">&times;</button><div class="sub">This is the file Docsmit gets, page for page, in the envelope it goes in. Nothing is sent until you press Mail. &larr; &rarr; walk the pages, &uarr; &darr; the envelopes, Esc closes.</div></div>
+    <div class="dsmBody">
+      <div class="dsmEnvs" id="dsmEnvs"></div>
+      <div class="dsmMain" id="dsmMain"></div>
+      <div class="dsmFacts" id="dsmFacts"></div>
+    </div>
+    <div class="dsmFoot"><span class="sp" id="dsmFootWords"></span><button class="btn" type="button" id="dsmBack">Back</button><button class="btn blue" type="button" id="dsmMail"></button></div>
+  </div>
+</div>
+<script>
+(function () {
+  const el = (id) => document.getElementById(id);
+  const money = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const whole = (n) => '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const st = { envs: [], i: 0, p: 0, onMail: null, total: 0 };
+
+  /* Build the page list one copy carries, in the order the packet stacks it. */
+  function pagesForCopy(c, env) {
+    const out = [];
+    const owner = c.who === 'owner';
+    const lead = { job: c.job, amount: c.amount, months: c.months, who: owner ? 'Owner of record' : 'Original contractor', name: env.name, address: env.address, fixed: env.fixed };
+    if (owner) out.push({ kind: 'letter', title: 'Counsel&rsquo;s cover letter', ...lead });
+    if (owner && c.release) out.push({ kind: 'release', title: 'Conditional release', ...lead });
+    out.push({ kind: 'form1', title: '&sect; 53.056 notice, page 1', ...lead });
+    out.push({ kind: 'form2', title: '&sect; 53.056 notice, page 2', ...lead });
+    if (!owner && c.release) out.push({ kind: 'release', title: 'Conditional release', ...lead });
+    out.push({ kind: 'pay', title: 'How to pay', ...lead });
+    const inv = c.invoices || 2;
+    for (let k = 1; k <= inv; k++) out.push({ kind: 'invoice', title: 'Invoice ' + k + ' of ' + inv, n: k, ...lead });
+    return out;
+  }
+
+  function pageHtml(pg, idx, total, env) {
+    const foot = '<div class="foot"><span>' + pg.job + ' &middot; copy for the ' + pg.who.toLowerCase() + '</span><span>page ' + (idx + 1) + ' of ' + total + '</span></div>';
+    const lh = '<div class="lh"><b>Click Plumbing &amp; Electrical</b><span>8206 Lockhill Selma Rd, San Antonio, TX 78230 &middot; 210 555 0147</span></div>';
+    if (pg.kind === 'letter') return '<div class="dsmPage">' + lh + '<p style="font-family:var(--font);font-size:0.72rem;color:#555">October 12, 2026</p><div class="winzone"><span class="tag">shows in the window</span><b>' + pg.name + '</b><br>' + pg.address.replace(/, /g, '<br>') + '</div><div class="qr"><i aria-hidden="true"></i><span>Pay or ask a question<br>clicktooling.com/n/7Q4K-' + pg.job.slice(0, 3) + '</span></div><p><b>Re: ' + pg.job + ' &middot; unpaid plumbing work, ' + pg.months + ' &middot; ' + whole(pg.amount) + '</b></p><p>You are receiving the enclosed notice because our work on your property has not been paid for by the original contractor. Texas law lets you hold back what we are owed from what you pay them.</p><p>Nothing here asks you to pay twice. There are three ways to settle this before you pay the contractor again, and the enclosed page names them. We cannot deposit a joint check.</p><p>Call me with any question. I would rather talk than file.</p><p style="margin-top:18px">Robert Douglas<br><span style="font-family:var(--font);font-size:0.7rem;color:#555">Master plumber &middot; 210 555 0147</span></p>' + foot + '</div>';
+    if (pg.kind === 'release') return '<div class="dsmPage">' + lh + '<h4>Conditional Waiver and Release on Progress Payment</h4><p style="font-family:var(--font);font-size:0.72rem">Texas Property Code &sect; 53.284 form</p><p>Project: ' + pg.job + '<br>Job no.: ' + pg.job.slice(0, 3) + '<br>On receipt by the signer of this document of a check from ' + pg.name + ' in the sum of ' + whole(pg.amount) + ' payable to Click Plumbing &amp; Electrical, and when the check has been properly endorsed and has been paid by the bank on which it is drawn, this document becomes effective to release any mechanic&rsquo;s lien right the signer has on the property for work through ' + pg.months + '.</p><p>This release does not cover any retention or items furnished after that date.</p><div class="frame"><span class="rid">R' + pg.job.slice(0, 3) + '-1A2B3C</span>Signed<br><span class="sig">Robert Douglas</span><br>Robert Douglas, Click Plumbing &amp; Electrical &middot; October 12, 2026</div>' + foot + '</div>';
+    if (pg.kind === 'form1') return '<div class="dsmPage">' + lh + '<h4>Notice of Claim &middot; Texas Property Code &sect; 53.056</h4><table><tr><th style="width:34%">Claimant</th><td>Click Plumbing &amp; Electrical, 8206 Lockhill Selma Rd, San Antonio, TX 78230</td></tr><tr><th>Original contractor</th><td>Loberg Contracting, 4303 Thousand Oaks Dr, San Antonio, TX 78217</td></tr><tr><th>Owner of record</th><td>' + (pg.who === 'Owner of record' ? pg.name + ', ' + pg.address : 'ATI Schertz Holdings LLC, 17300 IH 35 N, Schertz, TX 78154') + '</td></tr><tr><th>Property</th><td>' + pg.job.slice(6) + ' &middot; Guadalupe County &middot; Lot 4, Block 2, Schertz Business Park</td></tr><tr><th>Months of work</th><td>' + pg.months + '</td></tr><tr><th>Amount unpaid</th><td><b>' + whole(pg.amount) + '</b></td></tr></table><p style="margin-top:10px">The claimant furnished labor and materials for plumbing on the property named above under a subcontract with the original contractor. The amount stated is unpaid. The invoices are attached.</p><p><b>WARNING:</b> If a lien is filed and is not paid, the owner may be personally liable and the property may be subject to a lien under Chapter 53 unless the owner withholds payments to the contractor for the payment of the claim or the claim is otherwise paid or settled.</p>' + foot + '</div>';
+    if (pg.kind === 'form2') return '<div class="dsmPage">' + lh + '<h4>Notice of Claim &middot; continued</h4><p>This notice is sent by certified mail to the owner of record and to the original contractor as Chapter 53 requires. It covers the months named on page 1. A copy of each unpaid invoice follows.</p><p>Statutory retainage: none recorded on this job. Payment bond: none known.</p><div class="frame"><span class="rid">L' + pg.job.slice(0, 3) + '-4C2E91</span>Signed and sworn<br><span class="sig">Robert Douglas</span><br>Robert Douglas &middot; Master plumber &middot; Signed October 12, 2026 at 2:14 PM CT<br><span style="color:#555">Electronic signature from the signer&rsquo;s own sign-in, bound to this notice as drafted.</span></div>' + foot + '</div>';
+    if (pg.kind === 'pay') return '<div class="dsmPage">' + lh + '<h4>How to pay, and three ways to settle</h4><table><tr><th>Job</th><th>Months</th><th>Unpaid</th></tr><tr><td>' + pg.job + '</td><td>' + pg.months + '</td><td>' + whole(pg.amount) + '</td></tr></table><p style="margin-top:10px"><b>1.</b> Pay us directly once the contractor authorizes it in writing. <b>2.</b> Hold back ' + whole(pg.amount) + ' from your next payment to the contractor until this is settled. <b>3.</b> Call us and we will work it out with the contractor on the line.</p><div class="qr"><i aria-hidden="true"></i><span>Pay by card or bank on the pay page<br>clicktooling.com/n/7Q4K-' + pg.job.slice(0, 3) + '</span></div><p style="font-family:var(--font);font-size:0.7rem;color:#555">We cannot deposit a check payable to two parties.</p>' + foot + '</div>';
+    return '<div class="dsmPage">' + lh + '<div class="stampinv">INVOICE</div><h4>Invoice ' + (1000 + pg.n * 7 + Number(pg.job.slice(0, 3))) + '</h4><p style="font-family:var(--font);font-size:0.72rem;color:#555">Billed ' + (pg.n === 1 ? 'July 31' : 'August 31') + ', 2026 &middot; due on receipt &middot; ' + pg.job + '</p><table><tr><th>Work</th><th style="width:18%">Amount</th></tr><tr><td>Rough-in, ' + (pg.n === 1 ? 'building A, levels 1&ndash;2' : 'building A, level 3 and the riser') + '</td><td>' + whole(Math.round(pg.amount * (pg.n === 1 ? 0.6 : 0.4))) + '</td></tr><tr><td>Materials, per the attached ticket</td><td>included</td></tr><tr><th>Unpaid</th><th>' + whole(Math.round(pg.amount * (pg.n === 1 ? 0.6 : 0.4))) + '</th></tr></table>' + foot + '</div>';
+  }
+
+  function thumbHtml(pg, i) {
+    const lines = '<div class="ln"></div><div class="ln" style="width:80%"></div><div class="ln" style="width:90%"></div><div class="ln" style="width:60%"></div>';
+    return '<button type="button" data-p="' + i + '"' + (i === st.p ? ' class="on"' : '') + ' title="' + pg.title + '"><div class="th"><b>' + pg.title + '</b>' + lines + (pg.kind === 'invoice' ? '<div style="position:absolute;right:4px;top:30px;transform:rotate(-18deg);border:1px solid #b00;color:#b00;font-weight:800;font-size:0.4rem;padding:0 2px">INVOICE</div>' : '') + (pg.kind === 'form2' || pg.kind === 'release' ? '<div style="border:1px solid #333;height:14px;margin-top:4px"></div>' : '') + '</div><span class="n">' + (i + 1) + '</span></button>';
+  }
+
+  function render() {
+    const env = st.envs[st.i]; if (!env) return;
+    const pages = env.pages;
+    el('dsmTitle').innerHTML = 'Review before Docsmit mails it &middot; ' + st.envs.length + ' envelope' + (st.envs.length > 1 ? 's' : '') + ' &middot; ' + money(st.total);
+    el('dsmEnvs').innerHTML = '<div class="k">Envelopes</div>' + st.envs.map((e, i) => '<button type="button" data-e="' + i + '"' + (i === st.i ? ' class="on"' : '') + '><div><b>' + e.n + ' &middot; ' + e.label + '</b></div><div>' + e.name + '</div><div class="m">' + e.pages.length + ' pages &middot; ' + e.envelope + ' &middot; ' + money(e.price) + '</div>' + (e.problem ? '<div class="m" style="color:var(--red)">' + e.problem + '</div>' : '') + '</button>').join('');
+    document.querySelectorAll('#dsmEnvs button').forEach((b) => b.addEventListener('click', () => { st.i = +b.dataset.e; st.p = 0; render(); }));
+    const face = '<div class="dsmFace' + (env.envelope === 'Flat' ? ' flat' : '') + '" aria-label="The envelope face"><div class="win ret"><b>Click Plumbing &amp; Electrical</b><br>8206 Lockhill Selma Rd<br>San Antonio, TX 78230</div><div class="cert">Certified Mail<small>' + env.sendType + '</small></div><div class="win to"><b>' + env.name + '</b><br>' + env.address.replace(/, /g, '<br>') + (env.fixed ? '<div class="fixed">' + env.fixed + '</div>' : '') + '</div><div class="stamp">Docsmit adds the label, the postage and the 20-digit number here<br>' + env.envelope + (env.envelope === 'Flat' ? ' envelope, 9 &times; 12' : ' double-window envelope') + ' &middot; ' + env.pages.length + ' sheets, single-sided</div></div>';
+    const pg = pages[st.p];
+    el('dsmMain').innerHTML = '<div><div class="dsmNav"><b style="color:var(--text)">The envelope</b><span>as Docsmit prints it; the address is the one the check returned</span></div>' + face + '</div>' +
+      '<div><div class="dsmNav"><b style="color:var(--text)">The pages, in order</b><span>' + pages.length + ' pages &middot; press one</span></div><div class="dsmStrip" id="dsmStrip">' + pages.map(thumbHtml).join('') + '</div></div>' +
+      '<div><div class="dsmNav"><b style="color:var(--text)">Page ' + (st.p + 1) + ' &middot; ' + pg.title + '</b><button class="btn sm" type="button" id="dsmPrev"' + (st.p === 0 ? ' disabled' : '') + '>&larr;</button><button class="btn sm" type="button" id="dsmNext"' + (st.p === pages.length - 1 ? ' disabled' : '') + '>&rarr;</button><span>as it prints, US Letter, black and white</span></div>' + pageHtml(pg, st.p, pages.length, env) + '</div>';
+    document.querySelectorAll('#dsmStrip button').forEach((b) => b.addEventListener('click', () => { st.p = +b.dataset.p; render(); }));
+    el('dsmPrev').addEventListener('click', () => { st.p = Math.max(0, st.p - 1); render(); });
+    el('dsmNext').addEventListener('click', () => { st.p = Math.min(pages.length - 1, st.p + 1); render(); });
+    const sigPage = pages.findIndex((x) => x.kind === 'form2') + 1;
+    const invCount = pages.filter((x) => x.kind === 'invoice').length;
+    el('dsmFacts').innerHTML = '<div><h3>As Docsmit mails it</h3><dl><dt>Paper</dt><dd>US Letter, single-sided, black and white</dd><dt>Envelope</dt><dd>' + env.envelope + ' &middot; ' + env.pages.length + ' sheets</dd><dt>Service</dt><dd>' + env.sendType + '</dd><dt>Return address</dt><dd>Click Plumbing &amp; Electrical, 8206 Lockhill Selma Rd, San Antonio, TX 78230</dd><dt>Price</dt><dd>' + money(env.price) + '</dd><dt>The file</dt><dd>' + env.fileName + ' &middot; ' + env.fileSize + ' &middot; <button class="lnk" type="button">Open the exact file &rsaquo;</button></dd></dl></div>' +
+      '<div><h3>Check before you press Mail</h3><ul class="chk"><li>The address shows in the window' + (env.fixed ? ', with the correction' : '') + '.</li><li>The signature is on page ' + sigPage + '.</li><li>The months read ' + env.pages[0].months + '.</li><li>The claim reads ' + whole(env.pages[0].amount) + '.</li><li>' + invCount + ' invoice' + (invCount === 1 ? '' : 's') + ' ride behind the notice, stamped INVOICE.</li></ul></div>' +
+      '<div><h3>Not in this envelope</h3><ul><li>Color, staples, a second copy.</li>' + (env.plus ? '<li>The plain First Class copy goes as its own piece, ' + money(1.87) + '.</li>' : '') + (env.email ? '<li>The courtesy PDF to ' + env.email + ' goes by email when the run is recorded.</li>' : '') + '</ul></div>';
+    const okCount = st.envs.filter((e) => !e.problem).length;
+    el('dsmFootWords').innerHTML = 'Docsmit prints and mails today&rsquo;s batch at 3:00 pm Central. Each envelope&rsquo;s PDF is filed on its job the moment you press Mail.' + (okCount < st.envs.length ? ' <span style="color:var(--red)">' + (st.envs.length - okCount) + ' envelope' + (st.envs.length - okCount > 1 ? 's' : '') + ' with a problem will not go.</span>' : '');
+    el('dsmMail').innerHTML = 'Mail ' + (okCount === 1 ? 'this envelope' : 'these ' + okCount + ' envelopes') + ' &middot; ' + money(st.envs.filter((e) => !e.problem).reduce((s, e) => s + e.price, 0)) + ' &#9656;';
+    el('dsmMail').disabled = okCount === 0;
+  }
+
+  function close() { el('dsmOverlay').hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(ev) {
+    if (ev.key === 'Escape') { close(); return; }
+    const env = st.envs[st.i]; if (!env) return;
+    if (ev.key === 'ArrowRight') { st.p = Math.min(env.pages.length - 1, st.p + 1); render(); ev.preventDefault(); }
+    if (ev.key === 'ArrowLeft') { st.p = Math.max(0, st.p - 1); render(); ev.preventDefault(); }
+    if (ev.key === 'ArrowDown') { st.i = Math.min(st.envs.length - 1, st.i + 1); st.p = 0; render(); ev.preventDefault(); }
+    if (ev.key === 'ArrowUp') { st.i = Math.max(0, st.i - 1); st.p = 0; render(); ev.preventDefault(); }
+  }
+  el('dsmClose').addEventListener('click', close);
+  el('dsmBack').addEventListener('click', close);
+  el('dsmMail').addEventListener('click', () => { const f = st.onMail; close(); if (f) f(); });
+
+  /**
+   * envs: [{ n, label, name, address, fixed, email, envelope: '#10'|'Flat', sendType, price, plus, problem, fileName, fileSize,
+   *          copies: [{ job, amount, months, who: 'owner'|'original_contractor', release, invoices }] }]
+   */
+  window.openDocsmitReview = function (envs, opts) {
+    st.envs = envs.map((e) => ({ ...e, pages: e.copies.flatMap((c) => pagesForCopy(c, e)) }));
+    st.i = 0; st.p = 0; st.onMail = opts && opts.onMail; st.total = opts && opts.total != null ? opts.total : st.envs.reduce((s, e) => s + e.price, 0);
+    el('dsmOverlay').hidden = false;
+    document.addEventListener('keydown', onKey);
+    render();
+    el('dsmMail').focus();
+  };
+})();
+</script>
+
+<script>
+(function () {
+  const el = (id) => document.getElementById(id);
+  const money = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const whole = (n) => '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+  /* ---------- tabs ---------- */
+  const TABS = ['digest', 'run', 'piece', 'counsel', 'dev', 'pen', 'notes'];
+  function showTab(t) {
+    TABS.forEach((k) => { el('tab-' + k).hidden = k !== t; });
+    document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+    if (t === 'notes') renderNotes();
+    if (t === 'counsel') renderCounsel();
+    try { localStorage.setItem('lienproto.tab', t); } catch (e) {}
+  }
+  document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.t)));
+
+  /* ---------- notes ---------- */
+  const NOTE_KEYS = ['digest', 'run', 'piece', 'counsel', 'dev', 'pen', 'general'];
+  const NOTE_TITLES = { digest: '1 The evening digest', run: '2 The run', piece: "3 A piece's life", counsel: "4 Counsel's packet", dev: '5 Dev settings', pen: '6 Signed with a pen', general: 'General' };
+  function loadNotes() { NOTE_KEYS.forEach((k) => { try { el('note-' + k).value = localStorage.getItem('lienproto.note.' + k) || ''; } catch (e) {} }); countNotes(); }
+  function countNotes() { let n = 0; NOTE_KEYS.forEach((k) => { if (el('note-' + k).value.trim()) n++; }); el('noteCount').textContent = n; }
+  NOTE_KEYS.forEach((k) => el('note-' + k).addEventListener('input', () => { try { localStorage.setItem('lienproto.note.' + k, el('note-' + k).value); } catch (e) {} countNotes(); if (k === 'general') renderNotes(); }));
+  function allNotesText() { return NOTE_KEYS.map((k) => el('note-' + k).value.trim() ? '## ' + NOTE_TITLES[k] + '\n' + el('note-' + k).value.trim() : '').filter(Boolean).join('\n\n') || '(no notes yet)'; }
+  function renderNotes() { el('allNotes').textContent = allNotesText(); }
+  el('copyNotes').addEventListener('click', () => {
+    const t = allNotesText();
+    const done = () => { el('copyMsg').textContent = 'Copied.'; setTimeout(() => { el('copyMsg').textContent = ''; }, 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done).catch(() => { selectAll(); });
+    else selectAll();
+    function selectAll() { const r = document.createRange(); r.selectNodeContents(el('allNotes')); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); el('copyMsg').textContent = 'Selected. Press copy.'; }
+  });
+  el('clearNotes').addEventListener('click', () => { NOTE_KEYS.forEach((k) => { el('note-' + k).value = ''; try { localStorage.removeItem('lienproto.note.' + k); } catch (e) {} }); countNotes(); renderNotes(); });
+
+  /* ---------- tab 1: digest ---------- */
+  const DIGEST = [
+    { id: 'n650', label: '650 &middot; ATI Schertz', gc: 'Loberg', amt: 33500 },
+    { id: 'n712', label: '712 &middot; ATI Schertz Bldg B', gc: 'Loberg', amt: 8240 },
+    { id: 'n731', label: '731 &middot; Oak Run Phase 2', gc: 'Loberg', amt: 12900 },
+    { id: 'n698', label: '698 &middot; Crestway Retail', gc: 'Bexar Builders', amt: 5610 },
+  ];
+  const dg = { held: {}, asking: null, ran: false };
+  function renderDigest() {
+    const going = DIGEST.filter((d) => !dg.held[d.id]);
+    el('digestTitle').innerHTML = 'Tomorrow 3:00 pm &middot; ' + going.length + ' notice' + (going.length === 1 ? '' : 's') + ' go to Docsmit by standing rule';
+    el('digestList').innerHTML = DIGEST.map((d) => '<div class="it' + (dg.held[d.id] ? ' held' : '') + '"><span>' + d.label + ' &middot; ' + d.gc + ' &middot; ' + whole(d.amt) + '</span>' + (dg.held[d.id] ? '<span class="chip amber">held</span>' : '<button class="btn sm" type="button" data-hold="' + d.id + '"' + (dg.ran ? ' disabled' : '') + '>Hold</button>') + '</div>').join('');
+    document.querySelectorAll('[data-hold]').forEach((b) => b.addEventListener('click', () => { dg.asking = b.dataset.hold; renderDigest(); }));
+    if (dg.asking) {
+      const d = DIGEST.find((x) => x.id === dg.asking);
+      el('holdBox').innerHTML = '<div class="note warn"><b>Hold ' + d.label + '?</b> It drops out of tomorrow\'s run and comes to you as a normal approval. <div class="row" style="margin-top:6px"><select id="holdWhy"><option>They promised a date</option><option>The claim looks wrong</option><option>Talking to the GC this week</option><option>Other</option></select><button class="btn red sm" type="button" id="holdYes">Hold it</button><button class="btn sm" type="button" id="holdNo">Keep it in</button></div></div>';
+      el('holdYes').addEventListener('click', () => { dg.held[dg.asking] = el('holdWhy').value; dg.asking = null; renderDigest(); });
+      el('holdNo').addEventListener('click', () => { dg.asking = null; renderDigest(); });
+    } else {
+      const names = Object.keys(dg.held);
+      el('holdBox').innerHTML = names.length ? '<div class="note ok">' + names.length + ' held: ' + names.map((id) => DIGEST.find((x) => x.id === id).label + ' (' + dg.held[id] + ')').join('; ') + '. ' + (names.length === 1 ? 'It waits' : 'They wait') + ' under Awaiting approval.</div>' : '';
+    }
+    el('runCron').disabled = dg.ran;
+  }
+  el('runCron').addEventListener('click', () => {
+    dg.ran = true; renderDigest();
+    const going = DIGEST.filter((d) => !dg.held[d.id]);
+    el('cronResult').innerHTML = '<div class="note ok"><b>Oct 12, 3:04 pm.</b> ' + going.length + ' notices built, addresses checked, ' + going.length * 2 + ' envelopes sent through Docsmit, ' + going.length + ' filings recorded. Each is named under Sent on your word, <i>by ' + [...new Set(going.map((g) => g.gc))].join(' and ') + '&rsquo;s rule</i>. The courtesy PDFs went to the GCs.' + (going.find((g) => g.id === 'n650') ? ' <button class="lnk" type="button" id="goPiece">Follow 650&rsquo;s owner envelope &rsaquo;</button>' : '') + '</div>';
+    const g = el('goPiece'); if (g) g.addEventListener('click', () => showTab('piece'));
+  });
+  el('resetDigest').addEventListener('click', () => { dg.held = {}; dg.asking = null; dg.ran = false; el('cronResult').innerHTML = ''; renderDigest(); });
+
+
+  /* ---------- tab 2: run (proposed design) ---------- */
+  const NOTICES = [
+    { id: 'n650', job: '650 &middot; ATI Schertz', amount: 33500, months: 'June and July 2026' },
+    { id: 'n712', job: '712 &middot; ATI Schertz Bldg B', amount: 8240, months: 'July 2026' },
+    { id: 'n688', job: '688 &middot; Harlan Dental', amount: 4120, months: 'July 2026' },
+  ];
+  const HOWS = [
+    { g: 'Through Docsmit', items: [['docsmit_err', 'Docsmit &middot; certified, electronic return receipt'], ['docsmit_card', 'Docsmit &middot; certified, green card (+$1.40)']] },
+    { g: 'On paper, here', items: [['print', 'Print here &middot; I carry it to the post office'], ['courier', 'Traceable courier'], ['hand', 'Hand delivery']] },
+    { g: 'Not now', items: [['hold', 'Hold this envelope &middot; not this run']] },
+  ];
+  const isDocsmit = (h) => h === 'docsmit_err' || h === 'docsmit_card';
+  const ENVS = () => [
+    { n: 1, label: 'Owner of record', name: 'ATI Schertz Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', fix: 'ZIP+4 added: 78154-1206', how: 'docsmit_err', plus: false, courtesy: false, tracking: '', sent: false, failed: false, mailed: false, delivered: false, stuffed: false, slip: false, mailedTick: false, copies: [{ nid: 'n650', who: 'owner', pages: 8 }, { nid: 'n712', who: 'owner', pages: 6 }] },
+    { n: 2, label: 'Original contractor', name: 'Loberg Contracting', address: '4303 Thousand Oaks Dr, San Antonio, TX 78217', email: 'ap@lobergcontracting.com', fix: '', how: 'docsmit_err', plus: false, courtesy: true, tracking: '', sent: false, failed: false, mailed: false, delivered: false, stuffed: false, slip: false, mailedTick: false, copies: [{ nid: 'n650', who: 'original_contractor', pages: 5 }, { nid: 'n712', who: 'original_contractor', pages: 4 }] },
+    { n: 3, label: 'Owner of record', name: 'Harlan Dental PLLC', address: '2200 Bandera Rd, San Antonio, TX 78228', fix: '', how: 'hand', plus: false, courtesy: false, tracking: '', sent: false, failed: false, mailed: false, delivered: false, stuffed: false, slip: false, mailedTick: false, copies: [{ nid: 'n688', who: 'owner', pages: 5 }, { nid: 'n688', who: 'original_contractor', pages: 3 }] },
+  ];
+  const run = { phase: 'ready', envs: ENVS(), inRun: { n650: true, n712: true, n688: true }, signed: { n650: 'e', n712: null, n688: 'e' }, printed: false, recorded: false, more: false, penOpen: null, balance: 412.5 };
+  const liveCopies = (e) => e.copies.filter((c) => run.inRun[c.nid]);
+  const livePages = (e) => liveCopies(e).reduce((s, c) => s + c.pages, 0);
+  const envKind = (p) => (p <= 5 ? '#10' : 'Flat');
+  const basePrice = (e) => (livePages(e) <= 5 ? 8.41 : 10.93) + (e.how === 'docsmit_card' ? 1.4 : 0) + (e.plus ? 1.87 : 0);
+  const active = () => run.envs.filter((e) => liveCopies(e).length > 0 && e.how !== 'hold');
+  const certified = () => active().filter((e) => isDocsmit(e.how));
+  const paper = () => active().filter((e) => !isDocsmit(e.how));
+  const envSigned = (e) => liveCopies(e).every((c) => !!run.signed[c.nid]);
+  const envPrinted = (e) => !isDocsmit(e.how) && run.printed;
+  const envSent = (e) => isDocsmit(e.how) ? e.sent && !e.failed : envPrinted(e);
+  const envMailed = (e) => isDocsmit(e.how) ? e.mailed : e.mailedTick;
+  const envRecorded = (e) => run.recorded && (isDocsmit(e.how) ? envSent(e) : (envPrinted(e) && e.tracking.trim() !== ''));
+  const envDelivered = (e) => isDocsmit(e.how) && e.delivered;
+  const STAGES = (e) => isDocsmit(e.how) ? ['Built', 'Checked', 'Signed', 'Sent', 'Mailed', 'Delivered'] : e.how === 'hand' ? ['Built', 'Checked', 'Signed', 'Printed', 'Handed over', 'Recorded'] : ['Built', 'Checked', 'Signed', 'Printed', 'Mailed', 'Recorded'];
+  function stageState(e) {
+    const ok = [true, true, envSigned(e), envSent(e), envMailed(e), isDocsmit(e.how) ? envDelivered(e) : envRecorded(e)];
+    const idx = ok.indexOf(false);
+    return { ok, idx: idx < 0 ? 6 : idx, waiting: idx === 2 };
+  }
+  function glyph(e) {
+    const s = stageState(e);
+    const c = e.how === 'hold' || liveCopies(e).length === 0 ? 'var(--border-strong)' : s.waiting ? 'var(--amber-border)' : s.ok[3] ? 'var(--green)' : 'var(--border-strong)';
+    if (!s.ok[3]) return '<svg class="glyph" viewBox="0 0 54 40" aria-hidden="true"><rect x="1" y="12" width="52" height="27" rx="3" fill="var(--surface)" stroke="' + c + '" stroke-width="2"/><path d="M1 14 L27 2 L53 14" fill="none" stroke="' + c + '" stroke-width="2"/><rect x="12" y="8" width="30" height="20" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1"/><path d="M16 16 h22 M16 20 h14" stroke="var(--border-strong)" stroke-width="1.5"/></svg>';
+    const extra = s.ok[5] ? '<circle cx="43" cy="12" r="8" fill="var(--green)"/><path d="M39 12 l3 3 l5 -6" stroke="#fff" stroke-width="2" fill="none"/>' : s.ok[4] ? '<circle cx="40" cy="26" r="9" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="2 2"/><text x="40" y="29" font-size="7" text-anchor="middle" fill="var(--text-muted)">USPS</text>' : '';
+    return '<svg class="glyph" viewBox="0 0 54 40" aria-hidden="true"><rect x="1" y="6" width="52" height="33" rx="3" fill="var(--surface)" stroke="' + c + '" stroke-width="2"/><path d="M1 9 L27 26 L53 9" fill="none" stroke="' + c + '" stroke-width="2"/>' + extra + '</svg>';
+  }
+  function counts() {
+    const A = active();
+    return { total: A.length, signed: A.filter(envSigned).length, waits: A.filter((e) => !envSigned(e)).length, sent: A.filter(envSent).length, mailed: A.filter(envMailed).length, recorded: A.filter(envRecorded).length, delivered: A.filter(envDelivered).length, held: run.envs.filter((e) => e.how === 'hold' && liveCopies(e).length).length };
+  }
+  function pillHtml() {
+    const c = counts(); const t = Math.max(c.total, 1);
+    const g = Math.round((c.sent / t) * 100), a = Math.round((c.waits / t) * 100);
+    const words = c.total === 0 ? 'Run &middot; nothing going' : 'Run &middot; ' + c.sent + ' sealed &middot; ' + (c.total - c.sent - c.waits) + ' ready &middot; ' + c.waits + ' wait' + (c.waits === 1 ? 's' : '') + (c.waits ? ' on Robert' : '');
+    return '<span class="bar"><i class="g" style="width:' + g + '%"></i><i class="a" style="width:' + a + '%"></i></span>' + words;
+  }
+  function renderJourney() {
+    const c = counts(); const t = c.total;
+    const nodes = [['Built', c.total + ' of ' + t, c.total === t && t > 0, false], ['Signed', c.signed + ' of ' + t + (c.waits ? ' \u00b7 ' + c.waits + ' wait' + (c.waits === 1 ? 's' : '') : ''), c.signed === t && t > 0, c.waits > 0], ['Sent', c.sent + ' of ' + t, c.sent === t && t > 0, false], ['In the mail', c.mailed + ' of ' + t, c.mailed === t && t > 0, false], ['Recorded', c.recorded + ' of ' + t, c.recorded === t && t > 0, false], ['Delivered', c.delivered + ' of ' + t, false, false]];
+    let nowSet = false;
+    const doneCount = nodes.filter((n) => n[2]).length;
+    el('journey').innerHTML = '<div class="fill" style="width:' + Math.max(0, (doneCount - 1)) * 16.68 + '%"></div>' + nodes.map((n, i) => { let cls = n[2] ? 'done' : ''; if (!n[2] && !nowSet) { cls = n[3] ? 'block' : 'now'; nowSet = true; } return '<div class="node ' + cls + '"><div class="dot">' + (n[2] ? '&#10003;' : i + 1) + '</div><b>' + n[0] + '</b><span class="c' + (n[3] ? ' warn' : '') + '">' + n[1] + '</span></div>'; }).join('');
+  }
+  function renderLanes() {
+    const d = certified().filter(envSent), p = paper().filter(envPrinted);
+    if (!(d.length && p.length)) { el('runLanes').innerHTML = ''; return; }
+    const lane = (k, steps, chips) => '<div class="lane"><span class="lk">' + k + '</span><div class="ministep" style="margin:0">' + steps.map(([t, c], i) => (i ? '<em></em>' : '') + '<span class="' + c + '">' + t + '</span>').join('') + ' <span class="chip ' + (k === 'Docsmit' ? 'blue' : 'gray') + '" style="margin-left:8px">' + chips + '</span></div></div>';
+    const dm = d.some(envMailed), dd = d.some(envDelivered), pm = p.some(envMailed), pr = p.some(envRecorded);
+    el('runLanes').innerHTML = '<div class="lanes">' + lane('Docsmit', [['Sent Oct 12', 'ok'], [dm ? 'Mailed Oct 13' : 'Produced &middot; number coming', dm ? 'ok' : 'now'], ['In the mail', dm && !dd ? 'now' : dd ? 'ok' : ''], ['Delivered', dd ? 'ok' : '']], 'envelope' + (d.length > 1 ? 's ' : ' ') + d.map((e) => e.n).join(', ')) + lane('In your hands', [['Printed Oct 12', 'ok'], ['At the counter', pm ? 'ok' : 'now'], ['Number typed', p.some((e) => e.tracking.trim()) ? 'ok' : pm ? 'now' : ''], ['Recorded', pr ? 'ok' : '']], 'envelope' + (p.length > 1 ? 's ' : ' ') + p.map((e) => e.n).join(', ')) + '</div>';
+  }
+  function renderSheet() {
+    const p = paper().filter(envPrinted);
+    if (!p.length || run.recorded) { el('runSheet').innerHTML = ''; return; }
+    el('runSheet').innerHTML = '<div class="dsheet"><h3>At the counter &middot; the checklist, live</h3>' + p.map((e) => '<div class="row">' + glyph(e) + '<div><b>' + e.n + ' &middot; ' + e.name + '</b><div class="small muted">' + liveCopies(e).map((c) => NOTICES.find((x) => x.id === c.nid).job.slice(0, 3) + ' ' + (c.who === 'owner' ? 'owner' : 'GC')).join(', ') + ' &middot; ' + e.address + '</div><div class="boxes"><label><input type="checkbox" data-tick="stuffed" data-n="' + e.n + '"' + (e.stuffed ? ' checked' : '') + '> stuffed</label><label><input type="checkbox" data-tick="slip" data-n="' + e.n + '"' + (e.slip ? ' checked' : '') + '> ' + (e.how === 'hand' ? 'in the truck' : 'slip on') + '</label><label><input type="checkbox" data-tick="mailedTick" data-n="' + e.n + '"' + (e.mailedTick ? ' checked' : '') + '> ' + (e.how === 'hand' ? 'handed over' : 'mailed') + '</label></div></div><input type="text" data-trk="' + e.n + '" value="' + e.tracking + '" placeholder="' + (e.how === 'hand' ? 'who signed for it' : e.how === 'courier' ? 'courier number' : '9407 1118 &hellip;') + '" aria-label="Envelope ' + e.n + ' tracking" style="width:12rem"></div>').join('') + '</div>';
+    document.querySelectorAll('#runSheet [data-tick]').forEach((c) => c.addEventListener('change', () => { run.envs.find((x) => x.n === +c.dataset.n)[c.dataset.tick] = c.checked; renderRun(); }));
+    document.querySelectorAll('#runSheet [data-trk]').forEach((i) => i.addEventListener('change', () => { run.envs.find((x) => x.n === +i.dataset.trk).tracking = i.value; renderRun(); }));
+  }
+  function howSelect(e, lock) {
+    return '<select data-how="' + e.n + '" aria-label="Envelope ' + e.n + ' how it goes out"' + (lock ? ' disabled' : '') + '>' + HOWS.map((g) => '<optgroup label="' + g.g + '">' + g.items.map(([k, l]) => '<option value="' + k + '"' + (k === e.how ? ' selected' : '') + '>' + l + '</option>').join('') + '</optgroup>').join('') + '</select>';
+  }
+  function renderCards() {
+    const lockHow = run.phase !== 'ready';
+    el('runCards').innerHTML = run.envs.map((e) => {
+      const live = liveCopies(e); const s = stageState(e); const off = e.how === 'hold' || live.length === 0;
+      const stages = STAGES(e);
+      const dots = '<div class="ministep">' + stages.map((t, i) => (i ? '<em></em>' : '') + '<span class="' + (s.ok[i] ? 'ok' : i === s.idx ? (s.waiting ? 'no' : 'now') : '') + '">' + t + (i === 2 && s.waiting ? ' &middot; waits on Robert' : '') + '</span>').join('') + '</div>';
+      const inside = '<div class="inside">' + e.copies.map((c) => { const n = NOTICES.find((x) => x.id === c.nid); const on = run.inRun[c.nid]; return '<label><input type="checkbox" data-in="' + c.nid + '"' + (on ? ' checked' : '') + (run.phase !== 'ready' ? ' disabled' : '') + ' title="In this run?"><b>' + n.job + '</b><span class="mm">' + whole(n.amount) + ' &middot; ' + n.months + (c.who === 'owner' ? ' &middot; cover letter' : '') + (run.signed[c.nid] === 'pen' ? ' &middot; <span class="chip gray">signed by pen</span>' : '') + (!on ? ' &middot; <span class="chip amber">not this run</span>' : '') + '</span></label>'; }).join('') + '</div>';
+      let chip = '', acts = '', next = '';
+      if (off) { chip = '<span class="chip amber">' + (e.how === 'hold' ? 'Held &middot; not this run' : 'Nothing inside is in the run') + '</span>'; next = 'Its notices wait in Ready to send. The approval stands.'; }
+      else if (s.waiting) { chip = '<span class="chip amber">Waiting on the leader&rsquo;s signature</span>'; acts = '<button class="btn green" type="button" data-sign="' + e.n + '" style="font-size:0.78rem">Sign here &#9656;</button><button class="btn" type="button" data-pen="' + e.n + '" style="font-size:0.78rem">He signed the paper &#9656;</button>'; next = 'Robert was asked on his phone Oct 12, 9:10 am'; }
+      else if (isDocsmit(e.how) && e.failed) { chip = '<span class="chip red">Not sent &middot; credit short</span>'; next = 'Top up and review again, or switch it to paper.'; }
+      else if (isDocsmit(e.how) && !e.sent) { chip = '<span class="chip green">Ready to mail &middot; ' + money(basePrice(e)) + '</span>'; next = 'Next: review and mail'; acts = '<button class="lnk" type="button" data-preview="' + e.n + '">Preview the pages &rsaquo;</button>'; }
+      else if (isDocsmit(e.how)) { chip = e.delivered ? '<span class="chip green">Delivered Oct 16 &middot; signed</span>' : e.mailed ? '<span class="chip blue">Mailed Oct 13 &middot; 9407 1118 9876 5432 100' + e.n + '</span>' : '<span class="chip blue">With Docsmit &middot; number coming</span>'; next = e.delivered ? 'The owner has it. Owner call queued Oct 19.' : 'Docsmit mails today&rsquo;s batch at 3:00 pm.'; acts = '<button class="lnk" type="button" data-preview="' + e.n + '">The mailed copy &rsaquo;</button>'; }
+      else if (!run.printed) { chip = '<span class="chip blue">Prints here</span>'; next = 'Next: print, then ' + (e.how === 'hand' ? 'type who signed for it' : 'type the number from the slip'); acts = '<button class="lnk" type="button">Print this envelope &rsaquo;</button>'; }
+      else if (!e.tracking.trim()) { chip = '<span class="chip amber">Printed &middot; ' + (e.how === 'hand' ? 'name owed' : 'number owed') + '</span>'; next = 'Tick it off on the checklist above as you go.'; }
+      else { chip = '<span class="chip green">' + (run.recorded ? 'Recorded' : 'Ready to record') + ' &middot; ' + e.tracking + '</span>'; }
+      const addon = isDocsmit(e.how) && !off ? '<div class="addon">' + (e.label === 'Owner of record' ? '<label><input type="checkbox" data-plus="' + e.n + '"' + (e.plus ? ' checked' : '') + (lockHow ? ' disabled' : '') + '> plain First Class copy too (+$1.87)</label>' : '') + (e.email ? '<label><input type="checkbox" data-courtesy="' + e.n + '"' + (e.courtesy ? ' checked' : '') + (run.recorded ? ' disabled' : '') + '> courtesy PDF to ' + e.email + '</label>' : '') + '</div>' : '';
+      const pen = run.penOpen === e.n ? '<div class="penmini"><b>He signed the paper with a pen.</b> <span class="muted">Who: Robert Douglas. When: Oct 12 (the print day). How you know:</span><div class="row" style="margin:0"><label><input type="radio" name="penhow' + e.n + '" checked> I watched him sign</label><label><input type="radio" name="penhow' + e.n + '"> He told me</label><label><input type="radio" name="penhow' + e.n + '"> I have the signed page</label></div><div class="row" style="margin:0"><button class="btn blue" type="button" data-penrec="' + e.n + '" style="font-size:0.78rem">Record the pen signature &#9656;</button><button class="btn" type="button" data-pencancel="1" style="font-size:0.78rem">Not now</button><span class="small muted">Tab 6 has the full pane with the photo.</span></div></div>' : '';
+      return '<div class="card2' + (s.waiting && !off ? ' held' : s.ok[3] && !off ? ' sealed' : '') + (off ? ' off' : '') + '">' + glyph(e) + '<div><div class="who"><span class="n">' + e.n + ' &middot; ' + e.label + '</span> ' + e.name + '</div><div class="ad">' + e.address + (e.email ? ' &middot; ' + e.email : '') + ' &middot; ' + envKind(livePages(e)) + ', ' + livePages(e) + ' pages' + (live.length > 1 ? ' &middot; ' + live.length + ' copies inside' : '') + '</div>' + (e.fix ? '<div class="fx">Address checked &middot; ' + e.fix + ' &middot; the envelope reads the corrected line</div>' : '') + (off ? '' : dots) + inside + '</div><div class="side">' + howSelect(e, lockHow) + chip + (acts ? '<div class="acts">' + acts + '</div>' : '') + addon + (next ? '<span class="next">' + next + '</span>' : '') + '</div>' + pen + '</div>';
+    }).join('');
+    document.querySelectorAll('#runCards [data-how]').forEach((s) => s.addEventListener('change', () => { const e = run.envs.find((x) => x.n === +s.dataset.how); e.how = s.value; e.tracking = ''; renderRun(); }));
+    document.querySelectorAll('#runCards [data-in]').forEach((c) => c.addEventListener('change', () => { run.inRun[c.dataset.in] = c.checked; renderRun(); }));
+    document.querySelectorAll('#runCards [data-plus]').forEach((c) => c.addEventListener('change', () => { run.envs.find((x) => x.n === +c.dataset.plus).plus = c.checked; renderRun(); }));
+    document.querySelectorAll('#runCards [data-courtesy]').forEach((c) => c.addEventListener('change', () => { run.envs.find((x) => x.n === +c.dataset.courtesy).courtesy = c.checked; renderRun(); }));
+    document.querySelectorAll('#runCards [data-sign]').forEach((b) => b.addEventListener('click', () => { const e = run.envs.find((x) => x.n === +b.dataset.sign); liveCopies(e).forEach((c) => { if (!run.signed[c.nid]) run.signed[c.nid] = 'e'; }); el('tUnsigned').checked = false; renderRun(); }));
+    document.querySelectorAll('#runCards [data-pen]').forEach((b) => b.addEventListener('click', () => { run.penOpen = +b.dataset.pen; renderRun(); }));
+    document.querySelectorAll('#runCards [data-penrec]').forEach((b) => b.addEventListener('click', () => { const e = run.envs.find((x) => x.n === +b.dataset.penrec); liveCopies(e).forEach((c) => { if (!run.signed[c.nid]) run.signed[c.nid] = 'pen'; }); run.penOpen = null; el('tUnsigned').checked = false; renderRun(); }));
+    document.querySelectorAll('#runCards [data-pencancel]').forEach((b) => b.addEventListener('click', () => { run.penOpen = null; renderRun(); }));
+    document.querySelectorAll('#runCards [data-preview]').forEach((b) => b.addEventListener('click', () => { const e = run.envs.find((x) => x.n === +b.dataset.preview); openDocsmitReview(dsmEnvs([e]), { total: basePrice(e), onMail: null }); }));
+    const held = NOTICES.filter((n) => !run.inRun[n.id]);
+    el('runHeld').innerHTML = held.length ? 'Not in this run: ' + held.map((n) => n.job + ' (' + whole(n.amount) + ')').join(', ') + '. ' + (held.length === 1 ? 'It waits' : 'They wait') + ' in Ready to send with the approval standing.' : '';
+  }
+  function dsmEnvs(list) {
+    return list.map((e) => ({ n: e.n, label: e.label, name: e.name, address: e.address, fixed: e.fix ? 'Address checked &middot; ' + e.fix : '', email: e.courtesy && e.email ? e.email : '', envelope: envKind(livePages(e)), sendType: e.how === 'docsmit_card' ? 'Return Receipt (green card)' : 'Electronic Return Receipt', price: basePrice(e), plus: !!e.plus, problem: envSigned(e) ? '' : 'Waits on the leader&rsquo;s signature', fileName: 'notice-' + liveCopies(e)[0].nid.slice(1) + '-' + (e.label === 'Owner of record' ? 'owner' : 'gc') + '.pdf', fileSize: (0.4 + livePages(e) * 0.11).toFixed(1) + ' MB', copies: liveCopies(e).map((c) => { const n = NOTICES.find((x) => x.id === c.nid); return { job: n.job, amount: n.amount, months: n.months, who: c.who, release: true, invoices: 2 }; }) }));
+  }
+  function renderStatus() {
+    const d = certified().filter((e) => envSigned(e) && !e.sent);
+    let html = '';
+    if (run.phase === 'ready' && el('tLateDay').checked && d.length) html = '<div class="note bad" style="margin:8px 16px 0"><b>June closes today, Oct 15. It is 4:10 pm, after Docsmit&rsquo;s 3:00 pm cutoff.</b> Docsmit would mail it tomorrow and June would be late. Switch those envelopes to <i>Print here</i> and carry them to the counter before 5:00 pm, or send and accept June as late on the record.</div>';
+    const failed = certified().filter((e) => e.failed).length;
+    if (failed) html += '<div class="note warn" style="margin:8px 16px 0">Credit ran short. ' + failed + ' envelope' + (failed > 1 ? 's' : '') + ' did not go. Top up and review again, or switch it to paper.</div>';
+    if (run.recorded) html += '<div class="note ok" style="margin:8px 16px 0">Recorded. Each notice is on its job with every month it covered and how it went. ' + (run.envs.some((e) => e.courtesy && envSent(e)) ? 'The courtesy email went to Loberg. ' : '') + '<button class="lnk" type="button" id="goPiece2">Follow 650&rsquo;s owner envelope &rsaquo;</button></div>';
+    el('runStatus').innerHTML = html;
+    const g2 = el('goPiece2'); if (g2) g2.addEventListener('click', () => showTab('piece'));
+  }
+  function renderFoot() {
+    const c = counts();
+    const dReady = certified().filter((e) => envSigned(e) && !e.sent);
+    const pToPrint = paper().filter((e) => envSigned(e) && !run.printed);
+    const recordable = certified().filter(envSent).length + paper().filter((e) => envPrinted(e) && e.tracking.trim()).length;
+    const dSent = certified().filter(envSent).length;
+    let primary = '', onPrimary = null, line1 = '', line2 = '';
+    if (run.recorded) { primary = 'Close the run'; line1 = 'Done. ' + c.recorded + ' recorded on their jobs.'; line2 = 'Docsmit brings the numbers; the checklist is filed with the packet.'; }
+    else if (dReady.length) { primary = 'Review and mail ' + dReady.length + ' &middot; ' + money(dReady.reduce((s, e) => s + basePrice(e), 0)) + ' &#9656;'; onPrimary = () => openDocsmitReview(dsmEnvs(dReady), { total: dReady.reduce((s, e) => s + basePrice(e), 0), onMail: () => { dReady.forEach((e, i) => { e.sent = true; e.failed = el('tShort').checked && i >= 1; }); run.phase = 'sent'; renderRun(); } }); line1 = dReady.length + ' ready to mail through Docsmit' + (pToPrint.length ? ' &middot; ' + pToPrint.length + ' prints here' : '') + (c.waits ? ' &middot; ' + c.waits + ' wait' + (c.waits === 1 ? 's' : '') + ' on Robert' : ''); line2 = 'Mailing now sends ' + (dReady.length === 1 ? 'envelope ' + dReady[0].n : 'envelopes ' + dReady.map((e) => e.n).join(' and ')) + '.' + (c.waits ? ' The rest join the next run the moment Robert signs.' : '') + (pToPrint.length ? ' Then print the packet.' : ''); }
+    else if (pToPrint.length) { primary = 'Print the packet &middot; ' + pToPrint.length + ' envelope' + (pToPrint.length > 1 ? 's' : '') + ' &#9656;'; onPrimary = () => { run.printed = true; run.phase = 'sent'; renderRun(); }; line1 = pToPrint.length + ' print' + (pToPrint.length === 1 ? 's' : '') + ' here' + (dSent ? ' &middot; ' + dSent + ' with Docsmit' : '') + (c.waits ? ' &middot; ' + c.waits + ' wait' + (c.waits === 1 ? 's' : '') + ' on Robert' : ''); line2 = 'The packet prints with its checklist page. The checklist comes alive here when it does.'; }
+    else if (recordable) { const wait = c.total - recordable - c.waits; primary = 'Record the mailing &middot; ' + recordable + (wait ? ' (' + wait + ' stays in the pile)' : '') + ' &#9656;'; onPrimary = () => { run.recorded = true; run.phase = 'recorded'; renderRun(); }; line1 = recordable + ' ready to record' + (wait ? ' &middot; ' + wait + ' still owes a number' : '') + (c.waits ? ' &middot; ' + c.waits + ' wait' + (c.waits === 1 ? 's' : '') + ' on Robert' : ''); line2 = 'Recording writes each notice to its job with how it went and every month it covered.'; }
+    else if (c.waits && c.total === c.waits) { primary = 'Nothing to do yet'; line1 = 'Every envelope waits on Robert'; line2 = 'He signs from his phone, or press Sign here when he is beside you.'; }
+    else if (c.total === 0) { primary = 'Nothing to send'; line1 = 'Nothing is in this run.'; line2 = 'Tick a notice to put it back in.'; }
+    else { primary = 'Waiting'; line1 = c.sent + ' sealed &middot; ' + (c.total - c.sent) + ' owe a number'; line2 = 'Type the numbers on the checklist above.'; }
+    el('runFoot').innerHTML = '<div class="status"><b>' + line1 + '</b><span>' + line2 + '</span></div><button class="btn" type="button" id="runMore">More &#9662;</button><button class="btn blue big" type="button" id="runPrimary"' + (onPrimary ? '' : ' disabled') + '>' + primary + '</button>' + (run.more ? '<div class="more"><button class="btn" type="button" style="font-size:0.78rem">Envelope faces</button><button class="btn" type="button" style="font-size:0.78rem">Addresses for the labels</button><button class="btn" type="button" style="font-size:0.78rem">Print the packet again</button><button class="btn" type="button" style="font-size:0.78rem">Take back&hellip;</button><label>Mailed on <input type="date" value="2026-10-12"></label><label>Saved copy <input type="text" placeholder="Drive link (optional)" style="width:14rem"></label><button class="btn" type="button" style="font-size:0.78rem" id="runReset">Start the run over</button></div>' : '');
+    el('runMore').addEventListener('click', () => { run.more = !run.more; renderRun(); });
+    if (onPrimary) el('runPrimary').addEventListener('click', onPrimary);
+    const rr = el('runReset'); if (rr) rr.addEventListener('click', () => { Object.assign(run, { phase: 'ready', envs: ENVS(), inRun: { n650: true, n712: true, n688: true }, signed: { n650: 'e', n712: el('tUnsigned').checked ? null : 'e', n688: 'e' }, printed: false, recorded: false, more: false, penOpen: null }); renderRun(); });
+  }
+  function renderRun() {
+    const c = counts();
+    el('runSub').innerHTML = c.total + ' envelope' + (c.total === 1 ? '' : 's') + ' &middot; ' + NOTICES.filter((n) => run.inRun[n.id]).length + ' notices &middot; ' + whole(NOTICES.filter((n) => run.inRun[n.id]).reduce((s, n) => s + n.amount, 0)) + ' claimed';
+    el('runDoor').innerHTML = pillHtml();
+    renderJourney(); renderLanes(); renderStatus(); renderSheet(); renderCards(); renderFoot();
+  }
+  el('tUnsigned').addEventListener('change', () => { run.signed.n712 = el('tUnsigned').checked ? null : 'e'; renderRun(); });
+  ['tLateDay', 'tShort', 'tPlus'].forEach((id) => el(id).addEventListener('change', () => { if (id === 'tPlus') run.envs.forEach((e) => { if (e.label === 'Owner of record') e.plus = el('tPlus').checked; }); renderRun(); }));
+  el('runDoor').addEventListener('click', () => el('journey').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  // Docsmit's news, for the lanes and the glyphs: a poll every few seconds once something is sent.
+  setInterval(() => { let changed = false; certified().forEach((e) => { if (envSent(e) && !e.mailed && Math.random() < 0.5) { e.mailed = true; changed = true; } else if (e.mailed && !e.delivered && run.recorded && Math.random() < 0.3) { e.delivered = true; changed = true; } }); if (changed && !el('tab-run').hidden) renderRun(); }, 4000);
+
+  /* ---------- tab 3: piece ---------- */
+  const STORIES = {
+    delivered: [
+      { c: 'done', when: 'Oct 12, 3:04 pm', what: '<b>Sent to Docsmit</b> by the standing-rule cron &middot; 14 pages, Flat, Certified, Electronic Return Receipt &middot; $10.93', src: 'our record', clock: 'Oct 12' },
+      { c: 'done', when: 'Oct 13, 9:05 am', what: '<b>Produced and mailed</b> &middot; USPS 9407 1118 9876 5432 1001 &middot; <b>notice given</b>', src: 'Docsmit &middot; mailed', clock: 'Oct 13' },
+      { c: 'done', when: 'Oct 13, 6:12 pm', what: 'In transit &middot; San Antonio TX distribution center', src: 'USPS, through Docsmit &middot; as of 7:00 pm', clock: 'Oct 13' },
+      { c: 'done', when: 'Oct 16, 10:22 am', what: '<b>Delivered, signed for</b> &middot; <span class="sig">R. Patel</span> &middot; owner call queued for Oct 19', src: 'Docsmit &middot; delivered, signedFor', clock: 'Oct 16', delivered: true },
+      { c: 'done', when: 'Oct 16, 11:00 am', what: '<b>Certification PDF</b> filed on the job', src: 'Docsmit &middot; documentation', clock: 'Oct 16' },
+      { c: 'done', when: 'Oct 17, 8:14 pm', what: '<b>Owner opened the pay page</b> &middot; from the QR &middot; 2 minutes on the page', src: 'our short link', clock: 'Oct 17', opened: true },
+      { c: 'done', when: 'Oct 19, 2:05 pm', what: '<b>Owner called first</b> &middot; &ldquo;Loberg told us to pay you&rdquo; &middot; recorded, with the GC&rsquo;s okay', src: 'the desk, the owner&rsquo;s call', clock: 'Oct 19', called: true },
+      { c: 'done', when: 'Oct 21, 9:40 am', what: '<b>Paid $33,500</b> by card on the pay page &middot; the enclosed release issued', src: 'Stripe &middot; the conditional release', clock: 'Oct 21', paid: true },
+    ],
+    unclaimed: [
+      { c: 'done', when: 'Oct 12, 3:04 pm', what: '<b>Sent to Docsmit</b> by the standing-rule cron &middot; $10.93', src: 'our record', clock: 'Oct 12' },
+      { c: 'done', when: 'Oct 13, 9:05 am', what: '<b>Produced and mailed</b> &middot; USPS 9407 1118 9876 5432 1001 &middot; <b>notice given</b>', src: 'Docsmit &middot; mailed', clock: 'Oct 13' },
+      { c: 'bad', when: 'Oct 14, 11:30 am', what: '<b>Notice left</b> &middot; no authorized recipient available', src: 'USPS, through Docsmit', clock: 'Oct 14', left: true },
+      { c: 'now', when: 'Oct 23', what: '<b>Day 9 unclaimed</b> &middot; USPS holds it until Oct 29, then returns it &middot; a Needs you row', src: 'the desk', clock: 'Oct 23', left: true },
+      { c: 'done', when: 'Oct 23, 10:00 am', what: '<b>Plain First Class copy mailed</b> &middot; $1.87 &middot; from the Needs you row', src: 'Docsmit &middot; First Class', clock: 'Oct 23', left: true, plain: true },
+      { c: 'done', when: 'Oct 25, 7:50 pm', what: '<b>Owner opened the pay page</b> &middot; from the QR on the plain copy', src: 'our short link', clock: 'Oct 25', left: true, plain: true, opened: true },
+      { c: 'done', when: 'Oct 26, 9:12 am', what: '<b>Owner called</b> &middot; &ldquo;we never got a certified slip&rdquo; &middot; recorded', src: 'the desk', clock: 'Oct 26', left: true, plain: true, opened: true, called: true },
+    ],
+    returned: [
+      { c: 'done', when: 'Oct 12, 3:04 pm', what: '<b>Sent to Docsmit</b> by the standing-rule cron &middot; $10.93', src: 'our record', clock: 'Oct 12' },
+      { c: 'done', when: 'Oct 13, 9:05 am', what: '<b>Produced and mailed</b> &middot; USPS 9407 1118 9876 5432 1001 &middot; <b>notice given</b>', src: 'Docsmit &middot; mailed', clock: 'Oct 13' },
+      { c: 'bad', when: 'Oct 14, 11:30 am', what: 'Notice left &middot; no authorized recipient available', src: 'USPS, through Docsmit', clock: 'Oct 14', left: true },
+      { c: 'done', when: 'Oct 19, 9:00 am', what: 'Reminder notice left', src: 'USPS, through Docsmit', clock: 'Oct 19', left: true },
+      { c: 'bad', when: 'Oct 29, 2:15 pm', what: '<b>Returned to sender</b> &middot; unclaimed &middot; the owner gate on 650 and 712 is flagged: this address returned mail', src: 'USPS, through Docsmit', clock: 'Oct 29', left: true, returned: true },
+      { c: 'done', when: 'Oct 30', what: '<b>Referred to counsel</b> with the Certification PDF (mailing and the return)', src: 'the desk', clock: 'Oct 30', left: true, returned: true, referred: true },
+    ],
+  };
+  const pc = { scen: 'delivered', step: 1 };
+  function pieceState() { const st = STORIES[pc.scen]; const seen = st.slice(0, pc.step); const last = seen[seen.length - 1] || {}; return { seen, last, mailed: pc.step >= 2 }; }
+  function renderPiece() {
+    const { seen, last, mailed } = pieceState();
+    const st = STORIES[pc.scen];
+    el('pieceTl').innerHTML = seen.map((e) => '<li class="' + e.c + '"><span class="when">' + e.when + '</span><span class="what">' + e.what + '<div class="src">' + e.src + '</div></span></li>').join('') + (pc.step < st.length ? '<li class="soon"><span class="when"></span><span class="what muted">&hellip;</span></li>' : '');
+    el('advance').disabled = pc.step >= st.length;
+    el('clock').textContent = 'Today: ' + (last.clock || 'Oct 12');
+    // chips
+    let owner = '<span class="chip blue">Sent Oct 12 &middot; number coming</span>';
+    if (mailed) owner = '<span class="chip blue">Mailed Oct 13 &middot; in transit</span>';
+    if (last.delivered || last.opened || last.called || last.paid) owner = '<span class="chip green">Delivered Oct 16 &middot; signed R. Patel</span>';
+    if (last.left && !last.returned) owner = '<span class="chip amber">Notice left Oct 14 &middot; not picked up</span>';
+    if (last.returned) owner = '<span class="chip red">Returned Oct 29 &middot; unclaimed</span>';
+    const extra = (last.opened ? '<span class="chip gray">owner read it ' + (pc.scen === 'delivered' ? 'Oct 17' : 'Oct 25') + '</span>' : '') + (last.plain ? '<span class="chip gray">plain copy mailed Oct 23</span>' : '') + (last.paid ? '<span class="chip green">Paid Oct 21</span>' : '');
+    el('pieceChips').innerHTML = '<span class="muted small">Owner of record</span>' + owner + extra + '<span class="muted small">&middot; Original contractor</span><span class="chip ' + (mailed ? 'green' : 'blue') + '">' + (mailed ? 'Delivered Oct 15' : 'Sent Oct 12') + '</span>';
+    // legal
+    let legal = '<div class="note info"><b>Sent Oct 12.</b> June closes Oct 15. Docsmit mails it tomorrow; the notice is given when USPS accepts it.</div>';
+    if (mailed) legal = '<div class="note ok"><b>Notice given Oct 13</b>, the day USPS accepted it. The June window closed Oct 15. <b>Two days to spare.</b>' + (last.delivered || last.opened || last.called || last.paid ? ' The owner has had it since Oct 16.' : '') + '</div>';
+    if (last.left && !last.returned) legal = '<div class="note warn"><b>Notice given Oct 13</b>, and that stands. USPS left a notice at the door Oct 14 and nobody has collected it. The owner may not have read it. The desk offers the plain copy now rather than waiting for the return.</div>';
+    if (last.returned) legal = '<div class="note bad"><b>Notice given Oct 13</b>, and that stands. USPS returned the piece Oct 29. The owner has not read it. The July notice goes to another address or by courier, and the owner gate flags this address until someone fixes it.</div>';
+    el('pieceLegal').innerHTML = legal;
+    // queue / desk reacts
+    let q = '<div><b>Followup queue</b> &middot; nothing yet</div><div class="muted">An owner call is queued on delivery, three days out.</div>';
+    if (last.delivered || last.opened) q = '<div><b>Followup queue</b> &middot; Call the owner Oct 19 &middot; Dana</div><div class="muted">Day 3 after delivery.' + (last.opened ? ' The owner read the pay page Oct 17, so the call can be about the money, not the mail.' : '') + '</div>';
+    if (last.called && pc.scen === 'delivered') q = '<div><b>Followup queue</b> &middot; cleared: the owner called Oct 19</div><div class="muted">The GC&rsquo;s okay is recorded. The owner&rsquo;s check comes against the release.</div>';
+    if (last.paid) q = '<div><b>Paid.</b> Letter two off. Lien right released. Chase cost on the job: $10.93 + $10.93.</div>';
+    if (last.left && !last.plain) q = '<div><b>Needs you</b> &middot; 650 owner: notice left, not picked up</div><div class="muted">One door: <b>Send the plain copy now</b>. Letter two counts from mailing (day ' + Math.max(0, ['Oct 14', 'Oct 23'].indexOf(last.clock) === 1 ? 10 : 1) + ') and says why.</div>';
+    if (last.plain && !last.called) q = '<div><b>Needs you</b> &middot; cleared: plain copy mailed Oct 23</div><div class="muted">Owner call queued Oct 26. Letter two: due, counts from mailing.</div>';
+    if (last.called && pc.scen === 'unclaimed') q = '<div><b>Followup queue</b> &middot; cleared: the owner called Oct 26</div><div class="muted">The certified piece still comes back Oct 29; the record will show both.</div>';
+    if (last.returned) q = '<div><b>Needs you</b> &middot; 650 and 712: owner address returned mail</div><div class="muted">Doors: find another address, send by courier, refer to counsel. Letter two: due since Oct 23, counsel&rsquo;s call.</div>';
+    if (last.referred) q = '<div><b>With counsel</b> since Oct 30.</div><div class="muted">The packet on tab 4 shows what they got.</div>';
+    el('pieceQueue').innerHTML = q;
+    // papers
+    el('piecePapers').innerHTML = ['<div>&#128196; What we mailed &middot; 14 pages, as sent &middot; <button class="lnk" type="button">Open &rsaquo;</button></div>', mailed ? '<div>&#128196; Certification &middot; proof of mailing' + (last.delivered || last.opened || last.called || last.paid ? ', the content, proof of delivery, the signature' : last.returned ? ', the return' : '') + ' &middot; <button class="lnk" type="button">Open &rsaquo;</button></div>' : '<div class="muted">&#128196; Certification &middot; after mailing</div>', last.delivered || last.opened || last.called || last.paid ? '<div>&#128196; Return receipt &middot; electronic, R. Patel, Oct 16 &middot; <button class="lnk" type="button">Open &rsaquo;</button></div>' : '<div class="muted">&#128196; Return receipt &middot; none yet</div>'].join('');
+    el('pieceFacts').innerHTML = '<dt>USPS number</dt><dd class="mono">' + (mailed ? '9407 1118 9876 5432 1001 &middot; <button class="lnk" type="button">USPS &rsaquo;</button>' : 'coming') + '</dd><dt>Sent type</dt><dd>Certified, Electronic Return Receipt &middot; Flat, 14 pages</dd><dt>Cost</dt><dd>$10.93' + (last.plain ? ' + $1.87 plain copy' : '') + ' &middot; posted to job 650 as a lien cost</dd><dt>Docsmit</dt><dd class="mono">message 2331 &middot; lien_notice_53_056:1f3e&hellip;</dd><dt>Covers</dt><dd>June and July 2026 &middot; $33,500</dd>';
+    // doors
+    let doors = ['Open USPS tracking', 'Mail to another address', 'Refer to counsel'];
+    if (last.left && !last.plain && !last.returned) doors = ['Send the plain copy now &middot; $1.87', 'Call the owner &middot; 210 555 0147', 'Mail to another address', 'Open USPS tracking'];
+    if (last.returned) doors = ['Find another address', 'Send by traceable courier', 'Refer to counsel'];
+    el('pieceDoors').innerHTML = doors.map((d) => '<button class="btn sm" type="button">' + d + ' &rsaquo;</button>').join('');
+  }
+  el('advance').addEventListener('click', () => { pc.step = Math.min(pc.step + 1, STORIES[pc.scen].length); renderPiece(); });
+  el('rewind').addEventListener('click', () => { pc.step = 1; renderPiece(); });
+  el('scen').addEventListener('change', () => { pc.scen = el('scen').value; pc.step = 1; renderPiece(); });
+
+  /* ---------- tab 4: counsel ---------- */
+  function renderCounsel() {
+    const { last, mailed } = pieceState();
+    const ownerLine = !mailed ? 'sent Oct 12, not yet mailed' : last.returned ? 'mailed Oct 13 &middot; notice left Oct 14 &middot; returned unclaimed Oct 29 &middot; <button class="lnk" type="button">Certification &rsaquo;</button>' : last.left ? 'mailed Oct 13 &middot; notice left Oct 14, unclaimed' + (last.plain ? ' &middot; plain copy mailed Oct 23' : '') + ' &middot; <button class="lnk" type="button">Certification &rsaquo;</button>' : (last.delivered || last.opened || last.called || last.paid) ? 'mailed Oct 13 &middot; delivered Oct 16, signed R. Patel &middot; <button class="lnk" type="button">Certification &rsaquo;</button>' : 'mailed Oct 13 &middot; in transit';
+    const pay = last.paid ? 'Owner opened it Oct 17 &middot; paid $33,500 Oct 21 &middot; release issued' : last.opened ? 'Owner opened it ' + (pc.scen === 'delivered' ? 'Oct 17' : 'Oct 25') + ' &middot; no payment' : 'Not opened';
+    const call = last.paid || (last.called && pc.scen === 'delivered') ? 'Owner called Oct 19: the GC authorized direct pay' : last.called ? 'Owner called Oct 26: never got a certified slip' : (last.delivered || last.opened) ? 'Owner call queued Oct 19' : '&mdash;';
+    el('counselBody').innerHTML = '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--bg-subtle);display:grid;gap:8px"><div><b>650 &middot; ATI Schertz</b> &middot; $33,500 &middot; Loberg Contracting &middot; <span class="chip ' + (last.paid ? 'green' : 'amber') + '">' + (last.paid ? 'paid' : 'open') + '</span></div><dl class="kv"><dt>&sect; 53.056 notice</dt><dd>Owner: ' + ownerLine + '<br>GC: ' + (mailed ? 'mailed Oct 13 &middot; delivered Oct 15 &middot; <button class="lnk" type="button">Certification &rsaquo;</button>' : 'sent Oct 12') + '</dd><dt>Pay page</dt><dd>' + pay + '</dd><dt>Owner call</dt><dd>' + call + '</dd><dt>Affidavit</dt><dd>' + (last.referred ? 'Due Nov 15 (fourth month after July) &middot; the owner gate must be fixed first: address returned mail' : last.paid ? 'Not needed. Paid.' : 'Due Nov 15 (fourth month after July) &middot; copies to the owner and the GC within five days of filing, through the same door; served dates fill from the mailed dates') + '</dd></dl></div>';
+  }
+
+  /* ---------- tab 5: dev settings ---------- */
+  const dev = { env: 'tracksmit', saved: false, tested: null, paused: 'on', def: 'docsmit', rr: 'err', cb: 'off', log: [
+    { when: 'Oct 12, 2:00 pm', call: 'mail-poll &middot; GET /messages/sent (7 ids)', res: '200 &middot; 0.6 s &middot; 2 pieces changed' },
+    { when: 'Oct 12, 3:04 pm', call: 'lien-standing-run &middot; 4 notices &middot; send', res: '201 &times; 8 &middot; 11.2 s' },
+    { when: 'Oct 12, 3:04 pm', call: 'POST /messages/2331/priceCheck', res: '200 &middot; $10.93' },
+    { when: 'Oct 12, 3:03 pm', call: 'POST /utils/multiCASS (8 addresses)', res: '200 &middot; 1 corrected, 0 non-mailable' },
+    { when: 'Oct 12, 3:03 pm', call: 'POST /token', res: '201 &middot; expires in 1 h' },
+  ] };
+  function loadDev() { try { const s = JSON.parse(localStorage.getItem('lienproto.dev') || '{}'); Object.assign(dev, s); } catch (e) {} }
+  function saveDev() { try { localStorage.setItem('lienproto.dev', JSON.stringify({ env: dev.env, saved: dev.saved, tested: dev.tested, paused: dev.paused, def: dev.def, rr: dev.rr, cb: dev.cb, email: el('devEmail').value, sid: el('devSid').value })); } catch (e) {} }
+  function seg(id, attr, val) { document.querySelectorAll('#' + id + ' button').forEach((b) => b.classList.toggle('on', b.dataset[attr] === val)); }
+  function renderDev() {
+    seg('devEnv', 'env', dev.env); seg('devPaused', 'p', dev.paused); seg('devDefault', 'd', dev.def); seg('devRr', 'r', dev.rr); seg('devCb', 'c', dev.cb);
+    const pill = dev.tested === 'ok' ? '<span class="chip green">Connected &middot; ' + (dev.env === 'prod' ? 'production' : 'Tracksmit') + '</span>' : dev.tested === 'fail' ? '<span class="chip red">Refused &middot; 401</span>' : dev.saved ? '<span class="chip amber">Saved, not tested</span>' : '<span class="chip gray">Not set up</span>';
+    el('devPill').innerHTML = pill + (dev.paused === 'off' ? ' <span class="chip amber">Paused</span>' : '');
+    el('devCbNote').innerHTML = dev.cb === 'on' ? 'Docsmit posts to <span class="mono">https://my.clickplumbing.com/docsmit/&lt;secret&gt;/{messageID}</span>, which forwards to the mail-callback function. The host must sit on the account email&rsquo;s domain. Later; the poll is enough to start.' : 'The hourly poll is the source of truth. Callbacks can be turned on later for faster news.';
+    el('devLog').querySelector('tbody').innerHTML = dev.log.map((r) => '<tr><td class="muted small">' + r.when + '</td><td class="mono">' + r.call + '</td><td class="small">' + r.res + '</td></tr>').join('');
+    if (dev.email != null) el('devEmail').value = dev.email; if (dev.sid != null) el('devSid').value = dev.sid;
+  }
+  async function sha512hex(s) { try { const b = await crypto.subtle.digest('SHA-512', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join(''); } catch (e) { return 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'; } }
+  el('devPw').addEventListener('input', async () => { const v = el('devPw').value; el('devHashPreview').textContent = v ? 'sha512: ' + (await sha512hex(v)).slice(0, 16) + '&hellip;' : ''; });
+  document.querySelectorAll('#devEnv button').forEach((b) => b.addEventListener('click', () => { dev.env = b.dataset.env; dev.tested = null; renderDev(); saveDev(); }));
+  document.querySelectorAll('#devPaused button').forEach((b) => b.addEventListener('click', () => { dev.paused = b.dataset.p; renderDev(); saveDev(); }));
+  document.querySelectorAll('#devDefault button').forEach((b) => b.addEventListener('click', () => { dev.def = b.dataset.d; renderDev(); saveDev(); }));
+  document.querySelectorAll('#devRr button').forEach((b) => b.addEventListener('click', () => { dev.rr = b.dataset.r; renderDev(); saveDev(); }));
+  document.querySelectorAll('#devCb button').forEach((b) => b.addEventListener('click', () => { dev.cb = b.dataset.c; renderDev(); saveDev(); }));
+  el('devSave').addEventListener('click', async () => {
+    if (!el('devEmail').value.trim() || !el('devPw').value || !el('devSid').value.trim()) { el('devSaveMsg').textContent = 'All three are needed.'; return; }
+    const h = await sha512hex(el('devPw').value);
+    dev.saved = true; dev.tested = null; el('devPw').value = ''; el('devHashPreview').textContent = 'kept: sha512 ' + h.slice(0, 12) + '&hellip;';
+    el('devSaveMsg').textContent = 'Saved to the Vault: DOCSMIT_EMAIL, DOCSMIT_PASSWORD_SHA512, DOCSMIT_SOFTWARE_ID (' + (dev.env === 'prod' ? 'production' : 'Tracksmit') + ').';
+    dev.log.unshift({ when: 'now', call: 'mail-config &middot; save (3 secrets)', res: '200 &middot; Vault' });
+    renderDev(); saveDev();
+  });
+  el('devTest').addEventListener('click', () => {
+    if (!dev.saved) { el('devTestResult').innerHTML = '<div class="note warn">Save the connection first.</div>'; return; }
+    el('devTestResult').innerHTML = '<div class="note info">Asking the function for a token&hellip;</div>';
+    setTimeout(() => {
+      const ok = !(el('devEmail').value || '').toLowerCase().includes('fail');
+      dev.tested = ok ? 'ok' : 'fail';
+      el('devTestResult').innerHTML = ok ? '<div class="note ok"><b>Connected</b> as Click Plumbing &amp; Electrical (' + (el('devEmail').value || 'office@clickplumbing.com') + ') on ' + (dev.env === 'prod' ? 'production' : 'Tracksmit') + '. Credit $412.50 &middot; attachment limit 300 MB &middot; token good for 1 h &middot; 0.4 s. The token stayed in the function.</div>' : '<div class="note bad"><b>Refused.</b> Docsmit answered 401: email and password or token not accepted. Check the hash and the software ID.</div>';
+      dev.log.unshift({ when: 'now', call: 'mail-send-docsmit &middot; ping (POST /token, GET /account/info)', res: ok ? '201, 200 &middot; 0.4 s' : '401' });
+      renderDev(); saveDev();
+    }, 900);
+  });
+  el('devPollNow').addEventListener('click', () => {
+    el('devPollMsg').innerHTML = '<div class="note info">Polling 7 open pieces&hellip;</div>';
+    setTimeout(() => { el('devPollMsg').innerHTML = '<div class="note ok">Polled. 1 piece mailed (number arrived), 1 delivered, 5 unchanged. The Sent rows updated.</div>'; dev.log.unshift({ when: 'now', call: 'mail-poll &middot; GET /messages/sent (7 ids)', res: '200 &middot; 0.7 s &middot; 2 pieces changed' }); renderDev(); }, 900);
+  });
+
+  /* ---------- tab 6: pen signature ---------- */
+  const PEN_ENVS = [
+    { n: 1, label: 'Owner of record', name: 'TC/JP SEGUIN 2019 LLC', address: '9993 IH 10 West Suite 102, San Antonio, TX 78230', tracking: '9507 1066 8641 6281 0001', copies: [{ job: '878 &middot; Take 5 - Seguin', amount: 38625, months: 'July, August and September 2026', id: 'L878-4C2E91', note: 'cover letter' }] },
+    { n: 2, label: 'Original contractor', name: 'Southern Post Construction', address: '2209 N. 23rd St., McAllen, TX 78501', tracking: '9507 1066 8641 6281 0002', copies: [{ job: '878 &middot; Take 5 - Seguin', amount: 38625, months: 'July, August and September 2026', id: 'L878-4C2E91' }] },
+    { n: 3, label: 'Owner of record', name: 'RIZVI SYED ZULFIQAR &amp; KIZILBASH QURATULAIN FATIMA', address: '704 Garratt Ct, San Antonio, TX 78209', tracking: '9507 1066 8641 6281 0003', copies: [{ job: '258 &middot; Dudley Mason', amount: 9810, months: 'April to August 2026', id: 'L258-9A11F0', note: 'cover letter' }, { job: '891 &middot; Take 5 - Liberty Hill', amount: 2040, months: 'July and August 2026', id: 'L891-77C3BD', note: 'cover letter' }] },
+  ];
+  const PEN_NOTICES = [['L878-4C2E91', '878 &middot; Take 5 - Seguin', 38625], ['L258-9A11F0', '258 &middot; Dudley Mason', 9810], ['L891-77C3BD', '891 &middot; Take 5 - Liberty Hill', 2040]];
+  const pen = { phase: 'held', open: false, ticked: { 'L878-4C2E91': true, 'L258-9A11F0': true, 'L891-77C3BD': true }, how: 'watched', photos: 0, when: '2026-10-09', time: '14:10', recorded: null, confirmed: null };
+  function penSigned(id) { return pen.recorded && pen.recorded.ids.includes(id); }
+  function renderPen() {
+    const held = PEN_ENVS.filter((e) => e.copies.some((c) => !penSigned(c.id)));
+    el('penStatus').innerHTML = held.length ? '<div class="note bad" style="margin:8px 16px 0"><b>' + held.length + ' envelopes are held.</b> Their notices have no signature on the record. Fix the recipients marked in red before recording. <button class="lnk" type="button" id="penOpen">He signed the paper with a pen &middot; Record it &#9656;</button></div>' : '<div class="note ok" style="margin:8px 16px 0">Every notice has its signature on the record. Record the mailing.</div>';
+    const o = el('penOpen'); if (o) o.addEventListener('click', () => { pen.open = true; renderPen(); });
+    el('penRows').innerHTML = PEN_ENVS.map((e) => {
+      const unsigned = e.copies.filter((c) => !penSigned(c.id));
+      const headLine = unsigned.length ? '<div style="color:var(--red);font-size:0.72rem;font-weight:600">Held &middot; Unsigned: the leader signs it from his phone, draws it here with Leader here, sign &#9656;, or <button class="lnk" type="button" data-penopen="1">he signed the paper with a pen &middot; Record it &#9656;</button></div>' : '<div style="color:var(--green);font-size:0.72rem;font-weight:600">Signed by pen &middot; Oct 9 &middot; recorded by Taunya' + (pen.recorded && pen.recorded.photos ? ' &middot; photo on file' : '') + '</div>';
+      return '<tr class="env"><td colspan="2" data-l="Envelope"><div><span class="muted">Envelope ' + e.n + ' &middot; ' + e.label + '</span> <span class="nm">' + e.name + '</span></div>' + headLine + '<div class="ad">' + e.address + (e.copies.length > 1 ? ' &middot; ' + e.copies.length + ' notices inside' : '') + '</div></td><td data-l="Method"><select disabled><option>certified mail, return receipt</option></select></td><td data-l="Tracking #"><input type="text" value="' + e.tracking + '" readonly aria-label="Envelope ' + e.n + ' tracking"><div class="small" style="color:var(--green)">&#10003; 22 digits &middot; certified</div></td></tr>' +
+        e.copies.map((c) => '<tr class="copy"><td>' + c.job + ' <span class="muted small">' + whole(c.amount) + (c.note ? ' &middot; ' + c.note : '') + '</span> <span class="mono muted" style="font-size:0.68rem">' + c.id + '</span></td><td class="muted small">' + c.months + '</td><td colspan="2" class="muted small">Copy for: ' + (e.label === 'Owner of record' ? 'owner of record' : 'original contractor') + ' &middot; ' + (penSigned(c.id) ? '<span class="chip green">signed by pen</span>' : '<span class="chip red">unsigned on the record</span>') + '</td></tr>').join('');
+    }).join('');
+    document.querySelectorAll('[data-penopen]').forEach((b) => b.addEventListener('click', () => { pen.open = true; renderPen(); }));
+    // the pane
+    if (pen.open && held.length) {
+      const unsignedIds = PEN_NOTICES.filter(([id]) => !penSigned(id));
+      el('penPane').innerHTML = '<div class="pad"><div style="border:1px solid var(--border-strong);border-radius:10px;background:var(--bg-subtle);padding:12px 14px;display:grid;gap:10px;font-size:0.8125rem">' +
+        '<div><b>The leader signed these on paper.</b> <span class="muted">You are writing down his act. The record names you as the one who wrote it, and him as the one who signed. He sees it on his phone tonight.</span></div>' +
+        '<div class="row"><span class="muted" style="min-width:8rem">Who signed</span><b>Robert Douglas</b> <span class="muted">the job&rsquo;s leader, from People</span></div>' +
+        '<div class="row"><label class="muted" for="penWhen" style="min-width:8rem">When he signed</label><input type="date" id="penWhen" value="' + pen.when + '"><input type="text" id="penTime" value="' + pen.time + '" style="width:5rem" aria-label="time"><span class="muted small">the print day is filled in; change it if he signed later</span></div>' +
+        '<div class="row" style="align-items:flex-start"><span class="muted" style="min-width:8rem">How you know</span><div style="display:grid;gap:4px"><label><input type="radio" name="penHow" value="watched"' + (pen.how === 'watched' ? ' checked' : '') + '> I watched him sign</label><label><input type="radio" name="penHow" value="told"' + (pen.how === 'told' ? ' checked' : '') + '> He told me he signed <span class="muted">(phone, text, in person)</span></label><label><input type="radio" name="penHow" value="photo"' + (pen.how === 'photo' ? ' checked' : '') + '> I have the signed page in front of me</label></div></div>' +
+        '<div class="row" style="align-items:flex-start"><span class="muted" style="min-width:8rem">The signed page</span><div><button class="btn sm" type="button" id="penPhoto">Add a photo or scan</button> <span class="muted small" id="penPhotoMsg">' + (pen.photos ? pen.photos + ' page' + (pen.photos > 1 ? 's' : '') + ' &middot; record ids read: ' + unsignedIds.slice(0, pen.photos).map(([id]) => id).join(', ') : 'optional, but it is the proof: the record id in the frame&rsquo;s corner ties the page to the row') + '</span></div></div>' +
+        '<div class="row" style="align-items:flex-start"><span class="muted" style="min-width:8rem">Which notices</span><div style="display:grid;gap:3px">' + unsignedIds.map(([id, job, amt]) => '<label><input type="checkbox" data-pentick="' + id + '"' + (pen.ticked[id] ? ' checked' : '') + '> ' + job + ' <span class="muted">' + whole(amt) + ' &middot; ' + id + '</span></label>').join('') + '</div></div>' +
+        '<div class="small muted">A notice whose draft changed after it printed is left off: the paper he signed is not the paper on the desk. None here.</div>' +
+        '<div class="row"><button class="btn blue" type="button" id="penRecord">Record ' + Object.values(pen.ticked).filter(Boolean).length + ' pen signature' + (Object.values(pen.ticked).filter(Boolean).length === 1 ? '' : 's') + ' &#9656;</button><button class="btn" type="button" id="penCancel">Not now</button></div>' +
+        '</div></div>';
+      document.querySelectorAll('[name=penHow]').forEach((r) => r.addEventListener('change', () => { pen.how = r.value; }));
+      document.querySelectorAll('[data-pentick]').forEach((c) => c.addEventListener('change', () => { pen.ticked[c.dataset.pentick] = c.checked; renderPen(); }));
+      el('penPhoto').addEventListener('click', () => { pen.photos = Math.min(pen.photos + 1, unsignedIds.length); pen.how = 'photo'; renderPen(); });
+      el('penCancel').addEventListener('click', () => { pen.open = false; renderPen(); });
+      el('penRecord').addEventListener('click', () => {
+        const ids = Object.keys(pen.ticked).filter((k) => pen.ticked[k]);
+        if (!ids.length) return;
+        pen.when = el('penWhen').value; pen.time = el('penTime').value;
+        pen.recorded = { ids, how: pen.how, photos: pen.photos, when: pen.when, time: pen.time, by: 'Taunya' };
+        pen.open = false; renderPen();
+      });
+    } else el('penPane').innerHTML = '';
+    const rec = held.length === 0;
+    el('penFoot').innerHTML = '<span class="small muted" style="flex:1;min-width:12rem">' + (rec ? 'Every envelope has its number and its signature.' : held.length + ' held. Fix the recipients marked in red before recording.') + '</span><label class="small muted">Mailed on <input type="date" value="2026-10-12"></label><button class="btn blue" type="button" id="penGo"' + (rec ? '' : ' disabled') + '>Record ' + (rec ? '3 mailed' : '0 mailed &middot; 3 stay in the pile') + ' &#9656;</button>';
+    const g = el('penGo'); if (g) g.addEventListener('click', () => { pen.phase = 'recorded'; renderPenAfter(); });
+    el('penAfterBox').hidden = pen.phase !== 'recorded';
+    if (pen.phase === 'recorded') renderPenAfter();
+  }
+  function renderPenAfter() {
+    el('penAfterBox').hidden = false;
+    const r = pen.recorded; const howWords = { watched: 'she watched him sign', told: 'he told her he had signed', photo: 'the signed page is on file' }[r.how];
+    const conf = pen.confirmed;
+    el('penPhone').innerHTML = '<div class="hdr"><span>Lien desk</span><span>Oct 12, 6:00 pm</span></div><div class="t">Taunya recorded your pen signature on ' + r.ids.length + ' notices</div><div class="small muted">Signed Oct 9 &middot; ' + howWords + (r.photos ? ' &middot; ' + r.photos + ' photo' + (r.photos > 1 ? 's' : '') : '') + '. They went out certified Oct 12.</div><div class="list">' + r.ids.map((id) => { const n = PEN_NOTICES.find((x) => x[0] === id); return '<div class="it"><span>' + n[1] + ' &middot; ' + whole(n[2]) + '</span><span class="mono muted" style="font-size:0.68rem">' + id + '</span></div>'; }).join('') + '</div>' +
+      (conf === 'yes' ? '<div class="note ok" style="margin-top:8px">Confirmed. The record now carries your word too.</div>' : conf === 'no' ? '<div class="note bad" style="margin-top:8px">Flagged: not what you signed. The desk opens a problem row for Taunya and counsel.</div>' : '<div class="row" style="margin-top:8px"><button class="btn green sm" type="button" id="penYes">Yes, I signed these</button><button class="btn sm" type="button" id="penNo">Not what I signed</button></div>');
+    const y = el('penYes'); if (y) y.addEventListener('click', () => { pen.confirmed = 'yes'; renderPenAfter(); });
+    const nn = el('penNo'); if (nn) nn.addEventListener('click', () => { pen.confirmed = 'no'; renderPenAfter(); });
+    el('penSentRow').innerHTML = '<div><b>878 &middot; Take 5 - Seguin</b> <span class="chip green">Sent</span></div><div class="row" style="margin:0"><span class="chip green">Owner &middot; certified &middot; 9507 1066 8641 6281 0001</span><span class="chip green">GC &middot; certified &middot; &hellip;0002</span></div><div class="row" style="margin:0"><span class="chip gray">signed by pen &middot; Oct 9 &middot; recorded by Taunya</span>' + (r.photos ? '<span class="chip gray">signed page on file</span>' : '<span class="chip amber">no photo of the signed page</span>') + (conf === 'yes' ? '<span class="chip green">leader confirmed Oct 12</span>' : conf === 'no' ? '<span class="chip red">leader: not what I signed</span>' : '<span class="chip blue">waiting for the leader&rsquo;s word</span>') + '</div>';
+    el('penAudit').textContent = 'Signed by pen by Robert Douglas on October 9, 2026 at ' + r.time + ' CT, on the paper as printed (record L878-4C2E91). Recorded by Taunya on October 12, 2026; ' + howWords + '.' + (conf === 'yes' ? ' Confirmed by Robert Douglas from his phone on October 12, 2026.' : '');
+    el('penCounsel').innerHTML = 'Signature: pen, on the paper as mailed. ' + (r.photos ? 'Signed page on file. ' : 'No image of the signed page. ') + (conf === 'yes' ? 'Leader confirmed.' : 'Leader&rsquo;s confirmation pending.') + ' The affidavit leans on this line the way it leans on the tracking number.';
+  }
+  renderPen();
+
+  /* ---------- boot ---------- */
+  loadDev(); renderDev();
+  renderDigest(); renderRun(); renderPiece(); loadNotes(); renderNotes();
+  let t = 'digest'; try { t = localStorage.getItem('lienproto.tab') || 'digest'; } catch (e) {}
+  showTab(TABS.includes(t) ? t : 'digest');
+})();
+</script>
+</body>
+</html>

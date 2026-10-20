@@ -18,13 +18,15 @@
  *     The 1024 stays at /apple-touch-icon.png as the unsized fallback — the help share-card shell
  *     and the portal link shell point at that name.
  *   - The tile and the mark are options (v2.5097): TILE picks the tile and the mark's colour
- *     (TILES), MARK the mark's weight (MARKS). With neither set the output is v2.4227's, byte for
- *     byte. `--sheet` renders all nine pairs at 180 px with the glass approximated, for the owner
+ *     (TILES), MARK the mark's weight (MARKS). With neither set the output is the live icon: the
+ *     owner's pick B of 2026-10-09 (TILE=yellow MARK=heavier, v2.5117), at MARK_SCALE 0.62 as the
+ *     sheet showed it, the bottom teeth 15.6% out instead of v2.4095's 17% (accepted with the pick).
+ *     `--sheet` renders all nine pairs at 180 px with the glass approximated, for the owner
  *     to pick from, into to-dos/app-icon-glass-candidates.{html,png}; it leaves public/ alone.
  *
  * Rendered with the Chromium that @playwright/test already installs for the e2e suite. Re-run with:
- *   npm run gen-app-icon                              the touch icons (TILE=yellow MARK=now)
- *   TILE=dark MARK=heavier npm run gen-app-icon       the touch icons from a sheet pick
+ *   npm run gen-app-icon                              the touch icons (TILE=yellow MARK=heavier, live)
+ *   TILE=dark MARK=now npm run gen-app-icon           the touch icons from another sheet pick
  *   npm run gen-app-icon -- --sheet                   the candidate sheet only
  */
 import { chromium } from '@playwright/test'
@@ -306,7 +308,7 @@ try {
     console.log(`Wrote ${SHEET_HTML} and ${SHEET_PNG} (${candidates.length} candidates at 180 px)`)
   } else {
     const tileName = process.env.TILE ?? 'yellow'
-    const markName = process.env.MARK ?? 'now'
+    const markName = process.env.MARK ?? 'heavier'
     const art = touchArt(pick(TILES, tileName, 'TILE'), pick(MARKS, markName, 'MARK'))
     for (const size of SIZES) {
       const png = await renderPng(browser, art, size)

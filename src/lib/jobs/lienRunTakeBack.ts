@@ -7,7 +7,7 @@
  */
 import { demandDate } from '../jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import type { RunNotice } from './lienDeskRun'
+import { recipientViaDocsmit, type RunNotice } from './lienDeskRun'
 import { shortDay } from './lienFootChip'
 
 /** Kept on the item's `fields` as `runTakenBack`: the latest take-back only. */
@@ -42,12 +42,13 @@ export function canTakeBackItem(item: { printed_at?: string | null; status?: str
 
 /**
  * The run's notices that printed — before this sitting (`printedAt`) or in it (`printedNow`, the
- * item ids the window stamped) — in run order, each once.
+ * item ids the window stamped) — in run order, each once. A notice with a copy mailed through
+ * Docsmit is left out (v2.5532): it went, so there is nothing to take back.
  */
-export function runPrintedItemIds(notices: ReadonlyArray<Pick<RunNotice, 'itemId' | 'printedAt'>>, printedNow: ReadonlyArray<string> = []): string[] {
+export function runPrintedItemIds(notices: ReadonlyArray<Pick<RunNotice, 'itemId' | 'printedAt'> & Partial<Pick<RunNotice, 'recipients'>>>, printedNow: ReadonlyArray<string> = []): string[] {
   const now = new Set(printedNow)
   const out: string[] = []
-  for (const n of notices) if ((n.printedAt || now.has(n.itemId)) && !out.includes(n.itemId)) out.push(n.itemId)
+  for (const n of notices) if ((n.printedAt || now.has(n.itemId)) && !(n.recipients ?? []).some(recipientViaDocsmit) && !out.includes(n.itemId)) out.push(n.itemId)
   return out
 }
 

@@ -263,8 +263,10 @@ export function BidVersionPicker({
   // through Bids.tsx.
   useEffect(() => {
     const open = () => openNewVersion(null)
-    // 'bid-version-picker-open-add-gc' (v2.2163): the Workbench door's "Another GC" opens the GC-first modal.
-    const openAddGc = () => setAddGc({ gcId: '', fromVersionId: selectedBidVersionId ?? bidVersions[0]?.id ?? '', name: '' })
+    // 'bid-version-picker-open-add-gc' (v2.2163): the Workbench door's "Another GC" opens the
+    // GC-first modal. A CustomEvent detail.gcId prefills the GC — the Cover Letter's addressed
+    // note dispatches it so "track separately" lands with that builder picked (to-do #133).
+    const openAddGc = (e: Event) => setAddGc({ gcId: (e as CustomEvent<{ gcId?: string | null }>).detail?.gcId ?? '', fromVersionId: selectedBidVersionId ?? bidVersions[0]?.id ?? '', name: '' })
     // 'bid-version-picker-reload' (v2.2133): "Adopt an existing bid" created versions outside this component.
     const reload = () => { setReloadTick((t) => t + 1); void reloadVersions() }
     window.addEventListener('bid-version-picker-open-new', open)

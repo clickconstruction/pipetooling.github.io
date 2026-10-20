@@ -245,6 +245,25 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
     expect(v.words.full).toBe('nobody clocked in · no % yet · $3,053 billed, nothing paid')
   })
 
+  it('lines mode fills each line from its own number once the crew has given one; a paid line reads full; the words keep the job percent (v2.5665)', () => {
+    const lines = [
+      { ...line('u', 'Underground', 2_000, 0, 'inv1'), progress_pct: null },
+      { ...line('r', 'Rough In', 3_500, 1), progress_pct: 50 },
+      { ...line('t', 'Top Out', 2_500, 2), progress_pct: null },
+      { ...line('w', 'Water heater', 2_000, 3), progress_pct: 100 },
+    ]
+    const money = buildStagesMoneyBarModel({ totalBill: 10_000, paymentsMade: 2_000, pctComplete: 43 })
+    const v = buildProgressPaymentView({ money, stageBar: null, fixtures: lines, invoices: [{ id: 'inv1', status: 'paid', amount: 2_000, applied: 2_000 }], crew: null, pctComplete: 43, status: 'working', todayYmd: today })
+    expect(v.mode).toBe('lines')
+    expect(v.segments.map((s) => s.fillPct)).toEqual([100, 50, 0, 100])
+    expect(v.segments.map((s) => s.state)).toEqual(['done', 'live', 'later', 'done'])
+    expect(v.segments.map((s) => s.label)).toEqual(['Underground ✓', 'Rough In 50%', 'Top Out', 'Water heater ✓'])
+    expect(v.words.text).toBe('No hours · 43%')
+    // No line has its own number: the job percent pours down the lines as before.
+    const poured = buildProgressPaymentView({ money, stageBar: null, fixtures: lines.map((l) => ({ ...l, progress_pct: null })), invoices: [{ id: 'inv1', status: 'paid', amount: 2_000, applied: 2_000 }], crew: null, pctComplete: 43, status: 'working', todayYmd: today })
+    expect(poured.segments.map((s) => s.fillPct)).toEqual([100, 66, 0, 0])
+  })
+
 })
 
 describe('percentClause · a percent set in the evening keeps its day (v2.4472)', () => {

@@ -3,13 +3,24 @@
  * as `gc-trade-portal` returns it (`supabase/functions/_shared/gcTradePortalSlice.ts`), turned into the prototype's shapes
  * the portal's kernels read (`portal.ts`, `planQuestions.ts`). The slice never carries our money, so every money field
  * here is 0 and the kernels that would show it never see a real figure. What a later lane owns and the slice does not carry
- * yet (the papers, the draws, the schedule) comes in empty, so its block stays hidden. Since P4b-i the slice carries the
+ * yet (the draws, the schedule) comes in empty, so its block stays hidden; the company's own papers come since B6-b-ii,
+ * where each stands and never its link or values. Since P4b-i the slice carries the
  * company's own award, statement of work, charges and change requests, and of each change order its request became only
- * its part, so a change order here has a cost and never a price.
+ * its part, so a change order here has a cost and never a price. Since P5c-1 it carries the job's work on the trades
+ * awarded to it (submittals, RFIs, punch items, draws, each line's newest report, the change orders sent to it), mapped
+ * by Building's own row mappers (`drawRows.ts`, `submittalRows.ts`, `rfiRows.ts`, `punchRows.ts`), never a second one.
  */
+import { BILL_DAY_CUTOFF_DAYS } from './billDay/trades'
 import type { TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
+import { readClausePaperPair, readSignedClauses } from '../../../supabase/functions/_shared/clausePaper'
+import { backChargeOf } from './backChargeRows'
+import { companyPapers } from './companyPapers'
+import { sowWithDraws, type DrawTables } from './drawRows'
+import { punchItemOf, type PunchRow } from './punchRows'
+import { rfisFromRows, type RfiTables } from './rfiRows'
+import { submittalsFromRows, type SubmittalTables } from './submittalRows'
 import type { PortalLang } from './portalI18n'
-import type { AskContact, BackCharge, ChangeOrder, ChangeOrderReason, GcProject, GcStage, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, Sow, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
+import type { AskContact, ChangeOrder, ChangeOrderReason, GcProject, GcStage, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, Sow, SovLine, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
 
 type Row = Record<string, unknown>
 
@@ -33,6 +44,8 @@ function partnerOf(slice: TradePortalSlice): Partner {
   const c = slice.company
   const people: PartnerPerson[] = slice.people.map((p) => ({ id: str(p.id), name: str(p.name), email: str(p.email), role: str(p.role), gets: groupsOf(p.gets) }))
   const status = strOrNull(c.vetting_status)
+  // Its vetting form (P5b-1): only the day it sent it passes, so portalVetting reads it as being checked.
+  const formOn = slice.vettingForm ? strOrNull(slice.vettingForm.sent_on) : null
   return {
     id: str(c.id),
     company: str(c.name),
@@ -40,22 +53,29 @@ function partnerOf(slice: TradePortalSlice): Partner {
     trades: list<string>(c.trades),
     base: strOrNull(c.address),
     maxMiles: c.max_miles === null || c.max_miles === undefined ? null : num(c.max_miles),
-    // The papers come from person_contract_documents once the Board's B6 adds company_id there.
-    msa: 'none',
-    msaSignedOn: null,
-    coiExpires: null,
-    w9: false,
+    // Its own papers (B6-b-ii), read by the board's rule, so Sign waits for the master agreement as msaFirst does.
+    ...companyPapers(
+      (slice.papers ?? []).map((d) => ({ id: str(d.id), company_id: strOrNull(d.company_id), doc_type: str(d.doc_type), status: str(d.status), sent_at: strOrNull(d.sent_at), signed_at: strOrNull(d.signed_at), expires_at: strOrNull(d.expires_at) })),
+      str(c.id),
+    ),
     invited: slice.invites.length,
     bids: new Set(slice.quotes.map((q) => str(q.invite_id))).size,
-    // The Board's B6-a-ii counts the awards; the portal shows none of them.
-    won: 0,
+    // The trades it won: its own asks the slice names as awarded (another company's award reads AWARDED_ELSEWHERE).
+    won: slice.packages.filter((p) => slice.invites.some((i) => str(i.id) === str(p.awarded_invite_id))).length,
     promisesMade: 0,
     promisesKept: 0,
     address: str(c.address),
     license: str(c.license),
     ...(strOrNull(c.portal_opened_on) ? { portalOpenedOn: str(c.portal_opened_on) } : {}),
     ...(status === 'new' || status === 'approved' || status === 'declined'
-      ? { vetting: { status, ...(c.vetting_limit !== null && c.vetting_limit !== undefined ? { limit: num(c.vetting_limit) } : {}), ...(strOrNull(c.vetting_decided_on) ? { decidedOn: str(c.vetting_decided_on) } : {}) } }
+      ? {
+          vetting: {
+            status,
+            ...(c.vetting_limit !== null && c.vetting_limit !== undefined ? { limit: num(c.vetting_limit) } : {}),
+            ...(strOrNull(c.vetting_decided_on) ? { decidedOn: str(c.vetting_decided_on) } : {}),
+            ...(formOn ? { form: { license: '', insurance: '', yearsInBusiness: 0, references: '', pastJobs: '', sentOn: formOn } } : {}),
+          },
+        }
       : {}),
     phone: str(c.phone),
     email: str(c.email),
@@ -108,7 +128,7 @@ function setsOf(slice: TradePortalSlice, projectId: string, packageIds: string[]
   return slice.sets
     .filter((s) => str(s.project_id) === projectId)
     .sort((a, b) => num(a.rev) - num(b.rev))
-    .map((s) => ({ rev: num(s.rev), label: str(s.label), issuedOn: str(s.issued_on), touches: touchedSets.has(str(s.id)) ? packageIds : [] }))
+    .map((s) => ({ rev: num(s.rev), label: str(s.label), issuedOn: str(s.issued_on), touches: touchedSets.has(str(s.id)) ? packageIds : [], changedSheets: [] }))
 }
 
 function questionsOf(slice: TradePortalSlice, companyId: string, projectId: string): PlanQuestion[] {
@@ -132,41 +152,79 @@ function questionsOf(slice: TradePortalSlice, companyId: string, projectId: stri
     })
 }
 
-const CHARGE_STATUSES: BackCharge['status'][] = ['open', 'agreed', 'disputed', 'kept', 'dropped']
+/** A charge to the company (`backChargeRows.ts`), kept here by name for the readers that import it from the portal's mapper. */
+export { backChargeOf }
 
-/** A charge to the company, in the prototype's shape: its answer, the office's keep or drop, and the draw it came off. */
-function backChargeOf(c: Row): BackCharge {
-  const status = str(c.status) as BackCharge['status']
+/**
+ * A statement of work's lines in position order (P2c-ii). Each line's id is the kernels' `SovLine.id`, as Building's
+ * `gc_sow_line_of` (U6) reads it: its scope item, or the line's own id on a change order's line. What was reported and
+ * billed is laid over them by `sowWithDraws` (P5c-1).
+ */
+function sovOf(slice: TradePortalSlice, sowId: string): SovLine[] {
+  return (slice.sowLines ?? [])
+    .filter((l) => str(l.sow_id) === sowId)
+    .sort((a, b) => num(a.position) - num(b.position))
+    .map((l) => ({ id: strOrNull(l.scope_item_id) ?? str(l.id), label: str(l.label), amount: num(l.amount), pctReported: 0, pctBilled: 0 }))
+}
+
+/** What the statement of work says the company will not do (`gc_sows.excluded`, from its quote): each with who does it. */
+function excludedOf(v: unknown): NonNullable<Sow['excluded']> {
+  return list<Row>(v)
+    .filter((x) => typeof x === 'object' && x !== null && str(x.name).trim() !== '')
+    .map((x) => {
+      const unit = x.unitPrice && typeof x.unitPrice === 'object' ? (x.unitPrice as Row) : null
+      return { name: str(x.name), by: strOrNull(x.by), ...(unit ? { unitPrice: { amount: num(unit.amount), unit: str(unit.unit) } } : {}) }
+    })
+}
+
+/**
+ * The slice's money on its statements of work in the shape Building's draws mapper reads (`DrawTables`): the rows carry
+ * the table's own column names, and only the ones the slice lets through (P5c-1).
+ */
+function drawTablesOf(slice: TradePortalSlice): DrawTables {
+  const rows = <T>(v: SliceRows | undefined) => (v ?? []) as unknown as T[]
   return {
-    id: str(c.id),
-    amount: num(c.amount),
-    reason: str(c.reason),
-    photo: strOrNull(c.photo_url),
-    sentOn: str(c.sent_on),
-    answerBy: str(c.answer_by),
-    status: CHARGE_STATUSES.includes(status) ? status : 'open',
-    ...(strOrNull(c.answered_on) ? { answer: { on: str(c.answered_on), note: str(c.answer_note) } } : {}),
-    ...(strOrNull(c.settled_on) ? { settled: { on: str(c.settled_on), note: str(c.settled_note) } } : {}),
-    ...(strOrNull(c.taken_on) ? { taken: { drawId: str(c.taken_draw_id), on: str(c.taken_on) } } : {}),
+    sows: (slice.sows ?? []).map((s) => ({ id: str(s.id), package_id: str(s.package_id) })),
+    sowLines: (slice.sowLines ?? []).map((l) => ({ id: str(l.id), sow_id: str(l.sow_id), position: num(l.position), scope_item_id: strOrNull(l.scope_item_id) })),
+    draws: rows<DrawTables['draws'][number]>(slice.draws),
+    drawLines: rows<DrawTables['drawLines'][number]>(slice.drawLines),
+    reports: rows<DrawTables['reports'][number]>(slice.lineReports),
+    backCharges: rows<DrawTables['backCharges'][number]>(slice.backCharges),
+    tradeSends: rows<DrawTables['tradeSends'][number]>(slice.changeSends),
   }
 }
 
-/** The trade's statement of work, with the charges on it. The lines and the draws come with Building's U6. */
-function sowOf(slice: TradePortalSlice, packageId: string): Sow | null {
+type SliceRows = TradePortalSlice['sows']
+
+/**
+ * The trade's statement of work, with its lines, the charges on it and, since P5c-1, its money as Building's draws mapper
+ * reads it (`sowWithDraws`): each line's reported and billed percent, the draws that stand, the pay applications sent
+ * back, and the day we accepted its work.
+ */
+function sowOf(slice: TradePortalSlice, packageId: string, draws: DrawTables): Sow | null {
   const row = (slice.sows ?? []).find((s) => str(s.package_id) === packageId)
   if (!row) return null
   const status = str(row.status)
-  return {
+  const excluded = excludedOf(row.excluded)
+  const clausePaper = readClausePaperPair(row.clause_paper)
+  const signedClauses = readSignedClauses(row.clause_versions)
+  const sow: Sow = {
+    id: str(row.id),
     status: status === 'sent' || status === 'signed' ? status : 'draft',
     price: num(row.price),
     retainagePct: num(row.retainage_pct),
     basedOnRev: num(row.based_on_rev),
-    sov: [],
+    sov: sovOf(slice, str(row.id)),
     signedOn: strOrNull(row.signed_on),
     draws: [],
     ...(strOrNull(row.sent_on) ? { sentOn: str(row.sent_on) } : {}),
-    backCharges: (slice.backCharges ?? []).filter((c) => str(c.sow_id) === str(row.id)).sort((a, b) => str(a.sent_on).localeCompare(str(b.sent_on))).map(backChargeOf),
+    ...(excluded.length > 0 ? { excluded } : {}),
+    ...(strOrNull(row.accepted_on) ? { acceptedOn: str(row.accepted_on) } : {}),
+    // Messages, cut 4c (v2.5329): built from clauses, its paper while sent to sign and its clauses once signed.
+    ...(clausePaper && status === 'sent' ? { clausePaper } : {}),
+    ...(signedClauses && status === 'signed' ? { signedClauses } : {}),
   }
+  return sowWithDraws(sow, str(row.id), draws)
 }
 
 const REASONS: ChangeOrderReason[] = ['owner', 'field', 'plans']
@@ -204,31 +262,76 @@ function changeRequestsOf(slice: TradePortalSlice, projectId: string): TradeChan
  * The change orders the company’s requests became, as their part only: the slice carries the number, the status, the days
  * sent and answered and the cost, so the price is 0 and the words are none. `portalChangeRequests` reads the cost as "Your part".
  */
-function changeOrdersOf(slice: TradePortalSlice, requests: TradeChangeRequest[]): ChangeOrder[] {
-  return requests.flatMap((r) => {
-    const o = (slice.changeOrders ?? []).find((c) => str(c.id) === r.changeOrderId)
-    if (!o) return []
+function changeOrdersOf(slice: TradePortalSlice, requests: TradeChangeRequest[], packageIds: string[]): ChangeOrder[] {
+  const orderOf = (o: Row, reason: ChangeOrderReason, packageId: string): ChangeOrder => {
     const status = str(o.status)
-    return [
-      {
-        id: str(o.id),
-        number: num(o.number),
-        description: '',
-        reason: r.reason,
-        schedule: '',
-        packageId: r.packageId,
-        cost: num(o.cost),
-        price: 0,
-        status: status === 'sent' || status === 'signed' || status === 'declined' ? status : 'draft',
-        sentOn: strOrNull(o.sent_on),
-        answeredOn: strOrNull(o.answered_on),
-        pctDone: 0,
+    return {
+      id: str(o.id),
+      number: num(o.number),
+      // The office's words to the customer never come: only a change sent to the trade carries its description.
+      description: str(o.description),
+      reason,
+      schedule: '',
+      packageId,
+      cost: num(o.cost),
+      price: 0,
+      status: status === 'sent' || status === 'signed' || status === 'declined' ? status : 'draft',
+      sentOn: strOrNull(o.sent_on),
+      answeredOn: strOrNull(o.answered_on),
+      pctDone: 0,
+    }
+  }
+  const fromRequests = requests.flatMap((r) => {
+    const o = (slice.changeOrders ?? []).find((c) => str(c.id) === r.changeOrderId)
+    return o ? [orderOf(o, r.reason, r.packageId)] : []
+  })
+  // A change order sent to the trade on this project (U6a, P5c-1), when no request of its own became it.
+  const sends = new Map((slice.changeSends ?? []).map((t) => [str(t.change_order_id), t]))
+  const fromSends = (slice.changeOrders ?? [])
+    .filter((o) => sends.has(str(o.id)) && packageIds.includes(str(o.package_id)) && !fromRequests.some((c) => c.id === str(o.id)))
+    .sort((a, b) => num(a.number) - num(b.number))
+    .map((o) => orderOf(o, reasonOf(o.reason), str(o.package_id)))
+  // Its trade side, as Building's withTradeChanges reads it: sent, signed, and the line it became.
+  const lineKey = new Map((slice.sowLines ?? []).map((l) => [str(l.id), strOrNull(l.scope_item_id) ?? str(l.id)]))
+  return [...fromRequests, ...fromSends].map((co) => {
+    const send = sends.get(co.id)
+    if (!send) return co
+    const line = strOrNull(send.sow_line_id)
+    return {
+      ...co,
+      tradeChange: {
+        status: strOrNull(send.signed_on) ? 'signed' : 'sent',
+        sentOn: str(send.sent_on),
+        signedOn: strOrNull(send.signed_on),
+        sovLineId: line ? (lineKey.get(line) ?? line) : '',
       },
-    ]
+    }
   })
 }
 
-function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePortalSlice['projects'][number]): GcProject {
+/**
+ * The job's work on a project (P5c-1), through Building's own row mappers: the submittals with their rounds, the RFIs
+ * (who asked read from `mine`, never a company's name, and no cost), and the punch list in its order. The slice holds
+ * them to the trades awarded to the company and leaves out a punch item taken off.
+ */
+function jobOf(slice: TradePortalSlice, companyId: string, projectId: string): Pick<GcProject, 'submittals' | 'rfis' | 'punch'> {
+  const submittals = submittalsFromRows(projectId, {
+    submittals: (slice.submittals ?? []) as unknown as SubmittalTables['submittals'],
+    holds: (slice.submittalHolds ?? []) as unknown as SubmittalTables['holds'],
+    rounds: (slice.submittalRounds ?? []) as unknown as SubmittalTables['rounds'],
+  })
+  const rfis = rfisFromRows(projectId, {
+    rfis: (slice.rfis ?? []).map((r) => ({ ...r, asked_by_company_id: r.mine === true ? companyId : null, cost: null, change_order_id: null })) as unknown as RfiTables['rfis'],
+    holds: (slice.rfiHolds ?? []) as unknown as RfiTables['holds'],
+  })
+  const punch = (slice.punch ?? [])
+    .filter((r) => str(r.project_id) === projectId)
+    .sort((a, b) => num(a.position) - num(b.position) || str(a.added_on).localeCompare(str(b.added_on)))
+    .map((r) => punchItemOf({ ...r, removed_at: null } as unknown as PunchRow))
+  return { submittals, rfis, punch }
+}
+
+function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePortalSlice['projects'][number], draws: DrawTables): GcProject {
   const { project, gc, team } = entry
   const id = str(project.id)
   const packageRows = slice.packages.filter((p) => str(p.project_id) === id).sort((a, b) => num(a.position) - num(b.position))
@@ -245,7 +348,7 @@ function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePorta
       carried: null,
       // The award (the Board's B6-a), only ever this company's own: the slice holds another company's to null.
       awardedInviteId: strOrNull(p.awarded_invite_id),
-      sow: sowOf(slice, pid),
+      sow: sowOf(slice, pid, draws),
       excludes: slice.exclusions.filter((x) => str(x.package_id) === pid).sort((a, b) => num(a.position) - num(b.position)).map((x) => ({ label: str(x.label), by: str(x.by) })),
     }
   })
@@ -279,7 +382,10 @@ function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePorta
     lostOn: strOrNull(gc.lost_on),
     ...(lostWhy ? { lostWhy: lostWhy as GcProject['lostWhy'] } : {}),
     changeRequests,
-    changeOrders: changeOrdersOf(slice, changeRequests),
+    changeOrders: changeOrdersOf(slice, changeRequests, packages.map((p) => p.id)),
+    // The job's work (P5c-1): the day we closed it, and its submittals, RFIs and punch list on the trades awarded to it.
+    ...(strOrNull(gc.closed_on) ? { closedOn: str(gc.closed_on) } : {}),
+    ...jobOf(slice, companyId, id),
   }
 }
 
@@ -302,18 +408,22 @@ function promiseOf(companyId: string, p: Row): TradePromise {
 }
 
 /** The company's slice as the prototype's state, its id and its language: what the portal page hands the kernels. */
-export function tradePortalState(slice: TradePortalSlice, today: string): { state: GcState; partnerId: string; lang: PortalLang } {
+export function tradePortalState(slice: TradePortalSlice, today: string): { state: GcState; partnerId: string; lang: PortalLang; billDayCutoffDays: number } {
   const partner = partnerOf(slice)
+  const cutoff = slice.billDayCutoffDays
+  const draws = drawTablesOf(slice)
   return {
     state: {
       today,
       customers: [],
       partners: [partner],
-      projects: slice.projects.map((p) => projectOf(slice, partner.id, p)),
+      projects: slice.projects.map((p) => projectOf(slice, partner.id, p, draws)),
       tradePromises: slice.promises.map((p) => promiseOf(partner.id, p)),
       paperSends: [],
     },
     partnerId: partner.id,
     lang: slice.company.lang === 'es' ? 'es' : 'en',
+    // Bill day's cut-off (Messages cut 9), or the default when the read is older or the number is not a day count.
+    billDayCutoffDays: typeof cutoff === 'number' && Number.isInteger(cutoff) && cutoff >= 2 && cutoff <= 20 ? cutoff : BILL_DAY_CUTOFF_DAYS,
   }
 }

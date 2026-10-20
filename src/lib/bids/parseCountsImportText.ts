@@ -15,6 +15,18 @@ export type ParsedCountImportRow = {
 export const COUNT_SOURCE_LINK_RE =
   /https?:\/\/\S*[?&]t=[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/
 
+// v2.5517: the project's own token inside the link, the identity a bid's sources are keyed on.
+export const COUNT_SOURCE_TOKEN_RE = /[?&]t=([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/
+
+/** The project token of a CountTooling view link, lower-cased; null when the link carries none. */
+export function countSourceTokenOf(link: string | null | undefined): string | null {
+  const m = (link ?? '').match(COUNT_SOURCE_TOKEN_RE)
+  return m?.[1] ? m[1].toLowerCase() : null
+}
+
+// v2.5517: the project's name sits between `Counts, ` and the first ` · ` of the scope heading.
+const COUNT_SCOPE_PROJECT_RE = /^---\s*Counts,\s*(.*?)\s*(?:·.*)?---$/i
+
 // CountTooling frames headings as `--- <text> ---` (the D25 scope header
 // `--- Counts, <project> · every sheet · every layer ---` since 2026-09-13, and
 // `--- Duct ---`). A heading is never a row: without this, a project named
@@ -51,6 +63,10 @@ export function parseCountsImportText(text: string): {
   rows: ParsedCountImportRow[]
   skippedCount: number
   sourceLink: string | null
+  /** v2.5517: the project's own token from the link (`t=<uuid>`, lower-cased); null without a link. */
+  sourceToken: string | null
+  /** v2.5517: the project's name from the scope heading (`--- Counts, <project> · … ---`); null without one. */
+  projectName: string | null
   /** The alternate groups the text names, first spelling kept, in the order they appear. */
   alternateGroups: string[]
   /** v2.4699: what the scope heading said the copy covers; 'unknown' without one (a hand-typed paste). */
@@ -60,8 +76,10 @@ export function parseCountsImportText(text: string): {
   const alternateGroups: string[] = []
   let skippedCount = 0
   let scope: CountsImportScope = 'unknown'
+  let projectName: string | null = null
   // First match anywhere in the blob → the source view link (stored opaque, as-is).
   const sourceLink = text.match(COUNT_SOURCE_LINK_RE)?.[0] ?? null
+  const sourceToken = countSourceTokenOf(sourceLink)
   const lines = text.split(/\r?\n/)
   let inAlternate: string | null = null
   // Inside a schedule block (duct / water sizing): rows are structure, neither counts nor "skipped".
@@ -93,7 +111,11 @@ export function parseCountsImportText(text: string): {
     }
     // Framed headings are structure, not counts — and not "skipped" either.
     if (COUNT_HEADING_LINE_RE.test(trimmed)) {
-      if (COUNT_SCOPE_HEADING_RE.test(trimmed)) scope = /every sheet/i.test(trimmed) ? 'all' : 'partial'
+      if (COUNT_SCOPE_HEADING_RE.test(trimmed)) {
+        scope = /every sheet/i.test(trimmed) ? 'all' : 'partial'
+        const name = trimmed.match(COUNT_SCOPE_PROJECT_RE)?.[1]?.trim() ?? ''
+        if (name && projectName == null) projectName = name
+      }
       inAlternate = null
       inSchedule = false
       continue
@@ -120,5 +142,5 @@ export function parseCountsImportText(text: string): {
     }
     rows.push({ fixture, count, group_tag: groupTag, page, unit: classifyCountRowUnit(fixture) })
   }
-  return { rows, skippedCount, sourceLink, alternateGroups, scope }
+  return { rows, skippedCount, sourceLink, sourceToken, projectName, alternateGroups, scope }
 }

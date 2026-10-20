@@ -200,10 +200,15 @@ export function useJobThreadNotes(
           fetchClockSessionsForJobLedger(jobId),
           fetchJobActivityEventsForJobLedger(jobId),
           // The job's live payment promises as feed events (v2.4103) — an extra: the thread reads without them.
+          // The job's own read since v2.5646, so the job's people get them; the company-wide read stands in until
+          // the migration is pushed (PostgREST's "could not find the function").
           (async (): Promise<unknown> => {
             try {
-              const r = await supabase.rpc('list_job_payment_promises' as never)
-              return r.error ? null : (r.data as unknown)
+              const r = await supabase.rpc('list_job_payment_promises_for' as never, { p_job_id: jobId } as never)
+              if (!r.error) return r.data as unknown
+              if (!/could not find the function|PGRST202/i.test(r.error.message ?? '')) return null
+              const old = await supabase.rpc('list_job_payment_promises' as never)
+              return old.error ? null : (old.data as unknown)
             } catch {
               return null
             }

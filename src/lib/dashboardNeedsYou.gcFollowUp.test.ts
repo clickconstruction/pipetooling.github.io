@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { NEEDS_YOU_RANK, buildNeedsYouItems, type NeedsYouInputs } from './dashboardNeedsYou'
-import type { GcFollowUpNeeds } from './gc/followUpNeeds'
+import type { GcNeedsYou } from './gc/needsYou'
 
 /**
- * GC mode's Follow up (v2.4941): the trade partners' asks to call about a quote, as one Needs you
+ * GC mode's Follow up (v2.4941): since v2.5289 the people waiting on us, each once (`follow_up_count`), as one Needs you
  * line. Its own file, as the owner records line has: two cards' tests at the shared file's end conflict.
  */
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
@@ -54,35 +54,35 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   }
 }
 
-const three: GcFollowUpNeeds = {
+const three: GcNeedsYou = {
   count: 3,
-  late: true,
-  title: '3 calls to make about quotes',
-  detail: 'Alamo Concrete is 2 days past the day it gave for its quote. Pecan Valley Electric promised its quote today. And 1 more. Next: call them from Follow up.',
+  late: false,
+  title: '3 people are waiting on us',
+  detail: 'Answer them, or say what we owe them.',
 }
 const card = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, ...over })).find((i) => i.key === 'gc-follow-up')
 
 describe('gc-follow-up (GC mode, v2.4941)', () => {
-  it('says the kernel’s words with the count as its figure, under GC projects', () => {
+  it('says the loader’s words with the count as its figure, under GC projects', () => {
     expect(card({ gcFollowUp: three })).toMatchObject({
-      severity: 'red',
+      severity: 'amber',
       kicker: 'GC projects',
-      title: '3 calls to make about quotes',
+      title: '3 people are waiting on us',
       detail: three.detail,
       figure: '3',
       actionLabel: 'Follow up',
     })
   })
 
-  it('is amber when nobody is late', () => {
-    expect(card({ gcFollowUp: { ...three, late: false } })?.severity).toBe('amber')
+  it('is red when the line says someone is late', () => {
+    expect(card({ gcFollowUp: { ...three, late: true } })?.severity).toBe('red')
   })
 
   it('sits in the revenue chasing tier', () => {
     expect(NEEDS_YOU_RANK['gc-follow-up']).toBe(NEEDS_YOU_RANK['bid-followups'])
   })
 
-  it('shows nothing when off, loading or with nobody to call', () => {
+  it('shows nothing when off, loading or with nobody waiting', () => {
     expect(card({ gcFollowUpEnabled: false, gcFollowUp: three })).toBeUndefined()
     expect(card({ gcFollowUp: null })).toBeUndefined()
     expect(card({ gcFollowUp: { ...three, count: 0 } })).toBeUndefined()

@@ -3,15 +3,15 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 85 Supabase Edge Functions
+purpose: Complete API documentation for all 160 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-20
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 85
+total_functions: 160
 
 key_sections:
   - name: "Functions"
@@ -93,13 +93,20 @@ when_to_read:
    - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
    - [gc-drive-access](#gc-drive-access)
+   - [drive-link](#drive-link)
+   - [photo-save](#photo-save)
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-architect-email](#gc-architect-email)
    - [gc-trade-portal](#gc-trade-portal)
    - [submit-gc-trade-portal](#submit-gc-trade-portal)
    - [gc-trade-email](#gc-trade-email)
    - [gc-customer-email](#gc-customer-email)
+   - [messages-email](#messages-email)
+   - [gc-card-bill](#gc-card-bill)
    - [gc-money-monday-email](#gc-money-monday-email)
+   - [bridge-sheet-email](#bridge-sheet-email)
+   - [gc-office-notices](#gc-office-notices)
+   - [gmail-sync](#gmail-sync)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -169,6 +176,10 @@ when_to_read:
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-bid-mark](#notify-bid-mark)
    - [notify-lien-approval](#notify-lien-approval)
+   - [mail-send-docsmit](#mail-send-docsmit)
+   - [mail-poll](#mail-poll)
+   - [mail-config](#mail-config)
+   - [messages-notify](#messages-notify)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [send-scheduled-reminders](#send-scheduled-reminders)
    - [recurring-job-report-preview](#recurring-job-report-preview)
@@ -218,6 +229,9 @@ when_to_read:
    - [ar-returned-checks](#ar-returned-checks)
    - [sync-resend-emails](#sync-resend-emails)
    - [resend-webhook](#resend-webhook)
+   - [quo-webhook](#quo-webhook)
+   - [quo-send](#quo-send)
+   - [messages-nudge-dispatch](#messages-nudge-dispatch)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
    - [import-manual-transactions](#import-manual-transactions)
@@ -250,7 +264,7 @@ PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-si
 Not every function takes an `Authorization` header — each function authenticates in one of three ways (see the Overview note on `verify_jwt`):
 
 1. **In-handler user JWT** (the majority): the client sends `Authorization: Bearer <jwt_token>`; the handler calls `auth.getUser` and checks the caller's role from `public.users` before doing anything privileged.
-2. **Webhook signature**: `stripe-webhook`, `mercury-webhook`, and `resend-webhook` are called by the provider, not a signed-in user — they validate the provider's signature header instead of a JWT.
+2. **Webhook signature**: `stripe-webhook`, `mercury-webhook`, `resend-webhook` and `quo-webhook` are called by the provider, not a signed-in user — they validate the provider's signature header instead of a JWT.
 3. **Cron secret / public token**: scheduled functions (`send-scheduled-reminders`, `sync-salary-sessions`, `recurring-job-report-dispatch`, `schedule-day-email-dispatch`, …) require the `X-Cron-Secret` header; public-token functions (`accept-estimate`, `get-estimate-for-customer`, `get-contract-for-signer`, `dev-login`, …) authenticate by an exact token/code in the request rather than a session.
 
 ### Role-Based Access Control
@@ -307,6 +321,8 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 **Deploy**: `supabase functions deploy send-supply-house-job-account` (after the v2.1605 client merge).
 
 ### create-user
+
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. `ensureLinkedRosterRow` catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, keeping `verify_jwt = false` from `config.toml`, so `check:edge-drift` stops naming it.
 
 **Purpose**: Create new users with specified roles (dev-only operation) `is_sample: true` (v2.3606, dev only like every call) makes a View-as sample account. **One door is not dev-only (v2.3627): `trial_prospect_id`** — Hiring → *Try out*. The caller must hold the Hiring board, or (v2.3798) hold a share on the card's column (`user_can_work_team_prospect(card)`, or be a dev); the function reads the card **as the caller** (RLS decides whether they may see it), refuses a card that is not on Screen / Interview, already has a `trial_user_id`, or has no well-formed email, and then **ignores `email`, `password`, `name`, `role`, `read_only` and `is_sample` from the body**: it makes a `helpers` login from the card's own name and email with a password nobody is told (the helper signs in by emailed link), sets `users.trial_prospect_id`, and moves the card to `status = 'trial'` with `trial_user_id` / `trial_started_at` — guarded on the status it read, so a second press loses with a 409 and its account is taken back out. Only `service_type_ids` is read from the body on this door.
 
@@ -526,6 +542,8 @@ interface SendSignInEmailRequest {
 
 ### merge-users
 
+> **v2.5397 — the absorbed login's ban lands, and `deno check` passes again**: the ban sent `banned_until`, which GoTrue's admin update drops without an error (see `archive-user`), so the call answered 200 and the absorbed login stayed open (TS2353). It sends `ban_duration: '876000h'` (100 years) now. **Redeploy** once merged, after `restore-user`: the ban works from then on.
+
 **Purpose**: Merge one user account into another (dev-only). Calls the `merge_user_accounts` RPC (migration `20260712190000` + `191500` fix) to reassign every reference from the absorbed account to the survivor — explicit handling for unique/membership tables, org pair tables, labels, roster link, `estimates.accept_notify_user_ids`, plus a dynamic FK sweep and a zero-leftovers coverage assert — then bans the absorbed login via the service role. Rules (validated in the RPC): both accounts same role; absorbed must be **archived or never signed in**; when one account is live it must be the survivor. Absorbed account keeps its email (tombstone) and stays restorable-in-name only — merges cannot be undone.
 
 **Endpoint**: `POST /functions/v1/merge-users`
@@ -567,6 +585,8 @@ interface MergeUsersRequest {
 
 ### archive-user
 
+> **v2.5397 — the ban lands, and `deno check` passes again**: the ban sent `banned_until`, which GoTrue's admin update does not take. `PUT /admin/users/{id}` reads the body into `AdminUserParams`, which has `ban_duration` and no `banned_until`, with a plain `json.Unmarshal` that drops unknown keys, so the call answered 200 and banned nobody (TS2353, confirmed by a read-only check on production). It sends `ban_duration: '876000h'` (100 years) now, and GoTrue writes `auth.users.banned_until` from it. The service-role client goes to `forwardCtSeatState` as that helper's own narrow type (TS2589, TS2345), and the outer `catch` reads `(error as Error).message` (TS18046). **Redeploy** once merged, after `restore-user`: the ban works from then on.
+
 **Purpose**: Archive users by email or name. Archived users are hidden across the app and cannot sign in, but can be restored later.
 
 **Endpoint**: `POST /functions/v1/archive-user`
@@ -597,7 +617,7 @@ interface ArchiveUserRequest {
 - Archiving an **already-archived** account returns **409** with `"That user is already archived (May 21, 2026)."` (second lookup without the archived filter; a genuinely unknown user still returns 404 `User not found`)
 - If `reassign_customers_to` is provided, all customers owned by the user will be reassigned to the specified master before archival
 - The new master must be a `dev` or `master_technician` role
-- Sets `archived_at` in `public.users` and `banned_until` in `auth.users` (user cannot sign in)
+- Sets `archived_at` in `public.users` and bans the auth login with `ban_duration: '876000h'`, which GoTrue stores as `auth.users.banned_until` (user cannot sign in, and an open session ends at its next token refresh)
 
 #### Example Request
 
@@ -629,7 +649,9 @@ const response = await supabase.functions.invoke('archive-user', {
 
 ### restore-user
 
-**Purpose**: Restore an archived user. Clears `archived_at` and `banned_until` so the user can sign in again.
+> **v2.5397 — the unban lands, and `deno check` passes again**: the unban sent `banned_until: null`, which GoTrue's admin update drops (see `archive-user`). It sends `ban_duration: 'none'` now, which clears `auth.users.banned_until`. The service-role client goes to `forwardCtSeatState` as that helper's own narrow type (TS2589, TS2345), and the outer `catch` reads `(error as Error).message` (TS18046). **Redeploy** once merged, before `archive-user` and `merge-users`, so a login they ban can always be restored.
+
+**Purpose**: Restore an archived user. Clears `archived_at` and lifts the auth ban (`ban_duration: 'none'`) so the user can sign in again.
 
 **Endpoint**: `POST /functions/v1/restore-user`
 
@@ -668,6 +690,8 @@ const response = await supabase.functions.invoke('restore-user', {
 ---
 
 ### login-as-user
+
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Generate magic link for user impersonation (dev, master, and assistant access). The client (`lib/loginAsUser.ts`) passes `redirectTo` = the page the operator is on (v2.3606; was the role's home page) and stashes `returnTo` beside the tokens so Exit lands back there.
 
@@ -788,6 +812,8 @@ const response = await supabase.functions.invoke('login-as-user', {
 
 ### dev-login
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error?.message` off an `unknown`, which the optional chain narrows to `{}` (TS2339). It reads `(error as Error)?.message` now, as `merge-users` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Password-free sign-in when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials. **Frontend identity is fixed (v2.1517)**: `src/pages/DevLogin.tsx` always sends `robert@douglasmining.com` (`DEV_LOGIN_EMAIL` constant) — the `?as=` value and the old email input no longer pick the account; `as`'s presence just triggers the auto-login, but for `?as=twin:<role>[:<n>]`, which signs in as that twin's account (v2.2426, `twinAliasEmail`). It signs in once per URL (v2.4993, `signedInFor`): StrictMode's second run minted a second link, which cancelled the first. The function itself still accepts any existing user's email if invoked directly with the secret.
 
 **Endpoint**: `POST /functions/v1/dev-login`
@@ -838,6 +864,12 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ### dev-mcp
 
+> **v2.5376 — `deno check` passes again**: `Admin` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `dev_mcp_credentials` touch and the `dev_mcp_calls` insert took `never`, and the service-role client could not be handed to `resolveDev`, `logCall`, `resolveViewAsTarget`, `sessionFor` or `priorApply` (8 errors). It is `SupabaseClient` now. The emitted JavaScript is byte-identical and the catalog does not change, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
+> **v2.5463 — the catalog one entry per line**: `scripts/build-dev-mcp-catalog.mjs` writes `CATALOG_TABLES`, `CATALOG_RPCS` and `EDGE_FUNCTIONS` one sorted entry a line, each ending in a comma, so two PRs that each add a function (or a table, or an RPC) no longer rewrite the same line and the merge queue keeps both. Nothing behaves differently. **Redeploy required** after merge; on 2026-10-13 `check:edge-drift` still lists it behind, with v2.5354's regeneration.
+
+> **v2.5354 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `gmail-sync` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
+
 > **v2.5010 — `get_customer` and `get_job` read the one payment rule**: `customerProfileStats` (`customerMoneyStats`, `profileJobRowMoney`) nets each bill with `appliedByInvoiceUnderRule` — money put on the job with no bill picked pays the part of the job on no bill, then the sent bills oldest first — as the Customer Hub and the Pipeline board read it (the owner's call of 2026-10-09). The composite reads carry `sequence_order`. **Redeploy after merge.**
 
 > **v2.4624 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `legal-send-firm-link` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
@@ -878,6 +910,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### twin-mcp
+
+> **v2.5378 — `deno check` passes again**: ten helpers typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so 17 calls could not hand them the service-role client and the shadow and backtest shells' reads and inserts took `never` (62 errors). They take `SupabaseClient` now. `resolveTwin` cast the user row `as typeof user` right after setting `user` to `null`, which TypeScript reads as the narrowed `null` (4 errors), so the row's type is named `TwinUserRow`. `get_answers`' redacted list is a `Record<string, unknown>[]` (1 error). `next_backtest`'s claim wrote `ok: true` before spreading a shell result that always carries `ok: true` (TS2783). The literal is gone, so the reply has the same keys and values with `ok` second, after `claimed`, instead of first. That is the one line of emitted JavaScript that changes. The server stays 1.4.6. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.5034 — travel at the owner's rate**: `briefs.ts` regenerated. `get_placement_guide` now says travel is the book's `Travel & Rentals (per mile from office)` entry rowed once at count = miles from the office × job days, $1.40 a count ($0.70 a mile, round trip, the owner's call of 2026-10-09), replacing the lesser of $80 × miles and 10% of the building. The entry's price moves in migration `20261010004000_robot_book_travel_rate.sql`; push it first. The run also carries `APP_DIRECTORY.md`'s unregenerated GC-mode lines. **Redeploy after merge.**
 
@@ -1003,11 +1037,48 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Endpoint**: `POST /functions/v1/gc-drive-access` · **Auth**: staff JWT validated in-body, office roles only (dev / master_technician / assistant / controller / estimator), never a training (`read_only`) account or a digital twin (403, door 1, v2.4832: it writes with the service role, so the read-only blocks and the twin fence never see it); `verify_jwt = false`. **Body**: `{ make_folders: { project_id } }` → `{ success, folder_url, folder_created, plans_url, team_url, plans_shared, reason, set_plans_link }`, or `{ check: { url, project_id?, rev? } }` → `{ success, access, seen, note, checked_on, recorded }`.
 
-**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the same two as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`). Google helpers from `_shared/driveUpload.ts`.
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the same two as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`). Google helpers from `_shared/driveUpload.ts`, whose `uploadBytes` (P5a-1) also files a trade's upload from `submit-gc-trade-portal`.
 
 **Doors**: the GC projects page (`/gc`, the office and estimators since door 1, v2.4832) calls make_folders right after `gc_create_project` and offers **Check the link** / **Check again** on each project's newest set (`src/lib/gc/gcIo.ts`).
 
 ---
+
+### drive-link
+
+**Purpose**: Messages, cut 7b (v2.5383, `MESSAGES_PLAN.md` → *Documents, for files going out*, the handler; the mock-up is `to-dos/gc-mode/messages/files-out-mockups.html` on spike/gc-mode). Our own link to one file in a job's Drive folder, `clicktooling.com/f/<link>`, and the office's door to a job's folder. The rules are pure in `_shared/driveLink.ts`, tested by `src/lib/documents/driveLink.test.ts`. Its Drive reads and writes are `_shared/driveJobFolder.ts`, shared with [photo-save](#photo-save) and [messages-email](#messages-email): the job's folder, `halfInside`, the byte read (`driveMedia`, `driveFileBytes`) and our link (`makeDriveLink`). A link is a `drive_links` row (cut 7a, `20261013110000_drive_links.sql`), kept by its SHA-256.
+
+**The open door**, no sign-in: the link is the key.
+- `GET ?t=<link>` answers `{ kind: 'drive', url, name }` for a file in the job's Plans half, which opens in Drive's own viewer since that half is open to anyone with its link. It answers `{ kind: 'stream', name, url }` for a Team only file, `url` being this function's public address (from `SUPABASE_URL`, never the request's) with `&raw=1`. It answers `{ kind: 'off', why }` for a link cut off, ended (30 days), unknown, or a Team only file over 50 MB. Each answer that opens counts one `public_page_views` row, surface `drive_link`. A staff look or a preview is stamped and not counted, as the portals do.
+- `GET ?t=<link>&raw=1` streams a Team only file's bytes from Drive (`alt=media`), passed through and never held whole, so Team only is never opened up. A file grown past 50 MB since its link was made is refused by Drive's own length. A page, an SVG or a script is saved, never shown, so a file that came by email cannot run on the function's address. A Plans file asked for raw redirects to Drive's viewer.
+
+**The office's door**: `POST` with a staff JWT validated in-function, office roles (dev, master_technician, assistant, controller, estimator), never a digital twin, as [gc-drive-access](#gc-drive-access) checks. A training account lists and opens, and is refused the three asks that write (*A training account cannot change Drive.*).
+- `{ action: 'list', job }`: the job's folder in its two halves, three levels deep, at most 500 files, for the one list (`documents/jobFiles.ts`).
+- `{ action: 'put', job, name, mime, where, base64 }`: a file from this computer into Team only → Sent by us, or a photo into Team only → Photos, up to 10 MB, as the trade portal's files are.
+- `{ action: 'link', job, driveFileId, messageId }`: our link to a file whose parents reach the job's folder, half as found → `{ linkId, url }`. A plan set's folder in Plans opens as the folder. A Team only folder has no bytes to hand over, so it is refused (*Only a folder in Plans can go as our link.*).
+- `{ action: 'save', attachmentId, half }`: Save to Drive for a file that came in, from the `message-attachments` bucket into Team only → From email, or the top of Plans. The row keeps `drive_file_id`, and a second save answers that one copy. Since v2.5458 (Messages, cut 10) a photo goes to the job's photos instead, named by day, sender and caption (`photoDriveName`, as [photo-save](#photo-save) files one): Team only → Photos, or a Pipeline job's own Customer Pictures folder when that link is plainly a Drive folder (`photoLanding`). The folder reads live in `_shared/driveJobFolder.ts`, shared with photo-save.
+- `{ action: 'open', job, driveFileId }`: Drive's own viewer for a file inside the job's folder, for the office's `/files/drive/<id>` page (cut 6's router).
+- A job is one of the spine's three. A GC project is `gc_projects.drive_folder_url`, with its Plans and Team only halves found by name. A bid is `bids.drive_link`, and a Pipeline job is `jobs_ledger.google_drive_link`; their folders have no halves, so every file in them is Team only.
+
+**Endpoint**: `GET|POST /functions/v1/drive-link` · **Auth**: `verify_jwt = false` in `config.toml`; the open door is the link, the office's door the JWT checked here.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [gc-drive-access](#gc-drive-access)), `APP_ORIGIN` (the link's page, else `https://clicktooling.com`).
+
+**Status**: v2.5383, deployed 2026-10-13. v2.5433 saves a page or a script in place of showing it, checks Drive's own length against the cap, and keeps one copy on a second save; redeploy once it merges. v2.5458 sends a saved photo to the job's photos under its name and imports `_shared/gcKernels/`; redeploy once it merges. v2.5465 lifts `halfInside`, the byte read and the link-making into `_shared/driveJobFolder.ts` and `bytesOfBase64` into `_shared/driveLink.ts`, with nothing that behaves differently; redeploy drive-link and photo-save once it merges.
+
+### photo-save
+
+**Purpose**: Messages, cut 10 (v2.5458, `MESSAGES_BUILD_PLAN.md` → *Cut 10*; the design is `quo-messages-mockup.html` drafts 8 and 9 on spike/gc-mode). The file agent's sweep: photos saved on arrival to the job's photos.
+- Every few minutes it reads the jobs whose office ticked *Save every photo on this job to Drive as it comes in* (`photo_saves`, v2.5457), the ones on.
+- It copies each photo that came in on a line tied to one of them since the tick went on (`photosToSave`), 20 a run, oldest first.
+- Each lands in Team only → Photos under the job's Drive folder, or in a Pipeline job's own Customer Pictures folder when that link is plainly a Drive folder (`photoFolderFor`, `_shared/driveJobFolder.ts`).
+- Each is named by day, sender and caption (`photoDriveName`), *2026-10-02 Priya Raman · Ceiling tile op 3.jpg*, with *(2)* when the folder holds the name.
+- The row keeps `drive_file_id`, written only where no save got there first, so a photo is copied once. A failed copy is tried again next run, and a line tied to its job later is caught then.
+
+**Endpoint**: `POST /functions/v1/photo-save` · **Auth**: `X-Cron-Secret`; `verify_jwt = false` in `config.toml`, since the cron sends no JWT. Answers `{ ticks, saved, failed: [{ id, why }] }`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)).
+
+**Status**: v2.5458, deployed 2026-10-13. Its cron, every 5 minutes while some job's tick is on, is `20261014090000_photo_save_cron.sql` (v2.5464).
 
 ### gc-plan-question-email
 
@@ -1037,37 +1108,58 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### gc-trade-portal
 
-**Purpose**: GC mode's trade partner portal, the read (v2.4916, P1b-ii of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`). One no-password link per trade partner company (`gc_trade_portal_links`, the sub portal's spine keyed to `gc_companies`) opens that company's slice: its asks and quotes, the quote days it gave, the asked projects with their trades, scope lines, known exclusions, plan sets, questions it may read, who to call, its people and the emails we sent it. Since P4b-i (v2.5044) it also reads its own work: the award of each trade it was asked to quote (its own ask, or `elsewhere` when another company holds it, so the portal reads the ask as lost and never learns who won), its statement of work, the charges to it and the changes it asked for, and of a change order one became only its part (the number, the status, the days sent and answered, and the cost). The read never carries our price to the customer, a change order's price, our budgets, fee, plugs or covers, another company or the office's notes. Every query is held to the link's company, then `_shared/gcTradePortalSlice.ts` copies only the fields named in `TRADE_PORTAL_FIELDS` (its never-sees test plants a marked value in each field outside the list).
+> **v2.5329 — a statement of work built from clauses** (Messages, cut 4c, cluster 9 PR 1; needs `20261013000000_gc_clause_papers` on prod first, since the read selects `gc_sows.paper_id`): the `gc_sows` read adds `paper_id, paper_revision, clause_versions`. Each statement of work sent to sign with a `paper_id` gets `clause_paper: { revision, en, es }` on its row (`withSowPapers`), put together by `clausePaperPair` (`_shared/clausePaper.ts`, new beside `clausePaperOf`): `contract_paper_clauses()` for its package's one trade, the between line naming the company, both languages at one revision. That is what `gc_trade_sign_sow` freezes. `TRADE_PORTAL_FIELDS.sows` passes `clause_paper`, `paper_revision` and `clause_versions`. A paper that fails to read leaves that statement of work with no clauses, and the SQL refuses its signing (`paperChanged`) until a reload reads them. The page maps `clausePaper` and `signedClauses` onto `Sow` (`tradePortalState.sowOf`), shows the clauses with the price and the lines folded under them, signs with `paperRevision` and `paperLang`, and once signed shows the version line. The kernel copy is regenerated (`types.ts`, `portal.ts`, `portalI18n.ts`). **Redeploy required**, with `submit-gc-trade-portal` and `customer-portal`, and `get-contract-for-signer` and `accept-contract` for the shared file (no change in what they do).
 
-**Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash) by `_shared/gcTradeLink.ts`, the one rule the writes share (v2.4925). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`).
+> **v2.5315 — the trade's flow beside the slice** (Messages cut 8c): `flow`, the company's trade flow rows (`_shared/gcTradeFlow.ts`), from which the page reads its first page, *Where you are with Click Construction*. It is built from the slice's own reads and four the flow alone needs: the company's own `contacts` row (off the flow) with its `contact_jobs` and `contact_step_skips`, its links' `first_opened_at`, its invites' `lost_on`, and its uploads of an unconditional final waiver. Cut 4's columns and table read empty until it is on prod. The office's words about the company (why it is off the flow, a skip's reason and who skipped), our people (who awarded, who sent the invitation), another company's quote (`elsewhere`) and the project days the trade flow never reads stay here, and a cancelled statement of work is left out. A flow that fails to read answers null and leaves the slice whole. An outside visit now stamps the link's first open (below, **Views**). **Redeploy required.** The page reads a missing `flow` as the home it had, so the client may ship first.
 
-**Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, dated from today, and no visit is counted. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
+> **v2.5283 — `deno check` passes again**: the copy of the kernels resolved a type-only import from outside it as a path back at `src` with no `.ts`, so the check failed with 504 errors and every type through it read as `any`; the generator's rule (*The copy of the kernels*, below) fixes the paths, `PayAppParties` and `ScopeBookProject` moved to `gc/types.ts`, and the empty schedule's to-dos are typed instead of `never[]`. Nothing behaves differently. **Redeploy required**, with `customer-portal`.
 
-**Views**: each validated load writes `public_page_views` with surface `gc_trade_portal` and `entity_id` = the company, stamped outside, staff or preview by `_shared/publicViewCounting.ts`. Only outside loads count.
+> **v2.5206 — the trade's side of the schedule** (GC mode, the Portal's P5d-ii-1, plan `to-dos/gc-mode/mockups/portal-p5d.md`): beside `schedules`, `scheduleWork[projectId] = { dates, late, lookAhead, crew }` and `scheduleTodos`, worked out on the same state with the same kernels the office reads (`datesNotices`, `lateDoor`, `portalLateNotice`, `portalLookAhead`, `portalCrewAsks`, `portalTodos`, added to the copy's entries). Only plain fields leave: the told moves it has not answered, with the message rebuilt in its language; a late door on each of its own bars, with its newest notice and our push back's day and words, never who pressed it; its look-ahead with its marks and our checks; its crew asks; and the home's four schedule to-dos. The read adds the moves with their pushes, its own bars' parts and marks, and of the company's own only its tells, answers, late notices and crew counts. The late door's second look is its own read, `GET ?t=&late=<lineId>&day=<YYYY-MM-DD>`, which counts no visit, reads that bar's job alone when it is one the company works on, and answers `{ waiting }` (`lateWaiting`'s work, company, new start and days) or `{}`. **Redeploy required.** The page reads a missing `scheduleWork` as none, so the client may ship first.
+
+> **v2.5201 — the slice carries the day the company sent its vetting form** (GC mode, the Portal's P5b-1): `vettingForm`, its `gc_company_vetting_forms` row as `company_id, sent_on` only (`TRADE_PORTAL_FIELDS.vettingForm`; never its answers, which the office reads), or null. The page reads a company new to us as being checked once it is there. **Redeploy required.**
+
+> **v2.5200 — the trade's chart beside the slice** (GC mode, the schedule's PR 14b): `schedules`, the company's chart on each job being built with a trade awarded to it, worked out here from every bar on the job with a generated copy of the kernels (`_shared/gcKernels/`). **Redeploy required.** The page reads a missing `schedules` as no chart, so the client may ship first.
+
+> **v2.5128 — the slice carries the company's own papers** (GC mode, the Board's B6-b-ii-a): its rows in `person_contract_documents` with its `company_id`, as `id, company_id, doc_type, status, sent_at, signed_at, expires_at` only, for its master agreement first (`TRADE_PORTAL_FIELDS.papers`; never a paper's link, body or values). **Redeploy required.** The page reads a missing list as none, so the client may ship first.
+
+**Purpose**: GC mode's trade partner portal, the read (v2.4916, P1b-ii of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`). One no-password link per trade partner company (`gc_trade_portal_links`, the sub portal's spine keyed to `gc_companies`) opens that company's slice: its asks and quotes, the quote days it gave, the asked projects with their trades, scope lines, known exclusions, plan sets, questions it may read, who to call, its people and the emails we sent it. Since P4b-i (v2.5044) it also reads its own work: the award of each trade it was asked to quote (its own ask, or `elsewhere` when another company holds it, so the portal reads the ask as lost and never learns who won), its statement of work, the charges to it and the changes it asked for, and of a change order one became only its part (the number, the status, the days sent and answered, and the cost). Since P2c-ii (v2.5138) it reads its statement of work's lines (`gc_sow_lines`: the label, the amount and the scope item, in order) and what it will not do (`gc_sows.excluded`), for the sign screen; never the signer's fields. Since P5c-1 (v2.5152) it reads the job's work on the trades awarded to the company, never those it was only asked to quote: Building's submittals with their holds and rounds, the RFIs on those trades (whether it asked, never who did, an RFI's cost or the change order it became, nor an RFI on our own work), its punch items not taken off, the draws on its statements of work with their lines, each line's newest report, the change orders sent to it (with the description it signs), the day we accepted its work and the day we closed the job. Never who of ours recorded, added or checked a row, nor the email that carried it. The read never carries our price to the customer, a change order's price, our budgets, fee, plugs or covers, another company or the office's notes. Every query is held to the link's company, then `_shared/gcTradePortalSlice.ts` copies only the fields named in `TRADE_PORTAL_FIELDS` (its never-sees test plants a marked value in each field outside the list).
+
+**Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash) by `_shared/gcTradeLink.ts`, the one rule the writes share (v2.4925). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice, schedules, scheduleWork, scheduleTodos, flow }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`). `schedules` (v2.5200) maps each job being built with a trade awarded to the company (`portalScheduleJobs`) to its chart (G-110): `readScheduleRows` (in `_shared/gcScheduleRead.ts` since v2.5211, shared with `customer-portal`, the trade's own rows behind its `trade` option) reads that job's trades, only their awarded invites and those companies' names, the awarded trades' statements of work with their draws and reports, and the bars with their links and baselines, paged past 1,000 rows; `_shared/gcTradePortalSchedule.ts` works out `portalSchedule`'s answer and nothing else leaves: its own bars and those right before and after them, each by its company's name, dates, percent and days slipped. A neighbour's percent is its own report, never the `we_see` of a draw we sent it back (`withoutOthersSendBacks`). A chart that fails to read answers `{}` and leaves the slice whole.
+
+**Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, schedules, scheduleWork, scheduleTodos, flow, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, the sample job's chart with made-up neighbours (`gcTradePortalSampleSchedules`, v2.5200), and the same rows run through the flow's builder (`gcTradePortalSampleFlow`, v2.5315), dated from today, and no visit is counted.
+
+**The copy of the kernels** (v2.5200): `_shared/gcKernels/` is generated from `src` by `scripts/edge-kernels.mjs` (`npm run gen:edge-kernels`), because an edge function cannot import `src/lib` as it stands: the files the value imports of `portalSchedule`, `gcProjectFromRows`, `boardStateFromRows`, `withDraws` and `withScheduleRows` reach, and since P5d-ii-1 (v2.5206) those of `datesNotices`, `lateDoor`, `lateTarget`, `lateWaiting`, `portalLateNotice`, `portalCrewAsks`, `portalLookAhead` and `portalTodos`, since the Board's B2b-vi-b (v2.5208) `boardRows.ts`'s `setTouches.ts` and `lineReach.ts`, and since the schedule's PR 15b (v2.5211) those of `customerSchedulePicture`, `customerBarWords`, `lateFinish` and `withOfficeChangeOrders` for the customer's picture (111 files and 27,317 lines on 2026-10-20, the index aside, the generator's own count; since v2.5653 `appSettingsKeys.ts`, the `app_settings` keys with their parsers, which the morning run's `flows/nudgeRunInputs.ts` imports; since v2.5638 `quickReplies/shortcut.ts`, a line's `/` word, which `quickReplies/kernel.ts` imports; since v2.5281 the Quo kernels `quo/webhook.ts`, `events.ts`, `send.ts` and `rows.ts`, since v2.5458 also the photo kernels `photoDriveName`, `photosToSave` and `photoRows.ts`'s reads, since v2.5468 `quo/mediaKeep.ts`, since v2.5479 `messages/notifyPlan.ts`, the reply push's rule, since v2.5469 `messages/boxes.ts`, the two boxes, since v2.5494 `emailIn/readerBoxes.ts`, the boxes the reader reads, since v2.5440 `quo/textsSwitch.ts`, the texts switch, since v2.5499 quo-send's tech path, `quo/techSend.ts` with `jobModeText.ts`, `messages/customerLang.ts` and `quickReplies/language.ts`, since v2.5442 the morning run's `nudgeRunReads`, `planNudgeRun`, `runSummary` and `runHourNow`, since v2.5590 `bio/bio.ts`, the tech's bio, and since v2.5606 `prospects/textingRule.ts`, the prospect's texting rule), in `src`'s layout with `.ts` on each relative import. A type-only import of a file outside the copy goes one of three ways since v2.5283 (before it the copy pointed back at `src` with no `.ts`, which Deno erases at run time but `deno check` cannot resolve, so every type through it read as `any` and both importers' checks failed, 504 errors in `gc-trade-portal`'s): a file that imports nothing (the database's types, the schedule's) is pointed at in `src` with its `.ts`; a file of types whose own imports are types alone is copied, so its imports resolve inside the copy (`gc/types.ts`, where `PayAppParties` and `ScopeBookProject` now live, the old files re-exporting them); a file that runs code of its own is refused with a word to move the types to a types file. The generator reports the files it holds for their types alone (`typeFiles`), and `edgeKernels.test.ts` plants all three cases. `deno check` passes for both importers since v2.5283. `src/lib/gc/edgeKernels.test.ts` fails when the copy differs from a regenerate, or its importers' list (`IMPORTERS`, today `customer-portal`, `drive-link`, `gc-trade-portal`, `gmail-sync`, `messages-email` (since v2.5496), `messages-notify` (since v2.5479), `messages-nudge-dispatch` (since v2.5442), `photo-save`, `quo-send` and `quo-webhook`) from the functions whose bundles reach it, a string-literal `import()` included. So a change to any of the 111 files regenerates in its own PR and redeploys every importer, and `check:edge-drift` names each importer to redeploy. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
+
+**Views**: each validated load writes `public_page_views` with surface `gc_trade_portal` and `entity_id` = the company, stamped outside, staff or preview by `_shared/publicViewCounting.ts`. Only outside loads count. The function's one write beyond that row (v2.5315): an outside load fills the company's live links' empty `first_opened_at`, the fact `portal_opened`, before the flow reads it. A staff look, a preview or the sample never stamps it, and until cut 4's column is on prod the stamp changes nothing.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
 
 **Doors**: links are made only through `mint_gc_trade_portal_link` (dev only until the portal's door, migration `20261008050000_gc_trade_portal_links`), so no real trade can open one before then. The page at `/t/:token` (`src/pages/GcTradePortal.tsx`, v2.4920) reads it, and a dev makes, copies, remakes or turns off a company's link in its company window's **Their portal** on `/gc` (the **Trade portals** pill is gone since v2.4942), or `gc-trade-email` makes it on the company's first email.
 
-**Status**: deployed 2026-10-08 after #4946 merged. Probed on prod: `?t=sample` answers 200 with today and Sample Electric Co.'s slice; an unknown 64-character token answers `{"error":"linkOff"}`. P4b-i (v2.5044) adds four reads (`gc_sows`, `gc_back_charges` and `gc_trade_change_requests` by the company, and `gc_change_orders` by its requests) and the sample's job; redeployed after it merges. The page ships first and reads a slice without the four lists as no work.
+**Status**: deployed 2026-10-08 after #4946 merged. Probed on prod: `?t=sample` answers 200 with today and Sample Electric Co.'s slice; an unknown 64-character token answers `{"error":"linkOff"}`. P4b-i (v2.5044) adds four reads (`gc_sows`, `gc_back_charges` and `gc_trade_change_requests` by the company, and `gc_change_orders` by its requests) and the sample's job; redeployed after it merges. The page ships first and reads a slice without the four lists as no work. P2c-ii (v2.5138) adds one read (`gc_sow_lines` by the company's statements of work), `excluded` on `gc_sows` and the sample job's two lines; redeployed after it merges with the seven other functions P2c-ii touches (below, `submit-gc-trade-portal`), and the page reads a slice without the lines as a statement of work with none. P5c-1 (v2.5152) adds the job's reads (`gc_draws`, `gc_change_order_trade_sends` and `gc_sow_line_reports` by its statements of work; `gc_draw_lines` by its draws; `gc_submittals`, `gc_rfis` and `gc_punch_items` by its awarded trades, with `gc_submittal_holds`, `gc_submittal_rounds` and `gc_rfi_holds`), widens the change orders read to those sent to it, adds `accepted_on` and `closed_on`, and gives the sample job its report, a paid draw, a punch item, a submittal and an answered RFI. Redeployed after it merges; the page reads a slice without them as no job work. The schedule's PR 14b (v2.5200) adds the chart's reads (above, **Response**) and the copy of the kernels. On the local edge runtime v1.70.0 its cold boot to a first answer went from about 1.16s to 1.32s and a warm answer stayed about 2ms, so the chart stays in this function. Redeployed after it merges; the page reads an answer without `schedules` as no chart. Messages cut 9 (v2.5304) adds one read, `app_settings.gc_bill_day_cutoff_days`, as the slice's `billDayCutoffDays`: a day count, never money, so the pay application's door can say when the next one is due and the bill it goes on (`tradeBillDay`). Redeployed after it merges; the page reads a slice without it as the default, 6 days.
 
 ---
 
 ### submit-gc-trade-portal
 
-**Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, asking about the plans and, since P4b-i (v2.5044), answering a charge and asking for a change. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The page's presses post to it since v2.4935 (P2b-ii, `gcTradePortalPress.ts`).
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
+> **v2.5329 — a statement of work built from clauses signs at the revision it showed** (Messages, cut 4c, cluster 9 PR 1): `sign_sow` may carry `paperRevision`, a whole number, and `paperLang` (`en` | `es`, anything else reads `en`). With a revision the call passes `p_paper_revision` and `p_paper_lang` to `gc_trade_sign_sow` (`20261013000000_gc_clause_papers`). Without one it passes neither, and the SQL's defaults sign a statement of work whose lines are the paper as before. A revision that is not a whole number answers `400 badRequest`. The verb's `paperChanged` maps to 409, and the page reads it as `errPaperChanged`, which comes off the words test's `WAITING`. **Redeploy required**, after the migration is on prod.
+
+**Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, asking about the plans, since P4b-i (v2.5044) answering a charge and asking for a change, and since P2c-ii (v2.5138) signing its statement of work. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The page's presses post to it since v2.4935 (P2b-ii, `gcTradePortalPress.ts`).
 
 **Endpoint**: `POST /functions/v1/submit-gc-trade-portal` with `{ token, kind, website?, ...fields }` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. **Response**: `{ ok: true, value? }` or `{ error: key }`.
 
 **In order**:
 1. A filled `website` (the honeypot) answers `{ ok: true }` and writes nothing.
-2. A shape the portal never sends answers `400 badRequest`. That is `parseTradeSubmit` in `_shared/gcTradeSubmit.ts`: the kind, uuids, `YYYY-MM-DD` days, text caps and the four kinds of email.
+2. A shape the portal never sends answers `400 badRequest`. That is `parseTradeSubmit` in `_shared/gcTradeSubmit.ts`: the kind, uuids, `YYYY-MM-DD` days, text caps and the four kinds of email. A `sign_sow` without the e-sign consent answers `400 consentNeeded`, and one whose drawn signature is not a PNG of at most 512 KiB answers `badRequest`.
 3. The sample token answers `{ ok: true, sample: true }` and writes nothing.
 4. A token under 16 or over 128 characters answers `400 badRequest`.
-5. The link is resolved by `_shared/gcTradeLink.ts`: the raw token, then its hash. An unknown or turned-off link answers `404 linkOff`.
+5. The link is resolved by `_shared/gcTradeLink.ts`: the raw token, then its hash. An unknown or turned-off link answers `404 linkOff`. A `file` (P5a-1) goes its own way from here: see *A file* below.
 6. `set_lang` with `es` while Spanish is held answers `400 spanishHeld`.
-7. The hourly cap: a free-text kind (`submit_quote`, `quote_day`, `add_person`, `ask_question`, `ask_change`) answers `429 tooMany` once the company has made 10 free-text writes in the last hour. The count is its questions, the people it added, its quotes, its portal contact lines and the changes it asked for.
-8. The verb runs. Its refusal is `P0001` with a key, which `tradeErrorOf` passes through with its status: 409 for a state, 400 for a field, 404 for `notFound`. Anything else answers `500 failed` and is logged.
+7. The hourly cap: a free-text kind (`submit_quote`, `quote_day`, `add_person`, `ask_question`, `ask_change`, `submittal_send`, `rfi_ask`) answers `429 tooMany` once the company has made 10 free-text writes in the last hour. The count is its questions, the people it added, its quotes, its portal contact lines, the changes it asked for, and since P5c-2 its questions while we build (`gc_rfis.asked_by_company_id`) and the submittal rounds it sent on its statements of work's trades.
+8. A signature (`sign_sow`, since P5c-3b `unconditional_waiver` and `sign_change`, and since P5c-3c-ii `pay_app` and `final_pay_app`) does what `accept-contract` does around the write. The consent words are read again with `parseEsignConsent` (none: `400 consentNeeded`). A drawn signature is stored at `contract-signer-signatures/gc-sows/<sow id>/<uuid>.png` (a store that fails answers `500 failed`); a typed one stores no image. The verb gets the path, the IP and the browser.
+9. The verb runs. Its refusal is `P0001` with a key, which `tradeErrorOf` passes through with its status: 409 for a state, 400 for a field, 404 for `notFound`. Anything else answers `500 failed` and is logged. A refused signature's image is deleted. After a signature, `recordEsignConsent` writes the `esign_consents` row. For `sign_sow` it is record type `gc_sow`, method `draw` or `type`, with the consent time the verb returned, so the row and `gc_sows.signer_consented_at` match. For the waiver (`gc_draw`) and a change (`gc_trade_change`) it is method `type` with the function's time, since their verbs return none. A pay application's row is `gc_draw` too, keyed by the draw its verb returns, its printed name the G702's signer.
 
 **Kinds**:
 
@@ -1085,6 +1177,24 @@ The function reads and writes with the service role, so every bid-scoped verb en
 | `ask_question` | `packageId`, `text`, `sheets[]` |
 | `answer_back_charge` (P4b-i) | `chargeId`, `agree`, `note` (a dispute needs one) |
 | `ask_change` (P4b-i) | `packageId`, `description`, `reason` (`owner`, `field` or `plans`), `amount`, `days` (a whole number, none is 0) |
+| `punch_fixed` (P5c-2) | `itemId`. Not under the cap: `punchNotOpen` holds a repeat |
+| `submittal_send` (P5c-2) | `submittalId`, `fileName` (200 at most; blank is the SQL's `fileNeeded`), `driveUrl` (https only, or none, until P5a's upload), `note` |
+| `rfi_ask` (P5c-2) | `packageId`, `question` (2,000 at most), `sheets[]` |
+| `sign_sow` (P2c-ii) | `sowId`, `printedName`, `signaturePngBase64` (drawn only), `esignConsent` (required). Not under the cap: a second press is `alreadySigned` |
+| `sow_report` (P5c-3b) | `packageId`, `line` (the kernels' `SovLine.id`), `pct` (0 to 100; the SQL holds it at what was billed) |
+| `unconditional_waiver` (P5c-3b) | `drawId`, `printedName` (required), `esignConsent` (required). Typed only. Ledger row `gc_draw`, keyed by the draw. Refused as `400 badRequest` while `WAIVER_SIGN_LIVE` is false (on since the owner's call 2, v2.5178) |
+| `sign_change` (P5c-3b) | `changeOrderId`, `printedName` (required), `esignConsent` (required). Typed only. Ledger row `gc_trade_change`, keyed by the change order |
+| `pay_app` (P5c-3c-ii) | `packageId`, `app` (`lines[]` of `line` (the kernels' `SovLine.id`), `toPct` 0 to 100 and `stored` (dollars, none or more); `periodTo`; `address`; `license`; `signedBy`; `signedTitle`), `esignConsent` (required). It signs the conditional waiver: ledger row `gc_draw`, keyed by the draw it makes. Refused as `400 badRequest` while `WAIVER_SIGN_LIVE` is false (on since v2.5178) |
+| `final_pay_app` (P5c-3c-ii) | `packageId`, `app` as `pay_app`'s with no lines, `esignConsent` (required). The same ledger row and hold |
+| `file` (P5a-1) | `for` (`submittal`, `change`, `quote`, or since P5b-2 `coi` with no record), its record (`submittalId`, `packageId` or `inviteId`), `name`, `base64`. Answers `{ id, name, url }`. Its own cap, 20 an hour |
+| `coi` (P5b-2) | `expiresOn` (`YYYY-MM-DD`; blank is the SQL's `coiDayNeeded`), `fileUrl` (https; the `file` kind's answer, or the SQL's `certNeeded`). Files it as *received* (P5b-2m), counting for nothing until the office marks it good. Not under the cap: its upload counts under the file cap |
+| `vetting_form` (P5b-1) | `license`, `insurance`, `years` (a whole number), `references`, `pastJobs` (2,000 each at most; a blank line or no years is the SQL's `formIncomplete`). Not under the cap: one row a company, a second send replacing it |
+| `paper_link` (P5b-1) | `paper` (`msa` or `w9`). Answers `{ signPath }`: see *A paper to sign* below. Not under the cap |
+| `answer_dates` (P5d-ii) | `moveId`, `ok`, and when not ok `day` (`YYYY-MM-DD`) and `note`. On 13a's `gc_trade_answer_dates` |
+| `say_late` (P5d-ii) | `activityId`, `day`, `reason` (one of the five), `note`. On 14a's `gc_trade_say_late`; answers the notice's id. Under the cap |
+| `keep_day` (P5d-ii) | `noticeId`. On `gc_trade_keep_day` |
+| `crew_count` (P5d-ii) | `packageId`, `weekOf` (a Monday), `count` (a whole number; the SQL holds it to 0 to 50). On `gc_trade_set_crew_count` |
+| `mark_lookahead` (P5d-ii) | `activityId`, `weekOf` (a Monday), `done`, and `reason` when not done. On `gc_trade_mark_lookahead` |
 
 The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/lib/gc/tradePortalPage.ts`). A test fails when a key has no words.
 
@@ -1100,15 +1210,41 @@ The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/l
 
 P4b-i (v2.5044) adds the two kinds above on P4a's verbs, `ask_change` under the cap, and the keys `alreadyAnswered` and `notAwarded` (409), `noteNeeded` and `descriptionNeeded` (400); redeployed after it merges.
 
+P2c-ii (v2.5138) adds `sign_sow` on P2c-i's `gc_trade_sign_sow` (migration `20261010043000_gc_trade_sign_sow`), the function's own `consentNeeded` (400) and the verb's `sowNotSent`, `alreadySigned` and `msaFirst` (409). `_shared/esignConsent.ts` gains the record type `gc_sow`, a type only, which its six other importers carry too. After it merges the lead deploys all eight so `npm run check:edge-drift` reads clean: `gc-trade-portal`, `submit-gc-trade-portal`, `accept-contract`, `accept-estimate`, `sign-bid-room`, `sign-job-contract`, `sign-owner-records` and `submit-sub-portal`.
+
+P5c-3b (v2.5159) adds `sow_report`, `unconditional_waiver` and `sign_change` on Building's U6a verbs (`gc_trade_sow_report`, `gc_trade_unconditional_waiver`, `gc_trade_sign_change`, migration `20261010021000_gc_trade_draws`) and the keys `sowNotSigned`, `splitLine` and `notPaidYet` (409). Their two signatures' verbs take no name, so `parseTradeSubmit` requires one. `WAIVER_SIGN_LIVE` (a copy of `drawEmail.ts`'s, held equal by a test) held the waiver until the owner said a trade may sign its lien waiver in the portal, on 2026-10-10 (v2.5178, the owner's call 2). Off, `waiverHeld` refuses it right after the shape is read. v2.5178 turned it on; `submit-gc-trade-portal`, `gc-trade-email` and `send-contract-for-signature` bundle `_shared/gcTradeSubmit.ts` and were redeployed after it merged.
+
+**A file** (P5a-1, v2.5172, plan `to-dos/gc-mode/mockups/portal-p5a.md`): `parseTradeFile` in `_shared/gcTradeFile.ts` reads the shape, the type from the file's first bytes (PDF, JPEG, PNG, HEIC, HEIF; else `400 fileType`) and the size (10 MB at most decoded; else `400 fileTooBig`). After the link, the function counts the company's files in the last hour in `gc_trade_files` (20 at most: `429 tooMany`) and checks its claim to the record as its next kind's verb would: its submittal while it is its move (`notYours`, `notYourMove`), a trade it signed for on a job that is ours (`notAwarded`), its own ask not passed on a project not lost (`notYours`, `youPassed`, `projectLost`). The job's folder is `gc_projects.drive_folder_url` (none: `409 noJobFolder`). A submittal's file goes to its **Submittals** folder, any other to **Team only → From trades → <company>**, each found or made by name. The bytes go up with `uploadBytes` (`_shared/driveUpload.ts`) under the service account the intake uses (`GOOGLE_SERVICE_ACCOUNT_JSON`, as `DRIVE_IMPERSONATE_USER` when set), named so that no two files meet: `<number> round <n> - <name>` for a submittal, `<YYYY-MM-DD HHmm> - <name>` otherwise. A `gc_trade_files` row keeps the link. A row not kept is logged and the link still goes back. The page sends the link with the kind that stores it: `submittal_send`'s `driveUrl`, `ask_change`'s `fileUrl` (P5a-m's `p_file_url`) or the quote's `file`.
+
+P5d-ii-1 (v2.5206) adds the schedule's five kinds above and maps the ten keys 13a and 14a parked: `datesTakenBack`, `workDone`, `notPushedBack`, `noticeClosed`, `weekClosed` and `alreadyChecked` (409), `dayNeeded`, `lateLaterDay`, `pickWhy` and `crewWhole` (400). `say_late` joins `FREE_TEXT_KINDS`, and `freeTextCounts` counts `gc_schedule_late_notices` by `company_id`. `_shared/gcTradeSubmit.ts`'s `SCHEDULE_REASONS` is a copy of `LATE_REASONS`, held equal by a test. Five functions bundle the changed files and are redeployed after it merges: `gc-trade-portal`, `submit-gc-trade-portal`, `gc-trade-email`, `send-contract-for-signature` and `submit-portal-request`.
+
+P5a-1 (v2.5172) adds the kind `file` and `fileUrl` and `file` on the two kinds, the keys `fileType`, `fileTooBig` (400) and `noJobFolder` (409), and `uploadBytes`. Six functions bundle the changed files and are redeployed after it merges: `submit-gc-trade-portal`, `drive-intake`, `file-submittal-package` and `gc-drive-access` (`_shared/driveUpload.ts`), and `gc-trade-email` and `send-contract-for-signature` (`_shared/gcTradeSubmit.ts` through `_shared/gcTradeEmail.ts`).
+
+**A certificate** (P5b-2, v2.5225): the kind `file` with `for: 'coi'` names no record (the certificate is the link's company's own, on no job), so it is never `noJobFolder`. It goes under the jobs Shared Drive's root (`DRIVE_JOBS_FOLDER_ID`) to **GC trade partners → <company>**, found or made by name; a missing root is `500 failed`, logged. Its `gc_trade_files` row has no project. The kind `coi` then calls `gc_trade_coi` with the upload's link, which files it as *received* (P5b-2m, the owner's "Office looks first"); the office marks it good from the company window's Documents tab (`gc_mark_company_coi_good`). `submit-gc-trade-portal` is redeployed after it merges.
+
+**A paper to sign** (P5b-1, v2.5201, plan `to-dos/gc-mode/mockups/portal-p5b.md`): for `paper_link` the function mints a fresh token before the verb (`_shared/gcTradePaper.ts`: 64 hex characters, as `submit-sub-portal`'s `sign_link` and `send-contract-for-signature` mint one), hands P5b-m's `gc_trade_paper_open` its SHA-256 and an expiry 14 days out, and answers `{ signPath: '/contract/accept?t=<raw>' }`. The raw token never reaches the database. The verb opens the company's master agreement the office sent, or its W-9, copying the Contract Book's W-9 for subs when it has none; the newest link wins, so the emailed one stops working. The page checks the path (`tradeSignPath`) and goes there in the same tab, since Safari on a phone blocks a tab opened after an answer. P5b-1 adds the kinds `vetting_form` and `paper_link` on P5b-m's verbs (migration `20261010140000_gc_portal_p5b_papers`) and maps the keys `vetDecided`, `msaNotSent`, `noW9Form` (409), `formIncomplete` (400), and for P5b-2's certificate `coiDayNeeded`, `coiPast`, `coiTooFar` and `certNeeded` (400). `submit-gc-trade-portal` and `gc-trade-portal` are redeployed after it merges.
+
+**A signed waiver** (P5a-2, v2.5175): after a waiver kind's verb (`unconditional_waiver`, `pay_app`, `final_pay_app`) and its e-sign ledger row, the function files the signed paper as a PDF. The form is the one the kind signs (`tradeWaiverPaperFor`: the conditional with a pay application, the unconditional after we pay, each the final form on the final draw), filled from the draw (`net`, `period_to`), the job (`projects.name`, `address`) and the company, with the typed name and the day. Its words are the Release of Lien window's (`_shared/lienWaiverWords.ts`, a copy of `src/lib/jobsDocuments/lienWaiverRelease.ts` that `src/lib/gc/lienWaiverWords.test.ts` holds equal), laid out by `_shared/tradeWaiverPdf.ts` with `pdf-lib`; the name signs in Great Vibes, fetched from `APP_ORIGIN` as `contract-form-paper-entry` fetches it, else in italics. Under it: the audit sentence (who typed it, in whose portal, when, consent recorded) and the e-sign statute line. The PDF goes to **Team only → From trades → <company>** as `<form title> - <trade> - draw <n> - signed <YYYY-MM-DD>.pdf`, and a `gc_trade_files` row keeps it with purpose `waiver`, its form in `paper` and the draw in `record_id`, `made_by` `portal`. It is best effort: no job folder, Drive refusing or a row not kept is logged and never undoes the signature. It files only while `WAIVER_SIGN_LIVE` is on, as it is since the owner's call 2 (v2.5178). The hourly file cap now counts only the company's own uploads (`made_by` `trade`). Only `submit-gc-trade-portal` bundles the changed files; redeployed after it merges.
+
+P5c-3c-ii (v2.5163) adds `pay_app` and `final_pay_app` on Building's U6a and U6c verbs (`gc_trade_pay_app`, `gc_trade_final_pay_app` through `gc_final_pay_app_ask`) and the keys `drawWaiting`, `nothingToBill`, `finalSent` and `finalNotYet` (409), so no key a trade verb raises waits any more. A pay application signs its conditional waiver, so both kinds are signatures and both are in `WAIVER_KINDS`, under `WAIVER_SIGN_LIVE` with the unconditional waiver; redeployed after it merges. `_shared/esignConsent.ts` gains the record types `gc_draw` and `gc_trade_change` (the CHECK took them in P5c-m, `20261010071000`), a type only, so the lead redeploys every importer as for P2c-ii.
+
+P5c-2 (v2.5154) adds `punch_fixed`, `submittal_send` and `rfi_ask` on Building's U3b-i, U4a and U5a verbs (`gc_trade_punch_fixed`, `gc_trade_submittal_send`, `gc_trade_rfi_ask`), the keys `punchNotOpen`, `notYourMove` and `jobNotBuilding` (409) and `fileNeeded` (400), and the cap's two counts; redeployed after it merges with `gc-trade-portal`.
+
 ---
 
 ### gc-trade-email
 
-**Purpose**: GC mode's one sender for every email to a trade partner company (v2.4936, P3-a of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p3.md`, both on branch `spike/gc-mode`). A lane sends by kind: the Ask window's invitation and reminder, a new set's plans, the questions window's answer, and the rest as they land. Each email goes to whoever at the company gets that kind, carries the company's portal link, and is recorded once per key in `gc_trade_messages`, which the portal's *Messages* reads. The questions window's answer (v2.4938), the Ask window's invitation (v2.4939) and a new set's plans (v2.4940) call it; `nudge` comes next. The words for a back-charge (`backChargeEmail`: `sent`, `settled`, `taken`, kind `backCharge`) and for the office's answers to a change a company asked for (`changeAskEmail`: `down`, `sent`, `no`, kind `changeAsk`) are built in `src/lib/gc/tradeEmail.ts` (P4b-iii, v2.5049), keyed `<id>:<stage>`, for Building's screen, Owner Billing's O3b and U6 to send.
+> **v2.5226 — a nudge to several kinds, and a test copy** (the Board's B2b-viii-b, co-signed by the Portal lane): a `nudge` may name `groups` and goes to everyone who gets any of them; `test: true` sends any kind's email to the caller alone. Callers that send neither are unchanged. **Redeploy with `submit-gc-trade-portal` and `send-contract-for-signature`**, which bundle `_shared/gcTradeEmail.ts`.
 
-**Endpoint**: `POST /functions/v1/gc-trade-email` with `{ companyId, kind, key, projectId | null, lang, subject, lines, group? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { companyId, messageId, emailSendLogId, to }`, the same with `already: true` for a key sent before, or `{ error: key, detail? }`.
+> **v2.5041 — the frame takes an optional action** (`_shared/gcTradeEmail.ts`, for send-contract-for-signature's company branch, agreed with the Portal lane): with no action this function's emails are byte for byte as before (`src/lib/gc/gcTradeEmailFrame.pin.test.ts`), and a kept copy now also blanks a `?t=` token. **Redeploy with send-contract-for-signature** so `check:edge-drift` reads level.
 
-- `kind` is one of the portal's 19 message kinds (`PortalMessage`) or `paper`. `paper` names its `group` (`contracts` or `pay`). Every other kind takes its group from the kind.
+**Purpose**: GC mode's one sender for every email to a trade partner company (v2.4936, P3-a of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p3.md`, both on branch `spike/gc-mode`). A lane sends by kind: the Ask window's invitation and reminder, a new set's plans, the questions window's answer, and the rest as they land. Each email goes to whoever at the company gets that kind, carries the company's portal link, and is recorded once per key in `gc_trade_messages`, which the portal's *Messages* reads. The questions window's answer (v2.4938), the Ask window's invitation (v2.4939) and a new set's plans (v2.4940) call it, and since v2.5226 the Follow up sheet's `nudge`. The words for a back-charge (`backChargeEmail`: `sent`, `settled`, `taken`, kind `backCharge`) and for the office's answers to a change a company asked for (`changeAskEmail`: `down`, `sent`, `no`, kind `changeAsk`) are built in `src/lib/gc/tradeEmail.ts` (P4b-iii, v2.5049), keyed `<id>:<stage>`, for Building's screen, Owner Billing's O3b and U6 to send. **Tell the trades** on the Schedule window (the schedule's PR 13b, v2.5182, `src/lib/gc/tellTradesIo.ts`) sends kind `dates` with `datesMessage`'s words, keyed `dates:` and a SHA-256 of the company's moves' ids, and records the tells after each send with its `emailSendLogId` (`gc_schedule_record_tells`); a key sent before answers `already: true` with the first log id, so a press again records and sends nothing.
+
+**Endpoint**: `POST /functions/v1/gc-trade-email` with `{ companyId, kind, key, projectId | null, lang, subject, lines, group?, groups?, test? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { companyId, messageId, emailSendLogId, to }`, the same with `already: true` for a key sent before, `200 { companyId, test: true, email, to, wouldGo: [{ name, email }] }` for a test copy, or `{ error: key, detail? }`.
+
+- `kind` is one of the portal's 21 message kinds (`PortalMessage`) or `paper`. `paper` names its `group` (`contracts` or `pay`). Every other kind takes its group from the kind.
+- `groups` is for `nudge` only (v2.5226): one to four of `quotes`, `job`, `contracts`, `pay`, each once. The email goes to everyone who gets any of them. Groups on another kind, an empty or doubled list, or an unknown group is `400 badRequest`.
+- `test: true` (v2.5226, any kind) asks for a test copy. Anything but `true` or `false` is `400 badRequest`.
 - `key` is unique per company and sent once. An invitation's is `<invite id>:invite`.
 - `lines` is `Array<string | { title?, items[] }>`, without the greeting: a paragraph, or a list under its title. At most 40 lines of 2,000 characters, and 100 items a list. The function trims each and drops the empty ones.
 - `lang` comes from the company's record through `tradeMailLang` (`src/lib/gc/tradeEmail.ts`).
@@ -1120,8 +1256,9 @@ P4b-i (v2.5044) adds the two kinds above on P4a's verbs, `ask_change` under the 
 4. `es` while Spanish is held is `400 spanishHeld`.
 5. No company with that id is `404 notFound`.
 6. With a project, a company with no ask on it (`gc_invites` on one of its trades) is `409 notOnProject`. The office fixes that by asking first; it is not a retry.
-7. A key already in `gc_trade_messages` for the company answers that row's ids with `already: true` and sends nothing.
-8. Who gets it: the kind's group (`tradeEmailGroup`), where plans and answers on a project past bidding go to `job`. Then the main contact when it gets the group, and each person ticked for it (`tradeEmailRecipients`). These are copies of `portalMailGroup` and `mailRecipients` in `src/lib/gc/portal.ts`, and `gcTradeEmail.test.ts` holds them equal. Anyone with no email is skipped, and an address gets it once. Nobody left is `422 noEmail`, with no row.
+7. A key already in `gc_trade_messages` for the company answers that row's ids with `already: true` and sends nothing. A test copy skips this: it uses no key.
+8. Who gets it: the kind's group (`tradeEmailGroup`), where plans and answers on a project past bidding go to `job`. Then the main contact when it gets the group, and each person ticked for it (`tradeEmailRecipients`). These are copies of `portalMailGroup` and `mailRecipients` in `src/lib/gc/portal.ts`, and `gcTradeEmail.test.ts` holds them equal. A nudge's `groups` (v2.5226) are each read the same way and put together, the main contact first, each person once (`tradeEmailRecipientsOf`, the client's `followUpMailTo`); its row keeps the first group in that order, and the portal's *Messages* show every message whatever its group. Anyone with no email is skipped, and an address gets it once. Nobody left is `422 noEmail`, with no row.
+   - **A test copy** (v2.5226) stops here: the same email, built with `/t/…` in place of the link (no link is made or shown), goes to the caller's own address on `users` and nowhere else, `[TEST]` before the subject, logged as `gc_trade_email_test`. No caller address is `422 noEmail`. It writes no message row and no sent copy, and answers who the real send would reach (`wouldGo`). It is `gc-customer-email`'s test mode, after every check above.
 9. The link: the company's link that is on, else a new one by `mint_gc_trade_portal_link`'s rules (64 hex characters, its SHA-256, one on per company, `created_by` the caller).
 10. The email (`buildGcTradeEmail`, shared with What customers see's sample): the greeting by first names, the lines, **Open your portal** to `APP_ORIGIN/t/<token>` with the address under it, the link line, and the signer. The words are copies of `portalI18n.ts`'s, held equal by the test.
 11. The send: `to` the first recipient, `cc` the rest, from `Click Construction <the EMAIL_FROM address>` (`mailboxWithName`), Reply-To the project's project manager else the sender, who also signs. A refusal from Resend is `502 sendFailed` with Resend's words in `detail`, and no row.
@@ -1132,7 +1269,7 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_trade_email`.
 
-**Doors**: a dev only until the portal's door. The questions window sends kind `answer` to the companies on the trade (P3-b, v2.4938: `emailTheAnswer` in `src/lib/gc/tradeEmailIo.ts`, which then adds them to `gc_plan_questions.answer_sent_to`). The Ask window sends kind `invite` (v2.4939, `askEmail.ts`), and a new set of plans sends kind `plans` to each company asked to quote (v2.4940, New project's step 7: `setEmail.ts`, `sendSetEmails` in `gcIo.ts`, key `<projectId>:plans:<rev>`, recorded in `gc_plan_set_sends`). A statement of work's **Send to their portal to sign** sends kind `sow` (B6-a-ii, v2.5036: `sowEmailRequest` in `sowEmail.ts`, key `<sow id>:sow`) once the Portal's sign screen is live (`SOW_SIGN_SCREEN_LIVE`, false today). Change orders sends kind `changeAsk` (O3b, v2.5055: `emailChangeAsk` in `gcIo.ts`, key `<request id>:<stage>`): `down` with **Turn it down**, `sent` with **Send for signature** on a change order made of the ask, `no` with **They declined**, and **Tell <company>** for a stage whose email has not gone. `nudge` comes next.
+**Doors**: a dev only until the portal's door. The questions window sends kind `answer` to the companies on the trade (P3-b, v2.4938: `emailTheAnswer` in `src/lib/gc/tradeEmailIo.ts`, which then adds them to `gc_plan_questions.answer_sent_to`). The Ask window sends kind `invite` (v2.4939, `askEmail.ts`), and a new set of plans sends kind `plans` to each company asked to quote (v2.4940, New project's step 7: `setEmail.ts`, `sendSetEmails` in `gcIo.ts`, key `<projectId>:plans:<rev>`, recorded in `gc_plan_set_sends`). A statement of work's **Send to their portal to sign** sends kind `sow` (B6-a-ii, v2.5036: `sowEmailRequest` in `sowEmail.ts`, key `<sow id>:sow`) once the Portal's sign screen is live (`SOW_SIGN_SCREEN_LIVE`, false today). Change orders sends kind `changeAsk` (O3b, v2.5055: `emailChangeAsk` in `gcIo.ts`, key `<request id>:<stage>`): `down` with **Turn it down**, `sent` with **Send for signature** on a change order made of the ask, `no` with **They declined**, and **Tell <company>** for a stage whose email has not gone. Building's Closeout window sends `accepted` with **Accept the work** (key `<sow id>:accepted`) and `finalIn` with a final pay application that came by email (key `<draw id>:finalIn`), both with the Draws window's tick (the Portal's P5c-4, v2.5168: `closeoutEmail.ts`, `closeoutWrite` in `GcProjects.tsx`). The Follow up sheet's **Send email** (the Board's B2b-viii-b, v2.5226: `followUpNudgeRequest` in `src/lib/gc/followUpWrites.ts`) sends kind `nudge` with the sheet's words, the `groups` of what is ticked, key `followUp:<day>:<the items>`, and the one job the items share or none, and logs it on each ask and the company once it went; **Send a test to me** sends the same as a test copy (`sendGcTradeEmailTest`).
 
 ---
 
@@ -1144,31 +1281,83 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 - Change orders' **Send for signature**, with **Email it to the customer now**, emails the change order for them to sign by reply (O4b-2). There is no change order form yet: the words carry the change, the price and the days.
 - Bill the customer's **Remind them to pay** → **Send the reminder** files the reminder through `gc_remind_customer_to_pay` (O5b, v2.5000), then emails it in the words it was filed with, with their portal link when they have one. The reminder is the email, so it has no tick.
 - Bill the customer's **Bill the interest**, with **Email the customer the bill now**, files the interest bill through `gc_send_owner_interest_bill` (O6b-2, v2.5003), then emails it to the customer, with their portal link when they have one.
+- The weekly report's **Send to {first}**, from Click Construction (Building's U7b, v2.5139; its window is U7c), keeps the report as a `gc_weekly_reports` row, then emails that row's own words to the customer's contact, the architect copied when the row says so. The report carries its own greeting and sign-off, so the function adds none.
+- Our contract's **Send to sign**, **Remind them** or **Send the new price** in the customer's window, with **Email it to them now, with their portal link** (the Board's B6-d-iii-b), keeps the send (`gc_send_owner_contract`), makes the customer's portal link when they have none (`mint_customer_portal_link`, audience `all`), then emails it with the send's own file attached by the function.
+- The Schedule window's **Send to {first}** on a job being built (the schedule's PR 15a, v2.5198) keeps the customer's schedule as a `gc_schedule_sends` row (G-94), then emails that row's own words to the customer's contact. The letter carries its own greeting and sign-off, so the function adds none, and since PR 15b (v2.5211) it ends with their portal's link, where their portal shows the schedule (step 6).
+- **Email me a test** (U7b, every kind): the same email to the sender's own address only, `[TEST]` before the subject. The Schedule window's is **Send a test to me**.
 
-The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `payReminderMail` in `ownerBillingRemind.ts`, shared with What customers see's samples); the function frames them, sends and files the sent copy. The customer's acceptance is recorded by the office (O7a) or pressed in their portal (O7c, `submit-portal-request`).
+The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `payReminderMail` in `ownerBillingRemind.ts`, shared with What customers see's samples; since v2.5230 each one's first line is `helloLine` — *Hello Elena,* for the contact with the title rule, else *Hello,*, never the customer's name); the function frames them, sends and files the sent copy. The customer's acceptance is recorded by the office (O7a) or pressed in their portal (O7c, `submit-portal-request`).
 
-**Endpoint**: `POST /functions/v1/gc-customer-email` with `{ projectId, kind, sourceId, subject, lines, pdf? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { to, email, resendEmailId }` or `{ error: key, detail? }`.
+**Endpoint**: `POST /functions/v1/gc-customer-email` with `{ projectId, kind, sourceId, subject, lines, pdf?, test? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { to, email, resendEmailId, copied, test }` or `{ error: key, detail? }`.
 
-- `kind` is `pay_app`, `certified`, `change_order`, `reminder` or `interest_bill` (to the customer) or `certify_ask` (to the architect). `sourceId` is the row it is about (`GC_CUSTOMER_EMAIL_SOURCE`): a `gc_owner_pay_apps` id, a `gc_change_orders` id for `change_order`, a `gc_owner_pay_reminders` id for `reminder`, or a `gc_owner_interest_bills` id for `interest_bill`.
-- `lines` are the paragraphs, the greeting first: 1 to 30, each at most 2,000 characters and none blank. `subject` is at most 200.
+- `kind` is `pay_app`, `certified`, `change_order`, `reminder`, `interest_bill`, `weekly`, `contract` or `schedule` (to the customer) or `certify_ask` (to the architect). `sourceId` is the row it is about (`GC_CUSTOMER_EMAIL_SOURCE`): a `gc_owner_pay_apps` id, a `gc_change_orders` id for `change_order`, a `gc_owner_pay_reminders` id for `reminder`, a `gc_owner_interest_bills` id for `interest_bill`, a `gc_weekly_reports` id for `weekly`, or a `gc_schedule_sends` id for `schedule`.
+- `test: true` makes a test copy of any kind (step 7).
+- `lines` are the paragraphs, the greeting first: 1 to 30, or to 80 for `schedule`, a line a stage and a date to meet (`gcCustomerEmailMaxLines`), each at most 2,000 characters and none blank. `subject` is at most 200.
+- **`contract`** (B6-d-iii-b): `sourceId` is a `gc_owner_contract_sends` id and `pdf` must be absent (`400 badRequest`), since the function attaches the send's own file. It is the money team's, goes to the customer's contact first (their owner, not their payables), framed, and filed as `gc_owner_contract` with the send as its source.
+  - **What it refuses:** another project's send is `409 otherProject`. A send signed already (in their portal or on paper) is `409 alreadySigned`, and a send a newer one replaced is `409 notNewest`.
+  - **The file:** read from `gc-owner-contracts` as the service role, and its SHA-256 must match the send's (`409 fileChanged`), so the email carries exactly the bytes the signature binds to. Over 30 MB is `413 tooLarge`, since Resend takes about 40 MB a message; their portal has it. A test copy attaches the same file.
+  - **No card line:** the card offer reads only a certified bill or a reminder, and the frame offers a card under a bill's portal words only.
+  - **A send not emailed** (no tick, or refused) has no sent copy. Its row reads "Not emailed", and **Email it now** emails that same send, with nothing sent anew.
+  - **The portal line:** required. It is *Read it and sign it in your portal:* with a link where their GC jobs show (`gcJobsPortalUrl`): the merged `all` link, at its short address when it has one, else a `customer` view, never a `gc` view. With none, `422 noPortal`.
 - `pdf`, with a pay application, is `{ filename, base64 }`: a `.pdf` name of at most 120 characters, and at most 6,000,000 base64 characters (the cap `send-lien-release-email` keeps).
 
 **In order**:
 1. Anything but `POST` answers `405 badRequest`.
-2. The caller: no session is `401 signIn`. Anyone off the money team is `403 moneyTeamOnly` (`GC_CUSTOMER_EMAIL_ROLES`: dev, master_technician, controller, held to the client's `GC_MONEY_TEAM` by `access.test.ts`). A training account or a digital twin is `403 readOnly`.
-3. The shape (`parseCustomerEmail` in `_shared/gcCustomerEmails.ts`) is `400 badRequest` when off.
-4. No project, or no GC project on it, is `404 notFound`. The row: none with that id is `404 notFound`, and another project's is `409 otherProject`. `certified` wants the pay application's certificate, above zero, since nothing certified makes no bill (`409 notCertified`), and `change_order` a change order out for their signature, not a draft and not answered (`409 notSent`). A reminder must be this project's and not emailed yet (`409 alreadySent`), and it goes in the subject and lines `gc_remind_customer_to_pay` filed, not the request's. An interest bill must be this project's.
-5. Who gets it: `certify_ask` goes to the project's architect (`gc_projects.architect_customer_id`) and every other kind to its customer, at the address the Pipeline bills (`customerBillingEmail`: the billing email, else the contact email). Nobody, or no address, is `422 noEmail`.
-6. The email (`buildGcCustomerEmail`): the lines as paragraphs; for `certified`, `reminder` and `interest_bill`, *You can see this bill in your portal:* and the customer's portal link when one is already on (`loadPortalReturnUrl`, `APP_ORIGIN`; never minted, and only an https address); then *Thank you,*, the signer and Click Construction. The project manager signs, else the sender.
-7. The send: from `Click Construction <the EMAIL_FROM address>` (`mailboxWithName`), Reply-To the project manager else the sender, the form attached when the request carries one. A refusal from Resend is `502 sendFailed` with Resend's words in `detail`.
-8. The sent copy, after the send ([SENT_COPIES.md](./SENT_COPIES.md)), by `GC_CUSTOMER_EMAIL_FILED_AS`: `bill_gc_pay_app` for the pay application and the ask, `bill_gc_certified` for the certified bill (both under Bills on the Documents page; never `pay_application`, the Pipeline's G702 workbook), `bill_gc_reminder` for a reminder and `bill_gc_interest` for an interest bill, also under Bills, and `job_contract_gc_change_order` under Contracts. Each carries the recipient's name and customer, the billing job (`gc_projects.billing_job_id`, when there is one) and its row as the source. Nothing else is written but a reminder's log (step 9): the copies are the record of what went, and the windows read them for their *Emailed to* lines.
-9. A reminder keeps its email's log row, found by the Resend id, as `gc_owner_pay_reminders.email_send_log_id` (O1's one door on a sent reminder). The window reads a reminder with none as *The email did not go.*
+2. The caller: no session is `401 signIn`. A training account, a View-as sample or a digital twin is `403 readOnly` (`REAL_ACCOUNT`).
+3. The shape (`parseCustomerEmail` in `_shared/gcCustomerEmails.ts`) is `400 badRequest` when off. Then the kind's gate (`GC_CUSTOMER_EMAIL_GATE`): for every kind but `weekly` and `schedule`, anyone off the money team is `403 moneyTeamOnly` (`GC_CUSTOMER_EMAIL_ROLES`: dev, master_technician, controller, held to the client's `GC_MONEY_TEAM` by `access.test.ts`). A weekly report is Building's: its row is read with the caller's own JWT in step 4, so RLS decides (dev while Building is built; Building's door decides the schedule's team, and whether reading the row is still enough to send it). The customer's schedule is the Schedule's, the same way: its row read as the caller, so a dev today and the job's team with the schedule's PR 10. It carries no money.
+4. No project, or no GC project on it, is `404 notFound`. The row: none with that id is `404 notFound`, and another project's is `409 otherProject`. `certified` wants the pay application's certificate, above zero, since nothing certified makes no bill (`409 notCertified`), and `change_order` a change order out for their signature, not a draft and not answered (`409 notSent`). A reminder must be this project's and not emailed yet (`409 alreadySent`), and it goes in the subject and lines `gc_remind_customer_to_pay` filed, not the request's. An interest bill must be this project's. A weekly report must be readable by the caller (`404 notFound` otherwise), this project's, sent from the company (one from me went from their own mail: `400 badRequest`) and not emailed yet (`409 alreadySent`, except as a test), and it goes in the row's own subject and body, split into paragraphs on blank lines (`gcWeeklyReportLines`). The customer's schedule is the same: readable by the caller, this project's and not emailed yet (`409 alreadySent`, except as a test), and it goes in the row's own subject and lines, never the request's.
+5. Who gets it: `certify_ask` goes to the project's architect (`gc_projects.architect_customer_id`) and every other kind to its customer (`GC_CUSTOMER_EMAIL_ADDRESS`): a bill at the address the Pipeline bills (`customerBillingEmail`: the billing email, else the contact email), the weekly report and the customer's schedule at the contact's (`customerContactEmail`: the contact email, else the billing email). Nobody, or no address, is `422 noEmail`. A weekly report whose row says so copies the architect at their contact's address (`gcCustomerEmailCc`); with none, it goes uncopied and answers `copied: false`.
+6. The email (`buildGcCustomerEmail`): the lines as paragraphs; for `schedule` and `weekly` (v2.5211), *You can see your schedule in your portal:* with the link where their GC jobs show (`gcJobsPortalUrl`), only on a job with a schedule drawn (`gc_schedules`) and never on a weekly report that copies the architect (`gcCustomerEmailPortalOn`, Building's two conditions), after the row's own sign-off; for `certified`, `reminder` and `interest_bill`, *You can see this bill in your portal:* and the customer's portal link when one where their GC jobs show is already on (`gcJobsPortalUrl`: the merged link, else a customer view, never a GC view, which shows no GC job of ours; `APP_ORIGIN`; never minted, and only an https address; with none, no line, v2.5209); then *Thank you,*, the signer and Click Construction, except for `weekly` and `schedule`, which are not framed (`GC_CUSTOMER_EMAIL_FRAMED`): their paragraphs are escaped with their own line breaks kept, and nothing follows them. **Pay by card** (v2.5125, Owner Billing O8c): for `certified` and `reminder`, with a portal link, when the switch is on (`app_settings.gc_card_bill_on_v1`) and the bill can still turn (billed, not on Stripe, nothing paid, never on card: `gcEmailCardFee`), the portal line reads *Or pay it by card in your portal:* and *Paying by card adds a 3% card fee of $X.* follows. A reminder on a bill already on card carries its own words from the window (*You chose to pay it by card…* and *Pay it here:* with the bill's pay link). The project manager signs, else the sender.
+7. The send: from `Click Construction <the EMAIL_FROM address>` (`mailboxWithName`), Reply-To the project manager else the sender, the form attached when the request carries one, the architect in `cc` for a weekly report that copies them. A refusal from Resend is `502 sendFailed` with Resend's words in `detail`. **A test copy** (`test: true`, every kind) passes the same gate and is built the same way, form, portal line and card fee included, then goes to the caller's own address only (`users` with `REAL_ACCOUNT`; none is `422 noEmail`), `[TEST]` before the subject, with no `cc`, logged with `email_type` `gc_customer_email_test` so no reader counts it as a send. Nothing is filed and nothing is written back, and it answers `test: true`.
+8. The sent copy, after step 9's write-back ([SENT_COPIES.md](./SENT_COPIES.md)), by `GC_CUSTOMER_EMAIL_FILED_AS`: `bill_gc_pay_app` for the pay application and the ask, `bill_gc_certified` for the certified bill (both under Bills on the Documents page; never `pay_application`, the Pipeline's G702 workbook), `bill_gc_reminder` for a reminder and `bill_gc_interest` for an interest bill, also under Bills, `job_contract_gc_change_order` under Contracts, `field_report_gc_weekly` for a weekly report and `field_report_gc_schedule` for the customer's schedule, both under Statements. A weekly report's copy carries its `cc`. Each carries the recipient's name and customer, the billing job (`gc_projects.billing_job_id`, when there is one) and its row as the source. Nothing else is written but a reminder's, a weekly report's or a schedule's log (step 9): the copies are the record of what went, and the windows read them for their *Emailed to* lines.
+9. A reminder keeps its email's log row, found by the Resend id, as `gc_owner_pay_reminders.email_send_log_id` (O1's one door on a sent reminder), a weekly report as `gc_weekly_reports.email_send_log_id`, and the customer's schedule as `gc_schedule_sends.email_send_log_id` (both by the service role, since a signed-in caller has no UPDATE on either table). It is written right after the send, before the copy is filed, so the gap where a failed write-back would let a retry send twice is as short as it can be. The window reads a reminder with none as *The email did not go*, a weekly report from the company with none is not a sent report, and the Schedule window reads a letter with none as *not emailed yet*. Before a row kind's send, a row whose `email_send_log_id` is still null is looked for in `email_send_log` (`gcCustomerEmailLoggedAlready`, v2.5203): the type `gc_customer_email`, the address it is about to go to, the row's own subject, and a log no earlier than the row. A match is written back and answers `409 alreadySent`, so a send whose write-back failed is never emailed twice. A test copy skips the look.
 
-Each window does its own write first, then the email: the pay application (`gc_send_owner_pay_app`), the certificate (`gc_record_certificate`), the change order's send (`gc_send_change_order`), the reminder (`gc_remind_customer_to_pay`) or the interest bill (`gc_send_owner_interest_bill`). An email that does not go leaves that write in place, and the window says why with `gcCustomerEmailRefusal(key)`. It calls the function with `sendGcCustomerEmail` (`src/lib/gc/customerEmailIo.ts`), which never throws for a refusal.
+Each window does its own write first, then the email: the pay application (`gc_send_owner_pay_app`), the certificate (`gc_record_certificate`), the change order's send (`gc_send_change_order`), the reminder (`gc_remind_customer_to_pay`) the interest bill (`gc_send_owner_interest_bill`), or the customer's schedule (a plain insert of its `gc_schedule_sends` row, or the same row again when the letter kept that day did not go, `src/lib/gc/scheduleLetterIo.ts`). An email that does not go leaves that write in place, and the window says why with `gcCustomerEmailRefusal(key)`. It calls the function with `sendGcCustomerEmail` (`src/lib/gc/customerEmailIo.ts`), which never throws for a refusal.
 
-**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN` (the portal link's address; clicktooling.com when unset). Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_customer_email`.
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN` (the portal link's address; clicktooling.com when unset). Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_customer_email`, or `gc_customer_email_test` for a test copy.
 
 ---
+
+### messages-email
+
+**Purpose**: Messages, cut 3: an email from the reply box in a person's thread, to one person at one of their addresses (`contact_channels`). The reply box (`src/components/gc/messages/reply/ReplyBox.tsx`) opens the send window, which shows the email as it will go; its **Send as email** calls this function through `replyIo.sendEmail` (`src/lib/messages/replyIo.ts`). In order:
+
+1. **The caller**: signed in, a real account (`REAL_ACCOUNT`: never a sample or a digital twin), not a training account, and on the office team (`gc_office_team()`, asked as the caller). Else `401 signIn`, `403 readOnly` or `403 officeOnly`.
+2. **The request** (`parseMessagesEmailBody` in `_shared/messagesEmail.ts`): `contactId` and `channelId` as ids, `tie` (`{ jobId, column }`, the column `bid_id`, `project_id` or `jobs_ledger_id`, or null for on the person), `subject` (1 to 200 characters), `greeting`, `body` (1 to 10,000), `signature` (up to 4 short lines) and `footer`. The words are the app's, from `compose.emailDraft` (`src/lib/messages/compose.ts`), so the send window and the email never differ. Since v2.5466 (cut 7e) an optional `files` list (`parseEmailFiles` in `_shared/messagesEmailFiles.ts`, up to 20, made in the app by `documents/emailFileAsks.ts`): each file's `source` (`drive`, `arrived`, `sent`, `paper`, `device`, or since v2.5493 `portal`, their portal at a page with no file, for the step's starred forms), its `ref`, how it goes (`file`, `link` or `picture`) and, for a link, their portal's `page`. A paper other than our contract goes only as its page. One file that does not fit refuses the list. Else `400 badRequest`.
+3. **The address** must be one of that person's `contact_channels`, of kind `email` (`404 notFound`).
+4. **The files** (cut 7e, `messages-email/files.ts`'s `readFiles`) are checked before anything is written. A Drive file must sit inside the tied job's folder (`halfInside`, `_shared/driveJobFolder.ts`); a file that came in, a sent copy's file and our contract must be where their rows say. Each that goes as the file is read whole, from Drive (`driveFileBytes`), `message-attachments`, `sent-documents` or `gc-owner-contracts`, and held to 10 MB a file and 20 MB together (`carryRefusal`). A file from this computer goes into the job's Team only (Sent by us, or Photos) first, so nothing goes out that Documents does not hold. A refusal says which file and why, and nothing is written.
+5. **The line** is written in `messages` as the service role first: channel `email`, direction `out`, `who_user_id` the caller, the subject, the body, the address's `channel_id` and the tie's column. So the email has an id before it goes, and a later press can name it (cut 2's *this message gets it done*, `owed_sent_done`).
+6. **The files are placed** once the line has its id (`placeFiles`): each link is their portal at its page (a trade partner's `gc_trade_portal_links` token, a customer's portal where their GC jobs show, `gcJobsPortalUrl`) when their portal has the page, else our link to the Drive file (`makeDriveLink`, its `drive_links` row naming the line). Each file that goes as the file is copied to `message-attachments` under `out/<line>/` (`outCopyPath`). Every file is a `message_attachments` row with `sent_as`, `url`, `drive_link_id` and `drive_file_id` (cut 7a).
+7. **The email** goes through `sendEmailViaResend` under our letterhead (`buildMessagesEmail` over `buildGcCustomerEmail`, unframed, so the lines carry their own greeting and signature): from the company's name on `EMAIL_FROM`'s address (`mailboxWithName`), Click Construction, or the plumbing company on a Pipeline job (`letterheadFor`). Its Reply-To is the box their answer comes back to (R6, v2.5496): the box they last wrote to (their newest line in that names one), else their kind's (`boxForReply`), at Settings' address in `messages_boxes_v1` (`mailboxFor`, no fallback, as the reply box names it), so the reader takes their answer into the thread. With no address there it is the caller's own address, as before. The line written in step 5 carries that box in `mailbox` when the box has an address. The files that went as links are a paragraph after the body, one line a portal page and one a file's own link (`emailLinkLines`); the rest are attached. It is logged as `messages_email` (`EMAIL_CATALOG`).
+8. **The sent copy** is filed as kind `messages_email` with the line as its source (`source_table = 'messages'`), under the contact's customer, the bid, or the Pipeline job (a GC project's billing job). The thread's overlay of sent copies (`sentLines`) skips a copy whose source is a `messages` row, so the email shows once, with the office's words.
+9. **If Resend refuses it**, the line is deleted again with its files' rows, our links and the copies under `out/` are taken back (`takeBack`), and the answer is `502 resend` with Resend's words. A file put into Team only from this computer stays there.
+
+**Endpoint**: `POST /functions/v1/messages-email` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { ok: true, messageId }`, or `{ ok: false, error, words }` where `words` is the office's sentence.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` and `RESEND_API_KEY`, all set already; `EMAIL_FROM` is the shared sending address. Since v2.5466 `GOOGLE_SERVICE_ACCOUNT_JSON` ([drive-link](#drive-link)'s) for a file in Drive or from this computer, and `APP_ORIGIN` (optional, `https://clicktooling.com`) for the links.
+
+**Deploy**: by hand after merge (`supabase functions deploy messages-email`), at the lead's go with `quo-send`. Until it is deployed, **Send as email** says the email did not go, and nothing is written. v2.5466 (cut 7e) takes the files; redeploy it once that merges. v2.5493 takes a `portal` file (their portal at its page, refused without their portal link); redeploy it once that merges.
+
+### gc-card-bill
+
+> **v2.5377 — `deno check` passes again**: `Admin` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `customers` write, the three `gc_card_bill_*` calls' arguments and two reads were refused, and the service-role client could not be handed to either door (8 errors). It is `SupabaseClient` now. Stripe's reply to `customers.create` comes back as `any`, so `stripeCustomerId = created.id` widened the id back to `string | null` against `stripeCustomerFor`'s `Promise<string>` (1 error). A customer Stripe makes always has its id, and the line reads `created.id as string`. The job read's `begun.jobId` is never null: `gc_card_bill_begin` returns the bill's `job_id`, which `jobs_ledger_invoices` holds `NOT NULL`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
+**Purpose**: GC mode's card payment for a certified bill (v2.5123, Owner Billing O8b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`; the plan is `mockups/owner-billing-o8.md`). The customer turns a certified GC bill into a card-only Stripe bill from their portal, and the turn adds a 3% credit card fee (the owner's word, 2026-10-09; counsel's okay the same day). Staff never turn one: `create-stripe-invoice` refuses a GC bill. The database's half is O8a (`20261010026000`: `gc_card_bill_begin`, `gc_card_bill_finish`, `gc_card_bill_undo`, `gc_owner_card_bills`). The pure half is `_shared/gcCardBill.ts`, which the app's tests import.
+
+**Endpoint**: `POST /functions/v1/gc-card-bill` · **Auth**: the portal door has none (the portal link is the capability); the undo door reads the staff JWT in its body; `verify_jwt = false`. **Response**: `200 { ok: true, url }` (portal) or `200 { ok: true }` (undo), or `{ error: key, words }` with `GC_CARD_BILL_ERRORS`' status. `words` is what the page shows as it is.
+
+**The portal door**, `{ token, invoiceId }`, in order:
+1. The offer is off unless its switch is on (`403 off`): the `app_settings` row `gc_card_bill_on_v1`, which the owner turns on in Settings → Jobs & billing (v2.5125, migration `20261010042000`; it replaced O8b's env value `GC_CARD_BILL_ON`).
+2. The link, by `token` or its hash, must be live (`404 linkGone`). The bill must be one a pay application's certificate made (`gc_owner_pay_apps.invoice_id`) on a GC project of the link's customer (`gcPortalOwns`, `404 notYours`). The customer must have an email for Stripe's receipt (`customerBillingEmail`, `422 noEmail`).
+3. `gc_card_bill_begin` as the service role checks the bill and writes the pending row at 3%, rounded to the cent. Its refusals reach the customer in its own words (`gcCardBillDbWords`, `409 refused`): an interest bill, a paid bill, a bill on Stripe, a bill with any payment, a bill taken back to a check bill, a second press while the page is made. A bill on card already answers its card page.
+4. Stripe, in `GC_CARD_BILL_STRIPE_MODE` (`test` unless it says `live`, the owner's word): the customer's Stripe customer for that mode (the same per-mode column `create-stripe-invoice` keeps), made when none. Then a `send_invoice` invoice with `payment_settings.payment_method_types: ['card']`, the app's number (`buildPipetoolingStripeInvoiceNumber`), the portal footer, `metadata.pipetooling_invoice_id`, and two lines: *Pay application N for the job, certified Oct 9*, then *Credit card fee (3%)*. It falls due by the contract (the certificate's day plus `owner_pay_days`) when that is ahead, else today. Finalized; nothing is emailed.
+5. `gc_card_bill_finish` writes the Stripe invoice onto the bill: the total, the Stripe columns, the fee as a `fee_lines` rider. If anything after begin fails, the half-made Stripe invoice is voided (or deleted as a draft), `gc_card_bill_undo` as the service role clears the pending row, and the answer is `502 stripeFailed`.
+
+**The undo door**, `{ undo: invoiceId }`: Back to a check bill (O8c's press). No session is `401 signIn`; anyone off the money team (`GC_CARD_BILL_UNDO_ROLES`, the same as `GC_CUSTOMER_EMAIL_ROLES`) is `403 moneyTeamOnly`; a training account or a digital twin is `403 readOnly` / `403 twin`. The bill must be on card (`409 notOnCard`). Stripe first: a paid invoice, or one with anything paid, is `409 paidOnStripe` (*Stripe shows a payment. Refund it in Stripe first.*); an open one is voided, a draft deleted. Then `gc_card_bill_undo` as the caller puts the bill back to its base, takes the fee off and lays the revenue again.
+
+The payment itself comes through `stripe-webhook` as on any Stripe bill (`metadata.pipetooling_invoice_id`), for the total with its fee. The portal's offer is `customer-portal`'s `cardBills`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE`, `APP_ORIGIN` (the footer's portal link; clicktooling.com when unset), `GC_CARD_BILL_STRIPE_MODE` (unset is test). The switch is no longer a secret: it is the `app_settings` row above. Logs one line per bill turned (`gc_card_bill_on_card`) and per bill taken back (`gc_card_bill_undone`).
 
 ### gc-money-monday-email
 
@@ -1184,9 +1373,62 @@ The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on 
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Money link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-money-monday-email --no-verify-jwt` after migration `20261009233000_gc_money_monday_email.sql`, which makes the requests table, the payload and the cron.
 
+### bridge-sheet-email
+
+**Purpose**: Mails the Bridge's Monday sheet (v2.5224) to the dev who pressed **Email me this sheet** on `/bridge?view=monday`, and to nobody else. The page builds the sheet from its own kernels (`src/lib/bridge/mondaySheet.ts`: `mondaySheetSubject`, `mondaySheetHtml`, `mondaySheetText`) and posts the finished parts; the function only checks the caller and sends.
+
+**Endpoint**: `POST /functions/v1/bridge-sheet-email` · **Auth**: `verify_jwt = false`; the caller's JWT is read in-body (`auth.getUser`), then the `users` row must be `role = 'dev'`, not archived, not a sample and not a digital twin, with an email address (the auth email as the fallback).
+
+- Body `{ subject, html, text }`; `subject` and `html` required, the subject cut to 200 characters, the HTML refused over 400 KB (413). The recipient is the caller's own address: the body names none and none is read.
+- Sends through `sendEmailViaResend` with `emailType: 'bridge_monday_sheet'` (`EMAIL_CATALOG`), no sent-copy filing (mail to our own staff). Answers `{ ok: true, to }`.
+- No cron and no table: the weekly send is PR 8b, when wanted (the sheet's eight loaders would move server-side first).
+
+### gc-office-notices
+
+**Purpose**: The office's GC notices (v2.5148, Owner Billing O10b; the plan is `to-dos/gc-mode/mockups/owner-billing-o10.md` on branch `spike/gc-mode`): three emails nobody presses. **Bill day is near** to the project manager on the 23rd or 24th (bill day is the 25th), with the pay application to draft and the trades still owing an unconditional waiver. **The architect's reminder** from the third day after a pay application went uncertified, from Click Construction, Reply-To the project manager. **The project manager's note** from the fifth, with the day the architect was reminded. Each goes once. One that carries money goes to the project manager only when they are on the money team, else to the company's owner. Only a pay application sent since the switch went on hears. **The customer's notice** (v2.5186, O12b; `mockups/owner-billing-o12.md`): three days before a certified bill is due, the project's customer hears when, what was certified and what is still open, once per pay application, behind its own switch.
+
+**Endpoint**: `POST /functions/v1/gc-office-notices` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or the staff JWT checked in-body for the two modes.
+
+- No mode: the cron (hourly at :13, its own lane). Before 8 AM Central (`officeHour`), nothing. With the switch off (`app_settings.gc_office_notices_on_v1` not a real ISO day, `gcOfficeNoticesSince`), nothing. Else `get_gc_office_notices_due()` (O10a), and for each notice: the address (the architect's billing email, else contact, `customerBillingEmail`; ours from the payload, a real account), its `gc_office_notices` row first (a second tick's insert hits the unique index, 23505, and skips), the send, the row's `email_send_log_id` by the Resend id. A notice with no address is skipped and writes nothing. A failed send keeps its row, so that notice is not tried again. Answers `{ sent, skipped, errors }`.
+- The cron's second half (O12b): with `gc_customer_due_notices_on_v1` a real day, `get_gc_customer_due_notices()` (O12a, migration `20261010130000`), and for each: the customer's billing email, else contact (`customerBillingEmail`; none is skipped); the architect who certified it; their portal when a link where their GC jobs show is on, never minted (`gcJobsPortalUrl`, never a GC view); the card fee by the certified email's offer rule (`gcEmailCardFee`); the `pay_soon` row first, with `due_on` (the index on a pay application and kind makes it once); the send as `gc_customer_due_notice`, from Click Construction, Reply-To the project manager, else the owner; the row's `email_send_log_id`; and the sent copy `bill_gc_due_soon` on the billing job, under Bills. Each half reads only while its own switch is on.
+- `{ mode: 'preview', since?, notices? }`: the caller must be on the money team (`GC_CUSTOMER_EMAIL_ROLES`), a real account, not archived and not in training mode. Today's notices as they would go, read as if on since `since`, else the switch's day, else today: each one's kind, job, who hears it, the address and its words. Writes nothing. Settings' **Preview today's notices** calls it with the day in *Count pay applications sent since* (O10c, v2.5180). With `notices: 'customer'` (O12b) it reads the customer's notices instead, as if on since their switch's day; the default is `'office'`. Beside a reminder that would go, the office's late notice says *They would be reminded first.*, since Preview never records one.
+- `{ mode: 'test_send', since?, notices? }`: the same gate and list; each notice to the caller's own address with `[TEST]` before its subject, logged as `gc_office_notice_test`. No row, no sent copy, the switch not read. **Email me a test** calls it. The customer's test is logged as `gc_customer_due_notice_test`.
+
+The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildGcCustomerEmail`'s frame with no portal line and keeps its sent copy on the billing job's Documents tab (`gc_certify_reminder`, [SENT_COPIES.md](./SENT_COPIES.md)); ours are staff mail with a link to Bill the customer (`/gc?bill=<projectId>`), logged as `gc_office_notice` and not filed. The customer's notice (`customerDueWords`, `buildCustomerDueEmail`) wears the same frame with the bill's portal line and card line.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, `APP_ORIGIN` (Bill the customer's link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-office-notices --no-verify-jwt` after O10a's migration (`20261010060000_gc_office_notices.sql`, the record, the payload and the switch), then push O10b's cron migration, so no tick finds the function missing. Turning the switch on is the owner's press in Settings → Jobs & billing, after the live walk on Grace's yes. O12b redeploys it after O12a's migration (`20261010130000_gc_customer_due_notices.sql`); the cron is unchanged. The customer's switch is the owner's too, after a test copy.
+
+---
+
+### gmail-sync
+
+**Purpose**: Messages, cut 6 (email in), the bids@ reader (v2.5354; `MESSAGES_BUILD_PLAN.md` → Cut 6 and the mock-up `email-in-mockups.html` on branch `spike/gc-mode`). Every email that reaches bids@ lands in its sender's thread. It reads Gmail as the bids@ mailbox under the service account's domain-wide delegation, takes each email once by its Gmail id (`email_write_line`), and marks it with the label **In ClickTooling**. Nothing in Gmail is deleted, archived, moved or marked read.
+
+**Endpoint**: `POST /functions/v1/gmail-sync` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret` only.
+
+- The cron runs every 3 minutes (`20261013080000_messages_email_in.sql`). Its statement posts only while `app_settings.gmail_sync_on_v1` is `'true'`, which the owner or a dev sets from Settings → Phone and texts → **Read bids@** (v2.5380), and the function checks the switch again.
+- The first run after the switch keeps the mailbox's history point (`users.getProfile`) and reads nothing older: no backfill.
+- Each run reads the Inbox's new messages since the last point (`users.history.list`, `messageAdded`, `INBOX`), oldest first, up to 40. The next run takes the rest. When Gmail no longer keeps the point (404), it searches the Inbox's untaken mail of the last week (`in:inbox -label:"In ClickTooling" newer_than:7d`) and starts again from the newest point.
+- For each message, through the kernels in `src/lib/emailIn/` (mirrored by `scripts/edge-kernels.mjs`):
+  - one already labelled is passed over;
+  - one whose `Message-ID` a line already holds (v2.5504, `messages.rfc_message_id`) is the same mail, read first in the other box: it is only labelled in this box, and counted as taken before, with no address placed, no file copied and no line;
+  - a forwarded copy one of us sent on lands on its first sender, with the forwarder's note as a team note (`forwarded.ts`);
+  - bulk, no-reply, Gmail's other tabs and our own addresses are left out and stay with no label (`leftOut.ts`);
+  - the address finds its contact or makes the Who is this? row (`email_place_address`);
+  - the subject's job number, or a job's name among the sender's own jobs, ties the line, else the person's star does (`subjectJobs.ts`, `jobInSubject.ts`);
+  - each file up to 25 MB is copied into the private `message-attachments` bucket. A bigger one, or one that would not copy, stays in Gmail. A file host's link stays a link, and a trade partner's W-9 or certificate is guessed for the thread's offer (`emailLine.ts`);
+  - then `email_write_line` writes the line once, with the mail's `Message-ID` trimmed (`emailLine.ts`'s `rfcMessageId`), and the label goes on.
+- A run moves the point only past records it took whole (`historyWalk.ts`). A message that fails stops the run, saves the point at the last record taken whole, and writes `last_error`. The next run starts there, and what was taken is passed over by its label. The label goes on only after `email_write_line` answers, written or not, so a crash between the two leaves no label, and the next run's write is a repeat that writes nothing. `gmail_sync_state` shows the reader's health (`last_run_at`, `last_ok_at`, `last_error`, `last_taken`) through the dev-mcp catalog.
+- "Ours": both boxes' addresses, `EMAIL_FROM`'s address, and every staff user's email (dev, master, assistant, controller, estimator, primary, superintendent). A sub or a helper is someone we write to.
+- **Two boxes** (R6's reader, v2.5494, [`src/lib/emailIn/readerBoxes.ts`](../src/lib/emailIn/readerBoxes.ts)): bids@ from `GMAIL_IMPERSONATE_USER` (Settings' bids address when the secret is empty), and the team box once `app_settings` `messages_boxes_v1.team.address` holds an address, read as that Workspace user under the same delegation (a group or an alias cannot be). Each box has its own token, its own `gmail_sync_state` row by `mailbox` (the team row is made on its first run, at its newest point, with no `id`), its own label and its own try: a box that fails writes its own `last_error`, the other still reads, and the answer is 500 with each box's result. Each line carries `mailbox` through `email_write_line`. One email sent to both boxes is two Gmail messages with one `Message-ID`, and lands once (v2.5504, `20261014170000_messages_rfc_message_id.sql`): the box that reads it first writes the line, and the other finds it and only labels its copy. `email_write_line` stands back on the `Message-ID` as on the Gmail id, so two runs at once still write one line. A mail with no `Message-ID`, or one read before v2.5504, is held by its Gmail id alone. No Settings card holds the addresses yet; until a Boxes card is built, a dev types the row.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `GOOGLE_SERVICE_ACCOUNT_JSON` (the Drive service account, now delegated `gmail.readonly` and `gmail.modify` on the Workspace), `GMAIL_IMPERSONATE_USER` (the mailbox, never written in the repo; `DRIVE_IMPERSONATE_USER` is untouched), and `EMAIL_FROM`. The token comes from `_shared/googleToken.ts`, `driveUpload.ts`'s path with the scopes given, so no Drive function changes. **Deploy**: `supabase functions deploy gmail-sync --no-verify-jwt` after the migration is pushed, and since v2.5504 after `20261014170000_messages_rfc_message_id.sql`, since it reads `messages.rfc_message_id`. Then redeploy `dev-mcp` (its catalog names the function), `customer-portal` and `gc-trade-portal` (their mirrored kernels' headers name the new importer). A dev turns the switch on after the live test: an email to bids@ from the owner's phone.
+
 ---
 
 ### drive-contract-scan
+
+> **v2.5412 — `deno check` passes again**: both folder walks start from `let cur = (f.parents ?? [])[0] ?? null`. Deno checks without `noUncheckedIndexedAccess`, so `[0]` reads as `string`, the `?? null` drops out of the type, and `cur` was `string`, so `cur = m.parent`, a `string | null`, was refused (TS2322 ×2). The loops already stop on the `null` an empty `parents` gives. Both read `let cur: string | null` now, and the second walk's `m` is typed `FolderMeta`, which TypeScript could not infer once `cur` may be null (TS7022). The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: The Contract sweep's **Drive pass** (v2.3390): lists the contract-looking files the jobs Shared Drive already holds so the office can file the signed copies that exist instead of emailing customers for new ones. Read-only against Drive (scope `drive.readonly`); it writes nothing — the client ([`src/lib/jobs/driveContractMatch.ts`](../src/lib/jobs/driveContractMatch.ts)) matches each file to a job by folder name (job number first, then street number + street, then job name, then customer/GC name) and file name (contract · agreement · subcontract · signed · executed strong; proposal · terms weak; invoices, plans, lien waivers, change orders excluded), states a confidence (Confident · Check · No match), and files confident rows through the normal paper-record write with the Drive link as the signed document (`✍ On file · Google Doc`).
 
@@ -1201,6 +1443,8 @@ The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on 
 ---
 
 ### plan-fetch
+
+> **v2.5377 — `deno check` passes again**: `recordProbe` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so its `bids` update took `never` and none of its six callers could hand it the service-role client (7 errors). It takes `SupabaseClient` now. Both merges hand pdf-lib's bytes, typed `Uint8Array<ArrayBufferLike>`, to `new Response`, which takes only a plain `ArrayBuffer`'s bytes (2 errors). `save()` fills a `Uint8Array` it allocates itself, so the bytes are in a plain `ArrayBuffer`, and both read `bytes as Uint8Array<ArrayBuffer>`. A copy, as `_shared/fileSentCopy.ts` makes, would hold a merged set of up to 60 MB twice. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: The pipeline's **plan-bytes door** (v2.2503, robot-ready train CT-1): streams a bid's plan set — the Drive file behind `bids.plans_link` — to an authorized caller using the service account's token (scope `drive.readonly`). Built so CountTooling's `import-takeoff` (`pdf_url` + `pdf_headers: {"X-Twin-Token": …}`) can pull the PDF server-side without holding any Google credential: a twin's takeoff import arrives WITH the plan set. Loud errors: no `plans_link` → file the plans first (drive-intake); non-Drive link → 422; Drive 4xx → "is the file shared with the service account?".
 
@@ -1275,6 +1519,8 @@ The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on 
 ---
 
 ### send-workflow-notification
+
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON, VAPID keys web-push refuses, or a `fetch` to Resend that fails (`TypeError`) or answers with something other than JSON. Each push send catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Send workflow stage email notifications via Resend; optionally send Web Push when **`recipient_user_id`** and VAPID keys are set.
 
@@ -1390,6 +1636,16 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.5331 — their thread for the page's Messages tab** (Messages cut 8e): beside `pageWords`, `thread`, from [`_shared/gcPortalThread.ts`](../supabase/functions/_shared/gcPortalThread.ts) (`loadPortalThread`), read only when a GC job has its page. It is the page's contact's lines (the customer's own row in `contacts`, else the first person at that customer in the seed's order) that went between us and them by text, email or their page (`direction` in or out, `channel` text, email or portal), and, when tied to a job, only to a project, bid or Pipeline job of theirs, the newest 100 oldest first. A team note or event, a call, a voicemail and a missed call never leave, nor `who_user_id`, a text's subject, `optout_line`, `back_*` or `step_key`; of ours only the writer's first name passes. A read that fails answers `thread: null` and the page draws no Messages tab. The owner sample carries three made-up lines. **Redeploy required**, with `submit-portal-request`.
+
+> **v2.5303 — the customer's page on each GC job** (Messages cut 8b-i, shape B): after the schedule, each `gcJobs` entry gains `page` from [`_shared/gcPortalPage.ts`](../supabase/functions/_shared/gcPortalPage.ts) (`loadGcPortalPages`): our contract's sum before the changes (`gc_owner_contract_now` less the signed change orders), the change orders sent and signed with their Spanish, the pay applications with their customer line, certificate day and bill, the architect's record name and the days to pay, each job's newest customer line on the daily log, read one job at a time (its photos link only while `portal_photos_on`), the project manager and the superintendent by name and role (never a person's own phone: `users` is read for the name only), the schedule's moves since the first schedule letter by their reason (never the note), and the three switches. The payload gains `pageWords`, every `customer_page_words` row, which the page lays over its code words. A failed read leaves `page` off and `pageWords` empty, so the page reads as before. **`?paper=<kind>:<id>`** (kind `contract`, `change_order` or `pay_app`) answers `{ ok: true }` at once without building the statement, and, when the open counts (the same rule as a page load) and the paper is on one of the link's customer's GC jobs, writes one `public_page_views` row with surface `portal_paper` for the office's read-back. Deploy it after `20261012130000` and `20261012200000` are on prod.
+
+> **v2.5283 — `deno check` passes again**: the copy of the kernels resolved a type-only import from outside it as a path back at `src` with no `.ts`, so the check failed and every type through it read as `any` (the rule that fixes it is *The copy of the kernels* under `gc-trade-portal`); two job reads now cast through `unknown` instead of straight to `PortalJobRow[]`, and the client handed to `loadGcStageInputs` is cast to the loader's own `GcStageAdmin`. Nothing behaves differently. **Redeploy required**, with `gc-trade-portal`.
+
+> **v2.5229 — whose letterhead**: `company` is [`portalLetterhead`](../supabase/functions/_shared/portalLetterhead.ts)'s pick and gains `tagline`, the line under the CLICK. mark. A customer with a GC job we build (`gcJobs`) and no Pipeline job but its billing job (`jobs_ledger.billing_only`, now in the job select) reads *Click Construction*: the GC customer emails' name, the tagline *Construction*, the office phone, and no city, license or email line until the owner names the GC entity (call 12). Mixed, none, or a `gc` link reads the plumbing company with *Plumbing, Electrical, and HVAC*. The `sample-owner` answer picks by the same rule from its rows, whose one job is its billing job. The page draws `tagline`, and a payload without one draws the plumbing line, so the function and the page deploy in either order. **Redeploy required**, with the other eight importers of `_shared/customerSampleFixtures.ts` and `_shared/portalMergedBills.ts`.
+
+> **v2.5211 — their schedule on each GC job being built** (GC mode, the schedule's PR 15b, G-90 to G-93): each `gcJobs` entry on a job being built with a schedule drawn carries `schedule`, words and dates only: the finish against their contract, the work done and planned, the next date to meet, the contract's days and the late finish in their words, each stage with its dates and percent, the dates to meet, what changed this week and what we need from them, and, for a GC or an owner's rep (`customer_role`), every bar by stage with its name, dates and `customerBarWords`. [`_shared/gcCustomerSchedule.ts`](../supabase/functions/_shared/gcCustomerSchedule.ts) works it out with the generated copy of the kernels (`customerSchedulePicture`, then `customerPortalSchedule`, which copies each field by name), so a bar's company, its line's worth and its spare days never leave. It reads the jobs with [`_shared/gcScheduleRead.ts`](../supabase/functions/_shared/gcScheduleRead.ts)'s `customer` option: the dates to meet, the moves and what they pushed, the waits and their holds, the change orders by the office view's twelve columns from the table, so no price is read, and the customer's name. The file loads with a dynamic `import()` only when the customer has a GC job of ours, so a homeowner's portal boots as before (on the local edge runtime: the copy loads in about 31 ms, a cold boot to the sample about 1.7 s either way). A failed read leaves `schedule` off and the portal whole. The sample owner's job carries a made-up one (`sampleGcSchedule`). **Redeploy required**; the page reads a job with no `schedule` as before, so either may ship first.
+
 > **v2.5110 — the sample portals' money through the builders** (What customers see #103, PR 2): the `sample`, `sample-gc` and `sample-owner` answers build `bills`, `sharedBills`, `waivers`, `checks` and `totalDue` from fixture rows (`samplePortalMoneyRows` in [`_shared/customerSampleFixtures.ts`](../supabase/functions/_shared/customerSampleFixtures.ts)) through `buildPortalBills`, `buildPortalSharedBills`, `buildPortalWaivers` and `buildPortalChecks`, called as the live branch calls them (`samplePortalMoney`). The samples now send `sharedBills` and `checks`. The live branch is unchanged. **Redeploy required.**
 
 > **v2.4650 — records for an owner**: the payload gains `ownerRecords` — the request the office offered on this portal and has not sent (`lien_owner_record_requests` for the link's customer with `file.offer` and no `sent_at`): `{ id, address, ownerName, offeredOn, signed: { on, name } | null }`, or null. The packet itself is never in the payload.
@@ -1416,7 +1672,9 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Stages** (v2.2933; rewritten v2.3132, Stage Plan PR 5): for `gc` / `all` links, jobs whose `gc_shares_stage_dates` is on and whose `gc_customer_id` is the viewer contribute `stages[]` — one `{ jobId, jobLabel, jobAddress, view, askWindowId, askWindow, entries: [] }` per job with something to show. `view` is the `GcView` from the shared Stage Plan kernel (`_shared/stagePlan.ts`, the same rules the Bill tab and the Edit drawer run): the line items whose eye (`jobs_ledger_fixtures.shared_with_gc`) is on, Order rows as one numbered sequence (`done` / `now` / `next` / `later`, the live row's percent in words, one `askable` step — the `next` one), Any rows under `also`. `askWindowId` is the `job_stage_windows` row behind the next step (where a "Need other dates?" ask lands) and `askWindow` its span. Loader `_shared/gcStages.ts` → `loadGcStageInputs` (fixtures with `stage_kind` / `shared_with_gc`, windows, orders **without** `display_name`, sheets, invoices, payments) + `gcPortalStages`; tested from `src/lib/subs/gcStages.test.ts`. Never a name, never "offered", never money. `entries` is kept empty one release so a stale client prints nothing.
 
-**GC jobs** (v2.5025, GC mode's Owner Billing O7c): for `customer` and `all` links, `gcJobs[]`. Each GC project of the link's customer that we won (`projects.customer_id`, stage buyout, building or closed) comes with the change orders waiting on them (`status = 'sent'`), `canAccept` once every line is billed (the last progress pay application's work so far covers `gc_owner_contract_now`, as `gc_record_acceptance` checks), and `accepted` with how. `_shared/gcPortal.ts` reads and shapes it (`loadGcPortalJobs`, `gcPortalJobs`); a failed read leaves it empty and the statement still shows. The sample token `sample-owner` shows a sample GC job.
+**GC jobs** (v2.5025, GC mode's Owner Billing O7c): for `customer` and `all` links, `gcJobs[]`. Each GC project of the link's customer that we won (`projects.customer_id`, stage buyout, building or closed) comes with the change orders waiting on them (`status = 'sent'`), `canAccept` once every line is billed (the last progress pay application's work so far covers `gc_owner_contract_now`, as `gc_record_acceptance` checks), and `accepted` with how. `_shared/gcPortal.ts` reads and shapes it (`loadGcPortalJobs`, `gcPortalJobs`); a failed read leaves it empty and the statement still shows. The sample token `sample-owner` shows a sample GC job. Since the Board's B6-d-iii a job also carries `contract`: while the newest send of our contract (`gc_owner_contract_sends`, B6-d-i) is unsigned and the job is going, `{ state: 'toSign', sendId, signBy, total, fileName, fileUrl, priceChanged?, retainagePct, retainageStep, payDays, lateInterestPctPerMonth, lateFinishPerDay }`: the price as one number, never by line; every term we bill by, which the page says as sentences (`gcContractTermsLines`); `fileUrl` a signed link to `gc-owner-contracts` for an hour, null when it could not be made; `priceChanged` when `gc_owner_contract_worth_ok` says the send's price is no longer whole, so the page shows no form to sign. Once they signed it here, `{ state: 'signed', signedOn, signer, fileName, fileUrl }`, the link to what they signed. A contract signed on paper at the office shows nothing. A job with only a contract to sign shows.
+
+**Card bills** (v2.5123, Owner Billing O8b): `cardBills[]`, `{ invoiceId, state, base, fee, total }` for the statement's bills. `offer` is a certified GC bill (`gc_owner_pay_apps.invoice_id`) with no Stripe page and nothing paid, offered at 3% (`gcPortalCardBills`, `_shared/gcCardBill.ts`) when the switch is on (the `app_settings` row `gc_card_bill_on_v1`, read as the service role since v2.5125) and the customer has an email. `onCard` is one turned to card (`gc_owner_card_bills.status = 'on_card'`), shown whether the switch is on or not, so the bill says its fee. A bill taken back to a check bill is offered no more. The page shows **PAY BY CARD** and its panel (`PortalCardBill.tsx`), which posts to `gc-card-bill`. The sample token `sample-owner` shows the offer on its certified bill.
 
 > **v2.3590 — live pay links**: the invoice select adds `stripe_invoice_id, stripe_mode, stripe_invoice_status`; every open Stripe bill past the stale margin (`linkMayBeStale`, 25 days after `billed_at`, or an unknown billed date) is re-fetched from Stripe through [`_shared/stripeInvoiceLinkRefreshIo.ts`](../supabase/functions/_shared/stripeInvoiceLinkRefreshIo.ts) before `buildPortalBills` runs, the row's `hosted_invoice_url` replaced and the payload's `payUrl` built from the fresh link — so Pay never opens Stripe's "link expired" page. Young bills cost no Stripe call; a failure leaves the stored link standing (the nightly `refresh-stripe-invoice-links` renews it anyway).
 
@@ -1458,6 +1716,10 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-portal-request
 
+> **v2.5359 — `deno check` passes again**: handing the supabase client to `loadGcStageInputs` sent TypeScript's structural check against `GcStageAdmin` too deep (TS2589, 1 error). The stage ask now casts the client to the loader's own `GcStageAdmin`, as `customer-portal` has since v2.5283. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
+> **v2.5331 — a line from their page** (Messages cut 8e): kind `portal_message` with `{ text, projectId? }`, 1 to 2,000 characters. After the link check, `writePortalLine` ([`_shared/gcPortalThread.ts`](../supabase/functions/_shared/gcPortalThread.ts)) writes a `messages` row as the service role: `channel` portal, `direction` in, on the page's contact, tied to `projectId` when that is a GC project of the link's customer (`404` otherwise), else to no job. A customer with no contact yet gets their own row (kind customer, the one the seed makes for a customer with nobody named). Twenty lines an hour from their page at most (`429`). It answers `{ ok: true, line }`; no inbox row and no email, since the thread is where it lands. **Redeploy required.**
+
 > **v2.4142 — the staff notice is a kernel**: the "Portal {kind} — {customer}" email comes from [`_shared/portalRequestStaffEmail.ts`](../supabase/functions/_shared/portalRequestStaffEmail.ts) (moved verbatim) so Settings → What the team sees renders it on sample data (punch list #60).
 
 > **v2.3438 — the offered columns are gone**: the `stage_window` ask reads the window **by id only** (`.eq('id', stageId)`) and selects no `bundle_id` / `offered_to_gc` — migration `20260914250000` drops both plus `offered_to_gc_at`. **Redeploy before the push**: the old bundle selects those columns and would 400 once they are gone.
@@ -1472,9 +1734,9 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Payment promise** (v2.3283, Their Word PR 2, migration `20260911052931`): `kind: 'payment_promise'` (`date` YYYY-MM-DD, `note?`) — the customer's own pay-by date from the statement's *Can't pay today? Tell us when to expect it.* strip. Validated with `_shared/portalPromise.ts` `promiseDateProblem` (today … +60 days); rate-limited at `PROMISE_MAX_PER_HOUR` (5) customer-sourced rows per customer per hour on `job_payment_promises` (no inbox row is written, so the dispatch counter doesn't apply); the job scope is exactly `customer-portal`'s (`openBillJobIds` over the link's audience) and an empty scope is a 400 ("Nothing is open on your account"). Writes through the service-role-only RPC `add_customer_payment_promise(customer, job_ids, date, note)` — one `source='customer'` / `channel='portal'` event per open-bill job the customer pays for plus the latest `job_promised_pay_dates` row (`marked_by NULL`), so the office's Billed chip reads *✓ Promised … · customer*. Logs one `portal_payment_promise` line. Response `{ ok, promisedYmd, jobs }`. **Redeploy required.**
 
-**GC mode's presses** (v2.5025, Owner Billing O7c): `kind: 'gc_change_order_answer'` (`changeOrderId`, `signed`, `note?`, one line on a decline) and `kind: 'gc_accept_work'` (`projectId`, `byName`, `note?`). The project must be the link's customer's (`gcPortalOwns`). Each calls the database's own function as the service role with `how = 'portal'` and today, `gc_answer_change_order` or `gc_record_acceptance`, whose checks hold: a change order is answered once, the work accepted once and only when every line is billed. A refusal answers `409` in the customer's words (`gcPortalRefusalWords`). No inbox row and no email: the office sees the answer in Change orders and Closeout.
+**GC mode's presses** (v2.5025, Owner Billing O7c): `kind: 'gc_change_order_answer'` (`changeOrderId`, `signed`, `note?`, one line on a decline) and `kind: 'gc_accept_work'` (`projectId`, `byName`, `note?`). The project must be the link's customer's (`gcPortalOwns`). Each calls the database's own function as the service role with `how = 'portal'` and today, `gc_answer_change_order` or `gc_record_acceptance`, whose checks hold: a change order is answered once, the work accepted once and only when every line is billed. A refusal answers `409` in the customer's words (`gcPortalRefusalWords`). No inbox row and no email: the office sees the answer in Change orders and Closeout. **Our contract** (the Board's B6-d-iii): `kind: 'gc_owner_contract_sign'` (`sendId`, `printedName`, `signaturePngBase64?` for a drawn one, `esignConsent`, required). A link of audience `gc` signs none. The send's project must be the link's customer's (`gcPortalOwns`); the consent is read first (`parseEsignConsent`); the send's file is read from `gc-owner-contracts` and its SHA-256 must match the send's (`bytesSha256Hex`), else `409` "This contract changed after we sent it. We will send you the new one.", since the database cannot read the bytes; a drawn signature is stored in `contract-signer-signatures` under `gc-owner-contracts/<send id>/` before `gc_customer_sign_owner_contract` runs as the service role with the link's customer, the IP and the browser, and is taken back if it refuses. Then the e-sign ledger row (`gc_owner_contract`) at the time it returns. A refusal answers `409` in the customer's words (`gcContractSignWords`, by the function's key). No inbox row and no email.
 
-**Endpoint**: `POST /functions/v1/submit-portal-request` — `{ token, kind: 'visit'|'bid'|'stage_window'|'payment_promise'|'share_bill_ask'|'gc_change_order_answer'|'gc_accept_work', jobId?, description, availability?, phone?, plansLink?, website }` (the GC kinds carry their own fields, above) (`website` is the honeypot).
+**Endpoint**: `POST /functions/v1/submit-portal-request` — `{ token, kind: 'visit'|'bid'|'stage_window'|'payment_promise'|'share_bill_ask'|'gc_change_order_answer'|'gc_accept_work'|'gc_owner_contract_sign', jobId?, description, availability?, phone?, plansLink?, website }` (the GC kinds carry their own fields, above) (`website` is the honeypot).
 
 > **v2.3378 — share_bill_ask** (Share this bill PR 4): `{ token, kind: 'share_bill_ask', ask: 'bill_me' | 'remind_owner', jobId, amount?, note? }`. The job must name the link's customer as its GC and someone else as its customer, and at least one of its billed invoices (or its billed shell remainder) must be **shared** with the viewer (`statementRoleFor` in `_shared/billVisibility.ts`), else 403 *That bill is not on your statement*. The function builds the sentence itself (*Done Right Foundation asks to be billed for J1017 · 4410 Cedar Hollow ($4,420.00) instead of Maria Delgado.* + *Note: …*) and inserts a `dispatch_requests` row (priority high, `job_ledger_id` = the job) with `pending_payload { source: 'portal', kind: 'share_bill_ask', ask, jobNumber, amount, ownerName, customerName, description, phone, phoneSource }`; the generic per-link rate limit applies. Never emails the owner. **Redeploy required.**
 
@@ -1557,6 +1819,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-estimate-for-customer
 
+> **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
+
 **Purpose**: Public read of a **sent** estimate for the customer acceptance page (no JWT).
 
 **Endpoint**: `GET /functions/v1/get-estimate-for-customer?token=<opaque>[&preview=1]`
@@ -1578,6 +1842,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 ### log-estimate-option-view
+
+> **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
 
 **Purpose**: Option-browsing telemetry for the acceptance page (Estimate Options Phase 3, v2.2462) — the staff activity feed's "Viewed option — Tankless upgrade" rows.
 
@@ -1612,6 +1878,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 ### get-submittal-room
+
+> **v2.5412 — `deno check` passes again**: `let personOut = base.person` took its type from `base.person`, which has no `messagesThisHour`, so adding the asker's count for the last hour was refused (TS2353). It is typed `RoomPerson | null` now, the payload's own person type, whose `messagesThisHour` is optional. The count reached the page all along. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose** (v2.3485, Submittals stage 4a-i): the **review room**'s public fetch — the one link per bid at `/submittal?t=…` that the GC forwards to the customer's architect or designer. Serves every submittal revision on the GC's record in the customer's words (which rows match the plans, which differ and why; never a price, a quote, a supply house, a bill or a stage date), newest first, plus the person when the token is a personal one. On the record means shared, or since v2.4667 answered by email with its package built (see *The GC's record* below).
 
@@ -1694,6 +1962,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-rfq-email
 
+> **v2.5360 — `deno check` passes again**: a saved request's preview, the reminder and the resend read `plansLink` off the stored `bid_rfqs.scope`, where a send has put it since v2.2642, but cast the scope to a type without it (3 errors, TS2339). Both casts use `StoredScope` now, which declares it. A row saved without one (a copied quote link, an outside request) still reads as no link through `cleanPlansLink`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4574 — the request is kept as it went**: each email to a supply house is filed in `sent_documents` through `sendEmailViaResend`'s `file` option — `rfq`, `rfq_reminder` or `rfq_resent` — keyed to the bid, with the request (`bid_rfqs`) as its source. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
@@ -1734,6 +2004,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### sign-bid-room
 
+> **v2.5359 — `deno check` passes again**: `gcNamesForVersions` and `notifyStaff` typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so none of their six callers could hand them the service-role client (6 errors). Both take `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4142 — the staff notice is a kernel**: the "Bid room — {project}: the GC {what}" email comes from [`_shared/bidRoomActivityStaffEmail.ts`](../supabase/functions/_shared/bidRoomActivityStaffEmail.ts) (moved verbatim) so Settings → What the team sees renders it on sample data (punch list #60).
 
 **Purpose**: Record a GC's signature or decline on a bid-room proposal (Signable Bids Phase 2, v2.2470) — the signature-time freeze.
@@ -1758,6 +2030,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-job-contract
 
+> **v2.5145 — link mode stamps nothing on a row already out with a live link** (punch list #104): when `mode` is `link` and the row is `sent`, not voided, with a token that has more than 7 days left (`jobContractLiveToken` in [`_shared/jobContractLinkLive.ts`](../supabase/functions/_shared/jobContractLinkLive.ts), the rule the app's link doors read since v2.5119), the function answers `{ ok, emailed: false, sign_url, reused: true }` and writes nothing. `sent_channel` stays, so a PDF emailed to sign stays one; `send_count`, `last_sent_at` and `next_reminder_at` stay; no `sent` event is logged. A draft, a row with no token or a link near its end goes through the send as before, which mints or renews the link and stamps it. Email mode always sends. **Redeploy required.**
+
 > **v2.4574 — the email is kept as it went**: the signing email is filed in `sent_documents` (`kind` `job_contract`, the job, the contract as its source) through `sendEmailViaResend`'s `file` option. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The office sends a job contract for signature (Contract Desk PR 2, v2.2681) — by email, or by minting the link to copy / text / sign in person.
@@ -1777,6 +2051,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **v2.3510 (What customers see PR 2):** the email's subject, text and HTML are built by `_shared/jobContractEmail.ts` → `buildJobContractSendEmail` (wording moved verbatim), which `src/lib/jobContractEmail.ts` re-exports so Settings → What customers see renders the same email over the sample. Send path unchanged.
 
 ### get-job-contract
+
+> **v2.5312 — the sample skips the flows' papers**: the sample's terms are the newest customer document in the Contract Book that is not a flow paper (`.is('flow_kind', null)`). A paper the flow editor adds (`flow_paper_create`, v2.5306) is filed under the customer audience and dated the day it is made, so it would otherwise be the newest. Deploy only after migration `20261013140000_flow_papers` is on prod, since the filter names its column. **Redeploy required.**
 
 > **v2.4474 — the sample agreement's wording date reads in the company zone**: on the What customers see sample, the Contract Book document's date is its `book_version_date`, else its `updated_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date — the Book's own rule (`effectiveBookVersionPlainDate` in `src/lib/contractBookVersionDate.ts`). Redeploy after merge.
 
@@ -1834,7 +2110,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Gateway**: `verify_jwt = false`; the cron secret is the credential. Scheduled hourly (`:23`) by pg_cron job `job-contract-reminders` (migration `20260903154024`).
 
-**Behavior**: Kill switch `app_settings` `job_contract_reminders_disabled_v1 = '1'` → `{ skipped: 'disabled' }`. Otherwise drains up to 50 `job_contracts` rows that are `sent`, `reminders_enabled`, not voided, `next_reminder_at <= now()` and `reminder_count < 3`. Rows with no token, an invalid email, or an expired link get `next_reminder_at` cleared (never re-queue). Each remaining row gets a Resend email ("Reminder: please sign — …", the durable link, reply-to = the contract's creator, CC list honored; the third says it is the last automatic reminder), then `reminder_count + 1` and `next_reminder_at` +3 days (null after the third), and a `reminded` event. An email failure leaves the row untouched to retry next hour.
+**Behavior**: Kill switch `app_settings` `job_contract_reminders_disabled_v1 = '1'` → `{ skipped: 'disabled' }`. Otherwise drains up to 50 `job_contracts` rows that are `sent`, `reminders_enabled`, not voided, `next_reminder_at <= now()` and `reminder_count < 3`. Rows with no token, an invalid email, or an expired link get `next_reminder_at` cleared (never re-queue). Each remaining row gets a Resend email ("Reminder: please sign — …", the durable link, reply-to = the contract's creator, CC list honored; the third says it is the last automatic reminder), then `reminder_count + 1` and `next_reminder_at` +3 days (null after the third), and a `reminded` event, which since v2.5636 writes the job's `contract_reminded` activity line (trigger `job_contract_events_to_activity`, 20261019030000; a `dry_run` row writes none). An email failure leaves the row untouched to retry next hour.
 
 ---
 
@@ -1855,6 +2131,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Response**: `{ ok, due, reminded, sent }`.
 
 ### share-job-contract
+
+> **v2.5359 — `deno check` passes again**: `fetchBytes` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so none of its five callers could hand it the service-role client (5 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.5101 — a record part link, part paper is shared as the paper**: a signed row with either frame filed from the paper (`filedOnPaper` in [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts): `signer_mode` or `co_signer_mode` is `paper`) sends `paper_upload_path` or its `signed_document_url`, as a paper record always has. That covers a first signature given through the link with the second filed from the paper (punch list #64). It has no stored PDF, and the rebuild printed its paper frame as typed. The email still names both signers. **Redeploy required.**
 
@@ -1917,6 +2195,10 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Endpoint**: `POST /functions/v1/file-submittal-package` — `{ submittal_id }`; staff user JWT in `Authorization` (a pricing sharer on the bid through `can_access_bid_for_pricing`, or an estimating role). Returns `{ ok, reused, file_id, file_url, file_name, folder_link }`; 503 `not_configured` without the Drive secrets, 409 `not_fileable` for a draft or an unbuilt package, 502 with `folder_link` when Google refuses the upload (the storage-quota note points at `DRIVE_IMPERSONATE_USER`, `docs/DRIVE_INTAKE_SETUP.md`). Idempotent: a revision already filed answers `reused: true`; a same-name file in the folder is reused. Stamps `bid_submittals.drive_file_id / drive_file_url / drive_filed_at`, and `bids.drive_link` when the bid had none. Helpers: `_shared/driveUpload.ts` (lifted from `drive-intake` in the same release — it imports them now), names in `_shared/submittalDriveNames.ts`. Secrets: `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`, optional `DRIVE_IMPERSONATE_USER`.
 ### legal-portal
 
+> **v2.5409 — `deno check` passes again**: 13 selects take their columns from a list typed `string`, not a literal: `MATTER_COUNSEL_SELECT` (`_shared/legalMatterShape.ts`) builds each with `.join(', ')`, and `readMatters` takes `cols: string`. supabase-js's type-level parser cannot read such a list (`string extends Query ? GenericStringError`), so each `(res.data ?? []) as Row[]` was refused (TS2352 ×13). Those selects name their row now, `.select<string, Row>(…)`. `jobsWithDetails` spreads a `Row` and adds four fields, and TypeScript drops an index signature when properties follow a spread, so its `collections_note` and `id` reads were refused (TS2339 ×2). It is typed `Row[]`, which `shapeMatterForCounsel` takes. Every column the function selects was checked against `src/types/database.ts` and exists. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
+> **v2.5124 — no ZZ test job reaches the firm**: `readLienBook`'s `jobs_ledger` select adds `customer_name`, so it is the same list as `LIEN_BOOK_JOB_COLUMNS` (`src/lib/jobs/lienTimelineBookAssemble.ts`). `shapeLienBookForCounsel` (`_shared/legalLienBookShape.ts`) then drops every ZZ test job (punch list #61: its own, its customer's or its GC's name starts with ZZ) from the months, affidavit windows, desk items, filings, owners and jobs, with a ZZ GC and any GC or property only those jobs point at, and cuts `customer_name` before the book is sent. A failed jobs read now sends no book (the portal still opens), since no test job could be told apart. **Redeploy owed** (`supabase functions deploy legal-portal`); until then the old function sends the book with any ZZ job in it.
+
 > **v2.4821 — the firm's answers to Start here**: the answer adds `intake: { answers, sentAt, sentBy }`, read from `legal_firms` in a query of its own after the firm row, so the payload never fails before migration `20261008001000` lands: until then `intake` is left out and the portal hides the step. **Redeploy after the push.**
 
 > **v2.4812 — the narrative**: each matter carries `narrative: { markdown, updatedOn, updatedByName } | null`, read from `legal_matters.narrative_md` in a separate query that tolerates the columns' absence before migration `20261007234000` ([`_shared/legalNarrative.ts`](../supabase/functions/_shared/legalNarrative.ts); `shapeMatterForCounsel` cuts it to those keys). The page renders it through the app's sanitizer. **Redeploy required.**
@@ -1965,7 +2247,9 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **View counting**: every validated load inserts a `public_page_views` row (`surface = 'legal_portal'`, `entity_id` = firm id) stamped by `publicViewDecision` — office previews (`?preview=1`) and staff sessions do not count.
 
-**Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `GET /functions/v1/legal-portal?token=<opaque>`. **Deploy**: after the v2.3319 migration is pushed. No secrets beyond the standard ones. The firm's writes (fees, steps, questions, payments received) are `submit-legal-portal` (PR 4).
+**Auth**: `verify_jwt = false` — the link is the capability. **Counsel's packet from the mail service** (v2.5388, the Docsmit train PR 8): each matter carries `mailPieces` — the `mail_pieces` rows behind its filings (by the job, or by `source_ids` overlapping the matter's filing ids), cut by `shapeMailPieces` to when USPS accepted each, the delivery and who signed, the provider's last word, and the Certification PDF as a 15-minute signed link (`certificationUrl`); never the address as sent, the price, the events or a path. A filing's `sends[]` keep `via` and `piece_id`. Until the table exists the list is empty and the portal still opens.
+
+**Endpoint**: `GET /functions/v1/legal-portal?token=<opaque>`. **Deploy**: after the v2.3319 migration is pushed. No secrets beyond the standard ones. The firm's writes (fees, steps, questions, payments received) are `submit-legal-portal` (PR 4).
 
 **v2.3512 (What customers see PR 6):** the sample token answers from `sampleLegalPortalResponse` — the sample firm's empty portal (recipients, particulars, no matters) — before the link lookup and the view row; a real matter never reaches it.
 
@@ -2081,6 +2365,10 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### accept-estimate
 
+> **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
+
+> **v2.5359 — `deno check` passes again**: `handleDecline` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the decline's `.update` took `never` and the service-role client could not be handed in (2 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Record Approach A acceptance (typed name + `agreedTerms: true`); sets `customer_accepted` and audit fields.
 
 **Endpoint**: `POST /functions/v1/accept-estimate`
@@ -2145,6 +2433,14 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### get-contract-for-signer
 
+> **v2.5412 — `deno check` passes again**: the reply sends `id: r.id`, and `r` is the row cast to a type that left `id` out (TS2339). The select fetches `id`, its first column, so the reply always carried it. The cast's type names `id: string` now. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
+> **v2.5329 — the shared clause read, generalized**: `_shared/clausePaper.ts` gains `clausePaperOf`, `clausePaperPair` and `readClausePaperPair` for the portals, and `clausePaperFor` now runs its gate read and the assembly through the same two helpers. Same reads in the same order, and the same answer. Redeployed so `check:edge-drift` reads clean.
+
+> **v2.5294 — a paper built from clauses** (Messages, cut 4c): when the row's library document (`applied_contract_template_document_id`) has live clauses at revision 1 or more and the row is no form, the response also carries `clause_paper: { revision, en, es }`. Each language is `contract_paper_clauses()` for the row's company's trades (none for a person's paper), read through `_shared/clausePaper.ts` (`clausePaperFor`): `{ paperId, revision, lang, clauses, exhibit, exhibitFor, between }`, each clause `{ id, v, n, text }`, the between line the GC frame's in that language (*Click Construction and …* / *y …*), null on a person's paper. A read that fails, or two languages at different revisions, leaves `clause_paper` null and the page on the body; `accept-contract` then asks for a reload. `ContractAccept` draws the clauses with the version line and folds the body under *The full agreement*. **Redeploy required.** No new secret.
+
+> **v2.5041 — a company's paper names the company** (GC mode, B6-b-i): for a row with `company_id`, the response's `person_name` and a W-9's prefilled name are the company's (`paperForName`, `_shared/companyPaper.ts`), never its stored `gc-company:<id>` name. **Redeploy required.**
+
 **Purpose**: Public read of a **sent** person contract document for the signing page (no JWT).
 
 **Endpoint**: `GET /functions/v1/get-contract-for-signer?token=<opaque>`
@@ -2165,6 +2461,12 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### accept-contract
 
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
+> **v2.5329 — the shared clause read, generalized**: `clausePaperFor` (`_shared/clausePaper.ts`) runs through the helpers the portals share, with the same reads and the same answer ([get-contract-for-signer](#get-contract-for-signer)). Redeployed so `check:edge-drift` reads clean.
+
+> **v2.5294 — a paper built from clauses signs as it read** (Messages, cut 4c): the body may carry `paperRevision` (the revision the page showed) and `paperLang` (`en` | `es`). Before anything is stored, the function puts the paper together again (`clausePaperFor`, `_shared/clausePaper.ts`) for the row's library document, company trades and language. A paper not built from clauses signs as before. One built from clauses signs only at the revision the page showed: else `409 { code: 'paper_changed', error: 'The paper changed since you opened it. Reload to read the new version.' }`, A library document with no clauses costs one small read of `contract_clauses` and nothing more. When the page showed clauses (it sent `paperRevision`), a read that fails answers 500 rather than signing without the freeze; a page that showed the body signs as before. The same update as the signature writes `paper_revision` and `clause_versions` (the paper with its `title`), which `contract_signed_clauses_frozen` keeps as signed. **Redeploy required.** No new secret.
+
 **Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn. **Two-party forms (v2.2802):** the signer's boxes only are validated and filled (`schemaForParty(schema, 'signer')`); when the template has office boxes the PDF is filed unflattened with the filled fields read-only, and `complete-contract-form-office` finishes it. The success response is `{ ok, documentId, officeSectionPending }` (v2.2803) so the thank-you page can offer the office step to a signed-in staff member on the same device.
 
 **Endpoint**: `POST /functions/v1/accept-contract`
@@ -2173,7 +2475,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Dates** (v2.2703): `signed_at` is the Central civil day via `todayYmdInAppTz()` — evening signatures used to be dated tomorrow.
 
-**Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true, "formValues"?: Record<string, string | boolean>, "formLang"?: "en" | "es" }`
+**Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true, "formValues"?: Record<string, string | boolean>, "formLang"?: "en" | "es", "paperRevision"?: number, "paperLang"?: "en" | "es" }`
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; optional `APP_ORIGIN` (where `/fonts/GreatVibes-Regular.ttf` is fetched for typed signatures; default `https://clicktooling.com`)
 
@@ -2186,6 +2488,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### send-contract-for-signature
+
+> **v2.5041 — a trade partner company's paper (GC mode, the Board's B6-b-i)**: a body with `trade_email: { companyId, key, lang, subject, lines, actionLabel }` takes the company branch, gc-trade-email's steps in order. A dev only (`officeOnly`; a training account or a twin `readOnly`), Spanish held (`spanishHeld`), the company's own sendable paper (`notFound` when the paper is not that company's), the `key` sent once and checked before any token is minted (`already: true`, nothing sent), the company's `contracts` people with the rest cc'd (`noEmail`), the token as for a person, then `buildGcTradeEmail` with the signing link as its action and the company's portal under it when it has a link (read, never minted). It writes a `gc_trade_messages` row (`msa`, or `paper` for a W-9, group `contracts`) and the sent copy (`gc_trade_email`, its `?t=` kept as `…`). Errors are gc-trade-email's keys. The person path is unchanged: its request checks, sendability and sent copy moved word for word to `_shared/contractSigningSend.ts` and are pinned against main with its email by `src/lib/contractSigningSend.pin.test.ts`. **Redeploy required.**
 
 > **v2.4574 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
@@ -2212,6 +2516,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### open-contract-form-pdf
 
+> **v2.5041** (GC mode, B6-b-i): a company's form PDF downloads as `<document_name> - <company name>.pdf`, never under its stored name. **Redeploy required.**
+
 **Purpose**: Mint a short-lived link to a **signed form PDF** (Contract Forms, v2.2798) — the flattened copy in the private `contract-form-pdfs` bucket, the only place a form's sensitive answers exist — for a staff member allowed to see it, and log the open.
 
 **Endpoint**: `POST /functions/v1/open-contract-form-pdf` — body `{ person_contract_document_id, which?: 'pdf' | 'scan' }`; `scan` (v2.2801) opens the paper scan of an *Enter from paper* filing instead of the flattened PDF, same gate, same log, download name suffixed "(paper)".
@@ -2227,6 +2533,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### contract-form-paper-entry
 
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose** (v2.2801, Contract Forms PR 6 — *Enter from paper*): a staff member keys a sub's hand-filled form into the same boxes the signing page shows, attaches the scan, and files it as signed on paper. Two actions in one function.
 
 **Endpoint**: `POST /functions/v1/contract-form-paper-entry` (`verify_jwt = false`; JWT validated with `auth.getUser` in the body).
@@ -2241,6 +2549,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 
 ### complete-contract-form-office
+
+> **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose** (v2.2802, Contract Forms PR 7 — two-party forms): the office's half of a form whose template has `party: 'office'` boxes (the I-9's Section 2). Such forms are filed by `accept-contract` / `contract-form-paper-entry` **unflattened** (signer fields read-only) so the office can still fill its fields; this function finishes them.
 
@@ -2406,6 +2716,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### geocode-one
+
+> **v2.5376 — `deno check` passes again**: `upsertGeocode` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `address_geocodes` upsert took `never` and none of its four callers could hand it the caller's client (5 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4974 — the controller is admitted**: the role check named dev, master_technician, assistant and estimator, while the Edit Job *On the map* line (and `/map` itself) opened to the controller too, so a controller's form showed a line the function answered with a 403. The list is now the five `/map` roles — the client's `isPathAllowedForRole(role, '/map')`. **Redeploy required** (until then a controller's line reads *could not place it*).
 
@@ -2609,6 +2921,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-checklist-notification
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON, or VAPID keys web-push refuses. Each push send catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Send Web Push notifications for checklist events (completion, test)
 
 **Endpoint**: `POST /functions/v1/send-checklist-notification`
@@ -2718,14 +3032,16 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-email
 
+> **v2.5359 — `deno check` passes again**: `AdminClient` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `report_email_dispatch_log` insert was refused and the service-role client could not be handed to `resolveReportContent` or `sendReportToSubscription` (5 errors). It is `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4574 — a report that leaves the company is kept**: when a subscription names an outside address (`recipient_email`), the report email is filed (`field_report`) on its job and bid. A subscription that names one of our own users is our own mail and is not filed. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4180 — the email is a kernel**: `buildReportEmail`, `ReportContent`, `renderFieldValue` and `escapeHtml` moved verbatim into [`_shared/fieldReportEmail.ts`](../supabase/functions/_shared/fieldReportEmail.ts); `index.ts` imports them, so Settings → What the team sees renders the email on sample data (punch list #60, lift 11 of 14). Redeploy after merge.
 
 **Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → the person's row, or the Dashboard → Recent Reports mail button — one modal since v2.3570, one list by person since v2.3595). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
 
-- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors`, or (v2.3480) the author is, or is led by, a leader in `report_email_subscription_team_leads` (`team_leader_assignments` read at send time) — skipping any already in the dispatch log. The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
-- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors plus each named team lead and everyone they lead.
+- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors` — skipping any already in the dispatch log. (The v2.3480 team-lead scope went with the Team leads list in v2.5088.) The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
+- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors.
 
 **Endpoint**: `POST /functions/v1/send-report-email`
 
@@ -2802,6 +3118,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 { "item_id": "<job_lien_desk_items.id>", "due_ymd": "2026-10-15" }
 ```
 
+**The pen train (PR 3, v2.5368)**: `{ "item_id": "<id>", "kind": "pen_recorded" }` tells the leader the office wrote down his pen signature (migration 20261013100000). The caller must be the row's `signed_recorded_by` and the row's mode must be `pen`, else 403; the push goes to the signer (`signed_by`) only, never the roster; the words come from `lienPenRecordedPush` (the job, the money, the day he signed, who wrote it down and how they know) and land on the notice in the Ready pile (`lienPenRecordedUrl`), where *Yes, I signed it ▸* and *Not what I signed* sit. Logged as `lien_pen_recorded`. The client calls it best-effort from `recordLienPenSignature`.
+
 `due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`): title *Approve a lien notice*, body *891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days*, the tap opening `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=<job>`. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
 
 #### Response
@@ -2816,7 +3134,76 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ---
 
+### messages-notify
+
+**Purpose** (v2.5317, Messages cut 4c): the people a change to a contract clause waits on hear of it. Since v2.5479 (residential R5) it also pushes a customer's, a lead's or a sub's reply to whoever has it ([A reply](#a-reply-r5-v25479) below). When the office sends a clause change for approval (`edit_clause` answered `proposed`), the approvers get a push on every device **and** an email with the change. When a controller or a dev decides one (`approve_clause_proposal`, `decline_clause_proposal`), the editor gets an email: it went out as the clause's next version, or the why. The editor's **text** by phone is a named follow-up: it comes with Quo (cut 5). The app calls it right after the RPC, best effort (`tellClauseApprovers` and `tellClauseEditor` in `src/lib/contracts/clausesIo.ts`): a call that fails never undoes the change, which still waits on the approvers' Needs you, and the toast then says nothing of a send.
+
+**Endpoint**: `POST /functions/v1/messages-notify`
+
+**Required Role**: a reply's push takes no user: the `X-Cron-Secret` header must match `CRON_SECRET`. A clause's: any signed-in user, but only the change's **proposer** (`contract_clause_proposals.by_user_id`, for each id named) or its **decider** (`decided_by`); anyone else gets 403. Only a change made or decided in the last 15 minutes is told, so an old row can't be used to buzz the approvers again; an older one returns 200 with nothing sent.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (the push), `RESEND_API_KEY` (the emails), `APP_ORIGIN` (the links; defaults to the live site), `CRON_SECRET` (a reply's push, the same secret `gmail-sync` reads).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and the row with the service role.
+
+#### Request body
+
+One of:
+
+```json
+{ "proposal_ids": ["<contract_clause_proposals.id>", "…"] }
+```
+
+```json
+{ "decided": "<contract_clause_proposals.id>" }
+```
+
+`proposal_ids` names the changes one save sent for approval (1 to 50), so the New paper window's several clauses on one paper make one push and one email, not one each. The caller names only the rows: the function writes every word itself from [`_shared/clauseNotify.ts`](../supabase/functions/_shared/clauseNotify.ts) (re-exported at `src/lib/contracts/clauseNotify.ts`). Push title *Approve a clause change*. Body: the change's Needs you title and the clause's first words, e.g. *Rosa changed clause 2 of the master agreement: “Insurance: general liability of $2,000,000 per occurrence, naming…”*. Several changes read *Rosa proposed 3 new clauses for the safety agreement.* The tap opens `/settings?tab=settings-clauses#settings-clause-paper-<paper>`. The email carries each change: what it asks, who it is for, the words in English and Spanish, and the why. A clause is named by the one numbering Settings uses (`clauseLabel`), a copy that `src/lib/contracts/clauseNotify.test.ts` holds to `assemble.ts`.
+
+The approvers are the users with role `dev` or `controller` (`gc_clause_approve_team()`, the client's `GC_CLAUSE_APPROVE_TEAM`), `REAL_ACCOUNT`, not archived, never the caller. On a decision the function skips a change the decider made themself (a dev's or a controller's own edit publishes at once). Everyone it writes to is our own staff, so no sent copy and no `EMAIL_CATALOG` row; the registry entry is a staff `sender` in `CUSTOMER_SURFACES`. Each person reached gets one `notification_history` row per channel, `template_type` `clause_proposal` or `clause_decision`.
+
+#### Response
+
+```json
+{ "success": true, "push_sent": 3, "email_sent": 2, "approvers": ["Maria", "Robert"] }
+```
+
+```json
+{ "success": true, "email_sent": true, "editor_name": "Rosa" }
+```
+
+The editor's toast reads *Sent to Maria and Robert with a push and an email.* (or *by email*, or *with a push*, as reached); with nobody reached it reads *It waits for Maria or Robert to approve it.* The approver's reads *Approved by Maria. Rosa gets an email that it went out.* or *Declined. Rosa gets an email with your why.*, and without the email the words from before. The approvers' Needs you row states the rule: *Robert and Maria get a push and an email.*
+
+#### A reply (R5, v2.5479)
+
+Server to server, with `X-Cron-Secret` (no user, no JWT), one of:
+
+```json
+{ "message_ids": ["<messages.id>", "…"] }
+```
+
+```json
+{ "sweep": true }
+```
+
+Both send nothing, and answer `{ "success": true, "off": true, … }`, while the owner's switch `messages_reply_push_on_v1` (R5's PR 3, `'false'` as it ships) is off or not there yet. `message_ids` (1 to 50) is for a line's writer right after its insert; the writers (`quo-webhook`, `gmail-sync`) call it in a later PR. `sweep` is the cron row `messages-reply-push` (R5's PR 3, v2.5481, `20261014110000_messages_notify_cron.sql`), every minute, posting only while the switch is on: the lines in from the last wait plus thirty minutes plus five (`sweepSince`), at most 200. The rule is [`src/lib/messages/notifyPlan.ts`](../src/lib/messages/notifyPlan.ts) through the edge copy; the reads, the sends and the record are [`_shared/messagesReplyPush.ts`](../supabase/functions/_shared/messagesReplyPush.ts).
+
+- **Whose lines**: a customer's, a lead's or a sub's (`PUSH_KINDS`), on a text, an email, a portal write, a voicemail or a missed call. An answered call does not push.
+- **Who has it**: after a legal line that still stands (`standingLegalLine` over the Lien desk's sends on the customer's Pipeline jobs, the owner's copies), the office alone (`routeReply`); else the teammate who took it or was handed it (`contacts.has_how`); else the rule (`whoHasReply`): the tech who last texted them while their hold stands, else the office's pick (`whoGetsIt` over `messages_assign_rule_v1`; a lead's and a sub's go to the Customers seat since v2.5501, which asks for a redeploy), else nobody while the office is closed (`messages_office_hours_v1`).
+- **Who hears, and when** (`pushesFor`): whoever has it at once; the office after `messages_office_wait_minutes` (15) unless someone answered first (`answeredBefore`); the office at once after hours, the push saying the line waits for the morning (no after-hours answer goes until `quo-send` sends one). The office is the Customers seat when one is picked, else the five office roles (`_shared/messagesTeams.ts`, held to `GC_OFFICE_TEAM` by `access.test.ts`). The tech's push carries no link until Job Mode's thread has one; the office's opens the thread at the line.
+- **Never twice, never late**: a push already in `notification_history.message_id` for that line is not sent again, and one more than thirty minutes past its time is never sent (`PUSH_LATE_MAX_MINUTES`). Each person reached gets one `notification_history` row, `template_type` `message_reply` or `message_reply_wait`, with the line in `message_id`. Nothing is written to `contacts`.
+
+```json
+{ "success": true, "lines": 3, "sent": 2, "reached": 3, "waiting": 1, "answered": 0, "late": 0 }
+```
+
+**Deploy**: `bash scripts/deploy-functions.sh messages-notify dev-mcp` (the catalog lists it). Since v2.5479 it imports the edge copy (`IMPORTERS`), so a change to a kernel it reads asks for its redeploy.
+
+---
+
 ### notify-dispatch-request
+
+> **v2.5376 — `deno check` passes again**: `notifyRequester` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so its `notification_history` insert took `never` and the service-role client could not be handed in (2 errors). It takes `SupabaseClient` now. The outer `catch` read `error.message` off an `unknown` (1 error) and reads `(error as Error).message` now, as `invite-user` does: what the `try` can throw is an `Error`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group). Since **v2.2880** the same function also carries the answer back: `mode: 'closed' | 'reopened'` pushes the **requester** (`from_user_id`) with the office's closing note and always logs them a `notification_history` row (journey-map Tier-2 #25 — "closing a field request tells the tech nothing").
 
@@ -2920,9 +3307,11 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 
 ### notify-team-lead-clock
 
-**Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. **Frozen since v2.3616** (Supervision retired the Team leads list; no UI writes assignments or prefs any more) — it keeps serving the rows that exist until the table is dropped (`to-dos/team-leads-table-retirement.md`). Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
+> **v2.5376 — `deno check` passes again**: `AdminClient` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `trial_helper_supervisors` arguments and the `notification_history` insert were refused, and the service-role client could not be handed to `notifyTrialHelperLeads` (3 errors). It is `SupabaseClient` now. The RPC takes `p_helper_user_id` and `p_work_date` as written. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
-**Try-out branch (v2.3650)** — independent of the list, and not frozen: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — the try-out loop, `recent-features/v2.3627.md` and its follow-ons; the to-do closed 2026-09-26), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure here never stops the opted-in leader flow, and the response carries `trial: { leads, pushed }`. **When the Team leads tables are dropped, this branch stays** — remove the leader flow, not the function or its webhook.
+**Purpose**: The try-out loop's push when a trial helper **clocks out** (`clocked_out_at` becomes non-null on UPDATE). Invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser; every other event is skipped. Until v2.5088 it also pushed *Team clock in / out* to leaders who opted in on the Team leads list (`team_leader_assignments` + `team_leader_clock_notify_prefs`); that flow went with the list (migration `20261010022000`), and the name stayed so the webhook needs no rewiring.
+
+**Try-out branch (v2.3650)**: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — the try-out loop, `recent-features/v2.3627.md` and its follow-ons; the to-do closed 2026-09-26), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure is logged, never thrown at the webhook, and the response carries `trial: { leads, pushed }`.
 
 **Endpoint**: `POST /functions/v1/notify-team-lead-clock`
 
@@ -2931,7 +3320,7 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, returns 200 with `push_sent: 0`)
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, nothing is pushed: `trial.pushed` is 0)
 - Optional: `TEAM_LEAD_CLOCK_WEBHOOK_SECRET` — if set, webhook can send this instead of the service role key.
 
 **Verify JWT**: `false` (uses shared secret / service role only)
@@ -2953,20 +3342,21 @@ For **clock out**, `type` is `UPDATE`, `old_record.clocked_out_at` is null, and 
 #### Success response
 
 ```json
-{ "success": true, "push_sent": 2, "leaders": 1, "kind": "clock_in" }
+{ "success": true, "kind": "clock_out", "trial": { "leads": 1, "pushed": 2 } }
 ```
 
-Skipped events return 200 with `skipped: true` (e.g. not a clock-in/out transition).
+Skipped events return 200 with `skipped: true` (anything but a clock-out).
 
 #### Deployment / wiring
 
 1. Deploy the function: `supabase functions deploy notify-team-lead-clock`
 2. In Supabase Dashboard → Database → Webhooks: add webhooks on `clock_sessions` for **Insert** and **Update**, HTTP POST to `https://<project-ref>.supabase.co/functions/v1/notify-team-lead-clock`, header `Authorization: Bearer <SERVICE_ROLE_KEY>` or the webhook secret.
-3. Leaders enable **Notify on clock in/out** per member on Dashboard → My Team.
 
 ---
 
 ### send-scheduled-reminders
+
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error?.message` off an `unknown`, which the optional chain narrows to `{}` (TS2339). It reads `(error as Error)?.message` now, as `merge-users` does. What its `try` can throw is an `Error`: VAPID keys web-push refuses. The body read, each push and each email catch their own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Send reminders for incomplete checklist tasks at configured times (CST) — Web Push first, **email fallback via Resend** (v2.2096) for users with no push device, so a reminder never silently vanishes. Invoked by pg_cron every 15 minutes. Since v2.2351 the **day-before** and **escalate-after-N-days** buckets key on the *effective due date* (`checklist_items.due_date` when set, else the instance's `scheduled_date`) — for windowed tasks the nudge lands the day before the deadline and escalation means N days *late*; items without a due date behave exactly as before. Since v2.2371 escalated titles carry a **pushed-back rider** — "(pushed ×2, +5d)" from the `checklist_item_due_changes` ledger (inline mirror of `src/lib/checklistDuePushes.ts`; keep in sync) — so escalation can't be quietly dodged by nudging the due date. Since v2.2056 the 03:00 CST run also performs the **weekly materialization top-up**: every active `day_of_week` item is stocked with occurrence rows 35 days ahead (mirrors `src/lib/checklistMaterialize.ts` — keep the Deno copy in sync; upserts against the `(checklist_item_id, scheduled_date)` unique index; new instances copy the item's current assignees). Pass `{"materialize": true}` in the body (with the cron secret) to force the top-up outside the 03:00 slot — the response then carries a `materialized` count.
 
@@ -3030,8 +3420,8 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 **Body (JSON)**:
 - `scope_master_user_id` (uuid, required) — org (**`jobs_ledger.master_user_id`**) universe
 - **`activity_scope`** (required): **`calendar_yesterday`** \| **`calendar_today`** \| **`calendar_week`** \| **`calendar_last_week`** — calendar window in **`timezone`** (half-open local midnights → UTC; **`calendar_week`** is Sun–Sat week **containing** **`anchor_date`**; **`calendar_last_week`** is the **prior** Sun–Sat week).
-- **`crew_filter`** (required): **`all_users`** \| **`my_team`** — **`my_team`** = **`recipient_user_id`** plus **`team_leader_assignments.member_user_id`** where **`leader_user_id = recipient_user_id`** (Dashboard **My team** roster); **`all_users`** does not restrict activity rows by user.
-- `recipient_user_id` (optional) — defaults to caller; affects **`my_team`** resolution only.
+- **`crew_filter`** (required): **`all_users`**, which does not restrict activity rows by user. **`my_team`** (the recipient plus the people they led on the Team leads list) went with the list in v2.5088; the column's check allows `all_users` only.
+- `recipient_user_id` (optional) — defaults to caller.
 - `timezone` (optional, default **`America/Chicago`**).
 - **`anchor_date`** (**`YYYY-MM-DD`**, civil date in **`timezone`**, required when not sending a manual **`window`**) — **“today”** in zone for resolving yesterday / today / week bounds.
 - Manual **`window`** (optional) overrides RPC bounds (**advanced testing**): provide **`window_start_utc`** / **`window_end_utc`** (ISO); optional **`period_kind`**: **`daily`** (default) \| **`weekly`** for **`reporting_date`** idempotency semantics when dispatching.
@@ -3218,6 +3608,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### set-user-password
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Set password for any user (dev-only operation)
 
 **Endpoint**: `POST /functions/v1/set-user-password`
@@ -3339,6 +3731,8 @@ The address is checked by the shared rule [`_shared/signInEmailChange.ts`](../su
 
 ### claim-dev
 
+> **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: **Break-glass only (v2.706).** Promote the current user to dev *when no usable dev is available* — bootstrapping the first dev, or recovering when every dev is archived or read-only. It is **not** a general self-promotion path: if a usable dev exists, use **Settings → People & accounts** instead.
 
 **Endpoint**: `POST /functions/v1/claim-dev`
@@ -3426,6 +3820,8 @@ const response = await supabase.functions.invoke('claim-dev', {
 ---
 
 ### test-email
+
+> **v2.5360 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `change-user-email`, `invite-user` and `send-sign-in-email` do; what its `try` can throw (a body that is not JSON, a failed `fetch`, a `body` that is not a string) is an `Error`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4557 — a self-test for sent copies**: `file_copy_only: true` (with the usual `to`, `subject`, `body`) sends **nothing** and files the message as a `sent_documents` row of `kind` `self_test`, with one small attachment, through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — the way to prove the helper against the live bucket and table after a deploy. The row names no job, so no list shows it; a dev deletes it afterwards. Answers `{ success: true, sent: false, filed: 'attempted' }`. **Redeploy required.**
 
@@ -3517,6 +3913,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.5408 — `deno check` passes again**: `_shared/stripeInvoiceSnapshot.ts`, which only this function bundles, read each line's `description` and `amount` off `unknown` (TS18046 ×3). Stripe from `esm.sh/stripe@16.12.0?target=deno` is `any` to the checker, and under TypeScript 6.0.3 (deno 2.9.6) `stripeInvoiceLinesDataForFixtureOrderDisplay<T>(data: T[])` given an `any` infers `T` as `unknown`. The call names the line type now, `<Stripe.InvoiceLineItem>`. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.3345 — who pays**: the job select adds `gc_customer_id, bill_to_party` and the invoice select `bill_to_party`; the shared [`billToParty.ts`](../supabase/functions/_shared/billToParty.ts) resolves the party (`effectiveInvoiceParty` — a typed `bill_to_email` → other; the invoice's pick; else the job's rule, `gc` only with a GC set). The body's `customer_id` must now be the **payer** (`payerCustomerId`): the job customer, or the GC's customers row when the GC pays — the GC then bills through its own `customers.stripe_customer_id[_test]`, and the homeowner's Stripe customer is never read or written. A mismatch answers 400 *This bill goes to the GC on the job — reopen Bill Customer*. The bill-to branch (`bill_to_email`) is unchanged. **Redeploy with `preview-stripe-invoice` and `send-physical-invoice-email`.**
 
 > **v2.3255 — discount lines** (discount train PR 3; kernel [`discountLine.ts`](../supabase/functions/_shared/discountLine.ts), re-exported to the app): the fixtures select adds `line_kind, discount_pct, discount_basis_positions`, and `buildStripeInvoiceItemsFromFixtures` takes `allFixtures` (every row on the job — a discount's shares split over its whole basis by largest remainder, so a draw's share needs the rows it does not bill). `scopeFixturesToInvoice` never scopes a discount row as a line and reads every work row NET of its shares, so the primary remainder's "sum equals target" test still composes on a discounted job. When the target is exactly the scoped work minus those rows' shares, the bill lists the work at its real prices plus one **negative item per discount** (`source.kind = 'discount'`, description `Negotiated discount (10%)`) — Stripe accepts a negative `amount` invoice item as a credit; any other target prorates over NET row cents (no discount line, no price the discount already lowered). `extra_line_items` stay positive. **Redeploy with `preview-stripe-invoice`.**
@@ -3532,6 +3930,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 > **v2.2846 — never bill a paid job twice** (journey-map J3-1): after the job row loads, `shouldBlockBillOnPaidJob({ jobStatus: jobRow.status, allowRebill })` from the shared [`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts) refuses with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` when `jobs_ledger.status = 'paid'` and the body did not send **`allow_rebill: true`** (the Bill Customer modal's "Bill this job again anyway" checkbox). The existing `Invoice must be Ready to Bill` check, the idempotent-retry branch and the v2.2045 conversion branch run first and are unchanged. Each refusal writes a `job_activity_events` row `event_type = 'rtb_paid_job_blocked'` (service role, best-effort). **Redeploy required.**
 
 > **v2.2045 — convert a billed non-Stripe line** (`convert_billed: true`): relaxes the ready_to_bill gate for a row already `billed` with no `stripe_invoice_id` and **zero payments applied** (checked via the caller's RLS client) — the one-button "Make Stripe bill" on Edit Job → Bill. `billed_at` is never written by this function (and the DB trigger COALESCEs), so the original billed date survives conversion by construction. Full flow: `docs/BILLING_FLOWS.md` → "Converting a non-Stripe bill to Stripe". Redeploy required.
+
+> **v2.5123 — never a GC bill** (Owner Billing O8b): a row that a GC pay application's certificate or an interest bill made (`gc_owner_pay_apps.invoice_id`, `gc_owner_interest_bills.invoice_id`, read as the service role) answers `409` *A GC bill goes on card only from the customer's portal.* before any Stripe call, so Edit Job's **Make Stripe bill** says why. A GC bill goes on card only through `gc-card-bill`, with its 3% fee.
 
 > **v2.1133 — segment invoices bill only their own line items**: the fixtures query now selects `invoice_id` and both this function and `preview-stripe-invoice` pass the rows through `scopeFixturesToInvoice` ([`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)): rows linked to the invoice when any exist (an invoice created from selected segments lists exactly those lines at their real amounts), else all rows (dollar break-off invoices keep the historical whole-job proration). Before this, a $454 change-order invoice rendered with every job stage on it, each carrying a prorated sliver. Client mirror: `src/lib/invoiceScopedFixtures.ts` (physical PDFs + previews + line-edit refs). Redeploy both functions.
 >
@@ -3668,6 +4068,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 ### open-test-report-pdf
 
+> **v2.5412 — `deno check` passes again**: `link` started as `let link: {…} | null = null`, and each read was cast `as typeof link`, which reads the type narrowed by that `= null`. So `link` was `null`, then `never` past the `!link` check, and its five reads were refused (TS2339 ×5). The row type is named, `PortalLinkRow`, and both casts use it. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose** (v2.3304, Test reports PR 5): the portal's **View report** door — `GET /functions/v1/open-test-report-pdf?t=<portal token>&r=<report id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-contract-form-pdf` pattern) on the private `job-test-reports` bucket, with a download name like *Sewer Pre-Test Hydrostatic Report - 112 Seidel St - 2026-09-10.pdf*. The bucket has no customer-side policies; this is the only customer-facing way to the file (staff open it from Documents → Jobs through a client signed URL, v2.3331).
 
 **Authentication**: none (`verify_jwt = false`) — the portal link is the capability, resolved exactly as `customer-portal` does (raw token, then the v1 sha256 hash; revoked → 404 text). Guards: the report must be `status = 'sent'` with a `pdf_path`, on a job the link's company pays for (`customer_id` for a customer link, `gc_customer_id` for a GC link, either for `all`); sample tokens get a plain 404 line. Errors are short `text/plain` sentences (the tab the customer opened shows them). **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
@@ -3692,7 +4094,7 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 > **v2.4574 — the release is kept as it went**: after the sent stamp the function files the email and the signed release PDF through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row, `kind` `lien_release`, keyed to the job, the customer it went to (the GC when the address is the GC's billing email) and the release (`source_table` `job_lien_releases`). The account card's code is drawn into the kept page. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
-> **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
+> **v2.4132 — sends as the company**: the From is *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it. **Since v2.5228** GC mode's billing job (`jobs_ledger.billing_only`, read by the function) sends as *Click Construction*, as every GC customer email does; a sub job that bills a GC (`gc_customer_id`) still sends as the company (`waiverEmailFromName` in [`_shared/lienWaiverEmailCard.ts`](../supabase/functions/_shared/lienWaiverEmailCard.ts)). **Redeploy required.**
 
 **Purpose** (v2.2621, the lien-signing loop's send leg): email a **signed** lien release to the job's customer with the PDF attached, then stamp the release row **sent** (`sent_to_customer_at`, `sent_channel: 'email'`, `sent_by`). The PDF arrives from the client — the stored `signed.pdf` bytes from the `lien-release-documents` bucket when present, else a regeneration from the row snapshot with the typed signature. Client helper: [`sendLienReleaseEmail.ts`](../src/lib/sendLienReleaseEmail.ts); the send surface is the "Signed — ready to send" inbox lane ([`LienSignatureInboxSection`](../src/components/jobs/LienSignatureInboxSection.tsx)).
 
@@ -3728,6 +4130,8 @@ Body: `{ mode: 'send' | 'test', payload, recipient_user_ids?, subject?, note? }`
 
 ### send-physical-invoice-email
 
+> **v2.5360 — `deno check` passes again**: the request body's type never declared `additional_emails`, which Bill Customer has sent since v2.940 (the contact persons picked for copies) and which the function already checks (at most 10, each an email, the customer's own address and repeats dropped). So reading it failed the check twice (TS2339). The body type declares it now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4557 — the bill is kept as it went**: after a successful send the function files the email and its attachments (the invoice PDF, any companion PDFs) through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row (`kind` `bill`, or `bill_resent` for `resend: true`) keyed to the job, the payer and the invoice (`source_table` `jobs_ledger_invoices`), with the files in the private `sent-documents` bucket. Best effort: a copy that cannot be kept never fails the send. A re-email, which wrote nothing before, now leaves this row. The plan: [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
@@ -3738,7 +4142,7 @@ Body: `{ mode: 'send' | 'test', payload, recipient_user_ids?, subject?, note? }`
 
 > **v2.2846 — never bill a paid job twice** (journey-map J3-1): the `jobs_ledger` select adds `status`; a **first send** (not `resend`) on a job whose status is `paid` is refused with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` unless the body carries **`allow_rebill: true`** — same shared predicate as `create-stripe-invoice` ([`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts)). The refusal writes `job_activity_events` `rtb_paid_job_blocked` with a service-role client when `SUPABASE_SERVICE_ROLE_KEY` is set (best-effort; the function otherwise stays user-client only). `resend: true` is unaffected — re-emailing an already-billed invoice is not a new bill. **Redeploy required.**
 
-> **v2.2605 — Resend mode**: `resend: true` re-emails an already-**billed** invoice (the Who-owes-what cards' "Email again — PDF attached", client helper [`resendPhysicalInvoiceEmail.ts`](../src/lib/resendPhysicalInvoiceEmail.ts)): the status gate flips to require `status = 'billed'` and the function **writes nothing** — no status change, no `sent_to_customer_at` bump (the bill keeps its first-send evidence; the send is still captured by the shared email log). Without the flag, first-send behavior is unchanged.
+> **v2.2605 — Resend mode**: `resend: true` re-emails an already-**billed** invoice (the Who-owes-what cards' "Email again — PDF attached", client helper [`resendPhysicalInvoiceEmail.ts`](../src/lib/resendPhysicalInvoiceEmail.ts)): the status gate flips to require `status = 'billed'` and the function **writes nothing** — no status change, no `sent_to_customer_at` bump (the bill keeps its first-send evidence; the send is still captured by the shared email log, and since v2.4557 by its sent copy, kind `bill_resent`, which since v2.5636 writes the job's `invoice_resent` activity line through `sent_documents_to_activity`). Without the flag, first-send behavior is unchanged.
 
 > **v2.1085 — Bill-to override**: when the invoice row has `bill_to_email`, the target `customer_email` may match **either** that address or `jobs_ledger.customer_email` (a blank job customer email is fine in that case). Without the override, the job-customer-email match requirement is unchanged.
 
@@ -4058,6 +4462,8 @@ interface SendHazmatNoticeEmailBody {
 ---
 
 ### send-stripe-invoice
+> **v2.5359 — `deno check` passes again**: `persistSendAfterEmail` and `sendBillCopies` typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the send-time `.update` was refused and the service-role client could not be handed in (3 errors). Both take `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4557 — the bill is kept as it went**: the payer's own bill email (`kind` `bill`, with Stripe's PDF when it was attached) and each live copy (`bill_copy`) are filed in `sent_documents` through `sendEmailViaResend`'s new `file` option ([`fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts)), keyed to the job and the invoice. The statement's code, an inline image in the email, is drawn into the kept page. A test-mode bill and its single test copy go to ourselves and are not filed; a bill Stripe emails itself (the fallback) has no message of ours to keep. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4127 — the bill comes from the company**: the bill email and every copy send as [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (`mailboxWithName`, [`_shared/mailboxWithName.ts`](../supabase/functions/_shared/mailboxWithName.ts)); `sendEmailViaResend` takes `options.from` for it and `email_send_log.from_email` records it. Staff emails keep `EMAIL_FROM`. Punch list #53, PR 1.
@@ -4077,7 +4483,7 @@ interface SendHazmatNoticeEmailBody {
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
-**Purpose**: Email the customer an open billed line's bill — ours, or Stripe's through **`invoices.sendInvoice`** (see v2.4020 above). After the email goes out, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](../src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)), and for **Email invoice to customer** on Dashboard **Collect Payment** step 3 ([`CollectPaymentModal`](../src/components/jobs/CollectPaymentModal.tsx)).
+**Purpose**: Email the customer an open billed line's bill — ours, or Stripe's through **`invoices.sendInvoice`** (see v2.4020 above). After the email goes out, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list, and since v2.5634 each row's line in the job's trail through the log's own trigger, `20261019010000`, a bill's first send excepted since the invoice's `invoice_sent` holds it; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](../src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)), and for **Email invoice to customer** on Dashboard **Collect Payment** step 3 ([`CollectPaymentModal`](../src/components/jobs/CollectPaymentModal.tsx)).
 
 Pre-send validation uses **[`customerEmailFromStripeInvoice`](../supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)** on the retrieved invoice (**expanded Customer `email` first**, then **`invoice.customer_email`**).
 
@@ -4149,6 +4555,8 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 ---
 
 ### get-stripe-invoice-details
+
+> **v2.5376 — `deno check` passes again**: the field path's `adminForSub` was typed `ReturnType<typeof createClient> | null`, which supabase-js 2.117 resolves to a client with no schema, so the bill, team and collect-flow rows it reads were `never` and its memo/footer backfill `.update` took `never` (7 errors). It is `SupabaseClient | null` now. Each column it reads and writes is on its table in `src/types/database.ts`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
@@ -4359,6 +4767,8 @@ interface Body {
 
 ### preview-stripe-invoice
 
+> **v2.5408 — `deno check` passes again**: the preview's lines were read off `unknown` (TS18046 ×7). Stripe from `esm.sh/stripe@16.12.0?target=deno` is `any` to the checker, and under TypeScript 6.0.3 (deno 2.9.6) `stripeInvoiceLinesDataForFixtureOrderDisplay<T>(data: T[])` given an `any` infers `T` as `unknown`, so the call names the line type now, `<Stripe.InvoiceLineItem>`. Both `ephemeralCustomerId = ep.id` widened the narrowed `let` back to `string | null` against `customerIdForPreview: string` (TS2322 ×2), since `ep` is `any`. A customer Stripe creates always has its id, and both read `ep.id as string`, as v2.5377's `gc-card-bill` does. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.3345 — who pays**: mirrors `create-stripe-invoice` — the job + invoice selects carry the party columns and the body's `customer_id` must be the resolved payer (the GC's row when the GC pays, so the preview renders against the GC's own Stripe customer or an ephemeral one with the GC identity). **Redeploy with `create-stripe-invoice`.**
 
 > **v2.3255 — discount lines mirrored**: same select, same `allFixtures`, same shared composer as `create-stripe-invoice` (see that section); `invoice_items` sent to `invoices.createPreview` may include negative amounts. The client's `parseStripeLineSource` accepts `kind: 'discount'` (not clickable in the preview). **Redeploy with `create-stripe-invoice`.**
@@ -4415,6 +4825,8 @@ Amounts are in **cents**, matching Stripe invoice objects.
 
 ### void-stripe-invoice-for-revert
 
+> **v2.5408 — `deno check` passes again**: `existingCn.data.find((cn) => …)` runs on Stripe's `any`, so `cn` had no type to take from the call (TS7006). It reads `(cn: Stripe.CreditNote) =>` now. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4082 — a paid-by-check mark is reversed, not refused**: a Stripe invoice that is **`paid`** with **`amount_paid` 0** and no **`charge`** holds only ClickTooling's own out-of-band mark (Mark Paid · check/cash, or the AR auto-close). The function now issues an **out-of-band credit note** for the total less live credit notes already on the invoice (so a bill unwound through **reverse-stripe-invoice-out-of-band-payment** first gets no second note), deletes the row as usual, and writes a **`removed`** event to **`jobs_ledger_payment_events`** (**`payment_id`** null, the mark's `pt_paid_on` / `pt_payment_type` / `pt_reference`, reason `oob_mark_reversed: …`) — the **`stripe_oob_payment_reverts`** audit would cascade away with the invoice. Response adds **`stripe_action: 'reverse_oob_mark'`** and **`stripe_credit_note_id`**. Real money in Stripe (**`amount_paid` &gt; 0** or a charge) still **409**s, worded *refund it in the Stripe Dashboard*. Redeploy required.
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
@@ -4468,6 +4880,8 @@ interface Body {
 ---
 
 ### stripe-webhook
+
+> **v2.5360 — `deno check` passes again**: the arguments built for `mark_invoice_paid_from_stripe` were typed without `p_recorded_by`, which the code has set since v2.4289 and the RPC has taken since `20261001153000` (`p_recorded_by uuid default null`, applied on prod). So setting it failed the check (TS2339). The type declares it now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4950 — a card dispute or a failed bank debit is a case** (punch list #76 piece 1, migration `20261009080000`). Each event goes to `record_ar_stripe_case` (`_shared/stripeArCase.ts` builds the arguments). `charge.dispute.created` / `updated` / `closed` / `funds_withdrawn` / `funds_reinstated` retrieve the charge in the event's mode to find its invoice. `payment_intent.payment_failed` counts only a bank debit (`us_bank_account`) on an invoice; a card fails on the pay page in front of the customer. A dispute opens a case on the bill. `won` / `warning_closed` closes it, and `lost` leaves it open for Accounts Receivable's **Put the bill back** (`put_back_lost_dispute_bill`). The office is told once when it opens and once more when a dispute is lost, through the same `sendReturnCaseNotice` as the checks; the hourly **ar-returned-checks** catches a miss. Responses add `{ case_id, opened, lost_now, closed }` or `{ skipped }` (`unknown_invoice`, `mode_mismatch`, `already_paid`, `already_won`, *not a bank debit on a bill*). New secrets: none (it reuses `RESEND_API_KEY`, `VAPID_*` and `APP_ORIGIN`). **Subscribe the endpoint** (test and live) to `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `payment_intent.payment_failed`. Redeploy required.
 
@@ -4577,6 +4991,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### mercury-webhook
 
+> **v2.5359 — `deno check` passes again**: `generateSuggestion` and `autoApproveIfSwitchedOn` typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so both RPC calls' arguments were refused (`p_rows` and `p_tx_ids`, each the RPC's real argument) and the service-role client could not be handed in (3 errors). Both take `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4181 — rendered in What the team sees**: the check-returned notice was already a kernel (`_shared/bankReturnedDeposits.ts` — `buildBankReturnNoticeEmail`); Settings → What the team sees now renders it over a sample returned draw (punch list #60, lift 12 of 14). No function change, nothing to redeploy.
 
 **Purpose**: Receive Mercury **[webhook](https://docs.mercury.com/reference/webhooks)** events for **`transaction`** resources; verify **`Mercury-Signature`**, **dedupe** the delivery, **`GET /transaction/{id}`**, upsert into **`mercury_transactions`** (shared mapper), then **pre-tag** the transaction with a suggested accounting label.
@@ -4648,6 +5064,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### resend-webhook
 
+> **v2.5412 — `deno check` passes again**: `base64ToBytes` declared a plain `Uint8Array`, which TypeScript 5.7 and later read as `Uint8Array<ArrayBufferLike>`, and WebCrypto's `importKey` takes only bytes in a plain `ArrayBuffer` (TS2769). It fills a `new Uint8Array(n)` of its own, so it declares `Uint8Array<ArrayBuffer>` now. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: Receive Resend **email.\*** events (sent, delivered, delivery_delayed, bounced, complained, opened, clicked), verify the **Svix** signature, and upsert **`email_send_log`** rows — `last_event`/`last_event_at` update per event; identity fields (from/to/subject) fill in from whichever event carries them. Non-`email.*` event types return `200 { ignored }`.
 
 **Endpoint**: `POST /functions/v1/resend-webhook`
@@ -4665,9 +5083,135 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ---
 
+### quo-webhook
+
+**Purpose**: Messages, cut 5 (v2.5281): every event of our numbers on Quo lands in a person's thread. The rules are the kernels in `src/lib/quo/` (`webhook.ts`, `events.ts`, `send.ts`, `rows.ts`, copied to `_shared/gcKernels/`), and the function reads, writes and calls.
+- **Calls**: completed, missed, voicemail, recording, transcript and summary merge into one line per call, keyed by `messages.quo_id`. Quo promises no order, so every order ends on the same line. An answered call to or from a person closes every open call task to them (`call_tasks_close_by_call`, v2.5596, Follow up's We owe them) with the call's line. A text that is the one word EMAIL or TEXT (v2.5597, `PREFER_WORDS`) sets `contacts.prefers` as the service role (`prefers_how` `reply`), with a gray line and no answer.
+- **Texts**: a text in is a line. A text of ours that Quo reports (`message.delivered`, `message.failed`, `message.undelivered`) is a line per recipient. That covers a text sent from Quo's own phone app, and our own send's fields always win.
+- **The box** (residential R6, v2.5469): the event's `phoneNumberId` is matched against Settings' boxes (`app_settings` `messages_boxes_v1`, read by `loadBoxes`, `boxOfInbound`). Until the row names a number, `QUO_PHONE_NUMBER_ID` is the team box's. A number we cannot place is the team box, today's one number. A new line is stamped with its box (`messages.mailbox`), and a line already written keeps its own. A call's words name the number it rang ("rang everyone on the bids number").
+- **STOP, START and HELP**: Quo stops a number on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT and answers it, and START and UNSTOP bring it back. The function mirrors that for the one of our numbers it came to, on `contact_channels.opted_out_by_box` (`stopScope`, v2.5469). A word to a number of ours it cannot place reaches both boxes. A STOP again keeps the first stamp. The older `opted_out_at` is read as a STOP to every box and is never written by a new word. It answers only what Quo leaves: HELP and INFO, and the FCC's REVOKE and OPT OUT once, through `quo-send`'s path from the same box's number. A longer text that may ask to stop gets a team note instead. Both answers go whatever the texts switch says (v2.5440, see `quo-send`), since each answers the person's own keyword and the carriers expect it. A stop's confirmation Quo turns away is logged, never retried: the STOP is already mirrored, so a retry would plan none.
+- **A text's pictures and files** (Messages, cut 10, v2.5468): kept the moment the text's line is written, since Quo's link to them does not last (`_shared/quoMedia.ts`'s `keepTextMedia`). Each is fetched once (10 s, with `QUO_API_KEY` when Quo's link refuses a plain read) into the private `message-attachments` bucket at `quo/<quo id>/<place>.<ending>` and gets a `message_attachments` row (`quoMediaPlans`, `quoMediaRow`, `src/lib/quo/mediaKeep.ts`). One that does not read, or is over 25 MB, keeps its row marked `quo_not_copied`. A retry keeps nothing twice (`mediaToKeep`). A photo kept on a ticked job then goes to Drive with [photo-save](#photo-save).
+- **A number nobody has** becomes an unknown contact, the Who is this? row, through `quo_place_number`.
+- **The pause** (v2.5352): a `message.delivered` ends a pause for the balance (see `quo-send`), unless a newer text was turned away. A failed or undelivered text never pauses: its `errorCode` is the carrier's raw code, and none names the balance.
+
+**Endpoint**: `POST /functions/v1/quo-webhook`, called by Quo.
+
+**Authentication**: Quo's signature, either of its two schemes (`verifySignature`). A webhook made through Quo's versioned API signs the Standard Webhooks way. One made in Quo's own settings (Settings → Webhooks) signs the older OpenPhone way (v2.5536).
+- Standard Webhooks: headers `webhook-id`, `webhook-timestamp` and `webhook-signature`. HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the base64 after `whsec_`. Any `v1` entry passes.
+- Older: one `openphone-signature` header, `hmac;1;<timestamp in ms>;<base64>` entries. HMAC-SHA256 over `<timestamp>.<body>`, the raw body or the JSON written out with no spaces, keyed by the decoded base64 secret. The settings page shows that key with no `whsec_` prefix. The delivery's id is the event's own `id`. Such a webhook sends Quo's older v3 events, which the reader answers 200 and sets aside (`API version v3, not 2026-03-30`), so the live subscription is one made with Quo's API; its key comes from `POST https://api.quo.com/webhooks/{id}/rotate`.
+- Five minutes either way.
+- No Bearer JWT, so **`verify_jwt = false`**.
+
+**Order**:
+1. Verify the signature. A refusal is `401` and records nothing.
+2. `quo_webhook_claim` with the `webhook-id`. A repeat is `200`.
+3. `readQuoEvent`. Nothing to do is `200`, with the reason logged.
+4. The box, from `phoneNumberId` (`loadBoxes`, `boxOfInbound`).
+5. For each number:
+   - `quo_place_number`, with the number's STOP to that box (`stoppedOn`);
+   - `planQuoEvent`, merged and written by `quo_write_line` over the revision read and stamped with the box (a refused write is read and merged again, five tries);
+   - the STOP or START for that box (`writeStops`), and the EMAIL or TEXT that sets `contacts.prefers` (v2.5597);
+   - a text in: its pictures and files kept on the line (v2.5468);
+   - a team event, keyed `<quo id>:event` so a retry never doubles it;
+   - the app's answer, last.
+6. `200`. A failure first gives the claim back (`quo_webhook_release`), then answers `500`, so Quo sends it again: eight tries over about 27 and a half hours.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `QUO_WEBHOOK_SECRET`. The HELP answer also needs `quo-send`'s: `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. The seats and the boxes are read as `quo-send` reads them.
+
+**Tables**: `messages` (its Quo columns, `20261012170000_quo_messages.sql`, and `mailbox`, `20261014003000_messages_two_boxes.sql`), `message_attachments` and the `message-attachments` bucket (a text's pictures, v2.5468), `contacts` and `contact_channels` (through `quo_place_number`, and `opted_out_by_box`; since v2.5597 `contacts.prefers` / `prefers_how` / `prefers_at` from the one-word EMAIL or TEXT), `call_tasks` (closed by an answered call through `call_tasks_close_by_call`, v2.5596), `contact_jobs` (the star), `app_settings` (the seats and the boxes) and `quo_webhook_ids`.
+
+**Not deployed yet**: it waits on the spine's and cut 5's migrations on prod and on the Quo account (`to-dos/gc-mode/HANDOFF.md` call 4). v2.5469's boxes ship with it: the GC lead deploys `quo-webhook` and `quo-send` together after their switch PR, and R6's migration (`20261014003000`) is on prod. To enable it:
+1. `supabase functions deploy quo-webhook --no-verify-jwt`.
+2. Quo's `POST /v1/webhooks` (header `Quo-Api-Version: 2026-03-30`), with the company number's id and the ten events above. Keep the `whsec_` key it returns.
+3. `supabase secrets set QUO_WEBHOOK_SECRET=whsec_…`.
+4. Quo's Send Test Request: the log shows `200`.
+5. A text from Quo's phone app to a number we hold, to see `message.delivered` land in the thread.
+
+---
+
+### quo-send
+
+**Purpose**: Messages, cut 5 (v2.5281): a text from the reply box's send window goes out through Quo from its box's number. `sendText` (`_shared/quoLines.ts`) is the path the webhook's HELP answer takes too:
+- **The box** (residential R6, v2.5469): the one their newest text on this number came to, else the one their kind of contact is for (`boxForReply`). While that box has no number of its own, the text goes from the company number and the line says so (`sendBox`). No caller picks the box yet.
+- `planSend` refuses an empty text, a missing or unreadable number, a number that sent STOP to that box (`stoppedOn`) and a text past Quo's 1,600 characters.
+- **May we text?** (v2.5606): a contact tied to a prospect and not to a customer is texted only when the prospect's `ok_to_text` is `yes`; `textRefusal` (`_shared/gcKernels/lib/prospects/textingRule.ts`) refuses with 403 and words naming the person, which the reply box shows. The office sets the answer on the card after asking on the call.
+- It adds the opt-out line on the first text to a number from that box, or after 30 days since our last text to it from there, since a carrier pairs the two numbers. A person may hold it once, on the silence reason.
+- The text is posted to `https://api.quo.com/v1/messages` as `{ content, from: <the box's number id>, to: [E.164], userId }`, the user being the sender's seat when they have one, else the seat shared by the office (v2.5548), else none.
+- The line is written by `quo_write_line` under the id Quo answers with (`sendOver`), stamped with the box, so Quo's delivery event, before or after, ends on the same line.
+- **Quo turning a text away** is read by `readQuoRefusal` (`quo/paused.ts`, v2.5352). Quo documents no refusal for an empty prepaid balance, so a `402` (Subscription Expired, `0201402`) or a refusal whose words name money pauses texts. Code `0206400` (A2P registration not approved) and code `0204403` (the A2P 10DLC daily cap) get their own words. Any other `403` is a permission or a setting and never pauses. Each refusal logs Quo's status, code and title.
+- **The pause** is the `app_settings` row `messages_quo_paused_v1`, `{ since, reason, at }`. The functions write it with the service role, and everyone signed in reads it. A text turned away for money pauses texts, and the next text Quo takes ends the pause. `at` is the newest deciding text's own time: a word about an older text changes nothing, either way (`nextPause`). A write goes only over the words it read, three tries (`notePause`), and a word not written is logged without failing the send.
+- **The switch** (v2.5440): a person's text and the app's reminder wait while `app_settings` `messages_texts_on_v1` (Settings → Phone and texts → **Send texts**, migration `20261014160000_messages_texts_on`) reads anything but `'true'`. `sendText` reads it as the service role before anything reaches Quo, and a missing row reads off. The answer to HELP or INFO and a stop's confirmation go either way.
+- **Job Mode** (residential R5, v2.5499, `_shared/quoTechSend.ts`): a body with `from: 'job_mode'` takes the tech path before the office check. Its pure part is `quo/techSend.ts`.
+  - The text is made here from the phone's line and the record, with the sheet's own kernel (`jobModeText.ts`: `jobModeFills`, `previewOf`). The client sends only the blanks it typed, and any body is never read. A typed blank holds 40 characters at most, on one line, and fills only a blank the record cannot.
+  - The line must be on the phone: the team's, for customers, with a place, not removed. It must need neither `{amount}` nor `{link}`. It goes in the customer's language (`customerLang`, behind `PORTAL_SPANISH_ON`), and a blank still open is refused.
+  - The contact is the sheet's when it is the job's customer's; otherwise it is found or made as the caller, through `contact_for_job` for a tech and `contact_for_customer` for the office. A sheet's contact that is not the customer's is logged.
+  - The number is the one they last texted from, else their first phone (`pickPhone`). The box and the send are the reply box's, tied to the job (`jobs_ledger_id`).
+  - The line keeps the phone line it came from (`messages.quick_reply_id`). For a tech, their hold on the customer's answer is written: `contacts.has_user_id` the tech, `has_how = 'rule'`, `has_until` their hour (`techHoldUntil`, from `messages_office_hours_v1`). Neither write undoes the text, so a failure is logged.
+  - **The tech's bio** (v2.5590, punch list #114): `kind: 'bio'` with `lineIds`, the picked lines' ids, never words. The bio is composed here from the sender's own `user_bio_lines` with the bio kernel (`bio.ts`: `bioText`, the opener from the first word of the sender's name, the customer's language, Spanish lines only for a Spanish reader; `composeBioText` in `techSend.ts`). Refused `alreadyIntroduced` (409) when a line out in the customer's thread already names the sender in `messages.introduces_user_id`, `notYourLine` when a picked id is not the sender's live line, `nothingToSay` when nothing is left. The same number, box and send; the line that goes is stamped `introduces_user_id` instead of `quick_reply_id`, so the phone and this path never send it to that customer again; the tech's hold is written the same.
+
+**Endpoint**: `POST /functions/v1/quo-send` with `{ contactId, channelId, body, links?, held?, tie? }` (`parseQuoSendBody`). The number is one of the contact's `contact_channels`. `tie` is `{ jobId, column }` with the column `bid_id`, `project_id` or `jobs_ledger_id`. From Job Mode: `{ from: 'job_mode', customerId, contactId (or null), jobId, quickReplyId, fills }` (`parseTechSendBody`), `fills` holding only the blanks the tech typed; or, for the tech's bio (v2.5590), `{ from: 'job_mode', kind: 'bio', customerId, contactId, jobId, lineIds }`, at most 20 ids.
+
+**Authentication**: `verify_jwt = false`. In the handler:
+- `getUser`;
+- a real account (`REAL_ACCOUNT`: never a sample or a digital twin), not `read_only`;
+- `gc_office_team()`, asked as the caller;
+- from Job Mode, the office team or a tech on the job (`messages_tech_on_job`, asked as the caller, migration `20261014180000_messages_tech_send`).
+
+**Responses**: `200 { ok: true, messageId, quoId, segments, mailbox }`, `mailbox` being the box it went from. A refusal is `{ ok: false, error, words }`, the words plain for the window:
+- `401 signIn`;
+- `403 readOnly` or `officeOnly`, and `403 noTexts` / `notAskedToText` for a contact tied to a prospect and not to a customer whose `ok_to_text` is not yes (v2.5606);
+- `400 badRequest`;
+- `404 notFound`;
+- `422` a refusal of `planSend`'s;
+- `402 paused` (Quo turned it away for money: "Texts are paused until the phone balance is topped up.");
+- `429 daily-cap`;
+- `502 quo` (Quo did not take it, for a reason not read above);
+- `503 not-set-up`, `503 not-registered` ("Texts start once the carriers approve the company number.") or `503 textsOff` ("Texts are off. The owner or a dev turns them on in Settings → Phone and texts.");
+- from Job Mode, with `TECH_SEND_WORDS`' words:
+  - `400 badRequest` for a missing id or a typed blank too long or on two lines;
+  - `403 notTech`, and `403 noContact` with the door's own words;
+  - `404 notOnPhone`, a line not there;
+  - `422` for `noCustomer`, `wrongCustomer`, `notOnPhone`, `offPhone`, `blankOpen` (*Fill {minutes} first.*) and `noPhone`; for the bio kind `409 alreadyIntroduced` (*They have your bio already.*), `422 notYourLine` and `nothingToSay`, and `400 badRequest` for more than 20 ids or a repeated one (v2.5590). The 200 adds `contactId`.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. **The boxes** come from `app_settings` `messages_boxes_v1` (R6, `loadBoxes`): `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX` are the team box's until the row names them, and the bids box has no number until it does (`parseBoxSettings`, `boxSetting`). **The seats** (which of Quo's workspace users is which of ours) come from `app_settings` `messages_quo_seats_v1` (Settings → Phone and texts, migration `20261013040000_quo_seats`) once it names a seat; until then from the `QUO_SEATS` secret (`{"US…": "<user id>"}`), which can go once the row is filled (`seatsSource` in `quo/rows.ts`).
+
+**Not deployed yet**: it deploys once the texts switch's migration (`20261014160000`) is on prod, behind the switch, with `quo-webhook`, by the GC lead. Quo's API sends no picture messages, so a photo goes as a link line. The tech path (v2.5499) calls `contact_for_job` and `messages_tech_on_job`, so migration `20261014180000_messages_tech_send` is pushed before quo-send's deploy that carries it. Job Mode's door (`JOB_MODE_MESSAGES_ON`) is turned on in a one-line PR after it.
+
+---
+
+### messages-nudge-dispatch
+
+**Purpose**: Messages, cut 5: the morning run of the reminders the app sends itself (`MESSAGES_BUILD_PLAN.md` → Cut 5 and section 6; section 7's decision 3: per step, off until the owner turns it on). Every decision is a kernel's, from the copy (`_shared/gcKernels/`):
+- `nudgeRunReads` (`src/lib/flows/nudgeRunInputs.ts`) puts everyone's flow together the way each person's panel does;
+- `planNudgeRun` (`nudgeDispatch.ts`) picks the morning's texts: what Follow up shows as due, of the steps the app sends and the owner turned on, one text a person; since v2.5595 a step set to *Offers* lands in `run.offers` (the text plus `held`, why it cannot go yet) instead of `run.texts`, and a step whose text already waits on Today's sends is kept back as `offered`;
+- `runSummary` and `runHourNow` (`nudgeRunLog.ts`) word the morning and pick the cron's tick.
+
+Each text goes through `sendText` (`_shared/quoLines.ts`), the path `quo-send` and the webhook's HELP answer take, with the purpose `nudge`. It adds the opt-out line when a rule says, sends from its box's number, and pauses with the phone balance. The box is picked as `quo-send` picks it (R6, two boxes and two numbers): the one they last texted on this number, else their kind's, else the company number's (`boxForReply`, `sendBox`). The opt-out line's first-text and silence rule counts our texts from that box. A number that sent STOP to that box is kept back as opted out (`stoppedOn`), never sent.
+
+**Endpoint**: `POST /functions/v1/messages-nudge-dispatch` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or a signed-in dev on a real account for a dry run.
+
+- **The cron** (no body, or `{}`): it fires at 14:00 and 15:00 UTC, and only the tick that is 9 AM Central runs (`runHourNow`); the other answers `{ ran: false }`. The run reads as the service role, plans, and for each text sends it, then writes its `nudge_sent` row (`sent_by` `'app'`, no user, the line's `message_id`) and the thread's event line (*The app sent the Portal opened reminder by text.*, `channel` `event`, keyed by `quo_id` `nudge:<contact>:<step>:<job or ->:<day>`, so a retry writes nothing twice). Then the **offers** (v2.5595, punch list #115): one `nudge_offers` row per text the planner prepared for an *Offers* step (`prepared_by` `'app'`; `channel_id` null and `held_why` set when the number is missing or sent STOP), for the office to press on the Dashboard's Today's sends; and the texts the office handed to a morning (`prepared_by` `'office'`, `send_on` ≤ today, a number) sent through `sendText` as the office's own — the row stamped `sent_at` and `message_id`, a `nudge_sent` row (`sent_by` `'person'`, the preparer) and the event line *The app sent the text the office prepared for this morning.* (`quo_id` `nudge:offer:<id>`); one Quo turned away is held with Quo's words and its `send_on` cleared, so the office sees it instead of the run retrying. The summary goes in `app_settings` `messages_nudge_last_run_v1`. Texts not set up (no Quo key or number) refuses the first text and the rest are counted with the same words, not tried.
+- **`{ "dry": true }`**: the cron secret, or a signed-in dev. Any hour. Answers the summary, the texts as they would go, the offers that would be prepared (`offers`, with `held`) and the office's morning texts that would go (`morning`), every reminder kept back with why, and who could not be read. Sends nothing and writes nothing.
+
+**What it reads**, set-wise as the service role: the contacts of every flow kind but the customer's (`id, kind, name, goes_by, snoozed_until`); `flow_rows_for(ids)` a hundred at a time (the gated `flow_rows_kind` refuses the service role, and `flow_rows_for` keeps its `EXECUTE` through the default privileges); `flow_steps` with `flows(kind)`; standing `nudge_holds`; `nudge_sent`; the step notes and every thread line (newest first; each person's newest 50 are read, as their panel reads them); open `contact_owed`; phone `contact_channels`; the team's `quick_replies` and their `quick_reply_uses`; every open `nudge_offers` row, of every kind (v2.5595); each contact's `prefers` (v2.5597), so an email-only person's text is kept back (`prefers email`) or held on Today's sends with that reason; and the switch, `app_settings` `messages_nudge_app_sends_v1`. Every read pages past 1,000 rows.
+
+**Customers wait** until the run can read their page. `customer_portal_views` and `customer_portal_papers` are `gc_office_team()` only, so the run leaves customers out, counts them and says so (*Customers wait until the run can read their page.*). It never texts a customer off a partial read. Widening the two reads to the service role is a migration of its own, if the owner turns a customer step on. A customer's link is never in a line for now: a trade partner's comes from `flow_rows`' `previewPath`, without the preview mark, on `APP_ORIGIN`.
+
+**Two switches** gate a text. The step's own, `{}` as it ships (`20261014012000_messages_nudge_settings.sql`), so every step is off and every run sends nothing; the owner or a dev sets a step to *Sends*, `{"trade": {"portal": true}}`, or since v2.5595 to *Offers*, `{"trade": {"portal": "offer"}}` (the text is prepared for the office, never sent by the run). Then Settings → Phone and texts → **Send texts** (`messages_texts_on_v1`), checked inside `sendText`: while it is off, `sendText` answers `textsOff`, and the run counts that text and the rest as kept back (*3 texts were kept back because Send texts is off in Settings.*), never as texts that did not go.
+
+**Response**: `200 { ok, ran: true, summary, problems }` for the cron. `summary` is `{ at, dry, sent, kept, textsOff, refused, refusedCount, unread, customersHeld, prepared, morningSent, words }` (`prepared` the offers written, `morningSent` the office's morning texts that went, counted in `sent` too, v2.5595): `kept` counts the reminders kept back by why (`off`, `offered`, `not a text`, `snoozed`, `sent lately`, `no number`, `opted out`, `prefers email`, `one a morning`), `refused` keeps the first 20 texts that did not go with their words, and `words` says it all in plain words (*No text went. 12 reminders were kept back because the app does not send that step yet.*). `problems` names a `nudge_sent` row, an event line or the summary that could not be written after its text went. `401` without the secret or a dev, `500` with the error.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (a dev's dry run), `CRON_SECRET`, `APP_ORIGIN` (clicktooling.com when unset), and `sendText`'s `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. Nothing new beyond `quo-send`'s.
+
+**Deploy**: `supabase functions deploy messages-nudge-dispatch`, after `quo-send` and `quo-webhook`. The cron is a migration of its own, `20261014190000_messages_nudge_cron.sql` (v2.5506, `cron.schedule` at `0 14,15 * * *` with `vault` `PROJECT_URL` and `CRON_SECRET`), pushed only after the deploy, so the cron never posts to a function that is not there. A dry run tries it at any hour.
+
+---
+
 ### get-mercury-account-balances
 
 **Purpose**: Live Mercury account balances for the Balance Sheet cash line: `GET /accounts` from the Mercury API, filters out archived accounts, and returns per-account `currentBalance` / `availableBalance` plus totals. Read-only — nothing is written to the database.
+
+**Callers**: Banking's Mercury review tab (the Balance Sheet cash line) and, since v2.5218, the Bridge (`src/lib/bridge/mercuryCash.ts`: cash on hand for the net-position line and the cash forecast, read on load and on **Refresh**; the typed figure stands when the call fails).
 
 **Endpoint**: `POST /functions/v1/get-mercury-account-balances` (empty JSON body)
 
@@ -4797,6 +5341,101 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ```
 
 **Used by**: Banking → [`ManualAccountsModal.tsx`](../src/components/banking/ManualAccountsModal.tsx).
+
+---
+
+### mail-send-docsmit
+
+**Purpose** (v2.5381, the Docsmit train PR 3 — `docs/DOCSMIT_LIEN_RUN_PLAN.md`): the office's door to Docsmit, the certified-mail provider, one `action` per call. The run window's **Mail through Docsmit** (PR 5b, v2.5454) calls it to send a lien notice's envelopes as US-Letter PDFs and read back the USPS number, the acceptance scan and the delivery into `mail_pieces` (migration `20261013120000`, v2.5379). The HTTP lives in `_shared/docsmitClient.ts` (token, the three-call send, the reads); the pure rules in `_shared/mailSend.ts` (the status fold, which a vitest case holds equal to `src/lib/mail/mailPiece.ts`); the read-back shared with `mail-poll` in `_shared/mailDocsmitRefresh.ts`. The token Docsmit gives is never returned; the secrets never leave the function.
+
+**Endpoint**: `POST /functions/v1/mail-send-docsmit`
+
+**Required Role**: a signed-in `dev`, `master_technician`, `assistant` or `controller` who is not `read_only` (Bearer JWT → `getUser`, then the role from `users` with the service role). Anyone else gets 403.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DOCSMIT_EMAIL`, `DOCSMIT_PASSWORD_SHA512` (the lowercase SHA-512 hex of the password, all the API takes), `DOCSMIT_SOFTWARE_ID`, `DOCSMIT_BASE_URL` (unset = Tracksmit, the sandbox; the live site is `https://secure.docsmit.com/api/v1`). With any of the three Docsmit secrets missing it answers 500 naming them. `app_settings` `docsmit_paused` = `'true'` refuses everything but `ping` with 409.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+**The client reads a refusal's body** (v2.5532): `supabase.functions.invoke` hands a non-2xx back as `data: null` with a `FunctionsHttpError`, and until then `runDocsmitIo.ts` read none of it — a send that mailed envelope 1 and stopped on envelope 2 read as *Nothing mailed*, and a refused address was held as *Edge Function returned a non-2xx status code*. The body now comes from `error.context`, so a 402 (credit short), a 422 (an address that will not mail) and a 502 reach the run window with `sent`, `stopped_at`, the shortfall and the correction. The function's own answers are unchanged.
+
+#### Request body
+
+| action | fields | does |
+|---|---|---|
+| `ping` | — | one token and `GET /account/info`; answers `{ ok, env: tracksmit \| prod, account: { name, credit_balance } }`, nothing secret |
+| `prepare` | `piece` (`kind`, `source_ids[]`, `job_id`, `recipient`, `short_code?`, `name`, `organization`, `address1`, `address2`, `city`, `state`, `postal_code`, `send_type`, `envelope` `#10` \| `Flat`, `sheets`), `pdf_path`, `pdf_bucket?` (default `lien-release-documents`), `job_number?` | refuses a short envelope (400, naming what it lacks) or a PDF not in the bucket (400); `POST /utils/multiCASS` on the address and refuses a non-mailable one (422 with `correction`, no row made); inserts the `mail_pieces` row as `prepared`; `POST /messages/new` (title, `clientMsgID` = `<kind>:<piece id>`, `billTo` = the job number so Docsmit's invoices group by job (v2.5480), the party) → `POST /messages/{id}/upload` (the PDF read from the bucket with the service role) → `GET /messages/{id}/priceCheck` (with `certify`, `months` and `sendType`, reading `netPrice`; a price the service will not quote leaves `price` null and never holds the envelope, v2.5475); writes the provider id and the price; answers `{ ok, piece_id, provider_message_id, price, correction, credit_balance, env }`. A Docsmit failure after the row exists marks it `failed` with the reason (502). |
+| `send` | `piece_ids[]` (up to 40) | one at a time, in order. 201 marks the piece `sent`, reads `/parties` once (the USPS number, when Docsmit already has it, makes it `mailed`) and writes `via`, `piece_id` and the number into each source filing's `sends[]` for the piece's recipient. 402 stops the batch: `{ ok: false, sent[], skipped[], stopped_at, shortfall, error: "Docsmit credit is short by $X, nothing more was sent." }` (HTTP 402). A piece not `prepared` is skipped with its reason. |
+| `resend` | `piece_id`, `mode` `plain` \| `address`, `address?` (`name`, `organization`, `address1`, `address2`, `city`, `state`, `postal_code`; a blank keeps the old piece's), `job_number?` | (v2.5487, 6b-3) a new piece answering one that came back: the same PDF from the bucket, First Class to the same address (`plain`) or the old send type to the typed address (`address`, through CASS, 422 when it will not mail); made, uploaded, priced and sent in one call. 402 leaves the copy `prepared` (`{ ok: false, piece_id, shortfall }`). Sent, it reads `/parties` once; a re-mail becomes the filing's send, a plain copy never takes the certified number. The old piece gets `resolved_at`, `resolved_note` and a `resent` event. Answers `{ ok, piece_id, status, usps_tracking, price, resolved_note, env }`; 400 a never-sent piece, no PDF, or a short address; 404 no such piece. |
+| `resolve` | `piece_id`, `note` | (v2.5487, 6b-3) the office answered the envelope by hand (a courier, a visit): `resolved_at`, `resolved_note` and a `resolved` event on the piece; 400 with a blank note. |
+| `refresh` | `piece_ids?[]` (none = every open Docsmit piece) | `/parties` for each, the fold, the event log, the filing's `sends[]`, and the Certification PDF (`/documentation`) filed at `mail/<piece id>/certification.pdf` once a piece reads delivered; answers `{ ok, read, updated[], errors[], results[] }`. |
+
+#### Response
+
+200 with the action's answer; 400 a short request; 401 no user; 403 not office or read-only; 402 credit short; 409 paused; 422 non-mailable; 500 setup; 502 Docsmit refused.
+
+**Tests**: `src/lib/mail/mailSendDocsmit.run.test.ts` runs the handler itself with a recording fake database, a fake Docsmit and a fake bucket (`src/lib/mail/mailRunFakes.ts`); `src/lib/mail/mailSendShared.test.ts` holds the shared kernel.
+
+**Deploy**: `supabase functions deploy mail-send-docsmit`, then set the four Docsmit secrets (`supabase secrets set DOCSMIT_EMAIL=… DOCSMIT_PASSWORD_SHA512=… DOCSMIT_SOFTWARE_ID=…`; leave `DOCSMIT_BASE_URL` unset for Tracksmit). Since v2.5387 the secrets live in Vault, set from Settings → Developer through `mail-config` (below); the env secrets stay as the fallback.
+
+> **v2.5475 — a price the service will not quote holds nothing**: `GET /messages/{id}/priceCheck` wants `certify`, `months` and `sendType` or answers 400, and answers `netPrice` (with `details.total` as a money string), not `price`; `_shared/docsmitClient.ts`'s `priceCheck` sends the three and reads `netPrice`, then `price` / `cost` / `total` / `amount`, then `details.total` / `details.netPrice`, and a 400 or an unknown shape gives null. `prepare` keeps the piece `prepared` with no price when the check fails (the run's price line reads *not priced yet*) instead of marking it failed. **Redeploy required** for every function that bundles the client: on 2026-10-13 `check:edge-drift` lists `mail-config` and `mail-poll` behind on it.
+
+---
+
+### mail-poll
+
+**Purpose** (v2.5381, the Docsmit train PR 3): the hourly read-back. Every open Docsmit piece in `mail_pieces` (`sent`, `mailed`, `in_transit`, `notice_left`, `unknown`) gets one `/parties` read through the shared refresh (`_shared/mailDocsmitRefresh.ts`): tracking, status, the event log, the filing's `sends[]` (the number, `via`, `piece_id`, and `sent_on` as the Central day USPS accepted it), the charge Docsmit took (one `GET /messages/{id}/transactions` read once USPS has the piece, written to `mail_pieces.price` with a `charged` event and never asked again; v2.5480), and the Certification PDF once delivered. Then, only while `app_settings` `docsmit_match_site` = `'true'`, `GET /messages/sent?turnOffSoftwareID=true` lists what the office sent by hand from Docsmit's own site, and a message we do not hold becomes a piece of kind `other` with a problem line (*Sent from Docsmit's own site (title). Match it to a job.*), so nothing mailed goes unrecorded; a message carrying one of our `clientMsgID`s never makes a second row. Last, `GET /account/info` once: the balance goes to `app_settings` `docsmit_credit_balance` and `docsmit_credit_as_of` (made on first write) for the Dashboard's Needs you credit card (v2.5521); the answer carries `credit_balance` and `credit_error`.
+
+**Endpoint**: `POST /functions/v1/mail-poll`
+
+**Required Role**: none — the cron. `X-Cron-Secret` header (or `cron_secret` in the body) must equal `CRON_SECRET`; otherwise 401.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `DOCSMIT_EMAIL`, `DOCSMIT_PASSWORD_SHA512`, `DOCSMIT_SOFTWARE_ID`, `DOCSMIT_BASE_URL`. With Docsmit not set up it answers `{ ok, skipped: 'docsmit not set up' }`; paused (`docsmit_paused` = `'true'`) `{ ok, skipped: 'paused' }`.
+
+**Verify JWT**: `false` at the gateway.
+
+#### Request body
+
+`{ dry_run?: true }` — lists the open pieces and writes nothing.
+
+#### Response
+
+`{ ok, env, read, updated[], errors[{ id, error }], matched_from_site, match_errors[] }`. A provider error on one piece is logged on that piece (`poll_error` event) and the rest still read; `ok` is false when any erred.
+
+**Schedule**: the cron row comes with PR 6 of the train (`mail-poll` hourly, `X-Cron-Secret` from Vault, as `gmail-sync`'s is scheduled). Until then it is called by hand or by `mail-send-docsmit` `refresh`.
+
+**Tests**: `src/lib/mail/mailPoll.run.test.ts`.
+
+**Deploy**: `supabase functions deploy mail-poll`.
+
+---
+
+### mail-config
+
+**Purpose** (v2.5387, the Docsmit train PR 9 — `docs/DOCSMIT_LIEN_RUN_PLAN.md`, *Managed from Developer settings*): the dev's door to the Docsmit connection's secrets, which live in Vault (migration `20261013160000`: `mail_secret_set`, `mail_secret_get`, `mail_secrets_status`, the service role's only). Settings → Developer → *Docsmit · certified mail from the app* (`DocsmitDevSettingsBlock`) calls it. `mail-send-docsmit` and `mail-poll` read Vault first through `_shared/mailConfig.ts` (`loadDocsmitConfig`), then their own environment, so a connection set here wins and nothing breaks where Vault is not set up yet.
+
+**Endpoint**: `POST /functions/v1/mail-config`
+
+**Required Role**: `dev` only, not `read_only` (Bearer JWT → `getUser`, then the role from `users`). Anyone else gets 403.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+| action | fields | does |
+|---|---|---|
+| `status` | — | which of the four secrets are set and where each comes from (`vault` \| `env` \| `none`), the email and the base URL as values (neither is secret), which Docsmit (`tracksmit` \| `prod`), `ready`. Never a password hash or a software id. |
+| `set` | `email?`, `password_sha512?` (128 hex; the browser hashes the password, the cleartext never leaves it), `software_id?`, `base_url?` (Tracksmit's or Docsmit's `/api/v1`) | each given value into Vault as `docsmit_<name>`; a blank forgets it; a bad shape is refused (400) before anything is written; answers the status. |
+| `ping` | — | 409 until set up; else one token and `GET /account/info`: `{ account: { name, credit_balance } }` with the status. |
+
+#### Response
+
+200 with the status (and the account on `ping`); 400 a bad shape or nothing to set; 401 no user; 403 not a dev; 409 not set up; 502 Docsmit refused.
+
+**Tests**: `src/lib/mail/mailConfig.run.test.ts` runs the handler itself with the recording fakes (`src/lib/mail/mailRunFakes.ts`, now with `rpc`).
+
+**Deploy**: `supabase functions deploy mail-config` after migration `20261013160000` is pushed; redeploy `mail-send-docsmit` and `mail-poll` with it (they gained the Vault read).
 
 ---
 

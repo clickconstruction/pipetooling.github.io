@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 /** Render smoke for the Dispatch inbox's "open the job" to-do (v2.3143): the one button and where it routes. */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
 const openNewJob = vi.fn()
-vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ role: 'dev', user: { id: 'u1' } }) }))
+const auth = vi.hoisted(() => ({ role: 'dev' }))
+vi.mock('../hooks/useAuth', () => ({ useAuth: () => ({ role: auth.role, user: { id: 'u1' } }) }))
 vi.mock('../contexts/JobFormModalContext', () => ({
   useJobFormModal: () => ({ isOpen: false, openNewJob, openEditJob: vi.fn(), closeJobForm: vi.fn() }),
 }))
@@ -71,10 +72,39 @@ describe('DispatchInboxSection — open_job_from_bid (v2.3143)', () => {
     fireEvent.click(btn)
     expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-1' })
   })
+  it("v2.5659: an estimator's draft reads on the row and rides Open the job into New Job", async () => {
+    openNewJob.mockClear()
+    const job_draft = { v: 1, jobName: 'ZZ Test', address: '12925 FM 20', gcKey: '', gcName: 'Southern Post Construction', carry: 38625, serviceTypeId: null, wantedBy: '2026-10-30', note: 'Slab pour is the 3rd' }
+    renderSection([row({ id: 'r3', pending_payload: { job_draft } })])
+    await settle()
+    expect(screen.getByText("Wendi's draft: GC Southern Post Construction · starts at $38,625.00 · wanted by Oct 30 · note: Slab pour is the 3rd")).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Open the job from this bid' }))
+    expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-1', prefillDraft: { ...job_draft, serviceTypeId: null }, prefillDraftFrom: 'Wendi' })
+  })
   it('a closed to-do has no button', async () => {
     renderSection([row({ id: 'r2', status: 'closed', closed_at: '2026-09-07T21:00:00Z', closed_note: 'J1007 opened from B398 · ZZ Test', closed_by: { name: 'Taunya' } })])
     await settle()
     expect(screen.queryByRole('button', { name: 'Open the job from this bid' })).toBeNull()
+  })
+  describe('v2.5670: the door is for a role that may save the job', () => {
+    afterEach(() => {
+      auth.role = 'dev'
+    })
+    const job_draft = { v: 1, jobName: 'ZZ Test', address: '12925 FM 20', gcKey: '', gcName: 'Southern Post Construction', carry: 38625, serviceTypeId: null, wantedBy: '2026-10-30', note: '' }
+    it('an estimator in Dispatch reads the draft but gets no Open the job', async () => {
+      auth.role = 'estimator'
+      const { container } = renderSection([row({ id: 'r4', pending_payload: { job_draft } })])
+      await settle()
+      expect(container.querySelector('[data-dispatch-job-draft="r4"]')).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Open the job from this bid' })).toBeNull()
+    })
+    it('an assistant still gets it', async () => {
+      auth.role = 'assistant'
+      const { container } = renderSection([row({ id: 'r5', pending_payload: { job_draft } })])
+      await settle()
+      expect(container.querySelector('[data-dispatch-job-draft="r5"]')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Open the job from this bid' })).toBeTruthy()
+    })
   })
 })
 

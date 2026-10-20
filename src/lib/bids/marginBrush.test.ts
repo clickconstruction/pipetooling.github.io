@@ -7,6 +7,7 @@ import {
   brushPriceFor,
   brushSweptMessage,
   brushUndoOf,
+  brushUndoOnScreen,
   draftsWithout,
   previewWithoutRows,
   workbenchRowIdAt,
@@ -101,5 +102,22 @@ describe('workbenchRowIdAt', () => {
     expect(workbenchRowIdAt(table.querySelector('span'))).toBe('r7')
     expect(workbenchRowIdAt(table.querySelector('#other td'))).toBeNull()
     expect(workbenchRowIdAt(null)).toBeNull()
+  })
+})
+
+describe('brushUndoOnScreen (v2.5672)', () => {
+  const undo = { pricingId: 'wendi', rows: [['r1', null], ['r3', 180]] as Array<[string, number | null]> }
+
+  it('a sweep\'s undo is there on the price it was painted on', () => {
+    expect(brushUndoOnScreen(undo, 'wendi')).toEqual([['r1', null], ['r3', 180]])
+  })
+
+  it('with another price open there is no undo, so it can never write the old prices into that price', () => {
+    expect(brushUndoOnScreen(undo, 'alt')).toBeNull()
+  })
+
+  it('no price open, or no sweep yet, is no undo', () => {
+    expect(brushUndoOnScreen(undo, null)).toBeNull()
+    expect(brushUndoOnScreen(null, 'wendi')).toBeNull()
   })
 })

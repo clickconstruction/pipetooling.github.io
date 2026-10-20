@@ -57,7 +57,7 @@ export function GcProjectOutcome({ project, writes }: { project: GcProject; writ
         )}
         {step === 'none' && (
           <>
-            <Btn kind="primary" disabled={busy} onClick={() => setStep('won')}>
+            <Btn disabled={busy} onClick={() => setStep('won')}>
               We won this. Start buyout
             </Btn>
             <Btn disabled={busy} onClick={() => setStep('lost')}>

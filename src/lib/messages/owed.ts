@@ -1,0 +1,431 @@
+/**
+ * Messages, cut 2: what we owe a person, and the day words every day blank in Messages reads. Lifted from the
+ * Messages prototype v1.178 (branch spike/gc-mode, `to-dos/gc-mode/messages/prototype.html`: `owedWhatOptions`,
+ * `OWED_FLOW_WORDS`, `OWED_USUAL`, `dayChips`, `readDay`, `owedStripHtml`'s words, `markedBy`, `setOwedWhat`,
+ * `setOwedBy`, `markOwed`, `finishSettle` and the send window's *After this sends*; the why is `MESSAGES_PLAN.md` →
+ * *We owe them*, v1.20, v1.62, v1.64, v1.66 and v1.83). Our last word does not always end our turn: what we still owe
+ * holds the move as ours until a team note or the message that gets it done marks it done.
+ *
+ * A day is a date when the words read as one, and the words as typed when they do not: a day is never refused (the
+ * lead, 2026-10-12). `contact_owed` keeps `by_day` and `by_words` side by side, and so does a note's day to come back.
+ * Pure: the writes are cut 2's RPCs (`mark_owed`, `owed_done`).
+ */
+import { firstName, type ContactKind } from '../contacts/names'
+import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
+import { whenWords } from './thread'
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+
+function ymdParts(ymd: string): { y: number; m: number; d: number } | null {
+  const hit = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!hit) return null
+  return { y: Number(hit[1]), m: Number(hit[2]), d: Number(hit[3]) }
+}
+
+function ymdOf(y: number, m: number, d: number): string {
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+function daysInMonth(y: number, m: number): number {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate()
+}
+
+/** 0 for Sunday through 6 for Saturday, for a civil date. */
+function weekdayOf(ymd: string): number {
+  const p = ymdParts(ymd)
+  return p ? new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay() : 0
+}
+
+/** A day as the app writes it: "Fri Oct 2". */
+export function dayLabel(ymd: string): string {
+  const p = ymdParts(ymd)
+  if (!p) return ymd
+  return `${WEEKDAYS[weekdayOf(ymd)]!.slice(0, 3)} ${MONTHS[p.m - 1]} ${p.d}`
+}
+
+/** An instant as its exact stamp, in the app's zone: "Sat Sep 26, 2:30 PM". */
+export function exactStamp(iso: string): string {
+  const ymd = calendarYmdInAppTzFromIso(iso)
+  if (!ymd) return iso
+  return `${dayLabel(ymd)}, ${formatDenverTimeOnly(Date.parse(iso)).replace(/\u202f/g, ' ')}`
+}
+
+/** The day after `todayYmd` that falls on `weekday`, never today itself. */
+function comingWeekday(todayYmd: string, weekday: number): string {
+  const add = (weekday - weekdayOf(todayYmd) + 7) % 7 || 7
+  return ymdAddDays(todayYmd, add)
+}
+
+/** The coming Monday: *Remind me Monday* and *Put it off*. A press on a Monday means the Monday after. */
+export function nextMonday(todayYmd: string): string {
+  return comingWeekday(todayYmd, 1)
+}
+
+/** The next working day: *Another day* on a note brought back. Friday and the weekend go to Monday. */
+export function nextWorkday(todayYmd: string): string {
+  const wd = weekdayOf(todayYmd)
+  return ymdAddDays(todayYmd, wd === 5 ? 3 : wd === 6 ? 2 : 1)
+}
+
+/** One press in the day box's row: the next six days by name, then a week and two weeks out (v1.64). */
+export interface DayChip {
+  top: string
+  sub: string
+  label: string
+  ymd: string
+}
+
+export function dayChips(todayYmd: string): DayChip[] {
+  const chip = (add: number, top: string): DayChip => {
+    const ymd = ymdAddDays(todayYmd, add)
+    const p = ymdParts(ymd)!
+    return { top, sub: `${MONTHS[p.m - 1]} ${p.d}`, label: dayLabel(ymd), ymd }
+  }
+  const out: DayChip[] = []
+  for (let i = 1; i <= 6; i++) out.push(chip(i, i === 1 ? 'Tomorrow' : WEEKDAYS[weekdayOf(ymdAddDays(todayYmd, i))]!))
+  out.push(chip(7, 'A week'), chip(14, 'Two weeks'))
+  return out
+}
+
+/** A day read from words: the date it means, or the words kept as typed when they do not read as one. */
+export interface ReadDay {
+  /** "Fri Oct 16", or the words as typed. */
+  label: string
+  ymd: string | null
+  known: boolean
+}
+
+const WEEKDAY_WORD = '(sun(?:day)?|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?)'
+const MONTH_WORD =
+  '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)'
+const COUNT_WORDS: Readonly<Record<string, number>> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4 }
+
+const weekdayIndex = (word: string) => ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(word.slice(0, 3))
+const monthIndex = (word: string) => ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(word.slice(0, 3))
+
+/**
+ * Words to a day, from today: *today*, *tomorrow*, a weekday (the coming one, never today; *next Monday* is the
+ * coming Monday too, and *the Monday after next* the one after it), *in two weeks* or *in 3 days*, *Oct 16* or
+ * *Fri Oct 16* (this year, or next year once it has passed), *10/16*, *the 7th* (the next 7th) and a year where
+ * one is given. Anything else is kept as typed, with no date. Null for no words.
+ */
+export function readDay(text: string, todayYmd: string): ReadDay | null {
+  const typed = text.trim()
+  if (!typed) return null
+  const low = typed.toLowerCase().replace(/\s+/g, ' ').replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim()
+  const known = (ymd: string): ReadDay => ({ label: dayLabel(ymd), ymd, known: true })
+  const today = ymdParts(todayYmd)
+  if (!today) return { label: typed, ymd: null, known: false }
+
+  if (low === 'today') return known(todayYmd)
+  if (low === 'tomorrow') return known(ymdAddDays(todayYmd, 1))
+  if (low === 'next week') return known(ymdAddDays(todayYmd, 7))
+
+  const span = new RegExp('^(?:in )?(a|an|one|two|three|four|\\d{1,3}) (day|week)s?$').exec(low)
+  if (span) {
+    const n = COUNT_WORDS[span[1]!] ?? Number(span[1])
+    return known(ymdAddDays(todayYmd, span[2] === 'week' ? 7 * n : n))
+  }
+
+  const afterNext = new RegExp(`^(?:the )?${WEEKDAY_WORD} after next$`).exec(low)
+  if (afterNext) return known(ymdAddDays(comingWeekday(todayYmd, weekdayIndex(afterNext[1]!)), 7))
+
+  const weekday = new RegExp(`^(?:(?:this|next|coming) )?${WEEKDAY_WORD}$`).exec(low)
+  if (weekday) return known(comingWeekday(todayYmd, weekdayIndex(weekday[1]!)))
+
+  const dated = (y: number, m: number, d: number, yearGiven: boolean): ReadDay | null => {
+    if (m < 1 || m > 12 || d < 1 || d > daysInMonth(y, m)) return null
+    let ymd = ymdOf(y, m, d)
+    if (!yearGiven && ymd < todayYmd) {
+      if (d > daysInMonth(y + 1, m)) return null
+      ymd = ymdOf(y + 1, m, d)
+    }
+    return known(ymd)
+  }
+  const fullYear = (y: string | undefined) => (y === undefined ? undefined : y.length === 2 ? 2000 + Number(y) : Number(y))
+
+  const monthDay = new RegExp(`^(?:${WEEKDAY_WORD} )?${MONTH_WORD} (\\d{1,2})(?:st|nd|rd|th)?(?: (\\d{4}))?$`).exec(low)
+  if (monthDay) {
+    const y = fullYear(monthDay[4])
+    const hit = dated(y ?? today.y, monthIndex(monthDay[2]!) + 1, Number(monthDay[3]), y !== undefined)
+    if (hit) return hit
+  }
+
+  const slashed = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/.exec(low)
+  if (slashed) {
+    const y = fullYear(slashed[3])
+    const hit = dated(y ?? today.y, Number(slashed[1]), Number(slashed[2]), y !== undefined)
+    if (hit) return hit
+  }
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(low)
+  if (iso) {
+    const hit = dated(Number(iso[1]), Number(iso[2]), Number(iso[3]), true)
+    if (hit) return hit
+  }
+
+  const ordinal = new RegExp(`^(?:${WEEKDAY_WORD} )?(?:the )?(\\d{1,2})(?:st|nd|rd|th)$`).exec(low)
+  if (ordinal) {
+    const d = Number(ordinal[2])
+    for (let ahead = 0; ahead < 12; ahead++) {
+      const m0 = today.m - 1 + ahead
+      const y = today.y + Math.floor(m0 / 12)
+      const m = (m0 % 12) + 1
+      if (d > daysInMonth(y, m)) continue
+      const ymd = ymdOf(y, m, d)
+      if (ymd >= todayYmd) return known(ymd)
+    }
+  }
+
+  return { label: typed, ymd: null, known: false }
+}
+
+/** The line under a typed day, as it is typed: what it reads as, or that it stays as words. */
+export function readDayEcho(text: string, todayYmd: string): string {
+  const r = readDay(text, todayYmd)
+  if (!r) return ''
+  return r.known ? `Reads as ${r.label}. Press Enter.` : 'Cannot read that as a day. Enter keeps it as typed.'
+}
+
+/** A day as `contact_owed` and a note's day to come back keep it: the date, or the words when there is none. */
+export interface DayKept {
+  ymd: string | null
+  words: string | null
+}
+
+/** What a day box keeps for what was typed or pressed. Never a refusal: words that are not a day stay as words. */
+export function dayKept(read: ReadDay | null): DayKept {
+  if (!read) return { ymd: null, words: null }
+  return read.ymd ? { ymd: read.ymd, words: null } : { ymd: null, words: read.label }
+}
+
+/** What we owe one person. One open row per contact. */
+export interface Owed {
+  what: string
+  byYmd: string | null
+  /** The day in the words typed, when they did not read as a date. */
+  byWords: string | null
+  /** Who marked it, by name. */
+  markedBy: string
+  /** When, ISO. */
+  markedAt: string
+}
+
+/** The day on what we owe: a date reads as "Mon Oct 5"; words read as typed, with no day. Null for no day at all. */
+export function owedDay(owed: Pick<Owed, 'byYmd' | 'byWords'>): { label: string; dated: boolean } | null {
+  if (owed.byYmd) return { label: dayLabel(owed.byYmd), dated: true }
+  const words = owed.byWords?.trim()
+  return words ? { label: words, dated: false } : null
+}
+
+/** "by Mon Oct 5", ", after the Board meets", or nothing. The tail of every sentence about what we owe. */
+function byTail(owed: Pick<Owed, 'byYmd' | 'byWords'>): string {
+  const day = owedDay(owed)
+  if (!day) return ''
+  return day.dated ? ` by ${day.label}` : `, ${day.label}`
+}
+
+/** Who we owe, as a sentence names them: the first name, or "them" for a number nobody has named. */
+function whoWeOwe(person: { name: string; goesBy?: string | null; kind?: ContactKind }): string {
+  return firstName(person) || 'them'
+}
+
+/** The strip above the reply box: "We owe Greg the plans or an addendum by Mon Oct 5". */
+export function owedSentence(person: { name: string; goesBy?: string | null; kind?: ContactKind }, owed: Pick<Owed, 'what' | 'byYmd' | 'byWords'>): string {
+  return `We owe ${whoWeOwe(person)} ${owed.what}${byTail(owed)}`
+}
+
+/** The pill on a row and the move line: "we owe the start date · by Mon Oct 5"; a day in words says it has no day. */
+export function owedPill(owed: Pick<Owed, 'what' | 'byYmd' | 'byWords'>): string {
+  const day = owedDay(owed)
+  if (!day) return `we owe ${owed.what}`
+  return day.dated ? `we owe ${owed.what} · by ${day.label}` : `we owe ${owed.what} · ${day.label} · no day`
+}
+
+/** What the move line reads (`courtOf`'s `owed` in `messages/thread.ts`): the what, and the day when it is a date. */
+export function owedForMove(owed: Pick<Owed, 'what' | 'byYmd'>): { what: string; by: string | null } {
+  return { what: owed.what, by: owed.byYmd ? dayLabel(owed.byYmd) : null }
+}
+
+/** Who marked it and when, small after the strip's sentence: "Rosa, last Saturday" (the owner, 2026-10-11). */
+export function markedByWords(owed: Pick<Owed, 'markedBy' | 'markedAt'>, nowIso: string): string {
+  return `${owed.markedBy}, ${whenWords(owed.markedAt, nowIso).replace(/^today at /, 'today, ')}`
+}
+
+/** A hover card's three parts: its name, what the thing does or says, what it changes. */
+export interface Tip {
+  title: string
+  does: string
+  changes: string
+}
+
+/** The hover card on who marked it: the exact stamp and how long ago. */
+export function markedByTip(owed: Pick<Owed, 'markedBy' | 'markedAt'>, nowIso: string): Tip {
+  const days = ymdDaysBetween(calendarYmdInAppTzFromIso(owed.markedAt), calendarYmdInAppTzFromIso(nowIso)) ?? 0
+  const ago = days <= 0 ? '' : days === 1 ? ' · yesterday' : ` · ${days} days ago`
+  return {
+    title: `Marked by ${owed.markedBy}`,
+    does: `${exactStamp(owed.markedAt)}${ago}`,
+    changes: 'What we owe and its day can be changed with Change what we owe, or the day.',
+  }
+}
+
+/** The lane's usual asks after the flow's own, by who they are. */
+export const OWED_USUAL: Readonly<Record<ContactKind, readonly string[]>> = {
+  customer: ['a pay application', 'a change order’s price', 'an answer to their question', 'a call back'],
+  trade: ['the plans or an addendum', 'our answer to their question', 'the statement of work', 'a draw’s payment', 'a call back'],
+  arch: ['a submittal', 'a pay application to certify', 'an answer', 'a call back'],
+  lead: ['a call back'],
+  supply_house: ['a call back'],
+  candidate: ['a call back'],
+  sub: ['a call back'],
+  team: ['a call back'],
+  unknown: ['a call back'],
+}
+
+/**
+ * An our-move step of the person's flow, as the what list reads it. The step carries its own words as what we owe
+ * (`FlowStep.owedWords`, seeded in `flows/seed.ts` from the prototype's `OWED_FLOW_WORDS`).
+ */
+export interface OwedStep {
+  name: string
+  owedWords?: string | null
+}
+
+/**
+ * The what blank's list (`owed-blanks-mockups.html`, the owner's go 2026-10-11): the flow's our-move steps first,
+ * then the usual asks not already there, then the person's own words. A number nobody knows has no flow of ours.
+ */
+export function owedWhatOptions(kind: ContactKind, ourSteps: ReadonlyArray<OwedStep>): { flow: string[]; usual: string[] } {
+  const flow: string[] = []
+  if (kind !== 'unknown')
+    for (const step of ourSteps) {
+      const words = step.owedWords?.trim() || `the ${step.name.trim().toLowerCase()}`
+      if (!flow.includes(words)) flow.push(words)
+    }
+  return { flow, usual: OWED_USUAL[kind].filter((w) => !flow.includes(w)) }
+}
+
+/** The what list's first heading. */
+export function owedFlowHead(kind: ContactKind): string {
+  if (kind === 'customer') return 'From the customer flow'
+  if (kind === 'trade') return 'From the trade partner flow'
+  if (kind === 'arch') return 'From the architect flow'
+  return 'From their flow'
+}
+
+/** The heading's line when the flow holds no step of ours. */
+export const OWED_FLOW_EMPTY = 'nothing of ours in their flow'
+
+/** The strip's press that sends it: "Send Greg the plans or an addendum". */
+export function sendOwedLabel(person: { name: string; goesBy?: string | null; kind?: ContactKind }, owed: Pick<Owed, 'what'>): string {
+  return `Send ${whoWeOwe(person)} ${owed.what}`
+}
+
+/** The empty strip's *Mark it*: its hover, which says what is missing. */
+export function markItTip(person: { name: string; goesBy?: string | null; kind?: ContactKind }, draft: { what: string; day: DayKept }): Tip {
+  const hasDay = !!(draft.day.ymd || draft.day.words)
+  return {
+    title: 'Mark it',
+    does: `Writes what we owe ${whoWeOwe(person)}${hasDay ? ' and by when' : ''}.`,
+    changes: `${draft.what ? '' : 'Say what first. The day is optional. '}It stays our move until it is done. Follow up lists it under We owe them.`,
+  }
+}
+
+/** The gray event line *Mark it* writes. `name` is the person's full name. */
+export function owedMarkedLine(me: string, name: string, owed: Pick<Owed, 'what' | 'byYmd' | 'byWords'>): string {
+  return `${me} marked that we owe ${name} ${owed.what}${byTail(owed)}.`
+}
+
+/** The gray event line a new what writes. */
+export function owedWhatChangedLine(me: string, name: string, owed: Pick<Owed, 'what' | 'byYmd' | 'byWords'>, was: string): string {
+  const day = owedDay(owed)
+  return `${me} changed what we owe ${name}: ${owed.what}, not ${was}${day ? `, ${day.dated ? `by ${day.label}` : day.label}` : ''}.`
+}
+
+/** The gray event line a new day writes. */
+export function owedDayChangedLine(me: string, name: string, owed: Pick<Owed, 'what' | 'byYmd' | 'byWords'>): string {
+  const day = owedDay(owed)
+  return `${me} set the day we owe ${name} ${owed.what} to ${day ? day.label : 'no day'}.`
+}
+
+/** The gray event line when the message that gets it done goes. */
+export function owedSentDoneLine(me: string, owed: Pick<Owed, 'what'>): string {
+  return `${me} sent ${owed.what}. It is done.`
+}
+
+/** What the office reads after *Mark it*. */
+export function owedMarkedToast(name: string, owed: Pick<Owed, 'what'>): string {
+  return `Marked: we owe ${name} ${owed.what}.`
+}
+
+/** What the office reads after a new what. */
+export function owedWhatToast(name: string, owed: Pick<Owed, 'what'>): string {
+  return `We owe ${name} ${owed.what} now.`
+}
+
+/** What the office reads after a new day. */
+export function owedDayToast(owed: Pick<Owed, 'byYmd' | 'byWords'>): string {
+  const day = owedDay(owed)
+  return day ? (day.dated ? `By ${day.label}.` : `No day. Kept as typed: ${day.label}.`) : 'No day set.'
+}
+
+/** The head of the team note that marks it done. */
+export function owedDoneHeader(owed: Pick<Owed, 'what' | 'byYmd' | 'byWords'>): string {
+  const day = owedDay(owed)
+  return `Marking it done: we owed ${owed.what}${day ? ` · ${day.dated ? `by ${day.label}` : day.label}` : ''}`
+}
+
+/** The chip on the note, or on the message, that got it done. */
+export function owedDoneChip(owed: Pick<Owed, 'what'>): string {
+  return `✓ done: ${owed.what}`
+}
+
+/** The team note is what marks it done, so it cannot be empty. */
+export const OWED_DONE_NEEDS_A_NOTE = 'Say how it got done, or press Not done yet.'
+
+/** The reply box's placeholder while a team note marks what we owe done. */
+export const OWED_DONE_PLACEHOLDER = 'How it got done: what we did, or why nothing is owed…'
+
+/** The reply box's send button while a team note marks what we owe done. */
+export const OWED_DONE_SEND = 'Done, with this note'
+
+/** What the office reads once the note marks it done. */
+export const OWED_DONE_TOAST = 'Done, with the note for the team. The move goes by whose word was last.'
+
+/** The send window's *After this sends* (v1.83): whose move it is once this message goes. */
+export type AfterSendMove = 'theirs' | 'ours'
+
+/** With something owed, our move is lit; with nothing owed, theirs. */
+export function afterSendDefault(owed: Owed | null): AfterSendMove {
+  return owed ? 'ours' : 'theirs'
+}
+
+/** The line under the two presses. Null where it is the two blanks: "We still owe [what?] by [when?]". */
+export function afterSendWords(owed: Owed | null, move: AfterSendMove): string | null {
+  if (move === 'theirs') return owed ? `This message gets ${owed.what} done.` : 'Nothing is on us.'
+  return owed ? `We still owe ${owed.what}${byTail(owed)}.` : null
+}
+
+/** What sending does to what we owe: done by this message, kept, marked from the blanks, or nothing. */
+export function afterSendResult(owed: Owed | null, move: AfterSendMove, blanks?: { what: string }): 'done' | 'keep' | 'mark' | 'none' {
+  if (owed) return move === 'theirs' ? 'done' : 'keep'
+  return move === 'ours' && blanks?.what.trim() ? 'mark' : 'none'
+}
+
+/** The two presses' hover cards. */
+export function afterSendTips(owed: Owed | null): Record<AfterSendMove, Tip> {
+  return {
+    theirs: {
+      title: 'Their move',
+      does: owed ? `This message gets ${owed.what} done. We are waiting on them.` : 'We are waiting on them.',
+      changes: owed ? 'What we owe clears when this goes. The row leaves We owe them.' : 'Nothing is on us after this goes.',
+    },
+    ours: {
+      title: 'Our move',
+      does: owed ? `We still owe ${owed.what} after this goes.` : 'Something is still on us after this goes.',
+      changes: 'Follow up keeps it under We owe them until it is done.',
+    },
+  }
+}

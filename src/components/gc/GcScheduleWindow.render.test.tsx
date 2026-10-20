@@ -5,21 +5,31 @@
  * pressed, the list on a phone, Helotes' first draft, Boerne while we bid, a lost job, a read that
  * fails, and a draw someone else beat. Since 7c-ii, the call list grouped by company, with Call only.
  * Since 9a, an inspection passed or failed, the job's own work and the dates to meet, for a dev. Since
- * 9b, a bar's place, a split, a wait and a new baseline.
+ * 9b, a bar's place, a split, a wait and a new baseline. Since 9d, the holds' read, the walk's line, Pull earlier only
+ * with `canPull`, and a trade not ready in the bar's form. Since 12a, a first draft from a template, and the Templates
+ * card's save and set aside, for a dev. Since 12b, the rough while we bid drawn, the first draft after we win, and a
+ * rough's weeks kept later. Since 12c, their schedule brought in, first or in place of a draft, and their dates' door.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcScheduleWindow } from './GcScheduleWindow'
+import type { ScheduleFollowUp } from './GcSchedule'
+import { GcCompanyOpenerContext } from './gcCompanyOpener'
 import {
   addScheduleActivity,
   addScheduleWait,
   drawSchedule,
   failScheduleInspection,
+  keepRoughLater,
   loadSchedule,
+  loadScheduleWithHolds,
   passScheduleInspection,
   removeScheduleActivity,
   saveScheduleMove,
+  saveScheduleTemplate,
+  setAsideScheduleTemplate,
   setOwnWorkDone,
+  setRoughSchedule,
   setScheduleBaseline,
   setScheduleMilestone,
   setSchedulePlaces,
@@ -27,39 +37,52 @@ import {
   undoScheduleMove,
 } from '../../lib/gc/scheduleIo'
 import { addDays } from '../../lib/gc/building'
-import { callList } from '../../lib/gc/schedule/callList'
+import { callList, callListFollowPeople } from '../../lib/gc/schedule/callList'
 import { chartHolds } from '../../lib/gc/schedule/chartHolds'
 import { moveRecord, planMove } from '../../lib/gc/schedule/moves'
-import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
+import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { plainWordsFailures } from '../../lib/plainWords'
+import { withLineReported } from '../../lib/gc/schedule/testReports'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
-import type { ProjectSchedule } from '../../lib/gc/schedule/types'
+import { templateShape } from '../../lib/gc/schedule/templates'
+import type { ProjectSchedule, ScheduleTemplate } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { checkSupabaseError } from '../../utils/errorHandling'
 
-vi.mock('../../lib/gc/scheduleIo', () => ({
-  loadSchedule: vi.fn(),
-  drawSchedule: vi.fn(),
-  saveScheduleMove: vi.fn(),
-  undoScheduleMove: vi.fn(),
-  redoScheduleMove: vi.fn(),
-  setActualDates: vi.fn(),
-  addScheduleActivity: vi.fn(),
-  removeScheduleActivity: vi.fn(),
-  setOwnWorkDone: vi.fn(),
-  passScheduleInspection: vi.fn(),
-  failScheduleInspection: vi.fn(),
-  setScheduleMilestone: vi.fn(),
-  removeScheduleMilestone: vi.fn(),
-  addScheduleWait: vi.fn(),
-  setScheduleWaitStep: vi.fn(),
-  removeScheduleWait: vi.fn(),
-  setSchedulePlaces: vi.fn(),
-  splitScheduleBar: vi.fn(),
-  joinScheduleBar: vi.fn(),
-  setScheduleBaseline: vi.fn(),
-}))
+// The holds' read (PR 9d) lays the job's submittals and RFIs over the board, then reads the schedule: here, the schedule's read alone.
+vi.mock('../../lib/gc/scheduleIo', () => {
+  const loadSchedule = vi.fn()
+  return {
+    loadSchedule,
+    loadScheduleWithHolds: vi.fn((state: unknown, id: string) => loadSchedule(state, id)),
+    recordScheduleWalk: vi.fn(),
+    drawSchedule: vi.fn(),
+    saveScheduleMove: vi.fn(),
+    undoScheduleMove: vi.fn(),
+    redoScheduleMove: vi.fn(),
+    setActualDates: vi.fn(),
+    addScheduleActivity: vi.fn(),
+    removeScheduleActivity: vi.fn(),
+    setOwnWorkDone: vi.fn(),
+    passScheduleInspection: vi.fn(),
+    failScheduleInspection: vi.fn(),
+    setScheduleMilestone: vi.fn(),
+    removeScheduleMilestone: vi.fn(),
+    addScheduleWait: vi.fn(),
+    setScheduleWaitStep: vi.fn(),
+    removeScheduleWait: vi.fn(),
+    setSchedulePlaces: vi.fn(),
+    splitScheduleBar: vi.fn(),
+    joinScheduleBar: vi.fn(),
+    setScheduleBaseline: vi.fn(),
+    saveScheduleTemplate: vi.fn(),
+    renameScheduleTemplate: vi.fn(),
+    setAsideScheduleTemplate: vi.fn(),
+    setRoughSchedule: vi.fn(),
+    keepRoughLater: vi.fn(),
+  }
+})
 
 const realMatchMedia = window.matchMedia
 const asPhone = (phone: boolean) => {
@@ -75,6 +98,7 @@ afterEach(() => {
   vi.mocked(undoScheduleMove).mockReset()
   for (const press of [addScheduleActivity, removeScheduleActivity, setOwnWorkDone, passScheduleInspection, failScheduleInspection, setScheduleMilestone]) vi.mocked(press).mockReset()
   for (const press of [addScheduleWait, setSchedulePlaces, splitScheduleBar, setScheduleBaseline]) vi.mocked(press).mockReset()
+  for (const press of [saveScheduleTemplate, setAsideScheduleTemplate, setRoughSchedule, keepRoughLater]) vi.mocked(press).mockReset()
 })
 
 const s = initialGcState()
@@ -84,8 +108,8 @@ const withJob = (id: string, change: (p: GcProject) => GcProject): GcState => ({
 /** `loadSchedule`'s answer for one job of a state. */
 const readOf = (st: GcState, id: string, version: number | null = 3) => ({ state: st, project: job(st, id), version })
 
-function openWindow(project: GcProject, onClose = vi.fn(), canMove = false) {
-  const view = render(<GcScheduleWindow state={s} project={project} by="Robert Douglas" canMove={canMove} onClose={onClose} />)
+function openWindow(project: GcProject, onClose = vi.fn(), canMove = false, followUp?: ScheduleFollowUp) {
+  const view = render(<GcScheduleWindow state={s} project={project} by="Robert Douglas" canMove={canMove} onClose={onClose} {...(followUp ? { followUp } : {})} />)
   return { ...view, onClose, dialog: () => screen.getByRole('dialog', { name: `${project.name}: the schedule` }) }
 }
 const toolbar = () => document.querySelector('[data-tour="gc-gantt-toolbar"]') as HTMLElement
@@ -147,11 +171,13 @@ describe('the Schedule window', () => {
     expect(document.querySelectorAll('[data-gantt-bar]').length).toBeGreaterThan(0)
   })
 
-  it('shows Boerne, still bidding, the rough’s sentence and no draw', async () => {
+  it('shows Boerne, still bidding, the rough schedule for our bid and no first draft (PR 12b)', async () => {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'boerne', null))
     openWindow(job(s, 'boerne'))
-    expect(await screen.findByText('While we bid, the rough schedule is the one to draw.')).toBeTruthy()
+    expect(await screen.findByText('A rough schedule for our bid')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Draw a first draft' })).toBeNull()
+    // Read only for someone who may not move a bar: nothing to draw.
+    expect(screen.queryByRole('button', { name: 'Draw a rough schedule' })).toBeNull()
   })
 
   it('shows a lost job as lost, with no draw', async () => {
@@ -187,10 +213,21 @@ describe('the Schedule window', () => {
     await waitFor(() => expect(loadSchedule).toHaveBeenCalledTimes(2))
   })
 
+  it('reads what the page says this reader may read over the schedule (PR 16a), and nothing past the board without it', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
+    const reads = { logs: true, today: '2026-10-02' }
+    render(<GcScheduleWindow state={s} project={job(s, 'fairoaksd')} by="Robert Douglas" reads={reads} onClose={vi.fn()} />)
+    await screen.findByText('Work done against the plan')
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(s, 'fairoaksd', reads)
+    vi.mocked(loadScheduleWithHolds).mockClear()
+    openWindow(job(s, 'boerne'))
+    await waitFor(() => expect(loadScheduleWithHolds).toHaveBeenCalledWith(s, 'boerne', {}))
+  })
+
   it('closes on Close, on Escape and on the dark around it', async () => {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'boerne', null))
     const { onClose, dialog } = openWindow(job(s, 'boerne'))
-    await screen.findByText('While we bid, the rough schedule is the one to draw.')
+    await screen.findByText('A rough schedule for our bid')
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Close' }))
     fireEvent.keyDown(document, { key: 'Escape' })
     fireEvent.click(dialog().parentElement as HTMLElement)
@@ -322,14 +359,14 @@ describe('the call list in the window (7c-ii)', () => {
   const fairOaks = job(s, 'fairoaksd')
   const lineOf = (label: string) => scheduleMeasures(s, fairOaks).items.find((i) => i.label === label)!.activity.lineId
   /** Fair Oaks D grouped by company, where the chart draws who to call. */
-  async function byCompany(st: GcState = s) {
+  async function byCompany(st: GcState = s, followUp?: ScheduleFollowUp) {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(st, 'fairoaksd'))
-    const view = openWindow(job(st, 'fairoaksd'))
+    const view = openWindow(job(st, 'fairoaksd'), vi.fn(), false, followUp)
     fireEvent.click(within(await screen.findByRole('group', { name: 'Group the chart' })).getByRole('button', { name: 'By company' }))
     return { ...view, list: () => screen.getByRole('region', { name: 'Who to call about the schedule' }) }
   }
 
-  it('lists who to call with Call only: no Follow up and no Work the list until the Board lane’s sheet', async () => {
+  it('lists who to call with Call only: no Follow up and no Work the list when the page gives no log', async () => {
     const { list } = await byCompany()
     const calls = list().querySelectorAll('a[href^="tel:"]')
     expect(calls.length).toBe(callList(s, fairOaks, chartHolds(s, fairOaks)).count)
@@ -353,6 +390,31 @@ describe('the call list in the window (7c-ii)', () => {
     const first = callList(s, fairOaks, chartHolds(s, fairOaks)).people.find((p) => onChart.has(p.company))!
     fireEvent.click(within(list()).getAllByText('Their work')[0]!)
     expect((screen.getByRole('combobox', { name: 'One company' }) as HTMLSelectElement).value).toBe(first.company)
+  })
+
+  it('with the page’s log, Work the list walks the call list on the Follow up sheet, over the window (B2b-viii-a)', async () => {
+    const followUp: ScheduleFollowUp = { writes: { logAsk: vi.fn(), logCustomer: vi.fn(), recordPromise: vi.fn() }, me: 'Robert Douglas' }
+    const { list, onClose } = await byCompany(s, followUp)
+    fireEvent.click(within(list()).getByRole('button', { name: 'Work the list' }))
+    const sheet = screen.getByRole('dialog', { name: `Follow up: ${fairOaks.name}` })
+    const nav = within(sheet).getByRole('navigation', { name: 'People to follow up' })
+    expect(within(nav).getAllByRole('button').length).toBe(callListFollowPeople(s, fairOaks, chartHolds(s, fairOaks)).length)
+    // Escape closes the sheet, not the schedule under it.
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: `Follow up: ${fairOaks.name}` })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    // A person's Follow up opens the sheet at them.
+    fireEvent.click(within(list()).getAllByRole('button', { name: 'Follow up' })[0]!)
+    expect(within(screen.getByRole('dialog', { name: `Follow up: ${fairOaks.name}` })).getByRole('heading', { name: /^Follow up with / })).toBeTruthy()
+  })
+
+  it('the opened bar’s company has Follow up with the page’s log', async () => {
+    const followUp: ScheduleFollowUp = { writes: { logAsk: vi.fn(), logCustomer: vi.fn(), recordPromise: vi.fn() }, me: null }
+    const { container, list } = await byCompany(s, followUp)
+    fireEvent.click(within(list()).getByText('Lighting is behind: 40% done against 48% in the plan. It is due Fri Oct 23.'))
+    const card = container.querySelector(`[data-gc-opened-activity="${lineOf('Lighting')}"]`) as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Follow up' }))
+    expect(within(screen.getByRole('dialog', { name: `Follow up: ${fairOaks.name}` })).getByRole('heading', { name: 'Follow up with Marcus Bell' })).toBeTruthy()
   })
 
   it('has no call list on a job not being built', async () => {
@@ -532,5 +594,201 @@ describe('waits, places, parts and the baseline in the window (PR 9b)', () => {
     fireEvent.click(container.querySelector('[data-gantt-bar="froof-1"]') as HTMLElement)
     expect(screen.queryByRole('button', { name: 'Split into parts…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Set the place' })).toBeNull()
+  })
+})
+
+describe('the walk, Pull earlier and a trade not ready in the window (PR 9d)', () => {
+  it('reads the job with its submittals and RFIs laid over the board, through the holds’ read', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
+    openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    // No reads past the board's from the page (PR 16a's default): the submittals and RFIs only.
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(s, 'fairoaksd', {})
+  })
+
+  it('shows the walk’s line on a job being built to someone who may move a bar, and to nobody else', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
+    openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    fireEvent.click(screen.getByRole('button', { name: /^Update the week · \d+$/ }))
+    expect(screen.getByRole('dialog', { name: 'Update the week' })).toBeTruthy()
+    cleanup()
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
+    openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    expect(screen.queryByRole('button', { name: /^Update the week/ })).toBeNull()
+  })
+
+  it('offers Pull the work earlier only with canPull, and opens its window', async () => {
+    const early = withLineReported(withLineReported(s, 'fairoaksd', 'fhvac', 'fhvac-2', 100), 'fairoaksd', 'fplumb', 'fplumb-3', 100)
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(early, 'fairoaksd'))
+    openWindow(job(early, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    expect(screen.queryByRole('button', { name: 'Pull the work earlier' })).toBeNull()
+    cleanup()
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(early, 'fairoaksd'))
+    render(<GcScheduleWindow state={s} project={job(early, 'fairoaksd')} by="Robert Douglas" canMove canPull onClose={vi.fn()} />)
+    await screen.findByText('Work done against the plan')
+    fireEvent.click(screen.getByRole('button', { name: 'Pull the work earlier' }))
+    expect(screen.getByRole('dialog', { name: 'Pull the work earlier' })).toBeTruthy()
+  })
+
+  it('says a trade is not ready first in the bar’s form, and its button opens the company', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
+    const openPartner = vi.fn()
+    const { container } = render(
+      <GcCompanyOpenerContext.Provider value={{ openPartner }}>
+        <GcScheduleWindow state={s} project={job(s, 'fairoaksd')} by="Robert Douglas" canMove onClose={vi.fn()} />
+      </GcCompanyOpenerContext.Provider>,
+    )
+    await screen.findByText('Work done against the plan')
+    fireEvent.click(screen.getByText('Open all'))
+    fireEvent.click(container.querySelector('[data-gantt-bar="felec-5"]') as HTMLElement)
+    const form = container.querySelector('[data-gc-activity-editor="felec-5"]') as HTMLElement
+    const block = form.querySelector('[data-not-ready]') as HTMLElement
+    expect(block.textContent).toContain('Pecan Valley Electric is not ready to start this on Mon Oct 19.')
+    fireEvent.click(within(block).getByRole('button', { name: 'Ask for it' }))
+    expect(openPartner).toHaveBeenCalledWith('pecanvalley', { tab: 'documents', doc: 'insurance', send: true })
+  })
+})
+
+describe('templates in the window (PR 12a, G-44)', () => {
+  // Fair Oaks D saved as a template, as `loadSchedule` lays every template over the board.
+  const template: ScheduleTemplate = { id: 'tpl-1', name: 'Fair Oaks Shops, Building D', on: s.today, by: 'Robert Douglas', ...templateShape(s, job(s, 'fairoaksd'))! }
+  const withTemplate: GcState = { ...s, scheduleTemplates: [template] }
+
+  it('draws Helotes’ first draft from a template, with no version, its name on the schedule and the log’s words', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(withTemplate, 'helotes', null))
+    let sent: ProjectSchedule | null = null
+    vi.mocked(drawSchedule).mockImplementation(async (_state, _id, _press, schedule) => {
+      sent = schedule
+      return readOf({ ...withTemplate, projects: withTemplate.projects.map((p) => (p.id === 'helotes' ? { ...p, schedule } : p)) }, 'helotes', 1)
+    })
+    openWindow(job(s, 'helotes'))
+    const press = await screen.findByRole('button', { name: 'Draw a first draft' })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Start from a template' }), { target: { value: 'tpl-1' } })
+    expect(document.querySelector('[data-template-fit]')?.textContent).toMatch(/^The template Fair Oaks Shops, Building D covers 8 of the 17 lines here\./)
+    fireEvent.click(press)
+    await waitFor(() => expect(drawSchedule).toHaveBeenCalledTimes(1))
+    const [state, id, words] = vi.mocked(drawSchedule).mock.calls[0]!
+    expect([state, id]).toEqual([withTemplate, 'helotes'])
+    expect(sent!.template).toEqual({ id: 'tpl-1', name: 'Fair Oaks Shops, Building D', on: s.today })
+    expect(words).toEqual({ version: null, words: `Drew a first draft of the schedule on Helotes Dental Office: ${sent!.activities.length} activities from Mon Oct 5. It is drawn from the template Fair Oaks Shops, Building D.` })
+  })
+
+  it('saves Fair Oaks D as a template from its Templates card, a record', async () => {
+    const read = readOf(s, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(saveScheduleTemplate).mockResolvedValue(readOf(withTemplate, 'fairoaksd', 3))
+    openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    const card = document.querySelector('[data-tour="gc-templates"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Save as a template' }))
+    await waitFor(() => expect(saveScheduleTemplate).toHaveBeenCalledWith(read.state, 'fairoaksd', 'Fair Oaks Shops, Building D'))
+    await waitFor(() => expect(document.querySelector('[data-template="tpl-1"]')).toBeTruthy())
+  })
+
+  it('sets a template aside from the card, a record', async () => {
+    const read = readOf(withTemplate, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(setAsideScheduleTemplate).mockResolvedValue(read)
+    openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    fireEvent.click(within(document.querySelector('[data-template="tpl-1"]') as HTMLElement).getByRole('button', { name: 'Set it aside' }))
+    await waitFor(() => expect(setAsideScheduleTemplate).toHaveBeenCalledWith(read.state, 'fairoaksd', 'tpl-1', true))
+  })
+
+  it('shows no Templates card to someone who may not move a bar', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(withTemplate, 'fairoaksd', 3))
+    openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    expect(document.querySelector('[data-tour="gc-templates"]')).toBeNull()
+  })
+})
+
+describe('the rough while we bid in the window (PR 12b, G-45)', () => {
+  const rough = { start: '2026-11-02', days: {}, by: 'Robert Douglas', on: '2026-09-25' }
+
+  it('draws Boerne’s rough for a dev, a record, whole', async () => {
+    const read = readOf(s, 'boerne', null)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(setRoughSchedule).mockResolvedValue(readOf(withJob('boerne', (p) => ({ ...p, rough: { ...rough, on: s.today } })), 'boerne', null))
+    openWindow(job(s, 'boerne'), vi.fn(), true)
+    await screen.findByText('A rough schedule for our bid')
+    fireEvent.change(screen.getByLabelText('If work starts'), { target: { value: '2026-11-02' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Draw a rough schedule' }))
+    await waitFor(() => expect(setRoughSchedule).toHaveBeenCalledWith(read.state, 'boerne', { start: '2026-11-02', days: {}, by: 'Robert Douglas', on: s.today }))
+    expect(await screen.findByText('14 weeks to build')).toBeTruthy()
+  })
+
+  it('after we win, the first draft starts from the rough’s day and says the weeks we bid', async () => {
+    const won = withJob('helotes', (p) => ({ ...p, rough: { ...rough, kept: { on: '2026-09-28', weeks: 14, finish: '2027-02-02', at: 'bid' as const } } }))
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(won, 'helotes', null))
+    openWindow(job(won, 'helotes'), vi.fn(), true)
+    expect(await screen.findByText(/^We bid 14 weeks, from the rough schedule\./)).toBeTruthy()
+    expect((screen.getByLabelText('Work starts') as HTMLInputElement).value).toBe('2026-11-02')
+    expect(screen.queryByRole('button', { name: 'Keep the weeks as sent' })).toBeNull()
+  })
+
+  it('keeps a won job’s rough weeks later from the first draft’s card, with the day our bid went', async () => {
+    const won = withJob('helotes', (p) => ({ ...p, rough, ourBidSentOn: '2026-09-28' }))
+    const read = readOf(won, 'helotes', null)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(keepRoughLater).mockResolvedValue(read)
+    openWindow(job(won, 'helotes'), vi.fn(), true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep the weeks as sent' }))
+    await waitFor(() => expect(keepRoughLater).toHaveBeenCalledWith(read.state, 'helotes', expect.objectContaining({ on: '2026-09-28', at: 'bid' })))
+  })
+})
+
+describe('their schedule and their dates in the window (PR 12c, G-137 and G-145)', () => {
+  const XML = `<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><MinutesPerDay>480</MinutesPerDay><Tasks>
+    <Task><UID>1</UID><Name>Framing</Name><OutlineLevel>1</OutlineLevel><Start>2026-11-02T08:00:00</Start><Finish>2026-11-13T17:00:00</Finish></Task>
+    <Task><UID>2</UID><Name>Substantial completion</Name><OutlineLevel>1</OutlineLevel><Milestone>1</Milestone><Start>2027-01-29T08:00:00</Start><Finish>2027-01-29T08:00:00</Finish></Task>
+  </Tasks></Project>`
+  const importDialog = () => screen.getByRole('dialog', { name: 'Bring in a schedule' })
+
+  it('offers Bring in their schedule on Helotes’ first draft card, and makes the first one with no version', async () => {
+    const read = readOf(s, 'helotes', null)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(drawSchedule).mockResolvedValue(read)
+    openWindow(job(s, 'helotes'))
+    expect(await screen.findByText('Or start from the schedule the customer or the architect handed us.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Bring in their schedule' }))
+    fireEvent.change(within(importDialog()).getByLabelText('Choose a file'), { target: { files: [new File([XML], 'helotes.xml', { type: 'application/xml' })] } })
+    await within(importDialog()).findByText(/^What it holds:/)
+    fireEvent.click(within(importDialog()).getByRole('button', { name: 'Make the schedule from it' }))
+    await waitFor(() => expect(drawSchedule).toHaveBeenCalledTimes(1))
+    const [state, id, press] = vi.mocked(drawSchedule).mock.calls[0]!
+    expect([state, id, press.version]).toEqual([read.state, 'helotes', null])
+    expect(press.words).toMatch(/^Drew the schedule on Helotes Dental Office from .+ file helotes\.xml\./)
+  })
+
+  it('offers Bring in their schedule instead on a draft before Start, for a dev, and replaces it against the version read', async () => {
+    const drawn = withJob('helotes', (p) => ({ ...p, schedule: draftSchedule(p, '2026-11-02') }))
+    const read = readOf(drawn, 'helotes', 2)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(drawSchedule).mockResolvedValue(read)
+    openWindow(job(drawn, 'helotes'), vi.fn(), true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Bring in their schedule instead' }))
+    expect(within(importDialog()).getByText('It takes the place of the schedule drawn now. The changes made to it are lost.')).toBeTruthy()
+    fireEvent.change(within(importDialog()).getByLabelText('Choose a file'), { target: { files: [new File([XML], 'helotes.xml', { type: 'application/xml' })] } })
+    await within(importDialog()).findByText(/^What it holds:/)
+    fireEvent.click(within(importDialog()).getByRole('button', { name: 'Make the schedule from it' }))
+    await waitFor(() => expect(drawSchedule).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(drawSchedule).mock.calls[0]![2].version).toBe(2)
+  })
+
+  it('shows the their-dates door on Fair Oaks D’s Milestones card to someone who may move a bar, and nobody else', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    expect(screen.getByText('Bring in their dates…')).toBeTruthy()
+    // Fair Oaks D started, so their whole schedule never comes in in its place.
+    expect(screen.queryByRole('button', { name: 'Bring in their schedule instead' })).toBeNull()
+    cleanup()
+    openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    expect(screen.queryByText('Bring in their dates…')).toBeNull()
   })
 })

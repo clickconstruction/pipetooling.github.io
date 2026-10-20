@@ -30,6 +30,9 @@ export const TRADE_EMAIL_KINDS = [
   'dates',
   'startSoon',
   'paper',
+  // P5c-4: the trade's closeout, in the pay group: we accepted its work, and its final pay application came in.
+  'accepted',
+  'finalIn',
 ] as const
 
 export type TradeEmailKind = (typeof TRADE_EMAIL_KINDS)[number]
@@ -59,6 +62,8 @@ const KIND_GROUP: Record<Exclude<TradeEmailKind, 'paper'>, TradeMailGroup> = {
   less: 'pay',
   coi: 'pay',
   backCharge: 'pay',
+  accepted: 'pay',
+  finalIn: 'pay',
 }
 
 /**
@@ -103,6 +108,16 @@ export interface TradeEmailRequest {
   lines: TradeEmailLine[]
   /** Only for `paper`: a contract, or pay and papers. Every other kind takes its group from the kind. */
   group: TradeMailGroup | null
+  /**
+   * Only for `nudge` (the Board's B2b-viii-b, the Follow up sheet from the company): the mail groups of what it asks
+   * about. It goes to everyone at the company who gets any of them (the owner, 2026-10-05). Unset: the kind's group.
+   */
+  groups?: TradeMailGroup[]
+  /**
+   * A test copy (B2b-viii-b, as `gc-customer-email` has it): built as the real email would be, to the caller's own address
+   * only, `[TEST]` before the subject, with no key used, no message row, no sent copy and no link made or shown.
+   */
+  test?: boolean
 }
 
 export const TRADE_EMAIL_LIMITS = { key: 200, subject: 200, lines: 40, line: 2000, items: 100 } as const
@@ -155,7 +170,23 @@ export function parseTradeEmail(body: unknown): { ok: true; req: TradeEmailReque
       if (raw !== 'contracts' && raw !== 'pay') throw new Bad()
       group = raw
     } else if (raw !== null) throw new Bad()
-    return { ok: true, req: { companyId, kind: kind as TradeEmailKind, key, projectId, lang: body.lang, subject, lines, group } }
+    // A nudge's groups: one to four of them, each once, kept in the groups' own order.
+    const rawGroups = body.groups === undefined || body.groups === null ? null : body.groups
+    let groups: TradeMailGroup[] | null = null
+    if (rawGroups !== null) {
+      if (kind !== 'nudge' || !Array.isArray(rawGroups) || rawGroups.length === 0 || rawGroups.length > TRADE_MAIL_GROUPS.length) throw new Bad()
+      const seen = new Set<string>()
+      for (const g of rawGroups) {
+        if (typeof g !== 'string' || !(TRADE_MAIL_GROUPS as readonly string[]).includes(g) || seen.has(g)) throw new Bad()
+        seen.add(g)
+      }
+      groups = TRADE_MAIL_GROUPS.filter((g) => seen.has(g))
+    }
+    if (body.test !== undefined && typeof body.test !== 'boolean') throw new Bad()
+    return {
+      ok: true,
+      req: { companyId, kind: kind as TradeEmailKind, key, projectId, lang: body.lang, subject, lines, group, ...(groups ? { groups } : {}), ...(body.test === true ? { test: true } : {}) },
+    }
   } catch (e) {
     if (e instanceof Bad) return { ok: false }
     throw e
@@ -216,6 +247,32 @@ export function tradeEmailRecipients(company: TradeMailCompany, people: TradeMai
   return to.length > 0 ? to : [main]
 }
 
+/**
+ * Who gets an email about several kinds (a nudge's `groups`, B2b-viii-b): everyone who gets any of them, the main contact
+ * first, each person once. The client's copy is `followUpMailTo` in `src/lib/gc/companyPeople.ts`. Never empty.
+ */
+export function tradeEmailRecipientsOf(company: TradeMailCompany, people: TradeMailPerson[], groups: readonly TradeMailGroup[]): TradeRecipient[] {
+  const all = groups.flatMap((g) => tradeEmailRecipients(company, people, g))
+  const out: TradeRecipient[] = []
+  for (const r of [...all.filter((x) => x.main), ...all.filter((x) => !x.main)]) {
+    if (!out.some((o) => o.main === r.main && o.name === r.name && o.email === r.email)) out.push(r)
+  }
+  return out
+}
+
+/** A test copy's subject, as `gc-customer-email`'s. */
+export function tradeEmailTestSubject(subject: string): string {
+  return `[TEST] ${subject.trim()}`
+}
+
+/** A test copy's email type on `email_send_log`, so no reader counts it as a send. */
+export const GC_TRADE_EMAIL_TEST_TYPE = 'gc_trade_email_test'
+
+/** The portal link a test copy shows in place of the company's: no link is made for a test, and none leaves in one. */
+export function tradeTestLinkUrl(origin: string): string {
+  return `${origin.replace(/\/+$/, '')}/t/…`
+}
+
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** The recipients the email can reach: anyone without an email is skipped, and one address gets it once. Empty is `noEmail`. */
@@ -266,8 +323,13 @@ export interface GcTradeEmailInput {
   company: string
   subject: string
   lines: TradeEmailLine[]
-  /** The company's portal address. */
-  linkUrl: string
+  /** The company's portal address. Only an email with an action may go without it (the company has no link yet). */
+  linkUrl?: string | null
+  /**
+   * The email's own step, when it is not the portal (the Board's B6-b-i: a paper's signing link). Its ink button leads,
+   * and the portal, when the company has one, becomes the line under it. Unset: the portal's button, as always.
+   */
+  action?: { label: string; url: string }
   /** The project manager, else the sender. */
   signer: string
   /** Our company's name. */
@@ -283,8 +345,10 @@ const MUTED = '#5a6b7e'
 const HAIR = '#ddd6c8'
 const FONT = `-apple-system, 'Segoe UI', Roboto, sans-serif`
 
-/** The email a trade partner reads: the greeting, the lines, the button to its portal, then who it is from. */
+/** The email a trade partner reads: the greeting, the lines, the button to its portal (or its action), then who it is from. */
 export function buildGcTradeEmail(input: GcTradeEmailInput): { subject: string; text: string; html: string } {
+  if (input.action) return buildGcTradeActionEmail(input, input.action)
+  if (!input.linkUrl) throw new Error('A trade email needs its portal link or an action.')
   const w = (key: keyof typeof TRADE_EMAIL_WORDS) => TRADE_EMAIL_WORDS[key][input.lang]
   const greeting = tradeGreeting(input.lang, input.recipients, input.company)
   const subject = input.subject.trim()
@@ -323,6 +387,63 @@ export function buildGcTradeEmail(input: GcTradeEmailInput): { subject: string; 
     button +
     `<p style="margin:0 0 14px;padding-top:10px;border-top:1px solid ${HAIR};font-size:13px;color:${MUTED}">${esc(w('linkYours'))}</p>` +
     `<p style="margin:0">${esc(w('thanks'))}<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` +
+    `</div></div></div></body></html>`
+  return { subject, text, html }
+}
+
+/**
+ * An email whose step is its own (`action`): the greeting and lines as always, the action's ink button, then the portal
+ * as a quiet line under it with the portal's own footnote, only when the company has a link. Its link must be https.
+ */
+function buildGcTradeActionEmail(input: GcTradeEmailInput, action: { label: string; url: string }): { subject: string; text: string; html: string } {
+  if (!/^https:\/\//.test(action.url)) throw new Error('An action link must be https.')
+  const w = (key: keyof typeof TRADE_EMAIL_WORDS) => TRADE_EMAIL_WORDS[key][input.lang]
+  const greeting = tradeGreeting(input.lang, input.recipients, input.company)
+  const subject = input.subject.trim()
+  const portal = (input.linkUrl ?? '').trim()
+
+  const textLines: string[] = [greeting, '']
+  for (const line of input.lines) {
+    if (typeof line === 'string') textLines.push(line, '')
+    else textLines.push(...(line.title ? [line.title] : []), ...line.items.map((i) => `- ${i}`), '')
+  }
+  textLines.push(`${action.label}: ${action.url}`, '')
+  if (portal) textLines.push(`${w('openPortal')}: ${portal}`, '', w('linkYours'), '')
+  textLines.push(w('thanks'), input.signer, input.gc)
+  const text = textLines.join('\n')
+
+  const p = (s: string, style = '') => `<p style="margin:0 0 12px;${style}">${esc(s)}</p>`
+  const body = input.lines
+    .map((line) =>
+      typeof line === 'string'
+        ? p(line)
+        : `${line.title ? `<p style="margin:0 0 4px">${esc(line.title)}</p>` : ''}<ul style="margin:0 0 12px;padding-left:20px">${line.items.map((i) => `<li style="margin:0 0 2px">${esc(i)}</li>`).join('')}</ul>`,
+    )
+    .join('')
+  const url = esc(action.url)
+  const button =
+    `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:4px 0 6px"><tr><td style="background:${INK};border-radius:6px">` +
+    `<a href="${url}" style="display:inline-block;padding:10px 18px;color:${PAPER};font-weight:600;text-decoration:none">${esc(action.label)}</a>` +
+    `</td></tr></table>` +
+    `<p style="margin:0 0 14px;font-size:12px;color:${MUTED};word-break:break-all">${url}</p>`
+  const portalLine = portal
+    ? `<p style="margin:0 0 6px;font-size:13px">${esc(w('openPortal'))}: <a href="${esc(portal)}" style="color:${INK};word-break:break-all">${esc(portal)}</a></p>` +
+      `<p style="margin:0 0 14px;font-size:13px;color:${MUTED}">${esc(w('linkYours'))}</p>`
+    : ''
+  const html =
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>` +
+    `<body style="margin:0;padding:0;background:#ffffff">` +
+    `<div style="max-width:560px;margin:0 auto;padding:16px;font-family:${FONT}">` +
+    `<div style="background:${PAPER};color:${INK};border:1px solid ${INK};border-radius:10px;overflow:hidden">` +
+    `<div style="background:${INK};color:${PAPER};padding:10px 16px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase">${esc(input.gc)}</div>` +
+    `<div style="padding:16px;font-size:15px;line-height:1.5">` +
+    p(greeting) +
+    body +
+    button +
+    `<div style="padding-top:10px;border-top:1px solid ${HAIR}">` +
+    portalLine +
+    `<p style="margin:0">${esc(w('thanks'))}<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` +
+    `</div>` +
     `</div></div></div></body></html>`
   return { subject, text, html }
 }

@@ -44,8 +44,8 @@ If the job has more than one bill line, step 1 lets you pick which line(s) the r
 
 - **Check from**: the saved property owner for the job, else the GC, else the customer.
 - **Amount**: what's still open on the selected bill lines. For the unconditional progress form, it is what's been received. For the unconditional final form, it is the whole bill.
-- **Contractor / releasing party**: your company block from Settings → Jobs & billing → Physical invoice. Only a dev sees that block.
-- **Signed by**: the company's signer from Settings, else the job's leader. The **Signs** pick in step 5 opens on the company's signer for a new waiver. When a waiver already waits for a leader's signature, the pick opens on him. A saved draft keeps its own Signed by line and the leader you picked. The signer's title fills in when he is the company's signer. Fill in the **His title** field if it is blank.
+- **Contractor / releasing party**: your company block from Settings → Jobs & billing → Physical invoice. Only a dev sees that block. On the billing job of a GC project we build, it is Click Construction, LLC.
+- **Signed by**: the company's signer from Settings, else the job's leader. The **Signs** pick in step 5 opens on the company's signer for a new waiver. When a waiver already waits for a leader's signature, the pick opens on him. The pick offers the company's leaders, then its devs. A saved draft keeps its own Signed by line and the one you picked. The signer's title fills in when he is the company's signer. Fill in the **His title** field if it is blank.
 
 ## It saves itself
 

@@ -1,0 +1,89 @@
+import type { CashForecast } from './cashForecast'
+
+/**
+ * How sure the cash forecast's receipts are (Bridge redraw PR 3): each
+ * expected receipt rests on a promise, a pay pace or a late assumption, and
+ * the window often leans on one day. Pure: no React, no Supabase.
+ */
+
+/** Where a receipt's expected day came from. */
+export type ReceiptBasis = 'promised' | 'customer' | 'company' | 'default' | 'late'
+
+export type ReceiptsConfidence = {
+  promisedUsd: number
+  /** This customer's pace, the company pace, or the 45-day default: a statistical day. */
+  paceUsd: number
+  /** Already past its expected day, assumed within its own pace from today. */
+  lateUsd: number
+  lateCount: number
+  totalUsd: number
+  /** 0–1 shares of the total, for the band. */
+  shares: { promised: number; pace: number; late: number }
+}
+
+const num = (v: number | null | undefined): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+
+export function receiptsConfidence(receipts: ReadonlyArray<{ usd: number; basis: ReceiptBasis }>): ReceiptsConfidence {
+  let promisedUsd = 0
+  let paceUsd = 0
+  let lateUsd = 0
+  let lateCount = 0
+  for (const r of receipts) {
+    const usd = Math.abs(num(r.usd))
+    if (r.basis === 'promised') promisedUsd += usd
+    else if (r.basis === 'late') {
+      lateUsd += usd
+      lateCount++
+    } else paceUsd += usd
+  }
+  const totalUsd = promisedUsd + paceUsd + lateUsd
+  const share = (n: number): number => (totalUsd > 0 ? n / totalUsd : 0)
+  return { promisedUsd, paceUsd, lateUsd, lateCount, totalUsd, shares: { promised: share(promisedUsd), pace: share(paceUsd), late: share(lateUsd) } }
+}
+
+export const LATE_WITHIN_MIN_DAYS = 7
+export const LATE_WITHIN_MAX_DAYS = 45
+export const LATE_WITHIN_DEFAULT_DAYS = 14
+
+/**
+ * How many days from today a late invoice is assumed to land: the customer's
+ * own pay pace (or the company's) held to 7–45 days, else 14 — so forty late
+ * invoices spread over their customers' paces instead of landing on one day.
+ */
+export function lateWithinDays(medianDays: number | null | undefined): number {
+  if (medianDays == null || !Number.isFinite(medianDays)) return LATE_WITHIN_DEFAULT_DAYS
+  return Math.min(LATE_WITHIN_MAX_DAYS, Math.max(LATE_WITHIN_MIN_DAYS, Math.round(medianDays)))
+}
+
+export type CarryingDay = {
+  ymd: string
+  receiptsUsd: number
+  /** Its share of the window's receipts, 0–1. */
+  share: number
+  billsUsd: number
+  lateUsd: number
+  lateCount: number
+}
+
+/** The day that carries the window: the one with the most receipts, when it holds at least `minShare` of them. */
+export function carryingDay(forecast: Pick<CashForecast, 'days' | 'totalReceiptsUsd'>, receipts: ReadonlyArray<{ ymd: string; usd: number; basis: ReceiptBasis }>, minShare = 0.3): CarryingDay | null {
+  if (forecast.totalReceiptsUsd <= 0) return null
+  let best: CashForecast['days'][number] | null = null
+  for (const d of forecast.days) if (d.receiptsUsd > 0 && (!best || d.receiptsUsd > best.receiptsUsd)) best = d
+  if (!best) return null
+  const share = best.receiptsUsd / forecast.totalReceiptsUsd
+  if (share < minShare) return null
+  const late = receipts.filter((r) => r.ymd === best?.ymd && r.basis === 'late')
+  return { ymd: best.ymd, receiptsUsd: best.receiptsUsd, share, billsUsd: best.billsUsd, lateUsd: late.reduce((s, r) => s + Math.abs(num(r.usd)), 0), lateCount: late.length }
+}
+
+const shortK = (n: number): string => `${n < 0 ? '−' : ''}$${Math.abs(n) >= 100_000 ? `${(Math.abs(n) / 1000).toFixed(0)}k` : Math.abs(n) >= 1000 ? `${(Math.abs(n) / 1000).toFixed(1)}k` : `${Math.round(Math.abs(n))}`}`
+
+/** One sentence on the day that carries the window, or null when no day does. */
+export function carryingSentence(c: CarryingDay | null, dayLabel: (ymd: string) => string): string | null {
+  if (!c) return null
+  const pct = Math.round(c.share * 100)
+  const late = c.lateCount > 0 ? `, ${shortK(c.lateUsd)} of it ${c.lateCount} late ${c.lateCount === 1 ? 'invoice' : 'invoices'} assumed to land` : ''
+  const bills = c.billsUsd > 0 ? ` That day also owes ${shortK(c.billsUsd)}.` : ''
+  return `${pct}% of the window's receipts (${shortK(c.receiptsUsd)}) land on ${dayLabel(c.ymd)}${late}.${bills} If they slip, that is the day to watch.`
+}

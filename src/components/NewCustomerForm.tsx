@@ -4,17 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
-import {
-  CONVERTIBLE_PROSPECT_COLUMNS,
-  canAccessProspectPipeline,
-  customerDraftFromProspect,
-  markProspectConverted,
-  prospectChipLabel,
-  recordProspectConverted,
-  searchProspectsForCustomerForm,
-  type ConvertibleProspect,
-  type ProspectConversionLane,
-} from '../lib/prospects/prospectConversion'
+import { CONVERTIBLE_PROSPECT_COLUMNS, canAccessProspectPipeline, contactPersonFromProspect, customerDraftFromProspect, markProspectConverted, prospectChipLabel, recordProspectConverted, searchProspectsForCustomerForm, type ConvertibleProspect, type ProspectConversionLane } from '../lib/prospects/prospectConversion'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -80,6 +70,9 @@ export type NewCustomerInitialValues = {
   phone?: string
   email?: string
   dateMet?: string
+  /** v2.5603: from a prospect: Residential for a person on their own, and their language. */
+  customerType?: 'commercial' | 'residential'
+  language?: 'en' | 'es'
 }
 
 export type NewCustomerFormPayload = {
@@ -89,6 +82,8 @@ export type NewCustomerFormPayload = {
   customer_type: 'commercial' | 'residential' | null
   date_met: string | null
   master_user_id: string
+  /** v2.5603: the prospect's language rides to the customer; absent when the form was not opened from one. */
+  language?: 'en' | 'es' | null
 }
 
 /** Reported with the new row: which prospect (if any) Save just marked converted. */
@@ -125,7 +120,8 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [quickFillExpanded, setQuickFillExpanded] = useState(false)
-  const [customerType, setCustomerType] = useState<'commercial' | 'residential'>('commercial')
+  const [customerType, setCustomerType] = useState<'commercial' | 'residential'>(initialValues?.customerType ?? 'commercial')
+  const [language, setLanguage] = useState<'en' | 'es' | null>(initialValues?.language ?? null)
 
   // "Started as a prospect?" (v2.2879, J34-F4): the pipeline's finish line lives
   // where customers are actually minted. Shown only to roles that can see the
@@ -158,6 +154,8 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       const { data, error: loadErr } = await supabase
         .from('prospects')
         .select(CONVERTIBLE_PROSPECT_COLUMNS)
+        // A sub lands on the bench, never as a customer (v2.5563); a job to GC's owner may become one.
+        .neq('kind', 'sub')
         .order('company_name', { ascending: true })
       if (!mountedRef.current) return
       setProspectPool(loadErr ? [] : ((data ?? []) as ConvertibleProspect[]))
@@ -192,8 +190,10 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       if (initialValues.phone !== undefined) setPhone(initialValues.phone)
       if (initialValues.email !== undefined) setEmail(initialValues.email)
       if (initialValues.dateMet !== undefined) setDateMet(initialValues.dateMet)
+      if (initialValues.customerType !== undefined) setCustomerType(initialValues.customerType)
+      if (initialValues.language !== undefined) setLanguage(initialValues.language)
     }
-  }, [initialValues?.name, initialValues?.address, initialValues?.phone, initialValues?.email, initialValues?.dateMet])
+  }, [initialValues?.name, initialValues?.address, initialValues?.phone, initialValues?.email, initialValues?.dateMet, initialValues?.customerType, initialValues?.language])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -212,6 +212,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       customer_type: customerType,
       date_met: dateMet.trim() || null,
       master_user_id: customerMasterId,
+      ...(language ? { language } : {}),
     }
     if (onSubmitForConvert) {
       try {
@@ -239,7 +240,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
     // failure here is logged and never blocks the hand-off.
     let convertedProspectId: string | null = null
     if (linkedProspect && showProspectSearch) {
-      const marked = await markProspectConverted(linkedProspect.id, created.id, payload.name, user.id)
+      const marked = await markProspectConverted(linkedProspect.id, created.id, payload.name, user.id, undefined, contactPersonFromProspect(linkedProspect))
       if (marked.ok) {
         convertedProspectId = linkedProspect.id
         recordProspectConverted(user.id, authRole, conversionLane)

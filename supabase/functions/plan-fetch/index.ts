@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { type HeldSubmittalTask, twinMayReadPlans } from '../_shared/twinSeatGate.ts'
 
@@ -237,7 +237,7 @@ async function probePlansLink(plansLink: string | null, token: string | null): P
   return { readable: true, note: null, name: meta.name ?? null, mime, size: meta.size ? Number(meta.size) : null }
 }
 
-async function recordProbe(admin: ReturnType<typeof createClient>, bidId: string, r: ProbeResult): Promise<void> {
+async function recordProbe(admin: SupabaseClient, bidId: string, r: ProbeResult): Promise<void> {
   await admin.from('bids').update({
     plans_robot_readable: r.readable,
     plans_robot_probed_at: new Date().toISOString(),
@@ -445,7 +445,8 @@ serve(async (req) => {
         }
         const bytes = await merged.save()
         console.log(`[plan-fetch] ${who} ← request ${rr.id.slice(0, 8)} source ${sourceN} merged ${files.length} PDFs → ${merged.getPageCount()} pages`)
-        return new Response(bytes, {
+        // pdf-lib's save() writes into a Uint8Array it allocates itself, so the bytes sit in a plain ArrayBuffer.
+        return new Response(bytes as Uint8Array<ArrayBuffer>, {
           headers: { ...quoteHeaders, 'Content-Type': 'application/pdf', 'Content-Length': String(bytes.byteLength), 'Content-Disposition': `attachment; filename="${houseLabel} - quotes (merged ${files.length}).pdf"`, 'X-Plan-Parts': String(files.length) },
         })
       } catch (e) {
@@ -556,7 +557,8 @@ serve(async (req) => {
         }
         const bytes = await merged.save()
         console.log(`[plan-fetch] ${who} ← bid ${bid.bid_number} folder ${folderId} merged ${files.length} PDFs → ${merged.getPageCount()} pages, ${sizeMb(bytes.byteLength)} MB`)
-        return new Response(bytes, {
+        // pdf-lib's save() writes into a Uint8Array it allocates itself, so the bytes sit in a plain ArrayBuffer.
+        return new Response(bytes as Uint8Array<ArrayBuffer>, {
           headers: {
             ...folderHeaders,
             'Content-Type': 'application/pdf',

@@ -108,6 +108,8 @@ import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
+import { useBoardDots } from '../../hooks/useBoardDots'
+import { canOpenMessages } from '../../lib/gc/access'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -155,8 +157,15 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienInstrumentsModal from './LienInstrumentsModal'
+import { JobCustomerSheet } from './JobCustomerSheet'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
+import { TellCustomerSheet } from '../customers/TellCustomerSheet'
+import { supabaseAppSendsIo } from '../../lib/flows/appSendsIo'
+import type { AppSends } from '../../lib/flows/nudgeDispatch'
+import { jobBoxOffered } from '../../lib/messages/jobBox'
+import { moveAsks, moveMoment } from '../../lib/tellCustomer/moveOffer'
+import type { MoveMoment } from '../../lib/tellCustomer/tellCustomer'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienDeskMoneyCard, lienDeskCount as lienDeskCountOf } from '../../lib/jobs/lienDeskMoneyCard'
@@ -179,6 +188,9 @@ import {
 } from '../../lib/returnEditJobFromStages'
 import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
+import { lienArChipFor, lienArLedgerTone, type LienArChip } from '../../lib/jobs/lienArChip'
+import type { LienMailPieceRow } from '../../lib/mail/lienMailPieces'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
   invoiceNeedsStripeVoidForRevert,
@@ -279,6 +291,7 @@ import {
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
+import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, useZzTestJobsHidden, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
@@ -572,7 +585,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
   // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
   const bankReturnedEnabled = stagesGates.canSeeBankReturned(authRole)
-  const { returned: bankReturned, cases: bankReturnCases, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
+  /** ZZ test jobs off the returned-deposit badges for every role but a dev who shows them (punch list #61, v2.5122). */
+  const zzTestJobsHiddenForNudges = useZzTestJobsHidden(authRole)
+  const { returned: bankReturned, cases: bankReturnCases, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled, zzTestJobsHiddenForNudges, authUser?.id ?? null)
   const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
   const openPaymentsReceived = useCallback(
     (job: JobWithDetails) =>
@@ -675,7 +690,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     headerStats: cacheHeaderStats,
     leanBilledRows: cacheLeanBilledRows,
     setJobs: cacheSetJobs,
+    zzTestJobCount: cacheZzTestJobCount,
   } = useJobsListCache()
+  /**
+   * A dev's ZZ test jobs switch (punch list #61, v2.5120); every other role never holds the rows. It shows
+   * while the board holds a ZZ job, and always while the switch shows them: with none left on the board
+   * the Dashboard and the strip still follow it, so the dev must be able to turn it back off (review on #5241).
+   */
+  const devShowsZzTestJobs = useDevShowsZzTestJobs()
+  const zzTestJobsLine = zzTestJobsSwitchLine(authRole, cacheZzTestJobCount ?? 0, devShowsZzTestJobs)
   // Fetch-on-expand: any open section whose scope isn't merged kicks its fetch
   // (idempotent; the context guards in-flight and merged states).
   useEffect(() => {
@@ -808,6 +831,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const isMobile = useIsMobile()
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
   /** Lien instruments (v2.2640): the orange lien icon's home — every lien paper is made in this window. */
+  /** The customer's door (v2.5626, punch list #123): the job whose customer sheet is open over the board, from the row's speech bubble. */
+  const [customerDoorJob, setCustomerDoorJob] = useState<JobWithDetails | null>(null)
+  /** The waiting dots (v2.5632): the jobs whose customer waits in Follow up's Needs a reply, read once per load of the board's jobs. */
+  const boardDots = useBoardDots({ enabled: canOpenMessages(authRole), refreshKey: jobs })
   const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
@@ -986,11 +1013,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         isSub: Boolean(job.gc_customer_id),
         noticedMonths: clock.noticedMonths,
         anyNoticeOnFile: clock.noticeOnFile,
+        // v2.5522: the months printed and in the mail draw the In the mail mark instead of a hollow flag.
+        mailedMonths: clock.mailedMonths,
         workMonths: clock.workMonths,
       })
     },
     [billedLienClocks, billedPaySpeeds, promisedPayDates],
   )
+  // The notice's state under the ledger's lien row (v2.5491): the AR chip kernel over the desk's light data, built
+  // below once the desk's reads are in (`lienStateFor`) and handed here as state, since the desk's hook sits later in
+  // this body than the renderer.
+  const [lienStateFn, setLienStateFn] = useState<(jobId: string) => LienArChip | null>(() => () => null)
   const billedLienRunwayRenderer = useCallback(
     (row: StageRow) => {
       // v2.4168 / v2.4193 / v2.4205: the bill's dates in one block under the
@@ -1012,6 +1045,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         runway,
         inCollections: jobInCollections(row.job),
         uncollectible: jobUncollectible(row.job),
+        lienState: (() => {
+          const chip = lienStateFn(row.job.id)
+          return chip ? { words: chip.words, tone: lienArLedgerTone(chip.tone), title: chip.sentence } : null
+        })(),
       })
       if (ledger.rows.length === 0) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
@@ -1035,7 +1072,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer],
+    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
@@ -1226,6 +1263,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Focus ring for the unified command bar (v2.1187) — the input inside is borderless. */
   /** Job Follow-Up Mode deck (v2.1718). */
   const [followupOpen, setFollowupOpen] = useState(false)
+  /** The lens the deck opens on (v2.5511): `idle` from the Dashboard's idle card (`?followups=idle`), null from the button. */
+  const [followupLens, setFollowupLens] = useState<'idle' | null>(null)
   // Bumped when the deck closes so the button badge recounts (v2.2307).
   const [followupCountRefresh, setFollowupCountRefresh] = useState(0)
   const followupQueueCount = useJobFollowupQueueCount(followupCountRefresh)
@@ -1251,7 +1290,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // the doors are built once.
   const stagesDeepLinkDoors = useMemo<StagesDeepLinkDoors>(
     () => ({
-      followups: () => setFollowupOpen(true),
+      followups: (lens) => {
+        setFollowupLens(lens)
+        setFollowupOpen(true)
+      },
       gcReview: () => setGcReviewModalOpen(true),
       gcNotice: (gcId) => setGcNotice({ gcId }),
       lienDesk: (link) => setLienDesk(link),
@@ -1477,7 +1519,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const [gcNoticeRereadKey, setGcNoticeRereadKey] = useState(0)
-  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
+  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null, hideZzTestJobs: zzTestJobsHiddenForNudges })
   // The Calendar's rows are the board's billed jobs (`lienCalendarRows`), which the phone board loads only
   // while Billed is its stage — so the open desk fetches that scope, in the Legal desk's retry-until-merged shape.
   useEffect(() => {
@@ -1513,6 +1555,54 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The master's plain name for the desk's word row (v2.4856) — his name, not the signer line the letters print.
   const lienDeskLeaderFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
+  // The notice's state per job (v2.5491): Do now's rows once over the desk's data (light while the desk is closed: the
+  // queues and letter two, no filings or mail pieces — a sent notice reads from its desk item), then the AR chip kernel.
+  const lienStateFor = useMemo((): ((jobId: string) => LienArChip | null) => {
+    if (!lienDeskData) return () => null
+    const data = lienDeskData
+    const serveDue = Object.values(data.filingsByJob)
+      .flat()
+      .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
+      .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
+    const nextUp = buildLienNextUp({
+      notices: data.queue.entries,
+      affidavits: data.affidavits.entries,
+      retainage: data.retainage.entries,
+      letterTwoByJob: data.letterTwoByJob,
+      serveDue,
+      role: authRole,
+      todayYmd: forecastTodayYmd,
+      jobTitle: (jobId) => {
+        const j = data.jobsById[jobId]
+        if (!j) return jobId.slice(0, 8)
+        const number = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
+        const name = (j.job_name ?? '').trim()
+        return name ? `${number} · ${name}` : number
+      },
+      gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
+      leaderName: (jobId) => lienDeskLeaderFor(data.jobsById[jobId]?.master_user_id ?? null) || null,
+      userName: (userId) => lienDeskLeaderFor(userId) || null,
+    })
+    const entriesByJob = new Map(data.queue.entries.map((e) => [e.jobId, e] as const))
+    const affidavitsByJob = new Map(data.affidavits.entries.map((e) => [e.jobId, e] as const))
+    const cache = new Map<string, LienArChip | null>()
+    return (jobId: string) => {
+      const hit = cache.get(jobId)
+      if (hit !== undefined) return hit
+      const filings = data.filingsByJob[jobId] ?? []
+      const piecesByFiling: Record<string, ReadonlyArray<LienMailPieceRow>> = {}
+      for (const f of filings) {
+        const pieces = data.mailPiecesByFiling?.[f.id]
+        if (pieces) piecesByFiling[f.id] = pieces
+      }
+      const chip = lienArChipFor({ jobId, todayYmd: forecastTodayYmd, nextUp, entry: entriesByJob.get(jobId) ?? null, affidavit: affidavitsByJob.get(jobId) ?? null, filings, piecesByFiling, letterTwo: data.letterTwoByJob[jobId] ?? null })
+      cache.set(jobId, chip)
+      return chip
+    }
+  }, [lienDeskData, authRole, forecastTodayYmd, lienDeskLeaderFor])
+  useEffect(() => {
+    setLienStateFn(() => lienStateFor)
+  }, [lienStateFor])
   // The signer's own phone on the cover letters (v2.3753, counsel: the master is the callback); the letterhead's when he has none.
   const lienDeskSignerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, lienDeskIssuer?.phone ?? ''), [users, lienDeskIssuer?.phone])
 
@@ -1710,9 +1800,37 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // `?rtb=1` (v2.2276): strip it and scroll Ready to Bill into view once the board holds still.
   useStagesRtbFocus(deepLinks, searchParams, navigate, focusStagesSection)
 
+  // The board's ask (v2.5627, punch list #123 PR 2): a job moved forward by the office to a stage the customer feels
+  // opens Tell the customer with the step's text, while the residential step is set to Asks in Settings → Flows. The
+  // switch is read once, on the first move; the job's status before the move is the board's own, read through the tab's
+  // `jobsRef`, because the hook patches the list before it tells the tab.
+  const appSendsRef = useRef<AppSends | null>(null)
+  const appSendsIo = useMemo(() => supabaseAppSendsIo(), [])
+  const [moveTell, setMoveTell] = useState<{ moment: MoveMoment; jobId: string; jobLabel: string } | null>(null)
+  const askAfterMove = useCallback(
+    (jobId: string, toStatus: string) => {
+      if (!authUser || !jobBoxOffered(authRole)) return
+      const job = jobsRef.current.find((j) => j.id === jobId)
+      const moment = moveMoment(job?.status ?? null, toStatus)
+      if (!moment) return
+      const number = (effectiveJobLedgerNumber(job?.hcp_number ?? null, job?.click_number ?? null) ?? '').trim()
+      const jobLabel = [number, (job?.job_name ?? '').trim() || 'Job'].filter(Boolean).join(' · ')
+      void (async () => {
+        try {
+          const sends = appSendsRef.current ?? (appSendsRef.current = (await appSendsIo.load()).sends)
+          if (moveAsks(sends, moment)) setMoveTell({ moment, jobId, jobLabel })
+        } catch {
+          // The ask is a courtesy on top of the move: a switch that could not be read asks nothing.
+        }
+      })()
+    },
+    [authUser, authRole, appSendsIo],
+  )
+
   /** "Follow cards I move": open the destination section, then scroll to + flash the job row. */
   const followMovedJob = useCallback(
     (jobId: string, toStatus: string) => {
+      askAfterMove(jobId, toStatus)
       if (!stagesFollowMoves) return
       const section = stagesSectionKeyForJobStatus(toStatus)
       if (!section) return
@@ -1720,7 +1838,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setPendingStagesJobFocusId(jobId)
       setStagesJobFlashId(jobId)
     },
-    [stagesFollowMoves],
+    [stagesFollowMoves, askAfterMove],
   )
 
   const stagesFilteredJobs = stagesBoardLists.filtered
@@ -2391,6 +2509,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     onPropertyKindSaved: propertyKinds.setKind,
     propertyLinkByJobId: propertyKinds.linkByJobId,
     onPropertyLinked: propertyKinds.linkJob,
+    onOpenCustomerDoor: setCustomerDoorJob,
+    boardDotByJobId: boardDots.dotByJobId,
     }
   /** The phone rows' kernel input for a job, from the same side maps the cards read. */
   const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
@@ -2773,6 +2893,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     accountMan: stagesAccountManFilter,
     accountManOptions: stagesAccountManFilterOptions,
     exclusionCount: stagesExclusionCount,
+    zzTestJobs: zzTestJobsLine,
   }
   /** The # jump chip: the loaded board first, then the lean lookup across every job (any status); the chip shows its checking state meanwhile. */
   const jumpToTypedNumber = (digits: string) => {
@@ -3056,7 +3177,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             onNewJob={openNew}
             shortNewJobButtonLabel={shortNewJobButtonLabel}
             followupQueueCount={followupQueueCount}
-            onOpenFollowups={() => setFollowupOpen(true)}
+            onOpenFollowups={() => {
+              setFollowupLens(null)
+              setFollowupOpen(true)
+            }}
             canSeeForecast={canSeeBilledExpectedPay}
             onOpenForecast={() => setBilledPaymentForecastOpen(true)}
             onShowMap={!phoneBoard && jobsMapHidden ? toggleJobsMapHidden : null}
@@ -3121,6 +3245,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   setFollowupOpen(false)
                   setFollowupCountRefresh((n) => n + 1)
                 }}
+                initialLens={followupLens}
                 renderStageRow={renderFollowupStageRow}
                 onOpenBoardRow={openFollowupBoardRow}
                 onOpenActivity={openFollowupActivity}
@@ -4376,6 +4501,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         jobs={jobs}
         filters={stagesExcludeFilters}
         onChange={setStagesExcludeFilters}
+        zzTestJobs={zzTestJobsLine ? { ...zzTestJobsLine, onChange: setDevShowsZzTestJobs } : null}
       />
       <JobsCombineSeparateModal
         open={combineSeparateModalOpen}
@@ -4515,6 +4641,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setOwnerRecordsJobId(null)
         }}
       />
+      {moveTell && authUser ? (
+        <TellCustomerSheet moment={moveTell.moment} jobId={moveTell.jobId} jobLabel={moveTell.jobLabel} userId={authUser.id} role={authRole} onClose={() => setMoveTell(null)} />
+      ) : null}
       <GcOnNoticeModal
         open={gcNotice != null}
         gcId={gcNotice?.gcId ?? null}
@@ -4531,6 +4660,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onChanged={refetchLienDesk}
         rereadKey={gcNoticeRereadKey}
       />
+      {customerDoorJob ? (
+        <JobCustomerSheet
+          job={customerDoorJob}
+          onClose={() => setCustomerDoorJob(null)}
+          onSent={() => {
+            void loadJobs()
+            // Our reply closes their row in Follow up: the dot goes with the next read.
+            void boardDots.reload()
+          }}
+        />
+      ) : null}
       <LienInstrumentsModal
         open={lienInstrumentsModal != null}
         onClose={() => setLienInstrumentsModal(null)}

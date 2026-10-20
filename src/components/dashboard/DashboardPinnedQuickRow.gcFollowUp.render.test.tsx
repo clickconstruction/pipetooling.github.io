@@ -1,20 +1,21 @@
 // @vitest-environment jsdom
 /**
  * Wiring for GC mode's Follow up on Needs You (v2.4941): the GC office team gets the line, other
- * roles do not, and its button opens Follow up on the GC projects page.
+ * roles do not, and its button opens Follow up on the GC projects page. Since v2.5289 it counts the
+ * people waiting on us (`follow_up_count`), one read for every role on the team.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { NeedsYouInputs } from '../../lib/dashboardNeedsYou'
-import type { GcFollowUpNeeds } from '../../lib/gc/followUpNeeds'
+import type { GcNeedsYou } from '../../lib/gc/needsYou'
 import { DashboardPinnedQuickRow } from './DashboardPinnedQuickRow'
 
-const NEEDS: GcFollowUpNeeds = {
+const NEEDS: GcNeedsYou = {
   count: 2,
-  late: true,
-  title: '2 calls to make about quotes',
-  detail: 'Alamo Concrete is 2 days past the day it gave for its quote. Pecan Valley Electric promised its quote today. Next: call them from Follow up.',
+  late: false,
+  title: '2 people are waiting on us',
+  detail: 'Answer them, or say what we owe them.',
 }
 const seen: NeedsYouInputs[] = []
 const navigate = vi.fn()
@@ -67,13 +68,13 @@ const props = {
 }
 
 describe('DashboardPinnedQuickRow · GC Follow up on Needs You', () => {
-  it.each(['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const)('%s gets the calls to make', async (role) => {
+  it.each(['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const)('%s gets the people waiting on us', async (role) => {
     renderWithProviders(<DashboardPinnedQuickRow {...props} role={role} />)
     await settle()
     const last = seen[seen.length - 1]!
     expect(last.gcFollowUpEnabled).toBe(true)
     expect(last.gcFollowUp).toEqual(NEEDS)
-    expect(screen.getByText('2 calls to make about quotes')).toBeTruthy()
+    expect(screen.getByText('2 people are waiting on us')).toBeTruthy()
   })
 
   it.each(['primary', 'superintendent', 'subcontractor'] as const)('%s does not', async (role) => {

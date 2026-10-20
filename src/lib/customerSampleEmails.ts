@@ -8,6 +8,7 @@ import { ESTIMATE_PUBLIC_TERMS_KEY, sampleBidRoomResponse, sampleEstimateRespons
 import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../../supabase/functions/_shared/estimateOptions'
 import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { parseSharedBidRoomPayload } from '../../supabase/functions/_shared/bidRoomPayload'
+import { buildCustomerDueEmail, buildOfficeNoticeEmail } from '../../supabase/functions/_shared/gcOfficeNotices'
 import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } from './estimateCustomerExperience'
 import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
@@ -34,9 +35,15 @@ import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
-import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
-import { certifiedMail, certifyAskMail, changeOrderMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
+import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, GC_CUSTOMER_EMAIL_FROM_NAME, GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { buildMessagesEmail } from '../../supabase/functions/_shared/messagesEmail'
+import { emailDraft } from './messages/compose'
+import { certifiedMail, certifyAskMail, changeOrderMail, contractMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { payReminderMail } from './gc/ownerBillingRemind'
+import { weeklyReportText, type WeeklyReport } from './gc/buildingWeekly'
+import { mondayOf } from './gc/schedule/schedule'
+import type { GcProject } from './gc/types'
+import { shortDate, weekdayDate } from './gc/words'
 import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
@@ -330,7 +337,8 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill')
+  if (id === 'messages-reply') return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-due-soon' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly' || id === 'gc-schedule' || id === 'gc-contract')
     return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
@@ -427,6 +435,23 @@ export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { 
   return { ...buildSampleEmailBody(id, ctx), from: sampleEmailFrom(id) }
 }
 
+/**
+ * Messages (cut 3): an email from the reply box in a person's thread, as `messages-email` sends it. The office's own words,
+ * put together the way the box puts them (`compose.emailDraft`), under our letterhead by the same `buildMessagesEmail`.
+ */
+export function buildSampleMessagesReplyEmail(ctx: SampleEmailContext): BuiltEmail {
+  const company = { name: GC_CUSTOMER_EMAIL_FROM_NAME, phone: '', mailbox: '', address: '' }
+  const draft = emailDraft({
+    company,
+    sender: { name: String(ctx.sender?.name || 'The project manager'), title: 'Project manager', cell: ctx.sender?.phone || null },
+    to: { name: 'Elena', number: null, numberOptedOut: false, email: 'elena@sample.example' },
+    greetingName: 'Elena',
+    jobName: 'Sample Retail Shell',
+    body: 'The storefront glass samples are at the office. Can you look at them Thursday morning?',
+  })
+  return buildMessagesEmail(draft, company.name)
+}
+
 function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
@@ -446,9 +471,15 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-rfi') return buildSampleGcRfiEmail(ctx)
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
+  if (id === 'gc-certify-reminder') return buildSampleGcCertifyReminderEmail(ctx)
+  if (id === 'gc-due-soon') return buildSampleGcDueSoonEmail(ctx)
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
   if (id === 'gc-interest-bill') return buildSampleGcInterestBillEmail(ctx)
+  if (id === 'gc-weekly') return buildSampleGcWeeklyEmail(ctx)
+  if (id === 'gc-schedule') return buildSampleGcScheduleEmail(ctx)
+  if (id === 'gc-contract') return buildSampleGcContractEmail(ctx)
   if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
+  if (id === 'messages-reply') return buildSampleMessagesReplyEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
 
@@ -507,6 +538,54 @@ export function buildSampleGcReminderEmail(ctx: SampleEmailContext): BuiltEmail 
   })
 }
 
+/**
+ * GC mode (O10b): the architect's reminder to certify, as `gc-office-notices` sends it three days after a pay
+ * application with no certificate: the notice's own words and frame on a made-up pay application.
+ */
+export function buildSampleGcCertifyReminderEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildOfficeNoticeEmail(
+    {
+      kind: 'certify_reminder',
+      projectId: 'sample',
+      project: 'Sample Retail Shell',
+      billingJobId: null,
+      number: 3,
+      final: false,
+      due: 48600,
+      sentOn: ymdPlusDays(ctx.todayYmd, -3),
+      to: { customerId: 'sample', name: 'Sample Architects' },
+    },
+    '',
+    String(ctx.sender?.name ?? 'The project manager'),
+  )
+}
+
+/**
+ * GC mode (O12b): the customer's notice 3 days before a certified bill is due, as `gc-office-notices` sends it: the
+ * notice's own words and frame on a made-up bill, with the portal line.
+ */
+export function buildSampleGcDueSoonEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildCustomerDueEmail(
+    {
+      kind: 'pay_soon',
+      projectId: 'sample',
+      project: 'Sample Retail Shell',
+      billingJobId: null,
+      payAppId: 'sample',
+      number: 3,
+      final: false,
+      certified: 48600,
+      certifiedOn: ymdPlusDays(ctx.todayYmd, -27),
+      open: 48600,
+      dueOn: ymdPlusDays(ctx.todayYmd, 3),
+      promised: false,
+      to: { customerId: 'sample', name: 'Sample Owner LLC' },
+      replyTo: { name: String(ctx.sender?.name ?? 'The project manager'), email: null },
+    },
+    { architect: 'Sample Architects', portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`, cardFee: null },
+  )
+}
+
 /** GC mode (O6b-2): our bill for the interest on late bills, as `gc-customer-email` sends it, with the portal line. */
 export function buildSampleGcInterestBillEmail(ctx: SampleEmailContext): BuiltEmail {
   const mail = interestBillMail({ job: 'Sample Retail Shell', greeting: 'Elena', amount: 284.92, pctPerMonth: 1.5 })
@@ -516,5 +595,90 @@ export function buildSampleGcInterestBillEmail(ctx: SampleEmailContext): BuiltEm
     signer: String(ctx.sender?.name ?? 'The project manager'),
     gc: GC_CUSTOMER_EMAIL_FROM_NAME,
     portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+  })
+}
+
+/** GC mode (the Board's B6-d-iii-b): our contract to sign, as `gc-customer-email` sends it, its portal line always on. */
+export function buildSampleGcContractEmail(ctx: SampleEmailContext): BuiltEmail {
+  const mail = contractMail({ job: 'Sample Retail Shell', greeting: 'Elena', price: 187_000, mode: 'first', signBy: ymdPlusDays(ctx.todayYmd, 7), note: '' })
+  return buildGcCustomerEmail({
+    subject: mail.subject,
+    lines: mail.lines,
+    signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+    portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
+  })
+}
+
+/**
+ * GC mode (Building's U7b): the Friday report from Click Construction, as `gc-customer-email` sends it: the report
+ * kernel's own words (`weeklyReportText`) on a made-up week of the sample project, unframed, since the report carries its
+ * own greeting and sign-off.
+ */
+export function buildSampleGcWeeklyEmail(ctx: SampleEmailContext): BuiltEmail {
+  const weekOf = mondayOf(ctx.todayYmd)
+  const report: WeeklyReport = {
+    projectId: 'sample',
+    weekOf,
+    customer: null,
+    to: { name: 'Elena Ruiz', first: 'Elena', email: '' },
+    architect: null,
+    sections: [
+      { key: 'glance', title: 'At a glance', lines: ['Finish: about Fri Dec 18, 2 days ahead of the Dec 20 in your contract.', '62% of the work is done. 60% was planned by now, so we are 1 day ahead.'] },
+      { key: 'week', title: 'This week', lines: ['Mon: Footings poured on the east side.', 'Wed: Slab prep done. Under-slab plumbing inspected.', '8 to 12 people a day on site, from 3 trades.'] },
+      { key: 'next', title: 'Next week', lines: ['Concrete: the slab.', 'Steel: columns on the north line.'] },
+    ],
+    logs: 4,
+    missing: [],
+    hints: {},
+    nextTrades: ['Concrete', 'Steel'],
+    subject: `Sample Retail Shell · week of ${shortDate(weekOf)}`,
+  }
+  const text = weeklyReportText(report, { name: 'Sample Retail Shell' } as GcProject, { from: 'company', length: 'full', off: [], mine: '' }, null)
+  return buildGcCustomerEmail({
+    subject: text.subject,
+    lines: gcWeeklyReportLines(text.body),
+    signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    framed: false,
+    // Their portal shows the schedule (the schedule's PR 15b): the line comes after the report's own sign-off.
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+    portalWords: GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS,
+  })
+}
+
+/**
+ * GC mode (the schedule's PR 15a): the customer's schedule on its own, as `gc-customer-email` sends it: a made-up letter
+ * on the sample project in `customerScheduleLetter`'s shape, as the Friday report's sample writes its sections, unframed,
+ * since the letter carries its own greeting and sign-off.
+ */
+export function buildSampleGcScheduleEmail(ctx: SampleEmailContext): BuiltEmail {
+  const signer = String(ctx.sender?.name ?? 'The project manager')
+  return buildGcCustomerEmail({
+    subject: `Your schedule on Sample Retail Shell, ${shortDate(ctx.todayYmd)}`,
+    lines: [
+      'Hello Elena,',
+      `Here is where Sample Retail Shell stands as of ${weekdayDate(ctx.todayYmd)}.`,
+      'We finish Fri Dec 18. Your contract says Dec 20.',
+      '62% of the work is done. We planned 60% by today.',
+      'Foundations: done, Sep 8 to Sep 21.',
+      'Slab: done, Sep 22 to Sep 28.',
+      'Structure: under way, 40% done, Sep 29 to Oct 19.',
+      'Dry-in: starts Tue Oct 20, Oct 20 to Nov 2.',
+      'Rough-in: starts Tue Nov 3, Nov 3 to Nov 23.',
+      'Finishes: starts Tue Nov 24, Nov 24 to Dec 18.',
+      'Dried in: Nov 2.',
+      'What changed this week: Structure is 2 days later than planned, because of the weather. The finish holds.',
+      'We need from you: Your pick of the storefront glass, by Oct 23.',
+      'Call me with any question.',
+      `${signer}, ${GC_CUSTOMER_EMAIL_FROM_NAME}`,
+    ],
+    signer,
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    framed: false,
+    // The schedule's PR 15b: their portal shows the same schedule.
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+    portalWords: GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS,
   })
 }

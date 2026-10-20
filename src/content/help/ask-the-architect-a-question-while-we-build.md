@@ -7,6 +7,8 @@ order: 99
 ---
 A question about the plans while we build is an RFI. You record it, send it to the architect and record the answer.
 
+The company we awarded a trade can also ask from its portal. Its question lands here with its name, ready to send on or answer.
+
 Each RFI holds the work it is about. The answer is needed 3 days before that work starts. Only devs see the window for now.
 
 ## Open the RFIs

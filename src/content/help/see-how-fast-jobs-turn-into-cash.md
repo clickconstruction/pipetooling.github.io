@@ -31,11 +31,11 @@ Work → bill at 6 days and bill → paid at 32 days means the office bills fast
 
 The panel on the right lists **every open job** with no field work for a while. Open means not billed and not paid. The wait is {{chip:blue|14 d}}, {{chip:blue|21 d}} or {{chip:blue|30 d}} or more. Longest idle goes first. Each shows the GC, the lead tech and the contract. It runs on all jobs whatever **Show** says. This is the list behind the Timeline's "open then and still open" number.
 
-Click a row and the Jobs view opens on that job. Most stale jobs need one of three things: a bill, an inspection, or to be closed.
+Click a row and the job's own window opens. Most stale jobs need one of three things: a bill, a visit, or to be closed. {{button:outline|Review them in Follow-ups →}} opens the Follow-ups deck on its Idle lens. It deals the idle jobs with nothing booked, one card at a time. Each card says what the job needs and has a door for it.
 
 ## The Dashboard card
 
-You do not have to open the tab to know. When open jobs have sat idle **21+ days**, a **Needs you** card appears on the Dashboard. It says how many, how much contract is behind them and how many are yours. {{button:blue|See them}} opens this view with the list. The card counts started jobs only. A job still waiting to begin is queued, not stale.
+You do not have to open the tab to know. When open jobs have sat idle **21+ days**, a **Needs you** card appears on the Dashboard. It says how many, how much contract is behind them and how many are yours. {{button:blue|Review them}} opens the Follow-ups deck on its Idle lens, one card per job. Each card says what the job needs and has a door for it. See *follow up on quiet jobs*. The card counts started jobs only. A job still waiting to begin is queued, not stale. A job with a visit already on the schedule stays off the card. This view's list keeps every idle job, booked or not.
 
 ## Compare to
 

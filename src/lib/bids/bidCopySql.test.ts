@@ -72,7 +72,9 @@ describe('a copy of a takeoff names every column of the rows it copies (v2.4388)
     ['the count-row clone: count rows', cloneBody, 'bids_count_rows', ['id', 'created_at']],
     ['the count-row clone: fixture stage boxes', cloneBody, 'bid_takeoff_stage_splits', OWN],
     // A duplicate is one unsplit bid, so it carries no version column.
-    ['a duplicate: count rows', duplicateBody, 'bids_count_rows', ['id', 'created_at', 'bid_version_id']],
+    // v2.5517: a duplicate is a new bid, and a row's source_shares name the original bid's CountTooling projects, which the
+    // duplicate does not carry — its rows start with no project. A new version (same bid) carries them.
+    ['a duplicate: count rows', duplicateBody, 'bids_count_rows', ['id', 'created_at', 'bid_version_id', 'source_shares']],
     ['a duplicate: part lines', duplicateBody, 'bids_takeoff_rough_part_lines', ['created_at', 'updated_at', 'bid_version_id']],
     ['a duplicate: By Stage picks', duplicateBody, 'bids_takeoff_template_mappings', [...OWN, 'bid_version_id']],
     ['a duplicate: stage boxes', duplicateBody, 'bid_takeoff_stage_splits', OWN],

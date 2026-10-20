@@ -183,7 +183,13 @@ export function buildLegalJobTimelines(args: {
 // The paper that went out
 // ---------------------------------------------------------------------------
 
-export type LegalEnvelopeSend = { recipient: string; recipientLabel: string; method: string; methodLabel: string; tracking: string; sentOn: string }
+/** What the mail service said about one send (the Docsmit train, PR 8): the days as Central calendar days, who signed, the Certification PDF as a short link. */
+export type LegalSendMail = { status: string; mailedYmd: string | null; deliveredYmd: string | null; signedBy: string; tracking: string; deliveryStatus: string; certificationUrl: string | null }
+
+/** A `mail_pieces` row as the portal carries it (`shapeMailPieces`), or as the office reads it. */
+export type LegalMailPieceLike = { id: string; kind: string; recipient: string; status: string; usps_tracking: string | null; mailed_at: string | null; delivered_at: string | null; signed_by: string | null; delivery_status: string | null; source_ids: string[]; job_id: string | null; certificationUrl?: string | null }
+
+export type LegalEnvelopeSend = { recipient: string; recipientLabel: string; method: string; methodLabel: string; tracking: string; sentOn: string; via: string; pieceId: string; mail: LegalSendMail | null }
 export type LegalEnvelopeMonth = { key: string; label: string; asInformation: boolean }
 export type LegalEnvelopeShare = { jobId: string; jobLabel: string; amount: number }
 
@@ -227,7 +233,28 @@ function ymdOf(iso: string | null | undefined): string | null {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null
 }
 
-function parseSends(raw: unknown): LegalEnvelopeSend[] {
+function mailOfPiece(p: LegalMailPieceLike): LegalSendMail {
+  return {
+    status: p.status,
+    mailedYmd: p.mailed_at ? calendarYmdInAppTzFromIso(p.mailed_at) || null : null,
+    deliveredYmd: p.delivered_at ? calendarYmdInAppTzFromIso(p.delivered_at) || null : null,
+    signedBy: (p.signed_by ?? '').trim(),
+    tracking: (p.usps_tracking ?? '').trim(),
+    deliveryStatus: (p.delivery_status ?? '').trim(),
+    certificationUrl: p.certificationUrl ?? null,
+  }
+}
+
+/** The piece behind a send: by its id when the send names one, else the one on these filings for this recipient. */
+function pieceForSend(send: { pieceId: string; recipient: string }, filingIds: ReadonlyArray<string>, pieces: ReadonlyArray<LegalMailPieceLike>): LegalMailPieceLike | null {
+  if (send.pieceId) {
+    const byId = pieces.find((p) => p.id === send.pieceId)
+    if (byId) return byId
+  }
+  return pieces.find((p) => p.recipient === send.recipient && Array.isArray(p.source_ids) && p.source_ids.some((id) => filingIds.includes(id))) ?? null
+}
+
+function parseSends(raw: unknown, filingIds: ReadonlyArray<string> = [], pieces: ReadonlyArray<LegalMailPieceLike> = []): LegalEnvelopeSend[] {
   if (!Array.isArray(raw)) return []
   const out: LegalEnvelopeSend[] = []
   for (const s of raw) {
@@ -235,16 +262,41 @@ function parseSends(raw: unknown): LegalEnvelopeSend[] {
     const r = s as Record<string, unknown>
     const recipient = typeof r.recipient === 'string' ? r.recipient : ''
     const method = typeof r.method === 'string' ? r.method : ''
-    out.push({
+    const send = {
       recipient,
       recipientLabel: RECIPIENT_LABEL[recipient] ?? recipient,
       method,
       methodLabel: BY_HAND_METHODS.find((m) => m.key === method)?.label ?? method,
       tracking: typeof r.tracking === 'string' ? r.tracking.trim() : '',
       sentOn: typeof r.sent_on === 'string' ? r.sent_on.slice(0, 10) : '',
-    })
+      via: typeof r.via === 'string' ? r.via.trim() : '',
+      pieceId: typeof r.piece_id === 'string' ? r.piece_id.trim() : '',
+    }
+    const piece = pieceForSend(send, filingIds, pieces)
+    out.push({ ...send, mail: piece ? mailOfPiece(piece) : null })
   }
   return out
+}
+
+/** `mailed Oct 13 through Docsmit · delivered Oct 16, signed R SMITH` — what the mail service said about one send. */
+export function sendMailWords(s: Pick<LegalEnvelopeSend, 'via' | 'mail'>, todayYmd: string): string {
+  const m = s.mail
+  if (!m) return ''
+  const parts: string[] = []
+  if (m.mailedYmd) parts.push(`mailed ${shortDay(m.mailedYmd, todayYmd)}${s.via ? ` through ${s.via === 'docsmit' ? 'Docsmit' : s.via}` : ''}`)
+  else parts.push(s.via ? `sent to ${s.via === 'docsmit' ? 'Docsmit' : s.via}, not yet accepted by USPS` : 'not yet accepted by USPS')
+  if (m.status === 'delivered') parts.push(`delivered${m.deliveredYmd ? ` ${shortDay(m.deliveredYmd, todayYmd)}` : ''}${m.signedBy ? `, signed ${m.signedBy}` : ''}`)
+  else if (m.status === 'returned') parts.push('returned to sender')
+  else if (m.status === 'notice_left') parts.push('notice left, unclaimed so far')
+  else if (m.status === 'in_transit') parts.push('in transit')
+  else if (m.status === 'failed') parts.push('the mail service refused it')
+  else if (m.status === 'unknown' && m.deliveryStatus) parts.push(`USPS says "${m.deliveryStatus}"`)
+  return parts.join(' · ')
+}
+
+/** The Certification PDFs on an envelope, one per recipient that has one. */
+export function envelopeCertificationLinks(e: Pick<LegalEnvelope, 'sends'>): Array<{ recipientLabel: string; url: string }> {
+  return e.sends.filter((s) => s.mail?.certificationUrl).map((s) => ({ recipientLabel: s.recipientLabel, url: s.mail!.certificationUrl as string }))
 }
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -255,7 +307,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
  * rows belong (the caller has already dropped voided ones). Ordered by the day
  * the paper went out, oldest first, lettered in that order.
  */
-export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, opts: { labelOf: (jobId: string) => string; propertyKind: string; /** The first job's own kind dates the paper's months (#85 item 6). */ propertyKindOf?: (jobId: string) => string }): LegalEnvelope[] {
+export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, opts: { labelOf: (jobId: string) => string; propertyKind: string; /** The mail pieces behind the sends (the Docsmit train, PR 8). */ mailPieces?: ReadonlyArray<LegalMailPieceLike>; /** The first job's own kind dates the paper's months (#85 item 6). */ propertyKindOf?: (jobId: string) => string }): LegalEnvelope[] {
   type Group = { key: string; rows: JobLienFilingRow[] }
   const groups = new Map<string, Group>()
   for (const f of filings) {
@@ -269,7 +321,7 @@ export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, op
   for (const g of groups.values()) {
     const first = g.rows.slice().sort((a, b) => a.created_at.localeCompare(b.created_at))[0]
     if (!first) continue
-    const sends = parseSends(first.sends)
+    const sends = parseSends(first.sends, g.rows.map((r) => r.id), opts.mailPieces ?? [])
     const wentOutYmd = sends.map((s) => s.sentOn).filter(Boolean).sort()[0] ?? ymdOf(first.filed_at) ?? (calendarYmdInAppTzFromIso(first.created_at) || null)
     const shares: LegalEnvelopeShare[] = g.rows
       .map((r) => ({ jobId: r.job_id, jobLabel: opts.labelOf(r.job_id), amount: Number(r.amount ?? 0) }))
@@ -330,6 +382,12 @@ export function envelopeWentOutWords(e: Pick<LegalEnvelope, 'wentOutYmd' | 'byHa
   if (methods.length) parts.push(methods.join(' + ').toLowerCase())
   const tracking = [...new Set(e.sends.map((s) => s.tracking).filter(Boolean))]
   if (tracking.length) parts.push(tracking.join(', '))
+  // What the mail service said (the Docsmit train, PR 8), per recipient when they differ.
+  const mail = e.sends.map((s) => ({ label: s.recipientLabel, words: sendMailWords(s, todayYmd) })).filter((x) => x.words)
+  if (mail.length) {
+    const distinct = [...new Set(mail.map((x) => x.words))]
+    parts.push(distinct.length === 1 ? distinct[0]! : mail.map((x) => `${x.label}: ${x.words}`).join('; '))
+  }
   return parts.join(' · ')
 }
 

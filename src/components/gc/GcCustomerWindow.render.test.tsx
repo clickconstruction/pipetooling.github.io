@@ -1,0 +1,435 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+
+// The papers to build our contract from (v2.5334): none unless a test gives them, so the send reads as before.
+const paperIo = vi.hoisted(() => ({ choices: [] as unknown[], last: null as string | null }))
+vi.mock('../../lib/contracts/clausesIo', () => ({
+  loadPaperChoices: vi.fn(() => Promise.resolve(paperIo.choices)),
+  loadOwnerContractPaper: vi.fn(() => Promise.resolve(paperIo.last)),
+}))
+// Our contract's Paper waits for the customer's side (v2.5345): as shipped unless a test turns it on.
+const contractFlag = vi.hoisted(() => ({ live: null as boolean | null }))
+vi.mock('../../lib/gc/customerContract', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/gc/customerContract')>()
+  return {
+    ...real,
+    get OWNER_CONTRACT_PAPER_LIVE() {
+      return contractFlag.live ?? real.OWNER_CONTRACT_PAPER_LIVE
+    },
+  }
+})
+// Their portal's window reads their own portal (Messages cut 8d): a customer with no link here, so nothing is fetched.
+vi.mock('../../lib/portal/customerPortalPreviewIo', () => ({ activePortalToken: vi.fn(async () => null), loadPortalPreview: vi.fn(), makePortalLink: vi.fn() }))
+
+import { GcCustomerWindow, type CustomerWindowMoney } from './GcCustomerWindow'
+import { loadOwnerContractPaper, loadPaperChoices } from '../../lib/contracts/clausesIo'
+import { paperChoices } from '../../lib/contracts/clauseRows'
+import { clauseLibraryRows } from '../../test/fixtures/clauseBookDemo'
+import type { ContractSendInput, ContractSendOutcome } from './GcCustomerContractSend'
+import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
+import { CLINIC_WORTH_NOW, awardedClinicBoardRows, contractSendRow } from '../../lib/gc/boardTestRows'
+import { renderWithProviders } from '../../test/renderSmokeMocks'
+import type { BillingRows } from '../../lib/gc/billCustomer'
+import { customerMoneyView } from '../../lib/gc/customerMoney'
+import type { OwnerPayAppRow } from '../../lib/gc/ownerBillingRows'
+import type { GcState } from '../../lib/gc/types'
+
+const flowIo = vi.hoisted(() => ({ find: vi.fn(async (_by: { gcCompanyId?: string | null; customerId?: string | null }) => 'flow-contact') }))
+vi.mock('../../lib/flows/flowPersonIo', async () => {
+  const { SEED_FLOWS } = await import('../../lib/flows/seed')
+  return {
+    findFlowContactId: flowIo.find,
+    readFlowPerson: vi.fn(async () => ({
+      contact: { id: 'flow-contact', kind: 'customer', name: null, goes_by: null },
+      flow: SEED_FLOWS.customer,
+      rows: { contact: { id: 'flow-contact', kind: 'customer', off_since: null, off_why: null, off_by: null } },
+      holds: [],
+      sent: [],
+      notes: [],
+      lines: [],
+    })),
+    flowPresses: {},
+  }
+})
+
+/** Oak Street Partners' window: the clinic won, our contract on it in the state the rows give. */
+function open(rows: BoardRows = awardedClinicBoardRows(), opts: { send?: boolean; email?: boolean; at?: { tab?: 'about' | 'documents'; doc?: string; send?: boolean } } = { send: true }) {
+  const state = boardStateFromRows(rows)
+  const sendContract = vi.fn((_projectId: string, _input: ContractSendInput): Promise<ContractSendOutcome> => Promise.resolve({ words: 'On record with its price and file.' }))
+  const onOpenProject = vi.fn()
+  renderWithProviders(
+    <GcCustomerWindow
+      state={state}
+      customer={state.customers.find((c) => c.id === 'c1')!}
+      {...(opts.at ? { at: opts.at } : {})}
+      {...(opts.send ? { sendContract } : {})}
+      canEmail={opts.email === true}
+      onOpenProject={onOpenProject}
+      onClose={() => undefined}
+    />,
+  )
+  return { sendContract, onOpenProject, dialog: screen.getByRole('dialog', { name: 'Oak Street Partners' }) }
+}
+/** The clinic with these sends, each emailed unless `emailed: false` (its sent copy, B6-d-iii-b). */
+const sent = (sends: (Parameters<typeof contractSendRow>[0] & { emailed?: boolean })[]): BoardRows => {
+  const base = awardedClinicBoardRows()
+  const rows = sends.map(({ emailed: _e, ...s }) => contractSendRow(s))
+  return {
+    ...base,
+    boardDates: { p1: { ...base.boardDates.p1!, owner_contract_sent_on: '2026-10-05' } },
+    ownerContractSends: rows,
+    ownerContractEmails: rows.filter((_r, i) => sends[i]!.emailed !== false).map((r) => ({ source_id: r.id, sent_on: r.sent_on, recipient_name: 'Pat Oak' })),
+  }
+}
+const pdf = () => new File(['%PDF-1.7 the contract'], 'Clinic contract v2.pdf', { type: 'application/pdf' })
+
+describe('GcCustomerWindow', () => {
+  it('opens their portal as they see it from See their page, and Escape steps back out of it first', async () => {
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'See their page' }))
+    const portal = await screen.findByRole('dialog', { name: 'Oak Street Partners’s portal' })
+    expect(await within(portal).findByText('Oak Street Partners has no portal link yet. Our contract’s email makes one, or make it here.')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Oak Street Partners’s portal' })).toBeNull())
+    expect(screen.getByRole('dialog', { name: 'Oak Street Partners' })).toBeTruthy()
+  })
+
+  it('About lists their jobs, each opening its card', () => {
+    const { onOpenProject, dialog } = open()
+    const job = dialog.querySelector('[data-gc-customer-job="p1"]') as HTMLElement
+    expect(within(job).getByText('Hill Country Clinic')).toBeTruthy()
+    expect(within(job).getByText('buying out')).toBeTruthy()
+    fireEvent.click(within(job).getByRole('button', { name: 'Open the job' }))
+    expect(onOpenProject).toHaveBeenCalledWith('p1')
+  })
+
+  it('Documents counts our contract to get, and its row sends it to sign', () => {
+    const { dialog } = open()
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Documents · 1 to get' }))
+    const row = dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement
+    expect(within(row).getByText('not sent yet')).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Send to sign' }))
+    expect(within(dialog).getByText('Send our contract to sign in their portal')).toBeTruthy()
+  })
+
+  it('opened at the contract with its send: the price today, a PDF needed, then the send with what it went with', async () => {
+    const { sendContract, dialog } = open(awardedClinicBoardRows(), { send: true, at: { tab: 'documents', doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(box).getByText('$87,323')).toBeTruthy()
+    expect(within(box).getByText('Our number today. Check the file says this price.')).toBeTruthy()
+    const press = within(box).getByRole('button', { name: 'Send to sign' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    const picker = within(box).getByLabelText('The contract PDF')
+    fireEvent.change(picker, { target: { files: [new File(['x'], 'notes.docx', { type: 'application/msword' })] } })
+    expect(within(box).getByText('Pick a PDF of the contract.')).toBeTruthy()
+    const file = pdf()
+    fireEvent.change(picker, { target: { files: [file] } })
+    expect(press.disabled).toBe(false)
+    fireEvent.click(press)
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    const [projectId, input] = sendContract.mock.calls[0]!
+    expect(projectId).toBe('p1')
+    expect(input).toMatchObject({ signBy: '2026-10-15', note: '', worth: CLINIC_WORTH_NOW, mode: 'first', total: 87323.4, email: false })
+    expect(input.file).toBe(file)
+    expect(await within(dialog).findByText('On record with its price and file.')).toBeTruthy()
+  })
+
+  it('emails it only when ticked, a box that starts off, showing the email they get with the file attached (B6-d-iii-b)', async () => {
+    const { sendContract, dialog } = open(awardedClinicBoardRows(), { send: true, email: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    const tick = within(box).getByLabelText('Email it to them now, with their portal link') as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    expect(box.querySelector('[data-gc-contract-email]')).toBeNull()
+    fireEvent.click(tick)
+    const mail = box.querySelector('[data-gc-contract-email]') as HTMLElement
+    expect(within(mail).getByText('Your contract for Hill Country Clinic')).toBeTruthy()
+    expect(within(mail).getByText('Thank you for choosing us for Hill Country Clinic. Here is our contract for it: $87,323.')).toBeTruthy()
+    expect(within(mail).getByText('Read it and sign it in your portal: their link')).toBeTruthy()
+    fireEvent.change(within(box).getByLabelText('The contract PDF'), { target: { files: [pdf()] } })
+    expect(within(mail).getByText('Clinic contract v2.pdf')).toBeTruthy()
+    fireEvent.click(within(box).getByRole('button', { name: 'Send to sign' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1].email).toBe(true)
+  })
+
+  it('a send whose email did not go: the row says so, and Email it now emails that same send, nothing picked anew (B6-d-iii-b)', async () => {
+    const { sendContract, dialog } = open(sent([{ emailed: false, note: 'Call me' }]), { send: true, email: true, at: { doc: 'contract-p1' } })
+    const row = dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement
+    expect(within(row).getByText(/Not emailed yet\.$/)).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Email it now' }))
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(box).queryByLabelText('The contract PDF')).toBeNull()
+    expect(within(box).queryByRole('group', { name: 'Sign by' })).toBeNull()
+    expect(within(box).getByText('Thank you for choosing us for Hill Country Clinic. Here is our contract for it: $87,323.')).toBeTruthy()
+    sendContract.mockResolvedValueOnce({ words: 'On record. The email did not go: They have no portal link yet.', notEmailed: 'They have no portal link yet.' })
+    fireEvent.click(within(box).getByRole('button', { name: 'Send the email' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1]).toMatchObject({ sendId: 'cs1', email: true, mode: 'first', signBy: '2026-10-12', note: 'Call me', file: { path: 'p1/one.pdf' } })
+    expect(await within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).findByText(/Not emailed: They have no portal link yet\.$/)).toBeTruthy()
+  })
+
+  it('shows no email box to someone who may not email the customer', () => {
+    const { dialog } = open(awardedClinicBoardRows(), { send: true, at: { doc: 'contract-p1', send: true } })
+    expect(within(dialog).queryByLabelText('Email it to them now, with their portal link')).toBeNull()
+    expect(within(dialog).getByText('No email goes. They read it and sign it when they open their portal.')).toBeTruthy()
+  })
+
+  it('a reminder keeps the price and the file it went with, unless another file is picked', async () => {
+    const { sendContract, dialog } = open(sent([{ worth: CLINIC_WORTH_NOW }]), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(box).getByText('Remind them to sign our contract')).toBeTruthy()
+    expect(within(box).getByText('Clinic contract.pdf, as it went last time')).toBeTruthy()
+    fireEvent.click(within(box).getByRole('button', { name: 'Send the reminder' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1].file).toEqual({ path: 'p1/one.pdf', name: 'Clinic contract.pdf', sha256: 'ab'.repeat(32) })
+  })
+
+  it('our price moved since it went: Send the new price, with a new file and today’s price', () => {
+    const { dialog } = open(sent([{ worth: { ...CLINIC_WORTH_NOW, fee: 6000 } }]), { send: true, at: { doc: 'contract-p1' } })
+    const row = dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement
+    expect(within(row).getByText('Our price changed after we sent it.')).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Send the new price' }))
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(box).getByText('$87,323')).toBeTruthy()
+    expect((within(box).getByRole('button', { name: 'Send the new price' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('signed in their portal: who signed, and nothing to send', () => {
+    const base = sent([{ signed_on: '2026-10-08', signer_printed_name: 'Pat Oak' }])
+    const { dialog } = open({ ...base, boardDates: { p1: { ...base.boardDates.p1!, owner_contract_signed_on: '2026-10-08' } } }, { send: true, at: { doc: 'contract-p1' } })
+    const row = dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement
+    expect(within(row).getByText('signed Oct 8')).toBeTruthy()
+    expect(within(row).getByText('Pat Oak signed it in their portal. Their price stays what they signed.')).toBeTruthy()
+    expect(within(row).queryByRole('button')).toBeNull()
+  })
+
+  it('reads only for someone who does not send it', () => {
+    const { dialog } = open(awardedClinicBoardRows(), { send: false, at: { doc: 'contract-p1', send: true } })
+    expect(dialog.querySelector('[data-gc-customer-send]')).toBeNull()
+    expect(within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).queryByRole('button')).toBeNull()
+  })
+})
+
+describe('GcCustomerWindow · the paper our contract is built from (Messages, cut 4c, v2.5334)', () => {
+  beforeEach(() => {
+    vi.mocked(loadOwnerContractPaper).mockClear()
+    vi.mocked(loadPaperChoices).mockClear()
+    contractFlag.live = true
+  })
+  afterEach(() => {
+    paperIo.choices = []
+    paperIo.last = null
+    contractFlag.live = null
+  })
+
+  it('stays hidden while the customer’s side is not built (OWNER_CONTRACT_PAPER_LIVE off), and reads no paper (v2.5345)', async () => {
+    // As shipped: the customer's clause read (helper 8's PR) turns it on, and this line goes with it.
+    expect((await vi.importActual<typeof import('../../lib/gc/customerContract')>('../../lib/gc/customerContract')).OWNER_CONTRACT_PAPER_LIVE).toBe(false)
+    contractFlag.live = null
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    paperIo.last = 'doc-sow'
+    const { sendContract, dialog } = open(sent([{ worth: CLINIC_WORTH_NOW }]), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(box).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    expect(loadPaperChoices).not.toHaveBeenCalled()
+    expect(loadOwnerContractPaper).not.toHaveBeenCalled()
+    fireEvent.click(within(box).getByRole('button', { name: 'Send the reminder' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1].paperId).toBeNull()
+  })
+
+  it('a first send starts on our contract file, offers the papers built from clauses, and goes with the one picked', async () => {
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    const { sendContract, dialog } = open(awardedClinicBoardRows(), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    const paper = (await within(box).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    expect(paper.value).toBe('')
+    expect(within(paper).getByRole('option', { name: "Today's paper: our contract file" })).toBeTruthy()
+    expect(loadOwnerContractPaper).not.toHaveBeenCalled()
+    fireEvent.change(paper, { target: { value: 'doc-msa' } })
+    fireEvent.click(within(box).getByRole('button', { name: 'Preview' }))
+    const preview = await screen.findByRole('dialog', { name: 'Master services agreement, put together per trade' })
+    expect(within(preview).getByText('As it would go to Oak Street Partners')).toBeTruthy()
+    fireEvent.click(within(preview).getByRole('button', { name: 'Close' }))
+    fireEvent.change(within(box).getByLabelText('The contract PDF'), { target: { files: [pdf()] } })
+    fireEvent.click(within(box).getByRole('button', { name: 'Send to sign' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1]).toMatchObject({ paperId: 'doc-msa', mode: 'first' })
+  })
+
+  it('a reminder starts on the paper the last send went with', async () => {
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    paperIo.last = 'doc-sow'
+    const { sendContract, dialog } = open(sent([{ worth: CLINIC_WORTH_NOW }]), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    const paper = (await within(box).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    await waitFor(() => expect(paper.value).toBe('doc-sow'))
+    expect(loadOwnerContractPaper).toHaveBeenCalledWith('cs1')
+    fireEvent.click(within(box).getByRole('button', { name: 'Send the reminder' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1].paperId).toBe('doc-sow')
+  })
+
+  it('offers no paper with none built from clauses, nor on an email sent again, which picks nothing anew', async () => {
+    const first = open(awardedClinicBoardRows(), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = first.dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    await waitFor(() => expect(within(box).getByText('Our number today. Check the file says this price.')).toBeTruthy())
+    expect(within(box).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    cleanup()
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    const { sendContract, dialog } = open(sent([{ emailed: false }]), { send: true, email: true, at: { doc: 'contract-p1' } })
+    fireEvent.click(within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).getByRole('button', { name: 'Email it now' }))
+    const again = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(again).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    fireEvent.click(within(again).getByRole('button', { name: 'Send the email' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1]).not.toHaveProperty('paperId')
+  })
+})
+
+describe('GcCustomerWindow · Activity (the Board’s B2b-v-ii)', () => {
+  /** The clinic with two lines in Oak Street's call log, and one in another customer's. */
+  const logged = (): BoardRows => ({
+    ...awardedClinicBoardRows(),
+    customerContacts: [
+      { customer_id: 'c1', contacted_on: '2026-10-06', by_name: 'Rosa', note: 'Wants the start moved a week.', created_at: '2026-10-06T15:00:00Z' },
+      { customer_id: 'c1', contacted_on: '2026-10-08', by_name: 'Abe', note: 'Signed copy coming Friday.', created_at: '2026-10-08T15:00:00Z' },
+      { customer_id: 'c2', contacted_on: '2026-10-07', by_name: 'Rosa', note: 'Not theirs.', created_at: '2026-10-07T15:00:00Z' },
+    ],
+  })
+  function openActivity(onLogContact?: (how: 'call' | 'text' | 'email', note: string) => Promise<void>) {
+    const state = boardStateFromRows(logged())
+    const customer = state.customers.find((c) => c.id === 'c1')!
+    renderWithProviders(
+      <GcCustomerWindow state={state} customer={customer} onOpenProject={() => undefined} onClose={() => undefined} {...(onLogContact ? { onLogContact } : {})} />,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Oak Street Partners' })
+    const tab = within(dialog).getByRole('tab', { name: /^Activity \(\d+\)$/ })
+    fireEvent.click(tab)
+    return { dialog, tab }
+  }
+
+  it('sits between About and Documents, with their call log newest first and no other customer’s', () => {
+    const { dialog, tab } = openActivity()
+    expect(within(dialog).getAllByRole('tab').map((t) => t.getAttribute('data-gc-company-tab'))).toEqual(['about', 'activity', 'documents', 'flow'])
+    const lines = within(dialog).getAllByRole('listitem').map((li) => li.textContent ?? '')
+    expect(tab.textContent).toBe(`Activity (${lines.length})`)
+    const calls = lines.filter((l) => l.includes('Rosa:') || l.includes('Abe:'))
+    expect(calls).toEqual([expect.stringContaining('Abe: Signed copy coming Friday.'), expect.stringContaining('Rosa: Wants the start moved a week.')])
+    expect(within(dialog).queryByText(/Not theirs\./)).toBeNull()
+  })
+
+  it('logs a contact with how they were reached, and has no box without the write', async () => {
+    const log = vi.fn(() => Promise.resolve())
+    const { dialog } = openActivity(log)
+    fireEvent.change(within(dialog).getByRole('combobox', { name: 'How you reached them' }), { target: { value: 'email' } })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'What was said' }), { target: { value: 'Sent the revised schedule.' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Log a contact' }))
+    await waitFor(() => expect(log).toHaveBeenCalledWith('email', 'Sent the revised schedule.'))
+  })
+
+  it('shows no box when the page gives no write', () => {
+    const { dialog } = openActivity()
+    expect(within(dialog).queryByRole('button', { name: 'Log a contact' })).toBeNull()
+  })
+})
+
+describe('GcCustomerWindow · their money, for the money team (the Board’s B2b-v-iii)', () => {
+  /** The clinic sent to sign with its file, a change order waiting on Oak Street, and pay application 1 certified Sep 1 and unpaid. */
+  function money(over: Partial<CustomerWindowMoney> = {}) {
+    const rows: BoardRows = { ...awardedClinicBoardRows(), ownerContractSends: [contractSendRow()] }
+    const base = boardStateFromRows(rows)
+    const state: GcState = {
+      ...base,
+      projects: base.projects.map((p) =>
+        p.id === 'p1'
+          ? { ...p, changeOrders: [{ id: 'co1', number: 1, description: 'Add a hand sink', reason: 'owner', schedule: 'none', packageId: null, cost: 1000, price: 1100, status: 'sent', sentOn: '2026-10-06', answeredOn: null, pctDone: 0 }] }
+          : p,
+      ),
+    }
+    const app: OwnerPayAppRow = {
+      id: 'a1', project_id: 'p1', number: 1, final: false, period_to: '2026-08-31', sent_on: '2026-08-31', sent_by: null, retainage_pct: 10,
+      retainage_step_at_pct: null, retainage_step_to_pct: null, retainage_step_way: null, retainage: 1000, work_to_date: 10000, due: 9000,
+      certified: 9000, certified_on: '2026-09-01', certified_note: '', certified_by: null, invoice_id: null, conditional_waiver_id: null, created_at: '2026-08-31T15:00:00Z',
+      customer_line: null, customer_line_es: null, paid_on: null,
+    }
+    const billing: BillingRows = {
+      terms: [{ project_id: 'p1', owner_retainage_pct: 10, owner_retainage_step_at_pct: null, owner_retainage_step_to_pct: null, owner_retainage_step_way: null, owner_pay_days: 30, owner_late_interest_pct_per_month: null, owner_late_finish_per_day: null, billing_job_id: null, property_owner_customer_id: null }],
+      contract: [],
+      billing: new Map([['p1', { payApps: [app], lines: [], reminders: [], interestBills: [], acceptance: null }]]),
+      names: {},
+      payDays: {},
+    }
+    const customer = state.customers.find((c) => c.id === 'c1')!
+    const part: CustomerWindowMoney = { view: customerMoneyView(state, billing, customer), onOpenBill: vi.fn(), onOpenChanges: vi.fn(), onOpenContract: vi.fn(() => Promise.resolve()), ...over }
+    renderWithProviders(<GcCustomerWindow state={state} customer={customer} money={part} onOpenProject={() => undefined} onClose={() => undefined} />)
+    return { part, dialog: screen.getByRole('dialog', { name: 'Oak Street Partners' }) }
+  }
+
+  it('About says what they owe us now and what they hold, beside what we bid them and have under contract', () => {
+    const { dialog } = money()
+    const totals = dialog.querySelector('[data-gc-customer-totals]') as HTMLElement
+    expect(within(totals).getByText('They owe us now')).toBeTruthy()
+    expect(within(totals).getByText('$9,000')).toBeTruthy()
+    expect(within(totals).getByText('They are holding')).toBeTruthy()
+    expect(within(totals).getByText('$1,000')).toBeTruthy()
+    expect(within(totals).getByText('$9,000 certified, not paid')).toBeTruthy()
+    expect(within(totals).getByText('Under contract')).toBeTruthy()
+  })
+
+  it('Documents lists the late bill and the change order after our contract, each opening its own window, read only', () => {
+    const { dialog, part } = money()
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    expect(within(dialog).getByText('Pay application 1')).toBeTruthy()
+    expect(within(dialog).getByText(/days late/)).toBeTruthy()
+    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Open the bill' })[0]!)
+    expect(part.onOpenBill).toHaveBeenCalledWith('p1')
+    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Open the change orders' })[0]!)
+    expect(part.onOpenChanges).toHaveBeenCalledWith('p1')
+    expect(within(dialog).queryByRole('button', { name: /Remind/ })).toBeNull()
+  })
+
+  it('opens our contract’s file on the press, and says so in words when it does not open', async () => {
+    const { dialog, part } = money({ onOpenContract: vi.fn(() => Promise.reject(new Error('the file would not open.'))) })
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Open the contract' }))
+    expect(part.onOpenContract).toHaveBeenCalledWith('p1')
+    expect((await within(dialog).findByRole('alert')).textContent).toBe('The contract did not open: the file would not open.')
+  })
+
+  it('shows no file to open when the bucket does not let the reader read it', () => {
+    const rows: BoardRows = { ...awardedClinicBoardRows(), ownerContractSends: [contractSendRow()] }
+    const state = boardStateFromRows(rows)
+    const customer = state.customers.find((c) => c.id === 'c1')!
+    const part: CustomerWindowMoney = { view: customerMoneyView(state, { terms: [], contract: [], billing: new Map(), names: {}, payDays: {} }, customer), onOpenBill: vi.fn(), onOpenChanges: vi.fn() }
+    renderWithProviders(<GcCustomerWindow state={state} customer={customer} money={part} onOpenProject={() => undefined} onClose={() => undefined} />)
+    const dialog = screen.getByRole('dialog', { name: 'Oak Street Partners' })
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    expect(within(dialog).queryByRole('button', { name: 'Open the contract' })).toBeNull()
+  })
+
+  it('says it is reading while the money reads, and the problem in words when it does not', () => {
+    const { dialog } = money({ view: null })
+    expect(within(dialog).getAllByText('Reading what they owe us…').length).toBeGreaterThan(0)
+  })
+
+  it('outside the money team, About and Documents speak of no money owed, held or charged', () => {
+    const rows: BoardRows = { ...awardedClinicBoardRows(), ownerContractSends: [contractSendRow()] }
+    const state = boardStateFromRows(rows)
+    renderWithProviders(<GcCustomerWindow state={state} customer={state.customers.find((c) => c.id === 'c1')!} onOpenProject={() => undefined} onClose={() => undefined} />)
+    const dialog = screen.getByRole('dialog', { name: 'Oak Street Partners' })
+    expect(within(dialog).queryByText(/owe|holding|interest/i)).toBeNull()
+    expect(within(dialog).getByText('Under contract')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    expect(within(dialog).queryByRole('button', { name: 'Open the bill' })).toBeNull()
+    expect(within(dialog).queryByText(/Pay application/)).toBeNull()
+  })
+
+  it('opens their flow on its own tab, read for the customer', async () => {
+    const { dialog } = open()
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Flow' }))
+    expect(await within(dialog).findByRole('region', { name: 'Customer flow' })).toBeTruthy()
+    expect(flowIo.find).toHaveBeenCalledWith({ gcCompanyId: null, customerId: 'c1' })
+  })
+})

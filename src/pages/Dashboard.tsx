@@ -44,6 +44,7 @@ import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -59,6 +60,7 @@ import CrewReviewDeck from '../components/team-feedback/CrewReviewDeck'
 import { fetchTeamFeedbackSettings } from '../lib/teamFeedback'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import DashboardMyVehicleCard from '../components/DashboardMyVehicleCard'
+import { DashboardTrainingSection } from '../components/dashboard/DashboardTrainingSection'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
@@ -145,6 +147,8 @@ const DASHBOARD_MODAL_OVERLAY_STYLE: CSSProperties = {
 export default function Dashboard() {
   const jobDetailModal = useJobDetailModal()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  /** ZZ test jobs off the Billed pin for every role but a dev who shows them (punch list #61, v2.5120). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -359,6 +363,8 @@ export default function Dashboard() {
   } = useDashboardBoot({ authUserId: authUser?.id })
   /** Mirrors DashboardMyInboxCard’s render gate (reported via onVisibleChange) for the SectionDock entry. */
   const [myInboxDockVisible, setMyInboxDockVisible] = useState(true)
+  // Training (punch list #111): the card reports whether it drew, so the dock lists it only when there is a course to show.
+  const [trainingDockVisible, setTrainingDockVisible] = useState(false)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
   const {
     assignedJobs,
@@ -370,6 +376,8 @@ export default function Dashboard() {
     superintendentJobs,
     setSuperintendentJobs,
     superintendentJobsLoading,
+    zzTestJobsReadFailed,
+    retryZzTestJobs,
     refreshDashboardAssignedJobLists,
     refreshAssignedReadyToBill,
     resyncDashboardAfterUpdateJobStatusFailureRef,
@@ -654,7 +662,7 @@ export default function Dashboard() {
     }, FINANCIAL_PINS_REALTIME_DEBOUNCE_MS)
   }, [isDocVisible])
   const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(hasCostMatrixPin)
-  const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
+  const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey, hideZzTestJobs, authUser?.id ?? null)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
@@ -1196,6 +1204,11 @@ export default function Dashboard() {
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
         {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
+        {/* Training (v2.5586): the full Dashboard's foot card, here under My Schedule, so a crew member who lives in
+            Job Mode meets the course too. Renders nothing while nothing is required of the role. */}
+        <div style={{ marginTop: '0.75rem' }} data-job-mode-training>
+          <DashboardTrainingSection userId={authUser.id} role={role} />
+        </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"
@@ -1292,6 +1305,7 @@ export default function Dashboard() {
     { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
     { id: 'dash-hr-report', label: 'HR', visible: role === 'dev' || role === 'master_technician' },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
+    { id: 'dash-training', label: 'Training', visible: Boolean(authUser?.id) && trainingDockVisible },
   ].filter((sec) => sec.visible)
 
   const myInboxCard = (
@@ -1627,6 +1641,23 @@ export default function Dashboard() {
       </PhoneFold>
       {userError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{userError}</p>}
 
+      {zzTestJobsReadFailed ? (
+        // Punch list #61 (review on #5246): the job lists below are held, not empty — say so, with a retry.
+        <div
+          role="alert"
+          data-testid="dashboard-zz-read-failed"
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', marginBottom: '0.75rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', fontSize: '0.875rem' }}
+        >
+          <span>Could not read the test-job list, so your job lists are held.</span>
+          <button
+            type="button"
+            onClick={retryZzTestJobs}
+            style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
       <DashboardTeamReadyToBillSection
         reportCountByJobId={reportCountByJobId}
         role={role}
@@ -1780,6 +1811,10 @@ export default function Dashboard() {
       {/* v2.1648: field self-service for whoever holds a company vehicle —
           renders nothing for everyone else. Owner placement: just below My Time. */}
       {authUser?.id && <DashboardMyVehicleCard userId={authUser.id} />}
+      {/* Training (punch list #111, v2.5567): the courses the role must take, in one colour, at the bottom under My Time.
+          Renders nothing while nothing is required of the role or the tables are not on prod yet. */}
+      {authUser?.id && <div id="dash-training" aria-hidden="true" style={dockAnchorStyle} />}
+      {authUser?.id && <DashboardTrainingSection userId={authUser.id} role={role} onVisibility={setTrainingDockVisible} />}
 
       <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 

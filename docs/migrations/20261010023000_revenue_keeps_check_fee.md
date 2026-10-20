@@ -17,7 +17,7 @@ Every rewrite of a job's revenue from its line items keeps a returned check's fe
 
 Each keeps its signature, so `CREATE OR REPLACE` keeps its grants and its comment. No table is created or altered. `SET lock_timeout = '3s'` comes first, and the file is idempotent.
 
-**Left as it is.** `gc_owner_billing_revenue` keeps a GC billing job at the contract plus the interest billed, and every pay application, certificate and interest bill resets the revenue to it. A returned check fee on one of that job's bills would be dropped there. Its SQL is lifted byte for byte from `spike/gc-mode`, so adding `job_rider_fees(billing_job_id)` to it is the GC crew's change. Turnaway trip charges are a separate gap: `create_turnaway_trip_charge` raises the revenue with no line and no rider, so these rewrites drop a trip charge as they always have.
+**Left as it was, both closed since.** `gc_owner_billing_revenue` kept a GC billing job at the contract plus the interest billed, so a returned check fee on one of that job's bills would have been dropped there. [`20261010026000`](20261010026000_gc_owner_card_bills.md) (v2.5113) added `job_rider_fees(billing_job_id)` to it. Turnaway trip charges were a separate gap: `create_turnaway_trip_charge` raised the revenue with no line and no rider, so these rewrites dropped a trip charge. [`20261010044000`](20261010044000_trip_charge_rider.md) (v2.5129) gives the trip charge a rider entry on its bill that `job_rider_fees` counts.
 
 ## Apply order
 

@@ -60,6 +60,9 @@ function rowsOf(state: GcState, project: GcProject): OwnerBillingRows {
         conditional_waiver_id: null,
         invoice_id: null,
         created_at: `${app.sentOn}T15:00:00Z`,
+        customer_line: null,
+        customer_line_es: null,
+        paid_on: null,
       }
     }),
     lines: sent.flatMap((app) =>
@@ -199,6 +202,9 @@ describe('money in on the billing job (O5c)', () => {
     invoice_id: 'inv-1',
     conditional_waiver_id: null,
     created_at: '2026-09-25T15:00:00Z',
+    customer_line: null,
+    customer_line_es: null,
+    paid_on: null,
     ...over,
   })
   const money = (over: Partial<OwnerBillingMoney> = {}): OwnerBillingMoney => ({
@@ -219,6 +225,26 @@ describe('money in on the billing job (O5c)', () => {
     const read = payAppFromRows(app(), [], [], m)
     expect([read.payments, read.paidOn]).toEqual([[{ on: '2026-10-05', amount: 300 }, { on: '2026-10-20', amount: 600 }], '2026-10-20'])
     expect([appPaid(read), appOpen(read)]).toEqual([900, 0])
+  })
+
+  it('says the day the app reminded the architect, in the office’s day (O10), and only its own pay application’s', () => {
+    const notices = [
+      { pay_app_id: 'a1', kind: 'certify_reminder', created_at: '2026-10-06T02:30:00Z' },
+      { pay_app_id: 'a2', kind: 'certify_reminder', created_at: '2026-10-09T15:00:00Z' },
+    ]
+    expect(payAppFromRows(app(), [], [], money(), notices).architectRemindedOn).toBe('2026-10-05')
+    expect(payAppFromRows(app(), [], [], money(), []).architectRemindedOn).toBeUndefined()
+    expect(payAppFromRows(app({ id: 'a3' }), [], [], money(), notices).architectRemindedOn).toBeUndefined()
+  })
+
+  it('says the day the app told the customer it was due soon, and the day it named (O12)', () => {
+    const notices = [
+      { pay_app_id: 'a1', kind: 'certify_reminder', created_at: '2026-10-06T02:30:00Z', due_on: null },
+      { pay_app_id: 'a1', kind: 'pay_soon', created_at: '2026-10-25T14:00:00Z', due_on: '2026-10-28' },
+    ]
+    expect(payAppFromRows(app(), [], [], money(), notices).customerToldDue).toEqual({ on: '2026-10-25', due: '2026-10-28' })
+    expect(payAppFromRows(app(), [], [], money(), notices.slice(0, 1)).customerToldDue).toBeUndefined()
+    expect(payAppFromRows(app({ id: 'a3' }), [], [], money(), notices).customerToldDue).toBeUndefined()
   })
 
   it('leaves the rest of a part payment open, and closes a written-down bill on its last payment\'s day', () => {

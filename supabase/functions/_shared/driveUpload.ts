@@ -3,7 +3,8 @@
  * the package filing shares one implementation): the JWT-bearer token, find-or-create a
  * folder, reuse-or-upload a file from a URL. Setup and the delegation note:
  * docs/DRIVE_INTAKE_SETUP.md. Idempotent by name: an existing same-name folder or file is
- * reused, never duplicated.
+ * reused, never duplicated. `uploadBytes` (the trade portal's P5a-1) puts bytes the caller holds
+ * in a folder as a new file, with no reuse: `uploadFromUrl` calls it for its upload half.
  */
 
 export function b64url(data: Uint8Array | string): string {
@@ -106,17 +107,23 @@ export async function uploadFromUrl(token: string, folderId: string, url: string
     src = await fetch(url)
     if (!src.ok || !src.body) throw new Error(`Could not fetch the source (${src.status})`)
   }
+  const fileBytes = new Uint8Array(await src.arrayBuffer())
+  const { id } = await uploadBytes(token, folderId, fileBytes, name, src.headers.get('content-type') ?? 'application/pdf')
+  return { id, name, reused: false }
+}
+
+/** Upload bytes as a new file in the folder: one multipart upload, never a reuse by name. Throws with Drive's reason. */
+export async function uploadBytes(token: string, folderId: string, bytes: Uint8Array, name: string, mime: string): Promise<{ id: string }> {
   const meta = { name, parents: [folderId] }
   const boundary = 'drive-upload-' + crypto.randomUUID()
-  const fileBytes = new Uint8Array(await src.arrayBuffer())
   const pre = new TextEncoder().encode(
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${src.headers.get('content-type') ?? 'application/pdf'}\r\n\r\n`,
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`,
   )
   const post = new TextEncoder().encode(`\r\n--${boundary}--`)
-  const payload = new Uint8Array(pre.length + fileBytes.length + post.length)
+  const payload = new Uint8Array(pre.length + bytes.length + post.length)
   payload.set(pre, 0)
-  payload.set(fileBytes, pre.length)
-  payload.set(post, pre.length + fileBytes.length)
+  payload.set(bytes, pre.length)
+  payload.set(post, pre.length + bytes.length)
   const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
@@ -124,5 +131,5 @@ export async function uploadFromUrl(token: string, folderId: string, url: string
   })
   const body = await res.json()
   if (!res.ok || !body.id) throw new Error(`Upload failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
-  return { id: body.id as string, name, reused: false }
+  return { id: body.id as string }
 }

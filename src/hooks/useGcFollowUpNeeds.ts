@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import type { GcFollowUpNeeds } from '../lib/gc/followUpNeeds'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import type { GcNeedsYou } from '../lib/gc/needsYou'
 
 /**
- * GC mode: Follow up's count for the Dashboard's Needs you (Helper 6, after door 2). The GC
- * kernels and reads load on demand, only when the line is on, so the Dashboard's own chunk does
- * not grow. Null while off, loading, or when nobody waits on a call. Refetches on window focus
- * like the neighbouring nudges.
+ * GC mode: Follow up's count for the Dashboard's Needs you (Helper 6, after door 2): the people waiting on us, once a
+ * person, the number Follow up's pill says (`follow_up_count`, v2.5289). The read loads on demand, only when the line is
+ * on, so the Dashboard's own chunk does not grow. Null while off, loading, or when nobody waits on us. Refetches on window
+ * focus like the neighbouring nudges.
  */
-export function useGcFollowUpNeeds(enabled: boolean): GcFollowUpNeeds | null {
-  const [needs, setNeeds] = useState<GcFollowUpNeeds | null>(null)
+export function useGcFollowUpNeeds(enabled: boolean): GcNeedsYou | null {
+  const [needs, setNeeds] = useState<GcNeedsYou | null>(null)
   const load = useCallback(async () => {
     if (!enabled) {
       setNeeds(null)
@@ -18,7 +17,7 @@ export function useGcFollowUpNeeds(enabled: boolean): GcFollowUpNeeds | null {
     }
     try {
       const { loadGcFollowUpNeeds } = await import('../lib/gc/followUpNeedsIo')
-      setNeeds(await loadGcFollowUpNeeds(todayYmdInAppTz()))
+      setNeeds(await loadGcFollowUpNeeds())
     } catch {
       setNeeds(null)
     }

@@ -16,7 +16,7 @@ function affidavit(jobId: string, pile: LienAffidavitPile, over: Partial<LienAff
 function retainage(jobId: string, pile: LienRetainagePile, over: Partial<LienRetainageEntry> = {}): LienRetainageEntry {
   return { jobId, retainageHeld: 500, contractEndedOn: '2026-09-20', contractEndedHow: 'complete', deadline: '2026-10-20', daysLeft: 15, severity: 'amber', noticed: false, inClaim: false, openBalance: 1000, customerId: 'c1', gcCustomerId: 'gc1', propertyKind: '', hasOwner: true, paymentBond: 'unknown', gates: [], ready: true, item: null, pile, ...over }
 }
-const two = (state: LetterTwoStatus['state'], words = ''): LetterTwoStatus => ({ state, day: 12, firstItemId: 'i1', firstSentAt: '2026-09-23T12:00:00Z', letterTwo: null, gcAuthorized: null, words })
+const two = (state: LetterTwoStatus['state'], words = ''): LetterTwoStatus => ({ state, day: 12, clock: null, firstItemId: 'i1', firstSentAt: '2026-09-23T12:00:00Z', letterTwo: null, gcAuthorized: null, words })
 
 function build(over: Partial<LienNextUpInput>) {
   return buildLienNextUp({ notices: [], affidavits: [], retainage: [], letterTwoByJob: {}, role: 'assistant', todayYmd: TODAY, jobTitle: (id) => `Job ${id}`, gcName: (id) => `GC ${id}`, ...over })
@@ -78,6 +78,16 @@ describe('buildLienNextUp — notices', () => {
     expect([due.key, due.action, due.button, due.sub, due.dueOn, due.severity]).toEqual(['letter-two:j1', 'letter_two', 'Send letter two', 'day 12 · letter two due', null, 'amber'])
     expect(due.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'sent' })
     expect(one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue') } }).group).toBe('now')
+  })
+
+  it('an envelope mailed through Docsmit that came back is the office’s red row under Needs you now, opening the notice under Sent (the Docsmit train, 6b-2)', () => {
+    const r = one({ mailNeedsYou: [{ jobId: 'j1', pieceId: 'p2', who: 'Original contractor', words: 'returned to sender' }] })
+    expect([r.key, r.kind, r.action, r.button, r.title, r.sub, r.group, r.severity, r.dueOn]).toEqual(['mail:p2', 'notice', 'mail_needs_you', 'Open the notice', 'Job j1', 'Docsmit · original contractor · returned to sender', 'now', 'red', null])
+    expect(r.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'sent' })
+    expect(one({ role: 'estimator', mailNeedsYou: [{ jobId: 'j1', pieceId: 'p2', who: 'Owner of record', words: 'notice left, unclaimed so far' }] }).button).toBeNull()
+    // Dated rows of the same group come first; the envelope's row has no day of its own.
+    const rows = build({ notices: [notice('j3', 'to_draft', { earliestDeadline: '2026-10-08', daysLeft: 3, severity: 'red' })], mailNeedsYou: [{ jobId: 'j1', pieceId: 'p2', who: 'Owner of record', words: 'returned to sender' }] })
+    expect(rows.map((x) => x.key)).toEqual(['notice:j3', 'mail:p2'])
   })
 
   it('missed: open months are drafted; a closed window nobody wrote down is noted; a noted one asks nothing', () => {
@@ -262,5 +272,23 @@ describe('Only you can sign (v2.5087)', () => {
     const officeRow = one({ role: 'assistant', notices: [notice('j1', 'ready', { item: unsigned })], leaderName: () => 'Robert' })
     expect(officeRow.action).toBe('send')
     expect(officeRow.sub).toBe('Approved · ready to send · unsigned, waits on Robert')
+  })
+})
+
+describe('Signed by pen, as recorded (the pen train, PR 3)', () => {
+  it('a pen record the leader has not confirmed is his own row, first after Only you can sign, with Yes, I signed it; the office sees the ready row', () => {
+    const pen = { id: 'i-pen', status: 'approved', approval_mode: 'word', fields: {}, signed_at: '2026-10-09T17:00:00Z', signer_printed_name: 'Robert Douglas', signer_signature_mode: 'pen', signed_recorded_by: 'u-taunya', signed_witness_how: 'watched', signed_leader_confirmed_at: null } as unknown as LienDeskEntry['item']
+    const leaderRows = build({ role: 'master_technician', notices: [notice('j1', 'ready', { item: pen })], userName: (id) => (id === 'u-taunya' ? 'Taunya' : null) })
+    const row = leaderRows.find((r) => r.jobId === 'j1')!
+    expect(row.action).toBe('confirm_pen')
+    expect(row.button).toBe('Yes, I signed it')
+    expect(row.sub).toBe('Signed by pen Oct 9 · recorded by Taunya')
+    expect(row.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'ready' })
+    const groups = groupLienNextUp(leaderRows)
+    expect(groups[0]!.group).toBe('pen')
+    expect(groups[0]!.label).toBe('Signed by pen, as recorded')
+    const confirmed = { ...(pen as object), signed_leader_confirmed_at: '2026-10-12T22:00:00Z' } as unknown as LienDeskEntry['item']
+    expect(build({ role: 'master_technician', notices: [notice('j1', 'ready', { item: confirmed })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
+    expect(build({ role: 'assistant', notices: [notice('j1', 'ready', { item: pen })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
   })
 })

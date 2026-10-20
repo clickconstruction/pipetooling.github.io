@@ -18,7 +18,11 @@ import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useBidPricingEngine } from '../hooks/useBidPricingEngine'
 import { useBidPricingRows } from '../hooks/useBidPricingRows'
+import { useBidCrewRate } from '../hooks/useBidCrewRate'
+import { effectiveLaborRate } from '../lib/bids/crewRate'
 import { useBidCustomCosts } from '../hooks/useBidCustomCosts'
+import { bidTaxRateToSave, effectiveBidTaxRate } from '../lib/bids/bidTaxRate'
+import { loadBidTaxRateDefault, saveBidTaxRate } from '../lib/bids/bidTaxRateIo'
 import { useToastContext } from '../contexts/ToastContext'
 import { useRoleGate } from '../hooks/useRoleGate'
 import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
@@ -71,7 +75,7 @@ import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabK
 import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLensCaption, robotLenses } from '../lib/bids/bidsLenses'
 import { BidsLensBar } from '../components/bids/BidsLensBar'
 import { BidCellHistoryProvider } from '../hooks/useBidHistoryCells'
-import { BID_HISTORY_PUT_BACK_EVENT, type BidHistoryPutBackDetail } from '../lib/bids/bidHistoryPutBack'
+import { BID_HISTORY_PUT_BACK_EVENT, bidPutBackMovesBookPick, type BidHistoryPutBackDetail } from '../lib/bids/bidHistoryPutBack'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
@@ -94,6 +98,7 @@ import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
 import { BidsCallQueueTab } from '../components/bids/BidsCallQueueTab'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
+import { BidsMoneyLens } from '../components/bids/BidsMoneyLens'
 import { BidsJobAccountsLens } from '../components/bids/BidsJobAccountsLens'
 import { useBidGcPackets } from '../hooks/useBidGcPackets'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
@@ -331,8 +336,11 @@ export default function Bids() {
     lostBidsNeedingReasonCount,
     jobsByBidId,
     bidBoardBudgetChips,
+    bidBoardCountSources,
     jobAccountStrips,
     jobAccountsMissingCount,
+    moneyStrips,
+    moneyPastWordCount,
     linkJobToBidFromBoard,
   } = useBidBoardScope({ bids, twinUserIds, selectedServiceTypeId, serviceTypes, gcPacketsByBid, myRole, showToast })
   // Who a bid's call-again day asks for (v2.4421): the board prints the name beside the day.
@@ -548,7 +556,7 @@ export default function Bids() {
     bidCountRowSubmissionHides,
     bidVersions, selectedBidVersionId, setSelectedBidVersionId, selectedBidVersionIdRef, switchActiveVersion,
     pricingResolve, retryPricingResolve, costEstimateResolve,
-    selectedPricingVersionId, setSelectedPricingVersionId,
+    selectedPricingVersionId, setSelectedPricingVersionId, pricingPricesReady,
     pricingCountRows,
     pricingCostEstimate,
     pricingLaborRows,
@@ -583,7 +591,11 @@ export default function Bids() {
   onBidPutBackRef.current = (d) => {
     if (d.table === 'bids') void loadBids()
     if (selectedBidForCounts?.id === d.bidId) refreshAfterCountsChange()
-    if (selectedBidForPricing?.id === d.bidId) void Promise.all([loadBidPricingAssignments(d.bidId, selectedPricingVersionId), loadPricingDataForBid(d.bidId)])
+    // A put back on the bid's book pick re-resolves the book inside the pricing engine (v2.5130);
+    // reloading the current book's prices here would race it with the old book's rows.
+    if (selectedBidForPricing?.id === d.bidId && !bidPutBackMovesBookPick(d.table)) {
+      void Promise.all([loadBidPricingAssignments(d.bidId, selectedPricingVersionId), loadPricingDataForBid(d.bidId)])
+    }
   }
   useEffect(() => {
     const hear = (e: Event) => {
@@ -1424,6 +1436,50 @@ export default function Bids() {
 
   const { customCosts: bidCountRowCustomCosts, reloadCustomCosts: reloadBidCustomCosts } = useBidCustomCosts(selectedBidForPricing?.id ?? null, selectedBidVersionId)
 
+  // The crew rate stands in for a bid with no typed labor rate (punch list #128, PR 0): a bid whose
+  // hours came from the book has a labor cost before anyone opens Labor. `effectiveLaborRate` was
+  // the Labor tab's own read; Pricing, the print and the letter now read the same number.
+  const { crewRate: pricingCrewRate } = useBidCrewRate(!!selectedBidForPricing)
+  const pricingLaborRateEffective = effectiveLaborRate({ override: pricingLaborRate, companyRate: pricingCrewRate?.companyRate ?? null })
+
+  // The sales tax rate lives on the bid (punch list #128 PR 1, v2.5653): the box on Takeoffs reads
+  // `bids.tax_rate_pct`, else the company default, and writes the bid on blur. Before the migration
+  // is pushed the column is absent from the row and the default stands, as it always did.
+  const [bidTaxRateDefault, setBidTaxRateDefault] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void loadBidTaxRateDefault(supabase).then((pct) => {
+      if (!cancelled) setBidTaxRateDefault(pct)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const taxRateBid = selectedBidForTakeoff ?? selectedBidForPricing ?? selectedBidForCostEstimate
+  const taxRateBidOwn = (taxRateBid as (BidWithBuilder & { tax_rate_pct?: number | null }) | null)?.tax_rate_pct ?? null
+  useEffect(() => {
+    setCostEstimatePOModalTaxPercent(String(effectiveBidTaxRate(taxRateBidOwn, bidTaxRateDefault).pct))
+  }, [taxRateBid?.id, taxRateBidOwn, bidTaxRateDefault])
+  const commitBidTaxPercent = async (text: string) => {
+    const bid = taxRateBid
+    if (!bid) return
+    const next = bidTaxRateToSave(text, bidTaxRateDefault)
+    if (next === undefined) {
+      setCostEstimatePOModalTaxPercent(String(effectiveBidTaxRate(taxRateBidOwn, bidTaxRateDefault).pct))
+      showToast('The tax rate is a number from 0 to 100.', 'warning')
+      return
+    }
+    if (next === taxRateBidOwn) return
+    const { error } = await saveBidTaxRate(supabase, bid.id, next)
+    if (error) {
+      showToast(`Could not save the tax rate: ${error}`, 'error')
+      return
+    }
+    const patch = (b: BidWithBuilder) => (b.id === bid.id ? ({ ...b, tax_rate_pct: next } as BidWithBuilder) : b)
+    setBids((prev) => prev.map(patch))
+    setSharedBid(patch(bid))
+  }
+
   const { pricingRowsForGrid, pricingPackageSource, coverLetterPricingRows } = useBidPricingRows({
     selectedBidForPricing,
     selectedPricingVersionId,
@@ -1432,7 +1488,7 @@ export default function Bids() {
     pricingMaterialTotalRoughIn,
     pricingMaterialTotalTopOut,
     pricingMaterialTotalTrimSet,
-    pricingLaborRate,
+    pricingLaborRate: pricingLaborRateEffective.rate,
     costEstimatePOModalTaxPercent,
     bidPricingAssignments,
     bidCountRowCustomPrices,
@@ -1856,6 +1912,7 @@ export default function Bids() {
           showEstimatingHealth={myRole !== 'primary' && myRole !== 'superintendent'}
           jobsByBidId={jobsByBidId}
           budgetChips={bidBoardBudgetChips}
+          countSourcesByBid={bidBoardCountSources}
           onLinkJobToBid={canSeeBidBoardJobLinks(myRole) ? linkJobToBidFromBoard : undefined}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}
@@ -1899,7 +1956,7 @@ export default function Bids() {
 
       {/* Builder Review Tab */}
       {isFollowupLens(activeTab) && (
-        <BidsLensBar lenses={followupLenses({ role: myRole, jobAccountsMissing: jobAccountsMissingCount })} activeKey={activeTab} onSelect={selectBidsTab}>
+        <BidsLensBar lenses={followupLenses({ role: myRole, jobAccountsMissing: jobAccountsMissingCount, moneyPastWord: moneyPastWordCount })} activeKey={activeTab} onSelect={selectBidsTab}>
           {followupNeedsReasonChipShows({ role: myRole, activeTab, lostNeedingReason: lostBidsNeedingReasonCount }) ? (
             <button
               type="button"
@@ -1971,6 +2028,15 @@ export default function Bids() {
         <BidsJobAccountsLens
           bids={peopleBids}
           strips={jobAccountStrips}
+          ledgerPrefixMap={ledgerPrefixMap}
+          authUserId={authUser?.id ?? null}
+          narrowViewport640={narrowViewport640}
+        />
+      )}
+      {activeTab === 'money' && (
+        <BidsMoneyLens
+          bids={peopleBids}
+          strips={moneyStrips}
           ledgerPrefixMap={ledgerPrefixMap}
           authUserId={authUser?.id ?? null}
           narrowViewport640={narrowViewport640}
@@ -2121,6 +2187,7 @@ export default function Bids() {
           activeTab={activeTab}
           costEstimatePOModalTaxPercent={costEstimatePOModalTaxPercent}
           setCostEstimatePOModalTaxPercent={setCostEstimatePOModalTaxPercent}
+          onCommitTaxPercent={(text) => void commitBidTaxPercent(text)}
           takeoffCountRows={takeoffCountRows}
           takeoffRoughPartLines={takeoffRoughPartLines}
           setTakeoffRoughPartLines={setTakeoffRoughPartLines}
@@ -2277,13 +2344,22 @@ export default function Bids() {
           selectedBidVersionId={selectedBidVersionId}
           selectedPricingVersionId={selectedPricingVersionId}
           setSelectedPricingVersionId={setSelectedPricingVersionId}
+          pricingPricesReady={pricingPricesReady}
           pricingCountRows={pricingCountRows}
           pricingCostEstimate={pricingCostEstimate}
           pricingLaborRows={pricingLaborRows}
           pricingMaterialTotalRoughIn={pricingMaterialTotalRoughIn}
           pricingMaterialTotalTopOut={pricingMaterialTotalTopOut}
           pricingMaterialTotalTrimSet={pricingMaterialTotalTrimSet}
-          pricingLaborRate={pricingLaborRate}
+          pricingLaborRate={pricingLaborRateEffective.rate}
+          pricingLaborRateSource={pricingLaborRateEffective.source}
+          setCostEstimatePOModalTaxPercent={setCostEstimatePOModalTaxPercent}
+          onCommitTaxPercent={(text) => void commitBidTaxPercent(text)}
+          onPatchBid={(bidId, patch) => {
+            const apply = (b: BidWithBuilder) => (b.id === bidId ? ({ ...b, ...patch } as BidWithBuilder) : b)
+            setBids((prev) => prev.map(apply))
+            if (selectedBidForPricing?.id === bidId) setSharedBid(apply(selectedBidForPricing))
+          }}
           pricingFixtureMaterialsFromTakeoff={pricingFixtureMaterialsFromTakeoff}
           teamLaborDataForBids={teamLaborDataForBids}
           templatePriceBookVersions={templatePriceBookVersions}

@@ -22,6 +22,8 @@ export async function listArReturnCaseFees(caseIds: ReadonlyArray<string>): Prom
       fee_added_at: typeof r.fee_added_at === 'string' ? r.fee_added_at : null,
       fee_added_by: typeof r.fee_added_by === 'string' ? r.fee_added_by : null,
       bills: Array.isArray(r.bills) ? (r.bills as ArCaseFeeBill[]) : [],
+      // v2.5144: absent until migration 20261010062000 is on the database.
+      fee_came_off_at: typeof r.fee_came_off_at === 'string' ? r.fee_came_off_at : null,
     })
   }
   return out

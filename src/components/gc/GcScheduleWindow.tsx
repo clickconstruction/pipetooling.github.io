@@ -4,13 +4,39 @@
  * opens it at `schedule=<projectId>`, the way the plans, the questions and the change orders open
  * theirs. It frames the schedule's body (`GcSchedule`), which reads the job's schedule over the board
  * the page already holds. Since the schedule's PR 10 it is its team's (G-133, `canUseGcSchedule`): the
- * office and estimators open it and move a bar in it, each move with why it moved (PR 8a).
+ * office and estimators open it and move a bar in it, each move with why it moved (PR 8a). Since PR 9d, `canPull` adds Pull earlier and Days back (a dev's while
+ * Building is built, since they read its submittals and RFIs). Since PR 13b, `canTell` adds Tell the trades (whoever may
+ * send a trade email, a dev today).
  */
 import { useEffect } from 'react'
+import type { ScheduleReads } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
-import { GcSchedule } from './GcSchedule'
+import { GcSchedule, type ScheduleFollowUp } from './GcSchedule'
 
-export function GcScheduleWindow({ state, project, by, canMove = false, onClose }: { state: GcState; project: GcProject; by: string; canMove?: boolean; onClose: () => void }) {
+export function GcScheduleWindow({
+  state,
+  project,
+  by,
+  canMove = false,
+  canPull = false,
+  canTell = false,
+  reads,
+  followUp,
+  onClose,
+}: {
+  state: GcState
+  project: GcProject
+  by: string
+  canMove?: boolean
+  canPull?: boolean
+  /** Tell the trades (PR 13b): with `canMove`, for whoever may send a trade email (`canSendGcTradeEmail`). */
+  canTell?: boolean
+  /** What this reader may read over the schedule (PR 16), memoized by the page. */
+  reads?: ScheduleReads
+  /** The Follow up sheet's log (the Board's B2b-viii-a): the call list's Follow up and Work the list. */
+  followUp?: ScheduleFollowUp
+  onClose: () => void
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !e.defaultPrevented) onClose()
@@ -41,7 +67,7 @@ export function GcScheduleWindow({ state, project, by, canMove = false, onClose 
           </button>
         </div>
         <div style={{ padding: '0.8rem 1rem', overflowY: 'auto' }}>
-          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} />
+          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} canTell={canTell} {...(reads ? { reads } : {})} {...(followUp ? { followUp } : {})} />
         </div>
       </div>
     </div>

@@ -10,14 +10,17 @@ import {
   buildGcTradeEmail,
   GC_TRADE_EMAIL_FROM_NAME,
   GC_TRADE_EMAIL_ROLES,
+  GC_TRADE_EMAIL_TEST_TYPE,
   newTradeToken,
   parseTradeEmail,
   spanishHeld,
   TRADE_EMAIL_ERRORS,
   tradeEmailGroup,
   tradeEmailReach,
-  tradeEmailRecipients,
+  tradeEmailRecipientsOf,
+  tradeEmailTestSubject,
   tradePortalLinkUrl,
+  tradeTestLinkUrl,
   type TradeEmailErrorKey,
   type TradeMailPerson,
 } from '../_shared/gcTradeEmail.ts'
@@ -27,9 +30,16 @@ import {
  * plan `to-dos/gc-mode/mockups/portal-p3.md` on spike/gc-mode). A lane sends by kind: the Ask window's invitation and
  * reminder, a new set's plans, the questions window's answer, and the rest as they land.
  *
- *   POST { companyId, kind, key, projectId | null, lang, subject, lines, group? }   staff JWT
+ *   POST { companyId, kind, key, projectId | null, lang, subject, lines, group?, groups?, test? }   staff JWT
  *     → { companyId, messageId, emailSendLogId, to }, with `already: true` for a key sent before
+ *     → { companyId, test: true, email, to, wouldGo: [{ name, email }] } for a test copy: who the real send would reach
  *     → { error: key } with TRADE_EMAIL_ERRORS' status
+ *
+ * Since the Board's B2b-viii-b: a `nudge` may name `groups` (the Follow up sheet from the company), and it goes to everyone
+ * who gets any of them; its row keeps the first of them in TRADE_MAIL_GROUPS' order, and the portal's Messages show every
+ * message whatever its group. `test: true` (every kind) runs the same gate and builds the same email, to the caller's own
+ * address only, `[TEST]` before the subject, no copy to anyone, logged as `gc_trade_email_test`. It uses no key, makes no
+ * link and shows none, and writes no message row and no sent copy.
  *
  * In order: the caller (a dev until the portal's door; never a training account or a digital twin), the shape, Spanish
  * held, the company, its ask on the project, the key sent once, who gets it by the kind's group, the company's link (made
@@ -94,15 +104,44 @@ serve(async (req) => {
       pmId = gc?.project_manager_user_id ?? null
     }
 
-    // A key is sent once: the first send's ids, and nothing sent.
+    // A key is sent once: the first send's ids, and nothing sent. A test copy uses no key.
     const sentBefore = async () => (await admin.from('gc_trade_messages').select('id, email_send_log_id, to_names').eq('company_id', m.companyId).eq('msg_key', m.key).maybeSingle()).data
-    const before = await sentBefore()
+    const before = m.test ? null : await sentBefore()
     if (before) return json({ companyId: m.companyId, messageId: before.id, emailSendLogId: before.email_send_log_id, to: before.to_names ?? [], already: true })
 
-    const group = tradeEmailGroup(m.kind, stage, m.group)
+    // Who gets it: the kind's group, or a nudge's groups together (B2b-viii-b). The row keeps the first.
+    const group = m.groups?.[0] ?? tradeEmailGroup(m.kind, stage, m.group)
     const { data: people } = await admin.from('gc_company_people').select('name, email, gets').eq('company_id', m.companyId).is('removed_at', null)
-    const reach = tradeEmailReach(tradeEmailRecipients(company, (people ?? []) as TradeMailPerson[], group))
+    const reach = tradeEmailReach(tradeEmailRecipientsOf(company, (people ?? []) as TradeMailPerson[], m.groups ?? [group]))
     if (reach.length === 0) return refuse('noEmail')
+    const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+    const pm = pmId ? (await admin.from('users').select('name, email').eq('id', pmId).maybeSingle()).data : null
+    const replyTo = (pm?.email || who.email || '').trim() || undefined
+    const signer = (pm?.name || who.name || GC_TRADE_EMAIL_FROM_NAME).trim()
+    const from = mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, EMAIL_FROM)
+
+    // A test copy: the same email to the caller's own address, with no link made or shown, and nothing written.
+    if (m.test) {
+      const testAddress = String(who.email ?? '').trim()
+      if (!testAddress) return refuse('noEmail')
+      const email = buildGcTradeEmail({
+        lang: m.lang,
+        recipients: reach.map((r) => r.name),
+        company: String(company.name ?? ''),
+        subject: m.subject,
+        lines: m.lines,
+        linkUrl: tradeTestLinkUrl(origin),
+        signer,
+        gc: GC_TRADE_EMAIL_FROM_NAME,
+      })
+      const sent = await sendEmailViaResend(testAddress, tradeEmailTestSubject(email.subject), email.text, email.html, resendApiKey, {
+        from,
+        ...(replyTo ? { replyTo } : {}),
+        emailType: GC_TRADE_EMAIL_TEST_TYPE,
+      })
+      if (!sent.success) return refuse('sendFailed', sent.error ?? 'Resend said no')
+      return json({ companyId: m.companyId, test: true, email: testAddress, to: reach.map((r) => r.name), wouldGo: reach })
+    }
 
     // The company's link that is on, else a new one by mint_gc_trade_portal_link's rules (one on per company).
     const activeToken = async () => (await admin.from('gc_trade_portal_links').select('token').eq('company_id', m.companyId).is('revoked_at', null).maybeSingle()).data?.token as string | null | undefined
@@ -114,11 +153,7 @@ serve(async (req) => {
       token = mintError ? await activeToken() : raw
       if (!token) return refuse('failed', `The portal link was not made: ${mintError?.message ?? 'no link'}`)
     }
-    const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
 
-    const pm = pmId ? (await admin.from('users').select('name, email').eq('id', pmId).maybeSingle()).data : null
-    const replyTo = (pm?.email || who.email || '').trim() || undefined
-    const signer = (pm?.name || who.name || GC_TRADE_EMAIL_FROM_NAME).trim()
     const email = buildGcTradeEmail({
       lang: m.lang,
       recipients: reach.map((r) => r.name),
@@ -130,7 +165,6 @@ serve(async (req) => {
       gc: GC_TRADE_EMAIL_FROM_NAME,
     })
 
-    const from = mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, EMAIL_FROM)
     const [first, ...rest] = reach
     const cc = rest.map((r) => r.email)
     const sent = await sendEmailViaResend(first!.email, email.subject, email.text, email.html, resendApiKey, {

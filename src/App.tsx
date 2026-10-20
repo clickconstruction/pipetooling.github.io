@@ -33,6 +33,8 @@ const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
 const Bridge = lazy(() => import('./pages/Bridge'))
 const GcProjects = lazy(() => import('./pages/GcProjects'))
+const Messages = lazy(() => import('./pages/Messages'))
+const Training = lazy(() => import('./pages/Training'))
 const Moneyfill = lazy(() => import('./pages/Moneyfill'))
 const Partnerships = lazy(() => import('./pages/Partnerships'))
 const Bids = lazy(() => import('./pages/Bids'))
@@ -48,6 +50,7 @@ const Documents = lazy(() => import('./pages/Documents'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
 // GC mode's trade partner portal (P1b-ii-b): public, and loaded only when a company opens its link.
 const GcTradePortal = lazy(() => import('./pages/GcTradePortal'))
+const FileLinkPage = lazy(() => import('./pages/FileLinkPage'))
 import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
@@ -62,6 +65,7 @@ import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
 import JobContractSign from './pages/JobContractSign'
 import ContractBookPreview from './pages/ContractBookPreview'
+import FileOpen from './pages/FileOpen'
 import TaskShortcut from './pages/TaskShortcut'
 import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
 import { wipeServiceWorkersAndCaches } from './lib/hardReload'
@@ -244,6 +248,14 @@ function AppContent() {
             </Suspense>
           }
         />
+        <Route
+          path="/f/:link"
+          element={
+            <Suspense fallback={null}>
+              <FileLinkPage />
+            </Suspense>
+          }
+        />
         <Route path="/legal/confirm" element={<LegalConfirm />} />
         <Route
           path="/estimate/customer-accept-preview/:id"
@@ -253,6 +265,8 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        {/* A kept file's lasting link (Messages cut 6): it signs in on its own, so it returns to the file after. */}
+        <Route path="/files/:source/:id" element={<FileOpen />} />
         <Route
           path="/contract/book-preview"
           element={
@@ -339,6 +353,9 @@ function AppContent() {
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
           <Route path="bridge" element={<ErrorBoundary><Bridge /></ErrorBoundary>} />
           <Route path="gc" element={<ErrorBoundary><GcProjects /></ErrorBoundary>} />
+          <Route path="messages" element={<ErrorBoundary><Messages /></ErrorBoundary>} />
+          {/* A training course, read at the person's own pace (punch list #111): the lessons ride in this lazy chunk. */}
+          <Route path="training/:slug" element={<ErrorBoundary><Training /></ErrorBoundary>} />
           <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
           <Route path="partnerships" element={<ErrorBoundary><Partnerships /></ErrorBoundary>} />
           <Route path="my-statement" element={<ErrorBoundary><PartnerStatement /></ErrorBoundary>} />

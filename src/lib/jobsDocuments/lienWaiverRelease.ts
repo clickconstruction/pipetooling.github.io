@@ -6,6 +6,7 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { billCheckClearsYmd } from '../jobs/checkClearing'
 import { isUnfinishedDate } from '../autosaveDateHold'
 import { unfinishedDateStopsMessage } from '../dateBoxEntry'
+import { GC_COMPANY } from '../gc/company'
 
 /**
  * Lien waiver-and-release documents issued from the Jobs board (v2.2579):
@@ -417,7 +418,8 @@ export function buildLienWaiverPrefill(formType: LienWaiverFormType, ctx: LienWa
     invoices.map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? '') || calendarYmdInAppTzFromIso(i.created_at ?? '')).filter(Boolean).sort().pop() ??
     (ymdFromIso(job.last_work_date) || todayYmd())
   return {
-    companyName: (issuer?.companyName ?? '').trim() || 'ClickConstruction LLC',
+    // GC mode's billing job releases for our GC entity; every other job, a sub job that bills a GC included, for the issuer.
+    companyName: job.billing_only ? GC_COMPANY.legalName : (issuer?.companyName ?? '').trim() || 'ClickConstruction LLC',
     checkFrom: (ownerName ?? '').trim() || (job.gcCustomer?.name ?? '').trim() || (job.customer_name ?? '').trim(),
     amount: moneyInputStr(ctx.ask ? ctx.ask.amount : lienWaiverPrefillAmount(formType, job, invoices)),
     projectDescription,

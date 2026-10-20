@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcMoneyAhead } from './GcMoneyAhead'
 import { GcMoneyMargin } from './GcMoneyMargin'
@@ -6,6 +7,7 @@ import { GcMoneyLateFinish } from './GcMoneyLateFinish'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import { allJobsMoney, ownerAccount, ownerPayApp, type JobMoney, type OwedBill } from '../../lib/gc/ownerBilling'
 import { billDay } from '../../lib/gc/ownerBillingDay'
+import type { OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { GcState } from '../../lib/gc/types'
 import { money, shortDate, weekdayDate } from '../../lib/gc/words'
 
@@ -17,7 +19,26 @@ import { money, shortDate, weekdayDate } from '../../lib/gc/words'
  * schedule. Interest on late bills is O6b-1's card (`GcMoneyInterest`), the late finish O6b-3's (`GcMoneyLateFinish`),
  * over the jobs' schedules read beside the money when the lens opens.
  */
-export function GcMoney({ state, onOpenBill, schedulesRead = true }: { state: GcState; onOpenBill?: (projectId: string) => void; schedulesRead?: boolean }) {
+/** Bill day's From the trades (Messages cut 9): open or not, the switch, and the view the page draws for it. */
+export interface FromTheTrades {
+  open: boolean
+  onSwitch: (open: boolean) => void
+  view: ReactNode
+}
+
+export function GcMoney({
+  state,
+  onOpenBill,
+  schedulesRead = true,
+  own,
+  fromTheTrades,
+}: {
+  state: GcState
+  onOpenBill?: (projectId: string) => void
+  schedulesRead?: boolean
+  own?: OwnWorkCosts
+  fromTheTrades?: FromTheTrades
+}) {
   const m = allJobsMoney(state)
   const narrow = useMatchMedia('(max-width: 640px)')
   const t = m.totals
@@ -71,7 +92,7 @@ export function GcMoney({ state, onOpenBill, schedulesRead = true }: { state: Gc
         )}
       </Card>
 
-      <BillDayCard state={state} onOpenBill={onOpenBill} />
+      <BillDayCard state={state} onOpenBill={onOpenBill} fromTheTrades={fromTheTrades} />
 
       <GcMoneyAhead state={state} />
 
@@ -133,7 +154,7 @@ export function GcMoney({ state, onOpenBill, schedulesRead = true }: { state: Gc
         </div>
       </Card>
 
-      <GcMoneyMargin state={state} />
+      <GcMoneyMargin state={state} own={own} />
 
       <GcMoneyInterest state={state} />
 
@@ -149,15 +170,48 @@ export function GcMoney({ state, onOpenBill, schedulesRead = true }: { state: Gc
   )
 }
 
-/** Bill day across every job (`billDay`), read only: what each would ask and what to know before it goes. */
-function BillDayCard({ state, onOpenBill }: { state: GcState; onOpenBill?: (projectId: string) => void }) {
+/**
+ * Bill day across every job (`billDay`), read only: what each would ask and what to know before it goes. With
+ * `fromTheTrades`, a switch beside it opens From the trades (Messages cut 9), the trades' draws against the day.
+ */
+function BillDayCard({ state, onOpenBill, fromTheTrades }: { state: GcState; onOpenBill?: (projectId: string) => void; fromTheTrades?: FromTheTrades }) {
   const day = billDay(state)
   const ready = day.jobs.filter((j) => j.ready)
+  const tradesOpen = fromTheTrades?.open === true
   return (
     <Card style={{ padding: 0 }}>
-      <div style={{ padding: '0.75rem 1rem 0.3rem' }}>
+      <div style={{ padding: '0.75rem 1rem 0.3rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <strong style={{ fontSize: '1rem' }}>Bill day: {weekdayDate(day.on)}</strong>
+        {fromTheTrades && (
+          <span role="group" aria-label="Bill day" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden', fontSize: '0.85rem' }}>
+            {(
+              [
+                [false, 'To the owner'],
+                [true, 'From the trades'],
+              ] as const
+            ).map(([open, label]) => (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={tradesOpen === open}
+                onClick={() => fromTheTrades.onSwitch(open)}
+                style={{ border: 'none', padding: '0.25rem 0.75rem', cursor: 'pointer', background: tradesOpen === open ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'inherit', fontWeight: tradesOpen === open ? 700 : 400 }}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+        )}
       </div>
+      {tradesOpen ? fromTheTrades?.view : <BillDayToOwner day={day} ready={ready} onOpenBill={onOpenBill} />}
+    </Card>
+  )
+}
+
+/** To the owner: each job's draft, its notes, and whether it went. */
+function BillDayToOwner({ day, ready, onOpenBill }: { day: ReturnType<typeof billDay>; ready: ReturnType<typeof billDay>['jobs']; onOpenBill?: (projectId: string) => void }) {
+  return (
+    <>
       <div style={{ padding: '0 1rem 0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
         {ready.length === 0 ? 'Nothing is ready to bill.' : `${ready.length === 1 ? '1 bill is' : `${ready.length} bills are`} ready, ${money(day.readyTotal)}.`} Until the
         trades report their work in the app, a bill carries the signed change orders at their percent done.
@@ -195,7 +249,7 @@ function BillDayCard({ state, onOpenBill }: { state: GcState; onOpenBill?: (proj
           </div>
         ))}
       </div>
-    </Card>
+    </>
   )
 }
 

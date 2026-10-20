@@ -13,7 +13,8 @@
  */
 
 import { discountSharesByWorkRow, isDiscountRow, netWorkLineCents, type DiscountShare } from './discountLine'
-import { allocatedOpenCents, type LinkedPayment } from '../billing/openLineAllocation'
+import { allocatedOpenCents, isOpenLine, isRtbPrimaryBundle, type LinkedPayment } from '../billing/openLineAllocation'
+import { riderFeeLineCents } from './arReturnCaseFee'
 
 export type SegmentFixtureLine = {
   id: string
@@ -144,13 +145,16 @@ export type JobDollarCoverage = {
  *    first. This is an interpretation — dollar invoices don't say which items
  *    they bought — so partially covered rows stay selectable; only rows
  *    covered to the last cent lock.
+ *  - a rider on a bill (a returned check fee v2.5033, a GC card fee v2.5113, a
+ *    turnaway trip charge v2.5129) is its bill's own line, not work: it is
+ *    attributed to its bill, so it never runs down the waterfall (v2.5102).
  */
 export function dollarCoverageForSegments(args: {
   segments: JobBarSegment[]
   /** Job total including riders — same gross the break-off slider uses. */
   grossDollars: number
   paidDollars: number
-  invoices: Array<{ id?: string | null; status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }> | null | undefined
+  invoices: Array<{ id?: string | null; status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null; fee_lines?: unknown }> | null | undefined
   /** The job's payments; the ones applied to an open line keep it from counting twice (v2.3775). */
   payments?: ReadonlyArray<LinkedPayment> | null
 }): JobDollarCoverage {
@@ -167,10 +171,15 @@ export function dollarCoverageForSegments(args: {
       payments,
       { excludeRtbPrimary: true },
     ) / 100
-  const attributedCents = segments.reduce(
-    (sum, s) => (s.status !== 'unbilled' ? sum + Math.round(s.dollars * 100) : sum),
-    0,
+  // v2.5102: a returned check fee is in its bill's amount, so it is spoken for, but it is no line's money.
+  // Left unattributed, the $30 on bill 1 read as "$30 of $2,000 covered" on the first unbilled line. Every
+  // rider on a bill is the same (v2.5129): a trip charge's bill is all trip charge, and none of it covers a line.
+  // Only a bill counted above carries it: paid, or open and not the elastic bundle.
+  const feeCents = riderFeeLineCents(
+    (invoices ?? []).filter((inv) => inv.status === 'paid' || (isOpenLine(inv) && !isRtbPrimaryBundle(inv))),
   )
+  const attributedCents =
+    segments.reduce((sum, s) => (s.status !== 'unbilled' ? sum + Math.round(s.dollars * 100) : sum), 0) + feeCents
   const spokenForCents = Math.round((paidDollars + allocated) * 100)
   const unattributedCents = Math.max(0, spokenForCents - attributedCents)
   const remainingCents = Math.max(0, Math.round(grossDollars * 100) - spokenForCents)

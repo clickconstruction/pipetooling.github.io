@@ -14,6 +14,15 @@ export function canOpenGcProjects(role: UserRole | null | undefined): boolean {
 }
 
 /**
+ * Messages in the header (residential R2): who opens `/messages`, Follow up for every kind of person with their
+ * threads. The GC office team, since the spine's tables open to `gc_office_team()` alone. The field reaches a customer
+ * from Job Mode through the tech's door (`canMessageCustomersFromJobMode`), never from this page.
+ */
+export function canOpenMessages(role: UserRole | null | undefined): boolean {
+  return canOpenGcProjects(role)
+}
+
+/**
  * GC mode, B5 (v2.4923): who sees our number, the general conditions, contingency and fee we add on
  * top of the trades. The client's copy of the database's `gc_money_team()`
  * (`20261008130000_gc_our_number.sql`): dev, the leaders and the controller. `access.test.ts` reads
@@ -60,4 +69,87 @@ export const GC_SCHEDULE_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
 
 export function canUseGcSchedule(role: UserRole | null | undefined): boolean {
   return role != null && GC_SCHEDULE_TEAM.includes(role)
+}
+
+/**
+ * GC mode, Owner Billing's O9: who writes the Board's award records, the statement of work first (its **Send to their
+ * portal to sign**). A dev until the award door (the owner's call W), since `gc_sows` and `gc_sow_lines` write through
+ * `is_dev()` alone. The money team reads them since O9, so a screen shows them the card read only. `access.test.ts`
+ * fails when this list and those doors disagree, so the award door changes both.
+ */
+export const GC_BOARD_WRITE_TEAM: readonly UserRole[] = ['dev']
+
+export function canUseGcBoardWrites(role: UserRole | null | undefined): boolean {
+  return role != null && GC_BOARD_WRITE_TEAM.includes(role)
+}
+
+/**
+ * GC mode, the Board's B2b-v-iii (gc 5): who may open our contract's own file, from the private bucket
+ * `gc-owner-contracts`. The client's copy of that bucket's select policy (`gc_owner_contracts_select`, `is_dev()` since
+ * 20261010090000): a dev today, the money team once award's door opens the bucket. `access.test.ts` fails when the
+ * policy and this list disagree, so the door changes both.
+ */
+export const GC_OWNER_CONTRACT_FILE_TEAM: readonly UserRole[] = ['dev']
+
+export function canOpenOwnerContractFile(role: UserRole | null | undefined): boolean {
+  return role != null && GC_OWNER_CONTRACT_FILE_TEAM.includes(role)
+}
+
+/**
+ * Messages, cut 4c (v2.5247): who edits a contract clause and who approves one (the owner, 2026-10-12: anyone in the
+ * office edits, a controller or a dev approves). An office edit waits as a proposal; a dev's or a controller's own edit
+ * publishes at once (`src/lib/contracts/approval.ts`). Nobody else edits, so a superintendent reads the papers and never
+ * changes them. The database's copies: gc_office_team() edits and gc_clause_approve_team() approves
+ * (`20261012150000_contract_clauses.sql`); `access.test.ts` fails when the approvers differ.
+ */
+export const GC_CLAUSE_EDIT_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
+
+export const GC_CLAUSE_APPROVE_TEAM: readonly UserRole[] = ['dev', 'controller']
+
+export function canEditClause(role: UserRole | null | undefined): boolean {
+  return role != null && GC_CLAUSE_EDIT_TEAM.includes(role)
+}
+
+/**
+ * Who edits the flows in Settings → Flows (Messages, cut 4): the office team, the client copy of the flows tables'
+ * `gc_office_team()` policies and `flow_save`'s own check (`20261012120000`, `20261013020000`).
+ */
+export const GC_FLOWS_EDIT_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
+
+export function canEditFlows(role: UserRole | null | undefined): boolean {
+  return role != null && GC_FLOWS_EDIT_TEAM.includes(role)
+}
+
+export function canApproveClause(role: UserRole | null | undefined): boolean {
+  return role != null && GC_CLAUSE_APPROVE_TEAM.includes(role)
+}
+
+/**
+ * Messages, R5 (v2.5419): the field roles that message a customer from Job Mode, primary and helpers (`roleLabels.ts`);
+ * a subcontractor stays out until R8 · 12. The client's copy of the database's `messages_tech_team()`
+ * (`20261013190000_messages_tech_door.sql`), which with `messages_tech_can_read()` opens a customer's thread to a tech
+ * dispatched to or clocked on one of its jobs this week or last. `access.test.ts` fails when the two lists differ.
+ */
+export const MESSAGES_TECH_TEAM: readonly UserRole[] = ['primary', 'helpers']
+
+export function canMessageCustomersFromJobMode(role: UserRole | null | undefined): boolean {
+  return role != null && MESSAGES_TECH_TEAM.includes(role)
+}
+
+/**
+ * Messages, cut 10: who reads a Pipeline job's calls, texts and emails in its Job activity. The office team, and since
+ * the owner's word of 2026-10-13 the field roles of R5's door. The read runs under the rows' policies, so a tech gets
+ * the lines of a customer whose job they worked this week or last, tied to the job, and never an office-only note.
+ */
+export function canReadJobMessages(role: UserRole | null | undefined): boolean {
+  return role != null && (GC_OFFICE_TEAM.includes(role) || MESSAGES_TECH_TEAM.includes(role))
+}
+
+/**
+ * The tech's door to a job's customer lines (v2.5527): the Customer pill in Job Mode's Job updates and the Job detail
+ * window. The field roles among `canReadJobMessages`; the policies keep the read to a job they are on this week or last.
+ * The office reads the same lines on Pipeline's Job activity and in Messages, so its Job detail stays as it was.
+ */
+export function readsCustomerLinesInJobUpdates(role: UserRole | null | undefined): boolean {
+  return canReadJobMessages(role) && role != null && MESSAGES_TECH_TEAM.includes(role)
 }

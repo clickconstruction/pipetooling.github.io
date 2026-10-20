@@ -142,6 +142,26 @@ export function roleGateRedirect(input: {
   }
 }
 
+// ---------------------------------------------------------------------------
+// A role-gated page's first decision
+// ---------------------------------------------------------------------------
+
+/** What a role-gated page does on this render: wait, open, or send the person away. */
+export type PageGate = 'wait' | 'open' | 'away'
+
+/**
+ * A role-gated page's decision, so a hard load of its link never bounces someone it lets in. Auth still loading
+ * waits. A signed-in person whose role has not landed waits too: `useAuth` can end `loading` before the users row
+ * arrives (its 4 s watchdog on a cold load, the case v2.833 fixed on Map), and a page that read that null role as a
+ * refusal sent every typed or pushed link to the Dashboard. Signed out goes away, as the old bounce did.
+ */
+export function pageGate(auth: { loading: boolean; user: unknown; role: UserRole | null | undefined }, allowed: (role: UserRole) => boolean): PageGate {
+  if (auth.loading) return 'wait'
+  if (!auth.user) return 'away'
+  if (auth.role == null) return 'wait'
+  return allowed(auth.role) ? 'open' : 'away'
+}
+
 /**
  * The page a role starts on — the same target Layout's route guard bounces to.
  * Used as the impersonation landing so "Imitate" arrives where the button says.

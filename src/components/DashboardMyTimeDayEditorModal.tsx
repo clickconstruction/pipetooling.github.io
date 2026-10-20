@@ -92,7 +92,7 @@ export type { DayEditorSession }
 type Props = {
   dateStr: string
   sessions: DayEditorSession[]
-  /** When set, edits that user's clock sessions (team lead / pay access). Empty sessions triggers a fetch for dateStr. */
+  /** When set, edits that user's clock sessions (pay access). Empty sessions triggers a fetch for dateStr. */
   subjectUserId?: string | null
   subjectDisplayName?: string | null
   /**

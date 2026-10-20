@@ -45,7 +45,15 @@ export function GcBillRemind({
       {sent && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{`${sent}${last?.emailed === false ? ' The email did not go.' : ''}`}</div>}
       {step && !open && (
         <div>
-          <Btn kind="quiet" disabled={working} onClick={() => setOpen(true)}>
+          <Btn
+            kind="quiet"
+            disabled={working}
+            onClick={() => {
+              // The day is read as the box opens: a bill that turned late while the window was open starts at today + 5, not at the day it mounted (the walk's step 8).
+              setBy(step.by)
+              setOpen(true)
+            }}
+          >
             Remind them to pay
           </Btn>
         </div>

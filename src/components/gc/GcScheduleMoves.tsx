@@ -4,14 +4,22 @@
  * window every move goes through (what it does, why, in whose words) and the list of every move made, with Undo
  * and Redo. The prototype sent each press to its reducer; here each press is a callback the schedule's body sends
  * through the schedule's io (`saveScheduleMove`, `undoScheduleMove`, `redoScheduleMove`). A save someone else beat
- * stays open and says what they changed (G-134). A part's own move (PR 8b) goes through the same window. Telling the
- * trades comes with PR 13 and the what-if copy with PR 11. What a move does to the bills (G-97) is Owner Billing's.
+ * stays open and says what they changed (G-134). A part's own move (PR 8b) goes through the same window. Since PR 11,
+ * both take `trying` in the what-if copy (G-81): the reason is optional, a move with none keeps the stand-in marked
+ * `noWhy`, and the record is the copy's. Since PR 13b the record says who was told of each move and what they answered,
+ * a told move undone with Call, and **Tell the trades · N** in its head (`tell`). What a move does to the bills (G-97) is
+ * Owner Billing's. Since PR 14c a trade's late notice opens the window with its day, reason and words, and the move
+ * names the notice it takes; one someone answered first leaves the window saying so.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MOVE_REASONS, moveActivityName, moveRecord, moveRows, moveWhyProblem, planMove, redoableMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gc/schedule/moves'
 import { daysBetween } from '../../lib/gc/schedule/network'
 import { crowdingAfterMove } from '../../lib/gc/schedule/places'
+import { lateNoticeGone, NOTICE_ANSWERED_FIRST, noticeTakenRefusal } from '../../lib/gc/schedule/lateWindow'
+import type { ToldThenUndone } from '../../lib/gc/schedule/tellWindow'
+import { telHref } from '../../lib/gc/followUpSheet'
+import { WHAT_IF_NO_WHY } from '../../lib/gc/schedule/whatIf'
 import { changeTimeWords, moveWords, partMovePress } from '../../lib/gc/schedule/scheduleWindow'
 import { lineLabel } from '../../lib/gc/schedule/splitBars'
 import type { ScheduleActivity, ScheduleMove, ScheduleMoveReason } from '../../lib/gc/schedule/types'
@@ -31,6 +39,10 @@ export interface PendingMove {
   limits?: MoveLimits
   /** A split line's part moved (G-39, PR 8b): the part, its dates before, and its new ones. The move's start and finish are then its line's new span. */
   part?: { id: string; name: string; from: { start: string; finish: string }; start: string; finish: string }
+  /** A trade's late notice taken (G-117, PR 14c): its reason and words to start from, which the person may change. */
+  why?: { reason: ScheduleMoveReason; note: string }
+  /** The notice the move takes: the database refuses it once another standing move took it. */
+  lateNoticeId?: string
 }
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
@@ -72,6 +84,7 @@ export function GcMoveExplain({
   onSave,
   onReload,
   onClose,
+  trying = false,
 }: {
   state?: GcState
   project: GcProject
@@ -81,9 +94,11 @@ export function GcMoveExplain({
   onSave: (move: ScheduleMove, activities: ScheduleActivity[], words: string) => Promise<void>
   onReload: () => void
   onClose: () => void
+  /** In the what-if copy (G-81, PR 11): the move is tried on the copy, and its reason is optional. */
+  trying?: boolean
 }) {
-  const [reason, setReason] = useState<ScheduleMoveReason | null>(null)
-  const [note, setNote] = useState('')
+  const [reason, setReason] = useState<ScheduleMoveReason | null>(pending.why?.reason ?? null)
+  const [note, setNote] = useState(pending.why?.note ?? '')
   const [saving, setSaving] = useState(false)
   const [refused, setRefused] = useState<ScheduleChange[] | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
@@ -97,17 +112,23 @@ export function GcMoveExplain({
   const plan = planMove(project, pending.lineId, pending.start, pending.finish, pending.after, pending.limits)
   // What the move does to a place with too many trades (G-83), said before it saves.
   const crowding = useMemo(() => (state && plan && !plan.problem && !plan.same ? crowdingAfterMove(state, project, plan.activities) : []), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
+  // A late notice someone answered first (PR 14c): after the refusal the schedule reads again, and the notice is off the
+  // card. The window stays to say so, even when the chart already shows the notice's days.
+  const noticeGone = Boolean(pending.lateNoticeId && (refused || failed) && lateNoticeGone(project, pending.lateNoticeId))
   // A part moved inside its line's span (G-39) leaves the line's dates as they are: still a move, with its reason.
-  if (!plan || (plan.same && !pending.part) || !project.schedule) return null
+  if (!plan || (plan.same && !pending.part && !noticeGone) || !project.schedule) return null
   const schedule = project.schedule
-  const problem = plan.problem ?? moveWhyProblem(reason, note)
+  // In the what-if a reason is optional: the move is tried with one when it is given whole, else with none yet.
+  const whyGiven = moveWhyProblem(reason, note) === null
+  const problem = trying ? plan.problem : (plan.problem ?? moveWhyProblem(reason, note))
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
   const dated = plan.from.start !== plan.to.start || plan.from.finish !== plan.to.finish || Boolean(pending.part)
   const shift = daysBetween(plan.from.finish, plan.to.finish)
   const longer = daysBetween(plan.to.start, plan.to.finish) - daysBetween(plan.from.start, plan.from.finish)
   const save = async () => {
-    if (problem || !reason || saving) return
-    const why = { reason, note: note.trim(), by }
+    if (problem || (!trying && !reason) || saving || noticeGone) return
+    const why = reason && whyGiven ? { reason, note: note.trim(), by } : { ...WHAT_IF_NO_WHY, by }
+    const tried = (move: ScheduleMove): ScheduleMove => (trying && !(reason && whyGiven) ? { ...move, noWhy: true } : move)
     setSaving(true)
     setRefused(null)
     setFailed(null)
@@ -116,14 +137,18 @@ export function GcMoveExplain({
         // A part's move (G-39): its line's span moves like any bar, and the parts' days come along, for Undo and Redo.
         const press = partMovePress(project, pending.lineId, pending.part.id, pending.part.start, pending.part.finish, why, today)
         if (!press) throw new Error('This part does not move. Close this and drag it again.')
-        await onSave(press.move, press.activities, press.words)
-      } else await onSave(moveRecord(schedule, pending.lineId, plan, why, today), plan.activities, moveWords(project, pending.lineId, plan, why))
+        await onSave(tried(press.move), press.activities, press.words)
+      } else await onSave(tried(moveRecord(schedule, pending.lineId, plan, why, today, undefined, pending.lateNoticeId)), plan.activities, moveWords(project, pending.lineId, plan, why))
       onClose()
     } catch (e) {
       const refusal = scheduleChangedRefusal(e)
       if (refusal) {
         // Someone saved first: their changes, and the chart reads again behind the window.
         setRefused(refusal.changes)
+        onReload()
+      } else if (pending.lateNoticeId && noticeTakenRefusal(e)) {
+        // Another move took the notice first (PR 14c): the card reads again and its row goes.
+        setFailed(NOTICE_ANSWERED_FIRST)
         onReload()
       } else setFailed(formatErrorMessage(e, 'The move did not save.'))
     } finally {
@@ -145,10 +170,10 @@ export function GcMoveExplain({
       >
         <div>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
-            {dated ? 'Move' : 'Change'} {moveActivityName(project, pending.lineId)}
+            {trying ? `Try ${dated ? 'moving' : 'changing'}` : dated ? 'Move' : 'Change'} {moveActivityName(project, pending.lineId)}
             {pending.part ? `, ${pending.part.name}` : ''}
           </h3>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>A move is saved with why it moved. Both stay on the schedule&apos;s record.</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{trying ? 'In the what-if, a reason is optional. Keep asks for one.' : "A move is saved with why it moved. Both stay on the schedule's record."}</div>
         </div>
         <div style={{ display: 'grid', gap: '0.3rem', background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.6rem 0.7rem' }}>
           {pending.part ? (
@@ -189,7 +214,7 @@ export function GcMoveExplain({
             </div>
           ))}
         </div>
-        {refused && <GcScheduleRefusal changes={refused} what="Your move was not saved. The chart shows the new dates now. Try it again on them." />}
+        {refused && <GcScheduleRefusal changes={refused} what={noticeGone ? NOTICE_ANSWERED_FIRST : 'Your move was not saved. The chart shows the new dates now. Try it again on them.'} />}
         <div style={{ display: 'grid', gap: '0.35rem' }}>
           <span style={label}>Why it moved</span>
           <div role="group" aria-label="Why it moved" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -229,12 +254,14 @@ export function GcMoveExplain({
           </div>
         )}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? `Saved as moved by ${by}, today.`}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>
+            {problem ?? (trying ? (whyGiven ? 'Tried with its reason, on the copy only.' : 'Tried with no reason yet, on the copy only.') : `Saved as moved by ${by}, today.`)}
+          </span>
           <Btn kind="quiet" onClick={onClose}>
             Cancel
           </Btn>
-          <Btn kind="primary" disabled={problem !== null || saving} onClick={() => void save()}>
-            {saving ? 'Saving…' : 'Save the move'}
+          <Btn kind="primary" disabled={problem !== null || saving || noticeGone} onClick={() => void save()}>
+            {saving ? 'Saving…' : trying ? 'Try it' : 'Save the move'}
           </Btn>
         </div>
       </div>
@@ -255,6 +282,8 @@ export function GcMoveHistory({
   busy = false,
   refused = null,
   problem = null,
+  trying = false,
+  tell,
 }: {
   project: GcProject
   onUndo?: (move: ScheduleMove) => void
@@ -262,6 +291,15 @@ export function GcMoveHistory({
   busy?: boolean
   refused?: ScheduleChange[] | null
   problem?: string | null
+  /** The what-if copy's own record (G-81, PR 11): the moves tried on it. */
+  trying?: boolean
+  /** Tell the trades (PR 13b): the companies not told yet with the press, and under each move who was told and what they said. */
+  tell?: {
+    /** Companies not told yet: Tell the trades · N in the head. 0: no press. */
+    count: number
+    onTell: () => void
+    of: (move: ScheduleMove) => { untold: boolean; answers: string[]; undone: ToldThenUndone | null }
+  }
 }) {
   const rows = moveRows(project)
   const [all, setAll] = useState(false)
@@ -271,7 +309,10 @@ export function GcMoveHistory({
   if (rows.length === 0) {
     return (
       <Card>
-        <strong>Changes to the schedule</strong> <span style={{ color: 'var(--text-muted)' }}>None yet. Drag a bar on the chart, or press one to change its dates. Every move is kept here with who made it and why.</span>
+        <strong>{trying ? 'Tried in the what-if' : 'Changes to the schedule'}</strong>{' '}
+        <span style={{ color: 'var(--text-muted)' }}>
+          {trying ? 'Nothing tried yet. Drag a bar on the chart, or press one to change its dates.' : 'None yet. Drag a bar on the chart, or press one to change its dates. Every move is kept here with who made it and why.'}
+        </span>
       </Card>
     )
   }
@@ -279,8 +320,15 @@ export function GcMoveHistory({
   return (
     <Card>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <strong>Changes to the schedule ({rows.length})</strong>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Every move, who made it and why. Newest first.</span>
+        <strong>
+          {trying ? 'Tried in the what-if' : 'Changes to the schedule'} ({rows.length})
+        </strong>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 14rem' }}>{trying ? 'Every move tried on the copy, newest first. Keep puts them on the real schedule.' : 'Every move, who made it and why. Newest first.'}</span>
+        {tell && tell.count > 0 && (
+          <Btn kind="primary" onClick={tell.onTell} title="Each company whose days moved gets one email with its old and new days and why.">
+            Tell the trades · {tell.count}
+          </Btn>
+        )}
       </div>
       {refused && <GcScheduleRefusal changes={refused} what="Nothing was undone or put back. The chart shows the new dates now." />}
       {problem && (
@@ -310,6 +358,7 @@ export function GcMoveHistory({
             <div style={r.undone ? { textDecoration: 'line-through' } : undefined}>{r.what}</div>
             {r.move.noWhy ? <div style={{ color: 'var(--text-muted)' }}>{r.move.note}</div> : <div style={{ color: 'var(--text-base)' }}>“{r.move.note}”</div>}
             {(r.effect || r.undone) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{[r.effect, r.undone].filter(Boolean).join(' ')}</div>}
+            {tell && <MoveTold told={tell.of(r.move)} />}
           </div>
         ))}
       </div>
@@ -321,6 +370,38 @@ export function GcMoveHistory({
         </div>
       )}
     </Card>
+  )
+}
+
+/** Under a move (PR 13b): the trades not told yet, each told company's answer, and a told move undone with Call. */
+function MoveTold({ told }: { told: { untold: boolean; answers: string[]; undone: ToldThenUndone | null } }) {
+  if (told.undone) {
+    return (
+      <div data-move-told-undone style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>
+        <span>{told.undone.words}</span>
+        {told.undone.calls
+          .filter((c) => c.phone)
+          .map((c) => (
+            <a key={c.phone} href={telHref(c.phone)} title={`Call ${c.name}, ${c.phone}`} style={{ color: 'var(--text-blue-800)', fontWeight: 600 }}>
+              Call {c.first}
+            </a>
+          ))}
+      </div>
+    )
+  }
+  return (
+    <>
+      {told.untold && (
+        <div data-move-untold style={{ fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>
+          The trades have not been told.
+        </div>
+      )}
+      {told.answers.map((a) => (
+        <div key={a} data-move-answer style={{ fontSize: '0.82rem', color: 'var(--text-600)' }}>
+          {a}
+        </div>
+      ))}
+    </>
   )
 }
 

@@ -5,15 +5,22 @@ import { questionsCloseOn } from '../../lib/gc/planQuestions'
 import { bidIsStale } from '../../lib/gc/bids'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
-import { replyByEmailWords } from '../../lib/gc/tradePortalPage'
+import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
+import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcProject, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, money } from '../../lib/gc/words'
-import { COPPER, HAIR, MUTED } from '../../lib/portal/portalTheme'
+import { HAIR, MUTED } from '../../lib/portal/portalTheme'
 import { Btn, Chip } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
 import { GcTradePortalChanges } from './GcTradePortalChanges'
+import { GcTradePortalDatesMoved } from './GcTradePortalDatesMoved'
+import { GcTradePortalJob } from './GcTradePortalJob'
+import { GcTradePortalLate } from './GcTradePortalLate'
+import { GcTradePortalLookAhead } from './GcTradePortalLookAhead'
+import { GcTradePortalSchedule } from './GcTradePortalSchedule'
+import { GcTradePortalSow } from './GcTradePortalSow'
 import { AnswerLines, AskQuestion, ConfirmQuote, PassOnAsk, QuoteDay } from './GcTradePortalPresses'
 import { QuoteForm } from './GcTradePortalQuoteForm'
 import { PortalBlock, PortalNote } from './GcTradePortalUi'
@@ -34,6 +41,8 @@ export function GcTradePortalProject({
   today,
   planUrl,
   onHome,
+  schedule = null,
+  work = null,
 }: {
   project: GcProject
   partner: Partner
@@ -41,8 +50,14 @@ export function GcTradePortalProject({
   /** The Drive link of a set by its number; empty when it has none. */
   planUrl: (rev: number) => string
   onHome: () => void
+  /** Its chart on this job, as the portal's read worked it out (the schedule's PR 14b). Null: none. */
+  schedule?: PortalSchedule | null
+  /** Its side of the schedule on this job (the Portal's P5d-ii): dates to answer, late doors, look-ahead, crew. Null: none. */
+  work?: ScheduleWork | null
 }) {
   const { t } = usePortalLang()
+  // No press provider: the portal reads only, and none of the schedule's presses is drawn (P5d-ii-2).
+  const pressing = usePortalPress() !== null
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
   return (
     <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
@@ -61,6 +76,24 @@ export function GcTradePortalProject({
           {t('gcLine', { name: GC_COMPANY.name, contact: partner.contact })}
         </div>
       </div>
+      {/* Its chart first, under the job's name (the schedule's PR 14b, gc 3's pick): its dates frame everything below. Under
+          each of its own bars, the late door (P5d-ii-2). Then the two blocks that ask something of it (amendment 2). */}
+      {schedule && project.stage === 'building' && (
+        <GcTradePortalSchedule
+          schedule={schedule}
+          today={today}
+          ownRow={(bar) => {
+            const late = pressing ? work?.late.find((l) => l.lineId === bar.lineId) : undefined
+            return late ? <GcTradePortalLate late={late} today={today} /> : null
+          }}
+        />
+      )}
+      {work && pressing && project.stage === 'building' && (
+        <>
+          <GcTradePortalDatesMoved dates={work.dates} />
+          <GcTradePortalLookAhead weeks={work.lookAhead} crew={work.crew} />
+        </>
+      )}
       {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (
         <TradeBlocks key={invite.id} project={project} pkg={pkg} invite={invite} partner={partner} today={today} planUrl={planUrl} />
@@ -95,6 +128,7 @@ function TradeBlocks({
   // The award (P4b-i): its own job, or a trade we gave another company, as the prototype's PackageBlock reads it.
   const awardedToMe = pkg.awardedInviteId === invite.id
   const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
+  const buildingMine = awardedToMe && project.stage === 'building'
   const questions = portalQuestions(project, pkg.id, partner.id)
   const closeOn = questionsCloseOn(project)
   // The prototype's closing rule on its own shape (main's questionsOpen reads the row's 'bidding'): never on a bid we lost.
@@ -139,7 +173,8 @@ function TradeBlocks({
         )}
       </PortalBlock>
 
-      {!closed && !awardedElsewhere && invite.status !== 'declined' && (questions.length > 0 || closeOn || (press && canAsk)) && (
+      {/* While we build its own job, its questions are the RFI block's (P5c-1): the bidding questions closed long ago. */}
+      {!closed && !awardedElsewhere && !buildingMine && invite.status !== 'declined' && (questions.length > 0 || closeOn || (press && canAsk)) && (
         <PortalBlock title={t('questionsTitle', { trade: pkg.trade })}>
           <div style={{ display: 'grid', gap: '0.55rem', fontSize: '0.9rem' }}>
             {press && canAsk ? (
@@ -167,7 +202,7 @@ function TradeBlocks({
         </PortalBlock>
       )}
 
-      {/* On its own job the quote asks nothing more; its statement of work's block comes with P2c. */}
+      {/* On its own job the quote asks nothing more: its statement of work stands in its place (P2c-ii). */}
       {closedWords ? (
         <PortalBlock title={t('resultTitle', { trade: pkg.trade })}>
           <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
@@ -177,7 +212,13 @@ function TradeBlocks({
         </PortalBlock>
       ) : awardedElsewhere ? (
         <PortalBlock title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</PortalBlock>
-      ) : awardedToMe ? null : invite.status === 'declined' ? (
+      ) : awardedToMe ? (
+        <>
+          <GcTradePortalSow project={project} pkg={pkg} />
+          {/* The job once its statement of work is signed (P5c-1): the report, punch list, submittals, draws and RFIs. */}
+          <GcTradePortalJob project={project} pkg={pkg} partner={partner} today={today} />
+        </>
+      ) : invite.status === 'declined' ? (
         <PortalBlock title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</PortalBlock>
       ) : (
         <AskBlock project={project} pkg={pkg} invite={invite} today={today} openedNewest={!news.behind} notVetted={portalVetting(partner).state === 'send' || portalVetting(partner).state === 'checking'} />
@@ -287,7 +328,6 @@ function AskBlock({
         )}
         {press && !bid && <QuoteDay invite={invite} today={today} />}
         {press && !bid && <PassOnAsk invite={invite} />}
-        <div style={{ fontSize: '0.85rem', borderTop: `1px solid ${HAIR}`, paddingTop: '0.45rem', color: COPPER }}>{replyByEmailWords(project, lang)}</div>
       </div>
     </PortalBlock>
   )

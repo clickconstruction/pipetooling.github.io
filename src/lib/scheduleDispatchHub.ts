@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { fetchAllRows } from './supabasePaging'
 import { activeRosterOnly, type ActiveRosterRow } from './people/activeRoster'
 import { activeUsersQuery } from './people/fetchActiveUsers'
 import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
@@ -181,22 +182,37 @@ export async function fetchBidsForScheduleDispatchHub(): Promise<{
   }
 }
 
+/**
+ * Every job a crew can be dispatched to — the hub's Jobs tab, the Add job to schedule picker
+ * and the block titles read this. Paged since v2.5571: PostgREST answers an un-ranged read
+ * with its first 1,000 rows and no error, and the ledger carried 871 of these jobs on
+ * 2026-10-15 — past the cap the lowest-numbered jobs would have vanished with nothing said.
+ * A fresh query per page; `id` breaks ties on `hcp_number` so the pages never shuffle.
+ */
 export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
   data: ScheduleDispatchHubJobRow[]
   error: string | null
 }> {
   try {
-    const data = await withSupabaseRetry(
-      async () =>
-        await supabase
-          .from('jobs_ledger')
-          .select('id, hcp_number, click_number, job_name, project_id, created_at, job_address, customer_name, status, service_type:service_types(name)')
-          // A GC job's billing job carries only bills: no crew is dispatched to it (v2.4958).
-          .eq('billing_only', false)
-          .order('hcp_number', { ascending: false }),
+    const data = await fetchAllRows<ScheduleDispatchHubJobRow>(
+      async (from, to) => ({
+        data: (await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('jobs_ledger')
+              .select('id, hcp_number, click_number, job_name, project_id, created_at, job_address, customer_name, status, service_type:service_types(name)')
+              // A GC job's billing job carries only bills: no crew is dispatched to it (v2.4958).
+              .eq('billing_only', false)
+              .order('hcp_number', { ascending: false })
+              .order('id', { ascending: true })
+              .range(from, to),
+          'fetchJobsLedgerForScheduleDispatchHub',
+        )) as ScheduleDispatchHubJobRow[] | null,
+        error: null,
+      }),
       'fetchJobsLedgerForScheduleDispatchHub',
     )
-    return { data: (data ?? []) as ScheduleDispatchHubJobRow[], error: null }
+    return { data, error: null }
   } catch (e) {
     return { data: [], error: formatErrorMessage(e) }
   }

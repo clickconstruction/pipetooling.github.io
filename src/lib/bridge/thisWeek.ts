@@ -1,0 +1,81 @@
+/**
+ * This week (Bridge redraw PR 5): the moves that change the two lines, each
+ * sized where it can be and ending in its door. Replaces "What would change
+ * it". Pure: no React, no Supabase.
+ */
+
+export type MoveKey = 'bill' | 'chase' | 'approve' | 'price' | 'pct' | 'field_day' | 'overhead' | 'bid'
+
+export type Move = {
+  key: MoveKey
+  title: string
+  why: string
+  /** The right-hand lever text: "+$228k AR", "+$52/day". */
+  lever: string
+  leverTone: 'green' | 'muted'
+  door: { to: string; label: string } | null
+}
+
+export type ThisWeekInput = {
+  unbilledUsd: number
+  unbilledCount: number
+  lateReceipts: { count: number; usd: number }
+  pendingClosedHours: number
+  pendingClosedSessions: number
+  payrollWeeklyEstUsd: number
+  noContractJobs: ReadonlyArray<{ id: string; label: string }>
+  assumedHalfJobs: number
+  assumedHalfEarnedUsd: number
+  /** Field earned per approved hour over the window and the margin on it, for the extra field day. */
+  fieldEarnedPerHour: number | null
+  contributionMargin: number | null
+  overheadPerDayUsd: number
+  bidsDue: ReadonlyArray<{ id: string; label: string; bidValueUsd: number; dueYmd: string }>
+  dayLabel: (ymd: string) => string
+}
+
+export const THIS_WEEK_DOORS = {
+  stages: { to: '/jobs?tab=stages', label: 'Open Stages' },
+  billing: { to: '/jobs?tab=billing', label: 'Open Billing' },
+  approvals: { to: '/people?tab=hours&approvals=1', label: 'Open approvals' },
+  jobs: { to: '/jobs?tab=stages', label: 'Open the jobs' },
+  overhead: { to: '/people?tab=overhead', label: 'Open Overhead' },
+  bids: { to: '/bids', label: 'Open Bids' },
+} as const
+
+const shortK = (n: number): string => `${n < 0 ? '−' : ''}$${Math.abs(n) >= 100_000 ? `${(Math.abs(n) / 1000).toFixed(0)}k` : Math.abs(n) >= 1000 ? `${(Math.abs(n) / 1000).toFixed(1)}k` : `${Math.round(Math.abs(n))}`}`
+const money = (n: number): string => `$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
+const hrs = (h: number): string => `${Math.round(h).toLocaleString('en-US')}h`
+const plural = (c: number, one: string, many: string): string => (c === 1 ? one : many)
+
+export function buildThisWeek(input: ThisWeekInput): Move[] {
+  const out: Move[] = []
+  if (input.unbilledUsd > 0) {
+    out.push({ key: 'bill', title: 'Bill the finished work', why: `${shortK(input.unbilledUsd)} finished and not yet billed${input.unbilledCount > 0 ? ` on ${input.unbilledCount} ${plural(input.unbilledCount, 'job', 'jobs')}` : ''}; the biggest lever on both lines`, lever: `+${shortK(input.unbilledUsd)} owed to you`, leverTone: 'green', door: THIS_WEEK_DOORS.stages })
+  }
+  if (input.lateReceipts.count > 0) {
+    out.push({ key: 'chase', title: `Chase the ${input.lateReceipts.count} late ${plural(input.lateReceipts.count, 'invoice', 'invoices')}`, why: 'past their expected day and assumed to land within their pace; the forecast leans on them', lever: shortK(input.lateReceipts.usd), leverTone: 'green', door: THIS_WEEK_DOORS.billing })
+  }
+  if (input.pendingClosedHours > 0) {
+    out.push({ key: 'approve', title: `Approve the ${hrs(input.pendingClosedHours)} pending`, why: `${input.pendingClosedSessions} ${plural(input.pendingClosedSessions, 'session', 'sessions')}; the top line and payroll (${money(input.payrollWeeklyEstUsd)}/week) read low until then`, lever: 'accuracy', leverTone: 'muted', door: THIS_WEEK_DOORS.approvals })
+  }
+  if (input.noContractJobs.length > 0) {
+    const labels = input.noContractJobs.slice(0, 3).map((j) => j.label)
+    const more = input.noContractJobs.length - labels.length
+    out.push({ key: 'price', title: `Price ${input.noContractJobs.length === 1 ? 'job' : 'jobs'} ${labels.join(', ')}${more > 0 ? ` and ${more} more` : ''}`, why: 'worked with no contract price, so their hours earn $0 and every day on them reads red', lever: `${input.noContractJobs.length} ${plural(input.noContractJobs.length, 'job', 'jobs')}`, leverTone: 'muted', door: THIS_WEEK_DOORS.jobs })
+  }
+  if (input.assumedHalfJobs > 0) {
+    out.push({ key: 'pct', title: `Set % complete on ${input.assumedHalfJobs} ${plural(input.assumedHalfJobs, 'job', 'jobs')}`, why: `${shortK(input.assumedHalfEarnedUsd)} of earned rests on "assumed half done"`, lever: `≈ ${shortK(input.assumedHalfEarnedUsd)}`, leverTone: 'muted', door: THIS_WEEK_DOORS.jobs })
+  }
+  if (input.fieldEarnedPerHour != null && input.fieldEarnedPerHour > 0 && input.contributionMargin != null) {
+    const perDay = (input.fieldEarnedPerHour * input.contributionMargin * 8) / 7
+    out.push({ key: 'field_day', title: 'One more field day a week', why: `field earned ${money(input.fieldEarnedPerHour)} per approved hour; ${Math.round(input.contributionMargin * 100)}% of it is margin`, lever: `+${money(perDay)}/day`, leverTone: 'green', door: null })
+  }
+  if (input.overheadPerDayUsd > 0) {
+    out.push({ key: 'overhead', title: 'Cut overhead 10%', why: `of ${money(input.overheadPerDayUsd)}/day at the 90-day rate`, lever: `+${money(input.overheadPerDayUsd * 0.1)}/day`, leverTone: 'green', door: THIS_WEEK_DOORS.overhead })
+  }
+  for (const b of input.bidsDue.slice(0, 3)) {
+    out.push({ key: 'bid', title: `Win ${b.label}`, why: `${money(b.bidValueUsd)} · due ${input.dayLabel(b.dueYmd)}`, lever: input.contributionMargin == null ? '—' : `+${money((b.bidValueUsd * input.contributionMargin) / 60)}/day over 60d`, leverTone: 'green', door: THIS_WEEK_DOORS.bids })
+  }
+  return out
+}

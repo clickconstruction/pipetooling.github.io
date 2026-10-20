@@ -1,5 +1,6 @@
-import type { CSSProperties } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { groupPeopleRows, type PeopleGroup } from '../../lib/bridge/peopleGroups'
 import type { Vectors, VectorRow } from '../../lib/bridge/vectors'
 import { reviewDoorHref } from '../../lib/people/reviewDoor'
 
@@ -30,6 +31,41 @@ const ROLE_WORD: Record<string, string> = {
   estimator: 'estimator',
   primary: 'primary',
   superintendent: 'super',
+}
+
+function SubtotalRow({ g }: { g: PeopleGroup }) {
+  const st = g.subtotal
+  const c = st.contributionUsd
+  return (
+    <tr data-testid={`bridge-vectors-subtotal-${g.id}`} style={{ background: 'var(--bg-muted)' }}>
+      <td style={{ ...td, textAlign: 'left', fontWeight: 700 }}>{g.name}</td>
+      <td style={{ ...td, fontWeight: 700 }}>
+        {st.fieldHours > 0 ? hrs(st.fieldHours) : '—'}
+        {st.pendingHours > 0 && <span style={{ ...det, color: 'var(--text-amber-800)' }}> +{hrs(st.pendingHours)} waiting</span>}
+      </td>
+      <td style={{ ...td, fontWeight: 700 }}>{st.officeBidHours > 0 ? hrs(st.officeBidHours) : '—'}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{st.earnedUsd === 0 ? '—' : shortK(st.earnedUsd)}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{st.laborUsd === 0 ? '—' : shortK(st.laborUsd)}</td>
+      <td style={{ ...td, fontWeight: 700, color: c == null ? 'var(--text-muted)' : c >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{c == null ? '—' : `${c < 0 ? '−' : '+'}${shortK(Math.abs(c))}`}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{st.contributionPerHour == null ? '—' : money(st.contributionPerHour)}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{st.pctReports === 0 ? '—' : st.pctReports}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{usdCell(st.billedUsd, st.billedCount)}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{usdCell(st.collectedUsd, st.collectedCount)}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{usdCell(st.bidsSentUsd, st.bidsSentCount)}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{usdCell(st.bidsWonUsd, st.bidsWonCount)}</td>
+    </tr>
+  )
+}
+
+function GroupHeadRow({ g }: { g: PeopleGroup }) {
+  return (
+    <tr data-testid={`bridge-vectors-group-${g.id}`}>
+      <td colSpan={12} style={{ padding: '0.55rem 0.3rem 0.2rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+        <span style={{ ...label }}>{g.name}</span>
+        <span style={{ ...det, marginLeft: '0.5rem' }}>· {g.note}</span>
+      </td>
+    </tr>
+  )
 }
 
 function usdCell(n: number, count?: number): string {
@@ -106,7 +142,10 @@ export function BridgeVectorsPanel(props: { vectors: Vectors; weekLabel: string;
               </tr>
             </thead>
             <tbody>
-              {v.rows.map((r) => {
+              {groupPeopleRows(v.rows).map((g) => (
+                <Fragment key={g.id}>
+                  <GroupHeadRow g={g} />
+                  {g.rows.map((r) => {
                 const c = contributionCell(r)
                 return (
                   <tr key={r.userId}>
@@ -146,6 +185,9 @@ export function BridgeVectorsPanel(props: { vectors: Vectors; weekLabel: string;
                   </tr>
                 )
               })}
+                  <SubtotalRow g={g} />
+                </Fragment>
+              ))}
               <tr>
                 <td style={{ ...td, textAlign: 'left', fontWeight: 700, borderBottom: 'none' }}>Company</td>
                 <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}>{hrs(v.totals.fieldHours)}</td>

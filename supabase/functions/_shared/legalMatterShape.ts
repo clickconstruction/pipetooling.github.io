@@ -62,6 +62,13 @@ export const MATTER_DEMAND_COLUMNS = ['id', 'job_id', 'amount', 'sent_at', 'sent
 /** `job_lien_filings`: the paper and the public record. `sends` is cut to recipient, method, tracking and day. Never the office's note, the draft fields or the invoice ids. */
 export const MATTER_FILING_COLUMNS = ['id', 'job_id', 'kind', 'amount', 'months_covered', 'filed_at', 'served_at', 'serve_due', 'county', 'recording_number', 'sends', 'document_url', 'packet_id', 'printed_claim', 'by_hand', 'voided_at', 'created_at'] as const
 /**
+ * `mail_pieces` (the Docsmit train, PR 8): counsel's packet carries, per notice and recipient, when USPS accepted it,
+ * when it was delivered and who signed, the provider's last word, and the Certification PDF as a short link the
+ * function signs. Never the address as sent (the book's owner rows already name it), the price, the events or a path.
+ */
+export const MATTER_MAIL_PIECE_COLUMNS = ['id', 'kind', 'recipient', 'status', 'usps_tracking', 'mailed_at', 'delivered_at', 'signed_by', 'delivery_status', 'delivery_as_of', 'source_ids', 'job_id'] as const
+export const MATTER_MAIL_PIECE_PAYLOAD_KEYS: ReadonlyArray<string> = [...MATTER_MAIL_PIECE_COLUMNS, 'certificationUrl']
+/**
  * `legal_matter_entries`: the matter's own stream. `acknowledged_at` tells a withdrawn ask from an open one and a
  * seen act from a waiting one. `voided_at`, `voided_via_portal` and `void_reason` are item 18 PR 2's (#4637), listed
  * now so a voided entry never travels as live once they exist.
@@ -89,6 +96,7 @@ export const MATTER_COUNSEL_SELECT = {
   estimates: MATTER_ESTIMATE_COLUMNS.join(', '),
   demandLetters: MATTER_DEMAND_COLUMNS.join(', '),
   filings: MATTER_FILING_COLUMNS.join(', '),
+  mailPieces: [...MATTER_MAIL_PIECE_COLUMNS, 'pdf_bucket', 'certification_path'].join(', '),
   entries: MATTER_ENTRY_COLUMNS.filter((c) => !MATTER_ENTRY_PENDING_COLUMNS.includes(c)).join(', '),
 } as const
 
@@ -119,9 +127,14 @@ export function shapeDemandFields(fields: unknown): Row {
   return { feeClockYmd: typeof f.feeClockYmd === 'string' ? f.feeClockYmd : null, enclosures }
 }
 
-/** A filing's sends cut to who, how, the tracking number and the day. Never an address or an email. */
+/** A filing's sends cut to who, how, the tracking number, the day, and (the Docsmit train, PR 8) the provider and the piece behind a send that went through one. Never an address or an email. */
 export function shapeFilingSends(sends: unknown): Row[] {
-  return rows(sends).filter(isRecord).map((s) => pick(s, ['recipient', 'method', 'tracking', 'sent_on']))
+  return rows(sends).filter(isRecord).map((s) => pick(s, ['recipient', 'method', 'tracking', 'sent_on', 'via', 'piece_id']))
+}
+
+
+export function shapeMailPieces(pieces: unknown): Row[] {
+  return rows(pieces).filter(isRecord).map((p) => pick(p, MATTER_MAIL_PIECE_PAYLOAD_KEYS))
 }
 
 /**
@@ -151,6 +164,7 @@ export function shapeMatterForCounsel(matter: Row): Row {
   if ('signedEstimates' in matter) out.signedEstimates = rows(matter.signedEstimates).map((e) => pick(e, MATTER_ESTIMATE_COLUMNS))
   if ('demandLetters' in matter) out.demandLetters = rows(matter.demandLetters).map((d) => ({ ...pick(d, MATTER_DEMAND_COLUMNS), fields: shapeDemandFields(isRecord(d) ? d.fields : null) }))
   if ('lienFilings' in matter) out.lienFilings = rows(matter.lienFilings).map((f) => ({ ...pick(f, MATTER_FILING_COLUMNS), sends: shapeFilingSends(isRecord(f) ? f.sends : null) }))
+  if ('mailPieces' in matter) out.mailPieces = shapeMailPieces(matter.mailPieces)
   if ('threadNotes' in matter) out.threadNotes = rows(matter.threadNotes).filter(isRecord).map((n) => ({ jobId: n.jobId ?? null, createdAt: n.createdAt ?? null, body: '', authorName: null }))
   if ('entries' in matter) out.entries = rows(matter.entries).map((e) => pick(e, MATTER_ENTRY_COLUMNS))
   // Documents from the office (v2.4810): the title, the line, the kind, the size, the day, who added it, the link. Never the storage path or a hold reason.

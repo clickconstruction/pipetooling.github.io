@@ -35,7 +35,7 @@ function kindChip(kind: HouseRosterRow['kind']) {
   const base = { display: 'inline-block', borderRadius: 5, padding: '0 0.4rem', fontSize: '0.6875rem', fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap' as const }
   switch (kind) {
     case 'open': return <span style={{ ...base, background: TEAL_SOFT, color: TEAL }}>open</span>
-    case 'requested': return <span style={{ ...base, background: 'var(--bg-purple-100, #efe8ff)', color: '#6027c4' }}>requested</span>
+    case 'requested': return <span style={{ ...base, background: 'var(--bg-violet-100)', color: '#6027c4' }}>requested</span>
     case 'bought_no_account': return <span style={{ ...base, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>bought, no account</span>
     case 'not_needed': return <span style={{ ...base, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>not needed</span>
   }

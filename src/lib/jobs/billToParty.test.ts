@@ -3,6 +3,7 @@ import {
   applyPayerToJobBillingContext,
   billPartyLabel,
   customerBillingEmail,
+  customerContactEmail,
   effectiveInvoiceParty,
   jobBillToPartyOptions,
   jobPromisePayerCustomerId,
@@ -73,6 +74,15 @@ describe('customerBillingEmail', () => {
     expect(customerBillingEmail({ billing_email: '', contact_info: { email: 'est@gc.com' } })).toBe('est@gc.com')
     expect(customerBillingEmail({ contact_info: 'not an object' })).toBe('')
     expect(customerBillingEmail(null)).toBe('')
+  })
+})
+
+describe('customerContactEmail', () => {
+  it('prefers the contact email and falls back to billing_email (a GC job report, not a bill)', () => {
+    expect(customerContactEmail({ billing_email: 'ap@gc.com', contact_info: { email: ' dana@gc.com ' } })).toBe('dana@gc.com')
+    expect(customerContactEmail({ billing_email: ' ap@gc.com ', contact_info: { email: '' } })).toBe('ap@gc.com')
+    expect(customerContactEmail({ contact_info: 'not an object' })).toBe('')
+    expect(customerContactEmail(null)).toBe('')
   })
 })
 

@@ -27,6 +27,11 @@ vi.mock('../../lib/people/fetchAllPendingClockSessions', () => ({
   fetchAllPendingClockSessions: async () => rowsBox.current,
 }))
 const waitingBox: { current: TypedWaitingRow[] } = { current: [] }
+// v2.5223: the dispatch schedule over the pending days, for the on-the-schedule rule.
+const blocksBox: { current: Array<{ assignee_user_id: string; work_date: string; job_id: string | null; time_start: string; time_end: string }> } = { current: [] }
+vi.mock('../../lib/people/fetchScheduleBlocks', () => ({
+  fetchScheduleBlocksForRange: async () => blocksBox.current,
+}))
 const confirmMock = vi.fn()
 vi.mock('../../lib/clock/loadTypedHoursWaiting', () => ({
   loadTypedHoursWaiting: async () => waitingBox.current,
@@ -172,5 +177,44 @@ describe('PeopleHoursApprovalsQueueModal — typed hours', () => {
     )
     expect((screen.getByLabelText(/Typed by hand · 2/) as HTMLInputElement).checked).toBe(true)
     expect(screen.queryByText('“Rough in”')).toBeNull()
+  })
+})
+
+describe('PeopleHoursApprovalsQueueModal — on the schedule (v2.5223)', () => {
+  beforeEach(() => {
+    waitingBox.current = []
+    confirmMock.mockReset()
+    approveMock.mockReset()
+    approveMock.mockResolvedValue({ data: [{ approved_count: 1, error_message: null, held_own: 0, held_typed: 0 }], error: null })
+    stampsBox.current = new Map()
+    rowsBox.current = [
+      session('punch', '2026-09-28T13:00:00Z', '2026-09-28T17:00:00Z', 'Rough in'), // 4h, dispatch had 4h
+      session('long-day', '2026-09-29T13:00:00Z', '2026-09-29T17:00:00Z', 'Trim'), // 4h, dispatch had 8h
+      session('unscheduled', '2026-09-30T13:00:00Z', '2026-09-30T17:00:00Z', 'Call'), // nothing on the schedule
+    ]
+    blocksBox.current = [
+      { assignee_user_id: 'michael', work_date: '2026-09-28', job_id: 'job-1', time_start: '08:00:00', time_end: '12:00:00' },
+      { assignee_user_id: 'michael', work_date: '2026-09-29', job_id: 'job-1', time_start: '08:00:00', time_end: '16:00:00' },
+    ]
+  })
+
+  it('marks the rows dispatch had on that job within an hour, and approves them in one press', async () => {
+    await mount()
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
+    await settle()
+    expect(await screen.findAllByTestId('on-schedule-chip')).toHaveLength(1)
+    expect(screen.getAllByTestId('off-schedule-chip')).toHaveLength(1)
+    expect(screen.getByTestId('off-schedule-chip').getAttribute('title')).toContain('8h, but 4h clocked')
+    expect(screen.getByText(/1 on the dispatch schedule/)).toBeTruthy()
+    fireEvent.click(screen.getByTestId('approve-on-schedule'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve 1' }))
+    await waitFor(() => expect(approveMock).toHaveBeenCalledWith(['punch']))
+  })
+
+  it('offers no button when nothing is on the schedule', async () => {
+    blocksBox.current = []
+    await mount()
+    expect(screen.queryByTestId('approve-on-schedule')).toBeNull()
+    expect(screen.queryByText(/on the dispatch schedule/)).toBeNull()
   })
 })

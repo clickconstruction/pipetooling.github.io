@@ -14,6 +14,15 @@ import { bidHistoryColumnName, bidHistoryValueWords, type BidHistoryRow } from '
 export const BID_HISTORY_PUT_BACK_EVENT = 'bid-history-put-back'
 export type BidHistoryPutBackDetail = { bidId: string; table: string }
 
+/**
+ * Whether a put back on this table can move which book the open bid prices from: the bid's own row
+ * (its pick, its active version) or a version's ★. The pricing engine re-resolves on these; the tab's
+ * own reload of the current book's prices would read the old book (v2.5130).
+ */
+export function bidPutBackMovesBookPick(table: string): boolean {
+  return table === 'bids' || table === 'bid_versions'
+}
+
 export type BidPutBackTarget = {
   changeId: number
   column: string

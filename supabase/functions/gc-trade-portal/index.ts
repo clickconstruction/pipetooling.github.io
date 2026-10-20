@@ -4,8 +4,12 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { tradePortalSlice, type TradePortalRows } from '../_shared/gcTradePortalSlice.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { gcTradePortalSample } from '../_shared/gcTradePortalSample.ts'
+import { gcTradePortalSample, gcTradePortalSampleFlow, gcTradePortalSampleSchedules, gcTradePortalSampleScheduleWork } from '../_shared/gcTradePortalSample.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
+import { lateWaitingFromRows, portalScheduleJobs, portalSchedulesFromRows, portalScheduleWorkFromRows } from '../_shared/gcTradePortalSchedule.ts'
+import { readScheduleRows } from '../_shared/gcScheduleRead.ts'
+import { readTradeFlowExtra, stampFirstOpen, tradeFlowRowsOf, type TradeFlowRows } from '../_shared/gcTradeFlow.ts'
+import { clausePaperPair, type ClauseAdmin } from '../_shared/clausePaper.ts'
 
 /**
  * GC mode, the trade partner portal's read (P1b-ii, to-dos/gc-mode/PORTAL_REAL_BUILD.md): resolves a
@@ -19,6 +23,31 @@ import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
  * Errors are keys the page translates (linkOff, badRequest, failed), so a Spanish portal reads
  * them in Spanish. The sample token (`sample`) returns the made-up company for What customers see
  * (`_shared/gcTradePortalSample.ts`) and counts no visit.
+ *
+ * Since the schedule's PR 14b, `schedules` beside the slice: the company's chart on each job being built with a trade
+ * awarded to it (G-110), worked out here from every bar on the job with the generated copy of the kernels
+ * (`_shared/gcTradePortalSchedule.ts`, `_shared/gcKernels/`), so only the answer leaves: its own bars and those right
+ * before and after them by name, never a dollar, a note or a contact. A chart that fails to read leaves the slice whole.
+ *
+ *   GET ?t=<token>  → { today, slice, schedules: { [projectId]: PortalSchedule } }
+ *
+ * Since the Portal's P5d-ii (to-dos/gc-mode/mockups/portal-p5d.md), the trade's side of the schedule on the same read:
+ * `scheduleWork` (the told moves it answers, a late door on each of its own bars, its look-ahead and its crew counts)
+ * and `scheduleTodos` (the home's four schedule to-dos), worked out with the same kernels and leaving as plain fields.
+ * The read adds the moves with their pushes and parts, and of the company's own only its tells, answers, late notices,
+ * crew counts and look-ahead marks. The late door's second look is its own read, counting no visit:
+ *
+ *   GET ?t=<token>&late=<lineId>&day=<YYYY-MM-DD>  → { waiting: WorkWaiting[] }, or {} for a bar not its own
+ *
+ * Since Messages cut 8c, `flow` beside the slice: the company's trade flow rows (`_shared/gcTradeFlow.ts`), from which
+ * the page reads its first page, *Where you are with Click Construction*. The office's words about them, our people and
+ * another company's quote stay here. A flow that fails to read answers null and leaves the slice whole. Its one write
+ * beyond the visit row: an outside visit stamps the live link's first open (`first_opened_at`) once, never a staff look,
+ * a preview or the sample.
+ *
+ * Since Messages' cut 4c (v2.5329), a statement of work sent to sign that is built from clauses (`gc_sows.paper_id`)
+ * carries its paper on its row as `clause_paper`: the job's clauses, then the exhibit for its package's trade, in English
+ * and Spanish at one revision (`_shared/clausePaper.ts`). The page shows it and signs at that revision.
  */
 
 const corsHeaders = {
@@ -39,41 +68,69 @@ const ids = (rows: R[], f = 'id'): string[] => [...new Set(rows.map((r) => Strin
 async function readRows(admin: SupabaseClient, companyId: string): Promise<TradePortalRows | null> {
   const company = (await admin.from('gc_companies').select('*').eq('id', companyId).maybeSingle()).data as R | null
   if (!company) return null
-  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests] = await Promise.all([
+  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers, vettingForms] = await Promise.all([
     admin.from('gc_company_people').select('*').eq('company_id', companyId).is('removed_at', null).then(rowsOf),
     admin.from('gc_invites').select('id, package_id, company_id, status, invited_on, seen_rev, declined_why, declined_on').eq('company_id', companyId).then(rowsOf),
-    admin.from('gc_company_contacts').select('id, company_id, invite_id, contacted_on, how, note, promised_by').eq('company_id', companyId).not('invite_id', 'is', null).then(rowsOf),
+    admin.from('gc_company_contacts').select('id, company_id, invite_id, contacted_on, how, note, promised_by, created_at').eq('company_id', companyId).not('invite_id', 'is', null).then(rowsOf),
     admin.from('gc_trade_promises').select('*').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_trade_messages').select('*').eq('company_id', companyId).order('sent_at', { ascending: false }).limit(200).then(rowsOf),
     admin.from('gc_plan_set_sends').select('set_id, company_id, touched').eq('company_id', companyId).then(rowsOf),
     // Its own work (P4b-i): its statements of work, the charges to it and the changes it asked for.
-    admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on').eq('company_id', companyId).then(rowsOf),
+    admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on, excluded, accepted_on, paper_id, paper_revision, clause_versions').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_back_charges').select('*').eq('company_id', companyId).order('sent_on').then(rowsOf),
     admin.from('gc_trade_change_requests').select('*').eq('company_id', companyId).order('asked_on').then(rowsOf),
+    // Its own papers (B6-b-ii), where each stands: for its master agreement first.
+    admin.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').eq('company_id', companyId).then(rowsOf),
+    // Its vetting form (P5b-1): the day it sent it, never its answers.
+    admin.from('gc_company_vetting_forms').select('company_id, sent_on').eq('company_id', companyId).then(rowsOf),
   ])
-  // The change orders its requests became, as their part only: number, status, the day sent and answered, and the cost.
-  const orderIds = ids(changeRequests, 'change_order_id')
-  const changeOrders = orderIds.length ? await admin.from('gc_change_orders').select('id, number, status, sent_on, answered_on, cost').in('id', orderIds).then(rowsOf) : []
-  const work = { sows, backCharges, changeRequests, changeOrders }
+  const vettingForm = vettingForms[0] ?? null
+  // The lines of its own statements of work (P2c-ii), for the sign screen and its report; the draws on them and the
+  // change orders sent to it (P5c-1).
+  const sowIds = ids(sows)
+  const [sowLines, draws, changeSends] = sowIds.length
+    ? await Promise.all([
+        admin.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id').in('sow_id', sowIds).order('position').then(rowsOf),
+        admin.from('gc_draws').select('*').in('sow_id', sowIds).order('seq').then(rowsOf),
+        admin.from('gc_change_order_trade_sends').select('change_order_id, sow_id, sent_on, signed_on, sow_line_id').in('sow_id', sowIds).then(rowsOf),
+      ])
+    : [[], [], []]
+  // The change orders its requests became and those sent to it, as their part only: number, status, the days sent and
+  // answered, and the cost. The description passes only on one sent to it (`tradePortalSlice`).
+  const orderIds = [...new Set([...ids(changeRequests, 'change_order_id'), ...ids(changeSends, 'change_order_id')])]
+  const lineIds = ids(sowLines)
+  const drawIds = ids(draws)
+  const [changeOrders, drawLines, lineReports] = await Promise.all([
+    orderIds.length ? admin.from('gc_change_orders').select('id, number, status, sent_on, answered_on, cost, package_id, reason, description').in('id', orderIds).then(rowsOf) : [],
+    drawIds.length ? admin.from('gc_draw_lines').select('draw_id, sow_line_id, to_pct, stored, we_see').in('draw_id', drawIds).then(rowsOf) : [],
+    lineIds.length ? admin.from('gc_sow_line_reports').select('sow_line_id, pct, reported_on, seq').in('sow_line_id', lineIds).then(rowsOf) : [],
+  ])
+  const work = { sows, sowLines, backCharges, changeRequests, changeOrders, draws, drawLines, lineReports, changeSends }
   const inviteIds = ids(invites)
   const packageIds = ids(invites, 'package_id')
   const [quotes, packages] = await Promise.all([
     inviteIds.length ? admin.from('gc_quotes').select('*').in('invite_id', inviteIds).order('created_at', { ascending: false }).then(rowsOf) : [],
-    packageIds.length ? admin.from('gc_trade_packages').select('id, project_id, trade, position, awarded_invite_id').in('id', packageIds).then(rowsOf) : [],
+    packageIds.length ? admin.from('gc_trade_packages').select('id, project_id, trade, position, awarded_invite_id, carried_invite_id, awarded_on').in('id', packageIds).then(rowsOf) : [],
   ])
   const projectIds = ids(packages, 'project_id')
   if (projectIds.length === 0) {
-    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, ...work }
+    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, vettingForm, ...work }
   }
-  const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers] = await Promise.all([
+  // The job's work (P5c-1) on the trades awarded to it: Building's rows carry no company, so they are read by its trades.
+  const awarded = packages.filter((k) => inviteIds.includes(String(k.awarded_invite_id ?? ''))).map((k) => String(k.id))
+  const jobRead = readJobWork(admin, awarded)
+  const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers, billDayCutoffDays] = await Promise.all([
     admin.from('projects').select('id, name, address').in('id', projectIds).then(rowsOf),
-    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, project_manager_user_id').in('project_id', projectIds).then(rowsOf),
+    admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
     admin.from('gc_scope_items').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_scope_exclusions').select('*').in('package_id', packageIds).then(rowsOf),
     admin.from('gc_plan_sets').select('id, project_id, rev, label, kind, issued_on, note, drive_url').in('project_id', projectIds).then(rowsOf),
     admin.from('gc_plan_questions').select('id, project_id, package_id, company_id, text, sheets, asked_on, answered_on, answer, answer_sent_to, in_set_id').in('project_id', projectIds).then(rowsOf),
     admin.from('project_superintendents').select('project_id, superintendent_id').in('project_id', projectIds).then(rowsOf),
+    // Bill day's cut-off (Messages cut 9): the pay application's door names the day it is due.
+    admin.from('app_settings').select('value_num').eq('key', 'gc_bill_day_cutoff_days').maybeSingle().then((r) => (r.data ? Number((r.data as R).value_num) : null)),
   ])
+  const job = await jobRead
   const setIds = ids(sets)
   const setItems = setIds.length ? await admin.from('gc_plan_set_items').select('*').in('set_id', setIds).then(rowsOf) : []
   const userIds = [...ids(gcRows, 'project_manager_user_id'), ...ids(supers, 'superintendent_id')]
@@ -91,7 +148,109 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     ].filter((t): t is NonNullable<typeof t> => t !== null)
     return { project, gc, team }
   })
-  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, ...work }
+  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, billDayCutoffDays, ...work, ...job }
+}
+
+/**
+ * The job's work on the trades awarded to the company (P5c-1): Building's submittals with their holds and rounds, the
+ * RFIs on those trades with their holds, and its punch items not taken off. The slice holds them again and copies only
+ * what a trade may read.
+ */
+async function readJobWork(admin: SupabaseClient, awarded: string[]): Promise<Pick<TradePortalRows, 'submittals' | 'submittalHolds' | 'submittalRounds' | 'rfis' | 'rfiHolds' | 'punch'>> {
+  if (awarded.length === 0) return { submittals: [], submittalHolds: [], submittalRounds: [], rfis: [], rfiHolds: [], punch: [] }
+  const [submittals, rfis, punch] = await Promise.all([
+    admin.from('gc_submittals').select('*').in('package_id', awarded).then(rowsOf),
+    admin.from('gc_rfis').select('*').in('package_id', awarded).then(rowsOf),
+    admin.from('gc_punch_items').select('*').in('package_id', awarded).is('removed_at', null).then(rowsOf),
+  ])
+  const submittalIds = ids(submittals)
+  const rfiIds = ids(rfis)
+  const [submittalHolds, submittalRounds, rfiHolds] = await Promise.all([
+    submittalIds.length ? admin.from('gc_submittal_holds').select('submittal_id, scope_item_id').in('submittal_id', submittalIds).then(rowsOf) : [],
+    submittalIds.length ? admin.from('gc_submittal_rounds').select('*').in('submittal_id', submittalIds).then(rowsOf) : [],
+    rfiIds.length ? admin.from('gc_rfi_holds').select('rfi_id, scope_item_id').in('rfi_id', rfiIds).then(rowsOf) : [],
+  ])
+  return { submittals, submittalHolds, submittalRounds, rfis, rfiHolds, punch }
+}
+
+/**
+ * Each statement of work sent to sign that is built from clauses, with its paper as it reads today (Messages, cut 4c,
+ * v2.5329): the job's clauses, then the exhibit for its package's one trade, between us and the company, as
+ * `gc_trade_sign_sow` freezes it. A paper that fails to read leaves that statement of work with no clauses, and the SQL
+ * refuses its signing until a reload reads them (paperChanged).
+ */
+async function withSowPapers(admin: SupabaseClient, rows: TradePortalRows): Promise<TradePortalRows> {
+  const sent = (rows.sows ?? []).filter((s) => s.status === 'sent' && s.paper_id)
+  if (sent.length === 0) return rows
+  const reader = admin as unknown as ClauseAdmin
+  const betweenName = String(rows.company.name ?? '')
+  const tradeOf = new Map(rows.packages.map((k) => [String(k.id), String(k.trade ?? '')]))
+  const papers = new Map(
+    await Promise.all(
+      sent.map(async (s) => {
+        const trade = tradeOf.get(String(s.package_id)) ?? ''
+        try {
+          return [String(s.id), await clausePaperPair(reader, { paperId: String(s.paper_id), trades: trade ? [trade] : [], betweenName })] as const
+        } catch (e) {
+          console.error('gc-trade-portal: a statement of work\'s paper did not read', e)
+          return [String(s.id), null] as const
+        }
+      }),
+    ),
+  )
+  return { ...rows, sows: (rows.sows ?? []).map((s) => (papers.get(String(s.id)) ? { ...s, clause_paper: papers.get(String(s.id)) } : s)) }
+}
+
+// Typed as the read's own to-dos, so a job with a schedule fits the same shape.
+const NO_SCHEDULE = { schedules: {}, scheduleWork: {}, scheduleTodos: [] as ReturnType<typeof portalScheduleWorkFromRows>['todos'] }
+
+/**
+ * The company's chart and its side of the schedule on each of its jobs being built, from one read. A failed read
+ * leaves the slice whole, with no chart and no schedule work.
+ */
+async function scheduleFor(admin: SupabaseClient, companyId: string, rows: TradePortalRows, today: string): Promise<typeof NO_SCHEDULE> {
+  try {
+    const stages = rows.projects.map((p) => p.gc as { project_id: string; stage?: string | null })
+    const jobIds = portalScheduleJobs(rows.packages as { id: string; project_id: string; awarded_invite_id?: string | null }[], ids(rows.invites), stages)
+    if (jobIds.length === 0) return NO_SCHEDULE
+    const read = await readScheduleRows(admin, jobIds, { trade: { companyId } })
+    const lang = (rows.company as { lang?: string }).lang === 'es' ? 'es' : 'en'
+    const { work, todos } = portalScheduleWorkFromRows(read, companyId, today, lang)
+    return { schedules: portalSchedulesFromRows(read, companyId, today), scheduleWork: work, scheduleTodos: todos }
+  } catch (e) {
+    console.error('gc-trade-portal: the schedule did not read', e)
+    return NO_SCHEDULE
+  }
+}
+
+/** The company's trade flow rows for the first page (Messages cut 8c). A failed read answers null: the page keeps its old home. */
+async function flowFor(admin: SupabaseClient, companyId: string, rows: TradePortalRows): Promise<TradeFlowRows | null> {
+  try {
+    return tradeFlowRowsOf(rows, await readTradeFlowExtra(admin, companyId), companyId)
+  } catch (e) {
+    console.error('gc-trade-portal: the flow did not read', e)
+    return null
+  }
+}
+
+/**
+ * The late door's second look (P5d-ii, call 4): what a day does to the work waiting on one of the company's own bars.
+ * It reads that bar's job alone, and only when the job is one the company works on (`portalScheduleJobs`).
+ */
+async function lateWaitingFor(admin: SupabaseClient, companyId: string, lineId: string, day: string, today: string): Promise<Record<string, unknown>> {
+  if (!/^[0-9a-f-]{36}$/i.test(lineId) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return {}
+  const { data: bar } = await admin.from('gc_schedule_activities').select('project_id').eq('id', lineId).maybeSingle()
+  const projectId = (bar as { project_id?: string } | null)?.project_id
+  if (!projectId) return {}
+  const [packages, invites, gc] = await Promise.all([
+    admin.from('gc_trade_packages').select('id, project_id, awarded_invite_id').eq('project_id', projectId).then(rowsOf),
+    admin.from('gc_invites').select('id').eq('company_id', companyId).then(rowsOf),
+    admin.from('gc_projects').select('project_id, stage').eq('project_id', projectId).then(rowsOf),
+  ])
+  const jobs = portalScheduleJobs(packages as { id: string; project_id: string; awarded_invite_id?: string | null }[], ids(invites), gc as { project_id: string; stage?: string | null }[])
+  if (!jobs.includes(projectId)) return {}
+  const waiting = lateWaitingFromRows(await readScheduleRows(admin, [projectId], { trade: { companyId } }), companyId, today, lineId, day)
+  return waiting ? { waiting } : {}
 }
 
 serve(async (req) => {
@@ -101,7 +260,18 @@ serve(async (req) => {
     const url = new URL(req.url)
     const token = url.searchParams.get('t')?.trim() ?? ''
     const today = todayYmdInAppTz()
-    if (sampleStateFromToken(token)) return jsonResponse({ today, slice: gcTradePortalSample(today), sample: true })
+    const late = url.searchParams.get('late')
+    if (sampleStateFromToken(token)) {
+      if (late !== null) return jsonResponse({})
+      return jsonResponse({
+        today,
+        slice: gcTradePortalSample(today),
+        schedules: gcTradePortalSampleSchedules(today),
+        ...gcTradePortalSampleScheduleWork(today),
+        flow: gcTradePortalSampleFlow(today),
+        sample: true,
+      })
+    }
     if (token.length < 16 || token.length > 128) return jsonResponse({ error: 'badRequest' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
@@ -111,6 +281,8 @@ serve(async (req) => {
       return data as TradeLinkRow | null
     })
     if (!link) return jsonResponse({ error: 'linkOff' }, 404)
+    // The late door's second look: a read for one day on one bar, which counts no visit.
+    if (late !== null) return jsonResponse(await lateWaitingFor(admin, link.company_id, late.trim(), url.searchParams.get('day')?.trim() ?? '', today))
 
     // Who looked: outside counts; a signed-in teammate or the office's preview is stamped, never counted.
     const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
@@ -118,10 +290,14 @@ serve(async (req) => {
       .from('public_page_views')
       .insert({ surface: 'gc_trade_portal', entity_id: link.company_id, via: 'token', viewer: viewDecision.viewer, viewer_user_id: viewDecision.staffUserId })
       .then(() => {}, () => {})
+    // The first outside visit (Messages cut 8c): the fact portal_opened, before the flow reads it.
+    if (viewDecision.count) await stampFirstOpen(admin, link.company_id)
 
-    const rows = await readRows(admin, link.company_id)
-    if (!rows) return jsonResponse({ error: 'linkOff' }, 404)
-    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id) })
+    const read = await readRows(admin, link.company_id)
+    if (!read) return jsonResponse({ error: 'linkOff' }, 404)
+    // The papers ride on the statements of work, which the chart and the flow do not read, so the three run together.
+    const [rows, schedule, flow] = await Promise.all([withSowPapers(admin, read), scheduleFor(admin, link.company_id, read, today), flowFor(admin, link.company_id, read)])
+    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id), ...schedule, flow })
   } catch (e) {
     console.error('gc-trade-portal failed', e)
     return jsonResponse({ error: 'failed' }, 500)

@@ -142,6 +142,32 @@ export async function loadSentCopiesForJob(jobId: string): Promise<SentCopy[]> {
   }
 }
 
+/**
+ * The emails that went to any of these addresses, newest first, with the bid and the Pipeline jobs each names: the
+ * Messages thread's overlay (cut 1), which reads them into the thread of each person they went to. A read only; the
+ * copies stay here and nothing is written into `messages`. Answers no rows when it cannot read, as the job's list does.
+ */
+export async function loadSentEmailsTo(addresses: readonly string[]): Promise<Array<SentCopy & { bidId: string | null; jobIds: string[] }>> {
+  const wanted = [...new Set(addresses.flatMap((a) => [a.trim(), a.trim().toLowerCase()]).filter(Boolean))]
+  if (wanted.length === 0) return []
+  try {
+    const read = (cols: string) =>
+      table().select(`${cols}, bid_id, job_ids`).eq('how', 'email').overlaps('recipient_emails', wanted).order('sent_at', { ascending: false }).limit(2000)
+    let { data, error } = await read(SENT_COLS)
+    if (error && isUnknownColumn(error.code)) ({ data, error } = await read(SENT_COLS_BASE))
+    if (error) return []
+    return ((data ?? []) as unknown[]).flatMap((raw) => {
+      const copy = parseSentCopy(raw)
+      if (!copy) return []
+      const r = raw as { bid_id?: unknown; job_ids?: unknown }
+      const jobIds = Array.isArray(r.job_ids) ? r.job_ids.filter((j): j is string => typeof j === 'string' && j !== '') : []
+      return [{ ...copy, bidId: typeof r.bid_id === 'string' && r.bid_id ? r.bid_id : null, jobIds }]
+    })
+  } catch {
+    return []
+  }
+}
+
 async function copyText(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from(SENT_COPIES_BUCKET).download(path)
   if (error || !data) throw error ?? new Error('No copy')

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The split as a sub-row</title>
+<style>
+  /* Punch list #128, the owner's 2026-10-19 call: the split under the row, not beside it. Light only; made-up rows. */
+  :root { color-scheme: light; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --faint: #9ca3af; --line: #d1d5db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f8fafc; --blue: #2563eb; --blue-tint: #dbeafe; --green: #16a34a; --amber: #b45309; --amber-tint: #fef3c7; --red: #b91c1c; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 40px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 12px; color: var(--ink-2); max-width: 100ch; }
+  .fit { border: 1px solid #cbd5e1; border-radius: 10px; background: var(--surface); overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+  th { text-align: left; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 9px 10px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.c, th.c { text-align: center; }
+  .pin { color: #f9a8d4; }
+  .chev { display: inline-block; width: 16px; color: var(--muted); font-size: 11px; cursor: default; }
+  .chev.open { transform: rotate(90deg); }
+  .name { font-weight: 600; }
+  .book { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 6px; background: var(--blue-tint); color: #1d4ed8; }
+  .assign { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 6px; border: 1px dashed var(--line); color: var(--muted); }
+  .price { border-bottom: 1px dashed var(--line); padding-bottom: 1px; }
+  .m { color: var(--green); font-weight: 700; }
+  .ib { color: var(--blue); }
+  tr.sub td { background: #fafafa; border-bottom: 1px solid var(--line-2); padding: 6px 10px 8px; }
+  .strip { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; padding-left: 26px; font-size: 12.5px; }
+  .strip .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
+  .cell { display: inline-block; font-family: var(--mono); font-size: 12.5px; padding: 1px 6px; border-radius: 4px; border: 1px dashed var(--line); color: var(--ink-2); min-width: 86px; text-align: right; }
+  .cell.typed { border-style: solid; border-color: #9ca3af; color: var(--ink); }
+  .cell.ro { border-color: transparent; padding-left: 0; min-width: 0; }
+  .cell.lab { font-weight: 700; color: var(--ink); border-color: transparent; }
+  .ea { color: var(--faint); font-size: 11px; margin-left: 4px; }
+  .strip .r { margin-left: auto; color: var(--muted); font-size: 11.5px; }
+  .hint { color: var(--muted); font-size: 11.5px; margin-top: 4px; padding-left: 26px; }
+  /* B: the mini table */
+  table.mini { min-width: 0; width: auto; margin-left: 26px; font-size: 12.5px; }
+  table.mini th { padding: 2px 10px 4px; border-bottom: 1px solid var(--line-2); }
+  table.mini td { padding: 3px 10px; border-bottom: 0; }
+  table.mini tr.l td { color: var(--muted); font-size: 11.5px; }
+  /* C: the bar */
+  .bar { display: flex; height: 18px; border-radius: 5px; overflow: hidden; margin-left: 26px; max-width: 720px; font-size: 11px; color: #fff; font-weight: 600; }
+  .bar span { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; overflow: hidden; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 6px 0 0 26px; font-size: 12px; color: var(--ink-2); }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .hdr { display: flex; align-items: center; gap: 8px; }
+  .hdr .all { font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--blue); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; background: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #128 · the Pricing Workbench</p>
+  <h1>The split as a sub-row under each line</h1>
+  <p>The same four numbers, Material · Tax · Equipment · Labor, but under the row instead of beside it. A chevron on the row opens one; <b>Expand all</b> in the header opens every row. The columns above never move. Three shapes for the sub-row.</p>
+</header>
+
+<h2><span class="num pick">A</span> The strip: one quiet line</h2>
+<p class="lede">Four small cells on one line, indented under the fixture name. Dashed is the rule's number, solid is typed. Labor is bold because it is the answer. The per-unit figure sits faintly after each. <b>Recommended</b>: it reads like the kind and tag line already under the name, and it costs the table no width.</p>
+<div class="fit"><table>
+  <thead><tr><th></th><th><span class="hdr">Fixture or tie-in <span class="all">Expand all ▾</span></span></th><th class="c">Count</th><th class="n">Cost/unit</th><th>Book entry</th><th class="n">Sale price/unit</th><th class="n">Revenue</th><th class="n">Profit</th><th class="n">Margin</th><th></th></tr></thead>
+  <tbody>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev open">▶</span><span class="name">Toilets</span></td><td class="c">5</td><td class="n">$702.52</td><td><span class="book">Toilets · $1,500.00 ×</span></td><td class="n"><span class="price">$1,500.00</span></td><td class="n">$7,500.00</td><td class="n">$3,987.40</td><td class="n m">53%</td><td class="ib">ⓘ</td></tr>
+    <tr class="sub"><td colspan="10">
+      <div class="strip">
+        <span><span class="k">Material</span><span class="cell">$4,867.35</span><span class="ea">$973.47 ea</span></span>
+        <span><span class="k">Tax</span><span class="cell ro">$401.56</span><span class="ea">8.25%</span></span>
+        <span><span class="k">Equipment</span><span class="cell">—</span></span>
+        <span><span class="k">Labor</span><span class="cell lab">$2,231.09</span><span class="ea">$446.22 ea · 15 h on Labor</span></span>
+        <span class="r">adds to $7,500.00 · the dashed ones are the rule's, type over any</span>
+      </div>
+    </td></tr>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev open">▶</span><span class="name">Kitchen sinks</span></td><td class="c">6</td><td class="n">$2,667.96</td><td><span class="assign">assign…</span></td><td class="n"><span class="price">$5,340.50</span></td><td class="n">$32,043.00</td><td class="n">$16,035.23</td><td class="n m">50%</td><td class="ib">ⓘ</td></tr>
+    <tr class="sub"><td colspan="10">
+      <div class="strip">
+        <span><span class="k">Material</span><span class="cell typed">$20,000.00</span><span class="ea">$3,333.33 ea · typed</span></span>
+        <span><span class="k">Tax</span><span class="cell ro">$1,650.00</span><span class="ea">8.25%</span></span>
+        <span><span class="k">Equipment</span><span class="cell typed">$1,500.00</span><span class="ea">typed</span></span>
+        <span><span class="k">Labor</span><span class="cell lab">$8,893.00</span><span class="ea">$1,482.17 ea</span></span>
+        <span class="r">adds to $32,043.00</span>
+      </div>
+    </td></tr>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev">▶</span><span class="name">Shower/tub combos</span></td><td class="c">3</td><td class="n">$2,798.12</td><td><span class="assign">assign…</span></td><td class="n"><span class="price">$5,600.00</span></td><td class="n">$16,800.00</td><td class="n">$8,405.63</td><td class="n m">50%</td><td class="ib">ⓘ</td></tr>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev">▶</span><span class="name">WC</span></td><td class="c">4</td><td class="n" style="color:var(--muted)">no cost</td><td><span class="assign">assign…</span></td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="ib">ⓘ</td></tr>
+  </tbody>
+</table></div>
+<p class="note"><b>Where the kind and tags go:</b> the Fixture / Pipe / Equipment chip and the tags stay on the row's name line as they are now; the sub-row is money only. A row the chevron opens stays open until closed; Expand all remembers itself per device, like the composition bar's toggle.</p>
+
+<h2><span class="num">B</span> The mini table: two lines, per unit and for the row</h2>
+<p class="lede">A small four-column table under the row, the first line per unit and the second for the row. More to read, and the numbers you type are per unit here, which matches the Sale price/unit column.</p>
+<div class="fit"><table>
+  <thead><tr><th></th><th>Fixture or tie-in</th><th class="c">Count</th><th class="n">Cost/unit</th><th>Book entry</th><th class="n">Sale price/unit</th><th class="n">Revenue</th><th class="n">Profit</th><th class="n">Margin</th><th></th></tr></thead>
+  <tbody>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev open">▶</span><span class="name">Toilets</span></td><td class="c">5</td><td class="n">$702.52</td><td><span class="book">Toilets · $1,500.00 ×</span></td><td class="n"><span class="price">$1,500.00</span></td><td class="n">$7,500.00</td><td class="n">$3,987.40</td><td class="n m">53%</td><td class="ib">ⓘ</td></tr>
+    <tr class="sub"><td colspan="10">
+      <table class="mini">
+        <thead><tr><th></th><th class="n">Material</th><th class="n">Tax</th><th class="n">Equipment</th><th class="n">Labor</th><th class="n">Price</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--muted)">per unit</td><td class="n"><span class="cell">$973.47</span></td><td class="n"><span class="cell ro">$80.31</span></td><td class="n"><span class="cell">—</span></td><td class="n"><span class="cell lab">$446.22</span></td><td class="n">$1,500.00</td></tr>
+          <tr class="l"><td>for the row</td><td class="n">$4,867.35</td><td class="n">$401.56</td><td class="n">—</td><td class="n">$2,231.09</td><td class="n">$7,500.00</td></tr>
+        </tbody>
+      </table>
+    </td></tr>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev">▶</span><span class="name">Kitchen sinks</span></td><td class="c">6</td><td class="n">$2,667.96</td><td><span class="assign">assign…</span></td><td class="n"><span class="price">$5,340.50</span></td><td class="n">$32,043.00</td><td class="n">$16,035.23</td><td class="n m">50%</td><td class="ib">ⓘ</td></tr>
+  </tbody>
+</table></div>
+
+<h2><span class="num">C</span> The bar: see the shape, type in the legend</h2>
+<p class="lede">A stacked bar under the row shows how the price divides at a glance; the amounts live in the legend under it and are typed there. Prettiest, and the slowest to type into.</p>
+<div class="fit"><table>
+  <thead><tr><th></th><th>Fixture or tie-in</th><th class="c">Count</th><th class="n">Cost/unit</th><th>Book entry</th><th class="n">Sale price/unit</th><th class="n">Revenue</th><th class="n">Profit</th><th class="n">Margin</th><th></th></tr></thead>
+  <tbody>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev open">▶</span><span class="name">Toilets</span></td><td class="c">5</td><td class="n">$702.52</td><td><span class="book">Toilets · $1,500.00 ×</span></td><td class="n"><span class="price">$1,500.00</span></td><td class="n">$7,500.00</td><td class="n">$3,987.40</td><td class="n m">53%</td><td class="ib">ⓘ</td></tr>
+    <tr class="sub"><td colspan="10">
+      <div class="bar"><span style="width:65%;background:#64748b">Material 65%</span><span style="width:5%;background:#8b5cf6"></span><span style="width:30%;background:#0ea5e9">Labor 30%</span></div>
+      <div class="legend"><span><i style="background:#64748b"></i>Material <span class="cell">$4,867.35</span></span><span><i style="background:#8b5cf6"></i>Tax <span class="cell ro">$401.56</span></span><span><i style="background:#f59e0b"></i>Equipment <span class="cell">—</span></span><span><i style="background:#0ea5e9"></i>Labor <span class="cell lab">$2,231.09</span></span></div>
+    </td></tr>
+    <tr><td><span class="pin">📌</span></td><td><span class="chev">▶</span><span class="name">Kitchen sinks</span></td><td class="c">6</td><td class="n">$2,667.96</td><td><span class="assign">assign…</span></td><td class="n"><span class="price">$5,340.50</span></td><td class="n">$32,043.00</td><td class="n">$16,035.23</td><td class="n m">50%</td><td class="ib">ⓘ</td></tr>
+  </tbody>
+</table></div>
+</div>
+</body>
+</html>

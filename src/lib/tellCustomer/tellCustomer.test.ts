@@ -1,0 +1,174 @@
+import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
+import type { QuickReply } from '../quickReplies/kernel'
+import {
+  blanksLeftIn,
+  clockHm,
+  DEFAULT_LINES,
+  DEFAULT_SCRIPTS,
+  emailSentLine,
+  holdWords,
+  lineFor,
+  receiptScript,
+  sentLine,
+  tellActs,
+  tellFills,
+  tellHold,
+  tellWords,
+  TELL_WORDS,
+  type TellBlock,
+  type TellHold,
+  prefersNote,
+  unfillLine,
+} from './tellCustomer'
+
+const BLOCK: TellBlock = { workDate: '2026-10-23', timeStart: '10:00:00', timeEnd: '12:00:00', techName: 'Luis Ortega' }
+const line = (id: string, text: string, extra: Partial<QuickReply> = {}): QuickReply =>
+  ({ id, text, for: 'customer', stepId: 'booked', scope: 'team', addedBy: 'rosa', addedAt: 1, removed: false, uses: {}, lastUsed: null, textEs: null, ...extra }) as QuickReply
+
+describe('tellFills', () => {
+  it('fills their name, ours, the job, the day, the window and the tech from the block', () => {
+    const f = tellFills({ customerName: 'Dana Whitfield', me: 'Rosa Perez', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', block: BLOCK })
+    expect(f).toEqual({ first: 'Dana', me: 'Rosa', job: 'Whitfield water heater', address: '1208 Mesquite Ln', day: 'Friday, October 23, 2026', window: '10:00 AM to 12:00 PM', tech: 'Luis' })
+  })
+  it('leaves out what it does not know', () => {
+    const f = tellFills({ customerName: null, me: null, jobName: null, jobAddress: null, block: { ...BLOCK, techName: null } })
+    expect(Object.keys(f).sort()).toEqual(['day', 'window'])
+  })
+})
+
+describe('lineFor and tellWords', () => {
+  const fills = tellFills({ customerName: 'Dana Whitfield', me: 'Rosa Perez', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', block: BLOCK })
+  it('takes the office’s Booked line when it has one, in the customer’s language', () => {
+    const office = line('q1', '{first}, {me} here from Click Plumbing. See you {day}, {window}.', { textEs: '{first}, le habla {me} de Click Plumbing. Nos vemos el {day}, {window}.' })
+    const l = lineFor('booked', [office, line('q2', 'Not this one', { stepId: 'estimate' })], 'rosa')
+    expect(l).toMatchObject({ office: true, id: 'q1' })
+    expect(tellWords(l, fills, 'en').text).toBe('Dana, Rosa here from Click Plumbing. See you Friday, October 23, 2026, 10:00 AM to 12:00 PM.')
+    expect(tellWords(l, fills, 'es').text).toBe('Dana, le habla Rosa de Click Plumbing. Nos vemos el Friday, October 23, 2026, 10:00 AM to 12:00 PM.')
+  })
+  it('falls back to the app’s own words, and a moved visit always takes its own', () => {
+    expect(lineFor('booked', [], 'rosa')).toMatchObject({ office: false, id: null, text: DEFAULT_LINES.booked.text })
+    expect(tellWords(lineFor('booked', [], 'rosa'), fills, 'en').text).toBe('Dana, this is Rosa with Click Plumbing. We have you booked for Friday, October 23, 2026, 10:00 AM to 12:00 PM. Luis will text you when on the way.')
+    expect(lineFor('rescheduled', [line('q1', 'A Booked line')], 'rosa')).toMatchObject({ office: false, text: DEFAULT_LINES.rescheduled.text })
+  })
+  it('says which blanks nobody filled', () => {
+    expect(tellWords(lineFor('booked', [], 'rosa'), { first: 'Dana' }, 'en').left).toEqual(['me', 'day', 'window', 'tech'])
+    expect(blanksLeftIn('Hi {first}, see you {day}. {first} again.')).toEqual(['first', 'day'])
+    expect(blanksLeftIn('No blanks here.')).toEqual([])
+  })
+})
+
+describe('the holds and the acts', () => {
+  it('holds in order: the office, the customer, the switch, the number, STOP', () => {
+    const base = { office: true, hasCustomer: true, number: '(830) 555-0121', stopped: false, textsOn: true }
+    expect(tellHold(base)).toBeNull()
+    expect(tellHold({ ...base, office: false })).toBe('not-office')
+    expect(tellHold({ ...base, hasCustomer: false })).toBe('no-customer')
+    expect(tellHold({ ...base, textsOn: false })).toBe('texts-off')
+    expect(tellHold({ ...base, number: null })).toBe('no-number')
+    expect(tellHold({ ...base, stopped: true })).toBe('stop')
+  })
+  it('the rows say what the press does, and a hold says why not', () => {
+    const a = tellActs('booked', 'Dana', null)
+    expect(a.rows.map((r) => r.words)).toEqual(['Texts Dana the day and the window from the company number. Dana’s answer comes to the office.', 'Then shows you what went, and offers the call.'])
+    expect(a.primary).toBe('Send text to Dana')
+    expect(tellActs('rescheduled', null, null).rows[0]?.words).toBe('Texts the customer the new day and window from the company number. Their answer comes to the office.')
+    const held = tellActs('booked', 'Dana', 'no-number')
+    expect(held.rows).toEqual([{ icon: '⚠', words: 'No text: Dana has no phone number on file. Add one on the customer.', hold: true }])
+    expect(held.primary).toBe('Close')
+  })
+})
+
+describe('the receipt', () => {
+  const fills = tellFills({ customerName: 'Dana Whitfield', me: 'Rosa Perez', jobName: null, jobAddress: null, block: BLOCK })
+  it('says what went and when, and the script filled for them', () => {
+    // 2:41 PM in Chicago on a Friday in October (CDT).
+    const at = Date.parse('2026-10-16T19:41:00Z')
+    expect(clockHm(at)).toBe('2:41 PM')
+    expect(sentLine('Dana', at)).toBe('Text · from the company number · 2:41 PM · in Dana’s thread')
+    expect(sentLine(null, at)).toBe('Text · from the company number · 2:41 PM · in their thread')
+    expect(receiptScript('booked', fills)).toBe('Hi Dana, this is Rosa with Click Plumbing. You should have a text from us with the window for Friday, October 23, 2026, 10:00 AM to 12:00 PM. Does that still work for you? Luis will text you when on the way.')
+    expect(receiptScript('rescheduled', fills, 'es')).toContain('Hola Dana')
+  })
+  it('the words a first-timer reads are plain', () => {
+    const read = [
+      ...(['not-office', 'no-customer', 'texts-off', 'no-number', 'stop'] as TellHold[]).map((h) => holdWords(h, 'Dana')),
+      ...tellActs('booked', 'Dana', null).rows.map((r) => r.words),
+      TELL_WORDS.editHint(true, 'booked'),
+      TELL_WORDS.editHint(false, 'booked'),
+      TELL_WORDS.editHint(false, 'rescheduled'),
+      TELL_WORDS.noEmail('booked'),
+      TELL_WORDS.noEmail('done'),
+      TELL_WORDS.callAsk('Dana'),
+      TELL_WORDS.callLands('Dana'),
+      TELL_WORDS.sentToast('Dana'),
+      receiptScript('booked', fills),
+      DEFAULT_SCRIPTS.rescheduled.text.replace(/\{[a-z ]+\}/g, 'x'),
+    ]
+    for (const words of read) expect(plainWordsFailures(words), words).toEqual([])
+  })
+})
+
+describe('the estimate moment (v2.5594)', () => {
+  const fills = tellFills({ customerName: 'Dana Whitfield', me: 'Rosa Perez', jobName: null, jobAddress: null, estimate: { amount: '$1,850.00', title: 'Whitfield water heater' } })
+  it('fills the amount and the title as the job, and leaves the link to the send', () => {
+    expect(fills).toEqual({ first: 'Dana', me: 'Rosa', job: 'Whitfield water heater', amount: '$1,850.00' })
+    expect(tellWords(lineFor('estimate', [], 'rosa'), fills, 'en')).toEqual({
+      text: 'Dana, this is Rosa with Click Plumbing. Your estimate for Whitfield water heater is ready, $1,850.00. Open it to approve the option you want: {link}',
+      left: ['link'],
+    })
+    expect(blanksLeftIn('Dana, see {link} for {job}', 'estimate')).toEqual(['job'])
+    expect(blanksLeftIn('Dana, see {link}', 'booked')).toEqual(['link'])
+  })
+  it('takes the office’s Estimate line when it has one', () => {
+    const office = line('q9', '{first}, your estimate is ready: {link}', { stepId: 'estimate' })
+    expect(lineFor('estimate', [office], 'rosa')).toMatchObject({ office: true, id: 'q9' })
+    expect(lineFor('estimate', [line('q1', 'A Booked line')], 'rosa')).toMatchObject({ office: false })
+  })
+  it('the rows name both channels; a hold keeps the email and drops the text', () => {
+    const both = tellActs('estimate', 'Dana', null)
+    expect(both.rows.map((r) => r.words)).toEqual([
+      'Emails Dana the estimate with the link to approve it.',
+      'Texts Dana the same link from the company number. Dana’s answer comes to the office.',
+      'Then shows you what went, and offers the call.',
+    ])
+    expect(both.primary).toBe('Send both to Dana')
+    expect(both.emailOnly).toBe('Email only')
+    const held = tellActs('estimate', 'Dana', 'stop')
+    expect(held.rows.map((r) => r.hold)).toEqual([false, true, false])
+    expect(held.primary).toBe('Send email to Dana')
+    expect(held.emailOnly).toBeNull()
+    expect(tellActs('booked', 'Dana', null).emailOnly).toBeNull()
+  })
+  it('the receipt names the email, and the script walks through the estimate', () => {
+    expect(emailSentLine('dana@example.com', Date.parse('2026-10-16T20:05:00Z'))).toBe('Email · dana@example.com · 3:05 PM')
+    expect(receiptScript('estimate', fills)).toBe('Hi Dana, this is Rosa with Click Plumbing. I just sent your estimate for Whitfield water heater, $1,850.00. Do you have two minutes for me to walk you through it? You can approve from the link whenever you are ready.')
+    for (const words of [TELL_WORDS.emailWhat, TELL_WORDS.linkHint, TELL_WORDS.editHint(true, 'estimate'), TELL_WORDS.editHint(false, 'estimate'), TELL_WORDS.emailOnlyToast, TELL_WORDS.textFailed, TELL_WORDS.bothSentToast('Dana'), receiptScript('estimate', fills), ...tellActs('estimate', 'Dana', null).rows.map((r) => r.words)]) {
+      expect(plainWordsFailures(words), words).toEqual([])
+    }
+  })
+})
+
+describe('the customer’s say and the office’s line (v2.5597)', () => {
+  it('notes, never holds, a channel they did not ask for', () => {
+    expect(prefersNote('booked', 'Dana', 'email')).toBe('Dana asked to hear from us by email. A call may be kinder than this text.')
+    expect(prefersNote('estimate', 'Dana', 'email')).toBe('Dana asked to hear from us by email. Email only may be the kinder press.')
+    expect(prefersNote('estimate', 'Dana', 'text')).toBe('Dana asked to hear from us by text. The email still carries the link.')
+    expect(prefersNote('booked', 'Dana', 'text')).toBeNull()
+    expect(prefersNote('booked', 'Dana', 'either')).toBeNull()
+    expect(prefersNote('booked', null, 'email')).toBe('They asked to hear from us by email. A call may be kinder than this text.')
+    const acts = tellActs('booked', 'Dana', null, 'email')
+    expect(acts.rows.map((r) => [r.icon, r.hold])).toEqual([['💬', false], ['ℹ️', false], ['🧾', false]])
+    expect(acts.primary).toBe('Send text to Dana')
+    expect(tellActs('estimate', 'Dana', null, 'text').rows.map((r) => r.icon)).toEqual(['✉️', '💬', 'ℹ️', '🧾'])
+    for (const w of [prefersNote('booked', 'Dana', 'email')!, prefersNote('estimate', 'Dana', 'email')!, prefersNote('estimate', 'Dana', 'text')!]) expect(plainWordsFailures(w), w).toEqual([])
+  })
+
+  it('puts the blanks back into an edited line, the longest fill first', () => {
+    const fills = tellFills({ customerName: 'Dana Whitfield', me: 'Rosa Perez', jobName: 'Whitfield water heater', jobAddress: '1208 Mesquite Ln', block: { workDate: '2026-10-23', timeStart: '10:00:00', timeEnd: '12:00:00', techName: 'Luis Ortega' } })
+    expect(unfillLine('Dana, Rosa here with Click Plumbing. You are booked Friday, October 23, 2026, 10:00 AM to 12:00 PM at 1208 Mesquite Ln. Luis will text you.', fills)).toBe(
+      '{first}, {me} here with Click Plumbing. You are booked {day}, {window} at {address}. {tech} will text you.',
+    )
+    expect(unfillLine('Nothing of theirs here.', fills)).toBe('Nothing of theirs here.')
+  })
+})

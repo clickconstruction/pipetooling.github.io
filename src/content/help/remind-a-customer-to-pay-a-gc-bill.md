@@ -9,6 +9,8 @@ When a certified bill on a GC job is past the day it was due, send the customer 
 
 A reminder is our ask, not their promise. The day the bill was due stays the same. The owner, the leaders and the controller see the window.
 
+Before a bill is due, the app can tell the customer by itself. See [the reminders the app sends](/help/bill-the-customer-on-a-gc-job#the-reminders-the-app-sends).
+
 ## Send a reminder
 
 1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:outline|Bill the customer}} on the job's card.
@@ -19,7 +21,7 @@ A reminder is our ask, not their promise. The day the bill was due stays the sam
 6. Read the email as the customer will get it.
 7. Press {{button:blue|Send the reminder}}.
 
-The email comes from Click Construction. The email says what is still open and the day to pay by. The email asks them to reply with the day they will pay. A customer with a portal link gets the link too. The project manager gets their replies.
+The email comes from Click Construction. It greets their contact by first name. With no contact on their record, it starts with *Hello,*. The email says what is still open and the day to pay by. The email asks them to reply with the day they will pay. A customer with a portal link gets the link too. The project manager gets their replies.
 
 ## After it goes
 

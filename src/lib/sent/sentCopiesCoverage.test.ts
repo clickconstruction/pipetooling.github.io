@@ -54,6 +54,8 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'pages/LegalPortal.tsx': 'the law firm prints from its own portal page',
   'pages/PartnerStatement.tsx': 'the partner prints from their own statement page',
   'pages/SubPortal.tsx': 'the sub prints from their own portal page',
+  'components/gc/gcTradePortalPrint.ts': 'the trade partner prints its own list of papers from its own portal page',
+  'components/gc/messages/MessageWindow.tsx': 'one message from a person\'s thread, printed or saved as a PDF: the message is kept in the thread already',
 }
 
 function sourceFiles(dir: string, out: string[] = []): string[] {

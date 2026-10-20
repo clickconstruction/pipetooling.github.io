@@ -364,6 +364,24 @@ export const APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1 = 'bid_sov_material_fac
 export const APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1 = 'bid_sov_labor_share_pct_v1' as const
 
 /**
+ * `value_num` — the company sales tax rate on a bid's material, percent (punch list #128 PR 1,
+ * v2.5653): the rate a bid taxes its takeoff material at when `bids.tax_rate_pct` is null. Seeded
+ * at 8.25 (the Takeoffs box's old constant); the rate varies by city, so a bid keeps its own. Dev
+ * writes (Settings → Bid Cover Letter Defaults); every bid reads it. Parse: `parseBidTaxRatePct`.
+ */
+export const APP_SETTINGS_KEY_BID_TAX_RATE_PCT_V1 = 'bid_tax_rate_pct_v1' as const
+
+export const DEFAULT_BID_TAX_RATE_PCT = 8.25
+
+/** Parse a tax rate, percent: missing, garbage, or outside 0–100 falls back. */
+export function parseBidTaxRatePct(value: number | string | null | undefined, fallback = DEFAULT_BID_TAX_RATE_PCT): number {
+  if (value === null || value === undefined || value === '') return fallback
+  const n = typeof value === 'number' ? value : Number(String(value).replace(/[%,\s]/g, ''))
+  if (!Number.isFinite(n) || n < 0 || n > 100) return fallback
+  return Math.round(n * 1000) / 1000
+}
+
+/**
  * `value_num` — the contract floor in cents (Contract sweep PR 0): a live job whose amount is
  * under it is not counted as a contract gap by the Needs You item, the Pipeline card, the
  * No-contract filter or the sweep. 0 / missing = no floor (every live job counts). Dev writes
@@ -378,3 +396,48 @@ export function parseJobContractFloorCents(value: number | string | null | undef
   if (!Number.isFinite(n) || n <= 0) return 0
   return Math.round(n)
 }
+
+/**
+ * `value_text` — Who gets a new message (Messages, cut 2's migration `20261012160000_messages_follow_up.sql`): the
+ * seats the rule reads, `{"customer": uuid|null, "trade": uuid|null, "arch": uuid|null}`. The owner and a dev write it
+ * from Settings → Phone and texts; the office reads it. Parsed by `messages/assignRule.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1 = 'messages_assign_rule_v1' as const
+
+/**
+ * `value_text` — Quo's seats (Messages, cut 5's migration `20261013040000_quo_seats.sql`): which of Quo's workspace
+ * users is which of ours, `{"US…": "<users.id>"}`. The owner and a dev write it from Settings → Phone and texts;
+ * `quo-send` and `quo-webhook` read it as the service role. Parsed by `quo/seatsCard.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1 = 'messages_quo_seats_v1' as const
+
+/**
+ * `value_text` — Read bids@ (Messages, cut 6's migration `20261013080000_messages_email_in.sql`): 'true' lets the cron
+ * post to the `gmail-sync` reader, and anything else, 'false' as it ships, keeps it off. The owner and a dev set it from
+ * Settings → Phone and texts (its own UPDATE policy, `master_or_dev_update_gmail_sync_on`). Read by `messages/emailReader.ts`.
+ */
+export const APP_SETTINGS_KEY_GMAIL_SYNC_ON_V1 = 'gmail_sync_on_v1' as const
+
+/**
+ * `value_text` — the reminders the app sends itself, the owner's switch (Messages, cut 5's migration
+ * `20261014012000_messages_nudge_settings.sql`): `{"<kind>": {"<step id>": true}}`, `{}` as it ships, so every step is
+ * off. The ids nest under their kind because a step id is unique only within its kind's flow. The owner and a dev write
+ * it (its own UPDATE policy, `master_or_dev_update_messages_nudge_app_sends`); `messages-nudge-dispatch` reads it as the
+ * service role. Parsed by `flows/nudgeRunInputs.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1 = 'messages_nudge_app_sends_v1' as const
+
+/**
+ * `value_text` — the newest morning's run of those reminders (the same migration): what went and what was kept back and
+ * why, `{}` until the first run. `messages-nudge-dispatch` writes it as the service role; it has no UPDATE policy of
+ * its own.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 = 'messages_nudge_last_run_v1' as const
+
+/**
+ * `value_text` — Send texts (Messages, cut 5's migration `20261014160000_messages_texts_on.sql`): 'true' lets the office
+ * text from the company number, and anything else, 'false' as it ships, keeps texts off. The owner and a dev set it from
+ * Settings → Phone and texts (its own UPDATE policy, `master_or_dev_update_messages_texts_on`); the send window and
+ * `quo-send` read it. HELP answers and a stop's confirmation go either way. Read by `quo/textsSwitch.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_TEXTS_ON_V1 = 'messages_texts_on_v1' as const

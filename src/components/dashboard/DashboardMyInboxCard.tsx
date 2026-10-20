@@ -91,7 +91,7 @@ export function DashboardMyInboxCard({
         e.stopPropagation()
         setVehicleCtxInstanceId(instanceId)
       }}
-      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.5rem', borderRadius: 7, border: 'none', background: 'var(--bg-teal-tint, var(--bg-blue-tint))', color: 'var(--text-teal-700, var(--text-blue-800))', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer' }}
+      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.5rem', borderRadius: 7, border: 'none', background: 'var(--bg-blue-tint)', color: 'var(--text-teal-700, var(--text-blue-800))', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer' }}
     >
       🚗 vehicle
     </button>

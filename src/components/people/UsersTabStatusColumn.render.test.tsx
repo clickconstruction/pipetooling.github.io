@@ -50,6 +50,25 @@ describe('UsersRailCells (wide)', () => {
     expect(screen.getByLabelText('Taunya: account in order').tagName).toBe('SPAN')
     expect(screen.getByTestId('users-rail').textContent).toContain('26')
   })
+  it('the Paper cell draws a cap when the lead need is a course, and the paper otherwise (v2.5577)', () => {
+    const dana: RowNeeds = {
+      ...behar,
+      needs: [
+        { key: 'training', subject: 'paperwork', tone: 'red', count: 1, short: 'training due', long: 'OSHA 30 refresher not done.', verb: 'Ask them to take it', door: 'paperwork' },
+        { key: 'paperwork', subject: 'paperwork', tone: 'amber', count: 1, short: '1 unsent', long: '1 contract never sent.', verb: 'Send', door: 'paperwork' },
+      ],
+      needCount: 2,
+      attention: 'red',
+      reasons: ['OSHA 30 refresher not done.', '1 contract never sent.'],
+    }
+    render(<UsersRailCells rowNeeds={dana} name="Dana" openDesk={vi.fn()} />)
+    const paper = screen.getByRole('button', { name: /Dana: OSHA 30 refresher not done/ })
+    expect(paper.querySelector('svg')?.getAttribute('data-subject')).toBe('training')
+    cleanup()
+    render(<UsersRailCells rowNeeds={taunya} name="Taunya" openDesk={vi.fn()} />)
+    expect(screen.getByRole('button', { name: /Taunya: 1 contract never sent/ }).querySelector('svg')?.getAttribute('data-subject')).toBe('paperwork')
+  })
+
   it('the header names the three columns once', () => {
     render(<UsersRailHeader />)
     expect(screen.getByTitle('Hours to approve').textContent).toBe('Hours')

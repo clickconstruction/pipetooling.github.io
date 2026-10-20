@@ -13,7 +13,7 @@ import webpush from 'npm:web-push@3.6.7'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { lienApprovalPush } from '../_shared/lienApprovalPush.ts'
+import { lienApprovalPush, lienPenRecordedPush } from '../_shared/lienApprovalPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,31 +40,38 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser(token)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-    const { item_id, due_ymd } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string }
+    const { item_id, due_ymd, kind } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string; kind?: string }
     if (!item_id) return json({ error: 'Missing item_id' }, 400)
     const dueYmd = typeof due_ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(due_ymd) ? due_ymd : null
+    // The pen train (PR 3): `kind: 'pen_recorded'` tells the leader the office wrote down his pen signature. The caller is the recorder, the leader is the signer.
+    const penRecorded = kind === 'pen_recorded'
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const { data: item } = await admin
       .from('job_lien_desk_items')
-      .select('id, job_id, status, drafted_by, fields')
+      .select('id, job_id, status, drafted_by, fields, signed_by, signed_at, signer_signature_mode, signed_recorded_by, signed_witness_how')
       .eq('id', item_id)
       .maybeSingle()
-    if (!item || item.drafted_by !== user.id) return json({ error: 'Not your draft' }, 403)
-    if (item.status !== 'awaiting_approval') return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
+    if (penRecorded) {
+      if (!item || item.signed_recorded_by !== user.id || item.signer_signature_mode !== 'pen') return json({ error: 'Not your record' }, 403)
+    } else {
+      if (!item || item.drafted_by !== user.id) return json({ error: 'Not your draft' }, 403)
+      if (item.status !== 'awaiting_approval') return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
+    }
 
     const { data: job } = await admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number, master_user_id, gc_customer_id').eq('id', item.job_id).maybeSingle()
     if (!job) return json({ error: 'Job not found' }, 404)
 
-    // The leader: the job's master when he is one, else every leader on the roster.
+    // The leader: the job's master when he is one, else every leader on the roster. A pen record goes to its signer only.
+    const leaderId = penRecorded ? (item.signed_by as string | null) : job.master_user_id
     const [{ data: master }, { data: sender }, { data: gc }] = await Promise.all([
-      job.master_user_id ? admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).eq('id', job.master_user_id).maybeSingle() : Promise.resolve({ data: null }),
+      leaderId ? admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).eq('id', leaderId).maybeSingle() : Promise.resolve({ data: null }),
       admin.from('users').select('name').eq('id', user.id).maybeSingle(),
       job.gc_customer_id ? admin.from('customers').select('name').eq('id', job.gc_customer_id).maybeSingle() : Promise.resolve({ data: null }),
     ])
     let leaders: Array<{ id: string; name: string | null; email: string | null }> = []
     if (master && !master.archived_at && LEADER_ROLES.includes(String(master.role))) leaders = [master]
-    else {
+    else if (!penRecorded) {
       const { data: all } = await admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null)
       leaders = (all ?? []).filter((u) => u.id !== user.id)
     }
@@ -75,15 +82,24 @@ serve(async (req) => {
     const jobLabel = [number, name].filter(Boolean).join(' · ') || 'A job'
     const draft = (item.fields ?? {}) as { notice?: { claimAmount?: unknown } }
     const claimRaw = Number(draft.notice?.claimAmount)
-    const words = lienApprovalPush({
-      jobLabel,
-      jobId: item.job_id,
-      claim: Number.isFinite(claimRaw) ? claimRaw : null,
-      gcName: (gc?.name ?? '').trim() || null,
-      dueYmd,
-      todayYmd: todayYmdInAppTz(new Date()),
-      senderName: sender?.name ?? null,
-    })
+    const words = penRecorded
+      ? lienPenRecordedPush({
+          jobLabel,
+          jobId: item.job_id,
+          claim: Number.isFinite(claimRaw) ? claimRaw : null,
+          signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
+          recorderName: sender?.name ?? null,
+          how: (item.signed_witness_how as string | null) ?? null,
+        })
+      : lienApprovalPush({
+          jobLabel,
+          jobId: item.job_id,
+          claim: Number.isFinite(claimRaw) ? claimRaw : null,
+          gcName: (gc?.name ?? '').trim() || null,
+          dueYmd,
+          todayYmd: todayYmdInAppTz(new Date()),
+          senderName: sender?.name ?? null,
+        })
 
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
@@ -113,7 +129,7 @@ serve(async (req) => {
       if (sentToThisOne === 0 && resendApiKey && (leader.email ?? '').trim()) {
         const link = `${appOrigin}${words.url}`
         const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">Open the Lien desk</a></p>`
-        const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: 'lien_approval_ask' })
+        const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask' })
         if (mail.success) {
           emailSent++
           channel = 'email'
@@ -123,7 +139,7 @@ serve(async (req) => {
       if (channel) {
         await admin.from('notification_history').insert({
           recipient_user_id: leader.id,
-          template_type: 'lien_approval_ask',
+          template_type: penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask',
           title: words.title,
           body_preview: words.body.substring(0, 200),
           channel,

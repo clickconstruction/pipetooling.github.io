@@ -2,7 +2,7 @@
 title: see what a trade partner sends from its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes, charge, back-charge, dispute, change request
+keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes, charge, back-charge, dispute, change request, percent done, report, change order signed, file, upload, drive
 order: 97
 ---
 A trade partner can answer us from its portal. This guide shows where each thing it sends lands for the office.
@@ -47,6 +47,16 @@ The company can add people and tick the kinds of email each one gets. Every kind
 
 On a job of ours, the company can press **Agree** on a charge from us. It can also press **Dispute it** and say why. It can press **Ask for a change** to the work it signed for. Each one is saved with the job. No office screen shows them yet.
 
-## What the company cannot send yet
+## Its report, or a change it signed
 
-Its own quote file still goes by email to our project manager. The portal says so under the quote. A photo or a ticket for a change goes by email too. The change form says so.
+On a job we are building, the company picks each line's percent done. The Draws window shows it as reported. It signs a change we sent it, and the change becomes a line of its statement of work.
+
+It also sends its pay application from its portal, with the conditional waiver it signs. The draw waits on us in the Draws window. Once we pay, it signs its unconditional waiver there, and the draw reads it in. The final pay application and the final release come the same way. [Pay a trade's draw](/help/pay-a-trades-draw) says what comes next.
+
+## Its files
+
+The company can pick a file with its quote, a change it asks for, or a submittal it owes. It sends a PDF or a photo of 10 MB at most.
+
+Each file goes into the job's folder in Drive. A submittal's file goes in **Submittals**. Any other goes in **Team only**, under **From trades** and the company's name.
+
+The quote, the change and the submittal each show the file's link. A file over 10 MB still comes by email, or as a Drive link the company pastes.

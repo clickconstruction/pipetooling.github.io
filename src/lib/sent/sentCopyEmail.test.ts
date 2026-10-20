@@ -117,4 +117,19 @@ describe('sentCopyKeptHtml (punch list #85, item 21)', () => {
     expect(kept).toContain('>https://clicktooling.com/t/…</p>')
     expect(sentCopyKeptHtml('gc_plan_question', html)).toBe(html)
   })
+
+  it('keeps a company paper\u2019s signing link out of its filed copy too: ?t=… and never the token (B6-b-i)', () => {
+    const portal = 'b'.repeat(64)
+    const sign = 'c'.repeat(64)
+    const { html } = buildGcTradeEmail({
+      lang: 'en', recipients: ['Dana Ortiz'], company: 'Sample Electric Co.', subject: 'Your master agreement with Click Construction', lines: ['Here is our master agreement.'],
+      linkUrl: `https://clicktooling.com/t/${portal}`, action: { label: 'Read and sign', url: `https://clicktooling.com/contract/accept?t=${sign}` }, signer: 'Avery Lin', gc: 'Click Construction',
+    })
+    expect(html).toContain(sign)
+    const kept = sentCopyKeptHtml('gc_trade_email', html)
+    expect(kept).not.toContain(sign)
+    expect(kept).not.toContain(portal)
+    expect(kept).toContain('href="https://clicktooling.com/contract/accept?t=…"')
+    expect(kept).toContain('href="https://clicktooling.com/t/…"')
+  })
 })

@@ -57,7 +57,7 @@ describe('buildLienCalendar', () => {
     expect(cal.groups[0]!.total).toBe(17702)
     expect(cal.groups[0]!.tone).toBe('amber')
     expect(cal.groups[3]!.sub).toContain('a window closed unsent')
-    expect(cal.totals).toEqual({ jobs: 5, open: 26384, noticesOwed: 2, gone: 1 })
+    expect(cal.totals).toEqual({ jobs: 5, open: 26384, noticesOwed: 2, inTheMail: 0, gone: 1 })
     expect(cal.jobs.map((j) => j.jobId)).toEqual(['a', 'b', 'c', 'd', 'e'])
   })
 
@@ -177,8 +177,8 @@ describe('lienCalendarMarks', () => {
     })
     expect(j.runway.kindAssumed).toBe(true)
     expect(noticeFlagsFor(j)).toEqual([
-      { ymd: '2026-09-15', done: true, monthKey: '2026-07' },
-      { ymd: '2026-10-15', done: false, monthKey: '2026-08' },
+      { ymd: '2026-09-15', done: true, mailed: false, monthKey: '2026-07' },
+      { ymd: '2026-10-15', done: false, mailed: false, monthKey: '2026-08' },
     ])
     expect(commercialLienByFor(j)).toBe('2026-12-15')
     const axis = lienCalendarAxis([j], TODAY)
@@ -273,9 +273,9 @@ describe('the notice that counts is the earliest one still owed (v2.4308)', () =
   it('one flag per month still owed, none for a closed month; This month counts all three', () => {
     const seguin = cal.jobs.find((j) => j.jobId === '878')!
     expect(noticeFlagsFor(seguin)).toEqual([
-      { ymd: '2026-10-15', done: false, monthKey: '2026-07' },
-      { ymd: '2026-11-16', done: false, monthKey: '2026-08' },
-      { ymd: '2026-12-15', done: false, monthKey: '2026-09' },
+      { ymd: '2026-10-15', done: false, mailed: false, monthKey: '2026-07' },
+      { ymd: '2026-11-16', done: false, mailed: false, monthKey: '2026-08' },
+      { ymd: '2026-12-15', done: false, mailed: false, monthKey: '2026-09' },
     ])
     // each job counted once, at July's date: This month holds the three, H & I's September notice is next month's
     const board = buildLienCalendarBoard(rows, '', OCT_1)
@@ -290,8 +290,8 @@ describe('the notice that counts is the earliest one still owed (v2.4308)', () =
     const holub = job({ jobId: '927', gcId: 'gc-holub', gcName: 'Michael Holub', r: { todayYmd: OCT_1, propertyKind: '', lastWorkYmd: '2026-09-09', workMonths: ['2026-07', '2026-08', '2026-09'] } })
     expect(holub.runway.noticeByYmd).toBe('2026-10-15')
     expect(noticeFlagsFor(holub)).toEqual([
-      { ymd: '2026-10-15', done: false, monthKey: '2026-08' },
-      { ymd: '2026-11-16', done: false, monthKey: '2026-09' },
+      { ymd: '2026-10-15', done: false, mailed: false, monthKey: '2026-08' },
+      { ymd: '2026-11-16', done: false, mailed: false, monthKey: '2026-09' },
     ])
   })
 })
@@ -332,5 +332,49 @@ describe('the pen', () => {
       ['b', null, '2026-12-15'],
       ['a', 'addr-a', '2026-12-15'],
     ])
+  })
+})
+
+describe('the In the mail mark (v2.5522)', () => {
+  it('a printed month draws its own mark, in amber, between owed and on file; the GC row folds it apart from the owed ones; the key lists it right after Notice on file', () => {
+    const mailed = job({ jobId: 'm', ...RMC, isSub: true, lastWorkYmd: '2026-08-12', r: { lastWorkYmd: '2026-08-12', workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] } })
+    expect(noticeFlagsFor(mailed)).toEqual([
+      { ymd: '2026-09-15', done: true, mailed: false, monthKey: '2026-07' },
+      { ymd: '2026-10-15', done: false, mailed: true, monthKey: '2026-08' },
+    ])
+    const owed = job({ jobId: 'o', ...RMC, isSub: true, address: '9703 Lenox Hill', r: { lastWorkYmd: '2026-08-12' } })
+    const cal = buildLienCalendar([mailed, owed], '')
+    const axis = lienCalendarAxis(cal.jobs, TODAY)
+    const marks = lienCalendarMarks(mailed, axis).filter((m) => m.kind === 'notice')
+    expect(marks.map((m) => [m.done, m.mailed, m.tone])).toEqual([[true, false, 'green'], [false, true, 'amber']])
+    const rmc = cal.groups[0]!
+    expect(rmc.sub).toBe('GC · 2 jobs · 1 notice owed · 1 in the mail')
+    expect(lienCalendarGroupFlags(rmc, axis).map((f) => [f.ymd, f.notices, f.mailed, f.liens])).toEqual([
+      ['2026-10-15', 1, 1, 0],
+      ['2026-11-16', 0, 0, 2],
+    ])
+    expect(cal.totals).toMatchObject({ noticesOwed: 1, inTheMail: 1 })
+    // Every notice due in the mail: the GC's move is recording, and the group's tone eases to amber.
+    const only = buildLienCalendar([mailed], '')
+    expect(only.groups[0]!.word).toBe('record the mailing · 17 d')
+    expect(only.groups[0]!.sub).toBe('GC · 1 job · 1 in the mail')
+    const glyphs = LIEN_CALENDAR_KEY.map((k) => k.glyph)
+    expect(glyphs.indexOf('mailed')).toBe(glyphs.indexOf('check') + 1)
+    expect(LIEN_CALENDAR_KEY.find((k) => k.glyph === 'mailed')).toMatchObject({ short: 'In the mail', door: 'record' })
+  })
+})
+
+describe('a notice in the mail whose date has passed (v2.5529)', () => {
+  it('still draws the amber mark, but the job is not counted as a notice due', () => {
+    // Today Sep 28: June's residential date (Aug 17) has passed and its notice is in the mail; July is on file.
+    const j = job({ jobId: 'p', ...RMC, isSub: true, lastWorkYmd: '2026-07-12', r: { lastWorkYmd: '2026-07-12', workMonths: ['2026-06', '2026-07'], noticedMonths: ['2026-07'], mailedMonths: ['2026-06'] } })
+    expect(noticeFlagsFor(j).map((f) => [f.monthKey, f.done, f.mailed])).toEqual([
+      ['2026-06', false, true],
+      ['2026-07', true, false],
+    ])
+    expect(j.runway.state).not.toBe('notice_due')
+    const axis = lienCalendarAxis([j], TODAY)
+    expect(lienCalendarMarks(j, axis).filter((m) => m.kind === 'notice').map((m) => [m.mailed, m.tone])).toEqual([[true, 'amber'], [false, 'green']])
+    expect(buildLienCalendar([j], '').totals).toMatchObject({ noticesOwed: 0, inTheMail: 0 })
   })
 })

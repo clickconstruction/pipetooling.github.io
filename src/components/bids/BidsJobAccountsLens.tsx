@@ -24,6 +24,8 @@ import {
   type JobAccountsLensRow,
 } from '../../lib/bids/jobAccountsLens'
 import { MarkJobAccountOpenedModal } from '../materials/MarkJobAccountOpenedModal'
+import { JobDraftSheet } from './JobDraftSheet'
+import { sendsJobDraft } from '../../lib/bids/wonMomentActions'
 
 type Props = {
   bids: BidWithBuilder[]
@@ -87,7 +89,9 @@ function shortDate(iso: string | null): string | null {
  * page-wide strip as the board's chips (v2.3520); nothing new on the server.
  */
 export function BidsJobAccountsLens({ bids, strips, ledgerPrefixMap, authUserId, narrowViewport640 = false }: Props) {
-  const { user: authUser, profileName } = useAuth()
+  const { user: authUser, profileName, role } = useAuth()
+  // An estimator sends Dispatch a draft of the job in place of New Job (v2.5659).
+  const [draftBidId, setDraftBidId] = useState<string | null>(null)
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const [onlyMine, setOnlyMine] = useState(false)
@@ -185,6 +189,12 @@ export function BidsJobAccountsLens({ bids, strips, ledgerPrefixMap, authUserId,
 
   const rowActions = (r: JobAccountsLensRow) => {
     if (!r.job) {
+      if (sendsJobDraft(role))
+        return (
+          <button type="button" style={smallBtn} onClick={() => setDraftBidId(r.bidId)} title="You won it — send Dispatch a draft of the job; the account is asked for once the job exists">
+            Send to Dispatch
+          </button>
+        )
       return jobFormModal ? (
         <button type="button" style={smallBtn} onClick={() => jobFormModal.openNewJob({ prefillBidId: r.bidId })} title="You won it — open a job from this bid; the account is asked for once the job exists">
           Open the job first
@@ -359,6 +369,7 @@ export function BidsJobAccountsLens({ bids, strips, ledgerPrefixMap, authUserId,
           })
         )}
       </div>
+      {draftBidId ? <JobDraftSheet bidId={draftBidId} onClose={() => setDraftBidId(null)} onSent={() => strips.reload()} /> : null}
       {sheet && sheet.row.job ? (
         <MarkJobAccountOpenedModal
           jobId={sheet.row.job.id}

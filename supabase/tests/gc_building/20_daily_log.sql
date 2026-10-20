@@ -1,8 +1,9 @@
--- The daily log's press (v2.4957, the Building lane's U3a-i): gc_save_daily_log writes a day's log
--- with its crews and delays, replaces that day's when saved again, and refuses in words a training
--- account, a digital twin, a job not being built, a day after the writer's or before work started, a
--- writer's day off the server's, and a trade not on the job; the tables' own checks refuse a sky or a
--- reason they do not know, and RLS a role outside Building's dev door. Presses run through RLS, the
+-- The daily log's press (v2.4957, the Building lane's U3a-i; its tighter rules v2.5131, U3b-i): gc_save_daily_log
+-- writes a day's log with its crews and delays, replaces that day's when saved again, keeps a hired trade's start
+-- promise when its crew is on site, and refuses in words a training account, a digital twin, a job not being built, a
+-- day after the writer's or before work started, a writer's day off the server's, a missing high or low, a trade not
+-- on the job, and a trade with no signed statement of work; the tables' own checks refuse a sky or a reason they do
+-- not know, and RLS a role outside Building's dev door. Presses run through RLS, the
 -- fixture made as postgres; everything runs inside one transaction that rolls back. Raises on the
 -- first failed assertion; ends with "gc_building PASSED". See scripts/pgtest-gc-building.sh. Never
 -- against prod.
@@ -25,8 +26,8 @@ INSERT INTO public.users (id, email, name, role) VALUES
 UPDATE public.users SET read_only = true WHERE id = '00000000-0000-0000-0000-0000000006d2';
 UPDATE public.users SET is_digital_twin = true WHERE id = '00000000-0000-0000-0000-0000000006d3';
 
--- Two GC jobs: A being built since three days ago, with Concrete and our own Plumbing; B still bidding,
--- with Electrical.
+-- Two GC jobs: A being built since three days ago, with Concrete awarded to Ridgeway with a signed statement
+-- of work, our own Plumbing, and Framing not signed yet; B still bidding, with Electrical.
 INSERT INTO public.customers (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000000006c1', 'Building Test Owner', '00000000-0000-0000-0000-0000000006d1');
 INSERT INTO public.projects (id, name, customer_id) VALUES
   ('00000000-0000-0000-0000-0000000006a1', 'Building test A', '00000000-0000-0000-0000-0000000006c1'),
@@ -37,7 +38,18 @@ INSERT INTO public.gc_projects (project_id, stage, started_on) VALUES
 INSERT INTO public.gc_trade_packages (id, project_id, trade, position, ours) VALUES
   ('00000000-0000-0000-0000-0000000006b1', '00000000-0000-0000-0000-0000000006a1', 'Concrete', 0, false),
   ('00000000-0000-0000-0000-0000000006b2', '00000000-0000-0000-0000-0000000006a1', 'Plumbing', 1, true),
-  ('00000000-0000-0000-0000-0000000006b3', '00000000-0000-0000-0000-0000000006a2', 'Electrical', 0, false);
+  ('00000000-0000-0000-0000-0000000006b3', '00000000-0000-0000-0000-0000000006a2', 'Electrical', 0, false),
+  ('00000000-0000-0000-0000-0000000006b4', '00000000-0000-0000-0000-0000000006a1', 'Framing', 2, false);
+INSERT INTO public.gc_companies (id, name, trades) VALUES ('00000000-0000-0000-0000-0000000006e1', 'Ridgeway Concrete', ARRAY['Concrete']);
+INSERT INTO public.gc_invites (id, package_id, company_id) VALUES
+  ('00000000-0000-0000-0000-0000000006f1', '00000000-0000-0000-0000-0000000006b1', '00000000-0000-0000-0000-0000000006e1');
+UPDATE public.gc_trade_packages SET awarded_invite_id = '00000000-0000-0000-0000-0000000006f1', awarded_on = current_date - 10 WHERE id = '00000000-0000-0000-0000-0000000006b1';
+INSERT INTO public.gc_sows (id, package_id, invite_id, company_id, status, price, retainage_pct, sent_on, signed_on) VALUES
+  ('00000000-0000-0000-0000-000000000601', '00000000-0000-0000-0000-0000000006b1', '00000000-0000-0000-0000-0000000006f1', '00000000-0000-0000-0000-0000000006e1', 'signed', 30000, 10, current_date - 8, current_date - 6);
+-- Ridgeway's promises on Concrete: its start, which its crew on site keeps, and its submittals, which a log never does.
+INSERT INTO public.gc_trade_promises (id, company_id, kind, project_id, package_id, what, due_on, source) VALUES
+  ('00000000-0000-0000-0000-000000000611', '00000000-0000-0000-0000-0000000006e1', 'start', '00000000-0000-0000-0000-0000000006a1', '00000000-0000-0000-0000-0000000006b1', 'the start', current_date + 2, 'office'),
+  ('00000000-0000-0000-0000-000000000612', '00000000-0000-0000-0000-0000000006e1', 'submittals', '00000000-0000-0000-0000-0000000006a1', '00000000-0000-0000-0000-0000000006b1', 'the submittals', current_date + 2, 'office');
 
 CREATE SCHEMA gbt;
 CREATE FUNCTION gbt.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -80,6 +92,10 @@ CREATE FUNCTION gbt.logs(p_project uuid) RETURNS text LANGUAGE sql STABLE SECURI
       || ' delays ' || coalesce((SELECT string_agg(coalesce(k.trade, 'job') || ':' || d.reason, ',' ORDER BY d.position) FROM public.gc_daily_log_delays d LEFT JOIN public.gc_trade_packages k ON k.id = d.package_id WHERE d.log_id = l.id), '-'),
     E'\n' ORDER BY l.log_date)
   FROM public.gc_daily_logs l WHERE l.project_id = p_project $$;
+-- Ridgeway's promises: each kind with its day kept, from today.
+CREATE FUNCTION gbt.promises() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT string_agg(kind || ' ' || coalesce((kept_on - current_date)::text, 'open'), ', ' ORDER BY kind)
+  FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-0000000006e1' $$;
 GRANT USAGE ON SCHEMA gbt TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA gbt TO authenticated;
 
@@ -110,6 +126,9 @@ SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object(
 SELECT gbt.same('saving a day again replaces its log', gbt.logs('00000000-0000-0000-0000-0000000006a1'),
   '0 clear written 0 crews Concrete:5 delays -');
 
+-- Concrete's crew on site kept Ridgeway's start, on the log's day; its submittals stay open.
+SELECT gbt.same('a hired trade''s crew on site keeps its start promise', gbt.promises(), 'start 0, submittals open');
+
 -- A day missed, caught up today: written after its day.
 SELECT public.gc_save_daily_log(gbt.log(-1, jsonb_build_object('sky', 'cloudy')));
 SELECT gbt.same('a caught-up day says it was written later', gbt.logs('00000000-0000-0000-0000-0000000006a1'),
@@ -117,7 +136,12 @@ SELECT gbt.same('a caught-up day says it was written later', gbt.logs('00000000-
 
 -- The refusals, in words.
 SELECT gbt.refused('a day after the writer''s', $s$SELECT public.gc_save_daily_log(gbt.log(1))$s$, 'never before');
-SELECT gbt.refused('a day before work started', $s$SELECT public.gc_save_daily_log(gbt.log(-4))$s$, 'Work started');
+SELECT gbt.refused('a day before work started, said as "Oct 5"', $s$SELECT public.gc_save_daily_log(gbt.log(-4))$s$, 'Work started ' || to_char(current_date - 3, 'Mon FMDD') || '. A log before');
+SELECT gbt.refused('no high', $s$SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object('high', NULL)))$s$, 'Say the day’s high and low');
+SELECT gbt.refused('no low at all', $s$SELECT public.gc_save_daily_log(gbt.log(0) - 'low')$s$, 'Say the day’s high and low');
+SELECT gbt.refused('a high in words', $s$SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object('high', 'hot')))$s$, 'Say the day’s high and low');
+SELECT gbt.refused('a trade with no signed statement of work on the crews', $s$SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object('crews', jsonb_build_array(jsonb_build_object('packageId', '00000000-0000-0000-0000-0000000006b4', 'workers', 3)))))$s$, 'no signed statement of work');
+SELECT gbt.refused('a trade with no signed statement of work on the delays', $s$SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object('delays', jsonb_build_array(jsonb_build_object('packageId', '00000000-0000-0000-0000-0000000006b4', 'reason', 'crew', 'note', '')))))$s$, 'no signed statement of work');
 SELECT gbt.refused('a page whose day is off the server''s', $s$SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object('today', to_char(current_date + 3, 'YYYY-MM-DD'))))$s$, 'out of date');
 SELECT gbt.refused('a job still bidding', $s$SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object('projectId', '00000000-0000-0000-0000-0000000006a2')))$s$, 'starts once work starts');
 SELECT gbt.refused('a job that does not exist', $s$SELECT public.gc_save_daily_log(gbt.log(0, jsonb_build_object('projectId', '00000000-0000-0000-0000-0000000006ff')))$s$, 'No GC project with that id');

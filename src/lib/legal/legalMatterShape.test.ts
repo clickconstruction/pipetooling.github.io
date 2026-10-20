@@ -68,7 +68,7 @@ describe('shapeMatterForCounsel', () => {
     expect(Object.keys(shaped.demandLetters[0]!).sort()).toEqual([...MATTER_DEMAND_COLUMNS].sort())
     expect(shaped.demandLetters[0]!.fields).toEqual({ feeClockYmd: expect.any(String), enclosures: [{ label: 'A', kind: 'invoice', title: 'Invoice 1042-1', pages: 1 }] })
     expect(Object.keys(shaped.lienFilings[0]!).sort()).toEqual([...MATTER_FILING_COLUMNS].sort())
-    expect(Object.keys((shaped.lienFilings[0]!.sends as Row[])[0]!).sort()).toEqual(['method', 'recipient', 'sent_on', 'tracking'])
+    expect(Object.keys((shaped.lienFilings[0]!.sends as Row[])[0]!).sort()).toEqual(['method', 'piece_id', 'recipient', 'sent_on', 'tracking', 'via'])
     expect(Object.keys(shaped.entries[0]!).sort()).toEqual([...MATTER_ENTRY_COLUMNS].sort())
     expect(shaped.threadNotes).toEqual([{ jobId: expect.any(String), createdAt: '2026-08-01T12:00:00Z', body: '', authorName: null }])
     expect((shaped.customer as Row).contact_info).toEqual({ email: expect.any(String), billing_email: null, ap_email: null, phone: expect.any(String), mobile: null, office_phone: null })
@@ -143,4 +143,13 @@ describe('the narrative (v2.4812)', () => {
     expect(out.narrative).toEqual({ markdown: '## A', updatedOn: '2026-10-07', updatedByName: 'R' })
     expect(shapeMatterForCounsel({ jobs: [], narrative: null }).narrative).toBeNull()
   })
+
+  it('the mail pieces behind the sends reach the firm cut to their facts and the signed link, never a path or a bucket (the Docsmit train, PR 8)', () => {
+    const out = shapeMatterForCounsel({ jobs: [], lienFilings: [{ id: 'f', job_id: 'j', kind: 'notice_53_056', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p1', address: 'SECRET' }] }], mailPieces: [{ id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'delivered', usps_tracking: '9407', mailed_at: 'a', delivered_at: 'b', signed_by: 'R', delivery_status: 'Delivered', delivery_as_of: 'b', source_ids: ['f'], job_id: 'j', certificationUrl: 'https://signed', certification_path: 'mail/p1/certification.pdf', pdf_bucket: 'lien-release-documents', price: 9.85, address1: 'SECRET', events: [{ secret: true }] }] }) as Row & { lienFilings: Array<{ sends: Row[] }>; mailPieces: Row[] }
+    expect(out.lienFilings[0]!.sends[0]).toEqual({ recipient: 'owner', method: 'certified_mail', tracking: '9407', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p1' })
+    expect(out.mailPieces[0]).toEqual({ id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'delivered', usps_tracking: '9407', mailed_at: 'a', delivered_at: 'b', signed_by: 'R', delivery_status: 'Delivered', delivery_as_of: 'b', source_ids: ['f'], job_id: 'j', certificationUrl: 'https://signed' })
+    expect(JSON.stringify(out)).not.toContain('SECRET')
+    expect(JSON.stringify(out)).not.toContain('certification_path')
+  })
 })
+

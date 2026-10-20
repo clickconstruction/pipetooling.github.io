@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ownerRecordsSignedWaiting, type OwnerRecordsSigned, type OwnerRecordsSignedRow } from '../lib/jobs/ownerRecords'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -11,8 +12,15 @@ const db = supabase as unknown as SupabaseClient
  * owner-records requests the owner signed on their portal. The table is read by the office set
  * that works the Lien desk (RLS: dev, assistant, master), so the hosts pass that audience.
  * Refetches on focus; a failed read shows no line.
+ *
+ * `hideZzTestJobs` (punch list #61, PR 3): a request on a ZZ test job (its seed job) leaves the line, by the shared
+ * ids; a failed id read keeps every request, since an owner who signed is waiting on real records.
  */
-export function useOwnerRecordsSignedNudge(enabled: boolean): { signed: OwnerRecordsSigned | null; reload: () => void } {
+export function useOwnerRecordsSignedNudge(
+  enabled: boolean,
+  hideZzTestJobs = false,
+  userId?: string | null,
+): { signed: OwnerRecordsSigned | null; reload: () => void } {
   const [signed, setSigned] = useState<OwnerRecordsSigned | null>(null)
   const load = useCallback(async () => {
     if (!enabled) {
@@ -24,11 +32,13 @@ export function useOwnerRecordsSignedNudge(enabled: boolean): { signed: OwnerRec
         () => db.from('lien_owner_record_requests').select('id, seed_job_id, job_ids, property_address, file').is('sent_at', null).order('updated_at', { ascending: false }).limit(200),
         'owner records: signed on the portal',
       )
-      setSigned(ownerRecordsSignedWaiting(rows ?? []))
+      const read = rows ?? []
+      const zzIds = hideZzTestJobs && read.length > 0 ? await loadZzTestJobIds(userId).catch(() => null) : null
+      setSigned(ownerRecordsSignedWaiting(zzIds ? read.filter((r) => !(r.seed_job_id && zzIds.has(r.seed_job_id))) : read))
     } catch {
       setSigned(null)
     }
-  }, [enabled])
+  }, [enabled, hideZzTestJobs, userId])
   useEffect(() => {
     void load()
     if (!enabled) return

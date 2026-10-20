@@ -7,8 +7,10 @@ import {
   defaultCountsImportChoices,
   describeCountsImportApplied,
   describeCountsImportWritePlan,
+  joinPlanPages,
   reviewCountsImport,
 } from './countsImportReview'
+import { INCOMING_SOURCE_KEY } from './countSources'
 import type { CountSheetRow } from './countSheet'
 import type { ParsedCountImportRow } from './parseCountsImportText'
 
@@ -169,5 +171,105 @@ describe('the write plan from the choices', () => {
     const partial = reviewCountsImport({ incoming, existing, alternateTags: [], scope: 'partial' })
     const plan = buildCountsImportWritePlan(partial, defaultCountsImportChoices(partial))
     expect(plan.deletes).toEqual([])
+  })
+})
+
+describe('v2.5517 — a second project combines, a known project re-copies, a hand paste replaces', () => {
+  const exs = (id: string, fixture: string, count: number, page: string | null, shares: Record<string, number> | null): CountSheetRow => ({ id, fixture, count, group_tag: null, page, unit: null, source_shares: shares })
+  // Taunya's count is on the bid (source t1); Robert's copy arrives.
+  const bid = [
+    exs('w34', 'ft of 3/4IN WATER', 1489.04, '10, 11, 12', { t1: 1489.04 }),
+    exs('w4', 'ft of 4IN WASTE', 118.61, '10', { t1: 118.61 }),
+    exs('ewc', 'EWC-1', 5, '10, 11, 12', { t1: 5 }),
+    exs('hand', 'mb-1', 2, '10, 11', null),
+  ]
+  const robert = [inc('ft of 3/4IN WATER', 338.41, null, '12'), inc('ft of 4IN WASTE', 376.48, null, '12'), inc('ft of 1IN WATER', 682.49, null, '12')]
+
+  it('joins pages the bid’s first, once each', () => {
+    expect(joinPlanPages('10, 11, 12', '12')).toBe('10, 11, 12')
+    expect(joinPlanPages('10', '12')).toBe('10, 12')
+    expect(joinPlanPages(null, '12')).toBe('12')
+    expect(joinPlanPages(null, null)).toBeNull()
+  })
+
+  it('combine: every pair is Both counted (the counts add, the pages join), new rows add, the rest of the bid is untouched, no proposals', () => {
+    const r = reviewCountsImport({ incoming: robert, existing: bid, alternateTags: [], scope: 'all', mode: 'combine', incomingKey: INCOMING_SOURCE_KEY })
+    expect(r.mode).toBe('combine')
+    expect(r.changed.map((c) => [c.existing.id, c.combine?.after, c.combine?.page, c.combine?.pageJoined])).toEqual([
+      ['w34', 1827.45, '10, 11, 12', false],
+      ['w4', 495.09, '10, 12', true],
+    ])
+    expect(r.same).toEqual([])
+    expect(r.added.map((a) => a.fixture)).toEqual(['ft of 1IN WATER'])
+    expect(r.missing).toEqual([])
+    expect(r.untouched.map((u) => u.id)).toEqual(['ewc', 'hand'])
+    expect(r.pairs).toEqual([])
+    expect(r.missingDefault).toBe('keep')
+    const c = defaultCountsImportChoices(r)
+    const plan = buildCountsImportWritePlan(r, c)
+    expect(plan.updates).toEqual([
+      { id: 'w34', before: { count: 1489.04, source_shares: { t1: 1489.04 } }, patch: { count: 1827.45, source_shares: { t1: 1489.04, [INCOMING_SOURCE_KEY]: 338.41 } } },
+      { id: 'w4', before: { count: 118.61, page: '10', source_shares: { t1: 118.61 } }, patch: { count: 495.09, page: '10, 12', source_shares: { t1: 118.61, [INCOMING_SOURCE_KEY]: 376.48 } } },
+    ])
+    expect(plan.inserts).toEqual([{ fixture: 'ft of 1IN WATER', count: 682.49, group_tag: null, page: '12', unit: 'ft', source_shares: { [INCOMING_SOURCE_KEY]: 682.49 } }])
+    expect(plan.deletes).toEqual([])
+    expect([plan.combined, plan.replaced]).toEqual([2, 0])
+    expect(describeCountsImportWritePlan(plan, r.same.length, r.untouched.length)).toBe('Will add to 2, add 1. 2 untouched.')
+    expect(describeCountsImportApplied(plan, r.same.length, r.untouched.length)).toBe('Added to 2, added 1 · 2 untouched')
+    // Replace instead on one row: the row becomes Robert's alone.
+    c.replaceInstead = new Set(['w4'])
+    const replaced = buildCountsImportWritePlan(r, c)
+    expect(replaced.updates.find((u) => u.id === 'w4')).toEqual({ id: 'w4', before: { count: 118.61, page: '10', source_shares: { t1: 118.61 } }, patch: { count: 376.48, page: '12', source_shares: { [INCOMING_SOURCE_KEY]: 376.48 } } })
+    expect([replaced.combined, replaced.replaced]).toEqual([1, 1])
+    expect(describeCountsImportWritePlan(replaced, 0, 2)).toBe('Will add to 1, replace 1, add 1. 2 untouched.')
+  })
+
+  it('recopy: a pair moves this project’s share and keeps the others’ count and pages; an equal share is Same; a missing shared row leaves only its share; a row of its own goes whole; the rest is untouched', () => {
+    // Both projects are on the bid now; Robert copies again with one share changed, one row gone, one new.
+    const combined = [
+      exs('w34', 'ft of 3/4IN WATER', 1827.45, '10, 11, 12', { t1: 1489.04, r2: 338.41 }),
+      exs('w4', 'ft of 4IN WASTE', 495.09, '10, 12', { t1: 118.61, r2: 376.48 }),
+      exs('w1', 'ft of 1IN WATER', 682.49, '12', { r2: 682.49 }),
+      exs('w112', 'ft of 11/2IN WASTE', 10, '12', { r2: 10 }),
+      exs('ewc', 'EWC-1', 5, '10, 11, 12', { t1: 5 }),
+    ]
+    const again = [inc('ft of 3/4IN WATER', 340, null, '12'), inc('ft of 4IN WASTE', 376.48, null, '12'), inc('ft of 1IN WATER', 690, null, '12'), inc('ft of 2IN CONDENSATE', 42.1, null, '12')]
+    const r = reviewCountsImport({ incoming: again, existing: combined, alternateTags: [], scope: 'all', mode: 'recopy', incomingKey: 'r2' })
+    expect(r.changed.map((c) => [c.existing.id, c.recopy?.shareBefore, c.recopy?.shareAfter, c.recopy?.othersKeep, c.countChanged, c.pageChanged])).toEqual([
+      ['w34', 338.41, 340, 1489.04, true, false],
+      ['w1', 682.49, 690, 0, true, false],
+    ])
+    expect(r.same.map((x) => x.existing.id)).toEqual(['w4'])
+    expect(r.added.map((a) => a.fixture)).toEqual(['ft of 2IN CONDENSATE'])
+    expect(r.missing.map((m) => m.id)).toEqual(['w112'])
+    expect(r.untouched.map((u) => u.id)).toEqual(['ewc'])
+    expect(r.partialMissing.size).toBe(0)
+    const plan = buildCountsImportWritePlan(r, defaultCountsImportChoices(r))
+    expect(plan.updates).toEqual([
+      // Shared with Taunya: her pages stay, Robert's join in (already there), only his share and the sum move.
+      { id: 'w34', before: { count: 1827.45, source_shares: { t1: 1489.04, r2: 338.41 } }, patch: { count: 1829.04, source_shares: { t1: 1489.04, r2: 340 } } },
+      { id: 'w1', before: { count: 682.49, source_shares: { r2: 682.49 } }, patch: { count: 690, source_shares: { r2: 690 } } },
+    ])
+    expect(plan.inserts.map((i) => i.source_shares)).toEqual([{ r2: 42.1 }])
+    expect(plan.deletes.map((d) => d.id)).toEqual(['w112'])
+    expect(describeCountsImportWritePlan(plan, r.same.length, r.untouched.length)).toBe('Will update 2, add 1, remove 1. 1 unchanged · 1 untouched.')
+    // A shared row missing from the copy: Remove takes Robert's part out and leaves Taunya's.
+    const shared = reviewCountsImport({ incoming: [], existing: [exs('w4', 'ft of 4IN WASTE', 495.09, '10, 12', { t1: 118.61, r2: 376.48 })], alternateTags: [], scope: 'all', mode: 'recopy', incomingKey: 'r2' })
+    expect(shared.missing.map((m) => m.id)).toEqual(['w4'])
+    expect(shared.partialMissing.get('w4')).toEqual({ share: 376.48, othersKeep: 118.61 })
+    const sp = buildCountsImportWritePlan(shared, defaultCountsImportChoices(shared))
+    expect(sp.deletes).toEqual([])
+    expect(sp.updates).toEqual([{ id: 'w4', before: { count: 495.09, source_shares: { t1: 118.61, r2: 376.48 } }, patch: { count: 118.61, source_shares: { t1: 118.61 } } }])
+  })
+
+  it('replace with a key claims the rows for the arriving project; without one (a hand paste) no shares are written', () => {
+    const keyed = reviewCountsImport({ incoming: [inc('EWC-1', 6, null, '10')], existing: [exs('ewc', 'EWC-1', 5, '10', { t1: 5 })], alternateTags: [], scope: 'all', mode: 'replace', incomingKey: INCOMING_SOURCE_KEY })
+    const kp = buildCountsImportWritePlan(keyed, defaultCountsImportChoices(keyed))
+    expect(kp.updates).toEqual([{ id: 'ewc', before: { count: 5, source_shares: { t1: 5 } }, patch: { count: 6, source_shares: { [INCOMING_SOURCE_KEY]: 6 } } }])
+    const hand = reviewCountsImport({ incoming: [inc('EWC-1', 6, null, '10')], existing: [exs('ewc', 'EWC-1', 5, '10', { t1: 5 })], alternateTags: [], scope: 'unknown' })
+    const hp = buildCountsImportWritePlan(hand, defaultCountsImportChoices(hand))
+    expect(hp.updates).toEqual([{ id: 'ewc', before: { count: 5 }, patch: { count: 6 } }])
+    expect(hp.inserts).toEqual([])
+    expect([hand.mode, hand.incomingKey, hand.untouched]).toEqual(['replace', null, []])
   })
 })

@@ -7,6 +7,8 @@ import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerTh
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
 import { contractBodyHasRenderableDisplay } from '../lib/contractBodyFormat'
 import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay'
+import { ClausePaper } from '../components/contracts/ClausePaper'
+import { CLAUSE_SIGN_WORDS, clauseView, type ClausePaperPayload } from '../lib/contracts/clauseSign'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
 import { ContractFormFill } from '../components/contracts/formFill/ContractFormFill'
 import { applyPrefill, schemaForParty, type FormPerson, type FormSchema, type FormValues, validateFormValues } from '../lib/forms/formSchema'
@@ -16,6 +18,7 @@ import { esignConsentText } from '../lib/esignConsent'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { contractLinkErrorWords } from '../lib/contractAcceptLink'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -57,6 +60,8 @@ type LoadPayload = {
   signing_body_format: string
   canonical_document_url: string | null
   form: FormPayload | null
+  /** Messages, cut 4c (v2.5294): the paper built from clauses, in English and Spanish, at the revision signed. */
+  clause_paper: ClausePaperPayload | null
 }
 
 export default function ContractAccept() {
@@ -81,6 +86,8 @@ export default function ContractAccept() {
   const [officePendingDocId, setOfficePendingDocId] = useState<string | null>(null)
   const [formValues, setFormValues] = useState<FormValues>({})
   const [formLang, setFormLang] = useState<FillLang>('en')
+  // Messages, cut 4c (v2.5294): the language a paper built from clauses is read and signed in.
+  const [paperLang, setPaperLang] = useState<'en' | 'es'>('en')
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   const showThankYou = done || alreadySigned
@@ -154,7 +161,7 @@ export default function ContractAccept() {
           return
         }
         if (!res.ok) {
-          setError(json.error || 'Unable to load contract.')
+          setError(contractLinkErrorWords(res.status, json.error))
           setPayload(null)
           setLoading(false)
           return
@@ -167,6 +174,7 @@ export default function ContractAccept() {
           signing_body_format:
             typeof json.signing_body_format === 'string' && json.signing_body_format ? json.signing_body_format : 'html',
           canonical_document_url: json.canonical_document_url ?? null,
+          clause_paper: json.clause_paper && typeof json.clause_paper.revision === 'number' ? json.clause_paper : null,
           // Two-party forms (v2.2802): the signer sees only their boxes; the office's half is completed from the record.
           form: json.form && json.form.schema ? { ...json.form, schema: schemaForParty(json.form.schema, 'signer'), officeRegions: partyRegions(json.form.schema, 'office') } : null,
         })
@@ -218,16 +226,19 @@ export default function ContractAccept() {
     setError(null)
     try {
       const formPart = payload?.form ? { formValues, formLang } : {}
+      // A paper built from clauses signs at the revision the page showed, in the language it was read in.
+      const clausePart = payload?.clause_paper && !payload.form ? { paperRevision: payload.clause_paper.revision, paperLang } : {}
       const consentPart = p.consent ? { esignConsent: p.consent } : {}
       const body =
         p.mode === 'type'
-          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart, ...consentPart }
+          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart, ...clausePart, ...consentPart }
           : {
               token,
               printedName: p.printedName,
               signaturePngBase64: p.signaturePngBase64,
               agreedTerms: true as const,
               ...formPart,
+              ...clausePart,
               ...consentPart,
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-contract`, {
@@ -387,7 +398,36 @@ export default function ContractAccept() {
             />
           ) : null}
 
-          {hasRenderableSigningBody && !payload.form ? (
+          {payload.clause_paper && !payload.form ? (
+            <div data-clause-sign style={{ display: 'grid', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <div role="group" aria-label={CLAUSE_SIGN_WORDS[paperLang].language} style={{ display: 'flex', gap: '0.35rem' }}>
+                {(['en', 'es'] as const).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    aria-pressed={paperLang === l}
+                    onClick={() => setPaperLang(l)}
+                    style={{ padding: '0.25rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: paperLang === l ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', fontSize: '0.82rem' }}
+                  >
+                    {l === 'en' ? 'English' : 'Español'}
+                  </button>
+                ))}
+              </div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--bg-subtle)' }}>
+                <ClausePaper paper={clauseView(payload.clause_paper[paperLang], payload.document_name)} showTitle={false} />
+              </div>
+              {hasRenderableSigningBody ? (
+                <details>
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>{CLAUSE_SIGN_WORDS[paperLang].full}</summary>
+                  <div style={{ maxHeight: 'min(50vh, 420px)', overflow: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--bg-subtle)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                    <ContractBodyDisplay format={payload.signing_body_format} bodyHtml={payload.signing_body_html} />
+                  </div>
+                </details>
+              ) : null}
+            </div>
+          ) : null}
+
+          {hasRenderableSigningBody && !payload.form && !payload.clause_paper ? (
             <div
               style={{
                 maxHeight: 'min(50vh, 420px)',
@@ -407,7 +447,7 @@ export default function ContractAccept() {
             </div>
           ) : null}
 
-          {!hasRenderableSigningBody && !canonical && !payload.form ? (
+          {!hasRenderableSigningBody && !canonical && !payload.form && !payload.clause_paper ? (
             <p style={{ color: 'var(--text-muted)' }}>No document content was provided for this link.</p>
           ) : null}
 
@@ -421,8 +461,8 @@ export default function ContractAccept() {
             onSubmit={(p) => void submitAccept(p)}
             consent={esignConsentText({
               audience: 'sub',
-              lang: payload.form ? formLang : 'en',
-              documentNoun: payload.form ? (formLang === 'es' ? 'este formulario' : 'this form') : 'this agreement',
+              lang: payload.form ? formLang : payload.clause_paper ? paperLang : 'en',
+              documentNoun: payload.form ? (formLang === 'es' ? 'este formulario' : 'this form') : payload.clause_paper ? CLAUSE_SIGN_WORDS[paperLang].noun : 'this agreement',
             })}
             {...(payload.form
               ? {
@@ -431,7 +471,14 @@ export default function ContractAccept() {
                   agreeLabel: fillString(formLang, 'agree'),
                   submitLabel: fillString(formLang, 'submit'),
                 }
-              : {})}
+              : payload.clause_paper && paperLang === 'es'
+                ? {
+                    heading: CLAUSE_SIGN_WORDS.es.heading,
+                    disclosure: CLAUSE_SIGN_WORDS.es.disclosure,
+                    agreeLabel: CLAUSE_SIGN_WORDS.es.agree,
+                    submitLabel: CLAUSE_SIGN_WORDS.es.submit,
+                  }
+                : {})}
           />
         </div>
       </div>

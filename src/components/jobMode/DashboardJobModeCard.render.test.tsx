@@ -121,8 +121,8 @@ describe('DashboardJobModeCard day rail', () => {
     })
     expect(getByText('NOW')).toBeTruthy()
     expect(getByText('STILL OPEN')).toBeTruthy()
-    // Skipped Job 2 wraps back as Next Job (not a dead end).
-    expect(getAllByText(/Next\s*Job/).length).toBeGreaterThan(0)
+    // Skipped Job 2 wraps back as the next press, On my way (v2.5573), not a dead end.
+    expect(getAllByText(/On my\s*way/).length).toBeGreaterThan(0)
     // Quiet clock-out link present while clocked in.
     expect(getByText('Clock out')).toBeTruthy()
   })
@@ -154,7 +154,7 @@ describe('DashboardJobModeCard day rail', () => {
     })
     // Job 2 (first unvisited), not the visited Job 1 — header + rail row.
     expect(getAllByText(/Smoke Job 2/).length).toBeGreaterThan(1)
-    expect(getByText(/Start First\s*Job/)).toBeTruthy()
+    expect(getByText(/On my\s*way/)).toBeTruthy()
   })
 })
 

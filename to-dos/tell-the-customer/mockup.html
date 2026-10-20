@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tell the customer</title>
+<style>
+  /* Punch list #115. Light only, like every to-do mock-up. Office frames at desk width, the receipt as a window, one phone frame. Made-up people: Rosa at the office, Dana Whitfield at 1208 Mesquite Ln, job PLUM 512, an estimate of $1,850. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-mid: #d97706; --amber: #92400e; --amber-tint: #fef3c7; --orange: #c2410c; --orange-tint: #fff7ed; --orange-line: #fdba74; --orange-ink: #9a3412; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--line-2); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap.amber { background: var(--amber-tint); color: var(--amber); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; }
+
+  /* a window (ResponsiveModalShell on a desk) */
+  .win { width: 520px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; font-size: 13px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+  .win.narrow { width: 440px; }
+  .win .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; }
+  .win .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .win .body { padding: 12px 14px; }
+  .win .foot { padding: 10px 14px; border-top: 1px solid var(--line-2); display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+  .lab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 4px; }
+  .lab:first-child { margin-top: 0; }
+  .who { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .who b { font-size: 13.5px; }
+  .who .sub { color: var(--ink-2); font-size: 12px; grid-column: 1; }
+  .chan { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line-2); }
+  .chan:first-of-type { border-top: 0; }
+  .box { width: 18px; height: 18px; border: 1.5px solid var(--line); border-radius: 4px; margin-top: 2px; }
+  .box.on { background: var(--green); border-color: var(--green); color: #fff; text-align: center; font-size: 12px; line-height: 16px; font-weight: 800; }
+  .chan .t { font-weight: 700; }
+  .chan .m { color: var(--muted); font-size: 12px; }
+  .bubble { background: var(--orange-tint); border: 1px solid var(--orange-line); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.4; margin-top: 6px; }
+  .bubble b { background: #fed7aa; border-radius: 4px; padding: 0 3px; }
+  .bubble.edit { border-style: dashed; }
+  .bubble .cur { border-left: 2px solid var(--ink); margin-left: 1px; }
+  .mail { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; margin-top: 6px; background: #fafafa; }
+  .mail .s { font-weight: 700; }
+  .mail .l { color: var(--blue-ink); text-decoration: underline; }
+  .acts { display: grid; gap: 6px; margin-top: 2px; }
+  .act { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 13px; color: var(--ink-2); }
+  .act .i { font-size: 15px; line-height: 1.3; }
+  .act.hold { color: var(--amber); }
+  .p { min-height: 42px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--green); color: #fff; font: inherit; font-weight: 800; font-size: 14px; }
+  .p.blue { background: var(--blue-ink); }
+  .s { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 13px; }
+  .q { border: 0; background: none; color: var(--blue-ink); font: inherit; font-weight: 600; font-size: 12.5px; }
+  .q.m { color: var(--muted); font-weight: 500; }
+  .links { display: flex; gap: 14px; align-items: center; }
+  .script { background: #f9fafb; border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45; margin-top: 6px; }
+  .script .l { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 2px; }
+  .sent { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .tag { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--amber-tint); color: var(--amber); }
+  .tag.green { background: var(--green-tint); color: var(--green-ink); }
+  .tag.grey { background: var(--line-2); color: var(--ink-2); }
+
+  /* a flat card (the Dashboard, Follow up, the Flows editor) */
+  .card { width: 560px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 14px; font-size: 13px; }
+  .card h3 { margin: 0 0 2px; font-size: 15px; }
+  .card .hint { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
+  .ln { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line-2); }
+  .ln .w { font-size: 13px; }
+  .ln .m { color: var(--muted); font-size: 12px; }
+  .ln .r { display: flex; gap: 6px; align-items: center; }
+  .ln .b { min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-weight: 700; font-size: 12.5px; }
+  .ln .b.g { background: var(--green); border-color: var(--green); color: #fff; }
+  table.steps { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  table.steps th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  table.steps td { padding: 7px 6px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .sw { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; font-size: 11px; font-weight: 700; }
+  .sw span { padding: 2px 8px; color: var(--muted); }
+  .sw span.on { background: var(--green-tint); color: var(--green-ink); }
+  .sw span.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .field { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; font-size: 13px; margin-top: 4px; }
+  .thread { width: 520px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 12px; font-size: 13px; }
+  .out { background: var(--orange-tint); border: 1px solid var(--orange-line); border-radius: 12px 12px 4px 12px; padding: 8px 12px; max-width: 86%; margin-left: auto; }
+  .ev { text-align: center; color: var(--muted); font-size: 12px; margin: 8px 0; }
+  .inline { text-align: right; font-size: 12.5px; margin-top: 4px; }
+  .inline span { color: var(--blue-ink); font-weight: 600; margin-left: 10px; }
+  .phone { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; padding: 12px; font-size: 13px; }
+  .needs { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin-bottom: 8px; }
+  .needs b { font-size: 13.5px; }
+  .needs .m { color: var(--muted); font-size: 12px; grid-column: 1; }
+  .needs .go { color: var(--blue-ink); font-weight: 700; font-size: 12.5px; }
+
+  ol.alts, ol.pass, ol.calls { padding-left: 22px; max-width: 100ch; }
+  ol.alts li, ol.pass li, ol.calls li { margin: 6px 0; color: var(--ink-2); }
+  ol.alts li b, ol.pass li b, ol.calls li b { color: var(--ink); }
+  .pick { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--green-tint); color: var(--green-ink); margin-left: 6px; vertical-align: 1px; }
+  .no { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; background: var(--line-2); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #115 · mock-up · 2026-10-16</p>
+  <h1>Tell the customer: every text or email is pressed by a person, seen before it goes, and followed by a receipt that suggests the call</h1>
+  <p>The principle: nothing reaches a customer without a person pressing it, or seeing it the moment after. When Rosa schedules a job's first visit or sends an estimate, a <b>Tell the customer</b> sheet opens with the step's line filled, the channels that apply ticked, the words hers to edit, and Send or Skip. The reminders the app would send on its own become <b>offers</b> she presses from <b>Today's sends</b>. After anything goes, a <b>receipt</b> shows what went and suggests the call, with the script and one tap to dial. The people, the job and the estimate are made up.</p>
+</header>
+
+<h2><span class="num">1</span> The press on the schedule: the first visit</h2>
+<p class="lede">Rosa presses <b>Add job to schedule</b> on the Dispatch hub and saves Thursday 10 to 12 for PLUM 512. Before anything goes, the sheet: the Booked line filled with the day and the window, the text ticked, no email for a booking, the words hers to change, and a primary that says what it will do. Right: the receipt that follows the send.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Tell the customer · after the first block saves</div>
+    <div class="fit"><div class="win">
+      <div class="bar"><span>Tell Dana</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>PLUM 512 · Whitfield water heater</b><span class="tag green">Booked</span><span class="sub">Thursday Oct 23 · 10:00 AM to 12:00 PM · Luis</span></div>
+        <div class="lab">What goes</div>
+        <div class="chan"><span class="box on">✓</span><div><div class="t">Text to (830) 555‑0121 <span class="m">· Dana reads English</span></div>
+          <div class="bubble edit">Dana, this is Rosa with Click Plumbing. We have you booked for <b>Thursday</b>, <b>10:00 AM to 12:00 PM</b>. Luis will text you when he is on the way.<span class="cur"></span></div>
+          <div class="m" style="margin-top:4px">The office's Booked line, filled from the block. Change any word.</div></div></div>
+        <div class="chan"><span class="box"></span><div><div class="t" style="color:var(--muted)">Email</div><div class="m">No email goes for a booking. Turn it on in Flows if you want one.</div></div></div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">💬</span><span>Texts Dana from the company number. Her answer comes to the office.</span></div>
+          <div class="act"><span class="i">🧾</span><span>Then shows you what went, and offers the call.</span></div>
+        </div>
+      </div>
+      <div class="foot"><button class="s">Skip</button><button class="p">Send text to Dana</button></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap orange">The receipt · right after the send</div>
+    <div class="fit"><div class="win narrow">
+      <div class="bar"><span>Sent to Dana</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="bubble">Dana, this is Rosa with Click Plumbing. We have you booked for Thursday, 10:00 AM to 12:00 PM. Luis will text you when he is on the way.</div>
+        <div class="sent">Text · from the company number · 2:41 PM · in Dana's thread</div>
+        <div class="lab">Call Dana to walk her through it?</div>
+        <div class="script"><span class="l">What to say</span>Hi Dana, this is Rosa with Click Plumbing. You should have a text from us with Thursday's window, 10 to 12. Does that still work for you? Luis will text you when he is on the way.</div>
+        <div class="m" style="color:var(--muted);font-size:12px;margin-top:6px">The call lands in Dana's thread when it ends.</div>
+      </div>
+      <div class="foot"><div class="links"><button class="q">Add to my calls</button><button class="q m">Done</button></div><button class="p blue">📞 Call (830) 555‑0121</button></div>
+    </div></div>
+    <p class="note"><b>One receipt per press, never per block.</b> On a phone, Call dials. On a desk it shows the number and Quo places the call; the webhook writes the call into the thread, which also closes a call task the same day.</p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> The press on the estimate: both channels, one press</h2>
+<p class="lede">Rosa sends the estimate. The email already goes today with the customer's page link; the sheet adds the text with the same link, both ticked, one press. The receipt names both and the script walks Dana through the estimate.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Tell the customer · on the estimate's send</div>
+    <div class="fit"><div class="win">
+      <div class="bar"><span>Tell Dana</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="who"><b>PLUM 512 · Whitfield water heater</b><span class="tag green">Estimate sent</span><span class="sub">Estimate #512‑1 · $1,850 · 2 options</span></div>
+        <div class="lab">What goes</div>
+        <div class="chan"><span class="box on">✓</span><div><div class="t">Email to dana.whitfield@example.com</div>
+          <div class="mail"><div class="s">Your estimate from Click Plumbing</div>Dana, here is your estimate for the water heater, $1,850, with two options. Open it to approve the one you want: <span class="l">clicktooling.com/estimate/…</span></div></div></div>
+        <div class="chan"><span class="box on">✓</span><div><div class="t">Text to (830) 555‑0121</div>
+          <div class="bubble edit">Dana, this is Rosa with Click Plumbing. Your estimate is ready, <b>$1,850</b> with two options. Approve the one you want here: <b>clicktooling.com/e/…</b></div></div></div>
+        <div class="lab">What happens</div>
+        <div class="acts">
+          <div class="act"><span class="i">✉️</span><span>Emails Dana the estimate with her page link.</span></div>
+          <div class="act"><span class="i">💬</span><span>Texts Dana the same link from the company number.</span></div>
+          <div class="act"><span class="i">📅</span><span>Starts the reminders: a text tomorrow, a call on day 3, a text on day 7, each yours to press.</span></div>
+        </div>
+      </div>
+      <div class="foot"><div class="links"><button class="s">Skip</button><button class="q">Email only</button><button class="q">Text only</button></div><button class="p">Send both to Dana</button></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap orange">The receipt · both named</div>
+    <div class="fit"><div class="win narrow">
+      <div class="bar"><span>Sent to Dana</span><span class="x">✕</span></div>
+      <div class="body">
+        <div class="mail"><div class="s">Your estimate from Click Plumbing</div><span style="color:var(--muted)">Email · dana.whitfield@example.com · 3:05 PM</span></div>
+        <div class="bubble">Dana, this is Rosa with Click Plumbing. Your estimate is ready, $1,850 with two options. Approve the one you want here: clicktooling.com/e/…</div>
+        <div class="sent">Text · from the company number · 3:05 PM</div>
+        <div class="lab">Call Dana to walk her through it?</div>
+        <div class="script"><span class="l">What to say</span>Hi Dana, Rosa with Click Plumbing. I just sent your estimate for the water heater, $1,850, with two options. Do you have two minutes for me to walk you through them? You can approve from the link whenever you are ready.</div>
+      </div>
+      <div class="foot"><div class="links"><button class="q">Add to my calls</button><button class="q m">Done</button></div><button class="p blue">📞 Call (830) 555‑0121</button></div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num">3</span> The app's own sends become offers: Today's sends</h2>
+<p class="lede">The morning run and the board's moves prepare the words and wait for a press. The Dashboard's Customers line counts them; the list sends each, or all that are ready, and says why one is held. The owner can still turn a step to <b>the app sends</b>; it then writes the receipt onto this list instead of sending nothing silently.</p>
+<div class="row">
+  <div>
+    <div class="cap blue">Dashboard → Needs you → Customers</div>
+    <div class="fit"><div class="phone">
+      <div class="needs"><b>3 texts ready to send</b><span class="go">Open ▸</span><span class="m">The morning run prepared them. Nothing goes until you press.</span></div>
+      <div class="needs"><b>1 call to make</b><span class="go">Open ▸</span><span class="m">Dana Whitfield · the estimate · day 3</span></div>
+      <div class="needs"><b>2 waiting on a reply</b><span class="go">Open ▸</span><span class="m">Priya Natarajan · Sam Dudley</span></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap blue">Today's sends</div>
+    <div class="fit"><div class="card">
+      <h3>Today's sends</h3>
+      <p class="hint">Prepared this morning from the flows. Press one, or all that are ready. A held one says why.</p>
+      <div class="ln"><div><div class="w"><b>Dana Whitfield</b> · Approved, day 1 · text</div><div class="m">Dana, this is Rosa with Click Plumbing. Did the estimate come through? Approve the option you want here: clicktooling.com/e/…</div></div><div class="r"><button class="b">Edit</button><button class="b g">Send</button></div></div>
+      <div class="ln"><div><div class="w"><b>Priya Natarajan</b> · Booked · text</div><div class="m">Priya, this is Rosa with Click Plumbing. We have you booked for Friday, 1:00 PM to 3:00 PM…</div></div><div class="r"><button class="b">Edit</button><button class="b g">Send</button></div></div>
+      <div class="ln"><div><div class="w"><b>Sam Dudley</b> · Billed · text</div><div class="m">Sam, this is Rosa with Click Plumbing. Your bill for the repipe is ready…</div></div><div class="r"><button class="b">Edit</button><button class="b g">Send</button></div></div>
+      <div class="ln"><div><div class="w" style="color:var(--muted)"><b>Mesquite Rentals</b> · Billed · text</div><div class="m"><span class="tag">Held</span> No phone number on file. Add one on the customer, or send the email instead.</div></div><div class="r"><button class="b">Add a number</button></div></div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end"><button class="p">Send all 3 that are ready</button></div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num">4</span> The call task, and what closes it</h2>
+<p class="lede">Day three on an estimate is a call. It sits in Follow up under <b>We owe them</b> with the script. The webhook already writes every call into the thread, so a call to Dana's number the same day marks the task done; <b>I called</b> is for a call from another phone.</p>
+<div class="row">
+  <div>
+    <div class="cap amber">Follow up → We owe them</div>
+    <div class="fit"><div class="card">
+      <div class="ln" style="border-top:0"><div><div class="w">📞 <b>Call Dana Whitfield</b> about the estimate · day 3</div><div class="m">$1,850 · sent Tuesday · opened her page Wednesday · no answer yet</div>
+        <div class="script" style="margin-top:8px"><span class="l">What to say</span>Hi Dana, Rosa with Click Plumbing. I sent your water heater estimate on Tuesday and wanted to see if you had any questions on the two options. Is there anything holding you up?</div></div>
+        <div class="r" style="flex-direction:column;align-items:stretch"><button class="b g">📞 Call</button><button class="b">I called</button><button class="b">Tomorrow</button></div></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Dana's thread · after the call</div>
+    <div class="fit"><div class="thread">
+      <div class="out">Dana, this is Rosa with Click Plumbing. Did the estimate come through? Approve the option you want here: clicktooling.com/e/…</div>
+      <div class="inline">Wed 9:02 AM · Rosa</div>
+      <div class="ev">📞 Rosa called Dana · Thu 2:14 PM · 4:12 · <span style="color:var(--green-ink);font-weight:700">closed the day‑3 call</span></div>
+      <div class="ev">Rosa's note: she wants option 2, will approve tonight.</div>
+    </div></div>
+    <p class="note"><b>Quo closes the task.</b> The webhook's call event names the number; a call to it the same day as the task marks it done, so nobody records a call twice. The note is Rosa's own, as today.</p>
+  </div>
+</div>
+
+<h2><span class="num">5</span> The office shapes it in Flows: the Approved step</h2>
+<p class="lede">The step's reminders become a cadence with a three-way switch, a call script in both languages, and the suggestion the receipt makes. Nothing here is new ground: the editor already holds each step's days, channel and words.</p>
+<div class="row">
+  <div>
+    <div class="cap">Settings → Flows → Residential customer → Approved</div>
+    <div class="fit"><div class="card">
+      <h3>Approved <span class="tag grey">their move</span></h3>
+      <p class="hint">Finishes when Dana approves an option on her page. Until then, the reminders:</p>
+      <table class="steps">
+        <tr><th>Day</th><th>How</th><th>The app</th><th>The words</th></tr>
+        <tr><td>1</td><td>Text</td><td><span class="sw"><span>Off</span><span class="on">Offers</span><span>Sends</span></span></td><td>Did the estimate come through? Approve the option you want here: {link}</td></tr>
+        <tr><td>3</td><td>Call</td><td><span class="sw"><span>Off</span><span class="on">Offers</span><span style="color:#d1d5db">—</span></span></td><td>A call task with the script below</td></tr>
+        <tr><td>7</td><td>Text</td><td><span class="sw"><span>Off</span><span class="on">Offers</span><span>Sends</span></span></td><td>Last note from us on the estimate: it is open until {day}. Approve here: {link}</td></tr>
+      </table>
+      <div class="lab">Call script</div>
+      <div class="field">Hi {first}, {me} with Click Plumbing. I sent your estimate for the {job} on {day} and wanted to see if you had any questions on the options. Is there anything holding you up?</div>
+      <div class="field" style="color:var(--ink-2)">Hola {first}, soy {me} de Click Plumbing. Le envié el presupuesto de {job} el {day} y quería saber si tiene preguntas sobre las opciones…</div>
+      <div class="lab">After a send from another page</div>
+      <div style="display:flex;gap:10px;align-items:center"><span class="sw"><span class="on">Suggest a call</span><span>Say nothing</span></span><span style="font-size:12px;color:var(--muted)">The receipt shows the script and the dial.</span></div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Messages page · the same offer, one line</div>
+    <div class="fit"><div class="thread">
+      <div class="out">Dana, this is Rosa with Click Plumbing. We have you booked for Thursday, 10:00 AM to 12:00 PM. Luis will text you when he is on the way.</div>
+      <div class="inline">2:41 PM · Rosa · delivered</div>
+      <div class="inline" style="color:var(--muted)">Call Dana to walk her through it?<span>Call</span><span>Add to my calls</span></div>
+    </div></div>
+    <p class="note"><b>No window on the Messages page.</b> The thread already shows the send; the suggestion is one quiet line under the bubble, so the assistant working the inbox is never interrupted.</p>
+  </div>
+</div>
+
+<h2><span class="num">6</span> The five calls, settled</h2>
+<ol class="calls">
+  <li><b>Preview on the press, offers for the app's own sends, a receipt either way.</b><span class="pick">settled</span> The principle wants a person in every send: the preview is where they see the words first, the receipt is where they learn what the app did.</li>
+  <li><b>The estimate cadence</b>: day 1 text, day 3 call, day 7 text, then rest in They owe us.<span class="pick">settled</span></li>
+  <li><b>Call scripts</b>, office‑written per step in both languages, seeded.<span class="pick">settled</span></li>
+  <li><b>The page link</b> rides in the estimate's texts, never the booking's.<span class="pick">settled</span></li>
+  <li><b>Booked</b> on the first visit; <b>Rescheduled</b> when it moves; later visits by hand from the thread.<span class="pick">settled</span></li>
+</ol>
+
+<h2><span class="num">7</span> Alternatives weighed</h2>
+<ol class="alts">
+  <li><b>The app sends on its own with no receipt</b> (today's stage sends and morning run once switched on).<span class="no">rejected</span> The assistant would learn of a text from the customer.</li>
+  <li><b>A receipt only, no preview.</b><span class="no">rejected</span> When the assistant caused the message they should see the words first; the receipt alone fits only the app's own sends.</li>
+  <li><b>A call the app places after every send.</b><span class="no">not possible</span> Quo's API sends texts and reads calls; it places none. An automated call is also a different consent regime. A call is a person's, with a script and a task.</li>
+  <li><b>Preview on the press, offers for the app's sends, the receipt with the call, the task Quo closes.</b><span class="pick">picked</span></li>
+  <li><b>A separate Calls page.</b><span class="no">rejected</span> Follow up's We owe them already holds what we owe people, and the Dashboard's Customers line counts it.</li>
+  <li><b>The receipt on the Messages page too.</b><span class="no">rejected</span> The thread shows the send; one quiet line under the bubble.</li>
+</ol>
+
+<h2><span class="num">8</span> Is this the best we can do? The second pass</h2>
+<p class="lede">The first pass took the ask as written: a modal after every send suggesting a call to say it went. Read back against the assistant with six jobs to schedule, the customer who gets a call about a text, and the morning run that sends with nobody on a page, seven things changed.</p>
+<ol class="pass">
+  <li><b>A modal after every send became a receipt that never stacks.</b> One per press; the morning run's sends are listed on the Dashboard instead of popping windows nobody is there to see.</li>
+  <li><b>"Call to say it went" became "call to walk them through it."</b> The script says why we call; the office can turn the suggestion off for a step where a call would be odd.</li>
+  <li><b>The app's own sends became offers by default.</b> The three-way switch keeps the app's memory and loses the surprise; Sends stays for the owner who wants it on a step.</li>
+  <li><b>The call became a task Quo closes.</b> The webhook already logs every call; a call to that number the same day marks the task done, so nobody records a call twice.</li>
+  <li><b>The preview became editable for the office.</b> The office writes free text in the reply box today; the step's line is the starting words, not a cage. Techs keep the no‑free‑text rule.</li>
+  <li><b>Both channels became one press.</b> The estimate's email and its text go together, each ticked, and the receipt names both.</li>
+  <li><b>A changed first visit became a Rescheduled line</b> instead of silence.</li>
+</ol>
+</div>
+</body>
+</html>

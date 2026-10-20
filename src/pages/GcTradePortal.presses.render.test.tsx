@@ -51,14 +51,14 @@ const open = (path = `/t/${TOKEN}`) =>
 
 const block = (name: RegExp | string) => within(screen.getByRole('region', { name }))
 const openProject = async () => {
-  fireEvent.click(await screen.findByRole('button', { name: /Sample Retail Shell/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Sample Retail Shell/ }))
   return screen.findByRole('region', { name: 'Electrical · invitation to quote' })
 }
 
 describe('the presses', () => {
   it('welcomes a first visit and posts Got it, then reads the slice again', async () => {
-    // A first visit: never pressed Got it, no set opened, no quote and no word from it in the portal yet.
-    slice = { ...slice, company: { ...slice.company, portal_opened_on: null }, invites: slice.invites.map((i) => ({ ...i, seen_rev: null })), quotes: [], contacts: [] }
+    // A first visit: never pressed Got it, no set opened, no quote, no word from it in the portal and no paper signed yet.
+    slice = { ...slice, company: { ...slice.company, portal_opened_on: null }, invites: slice.invites.map((i) => ({ ...i, seen_rev: null })), quotes: [], contacts: [], papers: [] }
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Got it' }))
     await waitFor(() => expect(posts).toEqual([{ token: TOKEN, kind: 'got_it' }]))
@@ -150,7 +150,7 @@ describe('the presses', () => {
 
 describe('the job’s presses (P4b-ii)', () => {
   const openJob = async () => {
-    fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
     return screen.findByRole('region', { name: 'Electrical · charges from Click' })
   }
 
@@ -174,7 +174,7 @@ describe('the job’s presses (P4b-ii)', () => {
     await waitFor(() => expect(posts).toEqual([{ token: TOKEN, kind: 'answer_back_charge', chargeId: ID.charge, agree: false, note: 'We swept before we left.' }]))
   })
 
-  it('asks for a change: what changed, why, what it asks and whole working days, with no file yet', async () => {
+  it('asks for a change: what changed, why, what it asks and whole working days', async () => {
     open()
     await openJob()
     const changes = block('Electrical · changes to your work')
@@ -182,8 +182,8 @@ describe('the job’s presses (P4b-ii)', () => {
     expect(changes.getByText(/as change order 2 on .*\. Your part: \$3,400\./)).toBeTruthy()
     expect(changes.queryByText(/3,910/)).toBeNull()
     fireEvent.click(changes.getByRole('button', { name: 'Ask for a change' }))
-    expect(changes.queryByText('A photo or ticket, if you have one')).toBeNull()
-    expect(changes.getByText('Have a photo or a ticket? Email it to Click Construction.')).toBeTruthy()
+    // Since P5a-1 a photo or a ticket is picked in the form (GcTradePortal.files.render.test.tsx sends one).
+    expect(changes.getByLabelText('A photo or ticket, if you have one')).toBeTruthy()
     fireEvent.change(changes.getByLabelText('What changed'), { target: { value: ' Two more outlets in the break room. ' } })
     fireEvent.click(changes.getByLabelText('The customer asked for more'))
     fireEvent.change(changes.getByLabelText('What you ask for it'), { target: { value: '$1,250' } })
@@ -224,7 +224,7 @@ describe('the job’s presses (P4b-ii)', () => {
   it('reads a trade we gave another company as its result, with no questions to ask', async () => {
     slice = { ...slice, packages: slice.packages.map((p) => (p.id === ID.trade ? { ...p, awarded_invite_id: 'elsewhere' } : p)) }
     open()
-    fireEvent.click(await screen.findByRole('button', { name: /Sample Retail Shell/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Retail Shell/ }))
     const result = await screen.findByRole('region', { name: 'Electrical · result' })
     expect(within(result).getByText('This one went to another company. Thank you for your quote.')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Electrical · questions about the plans' })).toBeNull()

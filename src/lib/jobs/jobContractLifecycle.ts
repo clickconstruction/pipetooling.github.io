@@ -9,6 +9,7 @@ import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtil
 import { esignAuditSuffix } from '../esignConsent'
 import { signedRecordId } from '../signedRecordId'
 import type { JobContractRenderInput } from './jobContractDocument'
+import { JOB_CONTRACT_LINK_HANDOUT_MARGIN_DAYS, jobContractLiveToken } from '../../../supabase/functions/_shared/jobContractLinkLive'
 import { filedOnPaper, frameAsSignerRow, framesLabel, joinSignerNames, partLinkPartPaper, signerFrames, signerNamesLine, type SignerFrame, type SignerFramesRow } from './jobContractSigners'
 
 export type JobContractRow = Database['public']['Tables']['job_contracts']['Row']
@@ -78,6 +79,27 @@ export function jobContractChipColors(tone: JobContractChip['tone']): {
 /** The customer's page. The token is the credential; the origin is whatever domain the office is on. */
 export function jobContractSigningUrl(origin: string, rawToken: string): string {
   return `${origin.replace(/\/$/, '')}/contract/sign?t=${encodeURIComponent(rawToken)}`
+}
+
+/** The margin a link must still have to be handed out as it is: one rule with `send-job-contract` (v2.5145). */
+export { JOB_CONTRACT_LINK_HANDOUT_MARGIN_DAYS }
+
+/**
+ * The signing link a sent agreement already carries (punch list #104, v2.5119). The link doors
+ * (Copy link, Text the link, Sign here, now, and the in-person door) hand it out as it is and
+ * record nothing, as the signed rail does. So a PDF emailed to sign stays a PDF send, and the
+ * paper still converts it. Null for a row that is not out, has no token, or whose link has less
+ * than the margin left: those go through `send-job-contract`, which mints or renews the link and
+ * stamps the send. A link with no expiry counts as live, as `sign-job-contract` reads it. The rule
+ * is `jobContractLiveToken` in `_shared`, which `send-job-contract`'s link mode applies too (v2.5145).
+ */
+export function jobContractLinkOnRow(
+  row: Pick<JobContractRow, 'status' | 'voided_at' | 'public_token' | 'public_token_expires_at'> | null | undefined,
+  origin: string,
+  nowMs: number = Date.now(),
+): string | null {
+  const token = jobContractLiveToken(row, nowMs)
+  return token ? jobContractSigningUrl(origin, token) : null
 }
 
 export function formatContractStamp(iso: string | null | undefined): string | null {

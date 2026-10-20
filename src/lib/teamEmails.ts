@@ -51,6 +51,8 @@ export type TeamSampleEmailId =
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
   | 'gc_money_monday'
+  | 'bridge_monday_sheet'
+  | 'gc_office_notice'
   | 'lien_desk_summary'
   | 'bid_room_activity_staff'
   | 'portal_request_staff'
@@ -299,6 +301,17 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     manage: emails('Dispatch → Share'),
     reflects: ['the dispatch board'],
   },
+  {
+    id: 'gc_office_notice',
+    label: 'The office’s GC notices',
+    when: { kind: 'event', label: 'Two days before a GC bill day, and when a pay application waits 5 days on the architect', order: 21 },
+    recipients: { roles: ['dev', 'master_technician', 'controller'], decidedBy: 'event', rule: 'The GC job’s project manager when they are on the money team, else the company’s owner.' },
+    sampleSubject: () => 'Bill day for Sample Retail Shell is Oct 25',
+    render: { kind: 'sample', sample: 'gc_office_notice' },
+    manage: { tabId: 'settings-jobs', label: 'Jobs & billing → Email the office’s GC notices' },
+    reflects: ['the GC job’s pay applications', 'its trades’ waivers'],
+    guide: 'bill-the-customer-on-a-gc-job',
+  },
 
   // ---- Every week ----
   {
@@ -353,6 +366,17 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     manage: stream('gc_money_monday', 'GC projects → Money → The Monday money email'),
     reflects: ['the bills on our GC jobs', 'Money in GC projects'],
     guide: 'get-our-gc-money-by-email-each-week',
+  },
+  {
+    id: 'bridge_monday_sheet',
+    label: 'The Bridge, the Monday sheet',
+    when: { kind: 'once', label: 'When a dev presses Email me this sheet on the Bridge', order: 35 },
+    recipients: { roles: ['dev'], decidedBy: 'event', rule: 'The dev who pressed it, at their own address, and nobody else.' },
+    sampleSubject: (c) => `The Bridge, the week of ${c.weekStartLabel}–${c.weekEndLabel}: contribution ≈ +$38k, net down $37.4k, cash lowest point $15.4k`,
+    render: { kind: 'sample', sample: 'bridge_monday_sheet' },
+    manage: emails('The Bridge → Monday sheet → Email me this sheet'),
+    reflects: ['the Bridge’s top line, lights, moves and people lines'],
+    guide: 'the-bridge',
   },
   {
     id: 'recurring_job_report',

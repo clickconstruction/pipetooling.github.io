@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle, type GoogleGeocodeErrorCode } from '../_shared/googleGeocode.ts'
 import { censusCountyFromPoint, geocodeWithCensus } from '../_shared/censusGeocode.ts'
 import { inUsPointBox, refusePointOutsideUs } from '../_shared/usPointBox.ts'
@@ -56,7 +56,7 @@ function googleErrorToClientCode(e: GoogleGeocodeErrorCode): string {
 }
 
 async function upsertGeocode(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   key: string,
   lat: number,
   lng: number

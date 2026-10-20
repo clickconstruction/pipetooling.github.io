@@ -13,10 +13,10 @@
 - **Users**: 9 roles with layered access control — dev, master_technician, assistant, controller (assistant-like + payroll access), subcontractor, helpers (UI "Helper"), estimator, primary, superintendent
 - **Major systems**:
   1. **Projects/Workflows** — ongoing work tracking: customers → projects → workflow stages → line items
-  2. **Bids** — estimation: 26 tabs (`BIDS_TABS` in `src/lib/bids/bidsTabAccess.ts`) from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
+  2. **Bids** — estimation: 27 tabs (`BIDS_TABS` in `src/lib/bids/bidsTabAccess.ts`) from Bid Board through Takeoff/Pricing to Submission and Change Orders (`docs/BIDS_SYSTEM.md`)
   3. **Materials** — supply houses, price book, templates, purchase orders, PO Generator ledger
   4. **Checklist** — recurring tasks: Today / History / Review / Manage / Roadmap
-- **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (leads + Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally, GC mode (`/gc`: we are the general contractor and trades quote to us; PROJECT_DOCUMENTATION §20, every GC table's door in `src/lib/gc/doors.ts`)
+- **Major subsystems**: Jobs (ledger, Pipeline board, billing, AR, Lien desk, GC Review), Estimates (internal proposals + customer acceptance), Banking (Mercury + Stripe, accounting labels), People (payroll, hours, employment, contracts), Prospects (the cold-call deck in three lanes, customers, jobs to GC and subs for the bench, + the Team hiring board), Schedule Dispatch, Quickfill (billing workflow), Documents, Map, Tally, GC mode (`/gc`: we are the general contractor and trades quote to us; PROJECT_DOCUMENTATION §20, every GC table's door in `src/lib/gc/doors.ts`; the Messages system's map is `docs/MESSAGES_ARCHITECTURE.md`, its kernels and tables listed in the Glossary's **Messages** entry), Messages for the company's own customers (`/messages`: Follow up's lanes for every kind of person, the thread window, the job box, Job Mode's door and its On my way press with the tech's bio (`src/lib/bio/`), the two inboxes, the reply push, and since punch list #115 Tell the customer (every text or email to a customer pressed or seen by a person: the sheet on a booking and an estimate, Today's sends, call tasks) — the plan is `docs/MESSAGES_RESIDENTIAL_BUILD_PLAN.md`, its row in `docs/README.md` → Plans), Training (`/training/<slug>`: courses the crew takes at their own pace, each with a clock, the policy a dev's in Settings → Training; PROJECT_DOCUMENTATION §23)
 
 ---
 
@@ -70,7 +70,7 @@ Customer
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~500 tables; ~145 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~550 tables; ~160 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (four separate tracks — see `../CLAUDE.md`)
@@ -98,6 +98,7 @@ pipetooling.github.io/
 │   ├── utils/              # errorHandling, dateUtils (APP_CALENDAR_TZ), teamLabor, …
 │   ├── types/              # database.ts (generated), database-functions.ts (manual)
 │   ├── content/help/       # User-facing help guides (ship with features)
+│   ├── content/training/   # Training courses as markdown, one folder per course
 │   └── content/releaseNotes/ # One v2.NNNN.ts release note per PR (aggregator frozen)
 ├── supabase/
 │   ├── migrations/         # Post-baseline migrations (baseline: 20250101000000_baseline.sql)
@@ -193,7 +194,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~2,650 test files (~600 of them render smokes).
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~3,300 test files (~800 of them render smokes).
 
 ### Windows (modals)
 A window is a full-screen `position: fixed` backdrop that closes on `onClick` (not `onMouseDown` — `npm run check:backdrop-click` fails CI on one that closes on the press), holding a panel that stops the click (`onClick={(e) => e.stopPropagation()}`). [`modalBackdropGuard.ts`](../src/lib/modalBackdropGuard.ts), installed once in `main.tsx`, stops a backdrop click unless the press and the release were both on the backdrop, so a drag out of a window never closes it — no window needs its own drag guard (a backdrop under three quarters of the screen is not covered). A window drawn inside another window's backdrop but outside its panel, or inside a row that opens on a click, stops its own backdrop click before closing, or a click outside it also closes the window behind or toggles the row; `npm run check:nested-windows` lists any that do not and CI fails on a backdrop one — a `nested-windows: allow — <why>` comment above the inner window lets a meant one through (`-- --rows` lists rows, report only). A window's z-index is above the Dispatch / Job mode dock ([`DISPATCH_MODE_FOOTER_Z_INDEX`](../src/components/dispatchMode/DispatchModeFooter.tsx)) and below whatever opens on top of it — the Job form, the Job window and the Bid window stand at 1000–1010, so a list window that opens them stands under 1000; `npm run check:window-z` fails CI on a window under the dock, and a `window-z: allow — <why>` comment lets a page-level layer that keeps the dock on top through. A window's layer pads its top by `var(--app-top-chrome, 0px)` (the iPhone status bar when the app is on the Home Screen — one `padding` string, or `paddingTop` alone, never both) and a panel whose height is in `vh` is clamped to that padded layer (`min(90vh, 100%)`), so its title and × are never under the clock; `npm run check:status-bar` fails CI on a layer or panel that does not (`node scripts/codemods/window-below-status-bar.mjs` rewrites it), and a `status-bar: allow — <why>` comment lets a layer that is not a window through.
@@ -222,8 +223,8 @@ type Customer = Database['public']['Tables']['customers']['Row']
 - **controller**: assistant-like + dev-level money visibility and payroll access
 - **subcontractor** (Sub): external worker, sees only assigned work; optional service-type restriction
 - **helpers** (UI "Helper"): field helper, subcontractor-like access
-- **estimator**: bid specialist — Bids, Materials, Map, Calendar; optional service-type restriction
-- **primary**: client-side principal with billing visibility (Dashboard, Estimates, Jobs, Bids)
+- **estimator**: bid specialist — Bids, Materials, Map, Calendar; optional service-type restriction; the money of a job opened from their bid as one of the job's people (`is_job_people`, punch list #129), never a `jobs_ledger` row
+- **primary**: client-side principal with billing visibility (Dashboard, Estimates, Jobs, Bids); scoped to their own jobs, the paid verbs too since v2.5655
 - **superintendent**: site supervisor; assigned projects only
 
 ### Project Management
@@ -259,11 +260,11 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~500 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~550 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~145): email (Resend), Stripe,    │
+│  Edge Functions (Deno, ~160): email (Resend), Stripe,    │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -286,8 +287,8 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 | Symptom | Likely cause / fix |
 |---|---|
-| 403 Forbidden | RLS policy — check role, adoption/sharing, table policies |
-| Row not found / empty results | RLS filtering — verify ownership/adoption |
+| 403 Forbidden | RLS policy — check the role and the table's policies (one company: no adoption, no sharing to check) |
+| Row not found / empty results | RLS filtering — the role's read policy on that table, or a twin's fence |
 | TS build errors after schema change | Regenerate types (`npm run gen-types:linked`) |
 | Email not sending | Resend key/domain in Edge Function secrets |
 | App crash / 503 / slow | `docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md` |
@@ -301,4 +302,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-10-09
+last_updated: 2026-10-20

@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { GcTradePortalView } from '../components/gc/GcTradePortalView'
 import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePortalPress'
+import { PortalBillDayContext } from '../components/gc/gcTradePortalBillDay'
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
-import { readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
-import { submitTradePortal } from '../lib/gc/tradePortalSubmit'
+import { lateWaitingOf, readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
+import { goToSignPath, submitTradePortal, tradeFilePlaced, tradeSignPath } from '../lib/gc/tradePortalSubmit'
 import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -70,6 +71,34 @@ export default function GcTradePortal() {
         setPage(answer)
         return null
       },
+      upload: async (fields) => {
+        if (preview) return { problem: pt(lang, 'previewNothing'), file: null }
+        const result = await submitTradePortal(token, 'file', fields)
+        if (!result.ok) return { problem: tradeErrorWords(result.key, lang), file: null }
+        return { problem: null, file: tradeFilePlaced(result.value) }
+      },
+      // A paper to sign (P5b-1): the signing page in this tab, as the sub portal's sign_link goes there.
+      openPaper: async (paper) => {
+        if (preview) return pt(lang, 'previewNothing')
+        const result = await submitTradePortal(token, 'paper_link', { paper })
+        if (!result.ok) return tradeErrorWords(result.key, lang)
+        // The sample answers ok with no path (decision 12): it goes nowhere and says nothing, as its other presses do.
+        const path = tradeSignPath(result.value)
+        if (path) goToSignPath(path)
+        return null
+      },
+      // The late door's second look (P5d-ii-2): a read for one day on one bar, which counts no visit and writes nothing.
+      lateWaiting: async (lineId, day) => {
+        if (preview) return []
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/gc-trade-portal?t=${encodeURIComponent(token)}&late=${encodeURIComponent(lineId)}&day=${encodeURIComponent(day)}`, {
+            headers: await staffAwarePublicHeaders(),
+          })
+          return res.ok ? lateWaitingOf(await res.json().catch(() => null)) : []
+        } catch {
+          return []
+        }
+      },
     }),
     [preview, lang, token, read],
   )
@@ -89,6 +118,7 @@ export default function GcTradePortal() {
         </div>
       ) : mapped ? (
         <PortalPressContext.Provider value={press}>
+        <PortalBillDayContext.Provider value={mapped.billDayCutoffDays}>
         <GcTradePortalView
           state={mapped.state}
           partnerId={mapped.partnerId}
@@ -96,7 +126,12 @@ export default function GcTradePortal() {
           messages={messages}
           planUrl={planUrl}
           banner={page.sample ? pt(lang, 'samplePortal') : preview ? pt(lang, 'officePreview') : undefined}
+          schedules={page.schedules}
+          scheduleWork={page.scheduleWork}
+          scheduleTodos={page.scheduleTodos}
+          flow={page.flow}
         />
+        </PortalBillDayContext.Provider>
         </PortalPressContext.Provider>
       ) : null}
     </main>

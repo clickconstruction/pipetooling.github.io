@@ -1,0 +1,248 @@
+/**
+ * Messages, cut 5: the Quo webhook's own rules (`to-dos/gc-mode/messages/BUILD_PLAN.md` → Cut 5, `quo-webhook`). Pure
+ * but for the HMAC, which runs on WebCrypto, carried alike by the browser, Node and Deno. With these and `events.ts`
+ * the edge function in wave 2 is a thin wrapper, in this order:
+ *
+ * 1. `verifySignature` over the raw body, before any parsing. A refusal answers 401 and records nothing.
+ * 2. `seenBefore` with the deliveries kept: a repeat answers 200 and does nothing. A new one is claimed (the row
+ *    `record` names, inserted on conflict do nothing, the insert being the lock), and the expired ids are dropped.
+ * 3. `readQuoEvent` and `planQuoEvent` (`events.ts`), then the writes, then any answer text.
+ * 4. `webhookAnswer`: 200 when handled or when there is nothing to do, with the reason logged; 500 on a failure, after
+ *    the claim is released, so Quo sends it again.
+ *
+ * Quo signs every delivery the Standard Webhooks way (its page "Webhook signature validation", API version
+ * 2026-03-30): headers `webhook-id`, `webhook-timestamp` (Unix seconds) and `webhook-signature` (space-separated
+ * `v1,<base64>` entries, any one matching), HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the base64 after
+ * the `whsec_` prefix of the secret Quo returned. Quo retries a non-2xx answer eight times over about 27 and a half hours
+ * with the same `webhook-id`.
+ *
+ * A webhook made in Quo's own settings (Settings → Webhooks) signs the older way instead (v2.5536): one
+ * `openphone-signature` header, `hmac;1;<timestamp in ms>;<base64>` (comma-separated when there are several),
+ * HMAC-SHA256 over `<timestamp>.<body>`, keyed by the decoded base64 secret, which carries no `whsec_` prefix. Quo's
+ * samples disagree on the body (the raw bytes, or the JSON written out again with no spaces), so both are taken. The
+ * delivery's id for the repeat check is the event's own `id`, which Quo keeps on every retry.
+ */
+
+/** A delivery signed longer ago than this, or as far ahead, is refused: Quo's own example allows five minutes. */
+export const QUO_SIGNATURE_MAX_AGE_SECONDS = 5 * 60
+
+/** Quo retries for about 27 and a half hours, so a delivery's id is kept a little longer. */
+export const QUO_SEEN_KEEP_HOURS = 28
+
+/** The request's headers: a fetch `Headers`, or a plain record in any case. */
+export type HeaderSource = { get(name: string): string | null } | Readonly<Record<string, string | readonly string[] | null | undefined>>
+
+function header(headers: HeaderSource, name: string): string | null {
+  if (typeof headers.get === 'function') return (headers as { get(name: string): string | null }).get(name)
+  for (const [key, value] of Object.entries(headers as Record<string, string | readonly string[] | null | undefined>)) {
+    if (key.toLowerCase() !== name) continue
+    if (typeof value === 'string') return value
+    return Array.isArray(value) ? (value[0] ?? null) : null
+  }
+  return null
+}
+
+// ---------- the signature ----------
+
+export type SignatureRefusal = 'no secret' | 'missing headers' | 'bad timestamp' | 'bad signature' | 'too old' | 'too new'
+
+export type SignatureCheck = { ok: true; webhookId: string; timestamp: number } | { ok: false; why: SignatureRefusal }
+
+function base64Bytes(text: string): Uint8Array | null {
+  try {
+    const binary = atob(text)
+    return Uint8Array.from(binary, (ch) => ch.charCodeAt(0))
+  } catch {
+    return null
+  }
+}
+
+/** The key's bytes: the base64 after the `whsec_` prefix. Null for an empty or unreadable secret. */
+function secretBytes(secret: string): Uint8Array | null {
+  const text = secret.trim().replace(/^whsec_/, '')
+  if (!text) return null
+  const bytes = base64Bytes(text)
+  return bytes && bytes.length ? bytes : null
+}
+
+/** Equal bytes, compared in time that does not depend on where they differ. */
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i += 1) diff |= (a[i] ?? 0) ^ (b[i] ?? 0)
+  return diff === 0
+}
+
+/** `{id}.{timestamp}.` and the body, as the bytes Quo signed. */
+function signedBytes(id: string, timestamp: string, rawBody: string | Uint8Array): Uint8Array {
+  const head = new TextEncoder().encode(`${id}.${timestamp}.`)
+  const body = typeof rawBody === 'string' ? new TextEncoder().encode(rawBody) : rawBody
+  const out = new Uint8Array(head.length + body.length)
+  out.set(head, 0)
+  out.set(body, head.length)
+  return out
+}
+
+/** The bytes in a plain ArrayBuffer of their own, which WebCrypto takes under every TypeScript the app and Deno use. */
+function ownBuffer(bytes: Uint8Array): ArrayBuffer {
+  const out = new ArrayBuffer(bytes.length)
+  new Uint8Array(out).set(bytes)
+  return out
+}
+
+async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey('raw', ownBuffer(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  return new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, ownBuffer(data)))
+}
+
+/**
+ * Whether a delivery is Quo's: the three headers present, a `v1` signature that matches the raw body, and a timestamp
+ * within five minutes either way. The signature is checked first, so a replay of a real delivery reads as too old.
+ * `rawBody` is the body exactly as it came, before any parsing.
+ */
+export async function verifySignature(
+  headers: HeaderSource,
+  rawBody: string | Uint8Array,
+  secret: string,
+  now: number = Date.now(),
+): Promise<SignatureCheck> {
+  const key = secretBytes(secret)
+  if (!key) return { ok: false, why: 'no secret' }
+  const legacy = header(headers, 'openphone-signature')?.trim()
+  if (legacy && !header(headers, 'webhook-signature')) return verifyLegacySignature(legacy, rawBody, key, now)
+  const id = header(headers, 'webhook-id')?.trim()
+  const stamp = header(headers, 'webhook-timestamp')?.trim()
+  const signatures = header(headers, 'webhook-signature')?.trim()
+  if (!id || !stamp || !signatures) return { ok: false, why: 'missing headers' }
+  if (!/^\d{1,12}$/.test(stamp)) return { ok: false, why: 'bad timestamp' }
+  const expected = await hmacSha256(key, signedBytes(id, stamp, rawBody))
+  const matches = signatures
+    .split(' ')
+    .map((entry) => {
+      const comma = entry.indexOf(',')
+      return comma > 0 && entry.slice(0, comma) === 'v1' ? base64Bytes(entry.slice(comma + 1)) : null
+    })
+    .some((given) => given !== null && sameBytes(given, expected))
+  if (!matches) return { ok: false, why: 'bad signature' }
+  const timestamp = Number(stamp)
+  const age = Math.floor(now / 1000) - timestamp
+  if (age > QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too old' }
+  if (age < -QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too new' }
+  return { ok: true, webhookId: id, timestamp }
+}
+
+/** The body as text, and as the JSON written out again with no spaces, when it is JSON and that differs. */
+function legacyBodies(rawBody: string | Uint8Array): string[] {
+  const text = typeof rawBody === 'string' ? rawBody : new TextDecoder().decode(rawBody)
+  try {
+    const compact = JSON.stringify(JSON.parse(text))
+    return compact === text ? [text] : [text, compact]
+  } catch {
+    return [text]
+  }
+}
+
+/** The event's own `id`, which Quo keeps on every retry; null when the body has none. */
+function legacyEventId(rawBody: string | Uint8Array): string | null {
+  try {
+    const parsed: unknown = JSON.parse(typeof rawBody === 'string' ? rawBody : new TextDecoder().decode(rawBody))
+    const id = parsed && typeof parsed === 'object' ? (parsed as { id?: unknown }).id : null
+    return typeof id === 'string' && id.trim() ? id.trim() : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The older `openphone-signature` check (see the file's head): any `hmac;1;<timestamp>;<base64>` entry whose HMAC over
+ * `<timestamp>.<body>` matches, then the same five minutes either way. The timestamp is in milliseconds; ten digits or
+ * fewer reads as seconds.
+ */
+async function verifyLegacySignature(value: string, rawBody: string | Uint8Array, key: Uint8Array, now: number): Promise<SignatureCheck> {
+  const entries = value
+    .split(',')
+    .map((entry) => entry.trim().split(';'))
+    .filter((parts) => parts.length === 4 && parts[0] === 'hmac' && parts[1] === '1')
+  if (!entries.length) return { ok: false, why: 'missing headers' }
+  const bodies = legacyBodies(rawBody)
+  let matched: string | null = null
+  for (const [, , stamp = '', given = ''] of entries) {
+    if (!/^\d{1,16}$/.test(stamp)) continue
+    const givenBytes = base64Bytes(given)
+    if (!givenBytes) continue
+    for (const body of bodies) {
+      const expected = await hmacSha256(key, new TextEncoder().encode(`${stamp}.${body}`))
+      if (sameBytes(givenBytes, expected)) {
+        matched = stamp
+        break
+      }
+    }
+    if (matched) break
+  }
+  if (!matched) return entries.some(([, , stamp = '']) => /^\d{1,16}$/.test(stamp)) ? { ok: false, why: 'bad signature' } : { ok: false, why: 'bad timestamp' }
+  const timestamp = matched.length > 10 ? Math.floor(Number(matched) / 1000) : Number(matched)
+  const age = Math.floor(now / 1000) - timestamp
+  if (age > QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too old' }
+  if (age < -QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too new' }
+  return { ok: true, webhookId: legacyEventId(rawBody) ?? `legacy:${matched}`, timestamp }
+}
+
+// ---------- a delivery seen before ----------
+
+/** A delivery the webhook has taken: its `webhook-id` and when (ms). */
+export interface SeenDelivery {
+  id: string
+  at: number
+}
+
+/**
+ * Whether this `webhook-id` was taken in the last `QUO_SEEN_KEEP_HOURS`, the ids gone past that to drop, and the row
+ * to record when it is new. An id older than the window is taken as new: Quo stopped retrying it long before.
+ */
+export function seenBefore(id: string, seen: readonly SeenDelivery[], now: number): { repeat: boolean; drop: string[]; record: SeenDelivery | null } {
+  const cutoff = now - QUO_SEEN_KEEP_HOURS * 3_600_000
+  const repeat = seen.some((s) => s.id === id && s.at >= cutoff)
+  return {
+    repeat,
+    drop: seen.filter((s) => s.at < cutoff).map((s) => s.id),
+    record: repeat ? null : { id, at: now },
+  }
+}
+
+// ---------- the answer ----------
+
+/** How one delivery ended. */
+export type WebhookOutcome =
+  | { kind: 'handled'; type: string; eventId: string }
+  | { kind: 'ignored'; why: string }
+  | { kind: 'repeat'; webhookId: string }
+  | { kind: 'refused'; why: SignatureRefusal }
+  | { kind: 'failed'; why: string }
+
+/** What the edge function answers, what it logs, and whether it gives back its claim on the delivery first. */
+export interface WebhookAnswer {
+  status: 200 | 401 | 500
+  body: { ok: boolean; ignored?: string; repeat?: true; error?: string }
+  log: string | null
+  /** Delete the delivery's claim before answering, so Quo's retry is taken as new. */
+  release: boolean
+}
+
+/**
+ * The answer for each ending. Every 2xx tells Quo to stop sending it, so only a failure worth another try is a 500.
+ * A refusal says no more than unauthorized; the reason goes to the log.
+ */
+export function webhookAnswer(outcome: WebhookOutcome): WebhookAnswer {
+  switch (outcome.kind) {
+    case 'handled':
+      return { status: 200, body: { ok: true }, log: null, release: false }
+    case 'ignored':
+      return { status: 200, body: { ok: true, ignored: outcome.why }, log: `ignored: ${outcome.why}`, release: false }
+    case 'repeat':
+      return { status: 200, body: { ok: true, repeat: true }, log: `repeat delivery ${outcome.webhookId}`, release: false }
+    case 'refused':
+      return { status: 401, body: { ok: false, error: 'unauthorized' }, log: `refused: ${outcome.why}`, release: false }
+    case 'failed':
+      return { status: 500, body: { ok: false, error: 'try again' }, log: `failed: ${outcome.why}`, release: true }
+  }
+}

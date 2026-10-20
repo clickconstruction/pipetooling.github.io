@@ -133,11 +133,15 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
     const jobIds = [...new Set([...rows.map((r) => r.job_id as string), ...affidavitRows.map((r) => r.job_id as string)])]
     if (jobIds.length === 0) return { rows, affidavitRows, items: [], filings: [], jobs: [], gcs: [], addresses: [], owners: [] }
     const [jobsRes, itemsRes, filingsRes, ownersRes] = await Promise.all([
-      admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on').in('id', jobIds),
+      // The same columns as the app's LIEN_BOOK_JOB_COLUMNS (src/lib/jobs/lienTimelineBookAssemble.ts, v2.5124). customer_name
+      // is read for the ZZ test-job rule only: shapeLienBookForCounsel drops ZZ jobs and cuts the column before the book is sent.
+      admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on, customer_name').in('id', jobIds),
       admin.from('job_lien_desk_items').select(LIEN_BOOK_COUNSEL_SELECT.deskItems).in('job_id', jobIds).is('voided_at', null).order('created_at', { ascending: false }),
       admin.from('job_lien_filings').select(LIEN_BOOK_COUNSEL_SELECT.filings).in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
       admin.from('job_property_owners').select(LIEN_BOOK_COUNSEL_SELECT.owners).in('job_id', jobIds),
     ])
+    // Without the jobs no ZZ test job can be told apart, so the book is not sent (v2.5124).
+    if (jobsRes.error) throw jobsRes.error
     const jobs = (jobsRes.data ?? []) as Row[]
     const gcIds = [...new Set(jobs.map((j) => j.gc_customer_id as string | null).filter((v): v is string => Boolean(v)))]
     const addressIds = [...new Set(jobs.map((j) => j.customer_address_id as string | null).filter((v): v is string => Boolean(v)))]
@@ -258,7 +262,7 @@ serve(async (req) => {
 
     // Item 20's floor columns ride the named list once its migration (20261006140000) is pushed; until then the
     // read without them answers, and every matter reads no floor (item 23 names the columns, so '*' is gone).
-    const readMatters = (cols: string) => admin.from('legal_matters').select(cols).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
+    const readMatters = (cols: string) => admin.from('legal_matters').select<string, Row>(cols).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
     let matterRes = await readMatters(`${MATTER_COUNSEL_SELECT.matters}, settlement_floor_amount, settlement_floor_pct`)
     if (matterRes.error) matterRes = await readMatters(MATTER_COUNSEL_SELECT.matters)
     const matterRows = matterRes.data
@@ -294,16 +298,16 @@ serve(async (req) => {
     const customerIds = [...new Set(matters.map((m) => m.customer_id as string | null).filter((x): x is string => Boolean(x)))]
 
     const [jobsRes, invRes, payRes, custRes, personsRes, addrRes, contractsRes, estRes, demandRes, filingRes, deskItemRes, promRes, touchRes, contactRes, reportRes, tplRes, sessRes, noteRes, entryRes] = await Promise.all([
-      allJobIds.length ? admin.from('jobs_ledger').select(MATTER_COUNSEL_SELECT.jobs).in('id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_invoices').select(MATTER_COUNSEL_SELECT.invoices).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_payments').select(MATTER_COUNSEL_SELECT.payments).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customers').select(MATTER_COUNSEL_SELECT.customers).in('id', customerIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customer_contact_persons').select(MATTER_COUNSEL_SELECT.contactPersons).in('customer_id', customerIds) : Promise.resolve({ data: [] }),
-      customerIds.length ? admin.from('customer_addresses').select(MATTER_COUNSEL_SELECT.addresses).in('customer_id', customerIds).order('sequence_order') : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_contracts').select(MATTER_COUNSEL_SELECT.contracts).in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('estimates').select(MATTER_COUNSEL_SELECT.estimates).in('job_ledger_id', allJobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_demand_letters').select(MATTER_COUNSEL_SELECT.demandLetters).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_lien_filings').select(MATTER_COUNSEL_SELECT.filings).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger').select<string, Row>(MATTER_COUNSEL_SELECT.jobs).in('id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger_invoices').select<string, Row>(MATTER_COUNSEL_SELECT.invoices).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger_payments').select<string, Row>(MATTER_COUNSEL_SELECT.payments).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customers').select<string, Row>(MATTER_COUNSEL_SELECT.customers).in('id', customerIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customer_contact_persons').select<string, Row>(MATTER_COUNSEL_SELECT.contactPersons).in('customer_id', customerIds) : Promise.resolve({ data: [] }),
+      customerIds.length ? admin.from('customer_addresses').select<string, Row>(MATTER_COUNSEL_SELECT.addresses).in('customer_id', customerIds).order('sequence_order') : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_contracts').select<string, Row>(MATTER_COUNSEL_SELECT.contracts).in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('estimates').select<string, Row>(MATTER_COUNSEL_SELECT.estimates).in('job_ledger_id', allJobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_demand_letters').select<string, Row>(MATTER_COUNSEL_SELECT.demandLetters).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_lien_filings').select<string, Row>(MATTER_COUNSEL_SELECT.filings).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_lien_desk_items').select('id, job_id, kind, status, sent_at, sent_filing_id, fields, created_at, voided_at').in('job_id', allJobIds).eq('kind', 'notice_53_056').is('voided_at', null) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_payment_promises').select('id, job_id, customer_id, promised_date, said_by, heard_by, channel, source, note, created_at, voided_at').in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('job_payment_chase_touches').select('id, customer_id, job_id, outcome, note, promised_date, snooze_days, resolved_at, created_at, created_by').in('customer_id', customerIds) : Promise.resolve({ data: [] }),
@@ -325,6 +329,28 @@ serve(async (req) => {
     const estimates = (estRes.data ?? []) as Row[]
     const demands = (demandRes.data ?? []) as Row[]
     const filings = (filingRes.data ?? []) as Row[]
+    // Counsel's packet (the Docsmit train, PR 8): the mail pieces behind the matters' filings — when USPS accepted
+    // each, the delivery and who signed, and the Certification PDF as a 15-minute link. Until the table exists the
+    // list is empty and the portal still opens.
+    const filingIds = filings.map((f) => f.id as string)
+    const pieceRows: Row[] = []
+    if (allJobIds.length) {
+      const { data: byJob, error: pieceErr } = await admin.from('mail_pieces').select(MATTER_COUNSEL_SELECT.mailPieces).in('job_id', allJobIds)
+      if (!pieceErr) {
+        pieceRows.push(...((byJob ?? []) as Row[]))
+        if (filingIds.length) {
+          const { data: bySource } = await admin.from('mail_pieces').select(MATTER_COUNSEL_SELECT.mailPieces).overlaps('source_ids', filingIds)
+          for (const p of (bySource ?? []) as Row[]) if (!pieceRows.some((q) => q.id === p.id)) pieceRows.push(p)
+        }
+      }
+    }
+    const pieceUrls = new Map<string, string>()
+    await Promise.all(pieceRows.filter((p) => typeof p.certification_path === 'string' && p.certification_path).map(async (p) => {
+      const { data: signed } = await admin.storage.from(String(p.pdf_bucket ?? 'lien-release-documents')).createSignedUrl(p.certification_path as string, SIGNED_PDF_SECONDS)
+      if (signed?.signedUrl) pieceUrls.set(p.id as string, signed.signedUrl)
+    }))
+    const pieceInMatter = (p: Row, jobIdSet: Set<string>) =>
+      jobIdSet.has(p.job_id as string) || (Array.isArray(p.source_ids) && (p.source_ids as string[]).some((id) => filings.some((f) => f.id === id && jobIdSet.has(f.job_id as string))))
     // The notice desk items shaped down to the sent-notice facts (#41 PR 1b): the owner's call, letter two, the GC's okay.
     // The rest of the office's draft (the cover letter, a skip's reason, the leader's spoken word) never leaves.
     const deskItems = ((deskItemRes.data ?? []) as Row[]).map((it) => {
@@ -352,8 +378,8 @@ serve(async (req) => {
     // owner's email. The packet kernel resolves one property per job and runs each job's lien clock from it.
     const jobAddressIds = [...new Set(jobs.map((j) => j.customer_address_id as string | null).filter((v): v is string => Boolean(v)))]
     const [jobAddrRes, ownerRes] = await Promise.all([
-      jobAddressIds.length ? admin.from('customer_addresses').select(MATTER_COUNSEL_SELECT.jobAddresses).in('id', jobAddressIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_property_owners').select(MATTER_COUNSEL_SELECT.jobOwners).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      jobAddressIds.length ? admin.from('customer_addresses').select<string, Row>(MATTER_COUNSEL_SELECT.jobAddresses).in('id', jobAddressIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_property_owners').select<string, Row>(MATTER_COUNSEL_SELECT.jobOwners).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
     ])
     const jobAddressRows = (jobAddrRes.data ?? []) as Row[]
     const ownerRows = (ownerRes.data ?? []) as Row[]
@@ -423,7 +449,7 @@ serve(async (req) => {
 
       const mInvoices = invoices.filter((i) => jobIdSet.has(i.job_id as string))
       const mPayments = payments.filter((p) => jobIdSet.has(p.job_id as string))
-      const jobsWithDetails = mJobs.map((j) => ({
+      const jobsWithDetails: Row[] = mJobs.map((j) => ({
         ...j,
         invoices: mInvoices.filter((i) => i.job_id === j.id),
         payments: mPayments.filter((p) => p.job_id === j.id),
@@ -489,6 +515,7 @@ serve(async (req) => {
         signedEstimates: estimates.filter((e) => jobIdSet.has(e.job_ledger_id as string)),
         demandLetters: demands.filter((d) => jobIdSet.has(d.job_id as string)),
         lienFilings: filings.filter((f) => jobIdSet.has(f.job_id as string)),
+        mailPieces: pieceRows.filter((p) => pieceInMatter(p, jobIdSet)).map((p) => ({ ...p, certificationUrl: pieceUrls.get(p.id as string) ?? null, certification_path: undefined, pdf_bucket: undefined })),
         lienDeskItems: deskItems.filter((it) => jobIdSet.has(it.job_id as string)),
         promises: mPromises,
         promiseRecords,

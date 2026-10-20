@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 // Deno edge module (supabase/functions/_shared) — tested here.
-import { WAIVER_EMAIL_CARD_BLURB, waiverEmailRecipientCustomerId, withWaiverAccountCard } from '../../../supabase/functions/_shared/lienWaiverEmailCard'
+import { WAIVER_EMAIL_CARD_BLURB, waiverEmailFromName, waiverEmailRecipientCustomerId, withWaiverAccountCard } from '../../../supabase/functions/_shared/lienWaiverEmailCard'
+import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
+import { GC_COMPANY } from '../gc/company'
+
+describe('who the waiver email is from', () => {
+  it('GC mode\'s billing job sends as our GC entity; every other job, a sub job that bills a GC included, as the company', () => {
+    expect(waiverEmailFromName(true)).toBe(GC_COMPANY.name)
+    expect(waiverEmailFromName(false)).toBe(PORTAL_COMPANY.name)
+  })
+})
 
 describe('the waiver email’s account card (v2.4304)', () => {
   const base = { jobCustomerId: 'owner-1', jobCustomerEmail: 'owner@home.test', gcCustomerId: 'gc-1', gcBillingEmail: 'AP@Loberg.test' }

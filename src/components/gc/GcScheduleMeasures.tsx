@@ -26,7 +26,22 @@ export function ScheduleWhy() {
   )
 }
 
-export function Measures({ m, late, best, outlook, onAsk }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook; onAsk?: () => void }) {
+export function Measures({
+  m,
+  late,
+  best,
+  outlook,
+  onAsk,
+  askNote,
+}: {
+  m: ReturnType<typeof scheduleMeasures>
+  late?: LateFinish
+  best?: RecoveryOffer
+  outlook?: FinishOutlook
+  onAsk?: () => void
+  /** Under the whose-days line when this reader has no Ask for the days (PR 16b-ii): who asks instead. */
+  askNote?: string
+}) {
   const behind = m.work.daysBehind
   const nextMilestone = m.milestones.find((r) => r.state === 'due')
   const lateOnes = m.milestones.filter((r) => r.state === 'late' || r.state === 'missed')
@@ -61,7 +76,7 @@ export function Measures({ m, late, best, outlook, onAsk }: { m: ReturnType<type
       >
         {rel.done} of {rel.of} verified marks were done. {rel.waiting > 0 ? `${rel.waiting} ${rel.waiting === 1 ? 'mark waits' : 'marks wait'} on our superintendent.` : ''}
       </Measure>
-      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} {...(outlook ? { outlook } : {})} {...(onAsk ? { onAsk } : {})} />}
+      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} {...(outlook ? { outlook } : {})} {...(onAsk ? { onAsk } : {})} {...(askNote ? { askNote } : {})} />}
     </div>
   )
 }
@@ -83,6 +98,7 @@ function FinishMeasure({
   best,
   outlook,
   onAsk,
+  askNote,
 }: {
   finish: ProjectedFinish
   contract: ReturnType<typeof substantialCompletionOn>
@@ -90,6 +106,7 @@ function FinishMeasure({
   best?: RecoveryOffer
   outlook?: FinishOutlook
   onAsk?: () => void
+  askNote?: string
 }) {
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
   // The days past come from the one call Bill the customer and the customer's words read too (G-98).
@@ -116,6 +133,11 @@ function FinishMeasure({
               <span>{w}</span>
               {/* Ask for the days (G-141), under the whose-days line. Not a span, so the paper (G-21) prints only the lines. */}
               {w === late.split && late.ask && onAsk && <GcAskForDays ask={late.ask} where="schedule" onAsk={onAsk} />}
+              {w === late.split && late.ask && !onAsk && askNote && (
+                <span data-ask-note style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  {askNote}
+                </span>
+              )}
             </Fragment>
           ))}
         </span>

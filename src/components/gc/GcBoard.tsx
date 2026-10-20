@@ -1,12 +1,30 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { proposalTotals, proposalUncostedWords } from '../../lib/gc/bids'
-import { BOARD_SECTION_ORDER, boardSectionElementId, boardSectionOf, boardSectionWorthWords, type BoardSection } from '../../lib/gc/boardGroups'
+import {
+  BOARD_SECTION_ORDER,
+  boardCustomerElementId,
+  boardSectionCounts,
+  boardSectionElementId,
+  boardSectionOf,
+  boardSectionWorthWords,
+  customerGroups,
+  customerWorthWords,
+  type BoardGroupBy,
+  type BoardSection,
+} from '../../lib/gc/boardGroups'
 import { currentRev, planLabel } from '../../lib/gc/lookups'
 import { lostWords } from '../../lib/gc/lost'
-import type { GcProject, GcState } from '../../lib/gc/types'
+import type { GcProject, GcStage, GcState } from '../../lib/gc/types'
 import { daysUntil, money, shortDate, weekdayDate } from '../../lib/gc/words'
-import { GcBoardStrip, GcStageHeading, type StageStripItem } from './GcBoardStages'
+import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, type BoardStripItem, type StageStripItem } from './GcBoardStages'
+import { projectPeople, type ProjectPerson } from '../../lib/gc/projectPeople'
+import { callSheetId } from '../../lib/gc/schedule/callList'
+import { useCustomerOpener } from './gcCustomerOpener'
+import { GcPeoplePill } from './GcPeoplePill'
+import { GcProgressRing } from './GcProgressRing'
+import { RING_COLORS, stageProgress } from '../../lib/gc/progress'
+import type { RingRead } from './useRingLayers'
 import { GcPriceCard, GcPriceLikely, GcPriceTrigger } from './GcPriceCard'
 import { Chip, PlusUnknown, type Tone } from './gcUi'
 import { GC_ICON_PATHS } from './gcIcons'
@@ -18,8 +36,13 @@ import { usePriceCard } from './usePriceCard'
  * board (`GcMode.tsx`). The three stages and Closed and Lost, each a section with its heading, and
  * the strip that jumps between them; each project a row with its days left (or its start), its
  * customer and architect, and its price with the card behind it. Read only: a row opens the
- * project. The ring, Who to call and By customer come with the Board's B2b, once the kernels they
- * read are on main.
+ * project. Since the Board's B2b-ii each row carries Who to call (`GcPeoplePill`): its job's share of the people we wait
+ * on (`projectPeople`). Follow up's badge and Needs you keep one number (call E1): since v2.5289 the people waiting on us
+ * (`follow_up_count`), while everyone we wait on (`allPeople`) heads the asks list under them. Since B2b-iii the strip's **By stage | By customer** switch (the owner, 2026-10-04; By
+ * stage each time the board opens) shows the same rows under each customer we build for, a heading per stage they
+ * have jobs in, their closed and lost jobs on one quiet line. A section and a customer are worth `priceToOwner`'s price
+ * (gc 5's read). The ring comes with a later cut. Since B2b-viii-a (`onFollowUpJob`) the Who to call card's Follow up and
+ * **Work the list** open the Follow up sheet on the job's people.
  */
 
 const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: number; blurb: string; empty: string; order: (a: GcProject, b: GcProject) => number }> = {
@@ -63,6 +86,52 @@ const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: numbe
   },
 }
 
+/** The three stages a job moves through, in order: the small headings under a customer on By customer. */
+const STAGES: GcStage[] = ['pursuing', 'buyout', 'building']
+
+/** By stage | By customer before the strip's pills (the design spike's switch). By stage is the board's own order. */
+function GroupSwitch({ value, onChange }: { value: BoardGroupBy; onChange: (v: BoardGroupBy) => void }) {
+  const options: { key: BoardGroupBy; label: string }[] = [
+    { key: 'stage', label: 'By stage' },
+    { key: 'customer', label: 'By customer' },
+  ]
+  return (
+    <span role="group" aria-label="Group the board" data-tour="gc-group-switch" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          aria-pressed={value === o.key}
+          onClick={() => onChange(o.key)}
+          style={{
+            border: 'none',
+            padding: '0.25rem 0.8rem',
+            fontSize: '0.8rem',
+            fontWeight: value === o.key ? 600 : 400,
+            cursor: 'pointer',
+            background: value === o.key ? 'var(--bg-blue-tint)' : 'transparent',
+            color: value === o.key ? 'var(--text-blue-800)' : 'var(--text-muted)',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </span>
+  )
+}
+
+const alsoLink: CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  font: 'inherit',
+  color: 'var(--text-link)',
+  cursor: 'pointer',
+  textDecoration: 'underline',
+  textDecorationColor: 'var(--border-blue)',
+  textUnderlineOffset: 3,
+}
+
 export function GcBoard({
   state,
   onOpen,
@@ -70,6 +139,9 @@ export function GcBoard({
   onCompare,
   moneyShown = true,
   folderUrls = {},
+  onChase,
+  onFollowUpJob,
+  ring,
 }: {
   state: GcState
   /** Opens a project: its card on the GC projects page. */
@@ -81,6 +153,15 @@ export function GcBoard({
   moneyShown?: boolean
   /** Each project's Drive folder, by project id. */
   folderUrls?: Record<string, string>
+  /** Opens Follow up, from a row's Who to call card (B2b-ii). Unset: rows draw no Who to call. */
+  onChase?: () => void
+  /**
+   * The Follow up sheet on one job's people, at a person (a company's id, or `customer:<id>`), on "What did they say?" after a
+   * Call (B2b-viii-a). Unset: the Who to call card's Call only dials, and it has no Work the list.
+   */
+  onFollowUpJob?: (projectId: string, partnerId: string, calling: boolean) => void
+  /** The rings' read (B2b-vi-c, `useRingLayers`): each row's ring, from the board with what it counts laid over it. Unset: no ring column. */
+  ring?: RingRead | null
 }) {
   const bySection = new Map<BoardSection, GcProject[]>()
   for (const key of BOARD_SECTION_ORDER) bySection.set(key, [])
@@ -93,33 +174,107 @@ export function GcBoard({
     count: bySection.get(key)?.length ?? 0,
     ...(SECTIONS[key].number ? { number: SECTIONS[key].number } : {}),
   }))
-  const jump = useJumpStrip(true, BOARD_SECTION_ORDER, (k) => boardSectionElementId(k as BoardSection))
+  // A section is worth what its customers pay: the price they signed once they sign, ours until then (`priceToOwner`).
+  const counts = boardSectionCounts(state)
+  // By customer (the owner, 2026-10-04): the same rows under each customer we build for. By stage each time it opens.
+  const [group, setGroup] = useState<BoardGroupBy>('stage')
+  const groups = customerGroups(state)
+  const customers = useCustomerOpener()
+  const customerItems: BoardStripItem[] = groups.map((g) => ({
+    key: g.customer.id,
+    label: g.customer.name,
+    tone: 'blue',
+    count: g.open.length,
+    dots: STAGES.filter((stage) => g.open.some((p) => p.stage === stage)).map((stage) => SECTIONS[stage].tone),
+  }))
+  const byCustomer = group === 'customer'
+  const jump = useJumpStrip(
+    true,
+    byCustomer ? groups.map((g) => g.customer.id) : BOARD_SECTION_ORDER,
+    (k) => (byCustomer ? boardCustomerElementId(k) : boardSectionElementId(k as BoardSection)),
+    group,
+  )
+  const row = (p: GcProject) => (
+    <ProjectRow
+      key={p.id}
+      project={p}
+      state={state}
+      onOpen={() => onOpen(p.id)}
+      onPlans={() => onPlans(p.id)}
+      onCompare={onCompare && ((packageId) => onCompare(p.id, packageId))}
+      moneyShown={moneyShown}
+      folderUrl={folderUrls[p.id] ?? ''}
+      byCustomer={byCustomer}
+      {...(onChase ? { onChase } : {})}
+      {...(onFollowUpJob ? { onFollowUp: (partnerId: string, calling: boolean) => onFollowUpJob(p.id, partnerId, calling) } : {})}
+      {...(ring ? { ring } : {})}
+    />
+  )
   return (
     <section aria-label="Project Board" style={{ display: 'grid', gap: '1rem' }}>
-      <GcBoardStrip items={items} active={jump.active} onJump={jump.jumpTo} label="Jump to a stage" />
-      {BOARD_SECTION_ORDER.map((key) => {
+      <GcBoardStrip
+        items={byCustomer ? customerItems : items}
+        active={jump.active}
+        onJump={jump.jumpTo}
+        label={byCustomer ? 'Jump to a customer' : 'Jump to a stage'}
+        lead={<GroupSwitch value={group} onChange={setGroup} />}
+      />
+      {byCustomer &&
+        groups.map((g) => {
+          // Closed and lost jobs fold into one quiet line under the customer (the spike's rule).
+          const folded = [...g.closed.map((p) => ({ p, word: `closed ${shortDate(p.closedOn ?? '')}` })), ...g.lost.map((p) => ({ p, word: 'lost' }))]
+          return (
+            <div key={g.customer.id} data-gc-board-customer={g.customer.id} style={{ display: 'grid', gap: '0.5rem' }}>
+              <GcCustomerHeading
+                id={boardCustomerElementId(g.customer.id)}
+                name={g.customer.name}
+                title={`Open ${g.customer.name}`}
+                onName={() => customers?.openCustomer(g.customer.id)}
+                count={g.open.length}
+                sub={g.customer.contact}
+                money={customerWorthWords(g.open)}
+              />
+              {g.open.length === 0 ? (
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '0 0.25rem' }}>Nothing open with them right now.</span>
+              ) : (
+                STAGES.filter((stage) => g.open.some((p) => p.stage === stage)).map((stage) => {
+                  const jobs = g.open.filter((p) => p.stage === stage)
+                  const item = items.find((i) => i.key === stage)!
+                  return (
+                    <div key={stage} style={{ display: 'grid', gap: '0.5rem' }}>
+                      <GcStageSubheading item={{ ...item, count: jobs.length }} />
+                      {jobs.map(row)}
+                    </div>
+                  )
+                })
+              )}
+              {folded.length > 0 && (
+                <div data-gc-board-also={g.customer.id} style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  Also:{' '}
+                  {folded.map(({ p, word }, i) => (
+                    <span key={p.id}>
+                      {i > 0 && ' · '}
+                      <button type="button" onClick={() => onOpen(p.id)} style={alsoLink}>
+                        {p.name}
+                      </button>
+                      , {word}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      {!byCustomer && BOARD_SECTION_ORDER.map((key) => {
         const list = bySection.get(key) ?? []
-        // Until the customer's signed price is on main (Owner Billing), a section is worth what its bids price at.
-        const worth = list.reduce((t, p) => t + proposalTotals(p).price, 0)
         const item = items.find((i) => i.key === key)!
         return (
           <div key={key} style={{ display: 'grid', gap: '0.5rem' }}>
-            <GcStageHeading item={item} worth={boardSectionWorthWords({ key, count: list.length, worth })} blurb={SECTIONS[key].blurb} />
+            <GcStageHeading item={item} worth={boardSectionWorthWords(counts.find((c) => c.key === key) ?? { key, count: 0, worth: 0 })} blurb={SECTIONS[key].blurb} />
             {list.length === 0 ? (
               <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '0 0.25rem' }}>{SECTIONS[key].empty}</span>
             ) : (
-              list.map((p) => (
-                <ProjectRow
-                  key={p.id}
-                  project={p}
-                  state={state}
-                  onOpen={() => onOpen(p.id)}
-                  onPlans={() => onPlans(p.id)}
-                  onCompare={onCompare && ((packageId) => onCompare(p.id, packageId))}
-                  moneyShown={moneyShown}
-                  folderUrl={folderUrls[p.id] ?? ''}
-                />
-              ))
+              list.map(row)
             )}
           </div>
         )
@@ -246,6 +401,29 @@ const linkIcon: CSSProperties = {
   borderRadius: 6,
 }
 
+/**
+ * A row's ring (B2b-vi-c): how far the job is through its stage, from the rings' read. A stage the reader may not see keeps
+ * an empty cell, so the rows line up; one still reading what it counts is an empty track that says so.
+ */
+function RingCell({ project, ring }: { project: GcProject; ring: RingRead }) {
+  const laid = ring.state.projects.find((p) => p.id === project.id)
+  const label = SECTIONS[boardSectionOf(project)].label
+  if (!ring.shown.has(project.stage) || !laid) return <span aria-hidden />
+  if (!ring.ready.has(project.stage)) {
+    const words = ring.failed ? 'The ring could not read what it counts. Reload the page to try again.' : 'Reading what the ring counts.'
+    return (
+      <span data-gc-board-ring={project.id} style={{ display: 'flex', justifyContent: 'center' }}>
+        <span role="img" aria-label={words} title={words} style={{ width: 56, height: 56, boxSizing: 'border-box', borderRadius: '50%', border: '7px solid var(--border)' }} />
+      </span>
+    )
+  }
+  return (
+    <span data-gc-board-ring={project.id} style={{ display: 'flex', justifyContent: 'center' }}>
+      <GcProgressRing progress={stageProgress(ring.state, laid)} color={RING_COLORS[project.stage]} stageLabel={label} />
+    </span>
+  )
+}
+
 function ProjectRow({
   project,
   state,
@@ -254,6 +432,10 @@ function ProjectRow({
   onCompare,
   moneyShown,
   folderUrl,
+  byCustomer = false,
+  onChase,
+  onFollowUp,
+  ring,
 }: {
   project: GcProject
   state: GcState
@@ -262,11 +444,23 @@ function ProjectRow({
   onCompare?: ((packageId: string) => void) | undefined
   moneyShown: boolean
   folderUrl: string
+  /** On By customer the heading names the customer, so the row leaves their name out (B2b-iii). */
+  byCustomer?: boolean
+  onChase?: () => void
+  /** The Follow up sheet on this job's people, at a person (`callSheetId`). */
+  onFollowUp?: (partnerId: string, calling: boolean) => void
+  ring?: RingRead
 }) {
   // Outside the money team the price is the trades alone (B5-c), so its words say so.
   const soFar = moneyShown ? 'so far' : 'trades so far'
   const totals = proposalTotals(project)
+  // Who to call on this job, and Work the list from the first of them (B2b-viii-a): the sheet walks the job's people.
+  const people = onChase && !project.lostOn ? projectPeople(state, project) : null
+  const firstPerson = people?.people[0]
+  const workList = onFollowUp && firstPerson ? () => onFollowUp(callSheetId(firstPerson), false) : null
   const card = usePriceCard()
+  // The customer's name opens their window (the Board's B6-d-ii) where the page gives one; plain words otherwise.
+  const customers = useCustomerOpener()
   const newest = planLabel(project, currentRev(project))
   // A phone or a narrow pane: the days and the name on top, the rest on the lines under.
   const narrow = useMatchMedia('(max-width: 760px)')
@@ -282,12 +476,16 @@ function ProjectRow({
         cursor: 'pointer',
         color: 'var(--text-base)',
         display: 'grid',
-        gridTemplateColumns: narrow ? '6.5rem minmax(0, 1fr)' : '7rem minmax(0, 1fr) auto auto',
+        // The ring's column comes first when the page reads the rings (B2b-vi-c), on every row so they line up. On a phone
+        // the ring stands over the days block in its column, so the name keeps the width it has.
+        gridTemplateColumns: narrow ? '6.5rem minmax(0, 1fr)' : ring ? '3.5rem 7rem minmax(0, 1fr) auto auto' : '7rem minmax(0, 1fr) auto auto',
         gap: narrow ? '0.6rem 0.75rem' : '1rem',
         alignItems: 'center',
       }}
     >
-      <div style={{ display: 'flex' }}>
+      {ring && !narrow && <RingCell project={project} ring={ring} />}
+      <div style={ring && narrow ? { display: 'grid', justifyItems: 'center', gap: '0.4rem' } : { display: 'flex' }}>
+        {ring && narrow && <RingCell project={project} ring={ring} />}
         <DueBlock project={project} today={state.today} />
       </div>
       <span style={{ minWidth: 0 }}>
@@ -304,16 +502,37 @@ function ProjectRow({
         <br />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           {/* The dot rides with the customer's name, so it never starts a line on a phone. */}
-          {project.owner}
+          {byCustomer ? null : customers && project.customerId ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                customers.openCustomer(project.customerId)
+              }}
+              title={`Open ${project.owner}`}
+              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }}
+            >
+              {project.owner}
+            </button>
+          ) : (
+            project.owner
+          )}
           {project.architect && (
             <>
-              {'\u00a0·'} <span style={{ display: 'inline-block' }}>drawn by {project.architect}</span>
+              {byCustomer ? null : <>{'\u00a0·'} </>}
+              <span style={{ display: 'inline-block' }}>drawn by {project.architect}</span>
             </>
           )}
         </span>
         {project.lostOn && (
           <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
             <Chip tone="grey">{lostWords(project)}</Chip>
+          </span>
+        )}
+        {/* Everyone we are waiting on for this job, in one count (the owner, 2026-10-04). */}
+        {onChase && people && (
+          <span data-gc-board-people={project.id} style={{ display: 'block', marginTop: '0.35rem' }}>
+            <GcPeoplePill summary={people} projectName={project.name} onWorkList={workList} onOpenFollowUp={onChase} {...(onFollowUp ? { onFollowUp: (person: ProjectPerson, calling: boolean) => onFollowUp(callSheetId(person), calling) } : {})} />
           </span>
         )}
       </span>

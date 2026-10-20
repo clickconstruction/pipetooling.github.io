@@ -46,3 +46,17 @@ describe('promises other than a quote', () => {
     expect([promisesToChase(initialGcState()), promisesToChase(s)]).toEqual([2, 2])
   })
 })
+
+describe('a certificate waiting for the office (P5b-2m, "Office looks first")', () => {
+  it('leaves the insurance on Follow up while a certificate from the portal waits for a look', () => {
+    const state = initialGcState()
+    const before = insuranceRenewals(state).map((r) => r.partner.id)
+    expect(before.length).toBeGreaterThan(0)
+    const id = before[0]!
+    const waiting: GcState = {
+      ...state,
+      partners: state.partners.map((p) => (p.id === id ? { ...p, coiReceived: { id: 'paper-1', sentOn: state.today, expires: '2027-10-01' } } : p)),
+    }
+    expect(insuranceRenewals(waiting).map((r) => r.partner.id)).toEqual(before)
+  })
+})

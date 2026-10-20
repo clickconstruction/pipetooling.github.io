@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
 import { useAuth } from '../../hooks/useAuth'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
 import { useTallyUnlinkedCounts } from '../../hooks/useTallyUnlinkedCounts'
 import {
@@ -17,6 +18,7 @@ import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/u
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
+import { useDocsmitSettings } from '../../hooks/useDocsmitSettings'
 import { useOwnerRecordsSignedNudge } from '../../hooks/useOwnerRecordsSignedNudge'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
@@ -62,6 +64,8 @@ export function QuickfillNeedsYouSection({
 }) {
   const navigate = useNavigate()
   const { user: authUser, role } = useAuth()
+  /** ZZ test jobs off the Lien desk's count for every role but a dev who shows them (punch list #61). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
   // Customer Waiting (v2.3248): the Layout-level subscription; the Dispatch station is on this page.
   const customerWaitingCtx = useCustomerWaitingOptional()
   const customerWaiting = customerWaitingCtx && customerWaitingCtx.eligible ? summarizeCustomerWaiting(customerWaitingCtx.rows) : null
@@ -91,14 +95,16 @@ export function QuickfillNeedsYouSection({
   const bulkDelete = useBulkDeleteNudge(authUser?.id)
   const claimDev = useClaimDevAttemptsNudge(authUser?.id)
   const lienUnconditionalEnabled = Boolean(authUser?.id) && tallyStaffEligible
-  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled, hideZzTestJobs)
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
-  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
-  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled, hideZzTestJobs, authUser?.id ?? null)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled, hideZzTestJobs)
+  // Docsmit's prepaid credit (the Docsmit train, 6b, the credit line): the balance the poll last read, against the warn line.
+  const docsmit = useDocsmitSettings()
   // Owners who signed for our records on their portal (punch list #86) — the same office set.
-  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(lienUnconditionalEnabled)
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(lienUnconditionalEnabled, hideZzTestJobs, authUser?.id ?? null)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
-  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true })
+  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // Bank-label approvals ARE close-ritual work (journey-map Tier-2 #27): the
   // same card the Dashboard shows, so the Quickfill twin never lags it.
   // Banking is controller and above (v2.3305): the card opens Banking → Accounting,
@@ -155,6 +161,8 @@ export function QuickfillNeedsYouSection({
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
     lienWatch,
+    docsmitCreditEnabled: lienUnconditionalEnabled && docsmit.setUp,
+    docsmitCredit: docsmit.loaded ? { ...docsmit.credit, warn: docsmit.settings.creditWarn, nowIso: new Date().toISOString() } : null,
     lienDeskEnabled: lienUnconditionalEnabled,
     lienDesk: lienDeskData?.summary ?? null,
     lienDeskLeader: role === 'dev' || role === 'master_technician',
@@ -239,6 +247,8 @@ export function QuickfillNeedsYouSection({
             navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
           } else if (item.key === 'lien-tracking-owed') {
             navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
+          } else if (item.key === 'docsmit-credit') {
+            navigate('/jobs?tab=stages&liendesk=1&liendeskPile=ready')
           } else if (item.key === 'owner-records-signed') {
             const jobId = ownerRecordsSigned?.first.jobId
             navigate(jobId ? ownerRecordsHref(jobId) : '/jobs?tab=stages&liendesk=1')

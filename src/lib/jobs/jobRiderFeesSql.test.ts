@@ -51,7 +51,9 @@ describe('every rewrite of the revenue from the line items keeps the riders (v2.
 
   it.each(KEEP_THE_RIDERS)('%s adds job_rider_fees to the lines it sums', (name) => {
     const { file, body } = newestBodies.get(name)!
-    expect(file, `${name}'s newest body is the one that adds the riders`).toBe('20261010023000_revenue_keeps_check_fee.sql')
+    // The riders landed in 20261010023000; a later restatement (v2.5655 narrowed a primary's reach in
+    // record_job_tip_from_deposit) stands only while its body still adds them, which the next line pins.
+    expect(file >= '20261010023000_revenue_keeps_check_fee.sql', `${name}'s newest body is older than the one that adds the riders: ${file}`).toBe(true)
     expect(body).toMatch(/\+\s*public\.job_rider_fees\(p_job_id\)/)
     // The riders come from the helper alone, so a hazmat fee is never counted twice.
     expect(body).not.toMatch(/job_hazmat_incidents/)
@@ -63,6 +65,30 @@ describe('every rewrite of the revenue from the line items keeps the riders (v2.
     expect(body).toMatch(/jsonb_typeof\(l->'case_id'\) = 'string' AND btrim\(l->>'case_id'\) <> ''/)
     expect(body).toMatch(/FROM public\.jobs_ledger_invoices i/)
     expect(body).toMatch(/WHERE i\.job_id = p_job_id/)
+  })
+
+  it('job_rider_fees counts a GC card fee too, and the GC billing job\'s revenue adds the riders (v2.5113)', () => {
+    const riders = newestBodies.get('job_rider_fees')!
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'card_bill'\) = 'string' AND btrim\(l->>'card_bill'\) <> ''/)
+    const revenue = newestBodies.get('gc_owner_billing_revenue')!
+    expect(revenue.body).toMatch(/public\.job_rider_fees\(g\.billing_job_id\)/)
+    // The card fee goes on its bill as the rider job_rider_fees reads.
+    const finish = newestBodies.get('gc_card_bill_finish')!
+    expect(finish.body).toMatch(/'card_bill', p_invoice_id/)
+  })
+
+  it('job_rider_fees counts a turnaway trip charge, and the function writes it on the trip charge\'s own bill (v2.5129)', () => {
+    const riders = newestBodies.get('job_rider_fees')!
+    expect(riders.file).toBe('20261010044000_trip_charge_rider.sql')
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'trip_charge'\) = 'string' AND btrim\(l->>'trip_charge'\) <> ''/)
+    // The other riders stay counted: the restatement took the newest body.
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'case_id'\) = 'string' AND btrim\(l->>'case_id'\) <> ''/)
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'card_bill'\) = 'string' AND btrim\(l->>'card_bill'\) <> ''/)
+    const trip = newestBodies.get('create_turnaway_trip_charge')!
+    expect(trip.body).toMatch(/jsonb_build_object\('trip_charge', p_reason, 'amount', v_amount\)/)
+    expect(trip.body).toMatch(/SET revenue = COALESCE\(revenue, 0\) \+ v_amount/)
+    // No description: the paper draws no row of its own for it.
+    expect(trip.body).not.toMatch(/'description'/)
   })
 
   it('the returned check fee still raises the revenue with its bill, so the riders have something to keep', () => {

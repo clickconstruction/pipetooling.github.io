@@ -65,4 +65,45 @@ describe('JobsStagesHideGroupsModal', () => {
     fireEvent.click(screen.getByText('Show everything'))
     expect(onChange).toHaveBeenCalledWith(EMPTY_STAGES_EXCLUDE_FILTERS)
   })
+
+  it('has no test-jobs line without one (every role but dev)', () => {
+    renderWithProviders(
+      <JobsStagesHideGroupsModal open onClose={vi.fn()} jobs={JOBS} filters={EMPTY_STAGES_EXCLUDE_FILTERS} onChange={vi.fn()} />,
+    )
+    expect(screen.queryByTestId('stages-hide-zz-test-jobs')).toBeNull()
+  })
+
+  it('a dev’s ZZ test jobs line: hidden by default with its count, and a tap shows them (punch list #61)', () => {
+    const onZz = vi.fn()
+    const { rerender } = renderWithProviders(
+      <JobsStagesHideGroupsModal
+        open
+        onClose={vi.fn()}
+        jobs={JOBS}
+        filters={EMPTY_STAGES_EXCLUDE_FILTERS}
+        onChange={vi.fn()}
+        zzTestJobs={{ count: 4, shown: false, onChange: onZz }}
+      />,
+    )
+    const line = screen.getByTestId('stages-hide-zz-test-jobs')
+    expect(line.getAttribute('aria-pressed')).toBe('true')
+    expect(line.textContent).toContain('ZZ test jobs')
+    expect(line.textContent).toContain('4 jobs')
+    expect(line.textContent).toContain('Hidden')
+    fireEvent.click(line)
+    expect(onZz).toHaveBeenCalledWith(true)
+    rerender(
+      <JobsStagesHideGroupsModal
+        open
+        onClose={vi.fn()}
+        jobs={JOBS}
+        filters={EMPTY_STAGES_EXCLUDE_FILTERS}
+        onChange={vi.fn()}
+        zzTestJobs={{ count: 4, shown: true, onChange: onZz }}
+      />,
+    )
+    expect(screen.getByTestId('stages-hide-zz-test-jobs').getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(screen.getByTestId('stages-hide-zz-test-jobs'))
+    expect(onZz).toHaveBeenLastCalledWith(false)
+  })
 })

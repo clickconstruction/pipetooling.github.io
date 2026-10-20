@@ -165,25 +165,25 @@ describe('LienDeskCalendarTab', () => {
     // the bar names Oct 15, so the GC row says only what to send
     expect(rmc.textContent).toContain('send 2 notices')
     expect(rmc.textContent).not.toContain('by Oct 15')
-    expect(rmc.querySelector('[title="2 notices owed by Oct 15"]')).toBeTruthy()
+    expect(rmc.querySelector('[aria-label="2 notices owed by Oct 15"]')).toBeTruthy()
     // Umar Khan: the sent month's check, the owed month's hollow flag (a door), the kind bracket
     const tracks = screen.getAllByTestId('lien-cal-track')
     expect(tracks.length).toBe(4)
     const umar = rowOf('881 PLUM')
     expect(within(umar).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
-    expect(within(umar).getByTitle('The July 2026 notice is on file')).toBeTruthy()
+    expect(within(umar).getByLabelText('The July 2026 notice is on file')).toBeTruthy()
     // every flag names its month — Rizvi's August too, which used to say "the last work month"
     expect(within(rowOf('890 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026 — send it by Oct 15/ })).toBeTruthy()
-    expect(screen.getByTitle(/Property kind not set: residential would be the first date, commercial Dec 15/)).toBeTruthy()
+    expect(screen.getByLabelText(/Property kind not set: residential would be the first date, commercial Dec 15/)).toBeTruthy()
     // Mike Holub: a pay dot and room
-    expect(screen.getByTitle(/Expected to pay Sep 30/)).toBeTruthy()
-    expect(screen.getByTitle('Room — the money is expected before the lien date')).toBeTruthy()
+    expect(screen.getByLabelText(/said they would pay: Sep 30/)).toBeTruthy()
+    expect(screen.getByLabelText('Room — the money is expected before the lien date')).toBeTruthy()
     expect(screen.queryByText('Knight')).toBeNull()
     fireEvent.click(overdueBar())
     expect(screen.getByText('Knight')).toBeTruthy()
     // Overdue's rows sit straight under its bar: no Lien gone row repeating it
     expect(screen.queryByTestId('lien-cal-group-gone')).toBeNull()
-    expect(screen.getByTitle(/The notice window closed May 15 unsent/)).toBeTruthy()
+    expect(screen.getByLabelText(/The notice window closed May 15 unsent/)).toBeTruthy()
   })
 
   it('every row starts at its work tick; a job dated from its creation day says so in amber (v2.4265)', () => {
@@ -193,7 +193,7 @@ describe('LienDeskCalendarTab', () => {
     expect(ticks.filter((t) => t.textContent === 'Aug 12').length).toBe(2)
     expect(screen.getByText('Aug 20')).toBeTruthy()
     expect(screen.getByText('Aug · no hours')).toBeTruthy()
-    expect(screen.getByTitle(/No approved hours — the board counts from the month the job was created \(Aug 3\)/)).toBeTruthy()
+    expect(screen.getByLabelText(/No approved hours — the board counts from the month the job was created \(Aug 3\)/)).toBeTruthy()
   })
 
   it('the work tick’s label is a door to the last day of work when the desk passes one; plain otherwise (v2.4735)', () => {
@@ -202,7 +202,8 @@ describe('LienDeskCalendarTab', () => {
     const doors = screen.getAllByTestId('lien-cal-work-door')
     expect(doors.length).toBe(4)
     const amber = doors.find((d) => d.textContent === 'Aug · no hours')!
-    expect(amber.getAttribute('title')).toMatch(/click to change the last day of work$/)
+    // v2.5531: the tooltip is gone; the door's name says what it does, the tick's card says the rest
+    expect(amber.getAttribute('aria-label')).toBe('Change the last day of work · 512 PLUM')
     fireEvent.click(amber)
     expect(onOpenLastWork).toHaveBeenCalledTimes(1)
     expect(onOpen).not.toHaveBeenCalled()
@@ -456,5 +457,58 @@ describe('the pen (v2.4153)', () => {
       const row = rowOf('890 PLUM')
       expect(row.querySelector('[data-lien-supplier-mark]')?.textContent).toContain('$1,670')
     })
+  })
+})
+
+describe('the In the mail mark (v2.5522)', () => {
+  it('a printed notice draws the amber circle, sits beside Notice on file in the key, counts on the bar, and its doors open Record the mailing', () => {
+    const onRecord = vi.fn()
+    const onDraft = vi.fn()
+    const mailedRows: LienCalendarJob[] = [
+      // August's notice printed and in the mail (Oct 15), July's on file (Sep 15): one circle of each colour on the row.
+      { jobId: 'm', number: '878 PLUM', name: 'Take 5- Seguin', customer: 'Southern Post', gcId: 'gc9', gcName: 'Southern Post Construction', address: '380 TX-123', openBalance: 38625, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 38625, lastWorkYmd: '2026-08-20', isSub: true, workMonths: ['2026-07', '2026-08'], noticedMonths: ['2026-07'], mailedMonths: ['2026-08'] }) },
+      // A plain owed notice on the same date, another GC: the bar keeps Draft the one beside Record the mailing.
+      { jobId: 'o', number: '891 PLUM', name: 'Take 5- Liberty Hill', customer: 'Burd', gcId: 'gc8', gcName: 'Burd & Assoc.', address: '11730 TX-29', openBalance: 6258, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 6258, lastWorkYmd: '2026-08-20', isSub: true }) },
+    ]
+    render(<LienDeskCalendarTab rows={mailedRows} todayYmd={TODAY} onOpenJob={() => {}} onDraft={onDraft} onRecord={onRecord} canWrite />)
+    const mark = screen.getByTestId('lien-cal-mailed')
+    expect(mark.textContent).toBe('✉')
+    expect(mark.getAttribute('aria-label')).toContain('printed and in the mail — record its tracking number by Oct 15')
+    const key = screen.getByTestId('lien-cal-key')
+    const shorts = within(key).getAllByRole('button').map((b) => b.textContent?.trim())
+    expect(shorts.indexOf('✉In the mail')).toBe(shorts.indexOf('✓Notice on file') + 1)
+    // Today is Sep 28, so Oct 15 is next month's bar.
+    const bar = screen.getByTestId('lien-cal-bucket-next_month')
+    expect(bar.textContent).toContain('2 notices across 2 GCs · 1 in the mail')
+    expect(bar.textContent).toContain('1 notice owed')
+    expect(bar.textContent).toContain('1 in the mail')
+    fireEvent.click(within(bar).getByTestId('lien-cal-record'))
+    expect(onRecord).toHaveBeenCalledWith(['m'])
+    fireEvent.click(mark)
+    expect(onRecord).toHaveBeenCalledTimes(2)
+    expect(within(bar).getByRole('button', { name: 'Draft the one ›' })).toBeTruthy()
+    // The key's own door for the mark.
+    fireEvent.click(within(key).getByRole('button', { name: /In the mail/ }))
+    fireEvent.click(within(screen.getByTestId('lien-cal-key-panel')).getByRole('button', { name: 'Record the mailing ›' }))
+    expect(onRecord).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('a notice in the mail whose date has passed (v2.5529)', () => {
+  it('its mark says the date has passed, with no "by" a day gone by, and still opens Record the mailing', () => {
+    const onRecord = vi.fn()
+    // Today Sep 28: June's date (Aug 17) has passed; July is on file.
+    const rows: LienCalendarJob[] = [
+      { jobId: 'p', number: '258 PLUM', name: 'Dudley Mason', customer: 'RMC', gcId: 'gc7', gcName: 'RMC- Dudley Mason', address: '628 Terrell Rd', openBalance: 9800, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 9800, lastWorkYmd: '2026-07-12', isSub: true, workMonths: ['2026-06', '2026-07'], noticedMonths: ['2026-07'], mailedMonths: ['2026-06'] }) },
+    ]
+    render(<LienDeskCalendarTab rows={rows} todayYmd={TODAY} onOpenJob={() => {}} onRecord={onRecord} canWrite />)
+    const mark = screen.getByTestId('lien-cal-mailed')
+    // v2.5531: the marks carry aria-labels, the hover card the words
+    expect(mark.getAttribute('aria-label')).toBe('The June 2026 notice is printed and in the mail; its date, Aug 17, has passed — record its tracking number and the day it went out, and it is on file')
+    fireEvent.click(mark)
+    expect(onRecord).toHaveBeenCalledWith(['p'])
+    // The GC row's folded envelope says the same: no "by" a day gone by.
+    expect(screen.getByLabelText('1 in the mail · its date, Aug 17, has passed')).toBeTruthy()
+    expect(screen.queryByLabelText(/in the mail by Aug 17/)).toBeNull()
   })
 })

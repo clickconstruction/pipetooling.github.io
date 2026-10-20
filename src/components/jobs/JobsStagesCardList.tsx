@@ -9,6 +9,7 @@ import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { checklistJobModalPreset } from '../../lib/checklistJobPreset'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
+import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { formatEstimatedCompletionDisplay, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import {
   invoiceOpenRemainingOnJob,
@@ -669,11 +670,14 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const jobHoursStoryModal = useJobHoursStoryModal()
+  // A customer's name on a card opens their profile, as on the desktop rows (JobsStagesTable).
+  const customerProfileModal = useCustomerProfileModal()
   const checklistAddModal = useChecklistAddModal()
   const shareJob = useShareJob()
   const sessionNotesOpener = useSessionNotesOpener()
   const [moreActionsJob, setMoreActionsJob] = useState<JobWithDetails | null>(null)
   const ctx: StagesRowRenderContext = {
+    openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
     showToast: props.showToast,
     customers: props.customers,
@@ -705,6 +709,8 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     onDevelopmentFilter: props.onDevelopmentFilter,
     jobContractCoverageByJobId: props.jobContractCoverageByJobId,
     onOpenJobContract: props.onOpenJobContract,
+    onOpenCustomerDoor: props.onOpenCustomerDoor,
+    boardDotByJobId: props.boardDotByJobId,
   }
 
   const openCrew = useStagesCrewModalOpener()
@@ -975,6 +981,8 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
   const jobHoursStoryModal = useJobHoursStoryModal()
+  // A customer's name on a card opens their profile, as on the desktop rows (JobsStagesTable).
+  const customerProfileModal = useCustomerProfileModal()
   const checklistAddModal = useChecklistAddModal()
   const shareJob = useShareJob()
   const sessionNotesOpener = useSessionNotesOpener()
@@ -986,6 +994,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   }
   const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
   const ctx: StagesRowRenderContext = {
+    openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
     showToast: props.showToast,
     customers: props.customers,
@@ -1017,6 +1026,8 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     onDevelopmentFilter: props.onDevelopmentFilter,
     jobContractCoverageByJobId: props.jobContractCoverageByJobId,
     onOpenJobContract: props.onOpenJobContract,
+    onOpenCustomerDoor: props.onOpenCustomerDoor,
+    boardDotByJobId: props.boardDotByJobId,
   }
 
   const openCrew = useStagesCrewModalOpener()

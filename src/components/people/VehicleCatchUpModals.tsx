@@ -214,7 +214,7 @@ export function VehicleReadingsCatchUpModal({
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-emerald-800)', fontVariantNumeric: 'tabular-nums', justifySelf: 'end' }}>
                 <span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: '50%', background: '#059669', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>✓</span>
                 {saved.toLocaleString()} mi
-                <span style={{ fontWeight: 500, color: 'var(--text-emerald-700, var(--text-emerald-800))' }}>· just now</span>
+                <span style={{ fontWeight: 500, color: 'var(--text-emerald-800)' }}>· just now</span>
               </span>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>

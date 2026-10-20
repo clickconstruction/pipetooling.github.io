@@ -325,7 +325,7 @@ serve(async (req) => {
           })
           reversedCreditNoteId = cn.id
         } else {
-          reversedCreditNoteId = existingCn.data.find((cn) => cn.status !== 'void')?.id ?? null
+          reversedCreditNoteId = existingCn.data.find((cn: Stripe.CreditNote) => cn.status !== 'void')?.id ?? null
         }
         const md =
           inv.metadata && typeof inv.metadata === 'object' && !Array.isArray(inv.metadata)

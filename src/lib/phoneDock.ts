@@ -14,6 +14,7 @@ import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { canAccessBanking } from './bankingAccess'
 import { canOpenRoadmap } from './roadmapVisibility'
+import { canOpenMessages } from './gc/access'
 
 export type PhoneDockPageKey =
   | 'jobs'
@@ -23,6 +24,7 @@ export type PhoneDockPageKey =
   | 'dashboard'
   | 'dispatchHome'
   | 'customers'
+  | 'messages'
   | 'po'
   | 'supplyHouses'
   | 'subsPay'
@@ -63,6 +65,7 @@ export type PhoneDockIcon =
   | 'bank'
   | 'flag'
   | 'grid'
+  | 'chat'
 
 export type PhoneDockPage = {
   key: PhoneDockPageKey
@@ -90,6 +93,9 @@ export const PHONE_DOCK_PAGES: PhoneDockPage[] = [
   { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: 'gauge', activity: ['dashboard', 'home'], visible: () => true },
   { key: 'dispatchHome', label: 'Dispatch home', to: '/dispatch-mode', icon: 'gauge', activity: ['dispatch-mode'], visible: staff },
   { key: 'customers', label: 'Customers', to: '/dispatch-mode/customers', icon: 'person', activity: ['customers'], visible: office },
+  // Messages (residential R2): the same office team as the header's Messages door (`canOpenMessages`), so an
+  // assistant on the dock reaches it from More, as the hamburger gives it to the owner and an estimator.
+  { key: 'messages', label: 'Messages', to: '/messages', icon: 'chat', activity: ['messages'], visible: canOpenMessages },
   { key: 'po', label: 'PO', to: '/dispatch-mode/po', icon: 'receipt', activity: [], visible: staff },
   { key: 'supplyHouses', label: 'Supply houses', to: '/materials?tab=supply-houses', icon: 'store', activity: ['materials:supply-houses'], visible: notField },
   { key: 'subsPay', label: 'Subs · Pay', to: '/jobs?tab=subs&view=pay', icon: 'dollar', activity: ['jobs:subs'], visible: staffOrSuper },

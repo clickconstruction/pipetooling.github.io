@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { dailyLogOn, logTrades, missingLogs, newDailyLog, weekOfLogs } from '../../lib/gc/buildingLog'
+import { crewOnSiteOn, crewsToSave, logWithClockIns, ourCrewNote, type OurCrewOnLog } from '../../lib/gc/dailyLogRows'
 import { partnerById } from '../../lib/gc/lookups'
 import type { LookAheadReason } from '../../lib/gc/schedule/types'
 import type { DailyLog, GcProject, GcState, WeatherSky } from '../../lib/gc/types'
 import { shortDate, weekdayDate } from '../../lib/gc/words'
 import { Btn, Card, Chip, input } from './gcUi'
+import { GcWeeklyReportCard, type WeeklyReportWrites } from './GcWeeklyReport'
 
 /**
  * GC mode, the real build, the Building lane's U3a-ii: the superintendent's daily log on real data,
@@ -28,7 +30,24 @@ interface Props {
   problem?: string | null
   /** Saves a day's log. Resolves true once it is saved; false keeps the form open, the problem above it. */
   onSave: (log: Draft) => Promise<boolean>
+  /**
+   * This week's report to the customer (Building's U7c): the board with what the report reads laid over it (the logs,
+   * submittals, schedule, change orders and sent reports), who sends it, and its presses. Absent: no card.
+   */
+  weekly?: { state: GcState; project: GcProject; me: string | null; writes: WeeklyReportWrites } | null
+  /**
+   * Our own crew's clock-ins (Building's U8): a day with a count shows it read only, and the save leaves it off, so it
+   * is read and never stored. Absent: our crew's count is typed, as every trade's is.
+   */
+  ourCrew?: OurCrewOnLog | null
+  /** Bill day's Claims to check (Messages cut 9): the walk of the draws waiting on us, drawn above the day's log. Absent: no card. */
+  claims?: ReactNode
   onClose: () => void
+}
+
+/** A temperature as typed: a cleared box is blank (NaN), never 0, so Save waits and the press refuses a missing one (U3b). */
+function degrees(typed: string): number {
+  return typed.trim() === '' ? Number.NaN : Number(typed)
 }
 
 const SKIES: { key: WeatherSky; word: string }[] = [
@@ -51,7 +70,7 @@ function companyOf(state: GcState, project: GcProject, packageId: string | null)
   return company ? `${pkg.trade} · ${company}` : pkg.trade
 }
 
-export function GcDailyLogWindow({ state, project, today, busy = false, problem, onSave, onClose }: Props) {
+export function GcDailyLogWindow({ state, project, today, busy = false, problem, onSave, weekly = null, ourCrew = null, claims = null, onClose }: Props) {
   const missing = missingLogs(project, today)
   const [day, setDay] = useState(today)
   const [editing, setEditing] = useState(false)
@@ -68,10 +87,11 @@ export function GcDailyLogWindow({ state, project, today, busy = false, problem,
   }, [onClose])
 
   // A log names only the trades it may, as the prototype's reducer kept it: our own crew, and a trade
-  // whose statement of work is signed. The press itself takes any trade on the job until U3b.
+  // whose statement of work is signed. The press holds the same rule (logTrades, U3b-i).
   const save = (draft: Draft) => {
     const trades = new Set(logTrades(project).map((k) => k.id))
-    const kept = { ...draft, crews: draft.crews.filter((c) => trades.has(c.packageId)), delays: draft.delays.filter((d) => d.packageId === null || trades.has(d.packageId)) }
+    const crews = draft.crews.filter((c) => trades.has(c.packageId))
+    const kept = { ...draft, crews: ourCrew ? crewsToSave(crews, ourCrew.rows, draft.date) : crews, delays: draft.delays.filter((d) => d.packageId === null || trades.has(d.packageId)) }
     void onSave(kept).then((saved) => {
       if (saved) setEditing(false)
     })
@@ -111,6 +131,8 @@ export function GcDailyLogWindow({ state, project, today, busy = false, problem,
             <Card>The daily log starts once work starts.</Card>
           ) : (
             <>
+              {weekly && <GcWeeklyReportCard state={weekly.state} project={weekly.project} me={weekly.me} writes={weekly.writes} />}
+              {claims}
               {missing.length > 0 && (
                 <Card style={{ border: '1px solid var(--border-strong)' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
@@ -139,7 +161,8 @@ export function GcDailyLogWindow({ state, project, today, busy = false, problem,
                   key={day}
                   state={state}
                   project={project}
-                  start={log ?? newDailyLog(project, day)}
+                  start={ourCrew ? logWithClockIns(log ?? newDailyLog(project, day), project, ourCrew.rows) : (log ?? newDailyLog(project, day))}
+                  ourCrew={ourCrew}
                   title={day === today ? `Today's log · ${weekdayDate(day)}` : `The log for ${weekdayDate(day)} · caught up`}
                   busy={busy}
                   onSave={save}
@@ -197,6 +220,7 @@ function LogForm({
   busy,
   onSave,
   onCancel,
+  ourCrew = null,
 }: {
   state: GcState
   project: GcProject
@@ -205,6 +229,7 @@ function LogForm({
   busy: boolean
   onSave: (draft: Draft) => void
   onCancel?: () => void
+  ourCrew?: OurCrewOnLog | null
 }) {
   const [d, setD] = useState<Draft>(start)
   const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }))
@@ -233,11 +258,11 @@ function LogForm({
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-muted)' }}>High</span>
-              <input type="number" value={d.high} onChange={(e) => set({ high: Number(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="High, degrees" />
+              <input type="number" value={Number.isFinite(d.high) ? d.high : ''} onChange={(e) => set({ high: degrees(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="High, degrees" />
             </label>
             <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-muted)' }}>Low</span>
-              <input type="number" value={d.low} onChange={(e) => set({ low: Number(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="Low, degrees" />
+              <input type="number" value={Number.isFinite(d.low) ? d.low : ''} onChange={(e) => set({ low: degrees(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="Low, degrees" />
             </label>
             <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <input type="checkbox" checked={d.weatherStop} onChange={(e) => set({ weatherStop: e.target.checked })} />
@@ -248,19 +273,36 @@ function LogForm({
 
         <div style={{ display: 'grid', gap: '0.3rem' }}>
           <span style={label}>Who was on site · how many workers</span>
-          {trades.map((k) => (
-            <label key={k.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
-              <span style={{ color: workers(k.id) > 0 ? undefined : 'var(--text-muted)' }}>{companyOf(state, project, k.id)}</span>
-              <input
-                type="number"
-                min={0}
-                value={workers(k.id)}
-                onChange={(e) => setWorkers(k.id, Math.max(0, Number(e.target.value) || 0))}
-                style={{ ...input, width: '4.5rem' }}
-                aria-label={`Workers on site, ${k.trade}`}
-              />
-            </label>
-          ))}
+          {trades.map((k) => {
+            // Our crew's count from its clock-ins is read only (Building's U8): it changes in the Pipeline.
+            const clockedIn = ourCrew && k.selfPerform ? crewOnSiteOn(ourCrew.rows, k.id, d.date) : null
+            return clockedIn !== null ? (
+              <div key={k.id} data-crew-clocked-in={k.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+                <span>{companyOf(state, project, k.id)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{clockedIn} clocked in</span>
+              </div>
+            ) : (
+              <label key={k.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ color: workers(k.id) > 0 ? undefined : 'var(--text-muted)' }}>{companyOf(state, project, k.id)}</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={workers(k.id)}
+                  onChange={(e) => setWorkers(k.id, Math.max(0, Number(e.target.value) || 0))}
+                  style={{ ...input, width: '4.5rem' }}
+                  aria-label={`Workers on site, ${k.trade}`}
+                />
+              </label>
+            )
+          })}
+          {ourCrew &&
+            trades
+              .filter((k) => k.selfPerform)
+              .map((k) => (
+                <span key={k.id} data-our-crew-note={k.id} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {ourCrewNote(k.id, ourCrew, d.date)}
+                </span>
+              ))}
           {trades.length === 0 ? (
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No trade can be logged yet. A trade we hire shows here once its statement of work is signed.</span>
           ) : (

@@ -3,11 +3,12 @@
  * the home's words, through the sample `gc-trade-portal` answers for the sample token.
  */
 import { describe, expect, it } from 'vitest'
-import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
+import { gcTradePortalSample, gcTradePortalSampleSchedules, gcTradePortalSampleScheduleWork, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
 import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcTradeSubmit'
-import { portalAsks } from './portal'
+import { portalAsks, portalTodos } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
-import { askChips, askWhen, changeFileByEmailWords, pastWords, portalHomeGroups, readTradePortalAnswer, replyByEmailWords, sentMessages, setDriveUrl, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
+import { WAIVER_SIGN_LIVE } from './drawEmail'
+import { askChips, askWhen, paperworkLineOf, pastWords, portalHomeGroups, portalHomeTodos, readTradePortalAnswer, sentMessages, setDriveUrl, todoWaitsOnWaivers, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
 import { tradePortalState } from './tradePortalState'
 
 const TODAY = '2026-10-08'
@@ -33,6 +34,28 @@ describe('the function’s answer', () => {
     expect(readTradePortalAnswer(true, { today: TODAY })).toEqual({ kind: 'error', key: 'linkFailed' })
     expect(readTradePortalAnswer(true, { today: TODAY, slice: { ...slice, invites: null } })).toEqual({ kind: 'error', key: 'linkFailed' })
     expect(readTradePortalAnswer(true, { today: TODAY, slice: { ...slice, company: [] } })).toEqual({ kind: 'error', key: 'linkFailed' })
+  })
+
+  it('keeps the charts beside the slice, reads none from a function deployed before them, and drops one it cannot draw (the schedule’s PR 14b)', () => {
+    const schedules = gcTradePortalSampleSchedules(TODAY)
+    const a = readTradePortalAnswer(true, { today: TODAY, slice, schedules })
+    expect(a.kind === 'ready' && a.schedules).toEqual(schedules)
+    const b = readTradePortalAnswer(true, { today: TODAY, slice })
+    expect(b.kind === 'ready' && b.schedules).toEqual({})
+    const c = readTradePortalAnswer(true, { today: TODAY, slice, schedules: { ...schedules, broken: { mine: 'all of it' } } })
+    expect(c.kind === 'ready' && Object.keys(c.schedules)).toEqual([ID.job])
+  })
+
+  it('keeps the schedule work and its to-dos, reads none from a function deployed before them, and drops what it cannot read (P5d-ii)', () => {
+    const { scheduleWork, scheduleTodos } = gcTradePortalSampleScheduleWork(TODAY)
+    const todo = { key: `dates:${ID.move1}`, projectId: ID.job, text: 'New dates on Sample Dental Office to answer.', tone: 'amber', by: null, anchor: 'dates' }
+    const a = readTradePortalAnswer(true, { today: TODAY, slice, scheduleWork, scheduleTodos: [...scheduleTodos, todo] })
+    expect(a.kind === 'ready' && a.scheduleWork).toEqual(scheduleWork)
+    expect(a.kind === 'ready' && a.scheduleTodos).toEqual([todo])
+    const b = readTradePortalAnswer(true, { today: TODAY, slice })
+    expect(b.kind === 'ready' && [b.scheduleWork, b.scheduleTodos]).toEqual([{}, []])
+    const c = readTradePortalAnswer(true, { today: TODAY, slice, scheduleWork: { ...scheduleWork, broken: { dates: 'all' } }, scheduleTodos: [todo, { key: 1 }] })
+    expect(c.kind === 'ready' && [Object.keys(c.scheduleWork), c.scheduleTodos.length]).toEqual([[ID.job], 1])
   })
 
   it('opens a company’s link at /t/', () => {
@@ -78,10 +101,6 @@ describe('the home’s words', () => {
     expect(askWhen(ask, '2026-10-21', 'en')).toBe('Was due Mon Oct 19.')
   })
 
-  it('tells the company who to email its own quote file to until files come', () => {
-    expect(replyByEmailWords(bidding[0]!.project, 'en')).toBe('Have your own quote file? Email it to Avery Lin (avery@example.com).')
-    expect(replyByEmailWords(past[0]!.project, 'en')).toBe('Have your own quote file? Email it to Click Construction.')
-  })
 
   it('holds Spanish until a native speaker reads it', () => {
     expect(PORTAL_SPANISH_ON).toBe(false)
@@ -107,12 +126,23 @@ describe('the words for every refusal a press can get (P2b-i)', () => {
   })
 })
 
-describe('a change’s photo or ticket, by email until P5a (P4b-ii)', () => {
-  it('goes to our project manager on the job, or to us', () => {
-    const job = state.projects.find((p) => p.id === ID.job)!
-    expect(changeFileByEmailWords(job, 'en')).toBe('Have a photo or a ticket? Email it to Click Construction.')
-    const withPm = { ...job, team: [...(job.team ?? []), { role: 'projectManager' as const, name: 'Avery Lin', phone: '', email: 'avery@example.com' }] }
-    expect(changeFileByEmailWords(withPm, 'en')).toBe('Have a photo or a ticket? Email it to Avery Lin (avery@example.com).')
-    expect(changeFileByEmailWords(withPm, 'es')).toBe('¿Tiene una foto o una boleta? Envíela por correo a Avery Lin (avery@example.com).')
+describe('the home’s to-dos whose press is a waiver (P5c-3c-i, the owner’s call 2)', () => {
+  it('names the to-dos whose press is a waiver: a draw to ask for, one to fix and send again, the final, both waivers', () => {
+    for (const key of ['ask1:draw', 'ask1:back', 'ask1:final', 'ask1:finalwaiver', 'ask1:waiver:d1']) expect(todoWaitsOnWaivers(key), key).toBe(true)
+    for (const key of ['ask1:punch', 'ask1:submittals', 'ask1:less:d1', 'co1:sign', 'charge1:answer', 'ask1:sow', 'msa']) expect(todoWaitsOnWaivers(key), key).toBe(false)
+  })
+
+  it('keeps them in the sample’s Needs you since the owner’s call 2', () => {
+    expect(WAIVER_SIGN_LIVE).toBe(true)
+    const asks = portalAsks(state, partnerId)
+    const all = portalTodos(state, partnerId, asks, 'en')
+    expect(all.filter((t) => todoWaitsOnWaivers(t.key)).length).toBeGreaterThan(0)
+    expect(portalHomeTodos(state, partnerId, asks, 'en')).toEqual(all)
+  })
+})
+
+describe('a paperwork to-do opens its line (P5b-1)', () => {
+  it('reads the line from the to-do’s key, the certificate’s soon as the certificate', () => {
+    expect(['msa', 'coi', 'coi:soon', 'w9', 'vet', 'sow:pkg-1', 'quote:inv-1'].map(paperworkLineOf)).toEqual(['msa', 'coi', 'coi', 'w9', 'vet', null, null])
   })
 })

@@ -39,6 +39,20 @@ import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
 import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhatCustomersSeeTab'
 import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatTheTeamSeesTab'
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
+import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
+import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
+import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
+import { canEditClause, canEditFlows } from '../lib/gc/access'
+import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
+import { canSwitchReplyPush } from '../lib/messages/replyPushSwitch'
+import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
+import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
+import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
+import { BoxesSettingsCard } from '../components/settings/BoxesSettingsCard'
+import { TextsSwitchSettingsCard } from '../components/settings/TextsSwitchSettingsCard'
+import { canSeePhoneAndTexts } from '../lib/messages/assignRule'
+import { canSwitchReader } from '../lib/messages/emailReader'
+import { canSwitchTexts } from '../lib/quo/textsSwitch'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
@@ -65,8 +79,14 @@ import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeIn
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TestReportSettingsBlock from '../components/settings/TestReportSettingsBlock'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
+import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
+import { canSeeGcMoney } from '../lib/gc/access'
+import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
+import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNoticesSettingsBlock'
+import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomerDueNoticesSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
+import DocsmitDevSettingsBlock from '../components/settings/DocsmitDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
@@ -1477,6 +1497,36 @@ export default function Settings() {
         )}
       </SettingsGroup>
 
+      <SettingsGroup id="settings-clauses" hidden={activeSettingsTab !== 'settings-clauses'} title={settingsGroupTitle('settings-clauses', 'Contracts and clauses')} description={settingsGroupHint('settings-clauses')}>
+        {/* Mounted while it is open, so it re-reads the clauses and the waiting changes each time it is opened. */}
+        {activeSettingsTab === 'settings-clauses' && canEditClause(myRole) && <SettingsClausesTab />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-phone-texts" hidden={activeSettingsTab !== 'settings-phone-texts'} title={settingsGroupTitle('settings-phone-texts', 'Phone and texts')} description={settingsGroupHint('settings-phone-texts')}>
+        {/* Mounted while it is open, so it reads the texts switch, the seats, Quo's seats, the inboxes and the bids@ reader again each time.
+            Send texts comes first (v2.5538): it is the one card a text waits on, and the three under it only add names and a second number. */}
+        {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && (
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
+            <PhoneAndTextsSettingsSection />
+            <QuoSeatsSettingsSection />
+            <BoxesSettingsCard />
+            {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
+            {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
+          </div>
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-flows" hidden={activeSettingsTab !== 'settings-flows'} title={settingsGroupTitle('settings-flows', 'Flows')} description={settingsGroupHint('settings-flows')}>
+        {/* Mounted while it is open, so it reads the flow and who is on it each time it is opened. */}
+        {activeSettingsTab === 'settings-flows' && canEditFlows(myRole) && <SettingsFlowsTab />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-training" hidden={activeSettingsTab !== 'settings-training'} title={settingsGroupTitle('settings-training', 'Training')} description={settingsGroupHint('settings-training')}>
+        {/* Training (punch list #111, v2.5569): a dev's. Mounted while open, so the counts are read each time. */}
+        {activeSettingsTab === 'settings-training' && myRole === 'dev' && <SettingsTrainingTab />}
+      </SettingsGroup>
+
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
       {myRole === 'dev' && (
         <SettingsDataTab
@@ -1547,12 +1597,19 @@ export default function Settings() {
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <TestReportSettingsBlock />}
       {/* Owner of record (v2.3450): the nightly save-from-the-roll switch, off on day one — master + dev. */}
       {(myRole === 'dev' || myRole === 'master_technician') && <OwnerAutoConfirmSettingsBlock />}
+      {/* GC mode (O8c): Pay by card's switch for GC customers, off on day one — the owner and dev. */}
+      {(myRole === 'dev' || myRole === 'master_technician') && <GcCardBillSettingsBlock />}
+      {(myRole === 'dev' || myRole === 'master_technician') && <GcOfficeNoticesSettingsBlock />}
+      {(myRole === 'dev' || myRole === 'master_technician') && <GcCustomerDueNoticesSettingsBlock />}
+      {/* GC mode, Bill day (Messages cut 9): the trades' cut-off, for the money team as its policy is. */}
+      {canSeeGcMoney(myRole) && <GcBillDayCutoffSettingsBlock />}
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />
           <PhysicalInvoiceIssuerDevSettingsBlock focusField={settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null} />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
+          <DocsmitDevSettingsBlock />
         </>
       )}
       {myRole === 'dev' && <SettingsHcpReconcileSection />}

@@ -23,8 +23,10 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 
+// The kernels' generated copy of src/utils/dateUtils.ts (scripts/edge-kernels.mjs, the schedule's PR 14b) is that file
+// byte for byte but for its header, so it is allowed as the file is.
 const ALLOWLIST = new Set(
-  ['src/utils/dateUtils.ts', 'supabase/functions/_shared/appTimeZone.ts'].map((p) =>
+  ['src/utils/dateUtils.ts', 'supabase/functions/_shared/appTimeZone.ts', 'supabase/functions/_shared/gcKernels/utils/dateUtils.ts'].map((p) =>
     path.normalize(path.join(ROOT, p)),
   ),
 )

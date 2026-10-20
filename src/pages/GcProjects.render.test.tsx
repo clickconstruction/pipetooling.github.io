@@ -5,12 +5,32 @@ import GcProjects from './GcProjects'
 import { renderSettled, settle } from '../test/renderSmokeMocks'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
-import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
+import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, logGcAskContact, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
-import { loadSchedule } from '../lib/gc/scheduleIo'
-import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { boardStateFromRows } from '../lib/gc/boardRows'
+import { keepRoughAt, loadSchedule, loadScheduleWithHolds } from '../lib/gc/scheduleIo'
+import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs } from '../lib/gc/crewJobIo'
+import type { CrewJobRead } from '../lib/gc/crewJobRows'
+import type { GcState } from '../lib/gc/types'
+import { loadGcWeeklyReports } from '../lib/gc/weeklyReportsIo'
 import { loadGcSubmittals } from '../lib/gc/submittalsIo'
 import { loadGcRfis, startRfiChangeOrder } from '../lib/gc/rfisIo'
+import { emailTheTrade, loadGcDraws, payDraw } from '../lib/gc/drawsIo'
+import { acceptWork } from '../lib/gc/closeoutIo'
+import { addPunchItem, loadGcPunch } from '../lib/gc/punchIo'
+import { loadGcBillingRows, sendGcSow } from '../lib/gc/gcIo'
+import { awardedClinicBoardRows, lonestarPapersInRows } from '../lib/gc/boardTestRows'
+import { sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
+import type { DrawTables } from '../lib/gc/drawRows'
+import { loadMessagesView } from '../lib/messages/messagesIo'
+import type { ThreadSlots } from '../components/gc/messages/threadSlots'
+import { useMessagesReread } from '../components/gc/messages/useMessagesReread'
+import { loadPaperChoices, setOwnerContractPaper } from '../lib/contracts/clausesIo'
+import { paperChoices } from '../lib/contracts/clauseRows'
+import { clauseLibraryRows } from '../test/fixtures/clauseBookDemo'
+import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { sendGcCustomerEmail } from '../lib/gc/customerEmailIo'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -30,6 +50,11 @@ vi.mock('../hooks/useAuth', async () => {
 })
 
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
+// The board's rings read their own layers (the Board's B2b-vi-c, `useRingLayers.render.test.tsx`); here they read none, so each
+// window's lazy reads below keep their meaning.
+// How the stage is going's tests (B2b-vii) lay a ring read of their own here; every other test reads none.
+const ringRead = vi.hoisted(() => ({ value: null as unknown }))
+vi.mock('../components/gc/useRingLayers', () => ({ useRingLayers: () => ringRead.value }))
 
 // The company window's Their portal loads one company's link; none is made yet.
 vi.mock('../lib/gc/tradePortalLinksIo', () => ({
@@ -39,10 +64,55 @@ vi.mock('../lib/gc/tradePortalLinksIo', () => ({
 }))
 
 // The schedule's window (PR 7b) reads the job's schedule over the board: nothing is drawn on the test board.
-vi.mock('../lib/gc/scheduleIo', () => ({
-  loadSchedule: vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null })),
-  drawSchedule: vi.fn(),
-}))
+vi.mock('../lib/gc/scheduleIo', () => {
+  const loadSchedule = vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null }))
+  // The window reads the job's submittals and RFIs first (PR 9d): here, the schedule's read alone. The money team's own
+  // read (16c) never answers.
+  return {
+    loadSchedule,
+    loadScheduleWithHolds: vi.fn((state: { projects: { id: string }[] }, id: string) => loadSchedule(state, id)),
+    loadScheduleMoney: vi.fn(() => new Promise(() => undefined)),
+    drawSchedule: vi.fn(),
+    // The rough (the schedule's PR 12b): none drawn, and a keep after the Board's presses that writes nothing.
+    loadRough: vi.fn(() => Promise.resolve(null)),
+    keepRoughAt: vi.fn(() => Promise.resolve(null)),
+  }
+})
+
+// Every cut's slots in the thread window (`useThreadSlots`, which the window calls), as a test lays them; none by default.
+const slotsRead = vi.hoisted(() => ({ use: (): ThreadSlots => ({}) }))
+vi.mock('../components/gc/messages/threadSlots', () => ({ useThreadSlots: () => slotsRead.use() }))
+
+/** A slot that writes on its own (cut 3's reply box), then asks the page to read again. */
+function SendBox() {
+  const reread = useMessagesReread()
+  return (
+    <button type="button" onClick={reread}>
+      Send it
+    </button>
+  )
+}
+
+/** Cut 2's slots as a hook: its ⋯ row writes, then asks for the read again (No reply needed). */
+function useRereadMenuSlots(): ThreadSlots {
+  const reread = useMessagesReread()
+  return { menuRows: () => [{ key: 'no-reply', label: 'No reply needed', onPress: reread }] }
+}
+
+// Messages (cut 1's screens): the spine's rows, read only while the view or a thread is open; no press writes here.
+vi.mock('../lib/messages/messagesIo', async () => {
+  const { spineMessagesView } = await import('../lib/messages/spineRows')
+  return {
+    loadMessagesView: vi.fn(() => Promise.resolve(spineMessagesView())),
+    nameContact: vi.fn(),
+    tieMessage: vi.fn(() => Promise.resolve()),
+    setDefaultJob: vi.fn(() => Promise.resolve()),
+    addContactJob: vi.fn(() => Promise.resolve()),
+    removeContactJob: vi.fn(() => Promise.resolve()),
+    searchContactRecords: vi.fn(() => Promise.resolve([])),
+    searchJobs: vi.fn(() => Promise.resolve([])),
+  }
+})
 
 // No GC project yet: the page loads empty, so the card stops show their missing words.
 vi.mock('../lib/gc/gcIo', async () => {
@@ -69,7 +139,9 @@ vi.mock('../lib/gc/gcIo', async () => {
     addGcCompany: vi.fn(),
     vetGcCompany: vi.fn(),
     setGcCompanyCoverage: vi.fn(),
-    logGcAskContact: vi.fn(),
+    logGcAskContact: vi.fn(() => Promise.resolve()),
+    logGcCustomerContact: vi.fn(() => Promise.resolve()),
+    recordGcTradePromise: vi.fn(() => Promise.resolve('pr1')),
     askGcCompanies: vi.fn(() => Promise.resolve()),
     declineGcAsk: vi.fn(),
     setGcCompanyLanguage: vi.fn(),
@@ -78,6 +150,8 @@ vi.mock('../lib/gc/gcIo', async () => {
     setGcAskTakenAlternates: vi.fn(),
     carryGcTrade: vi.fn(() => Promise.resolve()),
     setGcProjectMoney: vi.fn(() => Promise.resolve()),
+    setGcGeneralConditionsJob: vi.fn(() => Promise.resolve()),
+    searchPipelineJobs: vi.fn(() => Promise.resolve([])),
     markGcBidSent: vi.fn(() => Promise.resolve()),
     markGcWon: vi.fn(),
     markGcLost: vi.fn(),
@@ -88,13 +162,64 @@ vi.mock('../lib/gc/gcIo', async () => {
     loadGcChangeRequests: vi.fn(none),
     loadGcChangeRequestEmails: vi.fn(none),
     loadGcBillingRows: vi.fn(() => Promise.resolve({ terms: [], contract: [], billing: new Map(), names: {}, payDays: {} })),
+    sendGcSow: vi.fn(() => Promise.resolve('w1')),
   }
+})
+
+// A trade's emails: every send goes through and is kept, so a test reads the language it went in.
+vi.mock('../lib/gc/tradeEmailIo', () => ({
+  sendGcTradeEmail: vi.fn(() => Promise.resolve({ ok: true })),
+  sendGcTradeEmailTest: vi.fn(() => Promise.resolve({ ok: true })),
+  emailTheAnswer: vi.fn(() => Promise.resolve()),
+}))
+
+// Follow up's own reads (Messages, cut 2, v2.5289): two people waiting on us, Greg's text and a number nobody has named.
+// The badge is theirs; the asks keep everyone we wait on for their own heading. Nobody is on either conversation, so
+// both wait in New (residential R7, v2.5477), not in Needs a reply.
+vi.mock('../lib/followUp/followUpIo', async (orig) => {
+  const actual = await orig<typeof import('../lib/followUp/followUpIo')>()
+  const contact = (id: string, kind: string, patch: Record<string, unknown> = {}) => ({
+    ...{ id, kind, customer_id: null, customer_contact_person_id: null, gc_company_id: null, gc_company_person_id: null, person_id: null },
+    ...{ name: null, goes_by: null, off_since: null, off_why: null, off_by: null },
+    ...{ state: 'waiting', snoozed_until: null, has_user_id: null, has_since: null, has_how: null },
+    ...patch,
+  })
+  const text = (id: string, contactId: string, at: string, body: string) => ({
+    ...{ id, contact_id: contactId, channel_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, channel: 'text', direction: 'in' },
+    ...{ who_user_id: null, who_text: '', at, subject: null, body, optout_line: null, back_on: null, back_by: null, back_words: null, back_done_at: null },
+  })
+  const rows = {
+    contacts: [contact('greg', 'trade', { gc_company_id: 'hillside' }), contact('unk1', 'unknown')],
+    channels: [],
+    records: { gcCompanies: [{ id: 'hillside', name: 'Hillside Excavation', contact_name: 'Greg Paulk', trades: ['Sitework'] }] },
+    messages: [text('m1', 'greg', '2026-10-01T14:00:00.000Z', 'Is the detention pond in sitework?'), text('m2', 'unk1', '2026-10-02T15:00:00.000Z', 'Is this the plumbing office?')],
+    heard: [],
+    owed: [],
+  }
+  const io = { loadQueue: vi.fn(() => Promise.resolve(rows)), loadHighlights: vi.fn(() => Promise.resolve([])), count: vi.fn(() => Promise.resolve(2)) }
+  return { ...actual, supabaseFollowUpIo: () => io }
 })
 
 // Building's daily log: no log yet, and a save that goes through.
 vi.mock('../lib/gc/dailyLogIo', () => ({
   loadGcDailyLogs: vi.fn(() => Promise.resolve([])),
   saveGcDailyLog: vi.fn(() => Promise.resolve('log-1')),
+  loadGcCrewOnSite: vi.fn(() => Promise.resolve([])),
+}))
+
+// Our own crew's Pipeline job (Building's U8): nothing linked unless a test says so.
+vi.mock('../lib/gc/crewJobIo', () => ({
+  loadCrewJobs: vi.fn(() => Promise.resolve([])),
+  linkCrewJob: vi.fn(() => Promise.resolve()),
+  searchCrewJobs: vi.fn(() => Promise.resolve([{ id: 'job-9', label: 'J 1309', name: 'Clinic plumbing, phase 2', address: '' }])),
+  suggestCrewJobs: vi.fn(() => Promise.resolve([{ id: 'job-7', label: 'J 1201', name: 'Clinic plumbing', address: '' }])),
+}))
+
+// Building's weekly reports: none sent yet, and every send going through.
+vi.mock('../lib/gc/weeklyReportsIo', () => ({
+  loadGcWeeklyReports: vi.fn(() => Promise.resolve([])),
+  recordWeeklyReport: vi.fn(() => Promise.resolve('wr-new')),
+  sendWeeklyReport: vi.fn(() => Promise.resolve({ ok: true, to: 'Hill Country Health', email: 'owner@clinic.test' })),
 }))
 
 // Building's submittals: an empty register, and every press going through.
@@ -115,6 +240,63 @@ vi.mock('../lib/gc/rfisIo', () => ({
   markRfiSent: vi.fn(() => Promise.resolve()),
   answerRfi: vi.fn(() => Promise.resolve()),
   startRfiChangeOrder: vi.fn(() => Promise.resolve('co-1')),
+}))
+
+// Building's draws: none yet, and every press going through. The email to the trade is the page's to send.
+vi.mock('../lib/gc/drawsIo', () => ({
+  loadGcDraws: vi.fn(() => Promise.resolve({ sows: [], sowLines: [], draws: [], drawLines: [], reports: [], backCharges: [], tradeSends: [] })),
+  drawCameIn: vi.fn(() => Promise.resolve('draw-new')),
+  approveDraw: vi.fn(() => Promise.resolve()),
+  approveDrawLess: vi.fn(() => Promise.resolve()),
+  sendDrawBack: vi.fn(() => Promise.resolve()),
+  payDraw: vi.fn(() => Promise.resolve()),
+  drawWaiverIn: vi.fn(() => Promise.resolve()),
+  chargeTrade: vi.fn(() => Promise.resolve('bc-new')),
+  settleBackCharge: vi.fn(() => Promise.resolve()),
+  takeBackCharge: vi.fn(() => Promise.resolve()),
+  sendTradeChange: vi.fn(() => Promise.resolve()),
+  emailTheTrade: vi.fn(() => Promise.resolve({ ok: true, key: 'k', detail: null })),
+}))
+
+// Building's closeout: no punch item, and every press going through.
+vi.mock('../lib/gc/punchIo', () => ({
+  loadGcPunch: vi.fn(() => Promise.resolve([])),
+  addPunchItem: vi.fn(() => Promise.resolve('punch-new')),
+  removePunchItem: vi.fn(() => Promise.resolve()),
+  punchFixedIn: vi.fn(() => Promise.resolve()),
+  checkPunchItem: vi.fn(() => Promise.resolve()),
+}))
+// The papers to build a statement of work or our contract from (v2.5334): none unless a test gives them. Our contract's
+// send keeps its id, so the paper picked is set on it, and its email goes through.
+vi.mock('../lib/contracts/clausesIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/contracts/clausesIo')>()),
+  loadPaperChoices: vi.fn(() => Promise.resolve([])),
+  loadSowPaper: vi.fn(() => Promise.resolve(null)),
+  loadOwnerContractPaper: vi.fn(() => Promise.resolve(null)),
+  setSowPaper: vi.fn(() => Promise.resolve()),
+  setOwnerContractPaper: vi.fn(() => Promise.resolve()),
+}))
+vi.mock('../lib/gc/ownerContractIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/gc/ownerContractIo')>()),
+  sendGcOwnerContract: vi.fn(() => Promise.resolve('cs-new')),
+}))
+vi.mock('../lib/portal/mintCustomerPortalLink', () => ({ mintCustomerPortalLink: vi.fn(() => Promise.resolve()) }))
+// Our contract's Paper waits for the customer's side (OWNER_CONTRACT_PAPER_LIVE, v2.5345); the send's tests read it on.
+vi.mock('../lib/gc/customerContract', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/gc/customerContract')>()),
+  OWNER_CONTRACT_PAPER_LIVE: true,
+}))
+vi.mock('../lib/gc/customerEmailIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/gc/customerEmailIo')>()),
+  sendGcCustomerEmail: vi.fn(() => Promise.resolve({ ok: true, to: 'Pat Oak', email: 'pat@example.com' })),
+}))
+
+vi.mock('../lib/gc/closeoutIo', () => ({
+  acceptWork: vi.fn(() => Promise.resolve('2026-10-12')),
+  finalPayAppCameIn: vi.fn(() => Promise.resolve('draw-final')),
+  approveRetainage: vi.fn(() => Promise.resolve('2026-10-12')),
+  changeSignedIn: vi.fn(() => Promise.resolve('line-new')),
+  closeJob: vi.fn(() => Promise.resolve('2026-10-12')),
 }))
 
 const loadedEmpty = { loaded: () => screen.findByText('No GC project yet. Press New project when the first plans come in.') }
@@ -158,6 +340,7 @@ describe('GcProjects: the Project Board', () => {
   afterEach(() => {
     window.localStorage.clear()
     auth.role = 'dev'
+    slotsRead.use = () => ({})
   })
 
   it('door 2: an estimator sees the board, Trade partners and Follow up, and never Trade portals', async () => {
@@ -167,7 +350,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     expect(screen.getByRole('heading', { name: 'Project Board' })).toBeTruthy()
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners or Follow up' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Customers, Follow up or Messages' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Trade partners' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
     expect(screen.queryByText('Devs only')).toBeNull()
@@ -180,7 +363,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Customers, Follow up, Messages or Money' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Money' })).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Change orders' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
@@ -193,7 +376,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners or Follow up' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Customers, Follow up or Messages' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Money' })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Change orders/ })).toBeNull()
   })
@@ -203,8 +386,77 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Customers, Follow up, Messages or Money' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
+  })
+
+  it('Messages: an estimator opens the people list from its pill, read only then, and a row opens the thread as a window', async () => {
+    auth.role = 'estimator'
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(loadMessagesView).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    expect(await screen.findByRole('group', { name: 'Who to show' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Messages' }).getAttribute('aria-pressed')).toBe('true')
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+    const greg = document.querySelector('[data-messages-row="c-greg"]') as HTMLElement
+    expect(greg.textContent).toContain('Greg Paulk')
+
+    fireEvent.click(greg)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:2105550113')
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getAllByRole('button', { name: 'Close' })[0]!)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Greg Paulk: messages' })).toBeNull())
+    expect(screen.getByRole('group', { name: 'Who to show' })).toBeTruthy()
+  })
+
+  it('Messages: a slot that writes on its own asks the page to read again', async () => {
+    slotsRead.use = () => ({ box: () => <SendBox /> })
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    await screen.findByRole('group', { name: 'Who to show' })
+    fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getByRole('button', { name: 'Send it' }))
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2))
+  })
+
+  it('Messages: a cut\'s slots hook runs inside the window, so its ⋯ row reads the thread again', async () => {
+    slotsRead.use = useRereadMenuSlots
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    await screen.findByRole('group', { name: 'Who to show' })
+    fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getByRole('button', { name: 'More' }))
+    fireEvent.click(within(win).getByRole('menuitem', { name: 'No reply needed' }))
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2))
+  })
+
+  it('Messages: a superintendent is sent on from the page and reads no messages', async () => {
+    auth.role = 'superintendent'
+    vi.mocked(loadMessagesView).mockClear()
+    await renderSettled(<GcProjects />, { loaded: () => null })
+    expect(screen.queryByRole('button', { name: 'Messages' })).toBeNull()
+    expect(loadMessagesView).not.toHaveBeenCalled()
   })
 
   it('a dev sees the board above the projects, with each project still listed under it', async () => {
@@ -231,15 +483,81 @@ describe('GcProjects: the Project Board', () => {
     expect(document.querySelector('[data-gc-project="p1"]')).toBeTruthy()
   })
 
+  it('a dev switches to Customers, which opens on its list (v2.5557) with By step one press away (Messages cut 4)', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Customers' }))
+    expect(screen.getByRole('heading', { name: 'Customers' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'List' }).getAttribute('aria-pressed')).toBe('true')
+    expect(await screen.findByRole('region', { name: 'Customers list' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'By step' }))
+    expect(await screen.findByRole('group', { name: 'Where everyone stands' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'By company' })).toBeTruthy()
+  })
+
+  it('a dev opens Papers on a project’s card, which reads everyone on the job (Messages cut 4)', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Papers' }))
+    const win = await screen.findByRole('dialog', { name: /^Papers on / })
+    expect(await within(win).findByText('Nobody on this job has papers yet.')).toBeTruthy()
+    fireEvent.click(within(win).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: /^Papers on / })).toBeNull()
+  })
+
   it('a dev sees the asks under each trade of a project, and Follow up with its count', async () => {
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     expect(document.querySelector('[data-gc-project="p1"] [data-gc-trade-asks="k1"]')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
+    // The badge counts the people waiting on us (v2.5289); everyone we wait on heads the asks under them.
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (2)' }))
     expect(screen.getByRole('heading', { name: 'Follow up' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'New (2)' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Needs a reply (0)' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'We are waiting on them (1)' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Late on their word (1)' })).toBeTruthy()
+  })
+
+  it('the office team works the list on the Follow up sheet, and a call it logs reads the board again (B2b-viii-a)', async () => {
+    auth.role = 'estimator'
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (2)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'By people · 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Work the list · 1 person' }))
+    const sheet = screen.getByRole('dialog', { name: 'Follow up' })
+    expect(within(sheet).getByRole('heading', { name: 'Follow up with Dee Park' })).toBeTruthy()
+    // The email from Click is a dev's while trade email is (B2b-viii-b).
+    expect(within(sheet).queryByRole('group', { name: 'From' })).toBeNull()
+    const reads = vi.mocked(loadGcBoardRows).mock.calls.length
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Log a call' }))
+    fireEvent.change(within(sheet).getByLabelText('What Dee said'), { target: { value: 'Pricing it now.' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Save the call' }))
+    await waitFor(() => expect(logGcAskContact).toHaveBeenCalledTimes(1))
+    expect(logGcAskContact).toHaveBeenCalledWith({ companyId: 'hillside', inviteId: 'i2', on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), byName: 'Smoke Dev', how: 'call', note: 'Pricing it now.', promisedBy: null })
+    await waitFor(() => expect(vi.mocked(loadGcBoardRows).mock.calls.length).toBeGreaterThan(reads))
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev’s Follow up sheet offers the email from Click (B2b-viii-b)', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (2)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'By people · 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Work the list · 1 person' }))
+    const sheet = screen.getByRole('dialog', { name: 'Follow up' })
+    expect(within(within(sheet).getByRole('group', { name: 'From' })).getByRole('button', { name: 'Click Construction' })).toBeTruthy()
   })
 
   it('a dev asks for quotes from a project’s trade, and the window records the asks', async () => {
@@ -268,7 +586,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(line).getByRole('button', { name: 'Lonestar Earthworks' }))
     const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
     expect(within(dialog).getByText('Who gets our emails')).toBeTruthy()
-    expect(within(dialog).getByText('Their portal')).toBeTruthy()
+    // Their portal is its own tab since B6-b-ii, beside About and Documents.
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Their portal' }))
     expect(await within(dialog).findByRole('button', { name: 'Make the link' })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Lonestar Earthworks' })).toBeNull()
@@ -331,7 +650,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
-    fireEvent.click(within(card).getByRole('button', { name: 'Bid tabs (1)' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Bid tabs · 1' }))
     expect(card.querySelector('[data-gc-bid-tab="k1"]')).toBeTruthy()
     fireEvent.click(within(card).getByRole('button', { name: 'Hide the bid tabs' }))
     expect(card.querySelector('[data-gc-bid-tabs]')).toBeNull()
@@ -347,6 +666,9 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
     expect(await screen.findByRole('dialog', { name: `${rows.projects[0]!.name}: the schedule` })).toBeTruthy()
     expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
+    // The schedule's PR 16: a dev may use Building and is on the money team, so the window reads the job's logs and
+    // clock-ins over the board (16a), offers Ask for the days (16b-ii) and reads the trades' percents and the money lines (16c).
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(expect.anything(), 'p1', { logs: true, money: true, draws: true, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
   })
 
   it('the schedule’s PR 10: the office team opens a project’s Schedule from its card, as a dev does', async () => {
@@ -374,6 +696,24 @@ describe('GcProjects: the Project Board', () => {
     expect(await within(card).findByText('our bid went in Oct 8')).toBeTruthy()
     vi.mocked(loadGcBoardRows).mockReset()
   })
+
+  it('keeps the rough after We sent our bid, and says so beside the strip when the keep did not happen (PR 12b)', async () => {
+    vi.mocked(markGcBidSent).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockImplementation((projects) =>
+      Promise.resolve({ ...rows, projects, boardDates: { p1: { ...rows.boardDates.p1!, our_bid_sent_on: vi.mocked(markGcBidSent).mock.calls.length ? '2026-10-08' : null } } }),
+    )
+    vi.mocked(keepRoughAt).mockResolvedValueOnce('The rough schedule’s weeks were not kept with the bid. Press Keep the weeks as sent on its Schedule.')
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'We sent our bid' }))
+    await waitFor(() => expect(keepRoughAt).toHaveBeenCalledWith(expect.objectContaining({ projects: expect.any(Array) }), 'p1', 'bid'))
+    // The outcome's own words first, the keep's line beside them.
+    expect(await within(card).findByText('our bid went in Oct 8')).toBeTruthy()
+    expect((await within(card).findByRole('status')).textContent).toBe('The rough schedule’s weeks were not kept with the bid. Press Keep the weeks as sent on its Schedule.')
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
 })
 
 describe('GcProjects: the daily log (Building)', () => {
@@ -383,6 +723,9 @@ describe('GcProjects: the daily log (Building)', () => {
     auth.role = 'dev'
     vi.mocked(loadGcDailyLogs).mockClear()
     vi.mocked(saveGcDailyLog).mockClear()
+    // The log window's weekly report card reads the job's register and its sent reports (U7c).
+    vi.mocked(loadGcSubmittals).mockClear()
+    vi.mocked(loadGcWeeklyReports).mockClear()
   })
 
   /** The clinic being built: started long ago unless a test says otherwise, so its last five working days have no log. */
@@ -400,6 +743,18 @@ describe('GcProjects: the daily log (Building)', () => {
     const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
     expect(await within(card).findByRole('button', { name: 'Daily log · 5 missed' })).toBeTruthy()
     expect(loadGcDailyLogs).toHaveBeenCalledWith(['p1'])
+  })
+
+  it('a dev opens it on a job being built and finds this week’s report card, the job’s sent reports read (U7c)', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(await within(card).findByRole('button', { name: 'Daily log · 5 missed' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: daily log' })
+    await waitFor(() => expect(loadGcWeeklyReports).toHaveBeenCalledWith(['p1']))
+    expect(dialog.querySelector('[data-weekly-card]')).toBeTruthy()
   })
 
   it('a dev opens it before work starts, and the window says the log starts then', async () => {
@@ -565,5 +920,582 @@ describe('GcProjects: RFIs (Building)', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, loaded)
     expect(screen.queryByRole('button', { name: 'RFIs' })).toBeNull()
+  })
+})
+
+describe('GcProjects: Draws (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcDraws).mockReset()
+    vi.mocked(loadGcDraws).mockImplementation(() => Promise.resolve(NONE))
+    vi.mocked(payDraw).mockClear()
+    vi.mocked(emailTheTrade).mockClear()
+  })
+
+  const NONE: DrawTables = { sows: [], sowLines: [], draws: [], drawLines: [], reports: [], backCharges: [], tradeSends: [] }
+  /** The clinic being built, its sitework's statement of work signed by Lonestar. */
+  const building = () => {
+    const base = awardedClinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })),
+      sows: (base.sows ?? []).map((w) => ({ ...w, status: 'signed', signed_on: '2026-10-09' })),
+    }
+  }
+  /** Lonestar's first pay application, approved: half the clearing, nothing stored. */
+  const approvedDraw: DrawTables = {
+    ...NONE,
+    sows: [{ id: 'w1', package_id: 'k1' }],
+    sowLines: [
+      { id: 'l1', sow_id: 'w1', position: 0, scope_item_id: 's1' },
+      { id: 'l2', sow_id: 'w1', position: 1, scope_item_id: 's2' },
+    ],
+    draws: [
+      {
+        id: 'd1', sow_id: 'w1', number: 1, requested_on: '2026-10-10', status: 'approved', gross: 16600, retainage: 1660, net: 14940, final: false,
+        waiver: 'conditional', waiver_on: null, approved_on: '2026-10-11', paid_on: null, asked: null, sent_back_on: null, sent_back_note: null,
+        period_to: '2026-10-10', address: '', license: '', signed_by: 'Ana Ruiz', signed_title: 'Owner', signed_on: '2026-10-10',
+        file_name: null, drive_url: null, recorded_by: 'u1', created_at: '2026-10-10T00:00:00Z', seq: 1,
+      },
+    ],
+    drawLines: [{ draw_id: 'd1', sow_line_id: 'l1', to_pct: 50, stored: 0, we_see: null }],
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens Draws after RFIs on a job being built, with every trade’s draws read', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const names = within(card).getAllByRole('button').map((b) => b.textContent)
+    expect(names.indexOf('Draws')).toBe(names.indexOf('RFIs') + 1)
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+    fireEvent.click(within(card).getByRole('button', { name: 'Draws' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Draws' })
+    expect(dialog.querySelector('[data-draw-trade="k1"]')).toBeTruthy()
+  })
+
+  it('a press with the email tick off emails nothing; with it on, the trade is emailed from the rows read again', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    vi.mocked(loadGcDraws).mockResolvedValue(approvedDraw)
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(await within(document.querySelector('[data-gc-project="p1"]') as HTMLElement).findByRole('button', { name: 'Draws' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Draws' })
+    const tick = within(dialog.querySelector('[data-draw-email-tick]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    const reads = vi.mocked(loadGcDraws).mock.calls.length
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Mark paid' }))
+    await waitFor(() => expect(payDraw).toHaveBeenCalledWith('d1'))
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls.length).toBeGreaterThan(reads))
+    await settle()
+    expect(emailTheTrade).not.toHaveBeenCalled()
+
+    fireEvent.click(tick)
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Mark paid' }))
+    await waitFor(() => expect(emailTheTrade).toHaveBeenCalledWith('lonestar', expect.any(Function)))
+  })
+
+  it('a master reads the draws for the money since O9, but sees no Draws while Building is built', async () => {
+    auth.role = 'master_technician'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Draws' })).toBeNull()
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+  })
+
+  it('the controller reads the draws too, and the statement of work without its press', async () => {
+    auth.role = 'controller'
+    const base = awardedClinicBoardRows()
+    const rows = { ...base, sows: (base.sows ?? []).map((w) => ({ ...w, status: 'draft', sent_on: null })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+    const sow = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
+    expect(within(sow).getByText('Statement of work drafted')).toBeTruthy()
+    expect(within(sow).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
+  })
+
+  it('sends a Spanish-speaking company its statement of work email in English while Spanish waits for its reader', async () => {
+    auth.role = 'dev'
+    // The company's papers all in, so the send is not held for a missing paper.
+    const base = awardedClinicBoardRows({ papers: lonestarPapersInRows() })
+    const rows = { ...base, sows: (base.sows ?? []).map((w) => ({ ...w, status: 'draft', sent_on: null })), companies: base.companies.map((c) => ({ ...c, lang: 'es' })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const sow = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
+    const emailIt = within(sow).queryByRole('checkbox', { name: /Email it now/ })
+    if (emailIt && !(emailIt as HTMLInputElement).checked) fireEvent.click(emailIt)
+    fireEvent.click(within(sow).getByRole('button', { name: 'Send to their portal to sign' }))
+    await waitFor(() => expect(sendGcSow).toHaveBeenCalled())
+    await waitFor(() => expect(sendGcTradeEmail).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sow', lang: 'en' })))
+    expect(screen.queryByText(/The email did not go/)).toBeNull()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('an estimator reads no draws', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(loadGcDraws).not.toHaveBeenCalled()
+  })
+
+  it('a job still bidding has no Draws, even for a dev', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Draws' })).toBeNull()
+  })
+})
+
+describe('GcProjects: Closeout (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcDraws).mockReset()
+    vi.mocked(loadGcDraws).mockImplementation(() => Promise.resolve(NONE))
+    vi.mocked(loadGcPunch).mockClear()
+    vi.mocked(loadGcBillingRows).mockClear()
+    vi.mocked(acceptWork).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  const NONE: DrawTables = { sows: [], sowLines: [], draws: [], drawLines: [], reports: [], backCharges: [], tradeSends: [] }
+  /** The clinic at a stage, its sitework's statement of work signed by Lonestar. */
+  const at = (stage: 'building' | 'closed') => {
+    const base = awardedClinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage })),
+      sows: (base.sows ?? []).map((w) => ({ ...w, status: 'signed', signed_on: '2026-10-09' })),
+    }
+  }
+  /** Lonestar billed every line, approved and paid: closeout opens on Accept the work. */
+  const allBilled: DrawTables = {
+    ...NONE,
+    sows: [{ id: 'w1', package_id: 'k1' }],
+    sowLines: [
+      { id: 'l1', sow_id: 'w1', position: 0, scope_item_id: 's1' },
+      { id: 'l2', sow_id: 'w1', position: 1, scope_item_id: 's2' },
+    ],
+    draws: [
+      {
+        id: 'd1', sow_id: 'w1', number: 1, requested_on: '2026-10-10', status: 'paid', gross: 66500, retainage: 6650, net: 59850, final: false,
+        waiver: 'unconditional', waiver_on: '2026-10-11', approved_on: '2026-10-10', paid_on: '2026-10-11', asked: null, sent_back_on: null, sent_back_note: null,
+        period_to: '2026-10-10', address: '', license: '', signed_by: 'Ana Ruiz', signed_title: 'Owner', signed_on: '2026-10-10',
+        file_name: null, drive_url: null, recorded_by: 'u1', created_at: '2026-10-10T00:00:00Z', seq: 1,
+      },
+    ],
+    drawLines: [
+      { draw_id: 'd1', sow_line_id: 'l1', to_pct: 100, stored: 0, we_see: null },
+      { draw_id: 'd1', sow_line_id: 'l2', to_pct: 100, stored: 0, we_see: null },
+    ],
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens Closeout after Draws, and it reads the customer’s bills and the punch list for that job', async () => {
+    const rows = at('building')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    // Closeout comes after Draws: since v2.5544 Draws is in the work set and Closeout ends the money team's.
+    const names = within(card).getAllByRole('button').map((b) => b.textContent)
+    expect(names.indexOf('Closeout')).toBeGreaterThan(names.indexOf('Draws'))
+    expect(within(within(card).getByRole('group', { name: 'Money' })).getByRole('button', { name: 'Closeout' })).toBeTruthy()
+    expect(loadGcPunch).not.toHaveBeenCalled()
+    fireEvent.click(within(card).getByRole('button', { name: 'Closeout' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Closeout' })
+    await waitFor(() => expect(loadGcPunch).toHaveBeenCalledWith(['p1']))
+    expect(loadGcBillingRows).toHaveBeenCalledWith(['p1'])
+    expect(dialog.querySelector('[data-closeout-trade="k1"]')).toBeTruthy()
+  })
+
+  it('Accept the work goes to its function and reads the board again', async () => {
+    const rows = at('building')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    vi.mocked(loadGcDraws).mockResolvedValue(allBilled)
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(await within(document.querySelector('[data-gc-project="p1"]') as HTMLElement).findByRole('button', { name: 'Closeout' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Closeout' })
+    const boardReads = vi.mocked(loadGcBoardRows).mock.calls.length
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Accept the work' }))
+    await waitFor(() => expect(acceptWork).toHaveBeenCalledWith('k1'))
+    await waitFor(() => expect(vi.mocked(loadGcBoardRows).mock.calls.length).toBeGreaterThan(boardReads))
+  })
+
+  it('a closed job keeps Closeout and has no Draws', async () => {
+    const rows = at('closed')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    expect(within(card).getByRole('button', { name: 'Closeout' })).toBeTruthy()
+    expect(within(card).queryByRole('button', { name: 'Draws' })).toBeNull()
+  })
+
+  it('a master sees no Closeout while Building is built, and nothing of it is read', async () => {
+    auth.role = 'master_technician'
+    const rows = at('building')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Closeout' })).toBeNull()
+    expect(loadGcPunch).not.toHaveBeenCalled()
+  })
+})
+
+describe('GcProjects: Punch list (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcPunch).mockClear()
+    vi.mocked(addPunchItem).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  /** The clinic being built, its sitework's statement of work signed by Lonestar. */
+  const building = () => {
+    const base = awardedClinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })),
+      sows: (base.sows ?? []).map((w) => ({ ...w, status: 'signed', signed_on: '2026-10-09' })),
+    }
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens Punch list after Daily log, reads the job’s list, and a press reads it again', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const names = within(card).getAllByRole('button').map((b) => b.textContent ?? '')
+    expect(names.indexOf('Punch list')).toBe(names.findIndex((n) => n.startsWith('Daily log')) + 1)
+    expect(loadGcPunch).not.toHaveBeenCalled()
+    fireEvent.click(within(card).getByRole('button', { name: 'Punch list' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Punch list' })
+    await waitFor(() => expect(loadGcPunch).toHaveBeenCalledWith(['p1']))
+    const reads = vi.mocked(loadGcPunch).mock.calls.length
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add an item' }))
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /A punch item for/ }), { target: { value: 'Rake the swale' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to the punch list' }))
+    await waitFor(() => expect(addPunchItem).toHaveBeenCalledWith('k1', { text: 'Rake the swale', where: '', photoUrl: '' }))
+    await waitFor(() => expect(vi.mocked(loadGcPunch).mock.calls.length).toBeGreaterThan(reads))
+  })
+
+  it('an estimator sees no Punch list while Building is built, and no punch item is read', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Punch list' })).toBeNull()
+    expect(loadGcPunch).not.toHaveBeenCalled()
+  })
+})
+
+describe('GcProjects: our own crew from its Pipeline job (Building’s U8)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadCrewJobs).mockReset()
+    vi.mocked(loadCrewJobs).mockImplementation(() => Promise.resolve([]))
+    vi.mocked(loadGcCrewOnSite).mockClear()
+    vi.mocked(linkCrewJob).mockClear()
+    vi.mocked(suggestCrewJobs).mockClear()
+    vi.mocked(searchCrewJobs).mockClear()
+    vi.mocked(loadSchedule).mockClear()
+  })
+
+  /** The clinic being built since Jan 5, our own plumbing (k3) linked to Pipeline job job-7. */
+  function linked() {
+    const base = clinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage: 'building' as const, trades: p.trades.map((t) => (t.id === 'k3' ? { ...t, jobLedgerId: 'job-7' } : t)) })),
+      boardDates: { p1: { ...base.boardDates.p1!, started_on: '2026-01-05' } },
+    }
+  }
+  const read: CrewJobRead = { packageId: 'k3', jobId: 'job-7', label: 'J 1201', name: 'Clinic plumbing', stages: [], reportPct: null, reportedOn: null, pctComplete: 40 }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  const plumbingIn = (state: GcState) => state.projects.find((p) => p.id === 'p1')?.packages.find((k) => k.id === 'k3')
+
+  it('lays the job’s percent over the board itself, so the Schedule window reads it (gc 10)', async () => {
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    vi.mocked(loadCrewJobs).mockResolvedValue([read])
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(loadCrewJobs).toHaveBeenCalledWith([{ packageId: 'k3', jobId: 'job-7' }]))
+    await settle()
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
+    await screen.findByRole('dialog', { name: 'Hill Country Clinic: the schedule' })
+    await waitFor(() => {
+      const calls = vi.mocked(loadSchedule).mock.calls
+      const self = plumbingIn(calls[calls.length - 1]![0] as GcState)?.selfPerform
+      expect([self?.pctDone, self?.source]).toEqual([40, { from: 'job', job: 'J 1201', on: null }])
+    })
+  })
+
+  it('reads our crew’s clock-ins with the logs, from the job’s first day', async () => {
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(loadGcCrewOnSite).toHaveBeenCalledWith('p1', '2026-01-05', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)))
+  })
+
+  it('a dev picks our crew’s Pipeline job on Draws, and the trades are read again', async () => {
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    vi.mocked(loadCrewJobs).mockResolvedValue([read])
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(await within(document.querySelector('[data-gc-project="p1"]') as HTMLElement).findByRole('button', { name: 'Draws' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Draws' })
+    const crew = await waitFor(() => {
+      const el = dialog.querySelector('[data-own-crew="k3"]')
+      expect(el?.textContent).toContain('Pipeline job J 1201')
+      return el as HTMLElement
+    })
+    expect(within(crew.parentElement as HTMLElement).getByText('40% done')).toBeTruthy()
+    fireEvent.click(within(crew).getByRole('button', { name: 'Change' }))
+    await waitFor(() => expect(suggestCrewJobs).toHaveBeenCalledWith('p1', 'b7'))
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Find the Pipeline job' }), { target: { value: '1309' } })
+    const hit = await waitFor(() => {
+      const el = dialog.querySelector('[data-crew-job-hit="job-9"]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    const reads = vi.mocked(loadGcProjects).mock.calls.length
+    fireEvent.click(within(hit).getByRole('button', { name: 'Use this job' }))
+    await waitFor(() => expect(linkCrewJob).toHaveBeenCalledWith('k3', 'job-9'))
+    await waitFor(() => expect(vi.mocked(loadGcProjects).mock.calls.length).toBe(reads + 1))
+  })
+
+  it('the money team reads the percent too, but gets no picker (gc 5)', async () => {
+    auth.role = 'master_technician'
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    vi.mocked(loadCrewJobs).mockResolvedValue([read])
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(loadCrewJobs).toHaveBeenCalledWith([{ packageId: 'k3', jobId: 'job-7' }]))
+    expect(loadGcCrewOnSite).not.toHaveBeenCalled()
+  })
+})
+
+describe('GcProjects: the customer window’s money (the Board’s B2b-v-iii)', () => {
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  afterEach(() => {
+    auth.role = 'dev'
+    vi.mocked(loadGcBillingRows).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev, on the money team, opens a customer and their billed jobs’ billing is read for that window', async () => {
+    const rows = awardedClinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    // The board may read a building job's bills for its Bill day pill (Messages cut 9); the window reads its own on open.
+    const before = vi.mocked(loadGcBillingRows).mock.calls.length
+    const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Oak Street Partners' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Oak Street Partners' })
+    await waitFor(() => expect(vi.mocked(loadGcBillingRows).mock.calls.slice(before)).toContainEqual([['p1']]))
+    expect(await within(dialog).findByText('They owe us now')).toBeTruthy()
+  })
+})
+
+describe('GcProjects: How the stage is going under a project’s title (the Board’s B2b-vii)', () => {
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  afterEach(() => {
+    auth.role = 'dev'
+    ringRead.value = null
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+  /** The clinic won and buying out, its ring's layers read for the stages given. */
+  async function open(ready: string[]) {
+    const rows = awardedClinicBoardRows()
+    ringRead.value = { state: boardStateFromRows(rows), shown: new Set(ready), ready: new Set(ready), failed: false }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    return document.querySelector('[data-gc-project="p1"]') as HTMLElement
+  }
+
+  it('draws under the title once the stage’s ring is read, and asks a dev for the start date', async () => {
+    const card = await open(['buyout'])
+    expect(card.querySelector('[data-tour="gc-stage-health"]')).toBeTruthy()
+    expect(within(card).getByLabelText('Set a start date')).toBeTruthy()
+  })
+
+  it('draws nothing while the stage’s ring is not read, as the ring draws nothing', async () => {
+    const card = await open([])
+    expect(card.querySelector('[data-tour="gc-stage-health"]')).toBeNull()
+  })
+
+  it('the next step opens what the card opens: the trades for anyone, the start date for a dev alone', async () => {
+    auth.role = 'estimator'
+    const card = await open(['buyout'])
+    // The clinic's next step is its unawarded trade, which every reader of the card can reach.
+    expect(within(card).getByRole('button', { name: 'Next: Award Concrete →' })).toBeTruthy()
+    expect(within(card).queryByLabelText('Set a start date')).toBeNull()
+  })
+})
+
+describe('GcProjects: our contract built from clauses (Messages, cut 4c, v2.5334)', () => {
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  afterEach(() => {
+    auth.role = 'dev'
+    vi.mocked(loadPaperChoices).mockResolvedValue([])
+    vi.mocked(setOwnerContractPaper).mockReset()
+    vi.mocked(setOwnerContractPaper).mockResolvedValue(undefined)
+    vi.mocked(sendGcOwnerContract).mockClear()
+    vi.mocked(sendGcCustomerEmail).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  /** The clinic's customer window, its contract's send open with a PDF picked and the paper given. */
+  async function sendWithPaper(paperId: string) {
+    vi.mocked(loadPaperChoices).mockResolvedValue(paperChoices(clauseLibraryRows()))
+    const rows = awardedClinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(within(document.querySelector('[data-gc-board-row="p1"]') as HTMLElement).getByRole('button', { name: 'Oak Street Partners' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Oak Street Partners' })
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    fireEvent.click(within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).getByRole('button', { name: 'Send to sign' }))
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    fireEvent.change(await within(box).findByRole('combobox', { name: 'Paper' }), { target: { value: paperId } })
+    fireEvent.change(within(box).getByLabelText('The contract PDF'), { target: { files: [new File(['%PDF-1.7'], 'Clinic contract.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(within(box).getByLabelText('Email it to them now, with their portal link'))
+    fireEvent.click(within(box).getByRole('button', { name: 'Send to sign' }))
+    return dialog
+  }
+
+  it('sets the paper the send picked on the new send, before the email names it', async () => {
+    const dialog = await sendWithPaper('doc-msa')
+    await waitFor(() => expect(setOwnerContractPaper).toHaveBeenCalledWith('cs-new', 'doc-msa'))
+    await waitFor(() => expect(sendGcCustomerEmail).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(setOwnerContractPaper).mock.invocationCallOrder[0]!).toBeLessThan(vi.mocked(sendGcCustomerEmail).mock.invocationCallOrder[0]!)
+    expect(await within(dialog).findByText('On record, and sent to Pat Oak.')).toBeTruthy()
+  })
+
+  it('says a refused paper after the send, which stands on our contract file', async () => {
+    vi.mocked(setOwnerContractPaper).mockRejectedValue(new Error('Only the money team picks the paper for our contract.'))
+    const dialog = await sendWithPaper('doc-sow')
+    expect(await within(dialog).findByText('On record, and sent to Pat Oak. The paper did not save, so it goes on our contract file alone: Only the money team picks the paper for our contract.')).toBeTruthy()
+  })
+})
+
+describe('GcProjects: the page sits in the middle of a wide screen', () => {
+  // v2.5537: the Bids board centers its column; this page hugged the left edge beside it.
+  it('caps the page at 1100px and centers it with auto margins, full width inside the cap', async () => {
+    window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1')
+    await renderSettled(<GcProjects />, loadedEmpty)
+    const page = screen.getByRole('heading', { name: 'GC projects' }).closest('[data-gc-page]') as HTMLElement
+    expect(page).toBeTruthy()
+    expect(page.style.maxWidth).toBe('1100px')
+    expect(page.style.width).toBe('100%')
+    expect(page.style.marginLeft).toBe('auto')
+    expect(page.style.marginRight).toBe('auto')
+  })
+})
+
+describe("the card's head (to-do #108, PR 1)", () => {
+  // v2.5544: the name and the stage, then the facts line, then the doors as grouped sets with the fact that says whether to open each.
+  it('a dev reads the facts line and the three sets, and a set holds the doors in order', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const project = rows.projects.find((p) => p.id === 'p1')
+    const facts = card.querySelector('[data-gc-card-facts]') as HTMLElement
+    expect(facts.textContent).toContain(project?.address ?? '')
+    expect(facts.textContent).toMatch(/bid due |no bid due day yet/)
+    const job = within(card).getByRole('group', { name: 'The job' })
+    expect(within(job).getAllByRole('button').map((b) => b.textContent)).toEqual(['The plans', 'Papers', 'Questions about the plans', 'A new set of plans came in', 'Schedule'])
+    const money = within(card).getByRole('group', { name: 'Money' })
+    expect(within(money).getAllByRole('button').map((b) => b.textContent)).toContain('Our number')
+    // A bidding job has no work set yet.
+    expect(within(card).queryByRole('group', { name: 'The work' })).toBeNull()
+    // The first card carries the walkthrough's anchors; its doors still open what they opened.
+    expect(within(job).getByRole('button', { name: 'The plans' }).getAttribute('data-tour')).toBe('gc-plans')
+    fireEvent.click(within(job).getByRole('button', { name: 'The plans' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+})
+
+describe('the trades as rows (to-do #108, PR 3)', () => {
+  // v2.5547: one row a trade under The trades, open by default with the scope, the statement of work and the asks under it.
+  it('a dev reads a row per trade with its words, folds one shut and opens it again', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const band = within(card).getByRole('region', { name: 'The trades' })
+    const row = band.querySelector('[data-gc-trade-row="k1"]') as HTMLElement
+    expect(row).toBeTruthy()
+    expect(row.textContent).toContain('Sitework')
+    expect(row.textContent).toMatch(/\d lines?/)
+    // The details are open: the asks are where they were.
+    expect(row.querySelector('[data-gc-trade-details="k1"] [data-gc-trade-asks="k1"]')).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Fold Sitework' }))
+    expect(row.querySelector('[data-gc-trade-details="k1"]')).toBeNull()
+    fireEvent.click(within(row).getByRole('button', { name: 'Open Sitework' }))
+    expect(row.querySelector('[data-gc-trade-details="k1"]')).toBeTruthy()
+    // The colours' key is behind the band's link.
+    expect(within(band).queryByText('done for this stage')).toBeNull()
+    fireEvent.click(within(band).getByRole('button', { name: 'Key' }))
+    expect(within(band).getByText('done for this stage')).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+})
+
+describe('the plans band and the foot (to-do #108, PR 4)', () => {
+  // v2.5550: The plans under The trades with the set's link and the Drive folder; the bid's end at the foot as plain buttons.
+  it("a dev reads the plans under the trades, and the bid's end at the foot", async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const trades = within(card).getByRole('region', { name: 'The trades' })
+    const plans = within(card).getByRole('region', { name: 'The plans' })
+    expect(plans.textContent).toMatch(/sheets?|no set yet/)
+    expect(within(plans).queryByRole('link', { name: 'The job folder in Drive' }) ?? within(plans).getByRole('button', { name: 'Make the Drive folder' })).toBeTruthy()
+    expect(plans.querySelector('[data-tour="gc-drive"]')).toBeTruthy()
+    const foot = card.querySelector('[data-gc-card-foot]') as HTMLElement
+    expect(foot.textContent).toContain('When the bid ends')
+    expect(within(foot).getByRole('button', { name: 'We sent our bid' })).toBeTruthy()
+    expect(within(foot).getByRole('button', { name: 'We won this. Start buyout' })).toBeTruthy()
+    // The order: the trades, then the plans, then the foot.
+    expect(trades.compareDocumentPosition(plans) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(plans.compareDocumentPosition(foot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
   })
 })

@@ -33,12 +33,19 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Jobs & billing', marker: 'Collections law firm' },
   { label: 'Bids & materials', marker: 'Manage Parts' },
   { label: 'People & teams', marker: 'Additional People' },
+  { label: 'Training', marker: 'Every course the app ships' },
   { label: 'Emails & reports', marker: 'Payment received notifications' },
   { label: 'What customers see', marker: 'Sample data:' },
   { label: 'What the team sees', marker: 'Sample data:' },
   // The v2.4108 index dropped the "Contracts customers accept or sign" section heading; this
   // line is the toolbar's intro and only renders once the wording has loaded (v2.4223).
   { label: 'Contracts & terms', marker: 'The wording as it stands today' },
+  // Messages, cut 4c (v2.5285): the papers built from clauses; the lede renders before the clauses load.
+  { label: 'Contracts and clauses', marker: 'A contract here is an ordered set of clauses' },
+  // Messages, cut 2's screens (v2.5311): who gets a new message; its heading renders before the seats load.
+  { label: 'Phone and texts', marker: 'Who gets a new message' },
+  // Messages, cut 4: the flows; the lede renders before the flow loads.
+  { label: 'Flows', marker: 'One flow for each kind of person' },
   { label: 'Company', marker: 'Company documents' },
   { label: 'Usage', marker: 'Where the time goes' },
   { label: 'Data & recovery', marker: /[Bb]ackup/ },

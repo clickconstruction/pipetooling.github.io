@@ -15,7 +15,7 @@ ver: v2.4174 · 4187 · 4189 · 4593 · 4595 · 4599 · 4606 · 4608 · 4667 · 
 opinion: soon — Wendi and Stephen are on the tab this week and first shares are coming; the pane is what teaches "why the reason matters" without a tour.
 group: ready
 blocker: None — the owner picked (b) on 2026-10-09.
-next: (b) is built as v2.5095. Deploy `get-submittal-room`, `open-submittal-pdf` and `submit-submittal-review` together; then drop the GC's Oct 2 email on BP398's Rev 3 and read the GC's page. Then delete this folder. The other hand-built samples in What customers see (the bid room, the customer portal) built through their kernels is a new row still to write.
+next: (b) is built as v2.5095. Deploy `get-submittal-room`, `open-submittal-pdf` and `submit-submittal-review` together; then drop the GC's Oct 2 email on BP398's Rev 3 and read the GC's page. Then delete this folder. The other hand-built samples in What customers see (the bid room, the customer portal) built through their kernels are #103, `to-dos/customer-samples-through-kernels.md`.
 ---
 
 # See what they see

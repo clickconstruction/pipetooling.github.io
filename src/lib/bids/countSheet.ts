@@ -14,6 +14,8 @@ export type CountSheetRow = {
   page: string | null
   /** Explicit unit (stage 2 column); null/undefined → inferred from the name. */
   unit?: string | null
+  /** v2.5517: each CountTooling project's share of the count, `{"<source id>": <count>}`; null/undefined = no project. */
+  source_shares?: unknown
 }
 
 /** Split a free-text plan-page value into display tokens ("5, 26,38" → ['5','26','38']). */

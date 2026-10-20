@@ -210,7 +210,7 @@ export function JobCalendarModal({
           boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', paddingBottom: '0.5rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1, minWidth: 0 }}>{renderStagesThreadFullscreenJobHeader(job)}</div>
           <button
             type="button"

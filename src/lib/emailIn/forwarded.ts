@@ -1,0 +1,117 @@
+/**
+ * Messages, cut 6 (email in): a forwarded copy. Mail that went to someone's own inbox reaches the thread when one of us
+ * forwards it to bids@ (the build plan's fallback, screen 4 of `email-in-mockups.html`). The line then lands on the
+ * first sender in the forwarded block, with that block's subject and time, and names who forwarded it. What the
+ * forwarder wrote above the block is their note: the reader writes it on the same thread as a team note.
+ *
+ * Only a forward by one of us counts: when someone outside forwards us a message, they are the one talking to us. The
+ * blocks Gmail, Apple Mail and Outlook write are read. A block whose From has no address reads as no forward.
+ */
+import { appTzWallTimeMs } from '../../utils/dateUtils'
+import { parseAddress, parseAddressList, type EmailAddress, type EmailIn } from './gmailMessage'
+
+export interface Forwarded {
+  /** The first sender in the forwarded block: whose thread the line lands on. */
+  from: EmailAddress
+  /** One of us, who forwarded it. */
+  by: EmailAddress
+  /** Whom the first sender wrote to: when the first sender is one of us, the line is ours, to them. */
+  to: EmailAddress[]
+  subject: string | null
+  /** When the first sender sent it, ISO, or null when the block's day reads as none. */
+  at: string | null
+  /** Their words, under the block's headers. */
+  text: string
+  /** What the forwarder wrote above the block, or null. */
+  note: string | null
+}
+
+const MARKERS: readonly RegExp[] = [
+  /^-{2,}\s*Forwarded message\s*-{2,}\s*$/im,
+  /^Begin forwarded message:\s*$/im,
+  /^-{2,}\s*Original Message\s*-{2,}\s*$/im,
+  /^_{10,}\s*$/m,
+]
+
+const FIELD = /^\s*\*?\s*(From|Date|Sent|Subject|To|Cc|Reply-To)\s*:\s*\*?\s*(.*)$/i
+
+const MONTHS: Readonly<Record<string, number>> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+}
+
+/** The offset of the time zones a mail program writes, in hours. With none, the time is the office's own (Chicago). */
+const ZONES: Readonly<Record<string, number>> = { CDT: -5, CST: -6, EDT: -4, EST: -5, MDT: -6, MST: -7, PDT: -7, PST: -8, UTC: 0, GMT: 0 }
+
+/**
+ * A forwarded block's day and time as mail programs write it ("Thu, Oct 1, 2026 at 4:02 PM", "October 1, 2026 at
+ * 4:02:12 PM CDT", "Thursday, October 1, 2026 4:02 PM"), ISO. Null when it does not read.
+ */
+export function readForwardedWhen(raw: string): string | null {
+  const WHEN = /([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})\D+?(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp]\.?[Mm]\.?)?(?:\s+([A-Z]{2,4}))?/g
+  for (const m of raw.matchAll(WHEN)) {
+    const month = MONTHS[m[1]!.slice(0, 4).toLowerCase()] ?? MONTHS[m[1]!.slice(0, 3).toLowerCase()]
+    if (month) return whenOf(m, month)
+  }
+  return null
+}
+
+const whenOf = (m: RegExpMatchArray, month: number): string | null => {
+  const day = Number(m[2])
+  const year = Number(m[3])
+  let hour = Number(m[4])
+  const minute = Number(m[5])
+  const second = Number(m[6] ?? 0)
+  const half = m[7]?.replace(/\./g, '').toLowerCase()
+  if (half === 'pm' && hour < 12) hour += 12
+  if (half === 'am' && hour === 12) hour = 0
+  if (day < 1 || day > 31 || hour > 23 || minute > 59) return null
+  const zone = m[8]
+  if (zone && zone in ZONES) return new Date(Date.UTC(year, month - 1, day, hour - ZONES[zone]!, minute, second)).toISOString()
+  const ms = appTzWallTimeMs(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`, hour, minute, second)
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null
+}
+
+/** The forwarded copy in an email, or null when it is not one of ours forwarding a message. */
+export function readForwarded(email: Pick<EmailIn, 'from' | 'text'>, isOurs: (address: string) => boolean): Forwarded | null {
+  if (!email.from || !isOurs(email.from.address)) return null
+  const text = email.text
+  let at = -1
+  let markerEnd = -1
+  for (const marker of MARKERS) {
+    const hit = marker.exec(text)
+    if (hit && (at < 0 || hit.index < at)) {
+      at = hit.index
+      markerEnd = hit.index + hit[0].length
+    }
+  }
+  if (at < 0) return null
+
+  const lines = text.slice(markerEnd).split('\n')
+  const fields: Record<string, string> = {}
+  let i = 0
+  while (i < lines.length && lines[i]!.trim() === '') i++
+  let last: string | null = null
+  for (; i < lines.length; i++) {
+    const line = lines[i]!
+    if (line.trim() === '') break
+    const f = FIELD.exec(line)
+    if (f) {
+      last = f[1]!.toLowerCase()
+      if (!(last in fields)) fields[last] = f[2]!.trim()
+    } else if (last && /^\s+\S/.test(line)) fields[last] = `${fields[last]} ${line.trim()}`
+    else break
+  }
+  const from = fields['from'] ? parseAddress(fields['from']) : null
+  if (!from) return null
+  const when = fields['date'] ?? fields['sent']
+  const note = text.slice(0, at).trim()
+  return {
+    from,
+    by: email.from,
+    to: parseAddressList(fields['to']),
+    subject: fields['subject'] ? fields['subject'].trim() || null : null,
+    at: when ? readForwardedWhen(when) : null,
+    text: lines.slice(i).join('\n').trim(),
+    note: note || null,
+  }
+}

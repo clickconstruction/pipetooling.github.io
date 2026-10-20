@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -7,7 +7,12 @@ import { allReportFieldLinesForThread } from '../lib/reportForViewFromJobLedgerR
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
-import { ACTIVITY_FILTERS, countActivityByFilter, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
+import { ACTIVITY_FILTERS, JOB_ACTIVITY_FILTERS, type JobActivityFilter } from '../lib/jobActivityFilter'
+import type { JobActivityMessage } from '../lib/jobs/jobActivityMessages'
+import { countJobUpdates, filterJobUpdates, mergeJobUpdates } from '../lib/jobs/jobUpdatesCustomerLines'
+import { JobUpdatesCustomerLine } from './jobs/JobUpdatesCustomerLine'
+import { JOB_BOX_KINDS, type JobBoxKind } from '../lib/messages/jobBox'
+import { KIND_LOOK, RING } from './gc/messages/reply/kindLook'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
 import {
   scheduleFormatDateLongNoWeekday,
@@ -78,6 +83,17 @@ type JobThreadNotesPanelProps = {
   onCommitPct?: (value: number, note: string) => void | Promise<void>
   /** People assigned to the job (jobs_ledger_team_members). Shown top-left. */
   teamMembers?: Array<{ user_id: string; name: string | null }>
+  /**
+   * Residential R2: Text and Email to the job's customer beside the note, through a kinds row over the composer (the
+   * job's window, for the office team). Note is this composer, as it was; Text and Email draw `render`'s box in its place.
+   */
+  customerBox?: { render: (kind: 'text' | 'email') => ReactNode }
+  /**
+   * The tech's door to the customer (v2.5527): the job's lines with its customer, from `customerLinesForJobUpdates`,
+   * listed in orange beside the activity under a Customer pill. Null while the read is out. Left out, no pill: the
+   * office's surfaces, and anyone who reads no lines.
+   */
+  customerLines?: readonly JobActivityMessage[] | null
 }
 
 const ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -148,7 +164,10 @@ export function JobThreadNotesPanel({
   pctSaving = false,
   onCommitPct,
   teamMembers,
+  customerBox,
+  customerLines,
 }: JobThreadNotesPanelProps) {
+  const [boxKind, setBoxKind] = useState<JobBoxKind>('note')
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
   // Who set the recorded % (v2.2852): the crew, when the newest report with a % says the same number; else the office.
@@ -228,18 +247,25 @@ export function JobThreadNotesPanel({
     [activityProp, notes],
   )
 
-  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
+  const [activityFilter, setActivityFilter] = useState<JobActivityFilter>('all')
   const filterEnabled = activityProp != null
-  const visibleActivity = useMemo(
-    () => (filterEnabled ? filterActivity(activity, activityFilter) : activity),
-    [filterEnabled, activity, activityFilter],
+  // The customer's lines (v2.5527) join the activity by time, under their own pill.
+  const withCustomer = filterEnabled && customerLines !== undefined
+  const entries = useMemo(
+    () => mergeJobUpdates(activity, withCustomer ? (customerLines ?? []) : []),
+    [activity, withCustomer, customerLines],
+  )
+  const visibleEntries = useMemo(
+    () => (filterEnabled ? filterJobUpdates(entries, activityFilter) : entries),
+    [filterEnabled, entries, activityFilter],
   )
   // Per-bucket counts for the filter pills — same array the filter reads, so a
   // pill's number always matches what clicking it shows.
   const activityCounts = useMemo(
-    () => (filterEnabled ? countActivityByFilter(activity) : null),
-    [filterEnabled, activity],
+    () => (filterEnabled ? countJobUpdates(entries) : null),
+    [filterEnabled, entries],
   )
+  const filters: { value: JobActivityFilter; label: string }[] = withCustomer ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS
   // If the selected bucket empties out (items reloaded, note deleted), fall
   // back to All rather than stranding the user on a blank feed behind a pill
   // that is now demoted to non-clickable.
@@ -249,14 +275,16 @@ export function JobThreadNotesPanel({
   }, [activityCounts, activityFilter])
 
   const activityTailKey = useMemo(() => {
-    const last = visibleActivity[visibleActivity.length - 1]
-    if (!last) return ''
+    const lastEntry = visibleEntries[visibleEntries.length - 1]
+    if (!lastEntry) return ''
+    if (lastEntry.kind === 'customer') return `m:${lastEntry.line.id}`
+    const last = lastEntry.item
     if (last.kind === 'note') return `n:${last.note.id}`
     if (last.kind === 'report') return `r:${last.report.id}`
     if (last.kind === 'clock_session') return `c:${last.clock.dedupeKey}`
     if (last.kind === 'event') return `e:${last.event.dedupeKey}`
     return `s:${last.schedule.dedupeKey}`
-  }, [visibleActivity])
+  }, [visibleEntries])
 
   // Re-pin the list to newest whenever the tail changes.
   useLayoutEffect(() => {
@@ -268,7 +296,7 @@ export function JobThreadNotesPanel({
       if (!box) return
       box.scrollTop = box.scrollHeight
     })
-  }, [loading, visibleActivity.length, activityTailKey])
+  }, [loading, visibleEntries.length, activityTailKey])
 
   return (
     <div
@@ -299,7 +327,7 @@ export function JobThreadNotesPanel({
           aria-label="Filter activity"
           style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}
         >
-          {ACTIVITY_FILTERS.map((f) => {
+          {filters.map((f) => {
             const active = activityFilter === f.value
             const count = f.value === 'all' ? null : (activityCounts?.[f.value] ?? 0)
             // Empty buckets demote to quiet non-clickable text (the v2.1475
@@ -392,12 +420,14 @@ export function JobThreadNotesPanel({
           }}
         >
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {visibleActivity.length === 0 ? (
+            {visibleEntries.length === 0 ? (
               showEmptyPlaceholder ? (
                 <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{emptyLabel}</li>
               ) : null
             ) : (
-              visibleActivity.map((item) => {
+              visibleEntries.map((entry) => {
+                if (entry.kind === 'customer') return <JobUpdatesCustomerLine key={`m-${entry.line.id}`} line={entry.line} />
+                const item = entry.item
                 if (item.kind === 'schedule_block') {
                   const s = item.schedule
                   const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(s.sortAt)
@@ -641,7 +671,26 @@ export function JobThreadNotesPanel({
             padding: '0.6rem',
           }}
         >
-          {pctEditorOpen && canEditPct ? (
+          {customerBox && (
+            <div role="radiogroup" aria-label="Write as" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {JOB_BOX_KINDS.map((k) => (
+                <button
+                  key={k.kind}
+                  type="button"
+                  role="radio"
+                  aria-checked={boxKind === k.kind}
+                  title={k.tip}
+                  onClick={() => setBoxKind(k.kind)}
+                  style={{ ...KIND_LOOK[k.kind], borderWidth: 1, borderStyle: 'solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', ...(boxKind === k.kind ? RING : null) }}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {customerBox && boxKind !== 'note' ? (
+            customerBox.render(boxKind)
+          ) : pctEditorOpen && canEditPct ? (
             /* % complete editor takes over the composer area: slider on top, then
                [note field | Cancel | Set to N%]. A note is required below 100%. */
             <div

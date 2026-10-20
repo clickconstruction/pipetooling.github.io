@@ -1,3 +1,4 @@
+import { WINDOW_QR_MM, WINDOW_ZONE_MM } from '../mail/windowEnvelope'
 import { loadJsPDF } from '../loadJsPDF'
 import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
 
@@ -28,7 +29,8 @@ import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
  * sentence and the statute line in grey beneath. `lienNoticeSignature.ts` builds it from the row.
  */
 export type FilingSignature = {
-  mode: 'type' | 'draw'
+  /** `type` = his name in cursive from one press; `draw` = his ink; `pen` (the pen train) = he signed the paper as printed, so the frame prints no mark, only the record. */
+  mode: 'type' | 'draw' | 'pen'
   printedName: string
   pngDataUrl?: string | null
   /** "Signed October 9, 2026 at 2:14 PM CT". */
@@ -39,6 +41,16 @@ export type FilingSignature = {
 }
 
 export const FILING_ESIGN_LINE = 'Binding as a signature in ink under the ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322).'
+/** Under a pen-signed frame instead of the statute line (the pen train): the ink is on the paper, this is the record of it. */
+export const FILING_PEN_LINE = 'The signature is in ink on the paper as mailed; this frame is the record of it.'
+/** The frame's tag by mode. */
+export function filingSignedTag(mode: FilingSignature['mode']): string {
+  return mode === 'pen' ? 'Signed by pen' : 'Signed electronically'
+}
+/** The line under the frame by mode. */
+export function filingSignedStatuteLine(mode: FilingSignature['mode']): string {
+  return mode === 'pen' ? FILING_PEN_LINE : FILING_ESIGN_LINE
+}
 /** The cursive face a pressed signature prints in; a print shell adds it when a page carries one. */
 export const FILING_SIGNATURE_FONT_LINK = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap">'
 /** True when a rendered page holds a pressed (typed) signature and so needs the cursive face loaded. */
@@ -61,6 +73,10 @@ export type FilingDocBlock =
   | { kind: 'deliveryRecord'; lines: string[] }
   /** A boxed line the reader must not miss (v2.3758): the pay page's direct-payment rule on the owner's copy. */
   | { kind: 'callout'; text: string }
+  /** The recipient block where a #10 double-window envelope's lower window shows (the Docsmit train, PR 4): drawn at the zone in `src/lib/mail/windowEnvelope.ts`, not at the cursor. */
+  | { kind: 'windowAddress'; lines: string[] }
+  /** A small code and the link it carries, in words beside it (the Docsmit train, PR 4): the owner's pay page with the piece's code. `png` for the PDF, `svg` for HTML; both null draws a dashed square. */
+  | { kind: 'qrLink'; png: string | null; svg: string | null; display: string; caption: string }
   /**
    * One bill on the pay page (v2.3758): its code (an SVG string for HTML, a PNG data URL for the
    * PDF; both null for a bill with no payment page), the bill's label and description, the amount
@@ -144,19 +160,22 @@ function payRowLineHtml(b: Extract<FilingDocBlock, { kind: 'payRow' }>, mark: Fi
 
 /** The signed frame on the page (v2.5077): the mark, the rule, the names, the day, the record ID; the audit and statute lines under it. */
 function signedSignatureHtml(sig: FilingSignature, lines: string[]): string {
+  // A pen signature prints no mark: the ink is on the paper, so the frame holds the name in plain type and the record.
   const mark =
-    sig.mode === 'draw' && sig.pngDataUrl
-      ? `<img src="${sig.pngDataUrl}" alt="Signature of ${esc(sig.printedName)}" style="display:block;max-height:56px;max-width:260px;object-fit:contain;object-position:left bottom" />`
-      : `<div style="font-family:'Great Vibes','Brush Script MT',cursive;font-size:2.2em;line-height:1.1;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sig.printedName)}</div>`
+    sig.mode === 'pen'
+      ? `<div style="${HTML_LABEL_FONT};font-size:1.05em;font-weight:600;line-height:1.3;color:#111827">${esc(sig.printedName)}</div>`
+      : sig.mode === 'draw' && sig.pngDataUrl
+        ? `<img src="${sig.pngDataUrl}" alt="Signature of ${esc(sig.printedName)}" style="display:block;max-height:56px;max-width:260px;object-fit:contain;object-position:left bottom" />`
+        : `<div style="font-family:'Great Vibes','Brush Script MT',cursive;font-size:2.2em;line-height:1.1;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sig.printedName)}</div>`
   return (
     `<div style="margin:2em 0 0;display:flex;justify-content:flex-end"><div style="width:54%">` +
     `<div data-filing-signed="${esc(sig.recordId)}" data-filing-signed-mode="${sig.mode}" style="position:relative;border:1.5px solid #c2410c;border-radius:6px;padding:12px 16px 9px">` +
-    `<span style="position:absolute;top:-8px;left:10px;background:#fff;padding:0 6px;${HTML_LABEL_FONT};font-size:0.58em;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#c2410c;line-height:1.2">Signed electronically</span>` +
+    `<span style="position:absolute;top:-8px;left:10px;background:#fff;padding:0 6px;${HTML_LABEL_FONT};font-size:0.58em;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#c2410c;line-height:1.2">${esc(filingSignedTag(sig.mode))}</span>` +
     mark +
     `<div style="border-top:1px solid currentColor;margin-top:0.35em;padding-top:0.35em;${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED};line-height:1.5">${[...lines, sig.signedWords].map(esc).join('<br/>')}</div>` +
     `<span style="position:absolute;bottom:-7px;right:10px;background:#fff;padding:0 6px;font-family:ui-monospace,Menlo,monospace;font-size:0.62em;color:${HTML_MUTED};line-height:1.2">${esc(sig.recordId)}</span>` +
     `</div>` +
-    `<div style="${HTML_LABEL_FONT};font-size:0.62em;color:${HTML_MUTED};margin-top:0.8em;line-height:1.5">${esc(sig.auditLine)}<br/>${esc(FILING_ESIGN_LINE)}</div>` +
+    `<div style="${HTML_LABEL_FONT};font-size:0.62em;color:${HTML_MUTED};margin-top:0.8em;line-height:1.5">${esc(sig.auditLine)}<br/>${esc(filingSignedStatuteLine(sig.mode))}</div>` +
     `</div></div>`
   )
 }
@@ -185,6 +204,24 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
         break
       case 'jurisdiction':
         parts.push(`<p style="margin:0 0 0.9em"><strong>STATE OF TEXAS</strong><br/><strong>COUNTY OF ${esc(b.county.toUpperCase() || '___________')}</strong></p>`)
+        break
+      case 'windowAddress':
+        // The window zone, kept as a box so the preview shows where the envelope's window falls.
+        parts.push(
+          `<div data-window-address style="${HTML_LABEL_FONT};min-height:${WINDOW_ZONE_MM.height}mm;width:${WINDOW_ZONE_MM.width}mm;max-width:100%;box-sizing:border-box;margin:${Math.max(0, WINDOW_ZONE_MM.top - 40)}mm 0 1em;padding:0.4em 0.6em;border:1px dashed ${HTML_RULE};font-size:0.95em;line-height:1.4">` +
+            b.lines.map(esc).join('<br/>') +
+            `</div>`,
+        )
+        break
+      case 'qrLink':
+        parts.push(
+          `<div data-qr-link style="display:grid;grid-template-columns:84px 1fr;gap:0.9em;align-items:center;margin:0 0 1em">` +
+            `<div style="width:84px;height:84px;line-height:0">${b.svg ?? `<div style="width:84px;height:84px;border:1px dashed ${HTML_RULE};box-sizing:border-box"></div>`}</div>` +
+            `<div style="${HTML_LABEL_FONT};font-size:0.86em;line-height:1.45">` +
+            `<div>${esc(b.caption)}</div>` +
+            `<div style="font-family:ui-monospace,Menlo,monospace;font-size:0.78em;color:${HTML_MUTED};margin-top:0.25em;word-break:break-all">${esc(b.display)}</div>` +
+            `</div></div>`,
+        )
         break
       case 'callout':
         parts.push(`<div style="${HTML_LABEL_FONT};font-size:0.9em;line-height:1.5;border:1px solid #c9a227;background:#fff8e1;padding:0.55em 0.8em;margin:0.2em 0 1em">${esc(b.text)}</div>`)
@@ -285,6 +322,12 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
         break
       case 'jurisdiction':
         out.push(`STATE OF TEXAS\nCOUNTY OF ${b.county.toUpperCase() || '___________'}`)
+        break
+      case 'windowAddress':
+        out.push(b.lines.join('\n'))
+        break
+      case 'qrLink':
+        out.push([b.caption, b.display].filter((l) => l).join('\n'))
         break
       case 'callout':
         out.push(b.text)
@@ -416,6 +459,46 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
         write(`COUNTY OF ${b.county.toUpperCase() || '___________'}`, 6, { bold: true })
         y += 3
         break
+      case 'windowAddress': {
+        // At the window zone, whatever the cursor says; the letter resumes under it.
+        if (y > WINDOW_ZONE_MM.top) ensureRoom(WINDOW_ZONE_MM.height)
+        const top = y > WINDOW_ZONE_MM.top ? y : WINDOW_ZONE_MM.top
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(11)
+        doc.setTextColor(...INK)
+        let ly = top + 5
+        for (const l of b.lines) {
+          doc.text(l, WINDOW_ZONE_MM.left, ly)
+          ly += 5
+        }
+        y = top + WINDOW_ZONE_MM.height + 4
+        break
+      }
+      case 'qrLink': {
+        const qr = WINDOW_QR_MM
+        ensureRoom(qr + 4)
+        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr)
+        else {
+          doc.setDrawColor(...RULE)
+          doc.rect(PAGE_MARGIN, y, qr, qr)
+        }
+        const textX = PAGE_MARGIN + qr + 5
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(...INK)
+        const cap = doc.splitTextToSize(b.caption, RIGHT_EDGE - textX) as string[]
+        let ty = y + 6
+        for (const l of cap) {
+          doc.text(l, textX, ty)
+          ty += 4.4
+        }
+        doc.setFont('courier', 'normal')
+        doc.setFontSize(7.5)
+        doc.setTextColor(...MUTED)
+        doc.text(b.display, textX, ty + 0.5)
+        y += qr + 5
+        break
+      }
       case 'callout': {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(9.5)
@@ -537,7 +620,7 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
           const frameH = pad + 1 + markH + 1 + 4 + (b.lines.length + 1) * 3.8 + pad - 1
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(6)
-          const auditLines = doc.splitTextToSize(`${s.auditLine} ${FILING_ESIGN_LINE}`, frameW) as string[]
+          const auditLines = doc.splitTextToSize(`${s.auditLine} ${filingSignedStatuteLine(s.mode)}`, frameW) as string[]
           y += 8
           ensureRoom(frameH + auditLines.length * 2.8 + 8)
           doc.setDrawColor(194, 65, 12)
@@ -547,7 +630,7 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
           doc.setFont('helvetica', 'bold')
           doc.setFontSize(5.5)
           doc.setTextColor(194, 65, 12)
-          const tag = 'SIGNED ELECTRONICALLY'
+          const tag = filingSignedTag(s.mode).toUpperCase()
           const tagW = doc.getTextWidth(tag) + 2
           doc.rect(frameX + 3, y - 1.5, tagW, 3, 'F')
           doc.text(tag, frameX + 4, y + 0.8)
@@ -555,6 +638,13 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
           if (png) {
             doc.addImage(s.pngDataUrl as string, 'PNG', frameX + pad, yy, png.w, png.h, undefined, 'FAST')
             yy += png.h + 1
+          } else if (s.mode === 'pen') {
+            // No mark: the ink is on the paper. The name in plain type.
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(9)
+            doc.setTextColor(17, 24, 39)
+            doc.text(s.printedName, frameX + pad, yy + 6)
+            yy += 9
           } else {
             doc.setFont('times', 'italic')
             doc.setFontSize(16)

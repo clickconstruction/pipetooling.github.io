@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react'
+import { Link } from 'react-router-dom'
 import type { JobActivityLine } from '../../lib/jobs/jobActivityLine'
 import { groupJobActivityLinesByDay, isConversationalLine } from '../../lib/jobs/jobActivityLine'
+import { isCustomerSide, type JobActivityMessageTone } from '../../lib/jobs/jobActivityMessages'
 
 /**
  * The shared Job activity feed (v2.1673) — ONE rendering used by every Pipeline
@@ -28,7 +30,22 @@ import { groupJobActivityLinesByDay, isConversationalLine } from '../../lib/jobs
  * and an opened report needs selectable text, and nested interactives inside a
  * button are invalid. Clicks inside the opened detail select text; they don't
  * collapse the line.
+ *
+ * Messages (cut 10, `customer-messages-prototype.html` v0.3): a call, text or
+ * email from Messages is a line like any other, its channel a small word before
+ * its words. Orange is the customer's: her lines carry an orange tint and bar,
+ * a deeper one when the line came from her. A team note written in her thread
+ * reads like any note. Every message line opens, to its whole words and a link
+ * to the thread in Messages.
  */
+
+/** The customer's lines: a tint and a bar, deeper when the line came from her. */
+const TONE_STYLE: Partial<Record<JobActivityMessageTone, CSSProperties>> = {
+  customerIn: { background: 'var(--bg-orange-100)', borderLeft: '4px solid var(--text-orange-700)', borderRadius: '0 6px 6px 0' },
+  customerOut: { background: 'var(--bg-orange-tint)', borderLeft: '3px solid var(--border-orange)', borderRadius: '0 6px 6px 0' },
+}
+
+const smallWord: CSSProperties = { fontSize: '0.6875rem', fontWeight: 600 }
 
 const dayHeadStyle: CSSProperties = {
   textAlign: 'left',
@@ -90,9 +107,14 @@ type Props = {
    * line still folds it (openKeys stores toggles away from the default).
    */
   reportsOpenByDefault?: boolean
+  /**
+   * A message line opens to *Open the thread with …* (cut 10). Off for a reader who cannot open Messages on GC projects,
+   * a tech (`canOpenGcProjects`): main has no thread page of theirs yet, so the line keeps its words and no link.
+   */
+  threadLinks?: boolean
 }
 
-export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false }: Props) {
+export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true }: Props) {
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set())
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Whether the reader is parked at the newest item. New arrivals re-pin only
@@ -150,13 +172,16 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
               {g.agoLabel ? ` · ${g.agoLabel}` : ''}
             </div>
             {g.lines.map((line) => {
-              const hasDetail = line.detail.length > 0
+              const message = line.kind === 'message' ? line.message : null
+              // A message opens to its words and, for a reader who can open it, the link to its thread.
+              const hasDetail = line.detail.length > 0 || (message !== null && threadLinks)
               const msg = isConversationalLine(line)
+              const customer = message ? isCustomerSide(message.tone) : false
               // Report answers fold (they're long) except in full-screen
               // shells; schedule/clock notes are a sentence and show by
               // default (owner call). openKeys therefore stores TOGGLES away
               // from each line's default, not "open".
-              const defaultOpen = hasDetail && (reportsOpenByDefault || line.kind !== 'report')
+              const defaultOpen = hasDetail && !message && (reportsOpenByDefault || line.kind !== 'report')
               const open = openKeys.has(line.key) ? !defaultOpen : defaultOpen
 
               const onRowClick = (e: MouseEvent<HTMLDivElement>) => {
@@ -184,7 +209,7 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                     // The strong name is reserved for speech; on system rows
                     // the body is the news, not the author.
                     fontWeight: msg ? 650 : 500,
-                    color: msg ? 'var(--text-strong)' : 'var(--text-muted)',
+                    color: message?.tone === 'customerIn' ? 'var(--text-orange-800)' : msg ? 'var(--text-strong)' : 'var(--text-muted)',
                     whiteSpace: 'nowrap',
                     ...(narrow ? null : { overflow: 'hidden', textOverflow: 'ellipsis' }),
                   }}
@@ -211,13 +236,28 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                   }}
                 >
                   {narrow && line.who ? <span style={{ color: 'var(--text-faint)' }}>{'— '}</span> : null}
+                  {message?.channelWord ? (
+                    <span data-activity-channel style={{ ...smallWord, marginRight: '0.35rem', color: customer ? 'var(--text-orange-700)' : 'var(--text-muted)' }}>
+                      {message.channelWord}
+                    </span>
+                  ) : null}
+                  {message?.subject ? (
+                    <>
+                      <strong style={{ fontWeight: 650 }}>{message.subject}</strong>
+                      {line.body ? ' · ' : ''}
+                    </>
+                  ) : null}
                   {line.body}
                   {line.pending ? <span style={pendingChipStyle}>Pending</span> : null}
-                  {hasDetail && !open ? (
+                  {message?.notTiedYet ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>not tied yet</span> : null}
+                  {message?.readersWord ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>{message.readersWord}</span> : null}
+                  {hasDetail && !open && (!message || line.detail.length > 0) ? (
                     <span style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.6875rem', marginLeft: '0.35rem' }}>
                       {line.kind === 'report'
                         ? `▸ ${line.detail.length} answer${line.detail.length === 1 ? '' : 's'}`
-                        : '▸ note'}
+                        : message
+                          ? '▸ more'
+                          : '▸ note'}
                     </span>
                   ) : null}
                 </span>
@@ -240,6 +280,11 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                         {d.value}
                       </span>
                     ))}
+                    {message && threadLinks ? (
+                      <Link to={message.threadHref} style={{ display: 'inline-block', marginTop: 4, color: 'var(--text-link)', fontWeight: 600, fontSize: '0.75rem' }}>
+                        Open the thread with {message.withName} ›
+                      </Link>
+                    ) : null}
                   </span>
                 ) : null
 
@@ -254,6 +299,8 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                 // Tier 1: speech sits on a faint band so what people actually
                 // said stands out of the system stream.
                 ...(msg ? { background: 'var(--bg-subtle)', borderRadius: 6 } : null),
+                // The customer's lines take her orange over the band (cut 10).
+                ...(message ? TONE_STYLE[message.tone] : null),
               }
 
               return (

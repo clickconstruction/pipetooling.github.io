@@ -59,3 +59,50 @@ describe('shapeLienBookForCounsel', () => {
     expect(input.filingsByJob.j1).toHaveLength(1)
   })
 })
+
+describe('shapeLienBookForCounsel · ZZ test jobs (punch list #61, v2.5124)', () => {
+  const job = (id: string, jobName: string, customerName: string, gcId: string, addressId: string) => ({
+    id, hcp_number: id, click_number: null, job_name: jobName, customer_name: customerName, job_address: '', gc_customer_id: gcId, customer_address_id: addressId,
+    revenue: 1000, payments_made: 0, last_work_date: '2026-08-01', lien_payment_bond: null, lien_contract_ended_on: null,
+  })
+  const month = (jobId: string) => ({ job_id: jobId, work_month: '2026-08', deadline: '2026-10-15', open_balance: 1000 })
+  const forJob = (jobId: string) => ({ ...deskItem, id: `it-${jobId}`, job_id: jobId })
+  // j1 is real. j2 is a ZZ job by its own name, j3 by its customer's, j4 by its GC's. j5 is real and shares j2's property.
+  const shaped = shapeLienBookForCounsel({
+    rows: ['j1', 'j2', 'j3', 'j4', 'j5'].map(month),
+    affidavitRows: [month('j1'), month('j3')],
+    items: [forJob('j1'), forJob('j2')],
+    filings: [{ ...filing, job_id: 'j3' }, filing],
+    jobs: [
+      job('j1', '101 Hill Street', 'Ann Lee', 'g1', 'a1'),
+      job('j2', 'ZZ TEST lien', 'Ann Lee', 'g1', 'a2'),
+      job('j3', 'Hill Street remodel', ' zz Test Customer', 'g3', 'a3'),
+      job('j4', '9 Oak Road', 'Ann Lee', 'g2', 'a4'),
+      job('j5', '12 Oak Road', 'Bo Diaz', 'g1', 'a2'),
+    ],
+    gcs: [gc, { ...gc, id: 'g2', name: 'ZZ Test GC' }, { ...gc, id: 'g3', name: 'Only Test Contracting' }],
+    addresses: ['a1', 'a2', 'a3', 'a4'].map((id) => ({ ...address, id })),
+    owners: [owner, { ...owner, job_id: 'j4' }],
+  })
+  const jobIds = (list: unknown[]) => list.map((r) => (r as { job_id: string }).job_id)
+
+  it('drops a ZZ job, by its own, its customer’s or its GC’s name, from every list', () => {
+    expect((shaped.jobs as { id: string }[]).map((j) => j.id)).toEqual(['j1', 'j5'])
+    expect(jobIds(shaped.rows)).toEqual(['j1', 'j5'])
+    expect(jobIds(shaped.affidavitRows)).toEqual(['j1'])
+    expect(jobIds(shaped.items)).toEqual(['j1'])
+    expect(jobIds(shaped.filings)).toEqual(['j1'])
+    expect(jobIds(shaped.owners)).toEqual(['j1'])
+  })
+
+  it('drops the ZZ GC and a GC or property only test jobs point at, and keeps a property a real job shares', () => {
+    expect(shaped.gcs.map((g) => g.id)).toEqual(['g1'])
+    expect(shaped.addresses.map((a) => a.id)).toEqual(['a1', 'a2'])
+  })
+
+  it('sends no customer name and no ZZ name', () => {
+    const flat = JSON.stringify(shaped)
+    expect(flat).not.toContain('customer_name')
+    expect(flat).not.toMatch(/zz/i)
+  })
+})

@@ -3,7 +3,7 @@ import { canTakeBackItem, fieldsWithTakeBack, runNoticesTakenBack, runPrintedIte
 import type { RunNotice } from './lienDeskRun'
 
 const rec = (tracking: string, method: RunNotice['recipients'][number]['method'] = 'certified_mail') => ({ key: 'owner' as const, label: 'Owner of record', name: 'A', address: '1 St', email: '', method, tracking })
-const n = (itemId: string, printedAt: string | null, recipients = [rec('')]) => ({ itemId, printedAt, recipients }) as Pick<RunNotice, 'itemId' | 'printedAt' | 'recipients'>
+const n = (itemId: string, printedAt: string | null, recipients: RunNotice['recipients'] = [rec('')]) => ({ itemId, printedAt, recipients }) as Pick<RunNotice, 'itemId' | 'printedAt' | 'recipients'>
 
 describe('lienRunTakeBack', () => {
   it('reads the line back, and ignores what is not one', () => {
@@ -30,6 +30,14 @@ describe('lienRunTakeBack', () => {
   it('the printed items: before this sitting or in it, in run order, once each', () => {
     expect(runPrintedItemIds([n('a', '2026-10-07T16:00:00Z'), n('b', null), n('c', null), n('a', '2026-10-07T16:00:00Z')], ['c'])).toEqual(['a', 'c'])
     expect(runPrintedItemIds([n('b', null)])).toEqual([])
+  })
+
+  it('a notice with a copy mailed through Docsmit is never taken back: it went (v2.5532)', () => {
+    const viaDocsmit: RunNotice['recipients'][number] = { ...rec(''), via: 'docsmit', pieceId: 'p1', pieceStatus: 'mailed' }
+    const gc: RunNotice['recipients'][number] = { ...rec(''), key: 'original_contractor' }
+    expect(runPrintedItemIds([n('a', '2026-10-14T16:00:00Z', [viaDocsmit, gc]), n('b', '2026-10-14T16:00:00Z')], ['c'])).toEqual(['b'])
+    // A copy Docsmit refused or never sent leaves the notice on paper, so it can come back.
+    expect(runPrintedItemIds([n('a', '2026-10-14T16:00:00Z', [{ ...viaDocsmit, pieceStatus: 'failed' }, gc])])).toEqual(['a'])
   })
 
   it('counts the typed numbers a take-back drops: paper sends only, on the items taken back', () => {

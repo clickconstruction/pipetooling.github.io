@@ -24,6 +24,8 @@ export type CustomerProfileData = {
       hcp_number: string | null
       click_number: string | null
       job_name: string | null
+      /** The job's stored customer name: the ZZ test-job rule reads it, as the shared ids do (punch list #61). */
+      customer_name?: string | null
       created_at: string | null
     }
   >
@@ -60,7 +62,7 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
         supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, click_number, job_name, status, revenue, payments_made, created_at, invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date, sequence_order), payments:jobs_ledger_payments(invoice_id, amount, paid_on)',
+            'id, hcp_number, click_number, job_name, customer_name, status, revenue, payments_made, created_at, invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date, sequence_order), payments:jobs_ledger_payments(invoice_id, amount, paid_on)',
           )
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false }),

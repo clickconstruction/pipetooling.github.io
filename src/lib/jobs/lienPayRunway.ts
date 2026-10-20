@@ -64,6 +64,8 @@ export type LienRunwayInput = {
   noticedMonths?: ReadonlyArray<string>
   /** A live notice that lists no months still counts as the work month's notice. */
   anyNoticeOnFile?: boolean
+  /** 'YYYY-MM' months on a § 53.056 notice printed and in the mail whose mailing is not recorded yet (v2.5522). */
+  mailedMonths?: ReadonlyArray<string>
   /**
    * 'YYYY-MM' months with approved hours (v2.4308). A sub owes a § 53.056 notice for each, so the
    * notice date is the earliest one still owed; null → the last work month stands alone. Months
@@ -72,8 +74,8 @@ export type LienRunwayInput = {
   workMonths?: ReadonlyArray<string> | null
 }
 
-/** One work month's § 53.056 notice on the runway's clock: recorded, owed with its window open, or closed unsent. */
-export type LienRunwayNoticeMonth = { key: string; ymd: string; state: 'sent' | 'owed' | 'closed' }
+/** One work month's § 53.056 notice on the runway's clock: recorded, printed and in the mail (v2.5522), owed with its window open, or closed unsent. */
+export type LienRunwayNoticeMonth = { key: string; ymd: string; state: 'sent' | 'mailed' | 'owed' | 'closed' }
 
 export type LienRunwayMarks = {
   /** Days from today at the runway's right edge (> every mark). */
@@ -111,6 +113,8 @@ export type LienPayRunway = {
   kindAssumed: boolean
   /** The § 53.056 notice for the work month is recorded (a sub job); false on a direct job. The Pipeline's dates block reads it (v2.4205). */
   noticeSent: boolean
+  /** Every month still owed is printed and in the mail (v2.5522): the next move is recording the mailing, not drafting. */
+  noticeMailed: boolean
   /** No clock hours — the clock counts from the month the job was created. */
   datedFromCreation: boolean
   /** The day every date counts from was set by hand (v2.4830). */
@@ -144,6 +148,7 @@ const NONE: LienPayRunway = {
   daysToNotice: null,
   kindAssumed: false,
   noticeSent: false,
+  noticeMailed: false,
   datedFromCreation: false,
   datedByHand: false,
   basisYmd: '',
@@ -209,7 +214,7 @@ function noticeMonthsFor(
   workMonth: string,
   kind: 'residential' | 'non_residential',
   todayYmd: string,
-  isSent: (key: string) => boolean,
+  stateOf: (key: string) => 'sent' | 'mailed' | null,
 ): LienRunwayNoticeMonth[] {
   const keys = new Set([workMonth])
   for (const raw of workMonths ?? []) {
@@ -221,7 +226,7 @@ function noticeMonthsFor(
     const ymd = noticeDeadlineForMonth(key, kind)
     const days = ymd ? daysBetweenYmd(todayYmd, ymd) : null
     if (days == null) continue
-    out.push({ key, ymd, state: isSent(key) ? 'sent' : days < 0 ? 'closed' : 'owed' })
+    out.push({ key, ymd, state: stateOf(key) ?? (days < 0 ? 'closed' : 'owed') })
   }
   return out
 }
@@ -265,6 +270,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       words: `lien filed ${formatYmdMonthDay(filed)}`,
       lines: [`lien filed ${formatYmdMonthDay(filed)}`],
       noticeSent: false,
+      noticeMailed: false,
       title: 'The lien affidavit is on file. The money is still owed; the Lien window carries the serve-by and the year to sue.',
       chipLabel: 'lien filed',
       basisYmd,
@@ -290,14 +296,30 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const kindEff = input.propertyKind === 'non_residential' ? 'non_residential' : 'residential'
   const noticedMonths = input.noticedMonths ?? []
   const noticeSent = isSub && (noticedMonths.includes(workMonth) || (input.anyNoticeOnFile === true && noticedMonths.length === 0))
-  const noticeMonths = isSub ? noticeMonthsFor(input.workMonths, workMonth, kindEff, today, (key) => (key === workMonth ? noticeSent : noticedMonths.includes(key))) : []
+  // A month printed and in the mail (v2.5522) keeps its place on the clock — recording the number is what is still owed.
+  const mailedMonths = input.mailedMonths ?? []
+  const noticeMonths = isSub
+    ? noticeMonthsFor(input.workMonths, workMonth, kindEff, today, (key) => ((key === workMonth ? noticeSent : noticedMonths.includes(key)) ? 'sent' : mailedMonths.includes(key) ? 'mailed' : null))
+    : []
   const lastNotice = noticeMonths[noticeMonths.length - 1] ?? null
-  const owedMonths = noticeMonths.filter((m) => m.state === 'owed')
+  // The months still owed set the date; the months in the mail step up only when nothing else is owed, since
+  // recording a number is not a statutory deadline. A month in the mail whose date has passed (v2.5529) keeps
+  // its mark but sets no date: the runway cannot tell from a print whether it went out in time, so it reads
+  // on to the lien date, as a month on file does, rather than counting days past a notice date.
+  const stillOwed = noticeMonths.filter((m) => m.state === 'owed')
+  const inTheMail = noticeMonths.filter((m) => m.state === 'mailed' && (daysBetweenYmd(today, m.ymd) ?? -1) >= 0)
+  const owedMonths = stillOwed.length > 0 ? stillOwed : inTheMail
+  const noticeMailed = stillOwed.length === 0 && inTheMail.length > 0
   const noticeBy = owedMonths[0]?.ymd ?? lastNotice?.ymd ?? ''
   const daysToNotice = noticeBy ? daysBetweenYmd(today, noticeBy) : null
   const noticeOwed = owedMonths.length > 0 && daysToNotice != null
   const noticeWords = noticeBy ? formatYmdMonthDay(noticeBy) : ''
-  const noticeNote = isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : ''
+  // v2.5529: a month in the mail whose date has passed sets no date, so the runway's words say what is still to do.
+  const passedMailed = noticeMonths.filter((m) => m.state === 'mailed' && (daysBetweenYmd(today, m.ymd) ?? -1) < 0).map((m) => monthWords(m.key, true))
+  const passedMailedWords = passedMailed.length > 1 ? `${passedMailed.slice(0, -1).join(', ')} and ${passedMailed[passedMailed.length - 1]}` : passedMailed[0] ?? ''
+  const noticeNote =
+    (isSub && noticeSent ? ' The § 53.056 notice for this month is recorded.' : '') +
+    (passedMailedWords ? ` The § 53.056 ${passedMailed.length > 1 ? 'notices' : 'notice'} for ${passedMailedWords} ${passedMailed.length > 1 ? 'are' : 'is'} printed and in the mail but not recorded; record the mailing on the Lien desk before the lien is filed.` : '')
 
   // The last month's window closed unsent: every earlier window closed before it.
   if (lastNotice?.state === 'closed' && daysToNotice != null) {
@@ -315,6 +337,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       daysToNotice,
       kindAssumed,
       noticeSent,
+      noticeMailed,
       datedFromCreation,
       datedByHand,
       basisYmd,
@@ -339,6 +362,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       daysToNotice,
       kindAssumed,
       noticeSent,
+      noticeMailed,
       datedFromCreation,
       datedByHand,
       basisYmd,
@@ -362,20 +386,23 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const payMark = livePay != null ? { days: livePay, pct: pct(livePay) } : null
 
   if (noticeOwed) {
-    const lines = [`notice by ${noticeWords} · lien by ${lienWords}`, `send the notice · ${daysWords(daysToNotice)}`]
+    const lines = [`notice by ${noticeWords} · lien by ${lienWords}`, noticeMailed ? `record the mailing · ${daysWords(daysToNotice)}` : `send the notice · ${daysWords(daysToNotice)}`]
     return {
       state: 'notice_due',
       tone: daysToNotice <= LIEN_RUNWAY_RED_DAYS ? 'red' : 'amber',
       words: wordsOf(lines),
       lines,
-      title: `${noticeOwedWords(owedMonths, workMonth, noticeWords)}; the lien affidavit can then be filed by ${lienWords}. Send ${owedMonths.length > 1 ? 'them' : 'it'} from the Lien desk. ${basis}.${kindNote}`,
-      chipLabel: `notice in ${daysWords(daysToNotice)}`,
+      title: noticeMailed
+        ? `${noticeOwedWords(owedMonths, workMonth, noticeWords)}; it is printed and in the mail, its tracking number not yet recorded. Record the mailing on the Lien desk and the lien affidavit can then be filed by ${lienWords}. ${basis}.${kindNote}`
+        : `${noticeOwedWords(owedMonths, workMonth, noticeWords)}; the lien affidavit can then be filed by ${lienWords}. Send ${owedMonths.length > 1 ? 'them' : 'it'} from the Lien desk. ${basis}.${kindNote}`,
+      chipLabel: noticeMailed ? `in the mail · ${daysWords(daysToNotice)}` : `notice in ${daysWords(daysToNotice)}`,
       lienByYmd: lienBy,
       daysToLien,
       noticeByYmd: noticeBy,
       daysToNotice,
       kindAssumed,
       noticeSent,
+      noticeMailed,
       datedFromCreation,
       datedByHand,
       basisYmd,
@@ -403,6 +430,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       daysToNotice,
       kindAssumed,
       noticeSent,
+      noticeMailed,
       datedFromCreation,
       datedByHand,
       basisYmd,
@@ -430,6 +458,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       daysToNotice,
       kindAssumed,
       noticeSent,
+      noticeMailed,
       datedFromCreation,
       datedByHand,
       basisYmd,
@@ -457,6 +486,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     daysToNotice,
     kindAssumed,
     noticeSent,
+    noticeMailed,
     datedFromCreation,
     datedByHand,
     basisYmd,

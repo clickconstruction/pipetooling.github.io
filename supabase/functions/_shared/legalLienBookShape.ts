@@ -39,6 +39,18 @@ function pick(row: unknown, keys: ReadonlyArray<string>): Row {
   return out
 }
 
+/**
+ * The ZZ convention (punch list #61; the app's `isZzTestName`, `src/lib/jobs/zzTestJobSweep.ts`): a name that starts
+ * with ZZ, in any case and after trimming, is a test record. Counsel never sees one (v2.5124).
+ */
+function isZzName(name: unknown): boolean {
+  return typeof name === 'string' && /^zz/i.test(name.trim())
+}
+
+function jobIdOf(row: unknown): unknown {
+  return row && typeof row === 'object' ? (row as Row).job_id : undefined
+}
+
 export type LienBookForCounsel = {
   rows: unknown[]
   affidavitRows: unknown[]
@@ -50,16 +62,34 @@ export type LienBookForCounsel = {
   owners: Row[]
 }
 
-/** The book as the firm may hold it: every row cut to its list. The RPC rows and the jobs already carry only dates and dollars. */
+/**
+ * The book as the firm may hold it: every row cut to its list. The RPC rows and the jobs already carry only dates and
+ * dollars; the jobs lose `customer_name`, which is read only for the test-job rule.
+ *
+ * ZZ test jobs (punch list #61, v2.5124) leave every list: a job whose own name or customer's name is a ZZ name, or
+ * whose GC's is, with its months, affidavit windows, desk items, filings and owners. A ZZ GC leaves too, and so do a
+ * GC or a property only those jobs pointed at.
+ */
 export function shapeLienBookForCounsel(raw: { rows?: unknown[]; affidavitRows?: unknown[]; items?: unknown[]; filings?: unknown[]; jobs?: unknown[]; gcs?: unknown[]; addresses?: unknown[]; owners?: unknown[] }): LienBookForCounsel {
+  const gcsRead = (raw.gcs ?? []) as Row[]
+  const jobsRead = (raw.jobs ?? []) as Row[]
+  const zzGcIds = new Set(gcsRead.filter((g) => isZzName(g.name)).map((g) => g.id))
+  const isZzJob = (j: Row) => isZzName(j.job_name) || isZzName(j.customer_name) || zzGcIds.has(j.gc_customer_id)
+  const zzJobIds = new Set(jobsRead.filter(isZzJob).map((j) => j.id))
+  const jobs = jobsRead.filter((j) => !zzJobIds.has(j.id))
+  const keptGcIds = new Set(jobs.map((j) => j.gc_customer_id))
+  const keptAddressIds = new Set(jobs.map((j) => j.customer_address_id))
+  const droppedGcIds = new Set(jobsRead.filter((j) => zzJobIds.has(j.id) && !keptGcIds.has(j.gc_customer_id)).map((j) => j.gc_customer_id))
+  const droppedAddressIds = new Set(jobsRead.filter((j) => zzJobIds.has(j.id) && !keptAddressIds.has(j.customer_address_id)).map((j) => j.customer_address_id))
+  const kept = <T,>(list: T[] | undefined): T[] => (list ?? []).filter((r) => !zzJobIds.has(jobIdOf(r)))
   return {
-    rows: raw.rows ?? [],
-    affidavitRows: raw.affidavitRows ?? [],
-    items: (raw.items ?? []).map((r) => pick(r, LIEN_BOOK_DESK_ITEM_COLUMNS)),
-    filings: (raw.filings ?? []).map((r) => pick(r, LIEN_BOOK_FILING_COLUMNS)),
-    jobs: raw.jobs ?? [],
-    gcs: (raw.gcs ?? []).map((r) => pick(r, LIEN_BOOK_GC_COLUMNS)),
-    addresses: (raw.addresses ?? []).map((r) => pick(r, LIEN_BOOK_ADDRESS_COLUMNS)),
-    owners: (raw.owners ?? []).map((r) => pick(r, LIEN_BOOK_OWNER_COLUMNS)),
+    rows: kept(raw.rows),
+    affidavitRows: kept(raw.affidavitRows),
+    items: kept(raw.items).map((r) => pick(r, LIEN_BOOK_DESK_ITEM_COLUMNS)),
+    filings: kept(raw.filings).map((r) => pick(r, LIEN_BOOK_FILING_COLUMNS)),
+    jobs: jobs.map(({ customer_name: _customerName, ...job }) => job),
+    gcs: gcsRead.filter((g) => !zzGcIds.has(g.id) && !droppedGcIds.has(g.id)).map((r) => pick(r, LIEN_BOOK_GC_COLUMNS)),
+    addresses: ((raw.addresses ?? []) as Row[]).filter((a) => !droppedAddressIds.has(a.id)).map((r) => pick(r, LIEN_BOOK_ADDRESS_COLUMNS)),
+    owners: kept(raw.owners).map((r) => pick(r, LIEN_BOOK_OWNER_COLUMNS)),
   }
 }

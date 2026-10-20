@@ -35,6 +35,8 @@ export type PortalJobRow = {
   show_bills_to_other_party?: boolean | null
   /** Your payments (v2.4053): the retainage the GC holds, for the by-job roll-up. */
   lien_retainage_held?: number | null
+  /** GC mode's billing job (O4a), for the letterhead (`portalLetterhead`, v2.5229). */
+  billing_only?: boolean | null
 }
 
 export type PortalInvoiceRow = {

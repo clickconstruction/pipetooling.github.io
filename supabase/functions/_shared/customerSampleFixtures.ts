@@ -6,8 +6,12 @@
 import { normalizeSharedEstimateOptions } from './estimateOptions.ts'
 import { estimateOptionsDraftPersistFields } from './estimateOptionsPersist.ts'
 import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
+import { gcPortalCardBills } from './gcCardBill.ts'
+import { portalLetterhead } from './portalLetterhead.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
+import type { PortalGcSchedule } from './gcCustomerSchedule.ts'
+import type { PortalThreadLine } from './gcPortalThread.ts'
 import { buildPortalBills, buildPortalSharedBills, type PortalBillOut, type PortalInvoiceRow, type PortalJobRow, type PortalSharedBillOut } from './portalMergedBills.ts'
 import { buildPortalWaivers, type PortalWaiverReleaseRow, type PortalWaiverRow } from './portalWaivers.ts'
 import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksOut, type PortalChecksPaymentRow } from './portalChecks.ts'
@@ -302,8 +306,8 @@ export function samplePortalMoneyRows(state: SampleState, todayYmd: string, appO
     return {
       viewerCustomerId: id,
       audience: 'customer',
-      jobs: [samplePortalJob({ id: 'sample-job-owner', hcp_number: '1010', job_name: `${SAMPLE_OWNER.job} (GC)`, job_address: SAMPLE_OWNER.address, status: 'billed', revenue: 45_000, payments_made: 0, customer_id: id })],
-      sentInvoices: [samplePortalInvoice({ id: 'sample-inv-owner', job_id: 'sample-job-owner', amount: 45_000, status: 'billed', billed_at: at(-6), sequence_order: 1, hosted_invoice_url: `${origin}/portal?t=${SAMPLE_TOKEN_OWNER}#pay` })],
+      jobs: [samplePortalJob({ id: 'sample-job-owner', hcp_number: '1010', job_name: `${SAMPLE_OWNER.job} (GC)`, job_address: SAMPLE_OWNER.address, status: 'billed', revenue: 45_000, payments_made: 0, customer_id: id, billing_only: true })],
+      sentInvoices: [samplePortalInvoice({ id: 'sample-inv-owner', job_id: 'sample-job-owner', amount: 45_000, status: 'billed', billed_at: at(-6), sequence_order: 1 })],
       payments: [],
       releases: [],
       events: [],
@@ -396,12 +400,16 @@ export function samplePortalMoney(r: SamplePortalMoneyRows): { bills: PortalBill
 
 /**
  * GC mode's customer (O7c): the owner of a job we build, with our certified pay application to pay, a change order
- * waiting on them and the work to accept, so What customers see shows both presses. Sample presses only say thank you.
+ * waiting on them and the work to accept, so What customers see shows both presses. The certified bill is not on
+ * Stripe, so it offers Pay by card with its 3% fee (O8b). Sample presses only say thank you.
  */
 function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: string, appOrigin: string): Record<string, unknown> {
-  const money = samplePortalMoney(samplePortalMoneyRows('owner', todayYmd, appOrigin))
+  const rows = samplePortalMoneyRows('owner', todayYmd, appOrigin)
+  const money = samplePortalMoney(rows)
+  const gcJobs = sampleOwnerGcJobs(todayYmd, appOrigin)
   return {
-    company,
+    // Its only Pipeline job is its GC billing job, so it reads Click Construction by the portal's own rule (v2.5229).
+    company: portalLetterhead({ audience: 'customer', gcJobCount: gcJobs.length, jobs: rows.jobs }, company),
     customerName: SAMPLE_OWNER.company,
     customerPhone: '(512) 555-0177',
     audience: 'customer',
@@ -418,17 +426,114 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
     checks: money.checks,
     stages: [],
     bankTransfer: null,
-    gcJobs: [
-      {
-        projectId: 'sample-gc-project',
-        name: SAMPLE_OWNER.job,
-        changeOrders: [
-          { id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1_100, days: 3, sentOn: ymdPlusDays(todayYmd, -2) },
-        ],
-        canAccept: true,
-        accepted: null,
+    gcJobs,
+    // The certified bill is not on Stripe, so Pay by card offers it at its 3% (O8b), through the portal's own kernel.
+    cardBills: gcPortalCardBills({ on: true, hasEmail: true, bills: money.bills, certifiedInvoiceIds: new Set(['sample-inv-owner']), cardRows: [] }),
+    // Their thread on the page's Messages tab (Messages cut 8e).
+    thread: sampleOwnerThread(todayYmd),
+  }
+}
+
+/** The owner's sample thread (Messages cut 8e): a text from the site, their line from the page, our email back. Made up, in the page's own shape. */
+function sampleOwnerThread(todayYmd: string): PortalThreadLine[] {
+  const at = (days: number, hm: string) => `${ymdPlusDays(todayYmd, days)}T${hm}:00-05:00`
+  return [
+    { id: 'sample-line-1', at: at(-2, '10:05'), dir: 'out', door: 'text', who: 'Wendi', subject: null, body: 'The framing inspection passed this morning.' },
+    { id: 'sample-line-2', at: at(-1, '15:30'), dir: 'in', door: 'portal', who: null, subject: null, body: 'Great news. Can we look at the coffee bar layout on Friday?' },
+    {
+      id: 'sample-line-3',
+      at: at(-1, '17:10'),
+      dir: 'out',
+      door: 'email',
+      who: 'Robert',
+      subject: 'Coffee bar cabinet',
+      body: 'Change order 2 has the cabinet. It adds three working days. Friday at 10 works for the walk.',
+    },
+  ]
+}
+
+/** The owner's sample GC job: our contract to sign, a change order, the work to accept, its schedule and its page. */
+function sampleOwnerGcJobs(todayYmd: string, appOrigin: string) {
+  return [
+    {
+      projectId: 'sample-gc-project',
+      name: SAMPLE_OWNER.job,
+      // Our contract to sign (the Board's B6-d-iii). The sample's file opens the sample again: a press writes nothing.
+      contract: {
+        state: 'toSign',
+        sendId: 'sample-gc-contract',
+        signBy: ymdPlusDays(todayYmd, 5),
+        total: 187_000,
+        retainagePct: 10,
+        retainageStep: { atPct: 50, toPct: 5, way: 'rest' },
+        payDays: 30,
+        lateInterestPctPerMonth: null,
+        lateFinishPerDay: null,
+        fileName: 'Our contract.pdf',
+        fileUrl: `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN_OWNER}`,
       },
+      changeOrders: [
+        { id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1_100, days: 3, sentOn: ymdPlusDays(todayYmd, -2) },
+      ],
+      canAccept: true,
+      accepted: null,
+      schedule: sampleGcSchedule(todayYmd),
+      // The customer's page (Messages cut 8b-i, shape B): its money before the first bill, this week's line, who to
+      // call, a move with its reason, and the switches off. Made up, in the page block's own shape.
+      page: {
+        contract: 187_000,
+        contractSignedOn: null,
+        architect: 'Rivera Design Studio',
+        payDays: 30,
+        changes: [{ id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', descriptionEs: null, price: 1_100, days: 3, state: 'open', signedOn: null }],
+        payApps: [],
+        week: { on: ymdPlusDays(todayYmd, -1), line: 'The framing is up. The roof deck goes on next week.', lineEs: null, photosUrl: null },
+        people: [
+          { role: 'pm', name: 'Robert' },
+          { role: 'super', name: 'Wendi' },
+        ],
+        moves: [{ activity: 'Roof deck', madeOn: ymdPlusDays(todayYmd, -3), from: ymdPlusDays(todayYmd, 4), to: ymdPlusDays(todayYmd, 8), reason: 'weather' }],
+        switches: { photos: false, forecast: false, spanish: false },
+      },
+    },
+  ]
+}
+
+/**
+ * The sample job's schedule (the schedule's PR 15b), written in the answer's own shape: building it with the kernels
+ * would make every importer of this file load the copy of them. Its words are the kernels' shapes on a made-up job, and
+ * `customerPortalSchedule.test.ts` holds it to what the page reads.
+ */
+export function sampleGcSchedule(todayYmd: string): PortalGcSchedule {
+  const day = (n: number) => ymdPlusDays(todayYmd, n)
+  return {
+    today: todayYmd,
+    finish: day(68),
+    contract: day(70),
+    late: 0,
+    finishWords: 'We finish two days before the day in your contract.',
+    donePct: 38,
+    plannedPct: 36,
+    doneWords: '38% of the work is done. We planned 36% by today.',
+    next: { label: 'Dried in', due: day(19), state: 'due', daysLate: 0 },
+    contractDays: [],
+    lateWords: [],
+    stages: [
+      { label: 'Foundations', start: day(-34), finish: day(-21), pct: 100, state: 'done' },
+      { label: 'Slab', start: day(-20), finish: day(-14), pct: 100, state: 'done' },
+      { label: 'Structure', start: day(-13), finish: day(7), pct: 40, state: 'underway' },
+      { label: 'Dry-in', start: day(8), finish: day(19), pct: 0, state: 'notStarted' },
+      { label: 'Rough-in', start: day(20), finish: day(40), pct: 0, state: 'notStarted' },
+      { label: 'Finishes', start: day(41), finish: day(68), pct: 0, state: 'notStarted' },
     ],
+    dates: [
+      { label: 'Dried in', due: day(19), state: 'due', daysLate: 0 },
+      { label: 'Substantial completion', due: day(70), state: 'due', daysLate: 0 },
+    ],
+    everyBar: false,
+    groups: [],
+    changes: ['Structure is 2 days later than planned, because of the weather. The finish holds.'],
+    asks: ['Your signature on change order 2, Add a coffee bar cabinet, per the customer (3 days of schedule).'],
   }
 }
 
@@ -436,11 +541,12 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
   if (state === 'owner') return sampleOwnerPortalResponse(company, todayYmd, appOrigin)
   const gc = state === 'gc'
   // #103 PR 2: the bills, shared bills, waivers and checks come from rows, through the function's builders.
-  const money = samplePortalMoney(samplePortalMoneyRows(state, todayYmd, appOrigin))
+  const rows = samplePortalMoneyRows(state, todayYmd, appOrigin)
+  const money = samplePortalMoney(rows)
   const openBill = money.bills.find((b) => b.invoiceId === 'sample-inv-open')!
   const paidBill = money.bills.find((b) => b.invoiceId === 'sample-inv-paid')!
   return {
-    company,
+    company: portalLetterhead({ audience: gc ? 'gc' : 'all', gcJobCount: 0, jobs: rows.jobs }, company),
     customerName: gc ? SAMPLE_GC.company : SAMPLE_HOMEOWNER.name,
     // Customer Waiting (v2.3249): the number on file, so the sample form shows the prefill.
     customerPhone: gc ? '(512) 555-0188' : '(512) 555-0142',

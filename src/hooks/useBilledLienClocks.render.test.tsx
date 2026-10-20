@@ -35,7 +35,7 @@ vi.mock('../lib/supabase', () => {
 
 const A: BilledLienClockJob = { id: 'a', customer_address_id: null, gc_customer_id: 'gc-1' }
 const B: BilledLienClockJob = { id: 'b', customer_address_id: 'addr-b', gc_customer_id: null }
-const CLOCK_A: BilledLienClock = { propertyKind: '', filedYmd: null, releasedYmd: null, noticedMonths: [], noticeOnFile: false, workMonths: [] }
+const CLOCK_A: BilledLienClock = { propertyKind: '', filedYmd: null, releasedYmd: null, noticedMonths: [], noticeOnFile: false, mailedMonths: [], workMonths: [] }
 
 /** Reads wait until `release()`. */
 function hold() {

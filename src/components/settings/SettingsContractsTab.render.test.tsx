@@ -21,7 +21,21 @@ vi.mock('../../lib/supabase', async () => {
   const plain = stub.from
   stub.from = (table: string) => {
     const builder = plain(table) as Record<string, unknown>
-    const rows = () => Promise.resolve({ data: tables[table] ?? [], error: null, count: 0 })
+    // The tab reads the library twice: the Book's own documents (flow_kind null) and the papers on the flows (set).
+    let flowKind: 'none' | 'set' | null = null
+    builder.is = (column: string, value: unknown) => {
+      if (column === 'flow_kind' && value === null) flowKind = 'none'
+      return builder
+    }
+    builder.not = (column: string, op: string, value: unknown) => {
+      if (column === 'flow_kind' && op === 'is' && value === null) flowKind = 'set'
+      return builder
+    }
+    const rows = () => {
+      const all = (tables[table] ?? []) as Array<Record<string, unknown>>
+      const data = flowKind === 'none' ? all.filter((r) => r.flow_kind == null) : flowKind === 'set' ? all.filter((r) => r.flow_kind != null) : all
+      return Promise.resolve({ data, error: null, count: 0 })
+    }
     builder.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => rows().then(ok, bad)
     builder.insert = (row: unknown) => {
       writes.push({ table, op: 'insert', row })
@@ -52,6 +66,20 @@ afterEach(() => {
 
 const BOOK_DOC = { id: 'doc-1', document_name: 'Service agreement', book_body_html: '1. Scope. The office wording.', book_body_format: 'plain', book_version_date: '2026-09-20', updated_at: '2026-09-20T12:00:00Z' }
 
+/** Papers the office added to the flows (Messages cut 4): a trade partner's bond, a customer's contract and notice. */
+const BOND_ID = '00000000-0000-0000-0000-0000000f1a01'
+const SAFETY_ID = '00000000-0000-0000-0000-0000000f1a02'
+const START_ID = '00000000-0000-0000-0000-0000000f1a03'
+const FLOW_PAPERS = [
+  { id: BOND_ID, document_name: 'Bond', name_es: 'Fianza', flow_kind: 'upload', audience: 'sub', renew_ask_days: 45, book_body_html: null, book_body_es: null, book_body_format: 'plain', book_version_date: '2026-10-12', updated_at: '2026-10-12T15:00:00Z', revision: null },
+  { id: SAFETY_ID, document_name: 'Site safety agreement', name_es: null, flow_kind: 'contract', audience: 'customer', renew_ask_days: null, book_body_html: null, book_body_es: null, book_body_format: 'plain', book_version_date: '2026-10-12', updated_at: '2026-10-12T15:00:00Z', revision: 1 },
+  { id: START_ID, document_name: 'Start letter', name_es: 'Carta de inicio', flow_kind: 'notice', audience: 'customer', renew_ask_days: null, book_body_html: 'We start on Monday.', book_body_es: 'Empezamos el lunes.', book_body_format: 'plain', book_version_date: '2026-10-12', updated_at: '2026-10-12T15:00:00Z', revision: null },
+]
+const SAFETY_CLAUSES = [
+  { paper_id: SAFETY_ID, sequence_order: 0, text_en: 'Keep the site gate closed.', text_es: 'Mantenga cerrada la puerta.', scope: ['all'] },
+  { paper_id: SAFETY_ID, sequence_order: 1, text_en: 'Call in a locate before digging.', text_es: '', scope: ['Sitework'] },
+]
+
 /** v2.4108: the rows start closed; the cases that reach into a card press Open all once the list is up. */
 function mount(role: 'dev' | 'master_technician' | 'assistant' = 'dev', opts: { openAll?: boolean; openEntryId?: string | null } = {}) {
   const onOpenEditor = vi.fn()
@@ -64,6 +92,35 @@ function mount(role: 'dev' | 'master_technician' | 'assistant' = 'dev', opts: { 
 }
 
 describe('SettingsContractsTab', () => {
+  it('Papers on the flows: a line for each paper the office added, read from the library and kept out of the Book', async () => {
+    tables.contract_template_documents = [BOOK_DOC, ...FLOW_PAPERS]
+    tables.contract_clauses = SAFETY_CLAUSES
+    const { view, onOpenEditor } = mount('assistant')
+    await view
+    await waitFor(() => expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent).slice(-1)[0]).toBe('Papers on the flows'))
+    // The Book's card is still the one service agreement: the papers on the flows are not standard terms.
+    expect(within(screen.getByTestId('contract-card-job-standard-terms:doc-1')).getByText('Job service agreement — standard terms')).toBeTruthy()
+    expect(screen.queryByTestId(`contract-card-job-standard-terms:${START_ID}`)).toBeNull()
+    const bond = within(screen.getByTestId(`contract-card-flow-paper-${BOND_ID}`))
+    expect(bond.getByText('Bond · Fianza')).toBeTruthy()
+    expect(bond.getByText('Trade partner')).toBeTruthy()
+    expect(bond.getByText('Their paper')).toBeTruthy()
+    expect(bond.getByText('The trade partner')).toBeTruthy()
+    expect(bond.getByText(/We ask for the next one 45 days before it runs out\./)).toBeTruthy()
+    expect(bond.getByText(/We keep their file and write no wording of our own/)).toBeTruthy()
+    const safety = within(screen.getByTestId(`contract-card-flow-paper-${SAFETY_ID}`))
+    expect(safety.getByText('Customer or architect')).toBeTruthy()
+    expect(safety.getByTestId(`contract-last-changed-flow-paper-${SAFETY_ID}`).textContent).toBe('version 1')
+    expect(safety.getByText(/Call in a locate before digging\. \(Sitework only, on its exhibit\)/)).toBeTruthy()
+    fireEvent.click(safety.getByText('Open its clauses →'))
+    expect(onOpenEditor).toHaveBeenCalledWith('settings-clauses', `settings-clause-paper-${SAFETY_ID}`)
+    const start = within(screen.getByTestId(`contract-card-flow-paper-${START_ID}`))
+    expect(start.getByText('Notice')).toBeTruthy()
+    expect(start.getByText(/Empezamos el lunes\./)).toBeTruthy()
+    expect(screen.getByTestId('contracts-counts').textContent).toContain('1 they give us')
+    expect(screen.getByTestId('contract-lens-theirs').textContent).toBe('Their paper · 1')
+  })
+
   it('shows the built-in wording and says so when nothing is set', async () => {
     await mount().view
     // v2.4108: the sections are the areas, in the order a customer meets them.

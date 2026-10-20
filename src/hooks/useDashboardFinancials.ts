@@ -30,6 +30,9 @@ import {
 import type { ArExcluded } from '../lib/dashboardFinancials'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
 import { loadUnlinkedMoney } from '../lib/billing/loadUnlinkedMoney'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { withoutZzTestJobMoney } from '../lib/jobs/zzTestJobVisibility'
 
 /** Detail for one unpaid supply-house bill — powers the AP row click-through modal. */
 export type DashboardApBill = {
@@ -88,7 +91,7 @@ export function useDashboardFinancials(
    * they get org-level aggregates from get_dashboard_payroll_totals instead of per-person rows.
    */
   viewerRole?: string | null,
-  /** For the one-release bill-truth shadow beacon row; omit to log only. */
+  /** The signed-in user: the shared ZZ test job ids are kept per user (punch list #61, review on #5241). */
   viewerUserId?: string | null,
 ): {
   data: DashboardFinancials | null
@@ -98,6 +101,8 @@ export function useDashboardFinancials(
   const [data, setData] = useState<DashboardFinancials | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** ZZ test jobs (punch list #61, v2.5120): every role but a dev who shows them reads AR and Unbilled without them. */
+  const hideZz = useZzTestJobsHidden(viewerRole)
 
   useEffect(() => {
     if (!enabled) {
@@ -186,8 +191,16 @@ export function useDashboardFinancials(
         if (cancelled) return
 
         // v2.4784: `uncollectible_at` is in the select ahead of the generated types — hence the unknown.
-        const jobs = (jobsRes ?? []) as unknown as FinancialJobRow[]
-        const invoices = (invoicesRes ?? []) as FinancialInvoiceRow[]
+        // ZZ test jobs leave here, before anything reads them: their bills are then never billed ids, so
+        // their payments and unlinked money are never read either (by their names and the shared ids).
+        const zzJobIds = hideZz ? await loadZzTestJobIds(viewerUserId) : null
+        if (cancelled) return
+        const read = {
+          jobs: (jobsRes ?? []) as unknown as FinancialJobRow[],
+          invoices: (invoicesRes ?? []) as FinancialInvoiceRow[],
+          payments: [] as Array<{ job_id: string }>,
+        }
+        const { jobs, invoices } = zzJobIds ? withoutZzTestJobMoney(read, zzJobIds) : read
         const supplyInvoices = (supplyRes ?? []) as unknown as Array<
           FinancialSupplyInvoiceRow & {
             due_date: string | null
@@ -403,7 +416,7 @@ export function useDashboardFinancials(
     return () => {
       cancelled = true
     }
-  }, [enabled, refreshKey, viewerRole, viewerUserId])
+  }, [enabled, refreshKey, viewerRole, viewerUserId, hideZz])
 
   return { data, loading, error }
 }

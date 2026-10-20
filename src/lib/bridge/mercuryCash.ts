@@ -1,0 +1,43 @@
+import { supabase } from '../supabase'
+
+/**
+ * Cash on hand from the bank (v2.5218): the Bridge reads Mercury's account
+ * balances through `get-mercury-account-balances` (Banking's own function,
+ * controller and above) instead of a figure someone typed weeks ago. The
+ * typed figure stays as the fallback when the bank cannot be read.
+ */
+
+export type MercuryAccount = { id: string; name: string; kind: string | null; currentBalance: number; availableBalance: number }
+export type MercuryCash = { usd: number; accounts: MercuryAccount[]; readAtIso: string }
+
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+
+/** Pure: the function's body → cash on hand, or a thrown Error with the function's own words. */
+export function parseMercuryCash(body: unknown, readAtIso: string): MercuryCash {
+  const b = (body ?? {}) as { error?: unknown; accounts?: unknown; totalCurrentBalance?: unknown }
+  if (typeof b.error === 'string' && b.error) throw new Error(b.error)
+  const accounts: MercuryAccount[] = Array.isArray(b.accounts)
+    ? b.accounts.map((a) => {
+        const r = (a ?? {}) as Record<string, unknown>
+        return { id: String(r.id ?? ''), name: String(r.name ?? 'Account'), kind: typeof r.kind === 'string' ? r.kind : null, currentBalance: num(r.currentBalance), availableBalance: num(r.availableBalance) }
+      })
+    : []
+  const usd = typeof b.totalCurrentBalance === 'number' && Number.isFinite(b.totalCurrentBalance) ? b.totalCurrentBalance : accounts.reduce((s, a) => s + a.currentBalance, 0)
+  return { usd, accounts, readAtIso }
+}
+
+export async function loadMercuryCash(): Promise<MercuryCash> {
+  const { data, error } = await supabase.functions.invoke('get-mercury-account-balances', { body: {} })
+  if (error) throw new Error(error.message)
+  return parseMercuryCash(data, new Date().toISOString())
+}
+
+/** "Mercury Checking ••4286 $0.4k · 7 more at $0" for the readout: the accounts with money, then the empty ones counted. */
+export function mercuryAccountsLine(accounts: ReadonlyArray<MercuryAccount>): string {
+  const k = (n: number): string => (Math.abs(n) < 1000 ? `${n < 0 ? '−' : ''}$${Math.round(Math.abs(n))}` : `${n < 0 ? '−' : ''}$${(Math.abs(n) / 1000).toFixed(Math.abs(n) >= 100_000 ? 0 : 1)}k`)
+  const live = accounts.filter((a) => Math.round(a.currentBalance) !== 0)
+  const empty = accounts.length - live.length
+  const parts = live.map((a) => `${a.name} ${k(a.currentBalance)}`)
+  if (empty > 0) parts.push(`${empty} more at $0`)
+  return parts.join(' · ')
+}

@@ -195,6 +195,9 @@ function copy404Plugin() {
     name: 'copy-404',
     closeBundle() {
       const outDir = join(process.cwd(), 'dist')
+      // closeBundle runs even when the bundle failed; throwing here would replace the build's own error with
+      // an ENOENT for dist/index.html (it hid the lesson-glob break for an afternoon, 2026-10-16).
+      if (!existsSync(join(outDir, 'index.html'))) return
       copyFileSync(join(outDir, 'index.html'), join(outDir, '404.html'))
     },
   }

@@ -2,7 +2,7 @@
 title: set up my profile and notifications
 category: Getting Started
 roles: all
-keywords: profile, name, phone, push notifications, pinned pages, tabs
+keywords: profile, name, phone, push notifications, pinned pages, tabs, my way, ask me first
 order: 2
 ---
 Settings is where you manage your own profile and notifications. On a desktop, its pages sit in a list down the left side.
@@ -26,6 +26,14 @@ Name: `Mike Thompson` &nbsp;·&nbsp; Email: `mike@example.com` &nbsp;·&nbsp; Ph
 :::
 
 On a sub or helper account, the Name field is locked. The note reads "Name is managed by admins. Contact a master or dev to change it."
+
+## Your bio
+
+Techs and office staff see **Your bio** under **Your account**. The office writes it. A customer gets it with your first On my way text to them, and never again. Each line has a switch. **Say it** keeps the line in. **Don’t say this** takes it out. Ask the office to change the words.
+
+## My way
+
+Office staff see **My way** under **Your account**. It covers two moments: a booking's first visit, and an estimate. For each, pick **Ask me first** or **Send it and show me the receipt**. With Ask me first, the Tell the customer sheet opens and waits for you. With the other, the text or email goes the moment it can, and the receipt shows what went. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer).
 
 ## Push notifications
 

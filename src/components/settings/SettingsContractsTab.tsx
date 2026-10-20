@@ -30,6 +30,8 @@ import {
 } from '../../lib/contracts/customerContractCatalog'
 import { EMPTY_LAST_SENT, contractLastSent, lastSentDiffers, sentCompareKey, type ContractLastSent, type ContractLastSentData } from '../../lib/contracts/contractLastSent'
 import { fetchContractLastSent } from '../../lib/contracts/fetchContractLastSent'
+import { fetchFlowPapers, NO_FLOW_PAPERS, type FlowPapers } from '../../lib/contracts/fetchFlowPapers'
+import { flowPaperEntries } from '../../lib/contracts/flowPaperEntries'
 import {
   contractSourceRef,
   lastChanged,
@@ -61,13 +63,14 @@ import { CONTRACT_AREA_HINTS, CONTRACT_AREA_ORDER, CONTRACT_LENS_ORDER, contract
  * **Last sent** sets each card against the copy frozen the last time it went out
  * (`contractLastSent.ts`), and that copy can take a column of its own. **History** and
  * **Mark reviewed** read `contract_text_versions` and `contract_text_reviews`
- * (`contractTextHistory.ts`); a review is the one row this tab writes.
+ * (`contractTextHistory.ts`); a review is the one row this tab writes. **Papers on the flows** (Messages cut 4) is the
+ * one section made from the data: a line per paper the office added to a step of a flow (`flowPaperEntries`).
  */
 
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem' }
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }
-const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
+const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
 const CHIP: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, padding: '0.05rem 0.45rem', borderRadius: 9999, whiteSpace: 'nowrap', background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
 const WORDING: CSSProperties = { margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', font: 'inherit', fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-700)' }
 const WORDING_BOX: CSSProperties = { background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.7rem', overflowY: 'auto' }
@@ -81,6 +84,7 @@ const STATUS_CHIP: Readonly<Record<ContractTextStatus, CSSProperties>> = {
   per_record: CHIP,
   in_settings: CHIP,
   external: CHIP,
+  theirs: CHIP,
 }
 
 /** `first`: the entry's first text carries the card's anchor (a Book with two documents makes two cards). */
@@ -110,6 +114,8 @@ export type SettingsContractsTabProps = {
 
 export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, onOpenStep }: SettingsContractsTabProps) {
   const [data, setData] = useState<ContractCatalogData | null>(null)
+  /** Papers on the flows: empty until read, and when the read fails the section stays out rather than failing the tab. */
+  const [flowPapers, setFlowPapers] = useState<FlowPapers>(NO_FLOW_PAPERS)
   // null until it is read; the cards show without it.
   const [lastSent, setLastSent] = useState<ContractLastSentData | null>(null)
   const [history, setHistory] = useState<ContractHistoryData | null>(null)
@@ -142,7 +148,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
         const [settings, docs] = await Promise.all([
           withSupabaseRetry(() => supabase.from('app_settings').select('key, value_text').in('key', contractSettingKeys()), 'contracts tab: settings texts'),
           withSupabaseRetry(
-            () => supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date, updated_at').eq('audience', 'customer').order('document_name'),
+            () => supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date, updated_at').eq('audience', 'customer').is('flow_kind', null).order('document_name'),
             'contracts tab: customer documents',
           ),
         ])
@@ -154,6 +160,11 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Could not read the wording.')
       }
     })()
+    void fetchFlowPapers()
+      .then((rows) => {
+        if (!cancelled) setFlowPapers(rows)
+      })
+      .catch(() => undefined)
     void fetchContractLastSent()
       .then((rows) => {
         if (!cancelled) setLastSent(rows)
@@ -177,9 +188,11 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
   const nameOf = useMemo(() => (id: string | null) => (id ? names?.get(id) ?? null : null), [names])
   const todayYmd = todayYmdInAppTz()
 
+  const entries = useMemo(() => [...CUSTOMER_CONTRACT_CATALOG, ...flowPaperEntries(flowPapers.docs, flowPapers.clauses)], [flowPapers])
+
   const cards = useMemo((): CardModel[] => {
     if (!data) return []
-    return CUSTOMER_CONTRACT_CATALOG.flatMap((entry) =>
+    return entries.flatMap((entry) =>
       resolveContractTexts(entry, data).map((text, i) => {
         const versions = versionsFor(contractSourceRef(entry, text), history?.versions ?? [])
         const changed = lastChanged(versions, nameOf)
@@ -195,7 +208,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
         }
       }),
     )
-  }, [data, lastSent, history, nameOf, todayYmd])
+  }, [data, entries, lastSent, history, nameOf, todayYmd])
 
   // A card named by the page's hash or by What customers see's door opens on arrival; the shell scrolls to it.
   const wantedEntryId = openEntryId ?? (typeof window !== 'undefined' ? entryIdFromHash(window.location.hash) : null)
@@ -395,7 +408,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
                 const reasons = needsLookReasons(card)
                 const canRead = readerSurfacesFor(entry).length > 0
                 return (
-                  <article key={text.key} id={first ? contractAnchorId(entry.id) : undefined} style={{ borderTop: '1px solid var(--border)', scrollMarginTop: '0.75rem', background: rowOpen ? 'var(--bg-blue-50)' : undefined }} data-testid={`contract-card-${text.key}`} data-open={rowOpen ? 'true' : undefined}>
+                  <article key={text.key} id={first ? contractAnchorId(entry.id) : undefined} style={{ borderTop: '1px solid var(--border)', scrollMarginTop: '0.75rem', background: rowOpen ? 'var(--bg-blue-tint)' : undefined }} data-testid={`contract-card-${text.key}`} data-open={rowOpen ? 'true' : undefined}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem 0.4rem 0.45rem' }}>
                       <button
                         type="button"
@@ -443,7 +456,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
                     </div>
 
                     <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.76rem', lineHeight: 1.4 }}>
-                      <dt style={{ color: 'var(--text-muted)' }}>The customer</dt>
+                      <dt style={{ color: 'var(--text-muted)' }}>{entry.audience === 'trade' ? 'The trade partner' : 'The customer'}</dt>
                       <dd style={{ margin: 0, color: 'var(--text-700)' }}>{entry.customerAction}</dd>
                       <dt style={{ color: 'var(--text-muted)' }}>Kept in</dt>
                       <dd style={{ margin: 0, color: 'var(--text-700)' }}>{contractSourceLine(entry)}</dd>
@@ -665,11 +678,13 @@ function Wording({ entry, text }: { entry: ContractCatalogEntry; text: ResolvedC
     const why =
       text.status === 'per_record' && entry.source.kind === 'per_record'
         ? entry.source.startsFrom
-        : text.status === 'blank'
-          ? 'Nothing is set, so the customer sees nothing here.'
-          : text.status === 'in_settings'
-            ? 'Set in Settings, in a form of its own. Open it as the customer sees it to read a sample.'
-            : 'Built around the facts of each record. Open it as the customer sees it to read a sample.'
+        : text.status === 'theirs'
+          ? 'Their own paper. We keep their file and write no wording of our own for it.'
+          : text.status === 'blank'
+            ? 'Nothing is set, so the customer sees nothing here.'
+            : text.status === 'in_settings'
+              ? 'Set in Settings, in a form of its own. Open it as the customer sees it to read a sample.'
+              : 'Built around the facts of each record. Open it as the customer sees it to read a sample.'
     return <p style={{ ...WORDING, color: 'var(--text-muted)' }}>{why}</p>
   }
   return <Body text={text.text} format={text.format} />

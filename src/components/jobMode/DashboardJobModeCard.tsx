@@ -23,9 +23,10 @@ import {
   type JobModeScheduleBlock,
 } from '../../lib/jobModePickCurrentNext'
 import { buildJobModeDayRail, type JobModeDayRailRow } from '../../lib/jobModeDayRail'
-import JobModeAdvanceNotesModal, {
-  type JobModeAdvanceDestination,
-} from './JobModeAdvanceNotesModal'
+import { OnMyWaySheet, type OnMyWayDestination } from './OnMyWaySheet'
+import { ImHereSheet } from './ImHereSheet'
+import { legOf, legWords, ON_MY_WAY_WORDS, type TravelFacts } from '../../lib/jobMode/onMyWay'
+import { supabaseOnMyWayIo } from '../../lib/jobModeOnMyWayIo'
 import JobModeDetailsSection from './JobModeDetailsSection'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useQuickEstimateDoor } from '../../hooks/useQuickEstimateDoor'
@@ -33,6 +34,8 @@ import { canHandThePhone, goToSigningPage, handPhoneDoorText, handPhoneState, op
 import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
 import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { jobModeMessagesOffered } from '../../lib/messages/jobBox'
+import { MessageCustomerDoor } from './MessageCustomerDoor'
 
 type LeaveReportJobPick = {
   id: string
@@ -126,6 +129,10 @@ const headerStatusLine: CSSProperties = {
   marginTop: '0.15rem',
 }
 
+/** The leg's line under the header (v2.5573): on the way in the clock's green, on site in the ink. */
+const onTheWayLine: CSSProperties = { ...headerStatusLine, color: '#15803d', fontWeight: 700 }
+const onSiteLine: CSSProperties = { ...headerStatusLine, color: 'var(--text-strong)', fontWeight: 600 }
+
 const buttonRow: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
@@ -159,6 +166,13 @@ const leaveReportBtn: CSSProperties = {
 const nextJobBtn: CSSProperties = {
   ...bigButtonBase,
   background: '#16a34a',
+  color: 'white',
+}
+
+/** I'm here, the big button while on the way (v2.5573), in the blue of a thing to press once. */
+const imHereBtn: CSSProperties = {
+  ...bigButtonBase,
+  background: '#1d4ed8',
   color: 'white',
 }
 
@@ -274,7 +288,7 @@ function safeTrim(s: string | null | undefined): string {
 export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, profileName } = useAuth()
   const { showToast } = useToastContext()
   // SP-2 (v2.3067): a sub or helper with a login reaches their own statement from here.
   const myStatement = useMySubPortalAddress(role === 'subcontractor' || role === 'helpers')
@@ -315,11 +329,13 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   /** Jobs with a closed clock session today — drives the rail's ✓s and the unvisited-aware picker. */
   const [visitedJobIds, setVisitedJobIds] = useState<ReadonlySet<string>>(new Set())
 
-  const [advanceModalOpen, setAdvanceModalOpen] = useState(false)
-  const [advanceIntent, setAdvanceIntent] = useState<'start-first' | 'next-job'>('next-job')
-  const [advanceInitialJobId, setAdvanceInitialJobId] = useState<string | null>(null)
-  const [advanceSaving, setAdvanceSaving] = useState(false)
-  const [advanceError, setAdvanceError] = useState<string | null>(null)
+  /** On my way (v2.5573): the sheet, with the job it opens on; I'm here: the arrival's sheet on the open session. */
+  const [onMyWay, setOnMyWay] = useState<{ initialJobId: string | null } | null>(null)
+  const [imHere, setImHere] = useState(false)
+  /** The open session's two stamps (null before the push, or on a row with none) and the minute the header reads them at. */
+  const [travelFacts, setTravelFacts] = useState<TravelFacts | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const onMyWayIo = useMemo(() => supabaseOnMyWayIo(), [])
 
   const reloadGenRef = useRef(0)
 
@@ -416,8 +432,12 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         | null
       if (open) {
         setOpenSession({ id: open.id, jobLedgerId: open.job_ledger_id, bidId: open.bid_id })
+        // The two stamps (v2.5573), read apart and fail-soft so a client ahead of the push still draws the card.
+        const facts = await onMyWayIo.loadTravelFacts(open.id).catch(() => null)
+        if (gen === reloadGenRef.current) setTravelFacts(facts)
       } else {
         setOpenSession(null)
+        setTravelFacts(null)
       }
 
       const sessionJobId = open?.job_ledger_id ?? null
@@ -481,7 +501,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     } finally {
       if (gen === reloadGenRef.current) setLoading(false)
     }
-  }, [userId])
+  }, [userId, onMyWayIo])
 
   useEffect(() => {
     void reload()
@@ -515,6 +535,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   // Roll the work date over at midnight without a page reload.
   useEffect(() => {
     const interval = window.setInterval(() => {
+      setNowMs(Date.now())
       const today = denverCalendarDayKey(Date.now())
       if (today !== workDateYmd) void reload()
     }, 60_000)
@@ -552,6 +573,15 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     return formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, prefixMap), hcp, click)
   }
 
+  /** Where the open session is (v2.5573): on the way, on site, or unmarked; its line under the header. */
+  const leg = openSession?.jobLedgerId ? legOf(travelFacts) : 'unmarked'
+  const legText = openSession?.jobLedgerId ? legWords(travelFacts, nowMs) : null
+  const legLine = legText ? (
+    <div style={leg === 'on-the-way' ? onTheWayLine : onSiteLine} data-testid="job-mode-leg">
+      {legText}
+    </div>
+  ) : null
+
   // Header content depends on state.
   function renderHeader() {
     // Clocked into a job that matches today's schedule.
@@ -566,6 +596,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             <span style={headerName}>{safeTrim(cb.job_name) || '—'}</span>
           </div>
           <div style={headerAddr}>{safeTrim(cb.job_address) || '—'}</div>
+          {legLine}
         </div>
       )
     }
@@ -580,6 +611,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             <span style={headerName}>{safeTrim(currentJobInfo.job_name) || '—'}</span>
           </div>
           <div style={headerAddr}>{safeTrim(currentJobInfo.job_address) || '—'}</div>
+          {legLine}
           <div style={headerStatusLine}>Not on today&rsquo;s schedule</div>
         </div>
       )
@@ -659,6 +691,18 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     return null
   })()
 
+  /** The job (or bid) the tech leaves on an advance, as the card names it, or null before the first clock-in (v2.5573). */
+  const leavingLabel: string | null = (() => {
+    if (!openSession) return null
+    if (picked.currentBlock) {
+      const cb = picked.currentBlock
+      return `${jobNumberLabel(cb.service_type_id, cb.hcp_number, cb.click_number)} · ${safeTrim(cb.job_name) || '—'}`
+    }
+    if (currentJobInfo) return `${jobNumberLabel(currentJobInfo.service_type_id, currentJobInfo.hcp_number, currentJobInfo.click_number)} · ${safeTrim(currentJobInfo.job_name) || '—'}`
+    if (currentBidInfo) return `Bid ${(currentBidInfo.bid_number ?? '').trim() || '—'}`
+    return 'your open session'
+  })()
+
   // Job the "Job calendar" link opens: the header's job (current block →
   // off-schedule clock job → next block), matching what the tech is looking at.
   const jobCalendarTarget: JobCalendarJobIdentity | null = (() => {
@@ -699,16 +743,21 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     | { kind: 'manual-clock-in'; label: string }
     | { kind: 'wrap-up'; label: string }
     | { kind: 'last-job'; label: string }
+    | { kind: 'im-here'; label: string }
 
   const rightButton: RightButton = (() => {
+    // On the way (v2.5573): the one press is the arrival.
+    if (leg === 'on-the-way') {
+      return { kind: 'im-here', label: ON_MY_WAY_WORDS.hereButton }
+    }
     if (picked.state === 'no-clock-no-schedule') {
       return { kind: 'manual-clock-in', label: 'Clock In' }
     }
     if (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock) {
-      return { kind: 'next', intent: 'start-first', label: 'Start First\nJob' }
+      return { kind: 'next', intent: 'start-first', label: ON_MY_WAY_WORDS.button }
     }
     if (picked.state === 'on-scheduled-job-not-last' && picked.nextBlock) {
-      return { kind: 'next', intent: 'next-job', label: 'Next\nJob' }
+      return { kind: 'next', intent: 'next-job', label: ON_MY_WAY_WORDS.button }
     }
     if (picked.state === 'on-scheduled-job-last') {
       // Every other job today is visited — offer the day's ending instead of a
@@ -717,20 +766,18 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       return { kind: 'last-job', label: 'Last job\nof the day' }
     }
     if (picked.state === 'on-off-schedule-job' && picked.nextBlock) {
-      return { kind: 'next', intent: 'next-job', label: 'Switch to\nScheduled Job' }
+      return { kind: 'next', intent: 'next-job', label: ON_MY_WAY_WORDS.button }
     }
     if (picked.state === 'on-bid' && picked.nextBlock) {
-      return { kind: 'next', intent: 'next-job', label: 'Start First\nScheduled Job' }
+      return { kind: 'next', intent: 'next-job', label: ON_MY_WAY_WORDS.button }
     }
     // No next block — let user open the regular Update Focus modal so they can search for a job.
     return { kind: 'open-update-focus', label: 'Choose Next\nJob' }
   })()
 
-  function openAdvanceModal(intent: 'start-first' | 'next-job', initialJobId: string | null) {
-    setAdvanceIntent(intent)
-    setAdvanceInitialJobId(initialJobId)
-    setAdvanceError(null)
-    setAdvanceModalOpen(true)
+  /** On my way (v2.5573): every advance to a scheduled job opens the sheet, on the suggested job or the one tapped. */
+  function openAdvanceModal(_intent: 'start-first' | 'next-job', initialJobId: string | null) {
+    setOnMyWay({ initialJobId })
   }
 
   async function handleRightButton() {
@@ -752,6 +799,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       // No-op; the button is informational.
       return
     }
+    if (rightButton.kind === 'im-here') {
+      setImHere(true)
+      return
+    }
     openAdvanceModal(rightButton.intent, picked.nextBlock?.job_id ?? null)
   }
 
@@ -770,33 +821,17 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   }
 
   // Where the advance modal can send the tech: today's still-open jobs.
-  const advanceDestinations: JobModeAdvanceDestination[] = dayRail.rows
+  const advanceDestinations: OnMyWayDestination[] = dayRail.rows
     .filter((r) => r.status === 'still-open' || r.status === 'upcoming')
     .map((r) => ({
       jobId: r.block.job_id,
       label: `${jobNumberLabel(r.block.service_type_id, r.block.hcp_number, r.block.click_number)} · ${safeTrim(r.block.job_name) || '—'}`,
       sublabel: `${formatBlockTime(r.block.time_start)} · ${safeTrim(r.block.job_address) || '—'}`,
       suggested: picked.nextBlock?.job_id === r.block.job_id,
+      jobName: safeTrim(r.block.job_name) || null,
+      jobAddress: safeTrim(r.block.job_address) || null,
+      timeEnd: r.block.time_end || null,
     }))
-
-  async function handleConfirmAdvance(notes: string, destinationJobId: string) {
-    setAdvanceSaving(true)
-    setAdvanceError(null)
-    try {
-      const res = await applyUpdateFocusDirect({
-        jobLedgerId: destinationJobId,
-        bidId: null,
-        notes,
-      })
-      if (!res.ok) {
-        setAdvanceError(res.error ?? 'Failed to switch focus')
-      } else {
-        setAdvanceModalOpen(false)
-      }
-    } finally {
-      setAdvanceSaving(false)
-    }
-  }
 
   function leaveReportDisabledReason(): string | null {
     if (!leaveReportTarget) {
@@ -814,6 +849,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   /** Write up a change (v2.4057): a quiet link under the action row, on the clocked-in job or the one ready to start. */
   const writeUpChangeDoor = useQuickEstimateDoor(userId, role)
   const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
+  /** Counts what Message the customer sent, so Job updates reads the note or the text without a reload. */
+  const [jobUpdatesRev, setJobUpdatesRev] = useState(0)
   /** Hand the phone to the customer (v2.4159): on the clocked-in job, for the roles that speak for the company on site, until the job is signed. */
   const handPhoneJobId = leaveReportTarget?.id ?? null
   const [handPhone, setHandPhone] = useState<HandPhoneState | null>(null)
@@ -973,7 +1010,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             target="_blank"
             rel="noopener"
             aria-label="My statement — opens your work and pay portal"
-            style={{ display: 'inline-block', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-900)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
+            style={{ display: 'inline-block', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
           >
             My statement ↗
           </a>
@@ -1002,7 +1039,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                 ? wrapUpBtn
                 : rightButton.kind === 'manual-clock-in'
                   ? manualClockInBtn
-                  : nextJobBtn
+                  : rightButton.kind === 'im-here'
+                    ? imHereBtn
+                    : nextJobBtn
           }
           disabled={rightButton.kind === 'last-job'}
           aria-label={rightButton.label.replace('\n', ' ')}
@@ -1050,6 +1089,17 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
         </button>
       ) : null}
+      {!loading && leaveReportTarget && jobModeMessagesOffered(role) ? (
+        <MessageCustomerDoor
+          jobId={leaveReportTarget.id}
+          jobName={leaveReportTarget.jobName === '—' ? null : leaveReportTarget.jobName}
+          jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress}
+          userId={userId}
+          me={profileName}
+          style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          onDone={() => setJobUpdatesRev((n) => n + 1)}
+        />
+      ) : null}
       {writeUpChangeOpen && writeUpChangeJobId ? (
         <QuickEstimateWizard open initialJobId={writeUpChangeJobId} onClose={() => setWriteUpChangeOpen(false)} />
       ) : null}
@@ -1079,31 +1129,48 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             key={detailsTarget.id}
             jobId={detailsTarget.id}
             jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
+            updatesRev={jobUpdatesRev}
           />
         ) : null
       })()}
-      <JobModeAdvanceNotesModal
-        open={advanceModalOpen}
-        intent={advanceIntent}
-        destinations={advanceDestinations}
-        initialJobId={advanceInitialJobId}
-        saving={advanceSaving}
-        errorMessage={advanceError}
-        onConfirm={(notes, destinationJobId) => void handleConfirmAdvance(notes, destinationJobId)}
-        onDoneForDay={
-          openSession && canClockOut
-            ? () => {
-                setAdvanceModalOpen(false)
-                requestClockOut()
-              }
-            : null
-        }
-        onCancel={() => {
-          if (advanceSaving) return
-          setAdvanceModalOpen(false)
-          setAdvanceError(null)
-        }}
-      />
+      {onMyWay ? (
+        <OnMyWaySheet
+          userId={userId}
+          me={profileName}
+          role={role}
+          destinations={advanceDestinations}
+          initialJobId={onMyWay.initialJobId ?? picked.nextBlock?.job_id ?? null}
+          leaving={leavingLabel}
+          canFinishDay={Boolean(openSession && canClockOut)}
+          apply={applyUpdateFocusDirect}
+          onFinishDay={() => {
+            setOnMyWay(null)
+            requestClockOut()
+          }}
+          io={onMyWayIo}
+          onDone={() => setJobUpdatesRev((n) => n + 1)}
+          onClose={() => setOnMyWay(null)}
+        />
+      ) : null}
+      {imHere && openSession && leaveReportTarget ? (
+        <ImHereSheet
+          sessionId={openSession.id}
+          jobId={leaveReportTarget.id}
+          jobLabel={leavingLabel ?? leaveReportTarget.jobName}
+          jobName={leaveReportTarget.jobName === '—' ? null : leaveReportTarget.jobName}
+          jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress}
+          userId={userId}
+          me={profileName}
+          role={role}
+          travelFacts={travelFacts}
+          io={onMyWayIo}
+          onDone={() => {
+            setJobUpdatesRev((n) => n + 1)
+            void reload()
+          }}
+          onClose={() => setImHere(false)}
+        />
+      ) : null}
     </div>
   )
 }

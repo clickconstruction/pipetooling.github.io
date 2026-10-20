@@ -1,3 +1,4 @@
+import { VECTOR_READINGS, vectorReadingValue, type VectorReading } from '../../lib/bridge/vectorReading'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type { VectorBucket, VectorColumn, VectorGrid, VectorGridRow, VectorTimeMode, VectorZoom } from '../../lib/bridge/vectorDays'
@@ -63,13 +64,29 @@ function bucketTitle(b: VectorBucket, col: VectorColumn): string {
 
 const FLIP: CSSProperties = { position: 'absolute', top: -1, right: 1, fontSize: '0.55rem', lineHeight: 1, color: 'var(--text-amber-800)' }
 
-function DayCell({ b, col, selected, onPick }: { b: VectorBucket | null; col: VectorColumn; selected: boolean; onPick: () => void }) {
+const readingValue = (b: VectorBucket, reading: VectorReading): number => vectorReadingValue(b, reading)
+const plainUsd = (n: number): string => shortUsd(n).replace(/^[+−]/, '')
+const readingTint = (reading: VectorReading): CSSProperties => (reading === 'revenue' ? { background: 'var(--bg-blue-tint, var(--bg-muted))', color: 'var(--text)' } : { background: 'var(--bg-amber-tint, var(--bg-muted))', color: 'var(--text-amber-800)' })
+
+/** A cell under the revenue or cost reading: a flat tint, the number, the pending dash kept. */
+function ReadingCell({ b, col, reading, selected, onPick, wide, testId }: { b: VectorBucket; col: VectorColumn; reading: VectorReading; selected: boolean; onPick: () => void; wide?: boolean; testId: string }) {
+  const v = readingValue(b, reading)
+  const base: CSSProperties = wide ? { ...cellBase, width: 56, minWidth: 56, fontSize: '0.68rem' } : cellBase
+  return (
+    <td style={{ ...base, ...readingTint(reading), ...(selected ? { outline: '2px solid var(--text-base)', outlineOffset: -1 } : {}), cursor: 'pointer', borderStyle: b.pendingHours > 0 ? 'dashed' : 'solid', borderColor: b.pendingHours > 0 ? 'var(--border-strong)' : 'transparent', fontStyle: b.pendingHours > 0 ? 'italic' : undefined, ...(v === 0 ? { color: 'var(--text-muted)' } : {}) }} title={bucketTitle(b, col)} onClick={onPick} data-testid={testId}>
+      {v === 0 ? '0' : plainUsd(v)}
+    </td>
+  )
+}
+
+function DayCell({ b, col, selected, onPick, reading }: { b: VectorBucket | null; col: VectorColumn; selected: boolean; onPick: () => void; reading: VectorReading }) {
   if (!b) {
     if (col.weekend || col.future) return <td style={{ ...cellBase, background: 'transparent' }} />
     return <td style={{ ...cellBase, background: 'var(--bg-muted)', color: 'var(--border-strong)' }}>·</td>
   }
+  if (reading !== 'profit' && (b.fieldHours > 0 || b.officeBidHours > 0)) return <ReadingCell b={b} col={col} reading={reading} selected={selected} onPick={onPick} testId="vector-day-cell" />
   const title = bucketTitle(b, col)
-  const sel: CSSProperties = selected ? { outline: '2px solid var(--text)', outlineOffset: -1 } : {}
+  const sel: CSSProperties = selected ? { outline: '2px solid var(--text-base)', outlineOffset: -1 } : {}
   if (b.contributionUsd == null || b.contributionPerHour == null) {
     return (
       <td style={{ ...cellBase, ...sel, background: 'var(--bg-muted)', cursor: 'pointer', borderStyle: b.pendingHours > 0 ? 'dashed' : 'solid', borderColor: b.pendingHours > 0 ? 'var(--border-strong)' : 'transparent' }} title={title} onClick={onPick}>
@@ -102,9 +119,10 @@ function DayCell({ b, col, selected, onPick }: { b: VectorBucket | null; col: Ve
 }
 
 /** A pay-week or month cell (Weeks / Months zooms): the day cell's shade, wider, hours only when the period had no field hours. */
-function PeriodCell({ b, col, selected, onPick }: { b: VectorBucket | null; col: VectorColumn; selected: boolean; onPick: () => void }) {
-  const wide: CSSProperties = { ...cellBase, width: 56, minWidth: 56, fontSize: '0.68rem', cursor: b ? 'pointer' : undefined, ...(selected ? { outline: '2px solid var(--text)', outlineOffset: -1 } : {}) }
+function PeriodCell({ b, col, selected, onPick, reading }: { b: VectorBucket | null; col: VectorColumn; selected: boolean; onPick: () => void; reading: VectorReading }) {
+  const wide: CSSProperties = { ...cellBase, width: 56, minWidth: 56, fontSize: '0.68rem', cursor: b ? 'pointer' : undefined, ...(selected ? { outline: '2px solid var(--text-base)', outlineOffset: -1 } : {}) }
   if (!b) return <td style={{ ...wide, background: col.future ? 'transparent' : 'var(--bg-muted)', color: 'var(--border-strong)' }}>{col.future ? '' : '·'}</td>
+  if (reading !== 'profit' && (b.fieldHours > 0 || b.officeBidHours > 0)) return <ReadingCell b={b} col={col} reading={reading} selected={selected} onPick={onPick} wide testId="vector-period-cell" />
   const title = bucketTitle(b, col)
   if (b.contributionUsd == null || b.contributionPerHour == null) {
     return (
@@ -128,8 +146,21 @@ function PeriodCell({ b, col, selected, onPick }: { b: VectorBucket | null; col:
   )
 }
 
-function SumCell({ b, col, bold }: { b: VectorBucket | null; col: VectorColumn | null; bold?: boolean }) {
+function SumCell({ b, col, bold, reading = 'profit' }: { b: VectorBucket | null; col: VectorColumn | null; bold?: boolean; reading?: VectorReading }) {
   if (!b || (b.fieldHours <= 0 && b.officeBidHours <= 0)) return <td style={{ ...sumBase, color: 'var(--text-muted)', fontWeight: 400 }}>—</td>
+  if (reading !== 'profit') {
+    const v = readingValue(b, reading)
+    return (
+      <td style={{ ...sumBase, ...readingTint(reading), fontWeight: bold ? 800 : 700 }} title={col ? bucketTitle(b, col) : undefined}>
+        {v === 0 ? '0' : plainUsd(v)}
+        <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+          {hrs(b.fieldHours)}
+          {b.fieldHours > 0 && col == null ? ` · ${money(v / b.fieldHours)}/h` : ''}
+          {b.pendingHours > 0 ? ' ⋯' : ''}
+        </span>
+      </td>
+    )
+  }
   const c = b.contributionUsd
   const guessed = b.guessedEarnedUsd > 0
   const color = c == null ? 'var(--text-muted)' : guessed ? 'var(--text-amber-800)' : c >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)'
@@ -152,7 +183,7 @@ function whyLine(r: VectorGridRow): string {
   return jobs.join(' · ')
 }
 
-function Row({ r, grid, selectedKey, onPick }: { r: VectorGridRow; grid: VectorGrid; selectedKey: string | null; onPick: (key: string) => void }) {
+function Row({ r, grid, selectedKey, onPick, reading }: { r: VectorGridRow; grid: VectorGrid; selectedKey: string | null; onPick: (key: string) => void; reading: VectorReading }) {
   const why = whyLine(r)
   return (
     <tr data-testid="vector-day-row">
@@ -179,11 +210,11 @@ function Row({ r, grid, selectedKey, onPick }: { r: VectorGridRow; grid: VectorG
       {grid.columns.map((col, i) => {
         const b = r.cells[i] ?? null
         const key = `${r.userId}:${col.key}`
-        if (col.kind === 'day') return <DayCell key={col.key} b={b} col={col} selected={selectedKey === key} onPick={() => onPick(key)} />
-        if (col.kind === 'weekSum') return <SumCell key={col.key} b={b} col={col} />
-        return <PeriodCell key={col.key} b={b} col={col} selected={selectedKey === key} onPick={() => onPick(key)} />
+        if (col.kind === 'day') return <DayCell key={col.key} b={b} col={col} selected={selectedKey === key} onPick={() => onPick(key)} reading={reading} />
+        if (col.kind === 'weekSum') return <SumCell key={col.key} b={b} col={col} reading={reading} />
+        return <PeriodCell key={col.key} b={b} col={col} selected={selectedKey === key} onPick={() => onPick(key)} reading={reading} />
       })}
-      <SumCell b={r.total} col={null} />
+      <SumCell b={r.total} col={null} reading={reading} />
     </tr>
   )
 }
@@ -193,15 +224,16 @@ const ZOOMS: Array<{ key: VectorZoom; word: string }> = [
   { key: 'weeks', word: 'Weeks' },
   { key: 'months', word: 'Months' },
 ]
-const segBtn = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.75rem', padding: '0.1rem 0.55rem', border: 'none', background: on ? 'var(--text)' : 'transparent', color: on ? 'var(--surface)' : 'var(--text)', fontWeight: on ? 700 : 400, cursor: 'pointer' })
+const segBtn = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.75rem', padding: '0.1rem 0.55rem', border: 'none', background: on ? 'var(--text-base)' : 'transparent', color: on ? 'var(--surface)' : 'var(--text)', fontWeight: on ? 700 : 400, cursor: 'pointer' })
 
 const MODES: Array<{ key: VectorTimeMode; word: string; title: string }> = [
   { key: 'recorded', word: 'Recorded time', title: 'Every closed session not rejected or revoked — pending hours count, drawn dashed (job costing’s reading)' },
   { key: 'approved', word: 'Approved only', title: 'What payroll paid — the pay-week table’s reading; this week reads blank until hours are approved' },
 ]
 
-export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: VectorZoom; onZoom: (zoom: VectorZoom) => void; mode: VectorTimeMode; onMode: (mode: VectorTimeMode) => void; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
+export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: VectorZoom; onZoom: (zoom: VectorZoom) => void; mode: VectorTimeMode; onMode: (mode: VectorTimeMode) => void; reading?: VectorReading; onReading?: (reading: VectorReading) => void; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
   const { grid, zoom, mode } = props
+  const reading: VectorReading = props.reading ?? 'profit'
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   useEffect(() => setSelectedKey(null), [grid])
   const selected = (() => {
@@ -220,7 +252,9 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem' }} data-testid="bridge-vector-days">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
         <span style={label}>Vectors — by the day</span>
-        <span style={det}>was each person's day worth it · field people · {mode === 'recorded' ? 'recorded time, pending dashed' : 'approved time'}</span>
+        <span style={det}>
+          {reading === 'profit' ? "was each person's day worth it" : reading === 'revenue' ? "what each person's day earned at the job's rate" : "what each person's day cost in wages"} · field people · {mode === 'recorded' ? 'recorded time, pending dashed' : 'approved time'}
+        </span>
         <span role="group" aria-label="Zoom" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
           {ZOOMS.map((z) => (
             <button key={z.key} type="button" onClick={() => props.onZoom(z.key)} style={segBtn(z.key === zoom)} aria-pressed={z.key === zoom}>
@@ -235,6 +269,15 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
             </button>
           ))}
         </span>
+        {props.onReading && (
+          <span role="group" aria-label="Reading" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} data-testid="vector-reading">
+            {VECTOR_READINGS.map((r) => (
+              <button key={r.key} type="button" onClick={() => props.onReading?.(r.key)} style={segBtn(r.key === reading)} aria-pressed={r.key === reading} title={r.title}>
+                {r.word}
+              </button>
+            ))}
+          </span>
+        )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
           <button type="button" onClick={props.onPrev} disabled={!props.canPrev} style={{ ...navBtn, opacity: props.canPrev ? 1 : 0.4 }} aria-label={`Previous ${stepWord}`}>
             ‹
@@ -279,22 +322,22 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
             </thead>
             <tbody>
               {grid.rows.map((r) => (
-                <Row key={r.userId} r={r} grid={grid} selectedKey={selectedKey} onPick={(key) => setSelectedKey((cur) => (cur === key ? null : key))} />
+                <Row key={r.userId} r={r} grid={grid} selectedKey={selectedKey} onPick={(key) => setSelectedKey((cur) => (cur === key ? null : key))} reading={reading} />
               ))}
               <tr data-testid="vector-day-company">
                 <td style={{ ...nameTd, fontWeight: 700, borderTop: '2px solid var(--border-strong)' }}>Field crew</td>
                 {grid.columns.map((col, i) => {
                   const b = grid.company.cells[i] ?? null
-                  if (col.kind === 'weekSum') return <SumCell key={col.key} b={b} col={col} bold />
-                  const c = b?.contributionUsd
+                  if (col.kind === 'weekSum') return <SumCell key={col.key} b={b} col={col} bold reading={reading} />
+                  const c = b == null ? null : reading === 'profit' ? b.contributionUsd : readingValue(b, reading)
                   const wide = col.kind === 'day' ? {} : { width: 56, minWidth: 56 }
                   return (
                     <td key={col.key} style={{ ...cellBase, ...wide, borderTop: '2px solid var(--border-strong)', borderRadius: 0, fontWeight: 700, color: c == null ? 'var(--text-muted)' : c >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }} title={b ? bucketTitle(b, col) : undefined}>
-                      {c == null ? '' : shortUsd(c)}
+                      {c == null ? '' : reading === 'profit' ? shortUsd(c) : plainUsd(c)}
                     </td>
                   )
                 })}
-                <SumCell b={grid.company.total} col={null} bold />
+                <SumCell b={grid.company.total} col={null} bold reading={reading} />
               </tr>
             </tbody>
           </table>
@@ -342,7 +385,7 @@ function CellCard({ row, col, b, onClose }: { row: VectorGridRow; col: VectorCol
   const worst = [...b.jobs].sort((a, c) => (a.ratePerHour ?? 0) - (c.ratePerHour ?? 0))[0]
   const oneDay = col.kind === 'day'
   return (
-    <div style={{ marginTop: '0.6rem', border: '1px solid var(--text)', borderRadius: 8, background: 'var(--surface)', maxWidth: 480, overflow: 'hidden' }} data-testid="vector-cell-card">
+    <div style={{ marginTop: '0.6rem', border: '1px solid var(--text-base)', borderRadius: 8, background: 'var(--surface)', maxWidth: 480, overflow: 'hidden' }} data-testid="vector-cell-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0.4rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: '0.85rem', fontWeight: 700 }}>
         <span>
           {row.name} · {periodWords(col)}
@@ -395,7 +438,7 @@ function CellCard({ row, col, b, onClose }: { row: VectorGridRow; col: VectorCol
         </div>
         <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {worst ? (
-            <Link to={`/jobs?tab=stages&stagesJob=${encodeURIComponent(worst.jobId)}`} style={{ ...doorBtn, background: 'var(--text)', color: 'var(--surface)', borderColor: 'var(--text)' }}>
+            <Link to={`/jobs?tab=stages&stagesJob=${encodeURIComponent(worst.jobId)}`} style={{ ...doorBtn, background: 'var(--text-base)', color: 'var(--surface)', borderColor: 'var(--text-base)' }}>
               Open {worst.label.split(' ')[0] || 'the job'}
             </Link>
           ) : null}

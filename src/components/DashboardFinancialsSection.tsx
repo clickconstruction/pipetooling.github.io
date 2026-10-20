@@ -3,6 +3,10 @@ import { supabase } from '../lib/supabase'
 import { stripTrailingZip } from '../lib/displayAddress'
 import { buildArLineItemsByJob, type ArLineItem } from '../lib/arModalLineItems'
 import DashboardArCustomersView from './DashboardArCustomersView'
+import { LienArChipLine } from './LienArChipTag'
+import { useArLienChips } from '../hooks/useArLienChips'
+import { lienArChipHref } from '../lib/jobs/lienArChip'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import DashboardArCallCard, { ArChasePillTag } from './DashboardArCallCard'
 import { buildArCustomerRollup } from '../lib/arCustomerRollup'
 import { arCustomerChasePill } from '../lib/arCustomerChase'
@@ -527,6 +531,13 @@ function ItemsModal({
   // Office roles only (the Pipeline chase gate); every fetch fails soft.
   const { role: viewerRole } = useAuth()
   const canChase = viewerRole === 'dev' || viewerRole === 'master_technician' || isAssistantLike(viewerRole)
+  // Lien chips (v2.5488): where each AR job's lien paper stands, from the Lien desk's own data — the office roles, who see the desk.
+  const hideZzForLiens = useZzTestJobsHidden(viewerRole)
+  const arLienJobIds = useMemo(
+    () => (cardKey === 'ar' ? [...new Set([...bucket.items, ...(arCollectionsSection?.items ?? [])].map((i) => i.jobId).filter((id): id is string => id != null))] : []),
+    [cardKey, bucket.items, arCollectionsSection],
+  )
+  const { chipsByJob: arLienChips } = useArLienChips(cardKey === 'ar' && canChase, arLienJobIds, arTodayYmd, viewerRole, hideZzForLiens)
   const [arChaseTouches, setArChaseTouches] = useState<ChaseTouch[] | null>(null)
   const [arPromises, setArPromises] = useState<Record<string, PromisedPayDate> | null>(null)
   const [arChaseRefresh, setArChaseRefresh] = useState(0)
@@ -837,6 +848,8 @@ function ItemsModal({
         billExtras={arBillExtras}
         collectionsSection={arCollectionsSection}
         isMobile={isMobile}
+        lienChips={arLienChips}
+        onOpenLien={(chip) => navigate(lienArChipHref(chip.door))}
         rowBadge={(row) => {
           const pill = arCustomerChasePill({
             customerId: row.customerId,
@@ -1108,6 +1121,10 @@ function ItemsModal({
                               })()}
                               {doneNothingBilledPill(item)}
                             </div>
+                            {(() => {
+                              const chip = item.jobId ? arLienChips?.get(item.jobId) ?? null : null
+                              return chip ? <LienArChipLine chip={chip} onOpen={(c) => navigate(lienArChipHref(c.door))} /> : null
+                            })()}
                             {(() => {
                               const ex = arRowExtras(item)
                               return ex ? arLineItemsBlock(item, ex) : null
@@ -1509,6 +1526,10 @@ function ItemsModal({
                                   {ex.address ? (
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}> · {ex.address}</span>
                                   ) : null}
+                                  {(() => {
+                                    const chip = item.jobId ? arLienChips?.get(item.jobId) ?? null : null
+                                    return chip ? <LienArChipLine chip={chip} onOpen={(c) => navigate(lienArChipHref(c.door))} /> : null
+                                  })()}
                                   {arLineItemsBlock(item, ex)}
                                 </>
                               )

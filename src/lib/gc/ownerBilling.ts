@@ -5,14 +5,13 @@
  * bill's money, when it is due, our waivers, the spread of our costs and fee, a change order's words. O2b
  * adds `ownerPayApp` and the rest, which read the Building lane's kernels.
  */
-import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep, TradePackage } from './types'
+import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep, PayAppParties, TradePackage } from './types'
 import { carriedAmount, proposalTotals } from './bids'
 import { partnerById } from './lookups'
 import { daysUntil, money, shortDate } from './words'
 import type { PayAppLine, PayApplication } from './building'
 import { changeOrderTradePct, ownCrewWork, retainageHeldNow, tradeCloseout } from './building'
 import { GC_COMPANY } from './company'
-import type { PayAppParties } from './payAppFile'
 
 export function projectChangeOrders(project: GcProject): ChangeOrder[] {
   return project.changeOrders ?? []
@@ -315,13 +314,13 @@ export type SpreadLine<L> = L & {
 }
 
 /** The trade lines with our costs and fee spread into them. Our own lines drop out. */
-export function spreadMarkup<L extends { id: string; worth: number; doneBefore: number; thisMonth: number; doneToDate: number }>(
+export function spreadMarkup<L extends { id: string; kind?: OwnerLineKind; worth: number; doneBefore: number; thisMonth: number; doneToDate: number }>(
   lines: L[],
 ): SpreadLine<L>[] {
   const ours = lines.filter((l) => OUR_COST_LINE_IDS.includes(l.id))
   // A change order's price already carries our fee: its line passes through as it is.
-  const changes = lines.filter((l) => isChangeOrderLineId(l.id))
-  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id) && !isChangeOrderLineId(l.id))
+  const changes = lines.filter((l) => isChangeOrderLine(l))
+  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id) && !isChangeOrderLine(l))
   const total = (rows: L[], key: 'worth' | 'doneBefore' | 'doneToDate') => rows.reduce((s, l) => s + l[key], 0)
   const share = (l: L, key: 'worth' | 'doneBefore' | 'doneToDate') => {
     const t = total(trades, key)
@@ -339,8 +338,8 @@ export function spreadMarkup<L extends { id: string; worth: number; doneBefore: 
 }
 
 /** Our costs and fee as a share of the trades' price: 0.372 reads "37.2% on top". */
-export function markupOnTop(lines: { id: string; worth: number }[]): number {
-  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id) && !isChangeOrderLineId(l.id)).reduce((s, l) => s + l.worth, 0)
+export function markupOnTop(lines: { id: string; kind?: OwnerLineKind; worth: number }[]): number {
+  const trades = lines.filter((l) => !OUR_COST_LINE_IDS.includes(l.id) && !isChangeOrderLine(l)).reduce((s, l) => s + l.worth, 0)
   const ours = lines.filter((l) => OUR_COST_LINE_IDS.includes(l.id)).reduce((s, l) => s + l.worth, 0)
   return trades === 0 ? 0 : ours / trades
 }
@@ -351,9 +350,12 @@ export const CHANGE_ORDER_REASON_WORDS: Record<ChangeOrder['reason'], string> = 
   plans: 'Plan revision',
 }
 
-/** Change-order lines on the bill are keyed by the change order's id, which starts "co-". */
-export function isChangeOrderLineId(id: string): boolean {
-  return id.startsWith('co-')
+/**
+ * A change-order line of the bill, by its kind. The line's id is the change order's own id, a uuid from the
+ * database, so nothing can be read from it: a line with no kind is a trade.
+ */
+export function isChangeOrderLine(line: { kind?: OwnerLineKind }): boolean {
+  return line.kind === 'changeOrder'
 }
 
 /** The contract's days to pay in Bill the customer's terms (O5d), or the ask to type them. */
@@ -422,6 +424,19 @@ export function ownerLateBills(state: GcState, project: GcProject): { app: Owner
     .sort((a, b) => b.due.daysLate - a.due.daysLate)
 }
 
+/**
+ * Where our own crew's percent came from, in one sentence (Building's U8, co-signed by the Owner Billing lane): the
+ * Pipeline job's stages, its crew report or its own percent, on a trade linked to its job. Otherwise as before.
+ */
+export function ownCrewSource(pkg: TradePackage, pct: number, done: number): string {
+  const source = pkg.selfPerform?.source
+  if (source?.from === 'stages') return `Our own crew is ${pct}% done, from Pipeline job ${source.job}’s stages.`
+  if (source?.from === 'report') return `Our own crew is ${pct}% done, from the crew report${source.on ? ` of ${shortDate(source.on)}` : ''}.`
+  if (source?.from === 'job') return `Our own crew is ${pct}% done, from Pipeline job ${source.job}’s percent.`
+  const byStage = pkg.selfPerform?.pctByLine ? ', by stage' : ''
+  return done > 0 ? `Our own crew reported ${pct}% done${byStage}.` : 'Our own crew has not reported any work yet.'
+}
+
 function tradeLine(state: GcState, pkg: TradePackage, worth: number): OwnerLine {
   const base = { id: pkg.id, label: pkg.trade, worth, doneBefore: 0, detail: [] as OwnerLine['detail'] }
   if (pkg.selfPerform) {
@@ -435,7 +450,7 @@ function tradeLine(state: GcState, pkg: TradePackage, worth: number): OwnerLine 
       doneToDate: done,
       thisMonth: done,
       crewPct: pct,
-      source: done > 0 ? `Our own crew reported ${pct}% done${crew?.byStage ? ', by stage' : ''}.` : 'Our own crew has not reported any work yet.',
+      source: ownCrewSource(pkg, pct, done),
       detail: crew?.byStage ? crew.stages.map((st) => ({ label: st.label, pct: st.pct })) : [],
     }
   }
@@ -639,6 +654,7 @@ export function owedDrawWords(owed: TradeWaiverCheck['owedUnconditional']): stri
 export interface SentPayAppLine {
   id: string
   label: string
+  kind: OwnerLineKind
   worth: number
   doneBefore: number
   thisMonth: number
@@ -664,7 +680,7 @@ export function sentPayAppLines(state: GcState, project: GcProject, number: numb
       const doneToDate = app.doneToDate[l.id] ?? 0
       const doneBefore = before?.doneToDate[l.id] ?? 0
       const stored = app.storedByLine?.[l.id] ?? 0
-      return { id: l.id, label: l.label, worth: app.worthByLine?.[l.id] ?? l.worth, doneBefore, thisMonth: doneToDate - doneBefore, doneToDate, ...(stored > 0 ? { stored } : {}) }
+      return { id: l.id, label: l.label, kind: l.kind, worth: app.worthByLine?.[l.id] ?? l.worth, doneBefore, thisMonth: doneToDate - doneBefore, doneToDate, ...(stored > 0 ? { stored } : {}) }
     })
 }
 
@@ -921,7 +937,9 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
   const sum = (key: 'scheduled' | 'fromPrevious' | 'thisPeriod' | 'stored' | 'toDate' | 'balance' | 'retainage') => lines.reduce((s, l) => s + l[key], 0)
   const scheduled = sum('scheduled')
   const toDate = sum('toDate')
-  const changeOrders = lines.filter((l) => isChangeOrderLineId(l.sovId)).reduce((s, l) => s + l.scheduled, 0)
+  // The form's lines carry no kind: the change-order lines are the rows that came through the spread as change orders.
+  const changeOrderIds = new Set(rows.filter((l) => isChangeOrderLine(l)).map((l) => l.id))
+  const changeOrders = lines.filter((l) => changeOrderIds.has(l.sovId)).reduce((s, l) => s + l.scheduled, 0)
   const retainage = record ? record.retainage : draft.retainage
   const earned = toDate - retainage
   const previous = record ? sent.filter((a) => a.number < record.number).reduce((s, a) => s + appClaimed(a), 0) : draft.askedBefore
@@ -964,7 +982,7 @@ export function ownerPayAppForm(state: GcState, project: GcProject, which: numbe
     },
     retainageWords: step ? ownerRetainageWords(retainagePct, step) : null,
     changeOrders: lines
-      .filter((l) => isChangeOrderLineId(l.sovId))
+      .filter((l) => changeOrderIds.has(l.sovId))
       .flatMap((l) => {
         const co = signed.get(l.sovId)
         return co ? [{ number: co.number, description: co.description, price: co.price }] : []

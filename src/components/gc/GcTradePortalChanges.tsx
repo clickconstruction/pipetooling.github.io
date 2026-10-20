@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { PORTAL_CHANGE_WHY, portalCanAskChange, portalChangeRequests } from '../../lib/gc/portal'
-import { changeFileByEmailWords } from '../../lib/gc/tradePortalPage'
 import type { ChangeOrderReason, GcProject, TradePackage } from '../../lib/gc/types'
-import { COPPER, HAIR } from '../../lib/portal/portalTheme'
+import { HAIR } from '../../lib/portal/portalTheme'
 import { Btn, Chip, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePress } from './gcTradePortalPress'
+import { PortalFilePick } from './GcTradePortalFile'
+import { portalFileUpload, type PickedFile } from '../../lib/gc/tradePortalFile'
 import { PortalBlock } from './GcTradePortalUi'
 
 /**
@@ -42,7 +43,7 @@ export function GcTradePortalChanges({ project, pkg, partnerId }: { project: GcP
           </div>
         ))}
         {asking ? (
-          <AskForm packageId={pkg.id} fileWords={changeFileByEmailWords(project, lang)} onDone={() => setAsking(false)} />
+          <AskForm packageId={pkg.id} onDone={() => setAsking(false)} />
         ) : (
           <div style={{ borderTop: rows.length > 0 ? `1px solid ${HAIR}` : 'none', paddingTop: rows.length > 0 ? '0.45rem' : 0 }}>
             <Btn onClick={() => setAsking(true)}>{t('crAsk')}</Btn>
@@ -54,12 +55,14 @@ export function GcTradePortalChanges({ project, pkg, partnerId }: { project: GcP
 }
 
 /**
- * What changed, why, what it asks and the working days: a whole number, as the submit function takes it. A photo or
- * ticket goes by email until P5a's files (the plan's decision 9), and the form says to whom.
+ * What changed, why, what it asks and the working days: a whole number, as the submit function takes it. Since P5a-1 a
+ * photo or a ticket is picked here: it goes up first, into the job's Team only → From trades folder, and its link rides
+ * with the change. A refused upload sends nothing, so what was typed stays.
  */
-function AskForm({ packageId, fileWords, onDone }: { packageId: string; fileWords: string; onDone: () => void }) {
+function AskForm({ packageId, onDone }: { packageId: string; onDone: () => void }) {
   const { t } = usePortalLang()
-  const { busy, problem, run } = usePress()
+  const { busy, problem, runWithFile } = usePress()
+  const [picked, setPicked] = useState<PickedFile | null>(null)
   const [description, setDescription] = useState('')
   const [reason, setReason] = useState<ChangeOrderReason>('field')
   const [amount, setAmount] = useState('')
@@ -96,13 +99,20 @@ function AskForm({ packageId, fileWords, onDone }: { packageId: string; fileWord
           <input type="number" min={0} step={1} value={days} onChange={(e) => setDays(e.target.value)} style={field} />
         </label>
       </div>
-      <div style={{ fontSize: '0.85rem', color: COPPER }}>{fileWords}</div>
+      <PortalFilePick label={t('crFile')} picked={picked} onPick={setPicked} disabled={busy} />
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <Btn
           kind="primary"
           disabled={!ready || busy}
           onClick={() => {
-            void run('ask_change', { packageId, description: description.trim(), reason, amount: asked, days: dayCount }).then((ok) => ok && onDone())
+            void runWithFile(portalFileUpload('change', packageId, picked), 'ask_change', (placed) => ({
+              packageId,
+              description: description.trim(),
+              reason,
+              amount: asked,
+              days: dayCount,
+              ...(placed ? { fileUrl: placed.url } : {}),
+            })).then((ok) => ok && onDone())
           }}
         >
           {t('crSend', { gc: GC })}

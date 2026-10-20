@@ -20,6 +20,9 @@ const said = (id: string, promisedYmd: string, over: Partial<PaymentPromise> = {
   source: 'office',
   note: null,
   createdAt: '2026-09-28T15:00:00Z',
+  kind: 'promise' as const,
+  method: null,
+  amount: null,
   ...over,
 })
 
@@ -31,9 +34,9 @@ describe('PromiseRecordList', () => {
 
   it('lists each promise and hands over the one that was never said', () => {
     const onNeverSaid = vi.fn()
-    const promises = [said('p2', '2026-10-09', { saidBy: 'Tanya, their office' }), said('p1', '2026-09-25', { channel: 'text', createdAt: '2026-09-10T15:00:00Z' })]
+    const promises = [said('p2', '2026-10-09', { saidBy: 'Tanya, their office' }), said('p1', '2026-09-25', { channel: 'text', createdAt: '2026-09-10T15:00:00Z', kind: 'promise', method: null, amount: null })]
     render(<PromiseRecordList promises={promises} boardYmd="2026-10-09" busyId={null} onNeverSaid={onNeverSaid} />)
-    expect(screen.getByText('On record for this bill · 2 promises')).toBeTruthy()
+    expect(screen.getByText('On record for this bill · 2 words')).toBeTruthy()
     const rows = screen.getAllByTestId('promise-record-row')
     expect(rows[0]!.textContent).toContain('Oct 9')
     expect(rows[0]!.textContent).toContain('Tanya, their office · by phone · heard by Robert · written Sep 28')

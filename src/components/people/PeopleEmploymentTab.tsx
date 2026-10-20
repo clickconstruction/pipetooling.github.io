@@ -500,7 +500,7 @@ export default function PeopleEmploymentTab({
               <span style={chipStyle('var(--text-amber-800)', 'var(--bg-amber-100)')}>no workday template</span>
             )
           ) : (
-            <span style={chipStyle('var(--text-blue-700)', 'var(--bg-blue-50)')}>
+            <span style={chipStyle('var(--text-blue-700)', 'var(--bg-blue-tint)')}>
               Salaried{salaryTemplateByPersonName[e.name] ? '' : ' · no workday template'}
             </span>
           )
@@ -625,7 +625,7 @@ export default function PeopleEmploymentTab({
             padding: '0.45rem 0.6rem',
             border: '1px solid ' + (isSelected ? 'var(--text-blue-700)' : 'var(--border)'),
             borderRadius: 6,
-            background: isSelected ? 'var(--bg-blue-50)' : 'var(--surface)',
+            background: isSelected ? 'var(--bg-blue-tint)' : 'var(--surface)',
             cursor: 'pointer',
           }}
         >

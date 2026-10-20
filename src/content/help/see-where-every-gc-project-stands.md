@@ -2,7 +2,7 @@
 title: see where every GC project stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card
+keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call, by customer, by stage, ring, progress, how far along
 order: 94
 ---
 The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. The row also says what the price is so far.
@@ -18,14 +18,43 @@ The office and estimators see the board on [GC projects](/gc), above the list of
 The pill of the stage on screen stays lit as you scroll. The three stages are numbered in the order a job goes through them. Closed and Lost come after them.
 
 :::example A stage's heading
-{{chip:yellow|1 Bidding to the customer}} {{chip:gray|$824,733 priced so far}}
+{{chip:yellow|1 Bidding to the customer}} {{chip:yellow|2}} {{chip:gray|$824,733 priced so far}}
 :::
+
+## See the board by customer
+
+The board opens **By stage** each time. **By customer** shows the same rows under each customer we build for.
+
+1. Press {{button:outline|By customer}} at the top of the board.
+2. Each customer has a heading with their name and their contact. The heading also says what we are bidding them and what is under contract.
+3. Their jobs sit under a small heading for each stage.
+4. Press a customer's name to open their window.
+5. Press {{button:outline|By stage}} to go back.
+
+The strip at the top has a pill for each customer instead. Press a pill to jump to that customer.
+
+A customer's closed and lost jobs sit on one line under their jobs. That line starts with *Also*. Press a job's name there to open it.
+
+## See how far a job has come
+
+Each row starts with a ring. The ring fills as the job gets through its stage.
+
+- **Bidding** counts the steps before our bid can go in. The middle says how many are done, like 14/25.
+- **Buying out** counts the steps on Get started.
+- **Building** shows the percent of the work the trades have reported.
+
+1. Point at the ring, or press it to keep its card open.
+2. The card lists what the ring counts, by type. What is left is spelled out. What is done is one line.
+3. The lines under *Also* are worth knowing. The ring does not count them.
+4. Press Escape to close the card.
+
+A full ring draws a check over its count. Some rings show only to the people who can read everything they count. An empty gray ring is still reading.
 
 ## Read a row
 
 Each row is one project.
 
-- **The block on the left** says the days left before our bid is due. The block turns red inside a week and amber inside two.
+- **The block next to the ring** says the days left before our bid is due. The block turns red inside a week and amber inside two.
 - A job we won shows the days to its planned start instead.
 - **The name** is the project. The customer and the architect are under the name.
 - **The price** on the right is the price so far. A trade with no number yet counts as nothing.
@@ -43,6 +72,21 @@ A row with trades that have no number says *so far, with 3 holes* under the pric
 
 The guess for a trade with no number is its lowest quote. When there is none, it is our budget for that trade.
 
+## See who to call on a job
+
+Each row shows how many people we wait on for that job. A row with late calls also says how many are late.
+
+1. Point at the count under the name, or press it to keep the card open.
+2. The card lists each person, with the late ones first. Every reason we need them sits under their name.
+3. Press {{button:outline|Call}} to call that person.
+4. Press {{button:outline|Open Follow up}} to see everyone we wait on across all jobs.
+
+A person on two jobs shows on both rows. A row with nobody to call says *Nobody to chase*.
+
+:::example A row's count
+{{chip:red|6 to call}}
+:::
+
 ## What comes next
 
-Carrying a quote comes to the board in a later step. So do the ring on each row and *Who to call*. To ask a company for a quote, press Ask for quotes on the project's card below the board.
+Carrying a quote comes to the board in a later step. So does how the stage is going, under each project's title. To ask a company for a quote, press Ask for quotes on the project's card below the board.

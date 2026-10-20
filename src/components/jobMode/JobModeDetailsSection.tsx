@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import {
@@ -12,11 +12,17 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
+import { useJobMessages } from '../../hooks/useJobMessages'
+import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 
 type CustomerContact = {
   customer_name: string | null
   customer_phone: string | null
   customer_email: string | null
+  /** For the customer's lines (v2.5527): which of them the job takes. */
+  status?: string | null
+  created_at?: string | null
 }
 
 const sectionLabel: CSSProperties = {
@@ -53,9 +59,12 @@ function googleMapsSearchUrlForAddress(address: string): string {
 export default function JobModeDetailsSection({
   jobId,
   jobAddress,
+  updatesRev = 0,
 }: {
   jobId: string
   jobAddress: string
+  /** Goes up when the card wrote to the job (Message the customer's note or text): Job updates reads again. */
+  updatesRev?: number
 }) {
   const { user: authUser, profileName, role } = useAuth()
   const { showToast } = useToastContext()
@@ -72,7 +81,7 @@ export default function JobModeDetailsSection({
           async () =>
             supabase
               .from('jobs_ledger')
-              .select('customer_name, customer_phone, customer_email')
+              .select('customer_name, customer_phone, customer_email, status, created_at')
               .eq('id', jobId)
               .maybeSingle(),
           'job mode load customer contact',
@@ -154,6 +163,19 @@ export default function JobModeDetailsSection({
     showToast,
     authorDisplayName: authUser?.id ? profileName : undefined,
   })
+  const reloadUpdates = threadNotes.reload
+  useEffect(() => {
+    if (updatesRev > 0) reloadUpdates()
+  }, [updatesRev, reloadUpdates])
+
+  // The tech's door to the customer (v2.5527): the job's lines with them, in Job updates under a Customer pill.
+  const readsLines = readsCustomerLinesInJobUpdates(role)
+  // A text from Message the customer bumps `updatesRev` too, so its line shows without a reopen (v2.5528).
+  const messages = useJobMessages(readsLines && contact ? { id: jobId, status: contact.status ?? null, createdAt: contact.created_at ?? null } : null, updatesRev)
+  const customerLines = useMemo(
+    () => (!readsLines ? undefined : contact && messages ? customerLinesForJobUpdates(messages) : null),
+    [readsLines, contact, messages],
+  )
 
   const name = contact?.customer_name?.trim() ?? ''
   const phone = contact?.customer_phone?.trim() ?? ''
@@ -287,6 +309,7 @@ export default function JobModeDetailsSection({
           showSectionTitle
           showEmptyPlaceholder={false}
           viewerRole={role}
+          customerLines={customerLines}
         />
       </div>
     </div>

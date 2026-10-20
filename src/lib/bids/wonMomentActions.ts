@@ -16,9 +16,19 @@ import { bidBoardJobLinkLabel, canSeeBidBoardJobLinks, type BidBoardJobLink } fr
 export const JOB_CREATED_FROM_BID_EVENT = 'job-created-from-bid'
 export type JobCreatedFromBidDetail = { bidId: string; jobId: string }
 
-/** Roles that may open the New Job form from a bid. The form's provider is app-level, so the
- * estimator (no /jobs route) still gets it — that is the whole point of the win-moment door. */
-const CREATE_JOB_ROLES: ReadonlySet<string> = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
+/** Roles that may open the New Job form from a bid. The estimator left it in v2.5659: they may not insert a job row
+ * (the live walk of punch list #129 found Save refused and a second job offered on BP166), so they draft one instead. */
+const CREATE_JOB_ROLES: ReadonlySet<string> = new Set(['dev', 'master_technician', 'assistant', 'controller'])
+
+/**
+ * Roles that send Dispatch a job draft in place of opening the job (v2.5659, the owner's call of 2026-10-20): the
+ * draft rides the request and the inbox's Open the job opens New Job with it, so the assistant schedules it.
+ */
+const DRAFT_JOB_ROLES: ReadonlySet<string> = new Set(['estimator'])
+
+export function sendsJobDraft(role: string | null | undefined): boolean {
+  return role != null && DRAFT_JOB_ROLES.has(role)
+}
 
 export function canCreateJobFromBid(role: string | null | undefined): boolean {
   return role != null && CREATE_JOB_ROLES.has(role)
@@ -32,16 +42,17 @@ export function canCreateJobFromBid(role: string | null | undefined): boolean {
  */
 const WON_WITHOUT_JOB_DOOR_ROLES: ReadonlySet<string> = new Set(['primary'])
 
-export type WonHandoffMode = 'button' | 'auto' | 'none'
+export type WonHandoffMode = 'button' | 'auto' | 'draft' | 'none'
 
-/** Whether a role hands the win to Dispatch by a quiet button, automatically, or not at all. */
+/** Whether a role hands the win to Dispatch by a quiet button, automatically, with a draft of the job, or not at all. */
 export function wonHandoffMode(role: string | null | undefined): WonHandoffMode {
   if (canCreateJobFromBid(role)) return 'button'
+  if (sendsJobDraft(role)) return 'draft'
   if (role != null && WON_WITHOUT_JOB_DOOR_ROLES.has(role)) return 'auto'
   return 'none'
 }
 
-export type WonMomentActionKey = 'open_existing' | 'create' | 'create_another' | 'ask_dispatch'
+export type WonMomentActionKey = 'open_existing' | 'create' | 'create_another' | 'ask_dispatch' | 'send_draft'
 export type WonMomentAction = { key: WonMomentActionKey; label: string; primary: boolean }
 
 /**
@@ -50,6 +61,7 @@ export type WonMomentAction = { key: WonMomentActionKey; label: string; primary:
  * - no job yet and the role can create → "Open the job" (primary) + "Ask Dispatch to open it" (quiet, v2.3143)
  * - no job yet and the role can mark Won but not create (primary) → "Ask Dispatch to open the job" (primary)
  * - an open Dispatch to-do already exists (`dispatchAsked`) → no ask button; the caller shows the chip
+ * - no job yet and the role drafts (estimator, v2.5659) → "Send to Dispatch" (primary), which opens the draft sheet
  * - superintendent (read-only board) / sub / helper → nothing
  */
 export function wonMomentActions(args: { hasJob: boolean; role: string | null | undefined; canCreateJobs?: boolean; dispatchAsked?: boolean }): WonMomentAction[] {
@@ -65,6 +77,7 @@ export function wonMomentActions(args: { hasJob: boolean; role: string | null | 
     const roleMode = wonHandoffMode(args.role)
     const mode: WonHandoffMode = args.canCreateJobs === undefined ? roleMode : args.canCreateJobs ? 'button' : roleMode === 'auto' ? 'auto' : 'none'
     if (mode === 'button') out.push({ key: 'ask_dispatch', label: 'Ask Dispatch to open it', primary: false })
+    else if (mode === 'draft') out.push({ key: 'send_draft', label: 'Send to Dispatch', primary: true })
     else if (mode === 'auto') out.push({ key: 'ask_dispatch', label: 'Ask Dispatch to open the job', primary: true })
   }
   return out

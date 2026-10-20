@@ -7,7 +7,7 @@
  * takes the projects, the store and the finished jobs' lines as its input instead of the whole
  * prototype state, so the real build passes its closed jobs.
  */
-import type { ScopeBookStore, ScopeExclusion } from './types'
+import type { ScopeBookProject, ScopeBookStore, ScopeExclusion } from './types'
 import { TRADE_TEMPLATES, tradeOrder } from './plans'
 import { COMMON_EXCLUSIONS, exclusionName } from './exclusions'
 
@@ -57,20 +57,8 @@ export interface ScopeBookInput {
   today: string
 }
 
-/** What the book reads of a project: its scopes, which set added a line, what quotes left out, what each trade says it leaves out. */
-export interface ScopeBookProject {
-  id: string
-  name: string
-  planSets: { label: string; issuedOn: string; addedLines?: { packageId: string; scopeId: string }[] }[]
-  packages: {
-    id: string
-    trade: string
-    scope: { id: string; label: string; specs?: string[] }[]
-    invites: { bid?: { includes: Record<string, string>; exclusions?: { name: string }[] } | null }[]
-    excludes?: ScopeExclusion[]
-  }[]
-  changeOrders?: { packageId: string | null; description: string }[]
-}
+/** What the book reads of a project. It lives in `types.ts`, a types file the edge copy holds whole. */
+export type { ScopeBookProject } from './types'
 
 /** A line's words as a key: capitals, "&" and stray punctuation do not make two lines. */
 export function scopeWordKey(words: string): string {

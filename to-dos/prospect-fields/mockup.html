@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospect Fields</title>
+<style>
+  /* layout: one column of framed app drawings, each under a caption; the app's own light look, system font */
+  :root { color-scheme: light; --page: #f6f7f9; --surface: #ffffff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb;
+    --blue: #3b82f6; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --violet: #7c3aed; --violet-tint: #ede9fe; --green: #15803d; --green-mid: #16a34a; --green-tint: #dcfce7;
+    --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --red: #dc2626; --red-tint: #fee2e2; --app: #f0f2f5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 13px; flex: none; }
+  h2 .num.grey { background: var(--ink); }
+  h2 .num.green { background: var(--green-mid); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 105ch; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--blue-tint); color: var(--blue-ink); margin-top: 14px; flex-wrap: wrap; }
+  .cap.old { background: var(--line-2); color: var(--ink-2); }
+  .cap.good { background: var(--green-tint); color: var(--green); }
+  .cap .w { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: var(--app); padding: 14px; overflow-x: auto; }
+  .page { width: 1040px; margin: 0 auto; }
+  .page.narrow { width: 720px; }
+  ul.moves { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  ul.moves li { margin: 2px 0; }
+  ul.moves b, .crit b { color: var(--ink); }
+
+  /* the app's chrome */
+  .ph { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs { display: inline-flex; gap: 4px; background: #e5e7eb; border-radius: 10px; padding: 4px; }
+  .tabs span { padding: 6px 18px; border-radius: 6px; color: var(--muted); font-size: 14px; font-weight: 400; }
+  .tabs span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .tabs span.new { outline: 2px dashed var(--amber-mid); outline-offset: -2px; }
+  .ptitle { font-size: 20px; font-weight: 800; margin-left: auto; }
+  .sub { display: flex; gap: 6px; align-items: center; margin: 4px 0 12px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .sub span { padding: 4px 10px; border-radius: 6px; }
+  .sub span.on { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; }
+  .sub .sep { color: var(--line); padding: 0; }
+  .sub .btn { margin-left: auto; }
+  .btn { display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); white-space: nowrap; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.g { background: var(--green-mid); color: #fff; border-color: var(--green-mid); }
+  .btn.a { background: var(--amber-tint); color: var(--amber); border-color: #f5d58a; }
+  .btn.v { background: var(--violet); color: #fff; border-color: var(--violet); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); padding: 3px 4px; }
+  .btn.s { padding: 2px 8px; font-size: 12px; }
+  .btn.dash { outline: 2px dashed var(--amber-mid); outline-offset: 2px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 11.5px; line-height: 18px; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.green { background: var(--green-tint); color: var(--green); }
+  .chip.amber { background: var(--amber-tint); color: var(--amber); }
+  .chip.red { background: var(--red-tint); color: #991b1b; }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .chip.purple { background: var(--violet-tint); color: #5b21b6; }
+  .chip.outline { background: var(--surface); border: 1px solid var(--line); }
+  .muted { color: var(--muted); } .ink2 { color: var(--ink-2); } .red { color: var(--red); } .green { color: var(--green); } .amber { color: var(--amber-mid); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); font-size: 13px; min-width: 0; }
+  .deck { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .co { font-size: 18px; font-weight: 800; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .co small { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .facts { display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; margin: 6px 0 10px; color: var(--ink-2); font-size: 12.5px; }
+  .tel { display: inline-flex; align-items: center; gap: 6px; background: var(--blue); color: #fff; border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 13px; }
+  .outcome { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 8px; }
+  .outcome .l { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+  .util { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--blue-ink); margin-top: 8px; }
+  .util .t { margin-left: auto; color: var(--muted); }
+  .rail { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; }
+  .rail .h { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 6px; }
+  .rail .ord { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+  .rail .ord span { padding: 2px 8px; font-size: 11.5px; color: var(--muted); }
+  .rail .ord span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .rail .row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; padding: 3px 0; border-top: 1px solid var(--line-2); align-items: baseline; }
+  .rail .row.on { background: var(--blue-tint); margin: 0 -6px; padding: 3px 6px; border-radius: 6px; border-top: 0; }
+  .rail .row .n { color: var(--muted); font-size: 11px; }
+  .rail .row .w { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail .row .s { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .strip { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; font-size: 12.5px; }
+  .strip .l { font-weight: 700; color: var(--ink-2); margin-right: 4px; }
+  .strip .need { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--surface); }
+  .strip .need b { color: var(--ink); }
+  .strip .need .q { color: var(--muted); font-size: 11.5px; }
+  .strip .need.on { border-color: var(--blue); background: var(--blue-tint); }
+  .strip .need.ok { color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); }
+  .jobs { border: 1px solid var(--line-2); border-radius: 8px; margin: 8px 0; }
+  .jobs .jh { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 10px; background: #f9fafb; border-bottom: 1px solid var(--line-2); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--muted); border-radius: 8px 8px 0 0; }
+  .jobs .jr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 7px 10px; border-top: 1px solid var(--line-2); align-items: baseline; }
+  .jobs .jr:first-of-type { border-top: 0; }
+  .jobs .jr b { font-size: 13px; }
+  .jobs .jr .m { color: var(--muted); font-size: 12px; }
+  .jobs .jr .due { font-weight: 700; white-space: nowrap; text-align: right; }
+  .jobs .jr .due small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 13px; }
+  .modal h4 { margin: 0 0 2px; font-size: 16px; }
+  .modal .why { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+  .kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .kind { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .kind.on { border: 2px solid var(--blue); background: var(--blue-tint); }
+  .kind b { display: block; font-size: 13px; }
+  .kind span { font-size: 11.5px; color: var(--ink-2); }
+  .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+  .f { display: grid; gap: 2px; min-width: 0; }
+  .f.wide { grid-column: 1 / -1; }
+  .f label { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .f .in { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--surface); min-height: 30px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .f .in.empty { color: #9ca3af; }
+  .f .hint { font-size: 11px; color: var(--muted); }
+  .radios { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .radios span::before { content: "○ "; color: var(--muted); } .radios span.on::before { content: "● "; color: var(--blue); }
+  .warn { border-left: 3px solid var(--amber-mid); background: var(--amber-tint); padding: 6px 10px; border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--amber); }
+  .mfoot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+  table.list { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); }
+  table.list th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); background: #f9fafb; }
+  table.list td { padding: 7px 8px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .sec { font-weight: 700; margin: 10px 0 4px; font-size: 13px; }
+  .sec small { color: var(--muted); font-weight: 500; }
+  .jump { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ideal { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; }
+  .ideal b { font-size: 13px; }
+  .ideal .bar { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; background: #f9fafb; border-top: 1px dashed var(--line-2); margin: 4px -14px -10px; padding: 8px 14px; border-radius: 0 0 10px 10px; flex-wrap: wrap; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  .lane { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 10px 12px; font-size: 12.5px; }
+  .lane .lh { font-weight: 800; display: flex; gap: 8px; align-items: center; }
+  .lane .lh .cnt { background: var(--blue); color: #fff; border-radius: 999px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+  .act { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+  .act .t { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .act .t .v { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .act .t .l { font-size: 11px; color: var(--muted); }
+  .src { display: grid; grid-template-columns: 160px minmax(0, 1fr) 90px; gap: 6px 10px; font-size: 12.5px; align-items: center; }
+  .src .b { height: 8px; border-radius: 999px; background: var(--line-2); position: relative; }
+  .src .b i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--green-mid); }
+  .src .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+  .crit { margin-top: 44px; border-top: 2px solid var(--ink); padding-top: 14px; max-width: 120ch; }
+  .crit h3 { font-size: 15px; margin: 18px 0 4px; }
+  .crit p, .crit li { font-size: 13.5px; color: var(--ink-2); }
+  table.wt { border-collapse: collapse; font-size: 13px; margin: 8px 0; width: 100%; }
+  table.wt th, table.wt td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.wt th { background: #f9fafb; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  table.wt td:first-child { font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .q { background: var(--amber-tint); border-left: 3px solid var(--amber-mid); padding: 8px 12px; border-radius: 0 6px 6px 0; }
+  ol.calls li { margin: 6px 0; }
+  .tbl { overflow-x: auto; }
+  @media (max-width: 720px) { .two, .kinds, .form, .act { grid-template-columns: 1fr; } .deck { grid-template-columns: 1fr; } }
+  /* this page's additions: a spot is two columns, Now and the suggestion, with a sentence under each */
+  body { background: var(--page); }
+  .spot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-top: 14px; }
+  .spot .cap { margin-top: 0; }
+  .spot .fit { padding: 12px; }
+  .spot .page { width: auto; }
+  .spot .deck { grid-template-columns: minmax(0, 1fr) 190px; gap: 10px; }
+  .spot .outcome .btn { padding: 4px 9px; font-size: 12px; }
+  .jobs .jh span { white-space: nowrap; }
+  .jobs .jh { gap: 8px; flex-wrap: wrap; }
+  .cap.now { background: var(--line-2); color: var(--ink-2); }
+  .say { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .say b { color: var(--ink); }
+  .new { outline: 2px dashed var(--amber-mid); outline-offset: 2px; border-radius: 4px; }
+  .lbl { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--amber-mid); color: #fff; border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: middle; }
+  .empty { text-align: center; color: var(--muted); padding: 22px 10px; font-size: 13px; }
+  .phone { width: 290px; height: 430px; margin: 0 auto; overflow: hidden; border: 6px solid #111827; border-radius: 26px; background: #6b7280; position: relative; }
+  .phone .modal { position: absolute; left: 12px; right: 12px; font-size: 12px; padding: 12px 14px; }
+  .phone .modal .f .in { min-height: 26px; }
+  .phone .modal.cut { top: -70px; }
+  .phone .modal.fits { top: 22px; bottom: 22px; overflow: hidden; }
+  .phone .modal.fits .scroller { position: absolute; right: 4px; top: 40px; bottom: 60px; width: 4px; border-radius: 2px; background: var(--line); }
+  .phone .modal.fits .scroller i { position: absolute; left: 0; right: 0; top: 0; height: 38%; border-radius: 2px; background: var(--muted); }
+  .phone .modal.fits .mfoot { position: absolute; left: 14px; right: 14px; bottom: 12px; margin: 0; background: var(--surface); padding-top: 8px; border-top: 1px solid var(--line-2); }
+  .jobs .jr .act { font-size: 12px; color: var(--blue-ink); white-space: nowrap; }
+  .jobs .jr.editing { grid-template-columns: 1fr; background: var(--blue-tint); }
+  .jobs .jr.editing .form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ok { border-left: 3px solid var(--green-mid); background: var(--green-tint); padding: 6px 10px; border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--green); }
+  .mini { font-size: 11px; color: var(--muted); }
+  @media (max-width: 720px) { .spot { grid-template-columns: 1fr; } }
+  .tick { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; }
+  .tick::before { content: "☐"; color: var(--muted); } .tick.on::before { content: "☑"; color: var(--blue); }
+  .paste { border: 1px dashed var(--blue); background: var(--blue-tint); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--blue-ink); white-space: pre-line; }
+  .person { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; font-size: 12.5px; margin: 6px 0 10px; }
+  .person .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  table.cols td:first-child { font-family: ui-monospace, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Prospects · mock-up 2026-10-17 · after #113</p>
+  <h1>Prospect fields: who we are talking to</h1>
+  <p>Grace, 2026-10-17: "when it is an owner it is not always a company it is sometimes a person, and when it is a sub they'll usually have a google maps business profile, how could we refine the prospects fields to better accommodate this and other things?" Then: make a mock-up, and ask whether it is the best we can do, whether it is holistic, and whether it thinks about the customer. This page draws today, a first cut, the critique, and the revised cut. Every name, street and number is made up.</p>
+  <p><b>Recommendation, before the drawings:</b> build <b>B</b>. The first cut answers the two asks with a tick and a box; the second pass found the real shape under them. Every prospect is <i>a person we call, sometimes at a company</i>, and the facts we gather on the call are the same facts the customer record, the bench and Messages keep. Gather them once, in the shape those records want, and the person on the other end is greeted by their own name, texted on the phone they gave us, in their language, and never asked twice.</p>
+</header>
+
+<h2><span class="num grey">0</span> Today: what a prospect row holds</h2>
+<p class="lede">One shape for three kinds, with the kind's facts bolted on in v2.5559. The company is the record; the person is one box under it.</p>
+<div class="tbl"><table class="wt cols">
+<tr><th>Column</th><th>What it is</th><th>Where it goes when the prospect lands</th></tr>
+<tr><td>company_name</td><td>The card's title. A homeowner has to be typed here.</td><td>Add customer's Name · the bench's Company · New project's customer</td></tr>
+<tr><td>contact_name</td><td>One person, no title.</td><td>Add customer's contact person (name only) · the bench's Contact</td></tr>
+<tr><td>phone_number · email</td><td>One phone, one email. Nothing says cell or office.</td><td>Add customer's phone and email · the bench's phone and email · Messages' contact channel</td></tr>
+<tr><td>address · links_to_website</td><td>One address, one link.</td><td>Add customer's address · the bench's address. The link goes nowhere.</td></tr>
+<tr><td>kind · company_role · source</td><td>The lane, a lead's role, where we found them.</td><td>New project's customer role · Source success</td></tr>
+<tr><td>trades · max_miles · lang</td><td>A sub's facts; language on subs only.</td><td>The bench's trades, range and language</td></tr>
+</table></div>
+<p class="note">Add customer defaults the type to <b>Commercial</b>. The bench has a <code>license</code> column the form never fills. Messages' contacts know a person's <i>goes by</i> name and their channels; a prospect does not.</p>
+
+<h2><span class="num">1</span> An owner who is a person</h2>
+<p class="lede">An owner on Jobs to GC is often a homeowner or a landlord. Today they are typed as a company, and Asked us ✓ makes them a commercial customer.</p>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now · New Prospect, A job to GC</span></div>
+    <div class="fit"><div class="page narrow"><div class="modal">
+      <h4>New Prospect</h4>
+      <div class="form"><div class="f"><label>Company Name</label><div class="in">Dana Whitlock</div></div><div class="f"><label>Contact Name</label><div class="in empty">—</div></div><div class="f wide"><label>Who they are</label><div class="radios"><span class="on">The owner</span><span>A developer</span><span>An architect</span><span>An owner's rep</span></div></div></div>
+      <div class="card" style="margin-top:12px"><div class="co">Dana Whitlock <span class="chip green">never called</span></div><div class="facts"><span class="muted">Owner · from a referral</span></div><div class="outcome"><span class="btn v">Asked us ✓</span><span class="muted" style="font-size:12px">→ Add customer · Customer Type: <b>Commercial</b></span></div></div>
+    </div></div></div>
+    <p class="say">A person typed into Company Name. Asked us ✓ opens Add customer as Commercial unless the caller notices.</p>
+  </div>
+  <div>
+    <div class="cap"><span>A · a tick when The owner is picked</span></div>
+    <div class="fit"><div class="page narrow"><div class="modal">
+      <h4>New Prospect</h4>
+      <div class="form"><div class="f wide"><label>Who they are</label><div class="radios"><span class="on">The owner</span><span>A developer</span><span>An architect</span><span>An owner's rep</span></div><div class="tick on new" style="margin-top:6px">The owner is a person, not a company</div></div><div class="f"><label>Name</label><div class="in">Dana Whitlock</div></div><div class="f"><label>Phone Number</label><div class="in">(512) 555-0177</div></div></div>
+      <div class="card" style="margin-top:12px"><div class="co">Dana Whitlock <span class="chip">a person</span> <span class="chip green">never called</span></div><div class="facts"><span class="muted">Owner · from a referral</span></div><div class="outcome"><span class="btn v">Asked us ✓</span><span class="muted" style="font-size:12px">→ Add customer · Customer Type: <b class="new">Residential</b></span></div></div>
+    </div></div></div>
+    <p class="say">One tick relabels Company Name to Name and hides Contact Name. The card says <i>a person</i>, and Asked us ✓ seeds Residential. One column, <code>is_person</code>.</p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> A sub with a Google Maps business profile</h2>
+<p class="lede">Most subs have a Google profile with their phone, address, hours, rating and website. Today the form has one Links to Website box, and the bench keeps no link at all.</p>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now · New Prospect, A sub</span></div>
+    <div class="fit"><div class="page narrow"><div class="modal">
+      <h4>New Prospect</h4>
+      <div class="form"><div class="f wide"><label>Company Name</label><div class="in">Bexar Fire Protection</div></div><div class="f"><label>Phone Number</label><div class="in">(210) 555-0188</div></div><div class="f"><label>Address</label><div class="in empty">—</div></div><div class="f wide"><label>Links to Website</label><div class="in">https://bexarfire.example</div></div></div>
+      <div class="card" style="margin-top:12px"><div class="co">Bexar Fire Protection <span class="chip green">never called</span></div><div class="facts"><span class="chip blue">Fire sprinkler</span><span class="muted">· goes up to 40 mi · from a GC's sub list</span></div><div class="facts"><span class="tel">📞 (210) 555-0188</span><span class="btn s">Call script</span></div></div>
+    </div></div></div>
+    <p class="say">The caller retypes what Google already shows, and the profile link is lost when the sub lands on the bench.</p>
+  </div>
+  <div>
+    <div class="cap"><span>A · a Google Maps box, and a paste that fills the form</span></div>
+    <div class="fit"><div class="page narrow"><div class="modal">
+      <h4>New Prospect</h4>
+      <div class="paste new">Paste from Google Maps
+Bexar Fire Protection
+1800 Cibolo Trail, Boerne, TX 78006
+https://maps.app.goo.gl/x7Qz…</div>
+      <div class="form" style="margin-top:8px"><div class="f wide"><label>Company Name</label><div class="in">Bexar Fire Protection</div></div><div class="f"><label>Phone Number</label><div class="in">(210) 555-0188</div></div><div class="f"><label>Address</label><div class="in">1800 Cibolo Trail, Boerne, TX 78006</div></div><div class="f"><label>Links to Website</label><div class="in">https://bexarfire.example</div></div><div class="f"><label>Google Maps</label><div class="in new">https://maps.app.goo.gl/x7Qz…</div></div></div>
+      <div class="card" style="margin-top:12px"><div class="co">Bexar Fire Protection <span class="chip green">never called</span></div><div class="facts"><span class="chip blue">Fire sprinkler</span><span class="muted">· goes up to 40 mi · from Google Maps</span></div><div class="facts"><span class="tel">📞 (210) 555-0188</span><span class="btn s">Call script</span><span class="btn s new">Maps ↗</span></div></div>
+    </div></div></div>
+    <p class="say">Google's Share copies the name, the address and a short link in one block. One paste fills three boxes and sets the source. The link rides to the bench as a column of its own.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span> The small boxes every lane is missing</h2>
+<p class="lede">Six facts the call gathers that the form has nowhere to put. Drawn once on the sub form; the person boxes are the same on every kind.</p>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>New Prospect</h4><p class="why">A sub</p>
+  <div class="form"><div class="f wide"><label>Company Name</label><div class="in">Bexar Fire Protection</div></div><div class="f"><label>Contact Name</label><div class="in">Tomás Reyna</div></div><div class="f"><label>Contact title <span class="lbl">new</span></label><div class="in">Estimator</div></div><div class="f"><label>Phone Number</label><div class="in">(210) 555-0188</div></div><div class="f"><label>Also reach <span class="lbl">new</span></label><div class="in">Ana Reyna, office · (210) 555-0190</div></div><div class="f"><label>Language <span class="lbl">every kind</span></label><div class="radios"><span class="on">English</span><span>Spanish</span></div></div><div class="f"><label>License <span class="lbl">new</span></label><div class="in">TX SCR-1884</div></div><div class="f wide"><label>Where we found them <span class="lbl">picks</span></label><div class="in"><span class="chip outline">A GC's sub list</span><span class="chip outline">PlanHub</span><span class="chip outline">Google Maps</span><span class="chip outline">A permit</span><span class="chip outline">A referral</span><span class="muted">or type</span></div></div></div>
+</div></div></div>
+<ul class="moves"><li><b>Contact title</b>: the call script asks for it; the card reads "Tomás Reyna · Estimator".</li><li><b>Also reach</b>: a second name and number. Subs have an office line and an estimator's cell.</li><li><b>Language</b> on every kind, not subs only; the column exists.</li><li><b>License</b>: the bench has the column, the form never fills it; the same license is the same company.</li><li><b>Source picks</b> from the lane's own history, so Source success groups "PlanHub" and "planhub" as one.</li></ul>
+
+<section class="crit">
+<h3>Is this the best we can do? Is it holistic? Does it think about the customer?</h3>
+<p>A answers the two asks and adds five boxes. Read back from the other end of the phone, and from the three records a prospect turns into, it stops short in six places. The customer here is three people: the homeowner we call, the sub we want on our bench, and the GC estimator we want plans from. B is built for them.</p>
+<div class="tbl"><table class="wt">
+<tr><th>Weak spot in A</th><th>Why it matters, seen from the customer</th><th>What B does instead</th></tr>
+<tr><td>A tick for owners only</td><td>A GC's estimator is a person at a company. A homeowner is a person. A sub is a company with a person who answers. Every call is to a person; the form makes the company the record and the person an afterthought, so we greet "Hill Country Developers" when Dana picks up.</td><td><b>Every prospect is a person we call, sometimes at a company.</b> The form's first block is the person: name, title, cell, language. The company block is under it and can be empty. The card's title is the person when there is no company. <code>is_person</code> stays the one column, true when the company block is empty.</td></tr>
+<tr><td>One phone, unlabeled</td><td>Messages texts through Quo. A text to an office landline bounces or lands on a desk. The sub gave us a cell for a reason.</td><td><b>Cell and office are two labeled numbers.</b> Texts go to the cell, never the office line; the card's phone button dials the cell. <code>phone_number</code> stays the company line, <code>contact_phone</code> is the person's cell.</td></tr>
+<tr><td>Nobody asked if we may text</td><td>A cold prospect never agreed to texts. The first text from the company number, unasked, is the fastest way to a STOP and a bad name. Messages already keeps STOPs; prospects keep nothing.</td><td><b>Ask on the call.</b> "May we text you?" is one tick on the card, <code>ok_to_text</code> (not asked, yes, no). Quo's path refuses a text to a prospect who has not said yes, and the card says why. The owner decides whether a given number counts as yes.</td></tr>
+<tr><td>A box for the Maps link</td><td>The profile is where the sub keeps their own facts current: hours, phone, rating. A box stores a string; the sub's rating is what tells the caller whom to ring first.</td><td><b>Paste first, type second.</b> The paste block is the sub form's first box; it fills the name, the address, the link, and sets the source to Google Maps. The link is the fourth double key (the same place is the same company). The Places read, a later card, adds rating, hours and the point.</td></tr>
+<tr><td>Language on the person, not the texts</td><td>A Spanish-speaking owner gets an English text and an English portal invite, after telling us on the call.</td><td><b>Language rides with the person</b> to Add customer (<code>customers.language</code>), to the bench (<code>lang</code>) and to Messages' contact, so the first text and the portal invite go in their language.</td></tr>
+<tr><td>Three landings, three retypes</td><td>Asked us ✓, Add to the bench ✓ and New project each open a window the caller completes by hand from what they just typed. A person-owner lands as Commercial with no contact person.</td><td><b>One seed for the three landings.</b> The prospect's person and company blocks fill Add customer (type by <code>is_person</code>: Residential or Commercial; the person as the contact person with title and cell; language), Add a company (contact, cell, license, Maps link) and New project (the customer, the role). Nothing retyped, the record whole from day one, so the first bill, the portal invite and the first text are right.</td></tr>
+</table></div>
+<p><b>What A got right and B keeps:</b> the lanes unchanged; no new table; the paste parser is pure and tested; source picks; the license box; the Maps link on the bench.</p>
+<p><b>What B says no to:</b> a second card row asking person or company (the empty company block says it); the Places read in this train (paid API, the owner's call); photos; a CRM-style timeline (the comments are it); a separate home address for a person (their address is their address, the job's is in the Jobs box).</p>
+</section>
+
+<h2><span class="num green">B</span> Revised cut: the person first, the company under them</h2>
+<p class="lede">Three drawings: the form on a homeowner, the form on a sub after a paste, and the card with the person block that the three landings read.</p>
+
+<div class="cap good"><span>B · 1 · the form, a homeowner on Jobs to GC</span><span class="w">the person block first; the company block empty, so the card's title is the person</span></div>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>New Prospect</h4><p class="why">A job to GC</p>
+  <div class="sec">The person we call</div>
+  <div class="form"><div class="f"><label>Name</label><div class="in">Dana Whitlock</div></div><div class="f"><label>Title</label><div class="in empty">—</div></div><div class="f"><label>Cell</label><div class="in">(512) 555-0177</div></div><div class="f"><label>Email</label><div class="in">dana@example.com</div></div><div class="f"><label>Language</label><div class="radios"><span class="on">English</span><span>Spanish</span></div></div><div class="f"><label>May we text?</label><div class="radios"><span>Not asked</span><span class="on">Yes</span><span>No</span></div></div></div>
+  <div class="sec" style="margin-top:12px">The company <small>· leave it empty for a person on their own</small></div>
+  <div class="form"><div class="f"><label>Company</label><div class="in empty">—</div></div><div class="f"><label>Office phone</label><div class="in empty">—</div></div><div class="f wide"><label>Address</label><div class="in">1208 Mesquite Ln, Cedar Park</div></div></div>
+  <div class="sec" style="margin-top:12px">For the lane</div>
+  <div class="form"><div class="f wide"><label>Who they are</label><div class="radios"><span class="on">The owner</span><span>A developer</span><span>An architect</span><span>An owner's rep</span></div></div><div class="f wide"><label>Where we found them</label><div class="in"><span class="chip outline">A referral</span><span class="chip outline">A permit</span><span class="chip outline">PlanHub</span><span class="muted">or type</span></div></div></div>
+  <div class="ok" style="margin-top:12px">Saved as a person: the card reads <b>Dana Whitlock · Owner</b>; Asked us ✓ opens Add customer as <b>Residential</b> with Dana as the contact person, her cell and her language already in.</div>
+</div></div></div>
+
+<div class="cap good"><span>B · 2 · the form, a sub after one paste from Google Maps</span><span class="w">the paste fills the company block; the caller adds the person</span></div>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>New Prospect</h4><p class="why">A sub</p>
+  <div class="paste">Paste from Google Maps
+Bexar Fire Protection
+1800 Cibolo Trail, Boerne, TX 78006
+https://maps.app.goo.gl/x7Qz…</div>
+  <div class="sec" style="margin-top:12px">The company <small>· filled from the paste</small></div>
+  <div class="form"><div class="f"><label>Company</label><div class="in">Bexar Fire Protection</div></div><div class="f"><label>Office phone</label><div class="in">(210) 555-0188</div></div><div class="f wide"><label>Address</label><div class="in">1800 Cibolo Trail, Boerne, TX 78006</div></div><div class="f"><label>Google Maps</label><div class="in">https://maps.app.goo.gl/x7Qz…</div></div><div class="f"><label>Website</label><div class="in empty">—</div></div><div class="f"><label>License</label><div class="in">TX SCR-1884</div></div><div class="f"><label>Trades</label><div class="in"><span class="chip blue">Fire sprinkler</span></div></div></div>
+  <div class="sec" style="margin-top:12px">The person we call</div>
+  <div class="form"><div class="f"><label>Name</label><div class="in">Tomás Reyna</div></div><div class="f"><label>Title</label><div class="in">Estimator</div></div><div class="f"><label>Cell</label><div class="in">(210) 555-0122</div></div><div class="f"><label>Language</label><div class="radios"><span>English</span><span class="on">Spanish</span></div></div><div class="f wide"><label>May we text?</label><div class="radios"><span class="on">Not asked</span><span>Yes</span><span>No</span></div></div></div>
+  <div class="ok" style="margin-top:12px">The source reads <b>Google Maps</b> on its own. Add to the bench ✓ carries the company, the Maps link, the license, Tomás as the contact with his cell and his Spanish, so the bench's papers go to him in Spanish.</div>
+</div></div></div>
+
+<div class="cap good"><span>B · 3 · the card, and what the three landings read from it</span><span class="w">the person block is the card's second line; the phone button dials the cell</span></div>
+<div class="fit"><div class="page"><div class="card" style="max-width:640px;margin:0 auto">
+  <div class="co">Bexar Fire Protection <span class="chip green">never called</span></div>
+  <div class="person"><span class="k">Call</span><span><b>Tomás Reyna</b> · Estimator · Spanish · <span class="chip amber">text? not asked</span></span><span class="k">Cell</span><span class="tel" style="font-size:12px">📞 (210) 555-0122</span><span class="k">Office</span><span>(210) 555-0188 · Ana Reyna</span><span class="k">Links</span><span><span class="btn s">Maps ↗</span> <span class="btn s">Website</span> · TX SCR-1884</span></div>
+  <div class="facts"><span class="chip blue">Fire sprinkler</span><span class="muted">· goes up to 40 mi · from Google Maps</span></div>
+  <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v">Add to the bench ✓</span></div>
+  <div class="tbl" style="margin-top:10px"><table class="wt">
+  <tr><th>Landing</th><th>Reads from the prospect</th><th>So the customer gets</th></tr>
+  <tr><td>Add customer (Converted ✓, Asked us ✓)</td><td>Residential or Commercial by <code>is_person</code>; the person as the contact person with title and cell; language; email; address</td><td>Their name on the bill, texts on their cell, the portal in their language, from day one</td></tr>
+  <tr><td>Add a company (Add to the bench ✓)</td><td>Company, office phone, address, Maps link, website, license, trades, range; the person as the contact with cell and language</td><td>Bid invitations and papers to the right person, in their language, with their license already on file</td></tr>
+  <tr><td>New project (Asked us ✓)</td><td>The customer above, the role, the job from the Jobs box</td><td>Nothing asked twice when the plans come in</td></tr>
+  </table></div>
+</div></div></div>
+
+<section class="crit">
+<h3>The data, in one migration</h3>
+<div class="tbl"><table class="wt cols">
+<tr><th>Column on prospects</th><th>What it holds</th><th>Where it lands</th></tr>
+<tr><td>is_person boolean</td><td>True when the company block is empty: the person is the record.</td><td>Add customer's type; the card's title</td></tr>
+<tr><td>contact_title text</td><td>The title their company knows them by.</td><td>The customer's contact person; the bench's contact</td></tr>
+<tr><td>contact_phone text</td><td>The person's cell. <code>phone_number</code> stays the company line.</td><td>Texts and the phone button; the customer's contact person; the bench's contact</td></tr>
+<tr><td>ok_to_text text</td><td>not_asked · yes · no, asked on the call.</td><td>Quo's path refuses a text without a yes; Messages' contact</td></tr>
+<tr><td>maps_url text</td><td>The Google Maps profile link; the fourth double key.</td><td>The bench (<code>gc_companies.maps_url</code>, one new column there); the card's Maps ↗</td></tr>
+<tr><td>license text</td><td>A sub's license.</td><td>The bench's <code>license</code></td></tr>
+<tr><td>also_reach text</td><td>A second name and number, free text.</td><td>The card; a second contact person on Add customer</td></tr>
+</table></div>
+<p><code>lang</code> and <code>source</code> already exist; the form shows language on every kind and offers the lane's sources as picks. The paste parser is a pure kernel, <code>mapsShareText.ts</code>, with tests. The three seeds extend the ones that exist (<code>newProjectSeedFromLead</code>, the Add customer prefill, <code>ProspectBenchModal</code>'s fill).</p>
+
+<h3>Grace's calls</h3>
+<ol class="calls">
+  <li><b>The person first, on every kind.</b> Drawn as B. The smaller cut is A's tick on owners only; it fixes the homeowner and nothing else.</li>
+  <li><b>May we text?</b> Drawn as a question on the call with Quo refusing a text without a yes. The lighter rule is that a number they gave us counts as yes. The owner's call, since it is his number texting.</li>
+  <li><b>Cell and office, or one phone.</b> Drawn as two labeled numbers. One phone is simpler and keeps texting a landline possible.</li>
+  <li><b>The Places read.</b> Not in this train. Rating, hours and the sub's point for distance come from a paid Google read and wait for the owner's yes.</li>
+  <li><b>Also reach.</b> Drawn as one free line. The fuller shape is the customers' contact-persons list on the prospect, which is a table.</li>
+  <li><b>Order of work.</b> PR 1 the migration and the person block on the form and card; PR 2 the three seeds; PR 3 the Maps paste, link and bench column; PR 4 the texting rule in Quo's path; then the guides.</li>
+</ol>
+<div class="q">Nothing here changes the lanes or the deck's machine. The one write that grows is the prospect row, by seven columns, and the one new rule outside Prospects is a text refused without a yes.</div>
+</section>
+</div>
+</body>
+</html>

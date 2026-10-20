@@ -12,7 +12,7 @@ import { normalizeEstimateLineItemsFromJson } from '../estimateLineItemNormalize
 import { buildJobContractPrefill } from './jobContractDocument'
 import { buildJobContractDraftPayload, refreshJobContractDraftTerms, saveJobContractDraft } from './jobContractDraftWrite'
 import type { QuickSendTemplate } from './jobContractQuickSend'
-import type { JobContractRow } from './jobContractLifecycle'
+import { jobContractLinkOnRow, type JobContractRow } from './jobContractLifecycle'
 
 /** Who may put our agreement in front of a customer at the job: the roles that speak for the company on site. */
 export const HAND_PHONE_ROLES: ReadonlySet<string> = new Set(['dev', 'master_technician', 'primary', 'superintendent', 'estimator'])
@@ -60,7 +60,8 @@ export type OpenInPersonResult = { ok: true; url: string } | { ok: false; error:
 /**
  * Open the job's agreement in person: reuse the live row (a draft takes the Book's current wording
  * first), or mint a draft from the job's own facts, then ask send-job-contract for the link only
- * (`mode: 'link'` — nothing is emailed) and add the in-person flag.
+ * (`mode: 'link'` — nothing is emailed) and add the in-person flag. A sent row with a live link
+ * hands out its own and calls nothing (v2.5119).
  */
 export async function openInPersonSigning(input: { jobId: string; authUserId: string | null; origin: string }): Promise<OpenInPersonResult> {
   try {
@@ -69,7 +70,7 @@ export async function openInPersonSigning(input: { jobId: string; authUserId: st
     const { data: rowsData } = await supabase.from('job_contracts').select('*').eq('job_id', job.id).is('voided_at', null).order('created_at', { ascending: false })
     const rows = (rowsData ?? []) as JobContractRow[]
     if (rows.some((r) => r.status === 'signed')) return { ok: false, error: 'This job’s agreement is already signed.' }
-    const { data: tpl } = await supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date').eq('audience', 'customer').order('document_name').limit(1).maybeSingle()
+    const { data: tpl } = await supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date').eq('audience', 'customer').is('flow_kind', null).order('document_name').limit(1).maybeSingle()
     const template = (tpl ?? null) as QuickSendTemplate
     let row = rows.find((r) => r.status === 'sent') ?? rows.find((r) => r.status === 'draft') ?? null
     if (row && row.status === 'draft') {
@@ -94,6 +95,10 @@ export async function openInPersonSigning(input: { jobId: string; authUserId: st
       })
     }
     if (!row) return { ok: false, error: 'Could not prepare the agreement.' }
+    // v2.5119 (punch list #104): a sent row hands out the link it already carries and records nothing,
+    // so a PDF emailed to sign stays a PDF send. A draft, or a link near its end, still goes through the send.
+    const own = jobContractLinkOnRow(row, input.origin)
+    if (own) return { ok: true, url: inPersonSigningUrl(own) }
     const { data, error } = await supabase.functions.invoke('send-job-contract', {
       body: { contract_id: row.id, mode: 'link', recipient_email: row.recipient_email ?? '', recipient_name: row.recipient_name ?? '', public_origin: input.origin },
     })

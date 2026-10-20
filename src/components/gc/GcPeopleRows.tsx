@@ -3,7 +3,7 @@
  * last thing said, and Call. Moved word for word from the GC mode prototype (branch spike/gc-mode, `GcPeoplePill.tsx`); the plan
  * is to-dos/gc-mode/mockups/schedule-pr7c.md on that branch. The Board lane's file: its Who to call pill (B2b) wraps these rows
  * rather than making a second copy. One known difference: `onFollowUp` is optional. Unset, Call only dials and Follow up is not
- * drawn, until the Board lane lifts the Follow up sheet.
+ * drawn. The Follow up sheet (B2b-viii-a) sets it where the reader may log.
  */
 import { telHref } from '../../lib/gc/followUpSheet'
 import type { PeopleTone, PersonReason, ProjectPerson } from '../../lib/gc/projectPeople'
@@ -33,7 +33,7 @@ export function PeopleRows({
 }: {
   people: ProjectPerson[]
   narrow: boolean
-  /** The Follow up sheet at this person, on "What did they say?" after a Call. Unset (the real build, until the Board lane lifts the sheet): Call only dials, and Follow up is not drawn. */
+  /** The Follow up sheet at this person, on "What did they say?" after a Call. Unset: Call only dials, and Follow up is not drawn. */
   onFollowUp?: (person: ProjectPerson, calling: boolean) => void
   /** A reason about a bar on the schedule pressed (the Gantt's call list, G-115): open that bar. Unset: reasons are words only. */
   onReason?: (person: ProjectPerson, reason: PersonReason) => void

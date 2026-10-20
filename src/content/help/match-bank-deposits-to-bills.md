@@ -34,6 +34,10 @@ Applying a deposit also gives it the **Income** label in Banking, so the P&L cou
 
 **Give it the whole screen.** The button between **⋯** and **Close** takes the window full screen. The deposits and the match pane then split the whole width. It opens the way you left it. Press it again for the window.
 
+## They said they paid
+
+Sometimes a customer tells an estimator or the office that they paid, and someone writes it down on the job. When a deposit fits that word, the pane leads with it under **They said they paid**. You see who wrote it, what the customer said and the job's open bills. Press the bill to allocate the deposit to it. When the deposit's name matches the customer, the pane says so. Nothing is marked paid by the word itself.
+
 ## Clear the obvious ones in one pass
 
 When deposits each match exactly one open bill to the cent, a green bar appears above the deposit list.
@@ -158,7 +162,7 @@ Sep 21 Taunya applied it to #878 Take 5- Seguin. Sep 23 The bank sent it back.
 - **Off its jobs.** The next step is to get a new check. Press {{button:blue|They said…}} to record the date the customer named. The case then waits for that date. A stopped check asks you to find out why it was stopped.
 - **The new check arrives.** A deposit may land from the same payer for the same amount. Then the case says *This looks like the new check.* Press {{button:blue|Use it as the new check}}. The bills the old check paid fill in. Press Apply, and the case closes. If you move the money to a different job first, the case stays open.
 - **It ends another way.** Open **More**. Pick **Settled another way** or **Not coming** and add a note. The case closes with your name on it.
-- **The returned check fee.** Texas lets you charge up to $30 for a check that came back. The case offers {{button:outline|Add the $30 fee to bill 1}} beside the line *$30 — the most Texas allows, Bus. & Com. Code § 3.506*. Point at the line to read the law. One press adds the fee to the bill the check paid, as its own line. The job's total grows by the fee too. Edit Job counts it in the **Job Total** as a rider, so later edits keep it. The case keeps who added it and when, and it takes the fee once. A Stripe bill cannot take a line, so the case says so instead.
+- **The returned check fee.** Texas lets you charge up to $30 for a check that came back. The case offers {{button:outline|Add the $30 fee to bill 1}} beside the line *$30 — the most Texas allows, Bus. & Com. Code § 3.506*. Point at the line to read the law. One press adds the fee to the bill the check paid, as its own line. The job's total grows by the fee too. Edit Job counts it in the **Job Total** as a rider, so later edits keep it. The case keeps who added it and when, and it takes the fee once. A Stripe bill cannot take a line, so the case says so instead. If the bill with the fee is sent back or deleted, the fee comes off with it. The job's total drops by the fee. The case then says *The $30 fee came off with its bill* and offers the press again.
 
 A check that came back cannot pay a bill. Its pane has no bills to pick and Apply stays off.
 

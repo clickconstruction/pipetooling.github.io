@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from '../_shared/ledgerDisplayPrefixes.ts'
 
@@ -83,7 +83,7 @@ function json(status: number, payload: unknown): Response {
  * own click).
  */
 async function notifyRequester(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: SupabaseClient,
   row: DispatchRow,
   mode: 'closed' | 'reopened',
   bodyNote: string | null,
@@ -413,7 +413,7 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error('notify-dispatch-request:', error)
-    return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
+    return new Response(JSON.stringify({ error: (error as Error).message || 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
