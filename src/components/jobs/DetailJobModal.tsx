@@ -90,6 +90,8 @@ import { JobCustomerSheet } from './JobCustomerSheet'
 import { contactForCustomer } from '../../lib/messages/messagesIo'
 import { messagesThreadHref } from '../../lib/messages/customerThread'
 import JobReportsModal from '../JobReportsModal'
+import AdditionalReportModal from '../AdditionalReportModal'
+import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
@@ -688,6 +690,8 @@ export default function DetailJobModal({
   const [scheduleTimeSectionOpen, setScheduleTimeSectionOpen] = useState(false)
   const [jobDetailScheduleSessionsFilter, setJobDetailScheduleSessionsFilter] = useState('')
   const [reportsModalOpen, setReportsModalOpen] = useState(false)
+  /** Leave Report from the window (punch list #135, v2.5688): the ＋ Report chip in the activity header opens the per-job form over the pane. */
+  const [leaveReportOpen, setLeaveReportOpen] = useState(false)
   // Archived users are hidden by the users RLS for non-dev viewers, so the team_members
   // embed comes back with a null name and the list showed raw UUIDs. Resolve those via
   // the RPC-backed helper (list_user_display_names), which can name archived users.
@@ -794,7 +798,10 @@ export default function DetailJobModal({
   }, [jobId, open])
 
   useEffect(() => {
-    if (!open) setReportsModalOpen(false)
+    if (!open) {
+      setReportsModalOpen(false)
+      setLeaveReportOpen(false)
+    }
   }, [open])
 
   useEffect(() => {
@@ -1277,6 +1284,7 @@ export default function DetailJobModal({
     writeUpChangeOpen ||
     paidEmailModalOpen ||
     reportsModalOpen ||
+    leaveReportOpen ||
     jobCalendarOpen ||
     detailScheduleModalOpen ||
     stackedAddFilesOpen ||
@@ -2109,6 +2117,7 @@ export default function DetailJobModal({
               },
             } : undefined}
             pctComplete={fullJob?.pct_complete ?? null}
+            onLeaveReport={fullJob && canLeaveJobFieldReport(authRole) ? () => setLeaveReportOpen(true) : undefined}
             canEditPct={canEditJobPctComplete && fullJob != null}
             pctSaving={pctSaving}
             onCommitPct={(value, note) => void commitPctWithNote(value, note)}
@@ -2800,6 +2809,26 @@ export default function DetailJobModal({
           authUserId={authUser?.id ?? null}
           userRole={authRole as UserRole | null}
           zIndex={1100}
+        />
+      ) : null}
+      {leaveReportOpen && fullJob ? (
+        // Leave Report from the window (v2.5688): the same per-job form the reports list opens, over the pane;
+        // a save reloads the feed (the report on top, the Reports pill's count) and the job (its percent, the box).
+        <AdditionalReportModal
+          open
+          onClose={() => setLeaveReportOpen(false)}
+          overlayZIndex={1110}
+          onSaved={() => {
+            setLeaveReportOpen(false)
+            threadNotes.reload()
+            void loadDetail()
+          }}
+          authUserId={authUser?.id ?? null}
+          userRole={authRole as UserRole | null}
+          jobId={fullJob.id}
+          hcpNumber={fullJob.hcp_number}
+          jobName={fullJob.job_name}
+          jobAddress={fullJob.job_address}
         />
       ) : null}
       {paidEmailModalOpen && jobId ? (

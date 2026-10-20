@@ -2,7 +2,7 @@
 title: file and review field reports
 category: Office
 roles: assistant, master_technician, primary, estimator
-keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, review, notifications
+keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, job window, review, notifications
 order: 20
 ---
 Field reports turn what happened on site into something the office can act on. Techs file them in under a minute, and the office reviews them in one place.
@@ -47,6 +47,10 @@ The app works out the job's percent from the lines. Each line counts by its shar
 :::example Halfway through rough-in
 Job: Underground ✓ Paid · Rough In 35% · Top Out — · Trim Set — · Water heater —. You tap **50** on Rough In. The Job line reads 32% → 38%. You set the water heater too, so you tap its line and **Done ✓**. The Job line reads 32% → 43%. Save. The office sees Rough In at 50% on the Bill tab and the job at 43% everywhere else. The report card reads *Rough In 35% → 50% · Water heater — → 100% · job 32% → 43%*.
 :::
+
+## From a job's window
+
+The office can file a report from the job's window too. Open the job from the Pipeline. In the activity list's filter row, press {{button:outline-blue|＋ Report}}. It sits right after the **Reports** pill. The same report form opens for that job. When you save, the report shows at the top of the feed. The **Reports** pill counts it. The job's percent follows the report.
 
 ## Reviewing reports (office side)
 
