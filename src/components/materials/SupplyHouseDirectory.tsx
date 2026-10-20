@@ -10,19 +10,25 @@ import {
   buildDirectoryRows,
   directoryAgoPhrase,
   directoryKindLabel,
+  ledgerBandInfo,
   priceCountsByHouse,
   requestOutcomeLabel,
   type DirectoryRep,
   type DirectoryRequest,
   type DirectoryRow,
 } from '../../lib/materials/supplyHouseDirectory'
-import { VENDOR_KINDS, vendorKindLabel, type VendorKind } from '../../lib/materials/vendorKind'
+import { VENDOR_KINDS, VENDOR_KIND_HINTS, vendorKindLabel, type VendorKind } from '../../lib/materials/vendorKind'
 import { defaultTradeSelection, filterHousesByTrades, tradeNamesFor, tradesByHouse, type HouseTradeLink, type TradeType } from '../../lib/materials/supplyHouseTrades'
 import { SupplyHouseContactsSection } from '../SupplyHouseContactsSection'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import type { Database } from '../../types/database'
-import { telHrefFor } from '../../lib/phoneContact'
+import { phoneContact, telHrefFor } from '../../lib/phoneContact'
+
+/** One look for every number the Directory prints: `(210) 344-4950` when US-dialable, as typed otherwise. */
+function phoneDisplay(raw: string | null | undefined): string {
+  return phoneContact(raw)?.display ?? (raw ?? '')
+}
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -227,6 +233,27 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
     </div>
   )
 
+  // The Kind column retired in favor of this band and the name-side chip (#131): the sort already
+  // puts the ledger-only vendors together; the band names the group once. Narrowing the kind
+  // select makes the band redundant (the select says it), so it only draws on "All kinds".
+  const ledger = ledgerBandInfo(rows)
+  const ledgerAt = audience === 'office' && kindFilter === 'all' ? ledger.index : -1
+  const ledgerBand = (
+    <div style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-700)', background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)' }}>
+      Ledger only · {ledger.count} {ledger.count === 1 ? 'vendor' : 'vendors'} — paid through Accounts payable, never quoted. Estimators don't see these.
+    </div>
+  )
+
+  /** A ledger-only vendor says what it is beside its name; a supply house is the default and unmarked. */
+  function kindChip(row: Row) {
+    if (row.kind === 'supply_house') return null
+    return (
+      <span title={VENDOR_KIND_HINTS[row.kind]} style={{ marginLeft: '0.45rem', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-muted)', whiteSpace: 'nowrap', verticalAlign: '1px' }}>
+        {directoryKindLabel(row.kind)}
+      </span>
+    )
+  }
+
   function requestLine(row: Row): string {
     if (!row.lastRequest) return 'no price requests yet'
     const ago = directoryAgoPhrase(row.lastRequest.created_at, nowMs) ?? ''
@@ -269,7 +296,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
               </a>
               {r.role === 'job_accounts' ? (
                 <span title="Opens job accounts — the person to call before the first parts run" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 999, padding: '0 0.45rem' }}>
-                  Job accounts{r.phone ? ` · ${r.phone}` : ''}
+                  Job accounts{r.phone ? ` · ${phoneDisplay(r.phone)}` : ''}
                 </span>
               ) : null}
             </div>
@@ -397,11 +424,12 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
           const open = expandedId === row.house.id
           return (
             <Fragment key={row.house.id}>
+              {i === ledgerAt ? <div style={{ borderRadius: 6, overflow: 'hidden' }}>{ledgerBand}</div> : null}
               {i === bandAt ? <div style={{ borderRadius: 6, overflow: 'hidden' }}>{needsRepBand}</div> : null}
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                 <div style={{ padding: '0.7rem 0.75rem', display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'flex-start' }}>
                   <button type="button" onClick={() => setExpandedId(open ? null : row.house.id)} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'var(--text-base)', flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '1rem' }}>{row.house.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: '1rem' }}>{row.house.name}{kindChip(row)}</div>
                     <div style={muted}>
                       {[row.house.address, tradeNamesFor(row.house.id, tradeByHouse, tradeTypes).join(' / ') || null, priceLine(row)].filter(Boolean).join(' · ')}
                     </div>
@@ -443,7 +471,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                 )}
                 {row.house.phone ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-600)' }}>
-                    <span>Counter · {row.house.phone}</span>
+                    <span>Counter · {phoneDisplay(row.house.phone)}</span>
                     <a href={telHrefFor(row.house.phone)} aria-label={`Call ${row.house.name}`} style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-strong)', borderRadius: 8, color: 'var(--text-link)', textDecoration: 'none', background: 'var(--surface)' }}>✆</a>
                   </div>
                 ) : null}
@@ -457,8 +485,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
     )
   }
 
-  const showKind = audience === 'office'
-  const colCount = showKind ? 6 : 5
+  const colCount = 5
   const bandAt = firstNeedsRepIndex()
 
   return (
@@ -469,9 +496,8 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={{ ...th, width: showKind ? '26%' : '30%' }}>{showKind ? 'Vendor' : 'Supply house'}</th>
-              {showKind ? <th style={th}>Kind</th> : null}
-              <th style={{ ...th, width: '30%' }}>Reps</th>
+              <th style={{ ...th, width: '30%' }}>{audience === 'office' ? 'Vendor' : 'Supply house'}</th>
+              <th style={{ ...th, width: '34%' }}>Reps</th>
               <th style={th}>Phone</th>
               <th style={th}>Prices on file</th>
               <th style={{ ...th, textAlign: 'right' }}>Actions</th>
@@ -485,6 +511,9 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
               const open = expandedId === row.house.id
               return (
                 <Fragment key={row.house.id}>
+                  {i === ledgerAt ? (
+                    <tr><td colSpan={colCount} style={{ padding: 0 }}>{ledgerBand}</td></tr>
+                  ) : null}
                   {i === bandAt ? (
                     <tr><td colSpan={colCount} style={{ padding: 0 }}>{needsRepBand}</td></tr>
                   ) : null}
@@ -498,7 +527,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                       >
                         <span aria-hidden="true" style={{ display: 'inline-block', marginTop: '0.35rem', fontSize: '0.6rem', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}>▶</span>
                         <span>
-                          <span style={{ display: 'block', fontWeight: 500, fontSize: '0.95rem' }}>{row.house.name}</span>
+                          <span style={{ display: 'block', fontWeight: 500, fontSize: '0.95rem' }}>{row.house.name}{kindChip(row)}</span>
                           {row.house.address ? <span style={{ display: 'block', ...muted }}>{row.house.address}</span> : null}
                           {tradeNamesFor(row.house.id, tradeByHouse, tradeTypes).length > 0 ? (
                             <span style={{ display: 'block', ...muted, fontSize: '0.75rem' }}>{tradeNamesFor(row.house.id, tradeByHouse, tradeTypes).join(' · ')}</span>
@@ -506,16 +535,9 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                         </span>
                       </button>
                     </td>
-                    {showKind ? (
-                      <td style={{ ...td, borderBottom: open ? 'none' : td.borderBottom }}>
-                        <span style={{ display: 'inline-block', padding: '0.1rem 0.5rem', borderRadius: 999, fontSize: '0.75rem', border: '1px solid var(--border)', background: row.kind === 'supply_house' ? 'var(--bg-blue-tint)' : 'var(--bg-muted)', color: row.kind === 'supply_house' ? 'var(--text-blue-800)' : 'var(--text-700)' }}>
-                          {directoryKindLabel(row.kind)}
-                        </span>
-                      </td>
-                    ) : null}
                     <td style={{ ...td, borderBottom: open ? 'none' : td.borderBottom }}>{repsCell(row, false)}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap', borderBottom: open ? 'none' : td.borderBottom }}>
-                      {row.house.phone ? <a href={telHrefFor(row.house.phone)} style={{ color: 'var(--text-700)', textDecoration: 'none' }}>{row.house.phone}</a> : <span style={muted}>—</span>}
+                      {row.house.phone ? <a href={telHrefFor(row.house.phone)} style={{ color: 'var(--text-700)', textDecoration: 'none' }}>{phoneDisplay(row.house.phone)}</a> : <span style={muted}>—</span>}
                     </td>
                     <td style={{ ...td, borderBottom: open ? 'none' : td.borderBottom }}>
                       <div style={{ fontVariantNumeric: 'tabular-nums' }}>{priceLine(row)}</div>

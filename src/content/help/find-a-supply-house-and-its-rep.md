@@ -22,6 +22,8 @@ Each row shows:
 - **Prices on file**: how many parts that house has priced in the Parts Book. Beneath it sits the last price request: when, who sent it, and whether the house answered.
 - {{button:outline|Open website}}: the house's order portal, when one is on file.
 
+For the office, vendors that are not supply houses sit together under a **Ledger only** band. Each carries a small chip beside its name, like {{chip:gray|Insurer}} or {{chip:gray|Rental yard}}. The office pays them through Accounts payable. Nobody sends them price requests, and estimators never see them.
+
 ## Add a rep
 
 Expand a house by tapping its name. Use the **Contacts** box. Enter a name, an email, a phone and a **role**. You can add an optional label like *quotes desk* or *outside sales*. Then tap {{button:blue|+ add contact}}. The first rep you add becomes the default. **make default** moves the star. Archive a rep with the ×. Past requests keep their history.
