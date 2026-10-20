@@ -33,7 +33,7 @@ A bill sent through Stripe has a pay page. Press {{button:outline|Send the pay p
 
 ## Reach the customer
 
-The speech bubble on the line opens the customer's door. Pick **Call**, **Text**, **Email** or **Open their thread**. The door shows the customer's last lines first, so you know where the conversation stands.
+The speech bubble on the line opens the customer's door. Pick **Call**, **Text**, **Email** or **Open their thread**. The door shows the customer's last lines first, so you know where the conversation stands. **Their record** shows how to reach them. Their bills and jobs stay with the office, so read the money on the line.
 
 ## Who sees the line
 

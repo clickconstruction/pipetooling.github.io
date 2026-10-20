@@ -14,6 +14,9 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The signed-in role: null (no provider) reads as the office's, as every test before v2.5658 did.
+const auth = vi.hoisted(() => ({ role: null as string | null }))
+vi.mock('../../hooks/useAuth', () => ({ useOptionalAuth: () => (auth.role ? { role: auth.role } : null), useAuth: () => ({ role: auth.role }) }))
 vi.mock('../../contexts/JobDetailModalContext', () => ({ useJobDetailModal: () => null }))
 vi.mock('../../contexts/BidPreviewModalContext', () => ({ useBidPreview: () => null }))
 vi.mock('../../contexts/EditCustomerModalContext', () => ({ useEditCustomerModal: () => ({ openEditCustomerModal: vi.fn() }) }))
@@ -41,10 +44,13 @@ vi.mock('../../lib/customers/fetchCustomerTimeline', async (orig) => ({
   }),
 }))
 
-import CustomerProfileModal from './CustomerProfileModal'
+import CustomerProfileModal, { RECORD_MONEY_OFFICE_WORDS } from './CustomerProfileModal'
 
 beforeAll(installDomShims)
-beforeEach(() => window.localStorage.clear())
+beforeEach(() => {
+  window.localStorage.clear()
+  auth.role = null
+})
 afterEach(cleanup)
 
 describe('CustomerProfileModal views', () => {
@@ -67,5 +73,22 @@ describe('CustomerProfileModal views', () => {
     // No jobs yet: the story is the day the customer was added.
     expect(screen.getByText('Customer added')).toBeTruthy()
     expect(document.querySelector('[data-tile="owed"]')?.textContent).toContain('nothing open')
+  })
+
+  it("tells the job's estimator the money is the office's, with no zeros, no Jobs rail and no Timeline (v2.5658)", async () => {
+    auth.role = 'estimator'
+    window.localStorage.setItem(CUSTOMER_PROFILE_VIEW_KEY, 'timeline')
+    await renderSettled(<CustomerProfileModal customerId="c1" onClose={vi.fn()} />, { loaded: () => screen.findByText(RECORD_MONEY_OFFICE_WORDS) })
+    expect(screen.getByRole('dialog', { name: 'Customer profile' })).toBeTruthy()
+    expect(screen.queryByText('Open balance')).toBeNull()
+    expect(screen.queryByText('Lifetime collected')).toBeNull()
+    expect(screen.queryByText('None yet.')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Timeline' })).toBeNull()
+  })
+
+  it('the office still reads the money strip', async () => {
+    auth.role = 'assistant'
+    await renderSettled(<CustomerProfileModal customerId="c1" onClose={vi.fn()} initialView="profile" />, { loaded: () => screen.findByText('Open balance') })
+    expect(screen.queryByText(RECORD_MONEY_OFFICE_WORDS)).toBeNull()
   })
 })
