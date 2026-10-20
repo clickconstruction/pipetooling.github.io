@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Price a fresh version from the book — mock-up (#137)</title>
+<style>
+  :root {
+    --surface: #ffffff;
+    --bg-page: #eef1f5;
+    --bg-muted: #f3f4f6;
+    --bg-subtle: #f9fafb;
+    --bg-blue-tint: #eff6ff;
+    --bg-amber-tint: #fffbeb;
+    --bg-red-tint: #fef2f2;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text-strong: #111827;
+    --text-700: #374151;
+    --text-600: #4b5563;
+    --text-muted: #6b7280;
+    --text-link: #2563eb;
+    --blue: #3b82f6;
+    --green-600: #16a34a;
+    --amber-700: #b45309;
+    --red-600: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-page); color: var(--text-strong); }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  .sub { color: var(--text-600); font-size: 0.9rem; margin: 0 0 24px; max-width: 72ch; }
+  .state { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 28px; }
+  .state h2 { font-size: 1rem; margin: 0 0 2px; }
+  .state .cap { font-size: 0.82rem; color: var(--text-600); margin: 0 0 14px; max-width: 80ch; }
+
+  /* ---- the Send-to strip ---- */
+  .strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .striplabel { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
+  .gcgroup { display: flex; align-items: stretch; gap: 6px; border: 1px solid var(--border-strong); border-radius: 10px; padding: 6px; background: var(--bg-subtle); flex-wrap: wrap; }
+  .gchead { display: flex; flex-direction: column; justify-content: center; padding: 2px 6px; }
+  .gchead b { font-size: 0.8rem; }
+  .gchead small { font-size: 0.64rem; color: var(--text-muted); }
+  .gchead .getsline { color: var(--text-link); font-weight: 600; }
+  .vchip { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 8px; padding: 5px 9px; font-size: 0.78rem; line-height: 1.25; text-align: left; }
+  .vchip small { display: block; font-size: 0.62rem; color: var(--text-muted); }
+  .vchip.on { border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); background: var(--bg-blue-tint); }
+  .vchip.ghost { border-style: dashed; color: var(--text-muted); font-size: 0.72rem; align-self: center; padding: 6px 8px; }
+  .btn { border: none; border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: default; }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .btn.outline { background: var(--surface); color: var(--text-link); border: 1px solid var(--blue); border-radius: 999px; }
+  .btn small { display: block; font-weight: 400; font-size: 0.66rem; opacity: 0.92; }
+  .spacer { flex: 1; }
+
+  /* ---- the empty-state / start panel ---- */
+  .panel { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 14px 16px; font-size: 0.85rem; color: var(--text-muted); }
+  .panel .head { color: var(--text-strong); font-weight: 600; margin-bottom: 4px; font-size: 0.9rem; }
+  .panel .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .panel .divline { border-top: 1px solid var(--border); margin: 12px 0 2px; }
+  .subnote { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; max-width: 58ch; }
+  .ghostlink { color: var(--text-link); font-size: 0.8rem; font-weight: 600; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 999px; padding: 5px 11px; }
+
+  /* annotations */
+  .note-red { border-left: 3px solid var(--red-600); background: var(--bg-red-tint); border-radius: 0 8px 8px 0; padding: 7px 11px; font-size: 0.76rem; color: var(--text-700); margin-top: 10px; max-width: 64ch; }
+  .note-blue { border-left: 3px solid var(--blue); background: var(--bg-blue-tint); border-radius: 0 8px 8px 0; padding: 7px 11px; font-size: 0.76rem; color: var(--text-700); margin-top: 10px; max-width: 64ch; }
+  .dead { text-decoration: line-through; text-decoration-color: var(--red-600); text-decoration-thickness: 2px; }
+
+  /* ---- compressed workbench ---- */
+  .totals { display: flex; gap: 18px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); margin-bottom: 10px; }
+  .totals .t b { display: block; font-size: 1rem; }
+  .totals .t small { font-size: 0.64rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .bookline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .booklabel { font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .bookchip { font-size: 0.78rem; color: var(--text-700); border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); padding: 3px 11px; }
+  .bookchip b { color: var(--text-link); }
+  .coverage { font-size: 0.72rem; font-weight: 700; color: var(--amber-700); background: var(--bg-amber-tint); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; }
+  table.rows { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  table.rows th { text-align: left; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); padding: 5px 8px; }
+  table.rows td { border-bottom: 1px solid var(--border); padding: 6px 8px; }
+  .assign { color: var(--text-link); border: 1px dashed var(--border-strong); border-radius: 5px; padding: 2px 8px; font-size: 0.72rem; display: inline-block; }
+  .entry { color: var(--text-700); }
+  .entry small { color: var(--text-muted); }
+  .amber-line { display: flex; align-items: baseline; gap: 8px; background: var(--bg-amber-tint); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; color: var(--amber-700); flex-wrap: wrap; }
+  .amber-line a { color: var(--text-link); font-weight: 600; }
+
+  /* ---- modal snippet ---- */
+  .modal { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 6px 18px rgba(0,0,0,0.12); padding: 16px; max-width: 420px; font-size: 0.85rem; }
+  .modal h3 { margin: 0 0 10px; font-size: 0.95rem; }
+  .field label { display: block; font-size: 0.78rem; font-weight: 600; margin: 10px 0 3px; }
+  .field .box { border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 9px; font-size: 0.82rem; color: var(--text-700); background: var(--bg-subtle); }
+  .check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 4px; font-size: 0.82rem; }
+  .check input { margin-top: 2px; }
+  .modal .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .pairs { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .pairs > div { flex: 1; min-width: 300px; }
+
+  .lenses { font-size: 0.8rem; color: var(--text-600); border-top: 1px solid var(--border); margin-top: 6px; padding-top: 12px; }
+  .lenses b { color: var(--text-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pricing: price a fresh version from the book, right in the Workbench</h1>
+  <p class="sub">Punch list #137 — Wendi's side-by-side rebid. A second version with its own counts has
+  no way to be priced: the empty state offers a copy she must not take, or a view that retired in
+  v2.2707. All data below is made up: bid BP612 Cedar Ridge Fire Station, GC Caprock Builders,
+  versions <i>To Plans</i> and <i>Addendum 2 rebid</i>.</p>
+
+  <!-- ============ STATE A ============ -->
+  <div class="state">
+    <h2>Today — the dead end</h2>
+    <p class="cap">She pressed + version for the rebid and left "Copy all the source's prices" unchecked,
+    because the counts are re-done. Standing on the new chip, this is everything the app offers.</p>
+
+    <div class="strip">
+      <span class="striplabel">Send to</span>
+      <div class="gcgroup">
+        <div class="gchead"><b>CAPROCK BUILDERS</b><small>not sent · 2 versions</small><small class="getsline">gets 1 price</small></div>
+        <button class="vchip"><b>To Plans</b> ✎<small>in letter ✓ · base</small></button>
+        <button class="vchip on"><b>Addendum 2 rebid</b> ✎<small>in letter ✓ · base</small></button>
+        <button class="vchip ghost">+ version</button>
+      </div>
+      <button class="btn primary">＋ Add GC</button>
+      <span class="spacer"></span>
+      <button class="btn outline">Versions</button>
+    </div>
+
+    <div class="panel">
+      <div class="head">No prices yet for Caprock Builders.</div>
+      <div class="row">
+        Start from another GC's base price:
+        <button class="btn primary">Copy Caprock's base price</button>
+        <span>or pick a price book in Old and price from there.</span>
+      </div>
+    </div>
+
+    <div class="note-red"><b>Three things wrong.</b> "…pick a price book in Old" points at a door that
+    retired in v2.2707 — the sentence never followed. The one live button is the copy, the exact thing a
+    different-counts rebid must not do. And both names are the GC's — the panel never says which version
+    she is standing on.</div>
+  </div>
+
+  <!-- ============ STATE B ============ -->
+  <div class="state">
+    <h2>The fix (PR 1) — the start panel</h2>
+    <p class="cap">The same spot becomes a real start. The primary button is Old's "pick a price book"
+    as one press, through the handler that still exists and already stamps the price to this version.</p>
+
+    <div class="strip">
+      <span class="striplabel">Send to</span>
+      <div class="gcgroup">
+        <div class="gchead"><b>CAPROCK BUILDERS</b><small>not sent · 2 versions</small><small class="getsline">gets 1 price</small></div>
+        <button class="vchip"><b>To Plans</b> ✎<small>in letter ✓ · base</small></button>
+        <button class="vchip on"><b>Addendum 2 rebid</b> ✎<small>in letter ✓ · base</small></button>
+        <button class="vchip ghost">+ version</button>
+      </div>
+      <button class="btn primary">＋ Add GC</button>
+      <span class="spacer"></span>
+      <button class="btn outline">Versions</button>
+    </div>
+
+    <div class="panel">
+      <div class="head">No prices yet on Addendum 2 rebid.</div>
+      <div style="font-size:0.8rem;">Price it from a book. The Workbench opens on this version's own counts.</div>
+      <div class="row">
+        <button class="btn primary">Price from HALEY<small>128 entries</small></button>
+        <span class="ghostlink">another book ▸</span>
+      </div>
+      <p class="subnote">The book To Plans prices from, as a fresh copy at today's book prices.</p>
+      <div class="divline"></div>
+      <div class="row">
+        Or start from prices already on this bid:
+        <button class="btn outline" style="border-radius:6px;">Copy prices from To Plans — ★ base</button>
+      </div>
+      <p class="subnote">Copies follow fixture names. Rows only in this version stay unpriced.</p>
+    </div>
+
+    <div class="note-blue"><b>Owner's calls live here.</b> (1) the copy door stays, with that caption
+    (recommended) or hides when counts differ · (2) the default book follows the sibling version
+    (recommended) or is always yours · (3) book prices wait on the Fill button (recommended) or assign
+    themselves on arrival.</div>
+  </div>
+
+  <!-- ============ STATE C ============ -->
+  <div class="state">
+    <h2>One press later — the Workbench she already knows</h2>
+    <p class="cap">Everything below exists today and simply becomes reachable: her book behind every
+    row, Fill-from-book counting its matches, the solver, the brush. The rows are the rebid's own 41
+    counts, not To Plans' 38.</p>
+
+    <div class="totals">
+      <div class="t"><b>$0.00</b><small>Revenue</small></div>
+      <div class="t"><b>$148,310</b><small>Our cost</small></div>
+      <div class="t"><b>—</b><small>Profit</small></div>
+      <div class="t"><b>—</b><small>Margin</small></div>
+    </div>
+    <div class="bookline">
+      <span class="booklabel">Price book</span>
+      <span class="bookchip">HALEY · 128 entries <b>▸</b></span>
+      <button class="btn primary" style="padding:5px 11px; font-size:0.76rem;">Fill 34 matching from book</button>
+      <span class="coverage">0/41 priced</span>
+      <span class="spacer"></span>
+      <button class="btn primary" style="padding:5px 11px; font-size:0.76rem;">Solver ›</button>
+    </div>
+    <table class="rows">
+      <tr><th>Fixture</th><th>Count</th><th>Book entry</th><th>Sale price/unit</th></tr>
+      <tr><td>Floor drain 3"</td><td>12</td><td class="entry">Floor Drain 3" <small>· $412.00</small></td><td>—</td></tr>
+      <tr><td>Water closet, wall hung</td><td>9</td><td class="entry">Water Closet Wall Hung <small>· $1,180.00</small></td><td>—</td></tr>
+      <tr><td>ft of 2" water line</td><td>640</td><td><span class="assign">assign…</span></td><td>—</td></tr>
+      <tr><td colspan="4" style="color:var(--text-muted); font-size:0.72rem;">… 38 more rows, the rebid's own counts</td></tr>
+    </table>
+  </div>
+
+  <!-- ============ STATE D ============ -->
+  <div class="state">
+    <h2>The honesty pair — PR 2 and PR 3</h2>
+    <p class="cap">Two small truths that keep a rebid's numbers straight.</p>
+    <div class="pairs">
+      <div>
+        <p class="cap" style="margin-bottom:6px;"><b>PR 2 — the labor line.</b> Labor rows are bid-wide and
+        follow whichever version last opened Labor. When the active version's counts disagree, Pricing
+        says so instead of quietly misreading the margin.</p>
+        <div class="amber-line"><span>⚠ Labor hours follow To Plans' counts. <a>Open Labor</a> to refresh them for this version.</span></div>
+      </div>
+      <div>
+        <p class="cap" style="margin-bottom:6px;"><b>PR 3 — the + version modal tells the truth.</b> Unchecked,
+        the sub-line stops claiming prices come along and says where pricing starts.</p>
+        <div class="modal">
+          <h3>Another version for Caprock Builders</h3>
+          <div class="field"><label>Start from</label><div class="box">Caprock Builders · To Plans · ★ HALEY</div></div>
+          <div class="field"><label>Name</label><div class="box">Addendum 2 rebid</div></div>
+          <div class="check"><input type="checkbox"><span>Copy all the source's prices — every price option comes along; ★ stays on <b>HALEY</b></span></div>
+          <p class="subnote" style="margin-top:2px;">copies its counts and takeoff — starts unpriced; the Pricing tab will offer your books</p>
+          <div class="foot"><button class="btn" style="background:var(--bg-muted); color:var(--text-700);">Cancel</button><button class="btn primary">Create</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lenses">
+      <b>Three lenses.</b> <b>Wendi's seat:</b> one press from the dead chip to her book on the rebid's own
+      counts. <b>The job behind the ask:</b> a GC wants the same project priced two ways with different
+      counts; pricing a fresh count list from the book is the core act, and only the first version of a
+      bid could do it. <b>The whole office:</b> every unpriced version (new GC packets too) gets the same
+      door; the ★ lands so the letter's Option 1 / 2, the strip and sends all follow; the labor line keeps
+      a rebid's margin honest.
+    </div>
+  </div>
+</div>
+</body>
+</html>
