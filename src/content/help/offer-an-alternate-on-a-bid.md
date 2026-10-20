@@ -33,7 +33,7 @@ On **Cover Letter**, under **In this cover letter**, each alternate has an **Off
 
 - the proposed amount is the **base**, the job without the alternate.
 - a block under it reads ***Alternates — priced in addition to the proposal above***. Its line reads *Alternate 1 — Break room: add $2,717 (with it, $13,241.00)*. The fixtures it covers sit on the next line.
-- you click the dashed wording on the preview, or ✎, to rename it or add a note. *Reset* returns to the automatic name.
+- you click the dashed wording on the preview, or ✎, to rename it or add a note. *Reset* returns to the automatic name. The editor also has {{button:outline|Take off this letter}}. It unticks **Offer** for you.
 
 You untick **Offer** and the alternate's price folds back into the proposed amount. It is as if it were never an alternate. An alternate whose rows have no sale price yet says {{chip:yellow|not priced yet}} here. The letter reads *price to follow* for it instead of an amount. The signable link leaves it out until it is priced.
 

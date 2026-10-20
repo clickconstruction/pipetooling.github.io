@@ -2210,6 +2210,40 @@ export function BidsCoverLetterTab({
                         if (next.sections && Object.keys(next.sections).length === 0) delete next.sections
                         void saveAltTexts(bid.id, next)
                       }
+                      // v2.5684 (#133 PR 2, Wendi): the deselect from the cover page itself — one button
+                      // that stops offering the alternate under the editor, shown only when the line IS an
+                      // alternate (never a base option, never the heading), routed to the write its kind
+                      // already has. The row under "In this cover letter" then reads not offered / unticks,
+                      // so the way back stays visible.
+                      const takeOff = (() => {
+                        if (isHeading) return null
+                        if (autoGroup) {
+                          return {
+                            what: `Stops offering ${autoGroup.label} on this letter — its Offer checkbox under "In this cover letter" unticks; tick it to bring it back.`,
+                            run: () => {
+                              const next: CoverLetterAltTexts = { ...altTexts, groups: { ...(altTexts.groups ?? {}), [autoGroup.key]: { ...(altTexts.groups?.[autoGroup.key] ?? {}), offered: false } } }
+                              void saveAltTexts(bid.id, next)
+                            },
+                          }
+                        }
+                        if (!autoSec || !samePagePlan) return null
+                        const isAlternateSec = samePagePlan.alternates.includes(autoSec) || (samePagePlan.options ?? []).some((o) => o.alternates.includes(autoSec))
+                        if (!isAlternateSec) return null
+                        if (autoSec.offeredPricingId) {
+                          const p = bidPricings.find((x) => x.id === autoSec.offeredPricingId)
+                          if (!p) return null
+                          return {
+                            what: `Stops offering this price to ${letterCustomerName} — its row under "In this cover letter" reads not offered; tick it to bring it back. The bid room follows.`,
+                            run: () => { void setScenarioOffered(p, false) },
+                          }
+                        }
+                        const v = autoSec.bidVersionId ? bidVersions.find((x) => x.id === autoSec.bidVersionId) : undefined
+                        if (!v) return null
+                        return {
+                          what: `Takes this in-lieu bid off the letter — its checkbox in step 1 unticks; tick it to bring it back. The bid room follows.`,
+                          run: () => { void toggleVersionInclude(v as BidVersionLetter) },
+                        }
+                      })()
                       const inputStyle: React.CSSProperties = { width: '100%', padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, boxSizing: 'border-box', fontSize: '0.85rem' }
                       return (
                         <div style={{ background: 'var(--surface)', border: '1px solid #3b82f6', borderRadius: 10, padding: '0.8rem 0.9rem', display: 'grid', gap: '0.5rem' }}>
@@ -2235,11 +2269,15 @@ export function BidsCoverLetterTab({
                               style={inputStyle}
                             />
                           ) : null}
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             <button type="button" onClick={commit} style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}>Save</button>
                             <button type="button" onClick={() => setAltTextEditor(null)} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer' }}>Cancel</button>
+                            {takeOff ? (
+                              <button type="button" onClick={() => { takeOff.run(); setAltTextEditor(null) }} title={takeOff.what} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', fontWeight: 600, background: 'var(--surface)', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 5, cursor: 'pointer' }}>Take off this letter</button>
+                            ) : null}
                             <button type="button" onClick={resetToAuto} title="Back to the automatic wording" style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem', fontSize: '0.8rem', background: 'none', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Reset to auto</button>
                           </div>
+                          {takeOff ? <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{takeOff.what}</span> : null}
                         </div>
                       )
                     })() : null}
