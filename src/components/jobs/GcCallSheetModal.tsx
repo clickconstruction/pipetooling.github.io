@@ -285,7 +285,7 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
                     role="radio"
                     aria-checked={on}
                     onClick={() => setHeardVia(c.value)}
-                    style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: on ? 700 : 500, padding: '0.12rem 0.5rem', borderRadius: 999, border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-100)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
+                    style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: on ? 700 : 500, padding: '0.12rem 0.5rem', borderRadius: 999, border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-200)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
                   >
                     {c.label}
                   </button>

@@ -3,21 +3,27 @@
  * Messages prototype v1.178 (branch spike/gc-mode, `to-dos/gc-mode/messages/prototype.html`: `renderFollowup`'s
  * sections, `noteBack`, `setNoteBack`, `clearBack`, `pushBack`, `remind`, `setState`, `claim`, `whoPicker`,
  * `morePicker`'s state rows and `portalNeeds`; the why is `MESSAGES_PLAN.md` → *Follow up*, v1.12, v1.128, v1.146 and
- * v1.147). The sections, in order: Needs you (a note's day come back, a customer's portal), Needs a reply (longest
+ * v1.147). The sections, in order: New (residential R7: what came in and still needs sorting, `newLane.ts`, built by
+ * the screen and passed through), Needs you (a note's day come back, a customer's portal), Needs a reply (longest
  * waiting first), We owe them, then the nudges from the flow, which `flows/nudges.ts` builds one row per person and
- * orders (this file passes them through as they come). Each section has one row per person, never one per job. The
- * quote asks are `gc/followUp.ts`'s and the screen draws them last. Neither the nudges nor the asks count on the badge.
+ * orders (this file passes them through as they come). Each section has one row per person, never one per job. A person
+ * in New is not also in Needs a reply. The quote asks are `gc/followUp.ts`'s and the screen draws them last. Neither
+ * the nudges nor the asks count on the badge.
  *
  * Open · Snoozed · Done is the app's to set (v1.146): a message from them opens the row, our reply or a team note
  * closes it, and the thread's ⋯ holds the overrides. A snooze wakes on its own day, so the queue reads the state
  * through `stateToday`. Pure: the writes are cut 2's RPCs (`take_it`, `hand_to`, `set_state`).
+ *
+ * Supply houses and candidates are never on it (`OFF_FOLLOW_UP`): their threads live on the RFQ and the hiring board.
  */
+import { callRows, type CallTaskRecord, type CallTaskRow } from '../calls/callTasks'
 import { firstName, type ContactKind } from '../contacts/kernel'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, ymdDaysBetween } from '../../utils/dateUtils'
 import type { ThreadMessage } from '../messages/thread'
 import { dayLabel, nextMonday, nextWorkday, owedPill, type DayKept, type Owed } from '../messages/owed'
 import { rowOffers, type HeardLine, type RowOffer } from '../messages/promises'
 import type { PaperView } from '../portal/papers'
+import type { NewLaneRow } from './newLane'
 
 /** Open, Snoozed or Done, as `contacts.state` keeps it. */
 export type ContactState = 'waiting' | 'snoozed' | 'done'
@@ -58,6 +64,17 @@ export interface CustomerPaper {
 
 /** A sent paper turns into a Needs you row once it has sat unanswered this many days. */
 export const PORTAL_PAPER_DAYS = 2
+
+/**
+ * The kinds Follow up never shows, in any section or on the badge: supply houses and candidates, the owner's call of
+ * 2026-10-13, off Follow up by default. `followUpQueue` drops their rows in one place.
+ */
+export const OFF_FOLLOW_UP: ReadonlySet<ContactKind> = new Set<ContactKind>(['supply_house', 'candidate'])
+
+/** Whether a person of this kind is on Follow up. */
+export function onFollowUp(kind: ContactKind): boolean {
+  return !OFF_FOLLOW_UP.has(kind)
+}
 
 /** The state as it stands today: a snooze whose day has come is open again. */
 export function stateToday(contact: Pick<QueueContact, 'state' | 'snoozedUntil'>, todayYmd: string): ContactState {
@@ -365,6 +382,8 @@ export interface FollowUpInput {
   messages: ReadonlyArray<QueueMessage>
   heard?: ReadonlyArray<HeardLine>
   owed?: ReadonlyArray<OwedRecord>
+  /** The calls to make (v2.5596), drawn in We owe them. */
+  calls?: ReadonlyArray<CallTaskRecord>
   portalPapers?: ReadonlyArray<CustomerPaper>
   todayYmd: string
 }
@@ -374,18 +393,22 @@ export interface FollowUpInput {
  * nudge row (`flows/nudges.ts` → `NudgeRow`), already one per person and in its order.
  */
 export interface FollowUpQueue<C = never, N extends { contactId: string } = never> {
+  /** What came in and still needs sorting (residential R7), drawn first. Its people are not in Needs a reply. */
+  newLane: NewLaneRow[]
   needsYou: NeedsYouRow[]
   /** Clause edits waiting on this person's approval, drawn in Needs you after the notes. */
   clauses: C[]
   needsReply: NeedsReplyRow[]
   weOwe: OwedRow[]
+  /** The calls to make (v2.5596), drawn in We owe them after what we owe, soonest first. */
+  calls: CallTaskRow[]
   /** Nudges from the flow, after We owe them, as `nudgeRows` returns them. */
   nudges: N[]
   /** The papers the portal rows show, for the step card's options (`flows/card.ts`), so the card agrees with the queue. */
   onPortal: OnPortal
   /**
-   * The badge: each person once across Needs you, Needs a reply and We owe them, as `follow_up_count` and the Dashboard's
-   * line count them. A clause waiting on approval counts in Needs you's heading only, since the Dashboard gives the
+   * The badge: each person once across New, Needs you, Needs a reply and We owe them, as `follow_up_count` and the
+   * Dashboard's line count them. New holds only people Needs a reply would, so it adds nobody to the count. A clause waiting on approval counts in Needs you's heading only, since the Dashboard gives the
    * clauses a line of their own (the lead, 2026-10-12).
    */
   count: number
@@ -399,21 +422,53 @@ export interface FollowUpQueue<C = never, N extends { contactId: string } = neve
 export interface FollowUpPassThrough<C, N extends { contactId: string }> {
   clauses?: ReadonlyArray<C>
   nudges?: (skip: OnPortal) => ReadonlyArray<N>
+  /**
+   * The New lane's rows (`newLane.ts`), built for the people Needs a reply holds, since the lane sorts what came in
+   * before anyone answers it. A row for anyone else is dropped.
+   */
+  newLane?: (people: ReadonlySet<string>) => ReadonlyArray<NewLaneRow>
+}
+
+/**
+ * The input with everyone `OFF_FOLLOW_UP` left out: the people, and every message, record and paper of theirs, so no
+ * section and no count can reach them.
+ */
+function onlyOnFollowUp(input: FollowUpInput): { input: FollowUpInput; on: (row: { contactId: string }) => boolean } {
+  const off = new Set(input.contacts.filter((c) => !onFollowUp(c.kind)).map((c) => c.id))
+  const on = (row: { contactId: string }) => !off.has(row.contactId)
+  if (off.size === 0) return { input, on }
+  return {
+    input: {
+      ...input,
+      contacts: input.contacts.filter((c) => !off.has(c.id)),
+      messages: input.messages.filter(on),
+      heard: input.heard?.filter(on),
+      owed: input.owed?.filter(on),
+      portalPapers: input.portalPapers?.filter(on),
+    },
+    on,
+  }
 }
 
 export function followUpQueue<C = never, N extends { contactId: string } = never>(
-  input: FollowUpInput,
+  all: FollowUpInput,
   passThrough: FollowUpPassThrough<C, N> = {},
 ): FollowUpQueue<C, N> {
+  const { input, on } = onlyOnFollowUp(all)
   const portal = portalNeeds(input.contacts, input.messages, input.portalPapers ?? [], input.todayYmd)
   const needsYou: NeedsYouRow[] = [...backToday(input.messages, input.todayYmd), ...portal]
-  const reply = needsReply(input.contacts, input.messages, input.heard ?? [], input.todayYmd)
+  const waiting = needsReply(input.contacts, input.messages, input.heard ?? [], input.todayYmd)
+  const replying = new Set(waiting.map((r) => r.contactId))
+  const newLane = (passThrough.newLane?.(replying) ?? []).filter((r) => replying.has(r.contactId))
+  const sorting = new Set(newLane.map((r) => r.contactId))
+  const reply = waiting.filter((r) => !sorting.has(r.contactId))
   const owing = weOwe(input.owed ?? [], input.todayYmd)
+  const calls = callRows(all.calls ?? [], input.todayYmd).filter(on)
   const clauses = [...(passThrough.clauses ?? [])]
   const shows = onPortal(portal)
-  const nudges = [...(passThrough.nudges?.(shows) ?? [])]
-  const people = new Set<string>([...needsYou, ...reply, ...owing].map((r) => r.contactId))
-  return { needsYou, clauses, needsReply: reply, weOwe: owing, nudges, onPortal: shows, count: people.size }
+  const nudges = (passThrough.nudges?.(shows) ?? []).filter(on)
+  const people = new Set<string>([...newLane, ...needsYou, ...reply, ...owing, ...calls].map((r) => r.contactId))
+  return { newLane, needsYou, clauses, needsReply: reply, weOwe: owing, calls, nudges, onPortal: shows, count: people.size }
 }
 
 /** The Needs you heading's count: every row, as the prototype counts them. */
@@ -437,6 +492,12 @@ export function noteBackToast(back: DayKept | null): string | null {
   if (back?.words) return 'It has no day, so it will not come back.'
   return null
 }
+
+/** The reply box's press beside *Add the note* that opens a note's day to come back (`NoteBackDay`). */
+export const NOTE_BACK_PRESS = '↩ Bring it back on a day…'
+
+/** Its hover: what a day does, and that it is optional. */
+export const NOTE_BACK_TIP = 'Adds a day to this note. The row comes back to Follow up that morning, under Needs you, with the note on it. Without a day, the note just closes the row.'
 
 /** *Another day* on a note brought back: the next working day, and what the office reads. */
 export function anotherDay(todayYmd: string): { backOn: string; toast: string } {
@@ -548,27 +609,8 @@ export function holdCount(contacts: ReadonlyArray<QueueContact>, teammate: strin
   return contacts.filter((c) => c.has === teammate && stateToday(c, todayYmd) === 'waiting').length
 }
 
-/** The seats *Who gets a new message* reads (Settings → Phone and texts). */
-export interface AssignSeats {
-  /** The assistant's seat. */
-  customer: string | null
-  /** The estimator's seat, which an architect shares unless set. */
-  trade: string | null
-  arch?: string | null
-}
-
-/**
- * Who gets a new message, by the rule (proposed in the prototype, the owner's call): whoever answered this person
- * last, when they are here today; else the seat for who they are. A number nobody knows goes to nobody, so whoever
- * answers first takes it.
- */
-export function whoGetsIt(input: { kind: ContactKind; answeredLastBy: string | null; hereToday: ReadonlySet<string>; seats: AssignSeats }): string | null {
-  if (input.answeredLastBy && input.hereToday.has(input.answeredLastBy)) return input.answeredLastBy
-  if (input.kind === 'customer') return input.seats.customer
-  if (input.kind === 'trade') return input.seats.trade
-  if (input.kind === 'arch') return input.seats.arch ?? input.seats.trade
-  return null
-}
+// The rule and its seats live in `assignSeats.ts`, light enough for the edge copy (R5's push). They are the queue's too.
+export { whoGetsIt, type AssignSeats } from './assignSeats'
 
 /** The day *Remind me Monday* sets, as the thread's pill says it: "snoozed until Mon Oct 5". */
 export function snoozedWords(contact: Pick<QueueContact, 'state' | 'snoozedUntil'>): string | null {

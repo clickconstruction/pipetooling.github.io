@@ -19,8 +19,8 @@ vi.mock('../../lib/supabase', async () => {
 const NOW = '2026-10-13T00:30:00.000Z'
 const READ_OK: ReaderHealth = { last_ok_at: '2026-10-13T00:12:00.000Z', last_error: null }
 
-function fakeIo(on: boolean, health: ReaderHealth | null, over: Partial<EmailReaderIo> = {}): EmailReaderIo {
-  return { load: vi.fn(async () => ({ on, health })), setOn: vi.fn(async () => undefined), ...over }
+function fakeIo(on: boolean, health: ReaderHealth | null, over: Partial<EmailReaderIo> = {}, teamHealth: ReaderHealth | null = null): EmailReaderIo {
+  return { load: vi.fn(async () => ({ on, health, teamHealth })), setOn: vi.fn(async () => undefined), ...over }
 }
 
 const card = () => within(document.querySelector<HTMLElement>('[data-settings-read-bids]')!)
@@ -36,6 +36,17 @@ describe('EmailReaderSettingsCard', () => {
     cleanup()
     renderWithProviders(<EmailReaderSettingsCard io={fakeIo(true, { last_ok_at: READ_OK.last_ok_at, last_error: 'Gmail 403: Delegation denied.' })} nowIso={NOW} />)
     expect(await screen.findByText('Last read today at 7:12 PM. The last run stopped: Gmail 403: Delegation denied.')).toBeTruthy()
+  })
+
+  it('shows the team box under bids@ once it has been read, and nothing for it before (R6)', async () => {
+    renderWithProviders(<EmailReaderSettingsCard io={fakeIo(true, READ_OK)} nowIso={NOW} />)
+    await screen.findByRole('switch', { name: 'Read bids@' })
+    expect(document.querySelector('[data-reader-health-team]')).toBeNull()
+    cleanup()
+    const stopped = { last_ok_at: null, last_error: 'Gmail 403: Delegation denied.' }
+    renderWithProviders(<EmailReaderSettingsCard io={fakeIo(true, READ_OK, {}, stopped)} nowIso={NOW} />)
+    expect(await screen.findByText('The team box: Not read yet. The last run stopped: Gmail 403: Delegation denied.')).toBeTruthy()
+    expect(card().getByText('Last read today at 7:12 PM. Nothing wrong.')).toBeTruthy()
   })
 
   it('asks before it turns the reader on, and turns it on only on a yes', async () => {

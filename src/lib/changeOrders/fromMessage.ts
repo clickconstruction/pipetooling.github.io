@@ -11,6 +11,7 @@
  * order in place of the price by line.
  */
 import type { UserRole } from '../../hooks/useAuth'
+import type { ContactKind } from '../contacts/kernel'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { GC_MONEY_TEAM, GC_OFFICE_TEAM } from '../gc/access'
 import type { ChangeOrderDraft } from '../gc/changeOrderRows'
@@ -51,7 +52,7 @@ export interface SourceMessage {
 /** The contact the message is with: the least of cluster 1's `contacts` this reads. */
 export interface MessageContact {
   id: string
-  kind: 'customer' | 'trade' | 'arch' | 'unknown'
+  kind: ContactKind
   name: string
   first: string
 }
@@ -89,6 +90,11 @@ const KIND_WORDS: Readonly<Record<MessageContact['kind'], string>> = {
   customer: 'a customer',
   trade: 'a trade partner',
   arch: 'an architect',
+  lead: 'a lead',
+  supply_house: 'a supply house',
+  candidate: 'a candidate',
+  sub: 'a sub',
+  team: 'one of our own team',
   unknown: 'a number nobody has named yet',
 }
 

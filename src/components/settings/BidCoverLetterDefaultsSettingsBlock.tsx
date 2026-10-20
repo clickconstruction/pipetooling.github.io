@@ -15,6 +15,9 @@ import {
   APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
   APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1,
   APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1,
+  APP_SETTINGS_KEY_BID_TAX_RATE_PCT_V1,
+  DEFAULT_BID_TAX_RATE_PCT,
+  parseBidTaxRatePct,
 } from '../../lib/appSettingsKeys'
 import { DEFAULT_SOV_MATERIAL_FACTOR, parseSovMaterialFactor } from '../../lib/bids/materialsByStage'
 import { DEFAULT_SOV_LABOR_SHARE_PCT, parseSovLaborSharePct } from '../../lib/bidDocuments/sovLaborMaterial'
@@ -51,6 +54,7 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
   const [values, setValues] = useState<Record<string, string>>({})
   const [factor, setFactor] = useState<string>('')
   const [laborShare, setLaborShare] = useState<string>('')
+  const [taxRate, setTaxRate] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -60,7 +64,7 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
       const { data, error } = await supabase
         .from('app_settings')
         .select('key, value_text, value_num')
-        .in('key', [...FIELDS.map((f) => f.key), APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1, APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1])
+        .in('key', [...FIELDS.map((f) => f.key), APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1, APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1, APP_SETTINGS_KEY_BID_TAX_RATE_PCT_V1])
       if (error) throw error
       const next: Record<string, string> = {}
       for (const f of FIELDS) {
@@ -69,6 +73,8 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
       setValues(next)
       const factorRow = (data ?? []).find((r) => r.key === APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1)
       setFactor(String(parseSovMaterialFactor(factorRow?.value_num ?? null)))
+      const taxRow = (data ?? []).find((r) => r.key === APP_SETTINGS_KEY_BID_TAX_RATE_PCT_V1)
+      setTaxRate(String(parseBidTaxRatePct(taxRow?.value_num ?? null)))
       const shareRow = (data ?? []).find((r) => r.key === APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1)
       setLaborShare(String(parseSovLaborSharePct(shareRow?.value_num ?? null)))
     } catch (e) {
@@ -111,6 +117,14 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
         .from('app_settings')
         .upsert({ key: APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1, value_num: shareNum }, { onConflict: 'key' })
       if (shareErr) throw shareErr
+      const taxNum = Number(taxRate.replace(/[%,\s]/g, '').trim())
+      if (!Number.isFinite(taxNum) || taxNum < 0 || taxNum > 100) {
+        throw new Error('The sales tax rate must be a number from 0 to 100 (8.25 = 8.25%).')
+      }
+      const { error: taxErr } = await supabase
+        .from('app_settings')
+        .upsert({ key: APP_SETTINGS_KEY_BID_TAX_RATE_PCT_V1, value_num: Math.round(taxNum * 1000) / 1000 }, { onConflict: 'key' })
+      if (taxErr) throw taxErr
       showToast('Cover letter defaults saved', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save cover letter defaults'), 'error')
@@ -191,6 +205,17 @@ export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: 
                   onChange={(e) => setLaborShare(e.target.value)}
                   inputMode="decimal"
                   placeholder={String(DEFAULT_SOV_LABOR_SHARE_PCT)}
+                  style={{ display: 'block', width: 120, marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}
+                />
+              </label>
+              <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem' }}>
+                Sales tax rate on a bid's material, % (the company default; a bid keeps its own in the Tax box on Takeoffs, since the rate varies by city)
+                <input
+                  id="bid-tax-rate-pct-default"
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(e.target.value)}
+                  inputMode="decimal"
+                  placeholder={String(DEFAULT_BID_TAX_RATE_PCT)}
                   style={{ display: 'block', width: 120, marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}
                 />
               </label>

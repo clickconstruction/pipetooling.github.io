@@ -329,6 +329,28 @@ serve(async (req) => {
     const estimates = (estRes.data ?? []) as Row[]
     const demands = (demandRes.data ?? []) as Row[]
     const filings = (filingRes.data ?? []) as Row[]
+    // Counsel's packet (the Docsmit train, PR 8): the mail pieces behind the matters' filings — when USPS accepted
+    // each, the delivery and who signed, and the Certification PDF as a 15-minute link. Until the table exists the
+    // list is empty and the portal still opens.
+    const filingIds = filings.map((f) => f.id as string)
+    const pieceRows: Row[] = []
+    if (allJobIds.length) {
+      const { data: byJob, error: pieceErr } = await admin.from('mail_pieces').select(MATTER_COUNSEL_SELECT.mailPieces).in('job_id', allJobIds)
+      if (!pieceErr) {
+        pieceRows.push(...((byJob ?? []) as Row[]))
+        if (filingIds.length) {
+          const { data: bySource } = await admin.from('mail_pieces').select(MATTER_COUNSEL_SELECT.mailPieces).overlaps('source_ids', filingIds)
+          for (const p of (bySource ?? []) as Row[]) if (!pieceRows.some((q) => q.id === p.id)) pieceRows.push(p)
+        }
+      }
+    }
+    const pieceUrls = new Map<string, string>()
+    await Promise.all(pieceRows.filter((p) => typeof p.certification_path === 'string' && p.certification_path).map(async (p) => {
+      const { data: signed } = await admin.storage.from(String(p.pdf_bucket ?? 'lien-release-documents')).createSignedUrl(p.certification_path as string, SIGNED_PDF_SECONDS)
+      if (signed?.signedUrl) pieceUrls.set(p.id as string, signed.signedUrl)
+    }))
+    const pieceInMatter = (p: Row, jobIdSet: Set<string>) =>
+      jobIdSet.has(p.job_id as string) || (Array.isArray(p.source_ids) && (p.source_ids as string[]).some((id) => filings.some((f) => f.id === id && jobIdSet.has(f.job_id as string))))
     // The notice desk items shaped down to the sent-notice facts (#41 PR 1b): the owner's call, letter two, the GC's okay.
     // The rest of the office's draft (the cover letter, a skip's reason, the leader's spoken word) never leaves.
     const deskItems = ((deskItemRes.data ?? []) as Row[]).map((it) => {
@@ -493,6 +515,7 @@ serve(async (req) => {
         signedEstimates: estimates.filter((e) => jobIdSet.has(e.job_ledger_id as string)),
         demandLetters: demands.filter((d) => jobIdSet.has(d.job_id as string)),
         lienFilings: filings.filter((f) => jobIdSet.has(f.job_id as string)),
+        mailPieces: pieceRows.filter((p) => pieceInMatter(p, jobIdSet)).map((p) => ({ ...p, certificationUrl: pieceUrls.get(p.id as string) ?? null, certification_path: undefined, pdf_bucket: undefined })),
         lienDeskItems: deskItems.filter((it) => jobIdSet.has(it.job_id as string)),
         promises: mPromises,
         promiseRecords,

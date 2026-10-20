@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps -- mount-only init; parent remounts via key */
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
+import type { JobDraft } from '../../lib/bids/jobDraft'
 import {
   useCallback,
   useEffect,
@@ -70,6 +71,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { JOB_CREATED_FROM_BID_EVENT, jobCreatedTelemetryTarget, type JobCreatedFromBidDetail } from '../../lib/bids/wonMomentActions'
 import { closeOpenJobFromBidRequests } from '../../lib/bids/openJobFromBidDispatchRequest'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   resolveDevelopmentIdForJobPayload,
   validateNewDevelopmentName,
@@ -221,6 +223,9 @@ export type JobFormModalProps = {
   newJobProjectId?: string | null
   /** When set on a new job, prefill runs after init (same as Import → bid). */
   newJobPrefillBidId?: string | null
+  /** An estimator's draft from the Dispatch inbox (v2.5659), laid over the bid's import, and who sent it. */
+  newJobPrefillDraft?: JobDraft | null
+  newJobPrefillDraftFrom?: string | null
   billingCustomerHighlightInitial: boolean
   fixturesSectionHighlightInitial: boolean
   /** Scroll to ③ Payments received and flash it — the Dashboard's bank-returned deposits card (v2.3795). */
@@ -268,6 +273,8 @@ export default function JobFormModal({
   initialJob,
   newJobProjectId = null,
   newJobPrefillBidId = null,
+  newJobPrefillDraft = null,
+  newJobPrefillDraftFrom = null,
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
   paymentsReceivedHighlightInitial = false,
@@ -1615,6 +1622,10 @@ export default function JobFormModal({
     setFixtureScopeExpandedById,
     setSelectedSegmentIds,
     setBidId,
+    accountManagerUserId,
+    setTeamMemberIds,
+    setAccountManagerUserId,
+    setAccountManagerRelationship,
     setBids,
     setLinkedBidSummary,
     setLinkedBidGc,
@@ -1784,8 +1795,8 @@ export default function JobFormModal({
     if (newJobPrefillBidAppliedRef.current === pid) return
     newJobPrefillBidAppliedRef.current = pid
     // This form exists only for the import — cancelling the GC picker closes it (Tier-1 #8, J15-F4).
-    void applyPrefillFromBid(pid, undefined, { closeOnCancel: true })
-  }, [initDone, mode, newJobPrefillBidId, applyPrefillFromBid, bidId])
+    void applyPrefillFromBid(pid, undefined, { closeOnCancel: true, draft: newJobPrefillDraft, draftFrom: newJobPrefillDraftFrom })
+  }, [initDone, mode, newJobPrefillBidId, newJobPrefillDraft, newJobPrefillDraftFrom, applyPrefillFromBid, bidId])
 
   useEffect(() => {
     if (!bidId) return
@@ -2293,7 +2304,16 @@ export default function JobFormModal({
         }
         // v2.3143: the Dispatch "open the job" to-do for this bid is done — close it and tell the requester
         // (a role RLS keeps from updating leaves it for the inbox's own sweep).
-        if (bidId) void closeOpenJobFromBidRequests({ bidId, hcpNumber: hcpNumber.trim(), userId: authUser?.id, role: authRole, elsewhere: false })
+        // The note names the job the way the board does, HCP else C# (v2.5670: a C#-only job closed it as "A job opened").
+        if (bidId) {
+          void closeOpenJobFromBidRequests({
+            bidId,
+            hcpNumber: effectiveJobLedgerNumber(hcpNumber, clickNumber),
+            userId: authUser?.id,
+            role: authRole,
+            elsewhere: false,
+          })
+        }
         if (bidId) announceDerivedBidOutcome(bidBefore, await readBidOutcomeForToast(bidId))
       }
       if (customerId && dateMet.trim()) {

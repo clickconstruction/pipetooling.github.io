@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-10-09
+last_updated: 2026-10-20
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -74,7 +74,7 @@ Side effects: `jobs_ledger` update + one `job_status_events` insert (`from_statu
 Other server-side status writers:
 
 - Trigger `clock_sessions_promote_job_waiting_to_working` (baseline) — auto waiting→working after a clock-out on the job (writes its own `job_status_events` row).
-- `mark_job_paid` / `mark_invoice_paid` / `mark_invoice_paid_from_stripe` / `apply_mercury_bank_payment_allocations` — promote billed→paid by **direct UPDATE** (no `job_status_events` row) when covered. See [Payments](#payments-jobs_ledger_payments).
+- `mark_job_paid` / `mark_invoice_paid` / `mark_invoice_paid_from_stripe` / `apply_mercury_bank_payment_allocations` — promote billed→paid by **direct UPDATE** (no `job_status_events` row) when covered. See [Payments](#payments-jobs_ledger_payments). Since v2.5655 (punch list #129, `20261019120000_primary_paid_verbs.sql`) these, `remove_jobs_ledger_payment_and_reconcile` and `record_job_tip_from_deposit` hold a primary to the job's people's jobs (`is_job_people`: the ones they account-manage or sold); the office's gates are unchanged.
 - `remove_jobs_ledger_payment_and_reconcile` and `revert_stripe_oob_invoice_payment` — may demote paid→billed via `update_job_status` (so those reverts *are* audited).
 - `migrate_job_ledger_costs_and_delete` (latest `supabase/migrations/20260929123000_migrate_delete_keeps_estimate_apart.sql`, v2.4139) — moves costs to another job and deletes the source (invoices/payments cascade); Edit Job delete/migrate path and Pipeline → Combine. The source's estimate follows it unless the target already has one (`estimates_job_ledger_id_unique`) — then it keeps its record and drops its job link, `estimate_unlinked: true` in the payload.
 
@@ -109,7 +109,7 @@ Audit table (baseline): `job_id` FK CASCADE, `from_status`, `to_status`, `change
 
 Created in the baseline migration; one later ALTER (`supabase/migrations/20260730165312_stripe_mode_on_invoices.sql`, v2.1114). Key columns: `job_id` (FK CASCADE), `amount` numeric(12,2), `status` CHECK `ready_to_bill`/`billed`/`paid` (default `ready_to_bill` = "draft bill"), `sequence_order`, `billed_at`, `estimated_bill_date`, `is_primary_rtb_bundle` (the ensure-RPC remainder line), Stripe group (`stripe_invoice_id`, `stripe_invoice_status`, `hosted_invoice_url`, `stripe_invoice_memo`, `stripe_invoice_footer`, and **`stripe_mode`** — CHECK `'live'`/`'test'`, stamped by `create-stripe-invoice`, NULL = pre-v2.1114 legacy treated as live; the row is the authority on its own mode, see below), `external_send_channel` CHECK NULL/`housecallpro`/`physical`/`stripe_manual`/`stripe` + `external_send_note`, `sent_to_customer_at`, and the five `agreed_write_down_*` audit columns. Row type: `src/types/database.ts`.
 
-Multiple invoices per job are first-class ("Partial invoices per job" per the table comment). Related: `jobs_ledger_invoice_stripe_email_sends` (append-only Stripe-email log), `job_collect_payment_flows.jobs_ledger_invoice_id` (SET NULL), `stripe_oob_payment_reverts` (CASCADE).
+Multiple invoices per job are first-class ("Partial invoices per job" per the table comment). Related: `jobs_ledger_invoice_stripe_email_sends` (append-only Stripe-email log; since v2.5634 each row writes an `invoice_stripe_email_sent` activity event through `jobs_ledger_invoice_stripe_email_sends_to_activity`, a bill's first send excepted since the invoice trigger's `invoice_sent` already holds it), `job_collect_payment_flows.jobs_ledger_invoice_id` (SET NULL), `stripe_oob_payment_reverts` (CASCADE).
 
 ### The ensure RPC (keystone)
 

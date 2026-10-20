@@ -200,13 +200,16 @@ describe('CustomerPortal render smoke', () => {
     expect(card.querySelector('[data-portal-property-notice-call]')?.getAttribute('href')).toBe('tel:5123600599')
   })
 
-  it('GC mode (O7c): the owner sample shows its GC job, the change order to sign and the work to accept', async () => {
+  it('GC mode (O7c, shape B since Messages 8b-i): the owner sample opens its GC job on Home, with the change order to sign and the work to accept on Papers', async () => {
     const owner = sampleCustomerPortalResponse(payload.company, 'owner', '2026-10-09', 'https://app.example')
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(owner), { status: 200 })))
     mountAt('/portal?t=sample-owner')
     await waitFor(() => expect(screen.getByText('Sample Owner LLC')).toBeTruthy())
     const gc = screen.getByTestId('portal-gc-jobs')
     expect(gc.textContent).toContain('Sample Retail Shell')
+    // Our contract waits on them, so it is their move on Home.
+    expect(screen.getByTestId('portal-gc-move').textContent).toContain('Sign the contract')
+    fireEvent.click(screen.getByTestId('portal-gc-tab-papers'))
     expect(gc.textContent).toContain('Change order 2')
     expect(gc.textContent).toContain('Add a coffee bar cabinet, per the customer')
     expect(screen.getByRole('button', { name: 'Accept the work' })).toBeTruthy()

@@ -19,6 +19,8 @@ vi.mock('../../lib/gc/customerContract', async (importOriginal) => {
     },
   }
 })
+// Their portal's window reads their own portal (Messages cut 8d): a customer with no link here, so nothing is fetched.
+vi.mock('../../lib/portal/customerPortalPreviewIo', () => ({ activePortalToken: vi.fn(async () => null), loadPortalPreview: vi.fn(), makePortalLink: vi.fn() }))
 
 import { GcCustomerWindow, type CustomerWindowMoney } from './GcCustomerWindow'
 import { loadOwnerContractPaper, loadPaperChoices } from '../../lib/contracts/clausesIo'
@@ -83,6 +85,16 @@ const sent = (sends: (Parameters<typeof contractSendRow>[0] & { emailed?: boolea
 const pdf = () => new File(['%PDF-1.7 the contract'], 'Clinic contract v2.pdf', { type: 'application/pdf' })
 
 describe('GcCustomerWindow', () => {
+  it('opens their portal as they see it from See their page, and Escape steps back out of it first', async () => {
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'See their page' }))
+    const portal = await screen.findByRole('dialog', { name: 'Oak Street Partners’s portal' })
+    expect(await within(portal).findByText('Oak Street Partners has no portal link yet. Our contract’s email makes one, or make it here.')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Oak Street Partners’s portal' })).toBeNull())
+    expect(screen.getByRole('dialog', { name: 'Oak Street Partners' })).toBeTruthy()
+  })
+
   it('About lists their jobs, each opening its card', () => {
     const { onOpenProject, dialog } = open()
     const job = dialog.querySelector('[data-gc-customer-job="p1"]') as HTMLElement
@@ -340,6 +352,7 @@ describe('GcCustomerWindow · their money, for the money team (the Board’s B2b
       id: 'a1', project_id: 'p1', number: 1, final: false, period_to: '2026-08-31', sent_on: '2026-08-31', sent_by: null, retainage_pct: 10,
       retainage_step_at_pct: null, retainage_step_to_pct: null, retainage_step_way: null, retainage: 1000, work_to_date: 10000, due: 9000,
       certified: 9000, certified_on: '2026-09-01', certified_note: '', certified_by: null, invoice_id: null, conditional_waiver_id: null, created_at: '2026-08-31T15:00:00Z',
+      customer_line: null, customer_line_es: null, paid_on: null,
     }
     const billing: BillingRows = {
       terms: [{ project_id: 'p1', owner_retainage_pct: 10, owner_retainage_step_at_pct: null, owner_retainage_step_to_pct: null, owner_retainage_step_way: null, owner_pay_days: 30, owner_late_interest_pct_per_month: null, owner_late_finish_per_day: null, billing_job_id: null, property_owner_customer_id: null }],

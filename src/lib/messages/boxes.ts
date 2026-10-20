@@ -6,9 +6,11 @@
  * spike/gc-mode, `to-dos/gc-mode/messages/customer-messages-prototype.html` v0.8) and `RESIDENTIAL_BUILD_PLAN.md` → R6
  * and section 7, decision 5. Pure: the addresses and the numbers are Settings', never written here.
  *
- * `compose.ts` still sends from one company mailbox and number (`ComposeCompany`) until R6's compose PR reads these.
+ * `compose.ts` re-exports the reads a send needs (`mailboxFor`, `fromNumberFor`, `parseBoxSettings`), and the reply box
+ * names its from line with them once the sends go from the boxes (`SENDS_FROM_BOXES` in `replyIo.ts`). `quo-webhook`
+ * and `quo-send` read them on the edge (R6 PR 4): the box a call or text came to, the one a text goes from
+ * (`sendBox`), and a STOP to one number.
  */
-import { normalizeChannel } from '../contacts/kernel'
 
 /** The box a line came in on or goes out from. The same union as `followUp/newLane.ts`'s, which imports it once both land. */
 export type Mailbox = 'team' | 'bids'
@@ -60,6 +62,113 @@ export function boxForReply(wroteTo: Mailbox | null, contact: { kind: string }):
   return wroteTo ?? boxForNew(contact)
 }
 
+/**
+ * Today's one mailbox and number, for a box whose fields Settings has not filled yet. The client knows neither, so its
+ * fallback is empty and the from line leaves them out (`fromLine`). The edge functions pass their secrets, as R6's
+ * migration says: the team box QUO_COMPANY_MAILBOX, QUO_COMPANY_PHONE and QUO_PHONE_NUMBER_ID, bids@
+ * GMAIL_IMPERSONATE_USER.
+ */
+export type BoxFallback = Readonly<Record<Mailbox, Partial<BoxSetting>>>
+
+/** The client's fallback: nothing, so an empty field stays empty. */
+export const NO_BOX_FALLBACK: BoxFallback = { team: {}, bids: {} }
+
+const EMPTY_BOX: BoxSetting = { address: '', phone: '', numberId: '' }
+
+/**
+ * Settings' row as `app_settings.value_text` holds it: JSON `{ team, bids }`. A field missing or not text reads empty,
+ * and a box missing reads all empty. Null when there is no row or it is not JSON, which reads the same as every field
+ * empty.
+ */
+export function parseBoxSettings(valueText: string | null | undefined): BoxSettings | null {
+  if (!valueText?.trim()) return null
+  let json: unknown
+  try {
+    json = JSON.parse(valueText)
+  } catch {
+    return null
+  }
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return null
+  const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+  const box = (v: unknown): BoxSetting => {
+    if (!v || typeof v !== 'object') return { ...EMPTY_BOX }
+    const o = v as Record<string, unknown>
+    return { address: text(o.address), phone: text(o.phone), numberId: text(o.numberId) }
+  }
+  const o = json as Record<string, unknown>
+  return { team: box(o.team), bids: box(o.bids) }
+}
+
+/** A box's fields as a send uses them: Settings' own, and each empty one from the fallback. */
+export function boxSetting(box: Mailbox, settings: BoxSettings | null, fallback: BoxFallback = NO_BOX_FALLBACK): BoxSetting {
+  const s = settings?.[box] ?? EMPTY_BOX
+  const f = fallback[box]
+  return {
+    address: s.address.trim() || f.address?.trim() || '',
+    phone: s.phone.trim() || f.phone?.trim() || '',
+    numberId: s.numberId.trim() || f.numberId?.trim() || '',
+  }
+}
+
+/**
+ * The address an email to this person goes from: the box they last wrote to, else their kind's box (`boxForReply`).
+ * Empty when neither Settings nor the fallback has one.
+ */
+export function mailboxFor(kind: string, settings: BoxSettings | null, fallback: BoxFallback = NO_BOX_FALLBACK, wroteTo: Mailbox | null = null): string {
+  return boxSetting(boxForReply(wroteTo, { kind }), settings, fallback).address
+}
+
+/**
+ * The number a text to this person goes from, as people read it and as Quo's id, by the same rule as `mailboxFor`.
+ * Written for the edge copy too, so `quo-send` can read it once R6's edge PR switches it from QUO_PHONE_NUMBER_ID.
+ */
+export function fromNumberFor(
+  kind: string,
+  settings: BoxSettings | null,
+  fallback: BoxFallback = NO_BOX_FALLBACK,
+  wroteTo: Mailbox | null = null,
+): { box: Mailbox; phone: string; numberId: string } {
+  const box = boxForReply(wroteTo, { kind })
+  const s = boxSetting(box, settings, fallback)
+  return { box, phone: s.phone, numberId: s.numberId }
+}
+
+/**
+ * The box a text goes from: the one wanted when it has a number, else the team box, today's one number. So the GC side's
+ * trades keep getting texts from the company number until bids has a number of its own, and the line says which.
+ */
+export function sendBox(wanted: Mailbox, settings: BoxSettings): Mailbox {
+  return settings[wanted].numberId ? wanted : 'team'
+}
+
+/** How a line names one of our numbers: "the company number", "the bids number". */
+export function numberName(box: Mailbox): string {
+  return box === 'team' ? 'the company number' : 'the bids number'
+}
+
+/** The box they last wrote to: their newest line in that names one. Null when none does (a line from before R6). */
+export function lastWroteTo(lines: ReadonlyArray<{ direction: string; at: string; mailbox?: Mailbox | null }>): Mailbox | null {
+  let newest: { at: number; box: Mailbox } | null = null
+  for (const line of lines) {
+    if (line.direction !== 'in' || !line.mailbox) continue
+    const at = Date.parse(line.at)
+    const t = Number.isNaN(at) ? 0 : at
+    if (!newest || t >= newest.at) newest = { at: t, box: line.mailbox }
+  }
+  return newest?.box ?? null
+}
+
+/**
+ * *Who is this?*'s records in the box's order: the box's own kinds first, a trade partner and a supply house on a bids@
+ * line, a customer, a lead, a sub and a candidate on the team line, each group in the order it came. With no box the
+ * order stays as it came.
+ */
+export function orderHitsByBox<T extends { kind: string }>(hits: readonly T[], box: Mailbox | null): T[] {
+  if (!box) return [...hits]
+  const ours = BOXES[box].kinds
+  return [...hits.filter((h) => ours.includes(h.kind)), ...hits.filter((h) => !ours.includes(h.kind))]
+}
+
 /** A number in words, its area code out of parentheses so the line passes plain words: "(512) 555-0144" is "512-555-0144". */
 export function phoneWords(phone: string): string {
   return phone.trim().replace(/^\((\d{3})\)\s*/, '$1-')
@@ -69,7 +178,7 @@ export function phoneWords(phone: string): string {
 export function fromWords(box: Mailbox, channel: 'text' | 'email', settings: BoxSettings, companyName: string): string[] {
   const s = settings[box]
   if (channel === 'email') return [`from ${s.address}`, companyName]
-  return [`from ${box === 'team' ? 'the company number' : 'the bids number'} ${phoneWords(s.phone)}`, companyName]
+  return [`from ${numberName(box)} ${phoneWords(s.phone)}`, companyName]
 }
 
 /** What the reader knows of where a line came in: R6's `messages.mailbox`, the Quo number id it came to, the address it was sent to. */
@@ -81,7 +190,15 @@ export interface InboundTo {
   toAddress?: string | null
 }
 
-const bareAddress = (raw: string) => normalizeChannel('email', /<([^>]+)>/.exec(raw)?.[1] ?? raw)
+/**
+ * An address as a channel's key reads it, from "Click Bids <bids@…>" or the bare address: trimmed, lower case, and empty
+ * for words that are not an address. `normalizeCustomerEmail`'s rule, kept here so the edge's copy of this file
+ * (`quo-webhook`, `quo-send`) needs none of the customer kernels.
+ */
+const bareAddress = (raw: string): string => {
+  const address = (/<([^>]+)>/.exec(raw)?.[1] ?? raw).trim().toLowerCase()
+  return address.includes('@') ? address : ''
+}
 
 /** The box a line came in on: its `mailbox` once R6's SQL fills it, else the number it came to, else the address. Null: not known. */
 export function boxOfInbound(line: InboundTo, settings: BoxSettings): Mailbox | null {
@@ -91,9 +208,8 @@ export function boxOfInbound(line: InboundTo, settings: BoxSettings): Mailbox | 
     const box = MAILBOXES.find((b) => settings[b].numberId === id)
     if (box) return box
   }
-  const to = line.toAddress?.trim()
-  if (to) {
-    const address = bareAddress(to)
+  const address = bareAddress(line.toAddress ?? '')
+  if (address) {
     const box = MAILBOXES.find((b) => bareAddress(settings[b].address) === address)
     if (box) return box
   }
@@ -131,10 +247,14 @@ export interface StopWrite {
 /**
  * A STOP to one of our numbers silences that number for this person and never the other, as carriers scope it to the
  * pair. A START reopens the one it came to. A word to a number we cannot place reaches both, so a STOP is never missed.
+ * A STOP again keeps the first stamp.
  */
 export function stopScope(channel: StopChannel, word: 'stop' | 'start', to: Mailbox | null, at: string): StopWrite {
   const boxes = to ? [to] : [...MAILBOXES]
-  const next: OptedOutByBox = { ...(channel.optedOutByBox ?? {}) }
-  for (const box of boxes) next[box] = word === 'stop' ? at : null
+  const byBox = channel.optedOutByBox ?? {}
+  const next: OptedOutByBox = { ...byBox }
+  // A STOP to a box already stopped keeps when they first stopped: its own stamp, or the older one that stops every box.
+  const since = (box: Mailbox): string | null => (box in byBox ? (byBox[box] ?? null) : channel.optedOutAt)
+  for (const box of boxes) next[box] = word === 'stop' ? (since(box) ?? at) : null
   return { channelId: channel.channelId, boxes, optedOutByBox: next }
 }

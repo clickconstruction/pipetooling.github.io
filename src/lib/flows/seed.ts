@@ -9,7 +9,15 @@
  * `loopEnds` for when a loop lets the chain move on, `skipOneJob` for the customer's master agreement,
  * `owedWords` for Follow up's We owe them list on our-move steps, and `aside` set on change orders only,
  * as before.
+ *
+ * The residential flow (R4, `RESIDENTIAL_BUILD_PLAN.md`) is the customer prototype's screen 4: a service job from the
+ * booking to the review ask, one Per job lane of eleven steps. Its reminders are the app's and start off, since the
+ * owner turns each step on: the estimate's on Approved and the bill's on Paid, each the customer's move. Estimate sent
+ * and Billed carry none, since `nudgeDue` never fires on our move. The review ask waits for the stage sends after paid.
+ * Paid's reminder reads each bill's pay by day, which the loader stamps from the expected pay model. Each bill is a
+ * round of Billed and of Paid. The usual days are a first guess until a year of done steps gives the middle.
  */
+import { SEED_CALL_SCRIPTS } from './callScripts'
 import type { FlowKind } from './facts'
 import type { FlowDef, FlowStep } from './state'
 
@@ -27,8 +35,13 @@ const step = (s: StepInput): FlowStep => ({
   later: null,
   nudge: null,
   owedWords: null,
+  callScript: null,
+  suggestCall: true,
   ...s,
 })
+
+/** The app's own call script on a residential step (v2.5596), as the migration seeds it. */
+const scriptOf = (id: keyof typeof SEED_CALL_SCRIPTS): FlowStep['callScript'] => ({ en: SEED_CALL_SCRIPTS[id].text, es: SEED_CALL_SCRIPTS[id].textEs })
 
 export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
   trade: {
@@ -169,6 +182,105 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
             id: 'certify', name: 'Certify pay apps', nameEs: 'Certificar pagos', phase: 'building', who: 'them',
             loop: 'each pay app', loopEnds: 'next', facts: ['certified'], papers: ['certificate'],
             nudge: { days: 3, how: 'email', send: 'ask', dayFact: null }, usual: 4,
+          }),
+        ],
+      },
+    ],
+  },
+  residential: {
+    kind: 'residential',
+    lanes: [
+      {
+        lane: 'per_job',
+        steps: [
+          step({ id: 'booked', name: 'Booked', nameEs: 'Agendado', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['booked'], owedWords: 'the day we come', usual: 1, callScript: scriptOf('booked') }),
+          step({
+            id: 'onway', name: 'On the way', nameEs: 'En camino', phase: 'setup', who: 'us', seat: 'Luis',
+            later: { en: 'On the day of your visit.', es: 'El día de su visita.' },
+            facts: ['on_way'], owedWords: 'a text when we leave', usual: 3,
+          }),
+          step({
+            id: 'arrived', name: 'Arrived', nameEs: 'Llegamos', phase: 'setup', who: 'us', seat: 'Luis',
+            later: { en: 'When our tech gets to you.', es: 'Cuando nuestro técnico llegue.' },
+            facts: ['arrived'], owedWords: 'the visit', usual: 0,
+          }),
+          step({
+            id: 'found', name: 'What we found', nameEs: 'Lo que encontramos', phase: 'setup', who: 'us', seat: 'Luis',
+            later: { en: 'After our tech looks.', es: 'Después de que nuestro técnico revise.' },
+            facts: ['found'], owedWords: 'what we found', usual: 0,
+          }),
+          step({
+            id: 'estimate', name: 'Estimate sent', nameEs: 'Presupuesto enviado', phase: 'pricing', who: 'us', seat: 'Rosa', callScript: scriptOf('estimate'),
+            later: { en: 'After we find the problem.', es: 'Después de encontrar el problema.' },
+            facts: ['estimate_sent'], papers: ['estimate'], owedWords: 'the estimate', usual: 1,
+          }),
+          step({
+            id: 'approved', name: 'Approved', nameEs: 'Aprobado', phase: 'pricing', who: 'them', callScript: scriptOf('approved'),
+            later: { en: 'Once you have the estimate.', es: 'Cuando reciba el presupuesto.' },
+            facts: ['estimate_approved'], nudge: { days: 1, how: 'text', send: 'app', dayFact: null }, usual: 3,
+          }),
+          step({
+            id: 'working', name: 'Working', nameEs: 'Trabajando', phase: 'building', who: 'us', seat: 'Luis',
+            later: { en: 'Once you approve the estimate.', es: 'Cuando apruebe el presupuesto.' },
+            facts: ['working'], owedWords: 'the work', usual: 2,
+          }),
+          step({
+            id: 'done', name: 'Done', nameEs: 'Terminado', phase: 'building', who: 'us', seat: 'Luis',
+            later: { en: 'When the work is finished.', es: 'Cuando el trabajo esté terminado.' },
+            facts: ['done'], owedWords: 'word that the work is done', usual: 3,
+          }),
+          step({
+            id: 'billed', name: 'Billed', nameEs: 'Facturado', phase: 'building', who: 'us', seat: 'Rosa',
+            later: { en: 'After the work is done.', es: 'Después de terminar el trabajo.' },
+            loop: 'each bill', loopEnds: 'rounds', facts: ['billed'], papers: ['bill'], owedWords: 'the bill', usual: 2,
+          }),
+          step({
+            id: 'paid', name: 'Paid', nameEs: 'Pagado', phase: 'building', who: 'them',
+            later: { en: 'When the bill comes.', es: 'Cuando llegue la factura.' },
+            loop: 'each bill', loopEnds: 'rounds', facts: ['paid'],
+            nudge: { days: 0, how: 'text', send: 'app', dayFact: 'pay_by' }, usual: 14,
+          }),
+          step({
+            id: 'review', name: 'Review asked', nameEs: 'Reseña pedida', phase: 'building', who: 'us', seat: 'Rosa',
+            later: { en: 'After you pay.', es: 'Después de pagar.' },
+            facts: ['review_asked'], owedWords: 'a review link', usual: 2,
+          }),
+        ],
+      },
+    ],
+  },
+  // A sub's flow (RESIDENTIAL_BUILD_PLAN.md R8 · 12): one labor job, the sub sheet, from the work order to the pay. No
+  // reminders; the office turns those on.
+  sub: {
+    kind: 'sub',
+    lanes: [
+      {
+        lane: 'per_job',
+        steps: [
+          step({
+            id: 'asked', name: 'Asked', nameEs: 'Ofrecido', phase: 'pricing', who: 'us', seat: 'Rosa',
+            later: { en: 'When a job of yours comes up.', es: 'Cuando surja un trabajo para usted.' },
+            facts: ['sub_asked'], owedWords: 'the work order', usual: 1,
+          }),
+          step({
+            id: 'yes', name: 'Said yes', nameEs: 'Aceptó', phase: 'pricing', who: 'them', fork: true,
+            later: { en: 'Once the work order comes.', es: 'Cuando llegue la orden de trabajo.' },
+            facts: ['sub_said_yes', 'sub_declined'], join: 'or', usual: 1,
+          }),
+          step({
+            id: 'onsite', name: 'On site', nameEs: 'En obra', phase: 'building', who: 'them',
+            later: { en: 'On the day you picked.', es: 'El día que eligió.' },
+            facts: ['sub_on_site'], usual: 3,
+          }),
+          step({
+            id: 'done', name: 'Done', nameEs: 'Terminado', phase: 'building', who: 'them',
+            later: { en: 'When your work is finished.', es: 'Cuando termine su trabajo.' },
+            facts: ['sub_done'], usual: 5,
+          }),
+          step({
+            id: 'paid', name: 'Paid', nameEs: 'Pagado', phase: 'building', who: 'us', seat: 'Rosa',
+            later: { en: 'After the walkthrough.', es: 'Después de la revisión.' },
+            facts: ['sub_paid'], owedWords: 'their pay', usual: 7,
           }),
         ],
       },

@@ -3,9 +3,11 @@ import { plainWordsFailures } from '../plainWords'
 import type { QuickReply } from '../quickReplies/kernel'
 import { at, day, demoPeople, demoPerson, type Seed } from './demoPeople.fixture'
 import {
+  appSendMode,
   NUDGE_LINE_STEPS,
   notSentWords,
   nudgeLine,
+  OFFER_HELD,
   planNudgeRun,
   type AppSends,
   type NudgeNotSent,
@@ -72,19 +74,20 @@ describe('the morning run', () => {
   it('sends nothing while every step is off, and says which reminder it kept back', () => {
     expect(run()).toEqual({
       texts: [],
+      offers: [],
       notSent: [{ contactId: 'tom', stepId: 'portal', jobId: null, why: 'off', words: 'the app does not send this step yet' }],
     })
     expect(run({}, {}).texts).toEqual([])
   })
 
   it('sends Tom one text once Portal opened is on, and only Tom: the other reminders are ours to send', () => {
-    expect(run({ appSends: PORTAL_ON })).toEqual({ texts: [TOMS_TEXT], notSent: [] })
+    expect(run({ appSends: PORTAL_ON })).toEqual({ texts: [TOMS_TEXT], offers: [], notSent: [] })
   })
 
   it('sends none on a second run the same morning, from what the first wrote to nudge_sent', () => {
     const first = run({ appSends: PORTAL_ON })
     const second = run({ appSends: PORTAL_ON, sent: first.texts.map((t) => t.record), now: new Date(at(10, 2, 9, 5)) })
-    expect(second).toEqual({ texts: [], notSent: [tomKept('sent lately')] })
+    expect(second).toEqual({ texts: [], offers: [], notSent: [tomKept('sent lately')] })
   })
 
   it('waits out the step’s days after one of ours sent it, then sends', () => {
@@ -119,9 +122,9 @@ describe('the morning run', () => {
 
   it('leaves out a person with a hold, and a reminder that is not due', () => {
     const held = (seed: Seed): Seed => ({ ...tomOnPortal(seed), marks: [{ stepId: 'portal', jobId: null, holdUntil: '2026-10-05' }] })
-    expect(run({ appSends: PORTAL_ON }, { tom: held })).toEqual({ texts: [], notSent: [] })
+    expect(run({ appSends: PORTAL_ON }, { tom: held })).toEqual({ texts: [], offers: [], notSent: [] })
     const wroteYesterday = (seed: Seed): Seed => ({ ...tomOnPortal(seed), lastOutAt: at(10, 1, 15) })
-    expect(run({ appSends: PORTAL_ON }, { tom: wroteYesterday })).toEqual({ texts: [], notSent: [] })
+    expect(run({ appSends: PORTAL_ON }, { tom: wroteYesterday })).toEqual({ texts: [], offers: [], notSent: [] })
   })
 
   it('keeps quiet for a person snoozed on Follow up until the snooze day: Priya, snoozed until Mon', () => {
@@ -141,6 +144,7 @@ describe('the morning run', () => {
     const snoozed = planNudgeRun({ ...input, snoozed: { priya: '2026-10-05' } })
     expect(snoozed).toEqual({
       texts: [],
+      offers: [],
       notSent: [{ contactId: 'priya', stepId: 'co', jobId: 'helotes', why: 'snoozed', words: 'snoozed until Mon Oct 5' }],
     })
     const monday = planNudgeRun({ ...input, snoozed: { priya: '2026-10-05' }, now: new Date(at(10, 5, 9)) })
@@ -173,6 +177,46 @@ describe('the morning run', () => {
       lastUsed: null,
     }
     expect(run({ appSends: PORTAL_ON, quickReplies: [line] }).texts[0]?.body).toBe('Did the invite come through? Your portal is at click.co/t/7Hq2.')
+  })
+})
+
+describe('the morning run’s offers (v2.5595)', () => {
+  const PORTAL_OFFERS: AppSends = { trade: { portal: 'offer' } }
+  const TOMS_OFFER = { ...TOMS_TEXT, event: 'The app prepared the Portal opened reminder for Today’s sends.', held: null }
+
+  it('prepares Tom’s text for the office to press instead of sending it', () => {
+    expect(run({ appSends: PORTAL_OFFERS })).toEqual({ texts: [], offers: [TOMS_OFFER], notSent: [] })
+  })
+
+  it('holds the prepared text with why when there is no number or it sent STOP, instead of keeping it back', () => {
+    expect(run({ appSends: PORTAL_OFFERS, numbers: { ...NUMBERS, tom: { number: null, optedOut: false } } }).offers).toEqual([{ ...TOMS_OFFER, held: OFFER_HELD['no number'] }])
+    expect(run({ appSends: PORTAL_OFFERS, numbers: { ...NUMBERS, tom: { number: '(210) 555-0130', optedOut: true } } }).offers).toEqual([{ ...TOMS_OFFER, held: OFFER_HELD['opted out'] }])
+  })
+
+  it('never prepares a second while one waits on Today’s sends, nor sends over one when the step turns to Sends', () => {
+    const offered = [{ contactId: 'tom', stepId: 'portal', jobId: null }]
+    expect(run({ appSends: PORTAL_OFFERS, offered })).toEqual({ texts: [], offers: [], notSent: [tomKept('offered')] })
+    expect(run({ appSends: PORTAL_ON, offered })).toEqual({ texts: [], offers: [], notSent: [tomKept('offered')] })
+  })
+
+  it('reads the pressed text as sent lately, like any reminder, so the next morning waits out the step’s days', () => {
+    const pressed: NudgeSent = { contactId: 'tom', stepId: 'portal', jobId: null, at: at(10, 1, 15), by: 'rosa', how: 'text' }
+    expect(run({ appSends: PORTAL_OFFERS, sent: [pressed] })).toEqual({ texts: [], offers: [], notSent: [tomKept('sent lately')] })
+  })
+
+  it('holds or keeps back a text for a person who asked for email (v2.5597)', () => {
+    expect(run({ appSends: PORTAL_ON, prefers: { tom: 'email' } })).toEqual({ texts: [], offers: [], notSent: [tomKept('prefers email')] })
+    expect(run({ appSends: PORTAL_OFFERS, prefers: { tom: 'email' } }).offers).toEqual([{ ...TOMS_OFFER, held: OFFER_HELD['prefers email'] }])
+    expect(run({ appSends: PORTAL_ON, prefers: { tom: 'text' } }).texts).toEqual([TOMS_TEXT])
+    expect(run({ appSends: PORTAL_ON, prefers: { tom: 'either' } }).texts).toEqual([TOMS_TEXT])
+  })
+
+  it('reads the switch three ways, and holds and keeps back in plain words', () => {
+    expect(appSendMode({ trade: { portal: true, msa: 'offer' } }, 'trade', 'portal')).toBe('send')
+    expect(appSendMode({ trade: { portal: true, msa: 'offer' } }, 'trade', 'msa')).toBe('offer')
+    expect(appSendMode({ trade: { portal: true } }, 'trade', 'sow')).toBe('off')
+    expect(appSendMode({ trade: { portal: true } }, 'customer', 'portal')).toBe('off')
+    for (const w of [...Object.values(OFFER_HELD), notSentWords('offered')]) expect(plainWordsFailures(w), w).toEqual([])
   })
 })
 

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Leave Report from the job window</title>
+<style>
+  /* Punch list #135. Light only, like every to-do mock-up. Made-up customer and job: Sharon Kane, 1043 Plum, 162 Forest Drive; made-up tech Marco; made-up counts. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-tint: #fef3c7; --red: #dc2626; --red-tint: #fee2e2; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --faint: #94a3b8; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  h2 .num.pick { background: var(--green); }
+  h2 .num.today { background: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--subtle); color: var(--ink-2); border: 1px solid var(--line); border-bottom: 0; }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: #991b1b; }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; overflow: auto; }
+  /* the window pane, as the app draws it */
+  .card { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 14px; }
+  .card.phone { max-width: 375px; }
+  .panel { margin: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 8px; }
+  .pill { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-2); background: #fff; display: inline-flex; gap: 6px; align-items: center; }
+  .pill.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .pill.quiet { border-color: transparent; color: var(--faint); font-weight: 500; }
+  .pill b { color: var(--blue-ink); font-weight: 700; }
+  .pill.on b { color: #fff; }
+  .leave { margin-left: auto; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--blue); color: var(--blue-ink); background: #fff; white-space: nowrap; }
+  .leave.solid { background: var(--blue); color: #fff; }
+  .readout { font-size: 13px; color: var(--ink-2); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .readout.right { margin-left: auto; }
+  .chip { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--subtle); color: var(--muted); }
+  .chip.green { background: var(--green-tint); border-color: #86efac; color: var(--green-ink); }
+  .feed { border-left: 3px solid var(--line-2); }
+  .entry { padding: 9px 10px 9px 12px; border-left: 3px solid #93c5fd; margin-left: -3px; border-bottom: 1px solid var(--line-2); }
+  .entry.amber { border-left-color: #fcd34d; }
+  .entry.green { border-left-color: #86efac; }
+  .entry.new { background: var(--green-tint); }
+  .entry .k { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--blue-ink); margin-right: 8px; }
+  .entry.amber .k { color: #92400e; }
+  .entry.green .k { color: var(--green-ink); }
+  .entry .who { font-weight: 700; }
+  .entry .when { color: var(--muted); margin-left: 6px; font-size: 13px; }
+  .entry .body { margin-top: 2px; }
+  .entry .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .band { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 12px; }
+  .box { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--subtle); text-align: center; }
+  .box .l { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  .box .v { font-size: 15px; font-weight: 600; margin-top: 2px; }
+  .box .v.link { color: var(--blue-ink); text-decoration: underline; }
+  .box .m { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .box .leave { margin: 6px auto 0; display: inline-block; }
+  .hop { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); margin: 12px; flex-wrap: wrap; }
+  .hop .step { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: #fff; }
+  .hop .step b { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .hop .arrow { color: var(--faint); font-size: 18px; }
+  .empty { padding: 20px 10px; text-align: center; color: var(--muted); font-size: 13px; }
+  .empty .leave { margin: 8px auto 0; display: inline-block; }
+  .dec { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+  .d { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .d b { display: block; margin-bottom: 2px; }
+  .d .def { color: var(--green-ink); font-weight: 600; }
+  ol.crit { margin: 8px 0 0; padding-left: 20px; color: var(--ink-2); max-width: 100ch; }
+  ol.crit li { margin: 4px 0; }
+  @media (max-width: 420px) { .band { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #135 · the job window · mock-up, made-up data</p>
+  <h1>Leave Report from the job window</h1>
+  <p>The window reads reports well and writes them badly: the feed has a Reports pill and the percent says <em>crew report</em> when a report set it, but leaving one is two hops and a scroll away. One button where the word <em>Reports</em> already is.</p>
+</header>
+
+<h2><span class="num today">1</span>Today — two hops and a scroll</h2>
+<p class="lede">The activity header on <b>Kane · 1043</b> has the pills and the percent. The door to a report is the <em>Reports</em> box in the date band, lower in the pane, then the list, then its button.</p>
+<div class="row">
+  <div>
+    <div class="cap red">Today · the header <span class="r">no door here</span></div>
+    <div class="fit">
+      <div class="card">
+        <div class="panel">
+          <div class="tabs">
+            <span class="pill on">All</span><span class="pill">Notes <b>2</b></span><span class="pill quiet">Reports</span><span class="pill">Status <b>5</b></span><span class="pill">Billing <b>3</b></span><span class="pill">Crew <b>5</b></span>
+            <span class="readout right">100% complete <span class="chip">set by office</span></span>
+          </div>
+          <div class="feed">
+            <div class="entry"><span class="k">Invoice</span><span class="who">Taunya</span><span class="when">Monday 10:29 AM · 15 days ago</span><div class="body">Invoice created $420.00</div></div>
+            <div class="entry amber"><span class="k">Status</span><span class="who">Taunya</span><span class="when">Monday 10:29 AM · 15 days ago</span><div class="body">Ready to Bill → Billed</div></div>
+            <div class="entry"><span class="k">Sent</span><span class="who">Taunya</span><span class="when">Monday 10:30 AM · 15 days ago</span><div class="body">Invoice sent to customer (stripe)</div></div>
+          </div>
+        </div>
+        <div class="hop">
+          <span class="step"><b>scroll down</b>the date band's Reports box · <i>No reports yet</i></span><span class="arrow">→</span>
+          <span class="step"><b>opens</b>the job's reports list</span><span class="arrow">→</span>
+          <span class="step"><b>then</b>Add additional report</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">2</span>Proposed A — ＋ Leave Report in the activity header (recommended)</h2>
+<p class="lede">A small outline button at the right end of the filter row, before the percent readout, in the row's own height. The <em>Reports</em> pill (quiet while empty) and the button say the same word side by side.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Proposed · the header <span class="r">one tap</span></div>
+    <div class="fit">
+      <div class="card">
+        <div class="panel">
+          <div class="tabs">
+            <span class="pill on">All</span><span class="pill">Notes <b>2</b></span><span class="pill quiet">Reports</span><span class="pill">Status <b>5</b></span><span class="pill">Billing <b>3</b></span><span class="pill">Crew <b>5</b></span>
+            <span class="readout right">100% complete <span class="chip">set by office</span></span><span class="leave" style="margin-left:10px">＋ Leave Report</span>
+          </div>
+          <div class="feed">
+            <div class="entry"><span class="k">Invoice</span><span class="who">Taunya</span><span class="when">Monday 10:29 AM · 15 days ago</span><div class="body">Invoice created $420.00</div></div>
+            <div class="entry amber"><span class="k">Status</span><span class="who">Taunya</span><span class="when">Monday 10:29 AM · 15 days ago</span><div class="body">Ready to Bill → Billed</div></div>
+            <div class="entry"><span class="k">Sent</span><span class="who">Taunya</span><span class="when">Monday 10:30 AM · 15 days ago</span><div class="body">Invoice sent to customer (stripe)</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>Opens</b> the same per-job form the reports list opens, over the window. On a job with more than one priced line, like this one, the form asks how far along each line is.</p>
+  </div>
+  <div>
+    <div class="cap green">Proposed · on a phone <span class="r">the pills wrap, the button keeps the right end</span></div>
+    <div class="fit">
+      <div class="card phone">
+        <div class="panel">
+          <div class="tabs">
+            <span class="pill on">All</span><span class="pill">Notes <b>2</b></span><span class="pill quiet">Reports</span><span class="pill">Status <b>5</b></span><span class="pill">Billing <b>3</b></span><span class="pill">Crew <b>5</b></span>
+          </div>
+          <div class="tabs"><span class="readout">100% complete <span class="chip">set by office</span></span><span class="leave">＋ Leave Report</span></div>
+          <div class="feed">
+            <div class="entry"><span class="k">Invoice</span><span class="who">Taunya</span><span class="when">15 days ago</span><div class="body">Invoice created $420.00</div></div>
+            <div class="entry amber"><span class="k">Status</span><span class="who">Taunya</span><span class="when">15 days ago</span><div class="body">Ready to Bill → Billed</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">3</span>After the report saves</h2>
+<p class="lede">Marco files a Status Report from the window: <em>Custom Service Visit</em> to 50, a note. The feed reloads with the report on top, the <em>Reports</em> pill wakes with its count, the percent follows the report.</p>
+<div class="row">
+  <div>
+    <div class="cap green">After the save <span class="r">the feed, the pill, the readout</span></div>
+    <div class="fit">
+      <div class="card">
+        <div class="panel">
+          <div class="tabs">
+            <span class="pill on">All</span><span class="pill">Notes <b>2</b></span><span class="pill">Reports <b>1</b></span><span class="pill">Status <b>6</b></span><span class="pill">Billing <b>3</b></span><span class="pill">Crew <b>5</b></span>
+            <span class="readout right">38% complete <span class="chip green">crew report Oct 20</span></span><span class="leave" style="margin-left:10px">＋ Leave Report</span>
+          </div>
+          <div class="feed">
+            <div class="entry green new"><span class="k">Report</span><span class="who">Marco</span><span class="when">just now</span><div class="body">Status Report · Custom Service Visit — → 50% · job 100% → 38%</div><div class="sub">Set the new valve, waiting on the regulator. Material not here yet.</div></div>
+            <div class="entry amber"><span class="k">Status</span><span class="who">Marco</span><span class="when">just now</span><div class="body">38% complete — from field report</div></div>
+            <div class="entry"><span class="k">Invoice</span><span class="who">Taunya</span><span class="when">Monday 10:29 AM · 15 days ago</span><div class="body">Invoice created $420.00</div></div>
+          </div>
+        </div>
+        <div class="band">
+          <div class="box"><div class="l">Job Start</div><div class="v">Oct 3</div><div class="m">8:02 AM</div></div>
+          <div class="box"><div class="l">Last Work</div><div class="v">Oct 20</div><div class="m">4:12 PM</div></div>
+          <div class="box"><div class="l">Reports</div><div class="v link">1 report</div><div class="m">Marco · just now</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">The <em>Reports</em> box in the date band keeps being the door to the list and reads the new count. The Dashboard and the Pipeline follow as for any report.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span>Placement B — in the Reports box (not recommended)</h2>
+<p class="lede">A second line inside the date band's box. It keeps the reports' doors together, but the box is a scroll away on every job and its first line is already the list's door: two actions in one small box.</p>
+<div class="row">
+  <div>
+    <div class="cap">Alternative · the date band <span class="r">below the feed</span></div>
+    <div class="fit">
+      <div class="card">
+        <div class="band">
+          <div class="box"><div class="l">Job Start</div><div class="v">Oct 3</div><div class="m">8:02 AM</div></div>
+          <div class="box"><div class="l">Last Work</div><div class="v">Oct 20</div><div class="m">4:12 PM</div></div>
+          <div class="box"><div class="l">Reports</div><div class="v" style="color:var(--faint);font-weight:500">No reports yet</div><span class="leave">＋ Leave Report</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">5</span>Is this the best we can do?</h2>
+<ol class="crit">
+  <li><b>An icon in the window's top row</b> was considered. Those icons are destinations; a report is an act, and an icon needs a tooltip to say <i>report</i>. The words win.</li>
+  <li><b>A button in the note composer</b> beside <i>Arrived</i>, <i>Leaving</i> and <i>Set % complete</i> was considered. That row is the field's stamps and the office's note; a report has its own form and would make the row a third thing wide.</li>
+  <li><b>The empty Reports pill</b> reads as quiet text today, <i>No reports yet</i> on hover. With the button beside it, the quiet pill reads as "none yet, and here is how".</li>
+  <li><b>The label</b> is the Dashboard's <i>Leave Report</i>, so the field and the office press the same thing.</li>
+</ol>
+
+<h2><span class="num">6</span>Decisions for the owner</h2>
+<div class="dec">
+  <div class="d"><b>D1 · placement</b><span class="def">Default: A, the activity header.</span><br>Or B, the date band's box.</div>
+  <div class="d"><b>D2 · who sees it</b><span class="def">Default: everyone who may leave a job report, the Dashboard's gate.</span><br>Or the office team only.</div>
+</div>
+<p class="note" style="margin-top:18px">One PR: the prop and the button on <b>JobThreadNotesPanel</b>, the form mounted by <b>DetailJobModal</b> beside the reports list, the refresh on save, two smokes, the release note, the guide's line.</p>
+</div>
+</body>
+</html>

@@ -10,7 +10,9 @@
  * Changed from the prototype: the Words row reads the real gaps, the lines the office types for the customer (this
  * week's line, a pay application's covers line, a change order's description, a milestone, a move and its why, a
  * person's role) that have no Spanish yet, where the prototype always said yes; a customer off the flow gets one row,
- * since the page reads only a thank-you line; counts read in the singular when there is one. Pure.
+ * since the page reads only a thank-you line; counts read in the singular when there is one. Since cut 8d: Photos reads
+ * the daily log's photos link and the job's photos switch, as the page shows photos (8b-i), not a count of marked
+ * photos; After that is asked only while the page sizes the next bill; Your move takes accepting the work. Pure.
  */
 
 import { customerMoveWords, type CustomerMove } from '../flows/customerMove'
@@ -35,19 +37,26 @@ export interface ReadinessIn {
   /** What we call them. */
   firstName: string
   off: boolean
-  /** Their move as `customerMove` reads it, in English. */
-  move: CustomerMove
+  /** Their move as `customerMove` reads it, in English, or the work to accept. */
+  move: CustomerMove | { kind: 'accept'; title: string }
   /** The step on now, by its English name. */
   nowStep: string | null
   today: string
-  /** This week's customer line on the daily log, with the photos marked for them. */
-  week: { on: string; line: TypedLine; photos: number } | null
+  /**
+   * This week's customer line on the daily log, and its photos: the log's photos link with the job's switch on
+   * (`linked`), no link on the log (`none`), or the switch off (`off`).
+   */
+  week: { on: string; line: TypedLine; photos: WeekPhotos } | null
   apps: { n: number; covers: TypedLine | null; state: PayAppState }[]
   next: NextAppIn | null
+  /** Whether the page sizes the next bill (After that); false leaves the row out. Unsaid: it does. */
+  sizesNext?: boolean
   changes: CustomerChange[]
   schedule: { milestones: { name: TypedLine }[]; moves: { name: TypedLine; why: TypedLine | null }[] }
   people: { name: string; role: TypedLine }[]
 }
+
+export type WeekPhotos = 'linked' | 'none' | 'off'
 
 const STALE_AFTER_DAYS = 7
 
@@ -85,7 +94,12 @@ export function portalReady(input: ReadinessIn): ReadyRow[] {
   rows.push({
     ok: true,
     piece: 'Your move',
-    words: input.move.kind === 'none' ? `Nothing owed. ${first} reads that we are on ${now ?? 'the next step'}.` : customerMoveWords(input.move),
+    words:
+      input.move.kind === 'none'
+        ? `Nothing owed. ${first} reads that we are on ${now ?? 'the next step'}.`
+        : input.move.kind === 'accept'
+          ? `${input.move.title}.`
+          : customerMoveWords(input.move),
     from: now ? 'the step' : 'the flow',
     fix: now ? 'step' : 'flows',
   })
@@ -103,13 +117,17 @@ export function portalReady(input: ReadinessIn): ReadyRow[] {
     from: 'the daily log',
     fix: 'log',
   })
-  rows.push({
-    ok: !!w && w.photos > 0,
-    piece: 'Photos',
-    words: w && w.photos > 0 ? `${plural(w.photos, 'photo', 'photos')} marked for the customer this week.` : 'No photo marked for the customer this week. The card shows words only.',
-    from: 'the daily log',
-    fix: 'log',
-  })
+  if (w?.photos === 'off') {
+    rows.push({ ok: true, piece: 'Photos', words: 'Photos are off for this job.', from: 'Settings → Customer page', fix: 'words' })
+  } else {
+    rows.push({
+      ok: w?.photos === 'linked',
+      piece: 'Photos',
+      words: w?.photos === 'linked' ? 'This week’s line links to the job’s photos.' : 'No photos link on this week’s log. The card shows words only.',
+      from: 'the daily log',
+      fix: 'log',
+    })
+  }
 
   if (input.apps.length) {
     const bare = input.apps.filter((a) => !a.covers || !a.covers.en.trim()).map((a) => a.n).sort((p, q) => p - q)
@@ -125,7 +143,7 @@ export function portalReady(input: ReadinessIn): ReadyRow[] {
     })
   }
 
-  rows.push({
+  if (input.sizesNext !== false) rows.push({
     ok: !!input.next,
     piece: 'After that',
     words: input.next

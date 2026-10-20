@@ -9,6 +9,7 @@ import { supabase } from './supabase'
 import { mergeMaxScheduleWorkDateByJobId } from './stagesJobReferenceDates'
 import { applyStagesEnrichment, parseStagesEnrichmentPayload, type StagesEnrichment, type StagesEstimateCandidate } from './jobs/stagesEnrichment'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { fetchAllRows } from './supabasePaging'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { buildJobsListStagesPrimarySelect, JOBS_LEDGER_FIXTURES_EMBED, JOBS_LEDGER_MATERIALS_EMBED } from './jobsLedgerEmbedSelects'
@@ -381,25 +382,41 @@ export async function fetchJobsLedgerStagesPrimary(
   const idsFilter = options.ids
   let rows: JobsLedgerStagesPrimaryRow[]
   try {
-    const data = (await withSupabaseRetry(
-      async () =>
-        idsFilter != null
-          ? supabase
-              .from('jobs_ledger')
-              .select(buildJobsListStagesPrimarySelect())
-              .in('id', [...idsFilter])
-              .order('hcp_number', { ascending: false })
-          : buildJobsListStagesQuery(customerFilter, statusScope),
+    // Paged since v2.5571: PostgREST answers an un-ranged read with its first 1,000 rows and
+    // no error, and the Paid in Full scope carried 767 rows on 2026-10-15. A fresh query per
+    // page; `id` breaks ties on `hcp_number` so the pages never shuffle between requests.
+    rows = await fetchAllRows<JobsLedgerStagesPrimaryRow>(
+      async (from, to) => ({
+        data: (await withSupabaseRetry(
+          async () =>
+            idsFilter != null
+              ? supabase
+                  .from('jobs_ledger')
+                  .select(buildJobsListStagesPrimarySelect())
+                  .in('id', [...idsFilter])
+                  .order('hcp_number', { ascending: false })
+                  .order('id', { ascending: true })
+                  .range(from, to)
+              : buildJobsListStagesQuery(customerFilter, statusScope).order('id', { ascending: true }).range(from, to),
+          'fetch jobs_ledger for stages',
+        )) as unknown as JobsLedgerStagesPrimaryRow[] | null,
+        error: null,
+      }),
       'fetch jobs_ledger for stages',
-    )) as unknown
-    rows = (data as JobsLedgerStagesPrimaryRow[] | null) ?? []
+    )
     if (idsFilter == null && statusScope === 'ready_to_bill') {
-      const companion = (await withSupabaseRetry(
-        async () => buildWorkingWithRtbInvoiceQuery(customerFilter),
+      const companion = await fetchAllRows<JobsLedgerStagesPrimaryRow & { rtb_gate?: unknown }>(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () => buildWorkingWithRtbInvoiceQuery(customerFilter).order('id', { ascending: true }).range(from, to),
+            'fetch working-with-RTB jobs for stages',
+          )) as unknown as Array<JobsLedgerStagesPrimaryRow & { rtb_gate?: unknown }> | null,
+          error: null,
+        }),
         'fetch working-with-RTB jobs for stages',
-      )) as unknown
+      )
       const seen = new Set(rows.map((r) => r.id))
-      for (const raw of (companion as Array<JobsLedgerStagesPrimaryRow & { rtb_gate?: unknown }> | null) ?? []) {
+      for (const raw of companion) {
         const { rtb_gate: _gate, ...row } = raw
         if (!seen.has(row.id)) rows.push(row as JobsLedgerStagesPrimaryRow)
       }

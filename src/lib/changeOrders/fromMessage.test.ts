@@ -109,7 +109,7 @@ describe('the refusals', () => {
 
 describe('plain words', () => {
   it('hold on every refusal', () => {
-    const contacts: MessageContact[] = (['customer', 'trade', 'arch', 'unknown'] as const).map((kind) => ({ ...PRIYA, kind }))
+    const contacts: MessageContact[] = (['customer', 'trade', 'arch', 'lead', 'supply_house', 'candidate', 'sub', 'unknown'] as const).map((kind) => ({ ...PRIYA, kind }))
     const results = [
       ...contacts.map((c) => draftFromMessage(SINK, c, [HELOTES])),
       draftFromMessage({ ...SINK, jobId: null }, PRIYA, [HELOTES]),

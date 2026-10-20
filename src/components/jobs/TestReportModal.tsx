@@ -265,7 +265,7 @@ export default function TestReportModal({
   const statusChip = selected ? (
     <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px', background: selected.status === 'sent' ? '#e8f5ec' : '#fff6e0', color: selected.status === 'sent' ? '#1f7a3a' : '#b7791f' }}>{testReportStatusLabel(selected)}</span>
   ) : (
-    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px', background: 'var(--surface-muted, var(--surface))', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>New</span>
+    <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px', background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>New</span>
   )
 
   const footer = (

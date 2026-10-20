@@ -59,7 +59,9 @@ async function mount() {
   )
 }
 
-describe('DashboardJobModeCard — hand the phone', () => {
+// The whole Job Mode card mounts in each case, as in the Message the customer smoke: 15 s rather than the default 5,
+// since a merge-queue runner is slower than the office Mac.
+describe('DashboardJobModeCard — hand the phone', { timeout: 15_000 }, () => {
   it('clocked in on a job with no agreement: the master sees the door, and a tap asks for the in-person link', async () => {
     scenario.openSession = { id: 'sess-1', job_ledger_id: JOB_C, bid_id: null }
     scenario.contracts = []

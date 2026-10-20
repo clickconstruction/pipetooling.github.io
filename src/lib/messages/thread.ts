@@ -12,6 +12,7 @@ import {
   companyWeekStartSundayContaining,
   ymdDaysBetween,
 } from '../../utils/dateUtils'
+import type { LineFile } from './lineFileTypes'
 
 export type MessageChannel = 'call' | 'voicemail' | 'missed' | 'text' | 'email' | 'note' | 'event' | 'portal'
 
@@ -42,6 +43,13 @@ export interface ThreadMessage {
   /** A team note's day to come back to Follow up, and who set it. */
   backOn?: string | null
   backBy?: string | null
+  /** The files and links it came or went with, in order (cut 6, `lineFiles.ts`; the type in `lineFileTypes.ts`). */
+  files?: readonly LineFile[]
+  /**
+   * The box it came in on or went out from (R6, `messages.mailbox`): the team box or bids@. Null on a line from before
+   * R6, a note or an event. Written out here, not imported from `boxes.ts`, so the edge copy of this file stays light.
+   */
+  mailbox?: 'team' | 'bids' | null
 }
 
 const byTime = (a: { at: string }, b: { at: string }) => Date.parse(a.at) - Date.parse(b.at)
@@ -254,26 +262,42 @@ export type ThreadRow =
    */
   | { kind: 'line'; message: ThreadMessage; job: 'full' | 'number' | 'none' }
 
+/** Where the rows stand while they are drawn: the day of the last divider, and the job of the last line on it. */
+export interface ThreadRowState {
+  day: string
+  lastJob: string | null
+}
+
+/** Lines oldest first, as the thread draws them. */
+export function byTimeOldestFirst<T extends { at: string }>(lines: readonly T[]): T[] {
+  return [...lines].sort(byTime)
+}
+
+/**
+ * One line onto the rows: its day's divider when its day is new, then the event or the line with how its job reads.
+ * `threadRows`' rule, and the app's folded runs' (`appLines.ts`, `foldedThreadRows`) for the lines they draw.
+ */
+export function pushThreadRow(rows: { push(row: ThreadRow): unknown }, state: ThreadRowState, m: ThreadMessage, nowIso: string): void {
+  const ymd = chicagoDay(m.at)
+  if (ymd !== state.day) {
+    rows.push({ kind: 'day', ymd, label: dayLabel(m.at, nowIso) })
+    state.day = ymd
+    state.lastJob = null
+  }
+  if (m.channel === 'event') {
+    // An event never breaks a run of one job.
+    rows.push({ kind: 'event', message: m, time: clockTime(m.at) })
+    return
+  }
+  const job = !m.jobId ? 'none' : m.jobId === state.lastJob ? 'number' : 'full'
+  state.lastJob = m.jobId
+  rows.push({ kind: 'line', message: m, job })
+}
+
 /** The thread as the screen draws it, oldest first: day dividers, events and lines. */
 export function threadRows(lines: readonly ThreadMessage[], nowIso: string): ThreadRow[] {
   const rows: ThreadRow[] = []
-  let day = ''
-  let lastJob: string | null = null
-  for (const m of [...lines].sort(byTime)) {
-    const ymd = chicagoDay(m.at)
-    if (ymd !== day) {
-      rows.push({ kind: 'day', ymd, label: dayLabel(m.at, nowIso) })
-      day = ymd
-      lastJob = null
-    }
-    if (m.channel === 'event') {
-      // An event never breaks a run of one job.
-      rows.push({ kind: 'event', message: m, time: clockTime(m.at) })
-      continue
-    }
-    const job = !m.jobId ? 'none' : m.jobId === lastJob ? 'number' : 'full'
-    lastJob = m.jobId
-    rows.push({ kind: 'line', message: m, job })
-  }
+  const state: ThreadRowState = { day: '', lastJob: null }
+  for (const m of byTimeOldestFirst(lines)) pushThreadRow(rows, state, m, nowIso)
   return rows
 }

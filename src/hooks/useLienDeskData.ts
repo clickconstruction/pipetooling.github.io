@@ -1,3 +1,5 @@
+import type { LienMailPieceRow } from '../lib/mail/lienMailPieces'
+import { readMailPiecesBySource } from '../lib/mail/lienMailPiecesIo'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -129,6 +131,10 @@ export type LienDeskData = {
   filingsByJob: Record<string, JobLienFilingRow[]>
   /** The job's live demand letters (v2.3880) — the timeline's demand node on the desk's panes; absent in light mode and on the GC run. */
   demandLettersByJob?: Record<string, JobDemandLetterRow[]>
+  /** The mail pieces behind the filings (the Docsmit train, 6b), by filing id; absent in light mode, and empty until a notice mails through Docsmit. */
+  mailPiecesByFiling?: Record<string, LienMailPieceRow[]>
+  /** The pieces behind each approved desk item (v2.5532), from prepare on: the run builds a copy that already went through Docsmit as mailed. Absent in light mode. */
+  mailPiecesByItem?: Record<string, LienMailPieceRow[]>
 }
 
 const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
@@ -277,6 +283,8 @@ export function useLienDeskData(
         let gcsHeldBefore = new Set<string>()
         let claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
         let filingsByJob: Record<string, JobLienFilingRow[]> = {}
+        let mailPiecesByFiling: Record<string, LienMailPieceRow[]> = {}
+        let mailPiecesByItem: Record<string, LienMailPieceRow[]> = {}
         let demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
         if (!light) {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
@@ -311,6 +319,14 @@ export function useLienDeskData(
             ).catch(() => [])
             for (const f of (part ?? []) as JobLienFilingRow[]) (filingsByJob[f.job_id] ??= []).push(f)
           }
+          // The mail pieces (the Docsmit train, 6b): the provider's word on each envelope, by filing; and (v2.5532) the
+          // pieces a notice not yet recorded already went out as, by desk item, so the run never offers them again.
+          const [byFiling, byItem] = await Promise.all([
+            readMailPiecesBySource(Object.values(filingsByJob).flat().map((f) => f.id), 'lien desk: mail pieces'),
+            readMailPiecesBySource(allItems.filter((i) => i.status === 'approved').map((i) => i.id), 'lien desk: pieces in the run'),
+          ])
+          mailPiecesByFiling = byFiling
+          mailPiecesByItem = byItem
           // The demand letters on the desk's jobs (v2.3880): one read, so every pane's strip carries the letter the Lien window draws.
           demandLettersByJob = {}
           for (const chunk of chunkIds(jobIds)) {
@@ -367,6 +383,8 @@ export function useLienDeskData(
           claimCorrectionsByJob,
           filingsByJob,
           demandLettersByJob,
+          mailPiecesByFiling,
+          mailPiecesByItem,
         })
       } catch {
         if (!cancelled)

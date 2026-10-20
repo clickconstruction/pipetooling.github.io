@@ -80,3 +80,16 @@ describe('PhoneDockMoreSheet', () => {
     expect(props.onClose).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('PhoneDockMoreSheet: Messages among the pages', () => {
+  it('lists Messages for an assistant, and opens it', () => {
+    mount()
+    expect(screen.getByRole('button', { name: 'Messages' })).toBeTruthy()
+  })
+
+  it('leaves Messages off a primary’s sheet', () => {
+    mount({ role: 'primary', userId: 'u-primary', slots: ['jobs', 'schedule', 'po', 'inbox'] })
+    expect(screen.queryByRole('button', { name: 'Messages' })).toBeNull()
+  })
+})
+

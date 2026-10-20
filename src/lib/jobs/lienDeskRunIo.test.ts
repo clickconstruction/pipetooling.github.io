@@ -168,6 +168,23 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
   })
 })
 
+describe('recordLienDeskRun · a copy that went through Docsmit (v2.5532)', () => {
+  it('records the piece, its USPS number and the day USPS took it; a paper copy keeps the Mailed on day', async () => {
+    const viaDocsmit = { ...notice(), recipients: notice().recipients.map((r) => (r.key === 'owner' ? { ...r, tracking: '9407 9', via: 'docsmit' as const, pieceId: 'p1', pieceStatus: 'mailed' as const, pieceProblem: null, pieceMailedOn: '2026-10-03' } : r)) }
+    await recordLienDeskRun([viaDocsmit], { ...OPTS, mailedOn: '2026-10-05' })
+    expect((db.inserts[0] as { sends: unknown[] }).sends).toEqual([
+      { recipient: 'owner', method: 'certified_mail', tracking: '9407 9', sent_on: '2026-10-03', via: 'docsmit', piece_id: 'p1' },
+      { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-10-05' },
+    ])
+  })
+
+  it('a piece USPS has not taken yet records the Mailed on day, and the poll writes the real one later', async () => {
+    const sentOnly = { ...notice(), recipients: notice().recipients.map((r) => (r.key === 'owner' ? { ...r, tracking: '', via: 'docsmit' as const, pieceId: 'p1', pieceStatus: 'sent' as const, pieceMailedOn: null } : r)) }
+    await recordLienDeskRun([sentOnly], OPTS)
+    expect((db.inserts[0] as { sends: Array<{ sent_on: string }> }).sends[0]).toMatchObject({ tracking: '', sent_on: '2026-10-06', via: 'docsmit', piece_id: 'p1' })
+  })
+})
+
 describe('buildRunNoticePdf · the attachment the courtesy preview shows (v2.5073)', () => {
   it('is the PDF the courtesy email attaches, byte for byte', async () => {
     const shown = await buildRunNoticePdf(notice(), 'original_contractor', [], [])

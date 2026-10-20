@@ -6,7 +6,7 @@
 
 ## Quick orientation
 
-**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~520 tables, all with RLS; ~150 Edge Functions.
+**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~550 tables, all with RLS; ~160 Edge Functions.
 
 ---
 
@@ -67,7 +67,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 6. **Test all 9 roles** — dev, master_technician, assistant, controller (assistant-like + payroll access), subcontractor, helpers (UI "Helper"), estimator, primary, superintendent.
 7. **Company time zone** — `APP_CALENDAR_TZ` from `src/utils/dateUtils.ts` (Edge: `supabase/functions/_shared/appTimeZone.ts`); no new `'America/Chicago'` literals (`npm run check:timezone`).
 8. **Realtime** — `useRealtimeChannel` from `src/hooks/useRealtimeChannel.ts` for every `postgres_changes` listener, filtered server-side via the `filter` string; don't add tables to the `supabase_realtime` publication casually.
-9. **Branch + PR** — `main` is protected. Branch → PR (`gh pr create --fill`) → CI `checks` (typecheck + lint + test) green → squash-merge. Run `npm run typecheck && npm run lint && npm test && npm run build` locally first. Never `git add -A`.
+9. **Branch + PR** — `main` is protected. Branch → PR (`gh pr create --fill`) → CI `checks` (typecheck + lint + test) green → squash-merge. Run `npm run typecheck && npm run lint && npm test && npm run build` locally first — `checks` never builds (only `deploy.yml` does), so a change to a glob, an asset import or `vite.config.ts` is proven by a local `npm run build`, never by a green PR. Never `git add -A`.
 10. **Theme tokens, not raw hexes** — CSS variables from `src/index.css`; CI runs `node scripts/theme-tokenize.mjs --check src`.
 11. **Docs ship with the PR** — release note + `docs/recent-features/` fragment, migration and edge-function fragments, help guide, specialist doc: `CLAUDE.md` → Working conventions. Amend the line that holds a fact; never append feature detail to this file, `docs/AI_CONTEXT.md`, or `docs/README.md`.
 
@@ -81,4 +81,4 @@ Break-glass repairs (understand what happened before running either):
 - **Remote-only version** (a ledger row with no repo file): `supabase migration repair --status reverted VERSION --linked` — edits the history table only; runs no DOWN, drops nothing.
 - **Push fails "already exists"** (DDL applied but never recorded): `supabase migration repair --status applied VERSION --linked`, then `supabase db push --linked` (`--include-all` for out-of-order timestamps).
 
-last_updated: 2026-10-12
+last_updated: 2026-10-17

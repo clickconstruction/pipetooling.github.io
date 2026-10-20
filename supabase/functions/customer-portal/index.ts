@@ -164,6 +164,29 @@ serve(async (req) => {
     // carrying a verified staff session does NOT count — every "view" on record had been
     // staff. The shared predicate lives in `_shared/publicViewCounting.ts`.
     const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+
+    // Messages cut 8b-i: a paper opened on the customer's page (`?paper=<kind>:<id>`): one portal_paper row for the
+    // office's read-back, counted by the same rule as a page load (outside opens only), and only for a paper on one of
+    // this customer's GC jobs. Answers at once; the statement is not built.
+    const paperParam = url.searchParams.get('paper')
+    if (paperParam) {
+      const [kind, paperId] = paperParam.split(':')
+      const table = kind === 'contract' ? 'gc_owner_contract_sends' : kind === 'change_order' ? 'gc_change_orders' : kind === 'pay_app' ? 'gc_owner_pay_apps' : null
+      if (table && paperId && /^[0-9a-f-]{36}$/i.test(paperId) && viewDecision.count) {
+        const { data: paper } = await admin.from(table).select('project_id').eq('id', paperId).maybeSingle()
+        const projectId = (paper as { project_id?: string } | null)?.project_id
+        if (projectId) {
+          const { data: project } = await admin.from('projects').select('customer_id').eq('id', projectId).maybeSingle()
+          if ((project as { customer_id?: string | null } | null)?.customer_id === link.customer_id) {
+            await admin
+              .from('public_page_views')
+              .insert({ surface: 'portal_paper', entity_id: link.customer_id, via: rawToken ? 'token' : 'slug', paper_kind: kind, paper_id: paperId })
+              .then(() => {}, () => {})
+          }
+        }
+      }
+      return jsonResponse({ ok: true })
+    }
     if (viewDecision.count) {
       void admin
         .from('public_page_views')
@@ -714,6 +737,30 @@ serve(async (req) => {
         console.error('customer-portal: the schedule did not load', e)
       }
     }
+    // Messages cut 8b-i: the customer's page (shape B) on each GC job, the money, this week's line, the people, the
+    // schedule's moves and the switches, and every sentence of ours as the office keeps it. A failed read leaves the
+    // page as it was.
+    let pageWords: { key: string; en: string; es: string }[] = []
+    if (gcJobs.length > 0) {
+      try {
+        const { loadGcPortalPages, loadCustomerPageWords } = await import('../_shared/gcPortalPage.ts')
+        await loadGcPortalPages(admin, gcJobs)
+        pageWords = await loadCustomerPageWords(admin)
+      } catch (e) {
+        console.error('customer-portal: the page did not load', e)
+      }
+    }
+    // Messages cut 8e: their thread for the page's Messages tab, only the lines between us and them by text, email or
+    // their page (`_shared/gcPortalThread.ts`). Null: no page, or a read that failed, and the page draws no tab.
+    let thread: unknown[] | null = null
+    if (gcJobs.some((j) => j.page)) {
+      try {
+        const { loadPortalThread } = await import('../_shared/gcPortalThread.ts')
+        thread = await loadPortalThread(admin, link.customer_id)
+      } catch (e) {
+        console.error('customer-portal: the thread did not load', e)
+      }
+    }
 
     // GC mode (Owner Billing O8b, v2.5123): the certified GC bills they may pay by card, with its 3% fee, and the
     // ones on card already (their fee shown under the bill). The offer needs the switch, the app_settings row
@@ -762,6 +809,8 @@ serve(async (req) => {
       bankTransfer,
       ownerRecords,
       gcJobs,
+      pageWords,
+      thread,
       cardBills,
     })
   } catch (e) {

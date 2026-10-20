@@ -19,6 +19,11 @@ export function envelopeKey(name: string, address: string): string {
   return n && a ? `${n}|${a}` : ''
 }
 
+/** The envelope's copies all went through a provider: the provider and the piece ride on the first recipient inside. */
+export function recipientViaDocsmit(r: Pick<RunRecipient, 'via' | 'pieceId' | 'pieceStatus'>): boolean {
+  return r.via === 'docsmit' && !!r.pieceId && (r.pieceStatus === 'sent' || r.pieceStatus === 'mailed')
+}
+
 export type RunEnvelopeContent = { notice: RunNotice; recipient: RunRecipient; noticeIndex: number; recipientIndex: number }
 
 export type RunEnvelope = {
@@ -42,7 +47,9 @@ export function runEnvelopes(notices: ReadonlyArray<RunNotice>): RunEnvelope[] {
   const byKey = new Map<string, RunEnvelope>()
   notices.forEach((notice, noticeIndex) => {
     notice.recipients.forEach((recipient, recipientIndex) => {
-      const key = envelopeKey(recipient.name, recipient.address) || `${notice.itemId}:${recipient.key}`
+      // A copy that already went through Docsmit stays in the envelope it went in, its piece (v2.5532): a new copy to the
+      // same party gets an envelope of its own, so it is never taken for mailed.
+      const key = recipientViaDocsmit(recipient) ? `docsmit:${recipient.pieceId}` : envelopeKey(recipient.name, recipient.address) || `${notice.itemId}:${recipient.key}`
       let env = byKey.get(key)
       if (!env) {
         env = { key, n: out.length + 1, label: recipient.label, name: recipient.name, address: recipient.address, email: recipient.email, method: recipient.method, tracking: recipient.tracking, contents: [] }

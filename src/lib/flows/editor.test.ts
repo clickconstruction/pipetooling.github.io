@@ -34,6 +34,8 @@ import {
   whoMovesPreview,
   type EditResult,
   type FlowDraft,
+  setCallScript,
+  setSuggestCall,
 } from './editor'
 import { FLOW_FIXTURE_NOW, FLOW_FIXTURE_PEOPLE } from './flowFixtures'
 import { SEED_FLOWS } from './seed'
@@ -406,5 +408,38 @@ describe('History past 500 characters', () => {
     expect(history.map((h) => h.stepId)).toEqual(['papers', 'papers'])
     expect(history.every((h) => h.what.length <= 500)).toBe(true)
     expect(history.map((h) => h.what).join('; ')).toBe(draftWords(draft).map((w) => w.words).join('; '))
+  })
+})
+
+describe('the call script on a step (v2.5596)', () => {
+  it('sets the script in both languages, clears it when both are empty, and words each change', () => {
+    const d = draftFrom(SEED_FLOWS.residential)
+    const set = setCallScript(d, 'booked', { en: ' Hi {first}, {me} here. Still good for {day}? ', es: '' })
+    expect(set.ok).toBe(true)
+    if (!set.ok) return
+    expect(stepById(set.draft.flow, 'booked')?.callScript).toEqual({ en: 'Hi {first}, {me} here. Still good for {day}?', es: '' })
+    expect(set.draft.changes[set.draft.changes.length - 1]).toEqual({ stepId: 'booked', words: 'Booked: call script → the office’s' })
+    const cleared = setCallScript(set.draft, 'booked', { en: '  ', es: '' })
+    expect(cleared.ok && stepById(cleared.draft.flow, 'booked')?.callScript).toBeNull()
+    const clearedLast = cleared.ok ? cleared.draft.changes[cleared.draft.changes.length - 1] : undefined
+    expect(clearedLast && 'words' in clearedLast ? clearedLast.words : null).toBe('Booked: call script → the app’s own')
+    expect(setCallScript(d, 'nope', { en: 'x', es: '' }).ok).toBe(false)
+  })
+
+  it('ticks suggest a call off and on, and the rows carry the three columns both ways', () => {
+    const d = draftFrom(SEED_FLOWS.residential)
+    const off = setSuggestCall(d, 'estimate', false)
+    expect(off.ok && stepById(off.draft.flow, 'estimate')?.suggestCall).toBe(false)
+    const offLast = off.ok ? off.draft.changes[off.draft.changes.length - 1] : undefined
+    expect(offLast && 'words' in offLast ? offLast.words : null).toBe('Estimate sent: suggest a call → no')
+    const rows = flowRows(off.ok ? off.draft.flow : d.flow)
+    const estimate = rows.find((r) => r.step_key === 'estimate')!
+    expect(estimate.suggest_call).toBe(false)
+    expect(estimate.call_script).toBe(SEED_FLOWS.residential.lanes.flatMap((l) => l.steps).find((s) => s.id === 'estimate')!.callScript!.en)
+    const back = flowFromRows('residential', rows)
+    expect(stepById(back, 'estimate')?.suggestCall).toBe(false)
+    expect(stepById(back, 'estimate')?.callScript).toEqual(stepById(off.ok ? off.draft.flow : d.flow, 'estimate')?.callScript)
+    expect(stepById(back, 'onway')?.callScript).toBeNull()
+    expect(stepById(back, 'onway')?.suggestCall).toBe(true)
   })
 })

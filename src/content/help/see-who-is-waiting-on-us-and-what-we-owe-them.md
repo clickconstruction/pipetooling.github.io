@@ -15,8 +15,9 @@ The Dashboard's **Needs you** card shows the same count on a **GC projects** lin
 
 The tab has four lists at the top.
 
+- **New** holds what came in and still needs sorting. [Sort new messages before anyone answers them](/help/sort-new-messages) shows how.
 - **Needs you** holds notes whose day has come, and customers who wrote on their page.
-- **Needs a reply** holds everyone who wrote or called and has no answer yet.
+- **Needs a reply** holds everyone who wrote or called and has no answer yet. Someone in **New** is not here too.
 - **We owe them** holds what we still have to do for someone, with its day.
 - **Nudges from the flow** holds people who are slow on a step and need a reminder.
 
@@ -78,7 +79,26 @@ A controller or a dev also sees the contract clause changes waiting on their app
 
 Each row says what we owe and by when, like {{chip:blue|we owe the start date · by Mon Oct 5}}. The chip turns red once that day has passed. The line under the name says who marked it and when.
 
-Press the chip to open their thread at the reply box. What we owe stays our move until a note or a message marks it done.
+Press the chip to open their thread at the reply box. What we owe stays our move until a note or a message marks it done. [Keep track of what we owe someone](/help/keep-track-of-what-we-owe-someone) shows how to mark it, change it and mark it done.
+
+## In their thread
+
+Open someone's thread from any row. The same pill sits at the top right of the thread. Press it to take the conversation or hand it on. Taking it or handing it on adds a gray line to the thread.
+
+The {{button:outline|⋯}} menu at the top changes where the conversation stands.
+
+- On a conversation waiting on us, it has {{button:outline|No reply needed}} and {{button:outline|Remind me Monday}}.
+- On any other, it has {{button:outline|Reopen}}. Reopen puts the person back on Follow up.
+
+A note with a day shows {{chip:blue|↩ back Fri Oct 2}} under the name. Press × beside it to clear the day. The note stays in the thread.
+
+A snoozed conversation shows {{chip:gray|snoozed until Mon Oct 5}} there too.
+
+## How a customer hears from us
+
+A customer can text back one word, EMAIL or TEXT, to say how they want to hear from us. The thread gets a gray line. You can set it too. Open their thread and press **⋯**. The menu offers three ways. Pick **Hears from us by text** or **Hears from us by email**. Pick **Hears from us either way** to clear it. A tick marks the one that stands.
+
+When a customer asked for email, the morning run holds their texts on Today's sends and says why. The Tell the customer sheet says it too.
 
 ## Nudges from the flow
 

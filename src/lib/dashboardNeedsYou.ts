@@ -35,6 +35,7 @@ import { arReturnCaseView, type ArReturnCaseRow } from './jobs/arReturnCase'
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 import type { LienDeskNeedsYou } from './jobs/lienDesk'
+import { docsmitCreditLine } from './mail/docsmitSettings'
 import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
@@ -45,10 +46,10 @@ import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 
 /**
- * Residential build, R8 · 14: the Customers line is built, counted and wired, and stays off until Messages has its page.
- * R2 turns it on with the `/messages` route, so the press never opens a page that is not there.
+ * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
+ * `/messages` route of R2 PR 1 there for its press. False takes the line off the card and stops the counts' read.
  */
-export const CUSTOMER_MESSAGES_LINE_ON = false
+export const CUSTOMER_MESSAGES_LINE_ON = true
 
 /** Where the Customers line's press goes: Messages, its customers only. */
 export const CUSTOMER_MESSAGES_HREF = '/messages?kind=customer'
@@ -95,11 +96,14 @@ export type NeedsYouItem = {
     | 'tally-team'
     | 'lost-bids'
     | 'bid-followups'
+    | 'paid-claims-stale'
+    | 'money-on-my-bids'
     | 'team-reviews'
     | 'statement-round'
     | 'roadmap-needs-person'
     | 'job-followups'
     | 'customer-messages'
+    | 'todays-sends'
     | 'gc-review-weekly'
     | 'bulk-delete'
     | 'bulk-hours'
@@ -111,6 +115,7 @@ export type NeedsYouItem = {
     | 'demand-deadline'
     | 'lien-serve-copy'
   | 'lien-tracking-owed'
+    | 'docsmit-credit'
     | 'lien-suit-year'
     | 'lien-window-missed'
     | 'lien-notice-draft'
@@ -184,6 +189,10 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'claim-dev': 0,
   'customer-waiting': 0,
   'ar-deposits': 10,
+  // A customer's word that they paid with nothing landed in a week: the hearer asks the customer before the office chases.
+  'paid-claims-stale': 12,
+  // The estimator's own chase list: the money open on the jobs they sold, past their word first.
+  'money-on-my-bids': 14,
   // Money tier: a returned check still counted as paid overstates the job, the Pipeline and the lien claim.
   'returned-check': 10,
   'lien-unconditional': 20,
@@ -195,11 +204,15 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   // Revenue chasing tier, beside the quiet jobs: a customer waiting on our answer (residential build, R8 · 14).
   'customer-messages': 40,
+  // The same tier: the texts the morning run prepared for the office to press (Today's sends, v2.5595).
+  'todays-sends': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
   'bid-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
   'lien-tracking-owed': 10,
+  // The mail service's prepaid credit under the line (6b): the next run's envelopes would stop at a 402.
+  'docsmit-credit': 10,
   'lien-suit-year': 20,
   'lien-window-missed': 40,
   'lien-notice-draft': 40,
@@ -336,8 +349,9 @@ export type NeedsYouInputs = {
    */
   jobFollowupsEnabled: boolean
   /**
-   * Open jobs idle 21+ days (v2.2825) — the Job Summary Cycle view's stale-open
-   * list. `mine` = jobs whose lead tech is the signed-in user, so the card
+   * Open jobs idle 21+ days (v2.2825; since v2.5512 the Follow-ups deck's idle
+   * cards, `useJobFollowupNudge().idle`, so the card and the deck's Idle lens say
+   * one number). `mine` = jobs whose lead tech is the signed-in user, so the card
    * names a person. Null while loading; the hook reports zero on error.
    */
   staleOpenEnabled?: boolean
@@ -359,6 +373,15 @@ export type NeedsYouInputs = {
    * prices and sends. Null = nothing waiting / loading. Action opens Jobs →
    * Work Orders on the Drafts filter.
    */
+  /**
+   * The paid claims the signed-in person heard with nothing landed in a week (v2.5650, punch list #129): the count and
+   * the oldest one's words, from `useMyStaleClaims`.
+   */
+  staleClaimsEnabled?: boolean
+  staleClaims?: { count: number; firstLine: string } | null
+  /** Money on my bids (v2.5651): the lens's rollup and counts for the signed-in person's jobs, from `useMyMoney`. */
+  myMoneyEnabled?: boolean
+  myMoney?: { open: number; rollup: string; pastWord: number; stale: number } | null
   unpricedWorkOrdersEnabled?: boolean
   unpricedWorkOrders?: { count: number; subNames: string[]; oldestDays: number | null } | null
   jobFollowupCount: number | null
@@ -468,6 +491,12 @@ export type NeedsYouInputs = {
    */
   ownerRecordsSignedEnabled?: boolean
   ownerRecordsSigned?: import('./jobs/ownerRecords').OwnerRecordsSigned | null
+  /**
+   * Docsmit's prepaid credit (the Docsmit train, 6b, the credit line): the balance the hourly poll last read
+   * and the warn line from Developer settings; null while loading or before a dev set the service up.
+   */
+  docsmitCreditEnabled?: boolean
+  docsmitCredit?: { balance: number | null; asOf: string | null; warn: number; nowIso: string } | null
   lienWatchEnabled: boolean
   lienWatch: {
     noticeDue: { deadline: string; openBalance: number }[]
@@ -595,6 +624,12 @@ export type NeedsYouInputs = {
   customerMessagesEnabled?: boolean
   customerMessages?: CustomerMessagesCounts | null
   /**
+   * Today's sends (v2.5595, punch list #115): the texts the morning run prepared for the office to press, and the ones
+   * the office prepared for a morning, as `useTodaysSends` counts them (`lib/offers/offers.ts` → `todaysSendsLine`).
+   */
+  todaysSendsEnabled?: boolean
+  todaysSends?: { count: number; line: string } | null
+  /**
    * Messages, cut 4c (v2.5285): the clause changes waiting on a controller's or a dev's approval, as `useClauseNeeds` reads
    * them (`contracts/approval.ts` → `clauseNeeds`). Approvers only; the rows are empty for anyone else.
    */
@@ -672,6 +707,23 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       figure: String(n),
       actionLabel: 'Open the Lien desk',
     })
+  }
+
+  // The credit line (6b): the mail service's balance under the line in Developer settings — a run's certified envelopes would stop at a 402.
+  if (inputs.docsmitCreditEnabled && inputs.docsmitCredit && inputs.docsmitCredit.balance != null) {
+    const c = inputs.docsmitCredit
+    const line = docsmitCreditLine({ balance: c.balance, asOf: c.asOf }, c.warn, c.nowIso)
+    if (line.state === 'low' || line.state === 'out') {
+      items.push({
+        key: 'docsmit-credit',
+        severity: line.state === 'out' ? 'red' : 'amber',
+        kicker: 'Lien notices',
+        title: line.state === 'out' ? 'Docsmit credit is out' : `Docsmit credit is low: $${(c.balance as number).toFixed(2)}`,
+        detail: `${line.words}. A certified envelope with the return receipt costs about $10, and a run with no credit stops at the first one. Add credit on Docsmit's site (Account → Increase credit balance); the poll reads the balance every hour.`,
+        figure: `$${Math.round(c.balance as number)}`,
+        actionLabel: 'Open the Lien desk',
+      })
+    }
   }
 
   // Records for an owner (punch list #86): the owner did their part on the portal; the packet is ours to send.
@@ -864,10 +916,10 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       kicker: 'Jobs',
       title: n === 1 ? `An open job has sat idle ${minIdleDays}+ days` : `${n} open jobs have sat idle ${minIdleDays}+ days`,
       detail:
-        `${money} of contract with no field work in ${minIdleDays} days${mine > 0 ? ` — ${mine} ${mine === 1 ? 'is' : 'are'} yours` : ''}. ` +
-        'Each one needs a bill, an inspection, or to be closed. The Cycle view lists them longest-idle first.',
+        `${money} of contract with no crew on site in ${minIdleDays} days${mine > 0 ? ` — ${mine} ${mine === 1 ? 'is' : 'are'} yours` : ''}. ` +
+        'Each card says what the job needs: a bill, a visit, or to be closed. Review them one at a time; Looks fine and Snooze remember your call.',
       figure: String(n),
-      actionLabel: 'See them',
+      actionLabel: 'Review them',
     })
   }
 
@@ -1077,6 +1129,30 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
+  if (inputs.myMoneyEnabled && inputs.myMoney != null && inputs.myMoney.open > 0) {
+    const m = inputs.myMoney
+    items.push({
+      key: 'money-on-my-bids',
+      severity: m.pastWord > 0 ? 'red' : 'amber',
+      kicker: 'Money on your bids',
+      title: m.open === 1 ? 'One job you sold has money open' : `${m.open} jobs you sold have money open`,
+      detail: `${m.rollup}.${m.pastWord > 0 ? ' A day they named has gone by.' : ''}`,
+      figure: String(m.open),
+      actionLabel: 'Open the Money lens',
+    })
+  }
+  if (inputs.staleClaimsEnabled && inputs.staleClaims != null && inputs.staleClaims.count > 0) {
+    const { count, firstLine } = inputs.staleClaims
+    items.push({
+      key: 'paid-claims-stale',
+      severity: 'amber',
+      kicker: 'Money on your bids',
+      title: count === 1 ? 'A customer said they paid, and nothing landed' : `${count} customers said they paid, and nothing landed`,
+      detail: `${firstLine}. Ask them before the office chases.`,
+      figure: String(count),
+      actionLabel: 'Open the bid',
+    })
+  }
   if (inputs.bidFollowupsDue != null && inputs.bidFollowupsDue.count > 0) {
     const { count, overdueCount, value, names } = inputs.bidFollowupsDue
     const late = overdueCount === 0 ? '' : overdueCount === count ? (count === 1 ? ' The day has passed.' : ' Every day has passed.') : ` ${overdueCount} ${overdueCount === 1 ? 'is' : 'are'} past the day.`
@@ -1159,6 +1235,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         actionLabel: 'Messages',
       })
     }
+  }
+
+  if (inputs.todaysSendsEnabled && inputs.todaysSends && inputs.todaysSends.count > 0) {
+    const t = inputs.todaysSends
+    items.push({
+      key: 'todays-sends',
+      severity: 'amber',
+      kicker: 'Messages',
+      title: 'Today’s sends',
+      detail: t.line,
+      figure: t.count > 99 ? '99+' : String(t.count),
+      actionLabel: 'Open',
+    })
   }
 
   if (inputs.statementRoundEnabled && inputs.statementRound && inputs.statementRound.count > 0) {

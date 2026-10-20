@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canAccessProspectPipeline,
+  contactPersonFromProspect,
   customerDraftFromProspect,
   markProspectConverted,
   prospectChipLabel,
@@ -9,6 +10,7 @@ import {
   searchProspectsForCustomerForm,
   type ConvertibleProspect,
   type ProspectConversionClient,
+  markProspectOnBench,
 } from './prospectConversion'
 
 function prospect(overrides: Partial<ConvertibleProspect> = {}): ConvertibleProspect {
@@ -153,7 +155,7 @@ describe('markProspectConverted', () => {
     const res = await markProspectConverted('p-1', 'c-7', 'Acme', 'u-1', client)
     expect(res).toEqual({ ok: true })
     expect(calls).toEqual([
-      { table: 'prospects', op: 'update', values: { prospect_fit_status: 'converted' }, eq: ['id', 'p-1'] },
+      { table: 'prospects', op: 'update', values: { prospect_fit_status: 'converted', converted_customer_id: 'c-7' }, eq: ['id', 'p-1'] },
       {
         table: 'prospect_comments',
         op: 'insert',
@@ -182,5 +184,49 @@ describe('markProspectConverted', () => {
   it('never throws even when the client does', async () => {
     const client = { from: () => { throw new Error('boom') } } as unknown as ProspectConversionClient
     await expect(markProspectConverted('p-1', 'c-7', 'Acme', 'u-1', client)).resolves.toEqual({ ok: false, error: 'boom' })
+  })
+})
+
+describe('markProspectOnBench (v2.5559)', () => {
+  it('flips the status, keeps the company it became, and leaves a converted interaction naming the bench', async () => {
+    const { client, calls } = fakeClient()
+    const res = await markProspectOnBench('p-2', 'co-3', 'Bexar Fire Protection', 'u-1', client)
+    expect(res).toEqual({ ok: true })
+    expect(calls).toEqual([
+      { table: 'prospects', op: 'update', values: { prospect_fit_status: 'converted', converted_gc_company_id: 'co-3' }, eq: ['id', 'p-2'] },
+      {
+        table: 'prospect_comments',
+        op: 'insert',
+        values: {
+          prospect_id: 'p-2',
+          created_by: 'u-1',
+          comment_text: 'Added to the bench: Bexar Fire Protection (/gc?view=partners)',
+          interaction_type: 'converted',
+        },
+      },
+    ])
+  })
+
+  it('reports a refused update without throwing', async () => {
+    const { client, calls } = fakeClient({ updateError: 'RLS says no' })
+    await expect(markProspectOnBench('p-2', 'co-3', 'Bexar', 'u-1', client)).resolves.toEqual({ ok: false, error: 'RLS says no' })
+    expect(calls.map((c) => c.op)).toEqual(['update'])
+  })
+})
+
+describe('the person we call lands on the customer (v2.5603)', () => {
+  const sub = { company_name: 'Bexar Fire Protection', contact_name: 'Tomás Reyna', contact_title: 'Estimator', contact_phone: '(210) 555-0122', phone_number: '(210) 555-0188', email: 'tomas@example.com', address: '1800 Cibolo Trail', is_person: false, lang: 'es' }
+  it('a company: Commercial, the cell first, the language, and the person as a contact person with their title', () => {
+    expect(customerDraftFromProspect(sub)).toEqual({ name: 'Bexar Fire Protection', address: '1800 Cibolo Trail', phone: '(210) 555-0122', email: 'tomas@example.com', customerType: 'commercial', language: 'es' })
+    expect(contactPersonFromProspect(sub)).toEqual({ name: 'Tomás Reyna', phone: '(210) 555-0122', email: 'tomas@example.com', note: 'Estimator' })
+  })
+  it('a person on their own: Residential, and no contact person, since the customer is them', () => {
+    const dana = { company_name: 'Dana Whitlock', contact_name: 'Dana Whitlock', contact_title: null, contact_phone: '(512) 555-0177', phone_number: null, email: null, address: null, is_person: true, lang: 'en' }
+    expect(customerDraftFromProspect(dana)).toEqual({ name: 'Dana Whitlock', phone: '(512) 555-0177', customerType: 'residential', language: 'en' })
+    expect(contactPersonFromProspect(dana)).toBeNull()
+  })
+  it('an old row says nothing about the type or the language, and a nameless person is no contact person', () => {
+    expect(customerDraftFromProspect({ company_name: 'Ridgeway Builders', contact_name: null, phone_number: '(512) 555-0142', email: null, address: null })).toEqual({ name: 'Ridgeway Builders', phone: '(512) 555-0142' })
+    expect(contactPersonFromProspect({ is_person: false, contact_name: '  ', phone_number: '(512) 555-0142' })).toBeNull()
   })
 })

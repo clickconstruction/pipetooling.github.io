@@ -12,17 +12,10 @@ import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
 import { recordedPercentProvenance, reportPercentSeedHint, seedUntouchedPercentFields, type JobPercentProvenance } from '../lib/jobPercentProvenance'
 import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
-import { ReportStageProgressField } from './ReportStageProgressField'
-import {
-  REPORT_FIELD_LABEL_STAGE_PROGRESS,
-  defaultStageToReport,
-  jobPercentFromStages,
-  stageEffectivePct,
-  stageModeAvailable,
-  stageProgressFieldValue,
-  stageProgressRowsFromRpc,
-  type StageProgressRow,
-} from '../lib/reports/stageProgressReport'
+import { ReportLinesProgressField } from './ReportLinesProgressField'
+import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
+import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
+import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import ResponsiveModalShell from './ResponsiveModalShell'
@@ -86,11 +79,9 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const [turnawayOpen, setTurnawayOpen] = useState(false)
   /** The picked job's recorded % and who set it (v2.2852) — seeds the percent slider ("Currently 30%"). */
   const [jobPctSeed, setJobPctSeed] = useState<{ jobId: string; pct: number | null; provenance: JobPercentProvenance } | null>(null)
-  // Stage-weighted reports (v2.3192): the job's priced stage rows (Order / Any line
-  // items) from list_job_stage_progress; null = no stage mode (plain slider).
-  const [stageRows, setStageRows] = useState<{ jobId: string; rows: StageProgressRow[] } | null>(null)
-  const [stageMode, setStageMode] = useState(true)
-  const [stagePick, setStagePick] = useState<{ fixtureId: string; pct: number } | null>(null)
+  // Report by line (punch list #130, v2.5663): the job's priced lines from list_job_stage_progress,
+  // two or more; null = the plain slider. One hook, shared with the Additional report and the stepper.
+  const lineProgress = useJobLineProgress(selectedJob && selectedJob.source === 'job_ledger' ? selectedJob.id : null, open)
   /** Once the tech taps Change, emptying the search box must not re-auto-select the last job. */
   const suppressAutoSelectRef = useRef(false)
 
@@ -137,47 +128,6 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   }, [open, authUserId, selectedJob?.id, selectedJob?.source])
 
   useEffect(() => {
-    // Stage rows for the picker (v2.3192). The RPC is SECURITY DEFINER (field roles
-    // cannot read line items); a missing RPC (client ahead of the push) or any
-    // error simply means no stage mode — the plain slider stays.
-    let cancelled = false
-    setStageMode(true)
-    setStagePick(null)
-    if (!open || !selectedJob || selectedJob.source !== 'job_ledger') {
-      setStageRows(null)
-      return
-    }
-    const jobId = selectedJob.id
-    void (async () => {
-      try {
-        // Bound: a detached `supabase.rpc` loses `this` and throws before the request leaves.
-        // Cast the client, not `rpc.bind` (binding the typed overloads trips TS2589 as database.ts grows).
-        const untyped = supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> }
-        const rpc = (fn: string, args: Record<string, unknown>) => untyped.rpc(fn, args)
-        const { data, error } = await rpc('list_job_stage_progress', { p_job_id: jobId })
-        if (cancelled) return
-        if (error || !Array.isArray(data)) {
-          setStageRows(null)
-          return
-        }
-        const rows = stageProgressRowsFromRpc(data as Parameters<typeof stageProgressRowsFromRpc>[0])
-        if (!stageModeAvailable(rows)) {
-          setStageRows(null)
-          return
-        }
-        setStageRows({ jobId, rows })
-        const first = defaultStageToReport(rows)
-        setStagePick(first ? { fixtureId: first.fixtureId, pct: stageEffectivePct(first) } : null)
-      } catch {
-        if (!cancelled) setStageRows(null)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [open, selectedJob])
-
-  useEffect(() => {
     // Slider seed (v2.2852, J2-F1): the job's recorded % and who set it, so the form opens on
     // "Currently 30% — move to update" instead of 0. Best-effort — a failed read keeps the old 0 start.
     let cancelled = false
@@ -213,9 +163,11 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
 
   const seedForSelected =
     selectedJob && selectedJob.source === 'job_ledger' && jobPctSeed && jobPctSeed.jobId === selectedJob.id ? jobPctSeed : null
-  const stagesForSelected = stageRows && selectedJob && selectedJob.source === 'job_ledger' && stageRows.jobId === selectedJob.id ? stageRows.rows : null
-  const stageModeActive = stagesForSelected != null && stagesForSelected.length > 0 && stageMode && stagePick != null
-  const stageDerivedPct = stageModeActive && stagesForSelected && stagePick ? jobPercentFromStages(stagesForSelected, stagePick) : null
+  const linesActive = lineProgress.lines != null
+  const recordedPctForLines = lineProgress.recordedPct ?? seedForSelected?.pct ?? null
+  // The percent the report files: what the lines say once something moved; until then the job's own
+  // number, so a report that moves nothing files the same number, as the slider does.
+  const stageDerivedPct = linesActive ? (lineProgress.moved.length > 0 ? lineProgress.derivedPct : (recordedPctForLines ?? lineProgress.derivedPct)) : null
   const percentFieldLabel = (templateFields[selectedTemplateId] ?? []).find((f) => f.input_type === 'percent_0_100')?.label ?? null
   // Keep the template's percent value in step with the stage math, so the copy text,
   // the seed hint and the saved field all read the derived number.
@@ -403,11 +355,12 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     for (const f of fields) {
       fv[f.label] = fieldValueForSubmit(f, seededFieldValues(fields))
     }
-    // Stage-weighted (v2.3192): the derived job % is authoritative for the percent
-    // field, and the stage move is recorded in words beside it.
-    if (stageModeActive && stagesForSelected && stagePick && percentFieldLabel && stageDerivedPct != null) {
+    // Report by line (v2.5663): the number the lines add up to is the percent field, and the
+    // moved lines are written in words beside it (the v2.3192 field, many lines in one value).
+    if (linesActive && lineProgress.lines && percentFieldLabel && stageDerivedPct != null) {
       fv[percentFieldLabel] = String(stageDerivedPct)
-      fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = stageProgressFieldValue(stagesForSelected, stagePick.fixtureId, stagePick.pct)
+      const moves = lineProgressFieldValue(lineProgress.lines, lineProgress.picks, recordedPctForLines)
+      if (moves) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = moves
     }
     const jobLedgerId = selectedJob.source === 'job_ledger' ? selectedJob.id : null
     const projectId = selectedJob.source === 'project' ? selectedJob.id : null
@@ -481,18 +434,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         .invoke('send-report-email', { body: { report_id: inserted.id } })
         .catch(() => { /* report email is best-effort */ })
     }
-    // Stage-weighted (v2.3192): stamp the stage's progress on its line item (best-effort;
-    // the report already carries the number, and the RPC may not exist before the push).
-    if (jobLedgerId && stageModeActive && stagePick) {
-      // Untyped on purpose (the RPC may not exist before the push). Cast the client, not `rpc.bind`: binding
-      // the typed overloads instantiates every function in database.ts and trips TS2589 as the list grows.
-      const untyped = supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> }
-      const rpc = (fn: string, args: Record<string, unknown>) => untyped.rpc(fn, args)
-      try {
-        await rpc('record_stage_progress', { p_job_id: jobLedgerId, p_fixture_id: stagePick.fixtureId, p_pct: stagePick.pct, p_report_id: inserted?.id ?? null })
-      } catch {
-        /* best-effort */
-      }
+    // Report by line (v2.5663): stamp each moved line on its row, best-effort — the report
+    // already carries the numbers, and a client ahead of a push must never strand the tech.
+    if (jobLedgerId && linesActive && lineProgress.moved.length > 0) {
+      await stampMovedLines(jobLedgerId, lineProgress.moved, inserted?.id ?? null)
     }
     // Job reports: mirror the completion percent into jobs_ledger.pct_complete
     // (best-effort — the Stages % done, progress dot, and My Schedule deltas
@@ -733,19 +678,17 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               {fields.map((f) => {
                 const t = f.input_type ?? 'long_text'
                 if (t === 'percent_0_100') {
-                  if (stageModeActive && stagesForSelected && stagePick) {
+                  if (linesActive && lineProgress.lines) {
                     return (
-                      <ReportStageProgressField
+                      <ReportLinesProgressField
                         key={f.id}
-                        label={f.label}
-                        stages={stagesForSelected}
-                        pick={stagePick}
-                        onPick={(fixtureId) => {
-                          const row = stagesForSelected.find((x) => x.fixtureId === fixtureId)
-                          setStagePick({ fixtureId, pct: row ? stageEffectivePct(row) : 0 })
-                        }}
-                        onPct={(pct) => setStagePick((prev) => (prev ? { ...prev, pct } : prev))}
-                        onSwitchToWholeJob={() => setStageMode(false)}
+                        rows={lineProgress.lines}
+                        picks={lineProgress.picks}
+                        openId={lineProgress.openId}
+                        onOpen={lineProgress.setOpenId}
+                        onPct={lineProgress.setPick}
+                        recordedPct={recordedPctForLines}
+                        onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
                       />
                     )
                   }
@@ -758,19 +701,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                         hint={reportPercentSeedHint(seedForSelected?.pct, fieldValues[f.label], seedForSelected?.provenance)}
                         onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
                       />
-                      {stagesForSelected && stagesForSelected.length > 0 && !stageMode ? (
+                      {lineProgress.hasLines && !lineProgress.linesMode ? (
                         <button
                           type="button"
-                          onClick={() => {
-                            setStageMode(true)
-                            if (!stagePick) {
-                              const first = defaultStageToReport(stagesForSelected)
-                              setStagePick(first ? { fixtureId: first.fixtureId, pct: stageEffectivePct(first) } : null)
-                            }
-                          }}
+                          onClick={() => lineProgress.setLinesMode(true)}
                           style={{ marginTop: -4, marginBottom: '0.75rem', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem' }}
                         >
-                          Report by stage instead
+                          {MARK_EACH_LINE_LINK}
                         </button>
                       ) : null}
                     </div>

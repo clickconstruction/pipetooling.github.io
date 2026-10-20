@@ -33,6 +33,11 @@ const FACE: Record<ContactKind, string> = {
   customer: 'var(--bg-green-100)',
   trade: 'var(--bg-blue-200)',
   arch: 'var(--bg-violet-100)',
+  lead: 'var(--bg-muted)',
+  supply_house: 'var(--bg-muted)',
+  candidate: 'var(--bg-muted)',
+  sub: 'var(--bg-muted)',
+  team: 'var(--bg-muted)',
   unknown: 'var(--bg-muted)',
 }
 
@@ -47,11 +52,14 @@ export function GcMessages({
   problem,
   nowIso,
   onOpenThread,
+  filters = true,
 }: {
   view: MessagesView | null
   problem: string | null
   nowIso: string
   onOpenThread: (contactId: string) => void
+  /** The All · Customers · Trades · Who is this? row. Off where the page picked the people (`/messages`' last pill). */
+  filters?: boolean
 }) {
   const [filter, setFilter] = useState<ListFilter>('all')
   const [search, setSearch] = useState('')
@@ -188,33 +196,37 @@ export function GcMessages({
             ‹
           </button>
         </div>
-        <div
-          role="group"
-          aria-label="Who to show"
-          style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}
-        >
-          {LIST_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={filter === f.key}
-              onClick={() => setFilter(f.key)}
-              style={{
-                padding: '0.2rem 0.65rem',
-                borderRadius: 999,
-                border: `1px solid ${filter === f.key ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-                background:
-                  filter === f.key ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                color:
-                  filter === f.key ? 'var(--text-blue-500)' : 'var(--text-600)',
-                cursor: 'pointer',
-                fontSize: '0.8rem',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {filters && (
+          <div
+            role="group"
+            aria-label="Who to show"
+            style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}
+          >
+            {LIST_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={filter === f.key}
+                onClick={() => setFilter(f.key)}
+                style={{
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: 999,
+                  border: `1px solid ${filter === f.key ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+                  background:
+                    filter === f.key ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  color:
+                    filter === f.key
+                      ? 'var(--text-blue-500)'
+                      : 'var(--text-600)',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {rows.length === 0 ? (
         <div

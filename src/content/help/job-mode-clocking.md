@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, my requests, dispatch answered
+keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course
 order: 10
 ---
 Job Mode turns the Dashboard into one big card built for working in the field. It shows your current job, your next job, and big buttons for what you do on site.
@@ -44,7 +44,7 @@ Here is what the card looks like during a working day:
 :::
 
 - You tap {{button:blue|Leave Report}} to file a field report on the current job. See the Reports guide.
-- The green button changes with your day: {{button:green|Clock In}}, {{button:green|Start First Job}}, {{button:green|Next Job}}. When only your current job is left, it turns into {{button:red|Wrap Up Day}} to clock you out.
+- The green button changes with your day: {{button:green|Clock In}} with no schedule, else {{button:green|On my way}}. While you drive it reads {{button:blue|I'm here}}. When only your current job is left, it turns into {{button:red|Wrap Up Day}} to clock you out.
 - You tap {{button:amber|Turnaway — not ready / not home}} when you arrive and cannot do the work. See the Turnaways guide.
 
 ## Your day on the card
@@ -56,7 +56,7 @@ Under the job header, the card lists **every job on today's schedule**, in order
 - An amber **still open** flag marks a job you drove past that is still owed a visit. Maybe the customer was not home. Maybe the site was not ready.
 - A hollow dot means coming up later.
 
-**Tap any open job to jump straight to it.** You do not need to take them in order. You get the same quick notes sheet, already pointed at the job you tapped. Jobs you skip are not lost. They stay flagged. {{button:green|Next Job}} offers them once the rest of your day is done.
+**Tap any open job to jump straight to it.** You do not need to take them in order. You get the On my way sheet, already pointed at the job you tapped. Jobs you skip are not lost. They stay flagged. {{button:green|On my way}} offers them once the rest of your day is done.
 
 While you are clocked into a job, the card keeps going below the buttons:
 
@@ -65,9 +65,13 @@ While you are clocked into a job, the card keeps going below the buttons:
 - A **Street View photo** of the job address. You tap it to open Street View in Google Maps.
 - **Job updates** is the same updates thread as Job Detail. You read what the office posted. You add your own note without leaving the card.
 
+## Training under the card
+
+Under My Schedule, a Training card lists the courses your role must take. It is the same card the full Dashboard shows. One press opens the course. See [take a training course](/help/take-a-training-course).
+
 ## Clocking in and out
 
-{{gif:job-mode-clocking.gif|Starting the day: the Ready to start card, Start First Job with intent notes, and the clocked-in card}}
+{{gif:job-mode-clocking.gif|Starting the day: the Ready to start card, the green button, and the clocked-in card}}
 
 - You tap {{button:green|Clock In}} to start your day. If you have a schedule, the card offers your scheduled job. Otherwise you can pick a job manually.
 - **Nothing listed?** The sheet says so and stays that way. It reads **Nothing on your schedule today, and no jobs assigned to you**. It has dispatch's number to tap and a pointer to the search box. You call, or you type the job's name or number.
@@ -76,7 +80,7 @@ While you are clocked into a job, the card keeps going below the buttons:
 Your new helper taps {{button:green|Clock In}}. No jobs appear, so the sheet says **Nothing on your schedule today, and no jobs assigned to you — call dispatch at 512 360 0599**. One tap dials the office; dispatch adds the block, and the job shows up as a pick.
 :::
 - Switching jobs from the full Dashboard uses {{button:blue|Update Focus}}. The job you are clocked into is listed first with a {{chip:green|You are here}} tag. You tap any other job to switch. The same tag shows on the clock-out review.
-- Moving on? You tap {{button:green|Next Job}}. You are asked for brief notes about the job you are leaving. The sheet shows **where you can go**. Your suggested next job is preselected. You can pick any open job instead. Or you choose **Done for the day** to clock out.
+- Moving on? You tap {{button:green|On my way}}. The sheet shows **where you can go**. Your suggested next job is preselected. You can pick any open job instead. The app writes the note for you. Or you choose **Done for the day** at the bottom. See the next two sections.
 - Your location is captured when you punch. Your hours flow to the office automatically for approval.
 
 ### When you have no signal
@@ -89,12 +93,59 @@ You tap {{button:green|Clock In}}, the sheet shows **No connection** and {{butto
 
 The same Retry appears when you save a report offline. Your **Schedule** tab is different. It reloads by itself the moment the signal returns, no tap needed. A message may say something else, for example that you do not have permission. Then Retry will not appear, because trying again would not change the answer.
 
+## Tell the customer you are on the way
+
+{{button:green|On my way}} does two things in one press. It clocks you in on the job as on the way. It texts the customer the office's line.
+
+1. Press {{button:green|On my way}}. The sheet opens on your next job.
+2. Read the orange box. That is the text the customer gets.
+3. Check the minutes. The app guesses them from your phone to the job. Press − or + to change them by five, or type a number.
+4. Read **What happens**. It says what the press will do.
+5. Press {{button:green|On my way, text Dana}}.
+
+:::example The text as it goes
+Dana, this is Luis with Click Plumbing. I am on my way, about 20 minutes out.
+:::
+
+The clock-in happens first. If the text cannot go, the sheet says why under **What happens**. The button then reads **On my way** alone. You are clocked in either way.
+
+- **Clock in, no text** clocks you in and sends nothing.
+- **Start here instead** is for when you are already at the door. It clocks you in on site with no drive.
+- When the guess lands past the customer's window, a line says so. **Running late** under **Message the customer** moves the board.
+
+Your phone's location is only a guess. Change the minutes when you know better.
+
+## Send your bio the first time
+
+The office writes a short bio about you. A customer gets it the first time you press {{button:green|On my way}} to them. It goes as a second text, right after your line. The same customer never gets it again.
+
+1. Read the bio under the orange box. The line above it says the customer hears from you for the first time.
+2. Press **Edit bio** to pick the lines for this customer. Tick a line on or off. Press {{button:blue|Use these}}.
+3. Press **Not this time** to send the line alone.
+4. Press {{button:green|On my way, text Dana}}. The line goes first, then your bio.
+
+Your usual picks are in Settings under **Your bio**. A change on the sheet is for this customer only. See [set up my profile and notifications](/help/settings-basics#your-bio).
+
+## Say you are here
+
+While you drive, the green button becomes {{button:blue|I'm here}}. The header reads **On the way** with the minutes so far.
+
+1. Press {{button:blue|I'm here}} at the door. The app marks you on site right away.
+2. When the customer can be texted, the sheet shows the office's I'm here line.
+3. Press {{button:blue|I'm here, text Dana}}, or **I'm here, no text**.
+
+The header then reads **On site since** with your drive time. The green button goes back to {{button:green|On my way}} for the next job.
+
+:::example A customer who is not home
+A property manager across town asked to know when you arrive. You press {{button:blue|I'm here}}, read the line, and press {{button:blue|I'm here, text Priya}}. She gets the text and calls the tenant.
+:::
+
 ## Clocking out
 
 Three ways, depending on your day:
 
 - **End of the day.** When your current job is the last one open, the green button becomes {{button:red|Wrap Up Day}}. You tap it and you get the usual clock-out review, below.
-- **From the switch sheet.** You pick **Done for the day** at the bottom of the "Where to next?" list.
+- **From the On my way sheet.** You pick **Done for the day** at the bottom of it.
 - **Any other time.** That is lunch, a parts run, or leaving early. You tap the small underlined **Clock out** link under the buttons. Your remaining jobs stay flagged on the card for when you are back.
 
 ### What the clock-out review asks, and why

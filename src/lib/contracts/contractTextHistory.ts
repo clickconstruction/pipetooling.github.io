@@ -38,6 +38,8 @@ export type ContractSourceRef = { kind: 'app_setting' | 'contract_book'; key: st
 export function contractSourceRef(entry: ContractCatalogEntry, text: ResolvedContractText): ContractSourceRef | null {
   if (entry.source.kind === 'app_setting') return { kind: 'app_setting', key: entry.source.key }
   if (entry.source.kind === 'contract_book' && text.doc) return { kind: 'contract_book', key: text.doc.id }
+  // A paper on a flow is a library document too; the history trigger keeps the customer audience's.
+  if (entry.source.kind === 'flow_paper') return { kind: 'contract_book', key: entry.source.doc.id }
   return null
 }
 

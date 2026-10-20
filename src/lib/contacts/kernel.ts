@@ -8,12 +8,21 @@
  * in `contact_info`, and the people at one are its `customer_contact_persons`; a trade partner's main contact is its
  * `gc_companies` row, and anyone else it named is a `gc_company_people` row; the roster is `people`.
  * `customer_contacts` and `gc_customer_contacts` are logs of calls, not people, so nothing points at them.
+ *
+ * Seven kinds of contact (the owner's call of 2026-10-13, `RESIDENTIAL_BUILD_PLAN.md` R0): a customer, a trade
+ * partner and an architect, and four more. A lead has no record until someone adds them to Prospects, then a
+ * `prospects` row until they book, when they become the customer; a supply house is its
+ * `supply_houses` row, the counter, and a rep at it is a `supply_house_contacts` row; a candidate is a row on the Team
+ * hiring board, `team_prospects`; a sub is a `people` row whose roster kind is `sub`, so a sub and a roster person
+ * point at the same table and `kindOf` tells them apart.
  */
 import { normalizeCustomerEmail, normalizeCustomerPhone } from '../customerSimilarity'
+import type { ContactKind } from './names'
 
-export type ContactKind = 'customer' | 'trade' | 'arch' | 'unknown'
+// What a contact is called lives in `names.ts`, light enough to run on the edge. It is the kernel's too.
+export * from './names'
 
-/** The record a contact is. Null: a number nobody has named yet, the one contact with no record. */
+/** The record a contact is. Null: a number nobody has named yet, or a lead nobody has added to Prospects. */
 export type ContactRecord =
   /** A customer who is one person. */
   | { table: 'customers'; id: string }
@@ -22,7 +31,16 @@ export type ContactRecord =
   /** A trade partner's main contact. */
   | { table: 'gc_companies'; id: string }
   | { table: 'gc_company_people'; id: string }
+  /** Someone on the roster: a sub when their roster kind is `sub`, else one of our own team (v2.5546). */
   | { table: 'people'; id: string }
+  /** A lead on Prospects, until they book and become a customer. */
+  | { table: 'prospects'; id: string }
+  /** A supply house: its counter, or someone named on its row. */
+  | { table: 'supply_houses'; id: string }
+  /** A rep at a supply house, as the RFQ desk keeps them. */
+  | { table: 'supply_house_contacts'; id: string }
+  /** A candidate on the Team hiring board. */
+  | { table: 'team_prospects'; id: string }
   | null
 
 export type ChannelKind = 'phone' | 'email'
@@ -61,58 +79,45 @@ export interface Contact {
   customerId?: string | null
   /** The trade partner they are, or are at: its main contact, or someone it named. The loader fills it. */
   gcCompanyId?: string | null
+  /**
+   * The language their customer's row keeps (`customers.language`), for a customer and each person at one. Unset:
+   * English, never guessed from a name. The loader fills it; `messages/customerLang.ts` holds Spanish behind the gate.
+   */
+  lang?: 'en' | 'es'
 }
 
 export function contactById(contacts: readonly Contact[], id: string): Contact | undefined {
   return contacts.find((c) => c.id === id)
 }
 
-const TITLE = /^(Dr|Mr|Mrs|Ms)\.?$/i
+/** The roster kind that makes someone on `people` a sub (`people_kind_check`). */
+export const SUB_ROSTER_KIND = 'sub'
 
 /**
- * What a greeting calls a full name: the first name, or a title with the last name ("Dr. Priya Raman" is "Dr. Raman",
- * the Board's rule). '' for no name. Owner Billing's `customerGreeting` reads the same rule.
+ * What a record makes them, the first answer *Who is this?* offers: a customer's row and a person at one are a
+ * customer, since an architect is the office's pick; a trade partner and the people it named are a trade partner; a
+ * prospect is a lead, a supply house and its reps a supply house, a hiring board row a candidate. On the roster, `rosterKind` is
+ * the `people.kind` column: `sub` is a sub, and anyone else on the roster is one of our own team (v2.5546; a trade
+ * partner before, which a roster row never is now).
  */
-export function greetingName(fullName: string): string {
-  const words = fullName.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return ''
-  const titled = words.length > 1 && TITLE.test(words[0]!)
-  return titled ? `${words[0]} ${words[words.length - 1]}` : words[0]!
-}
-
-/**
- * What we call them, in a greeting and in a sentence: what they go by, else `greetingName`, so a title on the record is
- * never dropped. '' for a number nobody has named; a sentence says "they" there.
- */
-export function firstName(c: { name: string; goesBy?: string | null; kind?: ContactKind }): string {
-  const goesBy = c.goesBy?.trim()
-  if (goesBy) return goesBy
-  if (c.kind === 'unknown') return ''
-  return greetingName(c.name)
-}
-
-/** The face's two letters, a title skipped: "PR" for Dr. Priya Raman. "?" for a number nobody has named. */
-export function initials(c: { name: string; kind?: ContactKind }): string {
-  if (c.kind === 'unknown') return '?'
-  return c.name
-    .split(/\s+/)
-    .filter((w) => w && !TITLE.test(w))
-    .map((w) => w[0]!)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-}
-
-const KIND_WORD: Record<ContactKind, string> = {
-  customer: 'customer',
-  trade: 'trade partner',
-  arch: 'architect',
-  unknown: 'who is this?',
-}
-
-/** "trade partner": what they are to us, for the line under a name. */
-export function kindWord(kind: ContactKind): string {
-  return KIND_WORD[kind]
+export function kindOf(record: NonNullable<ContactRecord>, rosterKind?: string | null): Exclude<ContactKind, 'unknown'> {
+  switch (record.table) {
+    case 'customers':
+    case 'customer_contact_persons':
+      return 'customer'
+    case 'gc_companies':
+    case 'gc_company_people':
+      return 'trade'
+    case 'people':
+      return rosterKind === SUB_ROSTER_KIND ? 'sub' : 'team'
+    case 'prospects':
+      return 'lead'
+    case 'supply_houses':
+    case 'supply_house_contacts':
+      return 'supply_house'
+    case 'team_prospects':
+      return 'candidate'
+  }
 }
 
 /** A number as ten digits, an address in lower case; '' when it is neither. "+1 (210) 555-0113" is "2105550113". */
@@ -189,8 +194,11 @@ export type NamePlan =
 
 const sameRecord = (a: ContactRecord, b: ContactRecord) => Boolean(a && b && a.table === b.table && a.id === b.id)
 
-/** A customer and a trade partner's company row can hold more people than their own, each by name: Dee at Alamo Concrete. */
-const COMPANY_TABLES: ReadonlySet<string> = new Set(['customers', 'gc_companies'])
+/**
+ * A customer, a trade partner and a supply house are company rows that can hold more people than their own, each by
+ * name: Dee at Alamo Concrete, Ray at the supply house's counter.
+ */
+const COMPANY_TABLES: ReadonlySet<string> = new Set(['customers', 'gc_companies', 'supply_houses'])
 const nameKey = (name: string) => name.trim().toLowerCase()
 
 /**
@@ -203,12 +211,24 @@ function samePerson(c: Contact, target: NameTarget): boolean {
 }
 
 /**
+ * Who *Who is this?* may name: a number nobody has named; a lead with no record, added to Prospects; and a lead who
+ * booked, named once more as the customer they became (the SQL's `name_contact` holds the same rule).
+ */
+function nameable(c: Contact, target: NameTarget): boolean {
+  if (c.kind === 'unknown') return true
+  if (c.kind !== 'lead') return false
+  if (target.kind === 'lead') return c.record === null && target.record.table === 'prospects'
+  return target.kind === 'customer' && (target.record.table === 'customers' || target.record.table === 'customer_contact_persons')
+}
+
+/**
  * *Who is this?*: re-points a contact at a record and keeps its thread. When someone already is that person, one person
- * keeps one contact, so the unknown one folds into theirs. Null when the contact is not an unknown number.
+ * keeps one contact, so the unknown one folds into theirs. A lead added to Prospects, or who booked and is named as
+ * the customer, re-points the same way, keeping their jobs. Null for any other contact that is named already.
  */
 export function nameContact(contacts: readonly Contact[], unknownId: string, target: NameTarget): NamePlan | null {
   const unknown = contactById(contacts, unknownId)
-  if (!unknown || unknown.kind !== 'unknown') return null
+  if (!unknown || !nameable(unknown, target)) return null
   const jobId = target.jobId ?? null
   const existing = contacts.find((c) => c.id !== unknownId && samePerson(c, target))
   if (existing) {
@@ -231,8 +251,8 @@ export function nameContact(contacts: readonly Contact[], unknownId: string, tar
       company: target.company,
       ...(target.trade ? { trade: target.trade } : {}),
       record: target.record,
-      jobIds: jobId ? [jobId] : [],
-      defaultJobId: jobId,
+      jobIds: jobId && !unknown.jobIds.includes(jobId) ? [...unknown.jobIds, jobId] : unknown.jobIds,
+      defaultJobId: unknown.defaultJobId ?? jobId,
     },
     jobId,
   }

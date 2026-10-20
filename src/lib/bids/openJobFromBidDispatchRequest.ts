@@ -18,6 +18,8 @@ import {
   wonHandoffSentMessage,
   wonHandoffTitle,
 } from './wonDispatchHandoff'
+import { loadJobsOpenedFromBids } from './bidJobsOpenedIo'
+import { draftForWrite, type JobDraft } from './jobDraft'
 
 type ToastFn = (message: string, type: 'success' | 'info' | 'warning' | 'error') => void
 
@@ -40,7 +42,7 @@ export async function askDispatchToOpenJob(
   authUserId: string | null | undefined,
   showToast: ToastFn,
   bidId: string,
-  opts?: { silent?: boolean },
+  opts?: { silent?: boolean; draft?: JobDraft | null },
 ): Promise<AskDispatchOutcome> {
   const say = (message: string, type: 'success' | 'info' | 'error') => {
     if (!opts?.silent) showToast(message, type)
@@ -67,10 +69,8 @@ export async function askDispatchToOpenJob(
             .maybeSingle(),
         'check existing open_job_from_bid dispatch request',
       ),
-      withSupabaseRetry<{ hcp_number: string | null } | null>(
-        async () => supabase.from('jobs_ledger').select('hcp_number').eq('bid_id', bidId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        'check job already opened from bid',
-      ),
+      // The definer read too (v2.5659): an estimator reads no job row, so the table alone said "no job" on BP166.
+      loadJobsOpenedFromBids([bidId]).then((rows) => (rows[0] ? { hcp_number: rows[0].hcpNumber } : null)),
     ])
     if (!bid) {
       say('Bid not found.', 'error')
@@ -88,6 +88,7 @@ export async function askDispatchToOpenJob(
       bidId: bid.id,
       referenceSummary: wonHandoffReference({ bidNumber: bid.bid_number, projectName: bid.project_name, address: bid.address }),
       pendingAction: OPEN_JOB_FROM_BID_ACTION,
+      pendingPayload: opts?.draft ? { job_draft: draftForWrite(opts.draft) } : null,
     })
     say(wonHandoffSentMessage(label), 'success')
     return 'created'

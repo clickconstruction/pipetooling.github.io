@@ -21,6 +21,19 @@ export type SpotlightTourStep = {
   center?: boolean
   /** Words and what they mean, listed under the body: a page of terms before the stops that use them. */
   terms?: ReadonlyArray<{ word: string; means: string }>
+  /**
+   * A framed example under the body (v2.5553, GC's Gaps stop): one line as a page draws it,
+   * part by part, so the stop shows the thing instead of describing it. A part with `means` is
+   * underlined and carries that label beneath it; a part without joins the labelled ones. `tone`
+   * `'red'` draws the line in the page's warning red. `after` is the sentence under the panel.
+   */
+  example?: {
+    /** Where the line is seen, in small capitals over the panel. */
+    caption: string
+    parts: ReadonlyArray<{ words: string; means?: string }>
+    tone?: 'red' | 'plain'
+    after?: string
+  }
 }
 
 type SpotlightTourProps = {
@@ -203,6 +216,26 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
         </div>
         <div style={{ fontSize: '0.82rem', color: 'var(--text-700)', margin: '0.35rem 0 0.7rem' }}>
           {step.body}
+          {step.example ? (
+            <>
+              <div data-testid="tour-example" style={{ marginTop: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.5rem 0.7rem 0.6rem' }}>
+                <div style={{ fontSize: '0.66rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>{step.example.caption}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 0.4rem', alignItems: 'flex-start', fontSize: '0.85rem', lineHeight: 1.3, color: step.example.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
+                  {step.example.parts.map((part, i) =>
+                    part.means ? (
+                      <span key={i} data-tour-part={part.means} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <span style={{ borderBottom: '2px dotted currentColor' }}>{part.words}</span>
+                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{part.means}</span>
+                      </span>
+                    ) : (
+                      <span key={i}>{part.words}</span>
+                    ),
+                  )}
+                </div>
+              </div>
+              {step.example.after ? <div data-testid="tour-example-after" style={{ marginTop: '0.5rem' }}>{step.example.after}</div> : null}
+            </>
+          ) : null}
           {step.terms ? (
             // The list scrolls inside the card on a short screen; the title and the buttons hold still.
             <dl data-testid="tour-terms" style={{ margin: '0.5rem 0 0', display: 'grid', gridTemplateColumns: 'minmax(5.5rem, auto) 1fr', gap: '0.3rem 0.75rem', maxHeight: 'calc(100vh - 15rem)', overflowY: 'auto', overscrollBehavior: 'contain' }}>

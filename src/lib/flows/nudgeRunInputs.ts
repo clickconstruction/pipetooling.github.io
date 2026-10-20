@@ -1,0 +1,303 @@
+/**
+ * Messages, cut 5: everyone's flow for the morning run of the reminders the app sends itself (`messages-nudge-dispatch`),
+ * from the rows the run reads set-wise as the service role. The run hands `input` to `planNudgeRun` (`nudgeDispatch.ts`)
+ * and sends each text to the number in `channelIds`. Pure.
+ *
+ * Each person is put together the way their own panel puts them together (`useFlowPerson` → `personFlowFrom`): their
+ * kind's flow as the office edited it, or the seed's; their flow rows; their holds, reminders sent and step notes; their
+ * thread's newest 50 lines; what we owe them; and a customer's page as cut 8 reads it back. So the run reads a person the
+ * way Follow up and the step card read them, and sends only what they would show as due.
+ *
+ * The owner's switch is `app_settings` `messages_nudge_app_sends_v1`: one key per step id under its kind, `true` to let
+ * the app send that step's reminder (`{ "trade": { "portal": true } }`). Anything else is off, and the seed is `{}`, so
+ * every step is off until the owner turns one on (`BUILD_PLAN.md` section 7, decision 3). The kinds nest because a step
+ * id is unique only within its kind's flow: the sub flow brings `asked`, `onsite` and `yes` again.
+ */
+import { APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1 } from '../appSettingsKeys'
+import { firstName } from '../contacts/names'
+import type { QuickReply, QuickReplyFor, QuickReplyScope } from '../quickReplies/kernel'
+import { flowFromRows, type FlowStepRow } from './editor'
+import { FLOW_KINDS, flowContactKind, type FlowKind } from './facts'
+import type { FlowCard, FlowRows } from './load'
+import type { AppSends, NudgeOffered, NudgeRunInput, NudgeSent, TextNumber } from './nudgeDispatch'
+import type { NudgeOptions, PersonFlow } from './nudges'
+import { personFlowFrom, type HoldRow, type OwedRow, type PortalReadBackRow, type SentRow, type StepNoteRow, type ThreadLineRow } from './person'
+import { SEED_FLOWS } from './seed'
+import type { FlowDef, NudgeHow } from './state'
+
+/** The `app_settings` key of the owner's switch (`20261014012000_messages_nudge_settings.sql`). */
+export const APP_SENDS_SETTING_KEY = APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1
+
+/** How many of a person's newest thread lines their panel reads (`flowPersonIo`), so the run reads the same. */
+export const PERSON_LINES = 50
+
+// ---------- the rows, as the run selects them ----------
+
+/** `contacts`: who they are, their kind, and Follow up's snooze (set only while `state` is `snoozed`). */
+export type RunContactRow = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; snoozed_until: string | null; prefers?: string | null }
+/** `flow_steps` with its flow's kind (`flows(kind)`), as `readFlowDef` reads one kind. */
+export type RunStepRow = FlowStepRow & { flows: { kind: string } | null }
+export type RunHoldRow = HoldRow & { contact_id: string }
+/** `nudge_sent`, with how it went and who sent it. */
+export type RunSentRow = SentRow & { contact_id: string; how: NudgeHow; by_user_id: string | null }
+export type RunNoteRow = StepNoteRow & { contact_id: string }
+/** A `messages` line: whose it is, when, and the number or address it came or went on. */
+export type RunLineRow = ThreadLineRow & { contact_id: string; channel_id: string | null }
+/** `contact_channels`: a number or an address, and when a number sent STOP. */
+export type RunChannelRow = { id: string; contact_id: string; kind: 'phone' | 'email'; value: string; opted_out_at: string | null; created_at: string }
+/** `quick_replies`. */
+export type RunQuickReplyRow = {
+  id: string
+  text: string
+  for_kind: QuickReplyFor
+  step_key: string | null
+  scope: QuickReplyScope
+  added_by: string | null
+  added_at: string
+  removed_at: string | null
+}
+/** `quick_reply_uses`: one press. */
+export type RunQuickReplyUseRow = { quick_reply_id: string; user_id: string | null }
+/** An open `nudge_offers` row (v2.5595): a text waiting on Today's sends, so the run never prepares a second. */
+export type RunOfferRow = { contact_id: string; step_key: string; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null }
+
+export interface NudgeRunRows {
+  contacts: readonly RunContactRow[]
+  /** `flow_rows_for(ids)`: each contact's rows, by contact id. */
+  flowRows: Readonly<Partial<Record<string, FlowRows>>>
+  steps: readonly RunStepRow[]
+  holds: readonly RunHoldRow[]
+  sent: readonly RunSentRow[]
+  notes: readonly RunNoteRow[]
+  /** Their thread's lines, any number of them: each person's newest `PERSON_LINES` are read. */
+  lines: readonly RunLineRow[]
+  owed: readonly OwedRow[]
+  channels: readonly RunChannelRow[]
+  quickReplies: readonly RunQuickReplyRow[]
+  uses?: readonly RunQuickReplyUseRow[]
+  /** A customer's page as cut 8 reads it back, by customer id. */
+  portals?: Readonly<Partial<Record<string, PortalReadBackRow>>>
+  /** A customer's live portal link, by customer id, when the run can give one. */
+  customerLinks?: Readonly<Partial<Record<string, string>>>
+  /** The switch's `app_settings` `value_text` as stored, or its value already parsed. */
+  appSends: unknown
+  /** The texts waiting on Today's sends (`nudge_offers`, open), when the run reads them. */
+  offers?: readonly RunOfferRow[]
+}
+
+/** A text number with the `contact_channels` row the send writes the line on. */
+export type RunNumber = TextNumber & { channelId: string | null }
+
+export interface NudgeRunReads {
+  input: NudgeRunInput
+  /** The number each text goes to, by contact. */
+  channelIds: Partial<Record<string, string>>
+  /** Contacts whose flow rows did not come back, or whose kind has no flow, for the run's log. The run leaves them out. */
+  unread: string[]
+}
+
+// ---------- the pieces ----------
+
+/** The stored text read as JSON; null when it does not read. */
+const parsed = (text: string): unknown => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The owner's switch as stored (`value_text`, or its value already parsed): only a `true` (sends) or an `'offer'`
+ * (offers, v2.5595) under a known kind and a step id turns a step on. Text that does not read as JSON is off for every
+ * step.
+ */
+export function appSendsFrom(stored: unknown): AppSends {
+  const out: AppSends = {}
+  const value = typeof stored === 'string' ? parsed(stored) : stored
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out
+  for (const kind of FLOW_KINDS) {
+    const steps = (value as Record<string, unknown>)[kind]
+    if (!steps || typeof steps !== 'object' || Array.isArray(steps)) continue
+    const on = Object.entries(steps as Record<string, unknown>).filter(([, v]) => v === true || v === 'offer')
+    if (on.length) out[kind] = Object.fromEntries(on.map(([id, v]) => [id, v === 'offer' ? 'offer' : true]))
+  }
+  return out
+}
+
+/** The texts waiting on Today's sends, by person, step and job. */
+export function offeredFrom(rows: readonly RunOfferRow[]): NudgeOffered[] {
+  return rows.map((r) => ({ contactId: r.contact_id, stepId: r.step_key, jobId: r.bid_id ?? r.project_id ?? r.jobs_ledger_id ?? null }))
+}
+
+/** Each kind's flow as the office edited it, or the seed's for a kind with no steps on the database (`readFlowDef`). */
+export function flowsByKind(steps: readonly RunStepRow[]): Record<FlowKind, FlowDef> {
+  const out = {} as Record<FlowKind, FlowDef>
+  for (const kind of FLOW_KINDS) {
+    const rows = steps.filter((s) => s.flows?.kind === kind)
+    out[kind] = rows.length ? flowFromRows(kind, rows) : SEED_FLOWS[kind]
+  }
+  return out
+}
+
+/** What we call them on their flow: the name they go by, else their first name, else their company, else "them". */
+export function flowFirst(contact: Pick<RunContactRow, 'kind' | 'name' | 'goes_by'>, card: FlowCard | null | undefined): string {
+  const first = firstName({ name: contact.name ?? card?.name ?? '', goesBy: contact.goes_by ?? card?.goes_by ?? null, kind: flowContactKind(contact.kind) })
+  return first || card?.company || 'them'
+}
+
+/** A person's newest lines, as many as their panel reads. */
+export function newestLines<T extends ThreadLineRow>(lines: readonly T[], n = PERSON_LINES): T[] {
+  return [...lines].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)).slice(0, n)
+}
+
+/**
+ * The number a reminder goes to: of their numbers that never sent STOP, the one their thread last carried a line on,
+ * else the first added. With every number stopped, the newest of them, so the run says it was stopped. With none, no
+ * number. An address is never a text number.
+ */
+export function textNumberOf(channels: readonly RunChannelRow[], lines: readonly RunLineRow[] = []): RunNumber {
+  const phones = channels.filter((c) => c.kind === 'phone')
+  if (!phones.length) return { number: null, optedOut: false, channelId: null }
+  const open = phones.filter((c) => !c.opted_out_at)
+  if (!open.length) {
+    const last = [...phones].sort((a, b) => (a.opted_out_at! < b.opted_out_at! ? 1 : -1))[0]!
+    return { number: last.value, optedOut: true, channelId: last.id }
+  }
+  const lastOn = (id: string) => lines.reduce((t, l) => (l.channel_id === id && l.at > t ? l.at : t), '')
+  const pick = [...open].sort((a, b) => {
+    const la = lastOn(a.id)
+    const lb = lastOn(b.id)
+    if (la !== lb) return la < lb ? 1 : -1
+    return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : a.id.localeCompare(b.id)
+  })[0]!
+  return { number: pick.value, optedOut: false, channelId: pick.id }
+}
+
+/**
+ * A trade partner's live page from the office's preview of it (`flow_rows`' `previewPath`, `/t/<token>?preview=1`):
+ * the same page without the preview mark, on the app's address. Anything else gives no link.
+ */
+export function portalLinkOf(previewPath: string | null | undefined, origin: string): string | null {
+  if (!previewPath || !previewPath.startsWith('/t/')) return null
+  const url = new URL(previewPath, 'https://app.invalid')
+  url.searchParams.delete('preview')
+  const base = origin.replace(/\/+$/, '')
+  if (!base) return null
+  return `${base}${url.pathname}${url.search}`
+}
+
+/** The team's quick replies, as the strip reads them. The app has no lines of its own, so a line marked mine is left out. */
+export function quickRepliesFrom(rows: readonly RunQuickReplyRow[], uses: readonly RunQuickReplyUseRow[] = []): QuickReply[] {
+  const counts = new Map<string, Record<string, number>>()
+  for (const u of uses) {
+    const byUser = counts.get(u.quick_reply_id) ?? {}
+    const who = u.user_id ?? ''
+    byUser[who] = (byUser[who] ?? 0) + 1
+    counts.set(u.quick_reply_id, byUser)
+  }
+  return rows
+    .filter((r) => r.scope === 'team')
+    .map((r) => ({
+      id: r.id,
+      text: r.text,
+      for: r.for_kind,
+      stepId: r.step_key,
+      scope: r.scope,
+      addedBy: r.added_by ?? '',
+      addedAt: Date.parse(r.added_at),
+      removed: r.removed_at != null,
+      uses: counts.get(r.id) ?? {},
+      lastUsed: null,
+    }))
+}
+
+/** The reminders sent, as the run reads them: the job is the GC project, as the marks read it (`marksFrom`). */
+export function nudgeSentFrom(rows: readonly RunSentRow[]): NudgeSent[] {
+  return rows.map((r) => ({
+    contactId: r.contact_id,
+    stepId: r.step_key,
+    jobId: r.project_id,
+    at: r.sent_at,
+    by: r.sent_by === 'app' ? 'app' : (r.by_user_id ?? 'person'),
+    how: r.how,
+  }))
+}
+
+// ---------- the run's input ----------
+
+const byContact = <T extends { contact_id: string }>(rows: readonly T[]): Map<string, T[]> => {
+  const out = new Map<string, T[]>()
+  for (const r of rows) {
+    const list = out.get(r.contact_id) ?? []
+    list.push(r)
+    out.set(r.contact_id, list)
+  }
+  return out
+}
+
+/** Everyone's flow and everything `planNudgeRun` reads, from the morning's rows. */
+export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: string; options?: NudgeOptions }): NudgeRunReads {
+  const flows = flowsByKind(rows.steps)
+  const holds = byContact(rows.holds)
+  const sent = byContact(rows.sent)
+  const notes = byContact(rows.notes)
+  const lines = byContact(rows.lines)
+  const channels = byContact(rows.channels)
+  const people: PersonFlow[] = []
+  const numbers: Partial<Record<string, TextNumber>> = {}
+  const channelIds: Partial<Record<string, string>> = {}
+  const links: Partial<Record<string, string>> = {}
+  const snoozed: Partial<Record<string, string>> = {}
+  const prefers: NonNullable<NudgeRunInput['prefers']> = {}
+  const unread: string[] = []
+  for (const contact of rows.contacts) {
+    const flowRows = rows.flowRows[contact.id]
+    const flow = flows[contact.kind]
+    if (!flowRows || !flow) {
+      unread.push(contact.id)
+      continue
+    }
+    const theirLines = lines.get(contact.id) ?? []
+    const customerId = flowRows.card?.customer_id ?? null
+    people.push(
+      personFlowFrom({
+        id: contact.id,
+        first: flowFirst(contact, flowRows.card),
+        flow,
+        rows: flowRows,
+        now,
+        holds: holds.get(contact.id) ?? [],
+        sent: sent.get(contact.id) ?? [],
+        notes: notes.get(contact.id) ?? [],
+        lines: newestLines(theirLines),
+        owed: rows.owed,
+        portal: contact.kind === 'customer' && customerId ? (rows.portals?.[customerId] ?? null) : null,
+      }),
+    )
+    const number = textNumberOf(channels.get(contact.id) ?? [], theirLines)
+    numbers[contact.id] = { number: number.number, optedOut: number.optedOut }
+    if (number.channelId && !number.optedOut) channelIds[contact.id] = number.channelId
+    const link = contact.kind === 'customer' ? (customerId ? rows.customerLinks?.[customerId] : null) : portalLinkOf(flowRows.previewPath, opts.origin)
+    if (link) links[contact.id] = link
+    if (contact.snoozed_until) snoozed[contact.id] = contact.snoozed_until
+    if (contact.prefers === 'text' || contact.prefers === 'email' || contact.prefers === 'either') prefers[contact.id] = contact.prefers
+  }
+  return {
+    input: {
+      people,
+      now,
+      appSends: appSendsFrom(rows.appSends),
+      sent: nudgeSentFrom(rows.sent),
+      numbers,
+      quickReplies: quickRepliesFrom(rows.quickReplies, rows.uses),
+      links,
+      options: opts.options,
+      snoozed,
+      offered: offeredFrom(rows.offers ?? []),
+      prefers,
+    },
+    channelIds,
+    unread,
+  }
+}

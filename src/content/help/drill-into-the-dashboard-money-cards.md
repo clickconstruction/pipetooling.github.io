@@ -41,6 +41,22 @@ The right side is two tight columns. The first is days waiting over their averag
 - Tap a row to unfold **every bill they owe**. Each shows the wait chip, job link, billed date and amount, with the line items already unfolded. The globe on the row opens their customer portal.
 - Search matches the customer name **or any of their jobs**. Typing a job number surfaces the whole customer.
 
+## Where the lien paper stands
+
+Under each bill, a chip says where the job's lien paper stands. The words are the Lien desk's own. The sentence after the chip says the rest.
+
+- {{chip:red|Waiting on Robert · by Oct 15 · 2d}} is a notice drafted and waiting on the leader. The day is the last day it can mail.
+- {{chip:yellow|Needs the owner · by Oct 25 · 12d}} is a notice with no owner address yet. It cannot mail until the owner of record has one. The chip turns red inside seven days.
+- {{chip:blue|In the mail · tracking owed}} is a notice printed with the run. Its certified number is not typed yet.
+- {{chip:green|Delivered Sep 16 · day 12 · letter two}} is a notice the post office delivered. The day count runs from delivery. Letter two is due by day 14.
+- {{chip:green|Lien filed Oct 2 · served Oct 6}} is a lien on record. {{chip:gray|Window closed Sep 15 · lien gone}} is a month whose notice never went out.
+
+Press the chip. It opens the Lien desk on that job when the next step lives there. It opens the job's Lien window otherwise.
+
+The customer's row wears the worst state among its jobs. Hover it to read each job. A job with nothing out and nothing due inside 30 days shows no chip. The Pipeline's dates ledger keeps the far date.
+
+Two more lenses sit beside the pace pair. {{chip:red|Lien paper due $12.8k · 2}} narrows the list to customers with a paper due. A window that closed unnoted counts too. {{chip:green|Paper out $21.2k · 4}} narrows it to customers with a notice mailed or a lien filed. Press a lens again to clear it.
+
 ## The call sheet
 
 Customer rows also wear their **chase state**, straight from the Payment Chase queue. {{chip:red|Owes a call}} means they're past pace and untouched. {{chip:green|Promised Sep 4}} means they named a date. {{chip:red|Promise broken}} means that date slipped a week. {{chip:gray|Touched Aug 31}} shows while a recent call keeps them quiet. A dispute pill shows when one is open.

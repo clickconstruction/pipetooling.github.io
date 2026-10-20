@@ -19,15 +19,21 @@ import {
   brushPriceFor,
   brushSweptMessage,
   brushUndoOf,
+  brushUndoOnScreen,
   draftsWithout,
   previewWithoutRows,
   workbenchRowIdAt,
   type BrushRow,
   type BrushTouch,
+  type BrushUndo,
 } from '../lib/bids/marginBrush'
 
 export type MarginBrushArgs = {
-  /** The pricing lock (v2.3591): false refuses the write and has already said why. */
+  /**
+   * The pricing lock (v2.3591), and the open price still loading after a card click (v2.5671): false
+   * refuses the write and has already said why. Asked to pick up the brush, to start a stroke, to
+   * commit it and to undo it.
+   */
   guardPricingWrite: () => boolean
   /** One tool at a time: picking up the brush folds the solver ring away. */
   foldSolver: () => void
@@ -56,8 +62,11 @@ export function useMarginBrush(args: MarginBrushArgs) {
   const [brushMarginInput, setBrushMarginInput] = useState('50')
   const [brushCommitting, setBrushCommitting] = useState(false)
   const [brushStrokeCount, setBrushStrokeCount] = useState(0)
-  /** Last committed sweep: [rowId, previous saved price (null = was unpriced)] — one-level undo. */
-  const [brushUndo, setBrushUndo] = useState<Array<[string, number | null]> | null>(null)
+  /** Last committed sweep and the price it was painted on: [rowId, previous saved price (null = was unpriced)] — one-level undo. */
+  const [brushUndoSweep, setBrushUndo] = useState<BrushUndo | null>(null)
+  // v2.5672: the undo is the open price's only if the sweep was painted on it — Undo writes to the open
+  // price, so after a card switch it used to write the old price's earlier prices into the new one.
+  const brushUndo = brushUndoOnScreen(brushUndoSweep, pricingVersionId)
   /* ---- Price by margin (v2.1769; row-by-row Margin mode v2.1772) ---- */
   const [recentMargins, setRecentMargins] = useState<number[]>(() => loadRecentMargins(window.localStorage))
   const brushStrokeRef = useRef<Map<string, BrushTouch> | null>(null)
@@ -101,8 +110,12 @@ export function useMarginBrush(args: MarginBrushArgs) {
   }
   /** Pointer-up: write every changed row through the typed-price save, then reload once. */
   async function endBrushStroke() {
-    if (!guardPricingWrite()) return
     if (!brushPaintingRef.current) return
+    // Refused at the end (v2.5671): the stroke and its drafts go, so the brush is never left painting.
+    if (!guardPricingWrite()) {
+      cancelBrushStroke()
+      return
+    }
     brushPaintingRef.current = false
     const stroke = brushStrokeRef.current
     brushStrokeRef.current = null
@@ -140,7 +153,7 @@ export function useMarginBrush(args: MarginBrushArgs) {
         setRecentMargins(nextRec)
         saveRecentMargins(window.localStorage, nextRec)
       }
-      setBrushUndo(brushUndoOf(changed))
+      setBrushUndo({ pricingId: versionId, rows: brushUndoOf(changed) })
       showToast(brushSweptMessage(changed.length, m), 'success')
     } finally {
       clearStrokeDrafts()
@@ -148,9 +161,9 @@ export function useMarginBrush(args: MarginBrushArgs) {
     }
   }
   async function undoBrushSweep() {
-    if (!guardPricingWrite()) return
     const undo = brushUndo
     if (!undo || brushCommitting) return
+    if (!guardPricingWrite()) return
     const versionId = pricingVersionId
     if (!bidId || !versionId) return
     setBrushCommitting(true)
@@ -194,6 +207,8 @@ export function useMarginBrush(args: MarginBrushArgs) {
         if (!brushArmed || brushCommitting) return
         e.preventDefault()
         e.stopPropagation()
+        // v2.5671: no stroke while the open price loads — each touch keeps the row's saved price for Undo.
+        if (!guardPricingWrite()) return
         const m = brushMarginVal()
         if (m == null) {
           showToast('Load the brush first — margin between 1 and 95.', 'error')

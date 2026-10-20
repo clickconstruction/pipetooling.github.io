@@ -127,3 +127,21 @@ describe('registry', () => {
     for (const p of PHONE_DOCK_PAGES) expect(p.to.startsWith('/')).toBe(true)
   })
 })
+
+describe('Messages on the phone’s More (residential R2)', () => {
+  it('is a page for the office team, as the header’s Messages door is, and never for the field', () => {
+    for (const role of ['assistant', 'controller', 'dev', 'master_technician', 'estimator'] as const) {
+      expect(phoneDockPagesFor(role).some((p) => p.key === 'messages'), role).toBe(true)
+    }
+    for (const role of ['primary', 'helpers', 'superintendent', 'subcontractor', null] as const) {
+      expect(phoneDockPagesFor(role).some((p) => p.key === 'messages'), String(role)).toBe(false)
+    }
+  })
+
+  it('opens the Messages page, and can go on an assistant’s dock', () => {
+    const page = PHONE_DOCK_PAGES.find((p) => p.key === 'messages')!
+    expect(page.to).toBe('/messages')
+    expect(parseStoredDockSlots('["jobs","messages","po","inbox"]', 'assistant')).toEqual(['jobs', 'messages', 'po', 'inbox'])
+  })
+})
+

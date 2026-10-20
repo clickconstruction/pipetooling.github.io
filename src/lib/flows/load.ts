@@ -5,7 +5,9 @@
  *
  * One function per fact family, each reading the columns `facts.ts` names in `reads`, then `flowStampsFor`, which puts
  * them together for a kind of person with one `JobStamps` per job. A job is a GC project (`gc_projects.project_id`),
- * the spine's `project_id`: every Per job fact reads a project. The row types are written out until the types regen
+ * the spine's `project_id`: every Per job fact reads a project. A residential customer's job is a Pipeline job
+ * (`jobs_ledger.id`) instead, read in `residentialLoad.ts`, which keeps the bills' rules out of this file and so out
+ * of the edge functions' copy of it. The row types are written out until the types regen
  * (Messages cut 4, `20261012120000_messages_flows.sql` adds `first_opened_at`, `lost_on`, `won_on` and `paid_on`, and
  * the spine's `20261012010000_messages_spine.sql` adds `contacts` and `contact_jobs`).
  */
@@ -167,18 +169,18 @@ const dayOf = (at: string | null | undefined): string | null => {
   const t = at.trim()
   return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : calendarYmdInAppTzFromIso(t) || null
 }
-const newest = <T>(rows: readonly T[], at: (r: T) => string | null | undefined): T | null =>
+export const newest = <T>(rows: readonly T[], at: (r: T) => string | null | undefined): T | null =>
   rows.reduce<T | null>((best, r) => ((at(r) ?? '') > (best ? at(best) ?? '' : '') ? r : best), null)
 const earliest = (...days: (string | null | undefined)[]): string | null =>
   days.map(dayOf).filter((d): d is string => !!d).sort()[0] ?? null
-const stamp = (fact: FactId, mark: FactMark, at: string | null | undefined, by: string | null = null, until: string | null = null): FactStamp => ({
+export const stamp = (fact: FactId, mark: FactMark, at: string | null | undefined, by: string | null = null, until: string | null = null): FactStamp => ({
   fact,
   mark,
   at: at ?? null,
   by,
   until,
 })
-const nameOf = (rows: FlowRows, userId: string | null | undefined): string | null => (userId ? rows.userNames?.[userId] ?? null : null)
+export const nameOf = (rows: Pick<FlowRows, 'userNames'>, userId: string | null | undefined): string | null => (userId ? rows.userNames?.[userId] ?? null : null)
 /** The same day a year on: "a year from closeout". */
 const aYearOn = (ymd: string): string => {
   const [y, m, d] = ymd.split('-').map(Number) as [number, number, number]
@@ -504,7 +506,7 @@ export function docStamps(rows: FlowRows, now: Date): FactStamp[] {
 }
 
 /** Off the flow: the office's word on the contact (the spine's `off_*`). */
-export function offOf(rows: FlowRows): OffFlow | null {
+export function offOf(rows: Pick<FlowRows, 'contact' | 'userNames'>): OffFlow | null {
   const c = rows.contact
   return c.off_since ? { since: c.off_since, why: c.off_why ?? '', by: nameOf(rows, c.off_by) } : null
 }
@@ -527,7 +529,7 @@ function jobsOf(kind: FlowKind, rows: FlowRows): { jobIds: string[]; defaultJobI
   return { jobIds: defaultJobId ? [defaultJobId, ...ordered.filter((id) => id !== defaultJobId)] : ordered, defaultJobId }
 }
 
-const lane = (stamps: FactStamp[], rounds: LaneStamps['rounds'] = {}): LaneStamps => ({ stamps, rounds, dues: {} })
+export const lane = (stamps: FactStamp[], rounds: LaneStamps['rounds'] = {}): LaneStamps => ({ stamps, rounds, dues: {} })
 
 /** One person's stamps, for `readFlow` with their kind's flow. */
 export function flowStampsFor(kind: FlowKind, rows: FlowRows, now: Date): FlowStamps {

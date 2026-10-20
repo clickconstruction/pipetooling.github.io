@@ -54,8 +54,8 @@ describe('flows/seed', () => {
   })
 
   it('makes every fork an or with a way out that ends the lane', () => {
-    const forks = Object.values(SEED_FLOWS).flatMap((f) => flat(f).filter((s) => s.fork))
-    expect(forks.map((s) => s.id)).toEqual(['compare', 'yes'])
+    const forks = Object.values(SEED_FLOWS).flatMap((f) => flat(f).filter((s) => s.fork).map((s) => ({ ...s, kind: f.kind })))
+    expect(forks.map((s) => `${s.kind}.${s.id}`)).toEqual(['trade.compare', 'customer.yes', 'sub.yes'])
     for (const s of forks) expect(s.join).toBe('or')
   })
 

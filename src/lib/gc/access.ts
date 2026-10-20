@@ -14,6 +14,15 @@ export function canOpenGcProjects(role: UserRole | null | undefined): boolean {
 }
 
 /**
+ * Messages in the header (residential R2): who opens `/messages`, Follow up for every kind of person with their
+ * threads. The GC office team, since the spine's tables open to `gc_office_team()` alone. The field reaches a customer
+ * from Job Mode through the tech's door (`canMessageCustomersFromJobMode`), never from this page.
+ */
+export function canOpenMessages(role: UserRole | null | undefined): boolean {
+  return canOpenGcProjects(role)
+}
+
+/**
  * GC mode, B5 (v2.4923): who sees our number, the general conditions, contingency and fee we add on
  * top of the trades. The client's copy of the database's `gc_money_team()`
  * (`20261008130000_gc_our_number.sql`): dev, the leaders and the controller. `access.test.ts` reads
@@ -88,6 +97,46 @@ export function canEditClause(role: UserRole | null | undefined): boolean {
   return role != null && GC_CLAUSE_EDIT_TEAM.includes(role)
 }
 
+/**
+ * Who edits the flows in Settings → Flows (Messages, cut 4): the office team, the client copy of the flows tables'
+ * `gc_office_team()` policies and `flow_save`'s own check (`20261012120000`, `20261013020000`).
+ */
+export const GC_FLOWS_EDIT_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
+
+export function canEditFlows(role: UserRole | null | undefined): boolean {
+  return role != null && GC_FLOWS_EDIT_TEAM.includes(role)
+}
+
 export function canApproveClause(role: UserRole | null | undefined): boolean {
   return role != null && GC_CLAUSE_APPROVE_TEAM.includes(role)
+}
+
+/**
+ * Messages, R5 (v2.5419): the field roles that message a customer from Job Mode, primary and helpers (`roleLabels.ts`);
+ * a subcontractor stays out until R8 · 12. The client's copy of the database's `messages_tech_team()`
+ * (`20261013190000_messages_tech_door.sql`), which with `messages_tech_can_read()` opens a customer's thread to a tech
+ * dispatched to or clocked on one of its jobs this week or last. `access.test.ts` fails when the two lists differ.
+ */
+export const MESSAGES_TECH_TEAM: readonly UserRole[] = ['primary', 'helpers']
+
+export function canMessageCustomersFromJobMode(role: UserRole | null | undefined): boolean {
+  return role != null && MESSAGES_TECH_TEAM.includes(role)
+}
+
+/**
+ * Messages, cut 10: who reads a Pipeline job's calls, texts and emails in its Job activity. The office team, and since
+ * the owner's word of 2026-10-13 the field roles of R5's door. The read runs under the rows' policies, so a tech gets
+ * the lines of a customer whose job they worked this week or last, tied to the job, and never an office-only note.
+ */
+export function canReadJobMessages(role: UserRole | null | undefined): boolean {
+  return role != null && (GC_OFFICE_TEAM.includes(role) || MESSAGES_TECH_TEAM.includes(role))
+}
+
+/**
+ * The tech's door to a job's customer lines (v2.5527): the Customer pill in Job Mode's Job updates and the Job detail
+ * window. The field roles among `canReadJobMessages`; the policies keep the read to a job they are on this week or last.
+ * The office reads the same lines on Pipeline's Job activity and in Messages, so its Job detail stays as it was.
+ */
+export function readsCustomerLinesInJobUpdates(role: UserRole | null | undefined): boolean {
+  return canReadJobMessages(role) && role != null && MESSAGES_TECH_TEAM.includes(role)
 }

@@ -1,16 +1,18 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DRIVE, driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { DRIVE, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half } from '../_shared/driveJobFolder.ts'
+import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import {
   DRIVE_FOLDER_MIME,
-  LINK_TOKEN_BYTES,
+  STREAM_CAP_BYTES,
+  bytesOfBase64,
   contentDisposition,
   driveViewUrl,
-  fileLinkUrl,
+  isImageFile,
   landingPath,
-  linkToken,
   linkTokenShape,
   openAnswer,
   parseOfficeAsk,
@@ -41,7 +43,8 @@ import {
  *                                                        photo into Team only → Photos, up to 10 MB → { driveFileId, url }
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
- *                                                        { driveFileId, url }; the row keeps drive_file_id
+ *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
+ *                                                        to the job's photos named by day, sender and caption (cut 10)
  *   POST { action: 'open', job, driveFileId }            → Drive's own viewer for a file inside the job's folder, for
  *                                                        the office's /files/drive/<id> page → { url }
  *
@@ -69,47 +72,6 @@ const PUT_MAX_BYTES = 10 * 1024 * 1024
 const LIST_MAX_FILES = 500
 const LIST_MAX_DEPTH = 3
 
-type Half = 'plans' | 'team_only'
-interface JobFolder {
-  folderId: string
-  /** The halves, or null where a job's folder has none. */
-  plansId: string | null
-  teamId: string | null
-}
-
-async function driveGet<T>(token: string, url: string): Promise<T> {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-  if (!res.ok) throw new Error(`Drive answered ${res.status}`)
-  return (await res.json()) as T
-}
-
-/** A child folder by its name, or null; never made here. */
-async function childFolder(token: string, parentId: string, name: string): Promise<string | null> {
-  const q = encodeURIComponent(`'${parentId}' in parents and name = '${name.replace(/'/g, "\\'")}' and mimeType = '${DRIVE_FOLDER_MIME}' and trashed = false`)
-  const body = await driveGet<{ files?: { id: string }[] }>(token, `${DRIVE}/files?q=${q}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`)
-  return body.files?.[0]?.id ?? null
-}
-
-/** The job's folder and its halves, from the row that holds its link. */
-async function jobFolder(admin: SupabaseClient, token: string, job: JobRef): Promise<JobFolder | null> {
-  let url: string | null = null
-  if ('project_id' in job) {
-    const { data } = await admin.from('gc_projects').select('drive_folder_url').eq('project_id', job.project_id).maybeSingle()
-    url = (data as { drive_folder_url?: string } | null)?.drive_folder_url ?? null
-  } else if ('bid_id' in job) {
-    const { data } = await admin.from('bids').select('drive_link').eq('id', job.bid_id).maybeSingle()
-    url = (data as { drive_link?: string } | null)?.drive_link ?? null
-  } else {
-    const { data } = await admin.from('jobs_ledger').select('google_drive_link').eq('id', job.jobs_ledger_id).maybeSingle()
-    url = (data as { google_drive_link?: string } | null)?.google_drive_link ?? null
-  }
-  const folderId = driveFolderIdFromUrl(url)
-  if (!folderId) return null
-  if (!('project_id' in job)) return { folderId, plansId: null, teamId: null }
-  const [plansId, teamId] = await Promise.all([childFolder(token, folderId, 'Plans'), childFolder(token, folderId, 'Team only')])
-  return { folderId, plansId, teamId }
-}
-
 interface DriveListed {
   id: string
   name: string
@@ -126,7 +88,7 @@ async function filesUnder(token: string, folderId: string, half: Half, out: Reco
     const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`)
     const page = await driveGet<{ files?: DriveListed[]; nextPageToken?: string }>(
       token,
-      `${DRIVE}/files?q=${q}&pageSize=200&orderBy=modifiedTime desc&fields=nextPageToken,files(id,name,mimeType,size,webViewLink,modifiedTime)&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ''}`,
+      `${DRIVE}/files?q=${q}&pageSize=200&orderBy=modifiedTime desc&fields=nextPageToken,files(id,name,mimeType,size,webViewLink,modifiedTime)&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
     )
     for (const f of page.files ?? []) {
       if (out.length >= LIST_MAX_FILES) return
@@ -138,40 +100,6 @@ async function filesUnder(token: string, folderId: string, half: Half, out: Reco
     }
     pageToken = page.nextPageToken ?? ''
   } while (pageToken && out.length < LIST_MAX_FILES)
-}
-
-/** Whether a Drive file sits inside the job's folder, by its parents, a few levels up; and which half it is in. */
-async function halfInside(token: string, folder: JobFolder, fileId: string): Promise<Half | null> {
-  let id = fileId
-  for (let i = 0; i < 6; i += 1) {
-    const meta = await driveGet<{ parents?: string[] }>(token, `${DRIVE}/files/${encodeURIComponent(id)}?fields=parents&supportsAllDrives=true`)
-    const parent = meta.parents?.[0]
-    if (!parent) return null
-    if (folder.plansId && parent === folder.plansId) return 'plans'
-    if (folder.teamId && parent === folder.teamId) return 'team_only'
-    // A bid's or a Pipeline job's folder has no halves: inside it is Team only.
-    if (parent === folder.folderId) return folder.plansId || folder.teamId ? null : 'team_only'
-    id = parent
-  }
-  return null
-}
-
-/** A folder path under the job's folder, made as needed: Team only → Sent by us, and the like. */
-async function landingFolder(token: string, folder: JobFolder, path: readonly string[]): Promise<string> {
-  let parent = folder.folderId
-  for (const name of path) parent = (await findOrCreateFolder(token, parent, name)).id
-  return parent
-}
-
-function bytesOfBase64(b64: string): Uint8Array | null {
-  try {
-    const bin = atob(b64.replace(/^data:[^,]*,/, '').trim())
-    const out = new Uint8Array(bin.length)
-    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i)
-    return out
-  } catch {
-    return null
-  }
 }
 
 async function openDoor(req: Request, admin: SupabaseClient, url: URL): Promise<Response> {
@@ -203,16 +131,23 @@ async function openDoor(req: Request, admin: SupabaseClient, url: URL): Promise<
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'failed' }, 500)
   const google = await googleAccessToken(saJson)
-  const file = await fetch(`${DRIVE}/files/${encodeURIComponent(row!.drive_file_id)}?alt=media&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${google}` } })
+  const file = await driveMedia(google, row!.drive_file_id)
   if (!file.ok || !file.body) return json({ kind: 'off', why: 'unknown' }, 404)
+  // The size kept on the row is the size the day the link was made; a file grown past the cap since is not streamed.
+  const length = Number(file.headers.get('Content-Length') ?? '')
+  if (Number.isFinite(length) && length > STREAM_CAP_BYTES) {
+    void file.body.cancel().catch(() => {})
+    return json({ kind: 'off', why: 'tooBig' }, 410)
+  }
   // Passed through as it comes, never held whole.
   return new Response(file.body, {
     status: 200,
     headers: {
       ...corsHeaders,
       'Content-Type': row!.mime || file.headers.get('Content-Type') || 'application/octet-stream',
-      'Content-Disposition': contentDisposition(row!.name),
+      'Content-Disposition': contentDisposition(row!.name, row!.mime),
       'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
       ...(file.headers.get('Content-Length') ? { 'Content-Length': file.headers.get('Content-Length')! } : {}),
     },
   })
@@ -240,21 +175,32 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (ask.action === 'save') {
     const { data: att } = await admin
       .from('message_attachments')
-      .select('id, kind, name, mime, bucket_path, message_id, messages(bid_id, project_id, jobs_ledger_id)')
+      .select('id, sort_order, kind, name, mime, bucket_path, drive_file_id, sent_as, message_id, messages(direction, at, bid_id, project_id, jobs_ledger_id, who_text, subject, body)')
       .eq('id', ask.attachmentId)
       .maybeSingle()
-    const a = att as { kind: string; name: string; mime: string | null; bucket_path: string | null; messages: { bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null } | null } | null
+    const a = att as (PhotoAttachmentRow & { messages: { bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null } | null }) | null
     if (!a || a.kind !== 'file' || !a.bucket_path) return json({ error: 'That file is not one we kept.' }, 404)
+    // Saved already, by a second press or a second person: the one copy in Drive, never another.
+    if (a.drive_file_id) return json({ driveFileId: a.drive_file_id, url: driveViewUrl(a.drive_file_id) })
     const m = a.messages
     const job: JobRef | null = m?.project_id ? { project_id: m.project_id } : m?.bid_id ? { bid_id: m.bid_id } : m?.jobs_ledger_id ? { jobs_ledger_id: m.jobs_ledger_id } : null
     if (!job) return json({ error: 'Tie the message to a job first.' }, 409)
-    const folder = await jobFolder(admin, google, job)
-    if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
+    // A photo goes to the job's photos (Team only › Photos, or a Pipeline job's own Customer Pictures folder), named by
+    // day, sender and caption, the way the photo-save sweep files it (Messages, cut 10).
+    const photo = isImageFile(a) ? photoNameInputOf(a) : null
+    let into: string | null
+    if (photo) {
+      into = await photoFolderFor(admin, google, job)
+    } else {
+      const folder = await jobFolder(admin, google, job)
+      const path = folder && (folder.plansId || folder.teamId) ? landingPath('saved', ask.half) : []
+      into = folder ? (path.length ? await landingFolder(google, folder, path) : folder.folderId) : null
+    }
+    if (!into) return json({ error: 'That job has no Drive folder yet.' }, 409)
     const { data: blob, error } = await admin.storage.from('message-attachments').download(a.bucket_path)
     if (error || !blob) return json({ error: 'Our copy of that file did not read.' }, 500)
-    const path = folder.plansId || folder.teamId ? landingPath('saved', ask.half) : []
-    const into = path.length ? await landingFolder(google, folder, path) : folder.folderId
-    const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), a.name, a.mime || 'application/octet-stream')
+    const name = photo ? await freeName(google, into, (taken) => photoDriveName(photo, taken)) : a.name
+    const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, a.mime || 'application/octet-stream')
     const { error: kept } = await admin.from('message_attachments').update({ drive_file_id: put.id }).eq('id', ask.attachmentId)
     if (kept) return json({ error: 'Saved to Drive, but the row did not keep it.' }, 500)
     return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
@@ -285,34 +231,24 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
   }
 
-  const half = await halfInside(google, folder, ask.driveFileId)
-  if (!half) return json({ error: 'That file is not in the job’s Drive folder.' }, 403)
-
-  if (ask.action === 'open') return json({ url: driveViewUrl(ask.driveFileId) })
+  if (ask.action === 'open') {
+    if (!(await halfInside(google, folder, ask.driveFileId))) return json({ error: 'That file is not in the job’s Drive folder.' }, 403)
+    return json({ url: driveViewUrl(ask.driveFileId) })
+  }
 
   // ask.action === 'link'
-  const meta = await driveGet<{ name: string; mimeType: string; size?: string }>(google, `${DRIVE}/files/${encodeURIComponent(ask.driveFileId)}?fields=name,mimeType,size&supportsAllDrives=true`)
-  // A plan set's folder in Plans opens as the folder. A Team only folder has no bytes to hand over.
-  if (meta.mimeType === DRIVE_FOLDER_MIME && half !== 'plans') return json({ error: 'Only a folder in Plans can go as our link.' }, 400)
-  const token = linkToken(crypto.getRandomValues(new Uint8Array(LINK_TOKEN_BYTES)))
-  const { data: made, error } = await admin
-    .from('drive_links')
-    .insert({
-      token_hash: await sha256Hex(token),
-      ...ask.job,
-      drive_file_id: ask.driveFileId,
-      half,
-      name: meta.name.slice(0, 300),
-      mime: meta.mimeType,
-      size_bytes: meta.size == null ? null : Number(meta.size),
-      message_id: ask.messageId,
-      made_by: u.user.id,
-    })
-    .select('id')
-    .single()
-  if (error || !made) return json({ error: 'The link was not made.' }, 500)
-  const origin = Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
-  return json({ linkId: (made as { id: string }).id, url: fileLinkUrl(origin, token) })
+  const made = await makeDriveLink(admin, google, {
+    job: ask.job,
+    folder,
+    driveFileId: ask.driveFileId,
+    messageId: ask.messageId,
+    madeBy: u.user.id,
+    origin: Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com',
+  })
+  if (made.ok) return json({ linkId: made.linkId, url: made.url })
+  if (made.why === 'notInFolder') return json({ error: 'That file is not in the job’s Drive folder.' }, 403)
+  if (made.why === 'teamOnlyFolder') return json({ error: 'Only a folder in Plans can go as our link.' }, 400)
+  return json({ error: 'The link was not made.' }, 500)
 }
 
 serve(async (req) => {

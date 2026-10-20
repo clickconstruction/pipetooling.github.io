@@ -70,7 +70,7 @@ export async function openInPersonSigning(input: { jobId: string; authUserId: st
     const { data: rowsData } = await supabase.from('job_contracts').select('*').eq('job_id', job.id).is('voided_at', null).order('created_at', { ascending: false })
     const rows = (rowsData ?? []) as JobContractRow[]
     if (rows.some((r) => r.status === 'signed')) return { ok: false, error: 'This job’s agreement is already signed.' }
-    const { data: tpl } = await supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date').eq('audience', 'customer').order('document_name').limit(1).maybeSingle()
+    const { data: tpl } = await supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date').eq('audience', 'customer').is('flow_kind', null).order('document_name').limit(1).maybeSingle()
     const template = (tpl ?? null) as QuickSendTemplate
     let row = rows.find((r) => r.status === 'sent') ?? rows.find((r) => r.status === 'draft') ?? null
     if (row && row.status === 'draft') {

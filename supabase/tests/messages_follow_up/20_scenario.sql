@@ -101,8 +101,9 @@ $$;
 CREATE FUNCTION mfu.line(p_contact uuid, p_channel text, p_direction text, p_ago interval, p_body text) RETURNS uuid LANGUAGE sql AS $$
   INSERT INTO public.messages (contact_id, channel, direction, at, body) VALUES (p_contact, p_channel, p_direction, now() - p_ago, p_body) RETURNING id
 $$;
-GRANT USAGE ON SCHEMA mfu TO anon, authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mfu TO anon, authenticated;
+-- The service role too (v2.5596): the webhook's close is asserted as the role that makes it.
+GRANT USAGE ON SCHEMA mfu TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mfu TO anon, authenticated, service_role;
 
 -- The people, as the spine's seed makes them, and a number nobody knows.
 SELECT public.messages_seed_contacts();
@@ -112,7 +113,7 @@ CREATE TEMP TABLE ids AS SELECT
   (SELECT id FROM public.contacts WHERE gc_company_id = '00000000-0000-0000-0000-0000000006a1') AS greg,
   (SELECT id FROM public.contacts WHERE customer_contact_person_id = '00000000-0000-0000-0000-0000000006e1') AS priya,
   '00000000-0000-0000-0000-000000006011'::uuid AS dee;
-GRANT SELECT ON ids TO authenticated;
+GRANT SELECT ON ids TO authenticated, service_role;
 
 -- 1 · Every conversation starts closed, nobody has it, and the badge reads 0.
 SELECT mfu.same('every conversation starts closed', (SELECT string_agg(DISTINCT state, ',') FROM public.contacts), 'done');
@@ -453,6 +454,132 @@ SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
 SET LOCAL ROLE authenticated;
 SELECT mfu.refused('done once', $q$SELECT public.owed_sent_done(priya, ours) FROM ids, sent$q$, 'Nothing is owed to them now.');
 RESET ROLE;
+
+-- 13 · Calls to make (v2.5596, *_call_tasks): Add to my calls, a second add moves the day, I called with a note, Skip,
+--      Tomorrow, the webhook's close, the badge, who may not, the fences.
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE calls (what text, id uuid);
+GRANT SELECT, INSERT ON calls TO authenticated;
+INSERT INTO calls SELECT 'first', public.call_task_add(priya, 'estimate', 'project', '00000000-0000-0000-0000-0000000006f1', public.app_today() + 1, ' about the estimate ', 'Hi Priya, this is Rosa.') FROM ids;
+SELECT mfu.same('a call is added for its day, with its words, by who',
+  (SELECT concat_ws('|', t.what, (t.due_on = public.app_today() + 1)::text, t.script, public.follow_up_user_name(t.made_by), coalesce(t.done_how, 'open'))
+   FROM public.call_tasks t WHERE t.id = (SELECT id FROM calls WHERE what = 'first')),
+  'about the estimate|true|Hi Priya, this is Rosa.|Rosa|open');
+SELECT mfu.same('the thread says so',
+  (SELECT body FROM public.messages WHERE contact_id = (SELECT priya FROM ids) AND channel = 'event' ORDER BY at DESC, id DESC LIMIT 1),
+  'Rosa added a call to Dr. Priya Raman about the estimate for ' || public.follow_up_day(public.app_today() + 1) || '.');
+INSERT INTO calls SELECT 'again', public.call_task_add(priya, 'estimate', 'project', '00000000-0000-0000-0000-0000000006f1', public.app_today() + 3, 'about the estimate', NULL) FROM ids;
+SELECT mfu.same('a second add for the same step and job moves the open call instead',
+  (SELECT (a.id = b.id)::text || '|' || (SELECT (due_on = public.app_today() + 3)::text FROM public.call_tasks WHERE id = a.id) FROM calls a, calls b WHERE a.what = 'first' AND b.what = 'again'),
+  'true|true');
+SELECT mfu.same('one open call for her', (SELECT count(*)::text FROM public.call_tasks WHERE contact_id = (SELECT priya FROM ids) AND done_at IS NULL), '1');
+SELECT mfu.refused('a call says what it is about', $q$SELECT public.call_task_add(priya, 'booked', NULL, NULL, public.app_today(), '  ', NULL) FROM ids$q$, 'Say what the call is about');
+SELECT mfu.refused('a call says its day', $q$SELECT public.call_task_add(priya, 'booked', NULL, NULL, NULL, 'about the visit', NULL) FROM ids$q$, 'Say which day to call');
+SELECT public.call_task_move((SELECT id FROM calls WHERE what = 'first'), public.app_today());
+SELECT mfu.same('Tomorrow moves the day', (SELECT (due_on = public.app_today())::text FROM public.call_tasks WHERE id = (SELECT id FROM calls WHERE what = 'first')), 'true');
+SELECT mfu.refused('a call is never moved to a day gone by', $q$SELECT public.call_task_move((SELECT id FROM calls WHERE what = 'first'), public.app_today() - 1)$q$, 'Pick today or a day to come');
+-- The badge: a person with nothing else open counts once for an open call, and not once it closes.
+RESET ROLE;
+-- Done, so nothing but the call could count them: a new row starts waiting.
+INSERT INTO public.contacts (id, kind, state) VALUES ('00000000-0000-0000-0000-000000006012', 'unknown', 'done');
+INSERT INTO public.contact_channels (contact_id, kind, value) VALUES ('00000000-0000-0000-0000-000000006012', 'phone', '(830) 555-0190');
+CREATE TEMP TABLE badge (what text, n integer);
+GRANT SELECT, INSERT ON badge TO authenticated;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+INSERT INTO badge SELECT 'before', public.follow_up_count();
+INSERT INTO calls SELECT 'badge', public.call_task_add('00000000-0000-0000-0000-000000006012', NULL, NULL, NULL, public.app_today() + 1, 'about the pad', NULL);
+SELECT mfu.same('the badge counts a person once for an open call', public.follow_up_count()::text, (SELECT (n + 1)::text FROM badge WHERE what = 'before'));
+SELECT public.call_task_done((SELECT id FROM calls WHERE what = 'badge'), 'skipped', NULL);
+SELECT mfu.same('and not once the call closes', public.follow_up_count()::text, (SELECT n::text FROM badge WHERE what = 'before'));
+-- I called, with the app's note.
+SELECT public.call_task_done((SELECT id FROM calls WHERE what = 'first'), 'called', NULL);
+SELECT mfu.same('I called closes it with a note in the thread',
+  (SELECT concat_ws('|', t.done_how, public.follow_up_user_name(t.done_by), m.channel, m.body) FROM public.call_tasks t JOIN public.messages m ON m.id = t.done_message_id WHERE t.id = (SELECT id FROM calls WHERE what = 'first')),
+  'called|Rosa|note|Called Dr. Priya Raman about the estimate.');
+SELECT mfu.refused('a closed call is not closed again', $q$SELECT public.call_task_done((SELECT id FROM calls WHERE what = 'first'), 'skipped', NULL)$q$, 'That call is not open');
+SELECT mfu.refused('done says how', $q$SELECT public.call_task_add(priya, 'booked', NULL, NULL, public.app_today(), 'about the visit', NULL) FROM ids; SELECT public.call_task_done((SELECT id FROM public.call_tasks WHERE step_key = 'booked' AND done_at IS NULL), 'rang', NULL)$q$, 'Say how');
+-- Skip, with a gray line.
+INSERT INTO calls SELECT 'skip', public.call_task_add(greg, 'portal', NULL, NULL, public.app_today(), 'about the portal', NULL) FROM ids;
+SELECT public.call_task_done((SELECT id FROM calls WHERE what = 'skip'), 'skipped', NULL);
+SELECT mfu.same('Skip closes it with a gray line',
+  (SELECT t.done_how || '|' || (SELECT body FROM public.messages WHERE contact_id = t.contact_id AND channel = 'event' ORDER BY at DESC, id DESC LIMIT 1) FROM public.call_tasks t WHERE t.id = (SELECT id FROM calls WHERE what = 'skip')),
+  'skipped|Rosa skipped the call to Greg Paulk about the portal.');
+RESET ROLE;
+-- The webhook's close: an answered call to her closes every open call, with its line.
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+INSERT INTO calls SELECT 'webhook', public.call_task_add(priya, 'approved', 'project', '00000000-0000-0000-0000-0000000006f1', public.app_today() + 2, 'about the estimate', NULL) FROM ids;
+SELECT mfu.refused('the office does not close by call', $q$SELECT public.call_tasks_close_by_call(priya, NULL) FROM ids$q$, 'permission denied');
+RESET ROLE;
+CREATE TEMP TABLE the_call AS SELECT mfu.line((SELECT priya FROM ids), 'call', 'out', interval '1 minute', 'Rosa called Dr. Priya Raman, 4:12') AS id;
+GRANT SELECT ON the_call TO service_role;
+SET LOCAL ROLE service_role;
+SELECT mfu.same('the webhook closes the open call with its line', public.call_tasks_close_by_call((SELECT priya FROM ids), (SELECT id FROM the_call))::text, '1');
+RESET ROLE;
+SELECT mfu.same('closed by the call', (SELECT t.done_how || '|' || (t.done_message_id = (SELECT id FROM the_call))::text FROM public.call_tasks t WHERE t.id = (SELECT id FROM calls WHERE what = 'webhook')), 'call|true');
+-- Who may not: a superintendent reads none and adds none; training mode and a twin are refused in words; anon reads nothing.
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d4');
+SET LOCAL ROLE authenticated;
+SELECT mfu.same('a superintendent reads no call', (SELECT count(*)::text FROM public.call_tasks), '0');
+SELECT mfu.refused('a superintendent adds no call', $q$SELECT public.call_task_add(priya, 'booked', NULL, NULL, public.app_today(), 'about the visit', NULL) FROM ids$q$, 'Only the office team can');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d6');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('training mode adds no call', $q$SELECT public.call_task_add(priya, 'booked', NULL, NULL, public.app_today(), 'about the visit', NULL) FROM ids$q$, 'training account');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d7');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('a twin adds no call', $q$SELECT public.call_task_add(priya, 'booked', NULL, NULL, public.app_today(), 'about the visit', NULL) FROM ids$q$, 'digital twin');
+RESET ROLE;
+SET LOCAL ROLE anon;
+SELECT mfu.refused('anon reads no call', $q$SELECT count(*) FROM public.call_tasks$q$, 'permission denied');
+RESET ROLE;
+SELECT mfu.same('the new table carries the office policy and the read-only and twin blocks', (
+  SELECT (SELECT string_agg(polname, ',' ORDER BY polname COLLATE "C") FROM pg_policy WHERE polrelid = c.oid)
+    || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt')
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'call_tasks'),
+  'call_tasks_select,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
+SELECT mfu.same('the residential flow''s scripts are seeded',
+  (SELECT string_agg(s.step_key, ',' ORDER BY s.step_key) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential' AND s.call_script IS NOT NULL AND s.call_script_es IS NOT NULL),
+  'approved,booked,estimate');
+
+-- 14 · The customer's say (v2.5597): the office sets text, email or either with a gray line; the same word again writes
+--      nothing; My way is each person's own row.
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT public.contact_set_prefers(priya, 'email') FROM ids;
+SELECT mfu.same('the office sets how she hears from us, with a gray line',
+  (SELECT concat_ws('|', c.prefers, c.prefers_how, (c.prefers_at IS NOT NULL)::text,
+     (SELECT body FROM public.messages WHERE contact_id = c.id AND channel = 'event' ORDER BY at DESC, id DESC LIMIT 1))
+   FROM public.contacts c WHERE c.id = (SELECT priya FROM ids)),
+  'email|office|true|Rosa set how Dr. Priya Raman hears from us: email.');
+SELECT public.contact_set_prefers(priya, 'email') FROM ids;
+SELECT mfu.same('the same word again writes no second line',
+  (SELECT count(*)::text FROM public.messages WHERE contact_id = (SELECT priya FROM ids) AND channel = 'event' AND body LIKE 'Rosa set how % hears from us: email.'), '1');
+SELECT public.contact_set_prefers(priya, 'either') FROM ids;
+SELECT mfu.same('either stands as a word of its own', (SELECT prefers FROM public.contacts WHERE id = (SELECT priya FROM ids)), 'either');
+SELECT mfu.refused('a known word only', $q$SELECT public.contact_set_prefers(priya, 'fax') FROM ids$q$, 'Say text, email or either');
+-- My way: Rosa's own row, and nobody else reads or writes it.
+INSERT INTO public.tell_customer_prefs (user_id, booked) VALUES ('00000000-0000-0000-0000-0000000006d3', 'send');
+SELECT mfu.same('Rosa reads her own way', (SELECT booked || '|' || estimate FROM public.tell_customer_prefs WHERE user_id = '00000000-0000-0000-0000-0000000006d3'), 'send|ask');
+SELECT mfu.refused('a way is ask or send', $q$UPDATE public.tell_customer_prefs SET estimate = 'maybe' WHERE user_id = '00000000-0000-0000-0000-0000000006d3'$q$, 'tell_customer_prefs_estimate_known');
+SELECT mfu.refused('nobody writes another''s way', $q$INSERT INTO public.tell_customer_prefs (user_id, booked) VALUES ('00000000-0000-0000-0000-0000000006d2', 'send')$q$, 'row-level security');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d2');
+SET LOCAL ROLE authenticated;
+SELECT mfu.same('Robert reads no row of Rosa''s', (SELECT count(*)::text FROM public.tell_customer_prefs), '0');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d4');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('a superintendent sets nothing', $q$SELECT public.contact_set_prefers(priya, 'text') FROM ids$q$, 'Only the office team can');
+RESET ROLE;
+SELECT mfu.same('the prefs table carries the read-only and twin blocks', (
+  SELECT (SELECT string_agg(polname, ',' ORDER BY polname COLLATE "C") FROM pg_policy WHERE polrelid = c.oid)
+    || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt')
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'tell_customer_prefs'),
+  'digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update,tell_customer_prefs_own:1');
 
 DO $$ BEGIN RAISE NOTICE 'messages_follow_up PASSED'; END $$;
 ROLLBACK;

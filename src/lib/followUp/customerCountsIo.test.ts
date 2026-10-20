@@ -15,6 +15,10 @@ const contact = (id: string, patch: Partial<FollowUpContactRow>): FollowUpContac
   off_since: null,
   off_why: null,
   off_by: null,
+  prospect_id: null,
+  supply_house_id: null,
+  supply_house_contact_id: null,
+  team_prospect_id: null,
   state: 'waiting',
   snoozed_until: null,
   has_user_id: null,
@@ -54,11 +58,23 @@ const ROWS: FollowUpRows = {
   owed: [],
 }
 
+const NOW = '2026-10-02T17:00:00.000Z'
+
 describe('loadCustomerMessagesCounts', () => {
   it('reads Follow up’s rows for the day and counts them through the queue', async () => {
     const loadQueue = vi.fn(async () => ROWS)
-    expect(await loadCustomerMessagesCounts('2026-10-02', { loadQueue })).toEqual({ needReply: 1, weOwe: 0, toSort: 0 })
+    // Dana has nobody on her, so she waits in New to be sorted, not in Needs a reply: one person, counted once.
+    expect(await loadCustomerMessagesCounts('2026-10-02', { loadQueue }, NOW)).toEqual({ needReply: 0, weOwe: 0, toSort: 1 })
     expect(loadQueue).toHaveBeenCalledWith('2026-10-02')
+  })
+
+  it('counts Dana as needing a reply once someone has her, and never a sender nobody has named', async () => {
+    const held: FollowUpRows = {
+      ...ROWS,
+      contacts: [contact('dana', { customer_id: 'cust-dana', has_user_id: 'u-rosa', has_since: '2026-10-01T15:00:00.000Z', has_how: 'took' }), contact('unk1', { kind: 'unknown' })],
+      messages: [line('d1', 'dana'), line('u1', 'unk1')],
+    }
+    expect(await loadCustomerMessagesCounts('2026-10-02', { loadQueue: async () => held }, NOW)).toEqual({ needReply: 1, weOwe: 0, toSort: 0 })
   })
 
   it('is null when nobody is waiting', async () => {

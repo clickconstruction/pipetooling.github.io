@@ -81,7 +81,7 @@ type Draft = {
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const labelStyle = { display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 } as const
-const inputStyle = { width: '100%', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', boxSizing: 'border-box', background: 'var(--surface)', color: 'var(--text-900)' } as const
+const inputStyle = { width: '100%', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', boxSizing: 'border-box', background: 'var(--surface)', color: 'var(--text-strong)' } as const
 const btn = (kind: 'primary' | 'ghost' | 'green', disabled = false) =>
   ({
     padding: '0.45rem 0.9rem',
@@ -164,7 +164,7 @@ export function WorkOrderAssemblerModal({
         const [pRes, sRes, bRes, aRes, uRes] = await Promise.all([
           supabase.from('people').select('id, name, email, notes, end_date').eq('kind', 'sub').is('archived_at', null).order('name'),
           supabase.from('sub_scope_items').select('*').is('archived_at', null).order('sequence_order', { ascending: true }),
-          supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').order('sequence_order', { ascending: true }),
+          supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').is('flow_kind', null).order('sequence_order', { ascending: true }),
           supabase.from('app_settings').select('key, value_text').in('key', ['sub_pay_run_day']),
           authUserId ? supabase.from('users').select('name, role').eq('id', authUserId).maybeSingle() : Promise.resolve({ data: null }),
         ])

@@ -24,15 +24,29 @@
  *   over by its label. The run's health is on `gmail_sync_state` (`last_run_at`, `last_ok_at`, `last_error`,
  *   `last_taken`).
  *
+ *
+ * Two boxes since R6's reader (v2.5494, `src/lib/emailIn/readerBoxes.ts`): bids@ as above, and the team box once
+ * `app_settings` `messages_boxes_v1.team.address` holds an address, read as that Workspace user under the same
+ * delegation. Each box has its own token, its own `gmail_sync_state` row (by `mailbox`; the team row is made on its first
+ * run, at its newest point), its own label and its own try, so a box that fails writes its own `last_error` and the other
+ * still reads. Each line carries the box it came through (`messages.mailbox`).
+ *
+ * One email sent to both boxes is two Gmail messages with one Message-ID (v2.5504, `messages.rfc_message_id`). Each line
+ * carries the mail's Message-ID, and the box that reads one second writes nothing: it finds the line the first box wrote,
+ * puts its own label on, and counts it as taken before. `email_write_line` holds the same rule, so two runs at once
+ * still write one line.
+ *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON, GMAIL_IMPERSONATE_USER
- * (the mailbox, never written in the repo), EMAIL_FROM. config.toml keeps verify_jwt = false: the cron sends no JWT.
+ * (bids@, never written in the repo), EMAIL_FROM. config.toml keeps verify_jwt = false: the cron sends no JWT.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { GMAIL_SCOPES, GmailError, gmailAddLabel, gmailAttachment, gmailHistory, gmailLabelId, gmailMessage, gmailProfile, gmailSearch } from '../_shared/gmail.ts'
 import { googleServiceToken } from '../_shared/googleToken.ts'
-import { emailFileRows, emailLine, emailParty } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
+import { emailFileRows, emailLine, emailParty, rfcMessageId } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
+import { readerBoxes, type ReaderBox } from '../_shared/gcKernels/lib/emailIn/readerBoxes.ts'
+import { BOXES_SETTINGS_KEY, parseBoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
 import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/lib/emailIn/historyWalk.ts'
 import { base64UrlBytes, parseAddress, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
@@ -62,6 +76,8 @@ interface Ctx {
   admin: Admin
   token: string
   labelId: string
+  /** The box it reads, which each line carries in `messages.mailbox`. */
+  box: Mailbox
   /** How a line names the box: `bids@`. */
   mailbox: string
   isOurs: (address: string) => boolean
@@ -75,13 +91,18 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 const nowIso = () => new Date().toISOString()
 
-async function saveState(admin: Admin, fields: Record<string, unknown>): Promise<void> {
-  const { error } = await admin.from('gmail_sync_state').update({ ...fields, updated_at: nowIso() }).eq('id', true)
-  if (error) throw new Error(`Saving the reader's state failed: ${error.message}`)
+/**
+ * A box's row, made when it is not there yet (the team box's first run). The old one-row key `id` stays true on the bids
+ * row alone (`gmail_sync_state_id_is_bids`), so the team row is written with none.
+ */
+async function saveState(admin: Admin, box: Mailbox, fields: Record<string, unknown>): Promise<void> {
+  const row = { mailbox: box, ...(box === 'bids' ? {} : { id: null }), ...fields, updated_at: nowIso() }
+  const { error } = await admin.from('gmail_sync_state').upsert(row, { onConflict: 'mailbox' })
+  if (error) throw new Error(`Saving the ${box} reader's state failed: ${error.message}`)
 }
 
-/** Our addresses: the mailbox, the app's sender and the staff's, each to its team member when one is. */
-async function loadTeam(admin: Admin, box: string): Promise<Pick<Ctx, 'isOurs' | 'member'>> {
+/** Our addresses: the boxes, the app's sender and the staff's, each to its team member when one is. */
+async function loadTeam(admin: Admin, boxes: readonly string[]): Promise<Pick<Ctx, 'isOurs' | 'member'>> {
   const { data, error } = await admin.from('users').select('id, name, email, role').in('role', STAFF_ROLES).not('email', 'is', null)
   if (error) throw new Error(`Reading the team failed: ${error.message}`)
   const byAddress = new Map<string, TeamMember>()
@@ -89,7 +110,7 @@ async function loadTeam(admin: Admin, box: string): Promise<Pick<Ctx, 'isOurs' |
     const key = (u.email ?? '').trim().toLowerCase()
     if (key) byAddress.set(key, { id: u.id, name: (u.name ?? '').trim() || key })
   }
-  const ours = new Set([...byAddress.keys(), box.trim().toLowerCase()])
+  const ours = new Set([...byAddress.keys(), ...boxes.map((b) => b.trim().toLowerCase())])
   const appFrom = parseAddress(EMAIL_FROM)?.address.trim().toLowerCase()
   if (appFrom) ours.add(appFrom)
   return {
@@ -162,6 +183,14 @@ async function jobFor(ctx: Ctx, contactId: string, subject: string): Promise<str
 /** A file's name as a path part: the bucket takes letters, digits, dots, dashes, underscores and spaces. */
 const safeName = (name: string): string => name.replace(/[^A-Za-z0-9._ -]+/g, '_').slice(0, 120) || 'file'
 
+/** A line already holding this Message-ID: the same mail, read first in the other box. */
+async function heldLine(ctx: Ctx, rfc: string | null): Promise<boolean> {
+  if (!rfc) return false
+  const { data, error } = await ctx.admin.from('messages').select('id').eq('rfc_message_id', rfc).limit(1)
+  if (error) throw new Error(`Reading the line for ${rfc} failed: ${error.message}`)
+  return (data ?? []).length > 0
+}
+
 /** One message: read, placed, tied, its files copied, written once, then labelled. */
 async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   let m
@@ -177,6 +206,11 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   if (fwd ? outsideInbox(email) : leftOut(email, ctx.isOurs)) return 'left'
   const party = emailParty(email, fwd, ctx.isOurs)
   if (!party) return 'left'
+  // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
+  if (await heldLine(ctx, rfcMessageId(email))) {
+    await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
+    return 'already'
+  }
 
   const placed = await ctx.admin.rpc('email_place_address', { p_value: party.address.address, p_name: party.address.name }).single()
   if (placed.error) throw new Error(`Placing ${email.gmailId}'s address failed: ${placed.error.message}`)
@@ -222,38 +256,39 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
     subject: line.subject,
     body: line.body,
     gmail_thread_id: line.gmailThreadId,
+    mailbox: ctx.box,
+    rfc_message_id: line.rfcMessageId,
     ...jobColumns(jobKey),
   }
   const note = fwd?.note ? { who_user_id: by?.id ?? null, who_text: by ? '' : fwd.by.name || fwd.by.address, at: email.at, body: fwd.note } : null
-  // Written or not (a line written before the label went on answers written false and writes nothing), the label goes on
-  // only once the write has answered: a crash in between leaves no label, and the next run's write is a repeat.
+  // Written or not (a line written before the label went on, or the same mail's line from the other box, answers written
+  // false and writes nothing), the label goes on only once the write has answered: a crash in between leaves no label,
+  // and the next run's write is a repeat.
   const wrote = await ctx.admin.rpc('email_write_line', { p_gmail_id: email.gmailId, p_row: row, p_files: files, p_note: note })
   if (wrote.error) throw new Error(`Writing ${email.gmailId} failed: ${wrote.error.message}`)
   await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
-  return 'taken'
+  return (wrote.data as { written: boolean }[] | null)?.[0]?.written === false ? 'already' : 'taken'
 }
 
-async function run(admin: Admin): Promise<Record<string, unknown>> {
+/** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
+async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Pick<Ctx, 'isOurs' | 'member'>, prefixes: LedgerPrefixMap): Promise<Record<string, unknown>> {
   const startedAt = nowIso()
-  await saveState(admin, { last_run_at: startedAt })
+  await saveState(admin, b.mailbox, { last_run_at: startedAt })
   try {
-    const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    const box = Deno.env.get('GMAIL_IMPERSONATE_USER')?.trim()
-    if (!saJson || !box) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON and GMAIL_IMPERSONATE_USER must be set.')
-    const token = await googleServiceToken(saJson, GMAIL_SCOPES, box)
-    const { data: state, error } = await admin.from('gmail_sync_state').select('history_id').eq('id', true).single()
-    if (error) throw new Error(`Reading the reader's state failed: ${error.message}`)
+    const token = await googleServiceToken(saJson, GMAIL_SCOPES, b.address)
+    const { data: state, error } = await admin.from('gmail_sync_state').select('history_id').eq('mailbox', b.mailbox).maybeSingle()
+    if (error) throw new Error(`Reading the ${b.mailbox} reader's state failed: ${error.message}`)
     // Found by its name each run, and made again if someone took it off the box.
     const labelId = await gmailLabelId(token, LABEL_NAME)
 
     // The first run: keep the box's history point and read nothing older.
-    if (!state.history_id) {
+    if (!state?.history_id) {
       const profile = await gmailProfile(token)
-      await saveState(admin, { history_id: profile.historyId, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: 0 })
+      await saveState(admin, b.mailbox, { history_id: profile.historyId, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: 0 })
       return { ok: true, started: true }
     }
 
-    const ctx: Ctx = { admin, token, labelId, mailbox: `${box.split('@')[0]}@`, ...(await loadTeam(admin, box)), prefixes: await loadPrefixes(admin) }
+    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes }
     let walk: HistoryWalk
     try {
       walk = await walkHistory(state.history_id, (pageToken) => gmailHistory(token, state.history_id, pageToken), (id) => takeOne(ctx, id), MAX_PER_RUN)
@@ -268,16 +303,42 @@ async function run(admin: Admin): Promise<Record<string, unknown>> {
     if (walk.error) {
       // A message failed: keep the point at the last record taken whole, and say why. The next run starts there.
       const message = walk.error instanceof Error ? walk.error.message : String(walk.error)
-      await saveState(admin, { history_id: walk.cursor, label_id: labelId, last_error: message.slice(0, 1000), last_taken: walk.counts.taken })
+      await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: labelId, last_error: message.slice(0, 1000), last_taken: walk.counts.taken })
       throw walk.error
     }
-    await saveState(admin, { history_id: walk.cursor, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: walk.counts.taken })
+    await saveState(admin, b.mailbox, { history_id: walk.cursor, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: walk.counts.taken })
     return { ok: true, full: walk.full, ...walk.counts }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    await saveState(admin, { last_error: message.slice(0, 1000) }).catch(() => undefined)
+    await saveState(admin, b.mailbox, { last_error: message.slice(0, 1000) }).catch(() => undefined)
     throw e
   }
+}
+
+/** Every box Settings and the secret name (`readerBoxes`), each on its own: one that fails leaves the other reading. */
+async function run(admin: Admin): Promise<{ ok: boolean; boxes: Record<string, unknown> }> {
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  const { data: boxesSetting } = await admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle()
+  const boxes = readerBoxes(parseBoxSettings(boxesSetting?.value_text), Deno.env.get('GMAIL_IMPERSONATE_USER'))
+  if (!saJson || boxes.length === 0) {
+    const message = 'GOOGLE_SERVICE_ACCOUNT_JSON and GMAIL_IMPERSONATE_USER must be set.'
+    await saveState(admin, 'bids', { last_run_at: nowIso(), last_error: message }).catch(() => undefined)
+    throw new Error(message)
+  }
+  const team = await loadTeam(admin, boxes.map((b) => b.address))
+  const prefixes = await loadPrefixes(admin)
+  const out: Record<string, unknown> = {}
+  let ok = true
+  for (const b of boxes) {
+    try {
+      out[b.mailbox] = await runBox(admin, saJson, b, team, prefixes)
+    } catch (e) {
+      ok = false
+      console.error(`gmail-sync ${b.mailbox}`, e)
+      out[b.mailbox] = { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+  return { ok, boxes: out }
 }
 
 serve(async (req) => {
@@ -288,7 +349,8 @@ serve(async (req) => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', SWITCH_KEY).maybeSingle()
     if (setting?.value_text !== 'true') return jsonResponse({ ok: true, off: true })
-    return jsonResponse(await run(admin))
+    const result = await run(admin)
+    return jsonResponse(result, result.ok ? 200 : 500)
   } catch (e) {
     console.error('gmail-sync', e)
     return jsonResponse({ error: e instanceof Error ? e.message : String(e) }, 500)

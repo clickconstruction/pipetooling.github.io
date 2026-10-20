@@ -1,11 +1,11 @@
 /**
  * Messages, cut 2: Follow up's queue on a screen. Loads the rows through `FollowUpIo`, builds the queue with the kernel
- * (`followUpQueue`, the clause rows and the nudge builder passed through as their own kernels make them), and reads
- * again after every press, so what the screen draws is what the tables hold. A press that is refused leaves its words
+ * (`followUpQueue`, the clause rows and the nudge builder passed through as their own kernels make them, and the New
+ * lane built from the same rows, `followUpNewLane`), and reads again after every press, so what the screen draws is what the tables hold. A press that is refused leaves its words
  * in `problem`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { followUpInputFromRows, type FollowUpContact, type FollowUpLine, type FollowUpRows } from '../lib/followUp/followUpRows'
+import { followUpInputFromRows, followUpNewLane, type FollowUpContact, type FollowUpLine, type FollowUpRows } from '../lib/followUp/followUpRows'
 import { pressProblem, type FollowUpIo } from '../lib/followUp/followUpIo'
 import { followUpQueue, type FollowUpPassThrough, type FollowUpQueue } from '../lib/followUp/queue'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -19,6 +19,8 @@ export interface UseFollowUpQueueOptions<C, N extends { contactId: string }> {
   passThrough?: FollowUpPassThrough<C, N>
   /** Today, for a test; the app's zone otherwise. */
   todayYmd?: string
+  /** Now, for the New lane's words ("today at 8:41 AM"), for a test; the clock otherwise. */
+  nowIso?: string
 }
 
 export interface FollowUpQueueState<C, N extends { contactId: string }> {
@@ -39,7 +41,7 @@ export interface FollowUpQueueState<C, N extends { contactId: string }> {
 export function useFollowUpQueue<C = never, N extends { contactId: string } = never>(
   options: UseFollowUpQueueOptions<C, N>,
 ): FollowUpQueueState<C, N> {
-  const { io, userNames, enabled = true, passThrough, todayYmd } = options
+  const { io, userNames, enabled = true, passThrough, todayYmd, nowIso } = options
   const [rows, setRows] = useState<FollowUpRows | null>(null)
   const [loading, setLoading] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -92,8 +94,9 @@ export function useFollowUpQueue<C = never, N extends { contactId: string } = ne
   const built = useMemo(() => {
     if (!rows) return { queue: null, contacts: [] as FollowUpContact[], lines: new Map<string, FollowUpLine>() }
     const input = followUpInputFromRows(rows, today, userNames)
-    return { queue: followUpQueue<C, N>(input, passThrough ?? {}), contacts: input.contacts, lines: new Map(input.messages.map((m) => [m.id, m])) }
-  }, [rows, today, userNames, passThrough])
+    const newLane = followUpNewLane(input, rows.jobStates ?? {}, nowIso ?? new Date().toISOString())
+    return { queue: followUpQueue<C, N>(input, { ...passThrough, newLane }), contacts: input.contacts, lines: new Map(input.messages.map((m) => [m.id, m])) }
+  }, [rows, today, userNames, passThrough, nowIso])
 
   return { queue: built.queue, contacts: built.contacts, lines: built.lines, loading, problem, pressing, reload, press }
 }

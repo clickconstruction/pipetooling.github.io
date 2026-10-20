@@ -66,7 +66,8 @@ export type LienCalendar = {
   groups: LienCalendarGroup[]
   /** Every row that survived the search, tightest first (the phone list). */
   jobs: LienCalendarJob[]
-  totals: { jobs: number; open: number; noticesOwed: number; gone: number }
+  /** v2.5522: `inTheMail` = jobs whose every notice due is printed and in the mail; they are not in `noticesOwed`. */
+  totals: { jobs: number; open: number; noticesOwed: number; inTheMail: number; gone: number }
 }
 
 function norm(s: string | null | undefined): string {
@@ -87,7 +88,13 @@ function daysWords(n: number): string {
 
 function groupWord(jobs: LienCalendarJob[], kind: LienCalendarGroupKind): { word: string; tone: LienRunwayTone } {
   if (kind === 'gone') return { word: 'money still owed', tone: 'red' }
-  const owed = jobs.filter((j) => j.runway.state === 'notice_due')
+  const due = jobs.filter((j) => j.runway.state === 'notice_due')
+  const owed = due.filter((j) => !j.runway.noticeMailed)
+  // v2.5522: every notice due is printed and in the mail — the move is recording the numbers.
+  if (due.length > 0 && owed.length === 0) {
+    const min = Math.min(...due.map((j) => j.runway.daysToNotice ?? Number.MAX_SAFE_INTEGER))
+    return { word: `record ${due.length === 1 ? 'the mailing' : `${due.length} mailings`} · ${daysWords(min)}`, tone: 'amber' }
+  }
   if (owed.length > 0) {
     const min = Math.min(...owed.map((j) => j.runway.daysToNotice ?? Number.MAX_SAFE_INTEGER))
     const tone: LienRunwayTone = owed.some((j) => j.runway.tone === 'red') ? 'red' : 'amber'
@@ -155,13 +162,15 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
 
   const groups: LienCalendarGroup[] = []
   for (const [gcId, list] of gcGroups) {
-    const owed = list.filter((j) => j.runway.state === 'notice_due').length
+    // v2.5522: a notice printed and in the mail is not owed — its number is.
+    const owed = list.filter((j) => j.runway.state === 'notice_due' && !j.runway.noticeMailed).length
+    const mailed = list.filter((j) => j.runway.state === 'notice_due' && j.runway.noticeMailed).length
     const { word, tone } = groupWord(list, 'gc')
     groups.push({
       key: `gc:${gcId}`,
       kind: 'gc',
       name: list[0]?.gcName?.trim() || 'GC',
-      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}${sharedPropertyNote(list) ? ` · ${sharedPropertyNote(list)}` : ''}`,
+      sub: `GC · ${list.length} ${list.length === 1 ? 'job' : 'jobs'}${owed ? ` · ${owed} ${owed === 1 ? 'notice' : 'notices'} owed` : ''}${mailed ? ` · ${mailed} in the mail` : ''}${sharedPropertyNote(list) ? ` · ${sharedPropertyNote(list)}` : ''}`,
       jobs: list,
       total: list.reduce((s, j) => s + j.openBalance, 0),
       word,
@@ -207,7 +216,8 @@ export function buildLienCalendar(rows: ReadonlyArray<LienCalendarJob>, query: s
     totals: {
       jobs: jobs.length,
       open: jobs.reduce((s, j) => s + j.openBalance, 0),
-      noticesOwed: jobs.filter((j) => j.runway.state === 'notice_due').length,
+      noticesOwed: jobs.filter((j) => j.runway.state === 'notice_due' && !j.runway.noticeMailed).length,
+      inTheMail: jobs.filter((j) => j.runway.state === 'notice_due' && j.runway.noticeMailed).length,
       gone: gone.length,
     },
   }
@@ -242,9 +252,9 @@ function addDays(ymd: string, days: number): string {
  * a month whose window closed unsent draws none. The runway's own months (v2.4308), so a flag sits on
  * the same clock as the words and the earliest hollow flag is the date the GC row names.
  */
-export function noticeFlagsFor(job: Pick<LienCalendarJob, 'runway' | 'isSub'>): Array<{ ymd: string; done: boolean; monthKey: string }> {
+export function noticeFlagsFor(job: Pick<LienCalendarJob, 'runway' | 'isSub'>): Array<{ ymd: string; done: boolean; mailed: boolean; monthKey: string }> {
   if (!job.isSub || job.runway.state === 'closed' || job.runway.state === 'filed') return []
-  return job.runway.noticeMonths.filter((m) => m.state !== 'closed').map((m) => ({ ymd: m.ymd, done: m.state === 'sent', monthKey: m.key }))
+  return job.runway.noticeMonths.filter((m) => m.state !== 'closed').map((m) => ({ ymd: m.ymd, done: m.state === 'sent', mailed: m.state === 'mailed', monthKey: m.key }))
 }
 
 /** The commercial lien date when the property kind is not set — the bracket's far end. */
@@ -307,7 +317,7 @@ export type LienCalendarMark =
   | { kind: 'gone'; pct: number; ymd: string; by: 'notice' | 'lien'; label: string }
   | { kind: 'pay'; pct: number; ymd: string }
   | { kind: 'pay_missing'; pct: number }
-  | { kind: 'notice'; pct: number; ymd: string; done: boolean; monthKey: string | null; tone: LienRunwayTone }
+  | { kind: 'notice'; pct: number; ymd: string; done: boolean; /** v2.5522: printed and in the mail, the number owed. */ mailed: boolean; monthKey: string | null; tone: LienRunwayTone }
   | { kind: 'lien'; pct: number; ymd: string; tone: LienRunwayTone; closed: boolean }
   | { kind: 'run'; fromPct: number; toPct: number; short: boolean }
   | { kind: 'bracket'; fromPct: number; toPct: number; toYmd: string }
@@ -366,25 +376,26 @@ export function lienCalendarMarks(job: LienCalendarJob, axis: LienCalendarAxis, 
   if (commercial && r.lienByYmd) out.push({ kind: 'bracket', fromPct: axis.pct(r.lienByYmd), toPct: axis.pct(commercial), toYmd: commercial })
   if (payYmd) out.push({ kind: 'pay', pct: axis.pct(payYmd), ymd: payYmd })
   else if (r.state !== 'filed' && opts.payMissingDot !== false) out.push({ kind: 'pay_missing', pct: axis.pct(addDays(axis.todayYmd, 2)) })
-  for (const f of noticeFlagsFor(job)) out.push({ kind: 'notice', pct: axis.pct(f.ymd), ymd: f.ymd, done: f.done, monthKey: f.monthKey, tone: f.done ? 'green' : noticeTone(f.ymd, axis.todayYmd) })
+  for (const f of noticeFlagsFor(job)) out.push({ kind: 'notice', pct: axis.pct(f.ymd), ymd: f.ymd, done: f.done, mailed: f.mailed, monthKey: f.monthKey, tone: f.done ? 'green' : f.mailed ? 'amber' : noticeTone(f.ymd, axis.todayYmd) })
   if (r.lienByYmd) out.push({ kind: 'lien', pct: axis.pct(r.lienByYmd), ymd: r.lienByYmd, tone: r.state === 'filed' ? 'green' : r.tone, closed: false })
   return out
 }
 
 /** A GC row's marks: the group's flags folded per date, each carrying a count. */
-export type LienCalendarGroupFlag = { ymd: string; pct: number; notices: number; liens: number; tone: LienRunwayTone }
+export type LienCalendarGroupFlag = { ymd: string; pct: number; notices: number; liens: number; /** v2.5522: notices printed and in the mail, their numbers owed. */ mailed: number; tone: LienRunwayTone }
 
 export function lienCalendarGroupFlags(group: Pick<LienCalendarGroup, 'jobs'>, axis: LienCalendarAxis): LienCalendarGroupFlag[] {
   const byYmd = new Map<string, LienCalendarGroupFlag>()
-  const bump = (ymd: string, what: 'notices' | 'liens', tone: LienRunwayTone) => {
-    const f = byYmd.get(ymd) ?? { ymd, pct: axis.pct(ymd), notices: 0, liens: 0, tone: 'grey' as LienRunwayTone }
+  const bump = (ymd: string, what: 'notices' | 'liens' | 'mailed', tone: LienRunwayTone) => {
+    const f = byYmd.get(ymd) ?? { ymd, pct: axis.pct(ymd), notices: 0, liens: 0, mailed: 0, tone: 'grey' as LienRunwayTone }
     f[what] += 1
     if (rank(tone) > rank(f.tone)) f.tone = tone
     byYmd.set(ymd, f)
   }
   for (const j of group.jobs) {
     for (const m of lienCalendarMarks(j, axis)) {
-      if (m.kind === 'notice' && !m.done) bump(m.ymd, 'notices', m.tone)
+      if (m.kind === 'notice' && m.mailed) bump(m.ymd, 'mailed', 'grey')
+      else if (m.kind === 'notice' && !m.done) bump(m.ymd, 'notices', m.tone)
       else if (m.kind === 'lien' && !m.closed) bump(m.ymd, 'liens', m.tone)
     }
   }
@@ -400,8 +411,8 @@ function rank(t: LienRunwayTone): number {
  * before, ten sentences in a fold). `label` stays the hover on a row's mark. `door` names the
  * board's own door the panel offers; the tab maps it to the handler it already has.
  */
-export type LienCalendarKeyGlyph = 'today' | 'work' | 'work_hollow' | 'notice' | 'check' | 'lien' | 'pay' | 'pay_missing' | 'room' | 'short' | 'bracket' | 'count' | 'gone'
-export type LienCalendarKeyEntry = { glyph: LienCalendarKeyGlyph; short: string; label: string; long: string; door?: 'kinds' | 'draft' }
+export type LienCalendarKeyGlyph = 'today' | 'work' | 'work_hollow' | 'notice' | 'check' | 'mailed' | 'lien' | 'pay' | 'pay_missing' | 'room' | 'short' | 'bracket' | 'count' | 'gone'
+export type LienCalendarKeyEntry = { glyph: LienCalendarKeyGlyph; short: string; label: string; long: string; door?: 'kinds' | 'draft' | 'record' }
 export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
   { glyph: 'today', short: 'Today', label: 'today — one line down the whole board', long: 'One line down the whole board on today’s date. Everything left of it has happened; everything right of it is still ahead.' },
   {
@@ -424,6 +435,13 @@ export const LIEN_CALENDAR_KEY: ReadonlyArray<LienCalendarKeyEntry> = [
     door: 'draft',
   },
   { glyph: 'check', short: 'Notice on file', label: 'that month’s notice is on file', long: 'That month’s § 53.056 notice is recorded — sent from the desk or entered by hand. The lien for that month stays alive to its own flag.' },
+  {
+    glyph: 'mailed',
+    short: 'In the mail',
+    label: 'that month’s notice is printed and in the mail — its tracking number is still owed',
+    long: 'That month’s § 53.056 notice was printed from the desk and is on its way, but the certified number is not on record yet, so it is not on file. Record the mailing on the Lien desk and this mark becomes Notice on file. Until then the desk lists it under In the mail · tracking owed.',
+    door: 'record',
+  },
   {
     glyph: 'lien',
     short: 'Lien deadline',

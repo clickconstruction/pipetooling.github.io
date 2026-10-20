@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emailFileRows, emailLine, emailParty, fileKeep, KEEP_FILE_BYTES, SKIP_INLINE_PICTURE_BYTES } from './emailLine'
+import { emailFileRows, emailLine, emailParty, fileKeep, KEEP_FILE_BYTES, RFC_MESSAGE_ID_MAX, rfcMessageId, SKIP_INLINE_PICTURE_BYTES } from './emailLine'
 import type { Forwarded } from './forwarded'
 import type { EmailIn } from './gmailMessage'
 
@@ -73,6 +73,7 @@ describe('emailLine', () => {
       subject: 'Hillside sitework, Boerne, rev 1',
       body: 'Robert,\n\nNumbers attached.',
       whoText: 'Greg Paulk <greg@hillside.example> to bids@',
+      rfcMessageId: null,
     })
     expect(emailLine(email({ from: { name: null, address: 'dee@alamoconcrete.example' }, subject: '' }), null, { address: { name: null, address: 'dee@alamoconcrete.example' }, direction: 'in' }, 'bids@')).toMatchObject({
       subject: null,
@@ -93,6 +94,22 @@ describe('emailLine', () => {
   it("falls back to the email's own time, its subject without Fwd:, and the forwarder's own name", () => {
     const line = emailLine(email({ from: rosa, subject: 'FW: Fwd: Glass' }), fwd({ subject: null, at: null }), { address: elena, direction: 'in' }, 'bids@')
     expect(line).toMatchObject({ at: '2026-10-02T16:30:00.000Z', subject: 'Glass', whoText: 'Elena Marchetti <elena@cibolocreek.example> · forwarded to bids@ by Rosa Diaz' })
+  })
+})
+
+describe('rfcMessageId: the same mail in both boxes', () => {
+  it("is the mail's Message-ID header, trimmed, on the line and on a forwarded copy's line", () => {
+    const headers = { 'message-id': '  <CAF8x2@mail.gmail.com> ' }
+    expect(rfcMessageId({ headers })).toBe('<CAF8x2@mail.gmail.com>')
+    expect(emailLine(email({ headers }), null, { address: greg, direction: 'in' }, 'bids@').rfcMessageId).toBe('<CAF8x2@mail.gmail.com>')
+    expect(emailLine(email({ from: rosa, headers }), fwd(), { address: elena, direction: 'in' }, 'office@', 'Rosa').rfcMessageId).toBe('<CAF8x2@mail.gmail.com>')
+  })
+
+  it('is null when the mail has none, an empty one, or one longer than a header line', () => {
+    expect(rfcMessageId({ headers: {} })).toBeNull()
+    expect(rfcMessageId({ headers: { 'message-id': '   ' } })).toBeNull()
+    expect(rfcMessageId({ headers: { 'message-id': `<${'x'.repeat(RFC_MESSAGE_ID_MAX)}>` } })).toBeNull()
+    expect(rfcMessageId({ headers: { 'message-id': `<${'x'.repeat(RFC_MESSAGE_ID_MAX - 2)}>` } })).toHaveLength(RFC_MESSAGE_ID_MAX)
   })
 })
 

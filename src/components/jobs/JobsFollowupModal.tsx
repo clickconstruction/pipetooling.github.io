@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -6,22 +7,28 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, getDefaultWeekRange } from '../../utils/dateUtils'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { fetchStreetViewImageBlob, fetchStreetViewMeta, googleStreetViewPanoUrl } from '../../lib/fetchStreetViewPreview'
 import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
 import {
+  JOB_FOLLOWUP_IDLE_DAYS,
   JOB_FOLLOWUP_STAGES,
   JOB_FOLLOWUP_STAGE_LABELS,
   computeJobFollowupQueue,
   dropDeletedFollowupCandidates,
+  jobFollowupIdleDays,
+  jobFollowupNeed,
   jobFollowupQuietDays,
   jobFollowupQuietSeverity,
   jobFollowupReviewActionLabel,
   jobFollowupStageCounts,
   type JobFollowupCandidate,
+  type JobFollowupQueueEntry,
   type JobFollowupReview,
   type JobFollowupSettings,
   type JobFollowupStage,
+  type JobFollowupWhy,
 } from '../../lib/jobs/jobFollowupQueue'
 import {
   deleteLatestJobFollowupReview,
@@ -177,7 +184,7 @@ function SettingsStepper({ label, desc, value, onChange }: { label: string; desc
   )
 }
 
-export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow, onOpenActivity, activityExpandOpen, liveJobIds, liveJobStages }: {
+export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRow, onOpenActivity, activityExpandOpen, liveJobIds, liveJobStages, initialLens = null }: {
   open: boolean
   onClose: () => void
   /** Renders the job's full Pipeline row (v2.1739) — provided by JobsStagesTab, which owns the section renderers. */
@@ -197,6 +204,8 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
    * outside them read as "deleted" and the deck wiped itself to All caught up.
    */
   liveJobStages?: ReadonlySet<JobFollowupStage>
+  /** The lens the deck opens on (v2.5511): `idle` from the Dashboard's idle card; null for the whole queue. */
+  initialLens?: 'idle' | null
 }) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -214,6 +223,9 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   const [reviews, setReviews] = useState<JobFollowupReview[]>([])
   const [settings, setSettings] = useState<JobFollowupSettings | null>(null)
   const [stageFilter, setStageFilter] = useState<JobFollowupStage | 'all'>('all')
+  /** The Idle lens (v2.5511): the cards with no crew on site in 21+ days, whatever their stage. */
+  const [whyFilter, setWhyFilter] = useState<JobFollowupWhy | 'all'>(initialLens ?? 'all')
+  const navigate = useNavigate()
   const [noteDraft, setNoteDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -230,6 +242,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     setReviewedCount(0)
     setSessionTrail([])
     setRevisitJobId(null)
+    setWhyFilter(initialLens ?? 'all')
     void (async () => {
       try {
         const [cands, revs, sets] = await Promise.all([
@@ -252,7 +265,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     return () => {
       cancelled = true
     }
-  }, [open, todayYmd, showToast])
+  }, [open, todayYmd, showToast, initialLens])
 
   // A job deleted while the deck is open (Job window Edit tab, migrate-to-bid,
   // even another user) leaves the tab's jobs list — drop its card instead of
@@ -269,9 +282,10 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     [candidates, reviews, settings, todayYmd],
   )
   const counts = useMemo(() => jobFollowupStageCounts(fullQueue), [fullQueue])
+  const idleCount = useMemo(() => fullQueue.filter((e) => e.why === 'idle').length, [fullQueue])
   const queue = useMemo(
-    () => (stageFilter === 'all' ? fullQueue : fullQueue.filter((e) => e.job.stage === stageFilter)),
-    [fullQueue, stageFilter],
+    () => fullQueue.filter((e) => (stageFilter === 'all' || e.job.stage === stageFilter) && (whyFilter === 'all' || e.why === whyFilter)),
+    [fullQueue, stageFilter, whyFilter],
   )
   // Queue list view (v2.1721): a row's "Review →" pins its job so the deck
   // deals from there; once the job leaves the queue, the pin clears and the
@@ -319,7 +333,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   const revisitCandidate = revisitEntry ? candidates.find((c) => c.id === revisitEntry.jobId) ?? null : null
   const revisitCard =
     revisitEntry && revisitCandidate
-      ? { job: revisitCandidate, quietDays: jobFollowupQuietDays(revisitCandidate.latestActivityAt, todayYmd), reason: '' }
+      ? { job: revisitCandidate, quietDays: jobFollowupQuietDays(revisitCandidate.latestActivityAt, todayYmd), reason: '', why: 'quiet' as const, idleDays: jobFollowupIdleDays(revisitCandidate, todayYmd), need: jobFollowupNeed(revisitCandidate) }
       : null
   const revisitCardMissing = revisitCard == null
   useEffect(() => {
@@ -483,6 +497,35 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
     [user, showToast],
   )
 
+  /** The card's clock chip: an idle card counts its field-day gap in red, a quiet card its quiet days in amber. */
+  const clockChip = (e: JobFollowupQueueEntry) =>
+    e.why === 'idle' ? (
+      <span data-testid="followup-clock-chip" style={{ ...chipStyle('var(--bg-red-100)', 'var(--text-red-700)'), marginLeft: 'auto' }}>
+        idle {e.idleDays} day{e.idleDays === 1 ? '' : 's'}
+      </span>
+    ) : (
+      <span data-testid="followup-clock-chip" style={{ ...chipStyle('var(--bg-amber-100)', 'var(--text-amber-800)'), marginLeft: 'auto' }}>
+        quiet {e.quietDays} day{e.quietDays === 1 ? '' : 's'}
+      </span>
+    )
+
+  /** The door that matches the Next line (v2.5511): the Bill tab for a bill, the week grid for a visit; the row carries the rest. */
+  const needDoor = (e: JobFollowupQueueEntry): { label: string; go: () => void } | null => {
+    if (!e.need) return null
+    if (e.need.kind === 'bill') {
+      return {
+        label: 'Open the Bill tab',
+        go: () => {
+          if (!jobWindowBridge?.requestOpenJobWindowEdit(e.job.id, { initialTab: 'bill' })) jobDetailModal?.openJobDetail({ jobId: e.job.id })
+        },
+      }
+    }
+    if (e.need.kind === 'schedule' || e.need.kind === 'schedule_or_close') {
+      return { label: 'Schedule it', go: () => navigate(scheduleDispatchWeekUrl(e.job.id, getDefaultWeekRange().start)) }
+    }
+    return null
+  }
+
   if (!open) return null
 
   const filterChip = (key: JobFollowupStage | 'all', label: string): React.ReactNode => (
@@ -565,6 +608,29 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
         >
           {filterChip('all', `All (${fullQueue.length})`)}
           {JOB_FOLLOWUP_STAGES.filter((s) => counts[s] > 0).map((s) => filterChip(s, `${JOB_FOLLOWUP_STAGE_LABELS[s]} (${counts[s]})`))}
+          {idleCount > 0 ? (
+            <button
+              type="button"
+              data-testid="followups-lens-idle"
+              aria-pressed={whyFilter === 'idle'}
+              onClick={() => setWhyFilter((v) => (v === 'idle' ? 'all' : 'idle'))}
+              title={`${idleCount} open job${idleCount === 1 ? '' : 's'} with no crew on site in ${JOB_FOLLOWUP_IDLE_DAYS}+ days, whatever the notes say`}
+              style={{
+                fontSize: '0.74rem',
+                fontWeight: whyFilter === 'idle' ? 700 : 500,
+                padding: '0.24rem 0.65rem',
+                borderRadius: 999,
+                border: `1px solid ${whyFilter === 'idle' ? '#dc2626' : 'var(--border-strong)'}`,
+                background: whyFilter === 'idle' ? '#dc2626' : 'var(--surface)',
+                color: whyFilter === 'idle' ? '#fff' : 'var(--text-red-700)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              Idle {JOB_FOLLOWUP_IDLE_DAYS}+ ({idleCount})
+            </button>
+          ) : null}
           <span role="group" aria-label="Follow-ups view" style={{ display: 'inline-flex', flexShrink: 0, borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-strong)', marginLeft: '0.2rem' }}>
             {(['deck', 'list', 'history'] as const).map((m) => (
               <button
@@ -688,6 +754,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                     </span>
                   </span>
                   <span style={{ ...STAGE_CHIP[e.job.stage], flexShrink: 0 }}>{JOB_FOLLOWUP_STAGE_LABELS[e.job.stage]}</span>
+                  {e.why === 'idle' ? <span style={{ ...chipStyle('var(--bg-red-100)', 'var(--text-red-700)'), flexShrink: 0 }}>idle</span> : null}
                   <button
                     type="button"
                     onClick={() => {
@@ -720,9 +787,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
                     <span style={{ background: '#f59e0b', color: '#fff', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
                     <span style={STAGE_CHIP[current.job.stage]}>{JOB_FOLLOWUP_STAGE_LABELS[current.job.stage]}</span>
-                    <span style={{ ...chipStyle('var(--bg-amber-100)', 'var(--text-amber-800)'), marginLeft: 'auto' }}>
-                      quiet {current.quietDays} day{current.quietDays === 1 ? '' : 's'}
-                    </span>
+                    {clockChip(current)}
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '1.05rem', marginTop: '0.4rem' }}>{current.job.jobName}</div>
                 </>
@@ -731,9 +796,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                   <span style={{ background: '#f59e0b', color: '#fff', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
                   <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{current.job.jobName}</span>
                   <span style={STAGE_CHIP[current.job.stage]}>{JOB_FOLLOWUP_STAGE_LABELS[current.job.stage]}</span>
-                  <span style={{ ...chipStyle('var(--bg-amber-100)', 'var(--text-amber-800)'), marginLeft: 'auto' }}>
-                    quiet {current.quietDays} day{current.quietDays === 1 ? '' : 's'}
-                  </span>
+                  {clockChip(current)}
                 </div>
               )}
 
@@ -764,6 +827,21 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                   Why it's here: {current.reason}
                 </div>
               )}
+              {current.need ? (
+                <div data-testid="followup-next-line" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.82rem', margin: '0 0 0.7rem', padding: '0.4rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
+                  <span>
+                    <b>Next:</b> {current.need.words}
+                  </span>
+                  {(() => {
+                    const door = needDoor(current)
+                    return door ? (
+                      <button type="button" onClick={door.go} style={{ marginLeft: 'auto', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', borderRadius: 7, fontSize: '0.76rem', fontWeight: 700, padding: '0.28rem 0.6rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {door.label} ↗
+                      </button>
+                    ) : null
+                  })()}
+                </div>
+              ) : null}
 
               <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.7rem', alignItems: 'center' }}>
                 {current.job.customerName ? <span style={{ fontSize: '0.8rem', color: 'var(--text-slate-600)' }}>Customer <b>{current.job.customerName}</b></span> : null}
@@ -999,9 +1077,11 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
             <div style={{ fontSize: '0.84rem', color: 'var(--text-slate-500)', marginTop: '0.3rem' }}>
               {reviewedCount > 0
                 ? `${reviewedCount} job${reviewedCount === 1 ? '' : 's'} handled this session. Nothing else is past its review period.`
-                : stageFilter === 'all'
-                  ? 'No job is past its review period right now.'
-                  : 'Nothing in this stage needs a follow-up.'}
+                : whyFilter === 'idle'
+                  ? `No open job has sat ${JOB_FOLLOWUP_IDLE_DAYS} days with no crew on site.`
+                  : stageFilter === 'all'
+                    ? 'No job is past its review period right now.'
+                    : 'Nothing in this stage needs a follow-up.'}
             </div>
           </div>
         ) : null}

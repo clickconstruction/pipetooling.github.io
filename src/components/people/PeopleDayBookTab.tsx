@@ -83,9 +83,9 @@ const pillStyle = (on: boolean, disabled = false): React.CSSProperties => ({
   fontSize: '0.78rem',
   padding: '0.2rem 0.55rem',
   borderRadius: 999,
-  border: `1px solid ${on ? 'var(--text-blue-600)' : 'var(--border)'}`,
+  border: `1px solid ${on ? 'var(--text-link)' : 'var(--border)'}`,
   background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-  color: on ? 'var(--text-blue-600)' : 'var(--text-700)',
+  color: on ? 'var(--text-link)' : 'var(--text-700)',
   fontWeight: on ? 600 : 400,
   cursor: disabled ? 'default' : 'pointer',
   opacity: disabled ? 0.5 : 1,
@@ -306,7 +306,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
       ) : state === 'error' ? (
         <p style={{ color: 'var(--text-red-600)', fontSize: '0.85rem' }}>
           The Day book could not load.{' '}
-          <button type="button" onClick={() => void load()} style={{ ...navButtonStyle, color: 'var(--text-blue-600)', padding: 0 }}>
+          <button type="button" onClick={() => void load()} style={{ ...navButtonStyle, color: 'var(--text-link)', padding: 0 }}>
             Retry
           </button>
         </p>
@@ -329,7 +329,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
             <section aria-label="Estimating" style={{ display: 'grid', gap: '0.35rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                 <b style={{ color: 'var(--text-strong)', fontSize: '0.85rem', fontWeight: 600 }}>Estimating · this range against the one before it</b>
-                <a href="/bids?tab=bid-costs" style={{ color: 'var(--text-blue-600)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                <a href="/bids?tab=bid-costs" style={{ color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
                   Bid vs actual →
                 </a>
               </div>
@@ -420,7 +420,7 @@ function PersonRow({ person: p, day, leftFor }: { person: DayBookPersonDay; day:
         </span>
       </div>
       {p.lines.length > 0 ? (
-        <div style={{ marginTop: '0.3rem', borderLeft: '3px solid var(--text-blue-600)', paddingLeft: '0.5rem', display: 'grid', gap: '0.08rem' }}>
+        <div style={{ marginTop: '0.3rem', borderLeft: '3px solid var(--text-link)', paddingLeft: '0.5rem', display: 'grid', gap: '0.08rem' }}>
           {p.lines.map((l, i) => {
             const left = leftFor(l, day)
             return (

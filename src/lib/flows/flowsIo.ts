@@ -5,7 +5,7 @@
  */
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { supabase } from '../supabase'
-import { parseFlowRowsKind, type FlowRowsKindAnswer } from './boardRead'
+import { pageOpensByCustomer, parseFlowRowsKind, type FlowRowsKindAnswer } from './boardRead'
 import type { FlowKind } from './facts'
 import { readFlowDef } from './flowPersonIo'
 import { SEED_FLOWS } from './seed'
@@ -18,6 +18,13 @@ import type { FlowDef } from './state'
 export async function loadFlowRowsKind(kind: FlowKind | null, projectId: string | null = null): Promise<FlowRowsKindAnswer> {
   const data = await withSupabaseRetry<unknown>(() => supabase.rpc('flow_rows_kind' as never, { p_kind: kind, p_project: projectId } as never) as never, 'flow rows')
   return parseFlowRowsKind(data)
+}
+
+/** Each customer's last outside open of their page (`customer_portal_views`, helper 8's, office team only), for By company's Portal column. */
+export async function loadCustomerPageOpens(customerIds: readonly string[]): Promise<Record<string, string>> {
+  if (!customerIds.length) return {}
+  const data = await withSupabaseRetry<unknown>(() => supabase.rpc('customer_portal_views' as never, { p_customer_ids: [...customerIds] } as never) as never, 'customer page opens')
+  return pageOpensByCustomer(data)
 }
 
 const flowDefs = new Map<FlowKind, FlowDef>()

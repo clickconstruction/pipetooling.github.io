@@ -28,6 +28,8 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { readCustomerProfileView, writeCustomerProfileView, type CustomerProfileView } from '../../lib/customers/customerProfileView'
 import CustomerViewSwitch from './CustomerViewSwitch'
 import CustomerTimelineView from './CustomerTimelineView'
+import { useOptionalAuth } from '../../hooks/useAuth'
+import { isStaffFullJobLedgerDetailRole } from '../../lib/jobDetailModalRole'
 
 /**
  * Customer profile modal (v2.1322): everything the app knows about one
@@ -40,10 +42,14 @@ import CustomerTimelineView from './CustomerTimelineView'
  * dollars. Every row opens the EXISTING surface (Job Detail modal, workflow
  * route, Bid Preview, estimate page).
  *
- * The money strip renders for every role that can open the modal — today the
- * opener lives on the Stages board, whose viewers are exactly the office set
- * that already sees these dollars on the board itself.
+ * The money strip, the Jobs rail and the Timeline read the customer's jobs, so they render for the roles that read
+ * `jobs_ledger` (the office and primary). Since punch list #129 the money line under a won bid opens this window for
+ * the job's estimator too, who reads no job row: for them the window says so in words and keeps to the record
+ * (v2.5658 — before, it read "Open balance $0 · across 0 jobs · None yet" beside a line with money open).
  */
+
+/** What a person who reads no job row is told where the money and the jobs would be (v2.5658). */
+export const RECORD_MONEY_OFFICE_WORDS = 'Their bills and jobs are the office’s to read. The money line on your won bid shows where your job stands.'
 
 const money = (n: number) =>
   `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
@@ -65,7 +71,8 @@ function Dot({ color }: { color: string }) {
 const JOBS_LIST_COLLAPSE_COUNT = 4
 const BIDS_LIST_COLLAPSE_COUNT = 3
 
-function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { customerId: string; onClose: () => void; onShowTimeline: () => void }) {
+function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { customerId: string; onClose: () => void; onShowTimeline: (() => void) | null }) {
+  const readsJobs = onShowTimeline != null
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const jobDetail = useJobDetailModal()
@@ -205,7 +212,7 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
                   </span>
                 ) : null}
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <CustomerViewSwitch view="profile" onChange={(v) => (v === 'timeline' ? onShowTimeline() : undefined)} />
+                  {onShowTimeline ? <CustomerViewSwitch view="profile" onChange={(v) => (v === 'timeline' ? onShowTimeline() : undefined)} /> : null}
                   <button
                     type="button"
                     onClick={onClose}
@@ -259,6 +266,12 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
             )}
 
             {/* money strip */}
+            {readsJobs ? null : (
+              <p role="status" data-record-money-office style={{ margin: 0, padding: '12px 20px', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {RECORD_MONEY_OFFICE_WORDS}
+              </p>
+            )}
+            {readsJobs ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', borderBottom: '1px solid var(--border)' }}>
               <div style={{ padding: '12px 16px', borderRight: '1px solid var(--border)' }}>
                 <div style={capStyle}>Open balance</div>
@@ -289,10 +302,12 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
               </div>
             </div>
 
+            ) : null}
+
             {/* work rails */}
             <div style={{ padding: '14px 20px 6px' }}>
               {/* Jobs: money-aware list (v2.1985) — rows reconcile with the open balance. */}
-              <div style={{ marginBottom: 12 }}>
+              {readsJobs ? <div style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
                   <span style={capStyle}>Jobs</span>
                   {sortedJobs.length > 0 && (
@@ -354,7 +369,7 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
                     </button>
                   </div>
                 )}
-              </div>
+              </div> : null}
               {/* Projects: full names + current step (v2.2002) */}
               {data.projects.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
@@ -574,10 +589,14 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
  */
 export default function CustomerProfileModal({ customerId, onClose, initialView }: { customerId: string; onClose: () => void; initialView?: CustomerProfileView }) {
   const [view, setView] = useState<CustomerProfileView>(() => initialView ?? readCustomerProfileView())
+  // A role still loading reads as the office's, as every opener did before v2.5658.
+  const role = useOptionalAuth()?.role ?? null
+  const readsJobs = role == null || isStaffFullJobLedgerDetailRole(role)
   const choose = (next: CustomerProfileView) => {
     setView(next)
     writeCustomerProfileView(next)
   }
+  if (!readsJobs) return <CustomerProfilePanel customerId={customerId} onClose={onClose} onShowTimeline={null} />
   if (view === 'profile') return <CustomerProfilePanel customerId={customerId} onClose={onClose} onShowTimeline={() => choose('timeline')} />
   return (
     <div

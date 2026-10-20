@@ -15,6 +15,18 @@ function writes(): TradePartnerWrites {
 const hillsideForm = { company_id: 'hillside', license: 'TX 4471', insurance: 'Lone Star Mutual, $1M / $2M', years_in_business: 9, reference_list: 'Ana Ruiz 210-555-0120', past_jobs: 'Two clinics in Boerne', sent_on: '2026-10-04' }
 
 describe('GcTradePartners', () => {
+  it('v2.5556 · Call script at the right of the strip opens the window, and scriptOpenAtStart opens it on mount', () => {
+    const { unmount } = render(<GcTradePartners state={boardStateFromRows(clinicBoardRows())} writes={writes()} onOpenProject={() => undefined} />)
+    expect(screen.queryByRole('dialog', { name: 'Calling a company new to us' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Call script' }))
+    expect(screen.getByRole('dialog', { name: 'Calling a company new to us' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close the call script' }))
+    expect(screen.queryByRole('dialog', { name: 'Calling a company new to us' })).toBeNull()
+    unmount()
+    render(<GcTradePartners state={boardStateFromRows(clinicBoardRows())} writes={writes()} onOpenProject={() => undefined} scriptOpenAtStart />)
+    expect(screen.getByRole('dialog', { name: 'Calling a company new to us' })).toBeTruthy()
+  })
+
   it('puts a company new to us at the top with its form, and approves it with no limit or up to an amount', async () => {
     const w = writes()
     const state = boardStateFromRows(clinicBoardRows({ vettingForms: [hillsideForm] }))

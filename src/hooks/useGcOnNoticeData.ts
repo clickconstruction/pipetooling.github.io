@@ -4,6 +4,7 @@ import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
+import { readMailPiecesBySource } from '../lib/mail/lienMailPiecesIo'
 import { gcNoticeRowsWithBilledOpen } from '../lib/jobs/lienBilledOpen'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom } from '../lib/jobs/lienLetterTwo'
@@ -172,7 +173,7 @@ export function useGcOnNoticeData(
         for (const i of invoiceRows) workByJob[i.job_id]?.invoices.push(i)
         for (const p of paymentRows) workByJob[p.job_id]?.payments.push(p)
         const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
-        const [gcRows, addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, matterRows, correctionRows] = await Promise.all([
+        const [gcRows, addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, matterRows, correctionRows, mailPiecesByItem] = await Promise.all([
           withSupabaseRetry(
             () => supabase.from('customers').select('id, name, address, contact_info, lien_notice_policy, lien_notice_policy_note, payment_terms, payment_terms_note').eq('id', gcId),
             'GC on notice: the GC',
@@ -186,6 +187,8 @@ export function useGcOnNoticeData(
           withSupabaseRetry(() => supabase.from('job_lien_desk_items').select('job_id, jobs_ledger!inner(gc_customer_id)').eq('status', 'held').eq('jobs_ledger.gc_customer_id', gcId), 'GC on notice: prior holds').catch(() => []),
           withSupabaseRetry(() => supabase.from('legal_matters').select('id, legal_matter_jobs(job_id)').eq('payer_key', `c:${gcId}`), 'GC on notice: legal matter').catch(() => []),
           jobIds.length ? withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'GC on notice: claim corrections').catch(() => []) : Promise.resolve([]),
+          // The copies already mailed through Docsmit (v2.5532): the run builds them as mailed, so it never offers them again.
+          readMailPiecesBySource(items.filter((i) => i.status === 'approved').map((i) => i.id), 'GC on notice: pieces in the run'),
         ])
         if (cancelled) return
         const gcRow = ((gcRows ?? []) as { id: string; name: string | null; address: string | null; contact_info: unknown; lien_notice_policy: string | null; lien_notice_policy_note: string | null; payment_terms: string | null; payment_terms_note: string | null }[])[0] ?? null
@@ -230,7 +233,8 @@ export function useGcOnNoticeData(
           promisesByJob,
           gcsWithPriorNotice: new Set(gcHasPriorNotice && gc ? [gc.id] : []),
           gcsHeldBefore: new Set(gcHeldBefore && gc ? [gc.id] : []),
-          claimCorrectionsByJob, filingsByJob: {}
+          claimCorrectionsByJob, filingsByJob: {},
+          mailPiecesByItem,
         }
         const ownerStateOf = (jobId: string): GcNoticeOwnerState => {
           const job = jobsById[jobId]

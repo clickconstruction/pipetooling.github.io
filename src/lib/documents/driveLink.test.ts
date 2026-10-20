@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import {
   DRIVE_FOLDER_MIME,
+  bytesOfBase64,
   LINK_DAYS,
   STREAM_CAP_BYTES,
   contentDisposition,
   driveViewUrl,
   fileLinkUrl,
+  isImageFile,
   landingPath,
   linkToken,
   linkTokenShape,
   openAnswer,
   parseOfficeAsk,
+  photoLanding,
   saveHalfFor,
   streamUrl,
+  streamsInline,
   tokenFromLink,
   type LinkRow,
 } from '../../../supabase/functions/_shared/driveLink'
@@ -102,6 +106,22 @@ describe('the link itself', () => {
     expect(contentDisposition('Cláusula "roca".pdf')).toBe(`inline; filename="Cl_usula _roca_.pdf"; filename*=UTF-8''Cl%C3%A1usula%20%22roca%22.pdf`)
     expect(driveViewUrl('1PlanSetRev2000000184')).toBe('https://drive.google.com/file/d/1PlanSetRev2000000184/view')
   })
+
+  it('saves a page, a drawing that can carry a script or a script, and never shows it on the function’s address', () => {
+    for (const mime of ['application/pdf', 'image/jpeg', 'image/png', 'text/plain', 'application/octet-stream', null]) expect(streamsInline(mime)).toBe(true)
+    for (const mime of ['text/html', 'text/html; charset=utf-8', 'image/svg+xml', 'application/xhtml+xml', 'text/xml', 'application/xml', 'application/javascript', 'TEXT/HTML'])
+      expect(streamsInline(mime)).toBe(false)
+    expect(contentDisposition('Bid tab.html', 'text/html')).toBe(`attachment; filename="Bid tab.html"; filename*=UTF-8''Bid%20tab.html`)
+    expect(contentDisposition('Rock clause.pdf', 'application/pdf')).toMatch(/^inline; /)
+  })
+})
+
+describe('a file from this computer', () => {
+  it('reads base64 and a data URL into bytes, and anything else as nothing', () => {
+    expect(Array.from(bytesOfBase64('JVBERi0=') ?? [])).toEqual([37, 80, 68, 70, 45])
+    expect(Array.from(bytesOfBase64('data:application/pdf;base64,JVBERi0=') ?? [])).toEqual([37, 80, 68, 70, 45])
+    expect(bytesOfBase64('not base64 at all!')).toBeNull()
+  })
 })
 
 describe('the office’s door', () => {
@@ -149,5 +169,25 @@ describe('the office’s door', () => {
     expect(parseOfficeAsk({ action: 'open', job: { bid_id: PROJECT }, driveFileId: '1BidTabSitework000002' })).toEqual({ action: 'open', job: { bid_id: PROJECT }, driveFileId: '1BidTabSitework000002' })
     expect(parseOfficeAsk({ action: 'delete', job: { project_id: PROJECT } })).toBeNull()
     expect(parseOfficeAsk(null)).toBeNull()
+  })
+})
+
+describe('a photo’s landing (Messages, cut 10)', () => {
+  it('knows a picture by its type or its name’s ending', () => {
+    expect(isImageFile({ mime: 'image/jpeg', name: 'picture-1' })).toBe(true)
+    expect(isImageFile({ mime: null, name: 'IMG_2041.HEIC' })).toBe(true)
+    expect(isImageFile({ mime: 'application/pdf', name: 'Addendum 3.pdf' })).toBe(false)
+  })
+
+  it('puts a photo in the job’s Team only, Photos', () => {
+    expect(photoLanding({ project_id: PROJECT }, null)).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
+    expect(photoLanding({ bid_id: PROJECT }, null)).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
+    expect(photoLanding({ jobs_ledger_id: PROJECT }, null)).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
+  })
+
+  it('puts a Pipeline job’s photo in its own Customer Pictures folder when that link is a Drive folder', () => {
+    expect(photoLanding({ jobs_ledger_id: PROJECT }, '1CustomerPictures00000001')).toEqual({ kind: 'pictures', folderId: '1CustomerPictures00000001' })
+    // A GC project or a bid has no Customer Pictures link: the folder id is never read for them.
+    expect(photoLanding({ project_id: PROJECT }, '1CustomerPictures00000001')).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
   })
 })

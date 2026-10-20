@@ -1,5 +1,5 @@
 import type { JobThreadEventActivityItem } from '../jobActivityEvent'
-import { promiseSaidLine, type PaymentPromise } from './paymentPromises'
+import { claimWords, promiseSaidLine, type PaymentPromise } from './paymentPromises'
 
 /**
  * Payment promises as job-thread events (v2.4103). A promise ("They said…" on
@@ -20,10 +20,13 @@ export function promiseDateWords(ymd: string): string {
   return `${MONTHS[Number(m[2]) - 1] ?? m[2]} ${Number(m[3])}, ${m[1]}`
 }
 
-/** The feed line: "Pay by Nov 20, 2026 — Umar Khan · phone · heard by Taunya · “check goes out with the draw”". */
+/**
+ * The feed line: "Pay by Nov 20, 2026 — Umar Khan · phone · heard by Taunya · “check goes out with the draw”"; a paid
+ * claim (v2.5648) reads "Says they paid Oct 20, 2026 · a check in the mail — Dana · by text · heard by Theo".
+ */
 export function promiseSummary(p: PaymentPromise): string {
   const said = promiseSaidLine(p)
-  const parts = [`Pay by ${promiseDateWords(p.promisedYmd)}`]
+  const parts = [p.kind === 'paid_claim' ? `Says they paid ${promiseDateWords(p.promisedYmd)} \u00b7 ${claimWords(p)}` : `Pay by ${promiseDateWords(p.promisedYmd)}`]
   if (said) parts.push(said)
   if (p.note) parts.push(`\u201c${p.note}\u201d`)
   return parts.join(' \u2014 ').replace(' \u2014 \u201c', ' \u00b7 \u201c')
@@ -41,7 +44,7 @@ export function paymentPromisesToActivityEvents(promises: ReadonlyArray<PaymentP
         // The office person who heard it; null when the customer named the date themselves (the feed then says "System").
         actorName: p.source === 'customer' ? null : p.heardByName,
         summary: promiseSummary(p),
-        detail: { promisedYmd: p.promisedYmd, source: p.source, channel: p.channel, saidBy: p.saidBy },
+        detail: { promisedYmd: p.promisedYmd, source: p.source, channel: p.channel, saidBy: p.saidBy, kind: p.kind, method: p.method, amount: p.amount },
         financial: true,
       },
     }))

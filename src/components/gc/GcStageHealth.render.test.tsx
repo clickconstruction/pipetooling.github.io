@@ -6,7 +6,7 @@
  * is words alone, the start date is Get started's own press, and the money's rows are Our number's readers' only.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcStageHealth } from './GcStageHealth'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import type { HealthTab } from '../../lib/gc/stageHealth'
@@ -27,7 +27,6 @@ describe('the stage-health strip', () => {
     render(<GcStageHealth state={state} project={project('boerne')} canOpen={any} onTab={(t) => tabs.push(t)} moneyShown />)
     expect(screen.getByText('Behind')).toBeTruthy()
     expect(screen.getByText('6 days left and 2 trades have no quote: Structural steel and Fire sprinkler.')).toBeTruthy()
-    expect(screen.getByText('Fire sprinkler')).toBeTruthy()
     expect(screen.getByText('Questions close')).toBeTruthy()
     expect(screen.getByText('Bid due')).toBeTruthy()
     expect(screen.getByText('9 of 14')).toBeTruthy()
@@ -41,8 +40,10 @@ describe('the stage-health strip', () => {
     expect(screen.getByLabelText('Oct 5 – 9: 5 working days')).toBeTruthy()
     expect(screen.getByLabelText('Oct 12 – 16: 5 working days')).toBeTruthy()
     expect(screen.getByLabelText('Sat Oct 10')).toBeTruthy()
-    expect(screen.getByLabelText('Sun Oct 18')).toBeTruthy()
-    expect(screen.getByText('Sep 28 – Oct 4')).toBeTruthy()
+    expect(screen.getByLabelText('Sun Oct 11')).toBeTruthy()
+    expect(screen.getByLabelText('Sat Oct 17')).toBeTruthy()
+    // Weeks run Sunday to Saturday (v2.5558).
+    expect(screen.getByText('Sep 27 – Oct 3')).toBeTruthy()
     expect(screen.getByText('Pricing set')).toBeTruthy()
     expect(screen.getByText('Today')).toBeTruthy()
   })
@@ -71,7 +72,7 @@ describe('the stage-health strip', () => {
     expect(screen.getByText('72% · plan 76%')).toBeTruthy()
     expect(screen.getByText('64% · work 74%')).toBeTruthy()
     expect(screen.getByText('about $149,000')).toBeTruthy()
-    expect(screen.getByLabelText(/^Week of Sep 21\. Dry-in was due Sep 25/)).toBeTruthy()
+    expect(screen.getByLabelText(/^Week of Sep 20\. Dry-in was due Sep 25/)).toBeTruthy()
   })
 
   it('building, outside the money team: the work against the plan, and no money row or number', () => {
@@ -87,5 +88,25 @@ describe('the stage-health strip', () => {
     render(<GcStageHealth state={state} project={project('boerne')} canOpen={() => false} onTab={onTab} moneyShown />)
     expect(screen.queryByRole('button', { name: /^Next:/ })).toBeNull()
     expect(screen.getByText(/Next: Ask more companies for Structural steel/)).toBeTruthy()
+  })
+})
+
+describe('the strip in shape D (to-do #108, PR 2): the verdict band, the clock, the trades', () => {
+  // v2.5545: the verdict, Next and the numbers in one block tinted by the verdict; the stage rail gone; each key behind its link.
+  it('puts the numbers in the verdict band, drops the rail, and keeps each key behind its Key link', () => {
+    render(<GcStageHealth state={state} project={project('boerne')} canOpen={any} onTab={() => undefined} moneyShown foot={<span>Bill day Sun Oct 25</span>} />)
+    const band = document.querySelector('[data-gc-verdict="behind"]') as HTMLElement
+    expect(band).toBeTruthy()
+    expect(band.querySelector('[data-gc-health-numbers]')).toBeTruthy()
+    expect(band.textContent).toContain('Bill day Sun Oct 25')
+    expect(screen.queryByLabelText('Where the job is')).toBeNull()
+    expect(screen.queryByText('Buying out')).toBeNull()
+    // The clock band: the calendar's key shows on Key and goes on Hide the key.
+    const clock = screen.getByRole('region', { name: 'The clock' })
+    expect(within(clock).queryByText('gone by')).toBeNull()
+    fireEvent.click(within(clock).getByRole('button', { name: 'Key' }))
+    expect(within(clock).getByText('gone by')).toBeTruthy()
+    fireEvent.click(within(clock).getByRole('button', { name: 'Hide the key' }))
+    expect(within(clock).queryByText('gone by')).toBeNull()
   })
 })

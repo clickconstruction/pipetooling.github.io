@@ -5,8 +5,8 @@
 #   npm run test:pg:quo-messages
 #
 # The same bed as scripts/pgtest-messages-spine.sh: the Supabase Postgres image with every file in supabase/migrations
-# applied in order (about a minute). The Quo migration is then applied a second time, which must change nothing. The
-# scenario, inside one transaction that rolls back: a text Quo sends twice is one line; quo_write_line writes over the
+# applied in order (about a minute), the Quo migration a second time right after its first, which must change nothing
+# (the later migrations win: v2.5549's roster read of quo_place_number). The scenario, inside one transaction that rolls back: a text Quo sends twice is one line; quo_write_line writes over the
 # revision it read and refuses a stale one, so two events for one call never write over each other; the new columns
 # keep their rules; the webhook takes a delivery once, gives one back, takes an id past 28 hours again and forgets the
 # old ones; the office reads the new columns and writes none of them; nobody signed in reaches the memory or the
@@ -38,9 +38,12 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
 for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  # A second run must change nothing: the columns, the index, the constraints, the table and the functions are there.
+  # Right after the first, so the migrations after it (v2.5549's quo_place_number) still win.
+  if [ "$f" = "$QUO" ]; then
+    psql_as postgres -f - < "$QUO" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $QUO"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  fi
 done
-# A second run must change nothing: the columns, the index, the constraints, the table and the functions are there.
-psql_as postgres -f - < "$QUO" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $QUO"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/quo_messages/20_scenario.sql 2>&1 || true)"
 if ! grep -q "quo_messages PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

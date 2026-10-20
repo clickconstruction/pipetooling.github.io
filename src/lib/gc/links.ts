@@ -31,8 +31,14 @@ export function messagesThreadHref(contactId: string, messageId?: string | null)
   return `${GC_MESSAGES_HREF}&thread=${encodeURIComponent(contactId)}${at}`
 }
 
+/**
+ * Follow up's **We are waiting on them**, below the people waiting on us: the late companies a board's **Needs a hand
+ * today** means. The id on its section, and the hash a board's press carries so the page scrolls there.
+ */
+export const GC_WAITING_ON_THEM_ID = 'gc-waiting-on-them'
+
 /** The GC projects page's views, one pill each. */
-export type GcView = 'board' | 'partners' | 'followUp' | 'money' | 'messages'
+export type GcView = 'board' | 'partners' | 'customers' | 'followUp' | 'money' | 'messages'
 
 /**
  * Money → Bill day → From the trades for one job (Messages cut 9): the trades' draws against the bill day. Follow up's
@@ -54,7 +60,21 @@ export function billDayFromSearch(search: URLSearchParams): string | null {
  */
 export function gcViewFromSearch(search: URLSearchParams): GcView {
   const view = search.get('view')
-  return view === 'partners' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
+  return view === 'partners' || view === 'customers' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
+}
+
+/** Customers on the GC projects page (Messages cut 4): every customer by step, or one row each. */
+export const GC_CUSTOMERS_HREF = '/gc?view=customers'
+
+/** How Trade partners or Customers shows its companies (Messages cut 4): the list as it was, or a board. */
+export type BoardBy = 'list' | 'step' | 'company' | 'trade'
+
+const BOARD_BYS: readonly string[] = ['list', 'step', 'company', 'trade'] satisfies BoardBy[]
+
+/** Pure: the board a `?by=` asks for, or null for the view's first. */
+export function gcBoardByFromSearch(search: URLSearchParams): BoardBy | null {
+  const by = search.get('by')
+  return by && BOARD_BYS.includes(by) ? (by as BoardBy) : null
 }
 
 /** The words a GC project carries outside GC mode (the Projects page, the Workflow page, Edit project). */

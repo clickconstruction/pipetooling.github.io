@@ -2,7 +2,7 @@
 title: see what is due on the lien calendar
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien calendar, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search
+keywords: lien calendar, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search, hover, card, mark
 ---
 The Deadlines tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
 
@@ -34,11 +34,11 @@ An overdue job is listed with its property when that property has a date still a
 This month by Oct 15, in 14 days. 24 notices across 9 GCs.
 :::
 
-Inside a month, each job sits under its GC. The GC row says how many notices to send. Jobs with no GC sit together under one heading.
+Inside a month, each job sits under its GC. The GC row says how many notices to send. Jobs with no GC sit together under one heading. A notice the desk printed but has not recorded reads differently. The bar counts it as *in the mail*. The GC row says *record the mailing* when every notice it owes is printed.
 
 ## Draft the notices
 
-When a month's notices can go out, its bar shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Notices tab on those jobs. The desk lists a notice once its date is 30 days away or less.
+When a month's notices can go out, its bar shows a button like {{button:amber|Draft the 24 ›}}. Press it to open the Notices tab on those jobs. The desk lists a notice once its date is 30 days away or less. A notice already printed is not drafted again. The bar offers {{button:amber|Record the mailing · 10 ›}} for those instead. It opens the run on its recording step, where the certified numbers go in.
 
 ## Use the date row
 
@@ -52,9 +52,17 @@ A property with no kind is read as a house. Its lien date could be a month later
 
 Office users on a computer can press it. Everyone else sees the count.
 
+## Read a mark
+
+Rest the pointer on any mark and a card opens under it. The card says what the mark is, its date and how many days away that is. It says the money owed on the job. It ends on a button for the next move, such as {{button:amber|Draft the notice ›}} or {{button:amber|Record the mailing ›}}.
+
+Marks that touch share one card, with a column for each mark in the same order. Rest on a GC row's flag to see every job behind its count. Each job shows its month and its money. The card's button acts on exactly those jobs. A card wider than the board scrolls sideways.
+
+Press Esc to close a card, or move the pointer away. Pressing a mark still does what it did before.
+
 ## Read the key
 
-The key runs along the bottom of the Deadlines tab. Press a mark to read what it means. Press it again or press Esc to close it.
+The key runs along the bottom of the Deadlines tab. Press a mark to read what it means. Press it again or press Esc to close it. Three marks tell a month's notice apart. A hollow flag is a notice still owed. An amber circle with an envelope is a notice printed and in the mail, its tracking number still owed. A green check is a notice on file. The envelope sits right after the check in the key. Press the envelope on a row to open Record the mailing. An envelope whose date has passed stays on the row. When no other notice is owed, the row then reads its lien date.
 
 ## On a phone
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../../components/JobThreadNotesPanel'
 import { DANA, DANA_JOB_MESSAGES, HECTOR } from '../../test/fixtures/jobActivityMessagesDemo'
 import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines, isConversationalLine, type JobActivityLine } from './jobActivityLine'
-import { MESSAGE_LINE_MAX, messageChannelWord, messageLineParts, messageTone, messageWho, type JobActivityMessage } from './jobActivityMessages'
+import { jobActivityMessagesFromRows, jobTakesUntiedLines, MESSAGE_LINE_MAX, messageChannelWord, messageLineParts, messageTone, messageWho, noteReaders, type JobActivityMessage, type JobMessageRow } from './jobActivityMessages'
 
 const byId = (id: string): JobActivityMessage => {
   const m = DANA_JOB_MESSAGES.find((x) => x.id === id)
@@ -86,7 +86,22 @@ describe('a message as a Job activity line (Messages cut 10)', () => {
   it('marks her line tied to no job yet, and links to her thread at the line', () => {
     expect(messageLineParts(byId('m-dana-11')).message.notTiedYet).toBe(true)
     expect(messageLineParts(byId('m-dana-2')).message.notTiedYet).toBe(false)
-    expect(messageLineParts(byId('m-dana-2')).message.threadHref).toBe('/gc?view=messages&thread=c-dana&at=m-dana-2')
+    expect(messageLineParts(byId('m-dana-2')).message.threadHref).toBe('/messages?thread=c-dana&at=m-dana-2')
+  })
+
+  it('opens a trade partner’s or an architect’s thread on GC projects’ Messages, and anyone else’s on the Messages page', () => {
+    const as = (kind: 'trade' | 'arch' | 'lead' | 'unknown') => messageLineParts({ ...byId('m-dana-2'), contactId: 'c-hector', contact: { name: 'Hector Ruiz', kind } }).message.threadHref
+    expect(as('trade')).toBe('/gc?view=messages&thread=c-hector&at=m-dana-2')
+    expect(as('arch')).toBe('/gc?view=messages&thread=c-hector&at=m-dana-2')
+    expect(as('lead')).toBe('/messages?thread=c-hector&at=m-dana-2')
+    expect(as('unknown')).toBe('/messages?thread=c-hector&at=m-dana-2')
+  })
+
+  it('says who reads a team note: the office alone when it is marked so, else the whole team, techs too', () => {
+    expect(messageLineParts(byId('m-dana-5')).message.readersWord).toBe('only the team sees this')
+    expect(messageLineParts({ ...byId('m-dana-5'), officeOnly: true }).message.readersWord).toBe('only the office sees this')
+    expect(noteReaders({ channel: 'text', officeOnly: false })).toBe('')
+    expect(messageLineParts(byId('m-dana-2')).message.readersWord).toBe('')
   })
 })
 
@@ -146,5 +161,84 @@ describe('the job’s lines with its messages', () => {
     const hector = lineOf(lines, 'm-m-hector-1')
     expect(hector.kind === 'message' && hector.message.tone).toBe('plain')
     expect([DANA.kind, HECTOR.kind]).toEqual(['customer', 'trade'])
+  })
+})
+
+describe('the read’s rows as Job activity’s lines (J2)', () => {
+  const contacts = [
+    { id: 'c-dana', name: 'Dana Whitfield', goesBy: null, kind: 'customer' as const },
+    { id: 'c-hector', name: 'Hector Ruiz', goesBy: null, kind: 'trade' as const },
+  ]
+  const row = (id: string, over: Partial<JobMessageRow>): JobMessageRow => ({
+    id,
+    contact_id: 'c-dana',
+    channel_id: null,
+    bid_id: null,
+    project_id: null,
+    jobs_ledger_id: 'jl-1312',
+    channel: 'text',
+    direction: 'in',
+    who_user_id: null,
+    who_text: '',
+    at: '2026-10-05T14:04:00Z',
+    subject: null,
+    body: 'Great. Gate code is 4471.',
+    optout_line: null,
+    back_on: null,
+    back_by: null,
+    ...over,
+  })
+  const job = { id: 'jl-1312', since: '2026-10-01T12:00:00Z' }
+
+  it('keeps every line tied to the job, names ours from the team’s names, and reads the call columns', () => {
+    const lines = jobActivityMessagesFromRows(
+      [
+        row('m2', {}),
+        row('m1', { direction: 'out', who_user_id: 'u-luis', at: '2026-10-05T14:02:00Z', body: 'On our way.' }),
+        row('m3', { channel: 'call', duration_seconds: 192, summary: 'Asked about Thursday.', transcript: 'Dana: Thursday?', at: '2026-10-06T21:05:00Z', body: '' }),
+        row('m4', { contact_id: 'c-hector', at: '2026-10-07T15:30:00Z', body: 'The trencher is free Thursday.' }),
+      ],
+      contacts,
+      { 'u-luis': 'Luis' },
+      job,
+    )
+    expect(lines.map((m) => [m.id, m.who, m.tied])).toEqual([
+      ['m1', 'Luis', true],
+      ['m2', 'Dana', true],
+      ['m3', 'Dana', true],
+      ['m4', 'Hector', true],
+    ])
+    expect([lines[2]?.durationSeconds, lines[2]?.summary, lines[2]?.transcript]).toEqual([192, 'Asked about Thursday.', 'Dana: Thursday?'])
+    expect(lines.every((m) => m.officeOnly === false)).toBe(true)
+  })
+
+  it('reads R5’s office-only mark on a team note', () => {
+    const [kept] = jobActivityMessagesFromRows([row('n1', { channel: 'note', direction: 'team', who_text: 'Rosa', office_only: true })], contacts, {}, job)
+    expect(kept?.officeOnly).toBe(true)
+  })
+
+  it('takes the customer’s lines tied to no job since the job began, and leaves out the rest', () => {
+    const untied = { jobs_ledger_id: null }
+    const lines = jobActivityMessagesFromRows(
+      [
+        row('ok', { ...untied, at: '2026-10-08T01:30:00Z' }),
+        row('before-start', { ...untied, at: '2026-09-20T12:00:00Z' }),
+        row('a-trade', { ...untied, contact_id: 'c-hector', at: '2026-10-08T02:00:00Z' }),
+        row('a-note', { ...untied, channel: 'note', direction: 'team', who_text: 'Rosa', at: '2026-10-08T03:00:00Z' }),
+        row('another-job', { jobs_ledger_id: 'jl-1298', at: '2026-10-08T04:00:00Z' }),
+        row('nobody-read', { ...untied, contact_id: 'c-gone', at: '2026-10-08T05:00:00Z' }),
+        row('odd', { ...untied, channel: 'fax', at: '2026-10-08T06:00:00Z' }),
+      ],
+      contacts,
+      {},
+      job,
+    )
+    expect(lines.map((m) => [m.id, m.tied])).toEqual([['ok', false]])
+    expect(messageLineParts(lines[0] as JobActivityMessage).message.notTiedYet).toBe(true)
+  })
+
+  it('reads no start as no limit, and a job is open for untied lines until it is paid', () => {
+    expect(jobActivityMessagesFromRows([row('old', { jobs_ledger_id: null, at: '2020-01-01T00:00:00Z' })], contacts, {}, { id: 'jl-1312', since: null })).toHaveLength(1)
+    expect(['working', 'ready_to_bill', 'billed', 'paid'].map(jobTakesUntiedLines)).toEqual([true, true, true, false])
   })
 })

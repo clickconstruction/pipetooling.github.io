@@ -83,8 +83,8 @@ export function robotLenses(input: { role: Role; activeTab: string; mirrorCount:
   return lenses
 }
 
-/** Call queue · Old: By builder · By status · Why we lost · Waiting to hear · Job accounts; a superintendent keeps By builder alone. */
-export function followupLenses(input: { role: Role; jobAccountsMissing: number }): BidsLens[] {
+/** Call queue · Old: By builder · By status · Why we lost · Waiting to hear · Job accounts · Money; a superintendent keeps By builder alone. */
+export function followupLenses(input: { role: Role; jobAccountsMissing: number; moneyPastWord?: number }): BidsLens[] {
   if (input.role === 'superintendent') return [{ key: 'builder-review', label: 'By builder' }]
   return [
     { key: 'call-queue', label: 'Call queue', badge: { text: 'new', tone: 'new' } },
@@ -98,6 +98,14 @@ export function followupLenses(input: { role: Role; jobAccountsMissing: number }
       title: 'Every won job still missing a supply-house account, grouped by house — one email per house',
       testId: 'followup-job-accounts-tab',
       ...(input.jobAccountsMissing > 0 ? { badge: { text: String(input.jobAccountsMissing), tone: 'count' as const } } : {}),
+    },
+    // Money on my bids (v2.5651, punch list #129): every won job with money open, past their word first.
+    {
+      key: 'money',
+      label: 'Money',
+      title: 'Every won job with money open: past their word first, then no word, then waiting — the customer\'s last word and the doors to them',
+      testId: 'followup-money-tab',
+      ...((input.moneyPastWord ?? 0) > 0 ? { badge: { text: String(input.moneyPastWord), tone: 'count' as const } } : {}),
     },
   ]
 }
@@ -120,6 +128,8 @@ export function followupLensCaption(activeTab: string): string {
       return 'Record and review why bids were lost — built for the Friday GC calls.'
     case 'job-accounts':
       return 'Every won job still missing a supply-house account — soonest first parts run first, one email per house.'
+    case 'money':
+      return 'Every won job with money open — past their word first, then no word, then waiting; the customer\'s last word and the doors to them.'
     default:
       return 'Chase recent sent bids for answers and bid tabs — newest first.'
   }

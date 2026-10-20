@@ -47,7 +47,7 @@ Each item's button drops you exactly where the work happens. What you see depend
 
 - **N live jobs have no contract on file** opens with {{button:outline|Start the sweep}} on the Pipeline board. **N contracts have been out for signature a week** opens with {{button:outline|See them}}.
 - **N sub work orders are waiting for a price**. {{button:outline|Price them}} opens Jobs → Work orders, on the drafts.
-- **N open jobs have sat idle N+ days**. {{button:outline|See them}} opens Job Summary's cycle view.
+- **N open jobs have sat idle N+ days**. These are Working or Waiting jobs with no crew on site in 21 days or more. {{button:outline|Review them}} opens the Follow-ups deck on its Idle lens. Each card says what the job needs and has a door for it. See *follow up on quiet jobs*.
 - **Field capacity has run under 60% three weeks running**. {{button:outline|Open Capacity}} opens Job Summary's Capacity view. The card names the three complete weeks. It gives each week's utilization, the share of available hours that was worked. It reads like *48% · 52% · 41% for the weeks of Aug 24, Aug 31 and Sep 7*. It also gives the field hours clocked against the roster's available hours. The current week never counts until it is over.
 - **N jobs are waiting on a follow-up**. {{button:outline|Start review}} starts the follow-up review on the Jobs board.
 - **Lien windows**. A lien is a legal claim on the property for unpaid work. The item may be a notice or filing window closing soon. It may be a filed lien not yet served, or a demand deadline. A window closing soon opens the Lien desk. A filed lien not yet served, or a demand deadline, opens the job's Lien window. A cleared payment behind a conditional release gets {{button:outline|Issue releases}}. That opens the **cleared releases list** right over the card. You issue the unconditional version from the row. See [give a customer a lien release](?g=give-a-customer-a-lien-release).
@@ -66,6 +66,12 @@ Estimators and devs see these.
 The office and estimators see this one.
 
 - **N people are waiting on us**. The line counts the people in GC mode waiting on an answer or on something we owe. Each person counts once. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there shows the same count. See [see who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them).
+
+**Customers**
+
+The office and estimators see this one.
+
+- **Customers**. The line counts customers who need a reply, what we owe them and senders to sort. {{button:outline|Messages}} opens Messages with **Customers** picked. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
 
 **Contracts**
 

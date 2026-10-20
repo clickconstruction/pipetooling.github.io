@@ -40,12 +40,19 @@ import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhat
 import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatTheTeamSeesTab'
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
 import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
-import { canEditClause } from '../lib/gc/access'
+import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
+import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
+import { canEditClause, canEditFlows } from '../lib/gc/access'
+import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
+import { canSwitchReplyPush } from '../lib/messages/replyPushSwitch'
 import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
 import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
+import { BoxesSettingsCard } from '../components/settings/BoxesSettingsCard'
+import { TextsSwitchSettingsCard } from '../components/settings/TextsSwitchSettingsCard'
 import { canSeePhoneAndTexts } from '../lib/messages/assignRule'
 import { canSwitchReader } from '../lib/messages/emailReader'
+import { canSwitchTexts } from '../lib/quo/textsSwitch'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
@@ -79,6 +86,7 @@ import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNotices
 import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomerDueNoticesSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
+import DocsmitDevSettingsBlock from '../components/settings/DocsmitDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
@@ -1495,14 +1503,28 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-phone-texts" hidden={activeSettingsTab !== 'settings-phone-texts'} title={settingsGroupTitle('settings-phone-texts', 'Phone and texts')} description={settingsGroupHint('settings-phone-texts')}>
-        {/* Mounted while it is open, so it reads the seats, Quo's seats and the bids@ reader again each time. */}
+        {/* Mounted while it is open, so it reads the texts switch, the seats, Quo's seats, the inboxes and the bids@ reader again each time.
+            Send texts comes first (v2.5538): it is the one card a text waits on, and the three under it only add names and a second number. */}
         {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && (
           <div style={{ display: 'grid', gap: '1rem' }}>
+            {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
             <PhoneAndTextsSettingsSection />
             <QuoSeatsSettingsSection />
+            <BoxesSettingsCard />
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
+            {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
           </div>
         )}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-flows" hidden={activeSettingsTab !== 'settings-flows'} title={settingsGroupTitle('settings-flows', 'Flows')} description={settingsGroupHint('settings-flows')}>
+        {/* Mounted while it is open, so it reads the flow and who is on it each time it is opened. */}
+        {activeSettingsTab === 'settings-flows' && canEditFlows(myRole) && <SettingsFlowsTab />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-training" hidden={activeSettingsTab !== 'settings-training'} title={settingsGroupTitle('settings-training', 'Training')} description={settingsGroupHint('settings-training')}>
+        {/* Training (punch list #111, v2.5569): a dev's. Mounted while open, so the counts are read each time. */}
+        {activeSettingsTab === 'settings-training' && myRole === 'dev' && <SettingsTrainingTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
@@ -1587,6 +1609,7 @@ export default function Settings() {
           <PhysicalInvoiceIssuerDevSettingsBlock focusField={settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null} />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
+          <DocsmitDevSettingsBlock />
         </>
       )}
       {myRole === 'dev' && <SettingsHcpReconcileSection />}

@@ -58,7 +58,7 @@ export async function quickSendWorkOrder(input: QuickSendInput): Promise<QuickSe
   try {
     const [sRes, bRes, aRes, uRes, dRes, pRes] = await Promise.all([
       supabase.from('sub_scope_items').select('*').is('archived_at', null).order('sequence_order', { ascending: true }),
-      supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').order('sequence_order', { ascending: true }),
+      supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').is('flow_kind', null).order('sequence_order', { ascending: true }),
       supabase.from('app_settings').select('key, value_text').in('key', ['sub_pay_run_day']),
       input.authUserId ? supabase.from('users').select('name, role').eq('id', input.authUserId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       supabase.from('person_contract_documents').select('document_name, doc_type, status, signed_at, expires_at').eq('person_id', input.person.id),

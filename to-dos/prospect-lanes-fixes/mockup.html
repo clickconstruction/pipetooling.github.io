@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospect Lanes Fixes</title>
+<style>
+  /* layout: one column of framed app drawings, each under a caption; the app's own light look, system font */
+  :root { color-scheme: light; --page: #f6f7f9; --surface: #ffffff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb;
+    --blue: #3b82f6; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --violet: #7c3aed; --violet-tint: #ede9fe; --green: #15803d; --green-mid: #16a34a; --green-tint: #dcfce7;
+    --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --red: #dc2626; --red-tint: #fee2e2; --app: #f0f2f5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 13px; flex: none; }
+  h2 .num.grey { background: var(--ink); }
+  h2 .num.green { background: var(--green-mid); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 105ch; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--blue-tint); color: var(--blue-ink); margin-top: 14px; flex-wrap: wrap; }
+  .cap.old { background: var(--line-2); color: var(--ink-2); }
+  .cap.good { background: var(--green-tint); color: var(--green); }
+  .cap .w { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: var(--app); padding: 14px; overflow-x: auto; }
+  .page { width: 1040px; margin: 0 auto; }
+  .page.narrow { width: 720px; }
+  ul.moves { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); max-width: 110ch; }
+  ul.moves li { margin: 2px 0; }
+  ul.moves b, .crit b { color: var(--ink); }
+
+  /* the app's chrome */
+  .ph { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs { display: inline-flex; gap: 4px; background: #e5e7eb; border-radius: 10px; padding: 4px; }
+  .tabs span { padding: 6px 18px; border-radius: 6px; color: var(--muted); font-size: 14px; font-weight: 400; }
+  .tabs span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .tabs span.new { outline: 2px dashed var(--amber-mid); outline-offset: -2px; }
+  .ptitle { font-size: 20px; font-weight: 800; margin-left: auto; }
+  .sub { display: flex; gap: 6px; align-items: center; margin: 4px 0 12px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .sub span { padding: 4px 10px; border-radius: 6px; }
+  .sub span.on { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; }
+  .sub .sep { color: var(--line); padding: 0; }
+  .sub .btn { margin-left: auto; }
+  .btn { display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); white-space: nowrap; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.g { background: var(--green-mid); color: #fff; border-color: var(--green-mid); }
+  .btn.a { background: var(--amber-tint); color: var(--amber); border-color: #f5d58a; }
+  .btn.v { background: var(--violet); color: #fff; border-color: var(--violet); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); padding: 3px 4px; }
+  .btn.s { padding: 2px 8px; font-size: 12px; }
+  .btn.dash { outline: 2px dashed var(--amber-mid); outline-offset: 2px; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 11.5px; line-height: 18px; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.green { background: var(--green-tint); color: var(--green); }
+  .chip.amber { background: var(--amber-tint); color: var(--amber); }
+  .chip.red { background: var(--red-tint); color: #991b1b; }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .chip.purple { background: var(--violet-tint); color: #5b21b6; }
+  .chip.outline { background: var(--surface); border: 1px solid var(--line); }
+  .muted { color: var(--muted); } .ink2 { color: var(--ink-2); } .red { color: var(--red); } .green { color: var(--green); } .amber { color: var(--amber-mid); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); font-size: 13px; min-width: 0; }
+  .deck { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .co { font-size: 18px; font-weight: 800; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .co small { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .facts { display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; margin: 6px 0 10px; color: var(--ink-2); font-size: 12.5px; }
+  .tel { display: inline-flex; align-items: center; gap: 6px; background: var(--blue); color: #fff; border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 13px; }
+  .outcome { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 8px; }
+  .outcome .l { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+  .util { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--blue-ink); margin-top: 8px; }
+  .util .t { margin-left: auto; color: var(--muted); }
+  .rail { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; }
+  .rail .h { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 6px; }
+  .rail .ord { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+  .rail .ord span { padding: 2px 8px; font-size: 11.5px; color: var(--muted); }
+  .rail .ord span.on { background: var(--blue); color: #fff; font-weight: 700; }
+  .rail .row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; padding: 3px 0; border-top: 1px solid var(--line-2); align-items: baseline; }
+  .rail .row.on { background: var(--blue-tint); margin: 0 -6px; padding: 3px 6px; border-radius: 6px; border-top: 0; }
+  .rail .row .n { color: var(--muted); font-size: 11px; }
+  .rail .row .w { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rail .row .s { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .strip { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; font-size: 12.5px; }
+  .strip .l { font-weight: 700; color: var(--ink-2); margin-right: 4px; }
+  .strip .need { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--surface); }
+  .strip .need b { color: var(--ink); }
+  .strip .need .q { color: var(--muted); font-size: 11.5px; }
+  .strip .need.on { border-color: var(--blue); background: var(--blue-tint); }
+  .strip .need.ok { color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); }
+  .jobs { border: 1px solid var(--line-2); border-radius: 8px; margin: 8px 0; }
+  .jobs .jh { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 10px; background: #f9fafb; border-bottom: 1px solid var(--line-2); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--muted); border-radius: 8px 8px 0 0; }
+  .jobs .jr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 7px 10px; border-top: 1px solid var(--line-2); align-items: baseline; }
+  .jobs .jr:first-of-type { border-top: 0; }
+  .jobs .jr b { font-size: 13px; }
+  .jobs .jr .m { color: var(--muted); font-size: 12px; }
+  .jobs .jr .due { font-weight: 700; white-space: nowrap; text-align: right; }
+  .jobs .jr .due small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.12); font-size: 13px; }
+  .modal h4 { margin: 0 0 2px; font-size: 16px; }
+  .modal .why { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+  .kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .kind { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .kind.on { border: 2px solid var(--blue); background: var(--blue-tint); }
+  .kind b { display: block; font-size: 13px; }
+  .kind span { font-size: 11.5px; color: var(--ink-2); }
+  .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+  .f { display: grid; gap: 2px; min-width: 0; }
+  .f.wide { grid-column: 1 / -1; }
+  .f label { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .f .in { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--surface); min-height: 30px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .f .in.empty { color: #9ca3af; }
+  .f .hint { font-size: 11px; color: var(--muted); }
+  .radios { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .radios span::before { content: "○ "; color: var(--muted); } .radios span.on::before { content: "● "; color: var(--blue); }
+  .warn { border-left: 3px solid var(--amber-mid); background: var(--amber-tint); padding: 6px 10px; border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--amber); }
+  .mfoot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+  table.list { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); }
+  table.list th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); background: #f9fafb; }
+  table.list td { padding: 7px 8px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .sec { font-weight: 700; margin: 10px 0 4px; font-size: 13px; }
+  .sec small { color: var(--muted); font-weight: 500; }
+  .jump { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ideal { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; }
+  .ideal b { font-size: 13px; }
+  .ideal .bar { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; background: #f9fafb; border-top: 1px dashed var(--line-2); margin: 4px -14px -10px; padding: 8px 14px; border-radius: 0 0 10px 10px; flex-wrap: wrap; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  .lane { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 10px 12px; font-size: 12.5px; }
+  .lane .lh { font-weight: 800; display: flex; gap: 8px; align-items: center; }
+  .lane .lh .cnt { background: var(--blue); color: #fff; border-radius: 999px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+  .act { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+  .act .t { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .act .t .v { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .act .t .l { font-size: 11px; color: var(--muted); }
+  .src { display: grid; grid-template-columns: 160px minmax(0, 1fr) 90px; gap: 6px 10px; font-size: 12.5px; align-items: center; }
+  .src .b { height: 8px; border-radius: 999px; background: var(--line-2); position: relative; }
+  .src .b i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--green-mid); }
+  .src .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+  .crit { margin-top: 44px; border-top: 2px solid var(--ink); padding-top: 14px; max-width: 120ch; }
+  .crit h3 { font-size: 15px; margin: 18px 0 4px; }
+  .crit p, .crit li { font-size: 13.5px; color: var(--ink-2); }
+  table.wt { border-collapse: collapse; font-size: 13px; margin: 8px 0; width: 100%; }
+  table.wt th, table.wt td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.wt th { background: #f9fafb; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  table.wt td:first-child { font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .q { background: var(--amber-tint); border-left: 3px solid var(--amber-mid); padding: 8px 12px; border-radius: 0 6px 6px 0; }
+  ol.calls li { margin: 6px 0; }
+  .tbl { overflow-x: auto; }
+  @media (max-width: 720px) { .two, .kinds, .form, .act { grid-template-columns: 1fr; } .deck { grid-template-columns: 1fr; } }
+  /* this page's additions: a spot is two columns, Now and the suggestion, with a sentence under each */
+  body { background: var(--page); }
+  .spot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-top: 14px; }
+  .spot .cap { margin-top: 0; }
+  .spot .fit { padding: 12px; }
+  .spot .page { width: auto; }
+  .spot .deck { grid-template-columns: minmax(0, 1fr) 190px; gap: 10px; }
+  .spot .outcome .btn { padding: 4px 9px; font-size: 12px; }
+  .jobs .jh span { white-space: nowrap; }
+  .jobs .jh { gap: 8px; flex-wrap: wrap; }
+  .cap.now { background: var(--line-2); color: var(--ink-2); }
+  .say { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .say b { color: var(--ink); }
+  .new { outline: 2px dashed var(--amber-mid); outline-offset: 2px; border-radius: 4px; }
+  .lbl { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--amber-mid); color: #fff; border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: middle; }
+  .empty { text-align: center; color: var(--muted); padding: 22px 10px; font-size: 13px; }
+  .phone { width: 290px; height: 430px; margin: 0 auto; overflow: hidden; border: 6px solid #111827; border-radius: 26px; background: #6b7280; position: relative; }
+  .phone .modal { position: absolute; left: 12px; right: 12px; font-size: 12px; padding: 12px 14px; }
+  .phone .modal .f .in { min-height: 26px; }
+  .phone .modal.cut { top: -70px; }
+  .phone .modal.fits { top: 22px; bottom: 22px; overflow: hidden; }
+  .phone .modal.fits .scroller { position: absolute; right: 4px; top: 40px; bottom: 60px; width: 4px; border-radius: 2px; background: var(--line); }
+  .phone .modal.fits .scroller i { position: absolute; left: 0; right: 0; top: 0; height: 38%; border-radius: 2px; background: var(--muted); }
+  .phone .modal.fits .mfoot { position: absolute; left: 14px; right: 14px; bottom: 12px; margin: 0; background: var(--surface); padding-top: 8px; border-top: 1px solid var(--line-2); }
+  .jobs .jr .act { font-size: 12px; color: var(--blue-ink); white-space: nowrap; }
+  .jobs .jr.editing { grid-template-columns: 1fr; background: var(--blue-tint); }
+  .jobs .jr.editing .form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ok { border-left: 3px solid var(--green-mid); background: var(--green-tint); padding: 6px 10px; border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--green); }
+  .mini { font-size: 11px; color: var(--muted); }
+  @media (max-width: 720px) { .spot { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Prospects · mock-up 2026-10-16 · after #110</p>
+  <h1>Six places the lanes can improve, each drawn once</h1>
+  <p>Grace, 2026-10-16: walk the live lanes as a caller with made-up entries and say where to improve. The walk ran on prod with two test rows, a sub and a developer lead with two jobs, all deleted after. This page draws each finding as one spot: what a caller sees now on the left, the first cut on the right, a sentence under each. Then the critique, and the revised cut where it differs. Every name, street and number on this page is made up.</p>
+  <p><b>Recommendation, before the drawings:</b> fix spot 1 as a bug this week, let <b>#5774</b> close spot 2, build spots 3 and 4 as drawn in <b>B</b> (edit in place; one lookup for every double), and take spots 5 and 6 as words. None of it changes the lanes' shape.</p>
+</header>
+
+<h2><span class="num grey">0</span> What the walk found</h2>
+<div class="tbl"><table class="wt">
+<tr><th>#</th><th>Where</th><th>What a caller sees</th><th>How much it hurts</th></tr>
+<tr><td>1</td><td>Any lane, on a refresh or a bookmark</td><td>The Customers deck under the Jobs to GC or Subs tab, with the lane's last press and order toggle. Seen three times.</td><td>A caller presses Asked us ✓ on a customer prospect. The biggest one.</td></tr>
+<tr><td>2</td><td>New Prospect, Edit prospect</td><td>Save and Cancel below the screen on a laptop and on a phone; the window does not scroll and Escape does nothing.</td><td>Nobody can add a sub from a phone. <b>#5774</b> fixes the height; it is in the queue.</td></tr>
+<tr><td>3</td><td>The Jobs box on a lead</td><td>An open job offers Lost and Drop only. A wrong bid day means Drop, Remove, type it again.</td><td>Bid days change weekly on real leads.</td></tr>
+<tr><td>4</td><td>New Prospect on Subs and Jobs to GC</td><td>The same company typed twice makes a second card. Only the bench and the customers are checked.</td><td>Two callers phone the same sub.</td></tr>
+<tr><td>5</td><td>An empty lane</td><td>"No prospects to follow up. Add prospects in Prospect List." while the control is New Prospect, and the call timer runs under nothing, then stamps its minutes on the first card added.</td><td>Wrong words, wrong minutes on Activity.</td></tr>
+<tr><td>6</td><td>A never-called card</td><td>A bare <span class="chip amber">Due</span> chip beside <span class="chip green">never called</span>.</td><td>Small. One chip too many.</td></tr>
+</table></div>
+
+<h2><span class="num">1</span> The lane on a refresh</h2>
+<p class="lede">The deck's kind starts as <i>customer</i> and its first load fires before the link's <code>?kind=</code> is read. Two loads race, and whichever answers last paints the deck. A tab press inside the page is fine; a refresh, a bookmark or a link from the Calendar is not.</p>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now · Jobs to GC, after a refresh</span></div>
+    <div class="fit"><div class="page">
+      <div class="ph"><div class="tabs"><span>Customers</span><span class="on">Jobs to GC</span><span>Subs</span><span>Hiring</span></div></div>
+      <div class="strip"><span class="l">GC work in flight</span><span class="need"><b>Bidding</b> 1</span><span class="need ok"><b>Buying out</b> 0</span><span class="need"><b>Building</b> 1</span><span class="need ok"><b>Lost</b> 0</span></div>
+      <div class="deck">
+        <div class="card">
+          <div class="co">Ridgeway Builders <span class="chip amber">Due 61 days</span></div>
+          <div class="facts"><span>Marisol Vega · estimating@ridgewaybuilders.example</span></div>
+          <div class="facts"><span class="tel">📞 (512) 555-0142</span></div>
+          <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v">Asked us ✓</span></div>
+        </div>
+        <div class="rail"><div class="h"><span>Queue</span><span class="muted">1 of 268</span></div><div class="ord"><span class="on">Coldest</span><span>Never called</span><span>Soonest bid</span></div>
+          <div class="row on"><span class="n">1</span><span class="w">Ridgeway Builders</span><span class="s">called 231d ago</span></div>
+          <div class="row"><span class="n">2</span><span class="w">Sabinal Commercial</span><span class="s">never called</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">A customer prospect wears the lane's purple press. The rail counts the customer deck. Nothing on the screen says it is wrong.</p>
+  </div>
+  <div>
+    <div class="cap"><span>A · the kind is read from the link first</span></div>
+    <div class="fit"><div class="page">
+      <div class="ph"><div class="tabs"><span>Customers</span><span class="on">Jobs to GC</span><span>Subs</span><span>Hiring</span></div></div>
+      <div class="strip"><span class="l">GC work in flight</span><span class="need"><b>Bidding</b> 1</span><span class="need ok"><b>Buying out</b> 0</span><span class="need"><b>Building</b> 1</span><span class="need ok"><b>Lost</b> 0</span></div>
+      <div class="deck">
+        <div class="card">
+          <div class="co">Hill Country Developers <span class="chip green">never called</span></div>
+          <div class="facts"><span>Dana Whitlock · dwhitlock@hcdev.example</span><span class="muted">Developer · from PlanHub</span></div>
+          <div class="jobs"><div class="jh"><span>Jobs (1)</span><span class="act">+ Add a job</span></div>
+            <div class="jr"><div><b>Retail shell on FM 1431</b> <span class="m">2200 FM 1431, Cedar Park · 12,000 sq ft · the plans</span></div><div class="due">Nov 4<small>bids due · 19 days</small></div></div></div>
+          <div class="outcome"><span class="l">How did the call end?</span><span class="btn a">Didn't Answer</span><span class="btn g">Answered</span><span class="btn">Can't reach</span><span class="btn">Not a fit</span><span class="btn v">Asked us ✓</span></div>
+        </div>
+        <div class="rail"><div class="h"><span>Queue</span><span class="muted">1 of 14</span></div><div class="ord"><span class="on">Coldest</span><span>Never called</span><span>Soonest bid</span></div>
+          <div class="row on"><span class="n">1</span><span class="w">Hill Country Developers</span><span class="s">never called</span></div>
+          <div class="row"><span class="n">2</span><span class="w">Studio Bexar</span><span class="s">called 9d ago</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="say">The first load is the lane's own, and a load that answers after a newer one is dropped. An empty lane says so: <i>Nobody on Jobs to GC yet. New Prospect adds the first lead.</i></p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> New Prospect on a phone <span class="lbl">fixed by #5774</span></h2>
+<p class="lede">Drawn so the fix is on the record. The window had no height limit, the backdrop centres it, so a window taller than the screen lost its title and its Save. #5774 clamps both windows to 90% of the screen and scrolls inside.</p>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now · 375 px</span></div>
+    <div class="fit"><div class="phone"><div class="modal cut">
+      <h4>New Prospect</h4><p class="why">Who are we looking for?</p>
+      <div class="kinds"><div class="kind"><b>A customer</b></div><div class="kind"><b>A job to GC</b></div><div class="kind on"><b>A sub</b></div></div>
+      <div class="form"><div class="f wide"><label>Company name</label><div class="in">Bexar Fire Protection</div></div><div class="f wide"><label>Contact name</label><div class="in">Tomás Reyna</div></div><div class="f wide"><label>Phone number</label><div class="in">(210) 555-0188</div></div><div class="f wide"><label>Email</label><div class="in empty">—</div></div><div class="f wide"><label>Address</label><div class="in empty">—</div></div><div class="f wide"><label>Trades</label><div class="in"><span class="chip blue">Fire sprinkler</span></div></div><div class="f wide"><label>Goes up to (miles)</label><div class="in">40</div></div><div class="f wide"><label>Language</label><div class="radios"><span class="on">English</span><span>Spanish</span></div></div><div class="f wide"><label>Where we found them</label><div class="in">A GC's sub list</div></div></div>
+      <div class="mfoot"><span class="btn p">Save</span><span class="btn">Cancel</span></div>
+    </div></div></div>
+    <p class="say">The title is above the screen and Save is below it. The window does not scroll and Escape does not close it.</p>
+  </div>
+  <div>
+    <div class="cap"><span>#5774 · the window fits and scrolls</span></div>
+    <div class="fit"><div class="phone"><div class="modal fits">
+      <h4>New Prospect</h4><p class="why">Who are we looking for?</p>
+      <div class="kinds"><div class="kind"><b>A customer</b></div><div class="kind"><b>A job to GC</b></div><div class="kind on"><b>A sub</b></div></div>
+      <div class="form"><div class="f wide"><label>Company name</label><div class="in">Bexar Fire Protection</div></div><div class="f wide"><label>Contact name</label><div class="in">Tomás Reyna</div></div><div class="f wide"><label>Phone number</label><div class="in">(210) 555-0188</div></div><div class="f wide"><label>Email</label><div class="in empty">—</div></div></div>
+      <div class="scroller"><i></i></div>
+      <div class="mfoot"><span class="btn p">Save</span><span class="btn">Cancel</span></div>
+    </div></div></div>
+    <p class="say">The fields scroll inside the window and Save stays at the foot. One thing #5774 does not do: Escape on an untouched window. That is in the critique.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span> Editing a job on a lead</h2>
+<p class="lede">The Jobs box orders the lead's jobs by bid day and asks who won when one is lost. It has no way to correct a job. A wrong bid day, the thing that orders the queue, has no door.</p>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now · the Jobs box</span></div>
+    <div class="fit"><div class="page"><div class="card" style="max-width:620px;margin:0 auto">
+      <div class="co">Hill Country Developers <span class="chip green">never called</span></div>
+      <div class="jobs"><div class="jh"><span>Jobs (2)</span><span class="act">+ Add a job</span></div>
+        <div class="jr"><div><b>Retail shell on FM 1431</b> <span class="m">2200 FM 1431, Cedar Park · 12,000 sq ft · the plans</span><br><span class="act">Lost · Drop</span></div><div class="due">Nov 4<small>bids due · 19 days</small></div></div>
+        <div class="jr"><div><b>Office TI on Lakeline</b> <span class="m">900 Lakeline Blvd, Austin · 4,500 sq ft · no plans yet</span><br><span class="act">Reopen · Remove</span></div><div class="due muted">dropped<small>not happening</small></div></div>
+      </div>
+    </div></div></div>
+    <p class="say">The owner says bids moved to Nov 11. The caller's only path is Drop, Remove, and + Add a job from memory.</p>
+  </div>
+  <div>
+    <div class="cap"><span>A · an Edit on the row, the add form filled in</span></div>
+    <div class="fit"><div class="page"><div class="card" style="max-width:620px;margin:0 auto">
+      <div class="co">Hill Country Developers <span class="chip green">never called</span></div>
+      <div class="jobs"><div class="jh"><span>Jobs (2)</span><span class="act">+ Add a job</span></div>
+        <div class="jr"><div><b>Retail shell on FM 1431</b> <span class="m">2200 FM 1431, Cedar Park · 12,000 sq ft · the plans</span><br><span class="act"><span class="new">Edit</span> · Lost · Drop</span></div><div class="due">Nov 4<small>bids due · 19 days</small></div></div>
+        <div class="jr"><div><b>Office TI on Lakeline</b> <span class="m">900 Lakeline Blvd, Austin · 4,500 sq ft · no plans yet</span><br><span class="act">Reopen · Remove</span></div><div class="due muted">dropped<small>not happening</small></div></div>
+        <div class="jr" style="grid-template-columns:1fr;background:#f9fafb"><div class="mini">Editing Retail shell on FM 1431</div>
+          <div class="form"><div class="f"><label>Job</label><div class="in">Retail shell on FM 1431</div></div><div class="f"><label>Address</label><div class="in">2200 FM 1431, Cedar Park</div></div><div class="f"><label>Size (sq ft)</label><div class="in">12000</div></div><div class="f"><label>Bids due</label><div class="in new">2026-11-11</div></div><div class="f wide"><label>Where the plans are (a link)</label><div class="in">https://planhub.example/retail-shell</div></div></div>
+          <div class="mfoot" style="justify-content:flex-start"><span class="btn p">Save changes</span><span class="btn">Cancel</span></div></div>
+      </div>
+    </div></div></div>
+    <p class="say">Edit opens the same form the add uses, filled in, at the foot of the box. Save changes writes the row and the box re-sorts.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span> The same company twice</h2>
+<p class="lede">New Prospect warns when a sub is already on the bench and when a lead is already a customer. It does not look at the deck itself. Two callers, or one caller twice, make two cards for one company, and the strip counts both.</p>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now · New Prospect on Subs</span></div>
+    <div class="fit"><div class="page narrow"><div class="modal">
+      <h4>New Prospect</h4><p class="why">Who are we looking for?</p>
+      <div class="kinds"><div class="kind"><b>A customer</b></div><div class="kind"><b>A job to GC</b></div><div class="kind on"><b>A sub</b></div></div>
+      <div class="form"><div class="f wide"><label>Company name</label><div class="in">Bexar Fire Protection</div></div><div class="f"><label>Contact name</label><div class="in empty">—</div></div><div class="f"><label>Phone number</label><div class="in">(210) 555-0188</div></div></div>
+      <div class="mfoot"><span class="btn p">Save</span><span class="btn">Cancel</span></div>
+    </div></div></div>
+    <p class="say">Bexar Fire Protection is already on Subs, called twelve days ago by Danny. Save makes a second card and the strip reads 2 to call.</p>
+  </div>
+  <div>
+    <div class="cap"><span>A · the deck is checked too</span></div>
+    <div class="fit"><div class="page narrow"><div class="modal">
+      <h4>New Prospect</h4><p class="why">Who are we looking for?</p>
+      <div class="kinds"><div class="kind"><b>A customer</b></div><div class="kind"><b>A job to GC</b></div><div class="kind on"><b>A sub</b></div></div>
+      <div class="form"><div class="f wide"><label>Company name</label><div class="in">Bexar Fire Protection</div><div class="warn new">Bexar Fire Protection is already on Subs. Danny called them 12 days ago. <b>Open it</b></div></div><div class="f"><label>Contact name</label><div class="in empty">—</div></div><div class="f"><label>Phone number</label><div class="in">(210) 555-0188</div></div></div>
+      <div class="mfoot"><span class="btn p">Save anyway</span><span class="btn">Cancel</span></div>
+    </div></div></div>
+    <p class="say">The same name case-blind, or the same phone of seven digits or more, on any lane. Open it closes the form and opens the card on its lane. Save anyway stays, because two branches of one company are real.</p>
+  </div>
+</div>
+
+<h2><span class="num">5</span> An empty lane, and the clock under it</h2>
+<p class="lede">The empty words point at Prospect List, which adds nothing. The call timer starts when the lane opens, not when a card is on screen, so it ran 2:16 under nothing and stamped it on the first sub added.</p>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now · Subs with nobody to call</span></div>
+    <div class="fit"><div class="page">
+      <div class="strip"><span class="l">The bench needs</span><span class="need"><b>Concrete</b> 2 more <span class="q">· 0 to call</span></span><span class="muted" style="margin-left:auto">3 a trade is the bench's rule</span></div>
+      <div class="empty">No prospects to follow up. Add prospects in Prospect List.</div>
+      <div class="util"><span class="t">this call 02:16 · my day 02:16</span></div>
+    </div></div>
+    <p class="say">The words name a tab that cannot add. The clock counts a call that is not happening.</p>
+  </div>
+  <div>
+    <div class="cap"><span>A · the words name the control, the clock waits for a card</span></div>
+    <div class="fit"><div class="page">
+      <div class="strip"><span class="l">The bench needs</span><span class="need"><b>Concrete</b> 2 more <span class="q">· 0 to call</span></span><span class="muted" style="margin-left:auto">3 a trade is the bench's rule</span></div>
+      <div class="empty new">Nobody on Subs yet. <b>New Prospect</b> adds the first company.<br><span class="mini">On a trade filter: No subs for Fire sprinkler. <b>All subs</b> widens the queue.</span></div>
+      <div class="util"><span class="t">my day 00:00</span></div>
+    </div></div>
+    <p class="say"><i>this call</i> appears with the card and starts at zero. <i>my day</i> keeps running, because the day's phone time is the caller's, not the card's.</p>
+  </div>
+</div>
+
+<h2><span class="num">6</span> The never-called chip</h2>
+<div class="spot">
+  <div>
+    <div class="cap now"><span>Now</span></div>
+    <div class="fit"><div class="page"><div class="card" style="max-width:560px;margin:0 auto"><div class="co">Bexar Fire Protection <span class="chip amber">Due</span> <span class="chip green">never called</span></div><div class="facts"><span>Tomás Reyna · bids@bexarfire.example</span></div></div></div></div>
+    <p class="say">A Due chip with no day. On the customer deck it reads <i>Due 61 days</i>; a company never called has no day to count from.</p>
+  </div>
+  <div>
+    <div class="cap"><span>A</span></div>
+    <div class="fit"><div class="page"><div class="card" style="max-width:560px;margin:0 auto"><div class="co">Bexar Fire Protection <span class="chip green new">never called</span></div><div class="facts"><span>Tomás Reyna · bids@bexarfire.example</span></div></div></div></div>
+    <p class="say">The Due chip waits for a first call. <i>never called</i> already says everything the card knows.</p>
+  </div>
+</div>
+
+<section class="crit">
+<h3>Is this the best we can do?</h3>
+<p>A fixes what the walk saw, one patch a spot. Read back as the caller, and as the code under it, four of the patches stop short, and two findings had no patch at all. B is the second pass.</p>
+<div class="tbl"><table class="wt">
+<tr><th>Weak spot in A</th><th>Why it matters</th><th>What B does instead</th></tr>
+<tr><td>1 · Fix the race and stop</td><td>A race fixed in the loader can come back from the next loader. The screen itself still trusts whatever it is handed.</td><td>Two guards. The loader keeps a request counter and drops a late answer. The deck <b>never draws a card whose kind is not the lane's</b>, and says <i>Loading Subs…</i> while the first load runs. A leak then shows as a quiet line, never as another lane's card.</td></tr>
+<tr><td>2 · Escape does nothing</td><td>#5774 makes the window fit. An untouched window still needs a press on Cancel to leave; the house rule since v2.5530 is that Escape and the backdrop close a window while nothing changed.</td><td>New Prospect and Edit prospect close on Escape and the backdrop until a field changes. Then they ask, as the big windows do.</td></tr>
+<tr><td>3 · A second form under the list</td><td>The row stays in the list while its copy sits in the form at the foot. The caller reads the same job twice and the box grows past the card on a phone.</td><td><b>Edit in place</b>: the row becomes the form where it sits, the other rows stay put, Save changes puts the row back and re-sorts. One copy of the job on the screen.</td></tr>
+<tr><td>4 · A third warning, a third rule</td><td>The bench double, the customer double and now a deck double, each its own words and its own door. A fourth home would be a fourth rule.</td><td><b>One lookup, one sentence, one door.</b> Typing a name or a phone checks the four places a company can already live and says it in one shape: <i>&lt;Company&gt; is already &lt;where&gt;. &lt;One fact&gt;. &lt;One door&gt;.</i> The two warnings that exist become cases of it.</td></tr>
+<tr><td>5 · Hide the clock</td><td>Hiding is right for <i>this call</i> and wrong for <i>my day</i>. A caller who opens an empty lane at 8:00 and a full one at 8:05 did start the day at 8:00.</td><td>Drawn in A already: the card's clock starts with the card; the day's clock runs from the first lane opened. The Activity report's <i>Time</i> column reads the card clocks only.</td></tr>
+<tr><td>Test rows on prod</td><td>A walk like this one leaves a ZZ sub on the strip and in the queue until it is deleted. Jobs already hide ZZ test rows from everyone but devs; prospects do not.</td><td><b>The ZZ rule for prospects</b>: a company whose name starts with <i>ZZ Test</i> is a dev's row, left out of the deck, the strip, the list and Activity for anyone who is not a dev. The next walk costs the office nothing.</td></tr>
+<tr><td>Leftovers nobody drew</td><td>A <i>blahfoo</i> quick-note chip sits on every card, and a project called <i>GC test bidding project, delete me</i> feeds the GC work strip's counts.</td><td>Not a build. Delete the quick note today; the project is the owner's call, since the GC walkthroughs may still use it.</td></tr>
+</table></div>
+<p><b>What A got right and B keeps:</b> one spot, one patch; nothing new on the card's shape; the warning's door is the same Open it the bench already uses; Save stays allowed on a double; no new tab, no new table.</p>
+<p><b>What B says no to:</b> blocking a double (two branches of one company, or a GC who is both a customer and a lead, are real); a Remove on open rows (an edit covers a mistake, and a removed job loses its story); a Notes field on the sub form (the comments box is the notes, and it logs who wrote them).</p>
+</section>
+
+<h2><span class="num green">B</span> Revised cut, where it differs from A</h2>
+<p class="lede">Three drawings. Spots 2, 5 and 6 stay as A drew them.</p>
+
+<div class="cap good"><span>B · 1 · the lane while it loads, and the guard</span><span class="w">a leak can only ever show as this line</span></div>
+<div class="fit"><div class="page">
+  <div class="ph"><div class="tabs"><span>Customers</span><span class="on">Jobs to GC</span><span>Subs</span><span>Hiring</span></div><div class="ptitle">Prospects</div></div>
+  <div class="strip"><span class="l">GC work in flight</span><span class="need"><b>Bidding</b> 1</span><span class="need ok"><b>Buying out</b> 0</span><span class="need"><b>Building</b> 1</span><span class="need ok"><b>Lost</b> 0</span></div>
+  <div class="deck"><div class="card"><div class="empty new">Loading Jobs to GC…</div></div><div class="rail"><div class="h"><span>Queue</span><span class="muted">—</span></div><div class="ord"><span class="on">Coldest</span><span>Never called</span><span>Soonest bid</span></div></div></div>
+  <p class="say"><b>The rule:</b> the deck draws a card only when <code>card.kind</code> is the lane's kind. The loader numbers its requests and keeps the newest answer. The first load reads the kind from the link, so the customer deck is never asked for on a lane's URL.</p>
+</div></div>
+
+<div class="cap good"><span>B · 3 · edit in place</span><span class="w">the row becomes the form; the other rows stay where they are</span></div>
+<div class="fit"><div class="page"><div class="card" style="max-width:640px;margin:0 auto">
+  <div class="co">Hill Country Developers <span class="chip green">never called</span></div>
+  <div class="jobs"><div class="jh"><span>Jobs (2)</span><span class="act">+ Add a job</span></div>
+    <div class="jr editing"><div>
+      <div class="form"><div class="f"><label>Job</label><div class="in">Retail shell on FM 1431</div></div><div class="f"><label>Address</label><div class="in">2200 FM 1431, Cedar Park</div></div><div class="f"><label>Size (sq ft)</label><div class="in">12000</div></div><div class="f"><label>Bids due</label><div class="in new">2026-11-11</div></div><div class="f wide"><label>Where the plans are (a link)</label><div class="in">https://planhub.example/retail-shell</div></div></div>
+      <div class="mfoot" style="justify-content:flex-start;margin-top:8px"><span class="btn p s">Save changes</span><span class="btn s">Cancel</span></div>
+    </div></div>
+    <div class="jr"><div><b>Office TI on Lakeline</b> <span class="m">900 Lakeline Blvd, Austin · 4,500 sq ft · no plans yet</span><br><span class="act">Reopen · Remove</span></div><div class="due muted">dropped<small>not happening</small></div></div>
+  </div>
+  <div class="ok">After Save changes the row reads <b>Nov 11 · bids due · 26 days</b> and, on Soonest bid, the queue re-sorts at once.</div>
+</div></div></div>
+
+<div class="cap good"><span>B · 4 · one lookup for every double</span><span class="w">one sentence shape, one door, four homes</span></div>
+<div class="fit"><div class="page narrow"><div class="modal">
+  <h4>New Prospect</h4><p class="why">Who are we looking for?</p>
+  <div class="kinds"><div class="kind"><b>A customer</b></div><div class="kind on"><b>A job to GC</b></div><div class="kind"><b>A sub</b></div></div>
+  <div class="form"><div class="f wide"><label>Company name</label><div class="in">Lantana Property Group</div><div class="warn new">Lantana Property Group is already a customer. 3 jobs with us since 2024. <b>Link this lead to them</b> · <b>Open their page</b></div></div><div class="f"><label>Contact name</label><div class="in empty">—</div></div><div class="f"><label>Phone number</label><div class="in">(512) 555-0190</div></div></div>
+  <div class="mfoot"><span class="btn p">Save anyway</span><span class="btn">Cancel</span></div>
+</div>
+<div class="tbl" style="margin-top:12px"><table class="wt">
+<tr><th>Where it already lives</th><th>The line says</th><th>The door</th></tr>
+<tr><td>This lane</td><td><i>Bexar Fire Protection is already on Subs. Danny called them 12 days ago.</i></td><td><b>Open it</b></td></tr>
+<tr><td>Another lane</td><td><i>Ridgeway Builders is already on Customers. Converted ✓ in March.</i></td><td><b>Open it</b></td></tr>
+<tr><td>The bench</td><td><i>Comal Concrete Works is already on the bench. Concrete, vetted.</i></td><td><b>Open it</b> (Trade partners)</td></tr>
+<tr><td>The customers</td><td><i>Lantana Property Group is already a customer. 3 jobs with us since 2024.</i></td><td><b>Link this lead to them</b> · <b>Open their page</b></td></tr>
+</table></div>
+<p class="say"><b>The rule:</b> one kernel, <code>companyDouble(name, phone, homes)</code>, over the four homes with the match the bench warning already uses (the same name case-blind, or the same phone of seven digits or more). The two warnings that exist today become its first two cases, so there is one place to add a fifth home.</p>
+</div></div>
+
+<section class="crit">
+<h3>Grace's calls</h3>
+<ol class="calls">
+  <li><b>A double: warn or block.</b> Drawn as a warning with Open it and Save anyway, because two branches of one company are real. Say so to block instead.</li>
+  <li><b>Edit in place or a form under the list.</b> Drawn in place (B · 3). The form under the list (A · 3) is smaller to build and reads the job twice.</li>
+  <li><b>The ZZ rule for prospects.</b> Drawn as the jobs rule: a company named <i>ZZ Test…</i> is a dev's and hidden from everyone else. Or keep deleting test rows by hand after each walk.</li>
+  <li><b>The leftovers.</b> The <i>blahfoo</i> quick note goes today. The <i>GC test bidding project, delete me</i> project is the owner's call.</li>
+  <li><b>Order of work.</b> Spot 1 first, as a bug; #5774 merges; then 4, then 3, then the words of 5 and 6 in one PR.</li>
+</ol>
+<div class="q">Nothing here changes the lanes' shape or their data. The one write that is new is an UPDATE on a job row. Every warning reuses a door that exists, and the guard in B · 1 is one line in the deck's render.</div>
+</section>
+</div>
+</body>
+</html>

@@ -13,7 +13,7 @@
  * Holidays are not known: a closed weekday reads as open until the owner asks for them.
  */
 import { appTzWallTimeMs, calendarYmdInAppTzFromIso, startOfYmdInAppTzMs, ymdAddDays } from '../../utils/dateUtils'
-import type { ContactFollowUpRow } from '../followUp/followUpRows'
+import type { ContactFollowUpRow } from '../followUp/followUpTypes'
 import { dayLabel } from './owed'
 import { clockTime } from './thread'
 

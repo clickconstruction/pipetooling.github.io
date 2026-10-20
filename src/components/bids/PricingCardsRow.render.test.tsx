@@ -199,6 +199,17 @@ describe('PricingCardsRow — the tray of cards', () => {
     render(<PricingCardsRow {...props({ scenarios: [BASE, EMPTY], selectedPricingVersionId: 'pC', copySource: null })} />)
     expect(screen.queryByText(/copy prices from/)).toBeNull()
   })
+
+  it('the open price whose prices are still landing reads … and says whose letter it is on: no "No prices yet", no copy (v2.5669, Grace)', () => {
+    // `cardRevenue` gives the open card null until its own book and rows are on screen.
+    const offered = pricing('pB', 'Alternate 1', { include_in_submission: true })
+    render(<PricingCardsRow {...props({ scenarios: [BASE, offered], selectedPricingVersionId: 'pB', revenueOf: (id) => (id === 'pB' ? null : 1000), copySource: { id: 'pA', name: 'Base' } })} />)
+    const card = cardOf('Alternate 1')
+    expect(card.textContent).toContain('…')
+    expect(card.textContent).not.toContain('No prices yet')
+    expect(screen.queryByText(/copy prices from/)).toBeNull()
+    expect(card.textContent).toContain('On their letter · alternate')
+  })
 })
 
 describe('PricingCardsRow — own-takeoff alternate cards', () => {

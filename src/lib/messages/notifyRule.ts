@@ -9,7 +9,7 @@
  * person's `push_subscriptions`, then one `notification_history` row per person (`pushSentRow`). That row carries the
  * line it was for in `message_id`, a nullable column R5's SQL PR adds, so no line is pushed twice.
  */
-import { firstName } from '../contacts/kernel'
+import { firstName } from '../contacts/names'
 import { GC_MESSAGES_HREF } from '../gc/links'
 import type { ThreadMessage } from './thread'
 
@@ -79,7 +79,7 @@ export interface PushSentRow {
 const QUIET_KINDS: ReadonlySet<string> = new Set(['supply_house', 'candidate'])
 
 /** The lines that push: a text, an email, a portal write, a voicemail and a missed call. An answered call does not. */
-const PUSH_CHANNELS: ReadonlySet<string> = new Set(['text', 'email', 'portal', 'voicemail', 'missed'])
+export const PUSH_CHANNELS: ReadonlySet<string> = new Set(['text', 'email', 'portal', 'voicemail', 'missed'])
 
 const BODY_MAX = 140
 
@@ -106,9 +106,14 @@ export function officeWaitWords(name: string, minutes: number): string {
   return `Nobody answered ${name} in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}. It is on Needs a reply.`
 }
 
-/** "Dana wrote after hours. The app answered with the hours we open." */
+/**
+ * "Dana wrote after hours. The app answered with the hours we open." Null while no after-hours answer goes (until
+ * `quo-send` sends one): then the words say only what is true, that the line waits for the morning.
+ */
 export function afterHoursWords(name: string, autoAnswer: ReplyHas['autoAnswer']): string {
-  return autoAnswer === 'send' ? `${name} wrote after hours. The app answered with the hours we open.` : `${name} wrote after hours. The app already answered tonight.`
+  if (autoAnswer === 'send') return `${name} wrote after hours. The app answered with the hours we open.`
+  if (autoAnswer === 'sent') return `${name} wrote after hours. The app already answered tonight.`
+  return `${name} wrote after hours. It waits for the morning.`
 }
 
 const plus = (iso: string, minutes: number) => new Date(Date.parse(iso) + minutes * 60_000).toISOString()

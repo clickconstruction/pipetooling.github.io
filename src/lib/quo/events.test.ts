@@ -64,6 +64,7 @@ const ctx = (over: Partial<QuoPlanContext> = {}): QuoPlanContext => ({
   users: USERS,
   company: CLICK,
   existing: null,
+  mailbox: 'team',
   ...over,
 })
 
@@ -308,6 +309,7 @@ describe('a text into the thread', () => {
         media: [],
         optoutLine: null,
         delivery: null,
+        mailbox: 'team',
       },
       optout: null,
       answer: null,
@@ -376,6 +378,17 @@ describe('a text into the thread', () => {
 })
 
 describe('a call, merged from its events', () => {
+  it('names a call the shared office seat took as the office, with no user of ours (v2.5548)', () => {
+    const office = ctx({ users: { 'US-robert': { userId: null, name: 'the office' } } })
+    const line = fold([ANSWERED.completed, ANSWERED.recording, ANSWERED.transcript, ANSWERED.summary], office)
+    expect(line).toMatchObject({
+      who: 'the office answered',
+      whoUserId: null,
+      transcript: 'Greg: I will price the Boerne sitework by Wednesday.\nthe office: Striping is listed under Sitework.',
+    })
+    expect(quoSentWho('US-robert', office.users)).toBe('the office · from the company number')
+  })
+
   it('writes Robert’s answered call with its summary, transcript and recording', () => {
     const line = fold([ANSWERED.completed, ANSWERED.recording, ANSWERED.transcript, ANSWERED.summary], ctx())
     expect(line).toEqual({
@@ -396,6 +409,7 @@ describe('a call, merged from its events', () => {
       media: [],
       optoutLine: null,
       delivery: null,
+      mailbox: 'team',
     })
   })
 
@@ -431,6 +445,7 @@ describe('a call, merged from its events', () => {
         media: [],
         optoutLine: null,
         delivery: null,
+        mailbox: 'team',
       })
     }
   })
@@ -545,6 +560,7 @@ describe('a text of ours, as Quo reports it', () => {
         media: [],
         optoutLine: null,
         delivery: 'delivered',
+        mailbox: 'team',
       },
       optout: null,
       answer: null,
@@ -585,6 +601,7 @@ describe('a text of ours, as Quo reports it', () => {
       media: [],
       optoutLine: 'first',
       delivery: null,
+      mailbox: 'team',
     }
     const photo = { url: 'https://files.example/walk.jpg', type: 'image/jpeg' }
     expect(planQuoEvent(ours('message.delivered', { media: [photo] }), ctx({ existing: written })).line).toEqual({ ...written, delivery: 'delivered', media: [photo] })
@@ -624,5 +641,46 @@ describe('plain words', () => {
     said.push(deliveryWords('failed', 'Greg', '30007') ?? '', deliveryWords('undelivered', 'Elena', null) ?? '')
     expect(said).toHaveLength(8)
     expect(said.flatMap((s) => plainWordsFailures(s))).toEqual([])
+  })
+})
+
+describe('the box a call or text came through (R6)', () => {
+  it('writes a text to the bids number on the bids box', () => {
+    expect(planQuoEvent(text('Bid due Friday?'), ctx({ mailbox: 'bids' })).line).toMatchObject({ mailbox: 'bids', who: 'Greg' })
+  })
+
+  it('names the bids number on a call it rang, and keeps the box the line has', () => {
+    expect(callWho('voicemail', 'in', null, undefined, 'bids')).toBe('rang everyone on the bids number')
+    expect(callWho('call', 'out', null, 'answered', 'bids')).toBe('called from the bids number')
+    expect(callWho('call', 'in', null, 'answered')).toBe('answered on the company number')
+    const voicemail = fold([VOICEMAIL.completed, VOICEMAIL.voicemail], ctx({ mailbox: 'bids' }))
+    expect(voicemail).toMatchObject({ mailbox: 'bids', who: 'rang everyone on the bids number' })
+    // A later event that names no number of ours is read as the team box; the line keeps the box its call came to.
+    expect(planQuoEvent(VOICEMAIL.missed, ctx({ existing: voicemail, mailbox: 'team' })).line).toMatchObject({ mailbox: 'bids' })
+  })
+
+  it('writes a text from Quo’s app on the box it went from, and fills the box on a line from before two boxes', () => {
+    expect(planQuoEvent(ours('message.delivered'), ctx({ mailbox: 'bids' })).line).toMatchObject({ mailbox: 'bids', who: 'Rosa · from the bids number' })
+    expect(quoSentWho('US-rosa', USERS, 'bids')).toBe('Rosa · from the bids number')
+    const before = planQuoEvent(ours('message.delivered'), ctx()).line
+    if (!before) throw new Error('no line')
+    expect(planQuoEvent(ours('message.delivered'), ctx({ existing: { ...before, mailbox: null }, mailbox: 'bids' })).line?.mailbox).toBe('bids')
+    expect(planQuoEvent(ours('message.delivered'), ctx({ existing: before, mailbox: 'bids' })).line?.mailbox).toBe('team')
+  })
+})
+
+describe('the customer’s say (v2.5597): EMAIL or TEXT alone', () => {
+  it('reads the word alone, in any case, and nothing longer', () => {
+    expect(keywordOf('EMAIL')).toEqual({ kind: 'prefer', word: 'EMAIL', prefers: 'email', quoAnswers: false })
+    expect(keywordOf('emails')).toEqual({ kind: 'prefer', word: 'EMAILS', prefers: 'email', quoAnswers: false })
+    expect(keywordOf('Text.')).toEqual({ kind: 'prefer', word: 'TEXT', prefers: 'text', quoAnswers: false })
+    expect(keywordOf('texts please')).toBeNull()
+    expect(keywordOf('Email me the estimate')).toBeNull()
+  })
+
+  it('plans the preference and a gray line, and sends nothing back', () => {
+    expect(planQuoEvent(text('EMAIL'), ctx())).toMatchObject({ optout: null, answer: null, prefers: 'email', event: 'Greg asked to hear from us by email. The app holds their texts for the office.' })
+    expect(planQuoEvent(text('text'), ctx())).toMatchObject({ optout: null, answer: null, prefers: 'text', event: 'Greg asked to hear from us by text.' })
+    expect(planQuoEvent(text('Any word on the start date?'), ctx()).prefers).toBeUndefined()
   })
 })

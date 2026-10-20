@@ -88,10 +88,30 @@ export function tokenFromLink(link: string): string | null {
   return m ? m[1]! : null
 }
 
-/** How the stream names the file: shown in the browser, saved under its own name. */
-export function contentDisposition(name: string): string {
+/**
+ * Whether the stream may show a file in the browser. A page, a drawing that can carry a script, or a script is saved
+ * instead: a file that came by email from outside must never run on the function's address.
+ */
+export function streamsInline(mime: string | null): boolean {
+  return !/^(text\/html|application\/xhtml\+xml|image\/svg\+xml|text\/xml|application\/xml|text\/javascript|application\/javascript)\b/i.test((mime ?? '').trim())
+}
+
+/** How the stream names the file: shown in the browser, saved under its own name. A page or a script is only saved. */
+export function contentDisposition(name: string, mime: string | null = null): string {
   const plain = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
-  return `inline; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}`
+  return `${streamsInline(mime) ? 'inline' : 'attachment'}; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}`
+}
+
+/** A file from this computer as the office's door and messages-email take it: base64, a data URL's head allowed. Null when it is not base64. */
+export function bytesOfBase64(b64: string): Uint8Array | null {
+  try {
+    const bin = atob(b64.replace(/^data:[^,]*,/, '').trim())
+    const out = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i)
+    return out
+  } catch {
+    return null
+  }
 }
 
 /** A job, as the spine ties a line: a bid, a GC project or a Pipeline job. */
@@ -160,8 +180,21 @@ export function landingPath(kind: 'sent' | 'photos' | 'saved', half: 'plans' | '
   return half === 'plans' ? ['Plans'] : ['Team only', 'From email']
 }
 
+/** A picture, by its type or its name's ending. */
+export function isImageFile(f: { mime: string | null; name: string }): boolean {
+  return (f.mime ?? '').startsWith('image/') || /\.(jpe?g|png|heic|heif|gif)$/i.test(f.name)
+}
+
 /** Save to Drive's pick for a file that came in: Team only for a quote or a photo, Plans for anything else (the lead, 2026-10-12). */
 export function saveHalfFor(f: { kind: string; mime: string | null; name: string; isQuote: boolean }): 'plans' | 'team_only' {
-  const image = (f.mime ?? '').startsWith('image/') || /\.(jpe?g|png|heic|heif|gif)$/i.test(f.name)
-  return f.isQuote || image ? 'team_only' : 'plans'
+  return f.isQuote || isImageFile(f) ? 'team_only' : 'plans'
+}
+
+/** Where a photo lands (Messages, cut 10): a Pipeline job's own Customer Pictures folder when its link is plainly a Drive folder, else the job's folder, Team only, Photos (the lead, 2026-10-13). */
+export type PhotoLanding = { kind: 'pictures'; folderId: string } | { kind: 'job'; path: readonly string[] }
+
+/** A photo's landing: `picturesFolderId` is the Drive folder a Pipeline job's Customer Pictures link names, or null. */
+export function photoLanding(job: JobRef, picturesFolderId: string | null): PhotoLanding {
+  if ('jobs_ledger_id' in job && picturesFolderId) return { kind: 'pictures', folderId: picturesFolderId }
+  return { kind: 'job', path: landingPath('photos') }
 }

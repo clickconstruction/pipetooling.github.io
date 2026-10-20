@@ -36,6 +36,8 @@ import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPla
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
 import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, GC_CUSTOMER_EMAIL_FROM_NAME, GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { buildMessagesEmail } from '../../supabase/functions/_shared/messagesEmail'
+import { emailDraft } from './messages/compose'
 import { certifiedMail, certifyAskMail, changeOrderMail, contractMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { payReminderMail } from './gc/ownerBillingRemind'
 import { weeklyReportText, type WeeklyReport } from './gc/buildingWeekly'
@@ -335,6 +337,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
+  if (id === 'messages-reply') return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-due-soon' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly' || id === 'gc-schedule' || id === 'gc-contract')
     return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
@@ -432,6 +435,23 @@ export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { 
   return { ...buildSampleEmailBody(id, ctx), from: sampleEmailFrom(id) }
 }
 
+/**
+ * Messages (cut 3): an email from the reply box in a person's thread, as `messages-email` sends it. The office's own words,
+ * put together the way the box puts them (`compose.emailDraft`), under our letterhead by the same `buildMessagesEmail`.
+ */
+export function buildSampleMessagesReplyEmail(ctx: SampleEmailContext): BuiltEmail {
+  const company = { name: GC_CUSTOMER_EMAIL_FROM_NAME, phone: '', mailbox: '', address: '' }
+  const draft = emailDraft({
+    company,
+    sender: { name: String(ctx.sender?.name || 'The project manager'), title: 'Project manager', cell: ctx.sender?.phone || null },
+    to: { name: 'Elena', number: null, numberOptedOut: false, email: 'elena@sample.example' },
+    greetingName: 'Elena',
+    jobName: 'Sample Retail Shell',
+    body: 'The storefront glass samples are at the office. Can you look at them Thursday morning?',
+  })
+  return buildMessagesEmail(draft, company.name)
+}
+
 function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
@@ -459,6 +479,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-schedule') return buildSampleGcScheduleEmail(ctx)
   if (id === 'gc-contract') return buildSampleGcContractEmail(ctx)
   if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
+  if (id === 'messages-reply') return buildSampleMessagesReplyEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
 

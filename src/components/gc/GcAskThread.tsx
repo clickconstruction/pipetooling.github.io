@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { GC_WAITING_ON_THEM_ID } from '../../lib/gc/links'
 import { bidsIn } from '../../lib/gc/bids'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, followUps, promiseWords, wordRecord, type FollowUp, type FollowUpWhy, type PromiseState } from '../../lib/gc/followUp'
@@ -299,7 +300,7 @@ export function GcFollowUp({
   // A phone puts each person's buttons under their words. Read once: a test page may have no matchMedia.
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 480px)').matches
   return (
-    <section aria-label="We are waiting on them" style={{ display: 'grid', gap: '0.9rem' }}>
+    <section id={GC_WAITING_ON_THEM_ID} aria-label="We are waiting on them" style={{ display: 'grid', gap: '0.9rem', scrollMarginTop: 'var(--app-top-chrome, 0px)' }}>
       <h3 style={{ margin: 0, fontSize: '1rem' }}>We are waiting on them ({listCount})</h3>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <span role="group" aria-label="Order Follow up" style={{ display: 'inline-flex', justifySelf: 'start', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
@@ -385,8 +386,9 @@ function FollowUpCard({ state, followUp, writes, onWhoElse }: { state: GcState; 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-gc-follow-up={invite.id}>
         <PartnerName partnerId={partner.id} company={partner.company} />
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
-        {/* The bid date sits with the job, once, not as a sentence on every card. */}
-        <Chip tone="grey">
+        {/* The bid date sits with the job, once, not as a sentence on every card. The chip wraps: a long job name with its trade
+            and bid day forced the page past a phone's edge (the live walk of 2026-10-14). */}
+        <Chip tone="grey" wrap>
           {project.name} · {pkg.trade}
           {project.bidDue ? ` · bid ${weekdayDate(project.bidDue)}` : ''}
         </Chip>

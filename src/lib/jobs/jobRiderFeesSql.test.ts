@@ -51,7 +51,9 @@ describe('every rewrite of the revenue from the line items keeps the riders (v2.
 
   it.each(KEEP_THE_RIDERS)('%s adds job_rider_fees to the lines it sums', (name) => {
     const { file, body } = newestBodies.get(name)!
-    expect(file, `${name}'s newest body is the one that adds the riders`).toBe('20261010023000_revenue_keeps_check_fee.sql')
+    // The riders landed in 20261010023000; a later restatement (v2.5655 narrowed a primary's reach in
+    // record_job_tip_from_deposit) stands only while its body still adds them, which the next line pins.
+    expect(file >= '20261010023000_revenue_keeps_check_fee.sql', `${name}'s newest body is older than the one that adds the riders: ${file}`).toBe(true)
     expect(body).toMatch(/\+\s*public\.job_rider_fees\(p_job_id\)/)
     // The riders come from the helper alone, so a hazmat fee is never counted twice.
     expect(body).not.toMatch(/job_hazmat_incidents/)

@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'gc-trade-portal', 'gmail-sync']
+export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -57,7 +57,71 @@ export const ENTRIES = {
   'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
   'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
   'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
+  // Residential R6, the reader's PR: bids@ and, once Settings holds its address, the team box.
+  'lib/emailIn/readerBoxes.ts': { values: ['boxWords', 'readerBoxes'], types: ['ReaderBox'] },
   'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
+  // Messages, cut 10: photos saved on arrival, named and picked for the photo-save sweep and drive-link's save.
+  'lib/photos/photoName.ts': { values: ['photoDriveName'], types: ['PhotoNameInput'] },
+  'lib/photos/photoSave.ts': { values: ['photosToSave', 'PHOTO_SAVE_BATCH'], types: ['PhotoRow', 'PhotoSwitch'] },
+  'lib/photos/photoRows.ts': { values: ['PHOTO_ROWS_SELECT', 'PHOTO_SWITCHES_SELECT', 'photoRowOf', 'photoNameInputOf', 'onSwitches'], types: ['PhotoAttachmentRow', 'PhotoLineRow'] },
+  // Messages, cut 5 (v2.5261 to v2.5268 and this): the Quo link's webhook and send. The thread is here for its types,
+  // so every import of the Quo kernels resolves inside the copy.
+  'lib/messages/thread.ts': { values: ['callLength'], types: ['MessageChannel', 'MessageDirection', 'ThreadMessage'] },
+  'lib/quo/webhook.ts': { values: ['verifySignature', 'webhookAnswer'], types: ['WebhookOutcome'] },
+  'lib/quo/events.ts': {
+    values: ['planQuoEvent', 'phoneWords', 'readQuoEvent', 'sentKey', 'toE164', 'unknownContact'],
+    types: ['QuoLine', 'QuoPlan', 'QuoPlanContext', 'QuoReading'],
+  },
+  // Messages, cut 10: a text's pictures and files kept on arrival (quo-webhook through _shared/quoMedia.ts).
+  'lib/quo/mediaKeep.ts': { values: ['quoMediaPlans', 'quoMediaRow', 'mediaToKeep', 'keepsCopy', 'QUO_NOT_COPIED'], types: ['QuoMediaPlan', 'QuoMediaFetch', 'QuoMediaRow'] },
+  'lib/quo/send.ts': { values: ['planSend', 'refusalWords', 'sendOver', 'sentQuoId'], types: ['QuoSendInput', 'QuoSendPlan', 'SendPurpose', 'SentLine'] },
+  // Residential R6 (PR 4): the box a call or text came to, the one a text goes from, and a STOP to one number.
+  'lib/messages/boxes.ts': {
+    values: ['BOXES_SETTINGS_KEY', 'boxForReply', 'boxOfInbound', 'boxSetting', 'parseBoxSettings', 'sendBox', 'stopScope', 'stoppedOn'],
+    types: ['BoxFallback', 'BoxSettings', 'Mailbox', 'OptedOutByBox', 'StopChannel'],
+  },
+  'lib/quo/rows.ts': {
+    values: ['MESSAGE_ROW_COLUMNS', 'contactKindOf', 'contactWords', 'defaultJob', 'jobOf', 'lineFromRow', 'parseQuoSendBody', 'quoSeatUserIds', 'quoSeats', 'rowFromLine', 'seatOf', 'seatsSource'],
+    types: ['JobAt', 'MessageColumns', 'MessageRow', 'QuoSendBody'],
+  },
+  // Texts paused while Quo will not take one for the account's money (v2.5352).
+  'lib/quo/paused.ts': { values: ['QUO_PAUSED_KEY', 'notePause', 'readQuoRefusal'], types: ['PauseChange', 'PauseStore', 'QuoRefusal'] },
+  // Residential R5's push (messages-notify): who has a reply, who gets a new message, a reply after a legal line, and
+  // the pushes a line makes.
+  'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'techHoldUntil', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },
+  // R5: quo-send's tech path. The text is made from the line and the record with the sheet's own kernel.
+  'lib/quo/techSend.ts': {
+    values: ['TECH_SEND_WORDS', 'TYPED_MAX', 'LINE_IDS_MAX', 'composeBioText', 'composeTechText', 'isJobModeSend', 'parseTechSendBody', 'pickPhone'],
+    types: ['BioSendText', 'PhoneChannel', 'PhoneLineRecord', 'TechSendBody', 'TechSendKind', 'TechSendText'],
+  },
+  'lib/bio/bio.ts': { values: ['bioText', 'bioPickedLines', 'bioLinesFromRows', 'usualPicks', 'firstNameOf', 'introduced', 'BIO_CAP'], types: ['BioLine', 'BioLineRow'] },
+  'lib/jobModeText.ts': { values: ['jobModeFills'], types: ['JobModeBlock', 'JobModeFillInput'] },
+  'lib/messages/customerLang.ts': { values: ['customerLang'], types: [] },
+  // May we text? (v2.5606): the one rule the card and quo-send read.
+  'lib/prospects/textingRule.ts': { values: ['textRefusal'], types: [] },
+  'lib/followUp/assignSeats.ts': { values: ['ASSIGN_RULE_KEY', 'parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
+  'lib/messages/legalRoute.ts': {
+    values: ['legalLines', 'legalSendsFromDemandLetters', 'legalSendsFromFilings', 'routeReply', 'standingLegalLine'],
+    types: ['LegalLine', 'LegalRoute', 'LegalSend'],
+  },
+  'lib/messages/notifyRule.ts': {
+    values: ['OFFICE_WAIT_KEY', 'OFFICE_WAIT_MINUTES', 'PUSH_CHANNELS', 'answeredBefore', 'pushDue', 'pushSentRow', 'pushesFor'],
+    types: ['NotifySettings', 'Push', 'PushSentRow', 'ReplyHas', 'ReplyLine'],
+  },
+  'lib/messages/notifyPlan.ts': {
+    values: ['NOTIFY_LINES_MAX', 'PUSH_KINDS', 'REPLY_PUSH_ON_KEY', 'planReplyPushes', 'sweepSince'],
+    types: ['NotifyPlan', 'NotifyPlanInput', 'PlanContact', 'PlanLine', 'PlanOut', 'PlanUser'],
+  },
+  // The texts switch, Settings → Phone and texts → Send texts (v2.5440).
+  'lib/quo/textsSwitch.ts': { values: ['TEXTS_OFF', 'TEXTS_SWITCH_KEY', 'switchGates', 'textsAreOn'], types: [] },
+  // Messages, cut 5: the morning run of the reminders the app sends itself (messages-nudge-dispatch): everyone's flow
+  // from the run's rows, the planner, the 9 AM gate and the summary.
+  'lib/flows/nudgeRunInputs.ts': {
+    values: ['APP_SENDS_SETTING_KEY', 'nudgeRunReads'],
+    types: ['NudgeRunReads', 'NudgeRunRows', 'RunChannelRow', 'RunContactRow', 'RunHoldRow', 'RunLineRow', 'RunNoteRow', 'RunOfferRow', 'RunQuickReplyRow', 'RunQuickReplyUseRow', 'RunSentRow', 'RunStepRow'],
+  },
+  'lib/flows/nudgeDispatch.ts': { values: ['planNudgeRun'], types: ['NudgeOffer', 'NudgeRun', 'NudgeText'] },
+  'lib/flows/nudgeRunLog.ts': { values: ['runHourNow', 'runSummary'], types: ['RunRefused', 'RunSummary'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

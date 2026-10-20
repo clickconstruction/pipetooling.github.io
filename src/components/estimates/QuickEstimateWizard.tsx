@@ -179,7 +179,7 @@ const inputStyle: CSSProperties = {
 
 const chipStyle = (selected: boolean): CSSProperties => ({
   border: `1.5px solid ${selected ? '#2563eb' : 'var(--border-strong)'}`,
-  background: selected ? 'var(--bg-blue-soft, rgba(37,99,235,0.08))' : 'var(--surface)',
+  background: selected ? 'var(--bg-blue-tint)' : 'var(--surface)',
   color: selected ? 'var(--text-link)' : 'var(--text-strong)',
   borderRadius: 999,
   padding: '0.7rem 1.1rem',

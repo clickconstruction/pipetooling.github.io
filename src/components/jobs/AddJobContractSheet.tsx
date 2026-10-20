@@ -182,7 +182,7 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
           borderRadius: 8,
           fontSize: '0.82rem',
           cursor: disabled ? 'default' : 'pointer',
-          border: `1px solid ${on ? 'var(--border-green-soft)' : 'var(--border)'}`,
+          border: `1px solid ${on ? 'var(--border-green)' : 'var(--border)'}`,
           background: on ? 'var(--bg-green-tint)' : 'var(--surface)',
           opacity: j.coveredElsewhere ? 0.6 : 1,
         }}
@@ -296,7 +296,7 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
                 padding: '0.5rem 0.7rem',
                 borderRadius: 8,
                 fontSize: '0.82rem',
-                border: '1px solid var(--border-green-soft)',
+                border: '1px solid var(--border-green)',
                 background: 'var(--bg-green-tint)',
               }}
             >

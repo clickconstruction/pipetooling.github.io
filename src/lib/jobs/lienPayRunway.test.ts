@@ -400,3 +400,68 @@ describe('a job created in the evening keeps its day (v2.4468)', () => {
     expect(buildLienPayRunway({ ...base, createdAt: '2026-08-01T12:00:00Z' }).basisYmd).toBe('2026-08-01')
   })
 })
+
+describe('a notice printed and in the mail (v2.5522)', () => {
+  it('a mailed month keeps its place on the clock as mailed, not owed: the row says record the mailing, and the month state carries the mark', () => {
+    // August's notice printed and in the mail, its number not recorded; today is Sep 28, the window closes Oct 15.
+    const r = buildLienPayRunway(input({ isSub: true, lastWorkYmd: '2026-08-20', mailedMonths: ['2026-08'] }))
+    expect(r.state).toBe('notice_due')
+    expect(r.noticeMailed).toBe(true)
+    expect(r.noticeSent).toBe(false)
+    expect(r.noticeByYmd).toBe('2026-10-15')
+    expect(r.noticeMonths).toEqual([{ key: '2026-08', ymd: '2026-10-15', state: 'mailed' }])
+    expect(r.lines[1]).toBe('record the mailing · 17 d')
+    expect(r.chipLabel).toBe('in the mail · 17 d')
+    expect(r.title).toContain('printed and in the mail, its tracking number not yet recorded')
+    // Once recorded it is sent, and a month recorded never reads as mailed.
+    const sent = buildLienPayRunway(input({ isSub: true, lastWorkYmd: '2026-08-20', noticedMonths: ['2026-08'], mailedMonths: ['2026-08'] }))
+    expect(sent.noticeMailed).toBe(false)
+    expect(sent.noticeMonths[0]?.state).toBe('sent')
+    // Two months, one in the mail and one still owed: the owed one sets the date and the words stay plain.
+    const mixed = buildLienPayRunway(input({ isSub: true, lastWorkYmd: '2026-08-20', workMonths: ['2026-07', '2026-08'], mailedMonths: ['2026-07'] }))
+    expect(mixed.noticeMailed).toBe(false)
+    expect(mixed.noticeMonths.map((m) => m.state)).toEqual(['mailed', 'owed'])
+    expect(mixed.noticeByYmd).toBe('2026-10-15')
+    expect(mixed.lines[1]).toBe('send the notice · 17 d')
+  })
+})
+
+describe('a notice in the mail whose date has passed (v2.5529)', () => {
+  it('keeps its mark but sets no date: the runway reads on to the lien, never days past a notice date', () => {
+    // Job 258's shape on Oct 14: May printed and unrecorded, its residential date Jul 15; June to August on file.
+    const r = buildLienPayRunway(
+      input({ todayYmd: '2026-10-14', isSub: true, lastWorkYmd: '2026-08-11', workMonths: ['2026-05', '2026-06', '2026-07', '2026-08'], noticedMonths: ['2026-06', '2026-07', '2026-08'], mailedMonths: ['2026-05'] }),
+    )
+    expect(r.noticeMonths.map((m) => [m.key, m.state])).toEqual([
+      ['2026-05', 'mailed'],
+      ['2026-06', 'sent'],
+      ['2026-07', 'sent'],
+      ['2026-08', 'sent'],
+    ])
+    expect(r.state).not.toBe('notice_due')
+    expect(r.noticeMailed).toBe(false)
+    expect(r.words).not.toMatch(/-\d+ d|record the mailing/)
+    // The hover still says what is left to do before the lien.
+    expect(r.title).toContain('The § 53.056 notice for May 2026 is printed and in the mail but not recorded; record the mailing on the Lien desk before the lien is filed.')
+  })
+
+  it('the only month, the day after its date: the mark stays and the lien date leads; on its date it still counts down', () => {
+    const after = buildLienPayRunway(input({ todayYmd: '2026-10-16', isSub: true, lastWorkYmd: '2026-08-20', mailedMonths: ['2026-08'] }))
+    expect(after.noticeMonths).toEqual([{ key: '2026-08', ymd: '2026-10-15', state: 'mailed' }])
+    expect(after.state).not.toBe('notice_due')
+    expect(after.state).not.toBe('closed')
+    expect(after.noticeMailed).toBe(false)
+    const onTheDay = buildLienPayRunway(input({ todayYmd: '2026-10-15', isSub: true, lastWorkYmd: '2026-08-20', mailedMonths: ['2026-08'] }))
+    expect(onTheDay.state).toBe('notice_due')
+    expect(onTheDay.noticeMailed).toBe(true)
+    expect(onTheDay.lines[1]).toMatch(/^record the mailing · /)
+  })
+
+  it('a passed month in the mail beside an owed one: the owed one sets the date, as before', () => {
+    // Job 650's shape: June in the mail (Sep 15, non-residential), July still owed by Oct 15.
+    const r = buildLienPayRunway(input({ todayYmd: '2026-10-14', propertyKind: 'non_residential', isSub: true, lastWorkYmd: '2026-07-20', workMonths: ['2026-06', '2026-07'], mailedMonths: ['2026-06'] }))
+    expect(r.noticeMonths.map((m) => m.state)).toEqual(['mailed', 'owed'])
+    expect(r.noticeByYmd).toBe('2026-10-15')
+    expect(r.lines[1]).toBe('send the notice · 1 d')
+  })
+})

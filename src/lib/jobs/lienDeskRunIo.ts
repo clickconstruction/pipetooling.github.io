@@ -1,9 +1,10 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { filingDocFooter, filingDocPdfBlob, filingPdfFilename, type FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent } from './lienDeskIo'
 import { clearOneShotLienClaimCorrection } from './lienClaimCorrectionIo'
-import { runCourtesyCopies, runCourtesyEmailWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunCourtesySend, type RunNotice, type RunSendRecord } from './lienDeskRun'
+import { runCourtesyCopies, runCourtesyEmailWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunCourtesySend, type RunNotice, type RunSendRecord, type CoverWindow, recipientViaDocsmit } from './lienDeskRun'
 import { combinedFilingPayloads, type CombinedRunNotice } from './lienNoticeCombine'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
@@ -25,13 +26,14 @@ import { issueNoticeRelease } from './lienNoticeReleaseIo'
  * pay page and unpaid bills stacked as the printed packet stacks them. The send attaches it, and
  * the run window's courtesy-email preview (v2.5073) shows it, so the preview is the attachment.
  */
-export async function buildRunNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = []): Promise<Blob> {
+export async function buildRunNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = [], opts: { window?: CoverWindow | null } = {}): Promise<Blob> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
   const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter(n.kind) })
   // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it;
   // the pay page (v2.3758) rides behind the form, in front of the invoices it points at.
   const parts: Blob[] = []
-  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0 })))
+  // The window envelope (the Docsmit train, PR 4): a copy that mails through a provider carries the recipient block at the window zone and the pay page's code under it.
+  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0, window: opts.window ?? null })))
   // The conditional release (v2.4729): behind the owner's letter, behind the GC's form — as the printed packet stacks it.
   const release = n.release ? await buildLienWaiverPdfBlob(n.release.formType, n.release.fields, n.release.signature) : null
   if (recipientKey === 'owner' && release) parts.push(release)
@@ -70,6 +72,24 @@ async function applyLienPayOffer(filingId: string, result: RunRecordResult, jobI
     result.offers.push({ jobId, applied: d.applied?.length ?? 0, skipped: d.skipped?.length ?? 0, failed: d.failed?.length ?? 0, reason: d.failed?.[0]?.reason ?? d.reason ?? '' })
   } catch (e) {
     result.offers.push({ jobId, applied: 0, skipped: 0, failed: 1, reason: e instanceof Error && e.message ? e.message : 'the offer could not be put on the bills' })
+  }
+}
+
+/** The piece behind a provider send learns its filings once they exist (`mail_pieces.source_ids`), so the poll can write the number back. Best effort: the notice is recorded regardless. */
+async function linkMailPiecesToFilings(sends: ReadonlyArray<RunSendRecord>, filingIds: string[]): Promise<void> {
+  if (filingIds.length === 0) return
+  // `mail_pieces` is not in the generated types until the regeneration chore lands; the loosely typed client reads it.
+  const db = supabase as unknown as SupabaseClient
+  for (const s of sends) {
+    if (!s.piece_id) continue
+    try {
+      const { data } = await db.from('mail_pieces').select('source_ids').eq('id', s.piece_id).maybeSingle()
+      const have = Array.isArray((data as { source_ids?: unknown } | null)?.source_ids) ? ((data as { source_ids: string[] }).source_ids) : []
+      const next = [...new Set([...have, ...filingIds])]
+      await db.from('mail_pieces').update({ source_ids: next }).eq('id', s.piece_id)
+    } catch {
+      /* the poll's next read-back writes the number by piece id; the filing link can be set by hand */
+    }
   }
 }
 
@@ -124,7 +144,9 @@ export async function recordLienDeskRun(
           const id = await emailNoticePdf(n, r.key, r.email, opts.invoiceDocsByJob?.[n.jobId] ?? [], opts.payBlocksByJob?.[n.jobId]?.[r.key] ?? [])
           tracking = `resend:${id} → ${r.email}`
         }
-        sends.push({ recipient: r.key, method: r.method, tracking, sent_on: opts.mailedOn || opts.todayYmd })
+        // A copy that went through Docsmit (PR 5b): the provider and the piece ride with the send; the poll fills the number.
+        // Recorded in a later sitting (v2.5532), it carries the day USPS took it, as the poll would write it.
+        sends.push({ recipient: r.key, method: r.method, tracking, sent_on: (recipientViaDocsmit(r) && r.pieceMailedOn) || opts.mailedOn || opts.todayYmd, ...(recipientViaDocsmit(r) ? { via: r.via, piece_id: r.pieceId } : {}) })
       }
       if (n.parts && n.parts.length > 1) {
         // One notice for the jobs at a property (#35 PR 3): one filing per job on one packet, each item sent.
@@ -134,6 +156,7 @@ export async function recordLienDeskRun(
           'lien desk run: record combined notice',
         )
         const filingByJob = new Map((rows ?? []).map((r) => [r.job_id, r.id]))
+        await linkMailPiecesToFilings(sends, (rows ?? []).map((r) => r.id))
         for (const part of n.parts) {
           const filingId = filingByJob.get(part.jobId)
           if (filingId) await markLienDeskItemSent(part.itemId, filingId)
@@ -151,6 +174,7 @@ export async function recordLienDeskRun(
         'lien desk run: record notice',
       )
       await markLienDeskItemSent(n.itemId, filing.id)
+      await linkMailPiecesToFilings(sends, [filing.id])
       // A claim corrected for this notice only (v2.3682) is done now; a carried one stays for the next.
       await clearOneShotLienClaimCorrection(n.jobId).catch(() => undefined)
       result.recorded.push(n.itemId)

@@ -211,7 +211,7 @@ All four are **extracted** thin mounts (2966–2983, 2984–2997, 3077–3084, 3
 16. **PartForm rough-line origin is captured at click** (`bidsPartFormRoughLineIdRef`, v2.1395) — by save time the row's search box has blurred and nulled the live picker id.
 17. **`useHistoryLinesOnFixture` is not a hook** (677) — a plain async handler with a `use` prefix; rename only in its own PR.
 18. **Dead prop:** `onEditBid` is declared (183) and passed by `Bids.tsx` but never destructured.
-19. Now in extracted children (keep there): tax fallback asymmetry `|| '8.25'` vs `|| 0` (`BidsTakeoffMaterialsSummarySection`); `deleteTakeoffBookVersion` cascade and the undeletable "Default" version (`TakeoffBookAdminSection`); part-merge-by-`part_id` (`mergeTemplateItemDrafts`).
+19. Now in extracted children (keep there): tax fallback asymmetry `|| '8.25'` vs `|| 0` (`BidsTakeoffMaterialsSummarySection`; since v2.5653 its box reads and writes `bids.tax_rate_pct` through `onCommitTaxPercent`, the company default in `app_settings` `bid_tax_rate_pct_v1`); `deleteTakeoffBookVersion` cascade and the undeletable "Default" version (`TakeoffBookAdminSection`); part-merge-by-`part_id` (`mergeTemplateItemDrafts`).
 
 ---
 

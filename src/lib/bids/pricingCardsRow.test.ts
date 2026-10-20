@@ -46,12 +46,23 @@ describe('cardOwnedByVersion', () => {
 })
 
 describe('cardRevenue / cardFigures', () => {
-  const args = { selectedPricingVersionId: 'a', effRevenue: 1200, scenarioRevenue: { a: 999, b: 800 } }
+  const args = { selectedPricingVersionId: 'a', openPriceReady: true, effRevenue: 1200, scenarioRevenue: { a: 999, b: 800 } }
 
   it('the open price reads the live total; another its loaded revenue; one still loading reads null', () => {
     expect(cardRevenue('a', args)).toBe(1200)
     expect(cardRevenue('b', args)).toBe(800)
     expect(cardRevenue('c', args)).toBeNull()
+  })
+
+  it('the open price reads null while its own prices are still landing — loading, never "No prices yet" (v2.5669)', () => {
+    const switching = { ...args, effRevenue: 0, openPriceReady: false }
+    expect(cardRevenue('a', switching)).toBeNull()
+    expect(cardFigures(cardRevenue('a', switching), 600).unpriced).toBe(false)
+    expect(cardRevenue('b', switching)).toBe(800)
+  })
+
+  it('an open price that is ready at $0 is unpriced', () => {
+    expect(cardFigures(cardRevenue('a', { ...args, effRevenue: 0 }), 600).unpriced).toBe(true)
   })
 
   it('margin over revenue; unpriced only at exactly $0, never while loading', () => {

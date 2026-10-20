@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
+import { GC_OFFICE_TEAM } from '../../lib/gc/access'
+import { supabaseTellCustomerIo } from '../../lib/tellCustomer/tellCustomerIo'
+import type { TellBlock } from '../../lib/tellCustomer/tellCustomer'
+import { TellCustomerSheet } from '../customers/TellCustomerSheet'
 import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
 import { isSelectableOption } from '../SearchableSelect'
 import { SearchableMultiSelect } from '../SearchableMultiSelect'
@@ -102,6 +107,9 @@ export function ScheduleJobModal({
   initialWorkDate,
 }: Props) {
   const confirmDialog = useConfirmDialog()
+  const { user: authUser, role } = useAuth()
+  /** Tell the customer (v2.5593): the sheet after a job's first visit saves, for the office team. */
+  const [tell, setTell] = useState<{ jobId: string; jobLabel: string; block: TellBlock } | null>(null)
   const assigneeCandidates = assigneeCandidatesProp ?? EMPTY_ASSIGNEE_CANDIDATES
   const draftsRef = useRef<Record<string, ScheduleFormDraft>>({})
   const [contextStack, setContextStack] = useState<ScheduleJobContext[]>(() => [
@@ -130,14 +138,14 @@ export function ScheduleJobModal({
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !saving) {
+      if (e.key === 'Escape' && !saving && !tell) {
         e.preventDefault()
         onClose()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, saving, onClose])
+  }, [open, saving, onClose, tell])
 
   useEffect(() => {
     if (!open) {
@@ -454,6 +462,17 @@ export function ScheduleJobModal({
       note: '',
     }
     await load()
+    // Tell the customer (v2.5593): a job's first visit, saved by the office, asks before it texts the customer.
+    if (role && GC_OFFICE_TEAM.includes(role) && authUser?.id) {
+      const first = await supabaseTellCustomerIo().isFirstVisit(currentJobId, groupId).catch(() => false)
+      if (first) {
+        setTell({
+          jobId: currentJobId,
+          jobLabel: currentContext?.jobTitle ?? jobTitle,
+          block: { workDate, timeStart: ts, timeEnd: te, techName: nameByUserId.get(ids[0]!) ?? null },
+        })
+      }
+    }
   }
 
   const removeBlock = async (id: string) => {
@@ -821,6 +840,11 @@ export function ScheduleJobModal({
           )}
         </div>
       </div>
+      {tell && authUser ? (
+        <div onClick={(e) => e.stopPropagation()} role="presentation">
+          <TellCustomerSheet moment="booked" jobId={tell.jobId} jobLabel={tell.jobLabel} block={tell.block} userId={authUser.id} role={role} onClose={() => setTell(null)} />
+        </div>
+      ) : null}
     </div>
   )
 }

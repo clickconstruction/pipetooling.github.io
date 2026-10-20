@@ -10,7 +10,7 @@
  * lead, 2026-10-12). `contact_owed` keeps `by_day` and `by_words` side by side, and so does a note's day to come back.
  * Pure: the writes are cut 2's RPCs (`mark_owed`, `owed_done`).
  */
-import { firstName, type ContactKind } from '../contacts/kernel'
+import { firstName, type ContactKind } from '../contacts/names'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
 import { whenWords } from './thread'
 
@@ -276,6 +276,11 @@ export const OWED_USUAL: Readonly<Record<ContactKind, readonly string[]>> = {
   customer: ['a pay application', 'a change order’s price', 'an answer to their question', 'a call back'],
   trade: ['the plans or an addendum', 'our answer to their question', 'the statement of work', 'a draw’s payment', 'a call back'],
   arch: ['a submittal', 'a pay application to certify', 'an answer', 'a call back'],
+  lead: ['a call back'],
+  supply_house: ['a call back'],
+  candidate: ['a call back'],
+  sub: ['a call back'],
+  team: ['a call back'],
   unknown: ['a call back'],
 }
 
@@ -379,6 +384,12 @@ export function owedDoneChip(owed: Pick<Owed, 'what'>): string {
 
 /** The team note is what marks it done, so it cannot be empty. */
 export const OWED_DONE_NEEDS_A_NOTE = 'Say how it got done, or press Not done yet.'
+
+/** The reply box's placeholder while a team note marks what we owe done. */
+export const OWED_DONE_PLACEHOLDER = 'How it got done: what we did, or why nothing is owed…'
+
+/** The reply box's send button while a team note marks what we owe done. */
+export const OWED_DONE_SEND = 'Done, with this note'
 
 /** What the office reads once the note marks it done. */
 export const OWED_DONE_TOAST = 'Done, with the note for the team. The move goes by whose word was last.'

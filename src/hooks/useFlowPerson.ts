@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { firstName } from '../lib/contacts/kernel'
 import { findFlowContactId, flowPresses, readFlowPerson, type FlowPersonRead } from '../lib/flows/flowPersonIo'
 import type { PersonFlow } from '../lib/flows/nudges'
+import { flowFirst } from '../lib/flows/nudgeRunInputs'
 import { personFlowFrom } from '../lib/flows/person'
 import { formatErrorMessage } from '../utils/errorHandling'
 
@@ -43,11 +43,9 @@ export function useFlowPerson(at: FlowPersonAt) {
         if (!id) return setGot({ state: 'none' })
         const read = await readFlowPerson(id)
         if (off) return
-        const card = read.rows.card
-        const first = firstName({ name: read.contact.name ?? card?.name ?? '', goesBy: read.contact.goes_by ?? card?.goes_by ?? null, kind: read.contact.kind })
         const person = personFlowFrom({
           id,
-          first: first || card?.company || 'them',
+          first: flowFirst(read.contact, read.rows.card),
           flow: read.flow,
           rows: read.rows,
           now: new Date(),

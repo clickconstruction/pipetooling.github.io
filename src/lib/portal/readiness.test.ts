@@ -51,7 +51,7 @@ describe('Ready for the customer?', () => {
     expect(rows.map((r) => [r.piece, r.ok, r.words])).toEqual([
       ['Your move', true, 'Change order 2 waits on your answer.'],
       ['This week', true, 'A customer line from Fri Oct 2.'],
-      ['Photos', true, '3 photos marked for the customer this week.'],
+      ['Photos', true, 'This week’s line links to the job’s photos.'],
       ['After that', true, 'The next application is sized, $60,000 to $80,000, Nov 5.'],
       ['Change orders', true, '1 waiting on Priya, with the amount and the days.'],
       ['Schedule', true, '3 milestones.'],
@@ -73,7 +73,7 @@ describe('Ready for the customer?', () => {
 
   it("finds the one thing to fix on Elena's: no photo marked this week", () => {
     const rows = portalReady(elena)
-    expect(rows.filter((r) => !r.ok).map((r) => [r.piece, r.words])).toEqual([['Photos', 'No photo marked for the customer this week. The card shows words only.']])
+    expect(rows.filter((r) => !r.ok).map((r) => [r.piece, r.words])).toEqual([['Photos', 'No photos link on this week’s log. The card shows words only.']])
     expect(words(rows, 'Your move')?.words).toBe('Nothing owed. Elena reads that we are on Pay application.')
     expect(words(rows, 'Pay applications')?.words).toBe('Every application says what it covers. 1 is with the architect.')
     expect(words(rows, 'Change orders')?.words).toBe('None open. 2 signed, in the sum.')
@@ -119,7 +119,8 @@ describe('Ready for the customer?', () => {
     expect(words(portalReady({ ...priya, schedule: { milestones: [], moves: [] } }), 'Schedule')).toMatchObject({ ok: false, words: 'No milestones. The tab would be empty.' })
     expect(words(portalReady({ ...priya, people: PRIYA_PAGE.people.slice(0, 1) }), 'Your people')).toMatchObject({ ok: false, words: 'Fewer than two names. Priya would not know who to call.' })
     expect(words(portalReady({ ...priya, next: null }), 'After that')).toMatchObject({ ok: false, words: 'No next application sized. Priya would get no warning before the bill.' })
-    expect(words(portalReady({ ...priya, week: { ...PRIYA_PAGE.week, photos: 1 } }), 'Photos')?.words).toBe('1 photo marked for the customer this week.')
+    expect(words(portalReady({ ...priya, week: { ...PRIYA_PAGE.week, photos: 'off' } }), 'Photos')).toMatchObject({ ok: true, words: 'Photos are off for this job.', fix: 'words' })
+    expect(portalReady({ ...priya, sizesNext: false }).map((r) => r.piece)).not.toContain('After that')
   })
 
   it('gives a customer off the flow one row, since the page reads only a thank-you', () => {

@@ -9,13 +9,9 @@ import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import { hasPillWords, hasSinceWords, holdCount, takeItWords, whoPickerHead, type QueueContact } from '../../lib/followUp/queue'
 import { exactStamp } from '../../lib/messages/owed'
 import { whenWords } from '../../lib/messages/thread'
+import type { Teammate } from '../../lib/followUp/team'
 
-export interface Teammate {
-  id: string
-  name: string
-  /** What they do, on their picker row: "estimator". */
-  role: string
-}
+export type { Teammate }
 
 export interface WhoHasItPillProps {
   contact: FollowUpContact
@@ -28,6 +24,8 @@ export interface WhoHasItPillProps {
   /** Hands it to someone, or puts it back (null). Taking it is handing it to me. */
   onHand: (userId: string | null) => void
   busy?: boolean
+  /** In the thread's header (v2.5542): the header's control class in place of the border, one 28px height; the tint still says it is yours. */
+  bare?: boolean
 }
 
 const initials = (name: string) =>
@@ -47,7 +45,7 @@ const ROLE_WORDS: Readonly<Record<string, string>> = {
   superintendent: 'superintendent',
 }
 
-export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy }: WhoHasItPillProps) {
+export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, bare }: WhoHasItPillProps) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -80,14 +78,15 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
         aria-expanded={open}
         disabled={busy}
         onClick={() => setOpen((o) => !o)}
+        className={bare ? 'thread-head-control' : undefined}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.35rem',
-          padding: '0.15rem 0.6rem 0.15rem 0.2rem',
+          padding: bare ? '0 0.55rem 0 0.15rem' : '0.15rem 0.6rem 0.15rem 0.2rem',
           borderRadius: 999,
-          border: '1px solid var(--border-strong)',
-          background: mine ? 'var(--bg-blue-tint)' : 'var(--surface)',
+          border: bare ? undefined : '1px solid var(--border-strong)',
+          background: mine ? 'var(--bg-blue-tint)' : bare ? undefined : 'var(--surface)',
           color: 'var(--text-base)',
           fontSize: '0.8rem',
           cursor: busy ? 'wait' : 'pointer',

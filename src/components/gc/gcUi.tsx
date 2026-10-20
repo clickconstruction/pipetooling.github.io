@@ -14,7 +14,8 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
 }
 
 /** A small one sits under a name in the chart's 168px name column on a phone (the phone pass, round five). */
-export function Chip({ tone, children, title, small }: { tone: Tone; children: ReactNode; title?: string; small?: boolean }) {
+/** A chip is one line; `wrap` lets a long one (a job's name with its trade and bid day) fold on a phone instead of pushing the page sideways. */
+export function Chip({ tone, children, title, small, wrap }: { tone: Tone; children: ReactNode; title?: string; small?: boolean; wrap?: boolean }) {
   const t = TONES[tone]
   return (
     <span
@@ -27,7 +28,8 @@ export function Chip({ tone, children, title, small }: { tone: Tone; children: R
         color: t.fg,
         fontSize: '0.75rem',
         fontWeight: 600,
-        whiteSpace: 'nowrap',
+        whiteSpace: wrap ? 'normal' : 'nowrap',
+        ...(wrap ? { maxWidth: '100%', overflowWrap: 'anywhere' as const } : {}),
         ...(small ? { fontSize: '0.65rem', padding: '0 0.4rem', lineHeight: 1.15 } : {}),
       }}
     >

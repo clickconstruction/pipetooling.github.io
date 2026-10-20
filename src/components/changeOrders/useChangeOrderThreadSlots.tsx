@@ -10,6 +10,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { becameChip, draftedWords, whoMayDraft } from '../../lib/changeOrders/fromMessage'
 import { supabaseFromMessageIo, type FromMessageIo, type ThreadChangeOrders } from '../../lib/changeOrders/fromMessageIo'
+import { jobRefOf } from '../../lib/messages/load'
 import { Chip } from '../gc/gcUi'
 import type { ThreadSlots } from '../gc/messages/threadSlots'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
@@ -79,6 +80,8 @@ export function useChangeOrderThreadSlots(io: FromMessageIo = supabaseFromMessag
               {becameChip(order.number)}
             </Chip>
           )
+        // A line on a Pipeline job goes on its estimate instead (R8 · 8's *Line on the estimate*).
+        if (jobRefOf(m.jobId)?.kind === 'pipeline') return null
         return <StartChangeOrder key={m.id} message={m} contact={contact} io={io} onDrafted={drafted} />
       },
     }

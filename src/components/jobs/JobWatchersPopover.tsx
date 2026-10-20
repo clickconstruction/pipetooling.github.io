@@ -155,7 +155,7 @@ export function JobWatchersPopover({ jobId, authUserId, compact = false }: { job
             </div>
           ))}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4 }}>
-            <select defaultValue="" disabled={busy || candidates.length === 0} onChange={(e) => { const v = e.target.value; e.target.value = ''; void subscribe(v) }} aria-label="Subscribe someone" style={{ padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-900)', maxWidth: '100%' }}>
+            <select defaultValue="" disabled={busy || candidates.length === 0} onChange={(e) => { const v = e.target.value; e.target.value = ''; void subscribe(v) }} aria-label="Subscribe someone" style={{ padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: '100%' }}>
               <option value="">+ Subscribe someone…</option>
               {candidates.map((u) => (
                 <option key={u.id} value={u.id}>

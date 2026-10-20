@@ -1,6 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
-import { canEditClause } from './gc/access'
+import { canEditClause, canEditFlows } from './gc/access'
 import { canSeePhoneAndTexts } from './messages/assignRule'
 
 /**
@@ -66,6 +66,10 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev' || r === 'master_technician') {
     groups.push({ id: 'settings-people', label: 'People & teams', zone: 'company', pagesHint: 'Shows on: People — accounts, teams, and review cadence.' })
   }
+  // Training (punch list #111, v2.5569): the courses the crew must take and how long a pass is good for. A dev's.
+  if (r === 'dev') {
+    groups.push({ id: 'settings-training', label: 'Training', zone: 'company', pagesHint: 'Shows on: the Dashboard under My Time, and People. Which courses each role must take, how long a pass is good for, and where everyone stands.' })
+  }
   if (r === 'dev') {
     groups.push({ id: 'settings-emails', label: 'Emails & reports', zone: 'company', pagesHint: 'The scheduled email streams the office receives.' })
   }
@@ -89,6 +93,10 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   // and a dev set the seats; Quo's rows (cut 5) join the same group.
   if (canSeePhoneAndTexts(r)) {
     groups.push({ id: 'settings-phone-texts', label: 'Phone and texts', zone: 'company', pagesHint: 'Shows on: GC projects, in Follow up and each thread. Who gets a new text, call or email first.' })
+  }
+  // Flows (Messages, cut 4): the steps each kind of person goes through. The office edits them.
+  if (canEditFlows(r)) {
+    groups.push({ id: 'settings-flows', label: 'Flows', zone: 'company', pagesHint: 'The steps each customer, trade partner and architect goes through. The office changes them.' })
   }
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r) || r === 'estimator') {
     groups.push({ id: 'settings-company', label: 'Company', zone: 'company', pagesHint: 'Company documents, the office address, and the Map.' })

@@ -11,7 +11,31 @@
  */
 import { textableNumbers, type Contact } from '../contacts/kernel'
 import { helloLine } from '../gc/ownerBillingRemind'
-import type { MessageChannel, ThreadMessage } from './thread'
+import type { MessageChannel } from './thread'
+import {
+  OPTOUT_SILENCE_DAYS,
+  optoutLine,
+  textSegments,
+  type ComposeCompany,
+  type OptoutReason,
+  type TextToSend,
+} from './textOut'
+
+// The rules for a text going out live in `textOut.ts`, light enough to run on the edge. They are compose's too.
+export * from './textOut'
+
+// Which box a message goes from, and that box's address and number (R6): `boxes.ts`'s, so the edge can copy them.
+export {
+  boxSetting,
+  fromNumberFor,
+  mailboxFor,
+  NO_BOX_FALLBACK,
+  parseBoxSettings,
+  type BoxFallback,
+  type BoxSetting,
+  type BoxSettings,
+  type Mailbox,
+} from './boxes'
 
 // ---------- the kinds row ----------
 
@@ -72,19 +96,6 @@ export function replyRecipient(
   }
 }
 
-/**
- * Our company as a message names it: the From, the letterhead, the footer and the opt-out line. The letterhead follows
- * the job, so the caller picks it: a GC job names Click Construction, a Pipeline job the plumbing company.
- */
-export interface ComposeCompany {
-  name: string
-  /** The one number every text goes from, as people read it: "(210) 555-0100". */
-  phone: string
-  /** The one mailbox every email goes from: "bids@clickconstruction.example". */
-  mailbox: string
-  /** Where the footer says we are: "San Antonio, Texas". Empty leaves it off. */
-  address?: string
-}
 
 /** Who sends it, from their account. `title` waits on `users.title` (cut 3's SQL); `cell` is their own phone. */
 export interface ComposeSender {
@@ -115,16 +126,40 @@ export function textBoxBlocked(kind: ReplyKind, to: ReplyRecipient): string | nu
   return kind === 'text' && to.numberOptedOut ? 'They sent STOP. The app will not text this number.' : null
 }
 
-/** The from line floating in the empty box: our one number or our one mailbox, never a person's own. Empty on a note. */
+/**
+ * The from line floating in the empty box: our number or the box their answer comes back to, never a person's own.
+ * Empty on a note. An email goes as our name on the app's sending address, with the box as its Reply-To (R6), so the
+ * line says where the answer goes. A blank number or box leaves it out rather than drawing a gap.
+ */
 export function fromLine(kind: ReplyKind, company: ComposeCompany): string[] {
-  if (kind === 'text') return [`from the company number ${company.phone}`, company.name]
-  if (kind === 'email') return [`from ${company.mailbox}`, company.name]
+  const phone = company.phone.trim()
+  const mailbox = company.mailbox.trim()
+  const number = company.numberWords?.trim() || 'the company number'
+  if (kind === 'text') return [phone ? `from ${number} ${phone}` : `from ${number}`, company.name]
+  if (kind === 'email') return mailbox ? [`from ${company.name}`, `replies to ${mailbox}`] : [`from ${company.name}`]
   return []
 }
 
-/** An email's From: "Click Construction <bids@clickconstruction.example>". */
+/** An email's From as their inbox shows it: our name, on the app's own sending address. */
 export function fromHeader(company: ComposeCompany): string {
-  return `${company.name} <${company.mailbox}>`
+  return company.name
+}
+
+/** An email's Reply-To (R6): the box their answer comes back to. Null when the app does not know one. */
+export function replyToHeader(company: ComposeCompany): string | null {
+  return company.mailbox.trim() || null
+}
+
+/** Where an answer to the reply box's email goes while no box is set: the sender's own inbox. */
+export const EMAIL_REPLIES_NOTE = 'Their answer comes to your own inbox. Bring anything that matters back to this thread.'
+
+/**
+ * Where an answer goes: the box, else the sender's own inbox. It names the box alone, since the box's answers reach this
+ * thread only while Read bids@ is on and the box is read.
+ */
+export function emailRepliesNote(company: ComposeCompany): string {
+  const box = company.mailbox.trim()
+  return box ? `Their answer comes to ${box}.` : EMAIL_REPLIES_NOTE
 }
 
 // ---------- the email ----------
@@ -235,108 +270,6 @@ export function emailDraft(input: {
   }
 }
 
-// ---------- the text: its pieces ----------
-
-export type TextEncoding = 'gsm7' | 'ucs2'
-
-/** How a text reaches a phone: its characters, the pieces the carriers split it into, and the alphabet that sets their size. */
-export interface TextSegments {
-  characters: number
-  segments: number
-  encoding: TextEncoding
-}
-
-// The GSM 03.38 alphabet, the carriers' own. Its basic table costs one place a character; its extension table costs two.
-// The Greek capitals are written by code point, since lookalikes elsewhere in Unicode (the ohm sign, the increment) are not in it.
-const GSM7_BASIC = new Set([
-  ...'@£$¥èéùìòÇ\nØø\rÅå',
-  ...'\u0394_\u03A6\u0393\u039B\u03A9\u03A0\u03A8\u03A3\u0398\u039EÆæßÉ',
-  ...' !"#¤%&\'()*+,-./0123456789:;<=>?',
-  ...'¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§',
-  ...'¿abcdefghijklmnopqrstuvwxyzäöñüà',
-])
-const GSM7_EXTENSION = new Set([...'^{}\\[~]|€\f'])
-
-/** One text holds 160 GSM places, or 70 UCS-2 units; a longer one goes in pieces of 153 or 67, the rest carrying the join. */
-const SINGLE = { gsm7: 160, ucs2: 70 } as const
-const PIECE = { gsm7: 153, ucs2: 67 } as const
-
-/** Exposed for the test: the basic table holds 127 characters, its 128th place being the escape. */
-export const GSM7_BASIC_SIZE = GSM7_BASIC.size
-
-/**
- * The pieces a text arrives in. A text in the carriers' GSM alphabet holds 160 places, and its extension characters
- * (€, brackets, the caret) take two. One character outside it, a curly apostrophe from a phone's keyboard or the á in
- * "está", sends the whole text as UCS-2 at 70. A long text is split without breaking a two-place character. The
- * prototype counted every text at 160, so a Spanish line read as one text that goes as two.
- */
-export function textSegments(text: string): TextSegments {
-  const chars = [...text]
-  if (chars.length === 0) return { characters: 0, segments: 0, encoding: 'gsm7' }
-  const gsm = chars.every((ch) => GSM7_BASIC.has(ch) || GSM7_EXTENSION.has(ch))
-  const encoding: TextEncoding = gsm ? 'gsm7' : 'ucs2'
-  const sizes = chars.map((ch) => (gsm ? (GSM7_EXTENSION.has(ch) ? 2 : 1) : ch.length))
-  const total = sizes.reduce((a, b) => a + b, 0)
-  if (total <= SINGLE[encoding]) return { characters: chars.length, segments: 1, encoding }
-  let segments = 1
-  let fill = 0
-  for (const size of sizes) {
-    if (fill + size > PIECE[encoding]) {
-      segments += 1
-      fill = 0
-    }
-    fill += size
-  }
-  return { characters: chars.length, segments, encoding }
-}
-
-// ---------- the opt-out line ----------
-
-/** A text after this many days since our last text to the number carries the opt-out line again. */
-export const OPTOUT_SILENCE_DAYS = 30
-
-/** Why the line rides on a text: our first text to the number, or the first after a quiet spell on our side. */
-export type OptoutReason = 'first' | 'silence'
-
-/**
- * What a sent text keeps in `messages.optout_line`: the reason the line rode along, or `held` when a person left it off
- * on the silence reason. A text with no reason keeps nothing.
- */
-export type OptoutRecord = NonNullable<ThreadMessage['optoutLine']>
-
-const DAY_MS = 86_400_000
-
-/** The line the carriers require of a registered business number: the company's name and how to stop. */
-export function optoutLine(company: Pick<ComposeCompany, 'name'>): string {
-  return `${company.name}. Reply STOP to opt out.`
-}
-
-/**
- * Whole days since our newest text to this number, or null when we never texted it. Theirs do not count: the rule is
- * our silence. Named apart from the flow's quiet days, which count from their last word.
- */
-export function daysSinceOurLastText(lastOurTextAt: number | null, now: number): number | null {
-  return lastOurTextAt == null ? null : Math.floor((now - lastOurTextAt) / DAY_MS)
-}
-
-/** The two rules: the first text we ever send the number, and the first after `OPTOUT_SILENCE_DAYS` of our silence. */
-export function optoutReason(lastOurTextAt: number | null, now: number): OptoutReason | null {
-  const days = daysSinceOurLastText(lastOurTextAt, now)
-  if (days == null) return 'first'
-  return days >= OPTOUT_SILENCE_DAYS ? 'silence' : null
-}
-
-/** A person may hold the line back once, on this one text, when the reason is only the silence. Never on a first text. */
-export function canHoldOptout(reason: OptoutReason | null): boolean {
-  return reason === 'silence'
-}
-
-/** What the sent text records; a hold asked on a first text is refused, so the line rides. */
-export function optoutRecord(reason: OptoutReason | null, held: boolean): OptoutRecord | null {
-  if (reason === 'silence' && held) return 'held'
-  return reason
-}
-
 /** The opt-out line as the send window draws it: its own grey bubble, tagged as the app's. */
 export interface OptoutBubble {
   line: string
@@ -390,47 +323,15 @@ export const OPTOUT_HOLD_TIP = {
 
 // ---------- the text as it goes ----------
 
-/** A file going by a text goes as a line of its own: "The plans are in your portal: " and our link. */
-export interface LinkLine {
-  text: string
-  link: string
-}
-
-/** A text as it goes: one text, the opt-out line appended after a blank line and counted in the pieces. */
-export interface TextToSend {
-  text: string
-  characters: number
-  segments: number
-  encoding: TextEncoding
-  /** The line rode along on this text. */
-  withLine: boolean
-  /** What `messages.optout_line` keeps. */
-  optout: OptoutRecord | null
-}
-
-export function textToSend(input: {
-  body: string
-  links?: readonly LinkLine[]
-  reason: OptoutReason | null
-  held?: boolean
-  company: Pick<ComposeCompany, 'name'>
-}): TextToSend {
-  const optout = optoutRecord(input.reason, input.held ?? false)
-  const withLine = optout === 'first' || optout === 'silence'
-  const links = (input.links ?? []).map((l) => `\n${l.text}${l.link}`).join('')
-  const text = `${input.body.trim()}${links}${withLine ? `\n\n${optoutLine(input.company)}` : ''}`
-  return { text, ...textSegments(text), withLine, optout }
-}
-
 /** The send window's note under a text: it goes from our number, so the answer comes back here. */
 export const TEXT_FROM_NOTE = 'Sent from the company number, so their reply lands back in this thread whoever answers.'
 
 /** The send window's warnings, in its order. A text past two pieces says so, and says if the opt-out line made it longer. */
 export function sendWarnings(kind: 'text' | 'email', to: ReplyRecipient, text?: TextToSend): string[] {
-  if (kind === 'email') return to.email ? [] : ['They have no email on file. Add one on the To line and the email can go.']
+  if (kind === 'email') return to.email ? [] : ['They have no email on file. Add one on their record, and the email can go.']
   const out: string[] = []
   if (to.numberOptedOut) out.push('They sent STOP. The app will not send this text.')
-  if (!to.number) out.push('They have no mobile number on file. Add one on the To line and the text can go.')
+  if (!to.number) out.push('They have no mobile number on file. Add one on their record, and the text can go.')
   if (text && text.segments > 2) {
     out.push(
       `${text.characters} characters is ${text.segments} texts${text.withLine ? ', with the opt-out line' : ''}. ` +

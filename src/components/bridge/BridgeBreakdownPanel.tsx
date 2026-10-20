@@ -87,7 +87,7 @@ export function BridgeBreakdownPanel({ title, sub, bars, sources, closing, testI
         <div style={label}>Where each number comes from, and what can make it wrong</div>
         <BreakdownSources rows={sources} />
       </div>
-      <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint, var(--surface-2, transparent))', border: '1px solid var(--border)' }} data-testid={`${testId}-closing`}>
+      <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint, transparent)', border: '1px solid var(--border)' }} data-testid={`${testId}-closing`}>
         {closing}
       </div>
     </div>

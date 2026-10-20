@@ -141,7 +141,7 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
         {papers.map((paper) => {
           const signed = shortDate(paper.signedAt)
           return (
-            <div key={paper.key} data-testid="customer-agreement" style={{ border: '1px solid var(--border-green-soft)', background: 'var(--bg-green-tint)', borderRadius: 8, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div key={paper.key} data-testid="customer-agreement" style={{ border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', borderRadius: 8, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ flex: '1 1 220px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>✍ Signed paper · {paper.documentUrl ? 'Google Doc' : 'scan'}</span>
@@ -167,7 +167,7 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
                   .map((j) => {
                   const id = j.id
                   return (
-                    <Link key={id} to={`/jobs?jobDetail=${id}`} style={{ padding: '2px 9px', borderRadius: 999, border: '1px solid var(--border-green-soft)', background: 'var(--surface)', fontSize: '0.74rem', color: 'inherit', textDecoration: 'none' }}>
+                    <Link key={id} to={`/jobs?jobDetail=${id}`} style={{ padding: '2px 9px', borderRadius: 999, border: '1px solid var(--border-green)', background: 'var(--surface)', fontSize: '0.74rem', color: 'inherit', textDecoration: 'none' }}>
                       {jobNumberLabel(j)}
                       {streetOf(j.job_address) ? ` · ${streetOf(j.job_address)}` : ''}
                     </Link>

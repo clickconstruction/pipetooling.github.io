@@ -6,19 +6,24 @@
  * `sentCopiesIo` does, and the rows are typed by the loaders (`contacts/load.ts`, `messages/load.ts`).
  *
  * The thread also shows every email the app already sent (`sent_documents`, through `loadSentEmailsTo`): a read-side
- * overlay, never rows written into `messages` (cut 6 backfills those).
+ * overlay, never rows written into `messages`. Cut 6's lines carry their files from `message_attachments`.
  */
 import { supabase } from '../supabase'
-import { fetchAllRows } from '../supabasePaging'
+import { fnProblem, type FnResult } from '../gc/gcIo'
+import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
-import type { Contact, ContactKind, ContactRecord } from '../contacts/kernel'
+import { jobActivityMessagesFromRows, jobTakesUntiedLines, type JobActivityMessage, type JobMessageContact, type JobMessageRow } from '../jobs/jobActivityMessages'
+import { kindOf, type Contact, type ContactKind, type ContactRecord } from '../contacts/kernel'
 import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { loadSentEmailsTo } from '../sent/sentCopiesIo'
 import { factJobKeys, railJobKeys, type InviteJobRow, type ProjectRolesRow } from './factJobs'
 import { jobTilesByKey, type BidTileRow, type GcProjectTileRow, type JobTile, type PipelineTileRow } from './jobTiles'
+import { activeJobKeys } from '../followUp/newLaneRows'
+import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { jobRefOf, threadMessagesFromRows, type MessageRow } from './load'
 import { sentLines } from './sentLines'
+import type { OwnLinkState, PortalOpens } from './sentLineFiles'
 import type { ThreadMessage } from './thread'
 
 /** Everything the Messages view and a thread window draw. */
@@ -44,11 +49,28 @@ function taken<T>(result: Result<T>, operation: string): T {
 const from = (table: string) => supabase.from(table as never)
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as never, args as never)
 
-const CONTACT_COLS = 'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by, off_since, off_why, off_by'
+const CONTACT_COLS =
+  'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by, off_since, off_why, off_by, ' +
+  // R0's four kinds: a lead, a supply house's counter, a rep at one and a candidate (`20261013180000`).
+  'prospect_id, supply_house_id, supply_house_contact_id, team_prospect_id'
 const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
+/** `mailbox` is R6's column (20261014003000_messages_two_boxes.sql): the box a line came in on or went out from. */
 const MESSAGE_COLS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, mailbox'
+/**
+ * A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql), a call's length, summary and words,
+ * and R5's office-only mark on a team note (20261013190000_messages_tech_door.sql).
+ */
+const JOB_MESSAGE_COLS = `${MESSAGE_COLS}, duration_seconds, summary, transcript, office_only`
+/** The most lines one job's read brings, each way: the newest, so a long job drops its oldest lines first. */
+const JOB_MESSAGES_MAX = 1000
+
+const ATTACHMENT_COLS =
+  'id, message_id, sort_order, kind, name, mime, size_bytes, bucket_path, left_in_gmail, url, host, paper, paper_answer, paper_answered_by, paper_answered_at, drive_file_id, sent_as, drive_link_id'
+
+/** Before the email migration is pushed, the table is not there: the lines then have no files. */
+const isMissingTable = (code: string | null | undefined): boolean => code === '42P01' || code === 'PGRST205'
 
 const unique = (ids: readonly (string | null | undefined)[]) => [...new Set(ids.filter((id): id is string => Boolean(id)))]
 
@@ -70,19 +92,34 @@ export async function loadSpineRows(): Promise<{ contacts: ContactRow[]; channel
   return { contacts, channels, jobs, messages }
 }
 
-/** The records the contacts point at, as much of each as a name, a company and a trade need. */
-async function loadRecords(rows: readonly ContactRow[]): Promise<ContactRecordRows> {
-  const persons = await inSlices<{ id: string; customer_id: string; name: string }>(
-    unique(rows.map((r) => r.customer_contact_person_id)),
-    (ids) => supabase.from('customer_contact_persons').select('id, customer_id, name').in('id', ids),
-    'load the people at the customers',
-  )
-  const gcPeople = await inSlices<{ id: string; company_id: string; name: string }>(
-    unique(rows.map((r) => r.gc_company_person_id)),
-    (ids) => supabase.from('gc_company_people').select('id, company_id, name').in('id', ids),
-    'load the people the trade partners named',
-  )
-  const [customers, gcCompanies, people] = await Promise.all([
+/** One record row of a kind, as `contactsFromRows` takes it. */
+type RecordRow<K extends keyof ContactRecordRows> = NonNullable<ContactRecordRows[K]>[number]
+
+/**
+ * The records the contacts point at, as much of each as a name, a company and a trade need. R0's four (a lead's
+ * prospect, a supply house, a rep at one, a candidate on the hiring board) are read the same way. A table the signed-in
+ * person may not read, as `prospects` is to an estimator, comes back empty, and the contact's own name stands.
+ * Exported for its test; `loadMessagesView` is its one caller.
+ */
+export async function loadRecords(rows: readonly ContactRow[]): Promise<ContactRecordRows> {
+  const [persons, gcPeople, supplyHouseContacts] = await Promise.all([
+    inSlices<{ id: string; customer_id: string; name: string }>(
+      unique(rows.map((r) => r.customer_contact_person_id)),
+      (ids) => supabase.from('customer_contact_persons').select('id, customer_id, name').in('id', ids),
+      'load the people at the customers',
+    ),
+    inSlices<{ id: string; company_id: string; name: string }>(
+      unique(rows.map((r) => r.gc_company_person_id)),
+      (ids) => supabase.from('gc_company_people').select('id, company_id, name').in('id', ids),
+      'load the people the trade partners named',
+    ),
+    inSlices<RecordRow<'supplyHouseContacts'>>(
+      unique(rows.map((r) => r.supply_house_contact_id)),
+      (ids) => supabase.from('supply_house_contacts').select('id, supply_house_id, name').in('id', ids),
+      'load the reps at the supply houses',
+    ),
+  ])
+  const [customers, gcCompanies, people, prospects, supplyHouses, teamProspects] = await Promise.all([
     inSlices<{ id: string; name: string }>(
       unique([...rows.map((r) => r.customer_id), ...persons.map((p) => p.customer_id)]),
       (ids) => supabase.from('customers').select('id, name').in('id', ids),
@@ -94,8 +131,23 @@ async function loadRecords(rows: readonly ContactRow[]): Promise<ContactRecordRo
       'load the trade partners',
     ),
     inSlices<{ id: string; name: string }>(unique(rows.map((r) => r.person_id)), (ids) => supabase.from('people').select('id, name').in('id', ids), 'load the roster'),
+    inSlices<RecordRow<'prospects'>>(
+      unique(rows.map((r) => r.prospect_id)),
+      (ids) => supabase.from('prospects').select('id, contact_name, company_name').in('id', ids),
+      'load the leads on Prospects',
+    ),
+    inSlices<RecordRow<'supplyHouses'>>(
+      unique([...rows.map((r) => r.supply_house_id), ...supplyHouseContacts.map((c) => c.supply_house_id)]),
+      (ids) => supabase.from('supply_houses').select('id, name').in('id', ids),
+      'load the supply houses',
+    ),
+    inSlices<RecordRow<'teamProspects'>>(
+      unique(rows.map((r) => r.team_prospect_id)),
+      (ids) => supabase.from('team_prospects').select('id, name').in('id', ids),
+      'load the candidates on the hiring board',
+    ),
   ])
-  return { customers, customerContactPersons: persons, gcCompanies, gcCompanyPeople: gcPeople, people }
+  return { customers, customerContactPersons: persons, gcCompanies, gcCompanyPeople: gcPeople, people, prospects, supplyHouses, supplyHouseContacts, teamProspects }
 }
 
 /** The jobs the facts give: a customer's GC projects in its three roles, a trade partner's asks. */
@@ -141,6 +193,20 @@ async function loadFactRows(contacts: readonly Contact[]): Promise<{ projects: P
 
 /** Every job's tile, by key. */
 async function loadTiles(keys: readonly string[], todayYmd: string): Promise<Record<string, JobTile>> {
+  return jobTilesByKey(await loadTileRows(keys), todayYmd)
+}
+
+/**
+ * Every job's tile, by key, and the jobs still under way (`activeJobKeys`), from one read: the New lane's *Which job?*
+ * (residential R7).
+ */
+export async function loadJobTilesAndActive(keys: readonly string[], todayYmd: string): Promise<{ tiles: Record<string, JobTile>; active: Set<string> }> {
+  const rows = await loadTileRows(keys)
+  return { tiles: jobTilesByKey(rows, todayYmd), active: activeJobKeys(rows) }
+}
+
+/** The rows the tiles are drawn from: the bids, the GC projects with their names, the Pipeline jobs. */
+async function loadTileRows(keys: readonly string[]): Promise<{ bids: BidTileRow[]; projects: GcProjectTileRow[]; pipeline: PipelineTileRow[] }> {
   const refs = keys.map(jobRefOf).filter((r): r is NonNullable<ReturnType<typeof jobRefOf>> => r !== null)
   const ids = (kind: string) => unique(refs.filter((r) => r.kind === kind).map((r) => r.id))
   const [bids, gc, names, pipeline] = await Promise.all([
@@ -154,27 +220,50 @@ async function loadTiles(keys: readonly string[], todayYmd: string): Promise<Rec
     inSlices<PipelineTileRow>(ids('pipeline'), (s) => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, status').in('id', s), 'load the Pipeline jobs'),
   ])
   const named = new Map(names.map((n) => [n.id, n]))
-  return jobTilesByKey(
-    { bids, projects: gc.map((g) => ({ ...g, name: named.get(g.project_id)?.name ?? '', project_number: named.get(g.project_id)?.project_number ?? null })), pipeline },
-    todayYmd,
-  )
+  return { bids, projects: gc.map((g) => ({ ...g, name: named.get(g.project_id)?.name ?? '', project_number: named.get(g.project_id)?.project_number ?? null })), pipeline }
+}
+
+/**
+ * The files and links on the lines given (cut 6, email in): 150 ids a request, each paged, so a line with many files is
+ * never cut at PostgREST's row cap. None while the table is not there yet, after one refused read.
+ */
+export async function loadLineFiles(messageIds: readonly string[]): Promise<MessageAttachmentRow[]> {
+  const out: MessageAttachmentRow[] = []
+  const seen = { missing: false }
+  for (let i = 0; i < messageIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const slice = messageIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE)
+    const rows = await fetchAllRows<MessageAttachmentRow>(async (a, b) => {
+      const page = (await from('message_attachments').select(ATTACHMENT_COLS).in('message_id', slice).order('id').range(a, b)) as unknown as Result<MessageAttachmentRow[]>
+      if (!page.error || !isMissingTable(page.error.code)) return page
+      seen.missing = true
+      return { data: [], error: null }
+    }, 'load the files on the lines')
+    if (seen.missing) return []
+    out.push(...rows)
+  }
+  return out
 }
 
 /** Everything the view and the window draw, at `nowIso`. */
 export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
   const spine = await loadSpineRows()
-  const records = await loadRecords(spine.contacts)
+  // Only an email carries files, so the files are read for the email lines alone.
+  const emailIds = spine.messages.filter((m) => m.channel === 'email').map((m) => m.id)
+  const [records, fileRows] = await Promise.all([loadRecords(spine.contacts), loadLineFiles(emailIds)])
   const contacts = contactsFromRows(spine.contacts, spine.channels, spine.jobs, records)
-  const userIds = unique([...spine.messages.flatMap((m) => [m.who_user_id, m.back_by]), ...spine.contacts.map((c) => c.off_by)])
+  const userIds = unique([
+    ...spine.messages.flatMap((m) => [m.who_user_id, m.back_by]),
+    ...spine.contacts.map((c) => c.off_by),
+    ...fileRows.map((f) => f.paper_answered_by),
+  ])
   const [users, facts, copies] = await Promise.all([
     inSlices<{ id: string; name: string | null }>(userIds, (ids) => supabase.from('users').select('id, name').in('id', ids), 'load the names of the team'),
     loadFactRows(contacts),
     loadSentEmailsTo(contacts.flatMap((c) => c.channels.filter((ch) => ch.kind === 'email').map((ch) => ch.value))),
   ])
   const userNames = Object.fromEntries(users.map((u) => [u.id, u.name ?? '']))
-  const messages = [...threadMessagesFromRows(spine.messages, { userNames, contacts }), ...sentLines(copies, contacts)].sort(
-    (a, b) => Date.parse(a.at) - Date.parse(b.at),
-  )
+  const own = withLineFiles(threadMessagesFromRows(spine.messages, { userNames, contacts }), lineFilesFromRows(fileRows))
+  const messages = [...own, ...sentLines(copies, contacts)].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
   const factKeys = factJobKeys(contacts, facts)
   const rails = Object.fromEntries(contacts.map((c) => [c.id, railJobKeys(c, factKeys[c.id] ?? [])]))
   const keys = unique([...Object.values(rails).flat(), ...messages.map((m) => m.jobId)])
@@ -182,7 +271,138 @@ export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
   return { contacts, messages, rails, tiles, userNames }
 }
 
+/**
+ * One Pipeline job's calls, texts and emails for its Job activity (cut 10, J2): the lines tied to the job, and while
+ * the job is open the lines of the customer's people put on it that are tied to no job yet, since the job began
+ * (`jobActivityMessagesFromRows` keeps the rule). Read as the signed-in user by the office team and, since the owner's
+ * word of 2026-10-13, a tech (`canReadJobMessages`). R5's door gives a tech the lines of a customer whose job they
+ * worked this week or last, never an office-only note, and no `contact_jobs` row, so a tech gets the tied lines alone.
+ * It leans on v2.5353's indexes: `messages_pipeline_job` and `contact_jobs_pipeline_job`.
+ */
+export async function loadJobMessages(job: { id: string; status: string | null; createdAt: string | null }): Promise<JobActivityMessage[]> {
+  const [tied, on] = await Promise.all([
+    from('messages').select(JOB_MESSAGE_COLS).eq('jobs_ledger_id', job.id).order('at', { ascending: false }).limit(JOB_MESSAGES_MAX) as unknown as PromiseLike<Result<JobMessageRow[]>>,
+    jobTakesUntiedLines(job.status)
+      ? (from('contact_jobs').select('contact_id').eq('jobs_ledger_id', job.id) as unknown as PromiseLike<Result<{ contact_id: string }[]>>)
+      : Promise.resolve({ data: [] as { contact_id: string }[], error: null }),
+  ])
+  const tiedRows = taken(tied, 'load the job’s messages') ?? []
+  const onIds = unique((taken(on, 'load the people on the job') ?? []).map((r) => r.contact_id))
+  const contactRows = await inSlices<{ id: string; kind: string; name: string | null; goes_by: string | null }>(
+    unique([...tiedRows.map((r) => r.contact_id), ...onIds]),
+    (ids) => from('contacts').select('id, kind, name, goes_by').in('id', ids) as never,
+    'load the people on the job’s messages',
+  )
+  const contacts: JobMessageContact[] = contactRows.map((c) => ({ id: c.id, name: c.name ?? '', goesBy: c.goes_by, kind: c.kind as ContactKind }))
+  const customersOn = contacts.filter((c) => c.kind === 'customer' && onIds.includes(c.id)).map((c) => c.id)
+  const untiedRows = customersOn.length
+    ? await inSlices<JobMessageRow>(
+        customersOn,
+        (ids) =>
+          from('messages')
+            .select(JOB_MESSAGE_COLS)
+            .in('contact_id', ids)
+            .is('bid_id', null)
+            .is('project_id', null)
+            .is('jobs_ledger_id', null)
+            .neq('direction', 'team')
+            .gte('at', job.createdAt ?? '1970-01-01T00:00:00Z')
+            .order('at', { ascending: false })
+            .limit(JOB_MESSAGES_MAX) as never,
+        'load the customer’s lines not tied to a job',
+      )
+    : []
+  const rows = [...tiedRows, ...untiedRows]
+  const userIds = unique(rows.map((r) => r.who_user_id))
+  const users = await inSlices<{ id: string; name: string | null }>(userIds, (ids) => supabase.from('users').select('id, name').in('id', ids), 'load the names of the team')
+  const userNames = Object.fromEntries(users.map((u) => [u.id, u.name ?? '']))
+  return jobActivityMessagesFromRows(rows, contacts, userNames, { id: job.id, since: job.createdAt })
+}
+
 // ---------- the presses ----------
+
+/**
+ * The office's answer to a paper offer on a line (cut 6): filed, once the company window filed it, or not it. A trigger
+ * stamps who and when. Refused in words when nothing was answered (training mode, a digital twin).
+ */
+export async function answerPaper(attachmentId: string, answer: 'filed' | 'not_it'): Promise<void> {
+  const rows = taken(
+    (await from('message_attachments').update({ paper_answer: answer } as never).eq('id', attachmentId).select('id')) as unknown as Result<{ id: string }[]>,
+    'answer the offer',
+  )
+  if (rows.length === 0) throw new Error('That offer could not be answered from this account.')
+}
+
+/**
+ * Save to Drive (cut 7f): our copy of a file that came in goes into its line's job's Drive folder through `drive-link`'s
+ * `save`, and the row keeps the Drive file. A second save answers the one copy already there. Refused in words: a line
+ * on nobody's job, a job with no Drive folder, a training account.
+ */
+export async function saveToDrive(attachmentId: string, half: 'plans' | 'team_only'): Promise<{ driveFileId: string; url: string }> {
+  const r = (await supabase.functions.invoke('drive-link', { body: { action: 'save', attachmentId, half } })) as FnResult
+  const problem = await fnProblem(r, 'The file was not saved to Drive.')
+  if (problem) throw new Error(problem)
+  const d = (r.data ?? {}) as { driveFileId?: string; url?: string }
+  if (!d.driveFileId || !d.url) throw new Error('The file was not saved to Drive.')
+  return { driveFileId: d.driveFileId, url: d.url }
+}
+
+/**
+ * Our own links' state for the message window (cut 7f): each `drive_links` row's cut and end, who cut it, and its opens
+ * read back through `drive_link_views` (outside opens only, never who). Keyed by the link's id.
+ */
+export async function loadOwnLinks(linkIds: readonly string[]): Promise<Record<string, OwnLinkState>> {
+  if (linkIds.length === 0) return {}
+  const ids = [...new Set(linkIds)]
+  const [links, views] = await Promise.all([
+    inSlices<{ id: string; cut_at: string | null; cut_by: string | null; ends_at: string }>(ids, (slice) => from('drive_links').select('id, cut_at, cut_by, ends_at').in('id', slice) as never, 'read our links'),
+    rpc('drive_link_views', { p_link_ids: ids }),
+  ])
+  const opens = taken(views as unknown as Result<{ link_id: string; opens: number; opened_at: string[] | null }[]>, 'read our links’ opens') ?? []
+  const cutBy = unique(links.map((l) => l.cut_by))
+  const names = cutBy.length
+    ? Object.fromEntries(
+        (await inSlices<{ id: string; name: string | null }>(cutBy, (slice) => supabase.from('users').select('id, name').in('id', slice), 'read who cut a link off')).map((u) => [u.id, u.name ?? '']),
+      )
+    : {}
+  const byLink = new Map(opens.map((o) => [o.link_id, o]))
+  return Object.fromEntries(
+    links.map((l) => {
+      const o = byLink.get(l.id)
+      const state: OwnLinkState = {
+        cutAt: l.cut_at,
+        cutByName: (l.cut_by && names[l.cut_by]?.trim()) || null,
+        endsAt: l.ends_at,
+        opens: o?.opens ?? 0,
+        openedAt: o?.opened_at ?? [],
+      }
+      return [l.id, state]
+    }),
+  )
+}
+
+/**
+ * Their portal's outside opens since a line we sent carried a link to it (`portal_opens_since`): a trade partner's
+ * portal by its company, a customer's by the customer. Null for anyone with no portal of either kind.
+ */
+export async function loadPortalOpensSince(
+  who: Pick<Contact, 'kind' | 'gcCompanyId' | 'customerId'>,
+  sinceIso: string,
+): Promise<PortalOpens | null> {
+  const target = who.kind === 'trade' && who.gcCompanyId ? { surface: 'gc_trade_portal', id: who.gcCompanyId } : who.kind === 'customer' && who.customerId ? { surface: 'portal', id: who.customerId } : null
+  if (!target) return null
+  const rows = taken(
+    (await rpc('portal_opens_since', { p_surface: target.surface, p_entity_id: target.id, p_since: sinceIso })) as unknown as Result<{ opens: number; last_opened_at: string | null }[]>,
+    'read their portal’s opens',
+  )
+  const row = rows?.[0]
+  return { opens: row?.opens ?? 0, lastOpenedAt: row?.last_opened_at ?? null }
+}
+
+/** Cut our own link off (cut 7f, `cut_drive_link`): it opens the turned-off words from now on. Refused in words. */
+export async function cutOwnLink(linkId: string): Promise<void> {
+  taken((await rpc('cut_drive_link', { p_link_id: linkId })) as unknown as Result<string>, 'cut the link off')
+}
 
 const jobArgs = (key: string | null) => {
   const ref = jobRefOf(key)
@@ -205,6 +425,59 @@ export async function nameContact(
     }),
     'name the number',
   ) as unknown as string
+}
+
+/**
+ * Who is this?: a number becomes a lead with no record yet, under `name` (R0's `name_contact` with no record), until Add
+ * to Prospects or a booking points it at a record. Answers who holds the thread now.
+ */
+export async function nameAsLead(contactId: string, name: string | null): Promise<string> {
+  return taken(
+    await rpc('name_contact', { p_contact_id: contactId, p_record_table: null, p_record_id: null, p_kind: 'lead', p_name: name?.trim() || null, p_job_kind: null, p_job_id: null }),
+    'name the number',
+  ) as unknown as string
+}
+
+/**
+ * A customer's own thread, for a press on their name (residential R2): the contact on their row with no name, made by
+ * `contact_for_customer` when there is none, with the number and address their row keeps. Answers its id. The office
+ * team only, said in the function's words; a training account and a twin find one and never make one.
+ */
+export async function contactForCustomer(customerId: string): Promise<string> {
+  return taken(await supabase.rpc('contact_for_customer', { p_customer_id: customerId }), 'open their messages')
+}
+
+/**
+ * One person as the thread reads them: their row, their numbers and addresses, their jobs and the record's name. Null
+ * when the row is not there or is of a kind this build does not know.
+ */
+export async function loadContact(contactId: string): Promise<Contact | null> {
+  const [rows, channels, jobs] = await Promise.all([
+    from('contacts').select(CONTACT_COLS).eq('id', contactId).limit(1),
+    from('contact_channels').select(CHANNEL_COLS).eq('contact_id', contactId),
+    from('contact_jobs').select(JOB_COLS).eq('contact_id', contactId),
+  ])
+  const row = taken(rows as Result<ContactRow[]>, 'read who they are')[0]
+  if (!row) return null
+  const records: ContactRecordRows = {}
+  if (row.customer_id || row.customer_contact_person_id) {
+    const persons = row.customer_contact_person_id
+      ? taken((await from('customer_contact_persons').select('id, customer_id, name').eq('id', row.customer_contact_person_id)) as Result<NonNullable<ContactRecordRows['customerContactPersons']>[number][]>, 'read who they are')
+      : []
+    records.customerContactPersons = persons
+    const customerId = row.customer_id ?? persons[0]?.customer_id
+    records.customers = customerId
+      ? taken((await from('customers').select('id, name').eq('id', customerId)) as Result<NonNullable<ContactRecordRows['customers']>[number][]>, 'read who they are')
+      : []
+  }
+  return contactsFromRows([row], taken(channels as Result<ContactChannelRow[]>, 'read their numbers'), taken(jobs as Result<ContactJobRow[]>, 'read their jobs'), records)[0] ?? null
+}
+
+/** A customer's own thread as a person to write to: their contact, made when there is none, read whole. */
+export async function loadCustomerContact(customerId: string): Promise<Contact> {
+  const contact = await loadContact(await contactForCustomer(customerId))
+  if (!contact) throw new Error('Their messages could not be opened. Read the job again.')
+  return contact
 }
 
 /** Ties a line to a job, or unties it (null): it then sits on the person. */
@@ -258,7 +531,7 @@ export async function searchContactRecords(words: string): Promise<RecordHit[]> 
     supabase.from('customer_contact_persons').select('id, name, customer_id, customers(name)').ilike('name', like).limit(8),
     supabase.from('gc_companies').select('id, name, contact_name').or(`name.ilike.${like},contact_name.ilike.${like}`).limit(8),
     supabase.from('gc_company_people').select('id, name, gc_companies(name)').ilike('name', like).is('removed_at', null).limit(8),
-    supabase.from('people').select('id, name').ilike('name', like).is('archived_at', null).limit(8),
+    supabase.from('people').select('id, name, kind').ilike('name', like).is('archived_at', null).limit(8),
   ])
   const embedded = (v: unknown) => (Array.isArray(v) ? (v[0] as { name?: string } | undefined)?.name : (v as { name?: string } | null)?.name) ?? ''
   return [
@@ -274,8 +547,9 @@ export async function searchContactRecords(words: string): Promise<RecordHit[]> 
     ...taken(customers as Result<{ id: string; name: string }[]>, 'find the customers').map(
       (c): RecordHit => ({ record: { table: 'customers', id: c.id }, label: c.name, sub: 'Customer', kind: 'customer' }),
     ),
-    ...taken(people as Result<{ id: string; name: string }[]>, 'find the roster').map(
-      (p): RecordHit => ({ record: { table: 'people', id: p.id }, label: p.name, sub: 'On the roster', kind: 'trade' }),
+    // A roster row is a sub or one of our own team, as the roster says (v2.5546); the window shows the kind, it is not picked.
+    ...taken(people as Result<{ id: string; name: string; kind: string | null }[]>, 'find the roster').map(
+      (p): RecordHit => ({ record: { table: 'people', id: p.id }, label: p.name, sub: p.kind === 'sub' ? 'On the roster · a sub' : 'On the roster · one of our own team', kind: kindOf({ table: 'people', id: p.id }, p.kind) }),
     ),
   ]
 }

@@ -81,11 +81,20 @@ import { JOB_STEPPER_LABELS, type JobStepperStatus } from '../../lib/jobs/jobSta
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { jobWindowTiles, viewerOnCrew } from '../../lib/jobs/jobWindowBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
+import { useJobMessages } from '../../hooks/useJobMessages'
+import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
+import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
+import { JobCustomerBox } from './JobCustomerBox'
+import { JobCustomerSheet } from './JobCustomerSheet'
+import { contactForCustomer } from '../../lib/messages/messagesIo'
+import { messagesThreadHref } from '../../lib/messages/customerThread'
 import JobReportsModal from '../JobReportsModal'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
+import { MessagesButton } from '../messages/MessagesButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
@@ -297,6 +306,8 @@ export function DetailJobModalCustomerPanel({
   gcCustomerName,
   developmentName,
   customerId,
+  onLeave,
+  onOpenCustomerDoor,
 }: {
   customerName: string | null | undefined
   customerPhone: string | null | undefined
@@ -305,6 +316,10 @@ export function DetailJobModalCustomerPanel({
   developmentName?: string | null
   /** The customer's portal globe (v2.3262) renders beside the name when set — office roles only (the button gates itself). */
   customerId?: string | null
+  /** The window closes before the Messages button opens the customer's thread (residential R2). */
+  onLeave?: () => void
+  /** The customer's door (v2.5629, punch list #124): the bubble opens the customer's sheet over the window instead of leaving. */
+  onOpenCustomerDoor?: () => void
 }) {
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
@@ -360,6 +375,7 @@ export function DetailJobModalCustomerPanel({
         {customerId && name ? (
           <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', flexShrink: 0 }}>
             <CustomerPortalGlobeButton customerId={customerId} customerName={name} size={15} />
+            <MessagesButton customerId={customerId} customerName={name} size={15} {...(onLeave ? { onOpen: onLeave } : {})} {...(onOpenCustomerDoor ? { onPressInstead: onOpenCustomerDoor } : {})} />
           </span>
         ) : null}
       </div>
@@ -1181,6 +1197,16 @@ export default function DetailJobModal({
     showToast,
     authorDisplayName: authUser?.id ? profileName : undefined,
   })
+  // The tech's door to the customer (v2.5527): the job's lines with them beside the notes, under a Customer pill.
+  const readsCustomerLines = open && readsCustomerLinesInJobUpdates(viewerAuthRole)
+  const jobForLines = fullJob ?? limitedJob
+  const jobMessages = useJobMessages(
+    readsCustomerLines && jobId && jobForLines ? { id: jobId, status: jobForLines.status ?? null, createdAt: fullJob?.created_at ?? null } : null,
+  )
+  const customerLines = useMemo(
+    () => (!readsCustomerLines ? undefined : jobForLines && jobMessages ? customerLinesForJobUpdates(jobMessages) : null),
+    [readsCustomerLines, jobForLines, jobMessages],
+  )
   const { requestOpenUpdateFocus } = useUpdateFocusOpenerBridge()
 
   // Stages "% complete" flow, transplanted from the Jobs Stages activity panel:
@@ -1215,6 +1241,8 @@ export default function DetailJobModal({
   )
 
   const navigate = useNavigate()
+  // The customer's door (v2.5629): the header's bubble opens the customer's sheet over the window; Open their thread closes the window first, as the bubble's own press did.
+  const [customerDoorOpen, setCustomerDoorOpen] = useState(false)
   // Mirrors Jobs.tsx canOpenJobScheduleModal — the roles that can use the Dispatch job-week grid.
   const showWeekDispatchButton =
     Boolean(jobId) &&
@@ -1934,6 +1962,8 @@ export default function DetailJobModal({
                     customerEmail={detailJob.customer_email}
                     gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
                     developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
+                    onLeave={onClose}
+                    onOpenCustomerDoor={fullJob ? () => setCustomerDoorOpen(true) : undefined}
                   />
                 </div>
               ) : (
@@ -2048,6 +2078,19 @@ export default function DetailJobModal({
           onKeyDown={(e) => e.stopPropagation()}
           role="presentation"
         >
+          {customerDoorOpen && fullJob ? (
+            <JobCustomerSheet
+              job={fullJob}
+              onClose={() => setCustomerDoorOpen(false)}
+              onSent={threadNotes.reload}
+              openThread={async (customerId) => {
+                const contactId = await contactForCustomer(customerId)
+                setCustomerDoorOpen(false)
+                onClose()
+                navigate(messagesThreadHref(contactId))
+              }}
+            />
+          ) : null}
           <JobThreadNotesPanel
             activity={threadNotes.activity}
             loading={threadNotes.loading}
@@ -2071,8 +2114,26 @@ export default function DetailJobModal({
             onCommitPct={(value, note) => void commitPctWithNote(value, note)}
             showSectionTitle={false}
             showEmptyPlaceholder={false}
+            customerLines={customerLines}
             showComposerLabel={false}
             viewerRole={authRole as UserRole | null}
+            customerBox={
+              fullJob && jobBoxOffered(authRole as UserRole | null)
+                ? {
+                    // Residential R2: Text and Email to the job's customer, tied to this job, beside the crew's note.
+                    render: (kind) => (
+                      <JobCustomerBox
+                        kind={kind}
+                        jobId={fullJob.id}
+                        jobName={jobBoxJobName(fullJob)}
+                        customerId={fullJob.customer_id ?? null}
+                        jobStatus={fullJob.status ?? null}
+                        onSent={threadNotes.reload}
+                      />
+                    ),
+                  }
+                : undefined
+            }
           />
         </div>
 

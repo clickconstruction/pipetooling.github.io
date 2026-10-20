@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { MessagesButton } from '../messages/MessagesButton'
 import { supabase } from '../../lib/supabase'
 import { telHrefFor } from '../../lib/phoneContact'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -120,6 +121,7 @@ export function CustomersPhoneView({
           )
         })()}
       </button>
+      <MessagesButton customerId={c.id} customerName={c.name} size={18} style={iconBtn} />
       {c.phone.trim() ? (
         <a href={telHrefFor(c.phone)} aria-label={`Call ${c.name}`} title={c.phone} style={iconBtn}>
           ☎

@@ -185,10 +185,11 @@ describe('jobs stale open (v2.2825)', () => {
   it('names the pile, the money, and how many are the reader’s own; quiet while loading or off', () => {
     const on = buildNeedsYouItems(inputs({ staleOpenEnabled: true, staleOpen: { count: 25, total: 343162, mine: 3, minIdleDays: 21 } }))
     const item = on.find((i) => i.key === 'jobs-stale-open')
-    expect(item).toMatchObject({ severity: 'amber', kicker: 'Jobs', figure: '25', actionLabel: 'See them' })
+    expect(item).toMatchObject({ severity: 'amber', kicker: 'Jobs', figure: '25', actionLabel: 'Review them' })
     expect(item?.title).toBe('25 open jobs have sat idle 21+ days')
     expect(item?.detail).toContain('$343,162 of contract')
     expect(item?.detail).toContain('3 are yours')
+    expect(item?.detail).toContain('Each card says what the job needs')
     expect(buildNeedsYouItems(inputs({ staleOpenEnabled: true, staleOpen: { count: 1, total: 900, mine: 1, minIdleDays: 21 } })).find((i) => i.key === 'jobs-stale-open')?.title).toBe('An open job has sat idle 21+ days')
     expect(buildNeedsYouItems(inputs({ staleOpenEnabled: true, staleOpen: null })).some((i) => i.key === 'jobs-stale-open')).toBe(false)
     expect(buildNeedsYouItems(inputs({ staleOpenEnabled: false, staleOpen: { count: 5, total: 1, mine: 0, minIdleDays: 21 } })).some((i) => i.key === 'jobs-stale-open')).toBe(false)
@@ -642,6 +643,19 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.title).toBe('3 payments cleared behind conditional releases')
     expect(many[0]?.figure).toBe('3')
     expect(many[0]?.actionLabel).toBe('Issue releases')
+  })
+
+  it('docsmit-credit (6b): amber under the warn line, red at zero, quiet above it, before the first read, or disabled', () => {
+    const credit = (balance: number | null, warn = 25) => ({ balance, asOf: '2026-10-14T14:17:00Z', warn, nowIso: '2026-10-14T16:20:00Z' })
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(120) }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(null) }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: false, docsmitCredit: credit(3) }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: null }))).toEqual([])
+    const low = buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(12.4) }))
+    expect(low.map((i) => [i.key, i.severity, i.title, i.figure, i.actionLabel])).toEqual([['docsmit-credit', 'amber', 'Docsmit credit is low: $12.40', '$12', 'Open the Lien desk']])
+    expect(low[0]!.detail).toMatch(/^Docsmit credit \$12\.40, under your \$25 line · read 2 h ago\. /)
+    const out = buildNeedsYouItems(inputs({ docsmitCreditEnabled: true, docsmitCredit: credit(0) }))
+    expect(out.map((i) => [i.key, i.severity, i.title])).toEqual([['docsmit-credit', 'red', 'Docsmit credit is out']])
   })
 
   it('lien watches (v2.2645): serve-copy red, notice/file windows amber, quiet at empty/disabled/loading', () => {

@@ -16,7 +16,7 @@ type Props = {
 }
 
 const CELL: Record<RhythmCell['state'], CSSProperties> = {
-  done: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-600)', fontWeight: 600 },
+  done: { background: 'var(--bg-blue-tint)', color: 'var(--text-link)', fontWeight: 600 },
   none: { background: 'var(--surface)', color: 'var(--text-muted)' },
   gap: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', fontWeight: 600 },
   closed: { background: 'var(--bg-subtle)', color: 'var(--text-muted)' },

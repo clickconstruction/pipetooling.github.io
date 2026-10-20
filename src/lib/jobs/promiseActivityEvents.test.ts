@@ -13,6 +13,9 @@ const promise = (over: Partial<PaymentPromise> = {}): PaymentPromise => ({
   source: 'office',
   note: 'check goes out with the draw',
   createdAt: '2026-09-28T16:20:00Z',
+  kind: 'promise' as const,
+  method: null,
+  amount: null,
   ...over,
 })
 
@@ -49,6 +52,16 @@ describe('promise activity events (v2.4103)', () => {
   })
 
   it('a promise with no usable timestamp is dropped rather than sorted to 1970', () => {
-    expect(paymentPromisesToActivityEvents([promise({ createdAt: '' }), promise({ id: 'p2', createdAt: 'not a date' })])).toEqual([])
+    expect(paymentPromisesToActivityEvents([promise({ createdAt: '' }), promise({ id: 'p2', createdAt: 'not a date', kind: 'promise', method: null, amount: null })])).toEqual([])
+  })
+})
+
+describe('a paid claim in the trail (v2.5648)', () => {
+  it('reads Says they paid, how and the amount, who and how, the note', () => {
+    const claim: PaymentPromise = { id: 'w1', jobId: 'j1', customerId: 'c1', promisedYmd: '2026-10-20', saidBy: 'Dana', heardByName: 'Theo', channel: 'text', source: 'office', note: 'Check #1187', createdAt: '2026-10-21T14:40:00Z', kind: 'paid_claim', method: 'check_mailed', amount: 1500 }
+    expect(promiseSummary(claim)).toBe('Says they paid Oct 20, 2026 · a check in the mail · $1,500 — Dana · by text · heard by Theo · “Check #1187”')
+    const [ev] = paymentPromisesToActivityEvents([claim])
+    expect(ev!.event.type).toBe('payment_promise')
+    expect(ev!.event.detail).toMatchObject({ kind: 'paid_claim', method: 'check_mailed', amount: 1500 })
   })
 })

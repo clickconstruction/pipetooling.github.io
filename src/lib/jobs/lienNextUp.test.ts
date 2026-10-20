@@ -80,6 +80,16 @@ describe('buildLienNextUp — notices', () => {
     expect(one({ notices: [notice('j1', 'sent')], letterTwoByJob: { j1: two('overdue') } }).group).toBe('now')
   })
 
+  it('an envelope mailed through Docsmit that came back is the office’s red row under Needs you now, opening the notice under Sent (the Docsmit train, 6b-2)', () => {
+    const r = one({ mailNeedsYou: [{ jobId: 'j1', pieceId: 'p2', who: 'Original contractor', words: 'returned to sender' }] })
+    expect([r.key, r.kind, r.action, r.button, r.title, r.sub, r.group, r.severity, r.dueOn]).toEqual(['mail:p2', 'notice', 'mail_needs_you', 'Open the notice', 'Job j1', 'Docsmit · original contractor · returned to sender', 'now', 'red', null])
+    expect(r.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'sent' })
+    expect(one({ role: 'estimator', mailNeedsYou: [{ jobId: 'j1', pieceId: 'p2', who: 'Owner of record', words: 'notice left, unclaimed so far' }] }).button).toBeNull()
+    // Dated rows of the same group come first; the envelope's row has no day of its own.
+    const rows = build({ notices: [notice('j3', 'to_draft', { earliestDeadline: '2026-10-08', daysLeft: 3, severity: 'red' })], mailNeedsYou: [{ jobId: 'j1', pieceId: 'p2', who: 'Owner of record', words: 'returned to sender' }] })
+    expect(rows.map((x) => x.key)).toEqual(['notice:j3', 'mail:p2'])
+  })
+
   it('missed: open months are drafted; a closed window nobody wrote down is noted; a noted one asks nothing', () => {
     expect(one({ notices: [notice('j1', 'missed', { dueMonths: ['2026-08'], missedUnrecorded: ['2026-06'] })] }).action).toBe('draft')
     const note = one({ notices: [notice('j1', 'missed', { dueMonths: [], missedUnrecorded: ['2026-06'] })] })

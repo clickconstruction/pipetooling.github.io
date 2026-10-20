@@ -63,4 +63,15 @@ describe('the emails the app already sent, read into each thread', () => {
     )
     expect(lines.map((l) => l.who)).toEqual(['Rosa', APP_WHO])
   })
+
+  it('skips the copy of an email from the reply box, whose line is in the thread already', () => {
+    const lines = sentLines(
+      [
+        copy({ id: 'sd5', kind: 'messages_email', sourceTable: 'messages', recipientEmails: ['greg@hillside.example'] }),
+        copy({ id: 'sd6', sourceTable: 'gc_trade_messages', recipientEmails: ['greg@hillside.example'] }),
+      ],
+      DEMO_CONTACTS,
+    )
+    expect(lines.map((l) => l.id)).toEqual(['sent:sd6'])
+  })
 })

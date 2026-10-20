@@ -304,10 +304,10 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
                   width: 44,
                   padding: '0.15rem 0',
                   textAlign: 'center',
-                  border: `1px solid ${on ? 'var(--text-blue-600)' : 'var(--border)'}`,
+                  border: `1px solid ${on ? 'var(--text-link)' : 'var(--border)'}`,
                   borderRadius: 6,
                   background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                  color: on ? 'var(--text-blue-600)' : 'var(--text-muted)',
+                  color: on ? 'var(--text-link)' : 'var(--text-muted)',
                   fontSize: '0.62rem',
                   cursor: blocked ? 'default' : 'pointer',
                   opacity: blocked ? 0.35 : weekend ? 0.7 : 1,
@@ -316,7 +316,7 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
               >
                 {new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
                 <br />
-                <b style={{ fontSize: '0.8rem', color: on ? 'var(--text-blue-600)' : 'var(--text-700)' }}>{counts[d] ?? 0}</b>
+                <b style={{ fontSize: '0.8rem', color: on ? 'var(--text-link)' : 'var(--text-700)' }}>{counts[d] ?? 0}</b>
                 {crews && (crews.unsupervisedByDay[d] ?? 0) > 0 && (
                   <>
                     <br />
@@ -334,7 +334,7 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
               onClick={() => setPlaying((p) => !p)}
               aria-label={playing ? 'Pause' : 'Play the day'}
               title={playing ? 'Pause' : 'Walk the day'}
-              style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--text-blue-600)', color: 'white', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}
+              style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}
             >
               {playing ? '❚❚' : '▶'}
             </button>
@@ -480,8 +480,8 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
                   ))}
                 </div>
                 {/* Playhead: sits over the track column only */}
-                <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 16, left: `calc(min(150px, max(96px, 25%)) + 8px + (100% - min(150px, max(96px, 25%)) - 8px) * ${trackPercent(clampedMinute, domain) / 100})`, width: 2, background: 'var(--text-blue-600)', pointerEvents: 'none', opacity: 0.85 }}>
-                  <span style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-blue-600)', whiteSpace: 'nowrap' }}>{formatMinuteLabel(clampedMinute)}</span>
+                <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 16, left: `calc(min(150px, max(96px, 25%)) + 8px + (100% - min(150px, max(96px, 25%)) - 8px) * ${trackPercent(clampedMinute, domain) / 100})`, width: 2, background: '#2563eb', pointerEvents: 'none', opacity: 0.85 }}>
+                  <span style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>{formatMinuteLabel(clampedMinute)}</span>
                 </div>
               </div>
             </div>

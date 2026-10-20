@@ -51,12 +51,12 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#73 Bid history](../to-dos/bid-history/README.md) | PR 6, undo a whole action | S | None | Helper 11 |
 | [#67 Home-screen icon](../to-dos/app-icon-glass.md) | PR 2, the `TILE` option and a sheet of candidates at 180 px. The touch icons regenerate from the pick. | S | The owner picks from the sheet | Helper 12 |
 | [#62 See what they see](../to-dos/see-what-they-see.md) | Build (b). A revision joins the GC's record when it is shared, or when it holds a reviewer's answer and a package or a reviewer's file. Three function deploys, then a reviewer file on BP398's Rev 3. | Not sized | None. The owner picked (b) on 2026-10-09. | Helper 13 |
-| [#64 A second signer](../to-dos/contract-second-signer-names.md) | The mixed record, signed partly through the link and partly on paper. An edge change and a deploy. | S–M | None | Helper 14 |
+| #64 A second signer (card retired with #5229) | The mixed record, signed partly through the link and partly on paper. An edge change and a deploy. | S–M | None | Helper 14 |
 | [#76 Returned checks](../to-dos/ar-returned-checks.md) | The ② waterfall's words on the Final line, "$30 of $2,000 covered". Branch `claude/bill-tab-fee-not-covered`. | S | None | Helper 15 |
 | [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 2's step 7, the send IO, done with the GC Review map | S per PR | Check `npm run sessions` first. `JobsStagesTab` is the hottest file. | Helper 17 |
 | [#21 Decomposition residuals](../to-dos/decomposition-residuals.md) | The Workflow page's leftovers. The smallest is the message when a projection delete is refused. | XS–S each | None | Helper 18 |
 | [#5 Owner decisions pending](../to-dos/owner-decisions-pending.md) | The anon EXECUTE revoke, #5110 (v2.5040) | One migration | 23:00 UTC tonight | PUNCHLIST |
-| [#26 Team leads table](../to-dos/team-leads-table-retirement.md) | Drop the frozen table, #5183 (v2.5088, migration `20261010022000`). Seven function deploys go first. | S | A quiet window with crews clocked out | PUNCHLIST |
+| #26 Team leads table (card retired with #5183) | Drop the frozen table, #5183 (v2.5088, migration `20261010022000`). Seven function deploys go first. | S | A quiet window with crews clocked out | PUNCHLIST |
 | [#76 Returned checks](../to-dos/ar-returned-checks.md) | The types regen after migration `20261010023000`, #5196. The dev-mcp deploy follows it. | Types only | Armed | PUNCHLIST |
 | [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 2's last seam, the row-render context (step 5) | S per PR | After step 7 | Nobody |
 | [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 3's draft-persistence seam hook | S per PR | A quiet day. It sits on the autosave engine that Edit Job and Edit Bid share. | Nobody |

@@ -1,0 +1,53 @@
+/**
+ * Quick replies by keyboard (punch list #126, the owner's pick C): a line's one-word shortcut, so `/bill` then Enter in
+ * the reply box lands on one line (the `/` list, `slash.ts`, puts an exact shortcut first). Pure, and the server's own
+ * rules: the word's shape is the column's check (`quick_replies_shortcut_word`), its cleaning is
+ * `set_quick_reply_shortcut`'s (spaces and a leading `/` off, lowercase), and a word another line holds is refused as
+ * the function refuses it: a live team line's word is the team's, and a line of one's own keeps clear of one's own other
+ * lines; two people's own lines, and a team line beside someone's own, may share one.
+ */
+import type { QuickReply } from './kernel'
+
+/** The most characters a shortcut holds. */
+export const SHORTCUT_MAX = 24
+
+/** `quick_replies_shortcut_word`: a letter or a digit, then letters, digits and dashes. */
+const SHORTCUT_SHAPE = /^[a-z0-9][a-z0-9-]{0,23}$/
+
+/** The editor's words for the field, and the refusals in the function's words. */
+export const SHORTCUT_WORDS = {
+  label: 'Shortcut',
+  note: 'one word. Type it after a / in the reply box.',
+  placeholder: 'bill',
+  bad: 'A shortcut is one word of letters, numbers or dashes, 24 at most.',
+} as const
+
+/** The refusal when another line holds the word, as `set_quick_reply_shortcut` says it. */
+export function shortcutTakenWords(word: string): string {
+  return `/${word} is another line's shortcut.`
+}
+
+/** The word as the server keeps it: null for none (blank), or the refusal when it is not one word. */
+export function shortcutWord(raw: string): { word: string | null } | { error: string } {
+  const word = raw.trim().replace(/^\/+/, '').toLowerCase()
+  if (!word) return { word: null }
+  return SHORTCUT_SHAPE.test(word) ? { word } : { error: SHORTCUT_WORDS.bad }
+}
+
+/** The other live line that holds the word for this line, as the function would refuse it; null when it is free. */
+export function shortcutHolder(
+  word: string,
+  line: Pick<QuickReply, 'id' | 'scope'>,
+  lines: readonly QuickReply[],
+  me: string,
+): QuickReply | null {
+  return (
+    lines.find(
+      (q) =>
+        q.id !== line.id &&
+        !q.removed &&
+        q.shortcut === word &&
+        (q.scope === 'team' || (line.scope === 'mine' && q.scope === 'mine' && q.addedBy === me)),
+    ) ?? null
+  )
+}

@@ -85,3 +85,8 @@ export function useToastContext(): ToastContextValue {
   if (!ctx) throw new Error('useToastContext must be used within ToastProvider')
   return ctx
 }
+
+/** The toasts, or null outside a ToastProvider: for a piece that should stay silent in a render smoke rather than throw. */
+export function useOptionalToastContext(): ToastContextValue | null {
+  return useContext(ToastContext)
+}

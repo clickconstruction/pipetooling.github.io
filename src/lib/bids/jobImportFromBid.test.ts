@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GcPacket } from './gcPackets'
 import {
+  bidImportAccountMan,
   bidImportCarry,
   bidImportCarryQuestion,
   bidImportEffectiveGc,
@@ -193,5 +194,16 @@ describe('bidImportWinWrite', () => {
   it('is null for a packet with no versions, or one that is not there', () => {
     expect(bidImportWinWrite(packets, 'shared:gc-b')).toBeNull()
     expect(bidImportWinWrite(packets, 'gc-missing')).toBeNull()
+  })
+})
+
+describe('bidImportAccountMan', () => {
+  it('is the bid’s account manager first, else its estimator', () => {
+    expect(bidImportAccountMan({ estimator_id: 'theo', account_manager_id: 'kim' }, null)).toBe('kim')
+    expect(bidImportAccountMan({ estimator_id: 'theo', account_manager_id: null }, null)).toBe('theo')
+  })
+  it('is nobody when the bid names nobody, or the form already has one', () => {
+    expect(bidImportAccountMan({ estimator_id: null, account_manager_id: null }, null)).toBeNull()
+    expect(bidImportAccountMan({ estimator_id: 'theo', account_manager_id: null }, 'rosa')).toBeNull()
   })
 })

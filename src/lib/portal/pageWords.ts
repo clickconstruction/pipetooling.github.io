@@ -103,6 +103,16 @@ const W = {
   weekTitle: { en: 'This week', es: 'Esta semana' },
   everyFriday: { en: 'Every Friday.', es: 'Cada viernes.' },
   peopleTitle: { en: 'Your people', es: 'Sus contactos' },
+  roleOffice: { en: 'office', es: 'oficina' },
+  rolePm: { en: 'project manager', es: 'gerente de proyecto' },
+  roleSuper: { en: 'on site', es: 'en obra' },
+  seePhotos: { en: 'See this week’s photos', es: 'Vea las fotos de esta semana' },
+  acceptTitle: { en: 'Accept the work', es: 'Acepte el trabajo' },
+  acceptWhy: {
+    en: 'Every line of the work is billed. Once you walk the job, accept it on Papers.',
+    es: 'Cada parte del trabajo está facturada. Cuando recorra la obra, acéptela en Documentos.',
+  },
+  goToPapers: { en: 'Go to Papers', es: 'Ir a Documentos' },
 
   // A change order waiting on them
   changeWaits: { en: 'Change order {n} waits on your answer', es: 'La orden de cambio {n} espera su respuesta' },
@@ -228,6 +238,19 @@ const W = {
   milestones: { en: 'Milestones', es: 'Hitos' },
   whatMoved: { en: 'What moved', es: 'Qué se movió' },
   nothingMoved: { en: 'Nothing has moved since the schedule went.', es: 'Nada se ha movido desde que salió el calendario.' },
+  movedFromTo: { en: '{from} to {to}', es: 'del {from} al {to}' },
+  reasonWeather: { en: 'weather', es: 'el clima' },
+  reasonTradeBefore: { en: 'the work before it ran long', es: 'el trabajo anterior se alargó' },
+  reasonMaterials: { en: 'materials', es: 'los materiales' },
+  reasonCrew: { en: 'the crew', es: 'el personal' },
+  reasonCustomer: { en: 'your request', es: 'su solicitud' },
+  reasonPlans: { en: 'the plans', es: 'los planos' },
+  reasonInspection: { en: 'an inspection', es: 'una inspección' },
+  reasonUs: { en: 'our scheduling', es: 'nuestra programación' },
+  reasonChangeOrder: { en: 'a change order', es: 'una orden de cambio' },
+  reasonOther: { en: 'other work on the job', es: 'otro trabajo en la obra' },
+  reasonEarly: { en: 'it is ready early', es: 'está listo antes' },
+  reasonRecovery: { en: 'we are catching up', es: 'estamos recuperando tiempo' },
   nothingYetShort: { en: 'Nothing yet.', es: 'Aún nada.' },
 
   // Messages: the same thread, read from their side
@@ -400,6 +423,14 @@ export const PAPER_WORDS: Record<PortalPaperId, Record<PortalLang, PaperWords>> 
   certificate: {
     en: { label: "Architect's certificate", why: 'Certify it or send it back with a note.', button: 'Certify the pay application' },
     es: { label: 'Certificado del arquitecto', why: 'Certifíquela o devuélvala con una nota.', button: 'Certifique la solicitud de pago' },
+  },
+  estimate: {
+    en: { label: 'Estimate', onIt: 'We are writing up your estimate.', why: 'Read it and approve it here.', button: 'See the estimate' },
+    es: { label: 'Presupuesto', onIt: 'Estamos preparando su presupuesto.', why: 'Léalo y apruébelo aquí.', button: 'Ver el presupuesto' },
+  },
+  bill: {
+    en: { label: 'Bill', onIt: 'We are getting your bill ready.', why: 'Pay it here.', button: 'See the bill' },
+    es: { label: 'Factura', onIt: 'Estamos preparando su factura.', why: 'Páguela aquí.', button: 'Ver la factura' },
   },
 }
 

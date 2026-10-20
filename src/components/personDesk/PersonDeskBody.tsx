@@ -14,6 +14,7 @@ import { PersonDeskPortalSection } from './sections/PersonDeskPortalSection'
 import { PersonDeskWorkOrdersSection } from './sections/PersonDeskWorkOrdersSection'
 import { PersonDeskPaySection } from './sections/PersonDeskPaySection'
 import { PersonDeskFieldSection } from './sections/PersonDeskFieldSection'
+import { PersonDeskBioSection } from './sections/PersonDeskBioSection'
 import { PersonDeskPaperworkSection } from './sections/PersonDeskPaperworkSection'
 import { PersonDeskRecordsSection } from './sections/PersonDeskRecordsSection'
 import { PersonDeskScheduleSection } from './sections/PersonDeskScheduleSection'
@@ -136,6 +137,7 @@ export function PersonDeskBody({
             <PersonDeskPaySection personKey={key} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskPushSection userId={key.userId} canSeePush={access.canSeePushStatus} changeKey={changeKey} />
             <PersonDeskFieldSection userId={key.userId} payName={key.payName} displayName={displayName} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
+            <PersonDeskBioSection userId={key.userId} displayName={displayName} personRole={user?.role ?? null} viewer={viewer} changeKey={changeKey} />
             <PersonDeskPaperworkSection payName={key.payName} personId={key.personId} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskRecordsSection userId={key.userId} personId={key.personId} viewer={viewer} changeKey={changeKey} />
             <PersonDeskScheduleSection userId={key.userId} displayName={displayName} />

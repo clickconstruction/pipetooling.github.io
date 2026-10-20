@@ -1,13 +1,12 @@
 /**
- * The one count (the Board's B2b, call E1): Needs you and Work the list each count `allPeople`, everyone the office waits
- * on, once a person across their jobs. A board row shows its job's share (`projectPeople`), so the rows' sum is not the
- * count: a person on two jobs is on both rows and counts once. Since B2b-ii-b Follow up's badge and the Dashboard's line
- * say the same number, read from the same rows.
+ * The one count (the Board's B2b, call E1): Work the list counts `allPeople`, everyone the office waits on, once a person
+ * across their jobs. A board row shows its job's share (`projectPeople`), so the rows' sum is not the count: a person on
+ * two jobs is on both rows and counts once. Since v2.5289 Follow up's badge and the Dashboard's line say one number too,
+ * the people waiting on us (`follow_up_count`), read from Follow up's rows.
  */
 import { describe, expect, it } from 'vitest'
 import { boardStateFromRows } from './boardRows'
 import { awardedClinicBoardRows, clinicBoardRows } from './boardTestRows'
-import { gcNeedsYou } from './needsYou'
 import { allFollowPeople, allPeople, projectPeople } from './projectPeople'
 import { initialGcState } from './schedule/testState'
 import type { GcState } from './types'
@@ -18,11 +17,10 @@ const states: [string, () => GcState][] = [
 ]
 
 describe('the one count', () => {
-  it.each(states)('%s: Needs you and Work the list each count everyone once', (_label, make) => {
+  it.each(states)('%s: Work the list counts everyone once', (_label, make) => {
     const state = make()
     const all = allPeople(state)
     expect(all.count).toBeGreaterThan(0)
-    expect(gcNeedsYou(state)?.count).toBe(all.count)
     expect(allFollowPeople(state)).toHaveLength(all.count)
   })
 

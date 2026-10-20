@@ -24,6 +24,7 @@ const toGreg = (over: Partial<QuoSendInput> = {}): QuoSendInput => ({
   lastOurTextAt: at(9, 30, 9, 40),
   now: NOW,
   company: CLICK,
+  mailbox: 'team',
   fromNumberId: 'PN-click',
   sender: ROBERT,
   jobId: 'job-boerne',
@@ -57,6 +58,7 @@ describe('a text out', () => {
         whoUserId: 'u-robert',
         body: 'Greg, checking on the Boerne sitework number. Still good for today?',
         optoutLine: null,
+        mailbox: 'team',
       },
       segments: 1,
       characters: 67,
@@ -152,6 +154,16 @@ describe('plain words', () => {
   })
 })
 
+describe('a text from the bids box (R6)', () => {
+  it('goes from the bids number, names it, and keeps its box on the line', () => {
+    const plan = sent(toGreg({ mailbox: 'bids', fromNumberId: 'PN-bids' }))
+    expect(plan.request.from).toBe('PN-bids')
+    expect(plan.line).toMatchObject({ mailbox: 'bids', who: 'Robert · from the bids number' })
+    expect(sendOver(null, plan.line, 'MS-88')).toMatchObject({ quoId: 'MS-88', mailbox: 'bids' })
+    expect(sentWho(null, 'bids')).toBe('The app · from the bids number')
+  })
+})
+
 describe('the race between our own write and Quo’s delivery event', () => {
   // Robert's first text to Greg, tied in the box to Pad B, not to Greg's default job.
   const plan = sent(toGreg({ lastOurTextAt: null, jobId: 'job-padb', body: 'Greg, the walk moved to 8.' }))
@@ -180,6 +192,7 @@ describe('the race between our own write and Quo’s delivery event', () => {
     users: { 'US-robert': { userId: 'u-robert', name: 'Robert' } },
     company: CLICK,
     existing,
+    mailbox: 'team',
   })
   const ours = (prev: QuoLine | null) => sendOver(prev, plan.line, QUO_ID)
   const theirs = (prev: QuoLine | null, type: string, extra?: Record<string, unknown>) => {
@@ -210,6 +223,7 @@ describe('the race between our own write and Quo’s delivery event', () => {
       media: [],
       optoutLine: 'first',
       delivery: 'delivered',
+      mailbox: 'team',
     })
   })
 

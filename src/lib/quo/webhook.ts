@@ -15,6 +15,12 @@
  * `v1,<base64>` entries, any one matching), HMAC-SHA256 over `{id}.{timestamp}.{raw body}`, keyed by the base64 after
  * the `whsec_` prefix of the secret Quo returned. Quo retries a non-2xx answer eight times over about 27 and a half hours
  * with the same `webhook-id`.
+ *
+ * A webhook made in Quo's own settings (Settings → Webhooks) signs the older way instead (v2.5536): one
+ * `openphone-signature` header, `hmac;1;<timestamp in ms>;<base64>` (comma-separated when there are several),
+ * HMAC-SHA256 over `<timestamp>.<body>`, keyed by the decoded base64 secret, which carries no `whsec_` prefix. Quo's
+ * samples disagree on the body (the raw bytes, or the JSON written out again with no spaces), so both are taken. The
+ * delivery's id for the repeat check is the event's own `id`, which Quo keeps on every retry.
  */
 
 /** A delivery signed longer ago than this, or as far ahead, is refused: Quo's own example allows five minutes. */
@@ -77,9 +83,16 @@ function signedBytes(id: string, timestamp: string, rawBody: string | Uint8Array
   return out
 }
 
+/** The bytes in a plain ArrayBuffer of their own, which WebCrypto takes under every TypeScript the app and Deno use. */
+function ownBuffer(bytes: Uint8Array): ArrayBuffer {
+  const out = new ArrayBuffer(bytes.length)
+  new Uint8Array(out).set(bytes)
+  return out
+}
+
 async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
-  const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  return new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, data))
+  const cryptoKey = await crypto.subtle.importKey('raw', ownBuffer(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  return new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, ownBuffer(data)))
 }
 
 /**
@@ -95,6 +108,8 @@ export async function verifySignature(
 ): Promise<SignatureCheck> {
   const key = secretBytes(secret)
   if (!key) return { ok: false, why: 'no secret' }
+  const legacy = header(headers, 'openphone-signature')?.trim()
+  if (legacy && !header(headers, 'webhook-signature')) return verifyLegacySignature(legacy, rawBody, key, now)
   const id = header(headers, 'webhook-id')?.trim()
   const stamp = header(headers, 'webhook-timestamp')?.trim()
   const signatures = header(headers, 'webhook-signature')?.trim()
@@ -114,6 +129,62 @@ export async function verifySignature(
   if (age > QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too old' }
   if (age < -QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too new' }
   return { ok: true, webhookId: id, timestamp }
+}
+
+/** The body as text, and as the JSON written out again with no spaces, when it is JSON and that differs. */
+function legacyBodies(rawBody: string | Uint8Array): string[] {
+  const text = typeof rawBody === 'string' ? rawBody : new TextDecoder().decode(rawBody)
+  try {
+    const compact = JSON.stringify(JSON.parse(text))
+    return compact === text ? [text] : [text, compact]
+  } catch {
+    return [text]
+  }
+}
+
+/** The event's own `id`, which Quo keeps on every retry; null when the body has none. */
+function legacyEventId(rawBody: string | Uint8Array): string | null {
+  try {
+    const parsed: unknown = JSON.parse(typeof rawBody === 'string' ? rawBody : new TextDecoder().decode(rawBody))
+    const id = parsed && typeof parsed === 'object' ? (parsed as { id?: unknown }).id : null
+    return typeof id === 'string' && id.trim() ? id.trim() : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The older `openphone-signature` check (see the file's head): any `hmac;1;<timestamp>;<base64>` entry whose HMAC over
+ * `<timestamp>.<body>` matches, then the same five minutes either way. The timestamp is in milliseconds; ten digits or
+ * fewer reads as seconds.
+ */
+async function verifyLegacySignature(value: string, rawBody: string | Uint8Array, key: Uint8Array, now: number): Promise<SignatureCheck> {
+  const entries = value
+    .split(',')
+    .map((entry) => entry.trim().split(';'))
+    .filter((parts) => parts.length === 4 && parts[0] === 'hmac' && parts[1] === '1')
+  if (!entries.length) return { ok: false, why: 'missing headers' }
+  const bodies = legacyBodies(rawBody)
+  let matched: string | null = null
+  for (const [, , stamp = '', given = ''] of entries) {
+    if (!/^\d{1,16}$/.test(stamp)) continue
+    const givenBytes = base64Bytes(given)
+    if (!givenBytes) continue
+    for (const body of bodies) {
+      const expected = await hmacSha256(key, new TextEncoder().encode(`${stamp}.${body}`))
+      if (sameBytes(givenBytes, expected)) {
+        matched = stamp
+        break
+      }
+    }
+    if (matched) break
+  }
+  if (!matched) return entries.some(([, , stamp = '']) => /^\d{1,16}$/.test(stamp)) ? { ok: false, why: 'bad signature' } : { ok: false, why: 'bad timestamp' }
+  const timestamp = matched.length > 10 ? Math.floor(Number(matched) / 1000) : Number(matched)
+  const age = Math.floor(now / 1000) - timestamp
+  if (age > QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too old' }
+  if (age < -QUO_SIGNATURE_MAX_AGE_SECONDS) return { ok: false, why: 'too new' }
+  return { ok: true, webhookId: legacyEventId(rawBody) ?? `legacy:${matched}`, timestamp }
 }
 
 // ---------- a delivery seen before ----------

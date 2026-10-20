@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { ThreadWindow } from './ThreadWindow'
+import { WhoIsThisWindow } from './WhoIsThisWindow'
 import type { MessagesWrites } from './messagesWrites'
 import type { ThreadSlots } from './threadSlots'
 import { renderWithProviders } from '../../../test/renderSmokeMocks'
@@ -51,11 +52,29 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     expect(screen.getByText('This person is not in Messages.')).toBeTruthy()
   })
 
+  it('draws an email’s files as chips under its words, the time below them, and a chip opens the message (cut 6)', () => {
+    const { win } = open('c-greg')
+    const line = win.querySelector('[data-thread-line="m-greg-email-in"]') as HTMLElement
+    const chips = within(line.querySelector('[data-line-files]') as HTMLElement).getAllByRole('button')
+    expect(chips.map((c) => c.textContent)).toEqual([
+      'PDFHillside-Boerne-sitework-rev1.pdf · 1.3 MB',
+      'IMGsite-photo-pad.jpg · 2.8 MB',
+      '↗Addendum 2 drawings · a link',
+      'FHillside-Boerne-full-set.zip · 31 MB',
+    ])
+    expect(line.lastElementChild!.textContent).toBe('11:30 AM')
+    fireEvent.click(chips[1]!)
+    expect(screen.getByRole('dialog', { name: 'Email: Hillside sitework, Boerne, rev 1' }).querySelector('[data-message-files]')).toBeTruthy()
+  })
+
   it('draws the header in its rows: name with ☎ and ⋯, what they are, their numbers, whose move, the stamps, the jobs', () => {
     const { win } = open('c-greg')
     expect(within(win).getByRole('heading', { name: 'Greg Paulk' })).toBeTruthy()
     expect(win.textContent).toContain('Trade partner: Hillside Excavation')
     expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:2105550113')
+    // v2.5542: the call link and ⋯ wear the header's control class (no border, one height) in place of their own borders.
+    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).className).toBe('thread-head-control')
+    expect(within(win).getByRole('button', { name: 'More' }).className).toBe('thread-head-control')
     const reach = win.querySelector('[data-thread-reach]') as HTMLElement
     expect(within(reach).getByRole('link', { name: 'greg@hillside.example' }).getAttribute('href')).toBe('mailto:greg@hillside.example')
     fireEvent.click(within(win).getByRole('button', { name: 'Hide their numbers and addresses' }))
@@ -141,6 +160,9 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     const onShowContact = vi.fn()
     const w = writes('c-dee')
     const { win } = open('c-unknown', { w, onShowContact })
+    const header = win.querySelector('[data-thread-header]') as HTMLElement
+    expect(within(header).getByText('A number nobody has named')).toBeTruthy()
+    expect(within(header).getAllByText('Who is this?')).toHaveLength(1)
     fireEvent.click(within(win).getByRole('button', { name: 'Who is this?' }))
     const who = await screen.findByRole('dialog', { name: /^Who is this\?/ })
     fireEvent.change(within(who).getByRole('textbox', { name: 'Their name or their company' }), { target: { value: 'Alamo' } })
@@ -151,5 +173,24 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     fireEvent.click(within(who).getByRole('button', { name: 'This is who it is' }))
     await waitFor(() => expect(onShowContact).toHaveBeenCalledWith('c-dee'))
     expect(w.nameContact).toHaveBeenCalledWith('c-unknown', { record: { table: 'gc_companies', id: 'gc-alamo' }, kind: 'trade', name: 'Dee' })
+  })
+
+  it('Who is this?: the box their line came in on puts its own kinds first (R6)', async () => {
+    const dana: RecordHit = { record: { table: 'customers', id: 'cu-dana' }, label: 'Dana Whitfield', sub: 'Customer', kind: 'customer' }
+    const view = spineMessagesView()
+    const unknown = view.contacts.find((c) => c.id === 'c-unknown')!
+    const shown = async (box: 'team' | 'bids' | null) => {
+      const w = { ...writes(), searchRecords: vi.fn(() => Promise.resolve([ALAMO, dana])) }
+      const { unmount } = renderWithProviders(<WhoIsThisWindow contact={unknown} box={box} writes={w} onNamed={vi.fn()} onClose={vi.fn()} />)
+      const who = screen.getByRole('dialog', { name: /^Who is this\?/ })
+      fireEvent.change(within(who).getByRole('textbox', { name: 'Their name or their company' }), { target: { value: 'Whit' } })
+      await within(who).findByRole('option', { name: /Dana Whitfield/ })
+      const order = within(who).getAllByRole('option').map((o) => o.textContent ?? '')
+      unmount()
+      return order.map((t) => (t.startsWith('Dana') ? 'Dana' : 'Alamo'))
+    }
+    expect(await shown('team')).toEqual(['Dana', 'Alamo'])
+    expect(await shown('bids')).toEqual(['Alamo', 'Dana'])
+    expect(await shown(null)).toEqual(['Alamo', 'Dana'])
   })
 })

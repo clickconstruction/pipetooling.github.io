@@ -414,7 +414,7 @@ export default function SubPortalGlobeButton({
         fontWeight: 600,
         border: danger ? '1px solid #f1c4bf' : '1px solid var(--border-strong)',
         background: 'var(--surface)',
-        color: danger ? '#b42318' : 'var(--text-900)',
+        color: danger ? '#b42318' : 'var(--text-strong)',
         borderRadius: 6,
         cursor: busy ? 'wait' : 'pointer',
         marginRight: 6,
@@ -491,7 +491,7 @@ export default function SubPortalGlobeButton({
 
             {main.kind === 'unminted' && (
               <div style={{ marginTop: '0.6rem', border: '1px dashed var(--border-strong)', borderRadius: 7, padding: '0.7rem 0.9rem' }}>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-900)' }}>No portal link yet.</div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>No portal link yet.</div>
                 <p style={{ margin: '0.3rem 0 0.6rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   {personName} has never been given a portal page. Creating the link makes their page live — you decide when to text it. Just looking? Close this and nothing is created.
                 </p>
@@ -518,7 +518,7 @@ export default function SubPortalGlobeButton({
                       <button
                         type="button"
                         onClick={() => { setSlugInput(slugSaved); setChangeOpen(true) }}
-                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', background: 'var(--surface)', color: 'var(--text-900)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}
+                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}
                       >
                         Change address…
                       </button>
@@ -539,7 +539,7 @@ export default function SubPortalGlobeButton({
                       value={slugInput}
                       readOnly={slugLocked}
                       onChange={(e) => setSlugInput(normalizeSlugInput(e.target.value))}
-                      style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', padding: '0.45rem 0.6rem 0.45rem 0', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: 'var(--text-900)' }}
+                      style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', padding: '0.45rem 0.6rem 0.45rem 0', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: 'var(--text-strong)' }}
                     />
                     {!slugLocked && (
                       <button
@@ -573,7 +573,7 @@ export default function SubPortalGlobeButton({
                   <button
                     type="button"
                     onClick={() => previewUrl && window.open(previewUrl, '_blank', 'noopener')}
-                    style={{ padding: '0.45rem 1rem', background: 'var(--surface)', color: 'var(--text-900)', border: '1px solid var(--border-strong)', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+                    style={{ padding: '0.45rem 1rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
                   >
                     Preview as {firstName}
                   </button>
@@ -604,7 +604,7 @@ export default function SubPortalGlobeButton({
                           type="text"
                           value={addrInput}
                           onChange={(e) => setAddrInput(normalizeSlugInput(e.target.value))}
-                          style={{ flex: 1, minWidth: 140, padding: '0.3rem 0.5rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-900)' }}
+                          style={{ flex: 1, minWidth: 140, padding: '0.3rem 0.5rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
                         />
                         {smallBtn('🎲', () => rollDice(addrInput, setAddrInput))}
                         {smallBtn('Save', () => void saveAddressChange())}

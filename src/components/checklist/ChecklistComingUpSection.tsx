@@ -190,7 +190,7 @@ export function ComingUpWaitingGroupList({ groups, groupBackground }: { groups: 
                 ) : (
                   <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>not staffed yet</span>
                 )}
-                {g.stageTitle ? <span style={{ whiteSpace: 'nowrap', color: 'var(--text-soft, var(--text-muted))' }}>· ⛰ {g.stageTitle}</span> : null}
+                {g.stageTitle ? <span style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>· ⛰ {g.stageTitle}</span> : null}
               </div>
             </div>
             <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0 }}>

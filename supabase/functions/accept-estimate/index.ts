@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
 import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
 import { canDeclineEstimate, normalizeEstimateDeclineReason } from '../_shared/estimateDecline.ts'
+import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
 const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
@@ -99,21 +100,20 @@ async function handleDecline(
   tokenHash: string,
   declineReason: unknown,
 ): Promise<Response> {
-  const { data: rowRaw, error: fetchErr } = await admin
-    .from('estimates')
-    .select('id, status, public_token_expires_at')
-    .eq('public_token_hash', tokenHash)
-    .maybeSingle()
+  // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
+  const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
+  const { data: rowRaw, error: fetchErr } = ref
+    ? await admin.from('estimates').select('id, status, public_token_expires_at').eq('id', ref.estimateId).maybeSingle()
+    : { data: null, error: null }
   const row = rowRaw as Pick<EstimateFetchRow, 'id' | 'status' | 'public_token_expires_at'> | null
-  if (fetchErr || !row) return json(404, { error: 'Not found' })
+  if (fetchErr || !row || !ref) return json(404, { error: 'Not found' })
 
   if (row.status === 'declined') return json(200, { ok: true, alreadyDeclined: true })
   if (row.status === 'customer_accepted') return json(409, { error: 'Already accepted', code: 'already_accepted' })
   const verdict = canDeclineEstimate(row.status)
   if (!verdict.ok) return json(404, { error: 'Not available' })
 
-  const exp = row.public_token_expires_at ? Date.parse(String(row.public_token_expires_at)) : NaN
-  if (!Number.isNaN(exp) && exp < Date.now()) return json(410, { error: 'Link expired', code: 'expired' })
+  if (linkHasExpired(ref, row.public_token_expires_at, Date.now())) return json(410, { error: 'Link expired', code: 'expired' })
 
   const reason = normalizeEstimateDeclineReason(declineReason)
   const { data: updatedRows, error: updErr } = await admin
@@ -213,17 +213,21 @@ serve(async (req) => {
     })
     const tokenHash = await sha256HexFromString(raw)
 
-    const { data: rowRaw, error: fetchErr } = await admin
-      .from('estimates')
-      .select(
-        'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title, total_cents, options_snapshot',
-      )
-      .eq('public_token_hash', tokenHash)
-      .maybeSingle()
+    // #127: the emailed link's hash on the row, or a link shared in a message (estimate_share_links).
+    const ref = await estimateRefForTokenHash(admin as unknown as EstimateLookupClient, tokenHash)
+    const { data: rowRaw, error: fetchErr } = ref
+      ? await admin
+          .from('estimates')
+          .select(
+            'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title, total_cents, options_snapshot',
+          )
+          .eq('id', ref.estimateId)
+          .maybeSingle()
+      : { data: null, error: null }
 
     const row = rowRaw as EstimateFetchRow | null
 
-    if (fetchErr || !row) {
+    if (fetchErr || !row || !ref) {
       return new Response(JSON.stringify({ error: 'Not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -253,8 +257,7 @@ serve(async (req) => {
       })
     }
 
-    const exp = row.public_token_expires_at ? Date.parse(String(row.public_token_expires_at)) : NaN
-    if (!Number.isNaN(exp) && exp < Date.now()) {
+    if (linkHasExpired(ref, row.public_token_expires_at, Date.now())) {
       return new Response(JSON.stringify({ error: 'Link expired', code: 'expired' }), {
         status: 410,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

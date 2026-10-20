@@ -4,6 +4,7 @@ import {
   buildDirectoryRows,
   directoryAgoPhrase,
   directorySearchMatches,
+  ledgerBandInfo,
   priceCountsByHouse,
   requestOutcomeLabel,
   type DirectoryHouse,
@@ -123,6 +124,28 @@ describe('requestOutcomeLabel', () => {
     expect(requestOutcomeLabel('closed')).toBe('closed')
     expect(requestOutcomeLabel('draft')).toBe('draft')
     expect(requestOutcomeLabel('anything-else')).toBe('no reply yet')
+  })
+})
+
+describe('ledgerBandInfo', () => {
+  it('finds the middle group the sort builds — first ledger row and how many there are', () => {
+    const rows = buildDirectoryRows({
+      houses: [
+        house('reece', 'Reece'),
+        house('mutual', 'Lone Star Mutual', { vendor_kind: 'insurer' }),
+        house('rentals', 'Longhorn Rentals', { vendor_kind: 'rental_yard' }),
+        house('norep', 'Cypress Supply'),
+      ],
+      reps: [rep('r1', 'reece', { is_default: true })],
+      requests: [],
+      priceCountByHouse: null,
+    }).rows
+    // Sorted: Reece (rep'd) · the two ledger vendors · Cypress (needs a rep).
+    expect(ledgerBandInfo(rows)).toEqual({ index: 1, count: 2 })
+  })
+  it('reports no band when every row is a supply house', () => {
+    expect(ledgerBandInfo([{ kind: 'supply_house' }, { kind: 'supply_house' }])).toEqual({ index: -1, count: 0 })
+    expect(ledgerBandInfo([])).toEqual({ index: -1, count: 0 })
   })
 })
 

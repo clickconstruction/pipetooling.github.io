@@ -11,6 +11,11 @@ export type UpdateFocusApplyDirectOpts = {
   jobLedgerId: string | null
   bidId: string | null
   notes: string
+  /**
+   * Job Mode's On my way and I'm here (v2.5573): the new session's leg. `on-the-way` stamps `travel_started_at`,
+   * `on-site` stamps `arrived_at`, on the row this call inserts (or, for a salaried person, updates). Omitted: no stamp.
+   */
+  travel?: 'on-the-way' | 'on-site'
 }
 
 export type UpdateFocusApplyDirectResult = {

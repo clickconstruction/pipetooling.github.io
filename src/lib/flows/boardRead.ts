@@ -123,6 +123,22 @@ export function readBoard(flow: FlowDef, answer: FlowRowsKindAnswer, now: Date):
 }
 
 /**
+ * `customer_portal_views`' answer (helper 8, cut 8) as each customer's last outside open of their page: the row with
+ * no paper. A customer with no such row has never opened it, so is left out.
+ */
+export function pageOpensByCustomer(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!Array.isArray(raw)) return out
+  for (const r of raw) {
+    if (!isObject(r) || r.paper_kind != null) continue
+    const id = str(r.customer_id)
+    const at = str(r.last_opened_at)
+    if (id && at && (!out[id] || at > out[id]!)) out[id] = at
+  }
+  return out
+}
+
+/**
  * By company's Portal column. A trade partner's is their Portal opened step: "opened", else "never". A customer's is
  * the last outside open of their page (`customer_portal_views`, the row with no paper): "today", "N d ago", or "never".
  */

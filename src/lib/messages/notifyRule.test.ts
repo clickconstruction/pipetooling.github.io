@@ -106,6 +106,13 @@ describe('pushesFor', () => {
     expect(pushesFor(late, { ...closed, autoAnswer: 'sent' }, settings)[0]?.body).toBe('Dana wrote after hours. The app already answered tonight.')
   })
 
+  it('says only that the line waits for the morning while no after-hours answer goes', () => {
+    const late = { ...dana, at: at('17:10') }
+    expect(pushesFor(late, { ...closed, autoAnswer: null }, settings)[0]?.body).toBe('Dana wrote after hours. It waits for the morning.')
+    expect(afterHoursWords('Dana', null)).toBe('Dana wrote after hours. It waits for the morning.')
+    expect(afterHoursWords('Dana', undefined)).toBe('Dana wrote after hours. It waits for the morning.')
+  })
+
   it('sends nothing for a supply house’s or a candidate’s line, our own line, or an answered call', () => {
     expect(pushesFor({ ...dana, channel: 'email', kind: 'supply_house', name: 'Hughes Supply' }, luisHasIt, settings)).toEqual([])
     expect(pushesFor({ ...dana, kind: 'candidate' }, luisHasIt, settings)).toEqual([])
@@ -150,7 +157,7 @@ describe('the words', () => {
   })
 
   it('pass the plain words rules', () => {
-    for (const w of [officeWaitWords('Dana', 15), officeWaitWords('Dana', 1), afterHoursWords('Dana', 'send'), afterHoursWords('Dana', 'sent'), replyWords({ channel: 'missed', body: '' }), replyWords({ channel: 'voicemail', body: '' })]) {
+    for (const w of [officeWaitWords('Dana', 15), officeWaitWords('Dana', 1), afterHoursWords('Dana', 'send'), afterHoursWords('Dana', 'sent'), afterHoursWords('Dana', null), replyWords({ channel: 'missed', body: '' }), replyWords({ channel: 'voicemail', body: '' })]) {
       expect(plainWordsFailures(w)).toEqual([])
     }
   })

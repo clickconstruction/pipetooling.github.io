@@ -28,7 +28,7 @@ export function BridgeRule() {
         </button>
       </div>
       {open && (
-        <div role="tooltip" style={{ position: 'absolute', left: 0, top: '100%', marginTop: 6, zIndex: 5, maxWidth: 680, background: 'var(--text)', color: 'var(--surface)', padding: '0.7rem 0.85rem', borderRadius: 8, fontSize: '0.88rem', lineHeight: 1.45, boxShadow: '0 12px 32px rgba(0,0,0,0.25)' }} data-testid="bridge-rule-popover">
+        <div role="tooltip" style={{ position: 'absolute', left: 0, top: '100%', marginTop: 6, zIndex: 5, maxWidth: 680, background: 'var(--text-base)', color: 'var(--surface)', padding: '0.7rem 0.85rem', borderRadius: 8, fontSize: '0.88rem', lineHeight: 1.45, boxShadow: '0 12px 32px rgba(0,0,0,0.25)' }} data-testid="bridge-rule-popover">
           <div>{STAGE_RULE_LONG}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
             {STAGE_RULE_POINTS.map((p) => (

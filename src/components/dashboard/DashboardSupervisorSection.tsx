@@ -129,7 +129,7 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
               <button
                 type="button"
                 onClick={() => setDeckOpen(true)}
-                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: 'var(--text-blue-600)', color: 'white', cursor: 'pointer' }}
+                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}
               >
                 {deckSummary?.startsWith('all') ? 'Change a rating' : 'Rate my crew'}
               </button>
@@ -158,7 +158,7 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
                   <button
                     type="button"
                     onClick={() => onLeaveReport({ id: r.jobId, hcpNumber: r.hcpNumber, jobName: r.jobName, jobAddress: r.address ?? '' })}
-                    style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.25rem 0.6rem', borderRadius: 6, border: 'none', background: 'var(--text-blue-600)', color: 'white', cursor: 'pointer' }}
+                    style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.25rem 0.6rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer' }}
                   >
                     Write it
                   </button>

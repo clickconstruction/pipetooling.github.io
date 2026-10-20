@@ -9,8 +9,12 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-20
 ---
+
+> **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `BidFormModal.tsx` draws `BidCountSourcesField` (new) under the CountTooling Plans field of a saved bid — one row per `bid_count_sources` project (`countSourceLabel`, *first* / *combined*, imported by whom and when, Open ↗, × → Remove / Keep) — and `BidsBidBoardTab.tsx` adds one CountTooling chip per project beyond the bid's own link through `useBidCountSourcesByBid` / `useBidBoardScope` (`docs/recent-features/v2.5520.md`, the combine train's last PR).
+
+> **v2.5647 / v2.5648 / v2.5651 (after `mapped_at`) — the money line under the Job block:** `BidWonJobActions`' Job block (F6, Win / Loss) draws `BidMoneyLine.tsx` over `lib/bids/bidMoneyLine.ts` for the job's people (`is_job_people`; `useBidMoneyStrip`, one `list_bid_money_strip` read per bid, again on focus and when a job is made from the bid): the job's stage, what is still open, the customer's last word and its tone, with **Send the pay page** (the Pipeline row's `JobCustomerSheet` on Text or Email, the pay page as `{bill}`), the customer's speech bubble (`MessagesButton`'s `onPressInstead` → the same sheet), **Write down their word** (`SetPromisedPayDateModal`) and **Trail** (`BidMoneyTrail.tsx`); the board's compact won link is unchanged, the board-wide line being the Money lens's (`docs/recent-features/v2.5647.md`, punch list #129).
 
 ## What this surface is
 
@@ -231,7 +235,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 - **Due:** date input (clearing it clears the time), "+ Add due time" / time input + remove (`dueTimeOpen`).
 - **Sent:** with versions → `BidGcSentPanel` (per-GC send records; writes the roll-ups itself — `bids.bid_date_sent` = first send, which a sync trigger also enforces server-side, and `bids.outcome` through `lib/bids/gcPacketOutcome.ts`; `onOutcomeRollupChanged` → `setOutcome` + `onOutcomeRollupPersisted`; `onRollupDateChanged` → parent `onGcRollupDateChanged`, which resets attestation and may offer the robot envelope); without → the hand-typed Bid Date Sent + an IIFE (782–807) deriving "Sent N days ago" and "Acknowledged by …" from `pendingAttestationForDate` / `pendingBidDateSentAttestation` / `editingBid.bid_date_sent_attested_by`.
 - **Last contact:** `BidLogContactControl` when editing (a contact is a ledger entry), raw `datetime-local` for New Bid.
-- **Win / Loss:** `OUTCOME_SEGMENTS`; Won/Lost locked (`perGcLocked` 829) when the bid has versions; Lost → `BidLossCategoryChips` + free text + nudge; Won → Start Date; editing → `BidWonJobActions`.
+- **Win / Loss:** `OUTCOME_SEGMENTS`; Won/Lost locked (`perGcLocked` 829) when the bid has versions; Lost → `BidLossCategoryChips` + free text + nudge; Won → Start Date; editing → `BidWonJobActions` (its Job block carries the money line since v2.5647, the note atop).
 - **Tests:** `BidWonJobActions.render.test.tsx`, `bidLossCategories.test.ts`; `bidDateSentDisplay.ts` (29 lines), the attestation IIFE, `BidGcSentPanel` (443) and `BidLogContactControl` (187) have none.
 - **Approach:** Stage A the attestation line and the lock rule first; then `BidFormStatusDates` owning `dueTimeOpen` + `bidHasVersions` (effect 216–231 moves with it) and receiving `setLoggingContact`.
 

@@ -4,6 +4,7 @@ import {
   followUpContactsFromRows,
   followUpInputFromRows,
   followUpMessagesFromRows,
+  followUpNewLane,
   heardLinesFromRows,
   highlightsFromRows,
   owedRecordsFromRows,
@@ -31,6 +32,10 @@ const contact = (id: string, patch: Partial<FollowUpContactRow>): FollowUpContac
   off_since: null,
   off_why: null,
   off_by: null,
+  prospect_id: null,
+  supply_house_id: null,
+  supply_house_contact_id: null,
+  team_prospect_id: null,
   state: 'done',
   snoozed_until: null,
   has_user_id: null,
@@ -156,5 +161,46 @@ describe('followUpInputFromRows into the queue', () => {
     expect(queue.weOwe.map((r) => r.pill)).toEqual(['we owe the start date · by Mon Oct 5'])
     expect(queue.needsReply.find((r) => r.contactId === 'greg')!.offers.map((o) => o.kind)).toEqual(['day', 'question'])
     expect(queue.count).toBe(3)
+  })
+})
+
+describe('the New lane from the rows (residential R7)', () => {
+  // Greg's two jobs, the default one taking his email without anyone tying it; Hillside's other job closed.
+  const withJobs: FollowUpRows = {
+    ...ROWS,
+    contacts: ROWS.contacts.map((c) => (c.id === 'greg' ? { ...c, has_user_id: 'u-robert', has_since: '2026-10-01T15:00:00.000Z', has_how: 'handed' } : c)),
+    messages: ROWS.messages.map((m) => (m.id === '16' ? { ...m, project_id: 'p-boerne', mailbox: 'bids', tied_by: null } : m)),
+    jobs: [
+      { contact_id: 'greg', bid_id: null, project_id: 'p-boerne', jobs_ledger_id: null, is_default: true, created_at: '2026-09-01T00:00:00.000Z' },
+      { contact_id: 'greg', bid_id: 'b-cibolo', project_id: null, jobs_ledger_id: null, is_default: false, created_at: '2026-09-02T00:00:00.000Z' },
+    ],
+    jobStates: { bids: [{ id: 'b-cibolo', outcome: null }], projects: [{ project_id: 'p-boerne', stage: 'building', lost_on: null }] },
+  }
+  const NOW = '2026-10-02T17:00:00.000Z'
+
+  it('reads each line’s box and tie, and each person’s jobs', () => {
+    const input = followUpInputFromRows(withJobs, TODAY, USERS)
+    expect(input.messages.find((m) => m.id === '16')).toMatchObject({ mailbox: 'bids', tiedByHand: false, jobId: 'project:p-boerne' })
+    expect(input.contacts.find((c) => c.id === 'greg')).toMatchObject({ jobIds: ['project:p-boerne', 'bid:b-cibolo'], defaultJobId: 'project:p-boerne' })
+  })
+
+  it('sorts the number nobody named and the line the default took, and leaves them out of Needs a reply', () => {
+    const input = followUpInputFromRows(withJobs, TODAY, USERS)
+    const queue = followUpQueue(input, { newLane: followUpNewLane(input, withJobs.jobStates ?? {}, NOW) })
+    expect(queue.newLane.map((r) => [r.contactId, r.sort, r.via])).toEqual([
+      ['unk1', 'who', 'Text'],
+      ['greg', 'job', 'Email to bids@'],
+    ])
+    expect(queue.needsReply.map((r) => r.contactId)).toEqual(['priya'])
+    expect(queue.count).toBe(3)
+  })
+
+  it('leaves Greg in Needs a reply once someone tied his line, or when one of his jobs is closed', () => {
+    const tied = { ...withJobs, messages: withJobs.messages.map((m) => (m.id === '16' ? { ...m, tied_by: 'u-rosa' } : m)) }
+    const tiedInput = followUpInputFromRows(tied, TODAY, USERS)
+    expect(followUpQueue(tiedInput, { newLane: followUpNewLane(tiedInput, tied.jobStates ?? {}, NOW) }).newLane.map((r) => r.contactId)).toEqual(['unk1'])
+    const closed = { bids: [{ id: 'b-cibolo', outcome: 'lost' }], projects: [{ project_id: 'p-boerne', stage: 'building', lost_on: null }] }
+    const input = followUpInputFromRows(withJobs, TODAY, USERS)
+    expect(followUpQueue(input, { newLane: followUpNewLane(input, closed, NOW) }).newLane.map((r) => r.contactId)).toEqual(['unk1'])
   })
 })

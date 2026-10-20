@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
-import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, canApproveClause, canEditClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
+import { MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from '../../../supabase/functions/_shared/messagesTeams'
+import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canReadJobMessages, canOpenOwnerContractFile, readsCustomerLinesInJobUpdates, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -27,8 +28,62 @@ describe('canOpenGcProjects', () => {
   })
 })
 
+describe('canMessageCustomersFromJobMode (Messages, R5)', () => {
+  it('opens for the field roles that text a customer from Job Mode', () => {
+    for (const role of ['primary', 'helpers'] as UserRole[]) expect(canMessageCustomersFromJobMode(role)).toBe(true)
+  })
+
+  it('stays shut for the office, the superintendent, a subcontractor and a session with no role yet', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'subcontractor'] as UserRole[]) {
+      expect(canMessageCustomersFromJobMode(role)).toBe(false)
+    }
+    expect(canMessageCustomersFromJobMode(null)).toBe(false)
+  })
+
+  it('names the same roles as the database’s messages_tech_team(), so the two copies cannot drift', () => {
+    expect([...MESSAGES_TECH_TEAM].sort()).toEqual(teamInSql('messages_tech_team').sort())
+  })
+})
+
+describe('canOpenMessages (residential R2)', () => {
+  it('opens /messages for the GC office team, the people the spine’s tables open to', () => {
+    for (const role of GC_OFFICE_TEAM) expect(canOpenMessages(role)).toBe(true)
+  })
+
+  it('keeps the field, the subs and a session with no role yet out, since the field’s door is Job Mode', () => {
+    for (const role of ['superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canOpenMessages(role)).toBe(false)
+    }
+    expect(canOpenMessages(null)).toBe(false)
+    expect(canOpenMessages(undefined)).toBe(false)
+  })
+})
+
+describe('canReadJobMessages (Messages, cut 10: a job’s lines in Job activity)', () => {
+  it('opens for the office team and the field roles of R5’s door', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'helpers'] as UserRole[]) {
+      expect(canReadJobMessages(role)).toBe(true)
+    }
+  })
+
+  it('stays shut for the superintendent, a subcontractor and a session with no role yet', () => {
+    for (const role of ['superintendent', 'subcontractor'] as UserRole[]) expect(canReadJobMessages(role)).toBe(false)
+    expect(canReadJobMessages(null)).toBe(false)
+  })
+})
+
+describe('readsCustomerLinesInJobUpdates (the tech’s Customer pill in Job updates)', () => {
+  it('opens for the field roles that read a job’s lines, and for nobody else', () => {
+    for (const role of ['primary', 'helpers'] as UserRole[]) expect(readsCustomerLinesInJobUpdates(role)).toBe(true)
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'subcontractor'] as UserRole[]) {
+      expect(readsCustomerLinesInJobUpdates(role)).toBe(false)
+    }
+    expect(readsCustomerLinesInJobUpdates(null)).toBe(false)
+  })
+})
+
 /** The roles the newest migration that defines `fn` names in it: the database's copy of a GC team. */
-function teamInSql(fn: 'gc_money_team' | 'gc_office_team' | 'gc_clause_approve_team'): string[] {
+function teamInSql(fn: 'gc_money_team' | 'gc_office_team' | 'gc_clause_approve_team' | 'messages_tech_team'): string[] {
   const dir = join(process.cwd(), 'supabase', 'migrations')
   const head = `FUNCTION public.${fn}()`
   const newest = readdirSync(dir)
@@ -98,6 +153,11 @@ describe('canSendGcTradeEmail', () => {
 
   it('names the money team as gc-customer-email does, so the two copies cannot drift', () => {
     expect([...GC_MONEY_TEAM].sort()).toEqual([...GC_CUSTOMER_EMAIL_ROLES].sort())
+  })
+
+  it('names the office and the techs as messages-notify’s push for a reply does (R5), so the copies cannot drift', () => {
+    expect([...GC_OFFICE_TEAM].sort()).toEqual([...MESSAGES_OFFICE_ROLES].sort())
+    expect([...MESSAGES_TECH_TEAM].sort()).toEqual([...MESSAGES_TECH_ROLES].sort())
   })
 
   it('names the money team as the office notices do, who hear the money only on it (O10a)', () => {

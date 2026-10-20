@@ -134,6 +134,16 @@ function rowGroup(row: DirectoryRow<DirectoryHouse>): number {
   return row.needsRep ? 2 : 0
 }
 
+/**
+ * The middle group (#131): where the office's "Ledger only" band draws and how
+ * many rows it covers. `index` is -1 when no ledger-only vendor is listed.
+ */
+export function ledgerBandInfo(rows: Array<{ kind: DirectoryKind }>): { index: number; count: number } {
+  const index = rows.findIndex((r) => !isQuotableVendorKind(r.kind))
+  const count = rows.reduce((n, r) => n + (isQuotableVendorKind(r.kind) ? 0 : 1), 0)
+  return { index, count }
+}
+
 export function buildDirectoryRows<H extends DirectoryHouse>(input: BuildDirectoryInput<H>): { rows: DirectoryRow<H>[]; coverage: DirectoryCoverage } {
   const kinds = input.kinds ?? 'all'
   const recentLimit = input.recentLimit ?? 3

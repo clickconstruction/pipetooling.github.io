@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { JobSummaryCompareBundle } from '../../hooks/useJobSummaryView'
 import type { JobDayLedger } from '../../lib/jobs/jobDayLedger'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -11,7 +12,9 @@ import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
  * medians per bill month on one day axis (last field day → bill, bill →
  * paid) with a 30-day line, tiles for the whole cycle and the slowest payer,
  * and the stale-open list — open jobs with no field work for N days — each
- * row a door to the job. Presentational; kernel in `lib/jobs/jobSummaryCycle.ts`.
+ * row a door to the job's window, and a door to the Follow-ups deck's Idle
+ * lens, which reviews them one card at a time (v2.5513). Presentational;
+ * kernel in `lib/jobs/jobSummaryCycle.ts`.
  */
 type Props = {
   rows: readonly JobSummaryEnrichedRow[]
@@ -26,7 +29,8 @@ type Props = {
   compare: JobSummaryCompareBundle | null
   compareLabel: string
   showMoney: boolean
-  onOpenJob: (jobNumber: string) => void
+  /** A stale row opens the job's own window (v2.5513), where the bill, the schedule and the status live. */
+  onOpenJobDetail: (jobId: string) => void
 }
 
 const WORK_TO_BILL = '#2563eb'
@@ -52,12 +56,13 @@ function Delta({ now, prior, vs }: { now: number | null; prior: number | null; v
   return <div style={{ fontSize: '0.7rem', fontVariantNumeric: 'tabular-nums', color: flat ? 'var(--text-muted)' : d < 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{flat ? '•' : d > 0 ? '▲' : '▼'} {Math.abs(Math.round(d))} d vs {vs}</div>
 }
 
-export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, startYmd, endYmd, todayYmd, allJobs, userNameById, compare, compareLabel, showMoney, onOpenJob }: Props) {
+export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, startYmd, endYmd, todayYmd, allJobs, userNameById, compare, compareLabel, showMoney, onOpenJobDetail }: Props) {
   const cycle = useMemo(() => jobCycleRows(rows, ledger), [rows, ledger])
   const summary = useMemo(() => summarizeJobCycle(cycle), [cycle])
   const months = useMemo(() => bucketJobCycleByMonth(cycle, startYmd, endYmd), [cycle, startYmd, endYmd])
   const prior = useMemo(() => (compare ? summarizeJobCycle(jobCycleRows(compare.rows, compare.ledger)) : null), [compare])
   const [minIdle, setMinIdle] = useState(21)
+  const navigate = useNavigate()
   const stale = useMemo(() => staleOpenJobs(allJobs, todayYmd, minIdle, ledger), [allJobs, todayYmd, minIdle, ledger])
   const openCount = useMemo(() => allJobs.filter((j) => j.status !== 'billed' && j.status !== 'paid').length, [allJobs])
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
@@ -201,6 +206,17 @@ export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, start
               ))}
             </span>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>open, no field work since</span>
+            {stale.length > 0 ? (
+              <button
+                type="button"
+                data-testid="cycle-review-idle"
+                onClick={() => navigate('/jobs?tab=stages&followups=idle')}
+                title="The Follow-ups deck on its Idle lens: one card per idle job, what it needs, a door, and Looks fine or Snooze to remember your call"
+                style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 700, padding: '0.22rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                Review them in Follow-ups →
+              </button>
+            ) : null}
           </div>
           {stale.length === 0 ? (
             <p style={{ margin: '0.25rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ledgerLoading ? 'Loading the day ledger…' : `Nothing open has sat idle ${minIdle} days.`}</p>
@@ -212,8 +228,8 @@ export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, start
                   <span style={{ display: 'inline-block', height: 6, borderRadius: 3, background: BILL_TO_PAID, width: Math.round(16 + 70 * (s.idleDays / maxIdle)), flex: '0 0 auto' }} />
                   <button
                     type="button"
-                    onClick={() => onOpenJob(s.number)}
-                    title={`Open ${s.number} on the Jobs view${s.lastWorkYmd ? ` · last field day ${formatStagesNextDateLabel(s.lastWorkYmd)}` : ''}`}
+                    onClick={() => onOpenJobDetail(s.jobId)}
+                    title={`Open ${s.number}’s job window${s.lastWorkYmd ? ` · last field day ${formatStagesNextDateLabel(s.lastWorkYmd)}` : ''}`}
                     style={{ flex: 1, minWidth: 0, textAlign: 'left', border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   >
                     <b>{s.number}</b> {s.name}
@@ -229,7 +245,7 @@ export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, start
               {stale.length > 40 ? <li style={{ padding: '0.25rem 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>… {stale.length - 40} more</li> : null}
             </ul>
           )}
-          <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>Every open job on the ledger, whatever Show says. Idle = today minus the last approved field day (else the job’s last work or creation date). Click a row to open it.</p>
+          <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>Every open job on the ledger, whatever Show says, a visit booked or not. Idle = today minus the last approved field day (else the job’s last work or creation date). Click a row to open the job’s window. The Follow-ups deck reviews the ones with nothing booked, one card at a time.</p>
         </div>
       </div>
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>

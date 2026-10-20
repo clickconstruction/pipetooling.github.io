@@ -19,14 +19,20 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
+
+/** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
+export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate'
+
+export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
   | { kind: 'email'; email: SampleEmailId }
+  | { kind: 'text'; text: SampleTextId }
   | { kind: 'paper'; paper: PaperId }
   | { kind: 'external'; note: string }
   | { kind: 'soon'; note: string }
@@ -128,6 +134,26 @@ export function customerJourneys(): Journey[] {
           guide: 'tell-if-a-customer-opened-an-estimate-and-record-a-no',
           reflects: ['Thank-you heading and body'],
           render: { kind: 'page', path: ESTIMATE_SAMPLE_DONE_PATH },
+        },
+        {
+          id: 'estimate-text',
+          label: 'Estimate text',
+          sublabel: 'Estimates → Send to customer → Tell the customer (the office presses it with the email; nothing goes on its own)',
+          when: 'Day 0, with the email, when the customer has a number on file.',
+          customerCan: 'Open the same accept link from their phone, and text back to the same number.',
+          guide: 'send-an-estimate-and-turn-it-into-a-job',
+          reflects: ['The office’s Estimate line on the quick replies, or the app’s own words', 'The accept link the email carries', 'Our company name and the company number'],
+          render: { kind: 'text', text: 'text-estimate' },
+        },
+        {
+          id: 'booked-text',
+          label: 'Booked text',
+          sublabel: 'Schedule → Add job to schedule → Tell the customer (the office presses it; nothing goes on its own)',
+          when: 'The day the first visit is booked. Every text to a number carries the opt-out line the first time.',
+          customerCan: 'Read the day and the window, and text back to the same number.',
+          guide: 'schedule-a-job-and-tell-the-customer',
+          reflects: ['The office’s Booked line on the quick replies, or the app’s own words', 'Our company name and the company number'],
+          render: { kind: 'text', text: 'text-booked' },
         },
         {
           id: 'job-contract-email',
@@ -517,6 +543,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'email', email: 'gc-schedule' },
         },
         {
+          id: 'gc-text',
+          label: 'A text from the company number',
+          sublabel: 'Messages → their thread → Text (devs only until the phone service is connected)',
+          when: 'Any time the office texts them from their thread. The first text to a number carries the opt-out line.',
+          customerCan: 'Read it and text back to the same number. STOP stops our texts, and HELP answers with how to reach us.',
+          guide: 'know-what-a-text-from-the-company-number-says',
+          reflects: ['Our company name and the company number', 'Who at the office sent it, never their own cell'],
+          render: { kind: 'text', text: 'text-customer' },
+        },
+        {
           id: 'gc-portal-schedule',
           label: 'GC mode: their schedule in their portal',
           sublabel: 'Their portal, first under each GC job we are building',
@@ -565,6 +601,16 @@ export function customerJourneys(): Journey[] {
           guide: 'close-out-a-gc-job-with-the-customer',
           reflects: ['Every line billed on the job', 'The customer’s portal link'],
           render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'gc-reply-email',
+          label: 'Messages: an email from their thread',
+          sublabel: 'GC projects → Messages → their thread → the reply box → Send email…',
+          when: 'Each time the office writes to them from their thread',
+          customerCan: 'Read our words under our letterhead, about the job named in the subject, and answer the person who signed it.',
+          guide: 'reply-to-a-person-from-their-thread',
+          reflects: ['The words the office wrote, with a subject from the job and the first line', 'The name they go by in the greeting', 'The sender’s name, title and cell in the signature'],
+          render: { kind: 'email', email: 'messages-reply' },
         },
         {
           id: 'owner-notice',
@@ -622,6 +668,36 @@ export function customerJourneys(): Journey[] {
           guide: 'email-a-trade-partner-from-gc-mode',
           reflects: ['The kind of email and who at the company gets it', 'The project manager on the GC project (the Reply-To and the signer)'],
           render: { kind: 'email', email: 'gc-trade-email' },
+        },
+        {
+          id: 'gc-file-link',
+          label: 'GC mode: a file sent as our own link',
+          sublabel: 'Messages → a person’s thread → a file on an email or a text, sent as our link',
+          when: 'Each time a file goes on a message as our link',
+          customerCan: 'Open the file from the link. A plan opens in Drive’s own viewer and anything else in the browser. A link we turned off says so.',
+          guide: 'find-every-message-with-a-person-in-one-place',
+          reflects: ['The file and which half of the job’s Drive folder it is in', 'Whether the office cut the link off, or it ended after 30 days'],
+          render: { kind: 'external', note: 'The link opens the file itself, so there is no page of ours to show. A link turned off reads “This link was turned off.”' },
+        },
+        {
+          id: 'sub-reply-email',
+          label: 'Messages: an email from their thread',
+          sublabel: 'GC projects → Messages → their thread → the reply box → Send email…',
+          when: 'Each time the office writes to them from their thread',
+          customerCan: 'Read our words under our letterhead, about the job named in the subject, and answer the person who signed it.',
+          guide: 'reply-to-a-person-from-their-thread',
+          reflects: ['The words the office wrote, with a subject from the job and the first line', 'The name they go by in the greeting', 'The sender’s name, title and cell in the signature'],
+          render: { kind: 'email', email: 'messages-reply' },
+        },
+        {
+          id: 'sub-text',
+          label: 'GC mode: a text to a trade partner',
+          sublabel: 'Messages → their thread → Text (devs only until the phone service is connected)',
+          when: 'Any time the office texts them from their thread. The first text to a number carries the opt-out line.',
+          customerCan: 'Read it and text back to the same number. Their reply lands in the thread, whoever at the office answers.',
+          guide: 'know-what-a-text-from-the-company-number-says',
+          reflects: ['Our company name and the company number', 'Who at the office sent it, never their own cell'],
+          render: { kind: 'text', text: 'text-trade' },
         },
         {
           id: 'sub-contract-email',

@@ -15,8 +15,8 @@ export const ACTIVITY_FILTERS: { value: ActivityFilter; label: string }[] = [
 
 /**
  * Job activity's buckets (Jobs → Pipeline): the panel's, and the customer's calls, texts and emails from Messages
- * (cut 10). Job Detail, Job Mode, Quickfill and Dispatch's customer summary keep {@link ACTIVITY_FILTERS}; they never
- * read messages. The lines' own counts are `countJobActivityLines` in `jobs/jobActivityLine.ts`.
+ * (cut 10). Quickfill and Dispatch's customer summary keep {@link ACTIVITY_FILTERS} and read no messages. Since v2.5527
+ * Job Mode's Job updates and the Job detail window take this set for a tech (`jobs/jobUpdatesCustomerLines.ts`). The lines' own counts are `countJobActivityLines` in `jobs/jobActivityLine.ts`.
  */
 export type JobActivityFilter = ActivityFilter | 'customer'
 

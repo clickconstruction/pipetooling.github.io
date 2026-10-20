@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, Fragment } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -47,11 +47,35 @@ import {
   customerDraftFromProspect,
   markProspectConverted,
   recordProspectConverted,
+  markProspectOnBench,
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
+import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, isProspectCompanyRole, kindFromUrlKey, parseTradesText, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
+import { addGcCompany, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
+import { boardStateFromRows } from '../lib/gc/boardRows'
+import { tradeBenches } from '../lib/gc/bench'
+import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
+import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubleRow } from '../lib/prospects/companyDouble'
+import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
+import { stripReads, type StripRead } from '../lib/prospects/stripState'
+import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
+import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
+import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
+import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
+import { useLeaveGuard } from '../hooks/useLeaveGuard'
+import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
+import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
+import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
+import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
+import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
+import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
+import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
+import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
-import { localCalendarDayKey } from '../utils/dateUtils'
+import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
@@ -113,7 +137,29 @@ type Prospect = {
   last_contact: string | null
   created_at: string | null
   updated_at: string | null
+  /** v2.5559: customer · gc_lead · sub, and each kind's facts. */
+  kind: ProspectKind
+  source: string | null
+  trades: string[] | null
+  max_miles: number | null
+  lang: string | null
+  company_role: string | null
+  customer_id: string | null
+  converted_customer_id: string | null
+  converted_gc_company_id: string | null
+  /** v2.5601: the person we call, and whether we may text them. */
+  is_person: boolean
+  contact_title: string | null
+  contact_phone: string | null
+  ok_to_text: string | null
+  maps_url: string | null
+  license: string | null
+  also_reach: string | null
 }
+
+/** Every column the deck reads (v2.5559 added the kind and its facts). */
+const PROSPECT_COLUMNS =
+  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id, is_person, contact_title, contact_phone, ok_to_text, maps_url, license, also_reach'
 
 type ProspectComment = {
   id: string
@@ -139,15 +185,6 @@ function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function formatDueBadge(lastContact: string | null): string | null {
-  const now = Date.now()
-  if (!lastContact) return 'Due'
-  const diffMs = now - new Date(lastContact).getTime()
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
-  if (diffDays >= 7) return `Due ${diffDays} days`
-  return null
 }
 
 function formatInteractionType(type: string): string {
@@ -261,10 +298,92 @@ function substituteCopyPlaceholders(
   return text
 }
 
+
+/** The boxes a kind adds to New Prospect and Edit prospect (v2.5559): where we found them for every kind; a sub's trades, range and language; a GC lead's role. */
+function renderKindFields(
+  k: ProspectKind,
+  f: {
+    source: string
+    setSource: (v: string) => void
+    trades: string
+    setTrades: (v: string) => void
+    maxMiles: string
+    setMaxMiles: (v: string) => void
+    role: string
+    setRole: (v: string) => void
+    /** The bench's trade names (v2.5560), offered as picks under Trades. */
+    tradeChoices?: readonly string[]
+  },
+) {
+  const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
+  const labelStyle = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
+  return (
+    <>
+      {k === 'gc_lead' && (
+        <div>
+          <span style={labelStyle}>Who they are</span>
+          <div style={{ display: 'flex', gap: '0.5rem 0.9rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+            {PROSPECT_COMPANY_ROLES.map((r) => (
+              <label key={r.role} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                <input type="radio" name="prospect-company-role" checked={f.role === r.role} onChange={() => f.setRole(r.role)} />
+                {r.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      {k === 'sub' && (
+        <>
+          <label>
+            <span style={labelStyle}>
+              Trades <span style={{ color: 'var(--text-muted)' }}>— the bench's names, a comma between two</span>
+            </span>
+            <input type="text" value={f.trades} onChange={(e) => f.setTrades(e.target.value)} style={inputStyle} placeholder="Concrete, Fire sprinkler" />
+          </label>
+          {(() => {
+            const left = tradesLeftToPick(f.tradeChoices ?? [], f.trades)
+            if (left.length === 0) return null
+            return (
+              <div role="group" aria-label="The bench's trades" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '-0.4rem', fontSize: '0.75rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>On the bench:</span>
+                {left.map((trade) => (
+                  <button
+                    key={trade}
+                    type="button"
+                    onClick={() => f.setTrades(withTrade(f.trades, trade))}
+                    style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                  >
+                    + {trade}
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
+          <label>
+            <span style={labelStyle}>Goes up to (miles)</span>
+            <input type="number" min={1} value={f.maxMiles} onChange={(e) => f.setMaxMiles(e.target.value)} style={inputStyle} placeholder="not said" />
+          </label>
+        </>
+      )}
+      <label>
+        <span style={labelStyle}>Where we found them</span>
+        <input type="text" list="prospect-sources" value={f.source} onChange={(e) => f.setSource(e.target.value)} style={inputStyle} placeholder={PROSPECT_SOURCES[0]} />
+        <datalist id="prospect-sources">
+          {PROSPECT_SOURCES.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      </label>
+    </>
+  )
+}
+
 export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
+  // The ZZ rule for prospects (v2.5583): a ZZ-named company is a dev's test row, hidden from every role but dev.
+  const hideZz = useZzTestJobsHidden(authRole)
   // v2.3805: a column share opens the Hiring pill too — the board then renders trimmed (`shared`).
   const { sharedRoleIds: myHiringShares, loading: hiringSharesLoading } = useMyHiringShares(authUser?.id)
   const canOpenHiring = teamProspectsAccess || myHiringShares.length > 0
@@ -275,6 +394,32 @@ export default function Prospects() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
+  // Which kind of company the deck is finding (v2.5559): customers, jobs to GC or subs. `?kind=`.
+  // The lane from the link before the first load (v2.5578): starting on the customer deck and reading
+  // `?kind=` afterwards raced two loads, and a refresh could paint the Customers deck under a lane's tab.
+  const [kind, setKind] = useState<ProspectKind>(() => kindFromSearch(location.search))
+  const latestLoad = useRef(makeLatestOnly())
+  const kindWords = PROSPECT_KIND_WORDS[kind]
+  // Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company.
+  const [benchDraft, setBenchDraft] = useState<BenchDraft | null>(null)
+  const [benchSaving, setBenchSaving] = useState(false)
+  const [benchError, setBenchError] = useState<string | null>(null)
+  // The Subs lane (v2.5560): the bench's trades and how many each can count on (null: not read, or
+  // refused), the bench's companies for the double check, the lane's whole queue for the counts,
+  // and the call script's window.
+  // The strips' reads (v2.5585): undefined until the first answer, null when the read failed, the rows once read.
+  const [benchTrades, setBenchTrades] = useState<StripRead<{ trade: string; dependable: number }[]>>(undefined)
+  const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null; trades: string[]; vetted?: boolean }[]>([])
+  const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
+  const [scriptOpen, setScriptOpen] = useState(false)
+  const tradeFilter = searchParams.get('trade')
+  // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
+  // refused), the customers for the double check, and the customer a new lead is linked to.
+  const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
+  const [gcWork, setGcWork] = useState<StripRead<GcWorkCounts>>(undefined)
+  const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null; since: string | null }[]>([])
+  const [prospectDoubles, setProspectDoubles] = useState<ProspectDoubleRow[]>([])
+  const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
 
   // Follow Up state
   const [followUpProspects, setFollowUpProspects] = useState<Prospect[]>([])
@@ -298,12 +443,14 @@ export default function Prospects() {
   const [lockHeldBy, setLockHeldBy] = useState<{ prospectId: string; name: string | null } | null>(null)
 
   // Edit form state
-  const [editCompanyName, setEditCompanyName] = useState('')
-  const [editContactName, setEditContactName] = useState('')
-  const [editPhoneNumber, setEditPhoneNumber] = useState('')
-  const [editEmail, setEditEmail] = useState('')
-  const [editAddress, setEditAddress] = useState('')
-  const [editLinksToWebsite, setEditLinksToWebsite] = useState('')
+  const [editSource, setEditSource] = useState('')
+  const [editTrades, setEditTrades] = useState('')
+  const [editMaxMiles, setEditMaxMiles] = useState('')
+  const [editRole, setEditRole] = useState('')
+  // The person we call and the company under them (v2.5601), the two blocks both windows share.
+  const [editPerson, setEditPerson] = useState<PersonFields>(EMPTY_PERSON)
+  const [editCompany, setEditCompany] = useState<CompanyFields>(EMPTY_COMPANY)
+  const [editOpenedWith, setEditOpenedWith] = useState<Record<string, string>>({})
 
   // Callback form state
   const [callbackDate, setCallbackDate] = useState('')
@@ -367,13 +514,16 @@ export default function Prospects() {
 
   // New Prospect modal state
   const [newProspectModalOpen, setNewProspectModalOpen] = useState(false)
-  const [newCompanyName, setNewCompanyName] = useState('')
-  const [newContactName, setNewContactName] = useState('')
-  const [newPhoneNumber, setNewPhoneNumber] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [newAddress, setNewAddress] = useState('')
-  const [newLinksToWebsite, setNewLinksToWebsite] = useState('')
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
+  const [newKind, setNewKind] = useState<ProspectKind>('customer')
+  const [newSource, setNewSource] = useState('')
+  const [newTrades, setNewTrades] = useState('')
+  const [newMaxMiles, setNewMaxMiles] = useState('')
+  const [newRole, setNewRole] = useState('')
+  const [newPerson, setNewPerson] = useState<PersonFields>(EMPTY_PERSON)
+  /** May we text? on the card (v2.5606): the chip opens the three answers. */
+  const [textAskOpen, setTextAskOpen] = useState(false)
+  const [newCompany, setNewCompany] = useState<CompanyFields>(EMPTY_COMPANY)
 
   // Copy templates (defaults from app_settings, overrides from user_prospect_copy_templates)
   const [copyDefaults, setCopyDefaults] = useState<Record<CopyTemplateKey, string>>({
@@ -421,6 +571,19 @@ export default function Prospects() {
     if (authLoading || hiringSharesLoading) return
     const params = new URLSearchParams(location.search)
     const tab = params.get('tab')
+    // A door from elsewhere (the bench's Find N more, v2.5559): `?tab=subs` or `?tab=gc-leads` names the kind.
+    const aliasKind: ProspectKind | null = tab === 'subs' ? 'sub' : tab === 'gc-leads' ? 'gc_lead' : null
+    if (aliasKind) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'follow-up')
+        next.set('kind', urlKeyForKind(aliasKind))
+        return next
+      }, { replace: true })
+      return
+    }
+    const urlKind = kindFromUrlKey(params.get('kind'))
+    if (urlKind !== kind) setKind(urlKind)
     if (tab === 'team') {
       // Top-level Team tab: the prospective-hires board (per-user users.team_prospects_access, or a column share)
       if (canOpenHiring) {
@@ -435,7 +598,7 @@ export default function Prospects() {
         setActiveTab('follow-up')
       }
     } else if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
-      if (tab === 'activity' && !canAccessActivityTab) {
+      if ((tab === 'activity' && !canAccessActivityTab) || (tab === 'convert' && urlKind !== 'customer')) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'follow-up')
@@ -462,7 +625,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring])
+  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring, kind])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -477,6 +640,152 @@ export default function Prospects() {
     }
   }, [location.search, setSearchParams])
 
+  // Escape and the backdrop (v2.5582): an untouched window closes at once, a touched one asks (useLeaveGuard, as the
+  // big windows do since v2.5530). Leaving New Prospect clears its boxes; Edit compares its boxes to what it opened with.
+  const newProspectDirty = newProspectModalOpen && anyTyped({ ...newPerson, okToText: newPerson.okToText !== 'not_asked', ...newCompany, newSource, newTrades, newMaxMiles, newRole, linked: !!newCustomerLink })
+  const newGuard = useLeaveGuard({ dirty: newProspectDirty, onClose: closeNewProspect, busy: saving, paused: !newProspectModalOpen })
+  const editFieldsNow: Record<string, string> = { ...editPerson, ...editCompany, source: editSource, trades: editTrades, miles: editMaxMiles, role: editRole }
+  const editGuard = useLeaveGuard({ dirty: editModalOpen && editDirty(editFieldsNow, editOpenedWith), onClose: closeEditProspect, busy: saving, paused: !editModalOpen })
+  function closeNewProspect() {
+    setNewProspectModalOpen(false)
+    resetNewProspectForm()
+  }
+  function closeEditProspect() {
+    setEditModalOpen(false)
+    setEditingProspect(null)
+  }
+  function resetNewProspectForm() {
+    setNewPerson(EMPTY_PERSON)
+    setNewCompany(EMPTY_COMPANY)
+    setNewSource('')
+    setNewTrades('')
+    setNewMaxMiles('')
+    setNewRole('')
+    setNewCustomerLink(null)
+    setNewProspectError(null)
+  }
+
+  // The bench (v2.5560): read the way GC projects reads it, so the strip says what the bench's own
+  // rule says. Fail-soft: a role the GC tables refuse sees the lane without the strip.
+  useEffect(() => {
+    if (kind !== 'sub' && newKind !== 'sub') return
+    if (!authUser?.id) return
+    let live = true
+    ;(async () => {
+      try {
+        const projects = await loadGcProjects()
+        const rows = await loadGcBoardRows(projects, todayYmdInAppTz(), { money: false })
+        if (!live) return
+        const state = boardStateFromRows(rows)
+        setBenchTrades(tradeBenches(state).map((b) => ({ trade: b.trade, dependable: b.dependable })))
+        setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null, trades: c.trades, vetted: c.vetting_status === 'approved' ? true : c.vetting_status === 'new' ? false : undefined })))
+      } catch {
+        if (live) setBenchTrades(null)
+      }
+    })()
+    return () => {
+      live = false
+    }
+  }, [kind, newKind, authUser?.id])
+
+  // The strip counts the lane as it stands: a sub the deck took off (an outcome, a delete) leaves the count with it.
+  const deckIds = new Set(followUpProspects.map((p) => p.id))
+  const benchNeedsNow: BenchNeed[] = kind === 'sub' ? benchNeeds(benchTrades ?? [], stillQueued(laneQueueAll, deckIds, tradeFilter)) : []
+
+  // One lookup for every double (v2.5579): the prospects of every lane and the customers load when New Prospect
+  // opens, whatever its kind; both fail-soft, and the bench rides along from the Subs effect above.
+  useEffect(() => {
+    if (!newProspectModalOpen || !authUser?.id) return
+    let live = true
+    loadProspectDoubles()
+      .then((rows) => {
+        if (live) setProspectDoubles(rows)
+      })
+      .catch(() => {
+        if (live) setProspectDoubles([])
+      })
+    loadCustomerDoubles()
+      .then((rows) => {
+        if (live) setCustomerDoubles(rows)
+      })
+      .catch(() => {
+        if (live) setCustomerDoubles([])
+      })
+    return () => {
+      live = false
+    }
+  }, [newProspectModalOpen, authUser?.id])
+  const newProspectTwin = newProspectModalOpen
+    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }, Date.now(), newCompany.mapsUrl)
+    : null
+
+  /** Open it on a prospect double (v2.5579): the form closes and the card opens on its own lane. */
+  function openDoubleProspect(twin: Extract<CompanyDouble, { door: 'open_prospect' }>) {
+    const lane = doubleLaneParams(twin)
+    setNewProspectModalOpen(false)
+    rememberProspectsTopTab('follow-up')
+    setTopTab('customers')
+    setActiveTab('follow-up')
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', 'follow-up')
+      if (lane.kind) next.set('kind', lane.kind)
+      else next.delete('kind')
+      next.set('prospect_id', lane.prospect_id)
+      next.delete('trade')
+      return next
+    })
+  }
+
+  // The Jobs to GC lane (v2.5561): the Project Board's counts and the customers, both fail-soft.
+  useEffect(() => {
+    if (kind !== 'gc_lead' && newKind !== 'gc_lead') return
+    if (!authUser?.id) return
+    let live = true
+    loadGcProjects()
+      .then((projects) => {
+        if (live) setGcWork(gcWorkCounts(projects))
+      })
+      .catch(() => {
+        if (live) setGcWork(null)
+      })
+    loadCustomerDoubles()
+      .then((rows) => {
+        if (live) setCustomerDoubles(rows)
+      })
+      .catch(() => {
+        if (live) setCustomerDoubles([])
+      })
+    return () => {
+      live = false
+    }
+  }, [kind, newKind, authUser?.id])
+
+  async function mergeJobs(ids: string[]) {
+    if (ids.length === 0) return {}
+    try {
+      const jobs = await loadProspectJobs(ids)
+      setJobsByProspect((prev) => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = jobs[id] ?? []
+        return next
+      })
+      return jobs
+    } catch {
+      return {}
+    }
+  }
+
+  const setTradeFilter = (trade: string | null) => {
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      if (trade) next.set('trade', trade)
+      else next.delete('trade')
+      next.delete('prospect_id')
+      return next
+    })
+  }
+
   const setTab = (tab: ProspectsTab) => {
     rememberProspectsTopTab('follow-up')
     setTopTab('customers')
@@ -486,6 +795,25 @@ export default function Prospects() {
       next.set('tab', tab)
       next.delete('prospect_id')
       return next
+    })
+  }
+
+  /** The three kind pills (v2.5559): the same deck, finding a different kind of company. */
+  const setKindTab = (next: ProspectKind) => {
+    rememberProspectsTopTab('follow-up')
+    setTopTab('customers')
+    setKind(next)
+    const tab: ProspectsTab = activeTab === 'convert' && next !== 'customer' ? 'follow-up' : activeTab
+    setActiveTab(tab)
+    setSearchParams((p) => {
+      const params = new URLSearchParams(p)
+      params.set('tab', tab)
+      if (next === 'customer') params.delete('kind')
+      else params.set('kind', urlKeyForKind(next))
+      params.delete('prospect_id')
+      // The Subs lane's trade filter (v2.5560) is the lane's own; another lane never carries it.
+      if (next !== 'sub') params.delete('trade')
+      return params
     })
   }
 
@@ -503,6 +831,8 @@ export default function Prospects() {
   async function loadFollowUpProspects() {
     if (!authUser?.id) return
     setFollowUpLoading(true)
+    // Only the newest load paints (v2.5578): a kind change mid-load starts another, and the first must not land last.
+    const load = latestLoad.current.start()
     const [{ data: locks }, { data: callRows }] = await Promise.all([
       // Only LIVE locks hide a prospect — a row older than the TTL is a closed
       // tab or a forgotten row, not a colleague on the phone (callingLock.ts).
@@ -513,12 +843,14 @@ export default function Prospects() {
         .gte('locked_at', callingLockCutoffIso(Date.now())),
       supabase.from('prospect_comments').select('prospect_id').in('interaction_type', [...CALL_INTERACTION_TYPES]),
     ])
+    if (!latestLoad.current.isLatest(load)) return
     const called = new Set(((callRows ?? []) as { prospect_id: string }[]).map((r) => r.prospect_id))
     setCalledProspectIds(called)
     const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
     let query = supabase
       .from('prospects')
-      .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
+      .select(PROSPECT_COLUMNS)
+      .eq('kind', kind)
       .or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
     if (lockedByOthers.length > 0) {
       query = query.not('id', 'in', `(${lockedByOthers.join(',')})`)
@@ -526,17 +858,32 @@ export default function Prospects() {
     const { data, error } = await query
       .order('last_contact', { ascending: true, nullsFirst: true })
       .order('created_at', { ascending: true })
+    if (!latestLoad.current.isLatest(load)) return
     if (error) {
       setFollowUpProspects([])
       setFollowUpLoading(false)
       return
     }
-    const raw = (data ?? []) as Prospect[]
-    const prospects = orderFollowUpProspects(
+    const raw = withoutZzProspects((data ?? []) as Prospect[], hideZz)
+    let prospects = orderFollowUpProspects(
       raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach' && p.prospect_fit_status !== 'converted'),
       called,
       callingOrderModeRef.current,
     )
+    if (kind === 'sub') {
+      // The Subs lane (v2.5560): the whole queue feeds the strip's counts; the deck shows one trade
+      // when the URL names it, and By need puts the biggest gap first.
+      setLaneQueueAll(prospects)
+      const needsNow = benchNeeds(benchTrades ?? [], prospects)
+      prospects = subsForTrade(prospects, searchParams.get('trade'))
+      if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
+    }
+    if (kind === 'gc_lead') {
+      // The Jobs to GC lane (v2.5561): each lead's jobs ride along, and Soonest bid orders on them.
+      const jobs = await mergeJobs(prospects.map((p) => p.id))
+      if (!latestLoad.current.isLatest(load)) return
+      if (callingOrderModeRef.current === 'soonest_bid') prospects = orderLeadsBySoonestBid(prospects, jobs, called)
+    }
 
     const prospectId = searchParams.get('prospect_id')
     let finalProspects = prospects
@@ -545,10 +892,24 @@ export default function Prospects() {
     if (prospectId && idx < 0) {
       const { data: single } = await supabase
         .from('prospects')
-        .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
+        .select(PROSPECT_COLUMNS)
         .eq('id', prospectId)
         .maybeSingle()
-      if (single) {
+      if (!latestLoad.current.isLatest(load)) return
+      const otherKind = single ? (single as Prospect).kind : null
+      if (otherKind && otherKind !== kind) {
+        // A link from elsewhere (Calendar's callbacks, v2.5563) to a prospect of another kind: its own lane opens it,
+        // so the card's last press is that kind's.
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          if (otherKind === 'customer') next.delete('kind')
+          else next.set('kind', urlKeyForKind(otherKind))
+          return next
+        }, { replace: true })
+        setFollowUpLoading(false)
+        return
+      }
+      if (single && !(hideZz && isZzTestProspect(single as Prospect))) {
         finalProspects = [single as Prospect, ...prospects]
         idx = 0
       }
@@ -648,7 +1009,8 @@ export default function Prospects() {
     const [{ data, error }, { data: callRows }] = await Promise.all([
       supabase
         .from('prospects')
-        .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at'),
+        .select(PROSPECT_COLUMNS)
+        .eq('kind', kind),
       supabase
         .from('prospect_comments')
         .select('prospect_id, interaction_type, created_at')
@@ -666,8 +1028,10 @@ export default function Prospects() {
       if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
     }
     setProspectLastCallMap(lastCalls)
-    setProspectListProspects((data ?? []) as Prospect[])
+    const rows = withoutZzProspects((data ?? []) as Prospect[], hideZz)
+    setProspectListProspects(rows)
     setProspectListLoading(false)
+    if (kind === 'gc_lead') void mergeJobs(rows.map((p) => p.id))
   }
 
   async function loadCopyTemplates() {
@@ -767,13 +1131,21 @@ export default function Prospects() {
       loadFollowUpProspects()
       loadMyTimeToday()
     }
-  }, [topTab, activeTab, authUser?.id, searchParams])
+  }, [topTab, activeTab, authUser?.id, searchParams, kind, benchTrades])
 
   useEffect(() => {
     if ((activeTab === 'prospect-list' || activeTab === 'convert') && authUser?.id) {
       loadProspectListProspects()
     }
-  }, [activeTab, authUser?.id])
+  }, [activeTab, authUser?.id, kind])
+
+  // Source success (v2.5560): the Activity tab of a new kind reads the lane's rows by where we found them.
+  useEffect(() => {
+    if (activeTab === 'activity' && kind !== 'customer' && authUser?.id) {
+      loadProspectListProspects()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, authUser?.id, kind])
 
   // When on Prospect List with prospect_id in URL (e.g. from Quickfill Edit), select that prospect
   useEffect(() => {
@@ -797,6 +1169,10 @@ export default function Prospects() {
   }, [activeTab, searchParams, prospectListProspects])
 
   const currentProspect = followUpProspects[currentProspectIndex] ?? null
+  const currentProspectId = currentProspect?.id ?? null
+  useEffect(() => {
+    setTextAskOpen(false)
+  }, [currentProspectId])
 
   useEffect(() => {
     setFollowUpNotes(currentProspect?.notes ?? '')
@@ -1083,14 +1459,15 @@ export default function Prospects() {
     if (!canAccessActivityTab) return
     setTeamLoading(true)
     try {
-      const result = await loadProspectTeamActivity(supabase)
+      // The lane's own 30 days (v2.5563); Quickfill's team chart keeps every kind.
+      const result = await loadProspectTeamActivity(supabase, kind, { hideZz })
       setTeamDataByDate(result)
     } catch {
       setTeamDataByDate({})
     } finally {
       setTeamLoading(false)
     }
-  }, [canAccessActivityTab])
+  }, [canAccessActivityTab, kind, hideZz])
 
   useEffect(() => {
     if (activeTab === 'activity' && canAccessActivityTab) {
@@ -1111,20 +1488,24 @@ export default function Prospects() {
           .select('id, name, email, role')
           // Same audience as loadProspectTeamActivity: office roles + estimators with Prospects access.
           .or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)'),
+        // Each read joins the prospect for its kind (v2.5559), so the report is one kind's week.
         supabase
           .from('prospect_comments')
-          .select('created_by, interaction_type, created_at')
+          .select('created_by, interaction_type, created_at, prospect:prospects!inner(kind)')
           .in('interaction_type', ['didnt_answer', 'answered', 'converted'])
+          .eq('prospect.kind', kind)
           .gte('created_at', startIso)
           .lt('created_at', endIso),
         (supabase as any)
           .from('prospect_timer_events')
-          .select('user_id, timer_seconds, created_at')
+          .select('user_id, timer_seconds, created_at, prospect:prospects!inner(kind)')
+          .eq('prospect.kind', kind)
           .gte('created_at', startIso)
           .lt('created_at', endIso),
         supabase
           .from('prospect_callbacks')
-          .select('user_id, created_at')
+          .select('user_id, created_at, prospect:prospects!inner(kind)')
+          .eq('prospect.kind', kind)
           .gte('created_at', startIso)
           .lt('created_at', endIso),
       ])
@@ -1145,7 +1526,7 @@ export default function Prospects() {
     } finally {
       setWeekLoading(false)
     }
-  }, [canAccessActivityTab])
+  }, [canAccessActivityTab, kind])
 
   useEffect(() => {
     if (activeTab === 'activity' && canAccessActivityTab) {
@@ -1251,13 +1632,15 @@ export default function Prospects() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
+  // The card's clock ticks only while a card is up (v2.5581): an empty lane used to count, then stamp its minutes on the first card added.
   useEffect(() => {
-    if (topTab !== 'customers' || activeTab !== 'follow-up' || document.visibilityState !== 'visible') return
+    if (!cardClockTicks({ onDeck: topTab === 'customers' && activeTab === 'follow-up', visible: document.visibilityState === 'visible', hasCard: !!currentProspect })) return
     const interval = setInterval(() => {
       setFollowUpTimerSeconds((s) => s + 1)
     }, 1000)
     return () => clearInterval(interval)
-  }, [topTab, activeTab])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topTab, activeTab, currentProspect?.id])
 
   // Auto-resize comment textarea as text wraps
   useEffect(() => {
@@ -1317,7 +1700,9 @@ export default function Prospects() {
           [
             ['coldest', 'Coldest', 'Longest since any contact first (the original order)'],
             ['never_called_first', 'Never called', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
-          ] as const
+            ...(kind === 'sub' ? ([['by_need', 'By need', BY_NEED_NOTE]] as const) : []),
+            ...(kind === 'gc_lead' ? ([['soonest_bid', 'Soonest bid', SOONEST_BID_NOTE]] as const) : []),
+          ] as readonly (readonly [CallingOrderMode, string, string])[]
         ).map(([mode, label, hint]) => (
           <button
             key={mode}
@@ -1429,23 +1814,52 @@ export default function Prospects() {
   function openEditModal() {
     if (!currentProspect) return
     setEditingProspect(null)
-    setEditCompanyName(currentProspect.company_name ?? '')
-    setEditContactName(currentProspect.contact_name ?? '')
-    setEditPhoneNumber(currentProspect.phone_number ?? '')
-    setEditEmail(currentProspect.email ?? '')
-    setEditAddress(currentProspect.address ?? '')
-    setEditLinksToWebsite(currentProspect.links_to_website ?? '')
+    const blocks = blocksFromRow(currentProspect)
+    setEditPerson(blocks.person)
+    setEditCompany(blocks.company)
+    setEditKindFields(currentProspect)
+    setEditOpenedWith(editSnapshotOf(currentProspect))
     setEditModalOpen(true)
+  }
+
+  /** The Edit window's boxes as a prospect fills them (v2.5582): what the window opened with, for the leave guard. */
+  function editSnapshotOf(p: Prospect): Record<string, string> {
+    const blocks = blocksFromRow(p)
+    return {
+      ...blocks.person,
+      ...blocks.company,
+      source: p.source ?? '',
+      trades: tradesText(p.trades),
+      miles: p.max_miles == null ? '' : String(p.max_miles),
+      role: p.company_role ?? '',
+    }
+  }
+
+  function setEditKindFields(p: Prospect) {
+    setEditSource(p.source ?? '')
+    setEditTrades(tradesText(p.trades))
+    setEditMaxMiles(p.max_miles == null ? '' : String(p.max_miles))
+    setEditRole(p.company_role ?? '')
+  }
+
+  /** The kind's facts as the row holds them (v2.5559), from the Edit and New windows' boxes. */
+  function kindFieldsPayload(k: ProspectKind, f: { source: string; trades: string; maxMiles: string; role: string }) {
+    const miles = Number(f.maxMiles)
+    return {
+      source: f.source.trim() || null,
+      trades: k === 'sub' ? parseTradesText(f.trades) : [],
+      max_miles: k === 'sub' && Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
+      company_role: k === 'gc_lead' && isProspectCompanyRole(f.role) ? f.role : null,
+    }
   }
 
   function openEditModalForProspect(p: Prospect) {
     setEditingProspect(p)
-    setEditCompanyName(p.company_name ?? '')
-    setEditContactName(p.contact_name ?? '')
-    setEditPhoneNumber(p.phone_number ?? '')
-    setEditEmail(p.email ?? '')
-    setEditAddress(p.address ?? '')
-    setEditLinksToWebsite(p.links_to_website ?? '')
+    const blocks = blocksFromRow(p)
+    setEditPerson(blocks.person)
+    setEditCompany(blocks.company)
+    setEditKindFields(p)
+    setEditOpenedWith(editSnapshotOf(p))
     setEditModalOpen(true)
   }
 
@@ -1482,26 +1896,21 @@ export default function Prospects() {
     const prospectToEdit = editingProspect ?? currentProspect
     if (!prospectToEdit || saving) return
     setSaving(true)
+    const held = blocksProblem(editPerson, editCompany)
+    if (held) {
+      showToast(held, 'error')
+      setSaving(false)
+      return
+    }
+    const updated = {
+      ...rowFromBlocks(editPerson, editCompany),
+      ...kindFieldsPayload(prospectToEdit.kind, { source: editSource, trades: editTrades, maxMiles: editMaxMiles, role: editRole }),
+    }
     const { error } = await supabase
       .from('prospects')
-      .update({
-        company_name: editCompanyName.trim() || null,
-        contact_name: editContactName.trim() || null,
-        phone_number: editPhoneNumber.trim() || null,
-        email: editEmail.trim() || null,
-        address: editAddress.trim() || null,
-        links_to_website: editLinksToWebsite.trim() || null,
-      })
+      .update(updated)
       .eq('id', prospectToEdit.id)
     if (!error) {
-      const updated = {
-        company_name: editCompanyName.trim() || null,
-        contact_name: editContactName.trim() || null,
-        phone_number: editPhoneNumber.trim() || null,
-        email: editEmail.trim() || null,
-        address: editAddress.trim() || null,
-        links_to_website: editLinksToWebsite.trim() || null,
-      }
       setFollowUpProspects((prev) =>
         prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
       )
@@ -1629,6 +2038,10 @@ export default function Prospects() {
         email: prospect.email,
         address: prospect.address,
         prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
       },
       conversionLane: 'follow-up',
       onCreated: (customer, meta) => {
@@ -1652,9 +2065,172 @@ export default function Prospects() {
         setCurrentProspectIndex(nextIdx)
         setFollowUpTimerSeconds(0)
         updateUrlProspectId(nextList[nextIdx]?.id ?? null)
-        showToast(`${prospect.company_name || 'Prospect'} converted → ${customer.name || 'customer'}`, 'success')
+        showToast(prospectLandedToast(prospect.kind, prospect.company_name || '', customer.name || ''), 'success')
       },
     })
+  }
+
+  /** Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company, filled in. */
+  function openBenchModal() {
+    if (!currentProspect || !authUser?.id || saving) return
+    setBenchError(null)
+    setBenchDraft(benchDraftFromProspect(currentProspect))
+  }
+
+  async function handleBenchSave(draft: BenchDraft) {
+    const prospect = currentProspect
+    if (!prospect || !authUser?.id || benchSaving) return
+    setBenchSaving(true)
+    setBenchError(null)
+    try {
+      const companyId = await addGcCompany(draft)
+      const marked = await markProspectOnBench(prospect.id, companyId, draft.name, authUser.id)
+      if (!marked.ok) {
+        // The company is on the bench; the prospect stays in the queue — say so and stop.
+        showToast(`${draft.name} is on the bench — ${prospect.company_name || 'the prospect'} is still in the calling queue`, 'info')
+        setBenchDraft(null)
+        return
+      }
+      void saveTimerEvent('converted')
+      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+      loadMyTimeToday()
+      const updated = { ...prospect, prospect_fit_status: 'converted' as const, converted_gc_company_id: companyId }
+      setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
+      const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
+      setFollowUpProspects(nextList)
+      const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+      setCurrentProspectIndex(nextIdx)
+      setFollowUpTimerSeconds(0)
+      updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+      setBenchDraft(null)
+      showToast(prospectLandedToast('sub', draft.name, ''), 'success')
+    } catch (err) {
+      setBenchError(err instanceof Error ? err.message : 'That did not save.')
+    } finally {
+      setBenchSaving(false)
+    }
+  }
+
+  /** The lead's deck after a landing (v2.5561): out of the queue, the caches patched, the next card up. */
+  function leaveQueueAsLanded(prospect: Prospect, patch: Partial<Prospect>) {
+    if (!authUser?.id) return
+    void saveTimerEvent('converted')
+    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+    loadMyTimeToday()
+    const updated = { ...prospect, prospect_fit_status: 'converted' as const, ...patch }
+    setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
+    const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
+    setFollowUpProspects(nextList)
+    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+    setCurrentProspectIndex(nextIdx)
+    setFollowUpTimerSeconds(0)
+    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+  }
+
+  /**
+   * Asked us ✓ (v2.5561): the lead becomes a customer (the one on file when linked, else Add customer),
+   * the job with the soonest bid is marked asked, and New project opens with it filled in.
+   */
+  function handleAskedUs() {
+    if (!currentProspect || !authUser?.id || saving) return
+    const prospect = currentProspect
+    const landed = async (customer: { id: string; name: string | null }) => {
+      const job = jobToHandOn(jobsByProspect[prospect.id] ?? [])
+      if (job) {
+        try {
+          await setProspectJobStatus(job.id, 'asked')
+        } catch {
+          /* the job keeps reading open; the project still opens */
+        }
+      }
+      leaveQueueAsLanded(prospect, { converted_customer_id: customer.id })
+      showToast(prospectLandedToast('gc_lead', prospect.company_name || '', customer.name || ''), 'success')
+      navigate('/gc?new=1', { state: { newProjectSeed: newProjectSeedFromLead(prospect, job, customer.id) } })
+    }
+    if (prospect.customer_id) {
+      // Already a customer: no second record. Mark the prospect and go.
+      void markProspectConverted(prospect.id, prospect.customer_id, prospect.company_name || '', authUser.id).then((res) => {
+        if (!res.ok) {
+          showToast(`${prospect.company_name || 'The prospect'} could not be marked: ${res.error}`, 'error')
+          return
+        }
+        void landed({ id: prospect.customer_id as string, name: prospect.company_name })
+      })
+      return
+    }
+    if (!newCustomerModal) return
+    newCustomerModal.openNewCustomerModal({
+      initialValues: customerDraftFromProspect(prospect),
+      sourceProspect: {
+        id: prospect.id,
+        company_name: prospect.company_name,
+        contact_name: prospect.contact_name,
+        phone_number: prospect.phone_number,
+        email: prospect.email,
+        address: prospect.address,
+        prospect_fit_status: prospect.prospect_fit_status,
+        is_person: prospect.is_person,
+        contact_title: prospect.contact_title,
+        contact_phone: prospect.contact_phone,
+        lang: prospect.lang,
+      },
+      conversionLane: 'follow-up',
+      onCreated: (customer, meta) => {
+        if ((meta?.convertedProspectId ?? null) !== prospect.id) {
+          showToast(`Customer ${customer.name || ''} created — ${prospect.company_name || 'the prospect'} is still in the calling queue`, 'info')
+          return
+        }
+        void landed({ id: customer.id, name: customer.name })
+      },
+    })
+  }
+
+  /** + Add a job on a lead's card (v2.5561): the box shows a refusal's words, so this throws. */
+  async function addJobFor(prospectId: string, job: NewProspectJob) {
+    if (!authUser?.id) throw new Error('Sign in first.')
+    const made = await addProspectJob(prospectId, job, authUser.id)
+    setJobsByProspect((prev) => ({ ...prev, [prospectId]: [...(prev[prospectId] ?? []), made] }))
+  }
+
+  /** Edit in place (v2.5580): the row's changes saved, the box re-sorts on the new bid day. */
+  async function editJobFor(job: ProspectJob, changes: NewProspectJob) {
+    const saved = await updateProspectJob(job.id, changes)
+    setJobsByProspect((prev) => ({ ...prev, [job.prospect_id]: (prev[job.prospect_id] ?? []).map((j) => (j.id === job.id ? saved : j)) }))
+  }
+
+  async function changeJob(job: ProspectJob, status: 'open' | 'dropped', wonBy: string | null = null) {
+    if (!currentProspect) return
+    const pid = currentProspect.id
+    try {
+      await setProspectJobStatus(job.id, status, wonBy)
+      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status, won_by: wonBy } : j)) }))
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+    }
+  }
+
+  async function markJobLost(job: ProspectJob) {
+    if (!currentProspect) return
+    const who = await promptDialog({ title: 'Who got it?', message: `${job.name}: the builder that won, if you know.`, placeholder: 'Another builder', confirmLabel: 'Mark lost' })
+    if (who === null) return
+    const pid = currentProspect.id
+    try {
+      await setProspectJobStatus(job.id, 'lost', who.trim() || null)
+      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status: 'lost', won_by: who.trim() || null } : j)) }))
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+    }
+  }
+
+  async function removeJob(job: ProspectJob) {
+    if (!currentProspect) return
+    const pid = currentProspect.id
+    try {
+      await deleteProspectJob(job.id)
+      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).filter((j) => j.id !== job.id) }))
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+    }
   }
 
   async function handleSendBack(p: Prospect) {
@@ -1885,8 +2461,26 @@ export default function Prospects() {
     return resolveCompanyOwnerUserId(supabase, authUser.id)
   }
 
+  /** May we text? (v2.5606): the answer asked on the call, saved from the card; quo-send reads it. */
+  async function saveOkToText(prospect: Prospect, value: OkToText) {
+    setTextAskOpen(false)
+    if (prospect.ok_to_text === value) return
+    const { error } = await supabase.from('prospects').update({ ok_to_text: value }).eq('id', prospect.id)
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    setFollowUpProspects((prev) => prev.map((p) => (p.id === prospect.id ? { ...p, ok_to_text: value } : p)))
+    setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? { ...p, ok_to_text: value } : p)))
+  }
+
   async function saveNewProspect() {
     if (!authUser?.id || saving) return
+    const held = blocksProblem(newPerson, newCompany)
+    if (held) {
+      setNewProspectError(held)
+      return
+    }
     setNewProspectError(null)
     setSaving(true)
     const effectiveMasterId = await getEffectiveMasterId()
@@ -1899,12 +2493,10 @@ export default function Prospects() {
       master_user_id: effectiveMasterId,
       created_by: authUser.id,
       warmth_count: 0,
-      company_name: newCompanyName.trim() || null,
-      contact_name: newContactName.trim() || null,
-      phone_number: newPhoneNumber.trim() || null,
-      email: newEmail.trim() || null,
-      address: newAddress.trim() || null,
-      links_to_website: newLinksToWebsite.trim() || null,
+      ...rowFromBlocks(newPerson, newCompany),
+      kind: newKind,
+      ...kindFieldsPayload(newKind, { source: newSource, trades: newTrades, maxMiles: newMaxMiles, role: newRole }),
+      customer_id: newKind === 'gc_lead' && newCustomerLink ? newCustomerLink.id : null,
     }
     const { error } = await supabase.from('prospects').insert(payload)
     setSaving(false)
@@ -1913,12 +2505,12 @@ export default function Prospects() {
       return
     }
     setNewProspectModalOpen(false)
-    setNewCompanyName('')
-    setNewContactName('')
-    setNewPhoneNumber('')
-    setNewEmail('')
-    setNewAddress('')
-    setNewLinksToWebsite('')
+    resetNewProspectForm()
+    if (newKind !== kind) {
+      // The new row lives on another lane: go there, and its loaders run on the kind change.
+      setKindTab(newKind)
+      return
+    }
     await loadFollowUpProspects()
     await loadProspectListProspects()
   }
@@ -2007,9 +2599,11 @@ export default function Prospects() {
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'max-content' }}>
-            <button type="button" onClick={() => setTab(activeTab)} style={pageTabStyle(topTab === 'customers')}>
-              Customers
-            </button>
+            {PROSPECT_KINDS.map((k) => (
+              <button key={k} type="button" onClick={() => setKindTab(k)} style={pageTabStyle(topTab === 'customers' && kind === k)}>
+                {PROSPECT_KIND_WORDS[k].tab}
+              </button>
+            ))}
             {canOpenHiring && (
               <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
                 Hiring
@@ -2037,14 +2631,18 @@ export default function Prospects() {
         >
           Prospect List
         </button>
-        <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-        <button
-          type="button"
-          onClick={() => setTab('convert')}
-          style={tabStyle(activeTab === 'convert')}
-        >
-          Convert
-        </button>
+        {kind === 'customer' && (
+          <>
+            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button
+              type="button"
+              onClick={() => setTab('convert')}
+              style={tabStyle(activeTab === 'convert')}
+            >
+              Convert
+            </button>
+          </>
+        )}
         {canAccessActivityTab && (
           <>
             <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
@@ -2061,12 +2659,9 @@ export default function Prospects() {
           <button
             type="button"
             onClick={() => {
-              setNewCompanyName('')
-              setNewContactName('')
-              setNewPhoneNumber('')
-              setNewEmail('')
-              setNewAddress('')
-              setNewLinksToWebsite('')
+              resetNewProspectForm()
+              setNewKind(kind)
+              setNewCustomerLink(null)
               setNewProspectError(null)
               setNewProspectModalOpen(true)
             }}
@@ -2084,14 +2679,100 @@ export default function Prospects() {
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <>
+          {kind === 'sub' && canAccessFollowUp && stripReads(benchTrades) !== 'loading' && (
+            <div
+              role="group"
+              aria-label="What the bench needs"
+              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
+            >
+              <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>The bench needs</span>
+              {benchNeedsNow.length === 0 && (
+                <span style={{ color: 'var(--text-muted)' }}>{stripReads(benchTrades) === 'failed' ? 'the bench could not be read' : 'nothing yet — no trade is on the bench'}</span>
+              )}
+              {benchNeedsNow.map((need) => {
+                const words = benchNeedWords(need)
+                const on = (tradeFilter ?? '').trim().toLowerCase() === need.trade.trim().toLowerCase()
+                return (
+                  <button
+                    key={need.trade}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setTradeFilter(on ? null : need.trade)}
+                    title={need.onBench ? `${need.dependable} on the bench · the bench wants 3` : 'No project asks for this trade yet'}
+                    style={{
+                      font: 'inherit',
+                      fontSize: '0.8125rem',
+                      display: 'inline-flex',
+                      gap: '0.35rem',
+                      alignItems: 'baseline',
+                      border: `1px solid ${on ? '#3b82f6' : 'var(--border)'}`,
+                      background: on ? 'var(--bg-blue-200)' : 'var(--surface)',
+                      color: need.onBench && need.short === 0 && !on ? 'var(--text-muted)' : 'var(--text-strong)',
+                      borderRadius: 999,
+                      padding: '0.1rem 0.6rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <b>{need.trade}</b> {words.head} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>· {words.tail}</span>
+                  </button>
+                )
+              })}
+              <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.75rem', display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+                3 a trade is the bench's rule
+                {tradeFilter && (
+                  <button type="button" onClick={() => setTradeFilter(null)} style={{ font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    All subs
+                  </button>
+                )}
+              </span>
+            </div>
+          )}
+          {kind === 'gc_lead' && canAccessFollowUp && stripReads(gcWork) !== 'loading' && (
+            <div
+              role="group"
+              aria-label="GC work in flight"
+              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
+            >
+              <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>GC work in flight</span>
+              {gcWork == null ? (
+                // Only a failed read lands here: the strip draws nothing while loading (v2.5585).
+                <span style={{ color: 'var(--text-muted)' }}>the Project Board could not be read</span>
+              ) : (
+                GC_WORK_LABELS.map((w) => (
+                  <span key={w.key} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'baseline', border: '1px solid var(--border)', borderRadius: 999, padding: '0.1rem 0.6rem', color: gcWork[w.key] === 0 ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                    <b>{w.label}</b> {gcWork[w.key]}
+                    {w.key === 'lost' && gcWork.lost > 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>· each owner can come back here</span>}
+                  </span>
+                ))
+              )}
+              <Link to="/gc" style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.75rem' }}>
+                from the Project Board
+              </Link>
+            </div>
+          )}
           {!canAccessFollowUp ? (
             <p style={{ color: 'var(--text-muted)' }}>You do not have access to Follow Up.</p>
           ) : followUpLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
           ) : followUpProspects.length === 0 ? (
-            <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No prospects to follow up. Add prospects in Prospect List.
-            </p>
+            (() => {
+              // The empty lane names the control that fills it (v2.5581): New Prospect, or All subs on a trade filter.
+              const words = emptyLaneWords(kind, kind === 'sub' ? tradeFilter : null)
+              const door = { font: 'inherit', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
+              return (
+                <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  {words.main}{' '}
+                  <button type="button" onClick={() => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true))} style={door}>
+                    {words.doorLabel}
+                  </button>{' '}
+                  {words.tail}
+                </p>
+              )
+            })()
+          ) : currentProspect && !cardOnLane(currentProspect, kind) ? (
+            // A card of another kind never wears this lane's press (v2.5578): the lane's own load is still coming.
+            <p style={{ color: 'var(--text-muted)' }}>{laneLoadingWords(kind)}</p>
           ) : currentProspect ? (
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -2118,12 +2799,53 @@ export default function Prospects() {
                     {/* Who you're calling */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)' }}>{currentProspect.company_name || '(no company name)'}</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)' }}>{prospectTitle(currentProspect)}</div>
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                          {currentProspect.contact_name ? <span>{currentProspect.contact_name}</span> : null}
+                          {personLineParts(currentProspect).map((part, i) => (
+                            <Fragment key={part}>
+                              {i > 0 ? <span aria-hidden>·</span> : null}
+                              <span>{part}</span>
+                            </Fragment>
+                          ))}
+                          {(() => {
+                            // The texting fact (v2.5601): asked on the call, read by the texts' path. Since v2.5606 the chip is a press
+                            // that opens the three answers and saves the one pressed.
+                            const ok = okToTextOf(currentProspect.ok_to_text)
+                            const ask = textAskWords(ok)
+                            const tone = ask.tone === 'yes' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : ask.tone === 'no' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
+                            if (textAskOpen) {
+                              return (
+                                <span role="group" aria-label="May we text?" style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>May we text?</span>
+                                  {OK_TO_TEXT_CHOICES.map((c) => (
+                                    <button
+                                      key={c.value}
+                                      type="button"
+                                      aria-pressed={ok === c.value}
+                                      onClick={() => void saveOkToText(currentProspect, c.value)}
+                                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0 0.45rem', borderRadius: 999, border: '1px solid var(--border)', background: ok === c.value ? 'var(--bg-blue-200)' : 'var(--surface)', color: ok === c.value ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
+                                    >
+                                      {c.label}
+                                    </button>
+                                  ))}
+                                </span>
+                              )
+                            }
+                            return (
+                              <button
+                                type="button"
+                                data-ok-to-text={ok}
+                                onClick={() => setTextAskOpen(true)}
+                                title="May we text them? Press to answer."
+                                style={{ font: 'inherit', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, border: 'none', cursor: 'pointer', ...tone }}
+                              >
+                                {ask.words}
+                              </button>
+                            )
+                          })()}
                           {currentProspect.email ? (
                             <>
-                              {currentProspect.contact_name ? <span aria-hidden>·</span> : null}
+                              <span aria-hidden>·</span>
                               <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: 'var(--text-link)' }}>{currentProspect.email}</a>
                             </>
                           ) : null}
@@ -2135,12 +2857,43 @@ export default function Prospects() {
                               </a>
                             </>
                           ) : null}
+                          {currentProspect.maps_url ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <a href={currentProspect.maps_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                                Maps ↗
+                              </a>
+                            </>
+                          ) : null}
+                          {currentProspect.kind === 'sub' && currentProspect.license ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span>{currentProspect.license}</span>
+                            </>
+                          ) : null}
                         </div>
+                        {(currentProspect.kind !== 'customer' || currentProspect.source) && (
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.25rem' }}>
+                            {currentProspect.kind === 'sub' &&
+                              (currentProspect.trades ?? []).map((trade) => (
+                                <span key={trade} style={{ padding: '0 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
+                                  {trade}
+                                </span>
+                              ))}
+                            {currentProspect.kind === 'sub' && (currentProspect.trades ?? []).length === 0 && <span>no trade named yet</span>}
+                            {(() => {
+                              const facts = prospectKindFacts(currentProspect)
+                              if (facts.length === 0) return null
+                              const lead = currentProspect.kind === 'sub' ? '· ' : ''
+                              return <span>{lead}{facts.join(' · ')}</span>
+                            })()}
+                          </div>
+                        )}
                       </div>
                       <div style={{ flex: 1 }} />
-                      {formatDueBadge(currentProspect.last_contact) && (
+                      {dueChipWords(currentProspect.last_contact) && (
                         <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
-                          {formatDueBadge(currentProspect.last_contact)}
+                          {dueChipWords(currentProspect.last_contact)}
                         </span>
                       )}
                       {!calledProspectIds.has(currentProspect.id) && (
@@ -2159,18 +2912,55 @@ export default function Prospects() {
                           {lockHeldBy.name ?? 'Someone'} is calling this one
                         </span>
                       )}
-                      {currentProspect.phone_number ? (
-                        <a
-                          href={telHrefFor(currentProspect.phone_number)}
-                          onClick={() => takeCallingLock('dial')}
-                          style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                      {(() => {
+                        // The cell first (v2.5601); the office line beside it when both are known.
+                        const nums = callNumbers(currentProspect)
+                        if (!nums.call) return <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>no phone number</span>
+                        return (
+                          <>
+                            <a
+                              href={telHrefFor(nums.call)}
+                              onClick={() => takeCallingLock('dial')}
+                              style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                            >
+                              📞 {nums.call}
+                            </a>
+                            {nums.other && (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                {nums.other.label} {nums.other.number}
+                              </span>
+                            )}
+                            {currentProspect.also_reach && (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>also {currentProspect.also_reach}</span>
+                            )}
+                          </>
+                        )
+                      })()}
+                      {kind === 'sub' && (
+                        <button
+                          type="button"
+                          onClick={() => setScriptOpen(true)}
+                          title="What to say when phoning a company new to us, your name already in it"
+                          style={{ ...btnSecondary, whiteSpace: 'nowrap' }}
                         >
-                          📞 {currentProspect.phone_number}
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>no phone number</span>
+                          {CALL_SCRIPT_BUTTON}
+                        </button>
                       )}
                     </div>
+                    {currentProspect.kind === 'gc_lead' && (
+                      <div style={{ marginTop: '0.75rem' }}>
+                        <ProspectJobsBox
+                          jobs={jobsByProspect[currentProspect.id] ?? []}
+                          todayYmd={todayYmdInAppTz()}
+                          busy={saving}
+                          onAdd={(job) => addJobFor(currentProspect.id, job)}
+                          onEdit={(job, changes) => editJobFor(job, changes)}
+                          onLost={(job) => void markJobLost(job)}
+                          onStatus={(job, status) => void changeJob(job, status)}
+                          onRemove={(job) => void removeJob(job)}
+                        />
+                      </div>
+                    )}
                     {/* Outcome row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>How did the call end?</span>
@@ -2188,18 +2978,18 @@ export default function Prospects() {
                         onClick={handleNoLongerFit}
                         disabled={saving}
                         style={saving ? btnDisabled(btnSecondary) : btnSecondary}
-                        title="Not a plumbing fit — leaves the calling queue (find it under No longer a fit on the Prospect List)"
+                        title={kindWords.notAFitTitle}
                       >
                         Not a fit
                       </button>
                       <button
                         type="button"
-                        onClick={handleConverted}
+                        onClick={kind === 'sub' ? openBenchModal : kind === 'gc_lead' ? handleAskedUs : handleConverted}
                         disabled={saving}
                         style={saving ? btnDisabled(btnConverted) : btnConverted}
-                        title="They became a customer — opens Add customer prefilled from this prospect; Save creates the customer and takes the prospect out of the calling queue"
+                        title={kindWords.lastPressTitle}
                       >
-                        Converted ✓
+                        {kindWords.lastPress}
                       </button>
                     </div>
                     {/* Utility row */}
@@ -2457,7 +3247,8 @@ export default function Prospects() {
                       Cancel
                     </button>
                   </div>
-                  {/* Copy templates */}
+                  {/* Copy templates: the customer deck's words (v2.5563); a sub's or an owner's email waits on the owner's own words. */}
+                  {kind === 'customer' && (
                   <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -2512,6 +3303,7 @@ export default function Prospects() {
                       ))}
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
               {/* The advance bar: the last thing you hit after logging the outcome and notes. */}
@@ -2543,7 +3335,7 @@ export default function Prospects() {
               <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Queue</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{kind === 'sub' && tradeFilter ? tradeFilter : 'Queue'}</span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                       {currentProspectIndex + 1} of {followUpProspects.length}
                     </span>
@@ -2655,7 +3447,7 @@ export default function Prospects() {
                           borderColor: palette ? 'transparent' : 'var(--border)',
                         }}
                       >
-                        {LIST_SECTION_CHIP_LABELS[key]} {n}
+                        {key === 'converted' ? kindWords.landedChip : LIST_SECTION_CHIP_LABELS[key]} {n}
                       </button>
                     )
                   })}
@@ -2673,7 +3465,7 @@ export default function Prospects() {
                         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                       >
                         <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                        {`${LIST_SECTION_LABELS[sectionKey]} (${prospects.length})`}
+                        {`${sectionKey === 'converted' ? kindWords.landed : LIST_SECTION_LABELS[sectionKey]} (${prospects.length})`}
                         {sectionKey === 'never_called' && (
                           <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>\u2014 oldest first, matches the calling queue</span>
                         )}
@@ -3166,6 +3958,7 @@ export default function Prospects() {
           <section style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>
+                {kind === 'customer' ? '' : `${kindWords.activity} · `}
                 {weekOffset === 0 ? 'This week' : 'Week of'} — {weekRange(Date.now(), weekOffset).label}
               </h2>
               <div style={{ display: 'flex', gap: '0.375rem' }}>
@@ -3246,6 +4039,26 @@ export default function Prospects() {
               </>
             )}
           </section>
+          {kind !== 'customer' && (
+            <section style={{ marginBottom: '2rem' }}>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Source success — {kindWords.tab}, every row of the lane</h3>
+              {sourceSuccess(prospectListProspects).length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing added yet.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 12rem) minmax(0, 1fr) 5rem', gap: '0.375rem 0.75rem', alignItems: 'center', fontSize: '0.875rem', maxWidth: 560 }}>
+                  {sourceSuccess(prospectListProspects).map((s) => (
+                    <Fragment key={s.source}>
+                      <span>{s.source}</span>
+                      <span style={{ height: 8, borderRadius: 999, background: 'var(--bg-muted)', position: 'relative', overflow: 'hidden' }}>
+                        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${s.total ? Math.round((s.landed / s.total) * 100) : 0}%`, background: '#16a34a', borderRadius: 999 }} />
+                      </span>
+                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{s.landed} of {s.total}</span>
+                    </Fragment>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
           <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Marked / Updated by day — last 30 days</h3>
           {teamLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
@@ -3314,15 +4127,18 @@ export default function Prospects() {
             zIndex: 750,
             paddingTop: 'var(--app-top-chrome, 0px)',
           }}
-          onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
+          onClick={editGuard.requestClose}
         >
           <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
-              maxWidth: 400,
+              maxWidth: 480,
               width: '90%',
+              // A sub's or a lead's boxes make the window taller than a laptop screen (v2.5574): it scrolls inside.
+              maxHeight: 'min(90vh, 100%)',
+              overflowY: 'auto',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -3354,60 +4170,14 @@ export default function Prospects() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Company Name</span>
-                <input
-                  type="text"
-                  value={editCompanyName}
-                  onChange={(e) => setEditCompanyName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Contact Name</span>
-                <input
-                  type="text"
-                  value={editContactName}
-                  onChange={(e) => setEditContactName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Phone Number</span>
-                <input
-                  type="text"
-                  value={editPhoneNumber}
-                  onChange={(e) => setEditPhoneNumber(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Email</span>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Address</span>
-                <input
-                  type="text"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Links to Website</span>
-                <input
-                  type="text"
-                  value={editLinksToWebsite}
-                  onChange={(e) => setEditLinksToWebsite(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
+              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} onSource={setEditSource} />
+              {renderKindFields((editingProspect ?? currentProspect)?.kind ?? kind, {
+                source: editSource, setSource: setEditSource,
+                trades: editTrades, setTrades: setEditTrades,
+                maxMiles: editMaxMiles, setMaxMiles: setEditMaxMiles,
+                role: editRole, setRole: setEditRole,
+                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
+              })}
               {(!editingProspect || editingProspect.id === currentProspect?.id) && currentProspect && (
                 <div>
                   <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
@@ -3422,6 +4192,7 @@ export default function Prospects() {
                 </div>
               )}
             </div>
+            {editGuard.asking && <LeaveQuestion what="The changes to this prospect are not saved." onLeave={closeEditProspect} onKeep={editGuard.keep} />}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
                 type="button"
@@ -3433,7 +4204,7 @@ export default function Prospects() {
               </button>
               <button
                 type="button"
-                onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
+                onClick={editGuard.requestClose}
                 style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
@@ -3859,6 +4630,11 @@ export default function Prospects() {
         </div>
       )}
 
+      {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} />}
+      {benchDraft && (
+        <ProspectBenchModal draft={benchDraft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} />
+      )}
+
       {/* New Prospect modal */}
       {newProspectModalOpen && (
         <div
@@ -3872,79 +4648,115 @@ export default function Prospects() {
             zIndex: 750,
             paddingTop: 'var(--app-top-chrome, 0px)',
           }}
-          onClick={() => !saving && setNewProspectModalOpen(false)}
+          onClick={newGuard.requestClose}
         >
           <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
-              maxWidth: 400,
+              maxWidth: 520,
               width: '90%',
+              // The kind cards and a kind's boxes make the window taller than a laptop screen (v2.5574): it scrolls
+              // inside, and it is wide enough that the three cards read in a few lines each.
+              maxHeight: 'min(90vh, 100%)',
+              overflowY: 'auto',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 1rem 0' }}>New Prospect</h3>
+            <h3 style={{ margin: '0 0 0.25rem 0' }}>New Prospect</h3>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Who are we looking for?</p>
+            <div role="radiogroup" aria-label="What kind of prospect" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
+              {PROSPECT_KINDS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={newKind === k}
+                  onClick={() => setNewKind(k)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '0.5rem 0.6rem',
+                    borderRadius: 8,
+                    border: newKind === k ? '2px solid #3b82f6' : '1px solid var(--border)',
+                    background: newKind === k ? 'var(--bg-blue-200)' : 'var(--surface)',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                  }}
+                >
+                  <span style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem' }}>{PROSPECT_KIND_WORDS[k].tab === 'Customers' ? 'A customer' : PROSPECT_KIND_WORDS[k].tab === 'Subs' ? 'A sub' : 'A job to GC'}</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-700)' }}>{PROSPECT_KIND_WORDS[k].card}</span>
+                </button>
+              ))}
+            </div>
             {newProspectError && (
               <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{newProspectError}</p>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Company Name</span>
-                <input
-                  type="text"
-                  value={newCompanyName}
-                  onChange={(e) => setNewCompanyName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Contact Name</span>
-                <input
-                  type="text"
-                  value={newContactName}
-                  onChange={(e) => setNewContactName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Phone Number</span>
-                <input
-                  type="text"
-                  value={newPhoneNumber}
-                  onChange={(e) => setNewPhoneNumber(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Email</span>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Address</span>
-                <input
-                  type="text"
-                  value={newAddress}
-                  onChange={(e) => setNewAddress(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Links to Website</span>
-                <input
-                  type="text"
-                  value={newLinksToWebsite}
-                  onChange={(e) => setNewLinksToWebsite(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
+              <ProspectPersonForm
+                person={newPerson}
+                onPerson={setNewPerson}
+                company={newCompany}
+                onCompany={setNewCompany}
+                kind={newKind}
+                onSource={setNewSource}
+                double={(() => {
+                // One line for every double (v2.5579): this lane, another lane, the bench, the customers, in that order.
+                const linkish = { font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
+                if (newKind === 'gc_lead' && newCustomerLink) {
+                  return (
+                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
+                      Linked to the customer {newCustomerLink.name}. Asked us ✓ will use that record.{' '}
+                      <button type="button" onClick={() => setNewCustomerLink(null)} style={linkish}>
+                        Unlink
+                      </button>
+                    </p>
+                  )
+                }
+                const twin = newProspectTwin
+                if (!twin) return null
+                return (
+                  <p role="status" data-company-double={twin.where} style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
+                    {twin.line}{' '}
+                    {twin.door === 'open_prospect' && (
+                      <button type="button" onClick={() => openDoubleProspect(twin)} style={linkish}>
+                        Open it
+                      </button>
+                    )}
+                    {twin.door === 'open_bench' && (
+                      <Link to="/gc?view=partners" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                        Open it
+                      </Link>
+                    )}
+                    {twin.door === 'customer' && (
+                      <>
+                        {newKind === 'gc_lead' && (
+                          <>
+                            <button type="button" onClick={() => setNewCustomerLink({ id: twin.id, name: twin.name })} style={linkish}>
+                              Link this lead to them
+                            </button>
+                            {' · '}
+                          </>
+                        )}
+                        <Link to={`/customers/${twin.id}`} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                          Open their page
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )
+              })()}
+              />
+              {renderKindFields(newKind, {
+                source: newSource, setSource: setNewSource,
+                trades: newTrades, setTrades: setNewTrades,
+                maxMiles: newMaxMiles, setMaxMiles: setNewMaxMiles,
+                role: newRole, setRole: setNewRole,
+                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
+              })}
             </div>
+            {newGuard.asking && <LeaveQuestion what="The new prospect is not saved." onLeave={closeNewProspect} onKeep={newGuard.keep} />}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
                 type="button"
@@ -3952,11 +4764,11 @@ export default function Prospects() {
                 disabled={saving}
                 style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
               >
-                Save
+                {newProspectTwin ? 'Save anyway' : 'Save'}
               </button>
               <button
                 type="button"
-                onClick={() => !saving && setNewProspectModalOpen(false)}
+                onClick={newGuard.requestClose}
                 style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Wiring for the Customers line on Needs You (residential build, R8 · 14): off until Messages has its page, so nobody
- * reads Follow up's rows for it today. Once on, the GC office team gets the line, other roles do not, and its button
- * opens Messages on its customers.
+ * Wiring for the Customers line on Needs You (residential build, R8 · 14): on since R2 PR 3b (v2.5451), as the flag
+ * ships. On, the GC office team gets the line, other roles do not, and its button opens Messages on its customers. With
+ * the flag off, nobody reads Follow up's rows for it.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
@@ -12,7 +12,8 @@ import type { CustomerMessagesCounts } from '../../lib/followUp/customerCounts'
 import { DashboardPinnedQuickRow } from './DashboardPinnedQuickRow'
 
 const COUNTS: CustomerMessagesCounts = { needReply: 3, weOwe: 1, toSort: 2 }
-const flag = vi.hoisted(() => ({ on: false }))
+// The flag as shipped (`CUSTOMER_MESSAGES_LINE_ON`); a test turns it off.
+const flag = vi.hoisted(() => ({ on: true }))
 const seen: NeedsYouInputs[] = []
 const asked: boolean[] = []
 const navigate = vi.fn()
@@ -54,7 +55,7 @@ afterEach(() => {
   cleanup()
   seen.length = 0
   asked.length = 0
-  flag.on = false
+  flag.on = true
   navigate.mockClear()
 })
 
@@ -74,7 +75,8 @@ const props = {
 }
 
 describe('DashboardPinnedQuickRow · the Customers line on Needs You', () => {
-  it('is off today: nothing reads the counts and nothing draws', async () => {
+  it('with the flag off, nothing reads the counts and nothing draws', async () => {
+    flag.on = false
     renderWithProviders(<DashboardPinnedQuickRow {...props} role="assistant" />)
     await settle()
     expect(seen[seen.length - 1]!.customerMessagesEnabled).toBe(false)
@@ -82,8 +84,7 @@ describe('DashboardPinnedQuickRow · the Customers line on Needs You', () => {
     expect(screen.queryByText('Customers')).toBeNull()
   })
 
-  it.each(['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const)('once on, %s gets the line', async (role) => {
-    flag.on = true
+  it.each(['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const)('on, %s gets the line', async (role) => {
     renderWithProviders(<DashboardPinnedQuickRow {...props} role={role} />)
     await settle()
     const last = seen[seen.length - 1]!
@@ -93,8 +94,7 @@ describe('DashboardPinnedQuickRow · the Customers line on Needs You', () => {
     expect(screen.getByText('3 need a reply, 1 we owe, 2 to sort.')).toBeTruthy()
   })
 
-  it.each(['primary', 'superintendent', 'subcontractor'] as const)('once on, %s does not', async (role) => {
-    flag.on = true
+  it.each(['primary', 'superintendent', 'subcontractor'] as const)('on, %s does not', async (role) => {
     renderWithProviders(<DashboardPinnedQuickRow {...props} role={role} />)
     await settle()
     const last = seen[seen.length - 1]!
@@ -102,8 +102,7 @@ describe('DashboardPinnedQuickRow · the Customers line on Needs You', () => {
     expect(last.customerMessages ?? null).toBeNull()
   })
 
-  it('once on, the line opens Messages on its customers', async () => {
-    flag.on = true
+  it('the line opens Messages on its customers', async () => {
     renderWithProviders(<DashboardPinnedQuickRow {...props} role="assistant" />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /^Messages/ }))

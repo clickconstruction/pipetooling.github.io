@@ -4,6 +4,7 @@
  */
 import { whoseMove } from './card'
 import { doneWords, type PersonFlow } from './nudges'
+import type { PaperId } from './facts'
 import { laneReadingOf, moverOf, stepById, stepReading } from './state'
 
 export type FlowNow = {
@@ -17,6 +18,8 @@ export type FlowNow = {
   sinceYmd: string | null
   /** What finishes it, as the card's Done when says it: "their quote is in the portal or they declined to quote". */
   finishes: string
+  /** The papers it turns on (the step's `papers`), for Attach's starred rows (cut 7f). */
+  papers: readonly PaperId[]
 }
 
 /** The step on now for them; null when nothing is on now, or they are off the flow. */
@@ -28,5 +31,5 @@ export function flowNowOf(person: PersonFlow): FlowNow | null {
   if (!def || !step) return null
   const perJob = laneReadingOf(r, r.nowStepId, r.nowJobId)?.lane === 'per_job'
   const who = whoseMove({ who: moverOf(def, step) }, { onNow: true, waiting: Boolean(step.waitingOn), perJob, owe: person.owe, court: person.court })
-  return { stepId: def.id, jobId: r.nowJobId, stepName: def.name, who, sinceYmd: step.since, finishes: doneWords(def) }
+  return { stepId: def.id, jobId: r.nowJobId, stepName: def.name, who, sinceYmd: step.since, finishes: doneWords(def), papers: def.papers }
 }

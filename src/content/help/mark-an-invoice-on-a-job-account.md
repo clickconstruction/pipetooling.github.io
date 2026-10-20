@@ -40,7 +40,7 @@ How an account gets opened and recorded is in [open a job account before buying 
 An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's balance and still gets paid from **Make Payment**. But on Held for suppliers it reads teal instead of red, and the summary tells you that $3,240.50 of what you're "holding for suppliers" is secured by the owner's account.
 :::
 
-Already have invoices sitting on job accounts? Open each one with the **Edit** pencil and check the box. The flag can be set any time.
+Already have invoices sitting on job accounts? Press the aging cell that holds them. Each bill in the window carries a **+ Job acct** chip. One press flags a bill when the job's account is open. With no account on record, an amber note opens instead. It offers {{button:green|Mark opened…}} and **Flag anyway**. Press **Job acct ✓** to take a flag off again. The **Edit** pencil still works too.
 
 ## The account itself lives on the house
 

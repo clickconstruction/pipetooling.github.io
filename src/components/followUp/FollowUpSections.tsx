@@ -1,14 +1,19 @@
 /**
  * Messages, cut 2: Follow up's sections, drawn above the asks the tab already lists (the prototype v1.178's
- * `renderFollowup`): **Needs you** (a note's day come back, the clause edits waiting on approval, a customer's portal),
+ * `renderFollowup`): **New** first (residential R7, mockup A: what came in and still needs sorting, each row's press
+ * opening the thread at the sort card), **Needs you** (a note's day come back, the clause edits waiting on approval, a customer's portal),
  * **Needs a reply** (longest waiting first, with who has it and the presses), **We owe them**, and the slot the nudges
  * from the flow fill after them. Each row is one person; a press anywhere off its buttons opens their thread at its
  * line. The queue and its words are the kernels' (`followUp/queue.ts`, `messages/owed.ts`, `messages/promises.ts`);
  * this draws them and hands each press to the page.
  */
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { callFirst, callTitle, CALL_WORDS, dayAfter, type CallTaskRow } from '../../lib/calls/callTasks'
+import { telHrefFor } from '../../lib/phoneContact'
 import { lineGcProject } from '../../lib/followUp/askArchitect'
 import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
+import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
+import { canSortAll, SORT_ALL } from '../../lib/followUp/sortDesk'
 import { needsYouCount, type BackRow, type FollowUpQueue, type NeedsReplyRow, type OwedRow, type PortalRow } from '../../lib/followUp/queue'
 import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
@@ -23,10 +28,15 @@ export interface FollowUpSectionActions {
   remindMonday: (contactId: string) => void
   backDone: (noteId: string) => void
   anotherDay: (noteId: string) => void
+  /** A call to make (v2.5596): I called or Skip, and Tomorrow. Unset: the row reads only. */
+  callDone?: (id: string, how: 'called' | 'skipped') => void
+  callMove?: (id: string, dueYmd: string) => void
   /** A plans question to the job's architect. Unset, or a line on no GC project: no press. */
   askArchitect?: (messageId: string) => void
   /** A customer's page as they see it (the portal's; the screen comes with cut 8). Unset: no press. */
   seeTheirPage?: (contactId: string) => void
+  /** **Sort all** on New's header (R7, mockup C): opens the desk. Unset: no press. */
+  sortAll?: () => void
 }
 
 export interface FollowUpSectionsProps<C, N extends { contactId: string }> {
@@ -70,7 +80,7 @@ const initials = (c: FollowUpContact) =>
 const clip = (s: string) => (s.length > 220 ? `${s.slice(0, 220).replace(/\s+\S*$/, '')}…` : s)
 
 export function FollowUpSections<C, N extends { contactId: string }>(props: FollowUpSectionsProps<C, N>) {
-  const { queue, contacts, renderClauses, renderNudges } = props
+  const { queue, contacts, renderClauses, renderNudges, actions } = props
   const byId = new Map(contacts.map((c) => [c.id, c]))
   const youCount = needsYouCount(queue)
   const back = queue.needsYou.filter((r): r is BackRow => r.kind === 'back')
@@ -78,6 +88,23 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
 
   return (
     <section aria-label="Follow up: who is waiting on us" style={{ display: 'grid', gap: '0.9rem' }}>
+      <Section
+        title={`New (${queue.newLane.length})`}
+        note="What came in and still needs sorting. Its row opens the thread, with the sort at the top."
+        action={
+          actions.sortAll && canSortAll(queue.newLane.length) ? (
+            <Btn kind="primary" onClick={actions.sortAll}>
+              {SORT_ALL}
+            </Btn>
+          ) : undefined
+        }
+      >
+        {queue.newLane.length === 0 ? (
+          <Empty>{NEW_LANE_EMPTY}</Empty>
+        ) : (
+          queue.newLane.map((r) => byId.get(r.contactId) && <NewRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
+        )}
+      </Section>
       {youCount > 0 && (
         <Section title={`Needs you (${youCount})`} note={[NEEDS_YOU_NOTE.back, NEEDS_YOU_NOTE.portal, ...(renderClauses ? [NEEDS_YOU_NOTE.clause] : [])].join(' ')}>
           {back.map((r) => byId.get(r.contactId) && <BackRowView key={r.noteId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
@@ -92,20 +119,28 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
           queue.needsReply.map((r) => byId.get(r.contactId) && <ReplyRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
       </Section>
-      <Section title={`We owe them (${queue.weOwe.length})`} note="What we still have to do for someone, with its day. It stays our move until a note or a message marks it done.">
-        {queue.weOwe.length === 0 ? <Empty>Nothing we owe anyone.</Empty> : queue.weOwe.map((r) => byId.get(r.contactId) && <OwedRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
+      <Section title={`We owe them (${queue.weOwe.length + queue.calls.length})`} note={`What we still have to do for someone, with its day. It stays our move until a note or a message marks it done. ${CALL_WORDS.lane}`}>
+        {queue.weOwe.length === 0 && queue.calls.length === 0 ? (
+          <Empty>Nothing we owe anyone.</Empty>
+        ) : (
+          <>
+            {queue.weOwe.map((r) => byId.get(r.contactId) && <OwedRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
+            {queue.calls.map((r) => byId.get(r.contactId) && <CallRowView key={r.id} row={r} contact={byId.get(r.contactId)!} {...props} />)}
+          </>
+        )}
       </Section>
       {renderNudges?.(queue.nudges)}
     </section>
   )
 }
 
-function Section({ title, note, children }: { title: string; note: string; children: ReactNode }) {
+function Section({ title, note, action, children }: { title: string; note: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section aria-label={title.replace(/ \(\d+\)$/, '')}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>{title}</h3>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{note}</span>
+        {action && <span style={{ marginLeft: 'auto' }}>{action}</span>}
       </div>
       <div style={{ display: 'grid', gap: '0.5rem' }}>{children}</div>
     </section>
@@ -242,6 +277,29 @@ function PortalRowView<C, N extends { contactId: string }>({ row, contact, ...pr
   )
 }
 
+function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: NewLaneRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
+  const { actions } = props
+  return (
+    <Row
+      contact={contact}
+      landOn={row.messageId}
+      pill={
+        <Chip tone="blue" title={row.why}>
+          {row.head}
+        </Chip>
+      }
+      sub={[contact.kind === 'unknown' ? '' : companyOf(contact), row.via, row.when].filter(Boolean).join(' · ')}
+      snippet={clip(row.words)}
+      acts={
+        <Btn kind="primary" onClick={() => actions.openThread(contact.id, row.messageId)}>
+          {row.head}
+        </Btn>
+      }
+      props={props}
+    />
+  )
+}
+
 function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: NeedsReplyRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
   const { actions, pressing, nowIso, lines } = props
   const line = row.landOnId ? lines.get(row.landOnId) : undefined
@@ -305,6 +363,57 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
               </Btn>
             ),
           )}
+        </>
+      }
+      props={props}
+    />
+  )
+}
+
+/** A call to make (v2.5596): who, about what, its day; the script to read; Call, I called, Tomorrow and Skip. */
+function CallRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: CallTaskRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
+  const { actions, pressing, todayYmd, nowIso } = props
+  const [open, setOpen] = useState(false)
+  const first = callFirst(contact)
+  const tel = contact.phone ? telHrefFor(contact.phone) : null
+  const busy = pressing === `call ${row.id}`
+  return (
+    <Row
+      contact={contact}
+      pill={<Chip tone={row.late ? 'red' : row.today ? 'amber' : 'blue'}>{row.pill}</Chip>}
+      sub={`${callTitle(first, row.what)} · added by ${row.madeBy} ${agoWords(row.madeAt, nowIso)}`}
+      snippet={
+        row.script ? (
+          <div data-call-script-row={row.id} style={{ fontSize: '0.85rem' }}>
+            <button type="button" onClick={() => setOpen((o) => !o)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}>
+              {open ? 'Hide what to say' : CALL_WORDS.whatToSay}
+            </button>
+            {open && <p style={{ margin: '0.25rem 0 0', whiteSpace: 'pre-wrap' }}>{row.script}</p>}
+          </div>
+        ) : undefined
+      }
+      acts={
+        <>
+          {tel ? (
+            <a href={tel} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.7rem', borderRadius: 8, background: '#16a34a', color: 'white', fontWeight: 700, fontSize: '0.8rem', textDecoration: 'none' }} data-testid={`call-dial-${row.id}`}>
+              📞 {CALL_WORDS.call}
+            </a>
+          ) : null}
+          {actions.callDone ? (
+            <Btn onClick={() => actions.callDone?.(row.id, 'called')} disabled={busy} title="Closes the call with a note in the thread.">
+              {CALL_WORDS.iCalled}
+            </Btn>
+          ) : null}
+          {actions.callMove ? (
+            <Btn onClick={() => actions.callMove?.(row.id, dayAfter(todayYmd))} disabled={busy} title="Moves the call to tomorrow.">
+              {CALL_WORDS.tomorrow}
+            </Btn>
+          ) : null}
+          {actions.callDone ? (
+            <Btn onClick={() => actions.callDone?.(row.id, 'skipped')} disabled={busy} title="Closes the call with no note. A gray line says so.">
+              {CALL_WORDS.skip}
+            </Btn>
+          ) : null}
         </>
       }
       props={props}

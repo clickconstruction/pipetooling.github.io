@@ -11,14 +11,18 @@
  * order (coldest first from the query), so the queue never runs dry.
  */
 
-export type CallingOrderMode = 'coldest' | 'never_called_first'
+/** `by_need` (v2.5560) is the Subs lane's third order; the deck orders it itself (`orderSubsByNeed`), so here it reads as coldest. */
+export type CallingOrderMode = 'coldest' | 'never_called_first' | 'by_need' | 'soonest_bid'
 
 export const CALLING_ORDER_STORAGE_KEY = 'prospects_calling_order_v1'
 
 export const CALL_INTERACTION_TYPES = ['didnt_answer', 'answered'] as const
 
 export function readCallingOrderMode(raw: string | null | undefined): CallingOrderMode {
-  return raw === 'never_called_first' ? 'never_called_first' : 'coldest'
+  if (raw === 'never_called_first') return 'never_called_first'
+  if (raw === 'by_need') return 'by_need'
+  if (raw === 'soonest_bid') return 'soonest_bid'
+  return 'coldest'
 }
 
 type OrderableProspect = { id: string; created_at: string | null }
@@ -28,7 +32,7 @@ export function orderFollowUpProspects<T extends OrderableProspect>(
   calledIds: ReadonlySet<string>,
   mode: CallingOrderMode,
 ): T[] {
-  if (mode === 'coldest') return [...prospects]
+  if (mode !== 'never_called_first') return [...prospects]
   const never: T[] = []
   const called: T[] = []
   for (const p of prospects) (calledIds.has(p.id) ? called : never).push(p)

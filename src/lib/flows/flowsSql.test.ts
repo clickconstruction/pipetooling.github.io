@@ -47,7 +47,8 @@ describe('the flows migration holds the code lists and the seed', () => {
     expect(checkOf(steps, 'flow_steps_who_known')).toEqual(['us', 'them', 'both'])
     expect(checkOf(steps, 'flow_steps_nudge_how_known')).toEqual(Object.keys(NUDGE_HOW_WORDS))
     expect(checkOf(steps, 'flow_steps_nudge_day_known')).toEqual(Object.keys(NUDGE_DAY_WORDS))
-    expect(checkOf(steps, 'flows_kind_known')).toEqual(FLOW_KINDS)
+    // The residential flow's migration widened the kinds after the table was made.
+    expect(checkOf(newestSaying('CONSTRAINT flows_kind_known CHECK'), 'flows_kind_known')).toEqual(FLOW_KINDS)
   })
 
   it('seeds every step of SEED_FLOWS, and nothing else', () => {

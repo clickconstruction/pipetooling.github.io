@@ -5,6 +5,7 @@ import { SAMPLE_TOKEN } from '../lib/customerSample'
 import { formatPayLinkCents, isPayLinkId } from '../lib/billing/payLink'
 import { PAY_LINK_FORWARD_MS, payLinkView, type PayLinkView } from '../lib/billing/payLinkView'
 import { lienOfferPayLinkWords } from '../lib/jobs/lienPayOffer'
+import { mailOpenCodeFrom } from '../lib/mail/windowEnvelope'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PAPER_GREEN, PORTAL_FONT } from '../lib/portal/portalTheme'
 
 /**
@@ -36,6 +37,21 @@ export default function PayLink() {
   useEffect(() => {
     document.title = 'Pay your bill · Click Plumbing and Electrical'
   }, [])
+
+  // The owner read it (the Docsmit train, PR 4): a code scanned off a mailed notice carries the
+  // piece's `m=` code, and the piece records its first open. Best effort, once; nothing shown.
+  useEffect(() => {
+    if (sample) return
+    const code = mailOpenCodeFrom(window.location.search)
+    if (!code) return
+    ;(async () => {
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/rpc/mail_piece_opened`, { method: 'POST', headers: { ...(await publicFunctionHeaders(null)), 'Content-Type': 'application/json' }, body: JSON.stringify({ p_code: code }) })
+      } catch {
+        /* the letter still reads; the open is a nicety */
+      }
+    })()
+  }, [sample])
 
   useEffect(() => {
     if (sample || !isPayLinkId(id)) return

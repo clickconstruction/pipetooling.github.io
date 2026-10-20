@@ -7,6 +7,8 @@ export type { PortalGcChangeOrder, PortalGcContract, PortalGcJob } from '../../.
 import type { PortalGcSchedule, PortalGcScheduleBar, PortalGcScheduleDate, PortalGcScheduleGroup, PortalGcScheduleStage } from '../../../supabase/functions/_shared/gcCustomerSchedule'
 import { PORTAL_TAGLINE } from '../../../supabase/functions/_shared/portalLetterhead'
 export type { PortalGcSchedule } from '../../../supabase/functions/_shared/gcCustomerSchedule'
+import { parsePortalGcPage } from './customerPage'
+import { parsePortalThread, type PortalThreadLine } from './portalThread'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
  * receives this from the customer-portal edge function; the parser is
@@ -129,6 +131,10 @@ export type PortalPayload = {
   gcJobs: PortalGcJob[]
   /** GC mode (O8b): the certified GC bills they may pay by card with its 3% fee, and the ones on card already — `_shared/gcCardBill.ts`; [] from an older function. */
   cardBills: PortalCardBill[]
+  /** Messages cut 8b-i: every sentence of ours on the customer's page as the office keeps it (`customer_page_words`), laid over the code's words; [] from an older function. */
+  pageWords: { key: string; en: string; es: string }[]
+  /** Messages cut 8e: their thread for the page's Messages tab, held to what they may read; null from an older function or with no page. */
+  thread: PortalThreadLine[] | null
 }
 
 /** One bill's card offer (`state: 'offer'`) or its card bill (`'onCard'`): the bill as certified, the fee and what the card pays. */
@@ -255,11 +261,13 @@ export function parsePortalGcJob(raw: unknown): PortalGcJob | null {
   const a = j.accepted && typeof j.accepted === 'object' ? (j.accepted as Record<string, unknown>) : null
   const contract = parsePortalGcContract(j.contract)
   const schedule = parsePortalGcSchedule(j.schedule)
+  const page = parsePortalGcPage(j.page)
   return {
     projectId: j.projectId,
     name: j.name,
     ...(contract ? { contract } : {}),
     ...(schedule ? { schedule } : {}),
+    ...(page ? { page } : {}),
     changeOrders,
     canAccept: j.canAccept === true,
     accepted: a && isYmd(a.on) ? { on: a.on, how: a.how === 'portal' ? 'portal' : 'office' } : null,
@@ -541,6 +549,13 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     checks: parsePortalChecks(r.checks),
     gcJobs: Array.isArray(r.gcJobs) ? r.gcJobs.map(parsePortalGcJob).filter((x): x is PortalGcJob => x != null) : [],
     cardBills: Array.isArray(r.cardBills) ? r.cardBills.map(parsePortalCardBill).filter((x): x is PortalCardBill => x != null) : [],
+    pageWords: Array.isArray(r.pageWords)
+      ? r.pageWords.flatMap((w): { key: string; en: string; es: string }[] => {
+          const o = w && typeof w === 'object' ? (w as Record<string, unknown>) : null
+          return o && typeof o.key === 'string' && typeof o.en === 'string' && typeof o.es === 'string' && o.en.trim() && o.es.trim() ? [{ key: o.key, en: o.en, es: o.es }] : []
+        })
+      : [],
+    thread: parsePortalThread(r.thread),
   }
 }
 

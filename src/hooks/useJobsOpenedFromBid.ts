@@ -1,15 +1,15 @@
 /**
  * The jobs opened from one bid (`jobs_ledger.bid_id = bid`), newest first — the read side of the
- * bid ↔ job link for the Edit Bid Job block and the per-GC Won pills (Tier-1 #8). Fail-soft: a role
- * whose RLS cannot read `jobs_ledger` simply sees no link. Refetches when the job form announces a
- * new job from this bid (`JOB_CREATED_FROM_BID_EVENT`).
+ * bid ↔ job link for the Edit Bid Job block and the per-GC Won pills (Tier-1 #8). Since v2.5659 it
+ * reads `loadJobsOpenedFromBids`, so an estimator, who reads no job row, sees the job their bid opened
+ * instead of an offer to open a second one. Fail-soft: nothing read, no link. Refetches when the job
+ * form announces a new job from this bid (`JOB_CREATED_FROM_BID_EVENT`).
  */
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import type { BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
+import { loadJobsOpenedFromBids, type JobOpenedFromBid } from '../lib/bids/bidJobsOpenedIo'
 import { JOB_CREATED_FROM_BID_EVENT, type JobCreatedFromBidDetail } from '../lib/bids/wonMomentActions'
 
-export type JobOpenedFromBid = BidBoardJobLink & { jobName: string | null; createdAt: string | null }
+export type { JobOpenedFromBid }
 
 export function useJobsOpenedFromBid(bidId: string | null | undefined): { jobs: JobOpenedFromBid[]; loaded: boolean } {
   const [jobs, setJobs] = useState<JobOpenedFromBid[]>([])
@@ -34,14 +34,8 @@ export function useJobsOpenedFromBid(bidId: string | null | undefined): { jobs: 
     let cancelled = false
     void (async () => {
       try {
-        const { data } = await supabase
-          .from('jobs_ledger')
-          .select('id, hcp_number, job_name, created_at')
-          .eq('bid_id', bidId)
-          .order('created_at', { ascending: false })
-        if (cancelled) return
-        const rows = (data ?? []) as Array<{ id: string; hcp_number: string | null; job_name: string | null; created_at: string | null }>
-        setJobs(rows.map((r) => ({ jobId: r.id, hcpNumber: r.hcp_number ?? '', jobName: r.job_name ?? null, createdAt: r.created_at ?? null })))
+        const rows = await loadJobsOpenedFromBids([bidId])
+        if (!cancelled) setJobs(rows)
       } catch {
         if (!cancelled) setJobs([])
       } finally {

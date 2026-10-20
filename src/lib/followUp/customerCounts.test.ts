@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { customerMessageCounts } from './customerCounts'
+import { customerMessageCounts, CUSTOMERS_PILL } from './customerCounts'
 import { DEMO_FOLLOW_UP_CONTACTS, DEMO_FOLLOW_UP_MESSAGES, DEMO_HEARD, DEMO_OWED, DEMO_PORTAL_PAPERS, DEMO_TODAY } from './followUpDemo'
+import type { NewLaneRow } from './newLane'
 import { followUpQueue, type FollowUpInput, type OwedRecord, type QueueContact, type QueueMessage } from './queue'
 
 const demo: FollowUpInput = {
@@ -29,9 +30,37 @@ const line = (id: string, contactId: string, patch: Partial<QueueMessage> = {}):
 const owedKevin: OwedRecord = { contactId: 'kevin', what: 'the water heater quote', byYmd: '2026-10-05', byWords: null, markedBy: 'Rosa', markedAt: '2026-10-01T15:00:00.000Z' }
 
 describe('customerMessageCounts', () => {
-  it('reads the prototype’s Friday: Elena and Priya need a reply, Priya is owed, the unknown number is to sort', () => {
+  it('reads the prototype’s Friday: Elena and Priya need a reply, Priya is owed, and the unknown number is not a customer', () => {
     // Greg is a trade partner, so his open thread is not a customer’s. Priya’s unopened change order waits on her, not on us.
-    expect(counts(demo)).toEqual({ needReply: 2, weOwe: 1, toSort: 1 })
+    // The number nobody has named sorts under All alone, as the Customers pill hides them.
+    expect(counts(demo)).toEqual({ needReply: 2, weOwe: 1, toSort: 0 })
+  })
+
+  it('counts the customers in New as to sort, from the lane the Customers pill shows, and no sender nobody named', () => {
+    const lane = (contactId: string, kind: NewLaneRow['kind'], sort: NewLaneRow['sort']): NewLaneRow => ({
+      contactId,
+      sort,
+      head: sort,
+      who: contactId,
+      kind,
+      company: '',
+      messageId: `m-${contactId}`,
+      channel: 'text',
+      words: '',
+      body: '',
+      at: '2026-10-02T14:00:00.000Z',
+      when: 'today',
+      mailbox: 'team',
+      via: 'Text on the team number',
+      why: '',
+      jobIds: [],
+      defaultJobId: null,
+    })
+    const contacts: QueueContact[] = [dana, { ...kevin, state: 'waiting' }, { id: 'unk1', kind: 'unknown', name: '(210) 555-0188', state: 'waiting' }, { id: 'greg', kind: 'trade', name: 'Greg Paulk', state: 'waiting' }]
+    // As the queue builds it, the lane's people leave Needs a reply.
+    const queue = { ...followUpQueue({ contacts, messages: [], todayYmd: DEMO_TODAY }), needsReply: [], newLane: [lane('dana', 'customer', 'has'), lane('kevin', 'customer', 'job'), lane('unk1', 'unknown', 'who'), lane('greg', 'trade', 'has')] }
+    expect(customerMessageCounts(queue, contacts)).toEqual({ needReply: 0, weOwe: 0, toSort: 2 })
+    expect(CUSTOMERS_PILL).toBe('customer')
   })
 
   it('counts a customer who wrote on their portal page as needing a reply, once', () => {

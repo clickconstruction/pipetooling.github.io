@@ -29,7 +29,7 @@ export function BridgeOrderModal({ order, note, onClose }: { order: Order; note:
             ×
           </button>
         </div>
-        <div style={{ fontSize: '0.85rem', padding: '0.5rem 0.7rem', background: 'var(--bg-blue-tint, var(--surface-2, transparent))', border: '1px solid var(--border)', borderRadius: 8 }}>{ORDER_RULE}</div>
+        <div style={{ fontSize: '0.85rem', padding: '0.5rem 0.7rem', background: 'var(--bg-blue-tint, transparent)', border: '1px solid var(--border)', borderRadius: 8 }}>{ORDER_RULE}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '28px minmax(120px, 1fr) minmax(160px, 1.3fr) minmax(180px, 1.6fr)', gap: '0 0.8rem', fontSize: '0.85rem', alignItems: 'baseline' }}>
           {order.rows.map((r) => (
             <span key={r.id} style={{ display: 'contents' }}>

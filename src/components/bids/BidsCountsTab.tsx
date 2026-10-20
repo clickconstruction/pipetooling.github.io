@@ -12,13 +12,15 @@ import { useAuth } from '../../hooks/useAuth'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { describeImportUndo, importUndoIsEmpty, importUndoPlan, type ImportUndoPlan, type ImportUndoReinsertRow, type ImportUndoRestoreRow } from '../../lib/bids/countsImportUndo'
 import { buildCountsImportWritePlan, countsImportReviewIsEmpty, describeCountsImportApplied, reviewCountsImport, type CountsImportChoices, type CountsImportReview } from '../../lib/bids/countsImportReview'
-import { CountsImportReviewModal, type CountRowAttachedWork } from './CountsImportReviewModal'
+import { CountsImportReviewModal, type CountRowAttachedWork, type CountsImportSourceContext } from './CountsImportReviewModal'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import { bidDisplayName, countsConfirmLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { parseCountsImportText } from '../../lib/bids/parseCountsImportText'
+import { countSourceTokenOf, parseCountsImportText, type CountsImportScope } from '../../lib/bids/parseCountsImportText'
+import { countRowFrom, countSourceLabel, countSourceShortLabel, decideCountsImportMode, legacyAdoptionPatches, parseSourceShares, resolveShareKeys, type CountSourceShares, type CountsImportMode, type CountsImportModeDecision } from '../../lib/bids/countSources'
+import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { loadCountRowTalliesByBid } from '../../lib/bids/countRowTallies'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -139,7 +141,7 @@ export function BidsCountsTab({
   // v2.3241: the strip folds to one line beside the title; per device.
   const flowFold = useBidFlowFold()
   const confirmDialog = useConfirmDialog()
-  const { user: authUser, role: authRole } = useAuth()
+  const { user: authUser, role: authRole, profileName } = useAuth()
 
   const [countsSearchQuery, setCountsSearchQuery] = useState('')
   const [movingCountRow, setMovingCountRow] = useState(false)
@@ -159,7 +161,56 @@ export function BidsCountsTab({
   const [countsImportBusy, setCountsImportBusy] = useState(false)
   // v2.4699: the import review — a paste onto a sheet that already has rows is sorted against
   // them (update / add / remove / same) and nothing is written until Apply.
-  const [countsReview, setCountsReview] = useState<{ review: CountsImportReview; parsed: ReturnType<typeof parseCountsImportText>; attached: Map<string, CountRowAttachedWork>; existingCount: number } | null>(null)
+  const [countsReview, setCountsReview] = useState<{ review: CountsImportReview; parsed: ReturnType<typeof parseCountsImportText>; attached: Map<string, CountRowAttachedWork>; existingCount: number; decision: CountsImportModeDecision } | null>(null)
+  // v2.5519: the CountTooling projects behind the bid's counts (`bid_count_sources`), read with the bid; the review's
+  // mode comes from the copy's token against them, and Apply registers the copy's project and writes the shares.
+  type CountSourceRow = { id: string; bid_id: string; link: string; token: string | null; project_name: string | null; scope: string; imported_by: string | null; first_imported_at: string; last_imported_at: string }
+  const [countSources, setCountSources] = useState<CountSourceRow[]>([])
+  const [countSourcesRefresh, setCountSourcesRefresh] = useState(0)
+  const countSourcesBidId = selectedBidForCounts?.id ?? null
+  useEffect(() => {
+    if (!countSourcesBidId) {
+      setCountSources([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase.from('bid_count_sources').select('id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at').eq('bid_id', countSourcesBidId).order('first_imported_at', { ascending: true })
+        if (error) throw error
+        if (!cancelled) setCountSources((data ?? []) as CountSourceRow[])
+      } catch {
+        // The sources are a courtesy until the migration lands: no sources reads as a bid with none.
+        if (!cancelled) setCountSources([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [countSourcesBidId, countSourcesRefresh])
+  const countSourceImporterNames = useUserDisplayNames(countSources.map((s) => s.imported_by))
+  /** v2.5519: the review's words and its Combine ↔ Replace switch; null on a hand paste onto a bid with no project. */
+  const countsReviewSourceContext = useMemo<CountsImportSourceContext | null>(() => {
+    if (!countsReview) return null
+    const { parsed, decision } = countsReview
+    const legacyToken = countSourceTokenOf(selectedBidForCounts?.count_tooling_plans_link)
+    const bidProjects = countSources.map((src) => ({ id: src.id, label: countSourceLabel(src, src.imported_by ? countSourceImporterNames[src.imported_by] : null), rows: countRows.filter((r) => (parseSourceShares(r.source_shares)[src.id] ?? 0) > 0).length }))
+    if (bidProjects.length === 0 && legacyToken && decision.adoptLegacy) bidProjects.push({ id: 'legacy', label: countSourceLabel({ project_name: null, link: selectedBidForCounts?.count_tooling_plans_link ?? '' }, null), rows: countRows.filter((r) => Object.keys(parseSourceShares(r.source_shares)).length === 0).length })
+    if (!parsed.sourceToken && bidProjects.length === 0) return null
+    // The switch is offered when another project is on the bid and the copy is not a re-copy of one.
+    const canSwitch = !!parsed.sourceToken && decision.recopySourceId == null && bidProjects.length > 0
+    return {
+      projectName: parsed.projectName,
+      importerName: profileName,
+      bidProjects,
+      onModeChange: canSwitch
+        ? (mode) => {
+            setCountsReview((prev) => (prev ? { ...prev, review: reviewFor(prev.parsed, mode, prev.decision.incomingKey) } : prev))
+          }
+        : null,
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countsReview, countSources, countSourceImporterNames, countRows, profileName, selectedBidForCounts?.count_tooling_plans_link])
   const [countsReviewBusy, setCountsReviewBusy] = useState(false)
   const [countsReviewError, setCountsReviewError] = useState<string | null>(null)
   // v2.3227: the Count & import door asked for the dialog. Deliberately the
@@ -201,6 +252,8 @@ export function BidsCountsTab({
     await onCountSourceLinkSaved?.(bid.id)
   }
   const [sheetNoPageOnly, setSheetNoPageOnly] = useState(false)
+  /** v2.5520: the sheet's From lens — one project's rows, the rows with no project, or all. */
+  const [sheetFromFilter, setSheetFromFilter] = useState<string | null>(null)
   const [qaOpen, setQaOpen] = useState(false)
   const [qaCount, setQaCount] = useState('1')
   const [qaFixture, setQaFixture] = useState('')
@@ -268,6 +321,7 @@ export function BidsCountsTab({
   useEffect(() => {
     setSheetPendingDeleteId(null)
     setSheetNoPageOnly(false)
+    setSheetFromFilter(null)
     setQaFixture('')
     setQaCount('1')
     setQaPage('')
@@ -508,7 +562,7 @@ export function BidsCountsTab({
 
   async function insertCountRows(
     bidId: string,
-    rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null; unit?: CountUnit | null }>
+    rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null; unit?: CountUnit | null; source_shares?: CountSourceShares | null }>
   ): Promise<{ inserted: number; insertedIds: string[]; error?: string }> {
     const { data: maxSeqData } = await supabase
       .from('bids_count_rows')
@@ -530,6 +584,8 @@ export function BidsCountsTab({
       sequence_order: maxSeq + 1 + i,
       // Explicit when the caller knows (import stamps from the name; quick add from its toggle); NULL = infer.
       unit: row.unit ?? null,
+      // v2.5519: the arriving project's share of a row it brought; NULL on a hand-typed row.
+      source_shares: row.source_shares ?? null,
     }))
     // v2.4720: one insert per batch, not one per row — a 35-row copy used to be 35 round trips,
     // which is what looked hung. RETURNING keeps the VALUES order, so the ids line up with the rows.
@@ -577,6 +633,12 @@ export function BidsCountsTab({
         if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         await onCountSourceLinkSaved?.(bidId)
       }
+      // v2.5519: a project the import registered leaves with it; one it re-copied stays.
+      if (plan.deleteSourceId) {
+        const { error } = await supabase.from('bid_count_sources').delete().eq('id', plan.deleteSourceId)
+        if (error) throw error
+        setCountSourcesRefresh((n) => n + 1)
+      }
       refreshAfterCountsChange()
       showToast(describeImportUndo(plan), 'success')
     } catch (e) {
@@ -593,8 +655,10 @@ export function BidsCountsTab({
     message: string
     restoreRows?: ImportUndoRestoreRow[]
     reinsertRows?: ImportUndoReinsertRow[]
+    /** v2.5519: the `bid_count_sources` row this import created, if any. */
+    sourceCreatedId?: string | null
   }) {
-    const plan = importUndoPlan({ insertedIds: args.insertedIds, sourceLinkBefore: args.sourceLinkBefore, sourceLinkWritten: args.sourceLinkWritten, restoreRows: args.restoreRows, reinsertRows: args.reinsertRows })
+    const plan = importUndoPlan({ insertedIds: args.insertedIds, sourceLinkBefore: args.sourceLinkBefore, sourceLinkWritten: args.sourceLinkWritten, restoreRows: args.restoreRows, reinsertRows: args.reinsertRows, sourceCreatedId: args.sourceCreatedId })
     if (importUndoIsEmpty(plan)) {
       showToast(args.message, 'success')
       return
@@ -623,6 +687,41 @@ export function BidsCountsTab({
     }
   }
 
+  /**
+   * v2.5519: the copy's CountTooling project on the bid (`bid_count_sources`): the row by its token when the bid has
+   * it (a re-copy bumps its last import, fills a missing name, takes the copy's scope), else a new one. Null when the
+   * copy carries no link. Non-fatal in the way the link write is: the counts are the import, the project is the record.
+   */
+  async function registerCountSource(
+    bidId: string,
+    src: { link: string | null; token: string | null; projectName: string | null; scope: CountsImportScope; importedBy: string | null },
+  ): Promise<{ id: string; created: boolean } | null> {
+    if (!src.link) return null
+    try {
+      const known = src.token ? countSources.find((s) => s.token && s.token.toLowerCase() === src.token!.toLowerCase()) : null
+      if (known) {
+        const { error } = await supabase
+          .from('bid_count_sources')
+          .update({ last_imported_at: new Date().toISOString(), scope: src.scope, ...(known.project_name ? {} : { project_name: src.projectName }) })
+          .eq('id', known.id)
+        if (error) throw error
+        return { id: known.id, created: false }
+      }
+      const { data, error } = await supabase
+        .from('bid_count_sources')
+        .insert({ bid_id: bidId, link: src.link, token: src.token, project_name: src.projectName, scope: src.scope, imported_by: src.importedBy })
+        .select('id')
+        .single()
+      if (error) throw error
+      return { id: (data as { id: string }).id, created: true }
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Imported counts, but could not record the CountTooling project'), 'error')
+      return null
+    } finally {
+      setCountSourcesRefresh((n) => n + 1)
+    }
+  }
+
   /** v2.4188: " · 1 alternate: Break room (1 ea · 48.5 ft)" on the import toast, '' when the text named none. */
   function importedAlternatesPart(rows: ReturnType<typeof parseCountsImportText>['rows'], alternateGroups: string[]): string {
     if (alternateGroups.length === 0) return ''
@@ -635,23 +734,33 @@ export function BidsCountsTab({
    * rows is compared first and the review decides what is written. Returns the error to show at
    * the door, or null when the paste was taken (or handed to the review).
    */
+  /** v2.5519: the review for a copy in a mode; the switch re-runs it. */
+  function reviewFor(parsed: ReturnType<typeof parseCountsImportText>, mode: CountsImportMode, incomingKey: string | null): CountsImportReview {
+    return reviewCountsImport({ incoming: parsed.rows, existing: countRows, alternateTags: altTags, importAlternateGroups: parsed.alternateGroups, scope: parsed.scope, mode, incomingKey })
+  }
+
   async function importParsedCounts(parsed: ReturnType<typeof parseCountsImportText>): Promise<string | null> {
     const bidId = selectedBidForCounts?.id
     if (!bidId) return null
     const { rows, skippedCount, sourceLink, alternateGroups } = parsed
     if (countRows.length > 0) {
-      const review = reviewCountsImport({ incoming: rows, existing: countRows, alternateTags: altTags, importAlternateGroups: alternateGroups, scope: parsed.scope })
-      if (countsImportReviewIsEmpty(review)) {
+      // v2.5519: the copy's token against the bid's projects says whether this is a re-copy, a second counter, or a plain paste.
+      const decision = decideCountsImportMode({ token: parsed.sourceToken, sources: countSources, legacyToken: countSourceTokenOf(selectedBidForCounts?.count_tooling_plans_link), hasRows: true })
+      const incomingKey = parsed.sourceToken ? decision.incomingKey : null
+      const review = reviewFor(parsed, decision.mode, incomingKey)
+      if (countsImportReviewIsEmpty(review) && decision.mode !== 'combine') {
         showToast(`All ${rows.length} row${rows.length === 1 ? '' : 's'} match this bid exactly. Nothing to import.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`, 'success')
         return null
       }
       const attached = await loadCountRowAttachedWork([...review.changed.map((c) => c.existing.id), ...review.missing.map((m) => m.id)])
       setCountsReviewError(null)
-      setCountsReview({ review, parsed, attached, existingCount: countRows.length })
+      setCountsReview({ review, parsed, attached, existingCount: countRows.length, decision })
       return null
     }
+    // An empty sheet takes the paste whole; a copy with a link registers its project and the rows carry its share.
+    const source = await registerCountSource(bidId, { link: sourceLink, token: parsed.sourceToken, projectName: parsed.projectName, scope: parsed.scope, importedBy: authUser?.id ?? null })
     const sourceLinkBefore = selectedBidForCounts?.count_tooling_plans_link
-    const { inserted, insertedIds, error } = await insertCountRows(bidId, rows)
+    const { inserted, insertedIds, error } = await insertCountRows(bidId, source ? rows.map((r) => ({ ...r, source_shares: r.count > 0 ? { [source.id]: r.count } : null })) : rows)
     if (error) {
       if (inserted > 0) refreshAfterCountsChange()
       return `Failed to insert: ${error}`
@@ -660,7 +769,7 @@ export function BidsCountsTab({
     const sourceLinkWritten = await persistCountSourceLink(bidId, sourceLink)
     if (alternateGroups.length > 0) await saveAlternateTags(bidId, mergeAlternateTags(altTags, alternateGroups))
     const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}${importedAlternatesPart(rows, alternateGroups)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
-    showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg })
+    showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg, sourceCreatedId: source?.created ? source.id : null })
     return null
   }
 
@@ -683,25 +792,47 @@ export function BidsCountsTab({
     return out
   }
 
-  /** Apply the review: updates first (they keep every link), then inserts, then deletes, then the source link. One Undo covers all of it. */
+  /**
+   * Apply the review: the copy's project first (so the shares have a key), updates (they keep every link), then
+   * inserts, then deletes, then the bid's link. One Undo covers all of it. v2.5519: a bid with no projects but a legacy
+   * link adopts that link as its first project and stamps its share-less rows, so a later re-copy of either project
+   * moves only its own share.
+   */
   async function applyCountsReview(choices: CountsImportChoices) {
     const bid = selectedBidForCounts
     if (!bid || !countsReview || countsReviewBusy) return
-    const { review, parsed } = countsReview
+    const { review, parsed, decision } = countsReview
     const plan = buildCountsImportWritePlan(review, choices)
     const restoreRows: ImportUndoRestoreRow[] = []
     const reinsertRows: ImportUndoReinsertRow[] = []
     let insertedIds: string[] = []
+    let sourceCreatedId: string | null = null
     setCountsReviewBusy(true)
     setCountsReviewError(null)
     try {
+      // The legacy link becomes the bid's first project; the rows with no share were its all along.
+      if (decision.adoptLegacy && bid.count_tooling_plans_link) {
+        const legacy = await registerCountSource(bid.id, { link: bid.count_tooling_plans_link, token: countSourceTokenOf(bid.count_tooling_plans_link), projectName: null, scope: 'unknown', importedBy: null })
+        if (legacy) {
+          for (const u of legacyAdoptionPatches(countRows, legacy.id)) {
+            const { error } = await supabase.from('bids_count_rows').update(u.patch).eq('id', u.id)
+            if (error) throw error
+            restoreRows.push({ id: u.id, before: u.before })
+          }
+        }
+      }
+      // The copy's own project: re-copied or new. Its id replaces the review's sentinel in every share.
+      const source = review.incomingKey ? await registerCountSource(bid.id, { link: parsed.sourceLink, token: parsed.sourceToken, projectName: parsed.projectName, scope: parsed.scope, importedBy: authUser?.id ?? null }) : null
+      if (source?.created) sourceCreatedId = source.id
+      const resolve = (shares: CountSourceShares | null | undefined) => (source ? resolveShareKeys(shares, source.id) : shares === undefined ? undefined : null)
       for (const u of plan.updates) {
-        const { error } = await supabase.from('bids_count_rows').update(u.patch).eq('id', u.id)
+        const patch = u.patch.source_shares === undefined ? u.patch : { ...u.patch, source_shares: resolve(u.patch.source_shares) ?? null }
+        const { error } = await supabase.from('bids_count_rows').update(patch).eq('id', u.id)
         if (error) throw error
         restoreRows.push({ id: u.id, before: u.before })
       }
       if (plan.inserts.length > 0) {
-        const ins = await insertCountRows(bid.id, plan.inserts)
+        const ins = await insertCountRows(bid.id, plan.inserts.map((r) => ({ ...r, source_shares: resolve(r.source_shares) ?? null })))
         insertedIds = ins.insertedIds
         if (ins.error) throw new Error(ins.error)
       }
@@ -709,7 +840,7 @@ export function BidsCountsTab({
         const byId = new Map(countRows.map((r) => [r.id, r]))
         for (const d of plan.deletes) {
           const full = byId.get(d.id)
-          if (full) reinsertRows.push({ id: full.id, bid_id: full.bid_id, bid_version_id: full.bid_version_id ?? null, fixture: full.fixture, count: full.count, group_tag: full.group_tag ?? null, page: full.page ?? null, unit: full.unit ?? null, sequence_order: full.sequence_order ?? null })
+          if (full) reinsertRows.push({ id: full.id, bid_id: full.bid_id, bid_version_id: full.bid_version_id ?? null, fixture: full.fixture, count: full.count, group_tag: full.group_tag ?? null, page: full.page ?? null, unit: full.unit ?? null, sequence_order: full.sequence_order ?? null, source_shares: Object.keys(parseSourceShares(full.source_shares)).length ? parseSourceShares(full.source_shares) : null })
         }
         const { error } = await supabase.from('bids_count_rows').delete().in('id', plan.deletes.map((d) => d.id))
         if (error) throw error
@@ -725,11 +856,13 @@ export function BidsCountsTab({
     setCountsImportText('')
     setCountsImportOpen(false)
     refreshAfterCountsChange()
+    // The bid's one link stays the first project's: it moves to this copy only when the copy is the first project.
     const sourceLinkBefore = bid.count_tooling_plans_link
-    const sourceLinkWritten = await persistCountSourceLink(bid.id, parsed.sourceLink)
+    const firstProject = countSources.length === 0 && !decision.adoptLegacy
+    const sourceLinkWritten = firstProject || !parsed.sourceToken ? await persistCountSourceLink(bid.id, parsed.sourceLink) : null
     if (parsed.alternateGroups.length > 0) await saveAlternateTags(bid.id, mergeAlternateTags(altTags, parsed.alternateGroups))
-    const msg = `${describeCountsImportApplied(plan, review.same.length)}.${parsed.skippedCount > 0 ? ` ${parsed.skippedCount} lines skipped.` : ''}`
-    showImportedToastWithUndo({ bidId: bid.id, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg, restoreRows, reinsertRows })
+    const msg = `${describeCountsImportApplied(plan, review.same.length, review.untouched.length)}.${parsed.skippedCount > 0 ? ` ${parsed.skippedCount} lines skipped.` : ''}`
+    showImportedToastWithUndo({ bidId: bid.id, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg, restoreRows, reinsertRows, sourceCreatedId })
   }
 
   /** v2.4720: the one-at-a-time gate both doors pass through. Returns false when a run is already in flight. */
@@ -1013,7 +1146,12 @@ export function BidsCountsTab({
             const summary = countSheetSummary(countRows, altTags)
             const groups = buildCountSheetPageGroups(countRows)
             const showGroupTag = summary.withGroupTag > 0
-            const visibleRows = sheetNoPageOnly ? countRows.filter((r) => parsePlanPageTokens(r.page).length === 0) : countRows
+            const fromRows = sheetFromFilter == null ? countRows : countRows.filter((r) => (sheetFromFilter === '' ? Object.keys(parseSourceShares(r.source_shares)).length === 0 : (parseSourceShares(r.source_shares)[sheetFromFilter] ?? 0) > 0))
+            const visibleRows = sheetNoPageOnly ? fromRows.filter((r) => parsePlanPageTokens(r.page).length === 0) : fromRows
+            // v2.5520: who each row came from, by the bid's projects (short names when the label carries an importer).
+            const sourceLabelById: Record<string, string> = Object.fromEntries(countSources.map((src) => [src.id, countSourceShortLabel(countSourceLabel(src, src.imported_by ? countSourceImporterNames[src.imported_by] : null))]))
+            const fromCounts = countSources.map((src) => ({ id: src.id, label: sourceLabelById[src.id] ?? '?', n: countRows.filter((r) => (parseSourceShares(r.source_shares)[src.id] ?? 0) > 0).length }))
+            const typedHereCount = countSources.length > 0 ? countRows.filter((r) => Object.keys(parseSourceShares(r.source_shares)).length === 0).length : 0
             // v2.4188: the By group view and the base / + alternate foot.
             const altTotals = countSheetAlternateTotals(countRows, altTags)
             const groupGroups = buildCountSheetGroupGroups(visibleRows, altTags)
@@ -1080,6 +1218,14 @@ export function BidsCountsTab({
                 <td style={{ ...sheetCell, width: '9rem' }}>
                   {sheetEditCell(r, 'page', r.page ?? '', { nopage: parsePlanPageTokens(r.page).length === 0, ariaLabel: `Plan page for ${r.fixture}` })}
                 </td>
+                {countSources.length > 0 ? (() => {
+                  const from = countRowFrom(r.source_shares, sourceLabelById, (n) => formatUnitTotal(n, effectiveCountUnit(r)))
+                  return (
+                    <td style={{ ...sheetCell, width: '6.5rem', whiteSpace: 'nowrap' }} data-testid="count-row-from" title={from.title}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 999, border: '1px solid var(--border)', background: from.kind === 'both' ? 'var(--bg-green-100)' : 'var(--bg-subtle)', color: from.kind === 'none' ? 'var(--text-muted)' : from.kind === 'both' ? 'var(--text-green-700)' : 'var(--text-700)' }}>{from.words}</span>
+                    </td>
+                  )
+                })() : null}
                 <td style={{ ...sheetCell, textAlign: 'right', width: '7rem', whiteSpace: 'nowrap' }}>
                   {sheetPendingDeleteId === r.id ? (
                     <>
@@ -1232,6 +1378,21 @@ export function BidsCountsTab({
                     <div style={{ padding: '0.55rem 1rem', borderLeft: '1px solid var(--border)', minWidth: '7rem' }} title="Groups the customer wants priced with and without — from CountTooling's alternate heading, or the Alternate switch on a group's heading in By group">
                       <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-amber-700)' }}>Alternates</div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{altTotals.alternates.length}</div>
+                    </div>
+                  ) : null}
+                  {countSources.length > 0 ? (
+                    <div data-testid="count-sheet-from" style={{ padding: '0.55rem 1rem', borderLeft: '1px solid var(--border)', minWidth: '10rem' }} title="Which CountTooling project each row came from — a row both counted shows each share on hover">
+                      <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>From</div>
+                      <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                        {[{ id: null as string | null, label: 'All', n: countRows.length }, ...fromCounts.map((f) => ({ id: f.id as string | null, label: f.label, n: f.n })), ...(typedHereCount > 0 ? [{ id: '' as string | null, label: 'typed here', n: typedHereCount }] : [])].map((pill) => {
+                          const on = sheetFromFilter === pill.id
+                          return (
+                            <button key={pill.id ?? 'all'} type="button" aria-pressed={on} onClick={() => setSheetFromFilter(on ? null : pill.id)} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: on ? 700 : 500, padding: '0.1rem 0.5rem', borderRadius: 999, border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              {pill.label} · {pill.n}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -1421,6 +1582,7 @@ export function BidsCountsTab({
                         <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Fixture or tie-in</th>
                         {showGroupTag ? <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Group/Tag</th> : null}
                         <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Plan page</th>
+                        {countSources.length > 0 ? <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>From</th> : null}
                         <th style={{ borderBottom: '1px solid var(--border)' }} aria-label="Actions"></th>
                       </tr>
                     </thead>
@@ -1540,6 +1702,7 @@ export function BidsCountsTab({
           error={countsReviewError}
           onApply={(choices) => void applyCountsReview(choices)}
           onCancel={() => { if (!countsReviewBusy) { setCountsReview(null); setCountsReviewError(null) } }}
+          source={countsReviewSourceContext}
         />
       )}
       {countsImportOpen && selectedBidForCounts && (

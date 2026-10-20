@@ -3,9 +3,9 @@
 ---
 file: docs/DOCSMIT_LIEN_RUN_PLAN.md
 type: Engineering plan (draft, not yet agreed)
-purpose: Give the company one certified-mail door (a vendor-agnostic mail_pieces table, an edge function per provider, an hourly poll) and open it first on the Lien desk's run, so a notice's envelope goes out through the Docsmit API (US-Letter PDF in, USPS number and delivery status back) instead of being printed and walked to the post office; then let delivery drive the collections cadence (owner call on day 3, a per-piece short link that says when the owner read it, letter two from the later clock) and send standing-rule GCs by cron. Written 2026-10-12 from a read of the Docsmit API reference and the run's code, widened the same day after the "is this the best we can do" pass; mockups linked below; nothing here is built.
+purpose: Give the company one certified-mail door (a vendor-agnostic mail_pieces table, an edge function per provider, an hourly poll) and open it first on the Lien desk's run, so a notice's envelope goes out through the Docsmit API (US-Letter PDF in, USPS number and delivery status back) instead of being printed and walked to the post office; then let delivery drive the collections cadence (owner call on day 3, a per-piece short link that says when the owner read it, letter two from the later clock) and send standing-rule GCs by cron. Written 2026-10-12 from a read of the Docsmit API reference and the run's code, widened the same day after the "is this the best we can do" pass; mockups linked below; of the PR train PRs 1 to 5, 6a, 6b through its credit line (v2.5521), 8 and 9 are on main (2026-10-14; the list under *PR train*, below, carries each version).
 audience: Owner, Developers, AI Agents
-last_updated: 2026-10-12
+last_updated: 2026-10-14
 sections:
   - The thesis
   - What stays the same
@@ -77,7 +77,7 @@ One new table, `mail_pieces`: one row per envelope the company sends certified, 
 |---|---|
 | `id` uuid | |
 | `kind` text | what the envelope is: `lien_notice_53_056`, `lien_retainage_53_057`, `lien_affidavit_copy`, `demand_31_04`, `lien_release`, `collections_demand`, `hazmat_notice`, `hr_letter`, … (check-constrained; each kind names where its facts land when they come back) |
-| `source_ids` uuid[] | the rows behind it: every `job_lien_filings` row inside a lien envelope (one, or N for the GC's envelope, or the packet's rows for a combined notice); a demand letter id; a release id |
+| `source_ids` uuid[] | the rows behind it: a lien envelope's desk items (`job_lien_desk_items`) from prepare on (v2.5532), then every `job_lien_filings` row inside it once the run records (one, or N for the GC's envelope, or the packet's rows for a combined notice); a demand letter id; a release id |
 | `job_id` uuid null | the job, when there is one, so the piece's cost and its papers land on it |
 | `provider` text | `docsmit` today; `lob`, `postgrid`, `labels_api` if ever; the edge function is chosen by this |
 | `recipient` text | `owner`, `original_contractor`, `customer`, `person`, … |
@@ -115,6 +115,8 @@ One function per provider, office-only (JWT + RLS on the job like `send-lien-fil
 
 ### Managed from Developer settings
 
+Shipped as v2.5387 (`DocsmitDevSettingsBlock`, `mail-config`, migration `20261013160000_mail_config.sql`; the switches' policies came with v2.5385). The call log (`mail_api_calls`) is not built; the pieces' `events` hold the calls that matter.
+
 The connection and its switches live on the Settings page's Developer section, dev role only, as a `DocsmitDevSettingsBlock` beside the existing dev blocks. Two homes, by the app's own pattern:
 
 - **Secrets** (`DOCSMIT_EMAIL`, `DOCSMIT_PASSWORD_SHA512`, `DOCSMIT_SOFTWARE_ID`, one set per environment): Supabase Vault, written by a dev-only edge function `mail-config` (JWT + dev role in-body) that the block calls; the password is hashed in the browser and only the hash travels; `mail-send-docsmit` and `mail-poll` read Vault at call time; nothing is ever returned to a browser. (Vault replaces `supabase secrets set` for these three, so the owner can rotate them without a terminal.)
@@ -132,7 +134,7 @@ Docsmit mails in a double-window #10 or a flat. The owner's page 1 is counsel's 
 
 ### The run window
 
-Step 1 grows one button beside the print button, **Mail through Docsmit · N envelopes**. It is enabled when at least one envelope is on `certified_mail` and has no problems. Pressing it:
+Step 1 grows one button beside the print button, **Mail through Docsmit · N envelopes**. It is enabled when at least one envelope that goes out is on `certified_mail` and has no problems; an envelope the run holds back (unsigned, a $0 claim, no address) is never offered, counted or prepared (v2.5535). Pressing it:
 
 1. Builds each certified envelope's PDF: `buildRunNoticePdf` per copy, merged in envelope order with `mergePdfBlobs` for an envelope holding several copies. Counts pages; picks `#10` for 5 sheets or fewer, `Flat` up to 47, and holds the envelope with a red line past that.
 2. Writes the PDF to the sent-copies bucket (one filed copy per envelope, `how: 'docsmit'`), then calls `prepare` for each. The window lists each envelope with its price and any address correction, and shows the total against the balance. A `nonMailable` address shows as a held row, like a missing address does today.
@@ -149,7 +151,7 @@ Nothing goes to Docsmit until the office has seen it the way Docsmit will mail i
 - **The footer**: *Back* and *Mail these N envelopes · $21.86 ▸*, with *Docsmit mails today's batch at 3:00 pm* beside it. A review of a held or problem envelope shows the problem on the face and has no Mail.
 
 The review is the same component the Sent row's *The mailed copy ›* opens later, read-only, so what was reviewed and what was mailed are one thing.
-4. **Record the mailing** runs `recordLienDeskRun` as today. For a Docsmit envelope the send record carries `via`, `piece_id` and whatever tracking is known. The function's `prepare` already knew the filing ids are not minted until this moment, so after the insert the client patches `mail_pieces.source_ids` (one small update per piece).
+4. **Record the mailing** runs `recordLienDeskRun` as today. For a Docsmit envelope the send record carries `via`, `piece_id` and whatever tracking is known. The filing ids are not minted until this moment, so after the insert the client adds them to `mail_pieces.source_ids` (one small update per piece). The desk items are there from `prepare` (v2.5532): the send itself stamps a notice with every copy out printed and re-reads the desk, so a run closed before this step loses nothing, and a later run builds those copies as mailed.
 
 Envelopes on other methods keep their print and type path in the same run. A run can mix.
 
@@ -239,12 +241,12 @@ Ship small; each PR is one `npm run claim` version with its release note and `do
 
 1. **Kernels** (no UI, no schema) — shipped as v2.5375. `src/lib/mail/mailAddress.ts`: envelope name + one-line address → provider party (organization vs first/last split, reusing `splitCityStateZip`). `src/lib/mail/mailPiece.ts`: page count → envelope choice, the sendType constant for D1, `clientMsgID` format, the status fold over a provider's payload with `unknown` for strings it has not seen, the send-by time from a window's last day and the cutoff. `lienSendTracking.ts`: `via`/`piece_id` and the "coming, not owed" rule. `lienLetterTwo.ts`: the later-clock rule. Unit tests for all, including the hostile addresses the label CSV already handles.
 2. **Migration** `mail_pieces` — shipped as v2.5379 (`20261013120000_mail_pieces.sql`) + RLS + the three fences + `docs/migrations/<version>_mail_pieces.md` + regenerated `src/types/database.ts`. Pushed with `supabase db push` after merge.
-3. **Edge functions** `mail-send-docsmit` and `mail-poll` with the `_shared/mailSend.ts` kernel, `config.toml` entries, `docs/EDGE_FUNCTIONS.md` sections and TOC lines, handler tests under vitest with a recording fake Docsmit (the mocked-URL-imports recipe). Deployed against **Tracksmit** first; the base URL secret decides which Docsmit it talks to.
-4. **The PDF for the window**: the owner's page 1 with the address block in the window zone and the QR + short link under it; the pay page records the open on the piece. Read on paper from Tracksmit.
-5. **The run window**: the button, the send-by strip with the cutoff, the price step, the send step, the locked tracking box, the record patch, the Sent-footer chips and the piece drawer, the render smoke, the help guide section, `PROJECT_DOCUMENTATION.md` line for the new button.
-6. **Delivery drives the desk** — 6a, the poll's cron and the switches' policies (`20261013150000_mail_poll_cron.sql`), shipped as v2.5385; 6b, the desk's surfaces, after the run train: the poll cron scheduled, the mailed date as the given date in the Months grid, the owner call queued on delivery, the Deliveries filter with its Needs you rows and doors, the Certification PDF filed on delivery, the cost line on the job, the credit-balance line on Needs you.
+3. **Edge functions** — shipped as v2.5381 (deploy owed; Docsmit secrets are the owner's to set). `mail-send-docsmit` and `mail-poll` with the `_shared/mailSend.ts` kernel, `config.toml` entries, `docs/EDGE_FUNCTIONS.md` sections and TOC lines, handler tests under vitest with a recording fake Docsmit (the mocked-URL-imports recipe). Deployed against **Tracksmit** first; the base URL secret decides which Docsmit it talks to.
+4. **The PDF for the window** — shipped as v2.5382 (migration `20261013130000_mail_piece_opened.sql`; the zone to be read on paper from Tracksmit): the owner's page 1 with the address block in the window zone and the QR + short link under it; the pay page records the open on the piece. Read on paper from Tracksmit.
+5. **The run window** — 5a, the pure side (`src/lib/mail/runDocsmit.ts`, `docsmitSettings.ts`), shipped as v2.5384; 5b, the window itself, shipped as v2.5454 (with the Docsmit lane and the paper-only packet): the button, the send-by strip with the cutoff, the price step, the send step, the locked tracking box, the record patch, the Sent-footer chips and the piece drawer, the render smoke, the help guide section, `PROJECT_DOCUMENTATION.md` line for the new button.
+6. **Delivery drives the desk** — 6a, the poll's cron and the switches' policies (`20261013150000_mail_poll_cron.sql`), shipped as v2.5385; 6b part 1, the desk reads the pieces (Sent row + footer), shipped as v2.5455; the cost line (`billTo` on each message, the charge read from `/transactions` onto the piece, the footer's cost words), shipped as v2.5480; the Deliveries filter and the Needs you rows (Do now, *Open the notice*), shipped as v2.5482; the doors on a Needs you row (a plain copy, another address, by hand; migration `20261014130000_mail_piece_resolved.sql`), shipped as v2.5487; the credit-balance line on Needs you (the poll keeps the balance; a card under the warn line), shipped as v2.5521; the rest of 6b after it: the mailed date as the given date in the Months grid, the owner call queued on delivery.
 7. **The standing-rule cron** `lien-standing-run` with the 6 pm digest push and its Hold.
-8. **Counsel's packet** on the firm portal for referred matters (D12), the affidavit's served dates from the copies' pieces.
+8. **Counsel's packet** — shipped as v2.5388 (the firm portal's envelope line, the Certification links, the affidavit's served day from its mailed copy); on the firm portal for referred matters (D12), the affidavit's served dates from the copies' pieces.
 9. **Optional, later**: a callback receiver. A path on the existing `my.clickplumbing.com` Worker (`portal-link-shell`, dashboard-edited and mirrored in `scripts/cloudflare/`) that forwards `/docsmit/<secret>/*` to a `mail-callback` function, since Docsmit has no signing secret and the host must sit on the account's domain. Only if the hourly poll proves too slow. Also later: the other kinds (affidavit copies, the § 31.04 demand, releases, Collections, hazmat, HR) open on the same door one at a time.
 
 ## Live rollout

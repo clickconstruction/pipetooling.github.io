@@ -13,12 +13,14 @@ import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWordFor, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
 import { lienSupplierLetterParagraphFor, type LienSupplierJob } from './lienJobSuppliers'
 import { conditionalReleaseParagraph, noticeReleaseEnclosureWords, noticeReleaseLabel, noticeReleasePageHtml, type NoticeRelease } from './lienNoticeRelease'
-import { runEnvelopes, type RunEnvelope } from './runEnvelopes'
+import { recipientViaDocsmit, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 import { RUN_PAPER_CSS, runDividerHtml, runMailing, runPageFoot, runSheetHtml } from './lienRunPaper'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature, type LienNoticeSignature } from './lienNoticeSignature'
+import { mailPieceForCopy, type LienMailPieceRow } from '../mail/lienMailPieces'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -53,6 +55,26 @@ export type RunRecipient = {
    * set it there and the run's tick can turn it off. The owner's copy never carries it.
    */
   courtesy?: boolean
+  /** This copy's envelope went (or is going) through a mail provider (the Docsmit train, PR 5b): the provider, the piece and where it stands. */
+  via?: 'docsmit'
+  pieceId?: string
+  pieceStatus?: 'prepared' | 'sent' | 'mailed' | 'failed'
+  /** Why the provider held it, in words for the card; null when it went. */
+  pieceProblem?: string | null
+  /** The day USPS accepted this copy (v2.5532), from the piece once the poll has it: the day the notice was given, so the record writes it as sent. */
+  pieceMailedOn?: string | null
+}
+
+export { recipientViaDocsmit }
+
+/**
+ * A copy that already went through Docsmit, built as mailed (v2.5532): the piece names its desk item from prepare, so a
+ * run opened after the send knows it, though the window closed before Record the run. The run never offers it to Docsmit
+ * or the packet again, and records it with its piece, the USPS number and the day USPS took it once the poll has them.
+ */
+export function runRecipientWithPiece(r: RunRecipient, pieces: ReadonlyArray<LienMailPieceRow> | undefined): RunRecipient {
+  const p = pieces ? mailPieceForCopy(pieces, r.key) : null
+  return p ? { ...r, via: 'docsmit', pieceId: p.id, pieceStatus: p.status === 'sent' ? 'sent' : 'mailed', pieceProblem: null, tracking: (p.usps_tracking ?? '').trim(), pieceMailedOn: p.mailed_at ? calendarYmdInAppTzFromIso(p.mailed_at) || null : null } : r
 }
 
 export type RunNotice = {
@@ -210,10 +232,12 @@ export function buildLienDeskRun(
       offer: lienOfferFromItem(item),
       release,
       ...(draft?.payLines ? { payLines: draft.payLines } : {}),
-      recipients: [
-        { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
-        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
-      ],
+      recipients: (
+        [
+          { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
+          { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
+        ] satisfies RunRecipient[]
+      ).map((r) => runRecipientWithPiece(r, data.mailPiecesByItem?.[item.id])),
     })
   }
   return out
@@ -283,10 +307,12 @@ export function buildLienRetainageRun(
       coverNote: null,
       coverLetter: item.cover_note ? lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: e.inClaim, endedHow: e.contractEndedHow, endedOn: e.contractEndedOn ? demandDate(e.contractEndedOn) : '', paymentBond: e.paymentBond, kind: coverLetterKindFor(property), contact: fields.contactPerson, phone: retPhone, trade: job?.service_type?.name }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
-      recipients: [
-        { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
-        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
-      ],
+      recipients: (
+        [
+          { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
+          { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
+        ] satisfies RunRecipient[]
+      ).map((r) => runRecipientWithPiece(r, data.mailPiecesByItem?.[item.id])),
     })
   }
   return out
@@ -318,7 +344,8 @@ export function runNoticeProblems(n: RunNotice): string[] {
   const out: string[] = []
   if (n.ownerUnconfirmed) out.push(RUN_OWNER_UNCONFIRMED_PROBLEM)
   // v2.5086: a builder said the leader has not signed it; a notice the builder said nothing about (undefined) is not held for it.
-  if (n.signature === null) out.push(RUN_UNSIGNED_PROBLEM)
+  // v2.5533: nor is one already printed — the paper went out as it was; the run records it as it went, and the row keeps the doors to record a pen signature first.
+  if (n.signature === null && !n.printedAt) out.push(RUN_UNSIGNED_PROBLEM)
   for (const r of n.recipients) {
     if (!r.name && !r.address) out.push(`${r.label}: nobody to send to`)
     else if (r.method === 'email' && !r.email) out.push(`${r.label}: no email on file`)
@@ -336,12 +363,25 @@ export function runNoticeProblems(n: RunNotice): string[] {
 export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind' | 'release' | 'signature'>> & {
   /** Unpaid invoices ride behind the form (§ 53.056(a-3)): the letter's Enclosed line says so, as counsel's letter does (v2.3828). */
   withInvoices?: boolean
+  /** The window envelope (the Docsmit train, PR 4): the recipient block at the window zone and, under it, the pay page's code with the piece's link. Only a copy that mails through a provider carries it. */
+  window?: CoverWindow | null
+}
+
+export type CoverWindow = { lines: string[]; qr?: { png: string | null; svg: string | null; display: string; caption: string } | null }
+
+/** The window blocks in order, or nothing. */
+export function coverWindowBlocks(w: CoverWindow | null | undefined): FilingDocBlock[] {
+  if (!w || w.lines.length === 0) return []
+  const out: FilingDocBlock[] = [{ kind: 'windowAddress', lines: w.lines }]
+  if (w.qr) out.push({ kind: 'qrLink', png: w.qr.png, svg: w.qr.svg, display: w.qr.display, caption: w.qr.caption })
+  return out
 }
 
 /** The cover page as the packet prints it: the letterhead, "Re: <job>" and the months, the note (or the run's cover letter), the signature. Empty when the draft carries neither. */
 export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
   const head: FilingDocBlock[] = []
   if (n.extras.letterhead && n.extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...n.extras.letterhead })
+  head.push(...coverWindowBlocks(n.window))
   if (n.coverLetter) {
     const paragraphs = coverLetterParagraphs(n.coverLetter)
     return [
@@ -493,13 +533,14 @@ export function runCopyKey(itemId: string, recipientKey: string): string {
 /**
  * Which notices have every copy printed (v2.4853): printing one copy at a time stamps an item
  * printed — into In the mail · tracking owed — only once each of its recipients has a copy, so a
- * notice whose GC copy is still unprinted does not read as in the mail.
+ * notice whose GC copy is still unprinted does not read as in the mail. A copy mailed through
+ * Docsmit is out as well (v2.5532), so a notice that went part by Docsmit and part on paper is stamped too.
  */
 export function noticesFullyPrinted<T extends Pick<RunNotice, 'itemId' | 'recipients'>>(notices: ReadonlyArray<T>, printed: ReadonlySet<string>): T[] {
-  return notices.filter((n) => n.recipients.length > 0 && n.recipients.every((r) => printed.has(runCopyKey(n.itemId, r.key))))
+  return notices.filter((n) => n.recipients.length > 0 && n.recipients.every((r) => printed.has(runCopyKey(n.itemId, r.key)) || recipientViaDocsmit(r)))
 }
 
-export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string }
+export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string; via?: string; piece_id?: string }
 
 /**
  * The courtesy PDFs a recorded notice owes (punch list #87 B): every copy still ticked, with an
@@ -560,8 +601,8 @@ export function trackingShape(method: RunSendMethod, tracking: string): Tracking
 }
 
 /** An envelope counts as mailed once it carries a number, or goes by email or hand (v2.4119). */
-export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking'>): boolean {
-  return r.method === 'email' || r.method === 'hand' || (r.tracking ?? '').trim().length > 0
+export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus'>): boolean {
+  return r.method === 'email' || r.method === 'hand' || (r.tracking ?? '').trim().length > 0 || recipientViaDocsmit(r)
 }
 
 /**
@@ -570,10 +611,51 @@ export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking'>): b
  * envelope carries a number the run records whole, as it always did — an
  * office that does not track is not stopped.
  */
-export function runRecordSplit<T extends RunNotice>(notices: ReadonlyArray<T>): { mailed: T[]; waiting: T[]; partial: boolean } {
-  const mailed = notices.filter((n) => n.recipients.some(recipientMailed))
-  if (mailed.length === 0 || mailed.length === notices.length) return { mailed: [...notices], waiting: [], partial: false }
-  return { mailed, waiting: notices.filter((n) => !n.recipients.some(recipientMailed)), partial: true }
+export type RunRecordSplit<T> = {
+  /** What records now. */
+  mailed: T[]
+  /** What stays in the pile: the unnumbered, then the held. */
+  waiting: T[]
+  /** Held for a problem in red (v2.5533): unsigned, an owner nobody confirmed, no address. They wait whatever their numbers say. */
+  held: T[]
+  /** Clean, but with no number yet while others have theirs (v2.4119). */
+  unnumbered: T[]
+  /** Something records and something waits. */
+  partial: boolean
+}
+
+/**
+ * Back from the post office (v2.4119): the clean notices with a number record now, the rest wait; with no number
+ * anywhere every clean notice records (the numbers are typed later). Since v2.5533 a notice with a problem
+ * (`problems[i]`, as `runNoticeProblems` lists them) is held: it waits in the pile with its reason whatever its
+ * numbers say, and the ready ones record now — the run is never all or nothing.
+ */
+export function runRecordSplit<T extends RunNotice>(notices: ReadonlyArray<T>, problems?: ReadonlyArray<ReadonlyArray<string>>): RunRecordSplit<T> {
+  const held: T[] = []
+  const clean: T[] = []
+  notices.forEach((n, i) => ((problems?.[i]?.length ?? 0) > 0 ? held : clean).push(n))
+  const numbered = clean.filter((n) => n.recipients.some(recipientMailed))
+  const mailed = numbered.length === 0 || numbered.length === clean.length ? clean : numbered
+  const unnumbered = clean.filter((n) => !mailed.includes(n))
+  const waiting = [...unnumbered, ...held]
+  return { mailed, waiting, held, unnumbered, partial: mailed.length > 0 && waiting.length > 0 }
+}
+
+/** The foot's words and the button's label for a split that waits on something (v2.5533); null when everything records. */
+export function runRecordWords(split: Pick<RunRecordSplit<unknown>, 'mailed' | 'waiting' | 'held' | 'unnumbered'>): { line1: string; line2: string; button: string } | null {
+  const m = split.mailed.length
+  const h = split.held.length
+  const u = split.unnumbered.length
+  const w = split.waiting.length
+  if (m === 0 && h > 0) return { line1: 'Nothing is ready to record', line2: 'Sign or fix what is marked in red, then record.', button: 'Record the run ▸' }
+  if (w === 0) return null
+  const stays = w === 1 ? 'stays' : 'stay'
+  const line1 = h && u ? `${h} held · ${u} with no number yet` : h ? `${h} ${h === 1 ? 'notice is' : 'notices are'} held` : `${u} ${u === 1 ? 'envelope has' : 'envelopes have'} no number yet`
+  const line2 = h
+    ? `${w === 1 ? 'It stays' : 'They stay'} in the pile with the reason in red. The ${m} ready ${m === 1 ? 'one records' : 'ones record'} now.`
+    : `${w === 1 ? 'It stays' : 'They stay'} in the mail pile; the numbered ones record now.`
+  const button = u ? `Record ${m} mailed · ${w} ${stays} in the pile ▸` : `Record ${m} · ${w} held ${stays} in the pile ▸`
+  return { line1, line2, button }
 }
 
 function esc(s: string): string {

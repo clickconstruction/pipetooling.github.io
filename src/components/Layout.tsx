@@ -95,6 +95,8 @@ import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swap
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
+import { canOpenMessages } from '../lib/gc/access'
+import { MessagesBadge } from './MessagesBadge'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -688,6 +690,7 @@ export default function Layout() {
           {estimatorProspectsAccess && (
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
           )}
+          {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages<MessagesBadge /></NavLink>}
           {onNavClick ? <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink> : null}
         </>
       )
@@ -789,6 +792,8 @@ export default function Layout() {
                 <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
               </>
             )}
+            {/* Messages in the header (residential R2): the GC office team, as `canOpenMessages` says. Its count (R7) is everyone waiting on us. */}
+            {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages<MessagesBadge /></NavLink>}
             {canShowRoadmapNav && (
               <NavLink to="/roadmap" style={linkStyle} onClick={onNavClick}>Roadmap</NavLink>
             )}
@@ -1035,7 +1040,7 @@ export default function Layout() {
           {/* Job Mode: the three task buttons become a labeled "Contact:" row when the
               viewport fits; small viewports keep the icon buttons with a phone on the left. */}
           {jobModeContactRowFits && (
-            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--chrome-muted, var(--text-muted))' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>
               Contact:
             </span>
           )}

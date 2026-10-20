@@ -21,7 +21,7 @@ import type { ArLineItem } from '../lib/arModalLineItems'
 const PILL_COLORS: Record<ArChasePillKind, { bg: string; fg: string }> = {
   ask: { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' },
   broken: { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' },
-  dispute: { bg: 'var(--bg-purple-tint, var(--bg-muted))', fg: 'var(--text-purple-700, var(--text-700))' },
+  dispute: { bg: 'var(--bg-muted)', fg: 'var(--text-700)' },
   promised: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)' },
   snoozed: { bg: 'var(--bg-muted)', fg: 'var(--text-muted)' },
   quiet: { bg: 'var(--bg-muted)', fg: 'var(--text-muted)' },

@@ -1,4 +1,6 @@
+import type { NewLaneRow } from './newLane'
 import { describe, expect, it } from 'vitest'
+import type { CallTaskRecord } from '../calls/callTasks'
 import { plainWordsFailures } from '../plainWords'
 import {
   DEMO_FOLLOW_UP_CONTACTS,
@@ -23,6 +25,8 @@ import {
   holdCount,
   needsYouCount,
   noteBackToast,
+  OFF_FOLLOW_UP,
+  onFollowUp,
   openOwed,
   portalNeeds,
   snoozedWords,
@@ -153,11 +157,61 @@ describe('followUpQueue on the prototype’s Friday', () => {
     expect([shown.onPortal('priya', 'co', 'co2'), queue.onPortal('greg', 'co', 'co2')]).toEqual([true, false])
   })
 
+  it('draws New first from its builder, for the people Needs a reply holds, who then leave Needs a reply (residential R7)', () => {
+    const asked: string[][] = []
+    const row = (contactId: string) => ({ contactId, sort: 'who', head: 'Who is this?' }) as unknown as NewLaneRow
+    const sorted = followUpQueue(demo, {
+      newLane: (people) => {
+        asked.push([...people].sort())
+        // Tom is not waiting on us: the queue drops his row.
+        return [row('unk1'), row('tom')]
+      },
+    })
+    expect(asked).toEqual([['elena', 'greg', 'priya', 'unk1']])
+    expect(sorted.newLane.map((r) => r.contactId)).toEqual(['unk1'])
+    expect(sorted.needsReply.map((r) => r.contactId)).toEqual(['priya', 'elena', 'greg'])
+    // Each person once: New adds nobody to the badge.
+    expect(sorted.count).toBe(queue.count)
+    expect(queue.newLane).toEqual([])
+  })
+
   it('leaves out the closed, the snoozed and anyone whose day has not come', () => {
     const quiet = followUpQueue({ ...demo, contacts: withContact('elena', { state: 'snoozed', snoozedUntil: '2026-10-05' }) })
     expect(quiet.needsReply.map((r) => r.contactId)).toEqual(['priya', 'unk1', 'greg'])
     const monday = followUpQueue({ ...demo, contacts: withContact('elena', { state: 'snoozed', snoozedUntil: '2026-10-05' }), todayYmd: '2026-10-05' })
     expect(monday.needsReply.map((r) => r.contactId)).toContain('elena')
+  })
+})
+
+describe('supply houses and candidates are off Follow up (the owner, 2026-10-13)', () => {
+  const kinds = (patch: Record<string, QueueContact['kind']>) => DEMO_FOLLOW_UP_CONTACTS.map((c) => (patch[c.id] ? { ...c, kind: patch[c.id]! } : c))
+  const nudges = [
+    { contactId: 'tom', stepId: 'invited', why: 'quiet 2 days' },
+    { contactId: 'greg', stepId: 'quote', why: 'waiting on their quote' },
+  ]
+
+  it('names the two kinds, and only those', () => {
+    expect([...OFF_FOLLOW_UP]).toEqual(['supply_house', 'candidate'])
+    const all: QueueContact['kind'][] = ['customer', 'trade', 'arch', 'lead', 'supply_house', 'candidate', 'sub', 'unknown']
+    expect(all.filter((k) => !onFollowUp(k))).toEqual(['supply_house', 'candidate'])
+  })
+
+  it('leaves them out of every section, the nudges and the badge', () => {
+    const queue = followUpQueue({ ...demo, contacts: kinds({ priya: 'supply_house', greg: 'candidate' }) }, { nudges: () => nudges })
+    expect(queue.needsReply.map((r) => r.contactId)).toEqual(['unk1', 'elena'])
+    expect(queue.needsYou).toEqual([])
+    expect(queue.weOwe).toEqual([])
+    expect(queue.nudges.map((n) => n.contactId)).toEqual(['tom'])
+    expect(queue.count).toBe(2)
+  })
+
+  it('keeps a lead and a sub on it like anyone else', () => {
+    const queue = followUpQueue({ ...demo, contacts: kinds({ priya: 'sub', greg: 'lead' }) }, { nudges: () => nudges })
+    expect(queue.needsReply.map((r) => r.contactId)).toEqual(['priya', 'unk1', 'elena', 'greg'])
+    expect(queue.needsYou.map((r) => [r.kind, r.contactId])).toEqual([['back', 'priya']])
+    expect(queue.weOwe.map((r) => r.contactId)).toEqual(['priya'])
+    expect(queue.nudges).toEqual(nudges)
+    expect(queue.count).toBe(4)
   })
 })
 
@@ -401,5 +455,41 @@ describe('plain words', () => {
       anotherDay(DEMO_TODAY).toast,
     ]
     expect(sentences.flatMap(plainWordsFailures)).toEqual([])
+  })
+})
+
+describe('the calls to make (v2.5596)', () => {
+  const call = (over: Partial<CallTaskRecord> = {}): CallTaskRecord => ({
+    id: 'c1',
+    contactId: 'dana',
+    stepKey: 'estimate',
+    jobKey: null,
+    dueYmd: '2026-10-03',
+    what: 'about the estimate',
+    script: null,
+    madeBy: 'Rosa',
+    madeAt: '2026-10-02T15:00:00.000Z',
+    doneAt: null,
+    ...over,
+  })
+  const contacts = [
+    { id: 'dana', kind: 'customer' as const, name: 'Dana Whitfield', goesBy: null, company: null, state: 'done' as const, snoozedUntil: null, has: null },
+    { id: 'shop', kind: 'supply_house' as const, name: 'Ferguson', goesBy: null, company: null, state: 'done' as const, snoozedUntil: null, has: null },
+  ]
+
+  it('draws them in We owe them after what we owe, counts the person once, and leaves out a supply house', () => {
+    const q = followUpQueue({ contacts, messages: [], calls: [call(), call({ id: 'c2', contactId: 'shop' }), call({ id: 'c3', dueYmd: '2026-10-01', stepKey: 'booked' })], todayYmd: '2026-10-02' })
+    expect(q.calls.map((r) => [r.id, r.pill, r.late])).toEqual([
+      ['c3', 'call · Thu Oct 1, late', true],
+      ['c1', 'call · Sat Oct 3', false],
+    ])
+    expect(q.weOwe).toEqual([])
+    expect(q.count).toBe(1)
+  })
+
+  it('is empty with none, and adds nobody to the count', () => {
+    const q = followUpQueue({ contacts, messages: [], todayYmd: '2026-10-02' })
+    expect(q.calls).toEqual([])
+    expect(q.count).toBe(0)
   })
 })

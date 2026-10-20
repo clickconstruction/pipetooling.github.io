@@ -24,7 +24,7 @@ function usd(n: number): string {
 
 const th: CSSProperties = { padding: '0.4rem 0.6rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const thNum: CSSProperties = { ...th, textAlign: 'right' }
-const td: CSSProperties = { padding: '0.45rem 0.6rem', borderBottom: '1px solid var(--border-soft)', verticalAlign: 'top', fontSize: '0.875rem' }
+const td: CSSProperties = { padding: '0.45rem 0.6rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.875rem' }
 const tdNum: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 
 const ARRANGEMENT_INK: Record<VehicleArrangement, string> = { company: '#0f766e', own_fuel_paid: '#4338ca', none: 'var(--text-muted)' }

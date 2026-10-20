@@ -1,14 +1,26 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { BID_ACTIONS, withBidAction, withBidActionIf, type BidAction } from '../../lib/bids/bidActionHeader'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
+import { AmountSmallCents, SignedAmountSmallCents } from '../AmountSmallCents'
 import { formatRevenueMultiple } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
 import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
-import { PricingCompositionBar } from './PricingCompositionBar'
 import { PricingProfitBar } from './PricingProfitBar'
 import { usePricingProfitBar } from '../../hooks/usePricingProfitBar'
+// What the price is made of (punch list #128): the split under a row, the three breakdown cards, the kind chip, tags, the Markup and Tax tools.
+import { PriceBreakdownCard } from './PriceBreakdownCard'
+import { TagBreakdownCard } from './TagBreakdownCard'
+import { KindBreakdownCard } from './KindBreakdownCard'
+import { RowKindChip } from './RowKindChip'
+import { MarkupToolPopover } from './MarkupToolPopover'
+import { TaxToolPopover } from './TaxToolPopover'
+import { cleanTag, rowKindOf, type RowMarks, type RowMarksByRowId } from '../../lib/bids/rowKinds'
+import { rowMarksFromDbRow, saveRowMarks, type RowMarksDbRow } from '../../lib/bids/rowMarksIo'
+import { effectiveSovFactor, loadSovMaterialFactorDefault } from '../../lib/bids/materialsByStageIo'
+import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
+import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
 import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
@@ -28,6 +40,7 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { useAlternateVersionData, useGcNamesById, useScenarioCardRevenues } from '../../hooks/usePricingCardsData'
 import { AddPriceDoorButton, PricingCardsRow } from './PricingCardsRow'
 import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../../lib/bids/pricingCardsRow'
+import { figureWhileLoading, LOADING_FIGURE, OPEN_PRICE_LOADING_MESSAGE, OPEN_PRICE_LOADING_TITLE, openPriceLoading } from '../../lib/bids/priceReadGate'
 import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
 import { sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { nextSortOrder } from '../../lib/bids/pickActivePricing'
@@ -123,6 +136,12 @@ type BidsPricingTabProps = {
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
   // Shared, parent-owned
   costEstimatePOModalTaxPercent: string
+  /** The Tax tool's rate cell sets the bid's rate as typed (punch list #128 PR 3)… */
+  setCostEstimatePOModalTaxPercent?: (v: string) => void
+  /** …and saves it to `bids.tax_rate_pct` when left (Bids.tsx's commit, as the Takeoffs box does). */
+  onCommitTaxPercent?: (text: string) => void
+  /** Patches the bid in the page's list and shared pointer after a write here (the markup chip). */
+  onPatchBid?: (bidId: string, patch: Record<string, unknown>) => void
   canPackageAndSendBidPricing: boolean
   estimatorUsers: EstimatorUser[]
   ledgerPrefixMap: LedgerPrefixMap
@@ -143,7 +162,9 @@ type BidsPricingTabProps = {
   /** Refresh the versions list after this tab creates one (v2.2404). */
   reloadBidVersions: () => Promise<void>
   selectedPricingVersionId: string | null
-  setSelectedPricingVersionId: Dispatch<SetStateAction<string | null>>
+  setSelectedPricingVersionId: (pricingId: string | null) => void
+  /** The open price's own book and rows are on screen (v2.5669) — until then its card reads …, not "No prices yet". */
+  pricingPricesReady: boolean
   pricingCountRows: BidCountRow[]
   bidCountRowCustomCosts: Array<{ id: string; count_row_id: string; unit_materials_cents: number; house_name: string | null; lot_group_id: string | null; applied_at: string }>
   reloadBidCustomCosts: () => Promise<void>
@@ -158,6 +179,8 @@ type BidsPricingTabProps = {
   pricingMaterialTotalTopOut: number | null
   pricingMaterialTotalTrimSet: number | null
   pricingLaborRate: number | null
+  /** Where the rate came from (punch list #128, PR 0): the bid's own box, the crew rate standing in, or nothing. */
+  pricingLaborRateSource?: 'override' | 'company' | 'none'
   pricingFixtureMaterialsFromTakeoff: Record<string, number>
   teamLaborDataForBids: TeamLaborBidRow[]
   /** Shared master catalog (bid_id IS NULL) shown under the "Templates" toggle / used as clone sources. */
@@ -225,6 +248,7 @@ export function BidsPricingTab({
   reloadBidVersions,
   selectedPricingVersionId,
   setSelectedPricingVersionId,
+  pricingPricesReady,
   pricingCountRows,
   bidCountRowCustomCosts,
   reloadBidCustomCosts,
@@ -239,6 +263,10 @@ export function BidsPricingTab({
   pricingMaterialTotalTopOut,
   pricingMaterialTotalTrimSet,
   pricingLaborRate,
+  pricingLaborRateSource = 'none',
+  setCostEstimatePOModalTaxPercent,
+  onCommitTaxPercent,
+  onPatchBid,
   pricingFixtureMaterialsFromTakeoff,
   teamLaborDataForBids,
   templatePriceBookVersions,
@@ -272,6 +300,21 @@ export function BidsPricingTab({
   function guardPricingWrite(): boolean {
     if (pricingLock !== 'locked') return true
     showToast(pricingLockedMessage(selectedBidForPricing?.bid_date_sent ?? '', new Date().getFullYear()), 'warning')
+    return false
+  }
+  // v2.5671: the short window after a price card is clicked, before that price's book and rows land. The
+  // rows in state are still the price you left, so its figures read … and a price write waits.
+  const pricesLoading = openPriceLoading({ selectedPricingVersionId, pricesReady: pricingPricesReady })
+  /**
+   * A write that looks up the open price's own rows or book (an assignment, a custom price, an entry): the
+   * sent-bid lock, and then false (with the toast) while the open price is still loading (v2.5671). Looked
+   * up in that window, "existing" is the price you left, so the write would miss the open price's own row
+   * or point it at the other price's entry. Writes to the bid or its rows (markup, tax, kinds) ask only the lock.
+   */
+  function guardPriceRowsWrite(): boolean {
+    if (!guardPricingWrite()) return false
+    if (!pricesLoading) return true
+    showToast(OPEN_PRICE_LOADING_MESSAGE, 'warning')
     return false
   }
   function setPricingRevising(revising: boolean) {
@@ -452,6 +495,183 @@ export function BidsPricingTab({
   }
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
+  // What the price is made of (punch list #128, PR 3): the material markup is the schedule-of-values
+  // factor — one company number (D1) with the bid's own in `bids.sov_material_factor` — set from the
+  // Traditional card's chip; a row may carry its own (`split_markup_pct`).
+  const [sovFactorDefault, setSovFactorDefault] = useState<number>(1.5)
+  const [bidSovFactor, setBidSovFactor] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void loadSovMaterialFactorDefault(supabase).then((f) => {
+      if (!cancelled) setSovFactorDefault(f)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const savedBidSovFactor = selectedBidForPricing?.sov_material_factor != null ? Number(selectedBidForPricing.sov_material_factor) : null
+  useEffect(() => {
+    setBidSovFactor(savedBidSovFactor)
+  }, [selectedBidForPricing?.id, savedBidSovFactor])
+  const materialMarkup = effectiveSovFactor(bidSovFactor, sovFactorDefault) - 1
+  /** The chip's text as it is typed: the screen follows at once, nothing is written until the chip is left. */
+  const previewBidMarkup = (markup: number | null) => {
+    if (pricingLock === 'locked') return
+    setBidSovFactor(markup == null ? null : Math.round((1 + markup) * 10000) / 10000)
+  }
+  /** The chip is left: the bid's own markup is written (null = back to the company number), behind the sent-bid lock. */
+  const commitBidMarkup = async (markup: number | null) => {
+    const bid = selectedBidForPricing
+    if (!bid) return
+    const next = markup == null ? null : Math.round((1 + markup) * 10000) / 10000
+    if (next === savedBidSovFactor) return
+    if (!guardPricingWrite()) {
+      setBidSovFactor(savedBidSovFactor)
+      return
+    }
+    setBidSovFactor(next)
+    const { error } = await supabase.from('bids').update({ sov_material_factor: next }).eq('id', bid.id)
+    if (error) {
+      showToast(`Could not save the markup: ${error.message}`, 'error')
+      setBidSovFactor(savedBidSovFactor)
+      return
+    }
+    onPatchBid?.(bid.id, { sov_material_factor: next })
+  }
+
+  // A row's kind, tags and split live on the row (`bids_count_rows`, migration 20261020020000): the
+  // engine reads the rows with `select('*')`, so the marks are seeded from them; an edit shows at once
+  // and is written to its row. Kind and split change the number, so they wait behind the sent-bid lock;
+  // tags never print and are always free.
+  const [rowMarks, setRowMarks] = useState<RowMarksByRowId>({})
+  useEffect(() => {
+    const next: RowMarksByRowId = {}
+    for (const cr of pricingCountRows) next[cr.id] = rowMarksFromDbRow(cr as unknown as RowMarksDbRow)
+    setRowMarks(next)
+  }, [pricingCountRows])
+  const marksNotThereToast = useRef(false)
+  const persistRowMarks = async (rowIds: string[], next: RowMarksByRowId, before: RowMarksByRowId) => {
+    const results = await Promise.all(rowIds.map((id) => saveRowMarks(supabase, id, next[id] ?? {})))
+    const failed = results.find((r) => r.error)
+    if (!failed) return
+    setRowMarks((cur) => {
+      const back = { ...cur }
+      rowIds.forEach((id, i) => {
+        if (results[i]?.error) back[id] = before[id] ?? {}
+      })
+      return back
+    })
+    if (failed.missing) {
+      if (!marksNotThereToast.current) showToast('Kinds, tags and the split save once the database update is in. They show on this screen until then.', 'warning')
+      marksNotThereToast.current = true
+      return
+    }
+    showToast(`Could not save the row: ${failed.error}`, 'error')
+  }
+  /** One row's marks: shown at once, written to the row. `free` skips the sent-bid lock (tags). */
+  const updateRowMarks = (rowId: string, patch: (m: RowMarks) => RowMarks, opts: { free?: boolean } = {}) => {
+    if (!opts.free && !guardPricingWrite()) return
+    const before = rowMarks
+    const next = { ...rowMarks, [rowId]: patch(rowMarks[rowId] ?? {}) }
+    setRowMarks(next)
+    void persistRowMarks([rowId], next, before)
+  }
+  /** Many rows at once (the Markup and Tax tools and their Undo). */
+  const updateManyRowMarks = (rowIds: string[], patch: (m: RowMarks, rowId: string) => RowMarks) => {
+    if (rowIds.length === 0 || !guardPricingWrite()) return false
+    const before = rowMarks
+    const next = { ...rowMarks }
+    for (const id of rowIds) next[id] = patch(next[id] ?? {}, id)
+    setRowMarks(next)
+    void persistRowMarks(rowIds, next, before)
+    return true
+  }
+
+  // The Markup tool — the margin brush's sibling: one number over a scope of rows, one Undo.
+  const [markupToolOpen, setMarkupToolOpen] = useState(false)
+  const [markupUndo, setMarkupUndo] = useState<{ rowId: string; markup: number | null | undefined }[] | null>(null)
+  const applyMarkupTool = (rowIds: string[], markup: number) => {
+    const undo = rowIds.map((rowId) => ({ rowId, markup: rowMarks[rowId]?.split?.markup }))
+    if (!updateManyRowMarks(rowIds, (m) => ({ ...m, split: { ...(m.split ?? {}), markup } }))) return
+    setMarkupUndo(undo)
+    setMarkupToolOpen(false)
+  }
+  const undoMarkupTool = () => {
+    if (!markupUndo) return
+    const back = new Map(markupUndo.map((u) => [u.rowId, u.markup ?? null] as const))
+    if (!updateManyRowMarks([...back.keys()], (m, id) => ({ ...m, split: { ...(m.split ?? {}), markup: back.get(id) ?? null } }))) return
+    setMarkupUndo(null)
+    setMarkupToolOpen(false)
+  }
+  // The Tax tool — the Markup tool's twin: tax-free or taxed over a scope of rows, one Undo; its rate cell is the bid's rate.
+  const [taxToolOpen, setTaxToolOpen] = useState(false)
+  const [taxUndo, setTaxUndo] = useState<{ rowId: string; taxable: boolean | null | undefined }[] | null>(null)
+  const applyTaxTool = (rowIds: string[], taxable: boolean) => {
+    const undo = rowIds.map((rowId) => ({ rowId, taxable: rowMarks[rowId]?.split?.taxable }))
+    if (!updateManyRowMarks(rowIds, (m) => ({ ...m, split: { ...(m.split ?? {}), taxable } }))) return
+    setTaxUndo(undo)
+    setTaxToolOpen(false)
+  }
+  const undoTaxTool = () => {
+    if (!taxUndo) return
+    const back = new Map(taxUndo.map((u) => [u.rowId, u.taxable ?? null] as const))
+    if (!updateManyRowMarks([...back.keys()], (m, id) => ({ ...m, split: { ...(m.split ?? {}), taxable: back.get(id) ?? null } }))) return
+    setTaxUndo(null)
+    setTaxToolOpen(false)
+  }
+  // The row whose + opened a tag box (one at a time); Enter adds, Escape or leaving closes it.
+  const [tagEditRowId, setTagEditRowId] = useState<string | null>(null)
+  // A row's own markup, typed on its Material child row: the text while typing, per row; written when the cell is left.
+  const [wbMarkupDraft, setWbMarkupDraft] = useState<{ rowId: string; text: string } | null>(null)
+  /** The markup a row shows while its cell is typed in (the labor moves at once); written when the cell is left. */
+  const rowMarkupPreview = (() => {
+    if (!wbMarkupDraft) return null
+    const s = wbMarkupDraft.text.replace(/[%\s]/g, '')
+    if (s === '') return { rowId: wbMarkupDraft.rowId, markup: null as number | null }
+    const v = Number(s)
+    return Number.isFinite(v) && v >= 0 ? { rowId: wbMarkupDraft.rowId, markup: Math.round(v * 10) / 1000 } : null
+  })()
+  const commitRowMarkupText = (rowId: string, raw: string) => {
+    const s = raw.replace(/[%\s]/g, '')
+    const current = rowMarks[rowId]?.split?.markup ?? null
+    if (s === '') {
+      if (current != null) updateRowMarks(rowId, (m) => ({ ...m, split: { ...(m.split ?? {}), markup: null } }))
+      return
+    }
+    const v = Number(s)
+    if (!Number.isFinite(v) || v < 0) return
+    const markup = Math.round(v * 10) / 1000
+    if (current != null && Math.abs(current - markup) < 1e-9) return
+    updateRowMarks(rowId, (m) => ({ ...m, split: { ...(m.split ?? {}), markup } }))
+  }
+
+  // The split under a row — Material · Sales tax · Labor as child rows the chevron opens. The open rows
+  // are remembered per bid on this device; Expand all / Collapse all fill or clear the set, and each
+  // chevron still works on its own row afterwards.
+  const splitOpenKey = `pt.pricing.split.open.${selectedBidForPricing?.id ?? ''}`
+  const [wbSplitOpen, setWbSplitOpen] = useState<ReadonlySet<string>>(() => new Set())
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(splitOpenKey)
+      setWbSplitOpen(new Set(raw ? (JSON.parse(raw) as string[]) : []))
+    } catch {
+      setWbSplitOpen(new Set())
+    }
+  }, [splitOpenKey])
+  const writeSplitOpen = (next: ReadonlySet<string>) => {
+    setWbSplitOpen(next)
+    try {
+      localStorage.setItem(splitOpenKey, JSON.stringify([...next]))
+    } catch {
+      /* per-device */
+    }
+  }
+  const toggleSplitRow = (rowId: string) => {
+    const next = new Set(wbSplitOpen)
+    if (next.has(rowId)) next.delete(rowId)
+    else next.add(rowId)
+    writeSplitOpen(next)
+  }
   // Workbench (New view) state: solver PREVIEW prices (never written until Apply),
   // session-local locks, and the solver controls.
   const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
@@ -561,7 +781,7 @@ export function BidsPricingTab({
     undoBrushSweep,
     gridPointerHandlers: brushGridPointerHandlers,
   } = useMarginBrush({
-    guardPricingWrite,
+    guardPricingWrite: guardPriceRowsWrite,
     // One tool at a time: picking up the brush folds the solver ring away. Read at click time
     // (the solver's state is declared further down).
     foldSolver: () => {
@@ -830,7 +1050,7 @@ export function BidsPricingTab({
   }
 
   async function savePricingAssignment(countRowId: string, priceBookEntryId: string) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
@@ -858,7 +1078,7 @@ export function BidsPricingTab({
   }
 
   async function removePricingAssignment(countRowId: string) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
@@ -1221,7 +1441,7 @@ export function BidsPricingTab({
    * entry simply starts turning up in the assign dropdowns.
    */
   async function applyPendingBookOffer() {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const pending = pendingBookOffer
     const versionId = selectedPricingVersionId
     if (!pending || !versionId || applyingBookOffer) return
@@ -1266,7 +1486,7 @@ export function BidsPricingTab({
 
   async function savePricingEntry(e: React.FormEvent) {
     // An entry added straight into the bid's own pricing is a pricing write; a shared-book edit is not.
-    if (entryFormTargetPricing && !editingPricingEntry && !guardPricingWrite()) {
+    if (entryFormTargetPricing && !editingPricingEntry && !guardPriceRowsWrite()) {
       e.preventDefault()
       return
     }
@@ -1742,7 +1962,7 @@ export function BidsPricingTab({
    * packet's rows by fixture name — same repair as copyBasePriceFromVersion (v2.2405).
    */
   async function copyPricesIntoViewedScenario(sourceId: string) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bid = selectedBidForPricing
     const targetId = selectedPricingVersionId
     if (!bid || !targetId || targetId === sourceId) return
@@ -1820,7 +2040,7 @@ export function BidsPricingTab({
   /** Iteration 2 — duplicate a Pricing as a fresh scenario and VIEW it (the ★ stays put). */
   /** Workbench: assign every exact-name book match in one batch (v2.2060). */
   async function fillMatchingBookEntries(matches: BookEntryMatch[]) {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId || matches.length === 0) return
@@ -1916,7 +2136,7 @@ export function BidsPricingTab({
 
   /** Workbench: commit the preview via the existing per-row override write. */
   async function applyWorkbenchPreview() {
-    if (!guardPricingWrite()) return
+    if (!guardPriceRowsWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     const derived = derivePricingWorkbench()
@@ -1949,9 +2169,11 @@ export function BidsPricingTab({
   /** Workbench: a hand-typed price saves itself on Enter/blur (v2.2373, Wendi) —
       the same write Apply uses, no preview gate. The preview gate stays solver-only. */
   async function commitWorkbenchTypedPrice(countRowId: string) {
-    if (!guardPricingWrite()) return
+    // A sale-price cell losing focus with nothing typed is no write, so a sent bid's lock has
+    // nothing to refuse — the toast only when a draft exists (punch list #128).
     const raw = wbPriceDrafts[countRowId]
     if (raw == null) return
+    if (!guardPriceRowsWrite()) return
     const clearDraft = () =>
       setWbPriceDrafts((prev) => {
         const next = { ...prev }
@@ -2128,14 +2350,18 @@ export function BidsPricingTab({
                     margin: r.margin,
                     materialsFromTakeoff: r.materialsFromTakeoff,
                   })
-    return { totalMaterials, rate, totalLaborHours, taxPercent, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost, assignmentsForVersion, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown }
+    // The bid's cost carries the tax on its material (punch list #128 PR 1), as every row's cost already did —
+    // until now the overhead line absorbed it (the map's tax fallback duality).
+    const taxCost = totalMaterials * (taxPercent / 100)
+    return { totalMaterials, rate, totalLaborHours, taxPercent, taxCost, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost: totalCost + taxCost, assignmentsForVersion, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown }
   }
 
   // v2.5043: what the priced-margin stamp reads when a price write settles: the strip's numbers over
   // saved prices, and whether this is the customer-facing price of the bid's own GC. Every commit.
   const pricedStampLatest: PricedMarginStampLatest | null = pricedMarginStampOnScreen({
     bid: selectedBidForPricing,
-    derived: selectedBidForPricing ? derivePricingWorkbench() : null,
+    // v2.5671: nothing to stamp while the open price loads — the strip still holds the price you left.
+    derived: selectedBidForPricing && !pricesLoading ? derivePricingWorkbench() : null,
     selectedBidVersionId,
     bidVersions,
     viewingPricingId: selectedPricingVersionId,
@@ -2447,6 +2673,19 @@ export function BidsPricingTab({
                     displayUnit != null && displayRevenue > 0 && r.cost > 0 ? (displayRevenue - r.cost) / displayRevenue : null
                   return { ...r, effUnit: unit, effRevenue: revenue, effMargin: rowMargin, isPreview, isVetoed, displayUnit, displayRevenue, displayMargin }
                 })
+                // #128: each row's Material · Tax · Equipment · Labor, typed or the rule's, adding to its price.
+                const splitOf = (r: (typeof eff)[number]) =>
+                  rowPriceSplit({
+                    price: r.effRevenue,
+                    materialCost: r.materialsBeforeTax,
+                    markup: materialMarkup,
+                    taxPercent: derived.taxPercent,
+                    kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind,
+                    typed:
+                      rowMarkupPreview?.rowId === r.countRow.id && pricingLock !== 'locked'
+                        ? { ...(rowMarks[r.countRow.id]?.split ?? {}), markup: rowMarkupPreview.markup }
+                        : (rowMarks[r.countRow.id]?.split ?? null),
+                  })
                 const effRevenue = eff.reduce((s, r) => s + r.effRevenue, 0)
                 const effProfit = effRevenue - totalCost
                 const effMargin = effRevenue > 0 ? effProfit / effRevenue : null
@@ -2496,8 +2735,16 @@ export function BidsPricingTab({
                   if (field === 'profit') return r.displayUnit != null ? `$${formatCurrency(r.displayRevenue - r.cost)}` : ''
                   return r.displayMargin == null ? '' : `${Math.round(r.displayMargin * 100)}%`
                 }
+                // v2.5671: a row's price cells read … while the open price loads. No box to type in, so no
+                // draft is made against the price you left; the write's own guard is the backstop.
+                const wbCellLoading = (
+                  <span title={OPEN_PRICE_LOADING_TITLE} style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                    {LOADING_FIGURE}
+                  </span>
+                )
                 /** One editable Revenue/Profit/Margin cell — typing solves the sale price/unit live (v2.2379). */
                 const wbCellInput = (r: (typeof eff)[number], field: WorkbenchCellField, width: string, extra?: React.CSSProperties) => {
+                  if (pricesLoading) return wbCellLoading
                   const id = r.countRow.id
                   const editingThis = wbCellDraft != null && wbCellDraft.rowId === id && wbCellDraft.field === field
                   return (
@@ -2568,7 +2815,7 @@ export function BidsPricingTab({
                 // price door while a solo bid is unpriced (artifact 0a627c7c) — `lib/bids/pricingCardsRow`.
                 const cardScenarios = cardsRowScenarios({ priceBookVersions, selectedBidVersionId, selectedPricingVersionId })
                 const cardAltVersions = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
-                const cardRevenueOf = (id: string) => cardRevenue(id, { selectedPricingVersionId, effRevenue, scenarioRevenue: wbScenarioRevenue })
+                const cardRevenueOf = (id: string) => cardRevenue(id, { selectedPricingVersionId, openPriceReady: pricingPricesReady, effRevenue, scenarioRevenue: wbScenarioRevenue })
                 const cardsMode = cardsRowMode({
                   scenarioCount: cardScenarios.length,
                   alternateCount: cardAltVersions.length,
@@ -2643,12 +2890,15 @@ export function BidsPricingTab({
                           runWorkbenchSolve({ targetTotal: v })
                         }
                         const labelStyle: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
-                        const stat = (k: string, v: string, c: string, title?: string) => (
+                        const stat = (k: string, v: React.ReactNode, c: string, title?: string) => (
                           <span key={k} title={title} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', flex: '0 0 auto' }}>
                             <span style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</span>
                             <span style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, color: c }}>{v}</span>
                           </span>
                         )
+                        // v2.5671: a tile made from the open price's prices reads … while they load, as its card does.
+                        const priceStat = (k: string, v: React.ReactNode, c: string, title?: string) =>
+                          pricesLoading ? stat(k, LOADING_FIGURE, 'var(--text-muted)', OPEN_PRICE_LOADING_TITLE) : stat(k, v, c, title)
                         // v2.2385 (Wendi): preview actions fuse into ONE segmented control — amber
                         // count chip · Apply · Discard, one shared height, wrapping as a unit and
                         // right-pinned even when it wraps to its own line. The long caption rides hover.
@@ -2760,33 +3010,96 @@ export function BidsPricingTab({
                             Margin ›
                           </button>
                         )
+                        // #128: the markup tool beside the brush — a popover with the number, a scope and one Undo.
+                        const markupRows = eff.map((r) => {
+                          const s = splitOf(r)
+                          return { id: r.countRow.id, name: r.countRow.fixture ?? '', kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind, tags: rowMarks[r.countRow.id]?.tags ?? [], own: s.markupSource === 'row', markup: s.markup, hasMaterial: s.materialSource === 'takeoff' }
+                        })
+                        const markupMatCost = eff.reduce((s, r) => s + (splitOf(r).materialSource === 'none' ? 0 : r.materialsBeforeTax), 0)
+                        const markupMatPrice = eff.reduce((s, r) => s + splitOf(r).material, 0)
+                        const markupControl = (
+                          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flex: '0 0 auto' }}>
+                            <button
+                              type="button"
+                              aria-expanded={markupToolOpen}
+                              onClick={() => setMarkupToolOpen((v) => !v)}
+                              title="Material markup — set one number across the rows, a tag or a kind"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: markupToolOpen ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1, flex: '0 0 auto' }}
+                            >
+                              <span aria-hidden style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>+%</span>
+                              Markup ›
+                            </button>
+                            {markupToolOpen ? (
+                              <MarkupToolPopover
+                                rows={markupRows}
+                                bidMarkup={materialMarkup}
+                                weightedMarkup={markupMatCost > 0 ? markupMatPrice / markupMatCost - 1 : null}
+                                onApply={applyMarkupTool}
+                                undoCount={markupUndo?.length ?? 0}
+                                onUndo={undoMarkupTool}
+                                onClose={() => setMarkupToolOpen(false)}
+                              />
+                            ) : null}
+                          </span>
+                        )
+                        const taxControl = (
+                          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flex: '0 0 auto' }}>
+                            <button
+                              type="button"
+                              aria-expanded={taxToolOpen}
+                              onClick={() => setTaxToolOpen((v) => !v)}
+                              title="Sales tax — make rows tax-free or taxed across the bid, a tag or a kind"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: taxToolOpen ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1, flex: '0 0 auto' }}
+                            >
+                              <span aria-hidden style={{ fontSize: '0.72rem', fontWeight: 800, lineHeight: 1, textDecoration: 'line-through' }}>tx</span>
+                              Tax ›
+                            </button>
+                            {taxToolOpen ? (
+                              <TaxToolPopover
+                                rows={eff.map((r) => {
+                                  const s = splitOf(r)
+                                  return { id: r.countRow.id, name: r.countRow.fixture ?? '', kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind, tags: rowMarks[r.countRow.id]?.tags ?? [], taxable: s.taxable, hasMaterial: s.material > 0 || s.materialSource === 'takeoff' }
+                                })}
+                                taxPercent={derived.taxPercent}
+                                onTaxPercentChange={setCostEstimatePOModalTaxPercent && pricingLock !== 'locked' ? (v) => setCostEstimatePOModalTaxPercent(String(v)) : undefined}
+                                onTaxPercentCommit={(text) => {
+                                  if (!guardPricingWrite()) return
+                                  onCommitTaxPercent?.(text)
+                                }}
+                                onApply={applyTaxTool}
+                                undoCount={taxUndo?.length ?? 0}
+                                onUndo={undoTaxTool}
+                                onClose={() => setTaxToolOpen(false)}
+                              />
+                            ) : null}
+                          </span>
+                        )
                         // v2.4194: a second line under the scoreboard when the bid carries an alternate —
                         // the base, what each alternate adds (with its own margin on hover), and the whole.
-                        const whole = (n: number) => `${n < 0 ? '-' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
                         const altLine =
                           altRevenue && altCost ? (
                             <div data-testid="workbench-alternates" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap', marginTop: '0.45rem', paddingTop: '0.4rem', borderTop: '1px dashed var(--border-strong)' }}>
-                              {stat('Base', whole(altRevenue.base), 'var(--text-strong)', `$${formatCurrency(altRevenue.base)} · our cost $${formatCurrency(altCost.base)}`)}
+                              {priceStat('Base', <SignedAmountSmallCents value={altRevenue.base} />, 'var(--text-strong)', `our cost $${formatCurrency(altCost.base)}`)}
                               {altRevenue.alternates.map((a, i) => {
                                 const c = altCost.alternates[i]?.value ?? 0
                                 const m = a.value > 0 ? (a.value - c) / a.value : null
-                                return stat(`+ ${a.label}`, whole(a.value), 'var(--text-amber-700)', `$${formatCurrency(a.value)} · our cost $${formatCurrency(c)}${m != null ? ` · margin ${Math.round(m * 100)}%` : ''}`)
+                                return priceStat(`+ ${a.label}`, <SignedAmountSmallCents value={a.value} />, 'var(--text-amber-700)', `our cost $${formatCurrency(c)}${m != null ? ` · margin ${Math.round(m * 100)}%` : ''}`)
                               })}
-                              {stat(altRevenue.alternates.length === 1 ? 'With the alternate' : 'With every alternate', whole(altRevenue.total), 'var(--text-strong)', `$${formatCurrency(altRevenue.total)} · our cost $${formatCurrency(altCost.total)}`)}
+                              {priceStat(altRevenue.alternates.length === 1 ? 'With the alternate' : 'With every alternate', <SignedAmountSmallCents value={altRevenue.total} />, 'var(--text-strong)', `our cost $${formatCurrency(altCost.total)}`)}
                               {altRevenue.alternates.length === 1 && altRevenue.alternates[0]!.value > 0
-                                ? stat('Alternate margin', `${Math.round(((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value) * 100)}%`, mColor((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value))
+                                ? priceStat('Alternate margin', `${Math.round(((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value) * 100)}%`, mColor((altRevenue.alternates[0]!.value - (altCost.alternates[0]?.value ?? 0)) / altRevenue.alternates[0]!.value))
                                 : null}
                             </div>
                           ) : null
                         return (
                           <>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
-                            {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
-                            {stat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}`)}
-                            {stat('Profit', `${effProfit < 0 ? '-' : ''}$${Math.abs(Math.round(effProfit)).toLocaleString('en-US')}`, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `$${formatCurrency(effProfit)} · our cost $${formatCurrency(totalCost)}`)}
-                            {stat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
+                            {/* Exact to the cent, cents small (v2.5678, Wendi — amends the v2.2205 whole-dollars call): the strip must match the card and the letter, and half-up rounding named dollars no row carries. */}
+                            {priceStat('Revenue', <AmountSmallCents value={effRevenue} />, 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
+                            {priceStat('Profit', <SignedAmountSmallCents value={effProfit} />, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
+                            {priceStat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
                             {/* v2.2423 (owner): margin's other dialect — revenue as a multiple of cost. */}
-                            {stat('Multiple', formatRevenueMultiple(effRevenue, totalCost) ?? '—', mColor(effMargin), `Revenue ÷ our cost — $${formatCurrency(effRevenue)} ÷ $${formatCurrency(totalCost)}`)}
+                            {priceStat('Multiple', formatRevenueMultiple(effRevenue, totalCost) ?? '—', mColor(effMargin), `Revenue ÷ our cost — $${formatCurrency(effRevenue)} ÷ $${formatCurrency(totalCost)}`)}
                             {/* v2.2378 (Wendi): coverage lives here as a chip — green ✓ when everything's
                                 priced, amber while work remains; the caret drops today's bar + filter row. */}
                             {costed.length > 0 ? (
@@ -2795,19 +3108,21 @@ export function BidsPricingTab({
                                 onClick={toggleWbCoverageOpen}
                                 aria-expanded={wbCoverageOpen}
                                 title={
-                                  pricedCount === costed.length
+                                  pricesLoading
+                                    ? OPEN_PRICE_LOADING_TITLE
+                                    : pricedCount === costed.length
                                     ? `All ${costed.length} costed rows have a sale price`
                                     : `${costed.length - pricedCount} costed row${costed.length - pricedCount === 1 ? '' : 's'} still unpriced${unpricedCost > 0 ? ` — $${formatCurrency(unpricedCost)} of cost has no sale price yet` : ''}`
                                 }
                                 style={{
                                   font: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.16rem 0.55rem', borderRadius: 999,
                                   fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', cursor: 'pointer', flex: '0 0 auto',
-                                  border: pricedCount === costed.length ? '1px solid var(--border-strong)' : '1px solid var(--text-amber-700)',
-                                  background: pricedCount === costed.length ? 'var(--surface)' : 'var(--bg-amber-tint)',
-                                  color: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)',
+                                  border: pricesLoading || pricedCount === costed.length ? '1px solid var(--border-strong)' : '1px solid var(--text-amber-700)',
+                                  background: pricesLoading || pricedCount === costed.length ? 'var(--surface)' : 'var(--bg-amber-tint)',
+                                  color: pricesLoading ? 'var(--text-muted)' : pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)',
                                 }}
                               >
-                                {pricedCount}/{costed.length}{pricedCount === costed.length ? ' ✓' : ''}
+                                {figureWhileLoading(pricesLoading, String(pricedCount))}/{costed.length}{!pricesLoading && pricedCount === costed.length ? ' ✓' : ''}
                                 <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{wbCoverageOpen ? '▾' : '▸'}</span>
                               </button>
                             ) : null}
@@ -2818,6 +3133,8 @@ export function BidsPricingTab({
                                 <>
                                   {solverEndDoor}
                                   {brushControl}
+                              {markupControl}
+                              {taxControl}
                                   <button
                                     type="button"
                                     onClick={() => setAndRememberWbSolverOpen(true)}
@@ -2836,6 +3153,8 @@ export function BidsPricingTab({
                               // The brush's compact button keeps riding left of the ring (v2.2401).
                               <>
                               {brushControl}
+                              {markupControl}
+                              {taxControl}
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.8rem', flexWrap: 'wrap', flex: '1 1 460px', minWidth: 300, border: '1.5px solid #3b82f6', borderRadius: 9, padding: '0.3rem 0.6rem', background: 'var(--bg-blue-tint)', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.15)' }}>
                                 <button
                                   type="button"
@@ -3074,7 +3393,8 @@ export function BidsPricingTab({
                         `bid_value` (stamped at send) is the honest number; say both wherever the live one is read. */}
                     {(() => {
                       const cmp = compareSentVsToday({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidValue: selectedBidForPricing?.bid_value, today: effRevenue })
-                      if (!cmp) return null
+                      // v2.5671: no comparison while the open price loads — today's number is not its own yet.
+                      if (!cmp || pricesLoading) return null
                       const differs = cmp.kind === 'differs'
                       return (
                         <div
@@ -3112,10 +3432,10 @@ export function BidsPricingTab({
                     {(wbCoverageOpen || wbShowUnpricedOnly) && costed.length > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', marginBottom: '0.7rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }} title={unpricedCost > 0 ? `$${formatCurrency(unpricedCost)} of cost has no sale price yet` : undefined}>
-                        {pricedCount} of {costed.length} priced
+                        {figureWhileLoading(pricesLoading, String(pricedCount))} of {costed.length} priced
                       </span>
                       <div style={{ flex: 1, minWidth: 160, height: 8, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', borderRadius: 999, width: `${costed.length > 0 ? (pricedCount / costed.length) * 100 : 0}%`, background: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)', transition: 'width 0.25s' }} />
+                        <div style={{ height: '100%', borderRadius: 999, width: `${costed.length > 0 && !pricesLoading ? (pricedCount / costed.length) * 100 : 0}%`, background: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)', transition: 'width 0.25s' }} />
                       </div>
                       <button
                         type="button"
@@ -3202,16 +3522,47 @@ export function BidsPricingTab({
                               ['Margin', 'right'],
                               ['', 'left'],
                             ] as const).map(([h, align], i) => (
-                              <th key={`${h}-${i}`} style={{ textAlign: align, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                              <th key={`${h}-${i}`} style={{ textAlign: align, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
+                                {h}
+                                {h === 'Fixture or tie-in'
+                                  ? (() => {
+                                      const allOpen = visibleEff.length > 0 && visibleEff.every((r) => wbSplitOpen.has(r.countRow.id))
+                                      const anyOpen = visibleEff.some((r) => wbSplitOpen.has(r.countRow.id))
+                                      return (
+                                        <span style={{ display: 'inline-flex', gap: '0.25rem', marginLeft: '0.6rem', verticalAlign: 'middle' }}>
+                                          <button
+                                            type="button"
+                                            disabled={allOpen}
+                                            onClick={() => writeSplitOpen(new Set(visibleEff.map((r) => r.countRow.id)))}
+                                            title="Open every row's split: Material · Sales tax · Labor under each line"
+                                            style={{ font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', padding: '0 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: allOpen ? 'var(--text-faint)' : 'var(--text-link)', cursor: allOpen ? 'default' : 'pointer' }}
+                                          >
+                                            Expand all ▾
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={!anyOpen}
+                                            onClick={() => writeSplitOpen(new Set())}
+                                            title="Close every row's split"
+                                            style={{ font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', padding: '0 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: !anyOpen ? 'var(--text-faint)' : 'var(--text-link)', cursor: !anyOpen ? 'default' : 'pointer' }}
+                                          >
+                                            Collapse all ▴
+                                          </button>
+                                        </span>
+                                      )
+                                    })()
+                                  : null}
+                              </th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {visibleEff.map((r) => {
                             const locked = r.isFixedPrice || wbLocks.has(r.countRow.id)
+                            const splitOpen = wbSplitOpen.has(r.countRow.id)
                             return (
+                              <Fragment key={r.countRow.id}>
                               <tr
-                                key={r.countRow.id}
                                 id={`wb-row-${r.countRow.id}`}
                                 // No row-level click: the breakdown opens ONLY from the row's ⓘ button
                                 // (v2.NEXT, Wendi — it kept popping up mid-typing when a click missed an input).
@@ -3247,7 +3598,76 @@ export function BidsPricingTab({
                                     📌
                                   </button>
                                 </td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}{altChip(r.countRow.id)}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
+                                  <button
+                                    type="button"
+                                    aria-expanded={splitOpen}
+                                    aria-label={`${splitOpen ? 'Close' : 'Open'} the split of ${r.countRow.fixture ?? 'row'}: material, tax, labor`}
+                                    title={splitOpen ? 'Close the split' : 'Material · Sales tax · Labor under this line; an Equipment row is one item'}
+                                    onClick={() => toggleSplitRow(r.countRow.id)}
+                                    style={{ font: 'inherit', fontSize: '0.6rem', width: '1.1rem', padding: 0, marginLeft: '-0.2rem', marginRight: '0.15rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-block', transform: splitOpen ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}
+                                  >
+                                    ▶
+                                  </button>
+                                  {r.countRow.fixture ?? '—'}{altChip(r.countRow.id)}
+                                  {/* #128: the row's kind (dashed while it is the app's guess) and the estimator's tags. */}
+                                  {(() => {
+                                    const marks = rowMarks[r.countRow.id] ?? {}
+                                    const k = rowKindOf(r.countRow.fixture ?? '', marks.kind)
+                                    const tags = marks.tags ?? []
+                                    return (
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', marginTop: '0.2rem', fontWeight: 400 }}>
+                                        <RowKindChip kind={k.kind} guessed={k.guessed} rowName={r.countRow.fixture ?? 'row'} onChange={(kind) => updateRowMarks(r.countRow.id, (m) => ({ ...m, kind }))} />
+                                        {tags.map((tag) => (
+                                          <button
+                                            key={tag}
+                                            type="button"
+                                            title="Remove this tag"
+                                            onClick={() => updateRowMarks(r.countRow.id, (m) => ({ ...m, tags: (m.tags ?? []).filter((x) => x !== tag) }), { free: true })}
+                                            style={{ font: 'inherit', fontSize: '0.68rem', padding: '0 0.45rem', borderRadius: 999, border: '1px solid transparent', background: 'rgba(59, 130, 246, 0.14)', color: 'var(--text-link)', cursor: 'pointer' }}
+                                          >
+                                            {tag} <span style={{ color: 'var(--text-muted)' }}>×</span>
+                                          </button>
+                                        ))}
+                                        {tagEditRowId === r.countRow.id ? (
+                                          <input
+                                            type="text"
+                                            list="pricing-row-tags"
+                                            placeholder="a tag, then Enter"
+                                            autoFocus
+                                            aria-label={`Add a tag to ${r.countRow.fixture ?? 'row'}`}
+                                            onBlur={() => setTagEditRowId(null)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Escape') {
+                                                e.stopPropagation()
+                                                setTagEditRowId(null)
+                                                return
+                                              }
+                                              if (e.key !== 'Enter') return
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              const tag = cleanTag(e.currentTarget.value)
+                                              if (!tag) return
+                                              updateRowMarks(r.countRow.id, (m) => ({ ...m, tags: (m.tags ?? []).includes(tag) ? m.tags ?? [] : [...(m.tags ?? []), tag] }), { free: true })
+                                              e.currentTarget.value = ''
+                                            }}
+                                            style={{ font: 'inherit', fontSize: '0.68rem', width: '9em', padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }}
+                                          />
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            aria-label={`Add a tag to ${r.countRow.fixture ?? 'row'}`}
+                                            title="Add a tag"
+                                            onClick={() => setTagEditRowId(r.countRow.id)}
+                                            style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, width: '1.15rem', height: '1.15rem', padding: 0, borderRadius: 999, border: '1px dashed var(--border-strong)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                          >
+                                            +
+                                          </button>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
+                                </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }} onClick={(e) => e.stopPropagation()}>
                                   {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
@@ -3354,7 +3774,8 @@ export function BidsPricingTab({
                                   )}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                                  {r.isPreview ? (
+                                  {/* v2.5671: … while the open price loads — no proposal, no box, no saving tag. */}
+                                  {!pricesLoading && r.isPreview ? (
                                     // The solver's proposal rides LEFT of the untouched saved price
                                     // (owner-approved prototype, v2.2379). Clicking it toggles this
                                     // row out of Apply: red + ✕ = clicked off, its price holds.
@@ -3388,6 +3809,7 @@ export function BidsPricingTab({
                                       ${formatCurrency(wbPreview?.[r.countRow.id] ?? 0)} {r.isVetoed ? '✕' : '→'}
                                     </button>
                                   ) : null}
+                                  {pricesLoading ? wbCellLoading : (
                                   <input
                                     type="text"
                                     inputMode="decimal"
@@ -3450,7 +3872,8 @@ export function BidsPricingTab({
                                     }}
                                     aria-label={`Sale price per unit for ${r.countRow.fixture ?? 'row'}`}
                                   />
-                                  {savingUnitPriceOverride === r.countRow.id ? (
+                                  )}
+                                  {pricesLoading ? null : savingUnitPriceOverride === r.countRow.id ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>saving…</span>
                                   ) : wbJustSaved[r.countRow.id] ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-green-700)', fontWeight: 700 }}>saved ✓</span>
@@ -3467,7 +3890,7 @@ export function BidsPricingTab({
                                     wbCellInput(r, 'margin', '3.8rem', { fontWeight: 700, color: mColor(r.displayMargin) })
                                   ) : (
                                     <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
-                                      {r.displayUnit != null ? 'no cost' : '—'}
+                                      {pricesLoading ? LOADING_FIGURE : r.displayUnit != null ? 'no cost' : '—'}
                                     </span>
                                   )}
                                 </td>
@@ -3485,11 +3908,190 @@ export function BidsPricingTab({
                                   </button>
                                 </td>
                               </tr>
+                              {splitOpen
+                                ? (() => {
+                                    // #128: the split as child rows in the parent's own columns — Cost/unit · Sale
+                                    // price/unit · Revenue · Profit · Margin per part, so a part reads like a row.
+                                    const s = splitOf(r)
+                                    const n = r.count > 0 ? r.count : 1
+                                    const priced = r.effRevenue > 0
+                                    const taxPct = derived.taxPercent
+                                    const matCostEa = r.materialsBeforeTax / n
+                                    // Equipment is an item of its own (a row whose kind is Equipment), never a part of a
+                                    // fixture's price — the owner's call; so a fixture splits three ways, an equipment
+                                    // row not at all.
+                                    const isEquipmentRow = s.equipmentSource === 'kind'
+                                    const parts: Array<{
+                                      key: 'material' | 'tax' | 'equipment' | 'labor'
+                                      name: string
+                                      note: string
+                                      costEa: number | null
+                                      priceEa: number
+                                      typed: boolean
+                                      editable: boolean
+                                      toggle?: () => void
+                                    }> = isEquipmentRow
+                                      ? [{ key: 'equipment', name: 'Equipment', note: 'an item of its own; its cost is on the Labor tab\'s rentals', costEa: null, priceEa: s.equipment / n, typed: false, editable: false }]
+                                      : [
+                                          { key: 'material', name: 'Material', note: s.materialSource === 'typed' ? 'typed' : s.materialSource === 'takeoff' ? `the takeoff +${Math.round(s.markup * 1000) / 10}%` : 'none', costEa: matCostEa, priceEa: s.material / n, typed: s.materialSource === 'typed', editable: true },
+                                          { key: 'tax', name: 'Sales tax', note: s.taxable ? `${taxPct}% on material` : 'tax-free', costEa: matCostEa * (taxPct / 100), priceEa: s.tax / n, typed: !s.taxable, editable: false, toggle: () => updateRowMarks(r.countRow.id, (m) => ({ ...m, split: { ...(m.split ?? {}), taxable: !s.taxable } })) },
+                                          { key: 'labor', name: 'Labor', note: 'what is left', costEa: r.laborCost > 0 ? r.laborCost / n : null, priceEa: s.labor / n, typed: false, editable: false },
+                                        ]
+                                    const childTd = (extra?: React.CSSProperties): React.CSSProperties => ({ padding: '0.15rem 0.7rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-muted)', fontSize: '0.78rem', color: 'var(--text-700)', verticalAlign: 'middle', ...extra })
+                                    const money = (v: number | null, sign = false) => (v == null ? '—' : `${sign && v < 0 ? '−' : ''}$${formatCurrency(Math.abs(v))}`)
+                                    if (!priced)
+                                      return (
+                                        <tr key={`${r.countRow.id}-unpriced`} id={`wb-split-${r.countRow.id}`}>
+                                          <td style={childTd({ borderBottom: '1px solid var(--border)' })} />
+                                          <td colSpan={9} style={childTd({ borderBottom: '1px solid var(--border)', paddingLeft: '2.1rem', color: 'var(--text-faint)' })}>
+                                            <span style={{ marginRight: '0.4rem' }}>└</span>No price on this row yet, so nothing to split.
+                                          </td>
+                                        </tr>
+                                      )
+                                    return parts.map((part, i) => {
+                                      const last = i === parts.length - 1
+                                      const revenue = part.priceEa * n
+                                      const costRow = part.costEa == null ? null : part.costEa * n
+                                      const profit = costRow == null ? null : revenue - costRow
+                                      const margin = profit != null && revenue > 0 ? profit / revenue : null
+                                      const under = part.key === 'labor' && s.labor < -0.005
+                                      const td = (extra?: React.CSSProperties) => childTd({ ...(last ? { borderBottom: '1px solid var(--border)' } : {}), ...extra })
+                                      return (
+                                        <tr key={`${r.countRow.id}-${part.key}`} id={i === 0 ? `wb-split-${r.countRow.id}` : undefined}>
+                                          <td style={td()} />
+                                          <td style={td({ paddingLeft: '2.1rem' })}>
+                                            <span style={{ color: 'var(--text-faint)', marginRight: '0.4rem' }}>{last ? '└' : '├'}</span>
+                                            <span style={{ fontWeight: part.key === 'labor' ? 600 : 500, color: under ? 'var(--text-red-700)' : 'var(--text-strong)' }}>{part.name}</span>
+                                            {part.toggle ? (
+                                              <button type="button" onClick={part.toggle} aria-pressed={s.taxable} title={s.taxable ? 'Taxed — press to make this row tax-free' : 'Tax-free — press to tax its material'} style={{ marginLeft: '0.5rem', font: 'inherit', fontSize: '0.66rem', color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                                                {part.note}
+                                              </button>
+                                            ) : part.key === 'material' && s.materialSource === 'takeoff' ? (
+                                              <span style={{ marginLeft: '0.5rem', fontSize: '0.66rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                                                the takeoff +
+                                                <input
+                                                  type="text"
+                                                  inputMode="decimal"
+                                                  value={wbMarkupDraft?.rowId === r.countRow.id ? wbMarkupDraft.text : String(Math.round(s.markup * 1000) / 10)}
+                                                  aria-label={`The material markup, percent, on ${r.countRow.fixture ?? 'row'}`}
+                                                  title={s.markupSource === 'row' ? `This row's own markup; the bid's is ${Math.round(materialMarkup * 1000) / 10}%. Clear it to go back.` : "The bid's markup. Type one for this row alone."}
+                                                  onFocus={(e) => setWbMarkupDraft({ rowId: r.countRow.id, text: e.target.value })}
+                                                  onChange={(e) => setWbMarkupDraft({ rowId: r.countRow.id, text: e.target.value })}
+                                                  onBlur={(e) => {
+                                                    setWbMarkupDraft(null)
+                                                    commitRowMarkupText(r.countRow.id, e.target.value)
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (e.key !== 'Enter') return
+                                                    e.stopPropagation()
+                                                    e.currentTarget.blur()
+                                                  }}
+                                                  style={{ width: '2.6em', font: 'inherit', fontSize: '0.66rem', textAlign: 'right', padding: '0 0.15rem', margin: '0 0.05rem', borderRadius: 3, border: `1px ${s.markupSource === 'row' ? 'solid' : 'dashed'} var(--border-strong)`, background: 'var(--surface)', color: s.markupSource === 'row' ? 'var(--text-strong)' : 'var(--text-700)' }}
+                                                />
+                                                %
+                                              </span>
+                                            ) : (
+                                              <span style={{ marginLeft: '0.5rem', fontSize: '0.66rem', color: 'var(--text-faint)' }}>{part.note}</span>
+                                            )}
+                                          </td>
+                                          <td style={td({ textAlign: 'center', color: 'var(--text-faint)' })}>{priced ? r.count : ''}</td>
+                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums' })}>{priced ? money(part.costEa) : ''}</td>
+                                          <td style={td()} />
+                                          <td style={td({ textAlign: 'right' })}>
+                                            {!priced ? (
+                                              <span style={{ color: 'var(--text-faint)' }}>—</span>
+                                            ) : part.editable ? (
+                                              <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                key={`${r.countRow.id}-${part.key}-${part.typed ? 't' : 'd'}-${Math.round(part.priceEa * 100)}`}
+                                                defaultValue={part.priceEa > 0 || part.typed ? formatCurrency(part.priceEa) : ''}
+                                                placeholder="—"
+                                                aria-label={`${part.name} per unit in the price of ${r.countRow.fixture ?? 'row'}`}
+                                                title={part.typed ? 'Typed for this row — clear it to go back to the rule' : `The rule: ${part.note}. Type over it for this row.`}
+                                                onBlur={(e) => {
+                                                  const v = parseSplitDollars(e.target.value)
+                                                  updateRowMarks(r.countRow.id, (m) => ({ ...m, split: { ...(m.split ?? {}), material: v == null ? null : Math.round(v * n * 100) / 100 } }))
+                                                }}
+                                                onKeyDown={(e) => {
+                                                  if (e.key !== 'Enter') return
+                                                  e.stopPropagation()
+                                                  e.currentTarget.blur()
+                                                }}
+                                                style={{ ...wbCellStyle('6rem'), fontSize: '0.78rem', color: part.typed ? 'var(--text-strong)' : 'var(--text-700)', borderBottomStyle: part.typed ? 'solid' : 'dashed' }}
+                                              />
+                                            ) : (
+                                              <span style={{ display: 'inline-block', width: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : part.key === 'labor' ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: part.key === 'labor' ? 600 : 400, textDecoration: part.key === 'tax' && !s.taxable ? 'line-through' : 'none' }}>
+                                                {money(part.priceEa, true)}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : undefined, fontWeight: part.key === 'labor' ? 600 : 400 })}>{priced ? money(revenue, true) : ''}</td>
+                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: profit != null && profit < 0 ? 'var(--text-red-700)' : undefined })}>{priced ? money(profit, true) : ''}</td>
+                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: margin == null ? 'var(--text-faint)' : mColor(margin) })}>{priced && margin != null ? `${Math.round(margin * 100)}%` : ''}</td>
+                                          <td style={td()} />
+                                        </tr>
+                                      )
+                                    })
+                                  })()
+                                : null}
+                              </Fragment>
                             )
                           })}
                         </tbody>
                       </table>
                     </div>
+
+                    {/* #128: what the price is made of — Cost · Price · Profit for material, tax,
+                        equipment, labor and the small costs; the columns add to the strip. */}
+                    <datalist id="pricing-row-tags">
+                      {[...new Set(Object.values(rowMarks).flatMap((m) => m.tags ?? []))].sort().map((tag) => (
+                        <option key={tag} value={tag} />
+                      ))}
+                    </datalist>
+                    <PriceBreakdownCard
+                      input={{
+                        rows: eff.map((r) => ({
+                          id: r.countRow.id,
+                          name: r.countRow.fixture ?? '',
+                          count: r.count,
+                          revenue: r.effRevenue,
+                          materialsBeforeTax: r.materialsBeforeTax,
+                          hours: r.laborRow ? costEstimateLaborRowHours(r.laborRow) : 0,
+                          isEquipment: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind === 'equipment',
+                          split: (() => {
+                            const s = splitOf(r)
+                            return { material: s.material, tax: s.tax, equipment: s.equipment, labor: s.labor }
+                          })(),
+                        })),
+                        materialTotal: derived.totalMaterials,
+                        hoursTotal: derived.totalLaborHours,
+                        markup: materialMarkup,
+                        taxPercent: derived.taxPercent,
+                        laborRate: pricingLaborRate,
+                        laborRateSource: pricingLaborRateSource,
+                        equipmentCost: derived.equipmentRentalCost,
+                        smallCosts: derived.drivingCost + derived.travelCost + derived.permitCost + derived.subcontractorCost + derived.wasteCost + derived.otherCost,
+                      }}
+                      companyMarkup={sovFactorDefault - 1}
+                      onMarkupChange={previewBidMarkup}
+                      onMarkupCommit={(m) => void commitBidMarkup(m)}
+                      onOpenLabor={selectedBidForPricing ? () => onNavigateBidToTab(selectedBidForPricing, 'labor') : undefined}
+                      marginColor={mColor}
+                    />
+                    {/* #128: the same card by the row's kind (the composition bar's arithmetic, in the cards' shape). */}
+                    <KindBreakdownCard
+                      rows={eff.map((r) => ({ id: r.countRow.id, name: r.countRow.fixture ?? '', count: r.count, cost: r.cost, revenue: r.effRevenue, kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind }))}
+                      marginColor={mColor}
+                    />
+                    {/* #128: the same card by the estimator's own tags. */}
+                    <TagBreakdownCard
+                      rows={eff.map((r) => {
+                        const s = splitOf(r)
+                        return { id: r.countRow.id, name: r.countRow.fixture ?? '', count: r.count, cost: r.cost, revenue: r.effRevenue, tags: rowMarks[r.countRow.id]?.tags ?? [], materialCost: s.materialSource === 'none' ? 0 : r.materialsBeforeTax, materialPrice: s.material }
+                      })}
+                      marginColor={mColor}
+                    />
 
                     <PricingProfitBar
                       bar={profitBar}
@@ -3508,13 +4110,6 @@ export function BidsPricingTab({
                       onJumpToRow={jumpToWorksheetRow}
                     />
 
-                    {/* v2.3239: what the bid is made of — fixtures · pipe · fittings · other, the strip's
-                        own colors. v2.3458: sits under "Where the profit lives" (it was one level above). */}
-                    <PricingCompositionBar
-                      rows={eff.map((r) => ({ id: r.countRow.id, name: r.countRow.fixture ?? '', count: r.count, cost: r.cost, revenue: r.effRevenue }))}
-                      marginColor={mColor}
-                      onJumpToRow={jumpToWorksheetRow}
-                    />
                   </>
                 )
               })()

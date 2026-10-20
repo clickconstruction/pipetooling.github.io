@@ -7,8 +7,8 @@ import { CONTRACT_STATUS_LABELS, type ContractCatalogArea, type ContractCatalogE
 import type { ContractLastSent } from './contractLastSent'
 import type { ReviewState } from './contractTextHistory'
 
-/** The sections, in the order a customer meets them. */
-export const CONTRACT_AREA_ORDER: readonly ContractCatalogArea[] = ['website', 'estimates', 'bids', 'jobs', 'signing', 'billing', 'liens']
+/** The sections, in the order a customer meets them, then the papers the office adds to the flows. */
+export const CONTRACT_AREA_ORDER: readonly ContractCatalogArea[] = ['website', 'estimates', 'bids', 'jobs', 'signing', 'billing', 'liens', 'flows']
 
 export const CONTRACT_AREA_HINTS: Readonly<Record<ContractCatalogArea, string>> = {
   website: 'what anyone reads on clickplumbing.com before they call',
@@ -18,6 +18,7 @@ export const CONTRACT_AREA_HINTS: Readonly<Record<ContractCatalogArea, string>> 
   signing: 'the sentences on every page a signature is taken',
   billing: 'what rides on a bill',
   liens: 'the notices and letters of chapter 53 and collections',
+  flows: 'the papers the office adds to a step of a flow, one line each, read from the Contract library',
 }
 
 /** What the index knows about one card — the tab's card model, narrowed to what a row and a lens read. */
@@ -51,7 +52,7 @@ export function needsLookReasons(card: Pick<IndexCard, 'text' | 'sent' | 'review
 export type ContractLens = 'all' | 'needs_look' | ContractTextStatus
 
 /** The lenses in the order the chips show them: every card, the ones that need a look, then each kind of wording. */
-export const CONTRACT_LENS_ORDER: readonly ContractLens[] = ['all', 'needs_look', 'yours', 'built_in', 'blank', 'in_settings', 'per_record', 'fixed', 'external']
+export const CONTRACT_LENS_ORDER: readonly ContractLens[] = ['all', 'needs_look', 'yours', 'built_in', 'blank', 'in_settings', 'per_record', 'fixed', 'external', 'theirs']
 
 export function contractLensLabel(lens: ContractLens): string {
   if (lens === 'all') return 'All'

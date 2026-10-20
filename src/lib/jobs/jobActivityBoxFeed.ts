@@ -1,4 +1,5 @@
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
+import type { JobActivityEvent } from '../jobActivityEvent'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /**
@@ -7,7 +8,14 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
  * leaving stamps) and REPORTS — numbered chronologically with 1 = OLDEST so a
  * note's number never shifts as new ones arrive ("check note 3" stays note 3).
  * Schedule/clock/event synthetic items are excluded: they're timeline texture,
- * not conversation, and the unified activity view carries them.
+ * not conversation, and the unified activity view carries them. One kind of
+ * event is conversation and comes in since v2.5633: a bill sent to the
+ * customer (Stripe's email, the app's), the owner's catch on the Palmer row.
+ * Since v2.5636 the papers that follow a bill come in too: a paper bill
+ * emailed again, a demand letter, a lien or retainage notice. They take no
+ * number, so "check note 3" still never shifts. A contract reminder stays
+ * out: the cron sends up to three on its own, and the contract's send is not
+ * in the box either.
  *
  * The expanded surfaces (floating modal + row panel) shape their WHOLE-timeline
  * lines in `jobActivityLine.ts`, which numbers with this same comparator so the
@@ -15,12 +23,44 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
  */
 
 export type JobActivityBoxEntry = {
-  /** Stable conversational number — 1 is the oldest note/report on the job. */
-  number: number
-  kind: 'note' | 'report'
+  /** Stable conversational number — 1 is the oldest note/report on the job. Null on a send: it takes no number. */
+  number: number | null
+  kind: 'note' | 'report' | 'sent'
   atIso: string
   authorName: string | null
   body: string
+}
+
+/**
+ * The events that are a word to the customer about their bill: the bill went to them (`invoice_sent`), Stripe's email
+ * did (the backfill's kind), the paper bill went again, and since v2.5636 the demand letter and the lien notice.
+ */
+export const SENT_EVENT_TYPES: ReadonlySet<JobActivityEvent['type']> = new Set<JobActivityEvent['type']>([
+  'invoice_sent',
+  'invoice_stripe_email_sent',
+  'invoice_resent',
+  'demand_letter_sent',
+  'lien_notice_sent',
+])
+
+/** Who sent it: the actor off the row, else the app, since Stripe's send runs as the service role with no signed-in name. */
+export const SENT_BY_APP = 'The app'
+
+/**
+ * The line's words from the event. A paper resend, a demand letter and a notice say what they are. A bill reads the
+ * channel in its detail (`channel: 'stripe'`) or in its summary's parentheses, *Invoice sent to customer (stripe)*:
+ * Stripe's email says so; another email says emailed; anything else, sent.
+ */
+export function sentLineBody(event: Pick<JobActivityEvent, 'type' | 'summary' | 'detail'>): string {
+  if (event.type === 'invoice_resent') return 'Bill emailed again'
+  if (event.type === 'demand_letter_sent') return 'Demand letter sent'
+  if (event.type === 'lien_notice_sent') return event.detail?.kind === 'retainage_53_057' ? 'Retainage notice sent' : 'Lien notice sent'
+  const fromDetail = typeof event.detail?.channel === 'string' ? event.detail.channel : ''
+  const fromSummary = /\(([a-z_ -]+)\)\s*$/i.exec(event.summary ?? '')?.[1] ?? ''
+  const channel = (fromDetail || fromSummary).trim().toLowerCase()
+  if (event.type === 'invoice_stripe_email_sent' || channel === 'stripe') return 'Bill emailed through Stripe'
+  if (channel === 'email') return 'Bill emailed to the customer'
+  return 'Bill sent to the customer'
 }
 
 /**
@@ -55,6 +95,9 @@ function entryFromItem(item: JobThreadActivityItem): Omit<JobActivityBoxEntry, '
       body: `Report: ${(item.report.template_name ?? '').trim() || 'Report'}`,
     }
   }
+  if (item.kind === 'event' && SENT_EVENT_TYPES.has(item.event.type)) {
+    return { kind: 'sent', atIso: item.event.occurredAt, authorName: item.event.actorName?.trim() || SENT_BY_APP, body: sentLineBody(item.event) }
+  }
   return null
 }
 
@@ -63,7 +106,8 @@ function entryFromItem(item: JobThreadActivityItem): Omit<JobActivityBoxEntry, '
  * request v2.2062; the box keeps itself scrolled to the newest). Items are
  * re-sorted by time here so numbering never depends on the caller's
  * ordering; ties keep input order. Numbers stay stable references:
- * 1 = the oldest note/report, "check note 3" never shifts.
+ * 1 = the oldest note/report, "check note 3" never shifts; a send sits
+ * in its place in time with no number (v2.5633).
  */
 export function buildJobActivityBoxFeed(items: JobThreadActivityItem[]): JobActivityBoxEntry[] {
   const entries = items
@@ -71,7 +115,8 @@ export function buildJobActivityBoxFeed(items: JobThreadActivityItem[]): JobActi
     .filter((e): e is Omit<JobActivityBoxEntry, 'number'> => e !== null)
     .map((e, inputIndex) => ({ e, inputIndex, t: Date.parse(e.atIso) }))
     .sort((a, b) => (a.t === b.t || Number.isNaN(a.t) || Number.isNaN(b.t) ? a.inputIndex - b.inputIndex : a.t - b.t))
-  return entries.map(({ e }, i) => ({ ...e, number: i + 1 }))
+  let next = 0
+  return entries.map(({ e }) => ({ ...e, number: e.kind === 'sent' ? null : ++next }))
 }
 
 export function jobActivityItemTimeIso(item: JobThreadActivityItem): string {

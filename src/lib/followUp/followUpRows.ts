@@ -6,12 +6,17 @@
  * until the generated types carry the tables; the lead's one types PR swaps them for `Tables<'…'>`.
  */
 import type { Contact } from '../contacts/kernel'
-import { contactsFromRows, type ContactChannelRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
+import type { CallTaskRecord } from '../calls/callTasks'
+import type { CallTaskDbRow } from '../calls/callTasksIo'
+import { jobKeyOfRow } from '../messages/jobKeys'
+import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { threadMessageFromRow, type MessageLoadContext, type MessageRow } from '../messages/load'
 import type { ThreadMessage } from '../messages/thread'
 import type { Owed } from '../messages/owed'
 import type { HeardLine, HeardPromiseKind, HeardPromiseState, QuestionState } from '../messages/promises'
 import type { PromiseKind } from '../gc/types'
+import { newLane, type NewLaneMessage, type NewLaneRow } from './newLane'
+import { activeJobKeys, laneFacts, type LaneJobRows } from './newLaneRows'
 import type { ContactState, FollowUpInput, HasHow, OwedRecord, QueueContact, QueueMessage } from './queue'
 import type { ContactFollowUpRow } from './followUpTypes'
 
@@ -21,8 +26,16 @@ export type { ContactFollowUpRow }
 /** A `contacts` row as Follow up reads it: cut 1's columns and cut 2's. */
 export type FollowUpContactRow = ContactRow & ContactFollowUpRow
 
-/** A `messages` row as Follow up reads it: cut 1's columns and a note's day in words and Done with it. */
-export type FollowUpMessageRow = MessageRow & { back_words: string | null; back_done_at: string | null }
+/**
+ * A `messages` row as Follow up reads it: cut 1's columns, a note's day in words and Done with it, and the box it came
+ * through and who tied it (R6's `mailbox`, R7's `tied_by`, for the New lane; not in the generated types yet).
+ */
+export type FollowUpMessageRow = MessageRow & {
+  back_words: string | null
+  back_done_at: string | null
+  mailbox?: string | null
+  tied_by?: string | null
+}
 
 /** A `contact_owed` row. */
 export interface ContactOwedRow {
@@ -61,12 +74,17 @@ export interface MessageHighlightRow {
   highlighted_at: string
 }
 
-/** A person as Follow up draws them: the queue's reading, their trade, and who has it in full. */
+/** A person as Follow up draws them: the queue's reading, their trade, who has it in full, and their jobs (the New lane's). */
 export type FollowUpContact = QueueContact & {
   trade?: string
   hasUserId: string | null
   hasSince: string | null
   hasHow: HasHow | null
+  /** Their jobs, by key, in the rail's order, and the starred one. Empty when the read loaded none. */
+  jobIds?: string[]
+  defaultJobId?: string | null
+  /** Their first phone number that did not send STOP, for a call's dial (v2.5596); null for none. */
+  phone?: string | null
 }
 
 /** A highlight as the thread draws it. */
@@ -88,6 +106,11 @@ export interface FollowUpRows {
   messages: readonly FollowUpMessageRow[]
   heard: readonly MessagePromiseRow[]
   owed: readonly ContactOwedRow[]
+  /** The open people's jobs, and those jobs' states, for the New lane's *Which job?* (R7). */
+  jobs?: readonly ContactJobRow[]
+  jobStates?: LaneJobRows
+  /** The open calls to make (v2.5596), every person's; none before the push. */
+  callTasks?: readonly CallTaskDbRow[]
 }
 
 const STATES: ReadonlySet<string> = new Set<ContactState>(['waiting', 'snoozed', 'done'])
@@ -105,37 +128,100 @@ const nameOf = (userNames: Readonly<Record<string, string>>, id: string | null) 
  */
 export function followUpContactsFromRows(rows: FollowUpRows, userNames: Readonly<Record<string, string>>): FollowUpContact[] {
   const byId = new Map(rows.contacts.map((r) => [r.id, r]))
-  return contactsFromRows(rows.contacts, rows.channels, [], rows.records).map((c: Contact) => {
-    const row = byId.get(c.id)!
-    const state = STATES.has(row.state) ? (row.state as ContactState) : 'done'
-    return {
-      id: c.id,
-      kind: c.kind,
-      name: c.name,
-      goesBy: c.goesBy,
-      company: c.company,
-      ...(c.trade ? { trade: c.trade } : {}),
-      state,
-      snoozedUntil: state === 'snoozed' ? row.snoozed_until : null,
-      has: nameOf(userNames, row.has_user_id),
-      hasUserId: row.has_user_id,
-      hasSince: row.has_user_id ? row.has_since : null,
-      hasHow: row.has_user_id && row.has_how && HOWS.has(row.has_how) ? (row.has_how as HasHow) : null,
-    }
+  const phones = new Map<string, string>()
+  for (const ch of rows.channels) if (ch.kind === 'phone' && !ch.opted_out_at && !phones.has(ch.contact_id)) phones.set(ch.contact_id, ch.value)
+  return contactsFromRows(rows.contacts, rows.channels, rows.jobs ?? [], rows.records).map((c: Contact) => ({ ...followUpContactOf(c, byId.get(c.id), userNames), phone: phones.get(c.id) ?? null }))
+}
+
+/**
+ * One person as Follow up reads them: the spine's contact (as the thread window holds it) with cut 2's columns. No row,
+ * or a state this build does not know, reads as done with nobody.
+ */
+export function followUpContactOf(
+  c: Pick<Contact, 'id' | 'kind' | 'name' | 'goesBy' | 'company' | 'trade'> & Partial<Pick<Contact, 'jobIds' | 'defaultJobId'>>,
+  row: ContactFollowUpRow | null | undefined,
+  userNames: Readonly<Record<string, string>>,
+): FollowUpContact {
+  const state = row && STATES.has(row.state) ? (row.state as ContactState) : 'done'
+  const hasUserId = row?.has_user_id ?? null
+  return {
+    id: c.id,
+    kind: c.kind,
+    name: c.name,
+    goesBy: c.goesBy,
+    company: c.company,
+    ...(c.trade ? { trade: c.trade } : {}),
+    state,
+    snoozedUntil: state === 'snoozed' ? (row?.snoozed_until ?? null) : null,
+    has: nameOf(userNames, hasUserId),
+    hasUserId,
+    hasSince: hasUserId ? (row?.has_since ?? null) : null,
+    hasHow: hasUserId && row?.has_how && HOWS.has(row.has_how) ? (row.has_how as HasHow) : null,
+    ...(c.jobIds ? { jobIds: c.jobIds, defaultJobId: c.defaultJobId ?? null } : {}),
+  }
+}
+
+/** Someone holding a conversation that is not done: what the picker counts for each teammate. */
+export interface HolderRow {
+  id: string
+  state: string
+  snoozed_until: string | null
+  has_user_id: string
+}
+
+/** The holders as `holdCount` reads them: who has each, by name, and its state. Their names do not matter here. */
+export function holdersFromRows(rows: readonly HolderRow[], userNames: Readonly<Record<string, string>>): QueueContact[] {
+  return rows.map((r) => {
+    const state = STATES.has(r.state) ? (r.state as ContactState) : 'done'
+    return { id: r.id, kind: 'unknown', name: '', state, snoozedUntil: state === 'snoozed' ? r.snoozed_until : null, has: nameOf(userNames, r.has_user_id) }
   })
 }
 
-/** A line as Follow up reads it: the queue's fields, what a row's snippet shows (an email's subject, who wrote it), and its job. */
-export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'>
+/**
+ * A line as Follow up reads it: the queue's fields, what a row's snippet shows (an email's subject, who wrote it), its
+ * job, and the box it came through and whether a person tied it (the New lane's).
+ */
+export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'> & Pick<NewLaneMessage, 'mailbox' | 'tiedByHand'>
 
 /** The lines as Follow up reads them, with a note's day in words and when it was dealt with. */
 export function followUpMessagesFromRows(rows: readonly FollowUpMessageRow[], ctx: MessageLoadContext = {}): FollowUpLine[] {
   const out: FollowUpLine[] = []
   for (const row of rows) {
     const m = threadMessageFromRow(row, ctx)
-    if (m) out.push({ ...m, backWords: row.back_words, backDoneAt: row.back_done_at })
+    if (m) out.push({ ...m, backWords: row.back_words, backDoneAt: row.back_done_at, ...laneFacts(row) })
   }
   return out
+}
+
+/**
+ * The New lane for the people Needs a reply holds (`FollowUpPassThrough.newLane`): their newest line in, its box and
+ * whether a person tied it, and their jobs still under way. Follow up reads only their lines in, since an open
+ * conversation has no reply of ours after its newest line.
+ */
+export function followUpNewLane(
+  input: { contacts: readonly FollowUpContact[]; messages: readonly FollowUpLine[] },
+  jobStates: LaneJobRows,
+  nowIso: string,
+): (people: ReadonlySet<string>) => NewLaneRow[] {
+  const active = activeJobKeys(jobStates)
+  return (people) =>
+    newLane(
+      input.contacts
+        .filter((c) => people.has(c.id))
+        .map((c) => ({
+          id: c.id,
+          kind: c.kind,
+          name: c.name,
+          goesBy: c.goesBy ?? null,
+          company: c.company ?? '',
+          jobIds: c.jobIds ?? [],
+          defaultJobId: c.defaultJobId ?? null,
+          has: c.has ?? null,
+        })),
+      input.messages.filter((m) => people.has(m.contactId)),
+      active,
+      nowIso,
+    )
 }
 
 /**
@@ -173,6 +259,22 @@ export function owedRecordsFromRows(rows: readonly ContactOwedRow[], userNames: 
   })
 }
 
+/** The calls to make (v2.5596), the maker named. */
+export function callTasksFromRows(rows: readonly CallTaskDbRow[], userNames: Readonly<Record<string, string>>): CallTaskRecord[] {
+  return rows.map((r) => ({
+    id: r.id,
+    contactId: r.contact_id,
+    stepKey: r.step_key,
+    jobKey: jobKeyOfRow(r),
+    dueYmd: r.due_on,
+    what: r.what,
+    script: r.script,
+    madeBy: nameOf(userNames, r.made_by) ?? 'Someone',
+    madeAt: r.made_at,
+    doneAt: r.done_at,
+  }))
+}
+
 /** Each line's highlights, oldest first, with who highlighted them by name. */
 export function highlightsFromRows(rows: readonly MessageHighlightRow[], userNames: Readonly<Record<string, string>>): Map<string, MessageHighlight[]> {
   const out = new Map<string, MessageHighlight[]>()
@@ -197,6 +299,7 @@ export function followUpInputFromRows(
     messages: followUpMessagesFromRows(rows.messages, { userNames, contacts: named }),
     heard: heardLinesFromRows(rows.heard),
     owed: owedRecordsFromRows(rows.owed, userNames),
+    calls: callTasksFromRows(rows.callTasks ?? [], userNames),
     todayYmd,
   }
 }

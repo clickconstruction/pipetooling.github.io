@@ -926,6 +926,11 @@ verify_jwt = false
 [functions.gc-customer-email]
 verify_jwt = false
 
+# Messages, cut 3: an email from the reply box in a person's thread. It checks the caller's session itself and asks
+# gc_office_team() as them, as quo-send does.
+[functions.messages-email]
+verify_jwt = false
+
 # The customer pays a certified GC bill by card from their portal (GC mode, Owner Billing O8b): the portal link is the
 # capability on its portal door, and its undo door reads the staff JWT itself.
 [functions.gc-card-bill]
@@ -965,4 +970,35 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.statement-round-email-dispatch]
+verify_jwt = false
+
+# The office's door to Docsmit (the Docsmit train, PR 3): ping · prepare · send · refresh. Bearer + getUser, office roles from users in-function; the secrets never leave it.
+[functions.mail-send-docsmit]
+verify_jwt = false
+
+# The hourly read-back of every open Docsmit piece (the Docsmit train, PR 3): X-Cron-Secret, no JWT.
+[functions.mail-poll]
+verify_jwt = false
+
+# The dev's door to Docsmit's secrets in Vault (the Docsmit train, PR 9): status · set · ping. Bearer + getUser, role dev in-function; never returns a hash or a software id.
+[functions.mail-config]
+verify_jwt = false
+
+# Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
+[functions.photo-save]
+verify_jwt = false
+
+# Messages, cut 5: Quo posts its events signed with the webhook's whsec_ key (webhook-id, webhook-timestamp,
+# webhook-signature), never with a Supabase session. The function checks the signature itself.
+[functions.quo-webhook]
+verify_jwt = false
+
+# Same as gc-customer-email: the caller's session is checked in the function (getUser, REAL_ACCOUNT, read_only,
+# gc_office_team()).
+[functions.quo-send]
+verify_jwt = false
+
+# Messages, cut 5: the morning run of the reminders the app sends itself. The cron sends no JWT (X-Cron-Secret);
+# a dev's dry run is checked in the function.
+[functions.messages-nudge-dispatch]
 verify_jwt = false

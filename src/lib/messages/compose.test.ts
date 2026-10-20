@@ -27,8 +27,11 @@ import {
   emailDraft,
   emailFooter,
   emailGreeting,
+  emailRepliesNote,
+  EMAIL_REPLIES_NOTE,
   fromHeader,
   fromLine,
+  replyToHeader,
   goesOut,
   optoutBubble,
   optoutHoldNote,
@@ -137,11 +140,27 @@ describe('the recipient, from the spine’s contact', () => {
 })
 
 describe('the from line', () => {
-  it('names our one number or our one mailbox, never a person’s own', () => {
+  it('names our number, or our name and the box their answer comes back to, never a person’s own', () => {
     expect(fromLine('text', CLICK)).toEqual(['from the company number (210) 555-0100', 'Click Construction'])
-    expect(fromLine('email', CLICK)).toEqual(['from bids@clickconstruction.example', 'Click Construction'])
+    expect(fromLine('email', CLICK)).toEqual(['from Click Construction', 'replies to bids@clickconstruction.example'])
     expect(fromLine('note', CLICK)).toEqual([])
-    expect(fromHeader(CLICK)).toBe('Click Construction <bids@clickconstruction.example>')
+    // An email goes from the app's own sending address under our name, with the box as its Reply-To (R6).
+    expect(fromHeader(CLICK)).toBe('Click Construction')
+    expect(replyToHeader(CLICK)).toBe('bids@clickconstruction.example')
+    expect(emailRepliesNote(CLICK)).toBe('Their answer comes to bids@clickconstruction.example.')
+  })
+
+  it('names the bids number when a text goes from it (R6)', () => {
+    expect(fromLine('text', { ...CLICK, phone: '(512) 555-0199', numberWords: 'the bids number' })).toEqual(['from the bids number (512) 555-0199', 'Click Construction'])
+  })
+
+  it('leaves out a number or a mailbox the app does not know, rather than drawing a gap', () => {
+    const blank = { ...CLICK, phone: '', mailbox: ' ' }
+    expect(fromLine('text', blank)).toEqual(['from the company number', 'Click Construction'])
+    expect(fromLine('email', blank)).toEqual(['from Click Construction'])
+    expect(fromHeader(blank)).toBe('Click Construction')
+    expect(replyToHeader(blank)).toBeNull()
+    expect(emailRepliesNote(blank)).toBe(EMAIL_REPLIES_NOTE)
   })
 })
 
@@ -210,7 +229,7 @@ describe('the email', () => {
       body: '  Pay application 3 is in your portal.\n\nThe architect has it for the certificate.  ',
     })
     expect(draft).toEqual({
-      from: 'Click Construction <bids@clickconstruction.example>',
+      from: 'Click Construction',
       to: 'elena@cibolocreek.example',
       subject: 'Fair Oaks Shops, Building D: Pay application 3 is in your portal',
       greeting: 'Hello Elena,',
@@ -372,11 +391,11 @@ describe('the send window', () => {
   })
 
   it('warns in its order: STOP, no number, then a text past two pieces', () => {
-    expect(sendWarnings('email', TOM)).toEqual(['They have no email on file. Add one on the To line and the email can go.'])
+    expect(sendWarnings('email', TOM)).toEqual(['They have no email on file. Add one on their record, and the email can go.'])
     expect(sendWarnings('email', GREG)).toEqual([])
     expect(sendWarnings('text', { ...GREG_STOPPED, number: null })).toEqual([
       'They sent STOP. The app will not send this text.',
-      'They have no mobile number on file. Add one on the To line and the text can go.',
+      'They have no mobile number on file. Add one on their record, and the text can go.',
     ])
     const long = textToSend({ body: 'a'.repeat(300), reason: 'first', company: CLICK })
     expect(sendWarnings('text', GREG, long)).toEqual([

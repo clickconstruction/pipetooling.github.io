@@ -506,7 +506,7 @@ function ChangeOrderRow({
         </div>
       )}
       {co.status === 'sent' && !emailedLine && (
-        <div style={{ background: 'var(--surface-2, var(--surface))', border: '1px dashed var(--border)', borderRadius: 6, padding: '0.45rem 0.6rem' }}>
+        <div style={{ background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 6, padding: '0.45rem 0.6rem' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>It went without an email. Send these words from your own email.</div>
           <div style={{ userSelect: 'all' }}>{sendWords(project, co)}</div>
         </div>

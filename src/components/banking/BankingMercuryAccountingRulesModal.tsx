@@ -409,7 +409,7 @@ export function BankingMercuryAccountingRulesModal({
                                         deleted tag · {c.categories.join(', ') || '—'}
                                       </span>
                                     ) : (
-                                      <span key={c.key} style={{ fontSize: '0.75rem', padding: '1px 8px', borderRadius: 6, background: 'var(--bg-muted)', border: '1px solid var(--border-soft)', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
+                                      <span key={c.key} style={{ fontSize: '0.75rem', padding: '1px 8px', borderRadius: 6, background: 'var(--bg-muted)', border: '1px solid var(--border)', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
                                         <span style={{ color: 'var(--text-muted)' }}>{c.label}</span> <b style={{ fontWeight: 600 }}>{c.value}</b>
                                       </span>
                                     ),

@@ -136,7 +136,7 @@ export function GcAskCompanies({
           borderRadius: 8,
           cursor: 'pointer',
           border: `1px solid ${showing?.partner.id === c.partner.id ? 'var(--border-blue)' : 'var(--border)'}`,
-          background: showing?.partner.id === c.partner.id ? 'var(--bg-blue-50)' : 'transparent',
+          background: showing?.partner.id === c.partner.id ? 'var(--bg-blue-tint)' : 'transparent',
           opacity: on ? 1 : 0.8,
         }}
       >
@@ -292,7 +292,7 @@ export function GcAskCompanies({
                       fontSize: '0.8rem',
                       cursor: 'pointer',
                       fontWeight: on ? 600 : 400,
-                      background: on ? 'var(--bg-blue-50)' : 'var(--surface)',
+                      background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       color: on ? 'var(--text-blue-800)' : 'var(--text-muted)',
                     }}
                   >

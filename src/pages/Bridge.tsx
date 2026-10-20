@@ -68,6 +68,7 @@ import { BridgeHoursPanel } from '../components/bridge/BridgeHoursPanel'
 import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
 import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
 import { STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
+import { pageGate } from '../lib/roleGate'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -951,8 +952,10 @@ export default function Bridge() {
     }
   }, [sheet, emailing, showToast])
 
-  if (authLoading) return null
-  if (role !== 'dev') return <Navigate to="/dashboard" replace />
+  // A hard load waits for the role before it decides (`pageGate`).
+  const gate = pageGate({ loading: authLoading, user, role }, (r) => r === 'dev')
+  if (gate === 'wait') return null
+  if (gate === 'away') return <Navigate to="/dashboard" replace />
 
   const billsByDay = groupByDay(bills)
   const receiptsByDay = groupByDay(receipts)

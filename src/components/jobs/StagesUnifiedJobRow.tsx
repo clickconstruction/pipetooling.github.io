@@ -141,7 +141,10 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
         {/* Wide screens: identity keeps its natural width and the Job
             activity box (v2.1587) absorbs the cell's dead middle. */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', justifyContent: 'space-between' }}>
-        <div style={{ minWidth: 0 }}>
+        {/* The identity block never claims more than it uses (v2.5630): a browser that sizes it to the unwrapped width of the
+            customer line with its globe, bubble and owner-sees chip, then wraps the line anyway, left dead space before the
+            activity box; the cap holds it to what Chromium already wraps at, and the box takes the rest. */}
+        <div style={{ minWidth: 0, maxWidth: 'min(100%, 30rem)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap' }}>
           {renderStagesOpenDetailJobName(j)}
           {/* The activity box already carries the trail on wide screens —

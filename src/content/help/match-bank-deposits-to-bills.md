@@ -34,6 +34,10 @@ Applying a deposit also gives it the **Income** label in Banking, so the P&L cou
 
 **Give it the whole screen.** The button between **⋯** and **Close** takes the window full screen. The deposits and the match pane then split the whole width. It opens the way you left it. Press it again for the window.
 
+## They said they paid
+
+Sometimes a customer tells an estimator or the office that they paid, and someone writes it down on the job. When a deposit fits that word, the pane leads with it under **They said they paid**. You see who wrote it, what the customer said and the job's open bills. Press the bill to allocate the deposit to it. When the deposit's name matches the customer, the pane says so. Nothing is marked paid by the word itself.
+
 ## Clear the obvious ones in one pass
 
 When deposits each match exactly one open bill to the cent, a green bar appears above the deposit list.

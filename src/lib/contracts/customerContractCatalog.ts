@@ -29,24 +29,29 @@ import { ESIGN_CONSENT_VERSION, esignConsentText } from '../esignConsent'
 import { effectiveBookVersionPlainDate } from '../contractBookVersionDate'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { WEBSITE_TERMS_COPIED_YMD, WEBSITE_TERMS_HOSTED_BY, WEBSITE_TERMS_TEXT, WEBSITE_TERMS_URL, copiedLabel } from './websiteTerms'
+import { canEditClause } from '../gc/access'
 
 export const CONTRACTS_TAB_ID = 'settings-contracts'
 /** Every card's DOM id, and the hash a deep link lands on: `#settings-contract-<entry id>`. */
 export const CONTRACT_ANCHOR_PREFIX = 'settings-contract-'
 
-export type ContractCatalogGroup = 'signed' | 'notice'
+/** `theirs`: a paper on a flow that the other side gives us (an upload), with no wording of ours. */
+export type ContractCatalogGroup = 'signed' | 'notice' | 'theirs'
 
 export const CONTRACT_GROUP_LABELS: Readonly<Record<ContractCatalogGroup, string>> = {
   signed: 'Contracts customers accept or sign',
   notice: 'Notices customers receive',
+  theirs: 'Papers they give us',
 }
 
 export const CONTRACT_GROUP_HINTS: Readonly<Record<ContractCatalogGroup, string>> = {
   signed: 'Wording a customer agrees to — with a signature, a checkbox, or by accepting the document it rides on.',
   notice: 'Wording we send that binds or informs a customer and that they do not sign.',
+  theirs: 'A paper the other side hands us, such as a bond. We keep their file and write no wording of our own.',
 }
 
-export type ContractCatalogArea = 'website' | 'estimates' | 'bids' | 'jobs' | 'signing' | 'billing' | 'liens'
+/** `flows`: Papers on the flows, the papers the office adds to a step of a flow. Its lines are data (`DATA_DRIVEN_AREAS`). */
+export type ContractCatalogArea = 'website' | 'estimates' | 'bids' | 'jobs' | 'signing' | 'billing' | 'liens' | 'flows'
 
 export const CONTRACT_AREA_LABELS: Readonly<Record<ContractCatalogArea, string>> = {
   website: 'Website',
@@ -56,9 +61,18 @@ export const CONTRACT_AREA_LABELS: Readonly<Record<ContractCatalogArea, string>>
   signing: 'Every signing page',
   billing: 'Billing',
   liens: 'Liens & collections',
+  flows: 'Papers on the flows',
 }
 
-export type ContractCatalogAudience = 'homeowner' | 'gc' | 'everyone' | 'owner' | 'public'
+/**
+ * The areas whose lines are the office's own data, made each time the tab reads it, never entries in
+ * `CUSTOMER_CONTRACT_CATALOG`: Papers on the flows is one line per Contract library document with a flow kind
+ * (`flowPaperEntries`, Messages cut 4). `contractCatalogProblems` refuses a catalog entry in one.
+ */
+export const DATA_DRIVEN_AREAS: readonly ContractCatalogArea[] = ['flows']
+
+/** `trade` and `flow_customer`: a paper on the trade partner flow, or on the customer's or the architect's. */
+export type ContractCatalogAudience = 'homeowner' | 'gc' | 'everyone' | 'owner' | 'public' | 'trade' | 'flow_customer'
 
 export const CONTRACT_AUDIENCE_LABELS: Readonly<Record<ContractCatalogAudience, string>> = {
   homeowner: 'Homeowner',
@@ -66,6 +80,8 @@ export const CONTRACT_AUDIENCE_LABELS: Readonly<Record<ContractCatalogAudience, 
   everyone: 'Everyone who signs',
   owner: 'Property owner',
   public: 'Anyone on the website',
+  trade: 'Trade partner',
+  flow_customer: 'Customer or architect',
 }
 
 /** Where the wording is kept. */
@@ -82,6 +98,8 @@ export type ContractTextSource =
   | { kind: 'settings_block'; where: string }
   /** A page kept outside the app (the website's terms on Housecall Pro): `text` is a copy made on `copiedYmd`. */
   | { kind: 'external'; url: string; hostedBy: string; text: string; copiedYmd: string }
+  /** A paper the office added to a step of a flow: its Contract library document, and the words `flowPaperEntries` read. */
+  | { kind: 'flow_paper'; doc: ContractBookDoc; text: string; format: 'plain' | 'html' | 'markdown'; status: 'yours' | 'blank' | 'theirs'; versionLabel: string | null }
 
 /** Where the wording is changed. */
 export type ContractEditDoor =
@@ -95,6 +113,8 @@ export type ContractEditDoor =
   | { kind: 'code'; note: string }
   /** Another company's site holds it; the door opens the live page. */
   | { kind: 'external'; url: string; note: string }
+  /** A contract built from clauses: its card on Settings → Contracts and clauses, for the office that edits clauses. */
+  | { kind: 'clauses'; paperId: string }
 
 export type ContractStepRef = { journeyId: JourneyId; stepId: string }
 
@@ -495,7 +515,7 @@ export type ContractCatalogData = {
   bookDocs: readonly ContractBookDoc[]
 }
 
-export type ContractTextStatus = 'yours' | 'built_in' | 'blank' | 'fixed' | 'per_record' | 'in_settings' | 'external'
+export type ContractTextStatus = 'yours' | 'built_in' | 'blank' | 'fixed' | 'per_record' | 'in_settings' | 'external' | 'theirs'
 
 export const CONTRACT_STATUS_LABELS: Readonly<Record<ContractTextStatus, string>> = {
   yours: 'Your wording',
@@ -505,6 +525,7 @@ export const CONTRACT_STATUS_LABELS: Readonly<Record<ContractTextStatus, string>
   per_record: 'Typed each time',
   in_settings: 'Set in Settings',
   external: 'Hosted elsewhere',
+  theirs: 'Their paper',
 }
 
 export type ResolvedContractText = {
@@ -564,6 +585,7 @@ export function resolveContractTexts(entry: ContractCatalogEntry, data: Contract
   if (s.kind === 'code') return [{ ...base, key: entry.id, title: entry.name, text: s.text ?? '', status: 'fixed', versionLabel: s.version ?? null }]
   if (s.kind === 'settings_block') return [{ ...base, key: entry.id, title: entry.name, text: '', status: 'in_settings' }]
   if (s.kind === 'external') return [{ ...base, key: entry.id, title: entry.name, text: s.text, status: 'external', versionLabel: copiedLabel(s.copiedYmd) }]
+  if (s.kind === 'flow_paper') return [{ ...base, key: entry.id, title: entry.name, text: s.text, format: s.format, status: s.status, versionLabel: s.versionLabel, doc: s.doc }]
   return [{ ...base, key: entry.id, title: entry.name, text: '', status: 'per_record' }]
 }
 
@@ -575,6 +597,7 @@ export function contractSourceLine(entry: ContractCatalogEntry): string {
   if (s.kind === 'code') return s.text == null ? 'Written in the app, around the facts of each record.' : 'Written in the app.'
   if (s.kind === 'settings_block') return `${s.where}.`
   if (s.kind === 'external') return `A page ${s.hostedBy} hosts. The wording here is a copy, ${copiedLabel(s.copiedYmd)}; open the live page to read it as it stands today.`
+  if (s.kind === 'flow_paper') return 'The Contract library, in a Flow papers packet. The New paper window added it to a step of a flow.'
   return `${s.where}. ${s.startsFrom}`
 }
 
@@ -609,6 +632,10 @@ export function contractEditAction(entry: ContractCatalogEntry, text: ResolvedCo
   }
   if (d.kind === 'page') return { kind: 'page', label: d.label, to: d.to }
   if (d.kind === 'external') return { kind: 'link', label: 'Open the live page', href: d.url, note: d.note }
+  if (d.kind === 'clauses') {
+    if (!canEditClause(role)) return { kind: 'note', text: 'The office changes its clauses in Settings → Contracts and clauses.' }
+    return { kind: 'settings', label: 'Open its clauses', tabId: 'settings-clauses', anchorId: `settings-clause-paper-${d.paperId}` }
+  }
   return { kind: 'note', text: d.note }
 }
 
@@ -652,11 +679,11 @@ export function toggleCompare(picked: readonly string[], key: string, max: numbe
 // The count, and the guard
 // ---------------------------------------------------------------------------
 
-export type ContractCatalogCounts = { texts: number; yours: number; builtIn: number; blank: number; fixed: number; perRecord: number; inSettings: number; external: number; dated: number }
+export type ContractCatalogCounts = { texts: number; yours: number; builtIn: number; blank: number; fixed: number; perRecord: number; inSettings: number; external: number; theirs: number; dated: number }
 
 export function contractCatalogCounts(texts: ReadonlyArray<ResolvedContractText>): ContractCatalogCounts {
   const n = (s: ContractTextStatus) => texts.filter((t) => t.status === s).length
-  return { texts: texts.length, yours: n('yours'), builtIn: n('built_in'), blank: n('blank'), fixed: n('fixed'), perRecord: n('per_record'), inSettings: n('in_settings'), external: n('external'), dated: texts.filter((t) => t.versionLabel != null).length }
+  return { texts: texts.length, yours: n('yours'), builtIn: n('built_in'), blank: n('blank'), fixed: n('fixed'), perRecord: n('per_record'), inSettings: n('in_settings'), external: n('external'), theirs: n('theirs'), dated: texts.filter((t) => t.versionLabel != null).length }
 }
 
 /** "12 texts · 3 your wording · 4 built-in · 1 with nothing set · 4 fixed in the app · 2 dated" */
@@ -669,6 +696,7 @@ export function contractCountsLine(c: ContractCatalogCounts): string {
   if (c.perRecord > 0) parts.push(`${c.perRecord} typed each time`)
   if (c.inSettings > 0) parts.push(`${c.inSettings} set in Settings`)
   if (c.external > 0) parts.push(`${c.external} hosted elsewhere`)
+  if (c.theirs > 0) parts.push(`${c.theirs} they give us`)
   parts.push(`${c.dated} dated`)
   return parts.join(' · ')
 }
@@ -692,6 +720,8 @@ export function contractCatalogProblems(input: {
   for (const e of input.entries) {
     if (seen.has(e.id)) problems.push(`entry ${e.id} is listed twice`)
     seen.add(e.id)
+    if (DATA_DRIVEN_AREAS.includes(e.area) && e.source.kind !== 'flow_paper') problems.push(`entry ${e.id} sits in ${CONTRACT_AREA_LABELS[e.area]}, whose lines are made from the data, never written in the catalog`)
+    if (e.source.kind === 'flow_paper' && !DATA_DRIVEN_AREAS.includes(e.area)) problems.push(`entry ${e.id} is a paper on a flow outside ${CONTRACT_AREA_LABELS.flows}`)
     if (!/^[a-z][a-z0-9-]*$/.test(e.id)) problems.push(`entry ${e.id} needs a lowercase-dash id — it is a DOM id and a link target`)
     for (const s of e.seenOn) if (!stepIds.has(`${s.journeyId}/${s.stepId}`)) problems.push(`entry ${e.id} names step ${s.journeyId}/${s.stepId}, which is not in customerJourneys()`)
     for (const r of e.routes ?? []) if (!customerRoutes.includes(r)) problems.push(`entry ${e.id} names route ${r}, which is not a customer-facing public route`)

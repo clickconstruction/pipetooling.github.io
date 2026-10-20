@@ -23,6 +23,12 @@ export type ContactRow = Pick<
   | 'off_since'
   | 'off_why'
   | 'off_by'
+  // The four kinds of 2026-10-13 (R0, `20261013180000_contacts_seven_kinds.sql`): a lead, a supply house's counter, a
+  // rep at a supply house and a candidate.
+  | 'prospect_id'
+  | 'supply_house_id'
+  | 'supply_house_contact_id'
+  | 'team_prospect_id'
 >
 
 /** A `contact_channels` row. Its `key` is the database's own, matched there. */
@@ -31,25 +37,45 @@ export type ContactChannelRow = Pick<Tables<'contact_channels'>, 'id' | 'contact
 /** A `contact_jobs` row. */
 export type ContactJobRow = Pick<Tables<'contact_jobs'>, 'contact_id' | 'bid_id' | 'project_id' | 'jobs_ledger_id' | 'is_default' | 'created_at'>
 
-/** The records the contacts point at, as much of each as a name, a company and a trade need. */
+/**
+ * `customers.language` (R8 · 16, migration 20261013220000): optional here until it is pushed and the types regenerate,
+ * and the fetchers select it only after that push, as with the new record columns above.
+ */
+type CustomerLanguageColumn = { language?: string | null }
+
+/** The records the contacts point at, as much of each as a name, a company, a trade and a language need. */
 export interface ContactRecordRows {
-  customers?: readonly Pick<Tables<'customers'>, 'id' | 'name'>[]
+  customers?: readonly (Pick<Tables<'customers'>, 'id' | 'name'> & CustomerLanguageColumn)[]
   customerContactPersons?: readonly Pick<Tables<'customer_contact_persons'>, 'id' | 'customer_id' | 'name'>[]
   gcCompanies?: readonly Pick<Tables<'gc_companies'>, 'id' | 'name' | 'contact_name' | 'trades'>[]
   gcCompanyPeople?: readonly Pick<Tables<'gc_company_people'>, 'id' | 'company_id' | 'name'>[]
   people?: readonly Pick<Tables<'people'>, 'id' | 'name'>[]
+  prospects?: readonly Pick<Tables<'prospects'>, 'id' | 'contact_name' | 'company_name'>[]
+  supplyHouses?: readonly Pick<Tables<'supply_houses'>, 'id' | 'name'>[]
+  supplyHouseContacts?: readonly Pick<Tables<'supply_house_contacts'>, 'id' | 'supply_house_id' | 'name'>[]
+  teamProspects?: readonly Pick<Tables<'team_prospects'>, 'id' | 'name'>[]
 }
 
-const KINDS: ReadonlySet<string> = new Set<ContactKind>(['customer', 'trade', 'arch', 'unknown'])
+/**
+ * Every kind this build reads, as a record so a kind added to `ContactKind` fails the typecheck here until the loader
+ * knows it (v2.5552: `team` was missing, and a teammate's thread read as not in Messages while Follow up's lanes held
+ * their lines). `CONTACT_KINDS` in `quo/rows.ts` keeps the webhook the same way.
+ */
+const KNOWN: Record<ContactKind, true> = { customer: true, trade: true, arch: true, lead: true, supply_house: true, candidate: true, sub: true, team: true, unknown: true }
+const KINDS: ReadonlySet<string> = new Set(Object.keys(KNOWN))
 const CHANNEL_KINDS: ReadonlySet<string> = new Set<ChannelKind>(['phone', 'email'])
 
-/** The record a row points at: the one of its five columns that is set. Null: a number nobody has named. */
+/** The record a row points at: the one of its nine columns that is set. Null: a number nobody has named. */
 export function contactRecordOfRow(row: ContactRow): ContactRecord {
   if (row.customer_id) return { table: 'customers', id: row.customer_id }
   if (row.customer_contact_person_id) return { table: 'customer_contact_persons', id: row.customer_contact_person_id }
   if (row.gc_company_id) return { table: 'gc_companies', id: row.gc_company_id }
   if (row.gc_company_person_id) return { table: 'gc_company_people', id: row.gc_company_person_id }
   if (row.person_id) return { table: 'people', id: row.person_id }
+  if (row.prospect_id) return { table: 'prospects', id: row.prospect_id }
+  if (row.supply_house_id) return { table: 'supply_houses', id: row.supply_house_id }
+  if (row.supply_house_contact_id) return { table: 'supply_house_contacts', id: row.supply_house_contact_id }
+  if (row.team_prospect_id) return { table: 'team_prospects', id: row.team_prospect_id }
   return null
 }
 
@@ -81,8 +107,27 @@ function fromRecord(record: ContactRecord, named: boolean, records: ContactRecor
       const c = byId(records.gcCompanies, p?.company_id)
       return { name: trimmed(p?.name), company: trimmed(c?.name), trade: tradesOf(c) }
     }
+    // Someone on the roster, a sub or a teammate: the kind is the contact's own, and `kindOf` gives it from the roster.
     case 'people':
       return { ...none, name: trimmed(byId(records.people, record.id)?.name) }
+    case 'prospects': {
+      // A lead is the person Prospects names at a company, or the company itself when it names nobody.
+      const p = byId(records.prospects, record.id)
+      const person = trimmed(p?.contact_name)
+      const company = trimmed(p?.company_name)
+      return { name: person || company, company: person || named ? company : '', trade: '' }
+    }
+    case 'supply_houses': {
+      // The counter is the house's own person; someone it holds by name is at it, as at a trade partner.
+      const h = byId(records.supplyHouses, record.id)
+      return { name: trimmed(h?.name), company: named ? trimmed(h?.name) : '', trade: '' }
+    }
+    case 'supply_house_contacts': {
+      const r = byId(records.supplyHouseContacts, record.id)
+      return { name: trimmed(r?.name), company: trimmed(byId(records.supplyHouses, r?.supply_house_id)?.name), trade: '' }
+    }
+    case 'team_prospects':
+      return { ...none, name: trimmed(byId(records.teamProspects, record.id)?.name) }
   }
 }
 
@@ -110,6 +155,8 @@ export function contactFromRows(
   const star = myJobs.find((j) => j.is_default)
   const customerId = row.customer_id ?? byId(records.customerContactPersons, row.customer_contact_person_id)?.customer_id ?? null
   const gcCompanyId = row.gc_company_id ?? byId(records.gcCompanyPeople, row.gc_company_person_id)?.company_id ?? null
+  // The customer's language, for them and each person at them; a row that says nothing leaves it unset, which is English.
+  const language = byId(records.customers, customerId)?.language
   return {
     id: row.id,
     kind: row.kind as ContactKind,
@@ -123,6 +170,7 @@ export function contactFromRows(
     defaultJobId: star ? jobKeyOfRow(star) : null,
     customerId,
     gcCompanyId,
+    ...(language === 'en' || language === 'es' ? { lang: language } : {}),
   }
 }
 

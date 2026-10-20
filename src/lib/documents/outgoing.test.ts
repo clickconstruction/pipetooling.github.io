@@ -9,6 +9,7 @@ import {
   chipFacts,
   chipHover,
   draftFromDevice,
+  draftFromPortal,
   draftFromJob,
   emailFileNote,
   landingFor,
@@ -127,10 +128,10 @@ describe('our link: their portal page when they have it, else the file', () => {
 describe('the send window’s file notes', () => {
   it('says why each file goes as our link on an email, and what the link opens', () => {
     expect(emailFileNote(waysOut([addendum, planSet], 'email'), 'trade', GREG_LINKS)).toBe(
-      'Boerne Retail Shell plans, rev 2 goes as our link, the way a plan set always has. The link opens their portal at the plans. The link is ours, not Drive’s. We see who opened it, and we can cut it off.',
+      'Boerne Retail Shell plans, rev 2 goes as our link, the way a plan set always has. The link opens their portal at the plans. The link is ours, not Drive’s. We see when it is opened, never who, and we can cut it off.',
     )
     expect(emailFileNote(waysOut([big('Survey.pdf', 12 * MB), { ...bidTab, bytes: null }], 'email'), 'trade', GREG_LINKS)).toBe(
-      "Survey.pdf is over the email limit, so it goes as our link. We do not know how big Bid tab, Sitework.pdf is yet, so it goes as our link. Our link opens that one file in the job's Drive folder. The link is ours, not Drive’s. We see who opened it, and we can cut it off.",
+      "Survey.pdf is over the email limit, so it goes as our link. We do not know how big Bid tab, Sitework.pdf is yet, so it goes as our link. Our link opens that one file in the job's Drive folder. The link is ours, not Drive’s. We see when it is opened, never who, and we can cut it off.",
     )
     expect(emailFileNote(waysOut([big('A.pdf', 9 * MB), big('B.pdf', 9 * MB), big('C.pdf', 9 * MB)], 'email'), 'arch', NO_PORTAL)).toMatch(/^The files together are over the email limit, so A\.pdf goes as our link\./)
   })
@@ -244,5 +245,17 @@ describe('plain words', () => {
     const pk = attachPicker(null, [], 'trade', [{ paper: 'w9', short: 'W-9' }], true)
     const picker = [pk.jobHead, ...pk.starred.flatMap((r) => r.facts), ...pk.device.flatMap((r) => r.facts), attachPicker('B491', [], 'trade', [], true).jobEmpty]
     for (const s of [...notes, ...picker]) expect(plainWordsFailures(s ?? '')).toEqual([])
+  })
+})
+
+describe('a form on their portal (cut 7f, the step’s starred papers)', () => {
+  it('goes as their portal at the papers on an email and a text, with no reason a file would have', () => {
+    const form = draftFromPortal('form:w9', 'The W-9 form', 'papers')
+    expect(waysOut([form], 'email')).toEqual([{ file: form, way: 'link', why: null }])
+    expect(waysOut([form], 'text')).toEqual([{ file: form, way: 'link', why: null }])
+    const make = { portal: (page: string) => `https://clicktooling.com/t/7Hq2#${page}`, file: () => 'https://clicktooling.com/f/x' }
+    expect(chipFacts(waysOut([form], 'email')[0]!, 'trade', make)).toEqual(['our link to their portal'])
+    expect(emailFileNote(waysOut([form], 'email'), 'trade', make)).toBe('The link opens their portal at the papers. The link is ours, not Drive’s. We see when it is opened, never who, and we can cut it off.')
+    expect(chipHover(form)).toEqual(['A form on their portal. They fill it in there.', 'It goes as our link to their portal, on an email or a text.'])
   })
 })

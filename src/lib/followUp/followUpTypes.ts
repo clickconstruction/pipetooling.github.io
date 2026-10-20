@@ -12,4 +12,6 @@ export interface ContactFollowUpRow {
   has_user_id: string | null
   has_since: string | null
   has_how: string | null
+  /** How they asked to hear from us (v2.5597): text, email, either, or null for nobody said. */
+  prefers?: string | null
 }

@@ -7,32 +7,12 @@
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_OFFICE_TEAM } from '../gc/access'
-import type { AssignSeats } from '../followUp/queue'
+import type { AssignRuleSeats } from '../followUp/assignSeats'
+
+// The seats and their reading live in `followUp/assignSeats.ts`, light enough for the edge copy (R5's push).
+export { NO_SEATS, parseAssignSeats, type AssignRuleSeats } from '../followUp/assignSeats'
 
 export type SeatKind = 'customer' | 'trade' | 'arch'
-
-/** The three seats, each a user's id or nobody. An architect's seat left empty shares the trade partners' seat. */
-export type AssignRuleSeats = Required<AssignSeats>
-
-export const NO_SEATS: AssignRuleSeats = { customer: null, trade: null, arch: null }
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-const seatOf = (v: unknown): string | null => (typeof v === 'string' && UUID.test(v.trim()) ? v.trim() : null)
-
-/** The seats as the setting keeps them. Anything it cannot read is an empty seat, so a bad value sends nothing astray. */
-export function parseAssignSeats(valueText: string | null | undefined): AssignRuleSeats {
-  if (!valueText?.trim()) return { ...NO_SEATS }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(valueText)
-  } catch {
-    return { ...NO_SEATS }
-  }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...NO_SEATS }
-  const o = parsed as Record<string, unknown>
-  return { customer: seatOf(o.customer), trade: seatOf(o.trade), arch: seatOf(o.arch) }
-}
 
 /** The setting's text for the seats, the three keys always written. */
 export function assignSeatsText(seats: AssignRuleSeats): string {
@@ -85,7 +65,7 @@ export function assignRuleRows(seats: AssignRuleSeats, nameOf: (userId: string) 
   const trade = name(seats.trade)
   const arch = name(seats.arch)
   return [
-    { key: 'customer', who: 'A customer', goesTo: customer ?? NOBODY },
+    { key: 'customer', who: 'A customer, a lead, a sub, a supply house or a candidate', goesTo: customer ?? NOBODY },
     { key: 'trade', who: 'A trade partner', goesTo: trade ?? NOBODY },
     { key: 'arch', who: 'An architect', goesTo: arch ?? (trade ? `${trade}, the trade partners' seat` : NOBODY) },
     { key: 'unknown', who: 'A number nobody knows', goesTo: NOBODY },

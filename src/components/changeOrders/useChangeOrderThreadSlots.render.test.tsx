@@ -109,6 +109,13 @@ describe('useChangeOrderThreadSlots', () => {
     expect(part('m-front-desk', 'window')).toBe('')
   })
 
+  it('leaves a customer’s line on a Pipeline job to its estimate (R8 · 8)', async () => {
+    const io = fakeIo()
+    draw(io, [OLD, line('m-priya-pipeline', { jobId: 'pipeline:j-helotes' })])
+    await waitFor(() => expect(part('m-priya-cabinet', 'under')).toBe('became CO 1'))
+    expect(part('m-priya-pipeline', 'window')).toBe('')
+  })
+
   it('reads nothing and draws nothing for someone off the office team', async () => {
     open.role = 'superintendent'
     const io = fakeIo()

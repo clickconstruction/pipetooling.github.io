@@ -1,13 +1,20 @@
 /**
  * Quick replies over the Messages prototype's made-up lines and people (v1.178, branch spike/gc-mode): its nineteen
  * lines with their presses by Robert, Rosa and Wendi, its three flows' steps, and its people, Greg on Asked to quote,
- * Tom on Papers in, Dr. Priya Raman on Start date, Jonah on Addenda and an unknown number.
+ * Tom on Papers in, Dr. Priya Raman on Start date, Jonah on Addenda and an unknown number. R3's tests add the residential
+ * prototype's lines (v0.8, `customer-messages-prototype.html`) for Dana, a residential customer on Working, with Rosa
+ * and Luis's presses.
  */
 import { describe, expect, it } from 'vitest'
 import { SEED_FLOWS } from '../flows/seed'
 import { plainWordsFailures } from '../plainWords'
 import {
+  EDITOR_WORDS,
   FIND_NOTE,
+  FLOW_NAMES,
+  QR_KIND_ORDER,
+  QR_KINDS,
+  QR_PRESS_COUNTED,
   REMOVE_ASK,
   addQuickReply,
   editQuickReply,
@@ -20,20 +27,27 @@ import {
   guessWords,
   historyHead,
   lastChange,
+  lastUsedWords,
+  nameOf,
   pressQuickReply,
   qrEmpty,
   qrGroups,
   qrGuess,
   qrKindOf,
+  qrLineCount,
   qrMarks,
+  qrStepName,
   qrStripCount,
   qrTagWords,
   qrTotal,
   qrVisible,
+  PHONE_ONLY_CUSTOMERS,
+  onThePhone,
   removeQuickReply,
   restoreQuickReply,
   showNarrow,
   stepLine,
+  stepsByFlow,
   stepsByKind,
   usedBy,
   versionWords,
@@ -155,6 +169,27 @@ describe('the strip’s groups for a thread', () => {
     expect(qrEmpty('')).toEqual({ words: 'No lines for this kind of person yet. Edit adds one.', add: null })
   })
 
+  it('says Nothing matches. in Find a reply, as the prototype did', () => {
+    expect(qrEmpty(' striping ', 'find')).toEqual({ words: 'Nothing matches.', add: 'Add “striping” as a quick reply' })
+    expect(qrEmpty('', 'find').words).toBe(qrEmpty('').words)
+  })
+
+  it('says when a line was last used, naming the person only when the window knows them', () => {
+    expect(lastUsedWords('Oct 12, 8:02 AM', 'Greg Paulk')).toBe('last used Oct 12, 8:02 AM, on Greg Paulk')
+    expect(lastUsedWords('Oct 12, 8:02 AM', null)).toBe('last used Oct 12, 8:02 AM')
+  })
+
+  it('names a user for the editor, or says Someone', () => {
+    expect(nameOf({ 'u-rosa': 'Rosa' }, 'u-rosa')).toBe('Rosa')
+    expect(nameOf({ 'u-rosa': 'Rosa' }, 'u-gone')).toBe('Someone')
+    expect(nameOf({}, null)).toBe('Someone')
+  })
+
+  it('counts a group’s lines for its pill', () => {
+    expect(qrLineCount(1)).toBe('1 line.')
+    expect(qrLineCount(4)).toBe('4 lines.')
+  })
+
   it('lights the typed words in a line, whatever their case', () => {
     expect(qrMarks('Your quote is in your portal now, thank you.', 'YOUR')).toEqual([
       { text: 'Your', lit: true },
@@ -210,10 +245,21 @@ describe('the line a step’s ask puts in the box', () => {
 describe('the steps a line can belong to', () => {
   it('reads them from the flows, by who the line is for, in the flow’s order', () => {
     expect(STEPS.trade?.map((s) => s.id)).toEqual(['invited', 'portal', 'papers', 'msa', 'ask', 'compare', 'sow', 'draws', 'closeout'])
-    expect(STEPS.customer?.map((s) => s.id)).toEqual(['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'])
+    // A customer's two flows, the residential one first.
+    expect(STEPS.customer?.map((s) => s.id)).toEqual([
+      ...['booked', 'onway', 'arrived', 'found', 'estimate', 'approved', 'working', 'done', 'billed', 'paid', 'review'],
+      ...['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'],
+    ])
     expect(STEPS.arch?.map((s) => s.name)).toEqual(['Plans in', 'Questions', 'Addenda', 'Submittals', 'Certify pay apps'])
     expect(STEPS.any).toBeUndefined()
-    expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [] })
+    expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], team: [], supply_house: [], candidate: [] })
+  })
+
+  it('has no steps for three of the four kinds of 2026-10-13, and the sub flow’s five since R8 · 12', () => {
+    expect([STEPS.lead, STEPS.supply_house, STEPS.candidate]).toEqual([[], [], []])
+    expect(STEPS.sub?.map((s) => s.id)).toEqual(['asked', 'yes', 'onsite', 'done', 'paid'])
+    expect(qrTagWords({ for: 'sub', stepId: 'asked' }, STEPS)).toEqual(['for subs', 'on Asked'])
+    expect(qrTagWords({ for: 'sub', stepId: 'gone' }, STEPS)).toEqual(['for subs', 'on no step'])
   })
 
   it('guesses only steps the flows have', () => {
@@ -235,6 +281,105 @@ describe('the steps a line can belong to', () => {
       expect(guess.stepId, text).not.toBeNull()
       expect(STEPS[guess.for]?.some((s) => s.id === guess.stepId), text).toBe(true)
     }
+  })
+})
+
+// The residential prototype's lines for customers (v0.8), ids r1 to r10, the user ids made up as rosa, luis and marco.
+const RES: QuickReply[] = [
+  line('r1', { scope: 'team', text: '{first}, this is Click Plumbing. We have you down for {day} between {window}. Reply here if that changes.', for: 'customer', stepId: 'booked', addedBy: 'rosa', addedAt: at(9, 30, 8, 10), uses: { rosa: 38 } }),
+  line('r2', { scope: 'team', text: '{first}, this is {me} with Click Plumbing. We are on our way to {address}, about {minutes} minutes out.', for: 'customer', stepId: 'onway', addedBy: 'rosa', addedAt: at(9, 30, 8, 12), uses: { luis: 41, rosa: 2, marco: 19 } }),
+  line('r6', { scope: 'team', text: '{first}, the water is off at the house while we work on the line. It is back on before we leave today.', for: 'customer', stepId: 'working', addedBy: 'rosa', addedAt: at(9, 30, 8, 20), uses: { luis: 9, marco: 3 } }),
+  line('r7', { scope: 'team', text: '{first}, we are done for today at {address}. We are back {back day} at {back time} to finish.', for: 'customer', stepId: 'working', addedBy: 'rosa', addedAt: at(9, 30, 8, 22), uses: { luis: 15, marco: 11, rosa: 1 } }),
+  line('r8', { scope: 'team', text: '{first}, your bill for {job} is ready. Pay it here: {link}. Thank you for your business.', for: 'customer', stepId: 'billed', addedBy: 'rosa', addedAt: at(9, 30, 8, 30), uses: { rosa: 31 } }),
+  line('r10', { scope: 'team', text: '{first}, could you send a photo of {thing}? Reply to this text with the picture.', for: 'customer', stepId: null, addedBy: 'rosa', addedAt: at(9, 30, 8, 40), uses: { luis: 4, rosa: 6 } }),
+]
+
+describe('the steps of each flow, a customer’s two among them (R3)', () => {
+  const BY_FLOW = stepsByFlow(SEED_FLOWS)
+
+  it('keeps a customer’s two flows apart, the residential one first, each under its name', () => {
+    expect(BY_FLOW.customer?.map((f) => [f.flow, f.name, f.steps.length])).toEqual([
+      ['residential', 'Residential customer', 11],
+      ['customer', 'GC customer', 11],
+    ])
+    expect(BY_FLOW.trade?.map((f) => f.name)).toEqual(['Trade partner'])
+    expect(BY_FLOW.customer?.[0]?.steps[1]).toEqual({ id: 'onway', name: 'On the way', flow: 'residential' })
+    expect(Object.keys(FLOW_NAMES)).not.toContain('unknown')
+  })
+
+  it('keeps every step id to one flow of its kind, since a line keeps only the id', () => {
+    for (const [kind, flows] of Object.entries(BY_FLOW)) {
+      const stepIds = (flows ?? []).flatMap((f) => f.steps.map((s) => s.id))
+      expect(new Set(stepIds).size, kind).toBe(stepIds.length)
+    }
+  })
+
+  it('leaves out a flow with no steps, and gives anyone none', () => {
+    expect(stepsByFlow({ sub: { kind: 'sub', lanes: [] } })).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], team: [], supply_house: [], candidate: [] })
+    expect(BY_FLOW.any).toBeUndefined()
+  })
+
+  it('is what stepsByKind flattens, one list per kind', () => {
+    for (const [kind, flows] of Object.entries(BY_FLOW)) {
+      expect(STEPS[kind as keyof StepsByKind], kind).toEqual((flows ?? []).flatMap((f) => f.steps))
+    }
+  })
+
+  it('names a step on either flow of the line’s kind', () => {
+    expect(qrStepName(STEPS, 'customer', 'onway')).toBe('On the way')
+    expect(qrStepName(STEPS, 'customer', 'bid')).toBe('Our bid')
+    expect(qrStepName(STEPS, 'trade', 'onway')).toBeNull()
+    expect(qrStepName(STEPS, 'customer', null)).toBeNull()
+    expect(qrTagWords({ for: 'customer', stepId: 'booked' }, STEPS)).toEqual(['for customers', 'on Booked'])
+  })
+
+  it('narrows the strip by a line’s Spanish as well as its English', () => {
+    const lines = [...LINES, { ...RES[1]!, textEs: '{first}, le habla {me} de Click Plumbing. Vamos en camino.' }]
+    const dana = { kind: 'customer' as const, nowStepId: 'working', steps: STEPS.customer ?? [], me: 'rosa' }
+    expect(qrGroups(lines, { ...dana, filter: 'camino' }).flatMap((g) => ids(g.rows))).toEqual(['r2'])
+    expect(qrGroups(lines, { ...dana, filter: 'on our way' }).flatMap((g) => ids(g.rows))).toEqual(['r2'])
+  })
+
+  it('leaves a line on the other flow off a customer’s strip, and keeps it in Find', () => {
+    const lines = [...LINES, ...RES]
+    const dana = { kind: 'customer' as const, nowStepId: 'working', steps: STEPS.customer ?? [], me: 'rosa' }
+    const strip = qrGroups(lines, { ...dana, flow: 'residential' })
+    expect(strip.map((g) => [g.title, ids(g.rows)])).toEqual([
+      ['Working', ['r7', 'r6']],
+      ['Other customers', ['r1', 'r8', 'r10', 'r2']],
+      ['Anyone', ['q14', 'q5']],
+    ])
+    const find = qrGroups(lines, { ...dana, flow: 'residential', place: 'find' })
+    expect(ids(find[1]?.rows ?? [])).toEqual(['r1', 'r8', 'q4', 'r10', 'q15', 'r2', 'q16', 'q9'])
+    // With no flow passed, the strip is as it was: every line for customers.
+    expect(ids(qrGroups(lines, dana)[1]?.rows ?? [])).toEqual(ids(find[1]?.rows ?? []))
+    const priya = qrGroups(lines, { kind: 'customer', nowStepId: 'start', steps: STEPS.customer ?? [], me: 'rosa', flow: 'customer' })
+    expect(priya.map((g) => [g.title, ids(g.rows)])).toEqual([
+      ['Start date', ['q16']],
+      ['Other customers', ['q4', 'r10', 'q15', 'q9']],
+      ['Anyone', ['q14', 'q5']],
+    ])
+  })
+
+  it('groups the editor’s customer lines flow by flow, naming the flow, no step last', () => {
+    const groups = editorGroups(editorRows([...LINES, ...RES], 'rosa', 'customer', ''), STEPS)
+    expect(groups.map((g) => [g.title.join(' · '), ids(g.rows)])).toEqual([
+      ['Customers · Residential customer · Booked', ['r1']],
+      ['Customers · Residential customer · On the way', ['r2']],
+      ['Customers · Residential customer · Working', ['r7', 'r6']],
+      ['Customers · Residential customer · Billed', ['r8']],
+      ['Customers · GC customer · Our bid', ['q4']],
+      ['Customers · GC customer · Start date', ['q16']],
+      ['Customers · GC customer · Pay application', ['q9']],
+      ['Customers · GC customer · Change orders', ['q15']],
+      ['Customers · no step', ['r10']],
+    ])
+  })
+
+  it('names no flow for a kind with one, or for steps passed in with no flow', () => {
+    const plain: StepsByKind = { customer: (STEPS.customer ?? []).map(({ id, name }) => ({ id, name })) }
+    expect(editorGroups([byId('q4'), RES[0]!], plain).map((g) => g.title.join(' · '))).toEqual(['Customers · Booked', 'Customers · Our bid'])
+    expect(editorGroups([byId('q2')], STEPS).map((g) => g.title.join(' · '))).toEqual(['Trade partners · Invited'])
   })
 })
 
@@ -291,7 +436,7 @@ describe('the Edit quick replies window', () => {
   const WITH = [...LINES.filter((q) => q.id !== 'q8'), removed, someoneElses]
 
   it('counts each tab over the team’s lines and the person’s own', () => {
-    expect(editorCounts(WITH, 'robert')).toEqual({ all: 18, trade: 9, customer: 4, arch: 2, any: 3, mine: 3, removed: 1 })
+    expect(editorCounts(WITH, 'robert')).toEqual({ all: 18, trade: 9, customer: 4, arch: 2, lead: 0, sub: 0, supply_house: 0, candidate: 0, any: 3, mine: 3, phone: 0, removed: 1 })
     expect(editorCounts(WITH, 'rosa')).toMatchObject({ all: 16, mine: 1, any: 3 })
   })
 
@@ -322,12 +467,34 @@ describe('the Edit quick replies window', () => {
       ['Trade partners · Invited', ['q2', 'q6', 'q17']],
       ['Trade partners · Papers in', ['q13']],
       ['Trade partners · Asked to quote', ['q3', 'q10', 'q1', 'q7', 'q12']],
-      ['Customers · Our bid', ['q4']],
-      ['Customers · Start date', ['q16']],
-      ['Customers · Pay application', ['q9']],
-      ['Customers · Change orders', ['q15']],
+      ['Customers · GC customer · Our bid', ['q4']],
+      ['Customers · GC customer · Start date', ['q16']],
+      ['Customers · GC customer · Pay application', ['q9']],
+      ['Customers · GC customer · Change orders', ['q15']],
       ['Architects · Submittals', ['q18']],
       ['Architects · Certify pay apps', ['q19']],
+      ['Anyone', ['q14', 'q5', 'q11']],
+    ])
+  })
+
+  it('gives a lead, a sub, a supply house and a candidate a tab and a group once a line is for them, after the architects', () => {
+    const forLead = line('q22', { scope: 'team', text: 'Thanks for calling. When can we come look?', for: 'lead', stepId: null, addedBy: 'rosa', addedAt: at(10, 2, 9), uses: {} })
+    const forSupply = line('q23', { scope: 'team', text: 'Please send the quote to bids.', for: 'supply_house', stepId: null, addedBy: 'rosa', addedAt: at(10, 2, 9), uses: {} })
+    const rows = [...LINES, forLead, forSupply]
+    expect(editorTabs(editorCounts(rows, 'robert')).map((t) => `${t.label} · ${t.count}`)).toEqual([
+      'All · 21',
+      'Trade partners · 10',
+      'Customers · 4',
+      'Architects · 2',
+      'Leads · 1',
+      'Supply houses · 1',
+      'Anyone · 3',
+      'Mine · 3',
+    ])
+    const groups = editorGroups(editorRows(rows, 'robert', 'all', ''), STEPS)
+    expect(groups.slice(-3).map((g) => [g.title.join(' · '), ids(g.rows)])).toEqual([
+      ['Leads · no step', ['q22']],
+      ['Supply houses · no step', ['q23']],
       ['Anyone', ['q14', 'q5', 'q11']],
     ])
   })
@@ -339,6 +506,18 @@ describe('the Edit quick replies window', () => {
       ['Trade partners · Invited', 'invited', ['q2']],
       ['Trade partners · no step', null, ['q8', 'q21']],
     ])
+  })
+
+  it('gives the lines on the phone a Phone tab after Mine, once one is there, and finds a line by its Spanish (R3)', () => {
+    const phone = [{ ...RES[1]!, phoneOrder: 2 }, { ...RES[3]!, phoneOrder: 1, textEs: '{first}, terminamos por hoy en {address}.' }, { ...RES[0]!, phoneOrder: 3, removed: true }]
+    const rows = [...LINES, ...RES.filter((q) => !['r1', 'r2', 'r7'].includes(q.id)), ...phone]
+    const counts = editorCounts(rows, 'rosa')
+    expect(counts.phone).toBe(2)
+    expect(editorTabs(counts).map((t) => t.tab).slice(-3)).toEqual(['mine', 'phone', 'removed'])
+    expect(editorTabs(editorCounts(LINES, 'rosa')).map((t) => t.tab)).not.toContain('phone')
+    expect(ids(editorRows(rows, 'rosa', 'phone', ''))).toEqual(['r2', 'r7'])
+    expect(ids(editorRows(rows, 'rosa', 'all', 'terminamos'))).toEqual(['r7'])
+    expect(onThePhone({ ...byId('q10'), phoneOrder: 1 })).toBe(false)
   })
 
   it('says what the list holds at its foot', () => {
@@ -428,6 +607,63 @@ describe('a line’s versions', () => {
     })
     expect(versionWords({ by: 'robert', at: NOW, kind: 'restored' }, STEPS).did).toBe('brought it back')
   })
+
+  it('saves the Spanish and the phone as their own versions, after the words and the tags (R3)', () => {
+    const onway = { ...RES[1]!, textEs: null, phoneOrder: null, phoneName: null }
+    const es = '{first}, le habla {me} de Click Plumbing. Vamos en camino a {address}.'
+    const saved = ok(editQuickReply(onway, { text: `${onway.text} `, tags: { for: 'customer', stepId: 'onway' }, textEs: ` ${es} `, phoneOrder: 1, phoneName: 'On our way' }, 'rosa', NOW))
+    expect(saved.versions).toEqual([
+      { by: 'rosa', at: NOW, kind: 'es', toText: es },
+      { by: 'rosa', at: NOW, kind: 'phone', fromPhoneOrder: null, toPhoneOrder: 1 },
+    ])
+    expect(saved.line).toMatchObject({ textEs: es, phoneOrder: 1, phoneName: 'On our way' })
+    // Words, then tags, then the Spanish cleared, then the phone moved; the name rides with the move.
+    const after = saved.line
+    const moved = ok(editQuickReply(after, { text: 'On our way, {first}.', tags: { for: 'customer', stepId: null }, textEs: '  ', phoneOrder: 3, phoneName: 'Leaving now' }, 'luis', NOW))
+    expect(moved.versions.map((v) => v.kind)).toEqual(['words', 'tags', 'es', 'phone'])
+    expect(moved.versions[2]).toEqual({ by: 'luis', at: NOW, kind: 'es', fromText: es })
+    expect(moved.versions[3]).toMatchObject({ fromPhoneOrder: 1, toPhoneOrder: 3 })
+    // A new name alone is a phone version with no places; a part left out keeps what the line has.
+    expect(ok(editQuickReply(after, { text: after.text, tags: { for: 'customer', stepId: 'onway' }, phoneName: 'Leaving now' }, 'rosa', NOW)).versions).toEqual([{ by: 'rosa', at: NOW, kind: 'phone' }])
+    expect(ok(editQuickReply(after, { text: after.text, tags: { for: 'customer', stepId: 'onway' } }, 'rosa', NOW))).toMatchObject({ versions: [], words: 'Nothing changed.' })
+    // Off the phone: 0 or null.
+    expect(ok(editQuickReply(after, { text: after.text, tags: { for: 'customer', stepId: 'onway' }, phoneOrder: 0 }, 'rosa', NOW)).versions).toEqual([{ by: 'rosa', at: NOW, kind: 'phone', fromPhoneOrder: 1, toPhoneOrder: null }])
+  })
+
+  it('refuses the phone for a line that is not the team’s for customers, and a long name (R3)', () => {
+    const onPhone = { ...RES[1]!, phoneOrder: 1 }
+    expect(editQuickReply(onPhone, { text: onPhone.text, tags: { for: 'trade', stepId: null } }, 'rosa', NOW)).toEqual({ error: PHONE_ONLY_CUSTOMERS })
+    expect(editQuickReply(onPhone, { text: onPhone.text, tags: { for: 'trade', stepId: null }, phoneOrder: 0 }, 'rosa', NOW)).not.toHaveProperty('error')
+    expect(editQuickReply(byId('q10'), { text: byId('q10').text, tags: { for: 'customer', stepId: null }, phoneOrder: 2 }, 'robert', NOW)).toEqual({ error: PHONE_ONLY_CUSTOMERS })
+    expect(editQuickReply(onPhone, { text: onPhone.text, tags: { for: 'customer', stepId: 'onway' }, phoneName: 'x'.repeat(61) }, 'rosa', NOW)).toEqual({ error: 'A name on the phone holds 60 characters at most.' })
+  })
+
+  it('reads the Spanish and the phone in the history (R3)', () => {
+    const words = (v: Omit<QuickReplyVersion, 'by' | 'at'>) => versionWords({ by: 'rosa', at: NOW, ...v }, STEPS)
+    const es = 'Vamos en camino a {address}, llegamos en unos {minutes} minutos.'
+    expect(words({ kind: 'es', toText: es })).toEqual({ did: 'wrote the Spanish', struck: null, added: es, note: null })
+    expect(words({ kind: 'es', fromText: 'Vamos en camino.', toText: es })).toEqual({ did: 'changed the Spanish', struck: 'Vamos en camino.', added: es, note: null })
+    expect(words({ kind: 'es', fromText: es, toText: ' ' })).toEqual({ did: 'cleared the Spanish', struck: es, added: null, note: null })
+    expect(words({ kind: 'phone', fromPhoneOrder: null, toPhoneOrder: 2 })).toEqual({ did: 'put it on the phone', struck: null, added: 'place 2', note: null })
+    expect(words({ kind: 'phone', fromPhoneOrder: 3, toPhoneOrder: 1 })).toEqual({ did: 'moved it on the phone', struck: 'place 3', added: 'place 1', note: null })
+    expect(words({ kind: 'phone', fromPhoneOrder: 3, toPhoneOrder: null })).toEqual({ did: 'took it off the phone', struck: 'place 3', added: null, note: null })
+    expect(words({ kind: 'phone' })).toEqual({ did: 'renamed it on the phone', struck: null, added: null, note: null })
+    expect(lastChange([{ by: 'rosa', at: NOW, kind: 'added', toText: 'x' }, { by: 'luis', at: NOW, kind: 'phone', toPhoneOrder: 1 }])?.by).toBe('luis')
+  })
+})
+
+describe('the seven kinds of contact, as the strip and the editor name them', () => {
+  it('names the four kinds of 2026-10-13 after the three that were, and anyone last', () => {
+    expect(QR_KIND_ORDER).toEqual(['trade', 'customer', 'arch', 'lead', 'sub', 'supply_house', 'candidate', 'any'])
+    expect(QR_KIND_ORDER.slice(3, 7).map((k) => QR_KINDS[k])).toEqual(['leads', 'subs', 'supply houses', 'candidates'])
+    expect(qrKindOf('supply_house')).toBe('supply_house')
+    expect(qrStripCount([], 'candidate')).toBe('0 for candidates')
+  })
+
+  it('reads each in plain words', () => {
+    const sentences = QR_KIND_ORDER.map((k) => `These lines are for ${QR_KINDS[k]}.`)
+    expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
+  })
 })
 
 describe('plain words', () => {
@@ -438,6 +674,12 @@ describe('plain words', () => {
       REMOVE_ASK.words,
       qrEmpty('').words,
       qrEmpty('x').words,
+      qrEmpty('x', 'find').words,
+      QR_PRESS_COUNTED,
+      EDITOR_WORDS.saveNote,
+      EDITOR_WORDS.removedNote,
+      EDITOR_WORDS.empty(''),
+      EDITOR_WORDS.empty('x'),
       findWhere({ step: { name: 'Asked to quote', done: 'their quote is in the portal' }, who: 'them', firstName: 'Greg', daysOn: 10, off: false }).sentence,
       findWhere({ step: null, who: 'them', firstName: 'Marcus', daysOn: null, off: true }).sentence,
       findWhere({ step: null, who: 'them', firstName: 'Dee', daysOn: null, off: false }).sentence,
@@ -455,5 +697,22 @@ describe('plain words', () => {
     ]
     expect(sentences.filter((s) => !s)).toEqual([])
     expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
+  })
+})
+
+describe('the stage’s lines first (v2.5629)', () => {
+  it('leads with the lines on the job’s stage steps, in the stage’s order, and keeps them out of the groups after', () => {
+    const groups = qrGroups(LINES, { kind: 'customer', nowStepId: 'start', steps: STEPS.customer ?? [], me: 'rosa', stageStepIds: ['co', 'payapp'] })
+    expect(groups.map((g) => [g.key, g.title, g.tag, ids(g.rows)])).toEqual([
+      ['stage', 'For this stage', 'the job’s stage', ['q15', 'q9']],
+      ['step', 'Start date', 'the step they are on', ['q16']],
+      ['kind', 'Other customers', null, ['q4']],
+      ['any', 'Anyone', null, ['q14', 'q5']],
+    ])
+  })
+
+  it('draws no stage group with no line on those steps, and Find a reply words the tag its own way', () => {
+    expect(qrGroups(LINES, { kind: 'customer', nowStepId: null, steps: STEPS.customer ?? [], me: 'rosa', stageStepIds: ['paid'] }).map((g) => g.key)).toEqual(['kind', 'any'])
+    expect(qrGroups(LINES, { kind: 'customer', nowStepId: null, steps: STEPS.customer ?? [], me: 'rosa', stageStepIds: ['co'], place: 'find' })[0]).toMatchObject({ key: 'stage', tag: 'fits the job’s stage' })
   })
 })

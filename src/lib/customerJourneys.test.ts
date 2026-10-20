@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { customerJourneys, findStep, firstRenderableStep, SAMPLE_EMAIL_IDS } from './customerJourneys'
+import { customerJourneys, findStep, firstRenderableStep, SAMPLE_EMAIL_IDS, SAMPLE_TEXT_IDS } from './customerJourneys'
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 
 describe('customerJourneys (What customers see)', () => {
@@ -14,6 +14,10 @@ describe('customerJourneys (What customers see)', () => {
   })
   it('every email step is on the list the tab builds samples from (v2.3617)', () => {
     for (const j of journeys) for (const s of j.steps) if (s.render.kind === 'email') expect(SAMPLE_EMAIL_IDS).toContain(s.render.email)
+  })
+  it('every text step is on the list of texts the tab builds from the kernels (Messages cut 5)', () => {
+    const texts = journeys.flatMap((j) => j.steps).flatMap((s) => (s.render.kind === 'text' ? [s.render.text] : []))
+    expect([...texts].sort()).toEqual([...SAMPLE_TEXT_IDS].sort())
   })
   it('page steps open the real public routes with the sample tokens', () => {
     const pages = journeys.flatMap((j) => j.steps).filter((s) => s.render.kind === 'page')
@@ -50,7 +54,7 @@ describe('customerJourneys (What customers see)', () => {
   })
   it('every renderable step names what it reflects; external and soon steps carry a note', () => {
     for (const s of journeys.flatMap((j) => j.steps)) {
-      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper') expect(s.reflects.length).toBeGreaterThan(0)
+      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper' || s.render.kind === 'text') expect(s.reflects.length).toBeGreaterThan(0)
       else expect(s.render.note.length).toBeGreaterThan(10)
     }
   })

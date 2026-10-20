@@ -36,6 +36,26 @@ export const PAID_OFF_TOLERANCE_USD = 1
 
 export type PromiseChannel = 'phone' | 'text' | 'email' | 'in_person' | 'portal' | 'backfill'
 export type PromiseSource = 'office' | 'customer'
+/** The customer's word on paying (punch list #129, v2.5648): a day they will pay by, or that they already paid. */
+export type PromiseKind = 'promise' | 'paid_claim'
+/** How they say they paid. */
+export type PaidMethod = 'check_mailed' | 'paid_online' | 'bank_transfer' | 'card_by_phone' | 'not_sure'
+export const PAID_METHODS: ReadonlyArray<{ key: PaidMethod; label: string }> = [
+  { key: 'check_mailed', label: 'Check in the mail' },
+  { key: 'paid_online', label: 'Paid online' },
+  { key: 'bank_transfer', label: 'Bank transfer' },
+  { key: 'card_by_phone', label: 'Card by phone' },
+  { key: 'not_sure', label: 'Not sure' },
+]
+const METHODS: ReadonlySet<string> = new Set(PAID_METHODS.map((m) => m.key))
+/** "a check in the mail", for a sentence. */
+export const PAID_METHOD_WORDS: Record<PaidMethod, string> = {
+  check_mailed: 'a check in the mail',
+  paid_online: 'paid online',
+  bank_transfer: 'a bank transfer',
+  card_by_phone: 'a card by phone',
+  not_sure: 'not sure how',
+}
 
 export type PaymentPromise = {
   id: string
@@ -49,6 +69,12 @@ export type PaymentPromise = {
   source: PromiseSource
   note: string | null
   createdAt: string
+  /** A promise (the day is a pay-by day) or a paid claim (the day is the day they say they paid). */
+  kind: PromiseKind
+  /** A claim's how; null on a promise. */
+  method: PaidMethod | null
+  /** A claim's amount when not all of what was open; null for all of it, and on a promise. */
+  amount: number | null
 }
 
 export type PromiseRecordInput = {
@@ -129,9 +155,17 @@ export function parsePaymentPromisesRpc(raw: unknown): PaymentPromise[] | null {
       source: r.source === 'customer' ? 'customer' : 'office',
       note: typeof r.note === 'string' && r.note.trim() ? r.note.trim() : null,
       createdAt: r.createdAt,
+      kind: r.kind === 'paid_claim' ? 'paid_claim' : 'promise',
+      method: r.kind === 'paid_claim' && typeof r.method === 'string' && METHODS.has(r.method) ? (r.method as PaidMethod) : null,
+      amount: r.kind === 'paid_claim' && r.amount != null && Number.isFinite(Number(r.amount)) && Number(r.amount) > 0 ? Number(r.amount) : null,
     })
   }
   return out
+}
+
+/** The promises alone: a paid claim is a word, not a day to keep. */
+export function promisesOnly(words: readonly PaymentPromise[]): PaymentPromise[] {
+  return words.filter((p) => p.kind !== 'paid_claim')
 }
 
 /** The promises on record for one job, newest first — what "They said…" lists under its form. */
@@ -153,9 +187,23 @@ export function promiseSaidLine(p: Pick<PaymentPromise, 'saidBy' | 'channel' | '
  * off the board too — unless another promise still on record names the same
  * day. An older date is not put back: that would be a promise nobody made.
  */
-export function voidTakesDateOffBoard(voided: Pick<PaymentPromise, 'id' | 'promisedYmd'>, boardYmd: string | null | undefined, onJob: readonly Pick<PaymentPromise, 'id' | 'promisedYmd'>[]): boolean {
+export function voidTakesDateOffBoard(voided: Pick<PaymentPromise, 'id' | 'promisedYmd'> & { kind?: PromiseKind }, boardYmd: string | null | undefined, onJob: readonly (Pick<PaymentPromise, 'id' | 'promisedYmd'> & { kind?: PromiseKind })[]): boolean {
+  // A paid claim was never on the board, so voiding one takes nothing off it.
+  if (voided.kind === 'paid_claim') return false
   if (!boardYmd || voided.promisedYmd !== boardYmd) return false
-  return !onJob.some((p) => p.id !== voided.id && p.promisedYmd === boardYmd)
+  return !onJob.some((p) => p.id !== voided.id && p.kind !== 'paid_claim' && p.promisedYmd === boardYmd)
+}
+
+/** A claim's own words: "a check in the mail · $1,500". */
+export function claimWords(p: Pick<PaymentPromise, 'method' | 'amount'>): string {
+  const how = p.method ? PAID_METHOD_WORDS[p.method] : 'not sure how'
+  return p.amount != null ? `${how} · ${moneyWords(p.amount)}` : how
+}
+
+function moneyWords(n: number): string {
+  const cents = Math.round(n * 100)
+  if (cents % 100 === 0) return `$${(cents / 100).toLocaleString('en-US')}`
+  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 /** Defensive parse of list_payment_promise_records (null on gate-refused / malformed). */

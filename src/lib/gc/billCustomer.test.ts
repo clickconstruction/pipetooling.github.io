@@ -137,6 +137,9 @@ describe('the pay application Send hands the database', () => {
           invoice_id: null,
           conditional_waiver_id: null,
           created_at: `${send.sentOn}T15:00:00Z`,
+          customer_line: null,
+          customer_line_es: null,
+          paid_on: null,
         },
       ],
       lines: send.lines.map((l, i) => ({

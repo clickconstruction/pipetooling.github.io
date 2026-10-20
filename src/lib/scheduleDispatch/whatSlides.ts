@@ -5,11 +5,14 @@
  * spike/gc-mode, `to-dos/gc-mode/messages/customer-messages-integrations-mockups.html` v0.2, card 3). Pure.
  *
  * Times are the board's wall clock on one `work_date`, in minutes past midnight, as `job_schedule_blocks.time_start`
- * and `time_end` store them. A block cannot cross midnight, so a slide that would end after 11:59 PM moves nothing.
+ * and `time_end` store them. The board's day runs 4:00 AM to 8:00 PM (`job_schedule_blocks_time_bounds`), so a slide that
+ * would end after 8:00 PM moves nothing.
  *
- * The move goes through `self_move_schedule_block`, one block per call, the tech's own. That RPC is the truth for two
- * things this file only words: it posts its own note on the job thread for a block dispatch made, and it takes the
- * tech out of a linked crew block. The reason and the dispatcher's note wait for R8's SQL (`dispatch_move_reason`).
+ * **Move it** is one `running_late_move` call (migration 20261014080000). It moves each block through
+ * `self_move_schedule_block`, the tech's own, in one transaction, so a refusal anywhere moves nothing. That RPC is the
+ * truth for two things this file only words: it takes the tech out of a linked crew block, and it posts its own note
+ * on the job thread for a slid block dispatch made. The late block's job reads the reason as one `running_late` line
+ * instead, and the dispatcher's note is a `dispatch_requests` row the caller pushes with `notify-dispatch-request`.
  */
 import type { Database } from '../../types/database'
 import { pgTimeToMinutes } from '../jobScheduleChicago'
@@ -63,13 +66,14 @@ export interface WhatSlides {
   slides: Slide[]
   /** The first stop after them whose gap took the rest of the delay. Null: none after, or none left to take it. */
   holds: DayBlock | null
-  /** A slide would end after 11:59 PM. Nothing moves. */
+  /** A slide would end after 8:00 PM, the board's day end. Nothing moves. */
   pastDayEnd: boolean
   /** The move's reason: "said to Dana, 9:02 AM". */
   reason: string
 }
 
-const DAY_END = 24 * 60 - 1
+/** The board's last minute, 8:00 PM: `job_schedule_blocks_time_bounds` holds every block to it. */
+const DAY_END = 20 * 60
 
 const slideOf = (block: DayBlock, toStart: number, toEnd: number): Slide => {
   const fromStart = pgTimeToMinutes(block.timeStart)
@@ -148,7 +152,7 @@ const possessive = (name: string) => `${name}’s`
 export interface MoveAsk {
   head: string
   lines: string[]
-  /** Move it, then Leave the board. Only Leave the board when the slide would pass midnight. */
+  /** Move it, then Leave the board. Only Leave the board when the slide would pass 8:00 PM. */
   presses: Array<{ id: 'move' | 'leave'; label: string }>
 }
 
@@ -177,7 +181,7 @@ export function moveAsk(read: WhatSlides, tech: string): MoveAsk {
   if (read.pastDayEnd) {
     return {
       head: 'Move the board too?',
-      lines: [movedLine(read.moved), `That would run ${possessive(tech)} day past midnight.`, 'The board stays as it is.'],
+      lines: [movedLine(read.moved), `That would run ${possessive(tech)} day past 8:00 PM.`, 'The board stays as it is.'],
       presses: [LEAVE_IT],
     }
   }
@@ -189,17 +193,23 @@ export function moveAsk(read: WhatSlides, tech: string): MoveAsk {
   }
 }
 
-/** One call of the move RPC, in its own shape. */
+/** One block's move inside the call, in `self_move_schedule_block`'s own shape. */
 export type SelfMoveRow = Database['public']['Functions']['self_move_schedule_block']['Args']
 
-/** What **Move it** writes. */
+/**
+ * What **Move it** sends: the arguments of one `running_late_move` call. Typed here until the types regen after the
+ * migration's push carries the function. The job and the bid come from the late block's row, never from the caller.
+ */
 export interface BoardWrite {
-  /** One `self_move_schedule_block` call per block, the last stop first, so no block lands on one not yet moved. */
-  rows: SelfMoveRow[]
-  /** The moved job's event line, for R8's SQL to carry with the reason. The RPC's own thread note stays the record. */
-  jobLine: string
-  /** The dispatcher's note, a `dispatch_requests` title and summary for R8's SQL to file. */
-  dispatcherNote: { title: string; reference_summary: string; job_ledger_id: string | null }
+  /** One row per block, the last stop first and the late block last, so no block lands on one not yet moved. */
+  p_moves: SelfMoveRow[]
+  /** "said to Dana, 9:02 AM". */
+  p_reason: string
+  /** The late job's `running_late` event line. */
+  p_job_line: string
+  /** The dispatcher's note: the `dispatch_requests` title and summary. */
+  p_note_title: string
+  p_note_summary: string
 }
 
 const pgTime = (minutes: number) => {
@@ -215,7 +225,7 @@ const rowOf = (s: Slide): SelfMoveRow => ({
   p_time_end: pgTime(s.toEnd),
 })
 
-/** The rows **Move it** takes, the job's line and the dispatcher's note. Null when nothing may move. */
+/** The one call **Move it** makes: the moves, the reason, the job's line and the dispatcher's note. Null when nothing may move. */
 export function boardWrite(read: WhatSlides, tech: string): BoardWrite | null {
   if (read.pastDayEnd) return null
   const moved = read.moved
@@ -225,12 +235,10 @@ export function boardWrite(read: WhatSlides, tech: string): BoardWrite | null {
   })
   const unlink = unlinkLine(tech, read)
   return {
-    rows: [...read.slides].reverse().map(rowOf).concat(rowOf(moved)),
-    jobLine: `Running late. Moved from ${boardTime(moved.fromStart)} to ${boardTime(moved.toStart)}, ${read.reason}.`,
-    dispatcherNote: {
-      title: `${tech} is running late on job ${moved.block.jobLabel}`,
-      reference_summary: [`${movedLine(moved).slice(0, -1)}, ${read.reason}.`, ...slid, ...(unlink ? [unlink] : [])].join(' '),
-      job_ledger_id: moved.block.jobsLedgerId,
-    },
+    p_moves: [...read.slides].reverse().map(rowOf).concat(rowOf(moved)),
+    p_reason: read.reason,
+    p_job_line: `Running late. Moved from ${boardTime(moved.fromStart)} to ${boardTime(moved.toStart)}, ${read.reason}.`,
+    p_note_title: `${tech} is running late on job ${moved.block.jobLabel}`,
+    p_note_summary: [`${movedLine(moved).slice(0, -1)}, ${read.reason}.`, ...slid, ...(unlink ? [unlink] : [])].join(' '),
   }
 }

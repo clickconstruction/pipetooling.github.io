@@ -74,4 +74,33 @@ describe('SpotlightTour', () => {
     expect(screen.getByRole('dialog', { name: 'First stop' })).toBeTruthy()
     expect(screen.queryByTestId('tour-terms')).toBeNull()
   })
+
+  it('v2.5553 · a stop with an example draws the line in a framed panel, its labelled parts underlined, the sentence after it, and still says when its anchor is missing', () => {
+    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    Element.prototype.scrollIntoView = () => {}
+    const shown = {
+      anchor: 'tour-gone',
+      title: 'Gaps',
+      body: 'The card says it in red:',
+      example: {
+        caption: 'On a card',
+        tone: 'red' as const,
+        parts: [{ words: 'Plumbing', means: 'leaves it out' }, { words: 'leaves out' }, { words: 'Gas piping', means: 'the work' }],
+        after: 'Settle it.',
+      },
+      missingBody: 'This project has none.',
+    }
+    renderWithProviders(<SpotlightTour steps={[shown, ...steps]} onClose={() => {}} />)
+    const panel = screen.getByTestId('tour-example')
+    expect(panel.textContent).toContain('On a card')
+    expect(panel.textContent).toContain('Plumbing')
+    expect(panel.textContent).toContain('leaves out')
+    expect(panel.textContent).toContain('Gas piping')
+    expect([...panel.querySelectorAll('[data-tour-part]')].map((e) => e.getAttribute('data-tour-part'))).toEqual(['leaves it out', 'the work'])
+    expect(screen.getByTestId('tour-example-after').textContent).toBe('Settle it.')
+    expect(screen.getByTestId('tour-missing').textContent).toBe('This project has none.')
+    fireEvent.click(screen.getByRole('button', { name: 'Next →' }))
+    expect(screen.getByRole('dialog', { name: 'First stop' })).toBeTruthy()
+    expect(screen.queryByTestId('tour-example')).toBeNull()
+  })
 })

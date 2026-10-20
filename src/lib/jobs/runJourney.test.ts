@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runEnvelopeChip, runEnvelopeProblems, runEnvelopeSigned, runEnvelopeStage, runLaneOf, runStageLabels } from './runEnvelopeStage'
+import { runEnvelopeChip, runEnvelopeProblems, runEnvelopeSigned, runEnvelopeStage, runLaneOf, runLaneOfEnvelope, runStageLabels } from './runEnvelopeStage'
 import { runJourney } from './runJourney'
 import { runFootAction } from './runFootAction'
 import { runChecklistRows, runChecklistWords } from './runChecklist'
@@ -43,6 +43,18 @@ describe('an envelope’s stage (Run-1)', () => {
     expect(runStageLabels('hand').mailed).toBe('Handed over')
     expect(runStageLabels('email').mailed).toBe('Emailed')
     expect(runStageLabels('certified').mailed).toBe('Mailed')
+    // A Docsmit envelope (the Docsmit train, 6b): its own lane, no Printed stage, mailed once the service took it, postmarked at once.
+    expect(runLaneOf('certified_mail', 'docsmit')).toBe('docsmit')
+    expect(runStageLabels('docsmit').printed).toBe('Sent to Docsmit')
+    const viaDsm = notice('d', '650')
+    viaDsm.recipients[0] = { ...viaDsm.recipients[0]!, via: 'docsmit', pieceId: 'p1', pieceStatus: 'sent' }
+    const env = envelope(9, 'owner', [viaDsm])
+    expect(runLaneOfEnvelope(env)).toBe('docsmit')
+    const s = runEnvelopeStage(env, { printed: false })
+    expect(s.lane).toBe('docsmit')
+    expect(s.stages.map((x) => `${x.key}:${x.done ? 1 : 0}`)).toEqual(['built:1', 'checked:1', 'signed:1', 'mailed:1', 'recorded:0'])
+    expect(s.glyph).toBe('postmarked')
+    expect(s.current).toBe('recorded')
   })
 
   it('an envelope that is built, checked and signed but not printed is open and waits on nothing', () => {

@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobsJobSummaryTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-10-14
 ---
 
 **Line numbers are as of `a05cef4c4` and rot** — search the quoted symbol or JSX text instead; every region below is anchored by both. Regenerate the facts with `npm run map -- src/components/jobs/JobsJobSummaryTab.tsx`.
@@ -287,7 +287,7 @@ Already done (do not redo): person-summary row building, work-date / punch inter
 13. **`mileageCost ?? 0.7` / `timePerMile ?? 0.02`** fallbacks are applied per row here (718–719) and again in the parent memo — keep the values aligned.
 14. **`showTeamLaborAndProfit`** gates Labor, Gross, Margin, Overhead, True profit, True %, Burn, Proj. margin, the write-down / discount chips, the `<tfoot>` money cells, the Overhead math `<details>`, the chart's `teamLaborIncluded` / `overheadDays`, and `showMoney` on every view — but the Person summary and Team sections still show team-labor dollars from `teamLaborRow`, which arrives wage-less for non-privileged viewers upstream (`utils/teamLabor.ts`). Do not add client-side masking during a move.
 15. **`Number(invoicesFromSupplyHouses ?? 0)`** defensive coercions in the Unassigned / footer totals — keep them (typed `number`, load-bearing against legacy nulls).
-16. **`onOpenJob` crosses owners**: Rework / Scatter / Cycle jump back to the table by writing the parent's `jobSummarySearch` *and* the view hook's prefs (`view: 'jobs', status: 'all'`); keep both writes together.
+16. **`onOpenJob` crosses owners**: Rework / Scatter jump back to the table by writing the parent's `jobSummarySearch` *and* the view hook's prefs (`view: 'jobs', status: 'all'`); keep both writes together. Cycle no longer does (v2.5513): its Stale open rows open the job's own window through `onOpenJobDetail`, and its header's *Review them in Follow-ups →* goes to `/jobs?tab=stages&followups=idle`, the deck's Idle lens; the list keeps every idle job, a visit booked or not, while the deck reviews the ones with nothing booked.
 17. **The tab has zero hooks**, so the alternate-view switch rebuilds `new Map(...)` lookups every render (`statusByJob` ×2, `userNameById` ×3, `jobLabelById`). Adding `useMemo` in an extracted component is fine but a deliberate change, not part of the move.
 18. **`Revenue*` and the footnote travel together**: both key off `view.totals.earnedRows > 0`.
 19. **`id={jobSummaryRowDomId(job.id)}` on the main row** is the money-story door's scroll target (Jobs.tsx 1283–1303).

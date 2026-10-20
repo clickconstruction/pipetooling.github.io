@@ -18,8 +18,10 @@ export async function submitStatusReportFromStepper(args: {
   jobId: string
   pct: number
   note: string
+  /** Fields beyond the percent and the note — the lines moved by line (punch list #130, v2.5664), under their own label. */
+  extraFields?: Record<string, string>
 }): Promise<
-  | { ok: true; fieldValues: Record<string, string> }
+  | { ok: true; fieldValues: Record<string, string>; reportId: string | null }
   | { ok: false; reason: 'no_template' | 'error'; message: string }
 > {
   try {
@@ -34,11 +36,14 @@ export async function submitStatusReportFromStepper(args: {
       .eq('template_id', templateId)
       .order('sequence_order')
     if (fErr) return { ok: false, reason: 'error', message: fErr.message }
-    const fieldValues = buildStepperReportFieldValues(
-      (fieldRows ?? []) as { label: string; input_type?: string | null }[],
-      args.pct,
-      args.note,
-    )
+    const fieldValues = {
+      ...buildStepperReportFieldValues(
+        (fieldRows ?? []) as { label: string; input_type?: string | null }[],
+        args.pct,
+        args.note,
+      ),
+      ...(args.extraFields ?? {}),
+    }
 
     // Best-effort location, same contract as the report modals — but with a
     // shorter timeout: the stepper is a two-tap flow and must stay quick.
@@ -86,7 +91,7 @@ export async function submitStatusReportFromStepper(args: {
         .invoke('send-report-email', { body: { report_id: inserted.id } })
         .catch(() => {/* best-effort */})
     }
-    return { ok: true, fieldValues }
+    return { ok: true, fieldValues, reportId: inserted?.id ?? null }
   } catch (e) {
     return { ok: false, reason: 'error', message: e instanceof Error ? e.message : 'Could not save the report' }
   }

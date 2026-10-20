@@ -11,10 +11,13 @@ let jobRow: { pct_complete: number | null; status: string | null } | null = {
   pct_complete: 45,
   status: 'working',
 }
+/** Report by line (v2.5664): the job's priced lines; null = a one-line job, the ± chips as before. */
+let lineRows: unknown[] | null = null
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   const stub = makeSupabaseStub() as Record<string, unknown> & {
     from: (table: string) => unknown
+    rpc: (fn: string, args: unknown) => unknown
   }
   const originalFrom = stub.from.bind(stub)
   stub.from = (table: string) => {
@@ -26,6 +29,8 @@ vi.mock('../../lib/supabase', async () => {
     }
     return originalFrom(table)
   }
+  const originalRpc = stub.rpc.bind(stub)
+  stub.rpc = (fn: string, args: unknown) => (fn === 'list_job_stage_progress' ? Promise.resolve({ data: lineRows, error: null }) : originalRpc(fn, args))
   return { supabase: stub }
 })
 // v2.2078: the modal reads useAuth (stepper saves file a report as the caller).
@@ -78,6 +83,36 @@ describe('FieldPctUpdateModal', () => {
     fireEvent.click(screen.getByText('+20'))
     expect(screen.getByText('20%')).toBeTruthy()
     expect(screen.getByText('▲ 20')).toBeTruthy()
+  })
+
+  it('a job with more than one line opens the list in place of the chips, holds Save until a line moves, and says the job number on the button (v2.5664)', async () => {
+    jobRow = { pct_complete: 32, status: 'working' }
+    lineRows = [
+      { fixture_id: 'u', name: 'Underground', stage_kind: 'any', sequence_order: 1, weight_pct: '20', progress_pct: null, draw_paid: true },
+      { fixture_id: 'r', name: 'Rough In', stage_kind: 'any', sequence_order: 2, weight_pct: '35', progress_pct: 35, draw_paid: false },
+      { fixture_id: 't', name: 'Top Out', stage_kind: 'any', sequence_order: 3, weight_pct: '25', progress_pct: null, draw_paid: false },
+      { fixture_id: 'w', name: 'Water heater', stage_kind: 'any', sequence_order: 4, weight_pct: '20', progress_pct: null, draw_paid: false },
+    ]
+    try {
+      renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={vi.fn()} onSaved={vi.fn()} />)
+      await waitFor(() => expect(screen.getByText('How far along is each line?')).toBeTruthy())
+      const held = (await screen.findByText('Save · job 32%')) as HTMLButtonElement
+      expect(held.disabled).toBe(true)
+      // The chips are off the screen while the list is on.
+      expect((screen.getByText('+20').parentElement as HTMLElement).style.display).toBe('none')
+      fireEvent.click(screen.getByRole('button', { name: 'Set Rough In to 50 percent' }))
+      const ready = screen.getByText('Save · job 38%') as HTMLButtonElement
+      expect(ready.disabled).toBe(false)
+      expect(screen.getByText('Job 32% → 38%')).toBeTruthy()
+      // The escape brings the chips back, with the saved number as the base.
+      fireEvent.click(screen.getByText('Set the whole-job % instead'))
+      expect((screen.getByText('+20').parentElement as HTMLElement).style.display).toBe('grid')
+      expect(screen.getByText('Save 32%')).toBeTruthy()
+      fireEvent.click(screen.getByText('Mark each line instead'))
+      expect(screen.getByText('Save · job 38%')).toBeTruthy()
+    } finally {
+      lineRows = null
+    }
   })
 
   it('Escape closes while the stepper is the top layer', async () => {

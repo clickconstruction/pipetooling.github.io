@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quick replies by keyboard</title>
+<style>
+  /* Punch list #126. Light only, like every to-do mock-up. Made-up people and jobs: Dana Whitfield, the Helotes re-pipe (#2148), Rosa in the office. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --orange: #ea580c; --orange-ink: #c2410c; --orange-tint: #ffedd5; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --amber-tint: #fef3c7; --amber-ink: #92400e; --yellow: #fef08a; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #ffffff; --page: #f6f7f9; --subtle: #f3f4f6; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; flex: none; }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.orange { background: var(--orange-tint); color: var(--orange-ink); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; overflow: auto; }
+  .win { width: 100%; max-width: 520px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .win .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 16px; gap: 10px; }
+  .win .bar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .win .body { padding: 10px 14px 14px; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .kinds { display: flex; gap: 6px; margin: 4px 0 8px; align-items: center; }
+  .kinds .k { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); }
+  .kinds .k.on { border-color: var(--orange); background: var(--orange); color: #fff; }
+  .fold { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; background: var(--subtle); padding: 6px 10px; margin: 0 0 8px; }
+  .fold b { color: var(--ink); }
+  .fold .r { margin-left: auto; color: var(--muted); }
+  .boxwrap { position: relative; }
+  .ta { background: #fff7ed; border: 1.5px solid var(--orange); border-radius: 8px; min-height: 86px; padding: 8px 10px; color: var(--ink); font-size: 13px; line-height: 1.45; }
+  .ta .ph { color: var(--muted); }
+  .ta .typed { font-family: var(--mono); font-size: 12.5px; background: var(--blue-tint); color: var(--blue-ink); border-radius: 3px; padding: 0 2px; }
+  .ta .caret { display: inline-block; width: 1.5px; height: 15px; background: var(--ink); vertical-align: -2px; margin-left: 1px; }
+  .ta .lnk { color: var(--blue-ink); text-decoration: underline; }
+  .ta .held { background: var(--red-tint); color: var(--red-ink); border-radius: 4px; padding: 0 3px; font-weight: 600; }
+  .boxfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11.5px; color: var(--muted); gap: 8px; }
+  .send { background: var(--blue); color: #fff; font-weight: 700; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; white-space: nowrap; }
+  .send.dim { background: #9ca3af; }
+  /* the / list */
+  .slash { margin-top: 6px; border: 1px solid #94a3b8; border-radius: 10px; background: #fff; box-shadow: 0 8px 22px rgba(15, 23, 42, .14); overflow: hidden; }
+  .slash .head { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line-2); }
+  .slash .it { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 7px 10px; border-bottom: 1px solid var(--line-2); align-items: baseline; }
+  .slash .it:last-of-type { border-bottom: 0; }
+  .slash .it.on { background: var(--blue-tint); box-shadow: inset 3px 0 0 var(--blue); }
+  .slash .key { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--blue-ink); }
+  .slash .when { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .slash .words { grid-column: 2; font-size: 12px; color: var(--ink-2); }
+  .slash mark { background: var(--yellow); color: inherit; border-radius: 2px; }
+  .slash .keys { display: flex; gap: 12px; flex-wrap: wrap; padding: 6px 10px; font-size: 11px; color: var(--muted); background: var(--subtle); border-top: 1px solid var(--line-2); }
+  kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: #fff; color: var(--ink-2); }
+  .toast { margin-top: 8px; font-size: 11.5px; color: var(--green-ink); background: var(--green-tint); border-radius: 6px; padding: 4px 8px; display: inline-block; }
+  /* the editor */
+  .ed { width: 100%; max-width: 620px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .ed .bar { padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .ed .tabs { display: flex; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line-2); flex-wrap: wrap; }
+  .ed .tabs span { font-size: 12px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2); }
+  .ed .tabs span.on { background: var(--blue-tint); border-color: #93c5fd; color: var(--blue-ink); font-weight: 700; }
+  .ed .grp { padding: 8px 14px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line-2); display: flex; justify-content: space-between; gap: 10px; }
+  .ed .grp .why { text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .ed .ln { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line-2); align-items: start; }
+  .ed .ln .key { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--blue-ink); padding-top: 1px; }
+  .ed .ln .w { color: var(--ink); }
+  .ed .ln .m { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .ed .ln.app { background: #fafafa; }
+  .ed .ln.app .w { color: var(--muted); font-style: italic; }
+  .bl { display: inline-block; font-size: 11.5px; padding: 0 5px; border-radius: 5px; background: var(--blue-tint); color: var(--blue-ink); font-weight: 600; }
+  .bl.theirs { background: var(--amber-tint); color: var(--amber-ink); }
+  .tag { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid #86efac; background: var(--green-tint); color: var(--green-ink); margin-left: 6px; }
+  .open { padding: 12px 14px; border-bottom: 1px solid var(--line-2); background: #f8fafc; }
+  .field { margin: 0 0 10px; }
+  .field label { display: block; font-size: 11.5px; font-weight: 700; color: var(--ink-2); margin: 0 0 3px; }
+  .field .in { border: 1px solid #94a3b8; border-radius: 6px; padding: 6px 8px; background: #fff; }
+  .field .in.key { display: inline-flex; gap: 2px; font-family: var(--mono); font-size: 12.5px; min-width: 160px; }
+  .field .in.key .slashc { color: var(--muted); }
+  .field .hint { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .fields2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .ghost { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: #fff; }
+  /* Find a reply */
+  .find .last { border-left: 3px solid var(--orange); background: var(--orange-tint); padding: 6px 10px; border-radius: 0 6px 6px 0; color: var(--ink-2); font-size: 12.5px; margin-bottom: 8px; }
+  .find .where { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+  .find .narrow { border: 2px solid var(--blue); border-radius: 6px; padding: 5px 8px; color: var(--ink); margin-bottom: 8px; }
+  .find .l { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2); }
+  .keychip { display: inline-flex; gap: 4px; align-items: center; font-size: 11.5px; color: var(--muted); }
+  /* phone */
+  .phone { width: 390px; max-width: 100%; background: var(--surface); border: 1px solid #aab2bd; border-radius: 26px; overflow: hidden; font-size: 13px; }
+  .phone .top { padding: 12px 14px 8px; border-bottom: 1px solid var(--line-2); }
+  .phone .top b { font-size: 16px; }
+  .phone .thread { padding: 10px 14px; background: #fafafa; min-height: 90px; }
+  .bub { max-width: 82%; border-radius: 12px; padding: 6px 10px; font-size: 12.5px; margin-bottom: 6px; }
+  .bub.in { background: var(--orange-tint); color: var(--ink); }
+  .phone .foot { padding: 8px 10px; border-top: 1px solid var(--line-2); }
+  .kbd { background: #d1d5db; padding: 8px 6px 14px; display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+  .kbd span { background: #fff; border-radius: 5px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--ink-2); box-shadow: 0 1px 0 #9ca3af; }
+  .kbd span.w2 { grid-column: span 2; font-size: 11px; }
+  .kbd span.w6 { grid-column: span 6; font-size: 11px; color: var(--muted); }
+  ol.calls { padding-left: 20px; max-width: 100ch; }
+  ol.calls li { margin: 0 0 8px; }
+  table.sum { border-collapse: collapse; width: 100%; max-width: 1000px; background: #fff; font-size: 13px; }
+  table.sum th, table.sum td { border: 1px solid var(--line-2); padding: 7px 9px; text-align: left; vertical-align: top; }
+  table.sum th { background: var(--subtle); font-size: 12px; }
+  @media (max-width: 520px) { .ed .ln { grid-template-columns: 64px 1fr; } h1 { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #126 · for the owner's pick · nothing built</p>
+  <h1>Quick replies by keyboard, and a starter set for the office</h1>
+  <p>The office sends the same few messages to customers every day. The app already keeps them as <b>Quick replies</b>, above every reply box. This page draws a way to reach one without the mouse, a one-word shortcut per line, and eleven starter lines placed so no automatic send changes.</p>
+</header>
+
+<h2><span class="num">0</span>Today: the strip, folded, with two lines</h2>
+<p class="lede">A job's box from the Pipeline row's speech bubble. The strip is one press until opened, and a new office hire finds only <b>On my way</b> and <b>I'm here</b> in it. No key reaches a line.</p>
+<div class="row">
+  <div>
+    <div class="cap">The Pipeline sheet · Text · today</div>
+    <div class="fit">
+      <div class="win">
+        <div class="bar"><span>Dana Whitfield</span><span class="x">×</span></div>
+        <div class="body">
+          <div class="sub">#2148 · Helotes re-pipe · (210) 555-0142</div>
+          <div class="kinds"><span class="k on">Text</span><span class="k">Email</span></div>
+          <div class="fold">▸ <b>Quick replies</b> · 2 <span class="r">Edit · Find</span></div>
+          <div class="ta"><span class="ph">Write to Dana Whitfield…</span></div>
+          <div class="boxfoot"><span>Tied to #2148</span><span class="send dim">Send text</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">A</span>The / list in the box (recommended, with C)</h2>
+<p class="lede">Type <kbd>/</kbd> at the start of the box, or after a space. A short list opens under the box with the customer's lines, read as they would go, narrowed by what follows the <kbd>/</kbd>. The pick replaces the <kbd>/</kbd> and what followed it, and counts as a press.</p>
+<div class="row">
+  <div>
+    <div class="cap orange">1 · Rosa types /pay, then ↓ once</div>
+    <div class="fit">
+      <div class="win">
+        <div class="bar"><span>Dana Whitfield</span><span class="x">×</span></div>
+        <div class="body">
+          <div class="kinds"><span class="k on">Text</span><span class="k">Email</span></div>
+          <div class="boxwrap">
+            <div class="ta"><span class="typed">/pay</span><span class="caret"></span></div>
+            <div class="slash" role="listbox" aria-label="Quick replies">
+              <div class="head"><span>Quick replies for Dana</span><span>3 of 11</span></div>
+              <div class="it"><span class="key">/remind</span><span class="when">Payment reminder · Dana's step</span><span class="words">Dana, a reminder that $1,840.00 for Helotes re-pipe is still open. You can <mark>pay</mark> it here: …/pay/2148-2</span></div>
+              <div class="it on"><span class="key">/bill</span><span class="when">Bill copy</span><span class="words">Dana, here is your bill for Helotes re-pipe. You can <mark>pay</mark> it here: …/pay/2148-2</span></div>
+              <div class="it"><span class="key">/paid</span><span class="when">The payment came in</span><span class="words">Thank you, Dana. We got your <mark>pay</mark>ment for Helotes re-pipe.</span></div>
+              <div class="keys"><span><kbd>↑</kbd> <kbd>↓</kbd> pick</span><span><kbd>Enter</kbd> or <kbd>Tab</kbd> fills</span><span><kbd>Esc</kbd> closes</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">2 · Enter: the box filled, nothing sent</div>
+    <div class="fit">
+      <div class="win">
+        <div class="bar"><span>Dana Whitfield</span><span class="x">×</span></div>
+        <div class="body">
+          <div class="kinds"><span class="k on">Text</span><span class="k">Email</span></div>
+          <div class="ta">Dana, here is your bill for Helotes re-pipe. You can pay it here: <span class="lnk">…/pay/2148-2</span><span class="caret"></span></div>
+          <div class="boxfoot"><span>Tied to #2148 · 97 of 160</span><span class="send">Send text</span></div>
+          <div class="toast">/bill filled the box. The strip counts it like a press.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row" style="margin-top:18px">
+  <div>
+    <div class="cap orange">3 · A blank only Rosa knows</div>
+    <div class="fit">
+      <div class="win">
+        <div class="body">
+          <div class="ta">Dana, could you text us a photo of <span class="held">{thing}</span>? It helps us bring the right parts.<span class="caret"></span></div>
+          <div class="boxfoot"><span>Fill {thing} first. The app does not know it.</span><span class="send dim">Send text</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">4 · Typing a fraction opens nothing</div>
+    <div class="fit">
+      <div class="win">
+        <div class="body">
+          <div class="ta">The new shutoff takes a 1/2 inch line, and/or a 3/4 if the meter allows.<span class="caret"></span></div>
+          <div class="boxfoot"><span>A / inside a word, or with a space after it, is just a /.</span><span class="send">Send text</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note">The placeholder says so once: <i>Write to Dana Whitfield… Type / for a quick reply.</i> <b>Esc</b> leaves the <kbd>/</kbd> and what was typed in the box. A line on no step and a line on the customer's step are both in the list, the step's first, as the strip orders them.</p>
+
+<h2><span class="num pick">C</span>A shortcut per line</h2>
+<p class="lede">Each line can carry one short word, set in the editor. In the / list an exact shortcut comes first, so <kbd>/</kbd><kbd>b</kbd><kbd>i</kbd><kbd>l</kbd><kbd>l</kbd> then <kbd>Enter</kbd> lands on one line. It needs A.</p>
+<div class="row">
+  <div>
+    <div class="cap">The editor · a line opened</div>
+    <div class="fit">
+      <div class="ed">
+        <div class="bar"><span>Quick replies</span><span class="ghost">+ Add a line</span></div>
+        <div class="open">
+          <div class="field"><label>The words</label><div class="in">{first}, here is your bill for {job}. You can pay it here: {bill}</div></div>
+          <div class="fields2">
+            <div class="field"><label>Who it is for</label><div class="in">Customers</div></div>
+            <div class="field"><label>Step</label><div class="in">No step</div></div>
+            <div class="field"><label>Shortcut</label><div class="in key"><span class="slashc">/</span>bill</div><div class="hint">One word, lowercase. No two of your lines share one.</div></div>
+          </div>
+          <div class="btns"><span class="ghost">Cancel</span><span class="send">Save</span></div>
+        </div>
+        <div class="ln"><span class="key">/late</span><div><div class="w">{first}, we are running behind. The new window is {window}. Sorry for the wait.</div><div class="m">Customers · No step · Used 0</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">B</span>A key that opens Find a reply</h2>
+<p class="lede"><kbd>Ctrl</kbd> + <kbd>/</kbd> (<kbd>⌘</kbd> <kbd>/</kbd> on a Mac) opens the window that already exists, its narrow box ready. Nothing new on the screen, but it covers the thread, and it is one more key to remember. It can ride along with A.</p>
+<div class="row">
+  <div>
+    <div class="cap">Find a reply, opened by the key</div>
+    <div class="fit">
+      <div class="win find">
+        <div class="bar"><span>Find a reply</span><span class="keychip"><kbd>Esc</kbd> closes</span></div>
+        <div class="body">
+          <div class="last"><b>Dana, yesterday:</b> Can you send me the bill again? I can't find the email.</div>
+          <div class="where">Dana is on <b>Paid</b>: the bill went out Tuesday.</div>
+          <div class="narrow">pay<span class="caret"></span></div>
+          <div class="l"><b>/remind</b> · Dana, a reminder that $1,840.00 for Helotes re-pipe is still open. You can pay it here: …/pay/2148-2</div>
+          <div class="l"><b>/bill</b> · Dana, here is your bill for Helotes re-pipe. You can pay it here: …/pay/2148-2</div>
+          <div class="sub">A press on a line fills the box. Nothing sends. The lines for the step they are on come first.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">P</span>On a phone</h2>
+<p class="lede">The <kbd>/</kbd> key sits on the second keyboard page, so the strip stays the phone's way in. The list works if someone types it, drawn above the keyboard.</p>
+<div class="row">
+  <div style="display:flex;justify-content:center">
+    <div class="phone">
+      <div class="top"><b>Dana Whitfield</b><div class="sub">#2148 · Helotes re-pipe</div></div>
+      <div class="thread"><div class="bub in">Can you send me the bill again? I can't find the email.</div></div>
+      <div class="foot">
+        <div class="slash" style="margin:0 0 6px">
+          <div class="it on"><span class="key">/bill</span><span class="when">Bill copy · the shortcut, exactly</span><span class="words">Dana, here is your bill for Helotes re-pipe. You can pay…</span></div>
+        </div>
+        <div class="ta" style="min-height:40px"><span class="typed">/bill</span><span class="caret"></span></div>
+      </div>
+      <div class="kbd"><span>q</span><span>w</span><span>e</span><span>r</span><span>t</span><span>y</span><span>u</span><span>i</span><span>o</span><span>p</span><span>a</span><span>s</span><span>d</span><span>f</span><span>g</span><span>h</span><span>j</span><span>k</span><span>l</span><span>⌫</span><span class="w2">123</span><span class="w6">space</span><span class="w2">return</span></div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">S</span>The starter set, as the editor would list it</h2>
+<p class="lede">Eleven team lines for customers, each with a shortcut. Blue blanks the app fills; amber blanks the person types. <b>The words are the owner's to set</b> before any of it ships.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Customers · the starter lines</div>
+    <div class="fit">
+      <div class="ed">
+        <div class="tabs"><span>All</span><span>Trade partners</span><span class="on">Customers</span><span>Architects</span><span>Anyone</span><span>Mine</span></div>
+        <div class="grp"><span>Any time</span><span class="why">on no step, so no automatic send changes</span></div>
+        <div class="ln"><span class="key">/gotit</span><div><div class="w"><span class="bl">{first}</span>, this is <span class="bl">{me}</span> with Click Plumbing. We got your message and will call you back today.<span class="tag">Starter</span></div><div class="m">We can't answer yet</div></div></div>
+        <div class="ln"><span class="key">/access</span><div><div class="w"><span class="bl">{first}</span>, is there a gate code, a pet or anything we should know before we come to <span class="bl">{address}</span>?<span class="tag">Starter</span></div><div class="m">Before the visit</div></div></div>
+        <div class="ln"><span class="key">/photo</span><div><div class="w"><span class="bl">{first}</span>, could you text us a photo of <span class="bl theirs">{thing}</span>? It helps us bring the right parts.<span class="tag">Starter</span></div><div class="m">We need to see it</div></div></div>
+        <div class="ln"><span class="key">/late</span><div><div class="w"><span class="bl">{first}</span>, we are running behind. The new window is <span class="bl">{window}</span>. Sorry for the wait.<span class="tag">Starter</span></div><div class="m">Running behind</div></div></div>
+        <div class="ln"><span class="key">/back</span><div><div class="w"><span class="bl">{first}</span>, we will be back <span class="bl">{back day}</span> at <span class="bl">{back time}</span> to finish <span class="bl">{job}</span>.<span class="tag">Starter</span></div><div class="m">The next visit</div></div></div>
+        <div class="ln"><span class="key">/bill</span><div><div class="w"><span class="bl">{first}</span>, here is your bill for <span class="bl">{job}</span>. You can pay it here: <span class="bl">{bill}</span><span class="tag">Starter</span></div><div class="m">They ask for the bill</div></div></div>
+        <div class="ln"><span class="key">/thanks</span><div><div class="w">Thank you, <span class="bl">{first}</span>. We will get <span class="bl">{job}</span> on the schedule and text you the day.<span class="tag">Starter</span></div><div class="m">They said yes</div></div></div>
+        <div class="ln"><span class="key">/paid</span><div><div class="w">Thank you, <span class="bl">{first}</span>. We got your payment for <span class="bl">{job}</span>.<span class="tag">Starter</span></div><div class="m">The payment came in</div></div></div>
+        <div class="grp"><span>What we found</span><span class="why">the step's own message</span></div>
+        <div class="ln"><span class="key">/found</span><div><div class="w"><span class="bl">{first}</span>, <span class="bl">{tech}</span> found <span class="bl theirs">{found}</span>. We will send you a price shortly.<span class="tag">Starter</span></div><div class="m">After our tech looks</div></div></div>
+        <div class="grp"><span>Approved</span><span class="why">the reminder a day after the estimate, once the step is on</span></div>
+        <div class="ln"><span class="key">/estimate</span><div><div class="w"><span class="bl">{first}</span>, did you get a chance to look at the estimate for <span class="bl">{job}</span>? You can open it here: <span class="bl">{link}</span><span class="tag">Starter</span></div><div class="m">The morning run holds it until it can fill blanks (#124's PR 4)</div></div></div>
+        <div class="grp"><span>Paid</span><span class="why">the reminder on the pay-by day, once the step is on</span></div>
+        <div class="ln"><span class="key">/remind</span><div><div class="w"><span class="bl">{first}</span>, a reminder that <span class="bl">{amount}</span> for <span class="bl">{job}</span> is still open. You can pay it here: <span class="bl">{bill}</span><span class="tag">Starter</span></div><div class="m">The morning run holds it until it can fill blanks (#124's PR 4)</div></div></div>
+        <div class="grp"><span>Booked · Working · Done · Billed</span><span class="why">no starter line: the app's own words keep going out</span></div>
+        <div class="ln app"><span class="key">app</span><div><div class="w">{first}, this is {me} with Click Plumbing. The work on {job} is done. Your bill follows by email. Text me here with any question.</div><div class="m">Done, as Tell the customer sends it today</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>Why most lines sit on no step:</b> the team's most used line on a step is what <b>Tell the customer</b> and the morning reminders send for it. A starter line on Booked would replace the booking text. So only the three steps with no words of their own get one.</p>
+
+<h2><span class="num">?</span>The owner's calls</h2>
+<ol class="calls">
+  <li><b>The shortcut:</b> A, A with C (the recommendation), or B. B can ride along with A.</li>
+  <li><b>The starter lines:</b> their words, which of the eleven to keep, and whether <i>Click Plumbing</i> is the name to sign with.</li>
+  <li><b>The three step lines:</b> seed them with the rest, or hold them until the morning run can fill blanks.</li>
+  <li><b>Spanish:</b> drafted for a speaker's read, or left empty until someone writes them.</li>
+  <li><b>The Reply book:</b> left as the estimators' copy-and-paste book, or folded into quick replies later.</li>
+</ol>
+
+<h2><span class="num">→</span>The plan</h2>
+<table class="sum">
+  <tr><th>PR</th><th>What</th><th>Size</th></tr>
+  <tr><td>1</td><td>The guide <i>edit the quick replies</i>: the Messages page as its door, the Office category, the keywords macro, canned reply, template, saved reply, shortcut and hotkey.</td><td>XS</td></tr>
+  <tr><td>2</td><td>The / list: <code>quickReplies/slash.ts</code> with tests, the list in <code>ReplyBox</code>, the placeholder, a smoke, the guide's <b>Type / in the box</b>. B here if picked.</td><td>S</td></tr>
+  <tr><td>3</td><td>A shortcut per line: <code>quick_replies.shortcut</code>, the editor's field, an exact match first. Dropped if A goes alone.</td><td>XS</td></tr>
+  <tr><td>4</td><td>The starter lines: one migration with the owner's words, after a read of what the office has already saved.</td><td>XS</td></tr>
+</table>
+
+</div>
+</body>
+</html>

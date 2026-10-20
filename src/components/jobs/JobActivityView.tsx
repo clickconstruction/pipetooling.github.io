@@ -3,8 +3,10 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRole } from '../../hooks/useAuth'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
 import { JobActivityFeed } from './JobActivityFeed'
-import { buildJobActivityLines, filterJobActivityLines } from '../../lib/jobs/jobActivityLine'
-import { ACTIVITY_FILTERS, countActivityByFilter, type ActivityFilter } from '../../lib/jobActivityFilter'
+import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines } from '../../lib/jobs/jobActivityLine'
+import { ACTIVITY_FILTERS, JOB_ACTIVITY_FILTERS, type JobActivityFilter } from '../../lib/jobActivityFilter'
+import { canOpenGcProjects, canReadJobMessages } from '../../lib/gc/access'
+import { useJobMessages } from '../../hooks/useJobMessages'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { clampCompletenessPct } from '../../lib/jobs/jobCompleteness'
@@ -27,6 +29,12 @@ import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor
  * composer stays a single pill. There are NO Schedule / Week dispatch buttons
  * here (owner call): scheduling lives on its own surfaces, and the pinned Next
  * strip still shows the upcoming block inside the thread.
+ *
+ * Messages, cut 10: for the office team, and since the owner's word of 2026-10-13 a tech (`canReadJobMessages`), the
+ * job's calls, texts and emails from Messages are in the same numbered feed, the customer's in orange, with a Customer
+ * pill (`useJobMessages`, `jobActivityMessages.ts`). The read runs under the rows' policies, so a tech gets what R5's
+ * door gives them, and the link to a thread shows only to a reader who can open Messages. The feed waits for that
+ * read too, so no line's number moves once it shows. Anyone else reads none and sees the feed as before.
  */
 
 const ACTION_BTN: CSSProperties = {
@@ -82,21 +90,24 @@ export function JobActivityView({
 }: JobActivityViewProps) {
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
+  const [activityFilter, setActivityFilter] = useState<JobActivityFilter>('all')
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
   const [pctNoteError, setPctNoteError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  const readsMessages = canReadJobMessages(viewerRole)
+  const messages = useJobMessages(readsMessages ? { id: job.id, status: job.status ?? null, createdAt: job.created_at ?? null } : null)
   const allLines = useMemo(
-    () => (activity ? buildJobActivityLines(activity, { viewerRole }) : null),
-    [activity, viewerRole],
+    () => (activity && messages ? buildJobActivityLines(activity, { viewerRole, messages }) : null),
+    [activity, messages, viewerRole],
   )
   const lines = useMemo(
     () => (allLines ? filterJobActivityLines(allLines, activityFilter) : null),
     [allLines, activityFilter],
   )
-  const filterCounts = useMemo(() => (activity ? countActivityByFilter(activity) : null), [activity])
+  const filterCounts = useMemo(() => (allLines ? countJobActivityLines(allLines) : null), [allLines])
+  const filters = readsMessages ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS
   // Who set the recorded % (v2.2852): the crew, when the newest report with a % says the same number; else the office.
   const pctProvenance = useMemo(
     () =>
@@ -206,7 +217,7 @@ export function JobActivityView({
       {/* Row 2 — the filter buckets. */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', padding: '0.4rem 0.9rem 0' }}>
         <div role="tablist" aria-label="Filter activity" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
-          {ACTIVITY_FILTERS.map((f) => {
+          {filters.map((f) => {
             const active = activityFilter === f.value
             const count = f.value === 'all' ? null : (filterCounts?.[f.value] ?? 0)
             // Empty buckets demote to quiet non-clickable text (the v2.1475
@@ -276,7 +287,7 @@ export function JobActivityView({
         </div>
       ) : null}
 
-      <JobActivityFeed lines={lines} filtered={activityFilter !== 'all'} narrow={narrow} reportsOpenByDefault={reportsOpenByDefault} />
+      <JobActivityFeed lines={lines} filtered={activityFilter !== 'all'} narrow={narrow} reportsOpenByDefault={reportsOpenByDefault} threadLinks={canOpenGcProjects(viewerRole)} />
 
       {submitNoteWithBody ? (
         pctEditorOpen && canEditPct ? (

@@ -7,7 +7,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
-import { READER_CONFIRM, READER_OFF_TOAST, READER_ON_TOAST, READER_TITLE, READER_WHAT, readerHealthWords, type ReaderHealth } from '../../lib/messages/emailReader'
+import { READER_CONFIRM, READER_OFF_TOAST, READER_ON_TOAST, READER_TITLE, READER_WHAT, readerHealthWords, teamBoxHealthWords, type ReaderHealth } from '../../lib/messages/emailReader'
 import { supabaseEmailReaderIo, type EmailReaderIo } from '../../lib/messages/emailReaderIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -19,7 +19,7 @@ const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem', 
 export function EmailReaderSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: EmailReaderIo; nowIso?: string }) {
   const confirm = useConfirmDialog()
   const { showToast } = useToastContext()
-  const [loaded, setLoaded] = useState<{ on: boolean; health: ReaderHealth | null } | null>(null)
+  const [loaded, setLoaded] = useState<{ on: boolean; health: ReaderHealth | null; teamHealth?: ReaderHealth | null } | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -88,9 +88,17 @@ export function EmailReaderSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: Emai
       </div>
       <p style={{ margin: 0, fontSize: '0.9rem' }}>{READER_WHAT}</p>
       {loaded ? (
-        <p data-reader-health style={muted}>
-          {readerHealthWords(loaded.health, nowIso ?? new Date().toISOString())}
-        </p>
+        <>
+          <p data-reader-health style={muted}>
+            {readerHealthWords(loaded.health, nowIso ?? new Date().toISOString())}
+          </p>
+          {/* The team box (R6), once Settings holds its address and the reader has read it. */}
+          {loaded.teamHealth && (
+            <p data-reader-health-team style={muted}>
+              {teamBoxHealthWords(loaded.teamHealth, nowIso ?? new Date().toISOString())}
+            </p>
+          )}
+        </>
       ) : (
         !problem && <p style={muted}>Loading the switch…</p>
       )}

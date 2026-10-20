@@ -22,12 +22,14 @@ describe('getZonedSettingsGroups', () => {
       'settings-jobs',
       'settings-catalogs',
       'settings-people',
+      'settings-training',
       'settings-emails',
       'settings-what-customers-see',
       'settings-what-the-team-sees',
       'settings-contracts',
       'settings-clauses',
       'settings-phone-texts',
+      'settings-flows',
       'settings-company',
       'settings-usage',
       'settings-data',
@@ -71,6 +73,15 @@ describe('getZonedSettingsGroups', () => {
     }
     for (const role of ['superintendent', 'subcontractor', 'helpers', 'primary'] as const) {
       expect(getZonedSettingsGroups(role).map((g) => g.id)).not.toContain('settings-phone-texts')
+    }
+  })
+
+  it('the office team gets Flows, and nobody else does (Messages, cut 4)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id)).toContain('settings-flows')
+    }
+    for (const role of ['superintendent', 'subcontractor', 'helpers', 'primary'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id)).not.toContain('settings-flows')
     }
   })
 

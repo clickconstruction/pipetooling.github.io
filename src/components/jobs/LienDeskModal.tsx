@@ -68,6 +68,8 @@ import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
+import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows, mailPiecesNeedingYou } from '../../lib/mail/lienMailPieces'
+import LienMailPieceDoors from './LienMailPieceDoors'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
@@ -548,12 +550,16 @@ export default function LienDeskModal({
   )
   // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
   const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
+  // Deliveries (the Docsmit train, 6b): the Sent pile narrowed to the notices mailed through the provider, each row's tail saying where its envelopes are.
+  const [deliveriesOnly, setDeliveriesOnly] = useState(false)
+  const mailedJobIds = useMemo(() => jobsWithMailPieces(entries, data?.mailPiecesByFiling ?? {}), [entries, data?.mailPiecesByFiling])
   const visibleAll = useMemo(() => {
     // Missed is a lens (v2.3679): a job in To draft with a closed month shows under it too.
     const scoped = calendarJobFilter ? entries.filter((e) => calendarJobFilter.jobIds.has(e.jobId)) : entries
     const list = pile ? scoped.filter((e) => e.pile === pile || (pile === 'missed' && e.missedMonths.length > 0)) : scoped
-    return PILE_ORDER.flatMap((p) => list.filter((e) => e.pile === p))
-  }, [entries, pile, calendarJobFilter])
+    const mailed = deliveriesOnly ? list.filter((e) => e.pile !== 'sent' || mailedJobIds.has(e.jobId)) : list
+    return PILE_ORDER.flatMap((p) => mailed.filter((e) => e.pile === p))
+  }, [entries, pile, calendarJobFilter, deliveriesOnly, mailedJobIds])
   // The find narrows the list (v2.4721); the hidden facts it landed on ride beside each row.
   const { visible, findHits } = useMemo(() => {
     const hits = new Map<string, LienFindFact[]>()
@@ -645,6 +651,7 @@ export default function LienDeskModal({
       gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
       leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
+      mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
     })
   }, [data, authRole, todayYmd, leaderNameFor])
   // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
@@ -1505,6 +1512,11 @@ export default function LienDeskModal({
                   Send the run · {runCount}
                 </button>
               ) : null}
+              {p === 'sent' && mailedJobIds.size > 0 ? (
+                <button type="button" data-lien-pile-deliveries={deliveriesOnly ? 'on' : 'off'} onClick={() => setDeliveriesOnly((v) => !v)} title={deliveriesOnly ? 'Every sent notice' : 'Only the notices mailed through Docsmit, with where each envelope is'} style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: deliveriesOnly ? 'var(--bg-blue-tint)' : 'var(--surface)', color: deliveriesOnly ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {deliveriesOnly ? 'Every sent notice' : `Deliveries · ${mailedJobIds.size}`}
+                </button>
+              ) : null}
               {pile ? (
                 <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   show every pile
@@ -1532,7 +1544,7 @@ export default function LienDeskModal({
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
                       : e.pile === 'sent'
-                        ? `sent ${e.item?.sent_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.sent_at)) : ''}${(() => { const f = (data?.filingsByJob[e.jobId] ?? []).find((x) => x.id === e.item?.sent_filing_id); return f && sendsTrackingOwed(f.sends).length ? ' · tracking owed' : '' })()}`
+                        ? `sent ${e.item?.sent_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.sent_at)) : ''}${(() => { const f = (data?.filingsByJob[e.jobId] ?? []).find((x) => x.id === e.item?.sent_filing_id); if (!f) return ''; const pieces = data?.mailPiecesByFiling?.[f.id] ?? []; return pieces.length ? filingMailTail(pieces, formatYmdMonthDay) : sendsTrackingOwed(f.sends).length ? ' · tracking owed' : '' })()}`
                         : e.pile === 'missed'
                           ? `window closed on ${e.missedMonths.map(workMonthShort).join(', ')}`
                           : e.pile === 'needs_owner'
@@ -3026,6 +3038,18 @@ export default function LienDeskModal({
             <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
             <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(calendarYmdInAppTzFromIso(lt.gcAuthorized.at))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
             {sentFiling && trackingOwed.length ? <LienTrackingOwedEditor filing={sentFiling} onSaved={onChanged} /> : null}
+            {sentFiling && (data?.mailPiecesByFiling?.[sentFiling.id]?.length ?? 0) > 0 ? (
+              <span data-lien-mail-status style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.3rem 0.8rem' }}>
+                {filingMailLines(data!.mailPiecesByFiling![sentFiling.id]!, formatYmdMonthDay).map((l) => (
+                  <span key={l.id}>Through Docsmit, {l.who.toLowerCase()}: <strong style={{ color: l.tone === 'green' ? 'var(--text-green-800)' : l.tone === 'red' ? 'var(--text-red-600)' : l.tone === 'amber' ? 'var(--text-amber-700, var(--text-amber-700))' : 'var(--text-700)' }}>{l.words}</strong>{l.tracking ? <span style={{ color: 'var(--text-muted)' }}> · {l.tracking}</span> : null}{l.cost ? <span style={{ color: 'var(--text-muted)' }}> · {l.cost}</span> : null}</span>
+                ))}
+                {filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!) ? <span data-lien-mail-cost>{filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!)}</span> : null}
+                {/* The doors (6b-3): under the lines, one set per envelope that came back, for the office. */}
+                {office ? mailPiecesNeedingYou(data!.mailPiecesByFiling![sentFiling.id]!).map((p) => (
+                  <LienMailPieceDoors key={p.id} piece={p} jobNumber={job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : null} onChanged={onChanged} />
+                )) : null}
+              </span>
+            ) : null}
             {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
             {signoff ? <span data-lien-counsel-signoff style={signoff.state === 'signed_off' ? { color: 'var(--text-green-800)' } : signoff.state === 'declined' ? { color: 'var(--text-red-600)' } : undefined}>Counsel: <strong style={{ color: 'inherit' }}>{signoffLine || 'not asked'}</strong></span> : null}
             <span data-lien-owner-called>Owner called: <strong style={{ color: 'var(--text-700)' }}>{call ? ownerCallWords(call, formatYmdMonthDay, formatUsdNoCents) : 'not yet'}</strong>{call && affidavitPileFor(call) ? <span style={{ ...chip('var(--bg-green-tint)', 'var(--text-green-800)'), marginLeft: 6 }}>Pile {affidavitPileFor(call)}</span> : null}</span>
@@ -3343,6 +3367,8 @@ export default function LienDeskModal({
                 onChanged()
                 onCalendarChanged?.(what)
               }}
+              // Record the mailing (v2.5522): the run opens on recording for the printed notices.
+              onRecord={office ? () => setRunOpen(true) : undefined}
               onDraft={(ymd, jobIds) => {
                 // Draft the N (v2.4153): the notice list, To draft, narrowed to the column's jobs.
                 setCalendarJobFilter({ ymd, jobIds: new Set(jobIds) })
