@@ -1939,7 +1939,7 @@ export function BidsPricingTab({
       // onto THIS packet's rows by fixture name or the copy is invisible (v2.2405).
       const rekey = await rekeyClonedPricingToVersion(bid.id, newId, sourceVersionId, selectedBidVersionId)
       await Promise.all([loadBidPricingAssignments(bid.id, newId), reloadPricingForBid(bid.id)])
-      // Two versions of the SAME GC (#135): the GC's name twice says nothing — name the versions.
+      // Two versions of the SAME GC (#137): the GC's name twice says nothing — name the versions.
       const target = bidVersions.find((v) => v.id === selectedBidVersionId)
       const sameGc = (src?.customer_id ?? null) === (target?.customer_id ?? null)
       const gcFrom = sameGc ? src?.name || gcNameForVersion(sourceVersionId) : gcNameForVersion(sourceVersionId)
@@ -2630,7 +2630,7 @@ export function BidsPricingTab({
                 }
                 const derived = derivePricingWorkbench()
                 if (!derived) {
-                  // #135: a version with no prices starts here — from a book (the Old grid's
+                  // #137: a version with no prices starts here — from a book (the Old grid's
                   // select, inline since v2.2707 retired it) or a copy of prices on the bid.
                   const choices = pricingStartChoices({
                     selectedBidVersionId,
