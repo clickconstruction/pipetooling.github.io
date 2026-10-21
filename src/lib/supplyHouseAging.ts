@@ -247,3 +247,48 @@ export function supplyHouseAgingPhoneNote(row: SupplyHouseAgingRow): string {
   if (b.past90plus > EPSILON) parts.push(`$${Math.round(b.past90plus).toLocaleString('en-US')} at 90+`)
   return parts.join(' · ') || 'all current'
 }
+
+/**
+ * The move window (punch list #132 PR 3): a supply house moves a charge onto the job
+ * account only while the invoice is CURRENT — once past due, the window is closed.
+ * Candidates are read before the allocations are known; movable needs exactly one job.
+ */
+export function movableCandidates<T extends { amount: number | null; due_date: string | null; on_job_account?: boolean | null }>(
+  unpaidInvoices: readonly T[],
+  todayYmd: string,
+): T[] {
+  return unpaidInvoices.filter(
+    (inv) =>
+      Number(inv.amount ?? 0) > 0 &&
+      inv.on_job_account !== true &&
+      inv.due_date != null &&
+      daysPastDue(inv.due_date, todayYmd) <= 0,
+  )
+}
+
+/** A candidate with exactly one job is movable; null allocation count = not known yet. */
+export function isMovableAgingInvoice(
+  inv: { amount: number | null; due_date: string | null; on_job_account?: boolean | null },
+  allocationCount: number | null,
+  todayYmd: string,
+): boolean {
+  return movableCandidates([inv], todayYmd).length === 1 && allocationCount === 1
+}
+
+export type MoveStripSummary = { count: number; dollars: number; askedCount: number; soonestDueYmd: string | null }
+
+/** The teal strip's numbers over the movable rows: the money, the asks out, the soonest window to close. */
+export function moveStripSummary<T extends { id: string; amount: number | null; due_date: string | null }>(
+  movable: readonly T[],
+  askedInvoiceIds: ReadonlySet<string>,
+): MoveStripSummary {
+  let dollars = 0
+  let askedCount = 0
+  let soonest: string | null = null
+  for (const r of movable) {
+    dollars += Number(r.amount ?? 0)
+    if (askedInvoiceIds.has(r.id)) askedCount++
+    if (r.due_date && (soonest == null || r.due_date < soonest)) soonest = r.due_date
+  }
+  return { count: movable.length, dollars, askedCount, soonestDueYmd: soonest }
+}

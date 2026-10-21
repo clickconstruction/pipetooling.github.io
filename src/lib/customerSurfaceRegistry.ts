@@ -89,6 +89,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-contract-for-signature', audience: 'sub', steps: [S('sub-contract-email')] },
   { kind: 'sender', ref: 'send-rfq-email', audience: 'house', steps: [HS('quote-email')] },
   { kind: 'sender', ref: 'send-supply-house-job-account', audience: 'house', steps: [HS('job-account-email')] },
+  // The move window (punch list #132 PR 3): the ask to move still-current charges onto job accounts.
+  { kind: 'sender', ref: 'request-job-account-move', audience: 'house', steps: [HS('job-account-move-email')] },
   { kind: 'sender', ref: 'legal-notify-dispatch', audience: 'firm', steps: [F('firm-now-email'), F('firm-digest-email')] },
   { kind: 'sender', ref: 'submit-legal-portal', audience: 'firm', steps: [F('firm-confirm-email')] },
   { kind: 'sender', ref: 'legal-send-firm-link', audience: 'firm', steps: [F('firm-welcome-email')] },

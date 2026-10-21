@@ -42,6 +42,12 @@ An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's b
 
 Already have invoices sitting on job accounts? Press the aging cell that holds them. Each bill in the window carries a **+ Job acct** chip. One press flags a bill when the job's account is open. With no account on record, an amber note opens instead. It offers {{button:green|Mark opened…}} and **Flag anyway**. Press **Job acct ✓** to take a flag off again. The **Edit** pencil still works too.
 
+## The move window
+
+A house moves a charge onto a job account only while the invoice is current. Once it is past due, the window is closed. A teal strip above the aging table counts the charges still movable. Press {{button:green|Work the list ›}} to see them by house, with the rep to call. Each row's **+ Job acct** opens the move window for that charge.
+
+Tick the box after your call and press {{button:green|Mark it moved ✓}}. Or press {{button:green|Send the request ›}} to email the rep from the app. Replies come to you. The row then reads **asked** with the date. Follow up with a call until the house confirms. An ask with no answer turns amber after 3 days and red after 7.
+
 ## The account itself lives on the house
 
 Whether a job **has** an account at a house is its own record, separate from this invoice flag. Open **Materials → Supply houses** and expand the house. **Job accounts** lists every job with an account there. Each shows {{chip:green|open}} with the house's reference, {{chip:purple|requested}}, or {{chip:gray|not needed}}. It also lists every job that bought there with none on record. {{button:green|Mark opened…}} records it in two taps after the call. See [find a supply house and its rep](?g=find-a-supply-house-and-its-rep).

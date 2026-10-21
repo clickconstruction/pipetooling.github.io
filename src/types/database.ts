@@ -28958,6 +28958,73 @@ export type Database = {
           },
         ]
       }
+      supply_house_invoice_move_requests: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          invoice_id: string
+          job_id: string
+          requested_at: string
+          requested_by: string | null
+          sent_to: string
+          supply_house_id: string
+          updated_at: string
+          via: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          invoice_id: string
+          job_id: string
+          requested_at?: string
+          requested_by?: string | null
+          sent_to?: string
+          supply_house_id: string
+          updated_at?: string
+          via: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          job_id?: string
+          requested_at?: string
+          requested_by?: string | null
+          sent_to?: string
+          supply_house_id?: string
+          updated_at?: string
+          via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_invoice_move_requests_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoice_move_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoice_move_requests_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supply_house_invoices: {
         Row: {
           amount: number
