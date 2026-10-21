@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
+keywords: gc mode, messages, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
 order: 117
 ---
 The reply box sits at the foot of every thread in Messages. Write a text, an email or a team note to the person there.
@@ -17,11 +17,12 @@ To find a person first, see [find every message with a person in one place](/hel
 
 ## Choose what to write
 
-The row above the box has three kinds. The one you chose has an orange ring.
+The row above the box has four kinds. The one you chose has an orange ring.
 
 - {{button:outline|Text}} goes to their phone from the company number.
 - {{button:outline|Email}} goes to their inbox under our letterhead.
 - {{button:outline|Note}} stays with the team. They never see it.
+- {{button:outline|Call}} logs a call you made. They never see it.
 
 The box starts as a text when their number can take one. Otherwise it starts as an email.
 
@@ -164,6 +165,19 @@ The send window shows how each file goes:
 When they have a portal and the file has a page there, our link opens their portal at that page. Otherwise it opens the one file. We see when a link is opened, never who.
 
 A file from this computer goes into the job's Team only folder before the email leaves. A photo goes into the job's photos. The copy of the email in Documents keeps its files.
+
+## Log a call
+
+Use the Call kind after you phone a person. It keeps what they said in the thread.
+
+1. Press {{button:outline|Call}}. The box turns green.
+2. Press the **☎ Call** line to dial them from your phone.
+3. Write what they said.
+4. Press **They gave a day…** when they named a day. Pick it, or type it.
+5. Leave **Their move** on when the next step is theirs. Press **Our move** when we still owe them something, and say what and by when.
+6. Press {{button:blue|Save the call}}.
+
+The call lands in the thread as our line. Only the team sees it. The row leaves Needs a reply. The thread's chip reads *Their move* until the day they gave.
 
 ## Add a note for the team
 

@@ -33,6 +33,7 @@ function fakeIo(): ReplyIo {
     addNote: vi.fn(() => Promise.resolve('m-note-new')),
     sendEmail: vi.fn(() => Promise.resolve('m-email-new')),
     sendText: vi.fn(() => Promise.resolve('m-text-new')),
+    logCall: vi.fn(() => Promise.resolve('m-call-new')),
   }
 }
 

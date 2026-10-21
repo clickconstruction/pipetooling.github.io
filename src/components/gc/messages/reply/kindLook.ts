@@ -1,11 +1,12 @@
 import type { CSSProperties } from 'react'
 import type { ReplyKind } from '../../../../lib/messages/compose'
 
-/** Text blue, Email white, Note yellow: the thread's own colours for each, so the box reads as the line it becomes. */
+/** Text blue, Email white, Note yellow, Call green (punch list #140 PR 7): the thread's own colours for each, so the box reads as the line it becomes. */
 export const KIND_LOOK: Record<ReplyKind, CSSProperties> = {
   text: { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-800)' },
   email: { background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-base)' },
   note: { background: 'var(--bg-yellow-tint)', borderColor: 'var(--border-amber-soft)', color: 'var(--text-base)' },
+  call: { background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-base)' },
 }
 
 /** The chosen kind wears the orange ring. */

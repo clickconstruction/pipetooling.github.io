@@ -2,7 +2,7 @@
 name: "Messages, worked like a desk — the loop switched fully on, Answer all one person at a time with a Mine lens, and a last-7-days strip whose every number is a door"
 number: 140
 group: ready
-status: READY TO BUILD — the owner's go 2026-10-21 on the recommended defaults (three revised after the code read, see § The seven decisions); BUILD_PLAN.md beside this file is the hand-off (per-PR files, kernels, words, tests, docs, the live test); nothing built yet; the proposal PR is #5955
+status: BUILDING — the owner's go 2026-10-21 on the recommended defaults (three revised after the code read, see § The seven decisions); BUILD_PLAN.md beside this file is the hand-off; PR 1 (#5957, the Office hours card) and PR 7 (the log_call migration and the Call kind) are filed with auto-merge armed; PRs 2–6 wait on the #139 stack's base (BUILD_PLAN § 0.2); § Where it stands is the record
 summary: >
   With #139's six additions Messages is a complete record and a complete inbox, and the next
   gain is not another lane. Three levers: close the loop (an Office hours card, and a card on
@@ -233,14 +233,14 @@ contact).
 
 | PR | What | Version | PR | State |
 |---|---|---|---|---|
-| — | Proposal + mock-up + BUILD_PLAN | — | #5955 | armed 2026-10-21 |
-| 1 | Office hours card | | | not started |
+| — | Proposal + mock-up + BUILD_PLAN | — | #5955 | merged 2026-10-21 |
+| 1 | Office hours card | v2.5709 | #5957 | armed 2026-10-21 |
 | 2 | Finish switching Messages on | | | not started |
 | 3 | Show: Mine · Everyone | | | not started |
 | 4 | Nudge fills the step's words | | | not started |
 | 5 | The last 7 days strip | | | not started |
 | 6 | Answer all | | | not started |
-| 7 | Log a call (+ migration, `supabase db push` after merge) | | | not started |
+| 7 | Log a call (+ migration `20261021010000_log_call`, `supabase db push` after merge; the Waiting on them hold moves to PR 4, since `waitingOnThem.ts` is the #139 stack's) | v2.5710 | #5958 | armed 2026-10-21 |
 | 8 | A lead's doors | | | not started |
 | 9 | One front door; the guides | | | not started |
 | — | Live test (BUILD_PLAN § 3) | | | after 1–9 |
