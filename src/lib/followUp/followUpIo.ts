@@ -42,6 +42,11 @@ export interface FollowUpIo {
   readQuestion(messageId: string, state: 'asked' | 'answered'): Promise<void>
   /** A team note with its day to come back, in one write. Returns the note. */
   addNote(contactId: string, body: string, job: JobRef | null, back: DayKept | null): Promise<string>
+  /**
+   * A call the office made, logged as our line with the day they gave as a written promise (`log_call`, punch list #140
+   * PR 7). Returns the call's line.
+   */
+  logCall(contactId: string, said: string, job: JobRef | null, day: DayKept | null): Promise<string>
   /** Null clears the day. */
   setBackDay(noteId: string, back: DayKept | null): Promise<void>
   backDone(noteId: string): Promise<void>
@@ -254,6 +259,9 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
         { p_contact_id: contactId, p_body: body, ...jobArgs(job), ...dayArgs(back, 'p_back_on', 'p_back_words') },
         'write a team note',
       )
+    },
+    async logCall(contactId, said, job, day) {
+      return call<string>('log_call', { p_contact_id: contactId, p_said: said, ...jobArgs(job), ...dayArgs(day, 'p_day', 'p_day_words') }, 'log a call')
     },
     async setBackDay(noteId, back) {
       await call('set_back_day', { p_note_id: noteId, ...dayArgs(back, 'p_on', 'p_words') }, 'bring a note back')

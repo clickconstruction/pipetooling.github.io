@@ -4,11 +4,13 @@ import { useOptionalAuth } from '../../../../hooks/useAuth'
 import { openFlowStep, useFlowNow } from '../../../../hooks/useFlowNow'
 import { SEED_FLOWS } from '../../../../lib/flows/seed'
 import { NOTE_BACK_PRESS, NOTE_BACK_TIP, noteBackToast } from '../../../../lib/followUp/queue'
-import { OWED_DONE_NEEDS_A_NOTE, OWED_DONE_PLACEHOLDER, OWED_DONE_SEND, OWED_DONE_TOAST, type DayKept } from '../../../../lib/messages/owed'
+import { dayKept, OWED_DONE_NEEDS_A_NOTE, OWED_DONE_PLACEHOLDER, OWED_DONE_SEND, OWED_DONE_TOAST, owedMarkedToast, readDay, type DayKept } from '../../../../lib/messages/owed'
 import { todayYmdInAppTz, ymdDaysBetween } from '../../../../utils/dateUtils'
+import { DayPicker } from '../../../followUp/DayPicker'
 import { NoteBackDay } from '../../../followUp/NoteBackDay'
 import { SettlingNote } from '../../../followUp/SettlingNote'
 import { useOwedSettling } from '../../../followUp/useOwedSettling'
+import { useOwedAfterSend } from '../../../followUp/useThreadOwed'
 import { fillLine } from '../../../../lib/quickReplies/blanks'
 import { nudgeDraftFor, type NudgeKind } from '../../../../lib/messages/nudgeDraft'
 import { replyFills, sendWaits } from '../../../../lib/quickReplies/filling'
@@ -33,6 +35,7 @@ import {
   type ComposeCompany,
   type ReplyKind,
 } from '../../../../lib/messages/compose'
+import { CALL_ASIDE, CALL_WORDS, callDayWords, dialHref, type CallLogDraft } from '../../../../lib/messages/callLog'
 import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { jobRefOf } from '../../../../lib/messages/jobKeys'
 import { defaultEstimatePaper, defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
@@ -69,6 +72,9 @@ const STEPS = stepsByKind(SEED_FLOWS)
 
 /** The Text tab's words while Send texts is off, in the send window's amber. */
 const WAIT_LOOK = { margin: 0, fontSize: '0.85rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.45rem 0.6rem' } as const
+
+/** The Call kind's two blanks for Our move (punch list #140 PR 7), drawn as the send window draws them. */
+const CALL_INPUT = { border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', fontSize: '0.85rem', padding: '0.15rem 0.4rem' } as const
 
 /** The strip's fold is kept on this computer, as the prototype kept it. */
 const QR_OPEN_KEY = 'msgQrOpen'
@@ -218,6 +224,13 @@ export function ReplyBox({
   const settling = useOwedSettling(contact.id)
   const [back, setBack] = useState<DayKept | null>(null)
   const [backOpen, setBackOpen] = useState(false)
+  // Punch list #140 PR 7: the Call kind's day they gave, whose move it leaves, and the two blanks for Our move.
+  const [callDay, setCallDay] = useState<DayKept | null>(null)
+  const [callDayOpen, setCallDayOpen] = useState(false)
+  const [callMove, setCallMove] = useState<'theirs' | 'ours'>('theirs')
+  const [callOweWhat, setCallOweWhat] = useState('')
+  const [callOweWhen, setCallOweWhen] = useState('')
+  const afterCall = useOwedAfterSend(contact.id)
   const [settleProblem, setSettleProblem] = useState<string | null>(null)
   // While a settle is under way the box is a team note; the kind chosen comes back after it, untouched.
   const shown: ReplyKind = settling.active ? 'note' : kind
@@ -283,6 +296,38 @@ export function ReplyBox({
     }
   }
 
+  /**
+   * Punch list #140 PR 7: the call the office made, logged as our line (`log_call`), with the day they gave. Our move
+   * then writes what we still owe through the send window's own `mark_owed`; a refusal there keeps the call saved and
+   * says so in the same toast.
+   */
+  const logCall = async (said: string) => {
+    setBusy(true)
+    try {
+      const draft: CallLogDraft = { said, day: callDay, theirMove: callMove === 'theirs' }
+      await io.logCall(contact.id, draft, jobKey)
+      let more: string | null = null
+      if (callMove === 'ours' && callOweWhat.trim()) {
+        try {
+          await afterCall.mark(callOweWhat.trim(), dayKept(readDay(callOweWhen, todayYmdInAppTz())))
+          more = owedMarkedToast(contact.name, { what: callOweWhat.trim() })
+        } catch (e) {
+          more = formatErrorMessage(e, 'What we owe was not written.')
+        }
+      }
+      setCallDay(null)
+      setCallDayOpen(false)
+      setCallMove('theirs')
+      setCallOweWhat('')
+      setCallOweWhen('')
+      after('call', more)
+    } catch (e) {
+      showToast(formatErrorMessage(e, CALL_WORDS.notSaved), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const press = async () => {
     const text = body.trim()
     if (settling.active) {
@@ -290,7 +335,11 @@ export function ReplyBox({
       return
     }
     if (!text) {
-      showToast(kind === 'note' ? 'Write the note first.' : 'Write the message first.', 'info')
+      showToast(kind === 'note' ? 'Write the note first.' : kind === 'call' ? CALL_WORDS.needWords : 'Write the message first.', 'info')
+      return
+    }
+    if (kind === 'call') {
+      await logCall(text)
       return
     }
     if (kind !== 'note') {
@@ -519,7 +568,9 @@ export function ReplyBox({
               {k.label}
             </button>
           ))}
-          {shown === 'note' && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{NOTE_ASIDE.join(' · ')}</span>}
+          {(shown === 'note' || shown === 'call') && (
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{(shown === 'call' ? CALL_ASIDE : NOTE_ASIDE).join(' · ')}</span>
+          )}
         </div>
       )}
 
@@ -567,6 +618,12 @@ export function ReplyBox({
         />
       )}
 
+      {shown === 'call' && to.number && (
+        <a data-reply-call-dial href={dialHref(to.number)} style={{ justifySelf: 'start', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-green-700)', textDecoration: 'none' }}>
+          ☎ {CALL_WORDS.dial} {to.number}
+        </a>
+      )}
+
       {slashOpen && slashWord && (
         <SlashList
           id={listId}
@@ -592,7 +649,7 @@ export function ReplyBox({
         <div style={{ position: 'relative' }}>
           <textarea
             ref={boxRef}
-            aria-label={shown === 'note' ? 'A note for the team' : `Write to ${contact.name}`}
+            aria-label={shown === 'note' ? 'A note for the team' : shown === 'call' ? CALL_WORDS.said : `Write to ${contact.name}`}
             aria-autocomplete={goesOut(shown) ? 'list' : undefined}
             aria-controls={slashOpen && slashCount ? listId : undefined}
             aria-activedescendant={slashOpen && slashCount ? `${listId}-${lit}` : undefined}
@@ -632,6 +689,73 @@ export function ReplyBox({
               {fromLine(shown, company).join(' · ')}
             </span>
           )}
+        </div>
+      )}
+
+      {shown === 'call' && !settling.active && (
+        <div data-reply-call style={{ display: 'grid', gap: '0.4rem' }}>
+          {callDayOpen || callDay ? (
+            <div data-reply-call-day style={{ display: 'grid', gap: '0.35rem', padding: '0.45rem 0.6rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+                <b>{CALL_WORDS.dayTitle}</b>
+                <span style={{ color: 'var(--text-muted)' }}>{CALL_WORDS.dayNote}</span>
+                {callDayWords(callDay) && (
+                  <span data-reply-call-day-words style={{ fontWeight: 600, color: 'var(--text-blue-800)' }}>
+                    {callDay?.ymd ? callDayWords(callDay) : `${callDayWords(callDay)} · no day`}
+                  </span>
+                )}
+                {callDay && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCallDay(null)
+                      setCallDayOpen(false)
+                    }}
+                    style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit' }}
+                  >
+                    {CALL_WORDS.noDay}
+                  </button>
+                )}
+              </div>
+              <DayPicker todayYmd={todayYmdInAppTz()} chosen={callDay} onPick={(d) => setCallDay(d.ymd || d.words ? d : null)} typedLabel={CALL_WORDS.dayTyped} />
+            </div>
+          ) : (
+            <button
+              type="button"
+              data-reply-call-day-press
+              onClick={() => setCallDayOpen(true)}
+              style={{ justifySelf: 'start', border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+            >
+              {CALL_WORDS.dayPress}
+            </button>
+          )}
+          <div data-reply-call-after={callMove} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+            <strong>{CALL_WORDS.after}</strong>
+            <span role="radiogroup" aria-label={CALL_WORDS.after} style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+              {(['theirs', 'ours'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={callMove === m}
+                  onClick={() => setCallMove(m)}
+                  style={{ border: 'none', padding: '0.2rem 0.6rem', cursor: 'pointer', background: callMove === m ? (m === 'ours' ? 'var(--bg-amber-tint)' : 'var(--bg-green-tint)') : 'var(--surface)', fontWeight: callMove === m ? 600 : 400 }}
+                >
+                  {m === 'theirs' ? CALL_WORDS.theirs : CALL_WORDS.ours}
+                </button>
+              ))}
+            </span>
+            {callMove === 'ours' ? (
+              <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                We still owe
+                <input aria-label="What we still owe" placeholder="what?" value={callOweWhat} onChange={(e) => setCallOweWhat(e.target.value)} style={{ ...CALL_INPUT, width: 160 }} />
+                by
+                <input aria-label="By when" placeholder="when?" value={callOweWhen} onChange={(e) => setCallOweWhen(e.target.value)} style={{ ...CALL_INPUT, width: 120 }} />
+              </span>
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>{CALL_WORDS.hint}</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -732,7 +856,9 @@ export function ReplyBox({
                 ? 'Marks what we owed done and keeps your words in the thread. The row closes as any note does.'
                 : shown === 'note'
                   ? 'Adds the note to the thread and closes the row. Only the team sees it.'
-                  : 'Shows it the way they will see it, before it goes. Nothing sends until you press Send there.'
+                  : shown === 'call'
+                    ? CALL_WORDS.saveTip
+                    : 'Shows it the way they will see it, before it goes. Nothing sends until you press Send there.'
             }
           >
             {sendLabel}
