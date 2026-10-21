@@ -11,7 +11,7 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
   it('newest first, the first line of the words, the time and who pressed', () => {
     const rows = wentOutRows([line({ id: 'm2', atMs: AT_900, who: '' }), line()], 'all')
     expect(rows.map((r) => r.id)).toEqual(['m1', 'm2'])
-    expect(rows[0]).toEqual({ id: 'm1', contactId: 'c1', name: 'Dana Whitfield', words: 'Dana, your estimate is ready.', when: '1:31 PM · Taunya', mark: null, tel: null })
+    expect(rows[0]).toEqual({ id: 'm1', contactId: 'c1', name: 'Dana Whitfield', channel: 'text', words: 'Dana, your estimate is ready.', when: '1:31 PM · Taunya', mark: null, tel: null, chip: null })
     expect(rows[1]?.when).toBe('9:00 AM')
   })
   it('a pill narrows by kind, and a number nobody has named shows under All alone', () => {
@@ -32,6 +32,22 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
       ['⚠ not sent', null],
       [null, null],
     ])
+  })
+  it('an email we sent sits beside the texts, its subject as the words and what the customer did as the chip; the lane’s filter picks either (v2.5707)', () => {
+    const lines = [
+      line(),
+      line({ id: 'e1', channel: 'email', subject: 'Estimate #212 — Estimate for Dana Whitfield — $4,860 · Click Plumbing', body: 'Estimate #212 — …', atMs: AT_131 - 60_000, estimate: { number: 212, opened: true, accepted: true } }),
+      line({ id: 'e2', channel: 'email', subject: 'Invoice 2041 — Calloway softener — $2,150', body: '', atMs: AT_900, who: 'the app', delivery: 'delivered', estimate: null }),
+    ]
+    const rows = wentOutRows(lines, 'all')
+    expect(rows.map((r) => [r.id, r.channel, r.words, r.chip, r.mark?.words ?? null])).toEqual([
+      ['m1', 'text', 'Dana, your estimate is ready.', null, null],
+      ['e1', 'email', 'Estimate #212 — Estimate for Dana Whitfield — $4,860 · Click Plumbing', 'opened · accepted', null],
+      ['e2', 'email', 'Invoice 2041 — Calloway softener — $2,150', null, null],
+    ])
+    expect(wentOutRows(lines, 'all', 'texts').map((r) => r.id)).toEqual(['m1'])
+    expect(wentOutRows(lines, 'all', 'emails').map((r) => r.id)).toEqual(['e1', 'e2'])
+    expect(wentOutRows([line({ id: 'e3', channel: 'email', subject: 'Estimate #213 — x', body: '', estimate: { number: 213, opened: true, accepted: false } })], 'all')[0]?.chip).toBe('opened')
   })
   it('long words trim to one row, on the first line', () => {
     const rows = wentOutRows([line({ body: `${'w'.repeat(200)}\nsecond line` })], 'all')
