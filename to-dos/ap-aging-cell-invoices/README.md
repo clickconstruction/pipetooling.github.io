@@ -1,8 +1,8 @@
 ---
 name: "Accounts payable: an aging cell opens onto the invoices behind it"
 number: 132
-group: ready
-status: building — the owner's go 2026-10-20 ("Build it"), on the recommended defaults for all nine calls; proposed, clarified twice and mocked up the same day (the modal; the Job acct chip as an act; the move window: movable only while Current, moved by an attested call or an emailed request with a follow-up); PR 1 on `feat/ap-aging-cell-modal`
+group: waiting
+status: built and live 2026-10-21 — proposed, clarified twice, mocked up and approved 2026-10-20 ("Build it", on the recommended defaults for all nine calls); PR 1 the cell modal (v2.5673 #5911), PR 2 the chip as an act (v2.5675 #5915), PR 3 the move window (v2.5677 #5927; migration 20261020130000 pushed, edge request-job-account-move deployed, the test-mode send verified end to end); PR 4 (the doors) waits on real use
 summary: >
   The aging heat map on Supply houses → Accounts payable sums unpaid invoices into cells —
   a house's 60–90 dollars, the No due date column, the footer totals — and none of those
@@ -22,14 +22,13 @@ summary: >
   money cards and GC Review's bill lines: a money number opens onto the papers behind it.
   Client-only except PR 3's one small table and one edge function for the emailed ask.
 next: >
-  The owner's go plus nine calls (which cells click, what PR 1 can do, the phone rows, job
-  names on open, Flag anyway on past-due rows, per-row vs batch, the email's shape, where
-  the nudge lives, how an unanswered ask escalates — recommended defaults under Decisions).
-  Then PR 1 (kernel + read-only modal), PR 2 (the Job acct chip flow), PR 3 (the move
-  window: the strip, the move modal, the worked list, the migration + edge function), PR 4
-  (edit / add-a-due-date / Make a payment doors from inside the modal).
+  A few days of real use of the cell modal, the chips and the move window, then PR 4 — the
+  doors out of the modal (row press opens the invoice through the house detail, Add a due
+  date on the No due date rows, Pick a job on job-less rows, Make a payment on house-scoped
+  modals). The plan's PR 4 section below is the spec.
 size: S (PR 1 — kernel, widened select, read-only modal) + S (PR 2 — the Job acct chip flow) + M (PR 3 — the move window: modal workflow, migration, edge function) + S (PR 4 — the doors out of it)
-blocker: "The owner: the go and the four calls under Decisions."
+blocker: "Time: a few days of real use before PR 4."
+ver: v2.5673 (PR 1, the cell modal) · v2.5675 (PR 2, the chip as an act) · v2.5677 (PR 3, the move window)
 opinion: build — the cell already knows exactly which papers it summed; making the office re-derive that by eye before every credit-desk call is the kind of detour the rest of the app has already paved over.
 ---
 
