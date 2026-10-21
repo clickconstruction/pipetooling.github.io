@@ -209,6 +209,31 @@ describe('/messages: Follow up with the kind pills', () => {
     expect(within(section).queryByRole('list')).toBeNull()
   })
 
+  it('searches every message from the box under the pills: the lines that match replace the lists, and a row opens the thread at its line (v2.5701)', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    expect(loadMessagesView).not.toHaveBeenCalled()
+    const box = screen.getByLabelText('Search every message') as HTMLInputElement
+    fireEvent.change(box, { target: { value: 'd' } })
+    expect(screen.getByText('Type two letters or more.')).toBeTruthy()
+    expect(loadMessagesView).not.toHaveBeenCalled()
+    fireEvent.change(box, { target: { value: 'detention' } })
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalled())
+    const hits = await screen.findAllByTestId('search-hit')
+    expect(hits.length).toBeGreaterThanOrEqual(1)
+    const greg = hits.find((h) => h.textContent?.includes('Addendum 1'))!
+    expect(greg).toBeTruthy()
+    expect(within(greg).getByText('detention').tagName).toBe('MARK')
+    expect(screen.queryByText(GREG)).toBeNull()
+    expect(screen.queryByTestId('went-out-today')).toBeNull()
+    fireEvent.click(greg)
+    await waitFor(() => expect(where()).toContain('thread=c-greg'))
+    expect(where()).toContain('at=m-greg-text-in')
+    fireEvent.change(box, { target: { value: '' } })
+    expect(await screen.findByText(GREG)).toBeTruthy()
+    expect(screen.queryByTestId('search-hits')).toBeNull()
+  })
+
   it('opens a person’s thread over the page and keeps the pill', async () => {
     at('/messages?kind=customer')
     fireEvent.click(await screen.findByText(ELENA))
