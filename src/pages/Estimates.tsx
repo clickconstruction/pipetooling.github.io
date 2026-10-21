@@ -97,6 +97,7 @@ import { GC_OFFICE_TEAM } from '../lib/gc/access'
 import { formatCurrency } from '../lib/format'
 import { TellCustomerSheet } from '../components/customers/TellCustomerSheet'
 import { EstimateWhatWent } from '../components/estimates/EstimateWhatWent'
+import { tieEstimateTextsToJob } from '../lib/estimates/estimateTextsTieIo'
 import type { TellSendEmailAnswer } from '../lib/tellCustomer/tellCustomer'
 import { estimateDraftFormSnapshot, shouldDiscardFreshEstimateDraftOnLeave } from '../lib/estimateFreshDraftDiscard'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
@@ -5325,6 +5326,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         onClose={() => setCreateJobModalOpen(false)}
         onSuccess={(jobId) => {
           void (async () => {
+            // The estimate's texts move onto the job it became (v2.5706, punch list #139): best effort, before the page leaves.
+            if (row.customer_id) await tieEstimateTextsToJob({ customerId: row.customer_id, sentAt: row.sent_at, tokenHash: row.public_token_hash ?? null, jobId })
             await load()
             navigate(`/jobs?edit=${jobId}`)
           })()

@@ -30,6 +30,33 @@ export function estimateDoorFor(m: { channel: string; direction: string; subject
 /** The estimate's page, change orders included. */
 export const estimateDoorHref = (d: EstimateDoor) => `/estimates/${d.number}`
 
+/** An estimate as the text door's read brings it: its number, its link's token hash, and whether it is a change order. */
+export interface EstimateForDoor {
+  number: number
+  tokenHash: string
+  changeOrder: boolean
+}
+
+/**
+ * The door on a text (v2.5706, punch list #139 PR 14): a text carries the accept link's token, the estimate keeps the
+ * token's hash (`acceptLinkTie.ts`), so a text whose token hashes to an estimate's opens that estimate. Texts with
+ * no match, or whose link died (a resend re-mints the hash), draw none.
+ */
+export function textDoorsFrom(texts: ReadonlyArray<{ id: string; hashes: readonly string[] }>, estimates: readonly EstimateForDoor[]): Map<string, EstimateDoor> {
+  const byHash = new Map(estimates.map((e) => [e.tokenHash.toLowerCase(), e]))
+  const doors = new Map<string, EstimateDoor>()
+  for (const t of texts) {
+    for (const h of t.hashes) {
+      const e = byHash.get(h.toLowerCase())
+      if (e) {
+        doors.set(t.id, { kind: e.changeOrder ? 'change-order' : 'estimate', number: e.number, duplicate: false })
+        break
+      }
+    }
+  }
+  return doors
+}
+
 export const ESTIMATE_DOOR_WORDS = {
   open: (d: EstimateDoor) => `Open ${d.kind === 'estimate' ? 'estimate' : 'change order'} #${d.number}`,
   tip: 'Opens it on the Estimates page. The thread closes.',

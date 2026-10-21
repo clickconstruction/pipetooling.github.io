@@ -4,9 +4,9 @@
  * subject draws the door as its body; one with its own words draws it under the line; their email and a text draw
  * none; a press closes the thread and lands on the estimate's page.
  */
-import { cleanup, fireEvent, screen } from '@testing-library/react'
-import { Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Contact } from '../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../lib/messages/thread'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -54,11 +54,32 @@ describe('useEstimateDoorThreadSlots', { timeout: 15_000 }, () => {
     expect(screen.getByTestId('body').textContent).toBe('words')
     expect(screen.getByTestId('under').textContent).toBe('📄 Open estimate #166')
   })
-  it('draws none on their email or on a text', () => {
+  it('draws none on their email, nor on a text whose link names no estimate', () => {
     mount(message({ direction: 'in' }))
     expect(screen.queryByTestId('estimate-door')).toBeNull()
     cleanup()
     mount(message({ channel: 'text', subject: null, body: 'Evan, your estimate: https://clicktooling.com/estimate/accept?t=abc' }))
     expect(screen.queryByTestId('estimate-door')).toBeNull()
+  })
+  it('a text that carried the link draws the door under it, its estimate named by the open thread’s read (v2.5706)', async () => {
+    const io = vi.fn(async (contactId: string) => new Map(contactId === 'c-evan' ? [['m1', { kind: 'estimate' as const, number: 166, duplicate: false }]] : []))
+    function TextHarness() {
+      const slots = useEstimateDoorThreadSlots(io)
+      const m = message({ channel: 'text', subject: null, body: 'Evan, your estimate: https://clicktooling.com/estimate/accept?t=abc' })
+      return <div data-testid="under">{slots.underLine?.(m, CONTACT) ?? null}</div>
+    }
+    render(
+      <MemoryRouter initialEntries={['/messages?thread=c-evan']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <TextHarness />
+        <Routes>
+          <Route path="/estimates/:n" element={<div data-testid="estimate-page">the estimate page</div>} />
+          <Route path="*" element={null} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect((await screen.findByTestId('estimate-door')).textContent).toBe('📄 Open estimate #166')
+    expect(io).toHaveBeenCalledWith('c-evan')
+    fireEvent.click(screen.getByTestId('estimate-door'))
+    expect(await screen.findByTestId('estimate-page')).toBeTruthy()
   })
 })
