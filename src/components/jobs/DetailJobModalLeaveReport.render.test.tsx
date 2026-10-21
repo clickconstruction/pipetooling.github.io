@@ -31,7 +31,7 @@ beforeAll(() => {
 })
 
 describe('DetailJobModal · ＋ Report in the activity header', () => {
-  it('opens the per-job report form over the window, which Escape leaves alone until the form closes', async () => {
+  it('opens the per-job report form over the window; Escape closes the form and leaves the window, as its Close does', async () => {
     const onClose = vi.fn()
     renderWithProviders(
       <UpdateFocusOpenerBridgeProvider>
@@ -48,12 +48,16 @@ describe('DetailJobModal · ＋ Report in the activity header', () => {
     const form = formOf()!
     expect(within(form).getByRole('heading', { name: '1043 Kane' })).toBeTruthy()
 
-    // Escape anywhere while the form is up: the window stays.
+    // Escape anywhere while the form is up peels one layer: the form closes (v2.5691), the window stays.
     fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(formOf()).toBeNull())
     expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Leave Report' })).toBeTruthy()
 
-    // The form's own Close takes it down; the window is still here.
-    fireEvent.click(within(form).getByRole('button', { name: 'Close' }))
+    // Opened again, the form's own Close takes it down the same way; the window is still here.
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Report' }))
+    await waitFor(() => expect(formOf()).not.toBeNull())
+    fireEvent.click(within(formOf()!).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(formOf()).toBeNull())
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Leave Report' })).toBeTruthy()
