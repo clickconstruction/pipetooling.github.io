@@ -380,7 +380,7 @@ describe('/messages: Answer all (punch list #140 PR 6)', () => {
   it('under Mine the desk walks only the people I hold, and reads the threads while it is open', async () => {
     at('/messages')
     await screen.findByText(GREG)
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Show' })).getByRole('radio', { name: 'Mine · 1' }))
+    fireEvent.click(await within(screen.getByRole('radiogroup', { name: 'Show' })).findByRole('radio', { name: 'Mine · 1' }))
     await waitFor(() => expect(screen.queryByText(GREG)).toBeNull())
     const lane = screen.getByRole('region', { name: 'Needs a reply' })
     fireEvent.click(within(lane).getByRole('button', { name: 'Answer all' }))
