@@ -1,13 +1,15 @@
 /**
  * Waiting on them, the read (v2.5704, punch list #139 PR 12): the last `LOOKBACK_DAYS` days of lines either way —
  * texts, emails and calls, theirs and ours — with each person's name and kind for the pill and the number our line
- * went to for the call. The kernel keeps each person's newest line and asks whether it is ours and old enough. One
+ * went to for the call, and since #140 PR 4 each line's channel and Quo's delivery answer, for the failed text's row. The
+ * kernel keeps each person's newest line and asks whether it is ours and old enough. One
  * read, at most 1500 rows; RLS shows the office what the thread would.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import type { ContactKind } from '../contacts/kernel'
+import { deliveryOf, type MessageChannel } from './thread'
 import type { WaitLine } from './waitingOnThem'
 
 /** A silence older than this is not a nudge the lane makes; the flow's reminders carry it. */
@@ -18,7 +20,7 @@ export async function loadWaitingOnThem(now: Date = new Date(), client: unknown 
   const fromIso = new Date(now.getTime() - LOOKBACK_DAYS * 86_400_000).toISOString()
   const result = await db
     .from('messages')
-    .select('id, contact_id, direction, body, at, number:contact_channels(value), contact:contacts(name, kind, customer:customers(name))')
+    .select('id, contact_id, direction, body, at, channel, delivery, number:contact_channels(value), contact:contacts(name, kind, customer:customers(name))')
     .in('direction', ['in', 'out'])
     .in('channel', ['text', 'email', 'call', 'voicemail', 'missed'])
     .gte('at', fromIso)
@@ -31,6 +33,8 @@ export async function loadWaitingOnThem(now: Date = new Date(), client: unknown 
     direction: string
     body: string
     at: string
+    channel: string | null
+    delivery: string | null
     number: { value: string | null } | null
     contact: { name: string | null; kind: string | null; customer: { name: string | null } | null } | null
   }>
@@ -46,5 +50,7 @@ export async function loadWaitingOnThem(now: Date = new Date(), client: unknown 
       body: r.body,
       atMs: Date.parse(r.at),
       number: r.number?.value ?? null,
+      channel: (r.channel ?? null) as MessageChannel | null,
+      delivery: deliveryOf(r.delivery),
     }))
 }

@@ -175,19 +175,26 @@ const NUDGE_LINES: Readonly<Record<string, (link: string | null) => string>> = {
   questions: () => 'checking on our question. Questions close soon.',
   submittals: () => 'checking on the submittal we sent you.',
   certify: () => 'checking on the pay application we sent for your certificate.',
+  // The residential steps that wait on the customer (punch list #140 PR 4): the thread's Nudge reads these too.
+  approved: () => 'any word on the estimate? Happy to answer any questions.',
+  paid: () => 'checking on the bill. Need the pay page sent again?',
 }
 
 /** The steps with words of their own. */
 export const NUDGE_LINE_STEPS: readonly string[] = Object.keys(NUDGE_LINES)
+
+/** What the line reads of a step: its id, its name and its papers, as a `FlowStep` has them or the box's `FlowNow` (punch list #140 PR 4). */
+export type NudgeLineStep = Pick<FlowStep, 'id' | 'name'> & { papers: readonly PaperId[] }
 
 /** A paper of theirs as the message names it to them: 'your W-9'. */
 const yours = (paper: PaperId): string => (FLOW_PAPERS[paper]?.name ?? paper).replace(/^their /, 'your ')
 
 /**
  * The reminder's own line for a step: the team's quick reply for it, with their portal link when the step waits on a
- * paper of theirs; else the step's own words; else a check on that paper; else a check-in on the step.
+ * paper of theirs; else the step's own words; else a check on that paper; else a check-in on the step. The thread's
+ * Nudge reads it too (`messages/nudgeDraft.ts`, punch list #140 PR 4), so the box and the morning say the same words.
  */
-export function nudgeLine(person: Pick<PersonFlow, 'first' | 'reading'>, def: FlowStep, quickReplies: readonly QuickReply[] = [], link: string | null = null): string {
+export function nudgeLine(person: { first: string; reading: Pick<PersonFlow['reading'], 'kind'> }, def: NudgeLineStep, quickReplies: readonly QuickReply[] = [], link: string | null = null): string {
   const paper = def.papers.find((p) => !factForPaper(p)?.ours) ?? null
   const upload = paper && link ? ` You can upload it here: ${link}` : ''
   const team = stepLine(quickReplies, flowContactKind(person.reading.kind), def.id, '')

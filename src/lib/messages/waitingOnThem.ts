@@ -2,13 +2,16 @@
  * Waiting on them (v2.5704, punch list #139 PR 12, the second of the six additions): the lane on `/messages` for the
  * people who went quiet after our send — every thread where our line is the last word, `WAIT_DAYS` or more ago,
  * longest quiet first. Needs a reply is who waits on us; the thread's header already says *Their move · 10 h* per
- * person; nothing listed them. Each row offers the nudge (the thread, where the office writes it) and the call. Pure;
- * the read is `waitingOnThemIo.ts`, the section `components/messages/WaitingOnThem.tsx`.
+ * person; nothing listed them. Each row offers the nudge and the call. Since punch list #140 PR 4 the nudge opens the
+ * thread with the step's reminder written and the send window open (`nudgeDraft.ts`), and a last text Quo could not
+ * deliver draws the row red with the call and the same words as an email, since they never read it. Pure; the read is
+ * `waitingOnThemIo.ts`, the section `components/messages/WaitingOnThem.tsx`.
  */
 import type { ContactKind } from '../contacts/kernel'
 import { telHrefFor } from '../phoneContact'
 import { clockDay } from '../tellCustomer/tellCustomer'
 import { inPill, type KindPill } from './kindPills'
+import { deliveryMark, type DeliveryMark, type MessageChannel, type QuoDeliveryWord } from './thread'
 
 /** How long our last word stands unanswered before the person is waiting on us to notice. */
 export const WAIT_DAYS = 2
@@ -26,6 +29,9 @@ export interface WaitLine {
   atMs: number
   /** The number our line went to, for the call. */
   number?: string | null
+  /** How the line went (#140 PR 4): a text of ours carries Quo's delivery answer. */
+  channel?: MessageChannel | null
+  delivery?: QuoDeliveryWord | null
 }
 
 export interface WaitingRow {
@@ -41,6 +47,8 @@ export interface WaitingRow {
   when: string
   tel: string | null
   atMs: number
+  /** Our last text did not reach them (#140 PR 4): the row says so and offers the call and the email in the nudge's place. */
+  mark: DeliveryMark | null
 }
 
 const WORDS_MAX = 110
@@ -68,6 +76,7 @@ export function waitingOnThem(lines: readonly WaitLine[], pill: KindPill, now: D
       when: clockDay(l.atMs),
       tel: l.number?.trim() ? telHrefFor(l.number) : null,
       atMs: l.atMs,
+      mark: l.channel === 'text' ? deliveryMark({ direction: 'out', channel: 'text', delivery: l.delivery ?? null }) : null,
     })
   }
   return rows.sort((a, b) => a.atMs - b.atMs)
@@ -79,6 +88,10 @@ export const WAITING_WORDS = {
   empty: 'Nobody has gone quiet on us.',
   problem: 'Who went quiet could not be read.',
   nudge: 'Nudge',
-  nudgeTip: 'Opens the thread so you can write the nudge.',
+  nudgeTip: 'Opens the thread with the reminder for their step written and the send window open.',
   call: 'Call',
+  /** A failed text's row (#140 PR 4): the call first, then the same words as an email. */
+  callThem: 'Call them',
+  asEmail: 'Send it as an email',
+  asEmailTip: 'Opens the thread with the same reminder written as an email and the send window open.',
 }
