@@ -332,8 +332,9 @@ describe('/messages: Show, Mine · Everyone (punch list #140 PR 3)', () => {
     at('/messages')
     await screen.findByText(GREG)
     expect(screen.getByText(HELD)).toBeTruthy()
-    expect(show().getByRole('radio', { name: /^Everyone · \d+$/ }).getAttribute('aria-checked')).toBe('true')
-    fireEvent.click(show().getByRole('radio', { name: 'Mine · 1' }))
+    // The counts land a render after the rows: the panel hears the queue in an effect, so wait for them.
+    expect((await show().findByRole('radio', { name: /^Everyone · \d+$/ })).getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(await show().findByRole('radio', { name: 'Mine · 1' }))
     await waitFor(() => expect(screen.queryByText(GREG)).toBeNull())
     expect(screen.getByText(HELD)).toBeTruthy()
     expect(screen.queryByText(UNKNOWN)).toBeNull()
