@@ -190,6 +190,25 @@ describe('/messages: Follow up with the kind pills', () => {
     expect(where()).toBe('/messages?kind=more')
   })
 
+  it('shows everyone we have talked with under the lane on a press, reading the view only then (v2.5700)', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    expect(loadMessagesView).not.toHaveBeenCalled()
+    const section = screen.getByRole('region', { name: 'Everyone we have talked with' })
+    expect(within(section).queryByRole('list')).toBeNull()
+    fireEvent.click(within(section).getByRole('button', { name: 'Show everyone' }))
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalled())
+    const list = await within(section).findByRole('list')
+    const rows = within(list)
+      .getAllByRole('button')
+      .map((b) => b.getAttribute('data-messages-row'))
+    expect(rows).toContain('c-dee')
+    expect(within(section).getByLabelText('Search the messages')).toBeTruthy()
+    expect(screen.getByText(GREG)).toBeTruthy()
+    fireEvent.click(within(section).getByRole('button', { name: 'Hide everyone' }))
+    expect(within(section).queryByRole('list')).toBeNull()
+  })
+
   it('opens a person’s thread over the page and keeps the pill', async () => {
     at('/messages?kind=customer')
     fireEvent.click(await screen.findByText(ELENA))

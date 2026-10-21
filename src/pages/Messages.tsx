@@ -21,6 +21,7 @@ import { canOpenMessages } from '../lib/gc/access'
 import { pageGate } from '../lib/roleGate'
 import { loadGcTeam, type GcTeamMember } from '../lib/gc/gcIo'
 import { followUpTeamOf } from '../lib/followUp/team'
+import { EVERYONE_WORDS } from '../lib/messages/everyone'
 import { KIND_PILLS, peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
 
 export default function Messages() {
@@ -33,7 +34,10 @@ export default function Messages() {
   const gate = pageGate({ loading: authLoading, user, role }, canOpenMessages)
   const canOpen = gate === 'open'
   const onFollowUp = pillOnFollowUp(pill)
-  const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null), closeThread: thread.closeThread })
+  // Everyone we have talked with (v2.5700): the people list under the queues, opened on a press, since its view reads
+  // every contact and message there is. The queues never wait on that read.
+  const [everyoneOpen, setEveryoneOpen] = useState(false)
+  const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null || everyoneOpen), closeThread: thread.closeThread })
 
   const [team, setTeam] = useState<GcTeamMember[]>([])
   useEffect(() => {
@@ -97,8 +101,38 @@ export default function Messages() {
         </div>
       )}
 
-      {/* Went out today (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
+      {/* Went out (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
       <WentOutToday pill={pill} onOpenThread={thread.openThread} />
+
+      {/* Everyone we have talked with (v2.5700): the people list with its search, for every pill the queues serve; the
+          last pill already shows the list in the queues' place. */}
+      {onFollowUp && (
+        <section aria-label={EVERYONE_WORDS.title} data-testid="everyone">
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem' }}>{EVERYONE_WORDS.title}</h3>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{EVERYONE_WORDS.note}</span>
+            <button
+              type="button"
+              onClick={() => setEveryoneOpen((open) => !open)}
+              data-testid="everyone-toggle"
+              style={{
+                marginLeft: 'auto',
+                padding: '0.3rem 0.8rem',
+                borderRadius: 999,
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                color: 'var(--text-link)',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
+            >
+              {everyoneOpen ? EVERYONE_WORDS.hide : EVERYONE_WORDS.show}
+            </button>
+          </div>
+          {everyoneOpen && <GcMessages view={listView} problem={host.problem} nowIso={host.nowIso} onOpenThread={(id) => thread.openThread(id)} filters={false} />}
+        </section>
+      )}
 
       {thread.contactId && (
         <MessagesRereadContext.Provider value={host.reread}>
