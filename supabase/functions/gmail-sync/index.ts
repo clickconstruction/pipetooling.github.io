@@ -5,7 +5,7 @@
  * Gmail id (`email_write_line`), and marked with the label "In ClickTooling". Nothing in Gmail is deleted, archived,
  * moved or marked read.
  *
- * Cron only, every 3 minutes (`20261013080000_messages_email_in.sql`), with X-Cron-Secret. With the switch
+ * Cron only, every minute (`20261021130000_gmail_sync_every_minute.sql`; every 3 before), with X-Cron-Secret. With the switch
  * (`app_settings` `gmail_sync_on_v1`) off, nothing.
  * - The first run after the switch keeps the mailbox's history point and reads nothing older (no backfill).
  * - Each run reads the Inbox's new messages since the last point, oldest first, up to 40.

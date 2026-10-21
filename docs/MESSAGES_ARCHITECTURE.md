@@ -175,7 +175,7 @@ function reads, writes and calls.
 **Email out** is `messages-email` from the reply box to one of the person's addresses; the GC senders (`gc-trade-email`,
 `gc-customer-email`, `gc-architect-email`) and the notify and send functions already keep every copy in
 `sent_documents`, which the thread reads back as lines. **Email in** is `gmail-sync` (cut 6): the bids@ reader, under a
-service account's delegation, every three minutes while **Read bids@** is on (`gmail_sync_on_v1`, `gmail_sync_state`);
+service account's delegation, every minute (v2.5719) while **Read bids@** is on (`gmail_sync_on_v1`, `gmail_sync_state`);
 each email lands in its sender's thread with its files as `message_attachments`, and a file that reads as a trade
 partner's paper is offered under its line (`PaperOffers.tsx`) until someone answers it.
 
@@ -216,7 +216,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | The office's wait before it hears a reply nobody answered (0 is at once) | Settings → Phone and texts → Reply push, under the switch (v2.5540) | `messages_office_wait_minutes` |
 | Office hours (the days, the open and the close; the tech's hour and the after-hours number stay a dev's by hand) | Settings → Phone and texts → Office hours (v2.5709, punch list #140 PR 1; `officeHoursCard.ts`, the owner and a dev) | `messages_office_hours_v1` |
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
-| Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every three minutes |
+| Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every minute (v2.5719) |
 | The reminders the app sends itself, per step: off, offers or sends (v2.5595) | Settings → Flows | `messages_nudge_app_sends_v1`; the cron `messages-nudge-dispatch`, 14:00 and 15:00 UTC; the summary `messages_nudge_last_run_v1` |
 | My way: per moment, *Ask me first* or *Send it and show me the receipt* (v2.5597) | Settings → Your account, each office member's own | `tell_customer_prefs` |
 | Photos saved on arrival (the tick on a line) | the line | the cron `photo-save`, every five minutes; `photo_saves` |

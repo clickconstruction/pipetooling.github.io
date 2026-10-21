@@ -1407,7 +1407,7 @@ The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildG
 
 **Endpoint**: `POST /functions/v1/gmail-sync` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret` only.
 
-- The cron runs every 3 minutes (`20261013080000_messages_email_in.sql`). Its statement posts only while `app_settings.gmail_sync_on_v1` is `'true'`, which the owner or a dev sets from Settings → Phone and texts → **Read bids@** (v2.5380), and the function checks the switch again.
+- The cron runs every minute (`20261021130000_gmail_sync_every_minute.sql`, v2.5719; every 3 minutes before, `20261013080000_messages_email_in.sql`). Its statement posts only while `app_settings.gmail_sync_on_v1` is `'true'`, which the owner or a dev sets from Settings → Phone and texts → **Read bids@** (v2.5380), and the function checks the switch again.
 - The first run after the switch keeps the mailbox's history point (`users.getProfile`) and reads nothing older: no backfill.
 - Each run reads the Inbox's new messages since the last point (`users.history.list`, `messageAdded`, `INBOX`), oldest first, up to 40. The next run takes the rest. When Gmail no longer keeps the point (404), it searches the Inbox's untaken mail of the last week (`in:inbox -label:"In ClickTooling" newer_than:7d`) and starts again from the newest point.
 - For each message, through the kernels in `src/lib/emailIn/` (mirrored by `scripts/edge-kernels.mjs`):
