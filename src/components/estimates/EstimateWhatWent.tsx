@@ -20,20 +20,22 @@ export interface EstimateWhatWentProps {
   email: string | null
   /** `estimates.sent_at`. */
   sentAt: string | null
-  io?: (customerId: string, sentAt: string | null) => Promise<WhatWentRead>
+  /** `estimates.public_token_hash` (v2.5697): names the texts that carry this estimate's live link; none without it. */
+  tokenHash: string | null
+  io?: (customerId: string, sentAt: string | null, tokenHash: string | null) => Promise<WhatWentRead>
 }
 
-export function EstimateWhatWent({ customerId, customerName, email, sentAt, io = loadWhatWent }: EstimateWhatWentProps) {
+export function EstimateWhatWent({ customerId, customerName, email, sentAt, tokenHash, io = loadWhatWent }: EstimateWhatWentProps) {
   const [read, setRead] = useState<WhatWentRead | null | undefined>(undefined)
   useEffect(() => {
     let live = true
-    io(customerId, sentAt)
+    io(customerId, sentAt, tokenHash)
       .then((r) => live && setRead(r))
       .catch(() => live && setRead(null))
     return () => {
       live = false
     }
-  }, [io, customerId, sentAt])
+  }, [io, customerId, sentAt, tokenHash])
 
   const sentAtMs = sentAt ? Date.parse(sentAt) : NaN
   // A thread read that failed still shows the email: the card never blocks on it.
