@@ -99,8 +99,9 @@ The client's three gates fall back to empty reads for everyone but a dev, so a r
 
 ## Applied
 
-Not yet. The PR is a draft and arms only after the schedule's first live walk on prod (Grace's own yes), as the lead set.
+2026-10-21. #5231 merged at 01:23 UTC as v2.5114 and the migration was pushed that morning: the 09:58 UTC types regeneration (facee7147, after `20261021010000_log_call`) carries `gc_on_schedule_team`, `gc_on_any_schedule_team`, `gc_schedule_activity_project` and `gc_schedule_move_project`, and `ACCESS_CONTROL.md` → GC mode's Schedule line reads the door as open.
 
 ## Status
 
 - 2026-10-09: cut by gc 1 (the Schedule lane) from main at c5c29cc84. The bed green locally (113 checks) with five mutants each caught. Held as a draft.
+- 2026-10-21: merged (#5231, v2.5114) and pushed; see Applied.

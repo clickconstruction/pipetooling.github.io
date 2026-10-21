@@ -2,7 +2,7 @@
 name: "Stage texts from the Pipeline: the stage's line ready, and the morning's reminders"
 number: 124
 group: gated
-status: DRAFTED 2026-10-18 — the ask, the validity read, three mock-ups and the plan beside this file for the owner's read; the first draft (two more doors) drawn and set aside; nothing built
+status: BUILDING — the ask, the validity read, three mock-ups and the plan beside this file; the first draft (two more doors) drawn and set aside; PR 1 the {bill} blank (v2.5628, #5851), PR 2 the stage's lines first with PR 3 the window's bubble (v2.5629, #5854) and the strip reading its lines as it appears (v2.5639, #5865) are on main since 2026-10-19; left: the setting (the owner writes the Paid step's line and sets it to Offers) and the morning run filling the blanks
 summary: >
   Tanya wants to send a customer the right message from the Pipeline in one press, the bill's
   reminder first: "Hi, this is Tanya. Here is a copy of your last invoice. Let us know if you need
@@ -13,7 +13,7 @@ summary: >
   reminder set to Offers so Today's sends prepares the same text every morning for the bills past
   their pay-by day. Two more doors (an icon in the job window's row, a press in the activity's
   + Add strip) were drawn first and set aside: the gap is the words and the link, not the door.
-next: The owner reads the mock-up, picks the cuts and gives the Paid step its words; PR 1 is the {bill} blank.
+next: The owner writes the Paid step's line (Make this the office's line, or Settings → Flows) and sets Paid to Offers; the first morning's Today's sends is the live test.
 size: S (the blank) + S (the stage's lines first) + XS (the window's bubble) + a setting (Paid to Offers)
 blocker: The owner's pick, and his words for the Paid step's line.
 opinion: build all three cuts and turn Paid to Offers; the morning does the hunting and the sheet keeps the deliberate press one press away
@@ -107,15 +107,15 @@ bill. And the real case, every billed job past its day, should not need a press 
 
 ## The plan
 
-1. **PR 1, the blank** (S): `blanks.ts` `bill`, the fills in `tellCustomer.ts` and the box's path,
+1. **PR 1, the blank** (S, built v2.5628): `blanks.ts` `bill`, the fills in `tellCustomer.ts` and the box's path,
    `nudgeLine` for the run, the newest-bill read (`invoices` by job, billed, newest first, Stripe
    id present), tests for the fill, the hold and the run's line. Guide: *text a customer from the
    job* § the blanks; the Flows guide's blank list.
-2. **PR 2, the stage's lines first** (S): the stage → steps map (`FELT_MOVES` plus Billed →
+2. **PR 2, the stage's lines first** (S, built v2.5629 with PR 3; the strip reads its lines as it appears since v2.5639): the stage → steps map (`FELT_MOVES` plus Billed →
    Paid first), the strip unfolded on the sheet and the job box, the app's own words as the chip
    when no team line exists; smokes on the sheet and the box. Guide: *text a customer from the
    job* § From the Pipeline row gains the chip.
-3. **PR 3, the window's bubble** (XS): `DetailJobModal` passes the door; one smoke.
+3. **PR 3, the window's bubble** (XS, built v2.5629): `DetailJobModal` passes the door; one smoke.
 4. **The setting**: the owner writes the Paid line in the box (Make this the office's line) or in
    Settings → Flows, and sets Paid to Offers. The first morning's Today's sends is the live test.
 

@@ -2,7 +2,7 @@
 name: "Tell the customer: the press always answers — a send that fails says so in the sheet, a sent estimate offers its link again, and what went out shows where the office looks"
 number: 139
 group: close
-status: BUILT 2026-10-20 (renumbered from #133 in the numbering race), the owner's go on the recommended defaults the same day as the proposal — PR 1 v2.5681 (the sheet answers, PR 5916), PR 2 v2.5683 (What went on the estimate, PR 5921), PR 3 v2.5686 (Went out today on Messages, PR 5923), stacked; send-estimate-to-customer redeployed; the live walk (2026-10-20 night, Route B) found the receipt never showed, the page's refresh unmounting the sheet — PR 4 v2.5695 keeps the sheet mounted; left: the re-walk after it lands
+status: BUILT 2026-10-20 (renumbered from #133 in the numbering race), the owner's go on the recommended defaults the same day as the proposal — PR 1 v2.5681 (the sheet answers, PR 5916), PR 2 v2.5683 (What went on the estimate, PR 5921), PR 3 v2.5686 (Went out today on Messages, PR 5923), stacked; send-estimate-to-customer redeployed; the live walk (2026-10-20 night, Route B) found the receipt never showed, the page's refresh unmounting the sheet — PR 4 v2.5695 (#5942) keeps the sheet mounted, and PRs 5–16 (v2.5696–v2.5701 and v2.5703–v2.5708, #5943–#5954: Went out names the customer, keeps 7 days and lists the emails beside the texts, What went tied by the link's token, Open estimate on our emails, Everyone we have talked with, search from the top and in the address, delivery marks, Waiting on them, the estimate's open, accept and decline in the thread, the estimate text's door and its job tie, folded empty lists on a phone) are on main 2026-10-21, accept-estimate and get-estimate-for-customer redeployed; left: the re-walk
 summary: >
   When the Tell the customer sheet's send fails, today the sheet stays open unchanged — the only
   word is a toast that is gone in seconds, and on a live estimate the email can go, the badge flip
@@ -14,8 +14,8 @@ summary: >
   the receipt closes.
 next: the live walk on a test customer (send, press the stale sheet again for the resend, pull the network for the timeout band, then /messages shows the sends); the step chip on Went out today waits until the send path stamps step_key.
 size: L as a train of three (sheet + edge code M, estimate card M, Messages lane M)
-blocker: the owner's go; decision 1 (resend from the sheet) shapes PR 1.
-ver: proposed after v2.5593–v2.5597 (punch list #115)
+blocker: none — built on the owner's go of 2026-10-20.
+ver: v2.5681 to v2.5708 (after v2.5593–v2.5597, punch list #115)
 opinion: build — the sheet made every send a person's press; a press the app answers with silence costs the trust the sheet was built to earn, and the office compensates by double-sending to real customers.
 mockup: to-dos/press-always-answers/mockup.html
 ---
