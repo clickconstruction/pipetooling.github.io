@@ -1,21 +1,22 @@
 ---
 name: "Messages, worked like a desk — the loop switched fully on, Answer all one person at a time with a Mine lens, and a last-7-days strip whose every number is a door"
 number: 140
-group: gated
-status: proposed 2026-10-21 after the #139 train; mock-up rendered; waiting on the owner's go and the seven decisions
+group: ready
+status: READY TO BUILD — the owner's go 2026-10-21 on the recommended defaults (three revised after the code read, see § The seven decisions); BUILD_PLAN.md beside this file is the hand-off (per-PR files, kernels, words, tests, docs, the live test); nothing built yet; the proposal PR is #5955
 summary: >
   With #139's six additions Messages is a complete record and a complete inbox, and the next
-  gain is not another lane. Three levers: close the loop (the team inbox read, reply push, the
-  phone seats, the estimate and bill reminders as Offers, an Office hours card, and a card on
-  Messages that says which of the eight switches are still off); make the page a desk the office
-  works one person at a time (Answer all over Needs a reply with the step's quick replies, a Show
-  lens of Mine · Nobody's · Everyone, a Nudge that fills the step's words, a Call kind in the
-  reply box that logs a call with the day they gave, Book a visit and Start an estimate on a
-  lead's thread); and a last-7-days strip at the top (answered within an hour, longest wait now,
-  texts not delivered, estimates sent → opened → accepted), every number opening its rows.
-next: the owner's go and the seven decisions (recommended defaults in the mock-up's §7); then PR 1, the Office hours card.
-size: XL as a train of nine (S S M S M L M M S); the switches themselves are the owner's presses, not code
-blocker: the owner's go; decision 3 (Answer all's reach) shapes PR 6, decision 4 (what a logged call does) shapes PR 7.
+  gain is not another lane. Three levers: close the loop (an Office hours card, and a card on
+  Messages for the owner that says which of the eight switches are still off, each a door: the
+  team inbox read, reply push, the phone seats, the estimate and bill reminders as Offers);
+  make the page a desk the office works one person at a time (Answer all over Needs a reply
+  with the step's quick replies, a Show lens of Mine · Everyone, a Nudge that fills the step's
+  words, a Call kind in the reply box that logs a call with the day they gave through a log_call
+  RPC, Book a visit and Start an estimate on a lead's thread); and a last-7-days strip at the
+  top (answered within an hour, longest wait now, texts not delivered, estimates sent → opened
+  → accepted), every number opening its rows.
+next: another session builds the train in BUILD_PLAN.md order (PR 1 the Office hours card first; PRs 1, 7 and 8 cut from main, the page PRs from the #139 stack's top until it lands — BUILD_PLAN § 0.2); drop a session card; keep § Where it stands true after each PR; the live test (BUILD_PLAN § 3, the ZZ customer is our own inbox and the owner's cell) once all nine are on main.
+size: XL as a train of nine (S M M M L L M+migration M S); the switches themselves are the owner's presses, not code
+blocker: none — a session to build it. PR 7 carries the train's one migration (log_call).
 ver: proposed after v2.5681 · 5683 · 5686 · 5699 (punch list #139; its PRs 9–16 are still in the queue)
 opinion: build — the record is done and the office still reads it top to bottom; a desk, a lens and a strip turn six true sections into one next press and one honest number, and the switch card turns three silent gaps into three presses the owner can see.
 mockup: to-dos/messages-desk/mockup.html
@@ -96,8 +97,11 @@ What it is not yet:
 
 ### Lever 2 · a desk
 
-3. **Show: Mine · Nobody's · Everyone** — a segmented lens beside the kind pills, narrowing every
-   lane (and the desk) by who has it. Remembered per browser; starts on Everyone.
+3. **Show: Mine · Everyone** — a two-value lens beside the kind pills, narrowing every lane (and
+   the desk) to what I hold. Remembered per browser; starts on Everyone. (The mock-up drew a
+   third value, Nobody's; the code read showed New already is the nobody's list — a person
+   nobody holds whose newest line is theirs lands in New under "Who has it?" and leaves Needs a
+   reply. Two values is the honest cut.)
 4. **Nudge fills the words** — Waiting on them's Nudge fills the reply box with the step's
    reminder line (the estimate follow-up, the quote ask) and opens the send window: one read, one
    press, like **Text Greg** on Nudges from the flow. A text that did not deliver offers **Call
@@ -108,12 +112,20 @@ What it is not yet:
    a No reply needed moves on; someone who writes back meanwhile drops off. The end says what
    went and offers the quiet ones as a second pass. Under Mine it walks only what you hold.
 6. **Log a call** — a fourth kind in the reply box: what they said, the day they gave, whose move
-   it leaves. Lands as the app's own line (`☎ Evan called Tom. They said: … A day heard: Tue Oct
-   27.`), team only; Their move clears Needs a reply; the day holds Waiting on them until it
-   comes, like a promise in the flows.
+   it leaves. Lands as our line (`Called Tom. They said: …`, `channel 'call'`, `direction 'out'`,
+   written by a new `log_call` RPC — a signed-in client cannot insert a call row, so this is the
+   train's one migration); the existing trigger clears Needs a reply and the thread's chip flips
+   to their move; the day they gave is a written promise on that line, which Waiting on them
+   honors (holding the row until the day) and the thread's chip reads as *Their move · until …*
+   (the first caller of `loadCourtFacts`, which exists and is unused today).
 7. **A lead's doors** — **Book a visit** (Add Job with the lead's name, number and words filled)
-   and **Start an estimate** (a customer made from the lead, a new estimate opened) above the
-   words of a lead's thread and on their Needs a reply row. Either takes them off Leads.
+   and **Start an estimate** (a customer made from the lead, the thread re-pointed to them, a
+   new estimate opened on them) above the words of a lead's thread and on their Needs a reply
+   row. Either takes them off Leads. Both need a small door that does not exist yet (Add Job's
+   `openNewJob` takes no customer prefill; a new estimate takes no customer) — part of the PR.
+   "Add to Prospects" is a pure kernel with no caller today and stays unbuilt; the mock-up's
+   "Who is this? · kept as a lead" chip is not an app phrase (the thread's sub-line reads
+   **Lead:** *name*).
 
 ### Lever 3 · a result
 
@@ -157,58 +169,81 @@ What it is not yet:
 
 ## The plan
 
-| PR | What | Size |
-|---|---|---|
-| 1 | Office hours card | S |
-| 2 | Finish switching Messages on (the card and its line) | S |
-| 3 | Show: Mine · Nobody's · Everyone | M |
-| 4 | Nudge fills the step's words; Call them / Send it as an email on a failed text | S |
-| 5 | The last 7 days strip | M |
-| 6 | Answer all | L |
-| 7 | Log a call | M |
-| 8 | A lead's doors | M |
-| 9 | One front door; the guides | S |
+**The detailed plan is [`BUILD_PLAN.md`](./BUILD_PLAN.md)** beside this file: how to pick it up
+(§0, including which base each PR cuts from while the #139 stack is in the queue, and the
+"is this the best we can do?" questions every PR answers), the code as it is (§1, read on
+2026-10-21), each PR's goal, files, kernel, words, tests, docs, check and verify (§2), the live
+test with the ZZ customer being our own inbox and the owner's cell (§3), and what is not carried
+(§4).
+
+| PR | What | Size | Base |
+|---|---|---|---|
+| 1 | Office hours card | S | main |
+| 2 | Finish switching Messages on (the card and its line) | M | the page base |
+| 3 | Show: Mine · Everyone | M | the page base |
+| 4 | Nudge fills the step's words; Call them / Send it as an email on a failed text | M | the page base |
+| 5 | The last 7 days strip | L | the page base |
+| 6 | Answer all | L | the page base, after PR 3 |
+| 7 | Log a call (`log_call` RPC + migration) | M | main |
+| 8 | A lead's doors | M | main |
+| 9 | One front door; the guides | S | after 1–8 |
 
 Each PR: `npm run claim`, a release note and a `docs/recent-features/` fragment, the guide
 *answer everyone waiting on us from one page* amended, `PROJECT_DOCUMENTATION.md` /
-`GLOSSARY.md` for the new words (Show, Answer all, the strip), `ACCESS_CONTROL.md` for the
-owner-only card.
+`GLOSSARY.md` for the new words (Show, Answer all, the strip, Call), `ACCESS_CONTROL.md` for the
+owner-only card, `docs/migrations/` for PR 7.
 
 ## The seven decisions
 
-Recommended defaults in bold; the mock-up's §7 draws each.
+**Taken 2026-10-21: the owner's go on the recommended defaults** ("I think we should build all
+of it, asking ourselves is this the best we can do along the way"). Three were revised by the
+code read the same day (BUILD_PLAN § 0.3); build the revised form.
 
 1. **Where the strip sits** — **the top of Messages**, four tiles over the last 7 days, each a
-   door. Alternative: a Dashboard card only.
+   door. (Not: a Dashboard card only.)
 2. **Show's default** — **Everyone**, Mine one press away and remembered per browser.
-   Alternative: Mine by default for assistants.
+   **Revised: two values, Mine · Everyone** — "Nobody's" is New by construction.
 3. **Answer all's reach** — **Needs a reply first**, the quiet ones offered as a second pass at
-   the end. Alternative: one desk over both lanes.
-4. **What a logged call does** — **a team line that clears Needs a reply; the day they gave
-   holds Waiting on them until that day**. Alternative: a plain note, no day.
-5. **A lead's doors** — **both**: Book a visit and Start an estimate. Alternative: Start an
-   estimate alone.
+   the end. (Not: one desk over both lanes.)
+4. **What a logged call does** — **clears Needs a reply; the day they gave holds Waiting on
+   them until that day**. **Revised: it is our `call` line written by a `log_call` RPC, with
+   the day as a written promise on it** — a team note cannot do this (the chip would still say
+   Our move and Waiting on them would never see it). The train's one migration.
+5. **A lead's doors** — **both**: Book a visit and Start an estimate. **Revised in scope:** each
+   needs a small door built (Add Job's customer prefill; a customer on a new estimate); Add to
+   Prospects stays unbuilt.
 6. **The switch card's home** — **on Messages for the owner and devs**, folded to a line, Later
-   holds it a week, gone when all eight are on. Alternative: a Settings card only.
-7. **What Nudge does** — **fills the step's words and opens the send window**. Alternative:
-   puts it on Today's sends for the morning run.
+   holds it a week, gone when all eight are on. (Not: a Settings card only.)
+7. **What Nudge does** — **fills the step's words and opens the send window**. (Not: Today's
+   sends.) The residential estimate follow-up and bill steps get real reminder words in the same
+   PR; today the fallback reads "checking in on approved".
 
 ## How to verify
 
-- Unit: the lens's narrowing (who has it × pill), the desk's order and moves (skip, no reply,
-  someone writes back mid-walk), the strip's four numbers from a made-up view (the share, the
-  longest wait, a failed text, the funnel), the call line's words and its day, the switch card's
-  eight states from the settings keys.
-- Smokes: Messages with the lens on Mine shows only held rows; Answer all walks three made-up
-  people and ends; the Call kind saves a line and clears Needs a reply; the strip's tiles open
-  their lanes; the switch card shows for dev and not for assistant.
-- Live, Route B (the owner presses sends; the agent reads): the sample assistant on a ZZ test
-  customer — Answer all over two ZZ rows, a logged call with a day, the strip's numbers against
-  the rows by hand, the switch card against Settings. Delete the ZZ rows after.
-- Plain words: every new on-screen sentence through `plainWords.ts`; the guide through
-  `helpGuidePlainWords.test.ts`.
+Per PR: BUILD_PLAN § 2 (each PR's *Tests* and *Verify*). The whole, once the train is on main:
+BUILD_PLAN § 3 — Route B (a human presses every Send), with **the ZZ customer being us**: its
+email is the team inbox's own address, its phone is the owner's own cell. So the estimate email
+and text go out to us, the email reply from that inbox lands in the thread through the team
+inbox read (the proof of lever 1), the text reply from that phone lands through the Quo webhook
+with the ✓ delivered mark above it, and Answer all, Log a call, Nudge, Show and the strip are
+walked on real rows. Delete the ZZ rows after (and check the owner's cell joins no other
+contact).
 
 ## Where it stands
 
-Proposed 2026-10-21 after the #139 train; the mock-up at `mockup.html` rendered with Playwright
-(desktop and phone frames). Waiting on the owner's go and the seven decisions.
+| PR | What | Version | PR | State |
+|---|---|---|---|---|
+| — | Proposal + mock-up + BUILD_PLAN | — | #5955 | armed 2026-10-21 |
+| 1 | Office hours card | | | not started |
+| 2 | Finish switching Messages on | | | not started |
+| 3 | Show: Mine · Everyone | | | not started |
+| 4 | Nudge fills the step's words | | | not started |
+| 5 | The last 7 days strip | | | not started |
+| 6 | Answer all | | | not started |
+| 7 | Log a call (+ migration, `supabase db push` after merge) | | | not started |
+| 8 | A lead's doors | | | not started |
+| 9 | One front door; the guides | | | not started |
+| — | Live test (BUILD_PLAN § 3) | | | after 1–9 |
+
+Keep this table true after each PR (version, PR number, armed / merged / live). The session that
+proposed it (2026-10-21) built nothing; the owner chose another session to build the train.
