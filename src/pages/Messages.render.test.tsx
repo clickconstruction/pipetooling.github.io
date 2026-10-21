@@ -59,7 +59,7 @@ vi.mock('../lib/messages/messagesIo', async () => {
   }
   return {
     loadMessagesView: vi.fn(() => Promise.resolve(view())),
-    // Answer all's box reads the person with their numbers; here nobody's record reads, so the card offers the thread.
+    // A lead's doors (punch list #140 PR 8) and Answer all's box (PR 6) read the person with their numbers; nobody's record reads here.
     loadContact: vi.fn(() => Promise.resolve(null)),
     nameContact: vi.fn(),
     tieMessage: vi.fn(() => Promise.resolve()),

@@ -19,6 +19,8 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useFollowUpQueue } from '../../hooks/useFollowUpQueue'
 import { Card } from '../gc/gcUi'
 import { FollowUpSections, type FollowUpSectionActions } from './FollowUpSections'
+import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
+import { useLeadDoors } from '../messages/useLeadDoors'
 import { SortAllDesk } from './SortAllDesk'
 import { AnswerAllDesk, type AnswerAllDeskProps, type AnswerThread } from './AnswerAllDesk'
 import type { OpenThreadMore } from '../gc/messages/useThreadWindow'
@@ -78,10 +80,13 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
     quickIo?: AnswerAllDeskProps['quickIo']
     quietIo?: AnswerAllDeskProps['quietIo']
   }
+  /** A lead's doors (punch list #140 PR 8): the writes behind Book a visit and Start an estimate; a smoke hands its own. */
+  leadIo?: LeadDoorsIo
 }
 
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
-  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll } = props
+  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll, leadIo } = props
+  const leadDoors = useLeadDoors(leadIo)
   const todayYmd = props.todayYmd ?? todayYmdInAppTz()
   const nowIso = props.nowIso ?? new Date().toISOString()
   const userNames = useMemo(() => Object.fromEntries([...team, me].map((t) => [t.id, t.name])), [team, me])
@@ -132,6 +137,9 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
 
   const actions: FollowUpSectionActions = {
     openThread: onOpenThread,
+    // A lead's doors (punch list #140 PR 8): the customer made from the lead, then Add Job or a new estimate.
+    bookVisit: (contactId, words) => void leadDoors.book({ contactId, words }),
+    startEstimate: (contactId, words) => void leadDoors.startEstimate({ contactId, words }),
     hand: (contactId, userId) => {
       const to = userId === null ? null : userId === me.id ? me.name : (userNames[userId] ?? 'Someone')
       void run(`hand ${contactId}`, (x) => (userId === me.id ? x.takeIt(contactId) : x.handTo(contactId, userId)), hasToast(me.name, nameOf(contactId), to))

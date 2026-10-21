@@ -32,7 +32,7 @@ Press the person's row in **New**. Their thread opens with the sort card at the 
 The card lists who the sender may be. A text to the team number guesses a customer we know first, then a new lead. An email to bids@ guesses a trade partner first.
 
 - Press a customer or a trade partner to name the number as them. The thread stays with them.
-- Press the new lead to keep them as a lead until they book.
+- Press the new lead to keep them as a lead until they book. Their thread then offers **Book a visit** and **Start an estimate**. Either makes them a customer, and their thread comes along.
 - Press **One of our own team** when the number is a teammate's. The card lists the roster. Press their name.
 - Press **Someone else** to find them yourself in **Who is this?**.
 

@@ -480,3 +480,39 @@ describe('FollowUpPanel: the whole queue for the page (punch list #140 PR 3)', (
     expect(contacts.find((c) => c.id === 'greg')?.hasUserId).toBe('u-rosa')
   })
 })
+
+// A lead's doors on the Needs a reply row (punch list #140 PR 8): Add Job's provider and the contact read are stood in.
+const leadDoorsStand = vi.hoisted(() => ({ openNewJob: vi.fn() }))
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock({ role: 'assistant' })
+})
+vi.mock('../../contexts/JobFormModalContext', () => ({ useJobFormModal: () => ({ isOpen: false, openNewJob: leadDoorsStand.openNewJob, openEditJob: vi.fn(), closeJobForm: vi.fn() }) }))
+vi.mock('../../lib/messages/messagesIo', async (orig) => ({
+  ...(await orig<typeof import('../../lib/messages/messagesIo')>()),
+  loadContact: vi.fn(async () => ({ id: 'lena', kind: 'lead', name: 'Lena Ortiz', goesBy: null, company: '', record: null, channels: [{ id: 'ch-lena', kind: 'phone', value: '(830) 555-0101', optedOutAt: null }], jobIds: [], defaultJobId: null })),
+}))
+
+describe('FollowUpPanel: a lead’s doors on their row (punch list #140 PR 8)', () => {
+  it('a lead’s row offers Book a visit and Start an estimate; Book a visit makes the customer and opens Add Job filled in', async () => {
+    const leadIo = { convert: vi.fn(async () => ({ customerId: 'cust-1' })), startEstimate: vi.fn(async () => ({ estimateNumber: 42 })) }
+    const rows: FollowUpRows = {
+      ...ROWS,
+      // Rosa holds Lena, so she sits in Needs a reply and not in New (New is the nobody's list).
+      contacts: [...ROWS.contacts, person('lena', 'lead', { name: 'Lena Ortiz', has_user_id: 'u-rosa', has_since: '2026-10-02T14:30:00.000Z', has_how: 'took' })],
+      messages: [...ROWS.messages, line('m-lena', 'lena', 'text', 'in', '2026-10-02T14:00:00.000Z', 'Can you come Thursday?')],
+    }
+    const { say } = renderPanel({ leadIo }, fakeIo({}, rows))
+    await screen.findByRole('heading', { name: 'Needs a reply (3)' })
+    const row = rowIn('Needs a reply', 'lena')
+    expect(row.getByText('lead')).toBeTruthy()
+    expect(row.getAllByRole('button').map((b) => b.textContent)).toEqual(expect.arrayContaining(['Reply', 'Book a visit', 'Start an estimate', 'No reply needed', 'Remind me Monday']))
+    expect(rowIn('Needs a reply', 'greg').queryByRole('button', { name: 'Book a visit' })).toBeNull()
+
+    fireEvent.click(row.getByRole('button', { name: 'Book a visit' }))
+    await waitFor(() => expect(leadIo.convert).toHaveBeenCalledTimes(1))
+    expect(leadIo.convert).toHaveBeenCalledWith('lena', expect.objectContaining({ name: 'Lena Ortiz', phone: '(830) 555-0101', words: 'Can you come Thursday?' }), { userId: expect.any(String) }, expect.any(String))
+    await waitFor(() => expect(leadDoorsStand.openNewJob).toHaveBeenCalledWith(expect.objectContaining({ prefillCustomer: { name: 'Lena Ortiz', phone: '(830) 555-0101', email: null, note: 'Can you come Thursday?' } })))
+    expect(say).not.toHaveBeenCalledWith(expect.stringMatching(/not/), 'error')
+  })
+})

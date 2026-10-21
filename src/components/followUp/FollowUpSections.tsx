@@ -40,6 +40,9 @@ export interface FollowUpSectionActions {
   sortAll?: () => void
   /** **Answer all** on Needs a reply's header (punch list #140 PR 6): opens the desk. Unset: no press. */
   answerAll?: () => void
+  /** A lead's doors (punch list #140 PR 8): the row's Book a visit and Start an estimate, with their newest words. Unset: the labels draw dead. */
+  bookVisit?: (contactId: string, words: string | null) => void
+  startEstimate?: (contactId: string, words: string | null) => void
 }
 
 export interface FollowUpSectionsProps<C, N extends { contactId: string }> {
@@ -67,7 +70,7 @@ const NEEDS_YOU_NOTE = {
   clause: 'A clause row waits on a controller or a dev.',
 }
 
-const KIND_WORDS: Readonly<Record<string, string>> = { customer: 'customer', trade: 'trade partner', arch: 'architect', unknown: 'who is this?' }
+const KIND_WORDS: Readonly<Record<string, string>> = { customer: 'customer', trade: 'trade partner', arch: 'architect', lead: 'lead', unknown: 'who is this?' }
 
 const initials = (c: FollowUpContact) =>
   c.kind === 'unknown'
@@ -364,6 +367,14 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
               </Btn>
             ) : label === 'Call back in Quo' ? (
               <Btn key={label} onClick={() => undefined} disabled title="Calls through Quo come with the phone link. Call from your own phone until then.">
+                {label}
+              </Btn>
+            ) : label === 'Book a visit' ? (
+              <Btn key={label} onClick={() => actions.bookVisit?.(contact.id, line ? snippetOf(line) : null)} disabled={busy || !actions.bookVisit} title="Makes them a customer and opens Add Job with their name, number and words filled in.">
+                {label}
+              </Btn>
+            ) : label === 'Start an estimate' ? (
+              <Btn key={label} onClick={() => actions.startEstimate?.(contact.id, line ? snippetOf(line) : null)} disabled={busy || !actions.startEstimate} title="Makes them a customer and opens a new estimate on them. The thread comes with them.">
                 {label}
               </Btn>
             ) : label === 'No reply needed' ? (
