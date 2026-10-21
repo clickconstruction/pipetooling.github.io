@@ -11,7 +11,7 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
   it('newest first, the first line of the words, the time and who pressed', () => {
     const rows = wentOutRows([line({ id: 'm2', atMs: AT_900, who: '' }), line()], 'all')
     expect(rows.map((r) => r.id)).toEqual(['m1', 'm2'])
-    expect(rows[0]).toEqual({ id: 'm1', contactId: 'c1', name: 'Dana Whitfield', words: 'Dana, your estimate is ready.', when: '1:31 PM · Taunya' })
+    expect(rows[0]).toEqual({ id: 'm1', contactId: 'c1', name: 'Dana Whitfield', words: 'Dana, your estimate is ready.', when: '1:31 PM · Taunya', mark: null, tel: null })
     expect(rows[1]?.when).toBe('9:00 AM')
   })
   it('a pill narrows by kind, and a number nobody has named shows under All alone', () => {
@@ -23,6 +23,15 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
   it('a customer’s own thread reads the customer’s name, since the app keeps that contact’s name null (v2.5696)', () => {
     const rows = wentOutRows([line({ name: null, customerName: 'Evan Johnson' }), line({ id: 'm2', name: null, customerName: null })], 'all')
     expect(rows.map((r) => r.name)).toEqual(['Evan Johnson', 'A number nobody has named'])
+  })
+  it('carries Quo’s answer beside the time, and the dial when the text did not reach them (v2.5703)', () => {
+    const rows = wentOutRows([line({ delivery: 'delivered', number: '(830) 555-0121' }), line({ id: 'm2', delivery: 'undelivered', number: '(830) 555-0121' }), line({ id: 'm3', delivery: 'failed', number: null }), line({ id: 'm4' })], 'all')
+    expect(rows.map((r) => [r.mark?.words ?? null, r.tel])).toEqual([
+      ['✓ delivered', null],
+      ['⚠ not delivered', 'tel:+18305550121'],
+      ['⚠ not sent', null],
+      [null, null],
+    ])
   })
   it('long words trim to one row, on the first line', () => {
     const rows = wentOutRows([line({ body: `${'w'.repeat(200)}\nsecond line` })], 'all')

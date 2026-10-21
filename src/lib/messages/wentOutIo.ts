@@ -1,14 +1,15 @@
 /**
  * Went out, the read (v2.5686, punch list #133 PR 3): the outbound texts of the last `WENT_OUT_DAYS` days
  * (`channel = 'text'`, `direction = 'out'`, from the first day's start in the company calendar; v2.5699 — today alone
- * before), newest first, with each person's name and kind for the pill. One read, at most 300 rows; RLS shows the
- * office what the thread would.
+ * before), newest first, with each person's name and kind for the pill, Quo's delivery answer and the number it went
+ * to (v2.5703). One read, at most 300 rows; RLS shows the office what the thread would.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { startOfYmdInAppTzMs, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import type { ContactKind } from '../contacts/kernel'
+import { deliveryOf } from './thread'
 import { WENT_OUT_DAYS, type WentOutLine } from './wentOut'
 
 export async function loadWentOut(now: Date = new Date(), client: unknown = supabase): Promise<WentOutLine[]> {
@@ -16,7 +17,7 @@ export async function loadWentOut(now: Date = new Date(), client: unknown = supa
   const fromIso = new Date(startOfYmdInAppTzMs(ymdAddDays(todayYmdInAppTz(now), -(WENT_OUT_DAYS - 1)))).toISOString()
   const result = await db
     .from('messages')
-    .select('id, contact_id, body, at, who_text, contact:contacts(name, kind, customer:customers(name))')
+    .select('id, contact_id, body, at, who_text, delivery, number:contact_channels(value), contact:contacts(name, kind, customer:customers(name))')
     .eq('channel', 'text')
     .eq('direction', 'out')
     .gte('at', fromIso)
@@ -29,6 +30,8 @@ export async function loadWentOut(now: Date = new Date(), client: unknown = supa
     body: string
     at: string
     who_text: string | null
+    delivery: string | null
+    number: { value: string | null } | null
     contact: { name: string | null; kind: string | null; customer: { name: string | null } | null } | null
   }>
   return rows.map((r) => ({
@@ -40,5 +43,7 @@ export async function loadWentOut(now: Date = new Date(), client: unknown = supa
     body: r.body,
     atMs: Date.parse(r.at),
     who: r.who_text?.trim() ?? '',
+    delivery: deliveryOf(r.delivery),
+    number: r.number?.value ?? null,
   }))
 }

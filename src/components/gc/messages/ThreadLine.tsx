@@ -7,7 +7,7 @@ const HOLD_TRAVEL_PX = 10
 import type { AppFoldThreadRow } from '../../../lib/messages/appLines'
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
-import { callLength, channelWord, clockTime, isLong, type ThreadMessage } from '../../../lib/messages/thread'
+import { callLength, channelWord, clockTime, deliveryMark, isLong, type ThreadMessage } from '../../../lib/messages/thread'
 import { FiledLines, LineFileChips } from './LineFiles'
 
 /**
@@ -114,6 +114,13 @@ export function ThreadLine({
   // With chips under the words, the time goes below them, as it does under folded words.
   const timeBelow = folded || files.length > 0
   const time = clockTime(message.at)
+  // Quo's answer on a text of ours (v2.5703): beside the time, green or red; nothing while Quo has not answered.
+  const mark = deliveryMark(message)
+  const markNode = mark ? (
+    <span title={mark.title} data-thread-delivery={mark.bad ? 'bad' : 'ok'} style={{ fontWeight: 700, color: mark.bad ? 'var(--text-red-700)' : '#16a34a', marginRight: '0.35rem' }}>
+      {mark.words}
+    </span>
+  ) : null
   const side = message.direction === 'out' ? 'flex-end' : 'flex-start'
   const tone: CSSProperties =
     message.direction === 'team'
@@ -202,8 +209,11 @@ export function ThreadLine({
           // The time keeps a slot at the end of the last line; when the words reach it, the slot wraps and the time drops.
           <div style={{ position: 'relative', fontSize: '0.875rem', marginTop: '0.15rem', whiteSpace: 'pre-wrap' }}>
             {message.body}
-            <span aria-hidden="true" style={{ display: 'inline-block', width: '4.6rem' }} />
-            <span style={{ position: 'absolute', right: 0, bottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{time}</span>
+            <span aria-hidden="true" style={{ display: 'inline-block', width: mark ? '11rem' : '4.6rem' }} />
+            <span style={{ position: 'absolute', right: 0, bottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              {markNode}
+              {time}
+            </span>
           </div>
         )}
         {files.length > 0 && (
@@ -231,7 +241,12 @@ export function ThreadLine({
             ))}
           </div>
         )}
-        {body == null && timeBelow && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>{time}</div>}
+        {body == null && timeBelow && (
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+            {markNode}
+            {time}
+          </div>
+        )}
       </div>
       {under}
     </div>
