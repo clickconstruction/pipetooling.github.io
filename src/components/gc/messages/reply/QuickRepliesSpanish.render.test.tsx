@@ -67,6 +67,7 @@ const replyIo = (): ReplyIo => ({
   addNote: vi.fn(() => Promise.resolve('m-note')),
   sendEmail: vi.fn(() => Promise.resolve('m-email')),
   sendText: vi.fn(() => Promise.resolve('m-text')),
+  logCall: vi.fn(() => Promise.resolve('m-call-new')),
 })
 
 async function openStrip(lang: 'es' | 'en' | undefined) {

@@ -153,3 +153,11 @@ export function canReadJobMessages(role: UserRole | null | undefined): boolean {
 export function readsCustomerLinesInJobUpdates(role: UserRole | null | undefined): boolean {
   return canReadJobMessages(role) && role != null && MESSAGES_TECH_TEAM.includes(role)
 }
+
+/**
+ * The owner and a dev (punch list #140 PR 1): who sets the office hours and, from PR 2, sees the switch card on
+ * Messages. The client's one copy of the SQL's `is_master_or_dev()`, which the Messages switches' UPDATE policies hold.
+ */
+export function isOwnerOrDev(role: UserRole | null | undefined): boolean {
+  return role === 'master_technician' || role === 'dev'
+}

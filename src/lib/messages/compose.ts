@@ -39,27 +39,30 @@ export {
 
 // ---------- the kinds row ----------
 
-/** What the box writes: one of the thread's channels. */
-export type ReplyKind = Extract<MessageChannel, 'text' | 'email' | 'note'>
+/** What the box writes: one of the thread's channels. A call (punch list #140 PR 7) is one the office made and logs. */
+export type ReplyKind = Extract<MessageChannel, 'text' | 'email' | 'note' | 'call'>
 
-/** The kinds row, in its order: Text blue, Email white, Note yellow. `send` is the box's Send press. */
+/** The kinds row, in its order: Text blue, Email white, Note yellow, Call green. `send` is the box's Send press. */
 export const REPLY_KINDS: ReadonlyArray<{ kind: ReplyKind; label: string; send: string }> = [
   { kind: 'text', label: 'Text', send: 'Send text…' },
   { kind: 'email', label: 'Email', send: 'Send email…' },
   { kind: 'note', label: 'Note', send: 'Add the note' },
+  { kind: 'call', label: 'Call', send: 'Save the call' },
 ]
 
 /** The kinds row's words at its right while Note is on. */
 export const NOTE_ASIDE: readonly string[] = ['only the team sees it', 'closes the row']
 
-/** A text or an email reaches them; a note stays with the team. Quick replies, Attach, the from line and the count line show only when it does. */
+/** A text or an email reaches them; a note and a logged call stay with the team. Quick replies, Attach, the from line and the count line show only when it does. */
 export function goesOut(kind: ReplyKind): kind is 'text' | 'email' {
-  return kind !== 'note'
+  return kind === 'text' || kind === 'email'
 }
 
 /** The box's words before anything is typed. */
 export function boxPlaceholder(kind: ReplyKind, contactName: string): string {
-  return kind === 'note' ? 'A note only the team sees…' : `Write to ${contactName}…`
+  if (kind === 'note') return 'A note only the team sees…'
+  if (kind === 'call') return `What ${contactName} said on the call…`
+  return `Write to ${contactName}…`
 }
 
 // ---------- who it goes to, and from ----------
@@ -114,9 +117,9 @@ export function defaultReplyKind(to: ReplyRecipient): ReplyKind {
   return to.email ? 'email' : 'text'
 }
 
-/** Whether the send window's Send can go. A note always can. */
+/** Whether the send window's Send can go. A note always can, and so can a logged call. */
 export function canSend(kind: ReplyKind, to: ReplyRecipient): boolean {
-  if (kind === 'note') return true
+  if (kind === 'note' || kind === 'call') return true
   if (kind === 'email') return Boolean(to.email)
   return Boolean(to.number) && !to.numberOptedOut
 }
@@ -358,7 +361,7 @@ export function wordCount(text: string): number {
 
 /**
  * The count line: a text its characters and how many texts, with a word past two; an email the subject it goes with
- * and its words; a note its words. An empty box, or one holding only spaces, has no line. The box's count is its own
+ * and its words; a note, or a logged call, its words. An empty box, or one holding only spaces, has no line. The box's count is its own
  * words; the send window counts the text as it goes, link lines and the opt-out line too.
  */
 export function countLine(kind: ReplyKind, body: string, subject?: string): CountLine {
@@ -380,6 +383,7 @@ export function countLine(kind: ReplyKind, body: string, subject?: string): Coun
 /** The words once it went. A note's words grow the day it comes back on, which the follow-up kernel adds. */
 export function sentWords(kind: ReplyKind, company: Pick<ComposeCompany, 'name'>): string {
   if (kind === 'note') return 'Note added and the row closed. Only the team sees the note.'
+  if (kind === 'call') return 'Call saved. Only the team sees it.'
   if (kind === 'email') return `Email sent as ${company.name}. Its copy is kept in Documents.`
   return 'Text sent from the company number.'
 }
