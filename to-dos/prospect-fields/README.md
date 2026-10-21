@@ -2,7 +2,7 @@
 name: "Prospect fields: who we are talking to"
 number: 117
 group: close
-status: built 2026-10-17 in five PRs, stacked (v2.5600 #5806 the columns, v2.5601 #5807 the person block, v2.5603 #5808 the three seeds, v2.5604 #5809 the Maps paste, v2.5606 #5813 May we text?); the migration push follows #5806, the quo-send redeploy follows #5813; the live walk follows the push
+status: built 2026-10-17 in five PRs, stacked (v2.5600 #5806 the columns, v2.5601 #5807 the person block, v2.5603 #5808 the three seeds, v2.5604 #5809 the Maps paste, v2.5606 #5813 May we text?); migration 20261017010000 pushed, quo-send and four more importers of the kernel copy redeployed, and the walk on prod passed 9 of 9 the same day
 summary: >
   Every prospect is a person we call, sometimes at a company. New Prospect and Edit prospect ask
   for the person first, their title, cell, email, language and whether we may text them, and the
@@ -11,7 +11,7 @@ summary: >
   and the same place is a double. Add customer, Add a company and New project read one seed, so
   the record is whole from day one: their name on the bill, texts on their cell, the portal in
   their language. Messages texts a prospect only after they said yes on the call.
-next: After the push and the redeploy, the walk on the dev server against prod with ZZ rows; then use it for a week and answer the six calls at the mock-up's foot. The reply box saying before the send that a prospect has not been asked is the one residual.
+next: Use it for a week and answer the six calls at the mock-up's foot. The reply box saying before the send that a prospect has not been asked is the one residual.
 size: S · M · M · S · S
 blocker: none; the owner's call on texting consent is built as drawn (ask on the call) and is one constant away from "a number they gave us counts as yes".
 opinion: shipped as drawn in B; the shape is the person first and the company under them, and nothing changed the lanes or the deck's machine.

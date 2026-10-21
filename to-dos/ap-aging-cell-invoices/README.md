@@ -196,7 +196,7 @@ quiet ✓.
 | Edit / due date / payment from the modal | `openEditInvoice` + `openApplyPaymentForm` exist but assume the house detail is loaded | PR 4: load the house detail, then open the form; the modal stays under it. |
 | Help | `mark-supply-house-bills-paid` and `mark-an-invoice-on-a-job-account` guides | PR 1 adds the one line: press a colored cell to see the bills inside it. PR 2 adds the chip to the job-account guide. |
 
-No migration, no edge function, no RPC. Client-only both PRs.
+PRs 1 and 2 are client-only; PR 3 adds the one table (`supply_house_invoice_move_requests`, migration 20261020130000) and the one edge function (`request-job-account-move`), no RPC.
 
 ## The plan
 
