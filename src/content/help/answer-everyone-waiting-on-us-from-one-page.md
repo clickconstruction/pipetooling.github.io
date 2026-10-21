@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers
 order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
@@ -47,6 +47,17 @@ Each list counts only the people under the pill you picked. A number nobody has 
 The page's address keeps the pill. A link to [Messages for customers](/messages?kind=customer) opens with **Customers** picked.
 
 **Show** sits beside the pills. Press {{button:outline|Mine}} to see only the people you hold, in every list. Press {{button:outline|Everyone}} to see them all again. This browser keeps your choice. Waiting on them and Went out always show everyone, since nobody holds a send.
+
+## See how the week went
+
+**The last 7 days** sits under the search box. It is four numbers over the last seven days, today included. Each number opens the rows behind it. A tile with nothing behind it reads *none*.
+
+- **Answered within an hour** is the share of people we answered inside an hour. A person who writes twice before we reply counts once. A reminder the app sent does not count as an answer. Neither does a note, since they never see one. The line under it compares last week. Press it to open Needs a reply.
+- **Longest wait right now** names the person who has waited longest for a reply, and who has it. Press it to open their thread.
+- **Texts not delivered** counts the texts of ours that never reached a phone this week. Press it to open Went out on its texts. The rows in red are the ones.
+- **Estimates** counts the estimates sent this week, how many the customer opened and how many they accepted. The line under it says how many were opened and then went quiet. Press it to open Waiting on them.
+
+Under **Mine** the strip still shows the office's numbers, not only yours. It says so.
 
 ## Supply houses and candidates
 
