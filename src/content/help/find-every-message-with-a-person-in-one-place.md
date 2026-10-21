@@ -43,6 +43,8 @@ Each message shows how it came, who sent it and its job. A long message shows fo
 Press Escape or {{button:outline|×}} to close the thread.
 
 
+Our estimate emails carry a button in the thread. Press {{button:outline|Open estimate #166}} to leave the thread and open that estimate. A change order's email opens the change order the same way.
+
 ## See the emails the app sent on its own
 
 Some emails go out with nobody pressing Send. A reminder, a scheduled notice and a bill the app sends are like that. Each one shows as **the app** in the thread.
