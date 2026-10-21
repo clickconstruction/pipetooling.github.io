@@ -5,7 +5,10 @@
  * pointer, so a stroke crosses real `wb-row-…` rows. Pins: arming loads the last margin and
  * folds the solver; a stroke drafts only the rows the brush may price; pointer-up saves the
  * changed rows, reloads, freezes, remembers the margin and leaves an undo; a pending solver
- * preview loses the brushed rows; undo writes the old prices back; Escape puts the brush down.
+ * preview loses the brushed rows; undo writes the old prices back; Escape puts the brush down;
+ * a guard that says no (the sent-bid lock, or the open price still loading, v2.5671) starts no
+ * stroke, and one refused at pointer-up is dropped, never left painting; a sweep's undo is
+ * offered only on the price it was painted on (v2.5672).
  */
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -147,6 +150,37 @@ describe('useMarginBrush', () => {
     expect(calls.folds).toBe(0)
   })
 
+  // v2.5671: the guard also says no while a just-clicked price card's prices are still loading.
+  it('a press while the guard says no starts no stroke: nothing drafted, nothing written', async () => {
+    render(<Probe />)
+    click('arm')
+    guardAllows = false
+    click('down on r1')
+    click('over r3')
+    click('up')
+    await act(async () => {})
+    expect(drafts()).toEqual({})
+    expect(state()).toContain('painting:0')
+    expect(calls.writes).toEqual([])
+  })
+
+  it('a stroke the guard refuses at pointer-up is dropped: its drafts go and the brush stops painting', async () => {
+    render(<Probe />)
+    stroke('r3')
+    expect(drafts()).toEqual({ r1: '250', r3: '250' })
+    guardAllows = false
+    click('up')
+    await act(async () => {})
+    expect(drafts()).toEqual({})
+    expect(state()).toContain('painting:0')
+    expect(calls.writes).toEqual([])
+    expect(state()).toContain('undo:none')
+    // Not left painting: once the guard allows again, moving over a row drafts nothing until a new press.
+    guardAllows = true
+    click('over r3')
+    expect(drafts()).toEqual({})
+  })
+
   it('a stroke drafts only the rows the brush may price, counts only real changes, and clears the landing chip', () => {
     render(<Probe />)
     stroke('r2', 'r3', 'held', 'nocost', 'fixed')
@@ -240,6 +274,41 @@ describe('useMarginBrush', () => {
     ])
     expect(calls.events).toEqual(['write r1', 'write r3', 'reload b359/pv1', 'freeze'])
     expect(toasts[toasts.length - 1]).toEqual(['Sweep undone.', 'success'])
+  })
+
+  // v2.5672: Undo writes to the open price, so a sweep's undo is offered only on the price it was painted on.
+  it('after a switch to another price the sweep has no undo there, and Undo writes nothing into it', async () => {
+    const { rerender } = render(<Probe />)
+    stroke('r3')
+    click('up')
+    await waitFor(() => expect(state()).toContain('undo:r1=∅,r3=180'))
+    calls.writes = []
+    calls.events = []
+    rerender(<Probe over={{ pricingVersionId: 'pv2' }} />)
+    expect(state()).toContain('undo:none')
+    click('undo')
+    await act(async () => {})
+    expect(calls.writes).toEqual([])
+    expect(calls.events).toEqual([])
+  })
+
+  it('back on the price it was painted on, the undo is there again and writes to that price', async () => {
+    const { rerender } = render(<Probe />)
+    stroke('r3')
+    click('up')
+    await waitFor(() => expect(state()).toContain('undo:r1=∅,r3=180'))
+    calls.writes = []
+    calls.events = []
+    rerender(<Probe over={{ pricingVersionId: 'pv2' }} />)
+    rerender(<Probe over={{ pricingVersionId: 'pv1' }} />)
+    expect(state()).toContain('undo:r1=∅,r3=180')
+    click('undo')
+    await waitFor(() => expect(state()).toContain('undo:none'))
+    expect(calls.writes).toEqual([
+      ['r1', null],
+      ['r3', 180],
+    ])
+    expect(calls.events).toEqual(['write r1', 'write r3', 'reload b359/pv1', 'freeze'])
   })
 
   it('Escape mid-stroke drops the stroke’s drafts and puts the brush down', () => {
