@@ -88,6 +88,8 @@ vi.mock('../lib/followUp/followUpIo', async (orig) => {
       contact('c-elena', 'customer', { name: 'Elena Ortiz' }),
       contact('c-unk', 'unknown'),
       contact('c-dee', 'supply_house', { name: 'Dee' }),
+      // Held by the signed-in person (the smoke's auth user), for the Show lens (punch list #140 PR 3).
+      contact('c-held', 'customer', { name: 'Held Customer', has_user_id: 'smoke-auth-user-1', has_since: '2026-10-02T16:10:00.000Z', has_how: 'took' }),
     ],
     channels: [],
     records: { gcCompanies: [{ id: 'gc-hillside', name: 'Hillside Excavation', contact_name: 'Greg Paulk', trades: ['Sitework'] }] },
@@ -96,6 +98,7 @@ vi.mock('../lib/followUp/followUpIo', async (orig) => {
       text('m2', 'c-elena', '2026-10-01T16:00:00.000Z', 'Is the certificate in yet? The bank is asking.'),
       text('m3', 'c-unk', '2026-10-02T15:00:00.000Z', 'Is this the plumbing office?'),
       text('m4', 'c-dee', '2026-10-02T15:30:00.000Z', 'Your fittings are in at the counter.'),
+      text('m5', 'c-held', '2026-10-02T16:00:00.000Z', 'Can you come Thursday?'),
     ],
     heard: [],
     owed: [],
@@ -108,6 +111,7 @@ const GREG = 'Is the detention pond in sitework?'
 const ELENA = 'Is the certificate in yet? The bank is asking.'
 const UNKNOWN = 'Is this the plumbing office?'
 const DEE = 'Your fittings are in at the counter.'
+const HELD = 'Can you come Thursday?'
 
 function Where() {
   const location = useLocation()
@@ -319,5 +323,32 @@ describe('/messages: the owner’s switch card (punch list #140 PR 2)', () => {
     at('/messages')
     await screen.findByRole('group', { name: 'Which people to show' })
     expect(screen.queryByRole('button', { name: /Finish switching Messages on/ })).toBeNull()
+  })
+})
+
+describe('/messages: Show, Mine · Everyone (punch list #140 PR 3)', () => {
+  beforeEach(() => localStorage.removeItem('messages_show_lens'))
+  const show = () => within(screen.getByRole('radiogroup', { name: 'Show' }))
+
+  it('Mine shows only the people I hold, the browser keeps it, and Everyone brings them back', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    expect(screen.getByText(HELD)).toBeTruthy()
+    // The counts land a render after the rows: the panel hears the queue in an effect, so wait for them.
+    expect((await show().findByRole('radio', { name: /^Everyone · \d+$/ })).getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(await show().findByRole('radio', { name: 'Mine · 1' }))
+    await waitFor(() => expect(screen.queryByText(GREG)).toBeNull())
+    expect(screen.getByText(HELD)).toBeTruthy()
+    expect(screen.queryByText(UNKNOWN)).toBeNull()
+    expect(screen.getByText('Waiting on them and Went out show everyone. Nobody holds a send.')).toBeTruthy()
+    expect(localStorage.getItem('messages_show_lens')).toBe('mine')
+    cleanup()
+    at('/messages')
+    await screen.findByText(HELD)
+    expect(show().getByRole('radio', { name: /^Mine/ }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.queryByText(GREG)).toBeNull()
+    fireEvent.click(show().getByRole('radio', { name: /^Everyone/ }))
+    expect(await screen.findByText(GREG)).toBeTruthy()
+    expect(localStorage.getItem('messages_show_lens')).toBe('everyone')
   })
 })

@@ -19,20 +19,20 @@ export const DEMO_ME = 'Robert'
 /** The six jobs' names, by the prototype's ids. */
 export const DEMO_JOB_NAMES: Readonly<Record<string, string>> = Object.fromEntries(DEMO_JOBS.map((j) => [j.id, j.name]))
 
-/** Each conversation's state and who has it, as the prototype opens. */
-const FOLLOW_UP_STATE: Readonly<Record<string, Pick<QueueContact, 'state' | 'has'>>> = {
-  greg: { state: 'waiting', has: null },
-  elena: { state: 'waiting', has: null },
-  priya: { state: 'waiting', has: 'Rosa' },
-  bill: { state: 'done', has: null },
-  tom: { state: 'done', has: null },
-  jonah: { state: 'done', has: null },
-  marcus: { state: 'done', has: null },
-  unk1: { state: 'waiting', has: null },
+/** Each conversation's state and who has it, as the prototype opens; the holder's id too (punch list #140 PR 3, the Show lens). */
+const FOLLOW_UP_STATE: Readonly<Record<string, Pick<QueueContact, 'state' | 'has'> & { hasUserId: string | null }>> = {
+  greg: { state: 'waiting', has: null, hasUserId: null },
+  elena: { state: 'waiting', has: null, hasUserId: null },
+  priya: { state: 'waiting', has: 'Rosa', hasUserId: 'u-rosa' },
+  bill: { state: 'done', has: null, hasUserId: null },
+  tom: { state: 'done', has: null, hasUserId: null },
+  jonah: { state: 'done', has: null, hasUserId: null },
+  marcus: { state: 'done', has: null, hasUserId: null },
+  unk1: { state: 'waiting', has: null, hasUserId: null },
 }
 
-/** The eight people, with the conversation's state and who has it. */
-export const DEMO_FOLLOW_UP_CONTACTS: ReadonlyArray<QueueContact & { trade?: string }> = DEMO_CONTACTS.map((c) => ({ ...c, ...FOLLOW_UP_STATE[c.id]! }))
+/** The eight people, with the conversation's state and who has it (by name, and by id for the Show lens). */
+export const DEMO_FOLLOW_UP_CONTACTS: ReadonlyArray<QueueContact & { trade?: string; hasUserId: string | null }> = DEMO_CONTACTS.map((c) => ({ ...c, ...FOLLOW_UP_STATE[c.id]! }))
 
 /** The twenty messages, as Follow up reads them. */
 export const DEMO_FOLLOW_UP_MESSAGES: ReadonlyArray<QueueMessage> = DEMO_MESSAGES

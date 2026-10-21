@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold
 order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
@@ -45,6 +45,8 @@ The pills above the lists pick who to show.
 Each list counts only the people under the pill you picked. A number nobody has named shows under **All** alone.
 
 The page's address keeps the pill. A link to [Messages for customers](/messages?kind=customer) opens with **Customers** picked.
+
+**Show** sits beside the pills. Press {{button:outline|Mine}} to see only the people you hold, in every list. Press {{button:outline|Everyone}} to see them all again. This browser keeps your choice. Waiting on them and Went out always show everyone, since nobody holds a send.
 
 ## Supply houses and candidates
 
