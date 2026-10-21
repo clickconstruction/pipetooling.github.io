@@ -285,7 +285,7 @@ describe('options (v2.4723) — two or more base bids are proposals the GC picks
   })
 })
 
-describe('sameAmountTwinNames (v2.5680, #133)', () => {
+describe('sameAmountTwinNames (v2.5680, #138)', () => {
   it('names the earliest offered alternate at the same amount; the first of a pair stays clean', () => {
     expect(
       sameAmountTwinNames([

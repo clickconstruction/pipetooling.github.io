@@ -248,7 +248,7 @@ export function buildOptionsBlock(
 }
 
 /**
- * v2.5680 (#133, Wendi): for each offered alternate, in letter order, the name of the EARLIEST
+ * v2.5680 (#138, Wendi): for each offered alternate, in letter order, the name of the EARLIEST
  * one before it at the same amount — the Step 1 nudge that names a probable copy ("same amount
  * as X"). Matching is to the cent; a row priced at 0 or less never matches (unpriced reads its
  * own caption). An alternate equal to the BASE is not this helper's job — the letter already
