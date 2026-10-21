@@ -51,6 +51,7 @@ const fakeIo = (): ReplyIo => ({
   addNote: vi.fn(() => Promise.resolve('m-note')),
   sendEmail: vi.fn(() => Promise.resolve('m-email')),
   sendText: vi.fn(() => Promise.resolve('m-text')),
+  logCall: vi.fn(() => Promise.resolve('m-call-new')),
 })
 
 /** A job's box as the Pipeline's sheet and the job window draw it: tied to the job, Text alone, the strip opened on the stage. */

@@ -76,7 +76,7 @@ const BILL_LAST_IN_AUGUST = at(8, 31, 16, 0)
 
 describe('the kinds row', () => {
   it('runs Text, Email, Note, each with its own Send', () => {
-    expect(REPLY_KINDS.map((k) => `${k.label}: ${k.send}`)).toEqual(['Text: Send text…', 'Email: Send email…', 'Note: Add the note'])
+    expect(REPLY_KINDS.map((k) => `${k.label}: ${k.send}`)).toEqual(['Text: Send text…', 'Email: Send email…', 'Note: Add the note', 'Call: Save the call'])
     expect(NOTE_ASIDE).toEqual(['only the team sees it', 'closes the row'])
   })
 

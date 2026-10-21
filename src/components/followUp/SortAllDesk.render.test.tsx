@@ -125,6 +125,7 @@ function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
     writeDown: vi.fn(async () => undefined),
     readQuestion: vi.fn(async () => undefined),
     addNote: vi.fn(async () => 'n-new'),
+    logCall: vi.fn(async () => 'm-call-new'),
     setBackDay: vi.fn(async () => undefined),
     backDone: vi.fn(async () => undefined),
     highlight: vi.fn(async () => 'h-new'),

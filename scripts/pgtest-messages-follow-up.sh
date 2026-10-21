@@ -50,4 +50,9 @@ done
 out="$(psql_as postgres -f - < supabase/tests/messages_follow_up/20_scenario.sql 2>&1 || true)"
 if ! grep -q "messages_follow_up PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
+# Punch list #140 PR 7 (*_log_call): the reply box's Call kind writes our call line through log_call, the day they gave
+# as a written promise, and closes their calls to make; who may, in words.
+out="$(psql_as postgres -f - < supabase/tests/messages_follow_up/30_log_call.sql 2>&1 || true)"
+if ! grep -q "messages_log_call PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
 echo "messages-follow-up bed ok"

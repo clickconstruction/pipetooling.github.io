@@ -158,7 +158,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const menuRows = contact ? [...ownRows, ...(slots.menuRows?.(contact) ?? [])] : []
   const phones = contact?.channels.filter((ch) => ch.kind === 'phone') ?? []
   const emails = contact?.channels.filter((ch) => ch.kind === 'email') ?? []
-  const court = contact ? courtOf(allLines, contact.id, nowIso, { optedOut: isOptedOut(contact) }) : null
+  // Whose move it is: the lines, and what cut 2 knows (what we owe, a written promise's day; punch list #140 PR 7).
+  const court = contact ? courtOf(allLines, contact.id, nowIso, { optedOut: isOptedOut(contact), ...(slots.court?.(contact) ?? {}) }) : null
   const stamps = contact ? stampSentence(contact, allLines, contact.id, nowIso) : null
   const openMessage = openMessageId ? allLines.find((m) => m.id === openMessageId) : undefined
   // The open thread for a slot's component (cut 3's reply box): given around everything the panel draws.
