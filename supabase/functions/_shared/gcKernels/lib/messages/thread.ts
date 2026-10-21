@@ -52,6 +52,35 @@ export interface ThreadMessage {
    * R6, a note or an event. Written out here, not imported from `boxes.ts`, so the edge copy of this file stays light.
    */
   mailbox?: 'team' | 'bids' | null
+  /**
+   * Quo's answer on a text of ours (`messages.delivery`, v2.5703, punch list #139): delivered to their phone, not sent
+   * at all, or sent and never delivered. Null before Quo answers, and on every other line.
+   */
+  delivery?: QuoDeliveryWord | null
+}
+
+export type QuoDeliveryWord = 'delivered' | 'undelivered' | 'failed'
+const DELIVERY_WORDS: ReadonlySet<string> = new Set<QuoDeliveryWord>(['delivered', 'undelivered', 'failed'])
+
+/** A row's delivery as the thread knows it; anything else reads as no answer yet. */
+export function deliveryOf(raw: string | null | undefined): QuoDeliveryWord | null {
+  return raw && DELIVERY_WORDS.has(raw) ? (raw as QuoDeliveryWord) : null
+}
+
+/** The mark beside a sent text's time (v2.5703): what Quo said of it, or nothing while Quo has not answered. */
+export interface DeliveryMark {
+  words: string
+  /** It did not reach them: red, and a call to make. */
+  bad: boolean
+  /** The hover words. */
+  title: string
+}
+
+export function deliveryMark(m: Pick<ThreadMessage, 'direction' | 'channel' | 'delivery'>): DeliveryMark | null {
+  if (m.direction !== 'out' || m.channel !== 'text' || !m.delivery) return null
+  if (m.delivery === 'delivered') return { words: '✓ delivered', bad: false, title: 'Quo delivered it to their phone.' }
+  if (m.delivery === 'failed') return { words: '⚠ not sent', bad: true, title: 'The text did not go out. Call them instead.' }
+  return { words: '⚠ not delivered', bad: true, title: 'The text went out but never reached their phone. Call them instead.' }
 }
 
 const byTime = (a: { at: string }, b: { at: string }) => Date.parse(a.at) - Date.parse(b.at)
