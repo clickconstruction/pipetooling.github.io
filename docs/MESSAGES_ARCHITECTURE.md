@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-10-19
+last_updated: 2026-10-21
 ---
 
 ## What it is, in one paragraph
@@ -25,9 +25,9 @@ the design is the plans named at the end of this page.
 
 | Surface | Route | Who | Code |
 |---|---|---|---|
-| Messages, the office's one page | `/messages` (`?kind=` pills, `?thread=<contact id>&at=<message id>`) | the office team (`canOpenMessages`) | `src/pages/Messages.tsx` |
+| Messages, the office's one page | `/messages` (`?kind=` pills, `?thread=<contact id>&at=<message id>`) | the office team (`canOpenMessages`) | `src/pages/Messages.tsx`; since v2.5686 **Went out**, every text we sent in the last 7 days (`components/messages/WentOutToday.tsx` over `lib/messages/wentOut.ts`, v2.5699) |
 | GC projects → Messages, Follow up, the boards, Papers, Money | `/gc?view=messages`, `?view=followUp`, … | the office team (`canOpenGcProjects`); Money the money team | `src/pages/GcProjects.tsx` |
-| The thread window (every door opens the same one) | over either page | the office; a tech through Job Mode's door | `src/components/gc/messages/ThreadWindow.tsx`, `openThread.ts`, `useMessagesHost.ts` |
+| The thread window (every door opens the same one) | over either page | the office; a tech through Job Mode's door | `src/components/gc/messages/ThreadWindow.tsx`, `openThread.ts`, `useMessagesHost.ts`; since v2.5698 our estimate email's **Open estimate #N** (`components/estimates/useEstimateDoorThreadSlots.tsx` over `lib/messages/estimateDoor.ts`) |
 | A job's box, **Note · Text · Email** | a job's window on the Pipeline | the office | `src/components/jobs/JobCustomerBox.tsx` over `reply/ReplyBox.tsx` |
 | The customer's door, **Call · Text · Email · Open their thread · Their record** (v2.5626), the thread's last three lines and the bubble's **waiting dot** (v2.5632) | the speech bubble on a Pipeline row or card, a window over the board; the dot on the bubble itself | the office | `src/components/jobs/JobCustomerSheet.tsx` over `JobCustomerBox`, its rows and last lines from `lib/messages/customerDoor.ts`; the dot `hooks/useBoardDots.ts` over `lib/messages/boardDots.ts` (`flows/stageSends.ts`'s `boardDot` over Follow up's `needsReply`) and `boardDotsIo.ts`, drawn by `MessagesButton`'s `dot` |
 | Job activity's message lines | Jobs → Pipeline → a job's activity | the office; techs by the gate (see *Who sees what*) | `src/components/jobs/JobActivityView.tsx`, `src/hooks/useJobMessages.ts` |
@@ -131,7 +131,7 @@ a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in
 `team.ts` says who a conversation can be handed to; `assignSeats.ts` is **Who gets a new message** (the rule and its
 seats, `app_settings.messages_assign_rule_v1`); `hasRule.ts` is R5's answer to who answers a customer's reply (the tech
 who last texted them until 5 PM, `has_until`, then the office). The screens are `src/components/followUp/`
-(`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`) and the
+(`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`; since v2.5332 `NudgesFromTheFlow` over `useFlowNudges`) and the
 two slot hooks that put them in the thread. The Dashboard's Customers line (and `follow_up_count`; since v2.5596 a customer with an open call counts once) counts from the same reads
 (`customerCounts.ts`).
 
@@ -214,7 +214,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | Who gets a new message (the rule and its seats) | Settings → Phone and texts | `messages_assign_rule_v1` |
 | Inboxes (the two boxes: address, number, number id) | Settings → Phone and texts | `messages_boxes_v1` |
 | The office's wait before it hears a reply nobody answered (0 is at once) | Settings → Phone and texts → Reply push, under the switch (v2.5540) | `messages_office_wait_minutes` |
-| Office hours | `app_settings`, set by a dev (no card yet) | `messages_office_hours_v1` |
+| Office hours (the days, the open and the close; the tech's hour and the after-hours number stay a dev's by hand) | Settings → Phone and texts → Office hours (v2.5709, punch list #140 PR 1; `officeHoursCard.ts`, the owner and a dev) | `messages_office_hours_v1` |
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
 | Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every three minutes |
 | The reminders the app sends itself, per step: off, offers or sends (v2.5595) | Settings → Flows | `messages_nudge_app_sends_v1`; the cron `messages-nudge-dispatch`, 14:00 and 15:00 UTC; the summary `messages_nudge_last_run_v1` |

@@ -19,6 +19,8 @@ vi.mock('../../changeOrders/useChangeOrderThreadSlots', () => ({
 }))
 // R8 · 8's slots fill nothing here, so cut 4b's reach the window as themselves.
 vi.mock('../../estimates/useEstimateLineThreadSlots', () => ({ useEstimateLineThreadSlots: () => ({}) }))
+// #139 PR 7's door navigates (useNavigate), and this hook runs outside a Router here: its own smoke covers it.
+vi.mock('../../estimates/useEstimateDoorThreadSlots', () => ({ useEstimateDoorThreadSlots: () => ({}) }))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {

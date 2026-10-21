@@ -11,11 +11,13 @@
  */
 import { createElement, Fragment, type ReactNode } from 'react'
 import { useChangeOrderThreadSlots } from '../../changeOrders/useChangeOrderThreadSlots'
+import { useEstimateDoorThreadSlots } from '../../estimates/useEstimateDoorThreadSlots'
 import { useEstimateLineThreadSlots } from '../../estimates/useEstimateLineThreadSlots'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
+import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
@@ -64,6 +66,11 @@ export interface ThreadSlots {
   messageWindowFirst?: (m: ThreadMessage, selection: string) => ReactNode
   /** The window's right side, its full height: cut 4's flow panel, a rail that opens to a panel. */
   side?: (c: Contact) => ReactNode
+  /**
+   * What cut 2 knows about whose move it is (punch list #140 PR 7): what we owe them and a written promise's day, which
+   * the window merges into the header's move chip (`courtOf`'s options). Facts, not a node: later cuts win field by field.
+   */
+  court?: (c: Contact) => CourtFacts | null
 }
 
 /** What a shared slot draws: nothing when every cut draws nothing, one cut's node as itself, else each in order. */
@@ -107,6 +114,16 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
   if (side) merged.side = side
   const menus = parts.flatMap((p) => (p.menuRows ? [p.menuRows] : []))
   if (menus.length > 0) merged.menuRows = (c) => menus.flatMap((rows) => rows(c))
+  const courts = parts.flatMap((p) => (p.court ? [p.court] : []))
+  if (courts.length > 0)
+    merged.court = (c) => {
+      let facts: CourtFacts | null = null
+      for (const court of courts) {
+        const got = court(c)
+        if (got) facts = { ...(facts ?? {}), ...got }
+      }
+      return facts
+    }
   const bodies = parts.flatMap((p) => (p.lineBody ? [p.lineBody] : []))
   if (bodies.length > 0)
     merged.lineBody = (m, c) => {
@@ -140,9 +157,11 @@ export function useThreadSlots(): ThreadSlots {
   const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
   // R8 · 8: a customer's line on a Pipeline job goes on its estimate, after cut 4b's in both slots it shares.
   const estimateLines = useEstimateLineThreadSlots()
+  // #139 PR 7: our estimate email's line opens the estimate; where its words only repeat the subject, the door is the body.
+  const estimateDoor = useEstimateDoorThreadSlots()
   // Residential R7: the sort card above the lines, while the person waits in Follow up's New lane.
   const newLane = useNewLaneThreadSlots()
   // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
-  // cut 6's paper offer, R7's sort card.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, email, newLane)
+  // #139's estimate door, cut 6's paper offer, R7's sort card.
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, estimateDoor, email, newLane)
 }
