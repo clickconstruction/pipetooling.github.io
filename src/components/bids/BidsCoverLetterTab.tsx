@@ -2546,7 +2546,7 @@ export function BidsCoverLetterTab({
                             <button type="button" onClick={commit} style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}>Save</button>
                             <button type="button" onClick={() => setAltTextEditor(null)} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer' }}>Cancel</button>
                             {takeOff ? (
-                              <button type="button" onClick={() => { takeOff.run(); setAltTextEditor(null) }} title={takeOff.what} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', fontWeight: 600, background: 'var(--surface)', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 5, cursor: 'pointer' }}>Take off this letter</button>
+                              <button type="button" onClick={() => { takeOff.run(); setAltTextEditor(null) }} title={takeOff.what} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-red-700)', border: '1px solid var(--border-red)', borderRadius: 5, cursor: 'pointer' }}>Take off this letter</button>
                             ) : null}
                             <button type="button" onClick={resetToAuto} title="Back to the automatic wording" style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem', fontSize: '0.8rem', background: 'none', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Reset to auto</button>
                           </div>
