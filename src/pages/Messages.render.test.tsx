@@ -38,6 +38,9 @@ vi.mock('../hooks/useAuth', async () => {
 // The thread window's later cuts read their own tables; here the window draws with none of them.
 vi.mock('../components/gc/messages/threadSlots', () => ({ useThreadSlots: () => ({}) }))
 
+// The last 7 days (punch list #140 PR 5): an empty fortnight; the longest wait comes from the queue below, not this read.
+vi.mock('../lib/messages/weekStripIo', () => ({ loadWeekStrip: vi.fn(() => Promise.resolve({ lines: [], estimates: [] })) }))
+
 vi.mock('../lib/gc/gcIo', () => ({
   loadGcTeam: () =>
     Promise.resolve([
@@ -350,5 +353,25 @@ describe('/messages: Show, Mine · Everyone (punch list #140 PR 3)', () => {
     fireEvent.click(show().getByRole('radio', { name: /^Everyone/ }))
     expect(await screen.findByText(GREG)).toBeTruthy()
     expect(localStorage.getItem('messages_show_lens')).toBe('everyone')
+  })
+})
+
+describe('/messages: the last 7 days (punch list #140 PR 5)', () => {
+  it('sits with the lanes, its longest wait the queue’s first row, and hides while searching', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    const strip = await screen.findByTestId('week-strip')
+    const tiles = await within(strip).findAllByTestId('strip-tile')
+    expect(tiles.map((t) => t.getAttribute('data-key'))).toEqual(['answered', 'longest', 'notDelivered', 'estimates'])
+    // An empty fortnight: three tiles read none. Needs a reply holds the one person somebody has (the rest wait in
+    // New), so the longest wait is the held customer, with who has them.
+    expect(within(tiles[0]!).getByTestId('strip-value').textContent).toBe('none')
+    // The longest wait lands a render after the rows: the page hears the queue in the panel's effect, so wait for it.
+    await waitFor(() => expect(within(tiles[1]!).getByTestId('strip-sub').textContent).toBe('Held Customer · Smoke Dev has it'))
+    expect((tiles[1] as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(tiles[1]!)
+    expect(where()).toBe('/messages?thread=c-held&at=m5')
+    fireEvent.change(screen.getByTestId('search-lines'), { target: { value: 'pond' } })
+    await waitFor(() => expect(screen.queryByTestId('week-strip')).toBeNull())
   })
 })

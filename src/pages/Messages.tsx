@@ -11,6 +11,7 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { GcMessages } from '../components/gc/GcMessages'
 import { WaitingOnThem } from '../components/messages/WaitingOnThem'
+import { WeekStrip } from '../components/messages/WeekStrip'
 import { WentOutToday } from '../components/messages/WentOutToday'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useMessagesHost } from '../components/gc/messages/useMessagesHost'
@@ -29,6 +30,8 @@ import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../li
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { KIND_PILLS, peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
 import { keepLens, lensCounts, queueForShow, readLens, SHOW_WORDS, type ShowLens } from '../lib/messages/showLens'
+import { waitsFromQueue } from '../lib/messages/weekStrip'
+import type { WentOutFilter } from '../lib/messages/wentOut'
 
 /** Search every message (v2.5701): the box under the pills, a hit's row, and the lane's one-line answers. */
 const searchBox: CSSProperties = { padding: '0.55rem 0.8rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.95rem', maxWidth: 560, width: '100%', boxSizing: 'border-box' }
@@ -82,7 +85,25 @@ export default function Messages() {
   const [lensCount, setLensCount] = useState<{ mine: number; everyone: number } | null>(null)
   const meId = user?.id ?? ''
   const narrow = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['narrow']>>((queue, contacts) => queueForShow(queueForPill(queue, contacts, pill), contacts, lens, meId), [pill, lens, meId])
-  const onQueue = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['onQueue']>>((queue, contacts) => setLensCount(lensCounts(queue, contacts, meId)), [meId])
+  // The last 7 days (punch list #140 PR 5): the strip under the search, its longest wait from the queue the panel
+  // already read (the whole queue under the pill, never the lens: the strip is the office's read), its doors the
+  // lanes below. Went out's filter lives here so the strip's Texts not delivered can open the texts.
+  type Heard = Parameters<NonNullable<Parameters<typeof FollowUpPanel>[0]['onQueue']>>
+  const [heard, setHeard] = useState<{ queue: Heard[0]; contacts: Heard[1] } | null>(null)
+  const onQueue = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['onQueue']>>(
+    (queue, contacts) => {
+      setLensCount(lensCounts(queue, contacts, meId))
+      setHeard({ queue, contacts })
+    },
+    [meId],
+  )
+  const waits = useMemo(() => {
+    if (!heard) return []
+    const names = Object.fromEntries([...followUpTeam, me].map((t) => [t.id, t.name]))
+    return waitsFromQueue(queueForPill(heard.queue, heard.contacts, pill).needsReply, heard.contacts, (id) => names[id] ?? null)
+  }, [heard, pill, followUpTeam, me])
+  const [wentOutFilter, setWentOutFilter] = useState<WentOutFilter>('both')
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
   const listView = useMemo(() => (host.view ? { ...host.view, contacts: peopleForPill(host.view.contacts, pill) } : null), [host.view, pill])
   const found = useMemo(() => (searching && host.view ? searchLines(host.view.messages, host.view.contacts, q, pill, host.nowIso) : null), [searching, host.view, host.nowIso, q, pill])
 
@@ -201,6 +222,24 @@ export default function Messages() {
         </section>
       )}
 
+      {!searching && onFollowUp && (
+        <WeekStrip
+          pill={pill}
+          waits={waits}
+          mine={lens === 'mine'}
+          onOpenThread={(id, at) => thread.openThread(id, at)}
+          onNeedsReply={() => {
+            setQueuesOpen(true)
+            scrollTo('queues')
+          }}
+          onWentOut={() => {
+            setWentOutFilter('texts')
+            scrollTo('went-out')
+          }}
+          onWaiting={() => scrollTo('waiting-on-them')}
+        />
+      )}
+
       {!searching && onFollowUp && foldQueues && (
         <button
           type="button"
@@ -215,7 +254,7 @@ export default function Messages() {
       )}
       {searching ? null : onFollowUp ? (
         // The panel stays mounted under the fold, so its count keeps the fold honest.
-        <div style={foldQueues ? { display: 'none' } : undefined} data-testid="queues">
+        <div id="queues" style={foldQueues ? { display: 'none' } : undefined} data-testid="queues">
           <FollowUpPanel me={me} team={followUpTeam} onOpenThread={thread.openThread} say={showToast} narrow={narrow} onCount={setQueueCount} onQueue={onQueue} />
         </div>
       ) : (
@@ -229,7 +268,7 @@ export default function Messages() {
       {/* Waiting on them (v2.5704): who went quiet after our send; Needs a reply above is who waits on us. */}
       {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={(id, more) => thread.openThread(id, null, more)} />}
 
-      {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} />}
+      {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} filter={wentOutFilter} onFilter={setWentOutFilter} />}
 
       {/* Everyone we have talked with (v2.5700): the people list with its search, for every pill the queues serve; the
           last pill already shows the list in the queues' place. */}

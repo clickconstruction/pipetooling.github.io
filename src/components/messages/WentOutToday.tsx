@@ -14,6 +14,9 @@ import type { KindPill } from '../../lib/messages/kindPills'
 export interface WentOutTodayProps {
   pill: KindPill
   onOpenThread: (contactId: string) => void
+  /** The lane's filter as the page holds it (punch list #140 PR 5: the strip's Texts not delivered opens the texts); its own when left out. */
+  filter?: WentOutFilter
+  onFilter?: (filter: WentOutFilter) => void
   io?: (now?: Date) => Promise<WentOutLine[]>
   now?: () => number
 }
@@ -82,9 +85,14 @@ function Row({ r, onOpenThread }: { r: WentOutRow; onOpenThread: (contactId: str
   )
 }
 
-export function WentOutToday({ pill, onOpenThread, io = loadWentOut, now = Date.now }: WentOutTodayProps) {
+export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter, io = loadWentOut, now = Date.now }: WentOutTodayProps) {
   const [lines, setLines] = useState<WentOutLine[] | null | undefined>(undefined)
-  const [filter, setFilter] = useState<WentOutFilter>('both')
+  const [own, setOwn] = useState<WentOutFilter>('both')
+  const filter = filterGiven ?? own
+  const setFilter = (f: WentOutFilter) => {
+    setOwn(f)
+    onFilter?.(f)
+  }
   useEffect(() => {
     let live = true
     io(new Date(now()))
@@ -98,7 +106,7 @@ export function WentOutToday({ pill, onOpenThread, io = loadWentOut, now = Date.
   const days = wentOutDays(lines ?? [], pill, new Date(now()), filter)
   const total = days.reduce((n, d) => n + d.rows.length, 0)
   return (
-    <section aria-label="Went out" data-testid="went-out-today">
+    <section id="went-out" aria-label="Went out" data-testid="went-out-today">
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>{WENT_OUT_WORDS.title(total)}</h3>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{WENT_OUT_WORDS.note}</span>

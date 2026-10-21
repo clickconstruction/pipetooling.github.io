@@ -238,7 +238,7 @@ contact).
 | 2 | Finish switching Messages on | v2.5712 | #5960 | armed 2026-10-21 |
 | 3 | Show: Mine · Everyone | v2.5713 | #5961 | filed 2026-10-21; armed once the PR below merges |
 | 4 | Nudge fills the step's words | v2.5714 | #5962 | filed 2026-10-21; armed once the PR below merges |
-| 5 | The last 7 days strip | | | not started |
+| 5 | The last 7 days strip | v2.5715 | #5963 | filed 2026-10-21; armed once the PR below merges |
 | 6 | Answer all | | | not started |
 | 7 | Log a call (+ migration `20261021010000_log_call`, `supabase db push` after merge; the Waiting on them hold moves to PR 4, since `waitingOnThem.ts` is the #139 stack's) | v2.5710 | #5958 | merged 2026-10-21; `db push` pending the client deploy |
 | 8 | A lead's doors | v2.5711 | #5959 | armed 2026-10-21 |

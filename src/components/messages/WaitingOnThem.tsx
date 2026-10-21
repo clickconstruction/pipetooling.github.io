@@ -42,7 +42,7 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
 
   const rows = waitingOnThem(lines ?? [], pill, new Date(now()))
   return (
-    <section aria-label="Waiting on them" data-testid="waiting-on-them">
+    <section id="waiting-on-them" aria-label="Waiting on them" data-testid="waiting-on-them">
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>{WAITING_WORDS.title(rows.length)}</h3>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{WAITING_WORDS.note}</span>
