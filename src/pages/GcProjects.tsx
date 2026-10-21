@@ -5,8 +5,8 @@
  * window. `src/lib/gc/gcIo.ts` does the reading
  * and the one write; the window and the kernels decide the rest.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule } from '../lib/gc/access'
 import { pageGate } from '../lib/roleGate'
@@ -256,7 +256,7 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
-import { billDayFromSearch, billDayHref, GC_WAITING_ON_THEM_ID, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, type BoardBy, type GcView } from '../lib/gc/links'
+import { billDayFromSearch, billDayHref, GC_WAITING_ON_THEM_ID, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, type BoardBy, type GcView, GC_MESSAGES_PAGE_HREF } from '../lib/gc/links'
 import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useThreadWindow, withThread } from '../components/gc/messages/useThreadWindow'
@@ -937,24 +937,21 @@ export default function GcProjects() {
     new URLSearchParams(billDayHref(projectId).split('?')[1]).forEach((v, k) => next.set(k, v))
     setParams(next, { replace: true })
   }
+  const pillLook = (on: boolean): CSSProperties => ({
+    padding: '0.3rem 0.8rem',
+    borderRadius: 999,
+    border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+    background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+    color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
+    fontWeight: on ? 600 : 400,
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    textDecoration: 'none',
+  })
   const devPill = (view: GcView, label: string) => {
     const on = devView === view
     return (
-      <button
-        type="button"
-        aria-pressed={on}
-        onClick={() => showView(view)}
-        style={{
-          padding: '0.3rem 0.8rem',
-          borderRadius: 999,
-          border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-          background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-          color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
-          fontWeight: on ? 600 : 400,
-          cursor: 'pointer',
-          fontSize: '0.85rem',
-        }}
-      >
+      <button type="button" aria-pressed={on} onClick={() => showView(view)} style={pillLook(on)}>
         {label}
       </button>
     )
@@ -2013,7 +2010,11 @@ export default function GcProjects() {
               {devPill('partners', 'Trade partners')}
               {devPill('customers', 'Customers')}
               {devPill('followUp', followUpCount > 0 ? `Follow up (${followUpCount})` : 'Follow up')}
-              {devPill('messages', 'Messages')}
+              {/* Punch list #140 PR 9: one front door. The pill is a link to the office's one page, Trade partners picked;
+                  `?view=messages&thread=` still draws the view here for the links in the wild (the reply push, the bubble). */}
+              <Link to={GC_MESSAGES_PAGE_HREF} aria-current={devView === 'messages' ? 'page' : undefined} style={pillLook(devView === 'messages')}>
+                Messages
+              </Link>
               {/* Money is the money team's (the Owner Billing door). */}
               {canSeeGcMoney(role) && devPill('money', 'Money')}
             </div>

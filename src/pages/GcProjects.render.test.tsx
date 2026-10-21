@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
+import { MemoryRouter } from 'react-router-dom'
+import { ToastProvider } from '../contexts/ToastContext'
+import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within, render } from '@testing-library/react'
 import GcProjects from './GcProjects'
-import { renderSettled, settle } from '../test/renderSmokeMocks'
+import { renderSettled, settle, installDomShims } from '../test/renderSmokeMocks'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, logGcAskContact, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
@@ -303,6 +306,23 @@ vi.mock('../lib/gc/closeoutIo', () => ({
 
 const loadedEmpty = { loaded: () => screen.findByText('No GC project yet. Press New project when the first plans come in.') }
 
+
+/** Punch list #140 PR 9: the in-page Messages view opens from the address alone (the pill is a link to /messages now), so these render at it. */
+async function renderGcAt<T>(url: string, loaded: () => Promise<T>): Promise<T> {
+  installDomShims()
+  render(
+    <ToastProvider>
+      <ConfirmDialogProvider>
+        <MemoryRouter initialEntries={[url]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <GcProjects />
+        </MemoryRouter>
+      </ConfirmDialogProvider>
+    </ToastProvider>,
+  )
+  await settle()
+  return loaded()
+}
+
 describe('GcProjects: New here?', () => {
   beforeEach(() => {
     window.localStorage.clear()
@@ -398,12 +418,10 @@ describe('GcProjects: the Project Board', () => {
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
-    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(loadMessagesView).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
-    expect(await screen.findByRole('group', { name: 'Who to show' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Messages' }).getAttribute('aria-pressed')).toBe('true')
+    await renderGcAt('/gc?view=messages', () => screen.findByRole('group', { name: 'Who to show' }))
+    // #140 PR 9: the pill is the door to the office's one page; the view itself opens from the address, for the links in the wild.
+    expect(screen.getByRole('link', { name: 'Messages' }).getAttribute('href')).toBe('/messages?kind=trade')
+    expect(screen.getByRole('link', { name: 'Messages' }).getAttribute('aria-current')).toBe('page')
     expect(loadMessagesView).toHaveBeenCalledTimes(1)
     const greg = document.querySelector('[data-messages-row="c-greg"]') as HTMLElement
     expect(greg.textContent).toContain('Greg Paulk')
@@ -424,9 +442,7 @@ describe('GcProjects: the Project Board', () => {
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
-    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
-    await screen.findByRole('group', { name: 'Who to show' })
+    await renderGcAt('/gc?view=messages', () => screen.findByRole('group', { name: 'Who to show' }))
     fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
     const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
     expect(loadMessagesView).toHaveBeenCalledTimes(1)
@@ -441,9 +457,7 @@ describe('GcProjects: the Project Board', () => {
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
-    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
-    await screen.findByRole('group', { name: 'Who to show' })
+    await renderGcAt('/gc?view=messages', () => screen.findByRole('group', { name: 'Who to show' }))
     fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
     const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
     expect(loadMessagesView).toHaveBeenCalledTimes(1)
@@ -457,7 +471,7 @@ describe('GcProjects: the Project Board', () => {
     auth.role = 'superintendent'
     vi.mocked(loadMessagesView).mockClear()
     await renderSettled(<GcProjects />, { loaded: () => null })
-    expect(screen.queryByRole('button', { name: 'Messages' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Messages' })).toBeNull()
     expect(loadMessagesView).not.toHaveBeenCalled()
   })
 
