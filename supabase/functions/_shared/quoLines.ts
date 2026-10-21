@@ -3,7 +3,8 @@
  * write a line through `quo_write_line` over the revision they read, and send a text through Quo's API. Every decision
  * is a kernel's (`./gcKernels/index.ts`, from `src/lib/quo/`); this file reads, writes and calls.
  *
- * Secrets: QUO_API_KEY (Quo's key, sent as the Authorization header), QUO_PHONE_NUMBER_ID (the company number's `PN…`
+ * Secrets: Quo's key (sent as the Authorization header) comes from Vault first, where Settings → Phone and texts keeps
+ * it since v2.5718 (`quo_secret_get`, `./quoKey.ts`), then QUO_API_KEY; QUO_PHONE_NUMBER_ID (the company number's `PN…`
  * id, every text's From), QUO_SEATS (`{"US…": "<our user id>"}`, the seats until Settings → Phone and texts has a
  * table), QUO_COMPANY_NAME, QUO_COMPANY_PHONE and QUO_COMPANY_MAILBOX (the words a HELP answer and a stop's confirmation
  * carry).
@@ -42,6 +43,7 @@ import { planSend, sendOver, sentQuoId, type QuoSendInput } from './gcKernels/li
 import { QUO_PAUSED_KEY, notePause, readQuoRefusal, type PauseChange, type PauseStore } from './gcKernels/lib/quo/paused.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings, stopScope, stoppedOn, type BoxFallback, type BoxSettings, type Mailbox, type StopChannel } from './gcKernels/lib/messages/boxes.ts'
 import { TEXTS_OFF, TEXTS_SWITCH_KEY, switchGates, textsAreOn } from './gcKernels/lib/quo/textsSwitch.ts'
+import { loadQuoApiKey } from './quoKey.ts'
 
 /** Quo's send endpoint. */
 export const QUO_MESSAGES_URL = 'https://api.quo.com/v1/messages'
@@ -260,7 +262,7 @@ export async function sendText(
   boxes: BoxSettings,
 ): Promise<SendOutcome> {
   if (switchGates(input.purpose) && !(await textsSwitchOn(admin))) return { ok: false, refused: 'textsOff', words: TEXTS_OFF, status: 503 }
-  const apiKey = Deno.env.get('QUO_API_KEY')
+  const { key: apiKey } = await loadQuoApiKey(admin, (k) => Deno.env.get(k))
   const fromNumberId = boxes[box].numberId
   if (!apiKey || !fromNumberId) {
     return { ok: false, refused: 'not-set-up', words: 'Texts are not set up yet. Add the Quo key and the company number first.', status: 503 }

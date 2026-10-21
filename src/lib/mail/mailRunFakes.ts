@@ -49,6 +49,8 @@ export class FakeDb {
     const chain = {
       select: () => chain,
       eq: (k: string, v: unknown) => { filters.push((r) => r[k] === v); where.push([k, v]); return chain },
+      // `.match(REAL_ACCOUNT)`: each pair an equality (quo-config, v2.5718).
+      match: (pairs: Record<string, unknown>) => { for (const [k, v] of Object.entries(pairs)) { filters.push((r) => r[k] === v); where.push([k, v]) } return chain },
       in: (k: string, vs: unknown[]) => { filters.push((r) => vs.includes(r[k])); where.push([k, vs]); return chain },
       order: () => chain,
       limit: (n: number) => { lim = n; return chain },

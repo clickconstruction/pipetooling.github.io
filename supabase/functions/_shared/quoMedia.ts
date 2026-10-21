@@ -9,20 +9,20 @@
  */
 import { keepsCopy, mediaToKeep, quoMediaPlans, quoMediaRow, type QuoMediaFetch, type QuoMediaPlan } from './gcKernels/lib/quo/mediaKeep.ts'
 import type { QuoMedia } from './gcKernels/lib/quo/events.ts'
+import { loadQuoApiKey } from './quoKey.ts'
 
 const BUCKET = 'message-attachments'
 /** How long one file's fetch may take before it is marked not copied. */
 const FETCH_MS = 10_000
 
-/** Quo's link, read once; a link that refuses a plain read is asked again with the API key. */
-async function fetchMedia(url: string): Promise<{ bytes: Uint8Array } | { failed: string }> {
+/** Quo's link, read once; a link that refuses a plain read is asked again with the API key (Vault's, else QUO_API_KEY). */
+async function fetchMedia(url: string, apiKey: string): Promise<{ bytes: Uint8Array } | { failed: string }> {
   const read = async (headers: Record<string, string>) => {
     const res = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_MS) })
     return res
   }
   try {
     let res = await read({})
-    const apiKey = Deno.env.get('QUO_API_KEY')
     if ((res.status === 401 || res.status === 403) && apiKey) res = await read({ Authorization: apiKey })
     if (!res.ok) return { failed: `Quo's link answered ${res.status}` }
     return { bytes: new Uint8Array(await res.arrayBuffer()) }
@@ -33,8 +33,8 @@ async function fetchMedia(url: string): Promise<{ bytes: Uint8Array } | { failed
 
 /** Our copy, uploaded; the fetch's outcome as `quoMediaRow` takes it. */
 // deno-lint-ignore no-explicit-any
-async function keepOne(admin: any, plan: QuoMediaPlan): Promise<QuoMediaFetch> {
-  const got = await fetchMedia(plan.url)
+async function keepOne(admin: any, plan: QuoMediaPlan, apiKey: string): Promise<QuoMediaFetch> {
+  const got = await fetchMedia(plan.url, apiKey)
   if ('failed' in got) {
     console.warn('[quo-webhook] a picture was not copied', plan.bucket_path, got.failed)
     return { ok: false }
@@ -60,8 +60,10 @@ export async function keepTextMedia(admin: any, messageId: string, quoId: string
   const { data: kept, error } = await admin.from('message_attachments').select('sort_order').eq('message_id', messageId)
   if (error) throw new Error(`message_attachments: ${error.message}`)
   const plans = mediaToKeep(quoMediaPlans(quoId, media), ((kept ?? []) as { sort_order: number }[]).map((k) => k.sort_order))
+  if (plans.length === 0) return
+  const { key: apiKey } = await loadQuoApiKey(admin, (k) => Deno.env.get(k))
   for (const plan of plans) {
-    const fetched = await keepOne(admin, plan)
+    const fetched = await keepOne(admin, plan, apiKey)
     const { error: rowError } = await admin.from('message_attachments').insert(quoMediaRow(messageId, plan, fetched))
     if (rowError) throw new Error(`message_attachments: ${rowError.message}`)
   }
