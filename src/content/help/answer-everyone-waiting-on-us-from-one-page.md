@@ -22,6 +22,8 @@ The page is Follow up for every kind of person. It has the same four lists.
 
 [See who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them) explains each list and its buttons. They work the same way here.
 
+Under the lists, **Went out today** shows every text we sent today, newest first. Each row names the person, the words and who pressed the send. Press a row to open the thread and read the text where it landed. The lists above hold what came in, so this is where you check that a send went.
+
 ## Show one kind of person
 
 The pills above the lists pick who to show.
