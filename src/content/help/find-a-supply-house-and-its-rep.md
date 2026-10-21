@@ -7,6 +7,8 @@ keywords: supply house, supply houses, directory, rep, reps, contact, vendor, ph
 
 The Directory on Materials → Supply houses lists every supply house the company deals with. It says who to talk to there and what we already know about each one.
 
+On the office's **Materials → Supply Houses**, the Directory starts folded to one line. Press **Directory** to open it. Press it again to fold it away. Your choice is remembered on your device.
+
 It is one list for the whole company. A rep is a contact person who works at that house. A rep one person adds is the rep everyone else sees. Estimators see the directory on its own. The office sees it above **Accounts payable**.
 
 ## Find a house
