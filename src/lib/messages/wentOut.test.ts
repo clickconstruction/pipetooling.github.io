@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { wentOutRows, WENT_OUT_WORDS, type WentOutLine } from './wentOut'
+import { wentOutDays, wentOutRows, WENT_OUT_WORDS, type WentOutLine } from './wentOut'
 
 // 1:31 PM and 9:00 AM in Chicago on Tue Oct 20 (CDT).
 const AT_131 = Date.parse('2026-10-20T18:31:00Z')
@@ -30,8 +30,26 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
     expect(rows[0]?.words.length).toBeLessThanOrEqual(111)
     expect(rows[0]?.words).not.toContain('second')
   })
+  it('groups the rows under their day in the company calendar, newest day first: Today, Yesterday, then the date (v2.5699)', () => {
+    // Now: Wed Oct 21, 12:03 AM Chicago (CDT), the minute the today-only lane went empty on the owner.
+    const now = new Date('2026-10-21T05:03:00Z')
+    const lines = [
+      line({ id: 'y1', atMs: AT_131 }),
+      line({ id: 'y2', atMs: AT_900, who: '' }),
+      line({ id: 't1', atMs: Date.parse('2026-10-21T05:01:00Z'), name: 'Pete Alvarez', kind: 'sub' }),
+      line({ id: 'o1', atMs: Date.parse('2026-10-19T16:00:00Z'), name: 'Kim Coe' }),
+    ]
+    const days = wentOutDays(lines, 'all', now)
+    expect(days.map((d) => [d.ymd, d.label, d.rows.map((r) => r.id)])).toEqual([
+      ['2026-10-21', 'Today', ['t1']],
+      ['2026-10-20', 'Yesterday', ['y1', 'y2']],
+      ['2026-10-19', 'Mon Oct 19', ['o1']],
+    ])
+    expect(wentOutDays(lines, 'sub', now).map((d) => d.label)).toEqual(['Today'])
+    expect(wentOutDays([], 'all', now)).toEqual([])
+  })
   it('the lane’s words are plain (the title’s count in parentheses is the queues’ own shape, not prose)', () => {
-    expect(WENT_OUT_WORDS.title(3)).toBe('Went out today (3)')
+    expect(WENT_OUT_WORDS.title(3)).toBe('Went out (3)')
     for (const words of [WENT_OUT_WORDS.note, WENT_OUT_WORDS.empty, WENT_OUT_WORDS.problem]) {
       expect(plainWordsFailures(words), words).toEqual([])
     }
