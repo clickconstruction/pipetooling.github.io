@@ -636,10 +636,19 @@ export function BidVersionPicker({
             <input value={newName} onChange={(e) => { setNewName(e.target.value); setNewNameTouched(true) }} placeholder="e.g. Value Engineered" autoFocus
               style={inputStyle} />
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: isUnsplit ? '0.25rem' : '1rem', fontSize: '0.875rem' }}>
             <input type="checkbox" checked={clonePricing} onChange={(e) => setClonePricing(e.target.checked)} />
             <span>Copy all {isUnsplit ? 'this bid’s' : 'the source’s'} prices{newFromPricingName ? <> — every price option comes along; ★ stays on <strong>{newFromPricingName}</strong></> : ' — every price option comes along'}</span>
           </label>
+          {/* #137 follow-up: the unsplit window's sub-line follows the checkbox too (v2.5690 gave the
+              split path's "Start from" line the same honesty) — unchecked, the new bid starts unpriced. */}
+          {isUnsplit && (
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 1rem 1.45rem' }}>
+              {clonePricing
+                ? 'both bids come out priced — the new one gets its own copy of every price option'
+                : `${currentName.trim() || 'the current setup'} keeps the prices — the new bid starts unpriced; the Pricing tab will offer your books`}
+            </span>
+          )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button type="button" onClick={() => setModalOpen(false)} disabled={busy} style={btnGhost}>Cancel</button>
             <button type="button" onClick={submitNewVersion} disabled={busy || !newName.trim()} style={btnPrimary}>
