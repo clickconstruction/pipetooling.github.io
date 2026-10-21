@@ -200,6 +200,7 @@ describe('a blank the box cannot fill (Messages R3)', () => {
     addNote: vi.fn(() => Promise.resolve('m-note')),
     sendEmail: vi.fn(() => Promise.resolve('m-email')),
     sendText: vi.fn(() => Promise.resolve('m-text')),
+    logCall: vi.fn(() => Promise.resolve('m-call-new')),
   })
 
   function box() {

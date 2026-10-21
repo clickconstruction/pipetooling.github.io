@@ -10,8 +10,12 @@ import { firstName, type ContactKind } from '../contacts/kernel'
 import type { PromiseKind } from '../gc/types'
 import { dayLabel } from './owed'
 
-/** What a heard day can be a promise of. Three by a trade partner, three by a customer, two by an architect. */
-export type HeardPromiseKind = 'quote' | 'start' | 'papers' | 'payment' | 'decision' | 'access' | 'answer' | 'cert'
+/**
+ * What a heard day can be a promise of. Three by a trade partner, three by a customer, two by an architect; and `said`,
+ * the day they gave on a call the office logged (punch list #140 PR 7, `log_call`), written on the call's line with no
+ * kind of its own and never offered.
+ */
+export type HeardPromiseKind = 'quote' | 'start' | 'papers' | 'payment' | 'decision' | 'access' | 'answer' | 'cert' | 'said'
 
 /** A heard day: offered until someone says what it is, then written down, or *just talk*. */
 export type HeardPromiseState = 'offered' | 'written' | 'no'
@@ -193,7 +197,7 @@ export function runningPromise(lines: ReadonlyArray<HeardLine>, contactId: strin
     if (!line.dayYmd || line.dayYmd < todayYmd || !line.kind) continue
     const at = Date.parse(line.at)
     if (best && at <= bestAt) continue
-    const word = line.writes ?? line.kind
+    const word = line.writes ?? (line.kind === 'said' ? 'their word' : line.kind)
     const day = dayLabel(line.dayYmd)
     best = { messageId: line.messageId, dayYmd: line.dayYmd, pill: `promised ${day} · ${word}`, until: `until ${day} · ${word}` }
     bestAt = at

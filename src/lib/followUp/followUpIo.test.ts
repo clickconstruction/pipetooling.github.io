@@ -131,6 +131,8 @@ describe('the presses', () => {
     await io.writeDown('m2', null)
     await io.readQuestion('m3', 'asked')
     await io.addNote('c1', 'Call her Monday.', null, { ymd: '2026-10-05', words: null })
+    await io.logCall('c1', 'Thursday works', { kind: 'project', id: 'p1' }, { ymd: '2026-10-23', words: null })
+    await io.logCall('c1', 'call me next week', null, { ymd: null, words: 'next week' })
     await io.setBackDay('n1', null)
     await io.backDone('n1')
     await io.highlight('m1', 'detention pond')
@@ -147,6 +149,8 @@ describe('the presses', () => {
       { fn: 'write_down', args: { p_message_id: 'm2', p_kind: null, p_writes: null } },
       { fn: 'read_question', args: { p_message_id: 'm3', p_state: 'asked' } },
       { fn: 'add_note', args: { p_contact_id: 'c1', p_body: 'Call her Monday.', p_job_kind: null, p_job_id: null, p_back_on: '2026-10-05', p_back_words: null } },
+      { fn: 'log_call', args: { p_contact_id: 'c1', p_said: 'Thursday works', p_job_kind: 'project', p_job_id: 'p1', p_day: '2026-10-23', p_day_words: null } },
+      { fn: 'log_call', args: { p_contact_id: 'c1', p_said: 'call me next week', p_job_kind: null, p_job_id: null, p_day: null, p_day_words: 'next week' } },
       { fn: 'set_back_day', args: { p_note_id: 'n1', p_on: null, p_words: null } },
       { fn: 'back_done', args: { p_note_id: 'n1' } },
       { fn: 'highlight', args: { p_message_id: 'm1', p_text: 'detention pond' } },

@@ -115,6 +115,7 @@ function Harness({ io, contact, box = false, line, loadLines }: { io: FollowUpTh
       <div data-testid="header">{slots.headerRight?.(contact)}</div>
       <div data-testid="status">{slots.statusRow?.(contact)}</div>
       <div data-testid="above">{slots.aboveBox?.(contact)}</div>
+      <div data-testid="court">{JSON.stringify(slots.court?.(contact) ?? null)}</div>
       {box && <BoxStandIn contactId={contact.id} />}
       <div data-testid="more">
         {(slots.menuRows?.(contact) ?? []).map((r) => (
@@ -185,6 +186,20 @@ describe('Follow up in the thread window', () => {
     const back = screen.getByText('↩ back Fri Oct 2').closest('[data-follow-up-back]') as HTMLElement
     expect(back.getAttribute('title')).toMatch(/^Comes back Fri Oct 2\. A note by Rosa brings this row back/)
     expect(more().getAllByRole('button').map((b) => b.textContent)).toEqual(['No reply needed', 'Remind me Monday'])
+  })
+
+  it('fills the court slot from the read: what we owe and a written promise’s day (punch list #140 PR 7)', async () => {
+    renderThread(
+      fakeIo(
+        {},
+        {
+          ...rows(),
+          owed: [{ id: 'o1', contact_id: 'greg', what: 'the revised quote', by_day: null, by_words: null, marked_by: 'u-rosa', marked_at: '2026-10-01T15:00:00.000Z', done_at: null, done_how: null, done_note_message_id: null }],
+          promises: [{ id: 'p1', message_id: '31', kind: 'said', state: 'written', day: '2099-01-09', day_words: null, writes: null, decided_by: 'u-rosa', decided_at: '2026-10-02T18:00:00.000Z', message: { contact_id: 'greg', at: '2026-10-02T18:00:00.000Z' } }],
+        },
+      ),
+    )
+    await waitFor(() => expect(JSON.parse(screen.getByTestId('court').textContent!)).toMatchObject({ owed: { what: 'the revised quote' }, promisedUntil: expect.stringMatching(/^until .* · their word$/) }))
   })
 
   it('takes it from the picker, says so, reads again and asks the window to read the thread again', async () => {
