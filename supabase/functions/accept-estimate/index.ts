@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
 import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
+import { writeEstimateThreadLine } from '../_shared/estimateThreadLine.ts'
 import { canDeclineEstimate, normalizeEstimateDeclineReason } from '../_shared/estimateDecline.ts'
 import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
 
@@ -135,6 +136,8 @@ async function handleDecline(
     req,
     metadata: { by: 'customer', note: reason },
   })
+  // The thread's line for the decline (v2.5705, punch list #139): once per estimate, best effort.
+  await writeEstimateThreadLine(admin, { estimateId: row.id, eventType: 'declined' })
   console.info(JSON.stringify({ tag: 'estimate_declined', by: 'customer', estimateId: row.id, hasReason: reason.length > 0 }))
   return json(200, { ok: true, declined: true })
 }
@@ -410,6 +413,9 @@ serve(async (req) => {
     }
 
     // sent -> customer_accepted audit: DB trigger estimates_audit_customer_accepted_trigger (same txn as UPDATE).
+
+    // The thread's line for the accept (v2.5705, punch list #139): once per estimate, best effort.
+    await writeEstimateThreadLine(admin, { estimateId: row.id, eventType: 'public_accept_submitted', metadata: { had_signature: hasSig } })
 
     // v2.3100: the consent words, verbatim, beside the signature (best-effort; the row stamp above is the act).
     await recordEsignConsent(admin, {

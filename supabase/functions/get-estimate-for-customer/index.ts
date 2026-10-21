@@ -7,6 +7,7 @@ import {
   toClientCustomerExperience,
 } from '../_shared/estimateCustomerExperience.ts'
 import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
+import { writeEstimateThreadLine } from '../_shared/estimateThreadLine.ts'
 import { estimateRefForTokenHash, linkHasExpired, type EstimateLookupClient } from '../_shared/estimateTokenLookup.ts'
 import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachment.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
@@ -212,6 +213,8 @@ serve(async (req) => {
         p_user_agent: req.headers.get('user-agent') ?? '',
       })
       if (viewErr) console.error('record_estimate_public_link_view', viewErr)
+      // The thread's line for the open (v2.5705, punch list #139): once per estimate, best effort.
+      await writeEstimateThreadLine(admin, { estimateId: est.id, eventType: 'public_link_view' })
     }
 
     return new Response(
