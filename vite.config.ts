@@ -230,10 +230,12 @@ export default defineConfig({
       registerType: 'prompt',
       injectManifest: {
         // Workbox default is 2 MiB; the main chunk is ~4.9 MiB (every public page is eager in App.tsx).
-        // A file over this cap fails the deploy build. 6 MiB leaves ~1 MiB for normal growth and still
-        // trips on a regression like v2.4655's, which put every help guide (~1.7 MB) in the main chunk
-        // (fixed v2.4695: LienRulesDoor lazy-loads its window). Raise it only with a reason here.
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // A file over this cap fails the deploy build. The main chunk reached 6 MiB on 2026-10-20 by plain
+        // growth (6,277 → 6,284 kB across v2.5332's merge, the same 259 chunks before and after), so the cap
+        // is 7 MiB: ~0.7 MiB for growth, and it still trips on a regression like v2.4655's, which put every
+        // help guide (now ~2.3 MB) in the main chunk (fixed v2.4695: LienRulesDoor lazy-loads its window).
+        // Raise it only with a reason here; the 6.3 MB main chunk itself is due a code-split pass.
+        maximumFileSizeToCacheInBytes: 7 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
         globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**'],
       },
