@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { ESTIMATE_DOOR_WORDS, estimateDoorFor, estimateDoorHref } from './estimateDoor'
+import { ESTIMATE_DOOR_WORDS, estimateDoorFor, estimateDoorHref, textDoorsFrom } from './estimateDoor'
 
 const SUBJECT = 'Estimate #166 — Estimate for Evan Johnson — $6,250 · Click Plumbing and Electrical'
 const line = (set: Partial<{ channel: string; direction: string; subject: string | null; body: string }> = {}) => ({ channel: 'email', direction: 'out', subject: SUBJECT, body: SUBJECT, ...set })
@@ -17,6 +17,24 @@ describe('estimateDoorFor (v2.5698, punch list #139)', () => {
     expect(estimateDoorFor(line({ subject: 'Re: Thursday' }))).toBeNull()
     expect(estimateDoorFor(line({ subject: null }))).toBeNull()
     expect(estimateDoorFor(line({ subject: 'Estimate #0 — nothing' }))).toBeNull()
+  })
+  it('a text’s door comes from its link’s token hash naming an estimate; a dead or unknown link names none (v2.5706)', () => {
+    const doors = textDoorsFrom(
+      [
+        { id: 't1', hashes: ['AAA'] },
+        { id: 't2', hashes: ['dead', 'bbb'] },
+        { id: 't3', hashes: ['nope'] },
+        { id: 't4', hashes: [] },
+      ],
+      [
+        { number: 166, tokenHash: 'aaa', changeOrder: false },
+        { number: 80, tokenHash: 'bbb', changeOrder: true },
+      ],
+    )
+    expect([...doors.entries()]).toEqual([
+      ['t1', { kind: 'estimate', number: 166, duplicate: false }],
+      ['t2', { kind: 'change-order', number: 80, duplicate: false }],
+    ])
   })
   it('names the press and the page, in plain words', () => {
     const d = estimateDoorFor(line())!

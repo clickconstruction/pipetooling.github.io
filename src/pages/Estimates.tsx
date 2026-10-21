@@ -5326,6 +5326,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         onClose={() => setCreateJobModalOpen(false)}
         onSuccess={(jobId) => {
           void (async () => {
+            // The estimate's texts move onto the job it became (v2.5706, punch list #139): best effort, before the page leaves.
+            if (row.customer_id) await tieEstimateTextsToJob({ customerId: row.customer_id, sentAt: row.sent_at, tokenHash: row.public_token_hash ?? null, jobId })
             await load()
             navigate(`/jobs?edit=${jobId}`)
           })()
