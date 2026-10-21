@@ -100,7 +100,7 @@ export function ReplyPushSettingsCard({ io = DEFAULT_IO }: { io?: ReplyPushSwitc
   }
 
   return (
-    <section aria-labelledby="phone-texts-reply-push" data-settings-reply-push style={cardStyle}>
+    <section aria-labelledby="phone-texts-reply-push" id="settings-phone-texts-reply-push" data-settings-reply-push style={cardStyle}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <h3 id="phone-texts-reply-push" style={{ margin: 0, fontSize: '1rem' }}>
           {REPLY_PUSH_TITLE}

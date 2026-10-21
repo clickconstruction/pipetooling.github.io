@@ -57,7 +57,7 @@ export function EmailReaderSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: Emai
   }
 
   return (
-    <section aria-labelledby="phone-texts-read-bids" data-settings-read-bids style={cardStyle}>
+    <section aria-labelledby="phone-texts-read-bids" id="settings-phone-texts-read-bids" data-settings-read-bids style={cardStyle}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <h3 id="phone-texts-read-bids" style={{ margin: 0, fontSize: '1rem' }}>
           {READER_TITLE}

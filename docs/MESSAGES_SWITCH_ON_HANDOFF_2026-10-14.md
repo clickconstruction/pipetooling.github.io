@@ -1,6 +1,6 @@
 # Hand-off: switching Messages on (Quo), 2026-10-14
 
-last_updated: 2026-10-14
+last_updated: 2026-10-21
 
 *Written 2026-10-14, about 4 PM CT, by the residential lead ("cc") as the owner hands the switch-on to another session.
 The build itself is closed: `MESSAGES_RESIDENTIAL_BUILD_PLAN.md` (its Status, §7 for the owner's calls, §9 for after live)
@@ -22,7 +22,7 @@ switch-on stands and what comes next.*
 
 ## What comes next, in order
 
-Each step is the owner's or a dev's press. The order was checked by the GC lead on 2026-10-14.
+Each step is the owner's or a dev's press. The order was checked by the GC lead on 2026-10-14. Since v2.5712 (punch list #140 PR 2) the owner reads the same eight switches on Messages itself: the **Finish switching Messages on** line at the top of `/messages` lists each with its state and a door to its card, and goes away once all eight are on; that card is where the switch-on stands from now on.
 
 1. **Name the test number.** Messages → New → its row → Who is this? → Someone else, with the owner's own name. That
    thread is the test bed for everything below.

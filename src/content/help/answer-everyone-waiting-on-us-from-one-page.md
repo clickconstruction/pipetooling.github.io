@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner
 order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
@@ -23,6 +23,16 @@ The page is Follow up for every kind of person. It has the same four lists.
 [See who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them) explains each list and its buttons. They work the same way here.
 
 Under the lists, **Went out** shows every text and email we sent in the last 7 days, newest first. The rows sit under the day each one went: **Today**, **Yesterday**, then the date. Each row names the person, the words and who pressed the send. An estimate email's row says **opened** or **accepted** once the customer did that. Press {{button:outline|Texts}} or {{button:outline|Emails}} to see one kind, and {{button:outline|Both}} for all. Press a row to open the thread and read the text where it landed. The lists above hold what came in, so this is where you check that a send went. Once Quo answers, the row says **delivered** beside its time. A text that did not reach them reads **not delivered** in red, with {{button:blue|Call them}} on the row.
+
+## Finish switching on
+
+The owner and devs see one more line at the top of the page. It reads **Finish switching Messages on**, with how many of the eight switches are on.
+
+1. Press the line. The card lists each switch with its state.
+2. Press the door beside a switch that is off. It opens that setting.
+3. Press {{button:outline|Later}} to fold the card for a week on this device.
+
+The card goes on its own once all eight are on. The switches themselves are set on [Phone and texts](/settings?tab=settings-phone-texts) and [Flows](/settings?tab=settings-flows).
 
 ## Show one kind of person
 

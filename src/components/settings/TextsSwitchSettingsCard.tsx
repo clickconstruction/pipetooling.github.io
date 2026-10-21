@@ -57,7 +57,7 @@ export function TextsSwitchSettingsCard({ io = DEFAULT_IO }: { io?: TextsSwitchI
   }
 
   return (
-    <section aria-labelledby="phone-texts-send-texts" data-settings-send-texts style={cardStyle}>
+    <section aria-labelledby="phone-texts-send-texts" id="settings-phone-texts-send-texts" data-settings-send-texts style={cardStyle}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <h3 id="phone-texts-send-texts" style={{ margin: 0, fontSize: '1rem' }}>
           {TEXTS_SWITCH_TITLE}

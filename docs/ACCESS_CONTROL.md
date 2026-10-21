@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-10-19
+last_updated: 2026-10-21
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -942,7 +942,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ board + RFI / Change Order / Lien Release only, no analytics (v2.3066) | ✅ limited |
 | **GC projects** (`/gc`, v2.4832 — GC mode door 1; `canOpenGcProjects` ↔ `gc_office_team()`; the **Trades \| GC** switch on Bids is its door) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **Messages** (`/messages`, v2.5446 — residential R2; `canOpenMessages` = `GC_OFFICE_TEAM`, since the spine's tables open to `gc_office_team()` alone; **Messages** in the header is its door; estimators reach it through `estimatorAllowedPaths`) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **Messages** (`/messages`, v2.5446 — residential R2; `canOpenMessages` = `GC_OFFICE_TEAM`, since the spine's tables open to `gc_office_team()` alone; **Messages** in the header is its door; estimators reach it through `estimatorAllowedPaths`; the **Finish switching Messages on** line and card at its top, v2.5712, punch list #140 PR 2, draw for the owner and a dev alone, `isOwnerOrDev`, and only read the eight switches' `app_settings` rows) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

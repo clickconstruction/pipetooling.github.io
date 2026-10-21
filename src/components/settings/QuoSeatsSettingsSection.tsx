@@ -77,7 +77,7 @@ export function QuoSeatsSettingsSection({ io = DEFAULT_IO }: { io?: QuoSeatsIo }
   const head = { ...muted, ...cell, borderTop: 'none', fontWeight: 600 }
 
   return (
-    <section aria-labelledby="phone-texts-quo-seats" data-settings-quo-seats style={cardStyle}>
+    <section aria-labelledby="phone-texts-quo-seats" id="settings-phone-texts-quo-seats" data-settings-quo-seats style={cardStyle}>
       <h3 id="phone-texts-quo-seats" style={{ margin: 0, fontSize: '1rem' }}>
         Company phone seats
       </h3>

@@ -18,7 +18,8 @@ import { MessagesRereadContext } from '../components/gc/messages/useMessagesRere
 import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
-import { canOpenMessages } from '../lib/gc/access'
+import { canOpenMessages, isOwnerOrDev } from '../lib/gc/access'
+import { SwitchOnCard } from '../components/messages/SwitchOnCard'
 import { pageGate } from '../lib/roleGate'
 import { loadGcTeam, type GcTeamMember } from '../lib/gc/gcIo'
 import { followUpTeamOf } from '../lib/followUp/team'
@@ -112,6 +113,8 @@ export default function Messages() {
             )
           })}
         </div>
+        {/* Punch list #140 PR 2: the owner's and a dev's line to the switches still off, gone once all eight are on. */}
+        {isOwnerOrDev(role) && !searching && <SwitchOnCard />}
       </div>
 
       <div style={{ display: 'grid', gap: '0.35rem' }}>
