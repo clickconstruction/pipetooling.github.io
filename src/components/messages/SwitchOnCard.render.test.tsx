@@ -27,7 +27,7 @@ const ALL_ON: Record<string, SwitchRaw> = {
   gmail_sync_on_v1: row('true'),
   messages_assign_rule_v1: row(JSON.stringify({ customer: '11111111-1111-4111-8111-111111111111', trade: '22222222-2222-4222-8222-222222222222', arch: null })),
   messages_boxes_v1: row(JSON.stringify({ team: { address: 'team@clickplumbing.example', phone: '', numberId: '' }, bids: { address: '', phone: '', numberId: '' } })),
-  messages_quo_seats_v1: row(JSON.stringify({ seats: [{ quoUserId: 'US1', userId: '11111111-1111-4111-8111-111111111111' }] })),
+  messages_quo_seats_v1: row(JSON.stringify({ US1: '11111111-1111-4111-8111-111111111111' })),
   messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: 'offer', paid: 'offer' } })),
 }
 const NOW = '2026-10-21T15:00:00.000Z'

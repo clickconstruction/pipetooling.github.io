@@ -10,7 +10,7 @@ const ALL_ON: Record<string, SwitchRaw> = {
   messages_assign_rule_v1: row(JSON.stringify({ customer: '11111111-1111-4111-8111-111111111111', trade: '22222222-2222-4222-8222-222222222222', arch: null })),
   messages_boxes_v1: row(JSON.stringify({ team: { address: 'team@clickplumbing.example', phone: '', numberId: '' }, bids: { address: '', phone: '', numberId: '' } })),
   messages_reply_push_on_v1: row('true'),
-  messages_quo_seats_v1: row(JSON.stringify({ seats: [{ quoUserId: 'US1', userId: '11111111-1111-4111-8111-111111111111' }] })),
+  messages_quo_seats_v1: row(JSON.stringify({ US1: '11111111-1111-4111-8111-111111111111' })),
   messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: 'offer', paid: 'offer' } })),
   messages_office_hours_v1: row(JSON.stringify({ days: [1, 2, 3, 4, 5], opens: '07:30', closes: '17:00', techUntil: '17:00', emergency: null, savedAt: '2026-10-21T15:00:00.000Z' })),
 }
@@ -39,7 +39,7 @@ describe('the switch card (punch list #140 PR 2)', () => {
   it('reads each switch through the app’s own parser, never a bare string', () => {
     expect(switchStates({ ...ALL_ON, messages_texts_on_v1: row('TRUE') }).texts).toBe('off')
     expect(switchStates({ ...ALL_ON, messages_assign_rule_v1: row(JSON.stringify({ customer: '11111111-1111-4111-8111-111111111111', trade: null })) }).assign).toBe('nobody')
-    expect(switchStates({ ...ALL_ON, messages_quo_seats_v1: row('{"seats":[]}') }).seats).toBe('nobody')
+    expect(switchStates({ ...ALL_ON, messages_quo_seats_v1: row('{}') }).seats).toBe('nobody')
     expect(switchStates({ ...ALL_ON, messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: true } })) }).reminders).toBe('off')
     expect(switchStates({ ...ALL_ON, messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: true, paid: 'offer' } })) }).reminders).toBe('on')
     expect(switchStates({ ...ALL_ON, messages_office_hours_v1: row('{"days":[1,2,3],"opens":"07:30","closes":"17:00"}') }).hours).toBe('not_set')

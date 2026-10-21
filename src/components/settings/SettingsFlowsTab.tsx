@@ -32,11 +32,9 @@ export const FLOWS_LEDE =
   'One flow for each kind of person. A step finishes on facts the app already keeps, picked from a list. The office changes the steps, whose move each is, the nudge, the papers and the order. Every change is tried on everyone before you save.'
 
 /** `now` is the day the flow is read on; the render smokes pin it. */
-const EDITOR_KINDS: readonly EditorKind[] = ['customer', 'trade', 'arch', 'residential', 'sub']
-
 /** The flow a `?kind=` names, else the trades'. */
 function kindFromParam(k: string | null): EditorKind {
-  return k && (EDITOR_KINDS as readonly string[]).includes(k) ? (k as EditorKind) : 'trade'
+  return k && EDITOR_KINDS.some(([kind]) => kind === k) ? (k as EditorKind) : 'trade'
 }
 
 export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
