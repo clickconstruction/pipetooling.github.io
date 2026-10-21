@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-19
+last_updated: 2026-10-21
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -45,7 +45,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Bank ledger, card sorting, accounting review → `/banking`
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`
 - Every message with every person we work with on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
-- Everyone waiting on us for an answer and what we owe them, for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
+- Everyone waiting on us for an answer, what we owe them and, since v2.5686, every text we sent in the last 7 days (**Went out**, v2.5699), for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
 - A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard, under My Schedule in Job Mode; guide `take-a-training-course`)
 - A course open to everyone, with a drawing in every lesson of how water comes into a house and leaves it → `/training/intro-to-plumbing` (the **Available** row of the same Training card; guide `take-a-training-course`)
@@ -251,7 +251,7 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
   or Billed asks before it texts the customer when that step is set to Asks in Settings → Flows
   (`/help?g=set-up-the-steps-a-person-goes-through`).
 - `?tab=reports` — field job reports (create/review); dispatch items (e.g. site-not-ready).
-- The job window, for the office team: **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens the customer's door over the window, as on the Pipeline's rows but with no Their record row, and its **Open their thread** goes to `/messages`. The box opens on the lines for the job's stage, and `{bill}` in a quick reply fills with the pay page of the job's newest Stripe bill; a slash typed in any reply box lists the quick replies by keyboard, and the words bill or estimate after it the customer's own bills and estimates, a pick putting in a line about that paper with its link (guide `reply-to-a-person-from-their-thread`).
+- The job window, for the office team: **＋ Report** beside the Reports pill leaves a field report from the window (v2.5688, guide `reports`); **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens the customer's door over the window, as on the Pipeline's rows but with no Their record row, and its **Open their thread** goes to `/messages`. The box opens on the lines for the job's stage, and `{bill}` in a quick reply fills with the pay page of the job's newest Stripe bill; a slash typed in any reply box lists the quick replies by keyboard, and the words bill or estimate after it the customer's own bills and estimates, a pick putting in a line about that paper with its link (guide `reply-to-a-person-from-their-thread`).
 - `?tab=billing` — invoices, payments, billing flows per job.
 - `?tab=job-summary` — one job's charges-vs-payments timeline chart + % complete.
 - `?tab=teams-summary` — Crew P&L (hours-weighted billing credit per crew).
@@ -277,7 +277,7 @@ The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a le
 Roles: staff; estimator only with `estimator_prospects_access`.
 
 ### /estimates — Estimates
-Homeowner-style quotes (separate from bids): line items, send for acceptance (since v2.5594 through **Tell the customer**: the email and the text with the link, guide `send-an-estimate-and-turn-it-into-a-job`), → job.
+Homeowner-style quotes (separate from bids): line items, send for acceptance (since v2.5594 through **Tell the customer**: the email and the text with the link, the sheet answering every press with a band or its receipt since v2.5681, guide `send-an-estimate-and-turn-it-into-a-job`; a sent estimate shows **What went**, v2.5683), → job.
 Roles: dev, master, assistant, controller, estimator, primary; super limited.
 
 ### /tally — Tally

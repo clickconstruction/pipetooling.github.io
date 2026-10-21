@@ -59,6 +59,14 @@ export interface WentOutDay {
   rows: WentOutRow[]
 }
 
+/** One day of the lane, newest day first: its header and its rows. */
+export interface WentOutDay {
+  ymd: string
+  /** "Today", "Yesterday", then the weekday and date: "Mon Oct 19". */
+  label: string
+  rows: WentOutRow[]
+}
+
 const WORDS_MAX = 110
 
 /** The lines under a pill, newest first. A number nobody has named shows under All alone, as the queues do. */
