@@ -214,7 +214,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | Who gets a new message (the rule and its seats) | Settings → Phone and texts | `messages_assign_rule_v1` |
 | Inboxes (the two boxes: address, number, number id) | Settings → Phone and texts | `messages_boxes_v1` |
 | The office's wait before it hears a reply nobody answered (0 is at once) | Settings → Phone and texts → Reply push, under the switch (v2.5540) | `messages_office_wait_minutes` |
-| Office hours | `app_settings`, set by a dev (no card yet) | `messages_office_hours_v1` |
+| Office hours (the days, the open and the close; the tech's hour and the after-hours number stay a dev's by hand) | Settings → Phone and texts → Office hours (v2.5709, punch list #140 PR 1; `officeHoursCard.ts`, the owner and a dev) | `messages_office_hours_v1` |
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
 | Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every three minutes |
 | The reminders the app sends itself, per step: off, offers or sends (v2.5595) | Settings → Flows | `messages_nudge_app_sends_v1`; the cron `messages-nudge-dispatch`, 14:00 and 15:00 UTC; the summary `messages_nudge_last_run_v1` |
