@@ -43,12 +43,14 @@ export function canAnswerAll(laneLength: number): boolean {
 export interface AnswerTally {
   texts: number
   emails: number
+  /** A call the box logged (PR 7's Call kind): the office spoke to them, so it answers like a send. */
+  calls: number
   notes: number
   noReply: number
   skipped: number
 }
 
-export const EMPTY_TALLY: AnswerTally = { texts: 0, emails: 0, notes: 0, noReply: 0, skipped: 0 }
+export const EMPTY_TALLY: AnswerTally = { texts: 0, emails: 0, calls: 0, notes: 0, noReply: 0, skipped: 0 }
 
 export function countOne(t: AnswerTally, key: keyof AnswerTally): AnswerTally {
   return { ...t, [key]: t[key] + 1 }
@@ -56,11 +58,12 @@ export function countOne(t: AnswerTally, key: keyof AnswerTally): AnswerTally {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-/** "2 texts, 1 email and 1 no reply needed went. 1 skipped." / "Nothing went." */
+/** "2 texts, 1 email, 1 call and 1 no reply needed went. 1 skipped." / "Nothing went." */
 export function tallyWords(t: AnswerTally): string {
   const parts = [
     t.texts ? plural(t.texts, 'text', 'texts') : null,
     t.emails ? plural(t.emails, 'email', 'emails') : null,
+    t.calls ? plural(t.calls, 'call', 'calls') : null,
     t.notes ? plural(t.notes, 'note', 'notes') : null,
     t.noReply ? `${t.noReply} no reply needed` : null,
   ].filter((p): p is string => p !== null)

@@ -167,7 +167,7 @@ export function AnswerAllDesk({ lane, weOwe, contacts, lines, reread, noReplyNee
     onOpenThread(contactId, at ?? undefined, more)
   }
 
-  // The box's io, with what went written down: a send moves the desk on; a note counts and stays.
+  // The box's io, with what went written down: a send or a logged call moves the desk on; a note counts and stays.
   const base = useMemo(() => replyIo ?? supabaseReplyIo(), [replyIo])
   const logIo = useMemo<ReplyIo | null>(() => {
     if (!current) return null
@@ -187,6 +187,12 @@ export function AnswerAllDesk({ lane, weOwe, contacts, lines, reread, noReplyNee
       sendText: async (input) => {
         const messageId = await base.sendText(input)
         moveOn(id, 'texts')
+        return messageId
+      },
+      // A call logged from the box (PR 7's Call kind): the office spoke to them, so the desk moves on as after a send.
+      logCall: async (...a) => {
+        const messageId = await base.logCall(...a)
+        moveOn(id, 'calls')
         return messageId
       },
     }

@@ -39,6 +39,7 @@ describe('Answer all (punch list #140 PR 6)', () => {
     const t = countOne(countOne(countOne(countOne(EMPTY_TALLY, 'texts'), 'texts'), 'emails'), 'noReply')
     expect(tallyWords(t)).toBe('2 texts, 1 email and 1 no reply needed went.')
     expect(tallyWords(countOne(countOne(EMPTY_TALLY, 'notes'), 'skipped'))).toBe('1 note went. 1 skipped.')
+    expect(tallyWords(countOne(countOne(EMPTY_TALLY, 'calls'), 'calls'))).toBe('2 calls went.')
   })
 
   it('knows whom the box can reach', () => {
