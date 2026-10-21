@@ -136,6 +136,7 @@ function followUpIo(...reads: FollowUpRows[]): FollowUpIo {
     callDone: vi.fn(async () => undefined),
     callMove: vi.fn(async () => undefined),
     setPrefers: vi.fn(async () => undefined),
+    logCall: vi.fn(async () => 'm-call-new'),
   }
 }
 const replyIo = (): ReplyIo => ({
