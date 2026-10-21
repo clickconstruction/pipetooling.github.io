@@ -131,7 +131,9 @@ export function tellFills(input: TellFillInput): BlankFills {
   }
   put('first', firstWord(input.customerName))
   put('me', firstWord(input.me))
-  put('job', input.jobName ?? input.estimate?.title ?? null)
+  // An estimate's default title is "Estimate for Dana Whitfield", and the line already says "Your estimate for {job}"
+  // (v2.5696, read on a live text as "estimate for Estimate for Evan Johnson"): the title's lead-in drops.
+  put('job', input.jobName ?? input.estimate?.title?.replace(/^\s*estimate\s+for\s+/i, '') ?? null)
   put('address', input.jobAddress)
   if (input.block) {
     put('day', scheduleFormatWeekdayLong(input.block.workDate))

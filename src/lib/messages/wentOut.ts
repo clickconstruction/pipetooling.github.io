@@ -12,8 +12,10 @@ import { inPill, type KindPill } from './kindPills'
 export interface WentOutLine {
   id: string
   contactId: string
-  /** Their name; null on a number nobody has named. */
+  /** Their name; null on a number nobody has named, and on a customer's own thread (the app keeps that contact's name null). */
   name: string | null
+  /** The customer the thread belongs to (v2.5696): a customer's own thread reads their customer record's name. */
+  customerName?: string | null
   kind: ContactKind | null
   body: string
   atMs: number
@@ -44,7 +46,7 @@ export function wentOutRows(lines: readonly WentOutLine[], pill: KindPill): Went
       return {
         id: l.id,
         contactId: l.contactId,
-        name: l.name?.trim() || 'A number nobody has named',
+        name: l.name?.trim() || l.customerName?.trim() || 'A number nobody has named',
         words: firstLine.length > WORDS_MAX ? `${firstLine.slice(0, WORDS_MAX).trimEnd()}…` : firstLine,
         when: l.who.trim() ? `${clockHm(l.atMs)} · ${l.who.trim()}` : clockHm(l.atMs),
       }
