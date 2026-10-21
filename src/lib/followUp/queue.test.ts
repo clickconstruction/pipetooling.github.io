@@ -71,6 +71,11 @@ describe('followUpQueue on the prototype’s Friday', () => {
     ])
   })
 
+  it('gives a lead’s row its two doors (punch list #140 PR 8)', () => {
+    const lead = followUpQueue({ ...demo, contacts: withContact('priya', { kind: 'lead' }) })
+    expect(lead.needsReply.find((r) => r.contactId === 'priya')!.acts).toEqual(['Reply', 'Book a visit', 'Start an estimate', 'No reply needed', 'Remind me Monday'])
+  })
+
   it('gives each row its presses: Who is this? for a number, Call back after a missed call', () => {
     const acts = Object.fromEntries(queue.needsReply.map((r) => [r.contactId, r.acts]))
     expect(acts).toEqual({
