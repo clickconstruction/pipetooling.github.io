@@ -1,8 +1,8 @@
 ---
 name: "Pricing: price a fresh version from the book, right in the Workbench"
 number: 137
-group: gated
-status: proposed 2026-10-20 — researched, mock-up beside this file; not started, waiting on the owner's go and the four calls below
+group: close
+status: built 2026-10-20 on the owner's go, all four defaults taken — PR 1 v2.5687, PR 2 v2.5689, PR 3 v2.5690; merges + the live walk left
 summary: >
   Wendi: on a side-by-side rebid she makes a second version with its own counts, and the newer
   Pricing view gives her no way to price it — only "Copy the base price" (wrong: the counts
@@ -14,14 +14,10 @@ summary: >
   door kept honest beside it. The Workbench then opens on the version's own counts with Fill
   from book and the solver — Old's flow, inline.
 next: >
-  Owner's go, and the four calls below: (1) does the copy door stay beside the book door with a
-  counts-differ caption (recommended) or hide when counts differ; (2) does the book button
-  default to the sibling version's book when it has one (recommended) or always the user's
-  default; (3) after the book lands, do exact-name matches wait on the counting Fill button
-  (recommended) or assign themselves; (4) does the honest labor line ship in this train
-  (recommended) or wait. Then PR 1 builds with the recommended defaults.
-size: M (PR 1 the start panel) + S (PR 2 the labor line, gated on call 4) + S (PR 3 the + version modal tells the truth)
-blocker: Owner's go; calls 1–4 picked (defaults proposed).
+  The three PRs merge, then the live walk per How to verify (ZZ bid: + version unchecked, the
+  book door, the copy door, the labor line, the modal words); delete the ZZ rows after.
+size: M (PR 1 the start panel) + S (PR 2 the labor line) + S (PR 3 the + version modal tells the truth)
+blocker: none — built on the owner's go 2026-10-20 (calls 1–4 all took the recommended defaults).
 ---
 
 # Pricing: price a fresh version from the book, right in the Workbench
@@ -183,7 +179,7 @@ bid-wide"); PR 2 only tells the truth about it. The robot/twin pricing fence is 
 
 ## Where it stands
 
-Proposed 2026-10-20 from Wendi's report (her screenshot of a two-version bid's dead end).
-Research done in code; the prod read of her bid was limited to confirming the bid exists (the
-deeper read was refused, and the screenshot already shows the state). Mock-up rendered and
-checked. Nothing built; waiting on the owner's go and calls 1–4.
+Proposed 2026-10-20 from Wendi's report (her screenshot of a two-version bid's dead end);
+research done in code, mock-up rendered and checked. The owner said go the same day and took
+all four defaults. Built as PR 1 v2.5687 (the start panel), PR 2 v2.5689 (the labor line) and
+PR 3 v2.5690 (the modal truth), stacked. Left: the merges and the live walk above.
