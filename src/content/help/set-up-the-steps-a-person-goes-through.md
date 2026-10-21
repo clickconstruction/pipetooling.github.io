@@ -64,6 +64,8 @@ Either way the text waits for the step's quiet days to pass. The words under the
 
 The control saves the moment you press it. It does not wait for **Save**.
 
+The same control is on Phone and texts, under **Reminders the app offers**. The owner sees every step the app can text there, with the other Messages switches. See [offer the app's reminders](/help/offer-the-apps-reminders).
+
 :::example A step the office presses
 {{chip:gray|Off}} {{chip:green|Offers}} {{chip:gray|Sends}}
 Each morning the app prepares the text for Today's sends on the Dashboard. The office presses it.

@@ -43,7 +43,8 @@ export const SWITCH_ROWS: readonly SwitchRow[] = [
   { key: 'teamBox', settingKey: BOXES_SETTINGS_KEY, title: 'The team inbox', why: 'a customer’s emailed reply lands in their thread, not in someone’s Gmail', door: 'Set the address', href: `${PHONE}#settings-phone-texts-boxes` },
   { key: 'replyPush', settingKey: REPLY_PUSH_ON_KEY, title: 'Reply push', why: 'whoever has it hears a reply on their phone', door: 'Turn it on', href: `${PHONE}#settings-phone-texts-reply-push` },
   { key: 'seats', settingKey: APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1, title: 'Company phone seats', why: 'a seat per person, or one shared by the office', door: 'Pick the seats', href: `${PHONE}#settings-phone-texts-quo-seats` },
-  { key: 'reminders', settingKey: APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1, title: 'Reminders the app offers', why: 'the estimate follow-up and the bill, as offers you press', door: 'Offer them', href: '/settings?tab=settings-flows&kind=residential' },
+  // The door lands on Phone and texts' own card since v2.5720 (`remindersCard.ts`); each step in Flows keeps the same control.
+  { key: 'reminders', settingKey: APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1, title: 'Reminders the app offers', why: 'the estimate follow-up and the bill, as offers you press', door: 'Offer them', href: `${PHONE}#settings-phone-texts-reminders` },
   { key: 'hours', settingKey: OFFICE_HOURS_KEY, title: 'Office hours', why: 'after hours the office hears first and the reply waits for the morning', door: 'Set the hours', href: `${PHONE}#settings-phone-texts-hours` },
 ]
 

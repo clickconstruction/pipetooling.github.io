@@ -43,7 +43,8 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
   const confirm = useConfirmDialog()
   const { profileName, role } = useAuth()
   const by = profileName?.trim() || 'someone'
-  // `?kind=` lands on a flow (punch list #140 PR 2: the switch card's Reminders door opens the residential one).
+  // `?kind=` lands on a flow (punch list #140 PR 2; since v2.5720 the switch card's Reminders door lands on Phone and
+  // texts' own card instead, and `?kind=` stays for the links already out).
   const [params] = useSearchParams()
   const [kind, setKind] = useState<EditorKind>(() => kindFromParam(params.get('kind')))
   const [view, setView] = useState<View>('flow')

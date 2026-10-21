@@ -19,7 +19,8 @@ describe('the switch card (punch list #140 PR 2)', () => {
   it('reads the eight rows in one list, each row naming the setting it reads', () => {
     expect(SWITCH_ROWS.map((r) => r.key)).toEqual(['texts', 'reader', 'assign', 'teamBox', 'replyPush', 'seats', 'reminders', 'hours'])
     expect(SWITCH_SETTING_KEYS).toEqual(['messages_texts_on_v1', 'gmail_sync_on_v1', 'messages_assign_rule_v1', 'messages_boxes_v1', 'messages_reply_push_on_v1', 'messages_quo_seats_v1', 'messages_nudge_app_sends_v1', 'messages_office_hours_v1'])
-    expect(SWITCH_ROWS.every((r) => r.href.startsWith('/settings?tab=settings-'))).toBe(true)
+    expect(SWITCH_ROWS.every((r) => r.href.startsWith('/settings?tab=settings-phone-texts#settings-phone-texts-'))).toBe(true)
+    expect(SWITCH_ROWS.find((r) => r.key === 'reminders')!.href).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-reminders')
   })
 
   it('reads every switch on, and counts eight of eight', () => {
