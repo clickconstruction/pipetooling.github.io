@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState } from 'react'
+import type { NewJobCustomerPrefill } from '../lib/messages/leadDoors'
 import type { JobDraft } from '../lib/bids/jobDraft'
 import type { JobFormFocusRow } from '../lib/jobs/jobFormFocusRow'
 import JobFormModal from '../components/jobs/JobFormModal'
@@ -39,6 +40,8 @@ export type OpenNewJobOptions = {
   prefillDraft?: JobDraft | null
   /** Who sent the draft, for the words New Job shows. */
   prefillDraftFrom?: string | null
+  /** A lead's doors (punch list #140 PR 8): the customer's name, number, address and their words as the job's name. */
+  prefillCustomer?: NewJobCustomerPrefill | null
 }
 
 type JobFormModalContextValue = {
@@ -71,6 +74,7 @@ type InternalOpenState =
       prefillBidId: string | null
       prefillDraft: JobDraft | null
       prefillDraftFrom: string | null
+      prefillCustomer: NewJobCustomerPrefill | null
       onSaved: (() => void) | null
       onCreatedJobId: ((jobId: string) => void) | null
     }
@@ -138,6 +142,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
       prefillBidId: options?.prefillBidId?.trim() ? options.prefillBidId.trim() : null,
       prefillDraft: options?.prefillDraft ?? null,
       prefillDraftFrom: options?.prefillDraftFrom ?? null,
+      prefillCustomer: options?.prefillCustomer ?? null,
       onSaved: options?.onSaved ?? null,
       onCreatedJobId: options?.onCreatedJobId ?? null,
     })
@@ -184,6 +189,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           newJobPrefillBidId={openState.prefillBidId}
           newJobPrefillDraft={openState.prefillDraft}
           newJobPrefillDraftFrom={openState.prefillDraftFrom}
+          newJobPrefillCustomer={openState.prefillCustomer}
           billingCustomerHighlightInitial={false}
           fixturesSectionHighlightInitial={false}
           jobPicturesLinkHighlightInitial={false}
