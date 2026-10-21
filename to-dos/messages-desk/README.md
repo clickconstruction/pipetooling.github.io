@@ -178,15 +178,15 @@ test with the ZZ customer being our own inbox and the owner's cell (§3), and wh
 
 | PR | What | Size | Base |
 |---|---|---|---|
-| 1 | Office hours card | v2.5709 | #5957 | merged 2026-10-21 |
-| 2 | Finish switching Messages on | v2.5712 | #5960 | merged 2026-10-21 |
-| 3 | Show: Mine · Everyone | v2.5713 | #5961 | merged 2026-10-21 |
-| 4 | Nudge fills the step's words | v2.5714 | #5962 | merged 2026-10-21 |
-| 5 | The last 7 days strip | v2.5715 | #5963 | merged 2026-10-21 |
-| 6 | Answer all | v2.5716 | #5964 | merged 2026-10-21 |
-| 7 | Log a call (+ migration `20261021010000_log_call`, applied on prod 2026-10-21; types PR #5965 merged) | v2.5710 | #5958 | merged 2026-10-21 |
-| 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
-| 9 | One front door; the guides | v2.5717 | #5966 | armed 2026-10-21 |
+| 1 | Office hours card | S | main |
+| 2 | Finish switching Messages on (the card and its line) | M | the page base |
+| 3 | Show: Mine · Everyone | M | the page base |
+| 4 | Nudge fills the step's words; Call them / Send it as an email on a failed text | M | the page base |
+| 5 | The last 7 days strip | L | the page base |
+| 6 | Answer all | L | the page base, after PR 3 |
+| 7 | Log a call (`log_call` RPC + migration) | M | main |
+| 8 | A lead's doors | M | main |
+| 9 | One front door; the guides | S | after 1–8 |
 
 Each PR: `npm run claim`, a release note and a `docs/recent-features/` fragment, the guide
 *answer everyone waiting on us from one page* amended, `PROJECT_DOCUMENTATION.md` /
@@ -235,14 +235,14 @@ contact).
 |---|---|---|---|---|
 | — | Proposal + mock-up + BUILD_PLAN | — | #5955 | merged 2026-10-21 |
 | 1 | Office hours card | v2.5709 | #5957 | merged 2026-10-21 |
-| 2 | Finish switching Messages on | v2.5712 | #5960 | armed 2026-10-21 |
-| 3 | Show: Mine · Everyone | v2.5713 | #5961 | filed 2026-10-21; armed once the PR below merges |
-| 4 | Nudge fills the step's words | v2.5714 | #5962 | filed 2026-10-21; armed once the PR below merges |
-| 5 | The last 7 days strip | v2.5715 | #5963 | filed 2026-10-21; armed once the PR below merges |
-| 6 | Answer all | v2.5716 | #5964 | filed 2026-10-21; armed once the PR below merges |
-| 7 | Log a call (+ migration `20261021010000_log_call`, `supabase db push` after merge; the Waiting on them hold moves to PR 4, since `waitingOnThem.ts` is the #139 stack's) | v2.5710 | #5958 | merged 2026-10-21; `db push` pending the client deploy |
-| 8 | A lead's doors | v2.5711 | #5959 | armed 2026-10-21 |
-| 9 | One front door; the guides | | | not started |
+| 2 | Finish switching Messages on | v2.5712 | #5960 | merged 2026-10-21 |
+| 3 | Show: Mine · Everyone | v2.5713 | #5961 | merged 2026-10-21 |
+| 4 | Nudge fills the step's words | v2.5714 | #5962 | merged 2026-10-21 |
+| 5 | The last 7 days strip | v2.5715 | #5963 | merged 2026-10-21 |
+| 6 | Answer all | v2.5716 | #5964 | merged 2026-10-21 |
+| 7 | Log a call (+ migration `20261021010000_log_call`, applied on prod 2026-10-21; types PR #5965 merged) | v2.5710 | #5958 | merged 2026-10-21 |
+| 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
+| 9 | One front door; the guides | v2.5717 | #5966 | armed 2026-10-21 |
 | — | Live test (BUILD_PLAN § 3) | | | next, once PR 9 is on main: the ZZ customer is the team inbox and the owner's cell; the session sets up and reads, the owner presses Send |
 
 Keep this table true after each PR (version, PR number, armed / merged / live). The session that
