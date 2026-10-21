@@ -18,7 +18,7 @@ export interface WhatWentFacts {
   email: string | null
   /** `estimates.sent_at` as ms; null when the row never stamped one. */
   sentAtMs: number | null
-  /** The estimate-link texts in their thread since the send, oldest first. */
+  /** The texts in their thread carrying this estimate's live link (`acceptLinkTie.ts`, v2.5697), oldest first. */
   texts: WhatWentText[]
   /** Their thread, when one exists. */
   contact: { contactId: string; hasPhone: boolean; stopped: boolean } | null

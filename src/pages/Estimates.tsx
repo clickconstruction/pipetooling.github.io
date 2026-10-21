@@ -4657,6 +4657,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               customerName={customers.find((c) => c.id === row.customer_id)?.name ?? null}
               email={row.customer_email ?? null}
               sentAt={row.sent_at}
+              tokenHash={row.public_token_hash ?? null}
             />
           ) : null}
           <div
