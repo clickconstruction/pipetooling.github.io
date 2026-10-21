@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { Folder, Images } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
@@ -102,6 +102,22 @@ export default function AdditionalReportModal({
     const next = String(lineDerivedPct)
     setFieldValues((prev) => (prev[percentFieldLabel] === next ? prev : { ...prev, [percentFieldLabel]: next }))
   }, [lineDerivedPct, percentFieldLabel])
+
+  // Escape closes the form as its Close does (v2.5691). The job window underneath ignores Escape while the form is
+  // up (`detailEscBlocked`), so the key answered nothing here; a layer above the form that handles Escape itself
+  // marks the event handled first and is left alone.
+  const closeRef = useRef<() => void>(() => undefined)
+  closeRef.current = handleClose
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented) return
+      ev.preventDefault()
+      closeRef.current()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open])
 
   useEffect(() => {
     if (!open) {
