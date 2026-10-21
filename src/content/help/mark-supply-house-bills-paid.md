@@ -24,6 +24,16 @@ Invoice **S1234567** · Paid ✓ · Paid On **Sep 25, 2026** · **View** · **Re
 
 To fix a paid day or unmark one bill, use the pencil on its row. The **Paid** checkbox works too.
 
+## See the bills inside an aging cell
+
+The aging table shows unpaid dollars by how late they are. Press any colored cell to see the bills inside it. A window lists each bill with its number, due day, jobs and amount. A late bill carries a {{chip:red|76d past due}} chip. A bill on the house's job account wears a {{chip:green|Job acct}} chip. The bottom line always matches the cell.
+
+:::example A cell's window
+**Reece** and **60–90 days past due** in the title. Two bills listed. Cell total **$13,216.08**.
+:::
+
+The **Total** row opens the same window across every house, grouped by house. The **Owed** cell shows everything one house owes. The **Credits open** cell lists the house's credit memos. The blue button at the bottom is named for the house. Press it to open the house and work on those bills.
+
 ## On a phone
 
 On a phone, Accounts payable is a list of houses with what each is owed. Tap a house and its own screen opens. That is the screen to hold while you are on the phone with them:

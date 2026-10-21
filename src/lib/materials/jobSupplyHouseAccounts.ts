@@ -278,3 +278,39 @@ export function jobAccountsForJob(
   }
   return out
 }
+
+/**
+ * The aging-cell modal's Jobs cell as a state machine (punch list #132 PR 2): what the chip
+ * is and what a press does. The flag is per property, so only a single-job invoice can gain
+ * it; taking a flag OFF is always allowed (recording a correction), whatever the jobs say.
+ */
+export type AgingCellChipState =
+  | { kind: 'on' }
+  | { kind: 'off_open'; account: JobSupplyHouseAccountRow }
+  | { kind: 'off_no_account'; account: JobSupplyHouseAccountRow | null }
+  | { kind: 'off_loading' }
+  | { kind: 'no_job' }
+  | { kind: 'split'; jobCount: number }
+  | { kind: 'credit' }
+
+export function agingCellChipState(
+  inv: { amount: number | null; on_job_account: boolean | null },
+  allocations: ReadonlyArray<{ job_id: string }>,
+  /** The (job, house) account row — null = checked, none on record; undefined = still loading. */
+  account: JobSupplyHouseAccountRow | null | undefined,
+): AgingCellChipState {
+  if (Number(inv.amount ?? 0) < 0) return { kind: 'credit' }
+  if (inv.on_job_account === true) return { kind: 'on' }
+  if (allocations.length === 0) return { kind: 'no_job' }
+  if (allocations.length > 1) return { kind: 'split', jobCount: allocations.length }
+  if (account === undefined) return { kind: 'off_loading' }
+  if (account?.status === 'open') return { kind: 'off_open', account }
+  return { kind: 'off_no_account', account }
+}
+
+/** The amber band's first sentence for an off_no_account chip — the invoice form's words. */
+export function agingCellBandWords(account: JobSupplyHouseAccountRow | null, houseName: string): string {
+  if (account?.status === 'requested') return 'Job account asked for, not open yet. If the house opened one, mark it — the flag will default on from then.'
+  if (account?.status === 'not_needed') return `Marked not needed at ${houseName}${account.note ? ` — ${account.note}` : ''}.`
+  return `No job account at ${houseName} on record for this job. If the house opened one, mark it — the flag will default on from then.`
+}

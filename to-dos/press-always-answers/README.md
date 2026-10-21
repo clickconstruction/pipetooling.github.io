@@ -1,8 +1,8 @@
 ---
 name: "Tell the customer: the press always answers — a send that fails says so in the sheet, a sent estimate offers its link again, and what went out shows where the office looks"
-number: 133
+number: 139
 group: close
-status: BUILT 2026-10-20, the owner's go on the recommended defaults the same day as the proposal — PR 1 v2.5681 (the sheet answers, PR 5916), PR 2 v2.5683 (What went on the estimate, PR 5921), PR 3 v2.5686 (Went out today on Messages, PR 5923), stacked; send-estimate-to-customer redeployed; left: the live walk on a test customer
+status: BUILT 2026-10-20 (renumbered from #133 in the numbering race), the owner's go on the recommended defaults the same day as the proposal — PR 1 v2.5681 (the sheet answers, PR 5916), PR 2 v2.5683 (What went on the estimate, PR 5921), PR 3 v2.5686 (Went out today on Messages, PR 5923), stacked; send-estimate-to-customer redeployed; left: the live walk on a test customer
 summary: >
   When the Tell the customer sheet's send fails, today the sheet stays open unchanged — the only
   word is a toast that is gone in seconds, and on a live estimate the email can go, the badge flip
@@ -20,7 +20,7 @@ opinion: build — the sheet made every send a person's press; a press the app a
 mockup: to-dos/press-always-answers/mockup.html
 ---
 
-# The press always answers (#133)
+# The press always answers (#139)
 
 ## The ask, in the office's words
 
