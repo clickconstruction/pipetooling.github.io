@@ -55,6 +55,8 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
   onCount?: (count: number) => void
   /** The rows to draw out of the whole queue: `/messages`' kind pills (`messages/kindPills.ts`). The badge counts the whole. */
   narrow?: (queue: FollowUpQueue<C, N>, contacts: readonly FollowUpContact[]) => FollowUpQueue<C, N>
+  /** Hears the whole queue and its people each time it is read, before `narrow`: the Show lens's counts (punch list #140 PR 3). */
+  onQueue?: (queue: FollowUpQueue<C, N>, contacts: readonly FollowUpContact[]) => void
   /** Today and now, for a smoke; the app's clock otherwise. */
   todayYmd?: string
   nowIso?: string
@@ -63,7 +65,7 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
 }
 
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
-  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, sortIo = DEFAULT_SORT_IO } = props
+  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO } = props
   const todayYmd = props.todayYmd ?? todayYmdInAppTz()
   const nowIso = props.nowIso ?? new Date().toISOString()
   const userNames = useMemo(() => Object.fromEntries([...team, me].map((t) => [t.id, t.name])), [team, me])
@@ -78,6 +80,9 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
   useEffect(() => {
     if (count !== undefined) onCount?.(count)
   }, [count, onCount])
+  useEffect(() => {
+    if (q.queue) onQueue?.(q.queue, q.contacts)
+  }, [q.queue, q.contacts, onQueue])
 
   const nameOf = (contactId: string) => q.contacts.find((c) => c.id === contactId)?.name ?? 'them'
   const run = async (name: string, press: (x: FollowUpIo) => Promise<unknown>, done: string | null) => {

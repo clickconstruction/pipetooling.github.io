@@ -452,3 +452,13 @@ describe('FollowUpPanel', () => {
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))
   })
 })
+
+describe('FollowUpPanel: the whole queue for the page (punch list #140 PR 3)', () => {
+  it('hears the queue and its people each read, before any narrowing', async () => {
+    const onQueue = vi.fn()
+    renderPanel({ onQueue, narrow: (queue) => ({ ...queue, needsReply: [], count: 0 }) })
+    await waitFor(() => expect(onQueue).toHaveBeenCalledWith(expect.objectContaining({ count: 4 }), expect.any(Array)))
+    const contacts = onQueue.mock.calls[0]![1] as Array<{ id: string; hasUserId: string | null }>
+    expect(contacts.find((c) => c.id === 'greg')?.hasUserId).toBe('u-rosa')
+  })
+})

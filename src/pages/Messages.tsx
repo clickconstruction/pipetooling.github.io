@@ -28,6 +28,7 @@ import { QUEUES_FOLD_WORDS } from '../lib/messages/queuesFold'
 import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { KIND_PILLS, peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
+import { keepLens, lensCounts, queueForShow, readLens, SHOW_WORDS, type ShowLens } from '../lib/messages/showLens'
 
 /** Search every message (v2.5701): the box under the pills, a hit's row, and the lane's one-line answers. */
 const searchBox: CSSProperties = { padding: '0.55rem 0.8rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.95rem', maxWidth: 560, width: '100%', boxSizing: 'border-box' }
@@ -76,7 +77,12 @@ export default function Messages() {
   const me = useMemo(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
 
   const pick = (next: KindPill) => setParams((prev) => withPill(prev, next), { replace: true })
-  const narrow = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['narrow']>>((queue, contacts) => queueForPill(queue, contacts, pill), [pill])
+  // Show: Mine · Everyone (punch list #140 PR 3): the lens over every lane, kept per browser; its counts from the whole queue.
+  const [lens, setLens] = useState<ShowLens>(readLens)
+  const [lensCount, setLensCount] = useState<{ mine: number; everyone: number } | null>(null)
+  const meId = user?.id ?? ''
+  const narrow = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['narrow']>>((queue, contacts) => queueForShow(queueForPill(queue, contacts, pill), contacts, lens, meId), [pill, lens, meId])
+  const onQueue = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['onQueue']>>((queue, contacts) => setLensCount(lensCounts(queue, contacts, meId)), [meId])
   const listView = useMemo(() => (host.view ? { ...host.view, contacts: peopleForPill(host.view.contacts, pill) } : null), [host.view, pill])
   const found = useMemo(() => (searching && host.view ? searchLines(host.view.messages, host.view.contacts, q, pill, host.nowIso) : null), [searching, host.view, host.nowIso, q, pill])
 
@@ -112,6 +118,40 @@ export default function Messages() {
               </button>
             )
           })}
+        </div>
+        <div role="radiogroup" aria-label={SHOW_WORDS.label} data-messages-show style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{SHOW_WORDS.label}</span>
+          {(['mine', 'everyone'] as const).map((v) => {
+            const on = lens === v
+            const n = lensCount ? (v === 'mine' ? lensCount.mine : lensCount.everyone) : null
+            return (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                title={v === 'mine' ? SHOW_WORDS.mineTip : SHOW_WORDS.everyoneTip}
+                onClick={() => {
+                  setLens(v)
+                  keepLens(v)
+                }}
+                style={{
+                  padding: '0.2rem 0.7rem',
+                  borderRadius: 999,
+                  border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+                  background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
+                  fontWeight: on ? 600 : 400,
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {v === 'mine' ? SHOW_WORDS.mine : SHOW_WORDS.everyone}
+                {n !== null && ` · ${n}`}
+              </button>
+            )
+          })}
+          {lens === 'mine' && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{SHOW_WORDS.notNarrowed}</span>}
         </div>
         {/* Punch list #140 PR 2: the owner's and a dev's line to the switches still off, gone once all eight are on. */}
         {isOwnerOrDev(role) && !searching && <SwitchOnCard />}
@@ -176,7 +216,7 @@ export default function Messages() {
       {searching ? null : onFollowUp ? (
         // The panel stays mounted under the fold, so its count keeps the fold honest.
         <div style={foldQueues ? { display: 'none' } : undefined} data-testid="queues">
-          <FollowUpPanel me={me} team={followUpTeam} onOpenThread={thread.openThread} say={showToast} narrow={narrow} onCount={setQueueCount} />
+          <FollowUpPanel me={me} team={followUpTeam} onOpenThread={thread.openThread} say={showToast} narrow={narrow} onCount={setQueueCount} onQueue={onQueue} />
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
