@@ -136,6 +136,11 @@ describe('the lines, the days heard, what we owe and highlights', () => {
     ])
   })
 
+  it('keeps the day a person gave on a logged call, kind said (punch list #140 PR 7)', () => {
+    const said: MessagePromiseRow = { id: 'p9', message_id: '31', kind: 'said', state: 'written', day: '2026-10-09', day_words: null, writes: null, decided_by: 'u-rosa', decided_at: '2026-10-02T18:00:00.000Z', message: { contact_id: 'greg', at: '2026-10-02T18:00:00.000Z' } }
+    expect(heardLinesFromRows([said])).toEqual([{ messageId: '31', contactId: 'greg', at: '2026-10-02T18:00:00.000Z', kind: 'said', state: 'written', dayYmd: '2026-10-09', dayWords: null, writes: null }])
+  })
+
   it('names who marked what we owe, and who highlighted, oldest highlight first', () => {
     const gone: ContactOwedRow = { ...ROWS.owed[0]!, id: 'o2', marked_by: null }
     expect(owedRecordsFromRows([...ROWS.owed, gone], USERS).map((o) => o.markedBy)).toEqual(['Rosa', 'Someone'])

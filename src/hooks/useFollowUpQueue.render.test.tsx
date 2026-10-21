@@ -79,6 +79,7 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}): FollowUpIo {
     writeDown: none,
     readQuestion: none,
     addNote: vi.fn(async () => 'n2'),
+    logCall: vi.fn(async () => 'm-call-new'),
     setBackDay: none,
     backDone: none,
     highlight: vi.fn(async () => 'h1'),
