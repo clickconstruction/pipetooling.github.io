@@ -186,7 +186,7 @@ test with the ZZ customer being our own inbox and the owner's cell (§3), and wh
 | 6 | Answer all | v2.5716 | #5964 | merged 2026-10-21 |
 | 7 | Log a call (+ migration `20261021010000_log_call`, applied on prod 2026-10-21; types PR #5965 merged) | v2.5710 | #5958 | merged 2026-10-21 |
 | 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
-| 9 | One front door; the guides | v2.5717 | (this PR) | armed 2026-10-21 |
+| 9 | One front door; the guides | v2.5717 | #5966 | armed 2026-10-21 |
 
 Each PR: `npm run claim`, a release note and a `docs/recent-features/` fragment, the guide
 *answer everyone waiting on us from one page* amended, `PROJECT_DOCUMENTATION.md` /
