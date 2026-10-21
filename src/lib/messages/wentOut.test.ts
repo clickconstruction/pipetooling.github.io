@@ -20,6 +20,10 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
     expect(wentOutRows(lines, 'sub').map((r) => r.id)).toEqual(['m2'])
     expect(wentOutRows(lines, 'all').map((r) => r.name)).toEqual(['Dana Whitfield', 'Pete Alvarez', 'A number nobody has named'])
   })
+  it('a customer’s own thread reads the customer’s name, since the app keeps that contact’s name null (v2.5696)', () => {
+    const rows = wentOutRows([line({ name: null, customerName: 'Evan Johnson' }), line({ id: 'm2', name: null, customerName: null })], 'all')
+    expect(rows.map((r) => r.name)).toEqual(['Evan Johnson', 'A number nobody has named'])
+  })
   it('long words trim to one row, on the first line', () => {
     const rows = wentOutRows([line({ body: `${'w'.repeat(200)}\nsecond line` })], 'all')
     expect(rows[0]?.words.endsWith('…')).toBe(true)

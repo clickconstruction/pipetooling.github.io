@@ -15,7 +15,7 @@ export async function loadWentOut(now: Date = new Date(), client: unknown = supa
   const fromIso = new Date(startOfYmdInAppTzMs(todayYmdInAppTz(now))).toISOString()
   const result = await db
     .from('messages')
-    .select('id, contact_id, body, at, who_text, contact:contacts(name, kind)')
+    .select('id, contact_id, body, at, who_text, contact:contacts(name, kind, customer:customers(name))')
     .eq('channel', 'text')
     .eq('direction', 'out')
     .gte('at', fromIso)
@@ -28,12 +28,13 @@ export async function loadWentOut(now: Date = new Date(), client: unknown = supa
     body: string
     at: string
     who_text: string | null
-    contact: { name: string | null; kind: string | null } | null
+    contact: { name: string | null; kind: string | null; customer: { name: string | null } | null } | null
   }>
   return rows.map((r) => ({
     id: r.id,
     contactId: r.contact_id,
     name: r.contact?.name ?? null,
+    customerName: r.contact?.customer?.name ?? null,
     kind: (r.contact?.kind ?? null) as ContactKind | null,
     body: r.body,
     atMs: Date.parse(r.at),
