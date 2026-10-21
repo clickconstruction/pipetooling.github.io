@@ -131,6 +131,9 @@ import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { ClauseNeedRows } from '../components/contracts/ClauseNeedRows'
 import { useClauseNeeds } from '../hooks/useClauseNeeds'
 import type { ClauseNeedRow } from '../lib/contracts/approval'
+import { NudgesFromTheFlow } from '../components/followUp/NudgesFromTheFlow'
+import { useFlowNudges } from '../hooks/useFlowNudges'
+import type { NudgeRow } from '../lib/flows/nudges'
 import { supabaseFollowUpIo } from '../lib/followUp/followUpIo'
 import { followUpTeamOf } from '../lib/followUp/team'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
@@ -868,6 +871,30 @@ export default function GcProjects() {
   const followUpMe = useMemo(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
   // The clause changes waiting on the viewer's approval (cut 4c), in Follow up's Needs you: a controller's or a dev's.
   const clauseNeeds = useClauseNeeds(canApproveClause(role))
+  // Messages cut 4: the steps gone quiet past their nudge, after We owe them, read only while Follow up is on screen.
+  // The page draws Follow up for its own pill, and for Money to someone who cannot see the money.
+  const followUpShown = canOpenGcProjects(role) && (devView === 'followUp' || (devView === 'money' && !canSeeGcMoney(role)))
+  const flowNudges = useFlowNudges({ enabled: followUpShown })
+  const { build: buildNudges, names: nudgeNames, flows: nudgeFlows, pressing: nudgePressing, loading: nudgesLoading, problem: nudgesProblem, holdUntilMonday, remindNow } = flowNudges
+  const nudgesSlot = useMemo(() => {
+    const tell = (r: { ok: boolean; words: string }) => showToast(r.words, r.ok ? 'success' : 'error')
+    return {
+      build: buildNudges,
+      render: (rows: readonly NudgeRow[]) => (
+        <NudgesFromTheFlow
+          rows={rows}
+          names={nudgeNames}
+          flows={nudgeFlows}
+          pressing={nudgePressing}
+          loading={nudgesLoading}
+          problem={nudgesProblem}
+          onOpenThread={thread.openThread}
+          onHold={(row) => void holdUntilMonday(row).then(tell)}
+          onRemindNow={(row) => void remindNow(row).then(tell)}
+        />
+      ),
+    }
+  }, [buildNudges, nudgeNames, nudgeFlows, nudgePressing, nudgesLoading, nudgesProblem, holdUntilMonday, remindNow, thread.openThread, showToast])
   // A pill, or a board's press that moves the page: the view and `?view=` together, so a reload opens where it is.
   const showView = (view: GcView) => {
     setDevView(view)
@@ -2076,6 +2103,7 @@ export default function GcProjects() {
                   {...(canApproveClause(role)
                     ? { clauses: { rows: clauseNeeds.rows, render: (rows: readonly ClauseNeedRow[]) => <ClauseNeedRows rows={rows} onDecided={clauseNeeds.reload} /> } }
                     : {})}
+                  nudges={nudgesSlot}
                   planQuestions={{
                     record: recordQuestion,
                     send: sendQuestionToArchitect,

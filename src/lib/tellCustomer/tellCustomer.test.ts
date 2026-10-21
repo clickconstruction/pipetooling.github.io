@@ -3,9 +3,11 @@ import { plainWordsFailures } from '../plainWords'
 import type { QuickReply } from '../quickReplies/kernel'
 import {
   blanksLeftIn,
+  clockDay,
   clockHm,
   DEFAULT_LINES,
   DEFAULT_SCRIPTS,
+  emailNotSentLine,
   emailSentLine,
   holdWords,
   lineFor,
@@ -14,6 +16,7 @@ import {
   tellActs,
   tellFills,
   tellHold,
+  tellProblem,
   tellWords,
   TELL_WORDS,
   type TellBlock,
@@ -146,6 +149,46 @@ describe('the estimate moment (v2.5594)', () => {
     for (const words of [TELL_WORDS.emailWhat, TELL_WORDS.linkHint, TELL_WORDS.editHint(true, 'estimate'), TELL_WORDS.editHint(false, 'estimate'), TELL_WORDS.emailOnlyToast, TELL_WORDS.textFailed, TELL_WORDS.bothSentToast('Dana'), receiptScript('estimate', fills), ...tellActs('estimate', 'Dana', null).rows.map((r) => r.words)]) {
       expect(plainWordsFailures(words), words).toEqual([])
     }
+  })
+})
+
+describe('the press always answers (v2.5681, punch list #133)', () => {
+  // 1:31 PM in Chicago on Tue Oct 20 (CDT).
+  const SENT_AT = Date.parse('2026-10-20T18:31:00Z')
+  it('an already-went answer reads the first send’s time and offers the resend', () => {
+    const p = tellProblem({ ok: false, kind: 'already-went', why: 'This estimate already went to the customer.', sentAtMs: SENT_AT }, 'Dana')
+    expect(p.kind).toBe('already-went')
+    expect(p.title).toBe('This estimate already went to Dana. It went Tue, Oct 20 at 1:31 PM.')
+    expect(p.detail).toBe('Send the link again makes a fresh link and emails it. The old link stops working. The text carries the fresh link.')
+    expect(clockDay(SENT_AT)).toBe('Tue, Oct 20')
+    const unknown = tellProblem({ ok: false, kind: 'already-went', why: 'x', sentAtMs: null }, null)
+    expect(unknown.title).toBe('This estimate already went to the customer.')
+  })
+  it('a refusal carries the server’s reason, and a slow send says it may still land', () => {
+    const refused = tellProblem({ ok: false, kind: 'refused', why: 'This estimate was declined. Start a new estimate instead of resending.' }, 'Dana')
+    expect(refused).toEqual({ kind: 'refused', title: 'The email did not go.', detail: 'This estimate was declined. Start a new estimate instead of resending.' })
+    const slow = tellProblem({ ok: false, kind: 'slow', why: 'No answer after 20 seconds.' }, 'Dana')
+    expect(slow.title).toBe('No answer after 20 seconds.')
+    expect(slow.detail).toBe('The email may still have gone. Open Dana’s thread before you press again.')
+    expect(tellProblem({ ok: false, kind: 'slow', why: '' }, null).detail).toBe('The email may still have gone. Open their thread before you press again.')
+  })
+  it('the receipt says when the email did not go', () => {
+    expect(emailNotSentLine('dana@example.com')).toBe('The email to dana@example.com did not go. The link was made and copied. Paste it into an email yourself.')
+  })
+  it('the band’s and the presses’ words are plain', () => {
+    const read = [
+      tellProblem({ ok: false, kind: 'already-went', why: 'x', sentAtMs: SENT_AT }, 'Dana').title,
+      tellProblem({ ok: false, kind: 'already-went', why: 'x', sentAtMs: SENT_AT }, 'Dana').detail,
+      tellProblem({ ok: false, kind: 'slow', why: '' }, 'Dana').title,
+      tellProblem({ ok: false, kind: 'slow', why: '' }, 'Dana').detail,
+      TELL_WORDS.emailNotGo,
+      TELL_WORDS.textNotGo,
+      TELL_WORDS.sendAgain,
+      TELL_WORDS.tryAgain,
+      TELL_WORDS.stillSending,
+      emailNotSentLine('dana@example.com'),
+    ]
+    for (const words of read) expect(plainWordsFailures(words), words).toEqual([])
   })
 })
 

@@ -27,6 +27,7 @@ import {
   breakAmountOntoOwnLineForPreview,
   buildCoverLetterHtml,
   buildCoverLetterText,
+  buildAddressedCopiesDocument,
   buildCombinedCoverLetterDocument,
   buildCombinedCoverLetterText,
   numberToWords,
@@ -1270,6 +1271,7 @@ export function BidsCoverLetterTab({
           packetGcIds: Object.values(versionGcById).map((c) => c?.id),
         })
         const addressedCustomer = resolveAddressedCustomer(addressees, addressedGcId)
+        const sharedAddressees = addressees.filter((a) => a.kind === 'shared')
         const packetKeyOf = (studioKey: string | null) => (studioKey === 'bid-default' ? bidDefaultPacketKey(bidGcPacketCustomer) : studioKey)
         // The document (`letterDocument` — the Approval PDF plans its letter with it too):
         //  • v2.2213 (owner): a $0 section never reaches the letter — unpriced bids are listed in
@@ -1380,29 +1382,45 @@ export function BidsCoverLetterTab({
         const letterCustomerName = letterCustomer.name
         const letterCustomerAddress = letterCustomer.address
         const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(false))
-        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(false))
+        const combinedHtmlFor = (name: string, address: string) => buildCoverLetterHtml(name, address, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(false))
         const combinedHtmlEditable = offeredAdd.length > 0 ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(effectiveRevenue), addAltsBlock(true)) : null
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
-        const packetSectionHtml = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
-          buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(s.revenueSum))
+        const packetSectionHtmlFor = (name: string, address: string, s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
+          buildCoverLetterHtml(name, address, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(s.revenueSum))
         const packetSectionText = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
           buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(s.revenueSum))
         // The layout toggle follows the packet the LETTER shows (selectedGcPacket), not the studio's
         // GC tab — they can differ when the active version's GC has nothing priced yet.
         const showAltsLayoutToggle = selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
-        const samePageHtml = (editable: boolean) =>
+        const samePageHtmlFor = (name: string, address: string, editable: boolean) =>
           samePagePlan
-            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: contentGcCustomer.name, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(editable, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, editable, { gcName: contentGcCustomer.name, projectName: projectNameVal }))
+            ? buildCoverLetterHtml(name, address, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: contentGcCustomer.name, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(editable, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, editable, { gcName: contentGcCustomer.name, projectName: projectNameVal }))
             : null
-        const finalCoverLetterHtml = selectedGcPacket
+        const samePageHtml = (editable: boolean) => samePageHtmlFor(letterCustomerName, letterCustomerAddress, editable)
+        // The letter addressed to any GC (to-do #133 PR 2): the same document chain with only the
+        // name-and-address block swapped — the per-copy builder behind Print all.
+        const letterHtmlAddressedTo = (name: string, address: string) => selectedGcPacket
           ? samePagePlan
-            ? samePageHtml(false)!
+            ? samePageHtmlFor(name, address, false)!
             : selectedGcPacket.sections.length > 1
-              ? buildCombinedCoverLetterDocument(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), html: packetSectionHtml(s) })))
-              : packetSectionHtml(selectedGcPacket.sections[0]!)
-          : combinedHtml
+              ? buildCombinedCoverLetterDocument(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), html: packetSectionHtmlFor(name, address, s) })))
+              : packetSectionHtmlFor(name, address, selectedGcPacket.sections[0]!)
+          : combinedHtmlFor(name, address)
+        const finalCoverLetterHtml = letterHtmlAddressedTo(letterCustomerName, letterCustomerAddress)
+        // Print all (to-do #133 PR 2): one addressed copy per GC, offered when the letter shown
+        // is the bid GC's — the letter every same-letter rider got. On another packet's letter
+        // the riders are not offered, because they never got that letter. A rider with no
+        // address on file still prints, name line alone — one missing address never holds the
+        // batch (their chip says so).
+        const contentIsBidGc = !letterGcDiffersFromBid(contentGcCustomer, bidGcPacketCustomer)
+        const addressedPrintCopies = contentIsBidGc && sharedAddressees.length > 0
+          ? [
+              { name: bidGcPacketCustomer.name, address: bidGcPacketCustomer.address },
+              ...sharedAddressees.map((a) => ({ name: a.name, address: a.address === '—' ? '' : a.address })),
+            ]
+          : null
         // Preview-only twin with data-cl-edit spans (click-to-edit); never copied or printed.
         const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : combinedHtmlEditable && !selectedGcPacket ? combinedHtmlEditable : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
@@ -1590,7 +1608,6 @@ export function BidsCoverLetterTab({
                         // bid-GC chip, then every same-letter addressee, then + GC. A shared chip
                         // swaps only the letter's address block; on a split bid it also lands the
                         // letter on the bid GC's packet, whose letter is the one they got.
-                        const sharedAddressees = addressees.filter((a) => a.kind === 'shared')
                         const showAddresseeRow = multi || addresseeRowVisible(addressees)
                         const bidDefaultPacketExists = gcPackets.some((pk) => pk.isBidDefault)
                         const sharedChipDisabled = multi && !bidDefaultPacketExists
@@ -1662,7 +1679,7 @@ export function BidsCoverLetterTab({
                                   title={sharedChipDisabled ? `${a.name} rides ${customerName}'s letter — nothing of ${customerName}'s is in the letter yet` : `Address this letter to ${a.name} — same letter, their name and address`}
                                   style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.6rem', borderRadius: 6, border: on ? '1px solid #3b82f6' : '1px dashed var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)', color: 'var(--text-strong)', cursor: sharedChipDisabled ? 'not-allowed' : 'pointer', textAlign: 'left', opacity: sharedChipDisabled ? 0.55 : 1 }}
                                 >
-                                  {a.name}<span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: 'var(--text-muted)' }}>same letter</span>
+                                  {a.name}<span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: 'var(--text-muted)' }}>same letter{a.address === '—' ? ' · no address on file' : ''}</span>
                                 </button>
                               ) })}
                               <span style={{ position: 'relative' }}>
@@ -2582,6 +2599,19 @@ export function BidsCoverLetterTab({
                         Print
                         {addressedCustomer ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400 }}>to {addressedCustomer.name}</span> : null}
                       </button>
+                      {addressedPrintCopies ? (
+                        <button
+                          type="button"
+                          onClick={() => printCoverLetterDocument(buildAddressedCopiesDocument(addressedPrintCopies.map((c) => letterHtmlAddressedTo(c.name, c.address))), bid)}
+                          disabled={!totalsResolved}
+                          aria-busy={!totalsResolved || undefined}
+                          title={totalsResolved ? `One addressed copy per GC, a page break between them: ${addressedPrintCopies.map((c) => c.name).join(', ')}` : totalsPendingTitle}
+                          style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
+                        >
+                          Print {addressedPrintCopies.length} letters
+                          <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: 'var(--text-muted)' }}>one per GC</span>
+                        </button>
+                      ) : null}
                       {coverLetterBidSubmissionQuickAddBidId === bid.id && (
                         <>
                           <input

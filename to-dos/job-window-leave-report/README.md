@@ -1,21 +1,22 @@
 ---
 name: "Leave Report from the job window"
 number: 135
-group: ready
-status: PROPOSED 2026-10-20 — the mock-up is here; the owner picks the placement (A, the activity header, recommended) and says go
+group: close
+status: SHIPPED 2026-10-20 — v2.5688 (#5929) on main: the ＋ Report chip in the pills' own family right after Reports, the owner's pick after one redraw ("it should blend in better"); delete the folder once it is seen live
 summary: >
   The job window's Job tab shows the activity feed with a Reports pill and the job's percent,
   but leaving a report from here takes two hops: the Reports box lower in the pane opens the
   job's reports list, whose Add additional report button opens the form. This to-do puts one
-  Leave Report button in the activity header beside the Reports pill, opening the same per-job
-  form (with the lines list on a multi-line job since v2.5663), and refreshes the feed, the
-  pill's count and the percent readout when the report saves.
-next: The owner's pick between A and B, then one PR.
+  ＋ Report chip in the activity header's filter row, in the pills' own family right after the
+  Reports pill, opening the same per-job form (with the lines list on a multi-line job since
+  v2.5663), and refreshes the feed, the pill's count and the percent readout when the report
+  saves.
+next: See it live on any job's window (Jobs → Pipeline → a job → the activity list's ＋ Report), then delete the folder.
 size: XS
 blocker: None.
-opinion: build — one button, one existing form, one PR
+opinion: your call — the code is done; a look at it live is all that is left
 mockup: to-dos/job-window-leave-report/mockup.html
-ver: v2.5663
+ver: v2.5663 · v2.5688
 ---
 
 # Leave Report from the job window (#135)
@@ -54,12 +55,16 @@ button; the window just needs its own door.
   `jobName`, `jobAddress`, `authUserId`, `userRole` and `overlayZIndex`, and reloads its list on
   save.
 
-## The proposal — one button in the activity header (A, recommended)
+## The proposal — a chip in the pill family, right after Reports (recommended)
 
-- **Where**: the right end of the filter row, before the percent readout: **＋ Leave Report**, a
-  small outline button in the row's own height (the mock-up's state 2). On a phone the pills wrap
-  and the button takes the row's right end under them. The *Reports* box in the date band stays as
-  the door to the list.
+- **Where**: in the filter row itself, right after the *Reports* pill: **＋ Report**, a chip of the
+  pills' own height, radius and weight, blue words with a plus so it reads as an act, its hairline a
+  shade bluer (the mock-up's state 2). The row reads *Reports · ＋ Report* — the filter, then the
+  door — and *Reports 3 · ＋ Report* on a job with reports. On a phone the row wraps as it does
+  today. The house already pairs an action chip with filter pills this way: *+ bid note* beside
+  *All | Bid | Customer* on a bid's notes strip. The chip's hover word and accessible name are
+  *Leave Report*, the Dashboard's label. The *Reports* box in the date band stays as the door to
+  the list.
 - **What it opens**: `AdditionalReportModal` for this job, over the window (`overlayZIndex` above
   the pane's 1100), the same form the reports list opens — so a multi-line job shows *How far
   along is each line?* and a one-line job the slider.
@@ -68,35 +73,46 @@ button; the window just needs its own door.
   moves up and the pill wakes from quiet text if it was empty; the percent readout follows the
   report (*43% complete · crew report Oct 20*); the date band's box reads *N reports*. The Dashboard
   and the Pipeline follow the way they do for any report (`propagateReportPctToJob`).
-- **Words**: *Leave Report*, the Dashboard's label, so the field and the office press the same
-  thing.
 - **Who sees it**: whoever can see the window and may leave a job report (`canLeaveJobFieldReport`,
   everyone with a role), the gate the Dashboard's buttons use.
 
-## The other placement (B, not recommended)
+## Two other ways to blend it in (drawn, not recommended)
 
-A second line inside the *Reports* box in the date band — *2 reports · ＋ Leave Report*. It keeps the
-reports' doors together, but the box is below the feed and the customer block, a scroll away on
-every job, and its first line is the list's door: two actions in one small box.
+- **B — a link in the percent readout**: *100% complete · set by office · ＋ Leave report*, the idiom
+  of *Set % complete*, a text press. It blends completely and is easy to miss: the readout is a fact
+  line, and a door in it reads as part of the fact.
+- **C — an icon in the window's top row**: a clipboard beside the paper and the share arrow, in the
+  same stroke. It blends with the other doors, and needs its hover word to say *report*; the icons in
+  that row open places, and a report is an act.
+- A second line inside the date band's *Reports* box was also considered: the box is a scroll away on
+  every job and its first line is already the list's door.
 
 ## Is this the best we can do?
 
-- An icon in the window's top row (beside the storefront, the envelope, the calendar, the send
-  arrow, the paper and the share) was considered: those are destinations, a report is an act, and an
-  icon needs a tooltip to say *report*. The words win.
+- The first draft drew an outlined blue button at the row's end. It fought the pills it sat beside —
+  a different shape, a heavier line, a label that did not say which pill it belonged to (the owner:
+  "it should blend in better"). The chip is the row's own shape and sits by the word it belongs to.
+- The label shortened from *Leave Report* to *＋ Report* because the pill before it already says
+  *Reports*; the chip's hover word and its accessible name stay *Leave Report*.
 - A button inside the note composer (beside *Arrived*, *Leaving*, *Set % complete*) was considered:
   that row is the field's stamps and the office's note; a report has its own form and would make the
-  row a third thing wide. The header, where the *Reports* pill already is, is the one place the word
-  *Reports* is already on the screen.
-- The empty *Reports* pill today reads as quiet text (*No reports yet* on hover). With the button
+  row a third thing wide.
+- The empty *Reports* pill today reads as quiet text (*No reports yet* on hover). With the chip
   beside it the quiet pill reads as "none yet, and here is how", which is what it should have read
   all along.
+
+## Decisions for the owner
+
+- **D1 — the door.** Default: the chip after *Reports*. Alternatives: B, the link in the readout;
+  C, the icon in the top row.
+- **D2 — who sees it.** Default: everyone who may leave a job report, the Dashboard's gate.
+  Alternative: the office team only.
 
 ## Where it plugs in
 
 | Piece | Exists | New |
 |---|---|---|
-| The button | the filter row in `JobThreadNotesPanel` (the percent readout pushed right) | an `onLeaveReport?: () => void` prop; when given, **＋ Leave Report** before the readout |
+| The chip | the filter row in `JobThreadNotesPanel` (`filters.map`, the empty-bucket quiet style, the percent readout pushed right) | an `onLeaveReport?: () => void` prop; when given, the **＋ Report** chip right after the *Reports* pill, in the pills' style with blue words and `aria-label="Leave Report"` |
 | The form | `AdditionalReportModal`, mounted by `JobReportsModal` | `DetailJobModal` mounts it beside `JobReportsModal` with the same props and `overlayZIndex` over the pane, opened by the button |
 | The refresh | `JobReportsModal.handleReportAdded`; the panel's own reload after a note; `fullJob.report_count` | `onSaved` reloads the panel's entries and the job (count, newest report, percent) |
 | Tests | `JobThreadNotesPanel` and `DetailJobModal` render smokes | the button renders when the prop is given and calls it; the window opens the form and refreshes on save |
@@ -106,6 +122,14 @@ every job, and its first line is the list's door: two actions in one small box.
 One PR: the prop and the button, the mount and the refresh, the two smokes, the release note and
 fragment, and a line in the guide *file and review field reports* (the window's door). Docs:
 `JOBS_MODALS_ARCHITECTURE.md`'s Job Detail row.
+
+## Where it stands
+
+Built 2026-10-20 as v2.5688 (#5929) the same afternoon it was asked for: the chip as drawn in
+state 2, `JobThreadNotesPanel`'s `onLeaveReport`, `DetailJobModal` mounting the form over the pane
+with the feed and the job reloading on save, two smokes, the guide's *From a job's window*. D1 the
+chip, D2 the Dashboard's gate, as the defaults. This file's first draft landed in #5924 while its
+redraw waited on a queued head; this is the redraw.
 
 ## How to verify
 

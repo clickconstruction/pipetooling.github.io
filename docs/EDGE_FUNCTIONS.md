@@ -2403,6 +2403,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-estimate-to-customer
 
+> **v2.5681 — a first-send refusal names itself** (punch list #133): `mode: "send"` on a non-draft row answers 400 with a `code` — `already_sent` with the row's `sent_at` when `status = sent` (the Tell sheet then offers **Send the link again**, its resend), else `not_draft` with `estimate_status`, which the client words through `canResendEstimateLink`. **Redeploy required.**
+
 > **v2.4574 — the email is kept as it went**: after a successful send the function files the email the customer read through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — `kind` `estimate`, or `estimate_resent` for `mode: 'resend'` — keyed to the estimate's job, customer and bid (the row select adds `customer_id, job_ledger_id, bid_id`) with the estimate as its source. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read draft estimate, generate token hash, set `sent`, persist resolved **`customer_experience_sent`**, email Resend link to `{public_origin}/estimate/accept?t=…`.

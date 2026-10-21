@@ -94,6 +94,29 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     expect(io.send).not.toHaveBeenCalled()
   })
 
+  it('a text that fails draws the band with the reason and keeps the words, and the X mid-send says still sending (v2.5681)', async () => {
+    let finish: (v: string) => void = () => {}
+    const io = fakeIo({ send: vi.fn(() => new Promise<string>((resolve) => (finish = resolve))) })
+    const { onClose } = mount(io)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    expect(screen.getByTestId('tell-primary').textContent).toBe('Sending…')
+    fireEvent.click(screen.getByLabelText('Close'))
+    expect(await screen.findByTestId('tell-still-sending')).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
+    finish('msg-1')
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    cleanup()
+    const failing = fakeIo({ send: vi.fn(async () => Promise.reject(new Error('Quo turned it away'))) })
+    mount(failing)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    const bandEl = await screen.findByTestId('tell-send-problem')
+    expect(bandEl.textContent).toBe('The text did not go.Quo turned it away')
+    expect(screen.getByTestId('tell-primary').textContent).toBe('Try again')
+    expect(screen.queryByTestId('tell-receipt')).toBeNull()
+  })
+
   it('Send in the morning hands the text to the 9 AM run and says when it goes (v2.5595)', async () => {
     const io = fakeIo()
     const { onSent } = mount(io)
@@ -213,13 +236,17 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
 
 describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () => {
   const ESTIMATE_LINE: QuickReply = { ...BOOKED, id: 'q9', stepId: 'estimate', text: '{first}, {me} here with Click Plumbing. Your estimate for {job} is ready, {amount}: {link}' }
-  const estimate = (sendEmail: TellEstimate['sendEmail'] = vi.fn(async () => ({ acceptUrl: 'https://clicktooling.com/estimate/accept?t=abc', emailed: true }))) => ({
+  const estimate = (
+    sendEmail: TellEstimate['sendEmail'] = vi.fn(async () => ({ ok: true as const, acceptUrl: 'https://clicktooling.com/estimate/accept?t=abc', emailed: true })),
+    sendEmailAgain?: TellEstimate['sendEmailAgain'],
+  ) => ({
     customerId: 'cust-dana',
     email: 'dana@example.com',
     amount: '$1,850.00',
     title: 'Whitfield water heater',
     jobId: null,
     sendEmail,
+    sendEmailAgain,
   })
   const mountEstimate = (io: TellCustomerIo, est = estimate()) => {
     const onClose = vi.fn()
@@ -253,7 +280,7 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     expect(screen.getByTestId('tell-script').textContent).toBe('Hi Dana, this is Rosa with Click Plumbing. I just sent your estimate for Whitfield water heater, $1,850.00. Do you have two minutes for me to walk you through it? You can approve from the link whenever you are ready.')
   })
 
-  it('Email only sends the email alone; a failed email sends no text and stays on the sheet', async () => {
+  it('Email only sends the email alone; a failed email draws the band, keeps the words, and the press reads Try again (v2.5681)', async () => {
     const io = fakeIo()
     const { est } = mountEstimate(io)
     await screen.findByTestId('tell-body')
@@ -263,14 +290,56 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     expect(io.send).not.toHaveBeenCalled()
     expect(screen.queryByTestId('tell-receipt-words')).toBeNull()
     cleanup()
-    const failing = estimate(vi.fn(async () => null))
+    const failing = estimate(vi.fn(async () => ({ ok: false as const, kind: 'refused' as const, why: 'This customer has no email on record.' })))
     const io2 = fakeIo()
     mountEstimate(io2, failing)
-    await screen.findByTestId('tell-body')
+    const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    fireEvent.change(box, { target: { value: 'Dana, your estimate is here: {link}' } })
     fireEvent.click(screen.getByTestId('tell-primary'))
     await waitFor(() => expect(failing.sendEmail).toHaveBeenCalled())
     expect(io2.send).not.toHaveBeenCalled()
     expect(screen.queryByTestId('tell-receipt')).toBeNull()
+    const bandEl = await screen.findByTestId('tell-send-problem')
+    expect(bandEl.textContent).toBe('The email did not go.This customer has no email on record.')
+    expect((screen.getByTestId('tell-body') as HTMLTextAreaElement).value).toBe('Dana, your estimate is here: {link}')
+    expect(screen.getByTestId('tell-primary').textContent).toBe('Try again')
+  })
+
+  it('an estimate that already went flips the press to Send the link again, which resends and texts the fresh link (v2.5681)', async () => {
+    const sendEmail = vi.fn(async () => ({ ok: false as const, kind: 'already-went' as const, why: 'This estimate already went to the customer.', sentAtMs: Date.parse('2026-10-20T18:31:00Z') }))
+    const sendEmailAgain = vi.fn(async () => ({ ok: true as const, acceptUrl: 'https://clicktooling.com/estimate/accept?t=fresh', emailed: true }))
+    const io = fakeIo()
+    mountEstimate(io, estimate(sendEmail, sendEmailAgain))
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    const bandEl = await screen.findByTestId('tell-send-problem')
+    expect(bandEl.textContent).toContain('This estimate already went to Dana. It went Tue, Oct 20 at 1:31 PM.')
+    expect(bandEl.textContent).toContain('Send the link again makes a fresh link and emails it.')
+    const primary = screen.getByTestId('tell-primary') as HTMLButtonElement
+    expect(primary.textContent).toBe('Send the link again')
+    fireEvent.click(primary)
+    await waitFor(() => expect(sendEmailAgain).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(io.send).toHaveBeenCalledWith(expect.objectContaining({ body: expect.stringContaining('t=fresh') })))
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it('the receipt says when the email did not go, and when the text failed after it (v2.5681)', async () => {
+    const io = fakeIo()
+    mountEstimate(io, estimate(vi.fn(async () => ({ ok: true as const, acceptUrl: 'https://clicktooling.com/estimate/accept?t=abc', emailed: false }))))
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    expect(screen.getByTestId('tell-receipt-email').textContent).toBe('The email to dana@example.com did not go. The link was made and copied. Paste it into an email yourself.')
+    cleanup()
+    const io2 = fakeIo({ send: vi.fn(async () => Promise.reject(new Error('Quo turned it away'))) })
+    mountEstimate(io2)
+    await screen.findByTestId('tell-body')
+    fireEvent.click(screen.getByTestId('tell-primary'))
+    expect(await screen.findByTestId('tell-receipt')).toBeTruthy()
+    expect(screen.getByTestId('tell-receipt-email').textContent).toBe('Email · dana@example.com · 2:41 PM')
+    expect(screen.queryByTestId('tell-receipt-words')).toBeNull()
+    expect((await screen.findByTestId('tell-receipt-note')).textContent).toBe('Quo turned it away')
   })
 
   it('with no number the email still goes, the hold says why no text, and the press reads Send email', async () => {

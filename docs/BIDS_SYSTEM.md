@@ -1997,6 +1997,8 @@ bid_gc_recipients: -- 20260821230000; v2.1994
 
 Every GC a bid was sent to beyond the bid-level `customer_id` (the primary GC is implied, never duplicated). `manual` rows come from the Edit Bid **Also sent to** row; `version` rows sync from `bid_versions.customer_id` overrides (backfilled at migration time). Feeds the Followup lenses' per-GC queue expansion and the Bid Board **+N GCs** chip (v2.1995). RLS mirrors `bid_payment_schedule_rows`.
 
+Changing WHO the bid's GC is goes through the **`promote_bid_gc` RPC** (v2.5682, migration `20261020100000`): Edit Bid's × on the ★ card, "make bid's GC" on alternate cards, and the change ▸ pick all call it. It atomically re-keys the departing GC's sent versions, `bid_gcs` row and rooms to its explicit key (unsent drafts stay the bid's), makes the stepping-up GC's rows the NULL-keyed ones, fixes this table up, and writes a method-less handoff note — a bare `bids.customer_id` swap re-badges the old GC's history onto the new one and is no longer written by the client.
+
 ### Per-GC bid state (bid_gcs)
 
 ```sql

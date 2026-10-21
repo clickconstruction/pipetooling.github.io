@@ -6,6 +6,8 @@
  * script, a one-tap dial and Done. On an estimate the email goes first through the page's own send, then the text with
  * the link the email came back with. The rules are `lib/tellCustomer/tellCustomer.ts`; the reads and the send are
  * `lib/tellCustomer/tellCustomerIo.ts`. Drawn for the office team (`GC_OFFICE_TEAM`); anyone else reads the hold.
+ * A send that answers no draws the problem band in place with the reason and the move (v2.5681, punch list #133); an
+ * estimate that already went offers **Send the link again**, the page's resend with a fresh link.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
@@ -24,6 +26,7 @@ import { fillLine } from '../../lib/quickReplies/blanks'
 import type { QuickReply } from '../../lib/quickReplies/kernel'
 import {
   blanksLeftIn,
+  emailNotSentLine,
   emailSentLine,
   firstWord,
   lineFor,
@@ -33,11 +36,14 @@ import {
   tellActs,
   tellFills,
   tellHold,
+  tellProblem,
   tellWords,
   TELL_WORDS,
   unfillLine,
   type TellBlock,
   type TellMoment,
+  type TellProblem,
+  type TellSendEmailAnswer,
 } from '../../lib/tellCustomer/tellCustomer'
 import { supabaseTellCustomerIo, type TellCallScript, type TellContact, type TellCustomerIo, type TellJob } from '../../lib/tellCustomer/tellCustomerIo'
 
@@ -50,8 +56,10 @@ export interface TellEstimate {
   title: string
   /** The pipeline job the estimate sits on, or null before one exists. */
   jobId: string | null
-  /** The page's send: emails the estimate and answers the accept link, or null when it failed (the page said so). */
-  sendEmail: () => Promise<{ acceptUrl: string | null; emailed: boolean } | null>
+  /** The page's send: emails the estimate and answers the accept link, or why it could not (v2.5681) — the sheet says it. */
+  sendEmail: () => Promise<TellSendEmailAnswer>
+  /** Send the link again (v2.5681): the page's resend, a fresh link that kills the old one, for an estimate that already went. */
+  sendEmailAgain?: () => Promise<TellSendEmailAnswer>
 }
 
 export interface TellCustomerSheetProps {
@@ -89,8 +97,17 @@ const callBtn: CSSProperties = { ...primaryBtn, background: '#1d4ed8', textDecor
 const secondaryBtn: CSSProperties = { minHeight: 46, padding: '0 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer' }
 const quietBtn: CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem 0.4rem' }
 const disabled: CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
+/** The problem band (v2.5681): a send that answered no says why, in place, until the next press. */
+const band: CSSProperties = { border: '1.5px solid var(--border-red)', background: 'var(--bg-red-tint)', borderRadius: 10, padding: '0.6rem 0.75rem', margin: '0.8rem 0 0', display: 'grid', gap: '0.15rem' }
+const bandSlow: CSSProperties = { ...band, borderColor: 'var(--border-amber)', background: 'var(--bg-amber-tint)' }
+const bandTitle: CSSProperties = { fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-red-700)', margin: 0 }
+const bandTitleSlow: CSSProperties = { ...bandTitle, color: 'var(--text-amber-800)' }
+const bandDetail: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-strong)' }
 
-type View = { kind: 'tell' } | { kind: 'receipt'; text: string | null; email: string | null; atMs: number } | { kind: 'morning'; day: string }
+type View =
+  | { kind: 'tell' }
+  | { kind: 'receipt'; text: string | null; email: string | null; emailed: boolean | null; note: string | null; atMs: number }
+  | { kind: 'morning'; day: string }
 
 export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, userId, role, onClose, onSent, io: ioProp, now = Date.now }: TellCustomerSheetProps) {
   const { showToast } = useToastContext()
@@ -107,6 +124,10 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const [officeLine, setOfficeLine] = useState<string | null>(null)
   const [body, setBody] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  /** A send that answered no (v2.5681): the band's words, kept until the next press. */
+  const [sendProblem, setSendProblem] = useState<TellProblem | null>(null)
+  /** The X pressed mid-send (v2.5681): say the sheet is still sending instead of refusing in silence. */
+  const [closeHint, setCloseHint] = useState(false)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>({ kind: 'tell' })
 
@@ -175,36 +196,55 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     return bodyToSend
   }
 
-  /** The press: on a booking the text; on an estimate the email first, then the text with the link it came back with. */
-  const go = async (withText: boolean) => {
+  /**
+   * The press: on a booking the text; on an estimate the email first, then the text with the link it came back with.
+   * A no answers in the sheet (v2.5681): the band says why and the press to make; `again` is Send the link again, the
+   * page's resend after an already-went band.
+   */
+  const go = async (withText: boolean, again = false) => {
     if (!canSend) return
     setBusy(true)
+    setCloseHint(false)
     try {
       if (moment === 'estimate' && estimate) {
-        const r = await estimate.sendEmail()
-        if (!r) return
+        const r: TellSendEmailAnswer = await (again && estimate.sendEmailAgain ? estimate.sendEmailAgain() : estimate.sendEmail())
+        if (!r.ok) {
+          setSendProblem(tellProblem(r, first))
+          return
+        }
+        setSendProblem(null)
         const atMs = now()
         let sentText: string | null = null
+        let note: string | null = null
         if (withText && textCanGo) {
           if (r.acceptUrl) {
             try {
               sentText = await sendText(fillLine(text.trim(), { link: r.acceptUrl }).text)
               showToast(TELL_WORDS.bothSentToast(first), 'success')
             } catch (e) {
-              showToast(formatErrorMessage(e, TELL_WORDS.textFailed), 'error')
+              note = formatErrorMessage(e, TELL_WORDS.textFailed)
+              showToast(note, 'error')
             }
-          } else showToast(TELL_WORDS.emailOnlyToast, 'error')
+          } else {
+            note = TELL_WORDS.emailOnlyToast
+            showToast(note, 'error')
+          }
         }
-        setView({ kind: 'receipt', text: sentText, email: estimate.email, atMs })
+        setView({ kind: 'receipt', text: sentText, email: estimate.email, emailed: r.emailed, note, atMs })
         return
       }
       const sentText = await sendText(text.trim())
+      setSendProblem(null)
       showToast(TELL_WORDS.sentToast(first), 'success')
-      setView({ kind: 'receipt', text: sentText, email: null, atMs: now() })
+      setView({ kind: 'receipt', text: sentText, email: null, emailed: null, note: null, atMs: now() })
     } catch (e) {
-      showToast(formatErrorMessage(e, 'The text did not go.'), 'error')
+      const title = moment === 'estimate' ? TELL_WORDS.emailNotGo : TELL_WORDS.textNotGo
+      const why = formatErrorMessage(e, title)
+      setSendProblem({ kind: 'refused', title, detail: why })
+      showToast(why, 'error')
     } finally {
       setBusy(false)
+      setCloseHint(false)
     }
   }
 
@@ -318,7 +358,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
         <div data-testid="tell-receipt">
           {view.email ? (
             <p style={mail} data-testid="tell-receipt-email">
-              {emailSentLine(view.email, view.atMs)}
+              {view.emailed === false ? emailNotSentLine(view.email) : emailSentLine(view.email, view.atMs)}
             </p>
           ) : null}
           {view.text ? (
@@ -330,6 +370,11 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
                 {sentLine(first, view.atMs)}
               </p>
             </>
+          ) : null}
+          {view.note ? (
+            <p role="alert" style={{ ...muted, color: 'var(--text-amber-800)', fontWeight: 600 }} data-testid="tell-receipt-note">
+              {view.note}
+            </p>
           ) : null}
           {callScript?.suggest === false ? null : (
             <>
@@ -351,13 +396,15 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
     )
   }
 
+  // Send the link again (v2.5681): after an already-went answer the primary is the page's resend.
+  const again = sendProblem?.kind === 'already-went' && Boolean(estimate?.sendEmailAgain)
   const primary = hold && moment !== 'estimate' ? (
     <button type="button" style={secondaryBtn} onClick={onClose} data-testid="tell-primary">
       {a.primary}
     </button>
   ) : (
-    <button type="button" style={canSend ? primaryBtn : { ...primaryBtn, ...disabled }} disabled={!canSend} title={left.length ? TELL_WORDS.blanksLeft(left) : undefined} onClick={() => void go(true)} data-testid="tell-primary">
-      {busy ? TELL_WORDS.sending : a.primary}
+    <button type="button" style={canSend ? primaryBtn : { ...primaryBtn, ...disabled }} disabled={!canSend} title={left.length ? TELL_WORDS.blanksLeft(left) : undefined} onClick={() => void go(true, again)} data-testid="tell-primary">
+      {busy ? TELL_WORDS.sending : again ? TELL_WORDS.sendAgain : sendProblem ? TELL_WORDS.tryAgain : a.primary}
     </button>
   )
   const footer = (
@@ -367,7 +414,7 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
           {a.skip}
         </button>
         {a.emailOnly && textCanGo ? (
-          <button type="button" style={quietBtn} disabled={busy || loading} onClick={() => void go(false)} data-testid="tell-email-only">
+          <button type="button" style={quietBtn} disabled={busy || loading} onClick={() => void go(false, again)} data-testid="tell-email-only">
             {a.emailOnly}
           </button>
         ) : null}
@@ -384,12 +431,31 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const subline = estimate ? `${estimate.amount} · ${estimate.email}` : block ? `${fills.day ?? block.workDate} · ${fills.window ?? ''}${block.techName ? ` · ${block.techName}` : ''}` : ''
 
   return (
-    <ResponsiveModalShell title={TELL_WORDS.title(first)} onRequestClose={() => !busy && onClose()} footer={footer}>
+    <ResponsiveModalShell
+      title={TELL_WORDS.title(first)}
+      onRequestClose={() => {
+        // Mid-send the X says so (v2.5681) instead of refusing in silence; any other time it closes.
+        if (busy) setCloseHint(true)
+        else onClose()
+      }}
+      footer={footer}
+    >
       <div data-testid="tell-sheet">
         <div style={who}>
           <span style={{ fontWeight: 700 }}>{jobLabel}</span>
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{subline}</span>
         </div>
+        {sendProblem ? (
+          <div role="alert" style={sendProblem.kind === 'slow' ? bandSlow : band} data-testid="tell-send-problem">
+            <p style={sendProblem.kind === 'slow' ? bandTitleSlow : bandTitle}>{sendProblem.title}</p>
+            {sendProblem.detail && sendProblem.detail !== sendProblem.title ? <p style={bandDetail}>{sendProblem.detail}</p> : null}
+          </div>
+        ) : null}
+        {busy && closeHint ? (
+          <p role="status" style={{ ...muted, fontWeight: 600 }} data-testid="tell-still-sending">
+            {TELL_WORDS.stillSending}
+          </p>
+        ) : null}
         {problem ? (
           <p role="alert" style={{ ...muted, color: 'var(--text-red-700)' }}>
             {problem}

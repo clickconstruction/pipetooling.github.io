@@ -35,6 +35,8 @@ Dana, this is Rosa with Click Plumbing. Your estimate for Whitfield water heater
 
 After the send, the sheet shows what went and when. Under it, **Call Dana to talk it through?** with the words to say. Press {{button:blue|Call}} to dial, or **Done**.
 
+A send that cannot finish says so in the sheet. A red band names the reason and your typed words stay. Press {{button:green|Try again}} when you fixed the reason, or **Skip** to leave it. If the estimate already went, the band says when it went. The button then reads {{button:green|Send the link again}}. That press emails a fresh link and texts it. The old link stops working.
+
 A change order, or an estimate with a $0 total, keeps the old question: **Send to pat@example.com?** The customer gets one letter with a {{button:amber|Review & accept the estimate}} button either way. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer) for the same sheet on a booking.
 
 ## 3. Watch the row

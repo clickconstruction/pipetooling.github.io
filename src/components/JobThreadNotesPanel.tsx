@@ -81,6 +81,12 @@ type JobThreadNotesPanelProps = {
    * Required when `canEditPct` is set.
    */
   onCommitPct?: (value: number, note: string) => void | Promise<void>
+  /**
+   * Leave Report from the job window (punch list #135, v2.5688): when given, a
+   * ＋ Report chip in the pills' own family sits right after the Reports pill
+   * and opens the per-job report form. The host refreshes the feed on save.
+   */
+  onLeaveReport?: () => void
   /** People assigned to the job (jobs_ledger_team_members). Shown top-left. */
   teamMembers?: Array<{ user_id: string; name: string | null }>
   /**
@@ -163,6 +169,7 @@ export function JobThreadNotesPanel({
   canEditPct = false,
   pctSaving = false,
   onCommitPct,
+  onLeaveReport,
   teamMembers,
   customerBox,
   customerLines,
@@ -334,8 +341,36 @@ export function JobThreadNotesPanel({
             // Reports-pill pattern): present so the vocabulary stays fixed,
             // silent so rows with real activity pop. All is always clickable.
             const empty = f.value !== 'all' && count === 0
+            // The door after the word (v2.5688): the ＋ Report chip, in the pills' own height and
+            // radius with blue words, right after the Reports pill — the filter, then the act.
+            const withChip = (pill: ReactNode): ReactNode =>
+              f.value === 'reports' && onLeaveReport
+                ? [
+                    pill,
+                    <button
+                      key="leave-report"
+                      type="button"
+                      onClick={onLeaveReport}
+                      aria-label="Leave Report"
+                      title="Leave Report"
+                      style={{
+                        padding: '0.15rem 0.5rem',
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        borderRadius: 999,
+                        cursor: 'pointer',
+                        border: '1px solid var(--border-blue)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-link)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ＋ Report
+                    </button>,
+                  ]
+                : pill
             if (empty) {
-              return (
+              return withChip(
                 <button
                   key={f.value}
                   type="button"
@@ -358,7 +393,7 @@ export function JobThreadNotesPanel({
                 </button>
               )
             }
-            return (
+            return withChip(
               <button
                 key={f.value}
                 type="button"
