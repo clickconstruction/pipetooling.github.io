@@ -49,10 +49,12 @@ import { RemindersSettingsCard } from '../components/settings/RemindersSettingsC
 import { canSwitchReplyPush } from '../lib/messages/replyPushSwitch'
 import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
+import { QuoConnectionCard } from '../components/settings/QuoConnectionCard'
+import { QuoConnectionProvider } from '../components/settings/QuoConnectionContext'
 import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
 import { BoxesSettingsCard } from '../components/settings/BoxesSettingsCard'
 import { TextsSwitchSettingsCard } from '../components/settings/TextsSwitchSettingsCard'
-import { canSeePhoneAndTexts } from '../lib/messages/assignRule'
+import { canSeePhoneAndTexts, canSetAssignSeats } from '../lib/messages/assignRule'
 import { canSwitchReader } from '../lib/messages/emailReader'
 import { canSwitchTexts } from '../lib/quo/textsSwitch'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
@@ -1511,8 +1513,12 @@ export default function Settings() {
           <div style={{ display: 'grid', gap: '1rem' }}>
             {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
             <PhoneAndTextsSettingsSection />
-            <QuoSeatsSettingsSection />
-            <BoxesSettingsCard />
+            {/* The Quo connection (v2.5718): the key once, then the seats and the inboxes pick from Quo's lists. */}
+            <QuoConnectionProvider enabled={canSetAssignSeats(myRole)}>
+              <QuoConnectionCard />
+              <QuoSeatsSettingsSection />
+              <BoxesSettingsCard />
+            </QuoConnectionProvider>
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
             {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
             {/* Office hours (punch list #140 PR 1): the owner and a dev set them; everyone else on the page reads the line. */}

@@ -52,6 +52,9 @@ Test texts go only to the owner's own phone or to the GC side's "Test contact", 
   list API-made webhooks**, so that page reads "Add your first webhook" while 43696 delivers. List them in a terminal:
   `curl -s https://api.quo.com/webhooks -H "Authorization: $QUO_KEY" -H "Quo-Api-Version: 2026-03-30"` (no secrets in
   the output).
+- **The key itself lives in Settings since v2.5718**: Settings → Phone and texts → **Quo connection** keeps Quo's API key in
+  Vault, and `quo-send`, `quo-webhook` and `quo-config` read it from there before `QUO_API_KEY`. The recipes below that
+  read `$QUO_KEY` from the terminal are for the webhook alone, which the card does not yet manage.
 - **Do not make a webhook on Quo's settings page.** It signs the older OpenPhone way and sends v3 events, which the
   reader answers and sets aside (`ignored: API version v3, not 2026-03-30`). One was made by mistake on 2026-10-14 and
   deleted the same evening.

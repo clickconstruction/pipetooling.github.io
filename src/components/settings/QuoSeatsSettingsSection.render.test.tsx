@@ -2,14 +2,18 @@
 /**
  * Messages, cut 5's screens: Settings → Phone and texts → Company phone seats over a fake io. The office reads the
  * seats with their people; the owner adds, changes and removes a seat, saves or puts them back; what stops a save
- * says so; a refused save keeps its words. The people are the prototype's demo people.
+ * says so; a refused save keeps its words. The people are the prototype's demo people. Since v2.5718, with the Quo
+ * connection's lists in hand the Quo user id is a picker of Quo's members, with Type it by hand beside it.
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SEATS_NOT_SAVED, SEAT_GONE } from '../../lib/messages/assignRule'
 import { QUO_SEATS_NONE, QUO_SEATS_SAVED_TOAST, type QuoSeatRow } from '../../lib/quo/seatsCard'
 import type { QuoSeatsIo } from '../../lib/quo/seatsCardIo'
+import { NO_QUO_KEY, type QuoDirectory, type QuoKeyStatus } from '../../lib/quo/connection'
+import type { QuoConnectionIo } from '../../lib/quo/connectionIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { QuoConnectionProvider } from './QuoConnectionContext'
 import { QuoSeatsSettingsSection } from './QuoSeatsSettingsSection'
 
 vi.mock('../../lib/supabase', async () => {
@@ -35,6 +39,26 @@ function fakeIo(seats: QuoSeatRow[] = [{ quoUserId: 'USrosa2', userId: ROSA }], 
 }
 
 const card = () => document.querySelector<HTMLElement>('[data-settings-quo-seats]')!
+
+const KEY_SAVED: QuoKeyStatus = { set: true, source: 'vault', last4: 'ab12', savedAt: '2026-10-21T19:30:00Z', savedBy: 'Robert' }
+const DIRECTORY: QuoDirectory = {
+  members: [
+    { id: 'USrobert1', name: 'Robert', email: 'robert@plumbing.example', role: 'owner' },
+    { id: 'USrosa2', name: 'Rosa Diaz', email: 'rosa@plumbing.example', role: 'member' },
+  ],
+  numbers: [],
+}
+function quoIo(over: Partial<QuoConnectionIo> = {}): QuoConnectionIo {
+  return { status: vi.fn(async () => KEY_SAVED), save: vi.fn(async () => KEY_SAVED), directory: vi.fn(async () => DIRECTORY), ...over }
+}
+/** The card under a Quo connection whose lists came back. */
+function drawWithQuo(io: QuoSeatsIo, quo: QuoConnectionIo = quoIo()) {
+  renderWithProviders(
+    <QuoConnectionProvider io={quo} enabled>
+      <QuoSeatsSettingsSection io={io} />
+    </QuoConnectionProvider>,
+  )
+}
 
 beforeEach(() => {
   auth.role = 'master_technician'
@@ -130,5 +154,49 @@ describe('Company phone seats (Settings → Phone and texts, Messages cut 5)', (
     renderWithProviders(<QuoSeatsSettingsSection io={fakeIo([{ quoUserId: 'USgone9', userId: 'u-gone' }])} />)
     await waitFor(() => expect(card().textContent).toContain('USgone9'))
     expect(card().textContent).toContain(SEAT_GONE)
+  })
+
+  it('picks a seat from Quo’s members once the connection has its lists, the id shown small, and saves it (v2.5718)', async () => {
+    const io = fakeIo()
+    drawWithQuo(io)
+    const pick = await within(card()).findByRole('combobox', { name: 'Seat 1: Quo member' })
+    expect((pick as HTMLSelectElement).value).toBe('USrosa2')
+    expect(within(pick).getByRole('option', { name: 'Rosa Diaz, rosa@plumbing.example' })).toBeTruthy()
+    expect(within(pick).getByRole('option', { name: 'Type it by hand' })).toBeTruthy()
+    expect(card().querySelector('[data-quo-seat="0"] code')?.textContent).toBe('USrosa2')
+    expect(within(card()).queryByRole('textbox', { name: 'Seat 1: Quo user id' })).toBeNull()
+    fireEvent.click(within(card()).getByRole('button', { name: 'Add a seat' }))
+    fireEvent.change(await within(card()).findByRole('combobox', { name: 'Seat 2: Quo member' }), { target: { value: 'USrobert1' } })
+    fireEvent.change(within(card()).getByRole('combobox', { name: 'Seat 2: who answers on it' }), { target: { value: ROBERT } })
+    fireEvent.click(within(card()).getByRole('button', { name: 'Save the seats' }))
+    await waitFor(() =>
+      expect(io.save).toHaveBeenCalledWith([
+        { quoUserId: 'USrosa2', userId: ROSA },
+        { quoUserId: 'USrobert1', userId: ROBERT },
+      ]),
+    )
+  })
+
+  it('types a seat by hand beside the picker, and goes back to the picker', async () => {
+    drawWithQuo(fakeIo([{ quoUserId: 'USelsewhere', userId: ROSA }]))
+    // A seat the list does not hold is typed as before, with a way back to the list.
+    const typed = await within(card()).findByRole('textbox', { name: 'Seat 1: Quo user id' })
+    expect((typed as HTMLInputElement).value).toBe('USelsewhere')
+    fireEvent.click(within(card()).getByRole('button', { name: 'Seat 1: pick from Quo' }))
+    const pick = await within(card()).findByRole('combobox', { name: 'Seat 1: Quo member' })
+    expect((pick as HTMLSelectElement).value).toBe('')
+    fireEvent.change(pick, { target: { value: '__by_hand__' } })
+    expect(await within(card()).findByRole('textbox', { name: 'Seat 1: Quo user id' })).toBeTruthy()
+  })
+
+  it('types the id as before without a key, saying the pickers come with the key; or when Quo did not answer', async () => {
+    drawWithQuo(fakeIo(), quoIo({ status: vi.fn(async () => NO_QUO_KEY) }))
+    expect(await within(card()).findByRole('textbox', { name: 'Seat 1: Quo user id' })).toBeTruthy()
+    await waitFor(() => expect(card().textContent).toContain('Paste the Quo key above and the seats and inboxes become pickers.'))
+    cleanup()
+    drawWithQuo(fakeIo(), quoIo({ directory: vi.fn(async () => Promise.reject(new Error('Quo did not answer.'))) }))
+    expect(await within(card()).findByRole('textbox', { name: 'Seat 1: Quo user id' })).toBeTruthy()
+    await waitFor(() => expect(card().textContent).toContain('Quo did not answer, so type the ids by hand for now.'))
+    expect(within(card()).queryByRole('button', { name: 'Seat 1: pick from Quo' })).toBeNull()
   })
 })

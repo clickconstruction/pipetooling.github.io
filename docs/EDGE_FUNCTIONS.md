@@ -232,6 +232,7 @@ when_to_read:
    - [resend-webhook](#resend-webhook)
    - [quo-webhook](#quo-webhook)
    - [quo-send](#quo-send)
+   - [quo-config](#quo-config)
    - [messages-nudge-dispatch](#messages-nudge-dispatch)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
@@ -5122,7 +5123,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 - **Texts**: a text in is a line. A text of ours that Quo reports (`message.delivered`, `message.failed`, `message.undelivered`) is a line per recipient. That covers a text sent from Quo's own phone app, and our own send's fields always win.
 - **The box** (residential R6, v2.5469): the event's `phoneNumberId` is matched against Settings' boxes (`app_settings` `messages_boxes_v1`, read by `loadBoxes`, `boxOfInbound`). Until the row names a number, `QUO_PHONE_NUMBER_ID` is the team box's. A number we cannot place is the team box, today's one number. A new line is stamped with its box (`messages.mailbox`), and a line already written keeps its own. A call's words name the number it rang ("rang everyone on the bids number").
 - **STOP, START and HELP**: Quo stops a number on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT and answers it, and START and UNSTOP bring it back. The function mirrors that for the one of our numbers it came to, on `contact_channels.opted_out_by_box` (`stopScope`, v2.5469). A word to a number of ours it cannot place reaches both boxes. A STOP again keeps the first stamp. The older `opted_out_at` is read as a STOP to every box and is never written by a new word. It answers only what Quo leaves: HELP and INFO, and the FCC's REVOKE and OPT OUT once, through `quo-send`'s path from the same box's number. A longer text that may ask to stop gets a team note instead. Both answers go whatever the texts switch says (v2.5440, see `quo-send`), since each answers the person's own keyword and the carriers expect it. A stop's confirmation Quo turns away is logged, never retried: the STOP is already mirrored, so a retry would plan none.
-- **A text's pictures and files** (Messages, cut 10, v2.5468): kept the moment the text's line is written, since Quo's link to them does not last (`_shared/quoMedia.ts`'s `keepTextMedia`). Each is fetched once (10 s, with `QUO_API_KEY` when Quo's link refuses a plain read) into the private `message-attachments` bucket at `quo/<quo id>/<place>.<ending>` and gets a `message_attachments` row (`quoMediaPlans`, `quoMediaRow`, `src/lib/quo/mediaKeep.ts`). One that does not read, or is over 25 MB, keeps its row marked `quo_not_copied`. A retry keeps nothing twice (`mediaToKeep`). A photo kept on a ticked job then goes to Drive with [photo-save](#photo-save).
+- **A text's pictures and files** (Messages, cut 10, v2.5468): kept the moment the text's line is written, since Quo's link to them does not last (`_shared/quoMedia.ts`'s `keepTextMedia`). Each is fetched once (10 s, with Quo's key, Vault's else `QUO_API_KEY`, when Quo's link refuses a plain read) into the private `message-attachments` bucket at `quo/<quo id>/<place>.<ending>` and gets a `message_attachments` row (`quoMediaPlans`, `quoMediaRow`, `src/lib/quo/mediaKeep.ts`). One that does not read, or is over 25 MB, keeps its row marked `quo_not_copied`. A retry keeps nothing twice (`mediaToKeep`). A photo kept on a ticked job then goes to Drive with [photo-save](#photo-save).
 - **A number nobody has** becomes an unknown contact, the Who is this? row, through `quo_place_number`.
 - **The pause** (v2.5352): a `message.delivered` ends a pause for the balance (see `quo-send`), unless a newer text was turned away. A failed or undelivered text never pauses: its `errorCode` is the carrier's raw code, and none names the balance.
 
@@ -5148,7 +5149,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
    - the app's answer, last.
 6. `200`. A failure first gives the claim back (`quo_webhook_release`), then answers `500`, so Quo sends it again: eight tries over about 27 and a half hours.
 
-**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `QUO_WEBHOOK_SECRET`. The HELP answer also needs `quo-send`'s: `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. The seats and the boxes are read as `quo-send` reads them.
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `QUO_WEBHOOK_SECRET`. The HELP answer and a text's pictures also need `quo-send`'s: Quo's key from Vault first (Settings → Phone and texts → Quo connection, v2.5718, `_shared/quoKey.ts`) then `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. The seats and the boxes are read as `quo-send` reads them.
 
 **Tables**: `messages` (its Quo columns, `20261012170000_quo_messages.sql`, and `mailbox`, `20261014003000_messages_two_boxes.sql`), `message_attachments` and the `message-attachments` bucket (a text's pictures, v2.5468), `contacts` and `contact_channels` (through `quo_place_number`, and `opted_out_by_box`; since v2.5597 `contacts.prefers` / `prefers_how` / `prefers_at` from the one-word EMAIL or TEXT), `call_tasks` (closed by an answered call through `call_tasks_close_by_call`, v2.5596), `contact_jobs` (the star), `app_settings` (the seats and the boxes) and `quo_webhook_ids`.
 
@@ -5205,9 +5206,39 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
   - `404 notOnPhone`, a line not there;
   - `422` for `noCustomer`, `wrongCustomer`, `notOnPhone`, `offPhone`, `blankOpen` (*Fill {minutes} first.*) and `noPhone`; for the bio kind `409 alreadyIntroduced` (*They have your bio already.*), `422 notYourLine` and `nothingToSay`, and `400 badRequest` for more than 20 ids or a repeated one (v2.5590). The 200 adds `contactId`.
 
-**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. **The boxes** come from `app_settings` `messages_boxes_v1` (R6, `loadBoxes`): `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX` are the team box's until the row names them, and the bids box has no number until it does (`parseBoxSettings`, `boxSetting`). **The seats** (which of Quo's workspace users is which of ours) come from `app_settings` `messages_quo_seats_v1` (Settings → Phone and texts, migration `20261013040000_quo_seats`) once it names a seat; until then from the `QUO_SEATS` secret (`{"US…": "<user id>"}`), which can go once the row is filled (`seatsSource` in `quo/rows.ts`).
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. **Quo's key** (v2.5718) comes from Vault first, where Settings → Phone and texts → Quo connection keeps it through [quo-config](#quo-config) (`loadQuoApiKey` in `_shared/quoKey.ts`, `quo_secret_get`), then from `QUO_API_KEY`, so a key saved in Settings wins and nothing breaks while Vault holds none. **The boxes** come from `app_settings` `messages_boxes_v1` (R6, `loadBoxes`): `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX` are the team box's until the row names them, and the bids box has no number until it does (`parseBoxSettings`, `boxSetting`). **The seats** (which of Quo's workspace users is which of ours) come from `app_settings` `messages_quo_seats_v1` (Settings → Phone and texts, migration `20261013040000_quo_seats`) once it names a seat; until then from the `QUO_SEATS` secret (`{"US…": "<user id>"}`), which can go once the row is filled (`seatsSource` in `quo/rows.ts`).
 
 **Not deployed yet**: it deploys once the texts switch's migration (`20261014160000`) is on prod, behind the switch, with `quo-webhook`, by the GC lead. Quo's API sends no picture messages, so a photo goes as a link line. The tech path (v2.5499) calls `contact_for_job` and `messages_tech_on_job`, so migration `20261014180000_messages_tech_send` is pushed before quo-send's deploy that carries it. Job Mode's door (`JOB_MODE_MESSAGES_ON`) is turned on in a one-line PR after it.
+
+---
+
+### quo-config
+
+**Purpose** (v2.5718, the Quo connection in Settings; the owner's ask of 2026-10-21: no terminal in setup): the owner's and a dev's door to Quo's API key, which lives in Vault (migration `20261021020000`: `quo_secret_set`, `quo_secret_get`, `quo_secret_status`, the service role's only), and to Quo's own lists, so Settings → Phone and texts picks seats and numbers instead of typed ids. Settings → Phone and texts → **Quo connection** (`QuoConnectionCard` over `QuoConnectionProvider`, `src/lib/quo/connection.ts` and `connectionIo.ts`) calls it. `quo-send` and `quo-webhook` read Vault first through `_shared/quoKey.ts` (`loadQuoApiKey`), then `QUO_API_KEY`, so a key saved here wins and nothing breaks while Vault holds none.
+
+**Endpoint**: `POST /functions/v1/quo-config`
+
+**Required Role**: `master_technician` (the owner) or `dev`, a real account (`REAL_ACCOUNT`), not `read_only` (Bearer JWT → `getUser`, then the row from `users`). Anyone else gets 403 with *Only the owner or a dev sets the Quo connection.*
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `QUO_API_KEY` as the fallback key while Vault holds none.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+| action | fields | does |
+|---|---|---|
+| `status` | — | `{ set, source: vault \| env \| none, last4, saved_at, saved_by }`: whether a key is held and where from, its last four characters when Vault holds one, when it was saved and by whom (the Vault secret's `updated_at` and description). Never the key. |
+| `set` | `key` | the key into Vault with the caller's name (`users.name`, else their email); a blank forgets it; a key with a space, under 16 or over 400 characters is refused (400) before anything is written; answers the status. |
+| `directory` | — | `GET /phone-numbers` and `GET /users` from Quo's versioned API (`https://api.quo.com`, `Quo-Api-Version: 2026-03-30`, the bare key as the Authorization header; `quoGet` in `quoKey.ts`, every page, `limit` 50 and `after` the `nextCursor`, ten pages at most), as Quo answers them: `{ numbers, members }` with the status. The client's kernel reads the fields (`parseQuoNumbers`, `parseQuoMembers`). |
+
+#### Response
+
+200 with the status (and the lists on `directory`); 400 a bad key or action; 401 no user; 403 not the owner or a dev; 409 `directory` without a key (*No Quo key yet. Paste the key first.*); 502 Quo refused, with Quo's status, title and message in words (*Quo did not give its numbers (401: Unauthorized, Invalid API key).*).
+
+**Tests**: `src/lib/quo/quoConfig.run.test.ts` runs the handler itself with the recording fakes (`src/lib/mail/mailRunFakes.ts`, `FakeDb` with `match` since v2.5718) and a fake Quo behind `fetch`.
+
+**Deploy**: `supabase functions deploy quo-config` after migration `20261021020000` is pushed; redeploy `quo-send` and `quo-webhook` with it (they gained the Vault read). The dev-mcp catalog names it (`node scripts/build-dev-mcp-catalog.mjs`).
 
 ---
 
