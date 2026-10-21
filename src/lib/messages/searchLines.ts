@@ -72,6 +72,21 @@ export function searchLines(messages: readonly ThreadMessage[], contacts: readon
   return { hits, total: found.length }
 }
 
+/** The search lives in the URL as `?q=` (v2.5708), like the pill: a reload keeps it and a link carries it. */
+export const QUERY_PARAM = 'q'
+
+export function queryOf(search: URLSearchParams): string {
+  return search.get(QUERY_PARAM) ?? ''
+}
+
+/** The search with the words set, every other param kept. Empty words take the param away. */
+export function withQuery(search: URLSearchParams, q: string): URLSearchParams {
+  const next = new URLSearchParams(search)
+  if (q.trim()) next.set(QUERY_PARAM, q)
+  else next.delete(QUERY_PARAM)
+  return next
+}
+
 export const SEARCH_WORDS = {
   label: 'Search every message',
   placeholder: 'Search any words in every message',

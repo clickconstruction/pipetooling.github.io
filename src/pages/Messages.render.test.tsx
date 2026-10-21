@@ -236,6 +236,18 @@ describe('/messages: Follow up with the kind pills', () => {
     expect(screen.queryByTestId('search-hits')).toBeNull()
   })
 
+  it('keeps the search in the URL: a link with q= lands on the lines, and typing writes it (v2.5708)', async () => {
+    at('/messages?kind=trade&q=detention')
+    const box = (await screen.findByLabelText('Search every message')) as HTMLInputElement
+    expect(box.value).toBe('detention')
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalled())
+    expect(await screen.findAllByTestId('search-hit')).toBeTruthy()
+    fireEvent.change(box, { target: { value: 'pond' } })
+    await waitFor(() => expect(where()).toBe('/messages?kind=trade&q=pond'))
+    fireEvent.change(box, { target: { value: '' } })
+    await waitFor(() => expect(where()).toBe('/messages?kind=trade'))
+  })
+
   it('opens a person’s thread over the page and keeps the pill', async () => {
     at('/messages?kind=customer')
     fireEvent.click(await screen.findByText(ELENA))

@@ -23,7 +23,9 @@ import { pageGate } from '../lib/roleGate'
 import { loadGcTeam, type GcTeamMember } from '../lib/gc/gcIo'
 import { followUpTeamOf } from '../lib/followUp/team'
 import { EVERYONE_WORDS } from '../lib/messages/everyone'
-import { searchLines, SEARCH_MIN, SEARCH_WORDS } from '../lib/messages/searchLines'
+import { QUEUES_FOLD_WORDS } from '../lib/messages/queuesFold'
+import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
+import { useMatchMedia } from '../hooks/useMatchMedia'
 import { KIND_PILLS, peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
 
 /** Search every message (v2.5701): the box under the pills, a hit's row, and the lane's one-line answers. */
@@ -47,8 +49,15 @@ export default function Messages() {
   const [everyoneOpen, setEveryoneOpen] = useState(false)
   // Search every message (v2.5701): the box under the pills; two letters typed read the view and draw the lines that
   // match in place of the lists, each opening the thread at its line.
-  const [q, setQ] = useState('')
+  // The words live in the URL as `?q=` (v2.5708), like the pill: a reload keeps them and a link carries them.
+  const q = queryOf(params)
+  const setQ = useCallback((words: string) => setParams((prev) => withQuery(prev, words), { replace: true }), [setParams])
   const searching = q.trim().length >= SEARCH_MIN
+  // On a phone, three empty lists fold to one line until something waits or the office opens them (v2.5708).
+  const phone = useMatchMedia('(max-width: 760px)')
+  const [queueCount, setQueueCount] = useState<number | null>(null)
+  const [queuesOpen, setQueuesOpen] = useState(false)
+  const foldQueues = phone && queueCount === 0 && !queuesOpen
   const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null || everyoneOpen || searching), closeThread: thread.closeThread })
 
   const [team, setTeam] = useState<GcTeamMember[]>([])
@@ -149,8 +158,23 @@ export default function Messages() {
         </section>
       )}
 
+      {!searching && onFollowUp && foldQueues && (
+        <button
+          type="button"
+          onClick={() => setQueuesOpen(true)}
+          data-testid="queues-fold"
+          style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', textAlign: 'left', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.85rem', background: 'var(--surface)', color: 'var(--text-muted)', font: 'inherit', fontSize: '0.875rem', cursor: 'pointer' }}
+        >
+          <span aria-hidden>▸</span>
+          <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{QUEUES_FOLD_WORDS.line}</span>
+          <span style={{ marginLeft: 'auto' }}>{QUEUES_FOLD_WORDS.tail}</span>
+        </button>
+      )}
       {searching ? null : onFollowUp ? (
-        <FollowUpPanel me={me} team={followUpTeam} onOpenThread={thread.openThread} say={showToast} narrow={narrow} />
+        // The panel stays mounted under the fold, so its count keeps the fold honest.
+        <div style={foldQueues ? { display: 'none' } : undefined} data-testid="queues">
+          <FollowUpPanel me={me} team={followUpTeam} onOpenThread={thread.openThread} say={showToast} narrow={narrow} onCount={setQueueCount} />
+        </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>They never count on Follow up. Each shows here by their last line.</div>
