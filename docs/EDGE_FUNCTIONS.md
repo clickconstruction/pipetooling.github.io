@@ -1820,6 +1820,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-estimate-for-customer
 
+> **v2.5705 — the open lands in the thread** (punch list #139 PR 13): after `record_estimate_public_link_view`, `writeEstimateThreadLine` writes *👀 Dana opened estimate #212.* into the customer's own thread as the app's event, keyed `estimate:<id>:opened` so a second open writes nothing (`_shared/estimateEventLine.ts`, `_shared/logEstimateCustomerEvent.ts`). Best effort; the customer's answer never waits on it. **Redeploy required.**
+
 > **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
 
 **Purpose**: Public read of a **sent** estimate for the customer acceptance page (no JWT).
@@ -1843,6 +1845,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 ### log-estimate-option-view
+
+> **v2.5705** (punch list #139 PR 13): untouched — an option viewed draws no thread line, and the shared audit logger it imports did not change. No redeploy.
 
 > **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
 
@@ -2388,6 +2392,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### accept-estimate
+
+> **v2.5705 — the accept and the decline land in the thread** (punch list #139 PR 13): after the row flips, `writeEstimateThreadLine` (`_shared/estimateThreadLine.ts`) writes *✍️ Dana accepted estimate #212.* (*Signed.* with a signature; a repeat after the row was accepted writes nothing) and `declined` writes *🚫 Dana declined estimate #212.* into the customer's own thread, keyed once per estimate and kind. **Redeploy required.**
 
 > **v2.5643 — a link shared in a message opens it too** (punch list #127, the owner's pick B): the token's hash is looked up through `_shared/estimateTokenLookup.ts` (`estimateRefForTokenHash`): the emailed link's `public_token_hash` on the row first, else a link made for a message in `estimate_share_links` (`share_estimate_link`), and the estimate is then read by its id. A shared link ends on its own `expires_at` (`linkHasExpired`); an emailed one on the row's `public_token_expires_at`, as before. A lookup that fails, the table not there yet included, is no match.
 
