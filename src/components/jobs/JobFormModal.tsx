@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps -- mount-only init; parent remounts via key */
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
+import type { NewJobCustomerPrefill } from '../../lib/messages/leadDoors'
 import type { JobDraft } from '../../lib/bids/jobDraft'
 import {
   useCallback,
@@ -226,6 +227,8 @@ export type JobFormModalProps = {
   /** An estimator's draft from the Dispatch inbox (v2.5659), laid over the bid's import, and who sent it. */
   newJobPrefillDraft?: JobDraft | null
   newJobPrefillDraftFrom?: string | null
+  /** A lead's doors (punch list #140 PR 8): the customer's three fields and their words as the job's name, filled once after init. */
+  newJobPrefillCustomer?: NewJobCustomerPrefill | null
   billingCustomerHighlightInitial: boolean
   fixturesSectionHighlightInitial: boolean
   /** Scroll to ③ Payments received and flash it — the Dashboard's bank-returned deposits card (v2.3795). */
@@ -275,6 +278,7 @@ export default function JobFormModal({
   newJobPrefillBidId = null,
   newJobPrefillDraft = null,
   newJobPrefillDraftFrom = null,
+  newJobPrefillCustomer = null,
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
   paymentsReceivedHighlightInitial = false,
@@ -458,6 +462,7 @@ export default function JobFormModal({
   const initialNewJobServiceTypeIdRef = useRef('')
   /** Avoid duplicate applyPrefillFromBid before bidId state updates (e.g. Strict Mode). */
   const newJobPrefillBidAppliedRef = useRef<string | null>(null)
+  const newJobPrefillCustomerAppliedRef = useRef(false)
   // Tier-2 #42 (J1-F2) New Job discard guard: the sheet as it looked once init
   // (and any bid prefill) landed; closing compares against it. Armed → captured
   // on the next render so batched state lands first.
@@ -1786,6 +1791,18 @@ export default function JobFormModal({
       cancelled = true
     }
   }, [authUser?.id])
+
+  // A lead's doors (punch list #140 PR 8): the three customer fields and their words as the job's name, once init has
+  // reset the form, and never over what the person already typed.
+  useEffect(() => {
+    if (!initDone || mode !== 'new' || !newJobPrefillCustomer || newJobPrefillCustomerAppliedRef.current) return
+    newJobPrefillCustomerAppliedRef.current = true
+    const p = newJobPrefillCustomer
+    setCustomerName((was) => was || p.name)
+    if (p.phone) setCustomerPhone((was) => was || p.phone!)
+    if (p.email) setCustomerEmail((was) => was || p.email!)
+    if (p.note) setJobName((was) => was || p.note!)
+  }, [initDone, mode, newJobPrefillCustomer])
 
   useEffect(() => {
     if (!initDone || mode !== 'new') return

@@ -104,6 +104,8 @@ vi.mock('../lib/messages/messagesIo', async () => {
   const { spineMessagesView } = await import('../lib/messages/spineRows')
   return {
     loadMessagesView: vi.fn(() => Promise.resolve(spineMessagesView())),
+    // A lead's doors (punch list #140 PR 8) read the person with their numbers; nobody's record reads here.
+    loadContact: vi.fn(() => Promise.resolve(null)),
     nameContact: vi.fn(),
     tieMessage: vi.fn(() => Promise.resolve()),
     setDefaultJob: vi.fn(() => Promise.resolve()),

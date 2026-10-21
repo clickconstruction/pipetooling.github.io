@@ -134,7 +134,8 @@ export function needsReply(
       waitingSince: last?.at ?? null,
       callBack,
       offers: rowOffers(heard, c.id),
-      acts: [c.kind === 'unknown' ? 'Who is this?' : 'Reply', ...(callBack ? ['Call back in Quo'] : []), 'No reply needed', 'Remind me Monday'],
+      // A lead's doors (punch list #140 PR 8): book them or start an estimate from the row; either makes them a customer.
+      acts: [c.kind === 'unknown' ? 'Who is this?' : 'Reply', ...(c.kind === 'lead' ? ['Book a visit', 'Start an estimate'] : []), ...(callBack ? ['Call back in Quo'] : []), 'No reply needed', 'Remind me Monday'],
     })
   }
   const name = new Map(contacts.map((c) => [c.id, c.name]))
