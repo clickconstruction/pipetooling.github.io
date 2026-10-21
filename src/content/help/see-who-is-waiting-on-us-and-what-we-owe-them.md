@@ -106,7 +106,7 @@ Each person we work with goes through steps, like *Asked to quote* or *Papers in
 
 You see one row for each person, with the worst at the top. The row names the steps its reminder is about. The line under it says why, like *late 2 days · waiting on their quote*. The {{chip:blue|Our move · a text}} chip says how the flow asks us to remind them.
 
-- Press {{button:blue|Text Greg}} to open their thread and remind them. The button says Call or Email when the flow asks for a call or an email.
+- Press {{button:blue|Text Greg}} to open their thread with the reminder for the step already written. The send window is open too. Read it and press {{button:blue|Send as text}}. The button says Email when the flow asks for an email, and the same words open as an email. It says Call when the flow asks for a call, and then it opens the thread as it is.
 - Press {{button:outline|Hold until Mon}} to hide the row until Monday.
 - Press {{button:outline|Remind now}} when you already reminded them another way, like a call from your own phone. The app then sends no second reminder on top of yours.
 

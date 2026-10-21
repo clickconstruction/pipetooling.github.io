@@ -55,7 +55,23 @@ describe('opening a thread on /gc (the URL holds it)', () => {
 
   it('a link with a thread opens it', () => {
     const { result } = renderHook(() => useThreadWindow(), { wrapper: at('/gc?thread=c-elena&at=m-7') })
-    expect(result.current).toMatchObject({ contactId: 'c-elena', at: 'm-7' })
+    expect(result.current).toMatchObject({ contactId: 'c-elena', at: 'm-7', nudge: null })
+  })
+
+  it('carries the nudge with the thread (punch list #140 PR 4): asked, read, and gone with the thread', () => {
+    expect(threadFromSearch(new URLSearchParams('thread=c-greg&nudge=text'))).toEqual({ contactId: 'c-greg', at: null, nudge: 'text' })
+    expect(threadFromSearch(new URLSearchParams('thread=c-greg&nudge=1'))).toEqual({ contactId: 'c-greg', at: null })
+    expect(withThread(new URLSearchParams('view=followUp'), 'c-greg', null, 'email').toString()).toBe('view=followUp&thread=c-greg&nudge=email')
+    expect(withThread(new URLSearchParams('thread=c-greg&nudge=text'), 'c-elena').toString()).toBe('thread=c-elena')
+    expect(withoutThread(new URLSearchParams('view=followUp&thread=c-greg&nudge=text')).toString()).toBe('view=followUp')
+    const { result } = renderHook(() => ({ thread: useThreadWindow(), location: useLocation() }), { wrapper: at('/messages?kind=all') })
+    act(() => result.current.thread.openThread('c-greg', null, { nudge: 'text' }))
+    expect(result.current.thread).toMatchObject({ contactId: 'c-greg', at: null, nudge: 'text' })
+    expect(result.current.location.search).toBe('?kind=all&thread=c-greg&nudge=text')
+    act(() => result.current.thread.openThread('c-greg', 'm-1'))
+    expect(result.current.thread.nudge).toBeNull()
+    act(() => result.current.thread.closeThread())
+    expect(result.current.location.search).toBe('?kind=all')
   })
 
   it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows, cut 3’s reply box, cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line, then cut 6’s paper offer', () => {

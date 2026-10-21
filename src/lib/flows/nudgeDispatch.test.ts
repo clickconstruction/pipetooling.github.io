@@ -223,7 +223,7 @@ describe('the morning run’s offers (v2.5595)', () => {
 describe('the reminder’s own line', () => {
   const tom = demoPerson('tom')
   const step = (id: string) => {
-    const def = stepById(SEED_FLOWS.trade, id) ?? stepById(SEED_FLOWS.customer, id) ?? stepById(SEED_FLOWS.arch, id)
+    const def = stepById(SEED_FLOWS.trade, id) ?? stepById(SEED_FLOWS.customer, id) ?? stepById(SEED_FLOWS.arch, id) ?? stepById(SEED_FLOWS.residential, id)
     if (!def) throw new Error(`no step ${id}`)
     return def
   }
@@ -251,6 +251,12 @@ describe('the reminder’s own line', () => {
     expect(nudgeLine(tom, step('papers'), [line], 'click.co/t/7Hq2')).toBe(
       'Send the W-9 when you can, and the insurance certificate too.\nYou can upload it here: click.co/t/7Hq2',
     )
+  })
+
+  it('has words of its own for the residential steps that wait on the customer (punch list #140 PR 4)', () => {
+    const dana = { first: 'Dana', reading: { kind: 'residential' as const } }
+    expect(nudgeLine(dana, step('approved'))).toBe('Dana, any word on the estimate? Happy to answer any questions.')
+    expect(nudgeLine(dana, step('paid'))).toBe('Dana, checking on the bill. Need the pay page sent again?')
   })
 
   it('reads in plain words for every step that has words of its own', () => {

@@ -2,13 +2,15 @@
  * Follow up's Nudges from the flow (the prototype's section of the same name, v1.178): one row per person whose step
  * has gone quiet past its nudge, worst first, drawn after We owe them in helper 2's slot (`FollowUpPanel`'s `nudges`).
  * Each row has the person, the steps its one message names, our move with the channel the flow asked for, and why.
- * Its presses: the nudge itself, which opens their thread until the send window lands; Hold until Mon; and Remind now,
- * for a reminder sent another way. A press on the name opens the thread too.
+ * Its presses: the nudge itself, which since punch list #140 PR 4 opens their thread with the step's reminder written
+ * and the send window open (a text or an email, as the flow asks; a call opens the thread as it is); Hold until Mon; and
+ * Remind now, for a reminder sent another way. A press on the name opens the thread as it is.
  */
 import type { CSSProperties } from 'react'
 import type { NudgePerson } from '../../lib/flows/flowNudgesIo'
 import type { NudgeRow } from '../../lib/flows/nudges'
 import { NUDGE_HOW_WORDS, stepById, type FlowDef } from '../../lib/flows/state'
+import type { OpenThreadMore } from '../gc/messages/useThreadWindow'
 
 const rowStyle: CSSProperties = { display: 'grid', gap: '0.25rem', padding: '0.6rem 0.75rem', borderTop: '1px solid var(--border)' }
 const nameButton: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer' }
@@ -33,7 +35,8 @@ export interface NudgesFromTheFlowProps {
   loading?: boolean
   /** Why everyone could not be read. */
   problem?: string | null
-  onOpenThread: (contactId: string) => void
+  /** The name opens the thread; the nudge's own press opens it with the reminder written (`more.nudge`), unless the flow asks for a call. */
+  onOpenThread: (contactId: string, more?: OpenThreadMore) => void
   onHold: (row: NudgeRow) => void
   onRemindNow: (row: NudgeRow) => void
 }
@@ -70,7 +73,7 @@ export function NudgesFromTheFlow({ rows, names, flows, pressing, loading = fals
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{r.why}</div>
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button type="button" disabled={busy} onClick={() => onOpenThread(r.contactId)} style={primary}>
+                <button type="button" disabled={busy} onClick={() => onOpenThread(r.contactId, r.how === 'call' ? undefined : { nudge: r.how })} style={primary}>
                   {NUDGE_PRESS[r.how]} {who?.first ?? 'them'}
                 </button>
                 <button type="button" disabled={busy} onClick={() => onHold(r)} style={button}>

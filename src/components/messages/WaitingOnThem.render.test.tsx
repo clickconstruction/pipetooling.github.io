@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Waiting on them (v2.5704, punch list #139 PR 12) over a fake read: the quiet people longest first with the chip,
- * our last words and the day; Nudge and the name open the thread; Call dials; the empty lane and a failed read say so.
+ * our last words and the day; Nudge opens the thread with the nudge asked and the name opens it as it is; Call dials; a
+ * last text Quo could not deliver draws the row red with Call them and Send it as an email (#140 PR 4); the empty lane
+ * and a failed read say so.
  */
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -30,10 +32,22 @@ describe('WaitingOnThem', { timeout: 15_000 }, () => {
     expect(rows.map((r) => r.textContent)).toEqual(['Kim CoeTheir move · 6 dUs · Kim, the water heater is on the truck for Tuesday. · Wed, Oct 14Nudge', 'Dana WhitfieldTheir move · 2 dUs · Dana, your estimate is ready, $4,860.00. · Sun, Oct 18Nudge☎ Call'])
     expect(screen.getByRole('heading', { name: 'Waiting on them (2)' })).toBeTruthy()
     fireEvent.click(screen.getAllByTestId('waiting-nudge')[0]!)
-    expect(onOpenThread).toHaveBeenCalledWith('c-kim')
+    expect(onOpenThread).toHaveBeenCalledWith('c-kim', { nudge: 'text' })
     fireEvent.click(screen.getAllByTestId('waiting-name')[1]!)
     expect(onOpenThread).toHaveBeenCalledWith('c-dana')
     expect((screen.getByTestId('waiting-call') as HTMLAnchorElement).getAttribute('href')).toBe('tel:+18305550121')
+  })
+  it('a last text Quo could not deliver draws the row red, with Call them and the same words as an email in the nudge’s place', async () => {
+    const onOpenThread = vi.fn()
+    const failed: WaitLine = { ...LINES[0]!, channel: 'text', delivery: 'failed' }
+    renderWithProviders(<WaitingOnThem pill="all" onOpenThread={onOpenThread} io={vi.fn(async () => [failed])} now={() => NOW} />)
+    const row = await screen.findByTestId('waiting-row')
+    expect(row.getAttribute('data-delivery')).toBe('bad')
+    expect(screen.getByTestId('waiting-mark').textContent).toBe('⚠ not sent')
+    expect(screen.queryByTestId('waiting-nudge')).toBeNull()
+    expect(screen.getByTestId('waiting-call').textContent).toBe('☎ Call them')
+    fireEvent.click(screen.getByTestId('waiting-email'))
+    expect(onOpenThread).toHaveBeenCalledWith('c-dana', { nudge: 'email' })
   })
   it('the empty lane says so, and a failed read says so', async () => {
     renderWithProviders(<WaitingOnThem pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => [])} now={() => NOW} />)

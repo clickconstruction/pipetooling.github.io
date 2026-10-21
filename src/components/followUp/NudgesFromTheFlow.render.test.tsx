@@ -90,7 +90,8 @@ describe('NudgesFromTheFlow', () => {
     fireEvent.click(greg.getByRole('button', { name: 'Text Greg' }))
     expect(props.onOpenThread).toHaveBeenCalledTimes(2)
     expect(props.onOpenThread).toHaveBeenNthCalledWith(1, 'greg')
-    expect(props.onOpenThread).toHaveBeenNthCalledWith(2, 'greg')
+    // #140 PR 4: the nudge's own press asks for the reminder written and the send window open; the name opens it as it is.
+    expect(props.onOpenThread).toHaveBeenNthCalledWith(2, 'greg', { nudge: 'text' })
 
     fireEvent.click(greg.getByRole('button', { name: 'Hold until Mon' }))
     expect(props.onHold).toHaveBeenCalledTimes(1)

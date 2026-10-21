@@ -10,6 +10,7 @@ import { NoteBackDay } from '../../../followUp/NoteBackDay'
 import { SettlingNote } from '../../../followUp/SettlingNote'
 import { useOwedSettling } from '../../../followUp/useOwedSettling'
 import { fillLine } from '../../../../lib/quickReplies/blanks'
+import { nudgeDraftFor, type NudgeKind } from '../../../../lib/messages/nudgeDraft'
 import { replyFills, sendWaits } from '../../../../lib/quickReplies/filling'
 import { appLinesForStage, isAppLine } from '../../../../lib/messages/stageLines'
 import { lineWords } from '../../../../lib/quickReplies/spanish'
@@ -19,6 +20,7 @@ import { paperTeamLine, SLASH_HINT, slashHead, slashLines, slashMove, slashPaper
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
   boxPlaceholder,
+  canSend,
   countLine,
   defaultReplyKind,
   fromLine,
@@ -127,6 +129,7 @@ export function ReplyBox({
   job,
   billLink = null,
   startWords = null,
+  nudge = null,
   stageStepIds = [],
   openStrip = false,
   kinds,
@@ -146,6 +149,12 @@ export function ReplyBox({
   billLink?: string | null
   /** Words the box opens with, its blanks filled from what it knows, once (Send the pay page under a won bid, v2.5657). */
   startWords?: string | null
+  /**
+   * Punch list #140 PR 4: the thread's nudge (`?nudge=`, `NudgedReplyBox`). Once the flow and the team's lines are read,
+   * the box holds the step's reminder as the morning run would send it (`nudgeDraftFor`) and the send window opens, once:
+   * a text, or an email when the text cannot go (no number, STOP, or Send texts off). Words already typed stay.
+   */
+  nudge?: NudgeKind | null
   /** A job's box (v2.5629): the steps the job's stage speaks to; their lines lead the strip, the app's own words standing in for a step with no team line. */
   stageStepIds?: readonly string[]
   /** A job's box opens the strip on its own, unless the person folded it by hand. */
@@ -180,7 +189,7 @@ export function ReplyBox({
   const slashTyped = slashWordAt(body, caret)
   // A job's box opens the strip on its own (v2.5629), so its lines are read then too, not only the app's stage line.
   const stripShown = stripOpen || (openStrip && !foldedByHand())
-  const quick = useQuickReplies(qio, me, goesOut(kind) && (stripShown || finding || slashTyped !== null))
+  const quick = useQuickReplies(qio, me, (goesOut(kind) && (stripShown || finding || slashTyped !== null)) || Boolean(nudge))
   // #127: their bills and estimates, read when the lines are, so a line about money fills from the right bill.
   const pio = useMemo(() => papersIo ?? supabasePapersIo(), [papersIo])
   const papers = usePapers(pio, contact.kind === 'customer' ? (contact.customerId ?? null) : null, goesOut(kind) && (stripShown || finding || slashTyped !== null))
@@ -326,14 +335,33 @@ export function ReplyBox({
   const pipelineJobId = pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null
   const paper = papers ? defaultPaperFills(papers, pipelineJobId, Boolean(job)) : undefined
   const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? auth?.profileName ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null), billLink, paper })
+  // #140 PR 4: the nudge's words, once the step on now and the team's lines are read (null until then): the step's
+  // reminder as the morning run would send it, or a plain check-in on no step. A number nobody has named gets 'Hi'.
+  const nudgeWords = useMemo(() => {
+    if (!nudge || flowNow === undefined || (quick.lines === null && quick.problem === null)) return null
+    const step = flowNow ? { id: flowNow.stepId, name: flowNow.stepName, papers: flowNow.papers } : null
+    return nudgeDraftFor({ first: contact.kind === 'unknown' ? '' : first, kind: contact.kind, step }, quick.lines ?? [], null, nudge).words
+  }, [nudge, flowNow, quick.lines, quick.problem, contact.kind, first])
   // The caller's opening words go in once, and only into an empty box, so nothing the person typed is lost.
-  const startText = startWords ? fillLine(startWords, fills).text : null
+  const opening = startWords ?? nudgeWords
+  const startText = opening ? fillLine(opening, fills).text : null
   const started = useRef(false)
   useEffect(() => {
     if (!startText || started.current) return
     started.current = true
     setBody((was) => was || startText)
   }, [startText])
+  // The nudge opens the send window once the words are in: a text, or an email when the text cannot go. With neither
+  // way open the words wait in the box and the box's own lines say what is missing.
+  const nudged = useRef(false)
+  useEffect(() => {
+    if (!nudge || !startText || nudged.current) return
+    nudged.current = true
+    const as: 'text' | 'email' = nudge === 'text' && (!canSend('text', to) || textsOn === false) ? 'email' : nudge
+    if (!canSend(as, to)) return
+    setKind(as)
+    setSending(as)
+  }, [nudge, startText, to, textsOn])
   // While an estimate's link is being made the line is in the box with its blank, so the send waits on the link, not the person.
   const [linking, setLinking] = useState(false)
   const waits = goesOut(shown) ? (linking ? ESTIMATE_LINK_MAKING : sendWaits(body)) : null

@@ -227,7 +227,7 @@ export default function Messages() {
 
       {/* Went out (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
       {/* Waiting on them (v2.5704): who went quiet after our send; Needs a reply above is who waits on us. */}
-      {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={thread.openThread} />}
+      {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={(id, more) => thread.openThread(id, null, more)} />}
 
       {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} />}
 

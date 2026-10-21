@@ -29,8 +29,25 @@ describe('waitingOnThem (v2.5704, punch list #139)', () => {
     expect(waitingOnThem(lines, 'trade', NOW).map((r) => r.name)).toEqual(['Greg Paulk'])
     expect(waitingOnThem([], 'all', NOW)).toEqual([])
   })
+  it('a last text Quo could not deliver marks the row; a delivered text, an email or a call does not (punch list #140 PR 4)', () => {
+    const lines = [
+      line({ id: 'd1', channel: 'text', delivery: 'failed' }),
+      line({ id: 'k1', contactId: 'c2', name: 'Kim Coe', channel: 'text', delivery: 'delivered', atMs: at('2026-10-14T20:00:00Z') }),
+      line({ id: 'g1', contactId: 'c3', name: 'Greg Paulk', channel: 'email', delivery: null, atMs: at('2026-10-13T20:00:00Z') }),
+      line({ id: 'p1', contactId: 'c4', name: 'Priya Natarajan', channel: 'text', delivery: 'undelivered', atMs: at('2026-10-12T20:00:00Z') }),
+      line({ id: 'o1', contactId: 'c5', name: 'Old Row' }),
+    ]
+    const rows = waitingOnThem(lines, 'all', NOW)
+    expect(rows.map((r) => [r.name, r.mark?.bad ?? null, r.mark?.words ?? null])).toEqual([
+      ['Priya Natarajan', true, '⚠ not delivered'],
+      ['Greg Paulk', null, null],
+      ['Kim Coe', false, '✓ delivered'],
+      ['Dana Whitfield', true, '⚠ not sent'],
+      ['Old Row', null, null],
+    ])
+  })
   it('the lane’s words are plain', () => {
     expect(WAITING_WORDS.title(3)).toBe('Waiting on them (3)')
-    for (const words of [WAITING_WORDS.note, WAITING_WORDS.empty, WAITING_WORDS.problem, WAITING_WORDS.nudgeTip]) expect(plainWordsFailures(words), words).toEqual([])
+    for (const words of [WAITING_WORDS.note, WAITING_WORDS.empty, WAITING_WORDS.problem, WAITING_WORDS.nudgeTip, WAITING_WORDS.asEmailTip]) expect(plainWordsFailures(words), words).toEqual([])
   })
 })

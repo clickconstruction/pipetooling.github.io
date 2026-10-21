@@ -876,6 +876,7 @@ export default function GcProjects() {
   const followUpShown = canOpenGcProjects(role) && (devView === 'followUp' || (devView === 'money' && !canSeeGcMoney(role)))
   const flowNudges = useFlowNudges({ enabled: followUpShown })
   const { build: buildNudges, names: nudgeNames, flows: nudgeFlows, pressing: nudgePressing, loading: nudgesLoading, problem: nudgesProblem, holdUntilMonday, remindNow } = flowNudges
+  const openThread = thread.openThread
   const nudgesSlot = useMemo(() => {
     const tell = (r: { ok: boolean; words: string }) => showToast(r.words, r.ok ? 'success' : 'error')
     return {
@@ -888,13 +889,13 @@ export default function GcProjects() {
           pressing={nudgePressing}
           loading={nudgesLoading}
           problem={nudgesProblem}
-          onOpenThread={thread.openThread}
+          onOpenThread={(id, more) => openThread(id, null, more)}
           onHold={(row) => void holdUntilMonday(row).then(tell)}
           onRemindNow={(row) => void remindNow(row).then(tell)}
         />
       ),
     }
-  }, [buildNudges, nudgeNames, nudgeFlows, nudgePressing, nudgesLoading, nudgesProblem, holdUntilMonday, remindNow, thread.openThread, showToast])
+  }, [buildNudges, nudgeNames, nudgeFlows, nudgePressing, nudgesLoading, nudgesProblem, holdUntilMonday, remindNow, openThread, showToast])
   // A pill, or a board's press that moves the page: the view and `?view=` together, so a reload opens where it is.
   const showView = (view: GcView) => {
     setDevView(view)
