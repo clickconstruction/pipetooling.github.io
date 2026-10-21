@@ -2,21 +2,21 @@
 name: "Quiet hours: a 24/7 switch on Office hours, and each person's own hours for pushes"
 number: 141
 group: ready
-status: proposed 2026-10-21 — planned and drawn; nothing built; waits on the owner's yes and one call (decision 2)
+status: proposed 2026-10-21, revised the same day after "is this the best we can do?"; nothing built; waits on the owner's yes
 summary: >
   Two related asks. One: the Office hours card gets a switch, The office is open around the clock,
   that saves the hours as always open, hides the day and time fields while it is on, and tells
-  the reply push, the after-hours answer and the tech's hold what 24/7 means. Two: each person
-  sets, under Settings → Your account, when their phone is pushed and when it is not: quiet
-  hours as days plus one window in the company's time zone. A push that lands in a person's
-  quiet hours is held for them and, when it is a customer's reply, handed to the office after
-  the reply push wait, so no customer waits on a sleeping phone. The company's hours gate what
-  customers see. A person's quiet hours gate only what reaches that person.
-next: The owner reads The decisions, takes or changes decision 2 (one window a day or a different window on weekends), then PR 1 goes.
-size: M as a train of five (S S S M S); one migration, one mirrored kernel, three function redeploys
+  the reply push and the tech's hold what 24/7 means. Two: each person sets, in the Push
+  Notifications card they already have under Settings → Your account, the days and hours their
+  phone is pushed, in the Office hours card's own shape: Push me any time, or only at these
+  hours. A push outside a person's hours is held for them, and a customer's reply is handed to
+  the office at once, so no customer waits on a sleeping phone. The company's hours gate what
+  customers see. A person's hours gate only what reaches that person.
+next: The owner's yes, then PR 1 goes. No call is left open; the weekend question became a day toggle.
+size: M as a train of five (S S S S S); one migration, one mirrored kernel, three function redeploys
 blocker: the owner's yes
 ver: proposed
-opinion: build — the 24/7 switch is an afternoon and fixes a real lie on the card today; the quiet hours are the first per-person control over the phone the app has ever had, and the hand-on rule keeps them from ever costing a customer an answer.
+opinion: build — the 24/7 switch is an afternoon and fixes a real lie on the card today; the person's hours are the first per-person control over the phone the app has ever had, reuse the office card's kernel whole, and the hand-on rule keeps them from ever costing a customer an answer.
 mockup: to-dos/quiet-hours/mockup.html
 ---
 
@@ -34,8 +34,12 @@ because the company is effectively 24/7 right now:
 > inside of their settings. Can you help me think through what this could look like and help me
 > make a mock up and plan.
 
-Two asks, one page each. The first is a company switch on a card that exists. The second is a
-new per-person card, and a rule for what the app does with a push it is told not to send.
+And, on the first draft of this to-do the same day: *I like your recommendations, is this the
+best we can do?* The second pass changed four things; *Is this the best we can do?* at the end
+says which.
+
+Two asks, one card each. The first is a company switch on a card that exists. The second is a
+block on a card that exists, and a rule for what the app does with a push it is told not to send.
 
 ## What exists today
 
@@ -135,8 +139,8 @@ and the owner presses the switch. The release note says so.
   the wait, at 3 AM as at 3 PM. The reply push's own words do not change.
 - *The office's wait*: unchanged, and now the only thing between a reply and the whole office
   at night. The card's note says that in one line while the switch is on.
-- *The after-hours answer*: never due. The `emergency` number has no reader while the switch is
-  on, and the card says so under the switch: *The after-hours text never goes while this is on.*
+- *The after-hours answer*: never due. It has no caller today either, so the card says nothing
+  about it, as v2.5709 chose: a card promises nothing about a text that does not go.
 - *The tech's hold*: still ends at `techUntil`. A tech who texts at 2 PM keeps the replies until
   5 PM, then the office has them. A tech who texts at 8 PM keeps them until midnight. The card
   reads the hour back as a line, *A tech who texts a customer keeps the replies until 5:00 PM*,
@@ -145,117 +149,119 @@ and the owner presses the switch. The release note says so.
 - *The switch card on Messages*: the Office hours row's why reads *the office is open around
   the clock* while the switch is on.
 
-### 2. The shape of a person's quiet hours: days plus one window
+### 2. The shape of a person's hours: the Office hours card's own, said the right way round
 
 **Alternatives.**
 
 - *A. One switch: Do not push me outside the office hours.* One press, no times to type.
   Under 24/7 it means nothing, which is the owner's case today. And a tech who works 7 to 4 is
-  not the office; their quiet hours are their own.
-- *B. A weekly grid of quiet hours.* Seven rows of hours, painted on and off. Exact, and
-  heavy: a phone screen of 168 cells for a choice most people make once, as *not after 8 and
-  not before 6, every day*.
-- *C. Days plus one window.* Seven day toggles, as the Office hours card already draws them,
-  and one window: *Quiet from 8:00 PM to 6:00 AM*. The window may cross midnight. A day
-  toggled off has no quiet hours. One line reads it back: *Quiet every day, 8:00 PM to 6:00 AM.*
+  not the office; their hours are their own.
+- *B. A weekly grid.* Seven rows of hours, painted on and off. Exact, and heavy: a phone
+  screen of 168 cells for a choice most people make once.
+- *C. Quiet hours: days plus one quiet window, 8 PM to 6 AM.* The first draft's pick. On a
+  second look it has three faults. The day toggles read backwards: a person who takes Sunday
+  off presses Sunday *off*, and in a quiet-hours card that means pushed all Sunday. The window
+  crosses midnight, so it needs its own rule and its own kernel. And it is a new card with a new
+  anchor beside the Push Notifications card that already owns the phone.
+- *D. The days and hours you are pushed, inside the Push Notifications card.* **Push me**:
+  *Any time*, or *Only at these hours*, two rows in My way's shape (v2.5597). Under the second:
+  seven day toggles and **From** and **To**, the Office hours card's exact controls, and its
+  line, *Mon to Fri, 6:00 AM to 8:00 PM*. A day toggled off is a day with no pushes. The window
+  never crosses midnight for anyone who sleeps at night, so the office card's one rule holds:
+  the end comes after the start.
 
-**Recommendation: C**, and the owner's one call is inside it: whether one window serves every
-day, or weekends get their own window (*Fri 6 PM to Mon 6 AM*). The mock-up draws one window
-with the days, and a second row **Weekends** folded under a quiet link, *Different hours on
-weekends*, off by default. One window ships in PR 2; the weekend row is a kernel field with no
-screen until the owner asks. The draft keeps the shape of `officeHoursCard.ts`: a draft, a
-problem line, Save and Put back.
+**Recommendation: D.** It reads the way a plumber thinks, in shifts, not in silences. It is the
+same card the person already uses to turn pushes on and send a test, so there is nowhere else
+to look. And it reuses the office card whole: `draftProblem`, `toggleDay`, `hoursLine`,
+`daysWords` and `timeWords` from `officeHoursCard.ts` as they are, and `officeOpen` and
+`nextOpening` from `hasRule.ts`, already mirrored, for the check itself. The weekend question
+the first draft left to the owner is gone: Sat and Sun off is two presses.
 
-**The line under the card** says what happens, in the words the mock-up draws:
+**The line under the block** says what happens:
 
-> A push that comes in your quiet hours waits for you. You get one push when they end, with
-> what waited. A customer's reply also goes to the office after the reply push wait. Nobody
-> waits on a sleeping phone.
+> Outside these hours a push waits for you. A customer's reply still goes to the office at once.
+> The Dashboard lists what waited when you are back.
 
-The card has its own switch, **Quiet hours** On or Off, so a person turns them off without
-clearing the days: off reads *No quiet hours. Every push reaches you when it is sent.*
-
-**The data: one row per person, `user_quiet_hours`.** `user_id` (PK, FK users), `on boolean`,
-`days int[]`, `starts text` and `ends text` ("HH:MM", Chicago), `weekend_starts` and
-`weekend_ends` (null until the owner asks for the second window), `updated_at`. RLS: a person reads and writes their own
-row; the service role reads every row for the senders. The migration ends with the three
+**The data: one row per person, `user_push_hours`.** `user_id` (PK, FK users), `days int[]`,
+`opens text` and `closes text` ("HH:MM", Chicago), `updated_at`. No row is *Any time*. RLS: a
+person reads and writes their own row; the owner and a dev read every row (the coverage line,
+decision 3); the service role reads for the senders. The migration ends with the three
 read-only and twin calls. Why a table and not a column on `users`: `users` is read by every
 role's rosters and guarded against self-edits by the role trigger, so a self-written column
 there is a policy change on a hot table; a row of its own is the `tell_customer_prefs` shape,
 already shipped and fail-soft. Why not an `app_settings`-style row: those are the company's.
 
-**The kernel: `src/lib/messages/quietHours.ts`**, pure, mirrored. `parseQuietHours(row)`,
-`quietNow(at, quiet)` (whether the instant is in the person's quiet hours, in Chicago, a
-window across midnight read as last night's), `quietEnds(at, quiet)` (the ISO the current quiet
-window ends), `quietLine(quiet)` (the words), `draftProblem(draft)` (*Pick at least one day.*,
-*Pick a start and an end.*, only while the switch is on; a window may cross midnight, so no order rule), and
-`pushDecision(push, quietByUser, now)`, which splits one push's `userIds` into `send` and `held`.
+**The kernel: `src/lib/messages/pushHours.ts`**, pure, mirrored, and small because the office
+card did the work: `parsePushHours(row)` (an `OfficeHours` with `always: false`, or null for any
+time), `pushedNow(at, hours)` (`officeOpen`), `backAt(at, hours)` (`nextOpening`, for the pill
+and the office's words), `pushHoursLine(hours)` (*Pushed Mon to Fri, 6:00 AM to 8:00 PM* or
+*Pushed any time*), the words, and `pushDecision(push, hoursByUser, now)`, which splits one
+push's `userIds` into `send` and `held`.
 
-### 3. What quiet hours do to each push: hold, hand on, or ignore
+### 3. What a person's hours do to each push: hold, hand on, or ignore
 
-Three verbs. **Hold**: the push is not sent now; a `notification_history` row is written with
-`channel = 'held'` and the person gets one catch-up push when their quiet hours end, *While you
-were quiet: 3 replies and a work order waited. Open the Dashboard.* **Hand on**: someone else
-hears now. **Ignore**: quiet hours do not apply.
+Three verbs. **Hold**: the push is not sent; a `notification_history` row is written with
+`channel = 'held'`, and the Dashboard's Needs you card lists what waited when the person is back
+(decision 5). **Hand on**: someone else hears now. **Ignore**: the hours do not apply.
 
 | Push | Verb | Why |
 |---|---|---|
-| A reply, to whoever has it | **hold and hand on** | the holder is quiet, so the office's wait push goes as it does today, to the office members who are not quiet; the holder's catch-up names the reply if nobody answered it |
-| A reply, the office after the wait | **hold**, per member | each office member who is quiet is held; the rest hear |
+| A reply, to whoever has it | **hold, and hand on at once** | the holder cannot answer, so the office does not wait 15 minutes for nothing: the office hears now, *Dana wrote to Luis, who is off until 6 AM*, then her words; the holder still has it on Messages and the office takes it with Who has it |
+| A reply, the office after the wait | **hold**, per member | each office member who is off is held; the rest hear. When the only office recipient is the Customers seat and the seat is off, the push widens to the office roles who are on |
 | A reply after hours, the office at once | **hold**, per member | the line waits for the morning anyway |
 | A clause change to approve | hold | the email goes now |
-| A dispatch request filed | **hold**, per member | the dispatchers who are awake hear; the requester's strip shows it waiting |
+| A dispatch request filed | **hold**, per member | the dispatchers who are on hear; the requester's strip shows it waiting |
 | A dispatch request closed or reopened | hold | the requester sees it on Job Mode's strip |
 | An estimator request | hold, per member | as the dispatch request |
 | A bid marked for someone | hold | the mark is on the Bid Board |
 | Help feedback | hold | the inbox is on Help |
 | A lien notice to approve | hold | the Needs you card carries it; the email fallback is unchanged |
 | Take them again? | hold | the Dashboard card is there in the morning |
-| A bid's call-again day | hold | a day-level reminder; the catch-up names it |
+| A bid's call-again day | hold | a day-level reminder; the Needs you line names it |
 | Ready to Bill | hold | the email pick is unchanged |
 | A check came back | hold | the email goes now |
 | A work order | hold | the email goes now |
 | A checklist assignment | hold | |
 | The Settings test push | **ignore** | the person pressed it to see a push |
-| A checklist reminder | hold | the person set the time, but a quiet window set later wins |
+| A checklist reminder | hold | the person set the time, but hours set later win |
 | A filed report | hold | |
 | Texts to customers, the morning run, Today's sends, Needs you, every email stream | **ignore** | not pushes to a person, or read when the app is opened |
 
-**When everyone in the office is quiet.** A reply's wait push may find no one awake. The row
-stays on Needs a reply as today, the thread's pill reads *Open · the office is quiet until 6 AM*,
-and the Office hours card grows one honest line while 24/7 is on: *Nobody hears a reply from
-11 PM to 6 AM. Rosa, Evan and Taunya are all quiet then.* The company's switch says the office
-is open; the people's hours say whether anyone is. The line is where the two meet, and it is
-the owner's to act on, not the app's.
+**When everyone in the office is off.** A reply's push may find no one on. The row stays on
+Needs a reply as today, the thread's pill reads *Open · the office is off until 6 AM*, and the
+Office hours card grows one honest line while 24/7 is on: *Nobody hears a reply from 11 PM to
+6 AM. Rosa, Evan and Taunya are all off then.* The company's switch says the office is open;
+the people's hours say whether anyone is. The line is where the two meet, and it is the owner's
+to act on, not the app's. It reads the rows through the owner-or-dev SELECT policy, no RPC.
 
-### 4. How the company's hours and a person's quiet hours combine
+### 4. How the company's hours and a person's hours combine
 
 The company's hours gate what customers see: who has a reply, the after-hours answer, the
-hand-off line, the morning's texts. A person's quiet hours gate what reaches that person's
-phone, and nothing else. Neither changes the other's record: a held push is still a
-`notification_history` row, a quiet person still *has* the conversation on Messages, and the
-office's wait still runs from the reply's time, not from the quiet end. Under 24/7 the rule is
-the same with the after-hours branch never taken.
+hand-off line, the morning's texts. A person's hours gate what reaches that person's phone, and
+nothing else. Neither changes the other's record: a held push is still a `notification_history`
+row, a person who is off still *has* the conversation on Messages, and the office's wait still
+runs from the reply's time. Under 24/7 the rule is the same with the after-hours branch never
+taken.
 
-### 5. The catch-up push: one, at the quiet end
+### 5. What you get when your hours open: a line on the Dashboard, not a push
 
-**Alternatives.** *A.* Send each held push when the quiet hours end. A phone buzzing nine times
-at 6 AM. *B.* Send nothing; the app's screens carry it. Honest, but the person asked for pushes
-and gets none. *C.* One push per person at the quiet end that counts what waited by kind and
-opens the Dashboard.
+**Alternatives.** *A.* Send each held push when the hours open. A phone buzzing nine times at
+6 AM. *B.* One catch-up push per person at the open that counts what waited: a new function, a
+cron entry and a migration, the first draft's pick. *C.* The Needs you card's first line when
+the person opens the app, *While you were off: 3 replies and a work order waited*, read from
+the person's own `held` rows since their last open, each a door; no cron, no function.
 
-**Recommendation: C.** `quiet-hours-catch-up`, a small function on the `messages-reply-push`
-minute cron's lane every 15 minutes, reads the `held` rows since each person's quiet began,
-sends one push and marks the rows `channel = 'push'` with the catch-up's time. A reply that was
-answered meanwhile is not counted. PR 4 ships it; until then a held push is held and the row
-says so.
+**Recommendation: C.** The person opens the app at the start of their day anyway, and the
+Needs you card is where the app already says what needs them. A reply answered meanwhile is
+not counted. The catch-up push is a later ask if anyone misses it, and *Not carried* says so.
 
 ## The mock-up
 
 [`mockup.html`](./mockup.html): the Office hours card with the switch off and on, in the card's
-own words and tokens; the **Quiet hours** card on Settings → Your account in shape C, with the
-read-back line, the weekend fold and the problem line; the thread's pill and the Office hours
-card's coverage line when every office member is quiet. Light and dark by the page's toggle,
+own words and tokens; the Push Notifications card on Settings → Your account with the **Push me**
+block in shape D, any time and at these hours, the read-back line and the problem line; the
+thread's pill, the office's push and the Dashboard's line when a holder is off; the Office hours
+card's coverage line when every office member is off. Light and dark by the page's toggle,
 drawn on `src/index.css`'s tokens. Every name and number is made up.
 
 ## The plan
@@ -263,66 +269,87 @@ drawn on `src/index.css`'s tokens. Every name and number is made up.
 **PR 1 · The 24/7 switch (S).** `hasRule.ts`: `always` on `OfficeHours`, `parseOfficeHours`
 reads it, `officeOpen` / `nextOpening` / `lastClosing` / `autoAnswerDue` honour it, `hasHover`
 and `handOffEvent` never take the closed branch. `officeHoursCard.ts`: `always` on the draft,
-the words (*The office is open around the clock*, *Open around the clock*, *The after-hours text
-never goes while this is on*, the tech's-hour line), `serializeOfficeHours` writes `always` and
-keeps the hours, `draftProblem` skips the day and time checks while it is on.
-`OfficeHoursSettingsCard.tsx`: the switch first, the day and time fields hidden while it is on,
-the tech's-hour line read-only. `switchCard.ts`: the row's why under 24/7. Regenerate the copy
-(`npm run gen:edge-kernels`). Tests: `hasRule.test.ts` (open at 3 AM, no next opening, no
-answer due, the hover's words), `officeHoursCard.test.ts` (the round trip with and without
-`always`, the words plain), `OfficeHoursSettingsCard.render.test.tsx` (the switch on hides the
-fields and saves `always`, off restores the hours), `switchCard.test.ts`, `edgeKernels.test.ts`.
-Guide: *turn on the reply push* → *Set the office hours* gains the switch and what it means.
-Docs: `MESSAGES_ARCHITECTURE.md`'s switches table row, `GLOSSARY.md`'s R5 line, the release note
-and fragment. No migration. Deploy: `messages-notify`, `quo-send`, `messages-nudge-dispatch`
-before the owner presses the switch.
+the words (*The office is open around the clock*, *Open around the clock*, the tech's-hour
+line), `serializeOfficeHours` writes `always` and keeps the hours, `draftProblem` skips the day
+and time checks while it is on. `OfficeHoursSettingsCard.tsx`: the switch first, the day and
+time fields hidden while it is on, the tech's-hour line read-only. `switchCard.ts`: the row's
+why under 24/7. Regenerate the copy (`npm run gen:edge-kernels`). Tests: `hasRule.test.ts` (open
+at 3 AM, no next opening, no answer due, the hover's words), `officeHoursCard.test.ts` (the
+round trip with and without `always`, the words plain), `OfficeHoursSettingsCard.render.test.tsx`
+(the switch on hides the fields and saves `always`, off restores the hours),
+`switchCard.test.ts`, `edgeKernels.test.ts`. Guide: *turn on the reply push* → *Set the office
+hours* gains the switch and what it means. Docs: `MESSAGES_ARCHITECTURE.md`'s switches table
+row, `GLOSSARY.md`'s R5 line, the release note and fragment. No migration. Deploy:
+`messages-notify`, `quo-send`, `messages-nudge-dispatch` before the owner presses the switch.
 
-**PR 2 · The Quiet hours card (S + migration).** Migration `user_quiet_hours` (the three calls at
-the end; `docs/migrations/` entry). `src/lib/messages/quietHours.ts` (pure; `parseQuietHours`,
-`quietNow`, `quietEnds`, `quietLine`, `draftProblem`, the words) and `quietHoursIo.ts` (own row,
-fail-soft, upsert). `QuietHoursCard.tsx` under Your account after Push Notifications, anchor
-`settings-quiet-hours` in `settingsDeepLink.ts`. Tests: `quietHours.test.ts` (a window across
-midnight, each day on and off, the ends, plain words), `quietHoursIo.test.ts`,
-`QuietHoursCard.render.test.tsx`. Guide: *settings basics* → a **Quiet hours** section after
-Push notifications. Docs: `SETTINGS_TABS_ARCHITECTURE.md` (the account tab's blocks),
-`PROJECT_DOCUMENTATION.md` §22, `GLOSSARY.md`. The card saves and reads back; nothing holds a
-push yet, and the card's note says *From the next update, …* until PR 3 lands.
+**PR 2 · Push me, the block on Push Notifications (S + migration).** Migration `user_push_hours`
+(own-row policies, the owner-or-dev read, the three calls at the end; `docs/migrations/`
+entry). `src/lib/messages/pushHours.ts` (pure; `parsePushHours`, `pushedNow`, `backAt`,
+`pushHoursLine`, the words) and `pushHoursIo.ts` (own row, fail-soft; a save upserts, *Any time*
+deletes). The block in `SettingsAccountTab.tsx`'s Push Notifications card, under the turn-on and
+test buttons, reusing `officeHoursCard.ts`'s draft, problem and words. Tests: `pushHours.test.ts`
+(each day on and off, the ends, no row, plain words), `pushHoursIo.test.ts`, the account tab's
+render smoke. Guide: *settings basics* → *Push notifications* gains **When you are pushed**.
+Docs: `SETTINGS_TABS_ARCHITECTURE.md` (the account tab), `PROJECT_DOCUMENTATION.md` §22,
+`GLOSSARY.md`. The block saves and reads back; nothing holds a push yet, and the line says
+*From the next update, …* until PR 3 lands.
 
-**PR 3 · The reply push honours quiet hours (S, edge).** `quietHours.ts` joins the mirrored
-copy; `pushDecision` in `notifyRule.ts` or beside it; `messagesReplyPush.ts` reads
-`user_quiet_hours` for the plan's users and splits each push into sent and held; held rows
-written with `channel = 'held'` (migration: widen `notification_history_channel_check`, one line,
-same PR). Tests: `notifyPlan.test.ts` (a quiet holder, the wait push to the awake office, every
-member quiet), `messagesReplyPush` bed. Deploy `messages-notify`. Docs: `EDGE_FUNCTIONS.md`
-messages-notify section, `MESSAGES_ARCHITECTURE.md`'s push paragraph.
+**PR 3 · The reply push honours a person's hours (S, edge).** `pushHours.ts` joins the mirrored
+copy; `pushDecision` beside `pushesFor` in `notifyRule.ts`; `pushesFor` gains the hand-on at
+once (the holder off: the office's push now, with its words) and the seat widening;
+`messagesReplyPush.ts` reads `user_push_hours` for the plan's users and splits each push into
+sent and held; held rows written with `channel = 'held'` (migration: widen
+`notification_history_channel_check`, one line, same PR). Tests: `notifyRule.test.ts` (the
+hand-on words, the widening), `notifyPlan.test.ts` (a holder off, the wait push to the office
+members who are on, every member off), the `messagesReplyPush` bed. Deploy `messages-notify`.
+Docs: `EDGE_FUNCTIONS.md` messages-notify section, `MESSAGES_ARCHITECTURE.md`'s push paragraph.
 
-**PR 4 · The catch-up push and the coverage line (M).** `quiet-hours-catch-up` function and its
-cron entry (migration, `docs/migrations/` entry, `EDGE_FUNCTIONS.md` section and TOC line);
-`catchUpWords` in `quietHours.ts`; the thread's pill when every holder is quiet; the Office
-hours card's coverage line (`coverageGaps(hours, quietRows)` in `quietHours.ts`, read through
-a small RPC behind `is_master_or_dev()` that returns the office members' names and quiet
-windows for the owner's card). Tests on the kernel and the card. Guide: the Quiet hours section gains *What you get
-when they end*.
+**PR 4 · What waited, the pill and the coverage line (S).** `whileOffLine(heldRows)` in
+`pushHours.ts` and the Needs you item (`dashboardNeedsYou.ts`, the person's own `held` rows
+since their last open, each kind a door); the thread's pill and hover when the holder or the
+whole office is off (`hasPill`, `hasHover`); the Office hours card's coverage line
+(`coverageGaps(hours, rows)` in `pushHours.ts`, the rows read as the owner or a dev). Tests on
+the kernels, the card and the Needs you render. Guide: the Push notifications section gains
+*What waited while you were off*.
 
 **PR 5 · The other senders (S each, one PR).** `pushDecision` in each of the thirteen other
-push senders, one shared helper `_shared/quietPush.ts` that reads the rows, splits, sends and
-writes `held`. The Settings test push skips it. Deploy each. `EDGE_FUNCTIONS.md`: one line per
-section. Release note and fragment.
+push senders through one shared helper, `_shared/pushHoursSend.ts`, that reads the rows, splits,
+sends and writes `held`. The Settings test push skips it. Deploy each. `EDGE_FUNCTIONS.md`: one
+line per section. Release note and fragment.
 
 Each PR: `npm run claim`, a release note, a fragment, `npm run check:todos` while this file
 stands; the last PR deletes the folder.
+
+## Is this the best we can do?
+
+The first draft, read back against the house's lenses, lost four things to the second:
+
+1. **Reuse.** The first draft wrote a second hours kernel for a quiet window that crosses
+   midnight. The second says the person's hours the way the office's are said, and the office
+   card's kernel and controls serve both. One shape, one set of words, one `officeOpen`.
+2. **Fewer presses, nowhere else to look.** A new Quiet hours card with its own switch and anchor
+   became a block in the Push Notifications card the person already uses. The weekend fold and
+   the owner's call under it became two day toggles.
+3. **Do what is ready.** A holder who is off cannot answer, so the office waited 15 minutes for
+   nothing. Now the office hears at once, with who is off. And the first draft's wait push could
+   reach nobody when the Customers seat alone was named and off; it widens.
+4. **Cut.** The catch-up push, a function, a cron and a migration, is gone in favour of one line
+   on the Needs you card. And the Office hours card no longer promises anything about the
+   after-hours text, which has no sender.
 
 ## Not carried
 
 - **A field for the tech's hour** (`techUntil`) and **the after-hours number** on the card: the
   card reads the hour back as a line; the fields are a later small PR, and the number has no
   sender until the after-hours answer gets a caller.
-- **A second window for weekends**: a kernel field with no screen until the owner asks.
-- **Quiet hours for emails**: every stream already has days and times per subscription on
-  Emails & reports.
-- **Quiet hours for texts to customers**: the company's hours and the morning run's 9 AM own
-  that.
+- **A different window on weekends**: Sat and Sun off is two presses; a shorter Saturday is
+  not drawable, and nobody has asked.
+- **Hours across midnight**, a night shift pushed 8 PM to 6 AM: the office card's rule holds
+  for now; a night shift is two rows of hours the day it is asked for.
+- **A catch-up push** at the hours' open: the Needs you line first; the push if anyone misses it.
+- **Hours for emails**: every stream already has days and times per subscription on Emails &
+  reports.
+- **Hours for texts to customers**: the company's hours and the morning run's 9 AM own that.
 - **Holding a push per kind** (reply yes, work order no): one window for every push is the
-  honest first cut; a kind picker is a row the card can grow if anyone asks.
-- **The hour the after-hours answer sends**, and holidays: `hasRule.ts`'s header says holidays
-  are not known; still true.
+  honest first cut; a kind picker is a row the block can grow if anyone asks.
+- **Holidays**: `hasRule.ts`'s header says they are not known; still true.
