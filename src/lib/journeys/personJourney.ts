@@ -586,6 +586,8 @@ export function houseJourney(subject: Extract<PersonSubject, { kind: 'house' }>,
     steps['quote-submitted'] = quoted ? { state: 'signed', headline: 'Quoted', at: r.viewed_at, link, action: null } : never('No quote yet')
   }
   steps['job-account-email'] = na('Not recorded per house')
+  // The move request email (v2.5677) is stamped on the invoice's move request, not on the house.
+  steps['job-account-move-email'] = na('Not recorded per house')
   const summary = [plural(rows.rfqs.length, 'quote request'), rows.rfqs.filter((x) => x.status === 'quoted').length ? `${rows.rfqs.filter((x) => x.status === 'quoted').length} quoted` : ''].filter(Boolean).join(' · ')
   return { subject, journeys: ['house'], steps, summary }
 }
