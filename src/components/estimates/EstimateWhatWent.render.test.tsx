@@ -23,7 +23,7 @@ const READ: WhatWentRead = {
 
 const mount = (read: Promise<WhatWentRead>) =>
   renderWithProviders(
-    <EstimateWhatWent customerId="cust-dana" customerName="Dana Whitfield" email="dana@example.com" sentAt="2026-10-20T18:31:00Z" io={vi.fn(() => read)} />,
+    <EstimateWhatWent customerId="cust-dana" customerName="Dana Whitfield" email="dana@example.com" sentAt="2026-10-20T18:31:00Z" tokenHash="ba7816bf" io={vi.fn(() => read)} />,
   )
 
 describe('EstimateWhatWent', { timeout: 15_000 }, () => {

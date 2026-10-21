@@ -2,7 +2,7 @@
 name: "Tell the customer: the press always answers — a send that fails says so in the sheet, a sent estimate offers its link again, and what went out shows where the office looks"
 number: 139
 group: close
-status: BUILT 2026-10-20 (renumbered from #133 in the numbering race), the owner's go on the recommended defaults the same day as the proposal — PR 1 v2.5681 (the sheet answers, PR 5916), PR 2 v2.5683 (What went on the estimate, PR 5921), PR 3 v2.5686 (Went out today on Messages, PR 5923), stacked; send-estimate-to-customer redeployed; left: the live walk on a test customer
+status: BUILT 2026-10-20 (renumbered from #133 in the numbering race), the owner's go on the recommended defaults the same day as the proposal — PR 1 v2.5681 (the sheet answers, PR 5916), PR 2 v2.5683 (What went on the estimate, PR 5921), PR 3 v2.5686 (Went out today on Messages, PR 5923), stacked; send-estimate-to-customer redeployed; the live walk (2026-10-20 night, Route B) found the receipt never showed, the page's refresh unmounting the sheet — PR 4 v2.5695 keeps the sheet mounted; left: the re-walk after it lands
 summary: >
   When the Tell the customer sheet's send fails, today the sheet stays open unchanged — the only
   word is a toast that is gone in seconds, and on a live estimate the email can go, the badge flip
@@ -186,6 +186,20 @@ and `send-estimate-to-customer` redeployed with the `already_sent` / `not_draft`
 from the mock-up: no step chip on Went out today's rows, since the send path stamps no
 `step_key` on the message; the chip waits until it does. Left: the owner's live walk on a test
 customer.
+
+## The walk, 2026-10-20 night — what it found
+
+Route B (the owner presses the send in the app's browser pane, the agent reads around it) on a test
+customer with the owner's own email and no phone. The sheet opened right, the email went, and PR 2's
+What went card drew correctly on the sent estimate. But the sheet **stayed on the Tell view after the
+send, with no band and no receipt** — Taunya's exact screen. A read-only observer timestamping the
+sheet's title showed why: the sheet unmounted and remounted twice during the send (the pre-send
+save's reload, then the post-send refresh), because `load()` flips `loading` and the detail render
+returns a bare *Loading…* tree while it is true. The receipt was set on a dead instance; a fresh
+sheet drew the Tell view. The receipt had never shown for anyone since v2.5594, and the train's PR 1
+could not see it: the sheet's smoke fakes the send and never touches the page. **PR 4 v2.5695**
+gives `load()` a refresh mode that keeps the page up, uses it on the send path, and renders the
+sheet above the loading early-return, keyed, so no refresh can unmount it.
 
 ## How to verify
 

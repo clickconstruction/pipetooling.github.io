@@ -26,13 +26,15 @@ To fix a paid day or unmark one bill, use the pencil on its row. The **Paid** ch
 
 ## See the bills inside an aging cell
 
-The aging table shows unpaid dollars by how late they are. Press any colored cell to see the bills inside it. A window lists each bill with its number, due day, jobs and amount. A late bill carries a {{chip:red|76d past due}} chip. A bill on the house's job account wears a {{chip:green|Job acct}} chip. The bottom line always matches the cell.
+The aging table shows unpaid dollars by how late they are. Press any colored cell to see the bills inside it. The window opens with a strip. It shows how much of the cell is on job accounts and how much is not. A bar under it draws the same split.
+
+The bills sit under their job. Each job's heading says its job account state in words. Each bill shows its number, its PO and date, how late it is and its amount. A late bill carries a {{chip:red|116 d}} chip. A bill on the house's job account reads {{chip:green|On it ✓}}. The bottom line always matches the cell.
 
 :::example A cell's window
-**Reece** and **60–90 days past due** in the title. Two bills listed. Cell total **$13,216.08**.
+**Moore Supply** and **90+ days past due** in the title. The strip reads **$0.00** on job accounts and **$7,199.38** not on one. Seven jobs follow, each with {{chip:yellow|No job account at Moore Supply}}.
 :::
 
-The **Total** row opens the same window across every house, grouped by house. The **Owed** cell shows everything one house owes. The **Credits open** cell lists the house's credit memos. The blue button at the bottom is named for the house. Press it to open the house and work on those bills.
+The **Total** row opens the same window across every house, grouped by house. The **Owed** cell shows everything one house owes. The **Credits open** cell lists the house's credit memos. The blue button at the bottom is named for the house. Press it to open the house and work on those bills. What each job's state means is in [work a cell by job](/help/mark-an-invoice-on-a-job-account#work-a-cell-by-job).
 
 ## On a phone
 

@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Messages, worked like a desk</title>
+<style>
+  /* Punch list #140. Light only, like every to-do mock-up. Every person, number, job and amount here is made up: Dana Whitfield (estimate #212, $4,860), Tom Reyes (job 1312), Marcus Calloway, Priya Natarajan, Lena Ortiz (a lead), Alvarez Mechanical, Hill Country Electric; the office is Taunya, Evan and Rosa. Today is Tue Oct 21, 2026, 11:40 AM. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --orange: #ea580c; --orange-tint: #ffedd5; --purple-ink: #6d28d9; --purple-tint: #ede9fe; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--red); }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--subtle); color: var(--ink-2); border: 1px solid var(--line); border-bottom: 0; }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 18px 14px; display: flex; justify-content: center; overflow: auto; }
+  .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0 0; }
+  .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .lens p { margin: 0; color: var(--ink-2); font-size: 13px; }
+  .callout { font-size: 11px; color: var(--red-ink); background: var(--red-tint); border: 1px solid var(--red); border-radius: 6px; padding: 1px 6px; display: inline-block; }
+  .callout.g { color: var(--green-ink); background: var(--green-tint); border-color: var(--green); }
+  /* frames */
+  .pagecard { width: 760px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(15,23,42,.12); overflow: hidden; }
+  .pagecard .ph { padding: 12px 18px; border-bottom: 1px solid var(--line-2); display: flex; gap: 10px; align-items: center; }
+  .pagecard .ph b { font-size: 17px; }
+  .pagecard .pb { padding: 12px 18px 18px; }
+  .sheet { width: 560px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(15,23,42,.22); overflow: hidden; }
+  .sheet.narrow { width: 520px; }
+  .sheet .bar { display: flex; align-items: center; gap: 10px; padding: 14px 18px 10px; }
+  .sheet .bar b { font-size: 17px; }
+  .sheet .bar .x { margin-left: auto; color: var(--muted); font-size: 20px; line-height: 1; }
+  .sheet .bar .count { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .sheet .inner { padding: 0 18px 14px; }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--line-2); margin-top: 14px; flex-wrap: wrap; }
+  .btn { border-radius: 10px; font-weight: 700; font-size: 13px; padding: 9px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; }
+  .btn.go { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn.quiet { border: 0; background: none; color: var(--blue-ink); font-weight: 600; padding: 9px 6px; }
+  .btn.sm { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+  .btn.sm.go { background: var(--blue); color: #fff; }
+  .btn.sm.link { border: 0; background: none; color: var(--blue-ink); padding: 4px 4px; }
+  .faint { color: var(--muted); font-size: 12px; }
+  /* pills, lens, strip */
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+  .pill.on { border-color: var(--blue); color: var(--blue-ink); font-weight: 700; background: var(--blue-tint); }
+  .lens2 { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-left: auto; font-size: 12.5px; }
+  .lens2 .ll { padding: 4px 9px; color: var(--muted); background: var(--subtle); border-right: 1px solid var(--line); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; display: inline-flex; align-items: center; }
+  .lens2 .seg { padding: 4px 11px; color: var(--ink-2); border-right: 1px solid var(--line); white-space: nowrap; }
+  .lens2 .seg:last-child { border-right: 0; }
+  .lens2 .seg.on { background: var(--ink); color: #fff; font-weight: 700; }
+  .lens2 .seg i { font-style: normal; font-weight: 700; margin-left: 4px; }
+  .strip { margin: 12px 0 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .strip .sh { padding: 6px 12px; background: var(--subtle); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); border-bottom: 1px solid var(--line-2); display: flex; gap: 8px; }
+  .strip .sh span { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: 1.05fr 1fr .85fr 1.3fr; }
+  .tile { padding: 10px 12px 9px; border-right: 1px solid var(--line-2); display: grid; gap: 1px; align-content: start; min-width: 0; }
+  .tile:last-child { border-right: 0; }
+  .tile .k { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  .tile .v { font-size: 20px; font-weight: 800; line-height: 1.2; letter-spacing: -.01em; }
+  .tile .v small { font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-left: 4px; }
+  .tile .v.red { color: var(--red); }
+  .tile .v .up { color: var(--green-ink); font-size: 12px; font-weight: 700; margin-left: 6px; }
+  .tile .sub { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .door { font-size: 12px; color: var(--blue-ink); font-weight: 700; margin-top: 3px; }
+  .funnel { display: flex; gap: 4px; align-items: baseline; font-size: 15px; font-weight: 800; white-space: nowrap; }
+  .funnel span { color: var(--muted); font-weight: 400; font-size: 11.5px; margin-right: 3px; }
+  .tile .sub.up { color: var(--green-ink); font-weight: 700; }
+  .search { margin: 12px 0 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--muted); font-size: 13px; max-width: 560px; background: var(--surface); }
+  /* queues */
+  .q { margin: 14px 0 0; }
+  .qh { display: flex; gap: 10px; align-items: baseline; margin: 0 0 6px; }
+  .qh h4 { margin: 0; font-size: 14.5px; }
+  .qh h4 span { font-weight: 400; color: var(--muted); font-size: 12.5px; margin-left: 6px; }
+  .qh .act { margin-left: auto; }
+  .empty { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; color: var(--muted); font-size: 13px; }
+  .prow { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; margin-top: 6px; background: var(--surface); display: grid; gap: 4px; }
+  .prow .l1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .prow .l1 b { font-size: 13.5px; }
+  .prow .l1 .kind { color: var(--muted); font-size: 12px; }
+  .prow .l1 .when { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .prow .words { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prow .words .ch { color: var(--muted); margin-right: 4px; }
+  .prow .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .more { color: var(--muted); font-size: 12.5px; margin: 6px 0 0 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; border: 1px solid transparent; white-space: nowrap; }
+  .c-amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .c-green { background: var(--green-tint); color: var(--green-ink); }
+  .c-grey { background: var(--subtle); color: var(--ink-2); border-color: var(--line); }
+  .c-blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .c-red { background: var(--red-tint); color: var(--red-ink); }
+  .c-purple { background: var(--purple-tint); color: var(--purple-ink); }
+  .mark { font-size: 11.5px; font-weight: 700; color: var(--green-ink); }
+  .mark.bad { color: var(--red); }
+  .went { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 6px; }
+  .went .wh { padding: 5px 11px; background: var(--subtle); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+  .went .wr { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline; padding: 8px 11px; border-bottom: 1px solid var(--line-2); font-size: 13px; }
+  .went .wr:last-child { border-bottom: 0; }
+  .went .wr.red { background: #fff5f5; }
+  .went .wr .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .went .wr .w { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .went .wr .w b { font-weight: 700; }
+  .went .wr .w .faint { margin-left: 4px; }
+  /* the desk */
+  .person { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .person b { font-size: 16px; }
+  .ctx { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
+  .theirs { position: relative; margin: 10px 0 0; padding: 9px 12px 9px 16px; border-radius: 10px; background: var(--subtle); font-size: 13.5px; line-height: 1.45; }
+  .theirs::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 4px; background: var(--orange); }
+  .theirs .meta { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .lab { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 13px 0 5px; display: flex; gap: 8px; align-items: baseline; }
+  .lab .r { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--blue-ink); font-size: 11.5px; }
+  .qrs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qr { border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; font-size: 12px; color: var(--ink-2); background: var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
+  .qr.on { border-color: var(--orange); color: var(--ink); }
+  .box { margin: 8px 0 0; border: 1.5px solid var(--orange); background: #fffaf5; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 1.45; min-height: 74px; }
+  .box.note { border-color: var(--amber); background: #fffbeb; }
+  .under { display: flex; gap: 14px; align-items: center; font-size: 12px; color: var(--ink-2); margin: 8px 0 0; flex-wrap: wrap; }
+  .under b { color: var(--ink); }
+  .radio { display: inline-flex; align-items: center; gap: 4px; }
+  .radio i { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--ink-2); display: inline-block; }
+  .radio.on i { border-color: var(--blue); background: radial-gradient(var(--blue) 45%, #fff 50%); }
+  .kinds { display: flex; gap: 6px; margin: 12px 0 0; }
+  .kind { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 12.5px; color: var(--ink-2); }
+  .kind.on { border: 2px solid var(--orange); color: var(--ink); font-weight: 700; }
+  .kind.new { position: relative; }
+  .kind.new::after { content: "new"; position: absolute; top: -9px; right: -6px; font-size: 9px; font-weight: 800; color: var(--green-ink); background: var(--green-tint); border: 1px solid var(--green); border-radius: 5px; padding: 0 4px; }
+  .callform { display: grid; grid-template-columns: 1fr 180px; gap: 10px; margin: 8px 0 0; }
+  .field { border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; font-size: 13px; background: var(--surface); min-height: 62px; }
+  .field .fl { font-size: 10.5px; color: var(--muted); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; display: block; margin-bottom: 3px; }
+  .field.day { min-height: 0; }
+  .line { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line-2); font-size: 13px; }
+  .line .when { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .line.app { color: var(--ink-2); font-size: 12.5px; }
+  .line .door { color: var(--blue-ink); font-weight: 700; font-size: 12.5px; }
+  .next { font-size: 12px; color: var(--muted); }
+  .next b { color: var(--ink-2); font-weight: 600; }
+  .doors { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+  .doors .btn { font-size: 12.5px; padding: 7px 12px; }
+  /* the switches */
+  .swrow { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-2); font-size: 13px; }
+  .swrow:last-child { border-bottom: 0; }
+  .swrow .what b { display: block; font-size: 13px; }
+  .swrow .what span { font-size: 12px; color: var(--muted); }
+  .scard { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; width: 480px; background: var(--surface); }
+  .scard h5 { margin: 0 0 2px; font-size: 14.5px; }
+  .scard .sub { font-size: 12.5px; color: var(--muted); margin: 0 0 6px; }
+  .hours { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: center; font-size: 13px; margin: 8px 0 0; }
+  .hours .pick { border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; background: var(--surface); display: inline-flex; gap: 8px; }
+  .days { display: flex; gap: 4px; }
+  .days span { width: 28px; height: 26px; border-radius: 6px; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; color: var(--muted); }
+  .days span.on { background: var(--ink); color: #fff; border-color: var(--ink); font-weight: 700; }
+  .says { margin: 10px 0 0; border: 1px dashed var(--line); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; color: var(--ink-2); }
+  /* the phone */
+  .phone { width: 390px; flex: 0 0 auto; background: var(--surface); border: 10px solid #1f2937; border-radius: 40px; overflow: hidden; box-shadow: 0 14px 40px rgba(15,23,42,.25); }
+  .phone .pt { padding: 46px 16px 10px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-2); }
+  .phone .pt b { font-size: 20px; }
+  .phone .pt .badge { margin-left: auto; font-size: 11.5px; color: var(--blue-ink); font-weight: 700; }
+  .phone .pbody { padding: 10px 14px 24px; }
+  .phone .pills { flex-wrap: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .phone .tiles { grid-template-columns: 1fr 1fr; }
+  .phone .tile:nth-child(2) { border-right: 0; }
+  .phone .tile:nth-child(-n+2) { border-bottom: 1px solid var(--line-2); }
+  .phone .tile .v { font-size: 17px; }
+  .phone .big { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 12px 0 0; width: 100%; padding: 13px 16px; font-size: 15px; }
+  .phone .fold { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+  .phone .fold b { color: var(--ink); }
+  .phone .fold .r { margin-left: auto; color: var(--blue-ink); font-weight: 700; }
+  .phone .prow .words { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .phone .sheet { width: 100%; box-shadow: none; border: 0; border-radius: 0; }
+  .phone .lens2 { margin-left: 0; margin-top: 8px; }
+  /* today sketch */
+  .sketch { width: 320px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .sketch .t { padding: 8px 14px; border-bottom: 1px solid var(--line-2); font-size: 13px; display: flex; gap: 8px; }
+  .sketch .t.h { font-weight: 800; font-size: 15px; }
+  .sketch .t .n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .sketch .t.dim { color: var(--muted); }
+  .aside { display: grid; gap: 8px; align-content: start; }
+  .aside .callout { display: block; width: fit-content; }
+  /* decisions */
+  .dec { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 14px; }
+  .d { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; }
+  .d h3 { margin: 0 0 3px; font-size: 13px; }
+  .d p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+  .d .rec { color: var(--green-ink); font-weight: 700; }
+  .train { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; }
+  .train span { border: 1px solid var(--line); border-radius: 8px; padding: 3px 9px; font-size: 12px; background: var(--surface); color: var(--ink-2); }
+  .train span b { color: var(--ink); }
+  .train span i { font-style: normal; color: var(--muted); margin-left: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #140 · follows The press always answers (#139, v2.5681–v2.5708)</p>
+  <h1>Messages, worked like a desk</h1>
+  <p>With #139's six additions, Messages is a complete record and a complete inbox: what came in, what we never answered, who went quiet on us, what went out and whether it landed, every line back to the first. Its highest and best use is not another lane. It is three things: the loop <b>switched fully on</b> (emailed replies land in the thread, the phone hears a reply, a call starts from a row), a page the office <b>works one person at a time</b> instead of reads, and a strip that says <b>whether it is working</b>, every number a door to the rows behind it.</p>
+  <div class="lenses">
+    <div class="lens"><h3>The office's seat</h3><p>Taunya opens Messages on her phone, presses <b>Answer all</b>, and six people are answered in five minutes. <b>Mine</b> shows what she holds. A call she just made is logged where she is, with the day they gave.</p></div>
+    <div class="lens"><h3>The job behind the ask</h3><p>Nothing a customer says goes unanswered. Every send lands and gets an answer, or a nudge. A homeowner who texts books a visit or gets an estimate in one press, before they call the next plumber.</p></div>
+    <div class="lens"><h3>The whole office</h3><p>Three switches still off mean a customer's emailed reply lands in someone's own Gmail, not the thread. The owner gets a read on whether communication works, not a page of activity. One Messages, one front door.</p></div>
+  </div>
+</header>
+
+<h2 id="s1"><span class="num today">1</span>Today — a page you read</h2>
+<p class="lede">Six sections, top to bottom, each true. None says what to do next, none says whether we are quick or slow, and the loop is not closed: a customer who answers an estimate by email answers into nobody's thread.</p>
+<div class="row">
+  <div>
+    <div class="cap">/messages at the top of the #139 stack <span class="r">desktop, All</span></div>
+    <div class="fit">
+      <div class="sketch">
+        <div class="t h">Messages</div>
+        <div class="t dim">All · Customers · Trade partners · Architects · Leads · Subs …</div>
+        <div class="t dim">Search every message</div>
+        <div class="t">New <span class="n">1</span></div>
+        <div class="t">Needs you <span class="n">0</span></div>
+        <div class="t">Needs a reply <span class="n">6</span></div>
+        <div class="t">We owe them <span class="n">2</span></div>
+        <div class="t">Waiting on them <span class="n">3</span></div>
+        <div class="t">Went out <span class="n">11</span></div>
+        <div class="t dim">Everyone we have talked with · Show everyone</div>
+      </div>
+    </div>
+  </div>
+  <div class="aside" style="padding-top:34px">
+    <span class="callout">six sections, no next press: the office reads, scrolls, picks, opens, answers, comes back, scrolls again</span>
+    <span class="callout">no number says whether we are quick or slow, or how many estimates we send go quiet</span>
+    <span class="callout">the team inbox is not read, reply push is off, Quo seats are empty: half the loop is open, and nothing on the page says so</span>
+    <span class="callout">a call made from a cell leaves no line; a lead's thread has no Book or Estimate press; two Messages front doors</span>
+  </div>
+</div>
+
+<h2 id="s2"><span class="num pick">2</span>The page — the same lanes, with a lens, a strip and a next press</h2>
+<p class="lede">Nothing moves and nothing is removed. Three things are added above the lanes: <b>Show</b> (Mine · Nobody's · Everyone), the <b>last 7 days</b> strip with a door on every number, and <b>Answer all</b> on Needs a reply. Waiting on them's Nudge fills the step's words so the send is one read and one press.</p>
+<div class="row">
+  <div>
+    <div class="cap green">/messages, the office's view <span class="r">All · Show: Everyone · owner's switch card folded to a line</span></div>
+    <div class="fit">
+      <div class="pagecard">
+        <div class="ph"><b>Messages</b><span class="faint" style="margin-left:auto">Finish switching Messages on · <b style="color:var(--amber-ink)">3 of 8 on</b> ›</span></div>
+        <div class="pb">
+          <div class="pills">
+            <span class="pill on">All</span><span class="pill">Customers</span><span class="pill">Trade partners</span><span class="pill">Architects</span><span class="pill">Leads</span><span class="pill">Subs</span><span class="pill">Supply houses and candidates</span>
+            <span class="lens2"><span class="ll">Show</span><span class="seg">Mine<i>3</i></span><span class="seg">Nobody's<i>2</i></span><span class="seg on">Everyone<i>9</i></span></span>
+          </div>
+
+          <div class="strip">
+            <div class="sh">The last 7 days <span>each number opens its rows</span></div>
+            <div class="tiles">
+              <div class="tile"><span class="k">Answered within an hour</span><span class="v">19 of 23 <small>83%</small></span><span class="sub up">↑ from 71% last week</span><span class="door">Needs a reply ›</span></div>
+              <div class="tile"><span class="k">Longest wait right now</span><span class="v">2 d 4 h</span><span class="sub">Tom Reyes · Evan has it</span><span class="door">Open the thread ›</span></div>
+              <div class="tile"><span class="k">Texts not delivered</span><span class="v red">1</span><span class="sub">Marcus Calloway</span><span class="door">Went out ›</span></div>
+              <div class="tile"><span class="k">Estimates</span><span class="v"><span class="funnel">6 <span>sent</span> 5 <span>opened</span> 2 <span>accepted</span></span></span><span class="sub">3 opened and quiet since</span><span class="door">Waiting on them ›</span></div>
+            </div>
+          </div>
+
+          <div class="search">🔍 Search every message</div>
+
+          <div class="q">
+            <div class="qh"><h4>New <span>1 · what came in and still needs sorting</span></h4></div>
+            <div class="prow">
+              <div class="l1"><b>(210) 555-0147</b><span class="chip c-blue">Who is this?</span><span class="chip c-grey">Nobody has it</span><span class="when">10:12 AM</span></div>
+              <div class="words"><span class="ch">💬</span>Is this the plumber? Need a quote on a water heater, 50 gallon gas.</div>
+              <div class="acts"><button class="btn sm go">A customer we know</button><button class="btn sm">A new lead on Prospects</button><button class="btn sm">Someone else</button></div>
+            </div>
+          </div>
+
+          <div class="q">
+            <div class="qh"><h4>Needs you <span>0</span></h4></div>
+            <div class="empty">Nothing waits on you today.</div>
+          </div>
+
+          <div class="q">
+            <div class="qh"><h4>Needs a reply <span>6 · longest wait first</span></h4><span class="act"><button class="btn go">Answer all</button></span></div>
+            <div class="prow">
+              <div class="l1"><b>Tom Reyes</b><span class="kind">customer · job 1312</span><span class="chip c-amber">Our move · 2 d 4 h</span><span class="chip c-grey">Evan has this</span><span class="when">Sun Oct 19, 9:40 AM</span></div>
+              <div class="words"><span class="ch">💬</span>Hey, did the part come in? The upstairs bath is still off.</div>
+              <div class="acts"><button class="btn sm go">Reply</button><button class="btn sm">No reply needed</button><button class="btn sm">Remind me Monday</button><button class="btn sm link">☎ Call</button></div>
+            </div>
+            <div class="prow">
+              <div class="l1"><b>Lena Ortiz</b><span class="kind">lead</span><span class="chip c-amber">Our move · 5 h</span><span class="chip c-grey">Nobody has it · Take it</span><span class="when">6:52 AM</span></div>
+              <div class="words"><span class="ch">💬</span>Hi, I think I have a slab leak. The water bill doubled and the floor is warm by the kitchen.</div>
+              <div class="acts"><button class="btn sm go">Reply</button><button class="btn sm">Book a visit</button><button class="btn sm">Start an estimate</button><button class="btn sm link">☎ Call</button></div>
+            </div>
+            <div class="prow">
+              <div class="l1"><b>Alvarez Mechanical</b><span class="kind">Greg Alvarez · trade partner · B512</span><span class="chip c-amber">Our move · 1 d</span><span class="chip c-grey">Rosa has this</span><span class="when">Mon Oct 20, 3:15 PM</span></div>
+              <div class="words"><span class="ch">📧</span>Can you send the revised drawings for B512 before we price the rooftop units?</div>
+              <div class="acts"><button class="btn sm go">Reply</button><button class="btn sm">No reply needed</button><button class="btn sm">Remind me Monday</button></div>
+            </div>
+            <div class="more">3 more · Priya Natarajan, Hill Country Electric, (512) 555-0180</div>
+          </div>
+
+          <div class="q">
+            <div class="qh"><h4>We owe them <span>2 · what we still have to do for someone</span></h4></div>
+            <div class="prow">
+              <div class="l1"><b>Priya Natarajan</b><span class="kind">customer · job 1298</span><span class="chip c-blue">we owe the start date · by Fri Oct 24</span><span class="when">marked by Taunya, Mon</span></div>
+            </div>
+            <div class="prow">
+              <div class="l1"><b>Marcus Calloway</b><span class="kind">customer · job 1305</span><span class="chip c-red">we owe the permit copy · by Mon Oct 20</span><span class="when">marked by Evan, Fri</span></div>
+            </div>
+          </div>
+
+          <div class="q">
+            <div class="qh"><h4>Waiting on them <span>3 · our line is the newest, two days or more</span></h4></div>
+            <div class="prow">
+              <div class="l1"><b>Dana Whitfield</b><span class="kind">customer · estimate #212</span><span class="chip c-green">Their move · 3 d</span><span class="when">Sat Oct 18</span></div>
+              <div class="words"><span class="ch">👀</span>Opened estimate #212 Sat 2:04 PM. No answer since. Our last: "Your estimate for the water heater is ready, $4,860…"</div>
+              <div class="acts"><button class="btn sm go">Nudge Dana</button><button class="btn sm">Open the thread</button><button class="btn sm link">☎ Call</button></div>
+            </div>
+            <div class="prow">
+              <div class="l1"><b>Marcus Calloway</b><span class="kind">customer · job 1305</span><span class="chip c-green">Their move · 1 d</span><span class="mark bad">⚠ not delivered</span><span class="when">Mon Oct 20, 11:05 AM</span></div>
+              <div class="words"><span class="ch">💬</span>Our last: "You're on the schedule Thursday, Oct 23, 10 AM to noon…" The text never reached his phone.</div>
+              <div class="acts"><button class="btn sm go">☎ Call them</button><button class="btn sm">Send it as an email</button></div>
+            </div>
+            <div class="prow">
+              <div class="l1"><b>Hill Country Electric</b><span class="kind">Sam Pruitt · trade partner · B512</span><span class="chip c-green">Their move · 4 d</span><span class="when">Fri Oct 17</span></div>
+              <div class="words"><span class="ch">📧</span>Asked to quote B512. Our last: "Sam, the drawings for B512 are on your portal. We need your number by…"</div>
+              <div class="acts"><button class="btn sm go">Nudge Sam</button><button class="btn sm">Open the thread</button></div>
+            </div>
+          </div>
+
+          <div class="q">
+            <div class="qh"><h4>Went out <span>11 · every text and email we sent in the last 7 days</span></h4><span class="act pills" style="gap:4px"><span class="pill on" style="font-size:11.5px;padding:1px 9px">Both</span><span class="pill" style="font-size:11.5px;padding:1px 9px">Texts</span><span class="pill" style="font-size:11.5px;padding:1px 9px">Emails</span></span></div>
+            <div class="went">
+              <div class="wh">Today</div>
+              <div class="wr"><span>📧</span><span class="w"><b>Alvarez Mechanical</b> · Revised drawings for B512<span class="faint">· Rosa</span></span><span class="when">10:48 AM</span></div>
+              <div class="wh">Yesterday</div>
+              <div class="wr red"><span>💬</span><span class="w"><b>Marcus Calloway</b> · Marcus, this is Taunya with Click Plumbing. You're on the schedule Thursday… <span class="mark bad">⚠ not delivered</span> <span class="door" style="color:var(--blue-ink);font-weight:700;font-size:12px">Call them</span></span><span class="when">11:05 AM · Taunya</span></div>
+              <div class="wr"><span>📧</span><span class="w"><b>Priya Natarajan</b> · Your job is ready to schedule<span class="faint">· the app</span></span><span class="when">9:00 AM</span></div>
+              <div class="wh">Sat Oct 18</div>
+              <div class="wr"><span>📧</span><span class="w"><b>Dana Whitfield</b> · Estimate #212 Whitfield water heater <span class="chip c-green" style="font-size:10.5px">opened</span><span class="faint">· Evan</span></span><span class="when">10:15 AM</span></div>
+              <div class="wr"><span>💬</span><span class="w"><b>Dana Whitfield</b> · Dana, this is Evan with Click Plumbing. Your estimate for the water heater is ready… <span class="mark">✓ delivered</span></span><span class="when">10:15 AM · Evan</span></div>
+            </div>
+            <div class="more">6 more</div>
+          </div>
+
+          <div class="q">
+            <div class="qh"><h4>Everyone we have talked with <span>back to the first message</span></h4><span class="act"><button class="btn sm">Show everyone</button></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>Show</b> narrows every lane by who has it: <i>Mine</i> is what you hold, <i>Nobody's</i> is unclaimed, <i>Everyone</i> is the office. It is remembered per browser and starts on Everyone. <b>The strip</b> reads the rows the lanes already read: Needs a reply's wait times, Went out's delivery marks, the estimate event lines. A tile with nothing behind it reads <i>none</i>, never a blank. <span class="callout g">no new table, no new read: three kernels over the view the page already holds</span></p>
+
+<h2 id="s3"><span class="num pick">3</span>Answer all — one person at a time, like Sort all</h2>
+<p class="lede">Sort all is the best thing on the page: one card, one press, the next one. Answer all does the same for Needs a reply. Each person comes up with their last words, their job and step, the quick replies for that step, and the box. A send or a No reply needed moves on. Skip holds them for the end.</p>
+<div class="row">
+  <div>
+    <div class="cap green">The desk, person 2 of 6 <span class="r">longest wait first · the box starts as a text when their number can take one</span></div>
+    <div class="fit">
+      <div class="sheet">
+        <div class="bar"><b>Answer all</b><span class="count">Needs a reply · 2 of 6</span><span class="x">✕</span></div>
+        <div class="inner">
+          <div class="person"><b>Tom Reyes</b><span class="faint">customer</span><span class="chip c-amber">Our move · 2 d 4 h</span><span class="chip c-grey">Evan has this</span></div>
+          <p class="ctx">Job 1312 · Reyes upstairs bath · <b>Working</b> · part on order since Oct 14</p>
+          <div class="theirs">Hey, did the part come in? The upstairs bath is still off.<span class="meta">💬 text · Sun Oct 19, 9:40 AM · to the company number</span></div>
+          <div class="lab">Quick replies · for this stage <span class="r">⤢ Find</span></div>
+          <div class="qrs"><span class="qr on">The part is in, we're scheduled for…</span><span class="qr">Still waiting on the part, here's the new day…</span><span class="qr">Calling you in a minute</span></div>
+          <div class="box">Tom, this is Evan with Click Plumbing. The part came in this morning. We're on your upstairs bath Thursday, Oct 23, 8 to 10 AM. Reply here if that time doesn't work.</div>
+          <div class="under"><span>Tie to <b>1312</b></span><span>After this sends:</span><span class="radio on"><i></i>Their move</span><span class="radio"><i></i>Our move</span></div>
+        </div>
+        <div class="foot">
+          <span><button class="btn">Skip for now</button> <button class="btn">No reply needed</button> <button class="btn quiet">☎ Call</button></span>
+          <button class="btn go">Send text…</button>
+        </div>
+        <div class="inner" style="padding-top:0"><p class="next">Next: <b>Lena Ortiz</b> · lead · 5 h &nbsp;·&nbsp; then <b>Alvarez Mechanical</b> · 1 d</p></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">The end <span class="r">what went, then the quiet ones as a second pass</span></div>
+    <div class="fit">
+      <div class="sheet">
+        <div class="bar"><b>Answer all</b><span class="count">Needs a reply · done</span><span class="x">✕</span></div>
+        <div class="inner">
+          <p style="margin:6px 0 0;font-size:17px;font-weight:800">All answered.</p>
+          <p style="margin:4px 0 0;color:var(--ink-2)">6 people. 4 texts and 1 email went. 1 needed no reply. Nobody was skipped.</p>
+          <div class="lab" style="margin-top:16px">What went</div>
+          <div class="line"><span>💬</span><span>Tom Reyes · The part came in this morning. We're on your upstairs bath Thursday… <span class="mark">✓ delivered</span></span><span class="when">11:44 AM</span></div>
+          <div class="line"><span>💬</span><span>Lena Ortiz · Lena, this is Evan with Click Plumbing. A warm floor and a doubled bill… <span class="mark">✓ delivered</span></span><span class="when">11:46 AM</span></div>
+          <div class="line"><span>📧</span><span>Alvarez Mechanical · Revised drawings for B512, attached</span><span class="when">11:49 AM</span></div>
+          <div class="line" style="border-bottom:0"><span class="faint">+2</span><span class="faint">Priya Natarajan, Hill Country Electric · and (512) 555-0180 needed no reply</span><span></span></div>
+          <div class="theirs" style="margin-top:14px;background:var(--green-tint)">3 people are quiet on us: Dana Whitfield, Marcus Calloway, Hill Country Electric.<span class="meta">Waiting on them · their move, two days or more</span></div>
+        </div>
+        <div class="foot"><button class="btn">Back to Messages</button><button class="btn go">Nudge the quiet ones</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>What the desk reuses:</b> the sort desk's shell (one card, Skip for now, the count), the reply box as it is (quick replies, /, Tie to, After this sends, the send window), the step's quick replies first. A person who writes back while you are on someone else drops off the desk on its own. <b>Mine</b> narrows the desk too: Answer all under Mine walks only what you hold. <span class="callout g">one new kernel: the desk's order and its moves; the sends are the sends the thread already makes</span></p>
+
+<h2 id="s4"><span class="num pick">4</span>In the thread — a call is a line, and a lead has two doors</h2>
+<p class="lede">The reply box writes a text, an email or a note. A fourth kind, <b>Call</b>, logs a call made from any phone: what they said, the day they gave, whose move it leaves. It lands as a line, clears Needs a reply, and Waiting on them waits for that day. A lead's thread gets the two presses that turn a text into work.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Log a call <span class="r">a fourth kind in the box · lands as the app's own line</span></div>
+    <div class="fit">
+      <div class="sheet">
+        <div class="bar"><b>Tom Reyes</b><span class="faint">customer · ☎ (830) 555-0133</span><span class="chip c-grey" style="margin-left:auto">Evan has this</span><span class="x">✕</span></div>
+        <div class="inner">
+          <div class="line"><span>💬</span><span>Hey, did the part come in? The upstairs bath is still off.</span><span class="when">Sun Oct 19, 9:40 AM</span></div>
+          <div class="line app" style="border-bottom:0"><span>☎</span><span>Evan called Tom. They said: part arrives Monday, Tuesday morning works. A day heard: <b>Tue Oct 27</b>.</span><span class="when">11:42 AM · just now</span></div>
+          <div class="kinds"><span class="kind">Text</span><span class="kind">Email</span><span class="kind">Note</span><span class="kind on new">Call</span></div>
+          <div class="callform">
+            <div class="field"><span class="fl">What they said</span>Part arrives Monday. He wants Tuesday morning, 8 to 10.</div>
+            <div class="field day"><span class="fl">They gave a day</span><span class="pick" style="display:inline-flex;gap:6px;border:1px solid var(--line);border-radius:8px;padding:3px 9px">Tue Oct 27 ▾</span></div>
+          </div>
+          <div class="under"><span>Tie to <b>1312</b></span><span>After this:</span><span class="radio on"><i></i>Their move</span><span class="radio"><i></i>Our move</span><span class="faint">Their move clears Needs a reply. Waiting on them waits for Oct 27.</span></div>
+        </div>
+        <div class="foot"><span class="faint">Only the team sees a call line.</span><button class="btn go">Save the call</button></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">A lead's thread <span class="r">two doors above the words · either takes them off Leads</span></div>
+    <div class="fit">
+      <div class="sheet narrow">
+        <div class="bar"><b>Lena Ortiz</b><span class="chip c-purple">Lead</span><span class="faint">☎ (830) 555-0199</span><span class="x">✕</span></div>
+        <div class="inner">
+          <div class="person"><span class="chip c-amber">Our move · 5 h</span><span class="chip c-grey">Nobody has it · Take it</span><span class="chip c-blue">Who is this? · kept as a lead</span></div>
+          <div class="doors"><button class="btn go">Book a visit</button><button class="btn">Start an estimate</button><button class="btn quiet">Add to Prospects</button></div>
+          <div class="theirs">Hi, I think I have a slab leak. The water bill doubled and the floor is warm by the kitchen.<span class="meta">💬 text · 6:52 AM · to the company number</span></div>
+          <div class="lab">Quick replies · for a lead</div>
+          <div class="qrs"><span class="qr">We can come look today or tomorrow, which works?</span><span class="qr">Here's what a leak check costs…</span></div>
+          <div class="box" style="min-height:48px;color:var(--muted)">Write a text to Lena…</div>
+        </div>
+        <div class="foot"><span class="faint"><b>Book a visit</b> opens Add Job with her name, number and words filled. <b>Start an estimate</b> makes her a customer and opens a new estimate.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 id="s5"><span class="num pick">5</span>Switched on — the card that says what is still off, and the one card that is missing</h2>
+<p class="lede">Most of the loop is built and waits on a switch. The owner sees that nowhere. A card on Messages, for the owner and devs only, lists the eight and opens each one's setting. It folds to a line on the page, and goes away when every row is on. Office hours is the one setting with no card at all today.</p>
+<div class="row">
+  <div>
+    <div class="cap blue">On Messages, owner and devs <span class="r">opens from the "3 of 8 on" line · Later folds it for a week</span></div>
+    <div class="fit">
+      <div class="scard">
+        <h5>Finish switching Messages on</h5>
+        <p class="sub">3 of 8 on. The page works before all eight. The loop closes when they are.</p>
+        <div class="swrow"><div class="what"><b>Send texts</b><span>the office texts from the company number</span></div><span class="chip c-green">On</span><span></span></div>
+        <div class="swrow"><div class="what"><b>Read bids@</b><span>trades' emails land in their threads</span></div><span class="chip c-green">On</span><span></span></div>
+        <div class="swrow"><div class="what"><b>Who gets a new message</b><span>the seats</span></div><span class="chip c-green">On</span><span></span></div>
+        <div class="swrow"><div class="what"><b>The team inbox</b><span>a customer's emailed reply lands in their thread, not someone's Gmail</span></div><span class="chip c-red">Not read</span><button class="btn sm go">Set the address</button></div>
+        <div class="swrow"><div class="what"><b>Reply push</b><span>whoever has it hears a reply on their phone</span></div><span class="chip c-amber">Off</span><button class="btn sm go">Turn it on</button></div>
+        <div class="swrow"><div class="what"><b>Company phone seats</b><span>Call back in Quo works from a row</span></div><span class="chip c-amber">Nobody</span><button class="btn sm go">Pick the seats</button></div>
+        <div class="swrow"><div class="what"><b>Reminders the app offers</b><span>the estimate follow-up and the bill, as Offers you press</span></div><span class="chip c-amber">Off</span><button class="btn sm go">Offer them</button></div>
+        <div class="swrow"><div class="what"><b>Office hours</b><span>after hours, the office hears first and the app answers once</span></div><span class="chip c-amber">Not set</span><button class="btn sm go">Set the hours</button></div>
+        <div class="foot" style="padding:10px 0 0;margin-top:8px"><span class="faint">Only the owner and devs see this card.</span><button class="btn quiet">Later</button></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap blue">Settings → Phone and texts → Office hours <span class="r">new card · the value a dev sets by hand today</span></div>
+    <div class="fit">
+      <div class="scard">
+        <h5>Office hours</h5>
+        <p class="sub">When the office is in. Outside these hours a reply waits for the morning, and the office hears it first.</p>
+        <div class="hours">
+          <span>Days</span><span class="days"><span>S</span><span class="on">M</span><span class="on">T</span><span class="on">W</span><span class="on">T</span><span class="on">F</span><span>S</span></span>
+          <span>Open</span><span><span class="pick">7:30 AM ▾</span></span>
+          <span>Close</span><span><span class="pick">5:00 PM ▾</span></span>
+        </div>
+        <div class="says"><b>After hours the app answers a first text once:</b> "Thanks, we got your text. The office opens at 7:30 AM and will answer then. For a burst pipe, call (830) 555-0100." <span class="faint">Change the words on What customers see.</span></div>
+        <div class="foot" style="padding:10px 0 0;margin-top:10px"><span class="faint">Central time, the company's.</span><button class="btn go">Save the hours</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 id="s6"><span class="num pick">6</span>On a phone — Answer all is the page</h2>
+<p class="lede">On a phone the strip is two by two, Answer all is the one big press, and the lanes sit under it. The desk fills the screen, one person at a time, the keyboard under the box.</p>
+<div class="row">
+  <div>
+    <div class="cap green">/messages on a phone <span class="r">390 wide · Show: Mine</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="pt"><b>Messages</b><span class="badge">3 of 8 on ›</span></div>
+        <div class="pbody">
+          <div class="pills"><span class="pill on">All</span><span class="pill">Customers</span><span class="pill">Trade partners</span><span class="pill">Architects</span><span class="pill">Leads</span></div>
+          <span class="lens2"><span class="ll">Show</span><span class="seg on">Mine<i>3</i></span><span class="seg">Nobody's<i>2</i></span><span class="seg">Everyone<i>9</i></span></span>
+          <div class="strip">
+            <div class="sh">The last 7 days</div>
+            <div class="tiles">
+              <div class="tile"><span class="k">Answered within an hour</span><span class="v">19 of 23<small>83%</small></span><span class="door">Needs a reply ›</span></div>
+              <div class="tile"><span class="k">Longest wait now</span><span class="v">2 d 4 h</span><span class="sub">Tom Reyes</span></div>
+              <div class="tile"><span class="k">Texts not delivered</span><span class="v red">1</span><span class="door">Went out ›</span></div>
+              <div class="tile"><span class="k">Estimates</span><span class="v" style="font-size:14px">6 sent · 5 opened · 2 accepted</span></div>
+            </div>
+          </div>
+          <button class="btn go big">Answer all <span style="font-weight:600;opacity:.85">· 3 waiting on you</span></button>
+          <div class="fold"><span>▸</span><span><b>New 1</b> · Needs you 0 · We owe them 1</span><span class="r">Open ›</span></div>
+          <div class="q">
+            <div class="qh"><h4>Needs a reply <span>3</span></h4></div>
+            <div class="prow">
+              <div class="l1"><b>Tom Reyes</b><span class="chip c-amber">2 d 4 h</span><span class="when">Sun 9:40 AM</span></div>
+              <div class="words"><span class="ch">💬</span>Hey, did the part come in? The upstairs bath is still off.</div>
+            </div>
+            <div class="prow">
+              <div class="l1"><b>Priya Natarajan</b><span class="chip c-amber">6 h</span><span class="when">5:30 AM</span></div>
+              <div class="words"><span class="ch">💬</span>Can the crew come after 9? School drop-off.</div>
+            </div>
+          </div>
+          <div class="q">
+            <div class="qh"><h4>Waiting on them <span>1</span></h4></div>
+            <div class="prow">
+              <div class="l1"><b>Dana Whitfield</b><span class="chip c-green">3 d</span><span class="when">Sat</span></div>
+              <div class="words"><span class="ch">👀</span>Opened estimate #212 Sat. No answer since.</div>
+              <div class="acts"><button class="btn sm go">Nudge Dana</button><button class="btn sm link">☎ Call</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap green">The desk on a phone <span class="r">full screen · 1 of 3 · Mine</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="pt"><span style="color:var(--blue-ink);font-weight:700">‹ Messages</span><b style="font-size:16px">Answer all</b><span class="badge" style="color:var(--muted)">1 of 3</span></div>
+        <div class="pbody">
+          <div class="person"><b>Tom Reyes</b><span class="chip c-amber">Our move · 2 d 4 h</span></div>
+          <p class="ctx">Job 1312 · upstairs bath · <b>Working</b></p>
+          <div class="theirs">Hey, did the part come in? The upstairs bath is still off.<span class="meta">💬 Sun Oct 19, 9:40 AM</span></div>
+          <div class="lab">Quick replies · for this stage</div>
+          <div class="qrs"><span class="qr on" style="max-width:100%">The part is in, we're scheduled for…</span><span class="qr" style="max-width:100%">Still waiting on the part, here's the new day…</span></div>
+          <div class="box">Tom, this is Evan with Click Plumbing. The part came in this morning. We're on your upstairs bath Thursday, Oct 23, 8 to 10 AM. Reply here if that time doesn't work.</div>
+          <div class="under"><span>Tie to <b>1312</b></span><span class="radio on"><i></i>Their move</span><span class="radio"><i></i>Our move</span></div>
+          <button class="btn go big" style="margin-top:12px">Send text…</button>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn sm">Skip for now</button><button class="btn sm">No reply needed</button><button class="btn sm link">☎ Call</button></div>
+          <p class="next" style="text-align:center;margin:10px 0 0">Next: <b>Priya Natarajan</b> · 6 h</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 id="s7"><span class="num">7</span>The seven decisions</h2>
+<div class="dec">
+  <div class="d"><h3>1 · Where the strip sits</h3><p><span class="rec">Recommended: the top of Messages</span>, four tiles, each a door, over the last 7 days. The Dashboard's Needs you card can carry the one number (answered within an hour) later if asked. Alternative: a Dashboard card only.</p></div>
+  <div class="d"><h3>2 · Show's default</h3><p><span class="rec">Recommended: Everyone</span>, with Mine one press away and remembered per browser, so nobody's row hides by default. Alternative: Mine by default for assistants.</p></div>
+  <div class="d"><h3>3 · Answer all's reach</h3><p><span class="rec">Recommended: Needs a reply first</span>, then the quiet ones offered as a second pass at the end. Alternative: one desk over both lanes from the start.</p></div>
+  <div class="d"><h3>4 · What a logged call does</h3><p><span class="rec">Recommended: a team line that clears Needs a reply</span>; a day they gave holds Waiting on them until that day, like a promise in the flows. Alternative: a plain note with no day.</p></div>
+  <div class="d"><h3>5 · A lead's doors</h3><p><span class="rec">Recommended: both</span> — Book a visit opens Add Job filled from the lead; Start an estimate makes them a customer and opens the estimate. Either takes them off Leads. Alternative: Start an estimate alone.</p></div>
+  <div class="d"><h3>6 · The switch card's home</h3><p><span class="rec">Recommended: on Messages for the owner and devs</span>, folded to a line, Later holds it a week, gone when all eight are on. Alternative: a Settings card only, nothing on Messages.</p></div>
+  <div class="d"><h3>7 · What Nudge does</h3><p><span class="rec">Recommended: fills the step's words and opens the send window</span>, one read and one press, like Text Greg on Nudges from the flow. Alternative: puts it on Today's sends for the morning.</p></div>
+</div>
+<p class="note"><b>The train, smallest first:</b></p>
+<div class="train">
+  <span><b>1</b> Office hours card<i>S</i></span><span><b>2</b> Finish switching on card<i>S</i></span><span><b>3</b> Show: Mine · Nobody's · Everyone<i>M</i></span><span><b>4</b> Nudge fills the words<i>S</i></span><span><b>5</b> The last 7 days strip<i>M</i></span><span><b>6</b> Answer all<i>L</i></span><span><b>7</b> Log a call<i>M</i></span><span><b>8</b> A lead's doors<i>M</i></span><span><b>9</b> One front door + the guides<i>S</i></span>
+</div>
+<p class="note">The switches themselves are your presses, not code. <span class="callout g">1, 2 and 4 are an afternoon; 3, 5, 7 and 8 a day each; 6 two days</span></p>
+
+</div>
+</body>
+</html>
