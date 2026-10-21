@@ -46,6 +46,10 @@ This pill shows a list of those people in place of the three lists. The person w
 
 Under **Went out**, press {{button:outline|Show everyone}}. The list shows every person with a message, newest conversation first, back to the first message. The pill you picked narrows it, like the lists above. Type in the search box to find a name, a number or any words in their messages. Press a row to open the thread. Press {{button:outline|Hide everyone}} to fold it away.
 
+## Search every message
+
+The search box sits under the pills. Type two letters or more. The lists give way to **Lines that match**, the messages that hold those words, newest first. Each row names the person, whose line it is and the words around the match. Press a row to open the thread at that line. Clear the box to see the lists again.
+
 ## Open a thread
 
 Press a row to open the person's thread over the page. The thread works as [Find every message with a person in one place](/help/find-every-message-with-a-person-in-one-place) shows.
