@@ -49,10 +49,6 @@ Our estimate emails carry a button in the thread. Press {{button:outline|Open es
 
 The thread draws the estimate's moments as the app's own lines, in order with the texts and emails. *Dana opened estimate #212* appears when they open the link. *Dana accepted estimate #212* appears when they accept, with *Signed* when they signed. *Dana declined estimate #212* appears when they decline. Each appears once.
 
-## See what they did with an estimate
-
-The thread draws the estimate's moments as the app's own lines, in order with the texts and emails. *Dana opened estimate #212* appears when they open the link. *Dana accepted estimate #212* appears when they accept, with *Signed* when they signed. *Dana declined estimate #212* appears when they decline. Each appears once.
-
 ## See the emails the app sent on its own
 
 Some emails go out with nobody pressing Send. A reminder, a scheduled notice and a bill the app sends are like that. Each one shows as **the app** in the thread.
