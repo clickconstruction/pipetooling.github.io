@@ -1,15 +1,18 @@
 /**
- * Went out (v2.5686, punch list #133 PR 3; the last 7 days under day headers since v2.5699): the lane on `/messages`
- * that shows every text we sent — the sheet's, the reply box's, Today's sends' presses and the morning run's — newest
- * first, each row opening the thread. The queues above it are all inbound, so without this a send the office just
- * pressed shows nowhere (Taunya, 2026-10-20); today only, it emptied at midnight with the owner looking at it
- * (2026-10-21). Pure; the reads are `wentOutIo.ts`, the section `components/messages/WentOutToday.tsx`.
+ * Went out (v2.5686, punch list #133 PR 3; the last 7 days under day headers since v2.5699; Quo's delivery answer on
+ * each row since v2.5703): the lane on `/messages` that shows every text we sent — the sheet's, the reply box's,
+ * Today's sends' presses and the morning run's — newest first, each row opening the thread. The queues above it are
+ * all inbound, so without this a send the office just pressed shows nowhere (Taunya, 2026-10-20); today only, it
+ * emptied at midnight with the owner looking at it (2026-10-21); and a text Quo could not deliver read "texted" like
+ * any other until the mark. Pure; the reads are `wentOutIo.ts`, the section `components/messages/WentOutToday.tsx`.
  */
 import type { ContactKind } from '../contacts/kernel'
 import { weekdayDate } from '../gc/words'
+import { telHrefFor } from '../phoneContact'
 import { clockHm } from '../tellCustomer/tellCustomer'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { inPill, type KindPill } from './kindPills'
+import { deliveryMark, type DeliveryMark, type QuoDeliveryWord } from './thread'
 
 /** How far back the lane reads, today included. */
 export const WENT_OUT_DAYS = 7
@@ -27,6 +30,10 @@ export interface WentOutLine {
   atMs: number
   /** Who pressed it: the person's name, or the morning run's words. */
   who: string
+  /** Quo's answer (v2.5703); null before it answers. */
+  delivery?: QuoDeliveryWord | null
+  /** The number it went to, for the call a failed text asks for. */
+  number?: string | null
 }
 
 /** One row of the lane. */
@@ -38,6 +45,18 @@ export interface WentOutRow {
   words: string
   /** "1:31 PM · Taunya" */
   when: string
+  /** Quo's answer beside the time (v2.5703); null while it has not answered. */
+  mark: DeliveryMark | null
+  /** The dial for a text that did not reach them; null when it did, or with no number. */
+  tel: string | null
+}
+
+/** One day of the lane, newest day first: its header and its rows. */
+export interface WentOutDay {
+  ymd: string
+  /** "Today", "Yesterday", then the weekday and date: "Mon Oct 19". */
+  label: string
+  rows: WentOutRow[]
 }
 
 /** One day of the lane, newest day first: its header and its rows. */
@@ -57,12 +76,15 @@ function inLane(lines: readonly WentOutLine[], pill: KindPill): WentOutLine[] {
 
 function rowOf(l: WentOutLine): WentOutRow {
   const firstLine = l.body.split('\n')[0]?.trim() ?? ''
+  const mark = deliveryMark({ direction: 'out', channel: 'text', delivery: l.delivery ?? null })
   return {
     id: l.id,
     contactId: l.contactId,
     name: l.name?.trim() || l.customerName?.trim() || 'A number nobody has named',
     words: firstLine.length > WORDS_MAX ? `${firstLine.slice(0, WORDS_MAX).trimEnd()}…` : firstLine,
     when: l.who.trim() ? `${clockHm(l.atMs)} · ${l.who.trim()}` : clockHm(l.atMs),
+    mark,
+    tel: mark?.bad && l.number?.trim() ? telHrefFor(l.number) : null,
   }
 }
 
@@ -96,4 +118,5 @@ export const WENT_OUT_WORDS = {
   note: `Every text we sent in the last ${WENT_OUT_DAYS} days, newest first. A row opens the thread.`,
   empty: `Nothing has gone out in the last ${WENT_OUT_DAYS} days.`,
   problem: 'What went out could not be read.',
+  call: 'Call them',
 }

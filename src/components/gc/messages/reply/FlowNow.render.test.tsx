@@ -53,6 +53,7 @@ const io = (): ReplyIo => ({
   addNote: vi.fn(() => Promise.resolve('m')),
   sendEmail: vi.fn(() => Promise.resolve('m')),
   sendText: vi.fn(() => Promise.resolve('m')),
+  logCall: vi.fn(() => Promise.resolve('m-call-new')),
 })
 
 function box() {

@@ -17,6 +17,7 @@ import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
+import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { useLeadDoorThreadSlots } from '../../messages/useLeadDoorThreadSlots'
 import { hasPaperOffer } from '../../../lib/messages/lineFiles'
@@ -66,6 +67,11 @@ export interface ThreadSlots {
   messageWindowFirst?: (m: ThreadMessage, selection: string) => ReactNode
   /** The window's right side, its full height: cut 4's flow panel, a rail that opens to a panel. */
   side?: (c: Contact) => ReactNode
+  /**
+   * What cut 2 knows about whose move it is (punch list #140 PR 7): what we owe them and a written promise's day, which
+   * the window merges into the header's move chip (`courtOf`'s options). Facts, not a node: later cuts win field by field.
+   */
+  court?: (c: Contact) => CourtFacts | null
 }
 
 /** What a shared slot draws: nothing when every cut draws nothing, one cut's node as itself, else each in order. */
@@ -109,6 +115,16 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
   if (side) merged.side = side
   const menus = parts.flatMap((p) => (p.menuRows ? [p.menuRows] : []))
   if (menus.length > 0) merged.menuRows = (c) => menus.flatMap((rows) => rows(c))
+  const courts = parts.flatMap((p) => (p.court ? [p.court] : []))
+  if (courts.length > 0)
+    merged.court = (c) => {
+      let facts: CourtFacts | null = null
+      for (const court of courts) {
+        const got = court(c)
+        if (got) facts = { ...(facts ?? {}), ...got }
+      }
+      return facts
+    }
   const bodies = parts.flatMap((p) => (p.lineBody ? [p.lineBody] : []))
   if (bodies.length > 0)
     merged.lineBody = (m, c) => {

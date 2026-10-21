@@ -22,7 +22,7 @@ The page is Follow up for every kind of person. It has the same four lists.
 
 [See who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them) explains each list and its buttons. They work the same way here.
 
-Under the lists, **Went out** shows every text we sent in the last 7 days, newest first. The rows sit under the day each text went: **Today**, **Yesterday**, then the date. Each row names the person, the words and who pressed the send. Press a row to open the thread and read the text where it landed. The lists above hold what came in, so this is where you check that a send went.
+Under the lists, **Went out** shows every text we sent in the last 7 days, newest first. The rows sit under the day each text went: **Today**, **Yesterday**, then the date. Each row names the person, the words and who pressed the send. Press a row to open the thread and read the text where it landed. The lists above hold what came in, so this is where you check that a send went. Once Quo answers, the row says **delivered** beside its time. A text that did not reach them reads **not delivered** in red, with {{button:blue|Call them}} on the row.
 
 ## Show one kind of person
 
@@ -45,6 +45,10 @@ This pill shows a list of those people in place of the three lists. The person w
 ## Find anyone we have talked with
 
 Under **Went out**, press {{button:outline|Show everyone}}. The list shows every person with a message, newest conversation first, back to the first message. The pill you picked narrows it, like the lists above. Type in the search box to find a name, a number or any words in their messages. Press a row to open the thread. Press {{button:outline|Hide everyone}} to fold it away.
+
+## Search every message
+
+The search box sits under the pills. Type two letters or more. The lists give way to **Lines that match**, the messages that hold those words, newest first. Each row names the person, whose line it is and the words around the match. Press a row to open the thread at that line. Clear the box to see the lists again.
 
 ## Open a thread
 

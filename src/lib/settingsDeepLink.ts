@@ -13,6 +13,8 @@
  * - /settings?tab=settings-advanced-tools#settings-claim-code  (Needs You "Someone tried to become a dev" — the
  *                                       code form is on Advanced, not People; Tier-2 #17)
  * - /settings#settings-contract-<id>   (one card on Contracts & terms; What customers see links here)
+ * - /settings?tab=settings-phone-texts#settings-phone-texts-hours (the Office hours card, punch list #140 PR 1;
+ *                                       PR 2's switch card on Messages lands on it)
  *
  * `?tab=` values are settings tab/group ids (e.g. `settings-data`). Hashes are
  * either a section anchor inside a tab (mapped below) or a tab id themselves.
@@ -34,6 +36,8 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-estimate-public-terms': 'settings-catalogs',
   'settings-estimate-cx-defaults': 'settings-catalogs',
   'settings-bid-cover-letter-defaults': 'settings-catalogs',
+  // Phone and texts' cards (punch list #140): the switch card on Messages opens each by its anchor.
+  'settings-phone-texts-hours': 'settings-phone-texts',
 }
 
 /** `#settings-contract-<entry id>`: one card on Contracts & terms (the prefix the catalog's anchors carry). */

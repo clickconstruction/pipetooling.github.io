@@ -6,7 +6,7 @@
  */
 import type { Tables } from '../../types/database'
 import { firstName, type Contact } from '../contacts/kernel'
-import type { MessageChannel, MessageDirection, ThreadMessage } from './thread'
+import { deliveryOf, type MessageChannel, type MessageDirection, type ThreadMessage } from './thread'
 import { jobKeyOfRow } from './jobKeys'
 
 // ---------- a job, as one key ----------
@@ -40,6 +40,8 @@ export type MessageRow = Pick<
   duration_seconds?: number | null
   /** R6's column: the box the line came in on or went out from. Optional until the types regenerate. */
   mailbox?: string | null
+  /** Quo's delivery answer on a text of ours (v2.5703). Optional: a read that leaves it out draws no mark. */
+  delivery?: string | null
 }
 
 export interface MessageLoadContext {
@@ -83,6 +85,7 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     backOn: row.back_on,
     backBy: row.back_by ? userName(row.back_by) || null : null,
     mailbox: row.mailbox && MAILBOXES.has(row.mailbox) ? (row.mailbox as ThreadMessage['mailbox']) : null,
+    delivery: deliveryOf(row.delivery),
   }
 }
 

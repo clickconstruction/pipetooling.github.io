@@ -33,6 +33,19 @@ describe('WentOutToday', { timeout: 15_000 }, () => {
     fireEvent.click(rows[0]!)
     expect(onOpenThread).toHaveBeenCalledWith('c-dana')
   })
+  it('a text Quo could not deliver reads red with the call to make; a delivered one reads so beside its time (v2.5703)', async () => {
+    const lines: WentOutLine[] = [
+      { ...LINES[0]!, delivery: 'delivered', number: '(830) 555-0121' },
+      { ...LINES[1]!, delivery: 'undelivered', number: '(830) 555-0164' },
+    ]
+    renderWithProviders(<WentOutToday pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => lines)} />)
+    const rows = await screen.findAllByTestId('went-out-row')
+    expect(rows.map((r) => r.getAttribute('data-delivery'))).toEqual(['ok', 'bad'])
+    expect(screen.getAllByTestId('went-out-mark').map((m) => m.textContent)).toEqual(['✓ delivered', '⚠ not delivered'])
+    const call = screen.getByTestId('went-out-call') as HTMLAnchorElement
+    expect(call.getAttribute('href')).toBe('tel:+18305550164')
+    expect(call.textContent).toContain('Call them')
+  })
   it('a pill narrows the lane, the empty lane says so, and a failed read says so', async () => {
     renderWithProviders(<WentOutToday pill="sub" onOpenThread={vi.fn()} io={vi.fn(async () => LINES)} />)
     const rows = await screen.findAllByTestId('went-out-row')

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { callFirst, CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
 import { useOptionalAuth } from '../../hooks/useAuth'
+import { courtFactsFromRows } from '../../lib/followUp/courtFacts'
 import { pressProblem } from '../../lib/followUp/followUpIo'
 import { followUpContactOf, followUpMessagesFromRows, holdersFromRows, owedRecordsFromRows } from '../../lib/followUp/followUpRows'
 import { supabaseFollowUpThreadIo, type FollowUpThreadIo, type FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
@@ -44,7 +45,7 @@ const PREFERS_ROWS: readonly { value: 'text' | 'email' | 'either'; label: string
   { value: 'either', label: 'Hears from us either way', tip: 'No preference. Texts and emails go as the steps say.' },
 ]
 
-export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox' | 'underLine'>
+export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox' | 'underLine' | 'court'>
 
 const quiet = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.55rem' } as const
 
@@ -116,6 +117,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   useEffect(() => {
     if (rows && contactId) owedStore.publish(contactId, owed)
   }, [rows, contactId, owed])
+  // Whose move it is, from the same read (punch list #140 PR 7): what we owe and a written promise's day, for the chip.
+  const court = useMemo(() => (rows && contactId ? (courtFactsFromRows(rows.owed, rows.promises, todayYmdInAppTz()).get(contactId) ?? null) : null), [rows, contactId])
 
   if (!on || !rows || !toasts) return {}
   const { showToast } = toasts
@@ -139,6 +142,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   const mine = (id: string) => id === contactId
 
   return {
+    court: (c) => (mine(c.id) ? court : null),
     // Calls (v2.5596): under a text we sent a customer today, the quiet ask, until a call to them waits.
     underLine: (m, c) => {
       if (!mine(c.id)) return null
