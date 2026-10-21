@@ -44,7 +44,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Company transactions, payroll marks, spending → `/tally`
 - Bank ledger, card sorting, accounting review → `/banking`
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`
-- Every message with every person we work with on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
+- Every message with every person we work with on GC projects, one thread each → `/messages?kind=trade` (since v2.5717 GC projects' Messages pill goes there; `/gc?view=messages&thread=` still opens a thread there for the links in the wild) (guide `find-every-message-with-a-person-in-one-place`)
 - Everyone waiting on us for an answer, what we owe them and, since v2.5686, every text we sent in the last 7 days (**Went out**, v2.5699), for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
 - Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
 - A training course your role must take, read at your own pace: the lessons, Check yourself, the final check → `/training/osha-30-refresher` (from the **Training** card under My Time on the Dashboard, under My Schedule in Job Mode; guide `take-a-training-course`)
@@ -89,7 +89,7 @@ architect, and its price so far with the card behind it. Its switch opens **Trad
 **New** (what came in and still needs sorting), **Needs you**, **Needs a reply** and **We owe them**, each row with who has it, and **Ask the architect** on a plans question;
 **Nudges from the flow**, one row a person whose step went quiet past its nudge, with the nudge's own press, **Hold until Mon** and **Remind now**;
 then **We are waiting on them** (guide `follow-up-on-a-quote-from-a-trade-partner`): every company we wait on for a quote,
-the ones to call first at the top, with Log a contact and **Will not do it** / **Cannot do it**. **Messages** (guide `find-every-message-with-a-person-in-one-place`; `/gc?view=messages` opens it) lists every
+the ones to call first at the top, with Log a contact and **Will not do it** / **Cannot do it**. **Messages** (guide `find-every-message-with-a-person-in-one-place`; since v2.5717 the pill opens `/messages?kind=trade`, and `/gc?view=messages` still opens the in-page view) lists every
 person the office works with, newest conversation first, and opens a person's thread as a window over any view
 (`?thread=<contact id>&at=<message id>`): their jobs with the star, each line's job, one message in full with an email's
 **Attachments** and **Open**, the offer to file a trade partner's certificate or W-9 that came by email, and **Who is this?** for a

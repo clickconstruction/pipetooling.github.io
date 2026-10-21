@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link
+keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link, header, lead, book a visit, start an estimate, show everyone
 order: 116
 ---
 Messages lists each person the office works with on GC projects. Press a person to read every message with them in one thread.
@@ -11,10 +11,11 @@ The office and estimators see Messages.
 
 ## Open Messages
 
-1. Go to [GC projects](/gc).
-2. Press {{button:outline|Messages}} in the row of views above the board.
+Press **Messages** in the header. It opens the office's one page for everyone who writes to us. [Answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page) shows the page. Press {{button:outline|Trade partners}} to see the people we work with on GC projects.
 
-Each person has one row. The first line has their name and when they last wrote. The second line has their company and whose move it is, such as {{chip:yellow|Our move}}. The third line has their last message.
+On [GC projects](/gc), {{button:outline|Messages}} in the row of views opens the same page with **Trade partners** picked.
+
+Under **Went out**, press {{button:outline|Show everyone}} to see every person with a message as a list. Each person has one row. The first line has their name and when they last wrote. The second line has their company and whose move it is, such as {{chip:yellow|Our move}}. The third line has their last message.
 
 The person with the newest message is on top. People with no message yet come last, by name.
 
@@ -41,6 +42,10 @@ The top of the window shows who they are and where things stand.
 Each message shows how it came, who sent it and its job. A long message shows four lines. Press {{button:outline|⋯}} and then **Show all text** to read every message in full.
 
 Press Escape or {{button:outline|×}} to close the thread.
+
+## A lead's two doors
+
+A lead is a person who wrote to us and has no record yet. Their thread offers {{button:blue|Book a visit}} and {{button:outline|Start an estimate}}. Book a visit makes them a customer and opens Add Job with their name and number filled in. Start an estimate makes them a customer and opens a new estimate for them. Their thread comes along either way.
 
 
 Our estimate emails carry a button in the thread. Press {{button:outline|Open estimate #166}} to leave the thread and open that estimate. A change order's email opens the change order the same way. A text that carried the estimate's link carries the same button under its words.
@@ -196,9 +201,3 @@ A thread for a number we do not know has a {{button:blue|Who is this?}} button. 
 The number joins that person. Every message from the number and the person stays in one thread.
 
 The list shows first the people who fit where their message came in. A message to our bids inbox shows trade partners and supply houses first. A message to the company number shows customers first.
-
-## What shows in a thread today
-
-A thread holds the emails the office sent them from the app. It holds the ones the app sent on its own too. A thread also holds the emails they send to our bids inbox. Calls and texts join it in a later update.
-
-An estimator does not see the emails we sent in a thread.

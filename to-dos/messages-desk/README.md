@@ -2,7 +2,7 @@
 name: "Messages, worked like a desk — the loop switched fully on, Answer all one person at a time with a Mine lens, and a last-7-days strip whose every number is a door"
 number: 140
 group: ready
-status: BUILDING — the owner's go 2026-10-21 on the recommended defaults (three revised after the code read, see § The seven decisions); BUILD_PLAN.md beside this file is the hand-off; PR 1 (#5957, the Office hours card) and PR 7 (the log_call migration and the Call kind) are filed with auto-merge armed; PRs 2–6 wait on the #139 stack's base (BUILD_PLAN § 0.2); § Where it stands is the record
+status: BUILT — nine PRs filed 2026-10-21 (1, 7, 8 merged first; 2–6 queued in order on main; 9 last); the live test (BUILD_PLAN § 3) is what is left
 summary: >
   With #139's six additions Messages is a complete record and a complete inbox, and the next
   gain is not another lane. Three levers: close the loop (an Office hours card, and a card on
@@ -14,10 +14,10 @@ summary: >
   RPC, Book a visit and Start an estimate on a lead's thread); and a last-7-days strip at the
   top (answered within an hour, longest wait now, texts not delivered, estimates sent → opened
   → accepted), every number opening its rows.
-next: another session builds the train in BUILD_PLAN.md order (PR 1 the Office hours card first; PRs 1, 7 and 8 cut from main, the page PRs from the #139 stack's top until it lands — BUILD_PLAN § 0.2); drop a session card; keep § Where it stands true after each PR; the live test (BUILD_PLAN § 3, the ZZ customer is our own inbox and the owner's cell) once all nine are on main.
+next: the live test (BUILD_PLAN § 3) once PR 9 is on main — the ZZ customer is the team inbox and the owner's cell; set up and read, the owner presses Send; then clear the session cards in .claude/sessions/active/ and move this file to done
 size: XL as a train of nine (S M M M L L M+migration M S); the switches themselves are the owner's presses, not code
-blocker: none — a session to build it. PR 7 carries the train's one migration (log_call).
-ver: proposed after v2.5681 · 5683 · 5686 · 5699 (punch list #139; its PRs 9–16 are still in the queue)
+blocker: none — the queue; each PR arms as the one below merges
+ver: v2.5709 · 5710 · 5711 · 5712 · 5713 · 5714 · 5715 · 5716 · 5717 (punch list #140; #139's PRs 11–16 landed the same day beneath it)
 opinion: build — the record is done and the office still reads it top to bottom; a desk, a lens and a strip turn six true sections into one next press and one honest number, and the switch card turns three silent gaps into three presses the owner can see.
 mockup: to-dos/messages-desk/mockup.html
 ---
@@ -235,15 +235,15 @@ contact).
 |---|---|---|---|---|
 | — | Proposal + mock-up + BUILD_PLAN | — | #5955 | merged 2026-10-21 |
 | 1 | Office hours card | v2.5709 | #5957 | merged 2026-10-21 |
-| 2 | Finish switching Messages on | v2.5712 | #5960 | armed 2026-10-21 |
-| 3 | Show: Mine · Everyone | v2.5713 | #5961 | filed 2026-10-21; armed once the PR below merges |
-| 4 | Nudge fills the step's words | v2.5714 | #5962 | filed 2026-10-21; armed once the PR below merges |
-| 5 | The last 7 days strip | v2.5715 | #5963 | filed 2026-10-21; armed once the PR below merges |
-| 6 | Answer all | v2.5716 | #5964 | filed 2026-10-21; armed once the PR below merges |
-| 7 | Log a call (+ migration `20261021010000_log_call`, `supabase db push` after merge; the Waiting on them hold moves to PR 4, since `waitingOnThem.ts` is the #139 stack's) | v2.5710 | #5958 | merged 2026-10-21; `db push` pending the client deploy |
-| 8 | A lead's doors | v2.5711 | #5959 | armed 2026-10-21 |
-| 9 | One front door; the guides | | | not started |
-| — | Live test (BUILD_PLAN § 3) | | | after 1–9 |
+| 2 | Finish switching Messages on | v2.5712 | #5960 | merged 2026-10-21 |
+| 3 | Show: Mine · Everyone | v2.5713 | #5961 | merged 2026-10-21 |
+| 4 | Nudge fills the step's words | v2.5714 | #5962 | merged 2026-10-21 |
+| 5 | The last 7 days strip | v2.5715 | #5963 | merged 2026-10-21 |
+| 6 | Answer all | v2.5716 | #5964 | merged 2026-10-21 |
+| 7 | Log a call (+ migration `20261021010000_log_call`, applied on prod 2026-10-21; types PR #5965 merged) | v2.5710 | #5958 | merged 2026-10-21 |
+| 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
+| 9 | One front door; the guides | v2.5717 | #5966 | armed 2026-10-21 |
+| — | Live test (BUILD_PLAN § 3) | | | next, once PR 9 is on main: the ZZ customer is the team inbox and the owner's cell; the session sets up and reads, the owner presses Send |
 
 Keep this table true after each PR (version, PR number, armed / merged / live). The session that
 proposed it (2026-10-21) built nothing; the owner chose another session to build the train.

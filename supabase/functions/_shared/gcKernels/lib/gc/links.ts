@@ -23,6 +23,12 @@ export const GC_MONEY_HREF = '/gc?view=money'
 
 /** Messages on the GC projects page (cut 1): every person the office talks with, and their threads. */
 export const GC_MESSAGES_HREF = '/gc?view=messages'
+/**
+ * Where GC projects' **Messages** pill goes since punch list #140 PR 9 (v2.5717): the office's one page, with Trade partners
+ * picked. `GC_MESSAGES_HREF` stays for the links in the wild (the reply push, the customer's bubble): `?view=messages&thread=`
+ * still draws the in-page view.
+ */
+export const GC_MESSAGES_PAGE_HREF = '/messages?kind=trade'
 
 /**
  * One person's thread over Messages, opened at a line when one is named (`useThreadWindow`'s `?thread=` and `?at=`).

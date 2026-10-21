@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { threadFromSearch } from '../../components/gc/messages/useThreadWindow'
-import { billDayFromSearch, billDayHref, GC_CUSTOMERS_HREF, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcBoardByFromSearch, gcFocusFromSearch, gcProjectHref, gcViewFromSearch, messagesThreadHref } from './links'
+import { billDayFromSearch, billDayHref, GC_CUSTOMERS_HREF, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcBoardByFromSearch, gcFocusFromSearch, gcProjectHref, gcViewFromSearch, messagesThreadHref, GC_MESSAGES_PAGE_HREF } from './links'
 
 describe('GC project links', () => {
   it('opens a GC project on its card on the GC projects page', () => {
@@ -52,5 +52,12 @@ describe('how Trade partners shows its companies', () => {
     expect(gcBoardByFromSearch(new URLSearchParams('by=trade'))).toBe('trade')
     expect(gcBoardByFromSearch(new URLSearchParams('by=columns'))).toBeNull()
     expect(gcBoardByFromSearch(new URLSearchParams(''))).toBeNull()
+  })
+})
+
+describe('GC projects’ Messages pill (punch list #140 PR 9)', () => {
+  it('is a door to the office’s one page with Trade partners picked; the in-page view keeps its address for the links in the wild', () => {
+    expect(GC_MESSAGES_PAGE_HREF).toBe('/messages?kind=trade')
+    expect(messagesThreadHref('c-greg', 'm-1')).toBe('/gc?view=messages&thread=c-greg&at=m-1')
   })
 })
