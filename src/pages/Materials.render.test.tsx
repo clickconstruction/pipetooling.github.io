@@ -115,7 +115,8 @@ const PO_BUILDER_ANCHOR = 'Search assemblies by name or description…'
 const PURCHASE_ORDERS_ANCHOR = 'Search purchase orders...'
 const PO_GENERATOR_ANCHOR = 'Search by HCP #, job name, or address…'
 // The office tab now opens with the Directory pane (to-dos/supply-house-directory, PR 1); its add button is the anchor.
-const SUPPLY_HOUSES_ANCHOR = 'Add vendor'
+// v2.5693: the Directory starts folded, so the tab's stable anchor is its folded header line.
+const SUPPLY_HOUSES_ANCHOR = /vendor(s)? — houses, reps and websites/
 
 describe('Materials page render smoke — dev sees every tab', () => {
   it('mounts the default Parts Book tab with all six tab buttons', async () => {

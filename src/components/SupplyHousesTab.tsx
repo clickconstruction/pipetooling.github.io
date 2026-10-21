@@ -343,6 +343,8 @@ export function SupplyHousesTab({
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
   // The three Accounts-payable toggles survive a refresh (v2.3568 — a May follow-up;
   // docs/recent-features/v2.3568.md). Per device; storage may be unavailable.
+  /** v2.5693: the Directory folds away — the office lives in Accounts payable (the owner's ask, 2026-10-21). Collapsed by default, remembered per device. */
+  const [directoryOpen, setDirectoryOpen] = useState(() => readRememberedToggle('directory-open', false))
   const [showPaidInvoices, setShowPaidInvoices] = useState(() => readRememberedToggle('show-paid-invoices', false))
   const [showLastPayment, setShowLastPayment] = useState(() => readRememberedToggle('show-last-payment', false))
   // v2.3604: the summary table's sort — every header a button, the pick remembered on the device.
@@ -378,6 +380,7 @@ export function SupplyHousesTab({
   )
   // B (decided 2026-09-17): job-account invoices stay in the cells; this marks their share.
   const [markJobAccountInvoices, setMarkJobAccountInvoices] = useState(() => readRememberedToggle('mark-job-account-invoices', true))
+  useEffect(() => writeRememberedToggle('directory-open', directoryOpen), [directoryOpen])
   useEffect(() => writeRememberedToggle('show-paid-invoices', showPaidInvoices), [showPaidInvoices])
   useEffect(() => writeRememberedToggle('show-last-payment', showLastPayment), [showLastPayment])
   useEffect(() => writeRememberedToggle('mark-job-account-invoices', markJobAccountInvoices), [markJobAccountInvoices])
@@ -1105,20 +1108,40 @@ export function SupplyHousesTab({
       {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       {houseEditor.error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{houseEditor.error}</p>}
 
-      {/* Pane 1 — the Directory: the same component the estimator's tab renders alone (to-dos/supply-house-directory). */}
-      <section style={{ marginBottom: '2.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+      {/* Pane 1 — the Directory: the same component the estimator's tab renders alone (to-dos/supply-house-directory).
+          v2.5693: it folds, and starts folded — the office's work is Accounts payable below; the header is the door. */}
+      <section style={{ marginBottom: directoryOpen ? '2.25rem' : '1.5rem' }}>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={directoryOpen}
+          title={directoryOpen ? 'Fold the Directory away' : 'Open the Directory'}
+          onClick={() => setDirectoryOpen((o) => !o)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return
+            e.preventDefault()
+            setDirectoryOpen((o) => !o)
+          }}
+          style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: directoryOpen ? '0.75rem' : 0, flexWrap: 'wrap', cursor: 'pointer' }}
+        >
+          <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{directoryOpen ? '▾' : '▸'}</span>
           <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Directory</h3>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>houses, reps and websites</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            {directoryOpen
+              ? 'houses, reps and websites'
+              : `${supplyHousesList.length} vendor${supplyHousesList.length === 1 ? '' : 's'} — houses, reps and websites`}
+          </span>
         </div>
-        <SupplyHouseDirectory
-          supplyHouses={supplyHousesList}
-          audience="office"
-          onAddHouse={houseEditor.openAdd}
-          onEditHouse={houseEditor.openEdit}
-          reloadKey={directoryReloadKey}
-          moneyByHouseId={supplyHouseSummaryLoading ? undefined : supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)}
-        />
+        {directoryOpen ? (
+          <SupplyHouseDirectory
+            supplyHouses={supplyHousesList}
+            audience="office"
+            onAddHouse={houseEditor.openAdd}
+            onEditHouse={houseEditor.openEdit}
+            reloadKey={directoryReloadKey}
+            moneyByHouseId={supplyHouseSummaryLoading ? undefined : supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)}
+          />
+        ) : null}
       </section>
 
       {/* Pane 2 — accounts payable: invoices, aging, balances. Office only; unchanged by the Directory split. */}
