@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { GcMessages } from '../components/gc/GcMessages'
+import { WaitingOnThem } from '../components/messages/WaitingOnThem'
 import { WentOutToday } from '../components/messages/WentOutToday'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useMessagesHost } from '../components/gc/messages/useMessagesHost'
@@ -158,6 +159,9 @@ export default function Messages() {
       )}
 
       {/* Went out (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
+      {/* Waiting on them (v2.5704): who went quiet after our send; Needs a reply above is who waits on us. */}
+      {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={thread.openThread} />}
+
       {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} />}
 
       {/* Everyone we have talked with (v2.5700): the people list with its search, for every pill the queues serve; the
