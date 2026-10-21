@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule } from '../lib/gc/access'
 import { pageGate } from '../lib/roleGate'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
@@ -363,7 +363,7 @@ export default function GcProjects() {
   const plansProjectId = params.get('plans')
   /** The questions window: `questions=<projectId>`. */
   const questionsProjectId = params.get('questions')
-  /** The schedule's window (the schedule's PR 7b): `schedule=<projectId>`, a dev's until the schedule's PR 10. */
+  /** The schedule's window (the schedule's PR 7b): `schedule=<projectId>`, the schedule's team's since its PR 10. */
   const scheduleProjectId = params.get('schedule')
   const [questionBusy, setQuestionBusy] = useState<string | null>(null)
   const [questionProblem, setQuestionProblem] = useState<string | null>(null)
@@ -1964,8 +1964,8 @@ export default function GcProjects() {
     else next.delete('schedule')
     setParams(next, { replace: true })
   }
-  // The schedule reads the board's job: a dev's only, as the gc_schedule_* tables are until the schedule's PR 10 (G-133).
-  const scheduleProject = scheduleProjectId && role === 'dev' ? (board?.projects.find((x) => x.id === scheduleProjectId) ?? null) : null
+  // The schedule reads the board's job: the schedule's team's, as the gc_schedule_* tables are since its PR 10 (G-133).
+  const scheduleProject = scheduleProjectId && canUseGcSchedule(role) ? (board?.projects.find((x) => x.id === scheduleProjectId) ?? null) : null
   const setSetWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('set', projectId)
@@ -2165,7 +2165,7 @@ export default function GcProjects() {
                   papers: canOpenGcProjects(role),
                   // Send the owner back to Prospects (v2.5561): the prospects staff, on a lost job.
                   prospects: Boolean(p.lostOn) && canAccessProspectPipeline(role, false),
-                  schedule: role === 'dev' && Boolean(board),
+                  schedule: canUseGcSchedule(role) && Boolean(board),
                   // Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is.
                   start: role === 'dev' && Boolean(board),
                   // The daily log (Building's U3a-ii), the punch list (U3b-ii), the submittals (U4b) and RFIs (U5b): a dev's
@@ -2234,7 +2234,7 @@ export default function GcProjects() {
                 plans: () => setPlansWindow(p.id),
                 ...(showNumber ? { number: () => setNumberOpen(p.id) } : {}),
                 ...(tabs > 0 ? { bidTabs: () => setTabsOpen(p.id) } : {}),
-                ...(role === 'dev' && board ? { schedule: () => setScheduleWindow(p.id) } : {}),
+                ...(canUseGcSchedule(role) && board ? { schedule: () => setScheduleWindow(p.id) } : {}),
                 ...(role === 'dev' && board && (p.stage === 'buyout' || p.stage === 'building') && !p.lostOn ? { start: () => setStartWindow(p.id) } : {}),
                 ...(canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' ? { log: () => setLogWindow(p.id) } : {}),
                 ...(canUseGcBuilding(role) && board && p.stage === 'building' ? { submittals: () => setSubmittalsWindow(p.id) } : {}),
@@ -2458,7 +2458,7 @@ export default function GcProjects() {
           state={board}
           project={scheduleProject}
           by={profileName ?? 'The office'}
-          canMove={role === 'dev'}
+          canMove={canUseGcSchedule(role)}
           canPull={canUseGcBuilding(role)}
           canTell={canSendGcTradeEmail(role)}
           reads={scheduleReads}

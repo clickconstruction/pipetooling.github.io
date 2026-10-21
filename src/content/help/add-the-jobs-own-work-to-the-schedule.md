@@ -1,13 +1,13 @@
 ---
 title: add the job's own work to the schedule
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, schedule, own work, mobilize, cure time, customer's work, milestone, date to meet, gantt
 order: 107
 ---
 Some work on a job is no trade's line. Mobilizing, cure time and the customer's own work get bars of their own on the schedule. The schedule also keeps the dates the job must meet.
 
-Only devs can change the schedule for now. The rest of the office gets the Schedule window later.
+The office and estimators can open the schedule. Superintendents get it later.
 
 ## Add the job's own work
 

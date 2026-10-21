@@ -21,11 +21,7 @@ const PRINTS = /openHtmlPrintWindow\(|printHtmlInNewWindow\(|print:\s*true|\.pri
 const FILES_A_COPY = /lib\/sent\/sentCopiesIo'|from '\.\/sentCopiesIo'/
 
 /** Goes to someone outside the company and keeps no copy yet. Remove a row when the file is wired. */
-const PRINTS_OWED: ReadonlyArray<string> = [
-  // GC mode's schedule chart, Print or PDF (the schedule's PR 7a): the customer's pages go to them. A dev's only until the
-  // schedule's PR 10, which files it with printAndFile before the office can print it.
-  'components/gc/GcGanttPrint.tsx',
-]
+const PRINTS_OWED: ReadonlyArray<string> = []
 
 /** Prints that are not a send, each with why. */
 const NOT_A_SEND: Readonly<Record<string, string>> = {

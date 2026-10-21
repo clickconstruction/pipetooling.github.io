@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs supabase/tests/gc_schedule against a throwaway copy of the WHOLE schema (v2.4848, the schedule's PR 5).
+# Runs supabase/tests/gc_schedule against a throwaway copy of the WHOLE schema (v2.4848, the schedule's PR 5;
+# the team door, v2.5114, the schedule's PR 10).
 #
 #   npm run test:pg:gc-schedule
 #
@@ -13,6 +14,8 @@
 # on a job of its own, ending "gc_schedule tells PASSED". Since PR 14a the trade's four writes are applied a second
 # time too, and 40_trade_writes.sql plays them on a job of its own, ending "gc_schedule trade writes PASSED".
 # PGTEST_KEEP=1 leaves the container
+# The team door (50_team_door.sql) then proves who the 23 tables let in, on its own
+# fixture, ending "gc_schedule team door PASSED".
 # up. Needs docker; .github/workflows/sql-beds.yml runs it on a PR that touches the schedule's SQL.
 # Never touches prod.
 set -euo pipefail
@@ -24,7 +27,7 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_gc_schedule_writes.sql)"
 TELLS="$(ls supabase/migrations/*_gc_schedule_tells.sql)"
 TRADE_WRITES="$(ls supabase/migrations/*_gc_schedule_trade_writes.sql)"
-
+DOOR="$(ls supabase/migrations/*_gc_schedule_team_door.sql)"
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
 
@@ -48,6 +51,7 @@ done
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 psql_as postgres -f - < "$TELLS" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $TELLS"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 psql_as postgres -f - < "$TRADE_WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $TRADE_WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+psql_as postgres -f - < "$DOOR" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $DOOR"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_schedule/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_schedule PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
@@ -58,5 +62,9 @@ grep -o "ok: .*" <<<"$out"
 # A trade's four writes from its portal (the schedule's PR 14a): a job of its own, in a transaction of its own.
 out="$(psql_as postgres -f - < supabase/tests/gc_schedule/40_trade_writes.sql 2>&1 || true)"
 if ! grep -q "gc_schedule trade writes PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# The team door (the schedule's PR 10): who the 23 tables let in, on its own fixture.
+out="$(psql_as postgres -f - < supabase/tests/gc_schedule/50_team_door.sql 2>&1 || true)"
+if ! grep -q "gc_schedule team door PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "gc-schedule bed ok"

@@ -8,12 +8,12 @@
  * edit here.
  */
 import type { UserRole } from '../../hooks/useAuth'
-import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM } from './access'
+import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_SCHEDULE_TEAM } from './access'
 import { GC_TABLE_DOORS, type GcDoor } from './doors'
 import type { GcStage } from './types'
 
-/** Who a door lets read: the database's `gc_office_team()`, `gc_money_team()` and `is_dev()`. */
-const DOOR_READERS: Record<GcDoor, readonly UserRole[]> = { office: GC_OFFICE_TEAM, money: GC_MONEY_TEAM, dev: ['dev'] }
+/** Who a door lets read: the database's `gc_office_team()`, `gc_on_schedule_team()`, `gc_money_team()` and `is_dev()`. */
+const DOOR_READERS: Record<GcDoor, readonly UserRole[]> = { office: GC_OFFICE_TEAM, schedule: GC_SCHEDULE_TEAM, money: GC_MONEY_TEAM, dev: ['dev'] }
 
 /** What the ring counts that is not a GC table, each with who reads it. */
 export const GC_OTHER_SOURCES: Record<string, { about: string; readers: readonly UserRole[] }> = {

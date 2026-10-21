@@ -5,7 +5,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import { MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from '../../../supabase/functions/_shared/messagesTeams'
-import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canReadJobMessages, canOpenOwnerContractFile, readsCustomerLinesInJobUpdates, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
+import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_SCHEDULE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canReadJobMessages, canOpenOwnerContractFile, readsCustomerLinesInJobUpdates, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -182,6 +182,29 @@ describe('canUseGcBuilding', () => {
     const building = Object.values(GC_TABLE_DOORS).filter((d) => d.lane === 'Building')
     expect(building.length).toBeGreaterThan(0)
     expect(building.every((d) => d.door === 'dev')).toBe(GC_BUILDING_TEAM.length === 1 && GC_BUILDING_TEAM[0] === 'dev')
+  })
+})
+
+describe('canUseGcSchedule', () => {
+  it('opens the schedule to the office and estimators, as gc_on_schedule_team()’s office arm does', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as UserRole[]) {
+      expect(canUseGcSchedule(role)).toBe(true)
+    }
+  })
+
+  it('keeps the field, the subs and a session with no role yet out, the superintendent until Building’s door', () => {
+    for (const role of ['superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canUseGcSchedule(role)).toBe(false)
+    }
+    expect(canUseGcSchedule(null)).toBe(false)
+    expect(canUseGcSchedule(undefined)).toBe(false)
+  })
+
+  it('is the office team exactly while doors.ts puts every schedule table behind the schedule’s door, so Building’s door changes both', () => {
+    const schedule = Object.values(GC_TABLE_DOORS).filter((d) => d.lane === 'Schedule')
+    expect(schedule).toHaveLength(23)
+    expect(schedule.every((d) => d.door === 'schedule')).toBe(true)
+    expect([...GC_SCHEDULE_TEAM].sort()).toEqual(teamInSql('gc_office_team').sort())
   })
 })
 

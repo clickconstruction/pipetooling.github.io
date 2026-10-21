@@ -150,7 +150,7 @@ const NO_READS: ScheduleReads = {}
 
 /**
  * The board's state (`boardStateFromRows`), the job to read, who prints and moves (the paper's foot, the move's name),
- * and whether this person may move a bar (a dev's until the schedule's PR 10). `canPull`: whether they may also pull work
+ * and whether this person may move a bar (the schedule's team since its PR 10). `canPull`: whether they may also pull work
  * in and get days back (G-37, G-82), which read Building's submittals and RFIs, so a dev's until Building's door.
  */
 /** The Follow up sheet's log on the schedule (the Board's B2b-viii-a): the page's presses, and who signs the draft. */
@@ -868,6 +868,7 @@ function ScheduleView({
           peopleOf={peopleOf}
           crowded={crowded}
           {...(printJob && !inCopy ? { print: printJob } : {})}
+          printFiling={{ projectId: project.id, customerId: project.customerId || null, customerName: project.owner || null }}
           {...(ghosts ? { real: ghosts } : {})}
           {...(copy ? { toolbarExtra: <GcWhatIfButton project={realProject} shown={inCopy} busy={copy.busy} onStart={copy.start} onShow={showCopy} /> } : {})}
           company={company}

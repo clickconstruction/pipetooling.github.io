@@ -24,13 +24,13 @@ describe('which stages’ rings a reader sees (the Board’s B2b-vi-c)', () => {
     expect(sourceReaders('gc_sows')).not.toContain('estimator')
   })
 
-  it('gives each office role today’s rings: bidding for everyone, buying out and building for a dev only', () => {
+  it('gives each office role today’s rings: bidding for everyone, buying out for the money team since the schedule’s door (its PR 10), building for a dev only', () => {
     const today = Object.fromEntries(GC_OFFICE_TEAM.map((role) => [role, [...ringStages(role)].sort()]))
     expect(today).toEqual({
       dev: ['building', 'buyout', 'pursuing'],
-      master_technician: ['pursuing'],
+      master_technician: ['buyout', 'pursuing'],
       assistant: ['pursuing'],
-      controller: ['pursuing'],
+      controller: ['buyout', 'pursuing'],
       estimator: ['pursuing'],
     })
   })

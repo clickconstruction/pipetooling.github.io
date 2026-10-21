@@ -1,19 +1,28 @@
 /**
  * GC mode, the real build, the schedule's PR 7a: the chart's Print or PDF (G-21). Moved word for
  * word from the GC mode prototype (branch spike/gc-mode, `GcGanttPrint.tsx`); the plan is
- * to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
+ * to-dos/gc-mode/mockups/schedule-pr7.md on that branch. Since the schedule's PR 10 a print is a send: it keeps a
+ * copy in Documents (`printAndFile`, docs/SENT_COPIES.md), the customer's pages under their name.
  */
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ganttPrint, ganttPrintHtml, type GanttPrintFor, type GanttPrintInput } from '../../lib/gc/schedule/ganttPrint'
-import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { Btn } from './gcUi'
+
+/** Where a printed schedule files its copy (the schedule's PR 10): the job, and its customer for the customer's pages. */
+export interface GanttPrintFiling {
+  projectId: string
+  customerId: string | null
+  customerName: string | null
+}
 
 /** How wide the document lays out on a screen: an 11 in sheet and the page's margin, in CSS pixels. */
 const DOC_W = 1088
 
-export function GcGanttPrint({ input, onClose }: { input: Omit<GanttPrintInput, 'for'>; onClose: () => void }) {
+export function GcGanttPrint({ input, filing, onClose }: { input: Omit<GanttPrintInput, 'for'>; filing?: GanttPrintFiling; onClose: () => void }) {
   const [forWhom, setForWhom] = useState<GanttPrintFor>('team')
+  const [blocked, setBlocked] = useState(false)
   const print = useMemo(() => ganttPrint({ ...input, for: forWhom }), [input, forWhom])
   const html = useMemo(() => ganttPrintHtml(print), [print])
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
@@ -80,6 +89,11 @@ export function GcGanttPrint({ input, onClose }: { input: Omit<GanttPrintInput, 
             />
           </div>
         </div>
+        {blocked && (
+          <div role="alert" style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
+            The print window was blocked. Allow pop-ups for this site and press it again.
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
           <Btn kind="quiet" onClick={onClose}>
             Cancel
@@ -88,7 +102,17 @@ export function GcGanttPrint({ input, onClose }: { input: Omit<GanttPrintInput, 
             kind="primary"
             title="Opens the pages in the print dialog. Save as PDF is one of the printers there."
             onClick={() => {
-              printHtmlInNewWindow(html)
+              const sent = printAndFile(html, {
+                kind: 'gc_schedule_print',
+                title: print.title,
+                recipientName: forWhom === 'customer' ? (filing?.customerName ?? 'The customer') : 'The job’s team',
+                customerId: filing?.customerId ?? null,
+                source: filing ? { table: 'gc_schedules', id: filing.projectId } : null,
+              })
+              if (!sent) {
+                setBlocked(true)
+                return
+              }
               onClose()
             }}
           >

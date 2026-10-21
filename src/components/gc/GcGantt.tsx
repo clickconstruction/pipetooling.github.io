@@ -21,7 +21,7 @@ import { GcPeopleStrip } from './GcPeopleStrip'
 import { GcCrowdedLane } from './GcPlaces'
 import { TRADES_IN_ONE_PLACE, crowdedPlaces, type CrowdedWeek } from '../../lib/gc/schedule/places'
 import type { PeopleWeek } from '../../lib/gc/schedule/peopleOnSite'
-import { GcGanttPrint } from './GcGanttPrint'
+import { GcGanttPrint, type GanttPrintFiling } from './GcGanttPrint'
 import { GcScheduleExport } from './GcScheduleExport'
 import type { GanttPrintJob } from '../../lib/gc/schedule/ganttPrint'
 
@@ -136,6 +136,7 @@ export function GcGantt({
   crowded,
   callList,
   print,
+  printFiling,
   earlier,
   real,
   toolbarExtra,
@@ -181,6 +182,8 @@ export function GcGantt({
   callList?: ReactNode
   /** The job's words for Print or PDF (G-21). Unset: the toolbar has no print button. */
   print?: GanttPrintJob
+  /** Where Print or PDF files its copy (the schedule's PR 10): the job and its customer. */
+  printFiling?: GanttPrintFiling
   /** Where each bar could start now that the work before it finished early (G-37): a green ghost behind it, and a line on its hover card. */
   earlier?: Map<string, { start: string; finish: string; words: string }>
   /** In a what-if copy (G-81): the real schedule's dates under each bar the copy moved, a grey ghost behind it and a line on its hover card. */
@@ -1223,7 +1226,7 @@ export function GcGantt({
       {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} crowded={Boolean(crowded && crowded.length > 0)} parts={all.some((b) => (b.item.activity.parts ?? []).length > 0)} />}
       {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} realSpan={real?.get(hovered.id) ?? null} />}
       {view === 'chart' && partHover && !partDrag && byId.get(partHover.lineId) && <GanttPartHoverCard bar={byId.get(partHover.lineId)!} partId={partHover.partId} at={partHover} building={building} today={today} />}
-      {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
+      {printing && printInput && <GcGanttPrint input={printInput} {...(printFiling ? { filing: printFiling } : {})} onClose={() => setPrinting(false)} />}
       {exporting && printInput && <GcScheduleExport input={printInput} onClose={() => setExporting(false)} />}
     </div>
   )
