@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiet hours</title>
+<style>
+  /* Punch list #141. The tokens are src/index.css's, light and dark, so the cards read as the app draws them.
+     Every person, number and time here is made up: the office is Taunya, Evan and Rosa; the tech is Luis; the
+     customer is Dana Whitfield. Today is Tue Oct 21, 2026. */
+  :root {
+    color-scheme: light;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb;
+    --text-blue-500: #3b82f6; --text-blue-700: #1d4ed8; --text-red-700: #b91c1c; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --border-amber: #fcd34d; --bg-blue-tint: #eff6ff; --border-blue: #bfdbfe; --bg-green-tint: #f0fdf4; --border-green: #bbf7d0;
+    --shadow: 0 8px 24px rgba(15, 23, 42, .12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa;
+    --text-blue-500: #60a5fa; --text-blue-700: #93c5fd; --text-red-700: #f87171; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --border-amber: #92400e; --bg-blue-tint: #1e3358; --border-blue: #1e40af; --bg-green-tint: #12301f; --border-green: #166534;
+    --shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 92ch; }
+  .theme { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 6px 14px; cursor: pointer; margin-top: 22px; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  .lede { margin: 0 0 14px; color: var(--text-700); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--text-700); max-width: 100ch; }
+  .note b { color: var(--text-strong); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--bg-subtle); color: var(--text-700); border: 1px solid var(--border); border-bottom: 0; }
+  .cap.green { background: var(--bg-green-tint); color: var(--text-green-700); border-color: var(--border-green); }
+  .cap.blue { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: var(--border-blue); }
+  .cap.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--border); border-top: 0; border-radius: 0 0 8px 8px; background: var(--bg-muted); padding: 18px 14px; display: flex; justify-content: center; overflow: auto; }
+  /* the settings page frame */
+  .page { width: 560px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .page .ph { padding: 10px 18px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; color: var(--text-muted); }
+  .page .ph b { color: var(--text-strong); font-size: 15px; }
+  .page .pb { padding: 14px 18px 18px; display: grid; gap: 14px; }
+  /* the app's card, as OfficeHoursSettingsCard draws it */
+  .card { border: 1px solid var(--border); border-radius: 10px; padding: .8rem .9rem; display: grid; gap: .6rem; background: var(--surface); }
+  .card h3 { margin: 0; font-size: 1rem; color: var(--text-strong); }
+  .card .what { margin: 0; font-size: .9rem; }
+  .card .muted { color: var(--text-muted); font-size: .85rem; margin: 0; }
+  .card .bad { color: var(--text-red-700); font-size: .85rem; margin: 0; }
+  .card .amberline { margin: 0; font-size: .85rem; color: var(--text-amber-800); background: var(--bg-amber-tint); border: 1px solid var(--border-amber); border-radius: 8px; padding: .4rem .6rem; }
+  .sw { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; font-size: .9rem; }
+  .sw .toggle { border: 1px solid var(--border-strong); border-radius: 999px; padding: .15rem .7rem; font-size: .85rem; font-weight: 600; background: var(--surface); color: var(--text-base); margin-left: auto; }
+  .sw .toggle.on { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .days { display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; }
+  .days span.l { font-size: .9rem; margin-right: .2rem; }
+  .day { border: 1px solid var(--border-strong); border-radius: 999px; padding: .15rem .6rem; font-size: .85rem; font-weight: 600; background: var(--surface); color: var(--text-base); }
+  .day.on { background: var(--text-blue-500); border-color: var(--text-blue-500); color: #fff; }
+  .times { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; font-size: .9rem; }
+  .time { padding: .25rem .4rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-base); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .btns { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--border-strong); border-radius: 6px; padding: .25rem .7rem; font-size: .85rem; background: var(--surface); color: var(--text-muted); font-weight: 600; }
+  .btn.live { background: var(--text-blue-500); border-color: var(--text-blue-500); color: #fff; }
+  .btn.plain { font-weight: 400; color: var(--text-base); }
+  .fold { font-size: .85rem; color: var(--text-link); font-weight: 600; }
+  .sub { display: grid; gap: .5rem; padding: .6rem .7rem; border: 1px dashed var(--border-strong); border-radius: 8px; }
+  .sub .k { font-size: .8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .hidden-note { font-size: 11.5px; color: var(--text-faint); font-style: italic; }
+  /* the thread header and the phone */
+  .thread { width: 520px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 16px; display: grid; gap: 8px; }
+  .thread .who { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .thread .who b { font-size: 16px; color: var(--text-strong); }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--border-strong); background: var(--bg-subtle); color: var(--text-700); white-space: nowrap; }
+  .pill.amber { background: var(--bg-amber-tint); border-color: var(--border-amber); color: var(--text-amber-800); }
+  .thread .hover { font-size: 12.5px; color: var(--text-muted); border-left: 3px solid var(--border-strong); padding-left: 8px; }
+  .thread .line { font-size: 13px; color: var(--text-700); padding: 8px 10px; border-radius: 8px; background: var(--bg-subtle); }
+  .thread .line.gray { color: var(--text-muted); font-style: italic; }
+  .phone { width: 340px; flex: 0 0 auto; background: var(--text-strong); border-radius: 28px; padding: 18px 14px 26px; box-shadow: var(--shadow); display: grid; gap: 10px; }
+  .phone .clock { color: var(--bg-page); text-align: center; font-size: 34px; font-weight: 300; letter-spacing: -.02em; }
+  .phone .date { color: var(--bg-page); text-align: center; font-size: 13px; opacity: .8; margin-top: -8px; }
+  .notif { background: var(--surface); border-radius: 16px; padding: 10px 12px; display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: start; color: var(--text-base); }
+  .notif .app { width: 28px; height: 28px; border-radius: 7px; background: var(--text-blue-500); }
+  .notif .t { font-weight: 700; font-size: 13px; }
+  .notif .b { font-size: 12.5px; color: var(--text-700); }
+  .notif .when { font-size: 11px; color: var(--text-muted); }
+  /* the rule, as three lenses */
+  .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0 0; }
+  .lens { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+  .lens p { margin: 0; color: var(--text-700); font-size: 13px; }
+  .lens p + p { margin-top: 6px; }
+  table.map { border-collapse: collapse; width: 100%; max-width: 900px; margin: 14px 0 0; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table.map th, table.map td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.map th { background: var(--bg-subtle); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+  table.map tr:last-child td { border-bottom: 0; }
+  .verb { font-weight: 700; }
+  .verb.hold { color: var(--text-amber-800); }
+  .verb.hand { color: var(--text-blue-700); }
+  .verb.ignore { color: var(--text-muted); }
+  @media (max-width: 640px) { .page, .thread { width: 100%; } .phone { width: 300px; } header.top { grid-template-columns: 1fr; } .theme { margin-top: 0; justify-self: start; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #141 · proposed 2026-10-21 · nothing built</p>
+      <h1>Quiet hours: the office around the clock, and each person's own hours for pushes</h1>
+      <p>Two cards. The company's <b>Office hours</b> card on Phone and texts gains one switch. Each person's <b>Your account</b> page gains a <b>Quiet hours</b> card. A push that lands in your quiet hours waits for you, and a customer's reply still reaches the office after the reply push wait.</p>
+    </div>
+    <button class="theme" type="button" onclick="(function(){var h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark';})()">Light / Dark</button>
+  </header>
+
+  <h2><span class="num">1</span> Office hours, the switch off</h2>
+  <p class="lede">The card as it is today, with one row added above the days: <b>The office is open around the clock</b>. Off, the days and times are the card's as before. The tech's hour, which only a dev sets today, is read back as a line so the owner can see it.</p>
+  <div class="row">
+    <div>
+      <div class="cap">Settings → Phone and texts → Office hours <span class="r">the owner or a dev</span></div>
+      <div class="fit">
+        <div class="page">
+          <div class="ph"><b>Phone and texts</b> Send texts · Who gets it · Inboxes · Reply push · Office hours</div>
+          <div class="pb">
+            <section class="card">
+              <h3>Office hours</h3>
+              <p class="what">When the office is in. After hours a reply waits for the morning, and the office hears it first.</p>
+              <div class="sw"><span>The office is open around the clock</span><span class="toggle">Off</span></div>
+              <div class="days"><span class="l">Days</span><span class="day">Sun</span><span class="day on">Mon</span><span class="day on">Tue</span><span class="day on">Wed</span><span class="day on">Thu</span><span class="day on">Fri</span><span class="day">Sat</span></div>
+              <div class="times"><span>Opens</span><span class="time">07:30 AM</span><span>Closes</span><span class="time">05:00 PM</span></div>
+              <p class="muted">Mon to Fri, 7:30 AM to 5:00 PM</p>
+              <p class="muted">A tech who texts a customer keeps the replies until 5:00 PM.</p>
+              <div class="btns"><span class="btn">Save the hours</span><span class="btn plain">Put them back</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>Nothing moved.</b> The day toggles, the two times, the read-back line and the two buttons are v2.5709's. The switch row and the tech's-hour line are the two additions.</p>
+    </div>
+  </div>
+
+  <h2><span class="num">2</span> Office hours, the switch on</h2>
+  <p class="lede">On, the days and times fold away and the line reads the one true thing. Under it, what 24/7 means for the pieces that read the hours, in three short lines. The row keeps the old days and times under the switch, so Off puts them back.</p>
+  <div class="row">
+    <div>
+      <div class="cap green">The switch on <span class="r">saves always: true, the hours kept</span></div>
+      <div class="fit">
+        <div class="page">
+          <div class="ph"><b>Phone and texts</b> Send texts · Who gets it · Inboxes · Reply push · Office hours</div>
+          <div class="pb">
+            <section class="card">
+              <h3>Office hours</h3>
+              <p class="what">When the office is in. After hours a reply waits for the morning, and the office hears it first.</p>
+              <div class="sw"><span>The office is open around the clock</span><span class="toggle on">On</span></div>
+              <p class="muted">Open around the clock.</p>
+              <p class="muted">Whoever has a reply hears at once. The office hears after the reply push wait, at 3 AM as at 3 PM.</p>
+              <p class="muted">The after-hours text never goes while this is on.</p>
+              <p class="muted">A tech who texts a customer keeps the replies until 5:00 PM.</p>
+              <div class="btns"><span class="btn live">Save the hours</span><span class="btn plain">Put them back</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>The kernel keeps a boolean.</b> <code>always: true</code> in the same JSON, read by <code>parseOfficeHours</code>: the office is open at every instant, there is no next opening and no last close, and the after-hours answer is never due. Not 00:00 to 23:59, which leaves one closed minute a day and a line that reads <i>12:00 AM to 11:59 PM</i>.</p>
+    </div>
+    <div>
+      <div class="cap amber">The switch on, once Quiet hours ship (PR 4) <span class="r">the coverage line</span></div>
+      <div class="fit">
+        <div class="page">
+          <div class="ph"><b>Phone and texts</b> Send texts · Who gets it · Inboxes · Reply push · Office hours</div>
+          <div class="pb">
+            <section class="card">
+              <h3>Office hours</h3>
+              <p class="what">When the office is in. After hours a reply waits for the morning, and the office hears it first.</p>
+              <div class="sw"><span>The office is open around the clock</span><span class="toggle on">On</span></div>
+              <p class="muted">Open around the clock.</p>
+              <p class="amberline">Nobody hears a reply from 11 PM to 6 AM. Rosa, Evan and Taunya are all quiet then.</p>
+              <p class="muted">Whoever has a reply hears at once. The office hears after the reply push wait, at 3 AM as at 3 PM.</p>
+              <p class="muted">The after-hours text never goes while this is on.</p>
+              <p class="muted">A tech who texts a customer keeps the replies until 5:00 PM.</p>
+              <div class="btns"><span class="btn">Save the hours</span><span class="btn plain">Put them back</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>Where the two settings meet.</b> The company says the office is open. The people's quiet hours say whether anyone is. The amber line is the gap, read from everyone's quiet rows, and it is the owner's to act on. It draws only while the switch is on and only when a gap exists.</p>
+    </div>
+  </div>
+
+  <h2><span class="num">3</span> Quiet hours on Your account</h2>
+  <p class="lede">The recommended shape: a switch, seven day toggles as the Office hours card draws them, one window that may cross midnight, a line that reads it back, and a plain line that says what happens to a push that lands inside it. Weekends get their own window behind a fold, off until the owner asks for it.</p>
+  <div class="row">
+    <div>
+      <div class="cap blue">Settings → Your account → Quiet hours <span class="r">each person's own</span></div>
+      <div class="fit">
+        <div class="page">
+          <div class="ph"><b>Your account</b> Your profile · Your bio · My way · Push Notifications · <u>Quiet hours</u> · Report notifications</div>
+          <div class="pb">
+            <section class="card">
+              <h3>Quiet hours</h3>
+              <p class="what">When your phone is not pushed. Days and times are the company's, Central time.</p>
+              <div class="sw"><span>Quiet hours</span><span class="toggle on">On</span></div>
+              <div class="days"><span class="l">Days</span><span class="day on">Sun</span><span class="day on">Mon</span><span class="day on">Tue</span><span class="day on">Wed</span><span class="day on">Thu</span><span class="day on">Fri</span><span class="day on">Sat</span></div>
+              <div class="times"><span>Quiet from</span><span class="time">08:00 PM</span><span>to</span><span class="time">06:00 AM</span></div>
+              <p class="muted">Quiet every day, 8:00 PM to 6:00 AM.</p>
+              <p class="what">A push that comes in your quiet hours waits for you. You get one push when they end, with what waited. A customer's reply also goes to the office after the reply push wait. Nobody waits on a sleeping phone.</p>
+              <span class="fold">Different hours on weekends ›</span>
+              <div class="btns"><span class="btn live">Save my hours</span><span class="btn plain">Put them back</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>Shape C, days plus one window</b>, over a single on/off that means nothing under 24/7, and over a weekly grid of 168 cells for a choice made once. The row is <code>user_quiet_hours</code>, one per person, the <code>tell_customer_prefs</code> shape: read fail-soft, saved with one button.</p>
+    </div>
+    <div>
+      <div class="cap">The fold open <span class="r">the owner's call, decision 2</span></div>
+      <div class="fit">
+        <div class="page">
+          <div class="pb">
+            <section class="card">
+              <h3>Quiet hours</h3>
+              <div class="sw"><span>Quiet hours</span><span class="toggle on">On</span></div>
+              <div class="days"><span class="l">Days</span><span class="day">Sun</span><span class="day on">Mon</span><span class="day on">Tue</span><span class="day on">Wed</span><span class="day on">Thu</span><span class="day on">Fri</span><span class="day">Sat</span></div>
+              <div class="times"><span>Quiet from</span><span class="time">08:00 PM</span><span>to</span><span class="time">06:00 AM</span></div>
+              <div class="sub">
+                <span class="k">Weekends</span>
+                <div class="times"><span>Quiet from</span><span class="time">06:00 PM</span><span>to</span><span class="time">08:00 AM</span></div>
+                <span class="hidden-note">A day toggled off above has no quiet hours on its own. Sat and Sun take this window.</span>
+              </div>
+              <p class="muted">Quiet Mon to Fri, 8:00 PM to 6:00 AM. Sat and Sun, 6:00 PM to 8:00 AM.</p>
+              <span class="fold">One window for every day ›</span>
+              <div class="btns"><span class="btn live">Save my hours</span><span class="btn plain">Put them back</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div class="cap" style="margin-top:18px">What stops a save, and the card off</div>
+      <div class="fit" style="flex-direction:column;gap:14px;align-items:center">
+        <div class="page">
+          <div class="pb">
+            <section class="card">
+              <h3>Quiet hours</h3>
+              <div class="sw"><span>Quiet hours</span><span class="toggle on">On</span></div>
+              <div class="days"><span class="l">Days</span><span class="day">Sun</span><span class="day">Mon</span><span class="day">Tue</span><span class="day">Wed</span><span class="day">Thu</span><span class="day">Fri</span><span class="day">Sat</span></div>
+              <div class="times"><span>Quiet from</span><span class="time">08:00 PM</span><span>to</span><span class="time">06:00 AM</span></div>
+              <p class="bad">Pick at least one day.</p>
+              <div class="btns"><span class="btn">Save my hours</span><span class="btn plain">Put them back</span></div>
+            </section>
+          </div>
+        </div>
+        <div class="page">
+          <div class="pb">
+            <section class="card">
+              <h3>Quiet hours</h3>
+              <p class="what">When your phone is not pushed. Days and times are the company's, Central time.</p>
+              <div class="sw"><span>Quiet hours</span><span class="toggle">Off</span></div>
+              <p class="muted">No quiet hours. Every push reaches you when it is sent.</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">4</span> What the office sees, and what you get at 6 AM</h2>
+  <p class="lede">A held push is still a row in the app. The thread's pill says who is quiet, the office's wait runs as it does today, and the one catch-up push at the quiet end counts what waited.</p>
+  <div class="row">
+    <div>
+      <div class="cap">The thread's header on Messages <span class="r">the holder is quiet</span></div>
+      <div class="fit">
+        <div class="thread">
+          <div class="who"><b>Dana Whitfield</b><span class="pill amber">Open · Rosa, quiet until 6 AM</span></div>
+          <div class="hover">Rosa has the replies and is quiet until 6 AM. The office hears after 15 minutes when nobody writes back. Rosa gets one push at 6 AM with what waited.</div>
+          <div class="line"><b>Dana</b> · 11:42 PM · Is it ok if I leave the water off overnight?</div>
+          <div class="line gray">Nobody answered Dana in 15 minutes. Evan and Taunya were pushed. Rosa is quiet until 6 AM.</div>
+        </div>
+      </div>
+      <div class="cap amber" style="margin-top:18px">The thread's header <span class="r">every office member is quiet</span></div>
+      <div class="fit">
+        <div class="thread">
+          <div class="who"><b>Dana Whitfield</b><span class="pill amber">Open · the office is quiet until 6 AM</span></div>
+          <div class="hover">Everyone in the office is quiet until 6 AM. The reply waits on Needs a reply. Each of them gets one push at 6 AM with what waited.</div>
+          <div class="line"><b>Dana</b> · 11:42 PM · Is it ok if I leave the water off overnight?</div>
+        </div>
+      </div>
+      <p class="note"><b>The office's wait is unchanged.</b> It runs from the reply's time, to the office members who are not quiet. The holder being quiet never delays it. When everyone is quiet, the row waits as a reply after hours waits today, and the Office hours card says so in amber.</p>
+    </div>
+    <div>
+      <div class="cap green">The catch-up push at the quiet end <span class="r">one, not nine</span></div>
+      <div class="fit">
+        <div class="phone">
+          <div class="clock">6:00</div>
+          <div class="date">Wednesday, October 22</div>
+          <div class="notif"><span class="app"></span><div><div class="t">ClickTooling</div><div class="b">While you were quiet: 3 replies and a work order waited. Open the Dashboard.</div></div><span class="when">now</span></div>
+        </div>
+      </div>
+      <p class="note"><b>One push per person, counted by kind.</b> A reply someone answered meanwhile is not counted. It opens the Dashboard, where the Needs you card and Messages carry each item. Before PR 4 lands a held push is simply held, and the thread's line says so.</p>
+    </div>
+  </div>
+
+  <h2><span class="num">5</span> The rule, in three words</h2>
+  <p class="lede">The company's hours gate what customers see. A person's quiet hours gate what reaches that person. Each push the app sends takes one verb.</p>
+  <div class="lenses">
+    <div class="lens"><h3>Hold</h3><p>The push is not sent now. The row is written as held, and the person gets the catch-up push when their quiet hours end.</p><p>Every push to a teammate about their own work: a work order, a bid marked for them, a report, a clause to approve, a check that came back.</p></div>
+    <div class="lens"><h3>Hold and hand on</h3><p>A customer's reply. The quiet holder is held. The office's wait push goes as today, to the office members who are awake.</p><p>No customer waits on a sleeping phone, and no sleeping phone is buzzed.</p></div>
+    <div class="lens"><h3>Ignore</h3><p>The Settings test push, which the person pressed to see one.</p><p>Everything that is not a push to a person: texts to customers, the morning run, Today's sends, the Needs you card, every email stream.</p></div>
+  </div>
+  <table class="map">
+    <thead><tr><th>Push</th><th>Who gets it today</th><th>Verb</th></tr></thead>
+    <tbody>
+      <tr><td>A reply, to whoever has it</td><td>the tech or the office's pick, at once</td><td><span class="verb hand">hold and hand on</span></td></tr>
+      <tr><td>A reply, the office after the wait</td><td>the office, after 15 minutes when nobody wrote back</td><td><span class="verb hold">hold</span>, per member</td></tr>
+      <tr><td>A reply after hours</td><td>the whole office at once</td><td><span class="verb hold">hold</span>, per member</td></tr>
+      <tr><td>A dispatch or estimator request</td><td>the group; then the requester</td><td><span class="verb hold">hold</span>, per member</td></tr>
+      <tr><td>A work order, a checklist, a reminder, a report</td><td>the person named</td><td><span class="verb hold">hold</span></td></tr>
+      <tr><td>A bid marked for someone, a call-again day, Ready to Bill</td><td>the person named</td><td><span class="verb hold">hold</span></td></tr>
+      <tr><td>A clause to approve, a lien notice to approve, a returned check, take them again</td><td>the approvers, the leader, the office</td><td><span class="verb hold">hold</span></td></tr>
+      <tr><td>The Settings test push</td><td>you</td><td><span class="verb ignore">ignore</span></td></tr>
+      <tr><td>Texts to customers, the morning run, Today's sends, Needs you, emails</td><td>not pushes to a person</td><td><span class="verb ignore">ignore</span></td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
