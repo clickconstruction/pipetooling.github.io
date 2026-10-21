@@ -240,7 +240,7 @@ contact).
 | 4 | Nudge fills the step's words | | | not started |
 | 5 | The last 7 days strip | | | not started |
 | 6 | Answer all | | | not started |
-| 7 | Log a call (+ migration `20261021010000_log_call`, `supabase db push` after merge; the Waiting on them hold moves to PR 4, since `waitingOnThem.ts` is the #139 stack's) | v2.5710 | filed | armed 2026-10-21 |
+| 7 | Log a call (+ migration `20261021010000_log_call`, `supabase db push` after merge; the Waiting on them hold moves to PR 4, since `waitingOnThem.ts` is the #139 stack's) | v2.5710 | #5958 | armed 2026-10-21 |
 | 8 | A lead's doors | | | not started |
 | 9 | One front door; the guides | | | not started |
 | — | Live test (BUILD_PLAN § 3) | | | after 1–9 |
