@@ -27,6 +27,17 @@ describe('mergeThreadSlots: cuts that fill the same slot', () => {
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Highlight', 'Start a change order'])
   })
 
+  it('cut 2’s facts about whose move it is merge field by field, the later cut winning (punch list #140 PR 7)', () => {
+    const merged = mergeThreadSlots(
+      { court: () => ({ owed: { what: 'the quote' }, promisedUntil: 'until Wed · quote' }) },
+      { court: () => null },
+      { court: () => ({ promisedUntil: 'until Fri · their word' }) },
+    )
+    expect(merged.court?.(person)).toEqual({ owed: { what: 'the quote' }, promisedUntil: 'until Fri · their word' })
+    expect(mergeThreadSlots({ court: () => null }).court?.(person)).toBeNull()
+    expect(mergeThreadSlots({}).court).toBeUndefined()
+  })
+
   it('a slot where every cut draws nothing draws nothing', () => {
     const merged = mergeThreadSlots({ aboveBox: () => null }, { aboveBox: () => false }, { aboveBox: () => undefined })
     expect(merged.aboveBox?.(person)).toBeNull()

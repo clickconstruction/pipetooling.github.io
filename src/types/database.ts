@@ -29003,6 +29003,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "supply_house_invoice_move_requests_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "supply_house_invoice_move_requests_invoice_id_fkey"
             columns: ["invoice_id"]
             isOneToOne: false
@@ -29014,6 +29021,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoice_move_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -33921,6 +33935,8 @@ export type Database = {
         Returns: undefined
       }
       gc_office_team: { Args: never; Returns: boolean }
+      gc_on_any_schedule_team: { Args: never; Returns: boolean }
+      gc_on_schedule_team: { Args: { p_project_id: string }; Returns: boolean }
       gc_owner_billing_revenue: {
         Args: { p_project_id: string }
         Returns: number
@@ -34024,6 +34040,10 @@ export type Database = {
         Args: { p_period_to: string; p_said_by: string; p_sow_id: string }
         Returns: string
       }
+      gc_schedule_activity_project: {
+        Args: { p_activity_id: string }
+        Returns: string
+      }
       gc_schedule_add_activity: {
         Args: {
           p_bar: Json
@@ -34110,6 +34130,7 @@ export type Database = {
         }
         Returns: number
       }
+      gc_schedule_move_project: { Args: { p_move_id: string }; Returns: string }
       gc_schedule_move_sits: {
         Args: { p_at_from: boolean; p_move_id: string }
         Returns: boolean
@@ -36400,6 +36421,17 @@ export type Database = {
         }
         Returns: string
       }
+      log_call: {
+        Args: {
+          p_contact_id: string
+          p_day?: string
+          p_day_words?: string
+          p_job_id?: string
+          p_job_kind?: string
+          p_said: string
+        }
+        Returns: string
+      }
       log_estimate_customer_event: {
         Args: {
           p_client_ip: string
@@ -36812,6 +36844,14 @@ export type Database = {
         Returns: boolean
       }
       primary_can_access_job: { Args: { p_job_id: string }; Returns: boolean }
+      promote_bid_gc: {
+        Args: {
+          p_bid_id: string
+          p_new_gc_id: string
+          p_old_gc_stays?: boolean
+        }
+        Returns: undefined
+      }
       publish_co_to_bid_room: {
         Args: { p_estimate_id: string; p_room_id: string }
         Returns: undefined

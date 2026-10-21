@@ -17,6 +17,7 @@ import { supabaseFollowUpIo, type FollowUpIo } from '../followUp/followUpIo'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { EmailFileAsk } from '../documents/emailFileAsks'
 import { BOXES_SETTINGS_KEY, parseBoxSettings, type BoxSettings } from './boxes'
+import type { CallLogDraft } from './callLog'
 import type { ComposeSender, EmailDraft } from './compose'
 import type { DayKept } from './owed'
 import { jobRefOf } from './load'
@@ -83,6 +84,8 @@ export interface ReplyIo {
   sendEmail(input: ReplyEmail): Promise<string>
   /** Resolves to the text's line. */
   sendText(input: ReplyText): Promise<string>
+  /** A call the office made, logged (punch list #140 PR 7): `log_call` through Follow up's io. Resolves to the call's line. */
+  logCall(contactId: string, draft: CallLogDraft, jobKey: string | null): Promise<string>
 }
 
 /** An edge function's answer: the line it wrote, or its refusal in words. */
@@ -102,7 +105,7 @@ async function invoke(name: string, body: Record<string, unknown>, doing: string
   return data.messageId
 }
 
-export function supabaseReplyIo(followUp: Pick<FollowUpIo, 'addNote'> = supabaseFollowUpIo()): ReplyIo {
+export function supabaseReplyIo(followUp: Pick<FollowUpIo, 'addNote' | 'logCall'> = supabaseFollowUpIo()): ReplyIo {
   return {
     async loadSender() {
       const { data: auth } = await supabase.auth.getUser()
@@ -118,6 +121,7 @@ export function supabaseReplyIo(followUp: Pick<FollowUpIo, 'addNote'> = supabase
       return { name: row?.name?.trim() ?? '', title: row?.title ?? null, cell: row?.phone ?? null }
     },
     addNote: (contactId, body, jobKey, back) => followUp.addNote(contactId, body, jobRefOf(jobKey), back),
+    logCall: (contactId, draft, jobKey) => followUp.logCall(contactId, draft.said, jobRefOf(jobKey), draft.day),
     sendEmail: (input) => {
       const { subject, greeting, body, signature, footer } = input.draft
       const files = input.files?.length ? { files: input.files } : {}

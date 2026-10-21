@@ -71,6 +71,7 @@ const fakeIo = (): ReplyIo => ({
   addNote: vi.fn(() => Promise.resolve('m-note')),
   sendEmail: vi.fn(() => Promise.resolve('m-email')),
   sendText: vi.fn(() => Promise.resolve('m-text')),
+  logCall: vi.fn(() => Promise.resolve('m-call-new')),
 })
 
 function draw(over: { job?: boolean | { key: string; name: string }; contact?: Contact; lines?: QuickReply[]; share?: EstimateLinkIo['share'] } = {}) {

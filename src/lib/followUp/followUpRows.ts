@@ -115,7 +115,7 @@ export interface FollowUpRows {
 
 const STATES: ReadonlySet<string> = new Set<ContactState>(['waiting', 'snoozed', 'done'])
 const HOWS: ReadonlySet<string> = new Set<HasHow>(['took', 'rule', 'handed'])
-const PROMISE_KINDS: ReadonlySet<string> = new Set<HeardPromiseKind>(['quote', 'start', 'papers', 'payment', 'decision', 'access', 'answer', 'cert'])
+const PROMISE_KINDS: ReadonlySet<string> = new Set<HeardPromiseKind>(['quote', 'start', 'papers', 'payment', 'decision', 'access', 'answer', 'cert', 'said'])
 const PROMISE_STATES: ReadonlySet<string> = new Set<HeardPromiseState>(['offered', 'written', 'no'])
 const QUESTION_STATES: ReadonlySet<string> = new Set<QuestionState>(['offered', 'asked', 'answered'])
 const WRITES: ReadonlySet<string> = new Set(['start', 'delivery', 'insurance', 'w9'])
