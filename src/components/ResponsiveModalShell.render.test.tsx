@@ -44,6 +44,12 @@ describe('ResponsiveModalShell', () => {
     fireEvent.mouseDown(overlay)
     fireEvent.click(overlay)
     expect(onClose).toHaveBeenCalledTimes(1)
+    // An Escape a window inside already took (its handler called preventDefault) is not a request to close (#140 PR 6).
+    const closes = onClose.mock.calls.length
+    const taken = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
+    taken.preventDefault()
+    window.dispatchEvent(taken)
+    expect(onClose).toHaveBeenCalledTimes(closes)
     // Escape still closes.
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(2)

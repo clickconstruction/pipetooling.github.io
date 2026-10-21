@@ -14,6 +14,7 @@ import { lineGcProject } from '../../lib/followUp/askArchitect'
 import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
 import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
 import { canSortAll, SORT_ALL } from '../../lib/followUp/sortDesk'
+import { ANSWER_ALL, canAnswerAll } from '../../lib/followUp/answerDesk'
 import { needsYouCount, type BackRow, type FollowUpQueue, type NeedsReplyRow, type OwedRow, type PortalRow } from '../../lib/followUp/queue'
 import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
@@ -37,6 +38,8 @@ export interface FollowUpSectionActions {
   seeTheirPage?: (contactId: string) => void
   /** **Sort all** on New's header (R7, mockup C): opens the desk. Unset: no press. */
   sortAll?: () => void
+  /** **Answer all** on Needs a reply's header (punch list #140 PR 6): opens the desk. Unset: no press. */
+  answerAll?: () => void
   /** A lead's doors (punch list #140 PR 8): the row's Book a visit and Start an estimate, with their newest words. Unset: the labels draw dead. */
   bookVisit?: (contactId: string, words: string | null) => void
   startEstimate?: (contactId: string, words: string | null) => void
@@ -115,7 +118,17 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
           {portal.map((r, i) => byId.get(r.contactId) && <PortalRowView key={`${r.contactId}-${i}`} row={r} contact={byId.get(r.contactId)!} {...props} />)}
         </Section>
       )}
-      <Section title={`Needs a reply (${queue.needsReply.length})`} note="Texts, voicemails, missed calls and emails nobody has answered. The one waiting longest is first.">
+      <Section
+        title={`Needs a reply (${queue.needsReply.length})`}
+        note="Texts, voicemails, missed calls and emails nobody has answered. The one waiting longest is first."
+        action={
+          actions.answerAll && canAnswerAll(queue.needsReply.length) ? (
+            <Btn kind="primary" onClick={actions.answerAll}>
+              {ANSWER_ALL}
+            </Btn>
+          ) : undefined
+        }
+      >
         {queue.needsReply.length === 0 ? (
           <Empty>Nobody is waiting on us.</Empty>
         ) : (

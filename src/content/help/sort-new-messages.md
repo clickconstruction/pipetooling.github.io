@@ -61,7 +61,7 @@ The rule is [Who gets a new message](/help/choose-who-gets-a-new-message). It pi
 
 ## Sort a backlog
 
-When two or more people wait in **New**, its header has {{button:blue|Sort all}}. Press it to sort them one at a time.
+When two or more people wait in **New**, its header has {{button:blue|Sort all}}. Press it to sort them one at a time. Needs a reply has the same kind of desk, [Answer all](/help/answer-everyone-waiting-on-us-from-one-page#answer-everyone-one-at-a-time).
 
 :::example The desk, one person at a time
 New · 3 to sort · 1 of 3 &nbsp; {{chip:blue|Who has it?}} &nbsp; {{button:outline|Skip for now}}

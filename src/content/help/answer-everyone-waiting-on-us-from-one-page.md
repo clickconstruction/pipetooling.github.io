@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers, answer all, one at a time, desk, no reply needed, skip for now, next
 order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
@@ -58,6 +58,21 @@ The page's address keeps the pill. A link to [Messages for customers](/messages?
 - **Estimates** counts the estimates sent this week, how many the customer opened and how many they accepted. The line under it says how many were opened and then went quiet. Press it to open Waiting on them.
 
 Under **Mine** the strip still shows the office's numbers, not only yours. It says so.
+
+## Answer everyone, one at a time
+
+When someone waits in **Needs a reply**, its header has {{button:blue|Answer all}}. Press it to answer them one at a time, with nothing else on the screen. It works like Sort all.
+
+Each card shows one person. You see their name, who has them, their last words and their job. Under that is the reply box, with the quick replies for their step first. Write your answer and press {{button:blue|Send text…}} or {{button:blue|Send email…}}. Read it in the send window and press Send. The next person comes up.
+
+- Press {{button:outline|No reply needed}} when their line needs no answer. The next person comes up.
+- Press {{button:outline|Skip for now}} to put them after the rest. They come back once the others are done.
+- Press {{button:blue|Call}} to dial them.
+- Press {{button:outline|Open the thread}} to leave the desk at their line.
+
+A person with no number and no email on file cannot be answered from the desk. The card says so and offers their thread. When someone else answers a person while their card is up, the desk says so and offers {{button:blue|Next}}.
+
+The end says what went. When people went quiet on us after our last word, it says how many and offers {{button:outline|Nudge the first}}. That opens the first one with the reminder written. Under **Mine** the desk walks only the people you hold.
 
 ## Supply houses and candidates
 

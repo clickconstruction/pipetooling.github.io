@@ -22,6 +22,8 @@ import { FollowUpSections, type FollowUpSectionActions } from './FollowUpSection
 import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
 import { useLeadDoors } from '../messages/useLeadDoors'
 import { SortAllDesk } from './SortAllDesk'
+import { AnswerAllDesk, type AnswerAllDeskProps, type AnswerThread } from './AnswerAllDesk'
+import type { OpenThreadMore } from '../gc/messages/useThreadWindow'
 import type { Teammate } from './WhoHasItPill'
 
 const DEFAULT_IO = supabaseFollowUpIo()
@@ -41,7 +43,7 @@ export interface PlanQuestionWrites {
 export interface FollowUpPanelProps<C, N extends { contactId: string }> {
   me: Teammate
   team: readonly Teammate[]
-  onOpenThread: (contactId: string, atMessageId?: string) => void
+  onOpenThread: (contactId: string, atMessageId?: string, more?: OpenThreadMore) => void
   /** Says what a press changed, or why it was refused. */
   say: (words: string, tone: 'success' | 'error') => void
   /** The reads and presses; the app's own unless a smoke hands it a fake. */
@@ -64,12 +66,26 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
   nowIso?: string
   /** The Sort all desk's reads and presses: the lane's sort card's own unless a smoke hands it a fake. */
   sortIo?: NewLaneCardIo
+  /**
+   * **Answer all** (punch list #140 PR 6): the page holds whether the desk is open, since the desk needs the page's view
+   * of the threads (`thread`), which the page loads only while something needs it. Unset: no press on the header.
+   */
+  answerAll?: {
+    on: boolean
+    onChange: (on: boolean) => void
+    thread: AnswerThread
+    /** A smoke's fakes; the app's own when left out. */
+    loadContact?: AnswerAllDeskProps['loadContact']
+    replyIo?: AnswerAllDeskProps['replyIo']
+    quickIo?: AnswerAllDeskProps['quickIo']
+    quietIo?: AnswerAllDeskProps['quietIo']
+  }
   /** A lead's doors (punch list #140 PR 8): the writes behind Book a visit and Start an estimate; a smoke hands its own. */
   leadIo?: LeadDoorsIo
 }
 
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
-  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, leadIo } = props
+  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll, leadIo } = props
   const leadDoors = useLeadDoors(leadIo)
   const todayYmd = props.todayYmd ?? todayYmdInAppTz()
   const nowIso = props.nowIso ?? new Date().toISOString()
@@ -141,6 +157,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
     ...(planQuestions ? { askArchitect: (messageId: string) => void askArchitect(planQuestions, messageId) } : {}),
     ...(seeTheirPage ? { seeTheirPage } : {}),
     sortAll: () => setSorting(true),
+    ...(answerAll ? { answerAll: () => answerAll.onChange(true) } : {}),
   }
 
   return (
@@ -166,6 +183,24 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
         />
       ) : (
         !q.problem && <Card style={{ color: 'var(--text-muted)' }}>Loading who is waiting on us…</Card>
+      )}
+      {answerAll?.on && drawn && (
+        <AnswerAllDesk
+          lane={drawn.needsReply}
+          weOwe={drawn.weOwe}
+          contacts={q.contacts}
+          lines={q.lines}
+          reread={() => void q.reload()}
+          noReplyNeeded={(contactId) => q.press(`state ${contactId}`, (x) => x.setState(contactId, 'done'))}
+          pressing={q.pressing}
+          onClose={() => answerAll.onChange(false)}
+          onOpenThread={onOpenThread}
+          thread={answerAll.thread}
+          {...(answerAll.loadContact ? { loadContact: answerAll.loadContact } : {})}
+          {...(answerAll.replyIo ? { replyIo: answerAll.replyIo } : {})}
+          {...(answerAll.quickIo ? { quickIo: answerAll.quickIo } : {})}
+          {...(answerAll.quietIo ? { quietIo: answerAll.quietIo } : {})}
+        />
       )}
       {sorting && drawn && (
         <SortAllDesk

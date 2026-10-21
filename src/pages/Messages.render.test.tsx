@@ -59,7 +59,7 @@ vi.mock('../lib/messages/messagesIo', async () => {
   }
   return {
     loadMessagesView: vi.fn(() => Promise.resolve(view())),
-    // A lead's doors (punch list #140 PR 8) read the person with their numbers; nobody's record reads here.
+    // A lead's doors (punch list #140 PR 8) and Answer all's box (PR 6) read the person with their numbers; nobody's record reads here.
     loadContact: vi.fn(() => Promise.resolve(null)),
     nameContact: vi.fn(),
     tieMessage: vi.fn(() => Promise.resolve()),
@@ -373,5 +373,21 @@ describe('/messages: the last 7 days (punch list #140 PR 5)', () => {
     expect(where()).toBe('/messages?thread=c-held&at=m5')
     fireEvent.change(screen.getByTestId('search-lines'), { target: { value: 'pond' } })
     await waitFor(() => expect(screen.queryByTestId('week-strip')).toBeNull())
+  })
+})
+
+describe('/messages: Answer all (punch list #140 PR 6)', () => {
+  it('under Mine the desk walks only the people I hold, and reads the threads while it is open', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    fireEvent.click(await within(screen.getByRole('radiogroup', { name: 'Show' })).findByRole('radio', { name: 'Mine · 1' }))
+    await waitFor(() => expect(screen.queryByText(GREG)).toBeNull())
+    const lane = screen.getByRole('region', { name: 'Needs a reply' })
+    fireEvent.click(within(lane).getByRole('button', { name: 'Answer all' }))
+    const desk = await screen.findByRole('dialog', { name: 'Answer all' })
+    expect([...desk.querySelectorAll('[data-answer-all-progress] span > span:last-child')].map((s) => s.textContent)).toEqual(['Needs a reply', '1 to answer', '1 of 1'])
+    expect(desk.querySelector('[data-answer-all-card]')?.getAttribute('data-answer-all-card')).toBe('c-held')
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalled())
+    expect(await within(desk).findByText('Their record could not be read. Answer them from their thread.')).toBeTruthy()
   })
 })

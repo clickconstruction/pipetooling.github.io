@@ -63,7 +63,10 @@ export default function Messages() {
   const [queueCount, setQueueCount] = useState<number | null>(null)
   const [queuesOpen, setQueuesOpen] = useState(false)
   const foldQueues = phone && queueCount === 0 && !queuesOpen
-  const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null || everyoneOpen || searching), closeThread: thread.closeThread })
+  // Answer all (punch list #140 PR 6): the desk over Needs a reply; while it is open the host's view is read, since the
+  // desk's reply box sends as the thread would.
+  const [answering, setAnswering] = useState(false)
+  const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null || everyoneOpen || searching || answering), closeThread: thread.closeThread })
 
   const [team, setTeam] = useState<GcTeamMember[]>([])
   useEffect(() => {
@@ -255,7 +258,16 @@ export default function Messages() {
       {searching ? null : onFollowUp ? (
         // The panel stays mounted under the fold, so its count keeps the fold honest.
         <div id="queues" style={foldQueues ? { display: 'none' } : undefined} data-testid="queues">
-          <FollowUpPanel me={me} team={followUpTeam} onOpenThread={thread.openThread} say={showToast} narrow={narrow} onCount={setQueueCount} onQueue={onQueue} />
+          <FollowUpPanel
+            me={me}
+            team={followUpTeam}
+            onOpenThread={thread.openThread}
+            say={showToast}
+            narrow={narrow}
+            onCount={setQueueCount}
+            onQueue={onQueue}
+            answerAll={{ on: answering, onChange: setAnswering, thread: { view: host.view, nowIso: host.nowIso, searchJobs: host.writes.searchJobs } }}
+          />
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>

@@ -455,6 +455,23 @@ describe('FollowUpPanel', () => {
 })
 
 describe('FollowUpPanel: the whole queue for the page (punch list #140 PR 3)', () => {
+  it('Answer all sits on Needs a reply’s header when the page hands the desk, and never otherwise (punch list #140 PR 6)', async () => {
+    const onChange = vi.fn()
+    renderPanel({ answerAll: { on: false, onChange, thread: { view: null, nowIso: '2026-10-02T17:00:00.000Z', searchJobs: async () => [] } } })
+    await loaded()
+    const lane = screen.getByRole('region', { name: 'Needs a reply' })
+    fireEvent.click(within(lane).getByRole('button', { name: 'Answer all' }))
+    expect(onChange).toHaveBeenCalledWith(true)
+    cleanup()
+    renderPanel()
+    await loaded()
+    expect(within(screen.getByRole('region', { name: 'Needs a reply' })).queryByRole('button', { name: 'Answer all' })).toBeNull()
+    cleanup()
+    renderPanel({ answerAll: { on: false, onChange, thread: { view: null, nowIso: '2026-10-02T17:00:00.000Z', searchJobs: async () => [] } } }, fakeIo({}, EMPTY))
+    await screen.findByRole('heading', { name: 'Needs a reply (0)' })
+    expect(within(screen.getByRole('region', { name: 'Needs a reply' })).queryByRole('button', { name: 'Answer all' })).toBeNull()
+  })
+
   it('hears the queue and its people each read, before any narrowing', async () => {
     const onQueue = vi.fn()
     renderPanel({ onQueue, narrow: (queue) => ({ ...queue, needsReply: [], count: 0 }) })

@@ -61,7 +61,9 @@ export default function ResponsiveModalShell({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onRequestClose()
+      // A window inside the panel (the reply box's send window) takes its own Escape first; that press is not a
+      // request to close the panel too, and losing the draft under it (punch list #140 PR 6, Answer all).
+      if (e.key === 'Escape' && !e.defaultPrevented) onRequestClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
