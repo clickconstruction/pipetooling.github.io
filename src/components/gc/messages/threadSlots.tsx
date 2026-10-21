@@ -18,6 +18,7 @@ import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
+import { useLeadDoorThreadSlots } from '../../messages/useLeadDoorThreadSlots'
 import { hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
 import { ReplyBox } from './reply/ReplyBox'
@@ -145,7 +146,9 @@ export function useThreadSlots(): ThreadSlots {
   const estimateDoor = useEstimateDoorThreadSlots()
   // Residential R7: the sort card above the lines, while the person waits in Follow up's New lane.
   const newLane = useNewLaneThreadSlots()
+  // #140 PR 8: a lead's doors above the lines, Book a visit and Start an estimate, once they are named a lead.
+  const leadDoors = useLeadDoorThreadSlots()
   // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
   // #139's estimate door, cut 6's paper offer, R7's sort card.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, estimateDoor, email, newLane)
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, estimateDoor, email, leadDoors, newLane)
 }
