@@ -36,7 +36,13 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-estimate-public-terms': 'settings-catalogs',
   'settings-estimate-cx-defaults': 'settings-catalogs',
   'settings-bid-cover-letter-defaults': 'settings-catalogs',
-  // Phone and texts' cards (punch list #140): the switch card on Messages opens each by its anchor.
+  // Phone and texts' cards (punch list #140 PR 2): the switch card on Messages opens each by its anchor.
+  'settings-phone-texts-send-texts': 'settings-phone-texts',
+  'settings-phone-texts-read-bids': 'settings-phone-texts',
+  'settings-phone-texts-who-gets-it': 'settings-phone-texts',
+  'settings-phone-texts-boxes': 'settings-phone-texts',
+  'settings-phone-texts-reply-push': 'settings-phone-texts',
+  'settings-phone-texts-quo-seats': 'settings-phone-texts',
   'settings-phone-texts-hours': 'settings-phone-texts',
 }
 

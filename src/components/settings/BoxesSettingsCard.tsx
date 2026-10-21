@@ -82,7 +82,7 @@ export function BoxesSettingsCard({ io = DEFAULT_IO }: { io?: BoxesCardIo }) {
   }
 
   return (
-    <section aria-labelledby="phone-texts-boxes" data-settings-boxes style={cardStyle}>
+    <section aria-labelledby="phone-texts-boxes" id="settings-phone-texts-boxes" data-settings-boxes style={cardStyle}>
       <h3 id="phone-texts-boxes" style={{ margin: 0, fontSize: '1rem' }}>
         Inboxes
       </h3>

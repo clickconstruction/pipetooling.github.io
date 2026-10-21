@@ -100,7 +100,7 @@ export function PhoneAndTextsSettingsSection({ io = DEFAULT_IO }: { io?: AssignR
   }
 
   return (
-    <section aria-labelledby="phone-texts-who-gets-it" data-settings-who-gets-it style={cardStyle}>
+    <section aria-labelledby="phone-texts-who-gets-it" id="settings-phone-texts-who-gets-it" data-settings-who-gets-it style={cardStyle}>
       <h3 id="phone-texts-who-gets-it" style={{ margin: 0, fontSize: '1rem' }}>
         Who gets a new message
       </h3>

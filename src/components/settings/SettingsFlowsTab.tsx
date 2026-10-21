@@ -8,6 +8,7 @@
  * (cut 5, `flows/appSends.ts`).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAppSends } from '../../hooks/useAppSends'
@@ -31,13 +32,20 @@ export const FLOWS_LEDE =
   'One flow for each kind of person. A step finishes on facts the app already keeps, picked from a list. The office changes the steps, whose move each is, the nudge, the papers and the order. Every change is tried on everyone before you save.'
 
 /** `now` is the day the flow is read on; the render smokes pin it. */
+/** The flow a `?kind=` names, else the trades'. */
+function kindFromParam(k: string | null): EditorKind {
+  return k && EDITOR_KINDS.some(([kind]) => kind === k) ? (k as EditorKind) : 'trade'
+}
+
 export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
   const { showToast } = useToastContext()
   const prompt = usePromptDialog()
   const confirm = useConfirmDialog()
   const { profileName, role } = useAuth()
   const by = profileName?.trim() || 'someone'
-  const [kind, setKind] = useState<EditorKind>('trade')
+  // `?kind=` lands on a flow (punch list #140 PR 2: the switch card's Reminders door opens the residential one).
+  const [params] = useSearchParams()
+  const [kind, setKind] = useState<EditorKind>(() => kindFromParam(params.get('kind')))
   const [view, setView] = useState<View>('flow')
   const editor = useFlowEditor(kind, { now })
   const appSends = useAppSends()

@@ -235,7 +235,7 @@ contact).
 |---|---|---|---|---|
 | — | Proposal + mock-up + BUILD_PLAN | — | #5955 | merged 2026-10-21 |
 | 1 | Office hours card | v2.5709 | #5957 | merged 2026-10-21 |
-| 2 | Finish switching Messages on | | | not started |
+| 2 | Finish switching Messages on | v2.5712 | #5960 | armed 2026-10-21 |
 | 3 | Show: Mine · Everyone | | | not started |
 | 4 | Nudge fills the step's words | | | not started |
 | 5 | The last 7 days strip | | | not started |

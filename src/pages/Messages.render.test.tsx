@@ -308,3 +308,16 @@ describe('/messages: the page sits in the middle of a wide screen', () => {
     expect(page.style.marginRight).toBe('auto')
   })
 })
+
+describe('/messages: the owner’s switch card (punch list #140 PR 2)', () => {
+  it('a dev sees the Finish switching Messages on line; an assistant does not', async () => {
+    auth.role = 'dev'
+    at('/messages')
+    expect(await screen.findByRole('button', { name: /^Finish switching Messages on · \d of 8 on/ })).toBeTruthy()
+    cleanup()
+    auth.role = 'assistant'
+    at('/messages')
+    await screen.findByRole('group', { name: 'Which people to show' })
+    expect(screen.queryByRole('button', { name: /Finish switching Messages on/ })).toBeNull()
+  })
+})
