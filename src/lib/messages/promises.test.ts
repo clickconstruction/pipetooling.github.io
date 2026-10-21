@@ -95,6 +95,11 @@ describe('runningPromise: the written day the move line waits on', () => {
     expect(runningPromise(DEMO_HEARD, 'greg', DEMO_TODAY)).toBeNull()
   })
 
+  it('reads the day a person gave on a logged call as their word (punch list #140 PR 7)', () => {
+    const said: HeardLine = { messageId: '31', contactId: 'greg', at: '2026-10-02T18:00:00.000Z', kind: 'said', state: 'written', dayYmd: '2026-10-09' }
+    expect(runningPromise([...DEMO_HEARD, said], 'greg', '2026-10-03')).toEqual({ messageId: '31', dayYmd: '2026-10-09', pill: 'promised Fri Oct 9 · their word', until: 'until Fri Oct 9 · their word' })
+  })
+
   it('takes the newest written line, names the one kind written, and skips offered days', () => {
     const heard: HeardLine[] = [
       ...DEMO_HEARD,
