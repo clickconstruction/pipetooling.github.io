@@ -11,14 +11,15 @@ import { REMINDER_FLOW_KINDS, type ReminderFlows } from './remindersCard'
 
 /** Every flow the card lists, by kind. A kind whose read throws is left out, so the rest still draw. */
 export async function loadReminderFlows(load: (kind: FlowKind) => Promise<FlowDef> = loadFlowDef): Promise<ReminderFlows> {
-  const read = await Promise.all(
+  const flows: ReminderFlows = {}
+  await Promise.all(
     REMINDER_FLOW_KINDS.map(async (kind) => {
       try {
-        return [kind, await load(kind)] as const
+        flows[kind] = await load(kind)
       } catch {
-        return null
+        // Left out: the other flows still draw.
       }
     }),
   )
-  return Object.fromEntries(read.filter((r): r is readonly [FlowKind, FlowDef] => r !== null))
+  return flows
 }
