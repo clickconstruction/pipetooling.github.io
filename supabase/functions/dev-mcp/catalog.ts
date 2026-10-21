@@ -1608,6 +1608,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "plan-fetch",
   "preview-stripe-invoice",
   "property-lookup",
+  "quo-config",
   "quo-send",
   "quo-webhook",
   "record-stripe-invoice-out-of-band-payment",

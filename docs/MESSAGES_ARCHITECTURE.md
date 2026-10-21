@@ -210,9 +210,10 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | What | Where | Key or job |
 |---|---|---|
 | Send texts (the office texts from the company number) | Settings → Phone and texts | `messages_texts_on_v1` |
-| Company phone seats (a Quo seat to a person, or one shared by the office since v2.5548) | Settings → Phone and texts | `messages_quo_seats_v1` |
+| Quo connection (Quo's API key, pasted once; the seats and the inboxes then pick from Quo's lists, v2.5718) | Settings → Phone and texts, the owner or a dev | Vault `quo_api_key` through `quo-config`; `QUO_API_KEY` the fallback |
+| Company phone seats (a Quo seat to a person, or one shared by the office since v2.5548; picked from Quo's members since v2.5718) | Settings → Phone and texts | `messages_quo_seats_v1` |
 | Who gets a new message (the rule and its seats) | Settings → Phone and texts | `messages_assign_rule_v1` |
-| Inboxes (the two boxes: address, number, number id) | Settings → Phone and texts | `messages_boxes_v1` |
+| Inboxes (the two boxes: address, number, number id; the number picked from Quo's numbers since v2.5718) | Settings → Phone and texts | `messages_boxes_v1` |
 | The office's wait before it hears a reply nobody answered (0 is at once) | Settings → Phone and texts → Reply push, under the switch (v2.5540) | `messages_office_wait_minutes` |
 | Office hours (the days, the open and the close; the tech's hour and the after-hours number stay a dev's by hand) | Settings → Phone and texts → Office hours (v2.5709, punch list #140 PR 1; `officeHoursCard.ts`, the owner and a dev) | `messages_office_hours_v1` |
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
@@ -259,8 +260,10 @@ touch the copy's index or the dev-mcp catalog, land them one after the other and
 
 The four tracks of `CLAUDE.md` apply: the client by CI; `supabase db push` for a migration, after its PR is on main;
 the functions by hand; the Cloudflare Workers unchanged by this build. What the owner operates by hand: Quo's
-webhook 43696 (through Quo's API, never its settings page) and the A2P registration; the switches above; the secrets `CRON_SECRET` and `PROJECT_URL` in the
-vault for the crons; and the morning run's dry run with the secret before a step is switched on.
+webhook 43696 (through Quo's API, never its settings page) and the A2P registration; the switches above; Quo's API key,
+pasted once on Settings → Phone and texts → Quo connection (v2.5718; `QUO_API_KEY` is the fallback the senders read while
+the vault holds none); the secrets `CRON_SECRET` and `PROJECT_URL` in the vault for the crons; and the morning run's dry
+run with the secret before a step is switched on.
 
 ## What is still open (as of 2026-10-14)
 

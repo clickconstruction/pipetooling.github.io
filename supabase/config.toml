@@ -984,6 +984,10 @@ verify_jwt = false
 [functions.mail-config]
 verify_jwt = false
 
+# The owner's and a dev's door to Quo's API key in Vault and to Quo's lists (v2.5718): status · set · directory. Bearer + getUser, role owner or dev in-function; never returns the key.
+[functions.quo-config]
+verify_jwt = false
+
 # Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
 [functions.photo-save]
 verify_jwt = false
