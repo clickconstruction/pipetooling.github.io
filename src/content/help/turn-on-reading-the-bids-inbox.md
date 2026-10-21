@@ -13,7 +13,7 @@ The app can read new email in the bids inbox and put each email on its sender's 
 2. Under **Read bids@**, press the {{button:outline|Off}} switch.
 3. Press {{button:blue|Turn it on}}.
 
-The switch now reads {{button:green|On}}. The first read comes within 3 minutes. After that the app reads the inbox every 3 minutes.
+The switch now reads {{button:green|On}}. The first read comes within a minute. After that the app reads the inbox every minute.
 
 Each email it reads lands on its sender's thread. In Gmail, that email gets the label **In ClickTooling**.
 
