@@ -182,6 +182,11 @@ export function promiseWriteThrough(p: WrittenPromise, at: PromiseAt): PromiseWr
   }
 
   switch (p.kind) {
+    case 'said':
+      // The day a person gave on a call the office logged (punch list #140 PR 7) is a promise of nothing in particular:
+      // it holds the thread's move and Waiting on them, and is written nowhere else.
+      out.skips.push(`The day they gave is kept on the call's line. Nothing else was written.`)
+      return out
     case 'quote': {
       const how = askHow(at.line.channel)
       if (!at.person.companyId) out.skips.push(noCompany)

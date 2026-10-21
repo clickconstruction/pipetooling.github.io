@@ -16,7 +16,8 @@ vi.mock('../supabase', () => ({
 import type { EmailFileAsk } from '../documents/emailFileAsks'
 import { supabaseReplyIo } from './replyIo'
 
-const io = supabaseReplyIo({ addNote: vi.fn() })
+const followUp = { addNote: vi.fn(), logCall: vi.fn(() => Promise.resolve('m-call-new')) }
+const io = supabaseReplyIo(followUp)
 const email = {
   contactId: '0f6a3c2e-1b7d-4e55-9a0c-3f2b8d1e4a01',
   channelId: '7c1d9e44-2a6b-4f03-8e5d-6b0a2c9f1d02',
@@ -54,5 +55,14 @@ describe('the wait line’s words (v2.5538)', () => {
     expect(TEXTS_WAIT_HREF).toBe('/settings?tab=settings-phone-texts')
     expect(TEXTS_WAIT_OTHERS).toContain('the owner or a dev')
     for (const w of [TEXTS_WAIT, TEXTS_WAIT_OTHERS]) expect(plainWordsFailures(w), w).toEqual([])
+  })
+})
+
+describe('a call the office made, logged from the reply box (punch list #140 PR 7)', () => {
+  it('goes to Follow up’s own log_call with the job and the day as the presses take them', async () => {
+    await expect(io.logCall('c-greg', { said: 'Thursday works', day: { ymd: '2026-10-23', words: null }, theirMove: true }, 'project:p1')).resolves.toBe('m-call-new')
+    expect(followUp.logCall).toHaveBeenCalledWith('c-greg', 'Thursday works', { kind: 'project', id: 'p1' }, { ymd: '2026-10-23', words: null })
+    await io.logCall('c-greg', { said: 'no answer', day: null, theirMove: false }, null)
+    expect(followUp.logCall).toHaveBeenLastCalledWith('c-greg', 'no answer', null, null)
   })
 })
