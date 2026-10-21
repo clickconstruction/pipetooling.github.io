@@ -201,6 +201,22 @@ could not see it: the sheet's smoke fakes the send and never touches the page. *
 gives `load()` a refresh mode that keeps the page up, uses it on the send path, and renders the
 sheet above the loading early-return, keyed, so no refresh can unmount it.
 
+## The six additions — as built, 2026-10-21
+
+After the train landed, the owner asked for a holistic look at Messages and took all six of the
+additions drawn in the follow-up mock-up (`six-additions`), built as PRs 11–16 on the same stack:
+**11** v2.5703 Quo's delivery answer on every sent text (thread and lane; a failed text reads red
+with Call them), **12** v2.5704 *Waiting on them* (who went quiet after our send, longest first,
+with Nudge and Call), **13** v2.5705 the thread as the timeline (opened / accepted / declined as the
+app's event lines, written by the estimate functions), **14** v2.5706 the door on texts and the
+job tie when an estimate becomes a job, **15** v2.5707 the emails we sent in Went out with the
+opened · accepted chip and a Both · Texts · Emails row, **16** v2.5708 the search in the URL and
+the phone fold of empty lists. Earlier the same night: **8** v2.5699 Went out over 7 days, **9**
+v2.5700 Everyone we have talked with (the people list + search under the queues), **10** v2.5701
+search every message from the top of the page. Not carried: a real owed-call task when Quo
+reports a failed text (an edge change in the webhook's kernel copy), and a one-press nudge into
+Today's sends from Waiting on them.
+
 ## How to verify
 
 - Unit: the kernel's answers per code (`already_sent`, refusal, timeout) and the plain-words

@@ -52,7 +52,9 @@ Under **Went out**, press {{button:outline|Show everyone}}. The list shows every
 
 ## Search every message
 
-The search box sits under the pills. Type two letters or more. The lists give way to **Lines that match**, the messages that hold those words, newest first. Each row names the person, whose line it is and the words around the match. Press a row to open the thread at that line. Clear the box to see the lists again.
+The search box sits under the pills. Type two letters or more. The lists give way to **Lines that match**, the messages that hold those words, newest first. Each row names the person, whose line it is and the words around the match. Press a row to open the thread at that line. Clear the box to see the lists again. The page's address keeps the words, so a reload keeps the search and a link can carry it.
+
+On a phone, three empty lists fold to one line that shows each count at zero. Then Went out and the search sit at the top. Press the line to open the lists. Any count opens them on its own.
 
 ## Open a thread
 

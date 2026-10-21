@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Contact } from '../contacts/kernel'
 import { plainWordsFailures } from '../plainWords'
 import type { ThreadMessage } from './thread'
-import { searchLines, SEARCH_MAX_HITS, SEARCH_WORDS } from './searchLines'
+import { queryOf, searchLines, SEARCH_MAX_HITS, SEARCH_WORDS, withQuery } from './searchLines'
 
 const NOW = '2026-10-21T05:10:00Z'
 const contact = (set: Partial<Contact>): Contact => ({ id: 'c1', kind: 'customer', name: 'Dana Whitfield', goesBy: null, company: '', channels: [], jobs: [], record: null, ...set }) as unknown as Contact
@@ -38,6 +38,14 @@ describe('searchLines (v2.5701, punch list #139)', () => {
     expect(r.total).toBe(SEARCH_MAX_HITS + 5)
     expect(r.hits).toHaveLength(SEARCH_MAX_HITS)
     expect(r.hits[0]?.id).toBe(`x${SEARCH_MAX_HITS + 4}`)
+  })
+  it('the search lives in the URL beside the pill, and empty words take it away (v2.5708)', () => {
+    const search = new URLSearchParams('kind=customer')
+    expect(queryOf(search)).toBe('')
+    const typed = withQuery(search, 'water heater')
+    expect(typed.toString()).toBe('kind=customer&q=water+heater')
+    expect(queryOf(typed)).toBe('water heater')
+    expect(withQuery(typed, '  ').toString()).toBe('kind=customer')
   })
   it('the words are plain (a count in parentheses is the page’s own shape)', () => {
     expect(SEARCH_WORDS.title(3)).toBe('Lines that match (3)')
