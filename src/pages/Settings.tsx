@@ -44,6 +44,7 @@ import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
 import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
 import { canEditClause, canEditFlows } from '../lib/gc/access'
 import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
+import { OfficeHoursSettingsCard } from '../components/settings/OfficeHoursSettingsCard'
 import { canSwitchReplyPush } from '../lib/messages/replyPushSwitch'
 import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
@@ -1513,6 +1514,8 @@ export default function Settings() {
             <BoxesSettingsCard />
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
             {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
+            {/* Office hours (punch list #140 PR 1): the owner and a dev set them; everyone else on the page reads the line. */}
+            <OfficeHoursSettingsCard role={myRole} />
           </div>
         )}
       </SettingsGroup>
