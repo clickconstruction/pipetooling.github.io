@@ -43,6 +43,8 @@ Each message shows how it came, who sent it and its job. A long message shows fo
 Press Escape or {{button:outline|×}} to close the thread.
 
 
+Our estimate emails carry a button in the thread. Press {{button:outline|Open estimate #166}} to leave the thread and open that estimate. A change order's email opens the change order the same way. A text that carried the estimate's link carries the same button under its words.
+
 ## See what they did with an estimate
 
 The thread draws the estimate's moments as the app's own lines, in order with the texts and emails. *Dana opened estimate #212* appears when they open the link. *Dana accepted estimate #212* appears when they accept, with *Signed* when they signed. *Dana declined estimate #212* appears when they decline. Each appears once.

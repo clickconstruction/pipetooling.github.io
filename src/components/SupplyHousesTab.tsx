@@ -71,7 +71,8 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
 import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
-import { agingCellBandWords, agingCellChipState, openedViaPhrase, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
+import { openedViaPhrase, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
+import { agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, groupAgingCellByJob, type AgingCellJobGroup } from '../lib/materials/agingCellByJob'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -221,16 +222,18 @@ export function SupplyHousesTab({
     jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }>
   }>({ allocations: {}, jobs: {} })
   /**
-   * PR 2 (punch list #132): the (job, house) account rows behind the modal's chips, keyed
+   * PR 2 (punch list #132): the (job, house) account rows behind the modal's job headings, keyed
    * `${jobId}:${houseId}` (an entry of null = checked, none on record), the job-accounts reps
-   * per house for the Mark opened sheet, which row's amber band is unfolded, and which row's
-   * Mark opened sheet is up. All cleared when the modal closes.
+   * per house for the Mark opened sheet, which invoice's Mark opened sheet is up — from a job
+   * heading (v2.5694) it only records the account; from the move modal, saved open also flags the
+   * invoice — and which job (`${jobId}:${houseId}`) has Flag anyway unfolded. All cleared when the
+   * modal closes.
    */
   const [agingCellAccounts, setAgingCellAccounts] = useState<Record<string, JobSupplyHouseAccountRow | null>>({})
   const [agingCellAccountsLoaded, setAgingCellAccountsLoaded] = useState(false)
   const [agingCellReps, setAgingCellReps] = useState<Record<string, JobAccountRep[]>>({})
-  const [agingCellBandFor, setAgingCellBandFor] = useState<string | null>(null)
-  const [agingCellMarkOpenedFor, setAgingCellMarkOpenedFor] = useState<AgingInvoiceRow | null>(null)
+  const [agingCellMarkOpenedFor, setAgingCellMarkOpenedFor] = useState<{ inv: AgingInvoiceRow; flagOnOpen: boolean } | null>(null)
+  const [agingCellFlagAnywayFor, setAgingCellFlagAnywayFor] = useState<string | null>(null)
   /**
    * PR 3 (the move window): the allocations and open asks behind the strip — read once per
    * summary load for the still-current unflagged invoices — plus the move modal's state.
@@ -570,8 +573,8 @@ export function SupplyHousesTab({
       setAgingCellAccounts({})
       setAgingCellAccountsLoaded(false)
       setAgingCellReps({})
-      setAgingCellBandFor(null)
       setAgingCellMarkOpenedFor(null)
+      setAgingCellFlagAnywayFor(null)
       return
     }
     const cellRows =
@@ -750,7 +753,6 @@ export function SupplyHousesTab({
       return
     }
     setAgingUnpaidInvoices((prev) => prev.map((r) => (r.id === inv.id ? { ...r, on_job_account: on } : r)))
-    setAgingCellBandFor(null)
     if (selectedSupplyHouseForDetail?.id === inv.supply_house_id) void loadSupplyHouseDetail(selectedSupplyHouseForDetail)
   }
 
@@ -1787,8 +1789,7 @@ export function SupplyHousesTab({
 
       <SupplyHouseJobAccountsSection />
 
-      {/* The aging-cell drill-down (v2.5673): exactly the invoices the cell sums, in the
-          vocabulary of the expanded house's own Invoices table. Read-only in this PR. */}
+      {/* The aging-cell drill-down (v2.5673): exactly the invoices the cell sums, grouped by job (v2.5694). */}
       {agingCellModal && (() => {
         const { houseId, cell } = agingCellModal
         const isMovableList = cell === 'movable'
@@ -1801,10 +1802,6 @@ export function SupplyHousesTab({
           'this house'
         const houseName = houseId ? houseNameOf(houseId) : 'Every house'
         const total = cellRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
-        const jobAcctTotal = cellRows.reduce(
-          (s, r) => s + (r.on_job_account === true && Number(r.amount ?? 0) > 0 ? Number(r.amount ?? 0) : 0),
-          0,
-        )
         const isCredits = cell === 'credits'
         const movableToAsk = isMovableList ? cellRows.filter((r) => !agingMoveData.asks[r.id]).length : 0
         const noun = isCredits
@@ -1816,6 +1813,162 @@ export function SupplyHousesTab({
           : agingMatrix.rows
               .map((r) => ({ key: r.supplyHouseId, name: r.name as string | null, rows: cellRows.filter((inv) => inv.supply_house_id === r.supplyHouseId) }))
               .filter((g) => g.rows.length > 0)
+        // v2.5694: the window by job. The strip answers the cell's question first: how much is on a job account. Then
+        // each house's rows sit under their job, whose heading says its job-account state in words and holds its press.
+        const allocationsOf = (id: string) => agingCellJobs.allocations[id] ?? []
+        const accountOf = (jobId: string, hId: string) => (agingCellAccountsLoaded ? agingCellAccounts[`${jobId}:${hId}`] ?? null : undefined)
+        const byHouse = groups.map((g) => ({ ...g, byJob: groupAgingCellByJob(g.rows, allocationsOf, accountOf) }))
+        const accountSplit = agingCellAccountSplit(cellRows)
+        const showSplit = !isMovableList && !isCredits && cellRows.length > 0
+        const onPct = accountSplit.onAmount + accountSplit.offAmount > 0 ? (accountSplit.onAmount / (accountSplit.onAmount + accountSplit.offAmount)) * 100 : 0
+        const jobsLine = agingCellAccountsLoaded ? agingCellJobsLine(byHouse.flatMap((g) => g.byJob.jobs), houseId ? houseName : null) : ''
+        const money = (n: number) => (n < 0 ? `−$${formatCurrency(Math.abs(n))}` : `$${formatCurrency(n)}`)
+        const jobLabelOf = (jobId: string) => {
+          const d = agingCellJobs.jobs[jobId]
+          return d ? { num: effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '', name: d.job_name || '—' } : { num: '', name: jobId.slice(0, 8) }
+        }
+        const jobsText = (invoiceId: string) =>
+          allocationsOf(invoiceId)
+            .map((a) => {
+              const j = jobLabelOf(a.job_id)
+              return `${j.num ? `${j.num} · ` : ''}${j.name} (${a.pct}%)`
+            })
+            .join(', ')
+        // markOnTitle: the row offers Mark it on (with these words on hover) when not flagged and past its window.
+        const renderRow = (inv: AgingInvoiceRow, markOnTitle: string | null, note: string | null) => {
+          const credit = isSupplyCredit(inv.amount)
+          const isOn = inv.on_job_account === true
+          // PR 3: a still-current single-job row moves through the move modal, never a bare flag.
+          const movableRow = !isOn && isMovableAgingInvoice(inv, allocationsOf(inv.id).length, agingTodayYmd)
+          const moveAsk = movableRow ? agingMoveData.asks[inv.id] ?? null : null
+          const openMoveModal = () => {
+            setAgingMoveModalFor(inv.id)
+            setAgingMoveAttest(false)
+            setAgingMoveError(null)
+          }
+          const days = inv.due_date && !credit ? daysPastDue(inv.due_date, agingTodayYmd) : null
+          const po = inv.purchase_order_number?.trim()
+          const poDate = `${po ? `PO ${po} · ` : ''}${formatYmdLocal(inv.invoice_date)}`
+          const pair = creditPairingLine(inv, agingUnpaidInvoices)
+          const rowNote = [pair, note].filter(Boolean).join(' · ')
+          return (
+            <div key={inv.id} className="aging-win-row">
+              <span className="aging-win-inv">{inv.invoice_number}</span>
+              <span className="aging-win-po" title={poDate}>{poDate}</span>
+              {/* A credit never wears an age chip — it has a size, not an age (v2.3500). */}
+              {credit ? (
+                <span className="aging-win-age" />
+              ) : !inv.due_date ? (
+                <span className="aging-win-age">no due date</span>
+              ) : days != null && days > 0 ? (
+                <span className={`aging-win-age ${days >= 60 ? 'aging-win-age--old' : 'aging-win-age--late'}`} title={`${days} days past due · due ${formatYmdLocal(inv.due_date)}`}>
+                  {days} d
+                </span>
+              ) : (
+                <span className="aging-win-age" title={`Due ${formatYmdLocal(inv.due_date)}`}>
+                  due {Number(inv.due_date.slice(5, 7))}/{Number(inv.due_date.slice(8, 10))}
+                </span>
+              )}
+              <span className={`aging-win-amt${credit ? ' aging-win-amt--credit' : ''}`}>{money(Number(inv.amount ?? 0))}</span>
+              <span className="aging-win-rowstate">
+                {credit ? null : isOn ? (
+                  <button type="button" className="aging-win-state aging-win-state--on" onClick={() => void setInvoiceJobAcct(inv, false)} title={`${JOB_ACCOUNT_LINE_TITLE} Press to take it off.`}>
+                    On it ✓
+                  </button>
+                ) : movableRow ? (
+                  moveAsk ? (
+                    (() => {
+                      const age = ageState(moveAsk.requested_at, undefined, SUPPLY_MOVE_ASK_AGE)
+                      return (
+                        <button
+                          type="button"
+                          onClick={openMoveModal}
+                          title={`The move was asked for by ${moveAsk.via}${moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call, then mark it moved`}
+                          style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', font: 'inherit', background: age === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: age === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)' }}
+                        >
+                          asked {formatYmdLocal(moveAsk.requested_at.slice(0, 10))} · follow up ☎
+                        </button>
+                      )
+                    })()
+                  ) : (
+                    <button
+                      type="button"
+                      className="aging-win-btn"
+                      onClick={openMoveModal}
+                      title={`Movable${inv.due_date ? ` until ${formatYmdLocal(inv.due_date)}` : ''}. A house moves a charge onto the job account only while it is current. Start the move with a call or an emailed request.`}
+                    >
+                      Move it…
+                    </button>
+                  )
+                ) : markOnTitle ? (
+                  <button type="button" className="aging-win-link" onClick={() => void setInvoiceJobAcct(inv, true)} title={markOnTitle}>
+                    Mark it on
+                  </button>
+                ) : null}
+              </span>
+              {inv.link ? (
+                <a className="aging-win-ext" href={inv.link} target="_blank" rel="noreferrer" title="The invoice" aria-label={`Open invoice ${inv.invoice_number}`}>
+                  ↗
+                </a>
+              ) : (
+                <span className="aging-win-ext" />
+              )}
+              {rowNote ? <span className="aging-win-note">{rowNote}</span> : null}
+            </div>
+          )
+        }
+        const renderJob = (job: AgingCellJobGroup<AgingInvoiceRow>) => {
+          const j = jobLabelOf(job.jobId)
+          const words = agingCellJobStateWords(job.state, houseNameOf(job.houseId))
+          // A past-due bill is marked on with one press per row. With an open account every such row offers it. With
+          // none on record, Flag anyway unfolds the same press for this job (the to-do #132 call: never a block).
+          const jobKey = `${job.jobId}:${job.houseId}`
+          const noAccount = job.state.kind === 'none' || job.state.kind === 'requested' || job.state.kind === 'not_needed'
+          const pastWindowOff = job.rows.filter((r) => r.on_job_account !== true && !isMovableAgingInvoice(r, 1, agingTodayYmd)).length
+          const anywayOpen = noAccount && agingCellFlagAnywayFor === jobKey
+          const markOnTitle =
+            job.state.kind === 'open'
+              ? 'The job account is open at this house. One press marks this invoice on it.'
+              : anywayOpen
+                ? 'No job account on record. This only records that the house carries this bill on one. The house roster keeps its bought, no account line.'
+                : null
+          const n = job.rows.length
+          return (
+            <div key={`${job.jobId}:${job.houseId}`} className="aging-win-job">
+              <div className="aging-win-job-head">
+                <div className="aging-win-job-name">
+                  {j.num ? <span className="aging-win-job-num">{j.num}</span> : null}
+                  {j.name}
+                </div>
+                <div className="aging-win-job-act">
+                  <span className={`aging-win-state aging-win-state--${words.tone}`}>{words.label}</span>
+                  {job.state.kind === 'none' || job.state.kind === 'requested' ? (
+                    <button type="button" className="aging-win-btn" onClick={() => setAgingCellMarkOpenedFor({ inv: job.rows[0]!, flagOnOpen: false })}>
+                      Mark opened…
+                    </button>
+                  ) : null}
+                  {noAccount && pastWindowOff > 0 ? (
+                    <button
+                      type="button"
+                      className="aging-win-link"
+                      aria-pressed={anywayOpen}
+                      onClick={() => setAgingCellFlagAnywayFor(anywayOpen ? null : jobKey)}
+                      title="Flag a bill as on the job account with no account on record"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      {anywayOpen ? 'Done' : 'Flag anyway…'}
+                    </button>
+                  ) : null}
+                </div>
+                <div className="aging-win-job-meta">
+                  {n} {n === 1 ? 'invoice' : 'invoices'} · {money(job.total)}
+                  {job.onCount > 0 && job.offCount > 0 ? ` · ${job.onCount} of ${n} on it` : ''}
+                </div>
+              </div>
+              <div className="aging-win-rows">{job.rows.map((r) => renderRow(r, markOnTitle, null))}</div>
+            </div>
+          )
+        }
         return (
           <div
             onClick={(e) => {
@@ -1835,241 +1988,100 @@ export function SupplyHousesTab({
                 </div>
                 <button type="button" onClick={() => setAgingCellModal(null)} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead style={{ background: 'var(--bg-subtle)' }}>
-                    <tr>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>{isCredits ? 'Credit #' : 'Invoice #'}</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>PO #</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Due</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Jobs</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Amount</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Link</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cellRows.length === 0 ? (
-                      <tr><td colSpan={7} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>{isMovableList ? 'Nothing left to move — every current charge that belongs on a job account is on one. ✓' : 'Nothing here any more.'}</td></tr>
-                    ) : (
-                      groups.map((g) => (
-                        <Fragment key={g.key}>
-                          {g.name ? (
-                            <tr>
-                              <td colSpan={7} style={{ padding: '0.6rem 0.75rem 0.25rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-                                {g.name} · {(() => { const s = g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0); return s < 0 ? `−$${formatCurrency(Math.abs(s))}` : `$${formatCurrency(s)}` })()}
-                                {isMovableList ? (() => {
-                                  const rep = (agingCellReps[g.key] ?? []).find((r) => typeof r.email === 'string' && r.email.includes('@')) ?? (agingCellReps[g.key] ?? [])[0]
-                                  const unasked = g.rows.filter((r) => !agingMoveData.asks[r.id])
-                                  const busyKey = `house:${g.key}`
-                                  return (
-                                    <>
-                                      {rep ? (
-                                        <span style={{ marginLeft: '0.6rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#0f766e' }}>
-                                          ☎ {(rep.name ?? '').trim() || rep.email}{'phone' in rep && rep.phone ? ` · ${rep.phone}` : ''}
-                                        </span>
-                                      ) : (
-                                        <span style={{ marginLeft: '0.6rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-amber-800)' }}>no job-accounts rep on file — add one on the house</span>
-                                      )}
-                                      {rep && typeof rep.email === 'string' && rep.email.includes('@') && unasked.length > 0 ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => void sendMoveRequest(unasked.map((r) => r.id), busyKey, false)}
-                                          disabled={agingMoveBusy === busyKey}
-                                          style={{ marginLeft: '0.6rem', padding: '0.1rem 0.55rem', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none', letterSpacing: 0, background: 'transparent', color: '#0f766e', border: '1px solid #0f766e', borderRadius: 4, cursor: 'pointer', font: 'inherit', opacity: agingMoveBusy === busyKey ? 0.6 : 1 }}
-                                        >
-                                          {agingMoveBusy === busyKey ? 'Sending…' : `✉ Email ${(rep.name ?? '').trim().split(' ')[0] || 'the rep'} the list ›`}
-                                        </button>
-                                      ) : null}
-                                    </>
-                                  )
-                                })() : null}
-                              </td>
-                            </tr>
-                          ) : null}
-                          {g.rows.map((inv) => {
-                            const allocations = agingCellJobs.allocations[inv.id] ?? []
-                            const singleJobId = allocations.length === 1 ? allocations[0]!.job_id : null
-                            const accountKey = singleJobId ? `${singleJobId}:${inv.supply_house_id}` : null
-                            const chip = agingCellChipState(
-                              inv,
-                              allocations,
-                              agingCellAccountsLoaded ? (accountKey ? agingCellAccounts[accountKey] ?? null : null) : undefined,
-                            )
-                            const bandOpen = agingCellBandFor === inv.id && chip.kind === 'off_no_account'
-                            // PR 3: a still-current single-job row moves through the move modal, never a bare flag.
-                            const movableRow = isMovableAgingInvoice(inv, allocations.length, agingTodayYmd)
-                            const moveAsk = movableRow ? agingMoveData.asks[inv.id] ?? null : null
-                            const openMoveModal = () => {
-                              setAgingCellBandFor(null)
-                              setAgingMoveModalFor(inv.id)
-                              setAgingMoveAttest(false)
-                              setAgingMoveError(null)
-                            }
-                            return (
-                              <Fragment key={inv.id}>
-                              <tr style={{ borderBottom: bandOpen ? 'none' : '1px solid var(--border)' }}>
-                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                                  {inv.invoice_number}
-                                  {(() => {
-                                    const pair = creditPairingLine(inv, agingUnpaidInvoices)
-                                    return pair ? <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{pair}</span> : null
-                                  })()}
-                                </td>
-                                <td style={{ padding: '0.5rem 0.75rem' }}>{inv.purchase_order_number?.trim() ? inv.purchase_order_number : '—'}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>{formatYmdLocal(inv.invoice_date)}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                                  {inv.due_date ? formatYmdLocal(inv.due_date) : '—'}
-                                  {(() => {
-                                    // A credit never wears an age chip — it has a size, not an age (v2.3500).
-                                    if (!inv.due_date || isSupplyCredit(inv.amount)) return null
-                                    const days = daysPastDue(inv.due_date, agingTodayYmd)
-                                    if (days <= 0) return null
-                                    return (
-                                      <span style={{ marginLeft: '0.4rem', padding: '0.1rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)', color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)' }}>
-                                        {days}d past due
-                                      </span>
-                                    )
-                                  })()}
-                                </td>
-                                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
-                                  {/* PR 2: the chip is the act — press it to flag or unflag; no account on record
-                                      unfolds the band below. PR 3: a movable (still current, one job) row opens the
-                                      move modal instead — the house has to move the charge, so the press starts
-                                      the call or the email, and an open ask wears its age. */}
-                                  {(chip.kind === 'off_open' || chip.kind === 'off_no_account') && movableRow ? (
-                                    moveAsk ? (
-                                      (() => {
-                                        const age = ageState(moveAsk.requested_at, undefined, SUPPLY_MOVE_ASK_AGE)
-                                        return (
-                                          <button
-                                            type="button"
-                                            onClick={openMoveModal}
-                                            title={`The move was asked for by ${moveAsk.via}${moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call, then mark it moved`}
-                                            style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', font: 'inherit', background: age === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: age === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)' }}
-                                          >
-                                            asked {formatYmdLocal(moveAsk.requested_at.slice(0, 10))} · follow up ☎
-                                          </button>
-                                        )
-                                      })()
-                                    ) : (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={openMoveModal}
-                                          title="Still current — the house will move this charge onto the job account. Start the move: the call, or the emailed request."
-                                          style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: 'transparent', color: '#0f766e', whiteSpace: 'nowrap', border: '1px solid #0f766e', cursor: 'pointer', font: 'inherit' }}
-                                        >
-                                          + Job acct
-                                        </button>
-                                        <span title="The window: a house moves a charge only while it is current" style={{ marginRight: '0.35rem', padding: '0 6px', borderRadius: 999, fontSize: '0.625rem', fontWeight: 700, color: '#0f766e', border: '1px solid #99f6e4', whiteSpace: 'nowrap' }}>
-                                          movable{inv.due_date ? ` until ${formatYmdLocal(inv.due_date)}` : ''}
-                                        </span>
-                                      </>
-                                    )
-                                  ) : chip.kind === 'on' ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => void setInvoiceJobAcct(inv, false)}
-                                      title={`${JOB_ACCOUNT_LINE_TITLE} Press to take it off.`}
-                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', font: 'inherit' }}
-                                    >
-                                      Job acct ✓
-                                    </button>
-                                  ) : chip.kind === 'off_open' ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => void setInvoiceJobAcct(inv, true)}
-                                      title={`Job account open at this house${chip.account.account_ref ? ` · ref ${chip.account.account_ref}` : ''}${chip.account.opened_at ? ` · ${openedViaPhrase(chip.account.opened_via)} ${new Date(chip.account.opened_at).toLocaleDateString()}` : ''} — one press puts this invoice on it.`}
-                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: 'transparent', color: '#0f766e', whiteSpace: 'nowrap', border: '1px solid #0f766e', cursor: 'pointer', font: 'inherit' }}
-                                    >
-                                      + Job acct
-                                    </button>
-                                  ) : chip.kind === 'off_no_account' ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => setAgingCellBandFor(bandOpen ? null : inv.id)}
-                                      title="Put this invoice on the job account"
-                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: 'transparent', color: '#0f766e', whiteSpace: 'nowrap', border: '1px dashed #0f766e', cursor: 'pointer', font: 'inherit' }}
-                                    >
-                                      + Job acct
-                                    </button>
-                                  ) : chip.kind === 'off_loading' ? (
-                                    <span style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', border: '1px solid var(--border)', opacity: 0.6 }}>+ Job acct</span>
-                                  ) : null}
-                                  <span
-                                    title={
-                                      chip.kind === 'split'
-                                        ? `Job accounts are per property — this invoice is split across ${chip.jobCount} jobs.`
-                                        : chip.kind === 'no_job'
-                                          ? 'Job accounts are per property — open the house and put the invoice on its job first.'
-                                          : undefined
-                                    }
-                                  >
-                                    {allocations.length > 0
-                                      ? allocations
-                                          .map((a) => {
-                                            const d = agingCellJobs.jobs[a.job_id]
-                                            return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name} (${a.pct}%)` : a.job_id.slice(0, 8)
-                                          })
-                                          .join(', ')
-                                      : chip.kind === 'on' || chip.kind === 'credit'
-                                        ? ''
-                                        : '—'}
-                                  </span>
-                                </td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(isSupplyCredit(inv.amount) ? { color: 'var(--text-green-700)', fontWeight: 600 } : {}) }}>
-                                  {isSupplyCredit(inv.amount) ? `−$${formatCurrency(Math.abs(inv.amount))}` : `$${formatCurrency(inv.amount)}`}
-                                </td>
-                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                                  {inv.link ? (
-                                    <a href={inv.link} target="_blank" rel="noreferrer" title="The invoice" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>View</a>
-                                  ) : (
-                                    '—'
-                                  )}
-                                </td>
-                              </tr>
-                              {bandOpen && chip.kind === 'off_no_account' ? (
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td colSpan={7} style={{ padding: '0 0.75rem 0.6rem' }}>
-                                    <div style={{ padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-                                      <span style={{ flex: '1 1 16rem' }}>{agingCellBandWords(chip.account, houseNameOf(inv.supply_house_id))}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setAgingCellMarkOpenedFor(inv)}
-                                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
-                                      >
-                                        Mark opened…
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => void setInvoiceJobAcct(inv, true)}
-                                        title="Set the flag without an account on record — the roster's bought-no-account row will keep saying so"
-                                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-amber-800)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
-                                      >
-                                        Flag anyway
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setAgingCellBandFor(null)}
-                                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', background: 'none', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', font: 'inherit' }}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
+              {showSplit ? (
+                <div className="aging-win-split">
+                  <div className="aging-win-split-row">
+                    <div className="aging-win-fig aging-win-fig--on">
+                      <b>{money(accountSplit.onAmount)}</b>
+                      <span>on job accounts · {accountSplit.onCount} of {accountSplit.onCount + accountSplit.offCount} · the owners' debt</span>
+                    </div>
+                    <div className="aging-win-fig aging-win-fig--off">
+                      <b>{money(accountSplit.offAmount)}</b>
+                      <span>not on one · {accountSplit.offCount} of {accountSplit.onCount + accountSplit.offCount} · Click's debt</span>
+                    </div>
+                  </div>
+                  <div className="aging-win-bar" role="img" aria-label={`${money(accountSplit.onAmount)} on job accounts, ${money(accountSplit.offAmount)} not on one`}>
+                    {accountSplit.onAmount > 0 ? <i className="aging-win-bar-on" style={{ width: `${onPct}%` }} /> : null}
+                    {accountSplit.offAmount > 0 ? <i className="aging-win-bar-off" style={{ width: `${100 - onPct}%` }} /> : null}
+                  </div>
+                  {jobsLine ? <p className="aging-win-why">{jobsLine}</p> : null}
+                </div>
+              ) : null}
+              {cellRows.length === 0 ? (
+                <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>{isMovableList ? 'Nothing left to move — every current charge that belongs on a job account is on one. ✓' : 'Nothing here any more.'}</p>
+              ) : !agingCellAccountsLoaded ? (
+                <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>Reading the jobs…</p>
+              ) : (
+                byHouse.map((g) => (
+                  <Fragment key={g.key}>
+                    {g.name ? (
+                      <div className="aging-win-house">
+                        {g.name} · {money(g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0))}
+                        {isMovableList ? (() => {
+                          const rep = (agingCellReps[g.key] ?? []).find((r) => typeof r.email === 'string' && r.email.includes('@')) ?? (agingCellReps[g.key] ?? [])[0]
+                          const unasked = g.rows.filter((r) => !agingMoveData.asks[r.id])
+                          const busyKey = `house:${g.key}`
+                          return (
+                            <>
+                              {rep ? (
+                                <span style={{ marginLeft: '0.6rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: '#0f766e' }}>
+                                  ☎ {(rep.name ?? '').trim() || rep.email}{'phone' in rep && rep.phone ? ` · ${rep.phone}` : ''}
+                                </span>
+                              ) : (
+                                <span style={{ marginLeft: '0.6rem', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-amber-800)' }}>no job-accounts rep on file — add one on the house</span>
+                              )}
+                              {rep && typeof rep.email === 'string' && rep.email.includes('@') && unasked.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void sendMoveRequest(unasked.map((r) => r.id), busyKey, false)}
+                                  disabled={agingMoveBusy === busyKey}
+                                  style={{ marginLeft: '0.6rem', padding: '0.1rem 0.55rem', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none', letterSpacing: 0, background: 'transparent', color: '#0f766e', border: '1px solid #0f766e', borderRadius: 4, cursor: 'pointer', font: 'inherit', opacity: agingMoveBusy === busyKey ? 0.6 : 1 }}
+                                >
+                                  {agingMoveBusy === busyKey ? 'Sending…' : `✉ Email ${(rep.name ?? '').trim().split(' ')[0] || 'the rep'} the list ›`}
+                                </button>
                               ) : null}
-                              </Fragment>
-                            )
-                          })}
-                        </Fragment>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div style={{ position: 'sticky', bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '0.6rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            </>
+                          )
+                        })() : null}
+                      </div>
+                    ) : null}
+                    {g.byJob.jobs.map(renderJob)}
+                    {g.byJob.split.length > 0 ? (
+                      <div className="aging-win-job">
+                        <div className="aging-win-job-head">
+                          <div className="aging-win-job-name">Split across jobs</div>
+                          <div className="aging-win-job-meta">A job account belongs to one property. A split invoice cannot sit on one.</div>
+                        </div>
+                        <div className="aging-win-rows">{g.byJob.split.map((r) => renderRow(r, null, jobsText(r.id)))}</div>
+                      </div>
+                    ) : null}
+                    {g.byJob.noJob.length > 0 ? (
+                      <div className="aging-win-job">
+                        <div className="aging-win-job-head">
+                          <div className="aging-win-job-name">No job yet</div>
+                          <div className="aging-win-job-meta">Open {houseNameOf(g.key)} and choose its job first.</div>
+                        </div>
+                        <div className="aging-win-rows">{g.byJob.noJob.map((r) => renderRow(r, null, null))}</div>
+                      </div>
+                    ) : null}
+                    {g.byJob.credits.length > 0 ? (
+                      <div className="aging-win-job">
+                        {isCredits ? null : (
+                          <div className="aging-win-job-head">
+                            <div className="aging-win-job-name">Credit memos</div>
+                          </div>
+                        )}
+                        <div className="aging-win-rows" style={isCredits ? { paddingTop: '0.4rem' } : undefined}>
+                          {g.byJob.credits.map((r) => renderRow(r, null, allocationsOf(r.id).length > 0 ? jobsText(r.id) : null))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </Fragment>
+                ))
+              )}
+              {/* Sticky pins to the panel's content box: the negative bottom and margin cover its bottom padding, so no
+                  row shows through under the pinned footer. */}
+              <div style={{ position: 'sticky', bottom: '-1.5rem', zIndex: 2, background: 'var(--surface)', borderTop: '1px solid var(--border)', margin: '0 -1.5rem -1.5rem', padding: '0.6rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <div style={{ fontWeight: 600 }}>
                   {isMovableList ? (
                     <>
@@ -2078,10 +2090,7 @@ export function SupplyHousesTab({
                     </>
                   ) : (
                     <>
-                  {isCredits ? 'Open credits' : 'Cell total'}: {total < 0 ? `−$${formatCurrency(Math.abs(total))}` : `$${formatCurrency(total)}`}
-                  {markJobAccountInvoices && jobAcctTotal > 0.005 ? (
-                    <span title={JOB_ACCOUNT_LINE_TITLE} style={{ ...JOB_ACCOUNT_LINE_STYLE, whiteSpace: 'normal' }}>${formatCurrency(jobAcctTotal)} job acct — the owner's debt, not Click's</span>
-                  ) : null}
+                  {isCredits ? 'Open credits' : 'Cell total'}: {money(total)}
                     </>
                   )}
                 </div>
@@ -2146,7 +2155,7 @@ export function SupplyHousesTab({
                           <span style={{ flex: '1 1 14rem' }}>No job account on record for this job — ask {rep?.name?.trim() || 'the house'} to open one on the same call.</span>
                           <button
                             type="button"
-                            onClick={() => setAgingCellMarkOpenedFor(inv)}
+                            onClick={() => setAgingCellMarkOpenedFor({ inv, flagOnOpen: true })}
                             style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
                           >
                             Mark opened…
@@ -2223,9 +2232,9 @@ export function SupplyHousesTab({
                   </div>
                 )
               })()}
-              {/* PR 2: the band's Mark opened… — the shared v2.3423 sheet, stacked above (z 1100). */}
+              {/* A job heading's or the move modal's Mark opened… — the shared v2.3423 sheet, stacked above (z 1100). */}
               {agingCellMarkOpenedFor && (() => {
-                const inv = agingCellMarkOpenedFor
+                const { inv, flagOnOpen } = agingCellMarkOpenedFor
                 const alloc = agingCellJobs.allocations[inv.id] ?? []
                 const jobId = alloc.length === 1 ? alloc[0]!.job_id : null
                 if (!jobId) return null
@@ -2242,9 +2251,9 @@ export function SupplyHousesTab({
                     onSaved={(row) => {
                       setAgingCellMarkOpenedFor(null)
                       setAgingCellAccounts((prev) => ({ ...prev, [key]: row }))
-                      // The form's own behavior: saved as open, the invoice the press was about is flagged too.
-                      if (row.status === 'open') void setInvoiceJobAcct(inv, true)
-                      else setAgingCellBandFor(null)
+                      // From the move modal, saved as open flags the invoice the press was about. From a job
+                      // heading it only records the account; each invoice then wears its own Mark it on.
+                      if (flagOnOpen && row.status === 'open') void setInvoiceJobAcct(inv, true)
                     }}
                   />
                 )

@@ -1583,8 +1583,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     }
   }
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { refresh?: boolean }) => {
+    // A refresh keeps the loaded page up and swaps the row in when the read lands (v2.5695, punch list #139): the
+    // loading flag blanks the whole detail tree, which unmounted the Tell sheet mid-send and lost its receipt.
+    if (!opts?.refresh) setLoading(true)
     try {
       let data: EstimateDetailRow | null = null
 
@@ -2841,7 +2843,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (!row) return { ok: false, kind: 'refused', why: 'The estimate is not open.' }
     setSending(true)
     try {
-      if (mode === 'send') await saveDraft()
+      // The pre-send save skips its reload (v2.5695): the refresh after the send re-seeds the editor once, without blanking the page.
+      if (mode === 'send') await saveDraft({ skipReload: true })
       const { data: sess } = await supabase.auth.getSession()
       const jwt = sess.session?.access_token
       if (!jwt) return { ok: false, kind: 'refused', why: 'Not signed in. Sign in again and retry.' }
@@ -2902,7 +2905,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         void navigator.clipboard.writeText(json.accept_url)
       }
       try {
-        await load()
+        await load({ refresh: true })
       } catch {
         /* the page is stale; the send stands */
       }
@@ -3084,9 +3087,35 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setCatalogModalOpen(false)
   }
 
+  // The Tell sheet (v2.5594) sits above the loading early-return and first in both trees, keyed (v2.5695, punch
+  // list #139): a refresh of the page behind it must never unmount the sheet, or the receipt it is about to show
+  // lands on a dead instance and the office reads an unchanged sheet after a send that went.
+  const tellSheet =
+    tellEstimate && user ? (
+      <TellCustomerSheet
+        key="tell-sheet"
+        moment="estimate"
+        jobId={tellEstimate.jobId}
+        jobLabel={`Estimate #${tellEstimate.number}${tellEstimate.title ? ` · ${tellEstimate.title}` : ''}`}
+        estimate={{
+          customerId: tellEstimate.customerId,
+          email: tellEstimate.email,
+          amount: `$${formatCurrency(tellEstimate.totalCents / 100)}`,
+          title: tellEstimate.title,
+          jobId: tellEstimate.jobId,
+          sendEmail: () => sendEstimateEmailAnswer(tellEstimate.email, 'send'),
+          sendEmailAgain: () => sendEstimateEmailAnswer(tellEstimate.email, 'resend'),
+        }}
+        userId={user.id}
+        role={role}
+        onClose={() => setTellEstimate(null)}
+      />
+    ) : null
+
   if (loading || !row) {
     return (
       <div className={`${ESTIMATES_PAGE_CLASS} estimates-page-shell--detail`}>
+        {tellSheet}
         <style>{estimateDetailPageCss}</style>
         <p>Loading…</p>
       </div>
@@ -3095,29 +3124,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   return (
     <div className={`${ESTIMATES_PAGE_CLASS} estimates-page-shell--detail`}>
+      {tellSheet}
       <style>{estimateDetailPageCss}</style>
       <div style={{ marginBottom: '1rem' }}>
         <Link to="/estimates">← Estimates</Link>
       </div>
-      {tellEstimate && user ? (
-        <TellCustomerSheet
-          moment="estimate"
-          jobId={tellEstimate.jobId}
-          jobLabel={`Estimate #${tellEstimate.number}${tellEstimate.title ? ` · ${tellEstimate.title}` : ''}`}
-          estimate={{
-            customerId: tellEstimate.customerId,
-            email: tellEstimate.email,
-            amount: `$${formatCurrency(tellEstimate.totalCents / 100)}`,
-            title: tellEstimate.title,
-            jobId: tellEstimate.jobId,
-            sendEmail: () => sendEstimateEmailAnswer(tellEstimate.email, 'send'),
-            sendEmailAgain: () => sendEstimateEmailAnswer(tellEstimate.email, 'resend'),
-          }}
-          userId={user.id}
-          role={role}
-          onClose={() => setTellEstimate(null)}
-        />
-      ) : null}
       {isDraft ? (
         <EstimateDraftStepRail
           steps={railData.steps}
@@ -4647,6 +4658,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               customerName={customers.find((c) => c.id === row.customer_id)?.name ?? null}
               email={row.customer_email ?? null}
               sentAt={row.sent_at}
+              tokenHash={row.public_token_hash ?? null}
             />
           ) : null}
           <div

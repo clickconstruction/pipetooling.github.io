@@ -40,11 +40,23 @@ How an account gets opened and recorded is in [open a job account before buying 
 An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's balance and still gets paid from **Make Payment**. But on Held for suppliers it reads teal instead of red, and the summary tells you that $3,240.50 of what you're "holding for suppliers" is secured by the owner's account.
 :::
 
-Already have invoices sitting on job accounts? Press the aging cell that holds them. Each bill in the window carries a **+ Job acct** chip. One press flags a bill when the job's account is open. With no account on record, an amber note opens instead. It offers {{button:green|Mark opened…}} and **Flag anyway**. Press **Job acct ✓** to take a flag off again. The **Edit** pencil still works too.
+## Work a cell by job
+
+Already have invoices sitting on job accounts? Press the aging cell that holds them. A strip at the top splits the cell. One figure is what sits on job accounts. The other is what does not. Below it, the bills sit under their job. Each job's heading says its state in words:
+
+- {{chip:green|On the job account ✓}} means every bill of that job in the cell is flagged.
+- {{chip:gray|Job account open · ref R-88214}} means the account is open. Each bill not flagged yet offers **Mark it on**.
+- {{chip:yellow|No job account at Moore Supply}} comes with {{button:outline|Mark opened…}}. Record the account there once the house opens it. Then each bill offers **Mark it on**.
+- {{chip:yellow|Job account asked for 10/2}} means someone asked the house. It offers {{button:outline|Mark opened…}} too.
+- {{chip:gray|No job account needed}} means the office decided this job does not need one there.
+
+The house may already carry a bill on an account you never recorded. Press **Flag anyway…** on the job's heading. Each of its past due bills then offers **Mark it on**. Press **Done** to fold it away.
+
+Press **On it ✓** to take a flag off again. The **Edit** pencil still works too. A bill on two jobs sits under **Split across jobs**. A job account belongs to one property, so that bill cannot go on one. A bill with no job sits under **No job yet**.
 
 ## The move window
 
-A house moves a charge onto a job account only while the invoice is current. Once it is past due, the window is closed. A teal strip above the aging table counts the charges still movable. Press {{button:green|Work the list ›}} to see them by house, with the rep to call. Each row's **+ Job acct** opens the move window for that charge.
+A house moves a charge onto a job account only while the invoice is current. Once it is past due, the window is closed. A teal strip above the aging table counts the charges still movable. Press {{button:green|Work the list ›}} to see them by house and job, with the rep to call. Each row's {{button:outline|Move it…}} opens the move window for that charge.
 
 Tick the box after your call and press {{button:green|Mark it moved ✓}}. Or press {{button:green|Send the request ›}} to email the rep from the app. Replies come to you. The row then reads **asked** with the date. Follow up with a call until the house confirms. An ask with no answer turns amber after 3 days and red after 7.
 
