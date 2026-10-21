@@ -364,7 +364,8 @@ describe('/messages: the last 7 days (punch list #140 PR 5)', () => {
     // An empty fortnight: three tiles read none. Needs a reply holds the one person somebody has (the rest wait in
     // New), so the longest wait is the held customer, with who has them.
     expect(within(tiles[0]!).getByTestId('strip-value').textContent).toBe('none')
-    expect(within(tiles[1]!).getByTestId('strip-sub').textContent).toBe('Held Customer · Smoke Dev has it')
+    // The longest wait lands a render after the rows: the page hears the queue in the panel's effect, so wait for it.
+    await waitFor(() => expect(within(tiles[1]!).getByTestId('strip-sub').textContent).toBe('Held Customer · Smoke Dev has it'))
     expect((tiles[1] as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(tiles[1]!)
     expect(where()).toBe('/messages?thread=c-held&at=m5')
