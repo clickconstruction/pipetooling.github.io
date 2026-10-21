@@ -11,7 +11,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; The shared substrate (or lack of one); Master summary table; Test coverage; JobsSubLaborFormModal dossiers; DetailJobModal dossiers; JobsCombineSeparateModal dossiers; Preserve-quirks list; Stage-A pure-logic inventory; Recommended extraction order
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 ---
 
 ## What this surface is
@@ -263,7 +263,7 @@ Workflow link, date band (Last bill date hardcoded `—` — quirk #26), status,
 
 ### D13 — Close row + satellite mounts (JSX 2459–2482, 2646–2708)
 
-Close row (hidden in pane). Since v2.5688 (punch list #135) the activity header's **＋ Report** chip (`JobThreadNotesPanel`'s `onLeaveReport`, given to whoever passes `canLeaveJobFieldReport`) opens `AdditionalReportModal` over the pane (`leaveReportOpen`, in `detailEscBlocked`; a save runs `threadNotes.reload()` and `loadDetail()`). Mounts: [`JobCalendarModal`](../src/components/jobs/JobCalendarModal.tsx) 2646–2660 (`onOpenSchedule` seeds `detailScheduleInitialDate`; `onOpenWeekDispatch`), [`ScheduleJobModal`](../src/components/jobs/ScheduleJobModal.tsx) 2661–2677 (since v2.5593 an office member's save of a job's first visit, `isFirstVisit`, opens `TellCustomerSheet` with moment `booked`, Escape ignored while it is up), [`JobReportsModal`](../src/components/JobReportsModal.tsx) 2678–2690 (`zIndex={1100}`), [`PaidJobEmailSendModal`](../src/components/jobs/PaidJobEmailSendModal.tsx) 2691–2698, [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx) 2699–2708 (close bumps `jobAccountSharesKey`). **Status:** all components; mounts + open states stay in the shell.
+Close row (hidden in pane). Since v2.5688 (punch list #135) the activity header's **＋ Report** chip (`JobThreadNotesPanel`'s `onLeaveReport`, given to whoever passes `canLeaveJobFieldReport`) opens `AdditionalReportModal` over the pane (`leaveReportOpen`, in `detailEscBlocked`; since v2.5691 the form's own `window` keydown closes it on Escape and marks the event handled, so the two layers peel in order; a save runs `threadNotes.reload()` and `loadDetail()`). Mounts: [`JobCalendarModal`](../src/components/jobs/JobCalendarModal.tsx) 2646–2660 (`onOpenSchedule` seeds `detailScheduleInitialDate`; `onOpenWeekDispatch`), [`ScheduleJobModal`](../src/components/jobs/ScheduleJobModal.tsx) 2661–2677 (since v2.5593 an office member's save of a job's first visit, `isFirstVisit`, opens `TellCustomerSheet` with moment `booked`, Escape ignored while it is up), [`JobReportsModal`](../src/components/JobReportsModal.tsx) 2678–2690 (`zIndex={1100}`), [`PaidJobEmailSendModal`](../src/components/jobs/PaidJobEmailSendModal.tsx) 2691–2698, [`SupplyHouseShareModal`](../src/components/jobs/SupplyHouseShareModal.tsx) 2699–2708 (close bumps `jobAccountSharesKey`). **Status:** all components; mounts + open states stay in the shell.
 
 ---
 
