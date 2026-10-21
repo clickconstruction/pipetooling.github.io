@@ -52,6 +52,15 @@ describe('SwitchOnCard (punch list #140 PR 2)', () => {
     expect(open.getByText(SWITCH_WORDS.footer)).toBeTruthy()
   })
 
+  it('reads the Office hours row’s why as around the clock while the card’s switch is on (punch list #141 PR 1)', async () => {
+    const always = row(JSON.stringify({ days: [1, 2, 3, 4, 5], opens: '07:30', closes: '17:00', techUntil: '17:00', emergency: null, always: true, savedAt: NOW }))
+    renderWithProviders(<SwitchOnCard io={fakeIo({ ...THREE_ON, messages_office_hours_v1: always })} now={() => NOW} />)
+    fireEvent.click(await screen.findByRole('button', { name: /3 of 8 on/ }))
+    const hours = within(document.querySelector<HTMLElement>('[data-switch-row="hours"]')!)
+    expect(hours.getByText('the office is open around the clock')).toBeTruthy()
+    expect(within(document.querySelector<HTMLElement>('[data-switch-row="replyPush"]')!).getByText('whoever has it hears a reply on their phone')).toBeTruthy()
+  })
+
   it('says the team inbox is named but not read, in red', async () => {
     renderWithProviders(<SwitchOnCard io={fakeIo({ ...ALL_ON, gmail_sync_on_v1: row('false') })} now={() => NOW} />)
     fireEvent.click(await screen.findByRole('button', { name: /6 of 8 on/ }))

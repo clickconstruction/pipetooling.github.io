@@ -130,7 +130,8 @@ a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in
 `newLane.ts`, **Sort all** in `sortDesk.ts`), Needs a reply, We owe them (`owed.ts`; since v2.5596 the call rows too, `FollowUpQueue.calls` from `callTasksFromRows`, `CallRowView`), They owe us (`theyOweUs.ts`).
 `team.ts` says who a conversation can be handed to; `assignSeats.ts` is **Who gets a new message** (the rule and its
 seats, `app_settings.messages_assign_rule_v1`); `hasRule.ts` is R5's answer to who answers a customer's reply (the tech
-who last texted them until 5 PM, `has_until`, then the office). The screens are `src/components/followUp/`
+who last texted them until 5 PM, `has_until`, then the office in its hours, or at any hour under the Office hours card's
+around-the-clock switch, v2.5721). The screens are `src/components/followUp/`
 (`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`; since v2.5332 `NudgesFromTheFlow` over `useFlowNudges`) and the
 two slot hooks that put them in the thread. The Dashboard's Customers line (and `follow_up_count`; since v2.5596 a customer with an open call counts once) counts from the same reads
 (`customerCounts.ts`).
@@ -214,7 +215,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | Who gets a new message (the rule and its seats) | Settings → Phone and texts | `messages_assign_rule_v1` |
 | Inboxes (the two boxes: address, number, number id) | Settings → Phone and texts | `messages_boxes_v1` |
 | The office's wait before it hears a reply nobody answered (0 is at once) | Settings → Phone and texts → Reply push, under the switch (v2.5540) | `messages_office_wait_minutes` |
-| Office hours (the days, the open and the close; the tech's hour and the after-hours number stay a dev's by hand) | Settings → Phone and texts → Office hours (v2.5709, punch list #140 PR 1; `officeHoursCard.ts`, the owner and a dev) | `messages_office_hours_v1` |
+| Office hours (the days, the open and the close, or the switch *The office is open around the clock*, `always: true`, under which `officeOpen` is true at every instant, there is no next opening or last close, no after-hours answer is due and the kept days and times come back when it goes off; the tech's hour is read back as a line and, with the after-hours number, stays a dev's by hand) | Settings → Phone and texts → Office hours (v2.5709, punch list #140 PR 1; the switch v2.5721, punch list #141 PR 1; `officeHoursCard.ts`, the owner and a dev) | `messages_office_hours_v1` |
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
 | Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every three minutes |
 | The reminders the app sends itself, per step: off, offers or sends (v2.5595) | Settings → Flows | `messages_nudge_app_sends_v1`; the cron `messages-nudge-dispatch`, 14:00 and 15:00 UTC; the summary `messages_nudge_last_run_v1` |

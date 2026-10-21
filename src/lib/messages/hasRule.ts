@@ -11,6 +11,11 @@
  * `contacts`' own columns (`has_user_id`, `has_since`, `has_how` = `rule`, and R5's `has_until`), the shapes
  * `followUp/queue.ts` reads. Days and times are Chicago's, read through `utils/dateUtils`, never the browser's.
  * Holidays are not known: a closed weekday reads as open until the owner asks for them.
+ *
+ * Punch list #141 PR 1: the setting's `always: true` is the Office hours card's switch, *The office is open around the
+ * clock*. Under it the office is open at every instant, there is no next opening and no last close, the after-hours
+ * answer is never due, and the days and times stay in the row so the switch off puts them back. The tech's hold still
+ * ends at `techUntil`.
  */
 import { appTzWallTimeMs, calendarYmdInAppTzFromIso, startOfYmdInAppTzMs, ymdAddDays } from '../../utils/dateUtils'
 import type { ContactFollowUpRow } from '../followUp/followUpTypes'
@@ -30,10 +35,12 @@ export interface OfficeHours {
   techUntil: string
   /** The number the after-hours answer gives for a leak, written "512-555-0144". Null: the answer gives none. */
   emergency: string | null
+  /** The office is open around the clock: the days and times are kept under the switch and not read. */
+  always: boolean
 }
 
-/** The defaults: Monday to Friday, 7:30 AM to 5 PM, the tech until 5 PM, no after-hours number. */
-export const OFFICE_HOURS: OfficeHours = { days: [1, 2, 3, 4, 5], opens: '07:30', closes: '17:00', techUntil: '17:00', emergency: null }
+/** The defaults: Monday to Friday, 7:30 AM to 5 PM, the tech until 5 PM, no after-hours number, not around the clock. */
+export const OFFICE_HOURS: OfficeHours = { days: [1, 2, 3, 4, 5], opens: '07:30', closes: '17:00', techUntil: '17:00', emergency: null, always: false }
 
 const HM = /^([01]?\d|2[0-3]):([0-5]\d)$/
 
@@ -57,8 +64,9 @@ export function phoneWords(raw: string): string | null {
 
 /**
  * The office's hours as the setting keeps them: `{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00",
- * "techUntil":"17:00","emergency":"(512) 555-0144"}`. A field it cannot read takes its default, so a bad value never
- * leaves the office without hours. An opening at or after the close takes both defaults.
+ * "techUntil":"17:00","emergency":"(512) 555-0144","always":false}`. A field it cannot read takes its default, so a bad
+ * value never leaves the office without hours. An opening at or after the close takes both defaults. `always` is read
+ * only as the boolean `true`; a row written before the switch has none and reads as off.
  */
 export function parseOfficeHours(valueText: string | null | undefined): OfficeHours {
   if (!valueText?.trim()) return { ...OFFICE_HOURS }
@@ -83,6 +91,7 @@ export function parseOfficeHours(valueText: string | null | undefined): OfficeHo
     closes,
     techUntil: hmOf(o.techUntil) ?? OFFICE_HOURS.techUntil,
     emergency: typeof o.emergency === 'string' ? phoneWords(o.emergency) : null,
+    always: o.always === true,
   }
 }
 
@@ -99,16 +108,21 @@ function weekdayOf(ymd: string): number {
 
 const isoOf = (ms: number) => new Date(ms).toISOString()
 
-/** Whether the office is open at this instant: an open day, from the opening up to the close. */
+/** Whether the office is open at this instant: always under the switch, else an open day, from the opening up to the close. */
 export function officeOpen(at: string, hours: OfficeHours = OFFICE_HOURS): boolean {
+  if (hours.always) return true
   const ymd = calendarYmdInAppTzFromIso(at)
   if (!hours.days.includes(weekdayOf(ymd))) return false
   const t = Date.parse(at)
   return t >= wallMs(ymd, hours.opens) && t < wallMs(ymd, hours.closes)
 }
 
-/** The next time the office opens after this instant, ISO. Friday evening and the weekend go to Monday's opening. */
+/**
+ * The next time the office opens after this instant, ISO. Friday evening and the weekend go to Monday's opening. Under
+ * the switch the office is open now, so the instant itself.
+ */
 export function nextOpening(at: string, hours: OfficeHours = OFFICE_HOURS): string | null {
+  if (hours.always) return isoOf(Date.parse(at))
   const t = Date.parse(at)
   const today = calendarYmdInAppTzFromIso(at)
   for (let d = 0; d <= 7; d++) {
@@ -120,8 +134,9 @@ export function nextOpening(at: string, hours: OfficeHours = OFFICE_HOURS): stri
   return null
 }
 
-/** The office's last close at or before this instant, ISO: where the night the instant sits in began. */
+/** The office's last close at or before this instant, ISO: where the night the instant sits in began. Null under the switch. */
 export function lastClosing(at: string, hours: OfficeHours = OFFICE_HOURS): string | null {
+  if (hours.always) return null
   const t = Date.parse(at)
   const today = calendarYmdInAppTzFromIso(at)
   for (let d = 0; d <= 7; d++) {
@@ -145,7 +160,7 @@ export function techHoldUntil(textAt: string, hours: OfficeHours = OFFICE_HOURS)
 
 /**
  * Whether the app answers a reply now: the office is closed, and no answer went since it closed. A night runs from the
- * close to the next opening, so a weekend is one night and gets one answer.
+ * close to the next opening, so a weekend is one night and gets one answer. Never under the switch: the office is open.
  */
 export function autoAnswerDue(now: string, lastAutoAnswerAt: string | null | undefined, hours: OfficeHours = OFFICE_HOURS): boolean {
   if (officeOpen(now, hours)) return false
