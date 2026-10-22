@@ -158,11 +158,11 @@ export function PeopleUsersTab({
     if (!canRestoreLogins) return
     const { data } = await supabase
       .from('users')
-      .select('id, name, email, role, archived_at, is_sample, is_digital_twin')
+      .select('id, name, email, role, archived_at, is_sample, is_digital_twin, is_walk_tester')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
       .limit(200)
-    setArchivedLogins(((data ?? []) as Array<ArchivedLogin & { is_sample?: boolean | null; is_digital_twin?: boolean | null }>).filter((u) => !u.is_sample && !u.is_digital_twin))
+    setArchivedLogins(((data ?? []) as Array<ArchivedLogin & { is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null }>).filter((u) => !u.is_sample && !u.is_digital_twin && !u.is_walk_tester))
   }, [canRestoreLogins])
   useEffect(() => {
     void loadArchivedLogins()

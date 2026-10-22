@@ -24,6 +24,7 @@ function row(over: Partial<RosterPerson> & { pay_name: string }): RosterPerson {
     account_kind: 'person',
     is_digital_twin: false,
     is_sample: false,
+    is_walk_tester: false,
     is_dev: false,
     read_only: false,
     needs_supervision: false,

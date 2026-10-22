@@ -38,6 +38,8 @@ export type RosterPerson = {
   account_kind: RosterAccountKind
   is_digital_twin: boolean
   is_sample: boolean
+  /** v2.5738: the walk kit's tester (punch list #142), in neither rollup. */
+  is_walk_tester: boolean
   is_dev: boolean
   read_only: boolean
   needs_supervision: boolean
@@ -54,7 +56,7 @@ export type RosterPerson = {
 }
 
 export const ROSTER_PEOPLE_COLUMNS =
-  'user_id, person_id, row_key, pay_name, account_name, roster_name, role, kind, account_kind, is_digital_twin, is_sample, is_dev, read_only, needs_supervision, user_archived_at, person_archived_at, is_archived, is_pay_roster, is_active_roster, has_login, has_roster_row, start_date, end_date, master_user_id'
+  'user_id, person_id, row_key, pay_name, account_name, roster_name, role, kind, account_kind, is_digital_twin, is_sample, is_dev, read_only, needs_supervision, user_archived_at, person_archived_at, is_archived, is_pay_roster, is_active_roster, has_login, has_roster_row, start_date, end_date, master_user_id, is_walk_tester'
 
 /** Every roster row the viewer may see (the view runs with owner rights: everyone sees the same list). */
 export async function fetchRosterPeople(supabase: SupabaseClient<Database>): Promise<RosterPerson[]> {

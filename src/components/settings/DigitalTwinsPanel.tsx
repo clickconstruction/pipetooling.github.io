@@ -9,6 +9,7 @@ import { formatTwinMcpKey } from '../../lib/mcpKeyPrefixes'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VIOLET } from '../bids/twinConsoleStyles'
 import { TwinSetupDialog } from '../bids/TwinSetupDialog'
 import SampleAccountsCard from './SampleAccountsCard'
+import WalkTesterLine from './WalkTesterLine'
 import TwinFreshKeyPanel from './TwinFreshKeyPanel'
 
 /**
@@ -664,6 +665,7 @@ export default function DigitalTwinsPanel() {
 
       {/* v2.3705 (People spine PR 6): the View-as sample accounts live beside the twins — fixtures, not people. */}
       <SampleAccountsCard />
+      <WalkTesterLine />
     </div>
   )
 }

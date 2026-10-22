@@ -39,6 +39,7 @@ export function activeUsersQuery<T extends object = ActiveUserRow>(
     .is('archived_at', null)
     .eq('is_digital_twin', false)
     .eq('is_sample', false) // v2.3606: the View-as sample accounts hide like twins
+    .eq('is_walk_tester', false) // v2.5738: the walk kit's tester hides like a sample
   if (opts.roles) {
     const roles = opts.includeDev ? [...opts.roles, 'dev'] : [...opts.roles]
     q = q.in('role', roles as unknown as UserRoleEnum[])

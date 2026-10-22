@@ -1432,7 +1432,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
     setShareAccountsLoading(true)
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, role, estimator_prospects_access, team_prospects_access, archived_at, is_sample')
+      .select('id, name, role, estimator_prospects_access, team_prospects_access, archived_at, is_sample, is_walk_tester')
       .is('archived_at', null)
     setShareAccountsLoading(false)
     if (error) {

@@ -28,7 +28,7 @@ export function supabaseQuoSeatsIo(client: SupabaseClient<Database> = supabase):
     async load() {
       const [setting, users] = await Promise.all([
         client.from('app_settings').select('value_text').eq('key', APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1).maybeSingle(),
-        client.from('users').select('id, name, role').in('role', OFFICE_ROLES).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false).order('name'),
+        client.from('users').select('id, name, role').in('role', OFFICE_ROLES).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false).eq('is_walk_tester', false).order('name'),
       ])
       checkSupabaseError(setting, 'read the company phone seats')
       checkSupabaseError(users, 'read the office team')

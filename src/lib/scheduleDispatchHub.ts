@@ -291,7 +291,7 @@ export function buildScheduleDispatchHubRoster(
   return out
 }
 
-const HUB_ROSTER_COLUMNS = 'id, role, needs_supervision, archived_at, is_digital_twin, is_sample'
+const HUB_ROSTER_COLUMNS = 'id, role, needs_supervision, archived_at, is_digital_twin, is_sample, is_walk_tester'
 
 /**
  * Same auth `users` cohort as People → Users: not archived, not a digital twin, not a View-as
