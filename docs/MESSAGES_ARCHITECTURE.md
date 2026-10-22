@@ -253,6 +253,11 @@ touch the copy's index or the dev-mcp catalog, land them one after the other and
   (`*.render.test.tsx`, `renderWithProviders`). The shared demo data is `src/lib/messages/messagesDemo.ts` and
   `src/lib/flows/demoPeople.fixture.ts`: the prototype's eight people, so a test reads like the mock-up. The reads and
   presses are interfaces (`replyIo`, `attachIo`, `FollowUpIo`), so a smoke hands a fake and never touches the network.
+- **Live, end to end, in one command.** `npm run walk` (`docs/WALK_KIT.md`, punch list #142, v2.5739) runs the whole loop
+  on prod on the company's own inbox and number: the kit's customer, the tester's two sends through the app's doors,
+  the open from bids@, the email and text replies, STOP and START, the office's view through the screens' own
+  kernels, the stray check and cleanup, with a report of what landed where and when. The walk below, pressed by a
+  person, is the fallback (`--owner-presses`).
 - **Live, as a sample account.** The project's harness is the `dev-login` function with `VITE_DEV_LOGIN_SECRET` from
   `.env.local`, signing in as `sample-<role>@samples.pipetooling.local` (`src/lib/sampleAccounts.ts`; assistant,
   primary, controller and estimator exist, no master or dev) against a local Vite on prod's Supabase —
