@@ -24,7 +24,7 @@ const ENV: Record<string, string> = { SUPABASE_URL: 'http://127.0.0.1:9', SUPABA
 // A Deno file: loaded by path at run time, so the app's typecheck does not follow it into Deno's globals.
 const FUNCTION_FILE = '../../../supabase/functions/send-bid-pricing-package/index.ts'
 
-const person = { is_sample: false, is_digital_twin: false, archived_at: null }
+const person = { is_sample: false, is_digital_twin: false, is_walk_tester: false, archived_at: null }
 const USERS = [
   { ...person, id: 'u-estimator', name: 'Wendi', role: 'estimator', email: 'wendi@example.com' },
   { ...person, id: 'u-gc-contact', name: 'Office Pat', role: 'assistant', email: 'pat@example.com' },

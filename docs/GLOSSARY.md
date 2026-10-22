@@ -1573,6 +1573,9 @@ The estimator-twin program's vocabulary (plans: [`DIGITAL_TWINS_PLAN.md`](./DIGI
 ### Sample account / View as
 A real `users` row per imitable role, flagged `is_sample` (v2.3606) — hidden from every human surface like a digital twin, listed under Settings → System → Digital twins & samples (v2.3705). A dev imitates one (the existing `login-as-user` mint) to see the page they are on as that role — from Settings' **View as…** door — the chip under the rail's search box on every tab, `/settings#view-as` from the address bar (v2.4041; the gear-menu item it replaced was v2.3608: Roles with switch chips, People search); the imitation lands on Settings, and Exit returns to the page you left. See ACCESS_CONTROL § Sample accounts.
 
+### Walk tester
+The walk kit's one hidden account (punch list #142, v2.5727): `walk-tester@walk.pipetooling.local`, *ZZ Walk tester*, role assistant, training mode, flagged `users.is_walk_tester`. The kit signs in as it to press the Messages loop's three sends at the kit's own address and number; every roster, picker and fan-out leaves it out like a sample (`roster_people`'s `account_kind` says `tester`), and its `users` row is read by itself and by devs alone. The flag is set by the kit alone, never from the client. See ACCESS_CONTROL § The walk tester.
+
 ### Digital twin / robot
 A role-scoped AI agent account flagged `users.is_digital_twin` (🤖 banner everywhere it appears; "robot" in user-facing copy). Estimator-only by owner decision. Twins impersonate roles, not people; their work is visible on the shared board and reviewable by any human.
 

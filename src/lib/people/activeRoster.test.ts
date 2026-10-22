@@ -19,6 +19,14 @@ describe('isActiveRosterPerson', () => {
     expect(isActiveRosterPerson({ ...twin, archived_at: '2026-01-01T00:00:00Z' }, { includeArchived: true })).toBe(false)
   })
 
+  it('drops the walk tester on every human surface, like a sample (v2.5727); a row without the column reads human', () => {
+    const tester = { ...human, id: 'u-7', name: 'ZZ Walk tester', is_walk_tester: true }
+    expect(isActiveRosterPerson(tester)).toBe(false)
+    expect(isActiveRosterPerson(tester, { includeDev: true, includeArchived: true })).toBe(false)
+    expect(isActiveRosterPerson({ ...human, is_walk_tester: null })).toBe(true)
+    expect(activeRosterOnly([human, tester]).map((r) => r.name)).toEqual(['Jessica White'])
+  })
+
   it('drops archived accounts unless the surface folds them itself', () => {
     expect(isActiveRosterPerson(archived)).toBe(false)
     expect(isActiveRosterPerson(mergeKeep)).toBe(false)
