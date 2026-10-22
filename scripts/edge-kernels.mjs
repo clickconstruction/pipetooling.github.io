@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook']
+export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook', 'send-estimate-to-customer']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -126,6 +126,9 @@ export const ENTRIES = {
   // readers (gmail-sync, quo-webhook) take an own address or number as a person only when the kit carries it.
   'lib/messages/ownChannels.ts': { values: ['isOwnAddress', 'isOwnNumber', 'ownChannels'], types: ['OwnChannels'] },
   'lib/walk/kit.ts': { values: ['WALK_KIT_KEY', 'channelKey', 'kitCarries', 'numberPlan', 'parseWalkKit'], types: ['WalkKit'] },
+  // The walk tester's doors (punch list #142 PR 5): quo-send, messages-email and send-estimate-to-customer let the
+  // tester through only at the kit's own targets.
+  'lib/walk/kitDoor.ts': { values: ['KIT_DOOR_WORDS', 'isFixtureAccount', 'isWalkTester', 'kitDoorVerdict'], types: ['DoorCaller', 'DoorTarget', 'KitDoorVerdict'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { KIT_DOOR_WORDS, isFixtureAccount, isWalkTester, kitDoorVerdict } from '../_shared/gcKernels/lib/walk/kitDoor.ts'
+import { loadWalkKit } from '../_shared/walkKit.ts'
 import { parseQuoSendBody, seatOf } from '../_shared/gcKernels/lib/quo/rows.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { lastOurTextAt, loadBoxes, loadSeats, quoCompany, sendText } from '../_shared/quoLines.ts'
@@ -11,7 +12,8 @@ import { jobModeSend } from '../_shared/quoTechSend.ts'
 /**
  * quo-send — Messages, cut 5: a text from the reply box's send window, out through Quo from its box's number. The
  * caller is someone in the office (`gc_office_team()`, asked as them), a real account (never a sample or a digital
- * twin), and never a training account. The body is `parseQuoSendBody`'s: the contact, the number (one of their
+ * twin), and never a training account, but for the walk kit's tester (punch list #142 PR 5, `kitDoor.ts`): a training
+ * account let through only at one of the kit's own channels on the kit's contact, never Job Mode. The body is `parseQuoSendBody`'s: the contact, the number (one of their
  * `contact_channels`), the words, the files as link lines, the opt-out hold and the job it is tied to.
  *
  * `sendText` (`_shared/quoLines.ts`) does the rest, the same path the webhook's HELP answer takes: `planSend` refuses a
@@ -61,12 +63,26 @@ serve(async (req) => {
 
     const { data: u } = await caller.auth.getUser()
     if (!u?.user) return refuse('signIn', 'Sign in to send a text.', 401)
-    const { data: who } = await admin.from('users').select('id, name, read_only').match(REAL_ACCOUNT).eq('id', u.user.id).maybeSingle()
-    if (!who || who.read_only) return refuse('readOnly', 'This account cannot send texts.', 403)
+    const { data: who } = await admin
+      .from('users')
+      .select('id, name, read_only, is_sample, is_digital_twin, is_walk_tester')
+      .eq('id', u.user.id)
+      .maybeSingle()
+    if (!who || isFixtureAccount(who)) return refuse('readOnly', 'This account cannot send texts.', 403)
+    const tester = isWalkTester(who)
+    if (!tester && who.read_only) return refuse('readOnly', 'This account cannot send texts.', 403)
     const raw = await req.json().catch(() => null)
     if (isJobModeSend(raw)) {
+      if (tester) return refuse('walkTesterOnly', KIT_DOOR_WORDS, 403)
       const answer = await jobModeSend(admin, caller, { id: who.id, name: who.name ?? null }, raw)
       return json(answer.body, answer.status)
+    }
+
+    // The walk tester's only way past training mode: the kit exists and the target is one of its channels.
+    if (tester) {
+      const ask = parseQuoSendBody(raw)
+      const verdict = kitDoorVerdict(who, await loadWalkKit(admin), ask ? { kind: 'channel', contactId: ask.contactId, channelId: ask.channelId } : null)
+      if (!verdict.ok) return refuse(verdict.refused, verdict.words, 403)
     }
 
     const { data: office, error: officeError } = await caller.rpc('gc_office_team')

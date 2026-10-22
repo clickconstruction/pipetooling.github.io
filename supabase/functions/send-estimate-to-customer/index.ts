@@ -13,6 +13,8 @@ import { buildEstimateLetterheadEmail, estimateEmailCompanyName } from '../_shar
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildCustomerAttachmentSentPayload } from '../_shared/estimateCustomerAttachment.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { isFixtureAccount, isWalkTester, kitDoorVerdict } from '../_shared/gcKernels/lib/walk/kitDoor.ts'
+import { loadWalkKit } from '../_shared/walkKit.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../_shared/estimateOptions.ts'
 import {
@@ -124,6 +126,30 @@ serve(async (req) => {
       })
     }
 
+    // A real account sends (punch list #142 PR 5; README found item 4): a View-as sample, a twin or a training
+    // account that can read a draft could otherwise send it to a real customer. The one training account let
+    // through is the walk kit's tester, at the kit's own estimate and address alone (checked once the address is
+    // known, below).
+    const admin = createClient(supabaseUrl, serviceKey)
+    const { data: who } = await admin
+      .from('users')
+      .select('id, name, email, read_only, is_sample, is_digital_twin, is_walk_tester')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (!who || isFixtureAccount(who)) {
+      return new Response(JSON.stringify({ error: 'Only a real account sends an estimate', code: 'not_a_real_account' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const tester = isWalkTester(who)
+    if (!tester && who.read_only) {
+      return new Response(JSON.stringify({ error: 'A training account cannot send an estimate', code: 'read_only' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // mode 'resend' (J17-F2/N3): re-mint the token on an already-sent estimate and mail the
     // stored email again. `customer_email` is optional there — the row's address is the default.
     const body = (await req.json()) as {
@@ -198,6 +224,16 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+    // The walk tester's only way past training mode: the kit exists, this is its estimate, and it goes to its address.
+    if (tester) {
+      const verdict = kitDoorVerdict(who, await loadWalkKit(admin), { kind: 'estimate', estimateId: estimate_id, customerEmail: customer_email })
+      if (!verdict.ok) {
+        return new Response(JSON.stringify({ error: verdict.words, code: verdict.refused }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
 
     const origin =
       (typeof public_origin === 'string' && public_origin.startsWith('http') ? public_origin : null)
@@ -209,7 +245,6 @@ serve(async (req) => {
     const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString()
     const acceptUrl = `${origin.replace(/\/$/, '')}/estimate/accept?t=${encodeURIComponent(rawToken)}`
 
-    const admin = createClient(supabaseUrl, serviceKey)
     const { data: appRows } = await admin
       .from('app_settings')
       .select('key, value_text')
@@ -235,13 +270,10 @@ serve(async (req) => {
         )
 
     // The Letterhead email (v2.2747): built once here, previewed by the same builder in the app.
-    const { data: me } = await admin.from('users').select('name, email').eq('id', user.id).maybeSingle()
-    const sender = me
-      ? {
-          name: String((me as { name?: string | null }).name ?? '').trim(),
-          email: String((me as { email?: string | null }).email ?? '').trim(),
-        }
-      : null
+    const sender = {
+      name: String((who as { name?: string | null }).name ?? '').trim(),
+      email: String((who as { email?: string | null }).email ?? '').trim(),
+    }
     const brand = parseAcceptHeaderBrandForEmail((est as { accept_header_brand?: unknown }).accept_header_brand)
     // Estimate Options (v2.2460, owner decision 5): the email shows every option's price —
     // the ladder itself is persuasive; the page still does the choosing.

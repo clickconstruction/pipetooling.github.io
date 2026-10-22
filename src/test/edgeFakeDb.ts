@@ -36,7 +36,7 @@ export function fakeTable(db: FakeDb, name: string): Chain {
   }
   const chain: Chain = {}
   const self = () => chain
-  for (const m of ['select', 'order', 'limit', 'lt', 'lte', 'gt', 'gte', 'neq', 'not', 'ilike', 'range']) chain[m] = self
+  for (const m of ['select', 'order', 'limit', 'lt', 'lte', 'gt', 'gte', 'neq', 'not', 'ilike', 'range', 'contains']) chain[m] = self
   chain.eq = ((c: string, v: unknown) => (where.push((r) => r[c] === v), chain)) as never
   chain.match = ((q: FakeRow) => {
     for (const [c, v] of Object.entries(q)) where.push((r) => r[c] === v)
