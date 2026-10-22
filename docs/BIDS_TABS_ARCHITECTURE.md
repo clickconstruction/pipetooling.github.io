@@ -77,7 +77,7 @@ What the 2,642 lines are at `mapped_at` (f423bd6e5), top to bottom. Regions that
 | Block | Lines | Size | Children / status |
 |---|---|---|---|
 | Error banner | 1564–1568 | 5 | inline (the materials-model switch modal that sat under it went with By Stage, v2.4389) |
-| Header, board strip, bid-detail strip | 1574–1700 | ~127 | `ScrollableTabStrip` |
+| Header, board strip, bid-detail strip | 1574–1700 | ~127 | `ScrollableTabStrip`; v2.5736: `BidPlansButton` at the detail row's end and `BidPlansPanel` under it, on `plansBid` (the active tab's selected bid) with the paired shell from `twinBidBySourceId` |
 | `WorkingBoardArchiveConfirmDialog` | 1702–1707 | 6 | extracted |
 | 🤖 Robots lens bar | 1714–1723 | 10 | `BidsLensBar` over `robotLenses` / `robotLensBarShows` ([`lib/bids/bidsLenses.ts`](../src/lib/bids/bidsLenses.ts)) — v2.3931; `robotLensCaption` is its child (v2.4256) |
 | Robots group strip | 1725–1735 | 11 | `RobotGroupStrip` on every robot lens (v2.4256) |
