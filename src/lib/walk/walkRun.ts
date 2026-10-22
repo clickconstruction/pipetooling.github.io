@@ -367,7 +367,8 @@ export function reportKit(kit: WalkKit): WalkReport['kit'] {
 export function finishReport(report: WalkReport, finishedAt: string): WalkReport {
   const held = report.steps.filter((s) => s.ok === false).map((s) => `${s.name}: ${s.held ?? 'held'}`)
   const strays = report.strays?.length ?? 0
-  const cleanupOk = report.flags.keep || (report.cleanup !== null && report.cleanup.cleaned === true)
+  // Nothing to clean is clean too: a walk whose setup refused made no rows, and --cleanup-only after a clean walk finds none.
+  const cleanupOk = report.flags.keep || (report.cleanup !== null && (report.cleanup.cleaned === true || report.cleanup.nothing === true))
   return { ...report, finishedAt, held, ok: held.length === 0 && strays === 0 && cleanupOk }
 }
 
