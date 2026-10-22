@@ -112,6 +112,7 @@
     "test:pg:on-my-way": "bash scripts/pgtest-on-my-way.sh",
     "test:pg:tech-bio": "bash scripts/pgtest-tech-bio.sh",
     "test:pg:supply-house-move-window": "bash scripts/pgtest-supply-house-move-window.sh",
+    "test:pg:walk-kit": "bash scripts/pgtest-walk-kit.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

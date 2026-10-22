@@ -69,3 +69,4 @@ on-my-way
 tech-bio
 stripe-email-sends-trail
 supply-house-move-window
+walk-kit
