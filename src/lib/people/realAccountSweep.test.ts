@@ -59,8 +59,8 @@ describe('the real-account rule in the edge functions', () => {
     }
   })
 
-  it('says a real account is neither a sample nor a twin', () => {
-    expect(readFileSync(RULE_FILE, 'utf8')).toMatch(/export const REAL_ACCOUNT = \{ is_sample: false, is_digital_twin: false \} as const/)
+  it('says a real account is neither a sample, a twin nor the walk tester', () => {
+    expect(readFileSync(RULE_FILE, 'utf8')).toMatch(/export const REAL_ACCOUNT = \{ is_sample: false, is_digital_twin: false, is_walk_tester: false \} as const/)
   })
 
   it('leaves alone the same files the sweep script leaves alone', () => {

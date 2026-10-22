@@ -12,7 +12,8 @@
  * - archived accounts are never active;
  * - digital twins are never active on a human surface (their home is
  *   Settings → Digital twins and the Robot Board), and neither are the View-as
- *   sample accounts (v2.3606; their home is Settings → System → Digital twins & samples);
+ *   sample accounts (v2.3606; their home is Settings → System → Digital twins & samples),
+ *   nor the walk kit's tester (v2.5727; its line is on the same page);
  * - dev accounts are the fixtures lane (`test` is a dev row) — they show only
  *   when the viewer is dev, unless a surface opts in with `includeDev: true`
  *   because it legitimately assigns work to the owner.
@@ -23,6 +24,8 @@ export type ActiveRosterRow = {
   is_digital_twin?: boolean | null
   /** v2.3606: a View-as sample account — hidden exactly like a twin. */
   is_sample?: boolean | null
+  /** v2.5727: the walk kit's tester (punch list #142) — hidden exactly like a sample; undefined reads false. */
+  is_walk_tester?: boolean | null
   role?: string | null
 }
 
@@ -36,6 +39,7 @@ export type ActiveRosterOptions = {
 export function isActiveRosterPerson(row: ActiveRosterRow, opts: ActiveRosterOptions = {}): boolean {
   if (row.is_digital_twin === true) return false
   if (row.is_sample === true) return false
+  if (row.is_walk_tester === true) return false
   if (!opts.includeArchived && row.archived_at != null) return false
   if (!opts.includeDev && row.role === 'dev') return false
   return true

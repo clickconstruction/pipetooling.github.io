@@ -3,9 +3,12 @@
  * (punch list #29, the People spine's rule). Neither a View-as sample account nor a digital twin is
  * ever one. Twins are estimators, so without this a twin's session passes the sender check of
  * every function that lets an estimator send, including the two that email outside the company
- * (send-bid-pricing-package, send-rfq-email).
+ * (send-bid-pricing-package, send-rfq-email). Since v2.5727 (punch list #142) neither is the walk
+ * kit's tester, the one hidden account that presses the Messages loop's sends at the kit's own
+ * address and number: every recipient fan-out leaves it out, and the three doors it may press
+ * admit it through their own check (the kit door, PR 5), never through this rule.
  *
- * This is the `users` half of `roster_people.is_pay_roster` (20260922001000). The functions cannot
+ * This is the `users` half of `roster_people.is_pay_roster` (20261022044606). The functions cannot
  * read the view itself: it answers nobody without a signed-in user, these lookups run as the
  * service role, and it carries no email. Archived stays with each caller, which words its own
  * refusal. `src/lib/people/rosterRulePin.test.ts` pins this to the view's SQL, and
@@ -13,4 +16,4 @@
  *
  *   admin.from('users').select('id, email').match(REAL_ACCOUNT).eq('id', id).maybeSingle()
  */
-export const REAL_ACCOUNT = { is_sample: false, is_digital_twin: false } as const
+export const REAL_ACCOUNT = { is_sample: false, is_digital_twin: false, is_walk_tester: false } as const

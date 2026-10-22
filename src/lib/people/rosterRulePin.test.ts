@@ -61,17 +61,18 @@ function conditions(alias: string): string[] {
 
 const TWIN = 'NOT COALESCE(u.is_digital_twin, false)'
 const SAMPLE = 'NOT COALESCE(u.is_sample, false)'
+const TESTER = 'NOT COALESCE(u.is_walk_tester, false)'
 const ACCOUNT_LIVE = 'u.archived_at IS NULL'
 const PERSON_LIVE = 'p.archived_at IS NULL'
 const NOT_DEV = "(u.role IS NULL OR u.role::text <> 'dev')"
 
 describe('the roster rule, pinned to roster_people', () => {
-  it('is_pay_roster is: not a twin, not a sample, neither half archived', () => {
-    expect(conditions('is_pay_roster')).toEqual([TWIN, SAMPLE, PERSON_LIVE, ACCOUNT_LIVE].sort())
+  it('is_pay_roster is: not a twin, not a sample, not the walk tester, neither half archived', () => {
+    expect(conditions('is_pay_roster')).toEqual([TWIN, SAMPLE, TESTER, PERSON_LIVE, ACCOUNT_LIVE].sort())
   })
 
   it('is_active_roster is is_pay_roster and not a dev', () => {
-    expect(conditions('is_active_roster')).toEqual([TWIN, SAMPLE, PERSON_LIVE, ACCOUNT_LIVE, NOT_DEV].sort())
+    expect(conditions('is_active_roster')).toEqual([TWIN, SAMPLE, TESTER, PERSON_LIVE, ACCOUNT_LIVE, NOT_DEV].sort())
   })
 
   it("the edge functions' REAL_ACCOUNT is is_pay_roster's flags (archived stays with each caller)", () => {
@@ -87,10 +88,11 @@ describe('the roster rule, pinned to roster_people', () => {
   })
 
   it("the crew pickers' isActiveRosterPerson refuses each condition of is_active_roster", () => {
-    const person = { archived_at: null, is_digital_twin: false, is_sample: false, role: 'estimator' }
+    const person = { archived_at: null, is_digital_twin: false, is_sample: false, is_walk_tester: false, role: 'estimator' }
     expect(isActiveRosterPerson(person)).toBe(true)
     expect(isActiveRosterPerson({ ...person, is_digital_twin: true }), TWIN).toBe(false)
     expect(isActiveRosterPerson({ ...person, is_sample: true }), SAMPLE).toBe(false)
+    expect(isActiveRosterPerson({ ...person, is_walk_tester: true }), TESTER).toBe(false)
     expect(isActiveRosterPerson({ ...person, archived_at: '2026-10-01T00:00:00Z' }), ACCOUNT_LIVE).toBe(false)
     expect(isActiveRosterPerson({ ...person, role: 'dev' }), NOT_DEV).toBe(false)
     // PERSON_LIVE has no column on a users row: End employment archives both halves together, so a

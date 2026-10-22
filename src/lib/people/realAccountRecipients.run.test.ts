@@ -44,7 +44,7 @@ afterAll(() => {
   globalThis.fetch = realFetch
 })
 
-const account = { is_sample: false, is_digital_twin: false, archived_at: null }
+const account = { is_sample: false, is_digital_twin: false, is_walk_tester: false, archived_at: null }
 beforeEach(() => {
   mail.length = 0
   box.db = makeFakeDb()

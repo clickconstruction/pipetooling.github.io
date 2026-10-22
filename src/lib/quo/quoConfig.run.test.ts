@@ -49,7 +49,7 @@ afterAll(() => {
   globalThis.fetch = realFetch
 })
 beforeEach(() => {
-  db.tables = { users: [{ id: 'u-robert', name: 'Robert Douglas', role: 'master_technician', read_only: false, is_sample: false, is_digital_twin: false }] }
+  db.tables = { users: [{ id: 'u-robert', name: 'Robert Douglas', role: 'master_technician', read_only: false, is_sample: false, is_digital_twin: false, is_walk_tester: false }] }
   db.rpcCalls = []
   delete vault.key
   delete vault.by
@@ -81,13 +81,13 @@ function post(body: unknown): Promise<Response> {
 describe('quo-config (v2.5718)', () => {
   it('the owner or a dev only, a real account, not read-only', async () => {
     expect((await post({ action: 'status' })).status).toBe(200)
-    db.tables.users = [{ id: 'u-robert', role: 'dev', read_only: false, is_sample: false, is_digital_twin: false }]
+    db.tables.users = [{ id: 'u-robert', role: 'dev', read_only: false, is_sample: false, is_digital_twin: false, is_walk_tester: false }]
     expect((await post({ action: 'status' })).status).toBe(200)
-    db.tables.users = [{ id: 'u-robert', role: 'assistant', read_only: false, is_sample: false, is_digital_twin: false }]
+    db.tables.users = [{ id: 'u-robert', role: 'assistant', read_only: false, is_sample: false, is_digital_twin: false, is_walk_tester: false }]
     expect((await post({ action: 'status' })).status).toBe(403)
-    db.tables.users = [{ id: 'u-robert', role: 'master_technician', read_only: true, is_sample: false, is_digital_twin: false }]
+    db.tables.users = [{ id: 'u-robert', role: 'master_technician', read_only: true, is_sample: false, is_digital_twin: false, is_walk_tester: false }]
     expect((await post({ action: 'status' })).status).toBe(403)
-    db.tables.users = [{ id: 'u-robert', role: 'dev', read_only: false, is_sample: false, is_digital_twin: true }]
+    db.tables.users = [{ id: 'u-robert', role: 'dev', read_only: false, is_sample: false, is_digital_twin: true, is_walk_tester: false }]
     expect((await post({ action: 'status' })).status).toBe(403)
     auth.user = null
     expect((await post({ action: 'status' })).status).toBe(401)
