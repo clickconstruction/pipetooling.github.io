@@ -248,7 +248,7 @@ describe('buildDesktopSetupCommandFromCode (Set up on this Mac, Price Matrix PR 
 
   it('redeems the code, writes the token only into the config, restarts Desktop, and copies the kickoff', () => {
     expect(cmd).toContain("action: 'redeem', code: process.env.SETUP_CODE")
-    expect(cmd).toContain("env: { TWIN_TOKEN: body.token }")
+    expect(cmd).toContain("env: { TWIN_TOKEN: body.token, PATH }")
     expect(cmd).toContain("'X-Twin-Token:${TWIN_TOKEN}'")
     expect(cmd).not.toMatch(/say\([^)]*body\.token/)
     expect(cmd).toContain('quit app "Claude"')
@@ -264,11 +264,26 @@ describe('buildDesktopSetupCommandFromCode (Set up on this Mac, Price Matrix PR 
   })
 
   it('runs on Node (already required for mcp-remote), merges into an existing config, and handles a broken one', () => {
-    expect(cmd).toContain('NPX="$(command -v npx)"')
-    expect(cmd).toContain("node - <<'NODEEOF'")
+    expect(cmd).toContain('for PT_C in "$(command -v node 2>/dev/null)" "$PT_HOME/bin/node"; do')
+    expect(cmd).toContain(`"$PT_NODE" - <<'NODEEOF'`)
     expect(cmd).not.toContain('python3')
     expect(cmd).toContain('cfg.mcpServers = cfg.mcpServers || {}')
     expect(cmd).toContain("if (e.code !== 'ENOENT')")
+  })
+
+  it('is right wherever it lands (v2.5742): fetches Node when the Mac has none, never ends the shell, notices Claude Code, checks the Claude app first', () => {
+    expect(cmd).toContain('https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt')
+    expect(cmd).toContain('shasum -a 256 -c one.sum')
+    expect(cmd).toContain('--strip-components=1')
+    expect(cmd).not.toMatch(/\bexit 1\b/)
+    expect(cmd).toContain('[ -n "$PT_NODE" ] && SETUP_CODE=')
+    expect(cmd).toContain('const underClaudeCode = !!process.env.CLAUDECODE')
+    expect(cmd).toContain('Now quit Claude with Cmd+Q and open it again')
+    expect(cmd).toContain("spawnSync('open', ['-Ra', 'Claude'])")
+    expect(cmd).toContain("command: nodeBin, args: [npxCli, '-y', 'mcp-remote'")
+    expect(cmd).toContain("process.env.KICKOFF_FILE")
+    // the Claude app check and the Node check both come before the code is redeemed
+    expect(cmd.indexOf("['-Ra', 'Claude']")).toBeLessThan(cmd.indexOf("action: 'redeem'"))
   })
 
   it('refuses a malformed code or the wrong doors', () => {

@@ -182,8 +182,8 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
           <h3 id="twin-setup-title" style={{ margin: '0.15rem 0 0', fontSize: '1.05rem' }}>Set up {who} on this Mac</h3>
           <p style={{ ...MUTED, margin: '0.35rem 0 0' }}>
             One command connects the Claude app on this Mac to the robot — its chats and its Code tab. The robot key is made on the
-            server and written straight into Claude's config — nobody sees it, nothing to paste but the command. Mac only; needs Node
-            18+ from nodejs.org (the command says so if it is missing).
+            server and written straight into Claude's config — nobody sees it, nothing to paste but the command. Mac only. A Mac with no Node gets one from
+            nodejs.org as part of the command, into your Library folder, no admin password.
           </p>
         </div>
 
@@ -236,7 +236,7 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
               </div>
               <div style={stepRow}>
                 <span style={stepNo}>2</span>
-                <span><b>Open Terminal.</b> <span style={MUTED}>Press ⌘ Space, type <i>Terminal</i>, press Return.</span></span>
+                <span><b>Open Terminal.</b> <span style={MUTED}>Press ⌘ Space, type <i>Terminal</i>, press Return. Pasted into a Claude Code session instead, the command still works; you then quit and reopen Claude yourself.</span></span>
               </div>
               <div style={stepRow}>
                 <span style={stepNo}>3</span>
@@ -244,7 +244,7 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
                   <b>Paste, press Return.</b>{' '}
                   <span style={MUTED}>
                     Claude quits and reopens by itself with the robot connected, and the robot's kickoff lands on your clipboard.
-                    Anything running in Claude stops with it, so finish or pause that first.
+                    Anything running in Claude stops with it, so finish or pause that first. A Mac with no Node fetches one first, about a minute.
                   </span>
                 </span>
               </div>
