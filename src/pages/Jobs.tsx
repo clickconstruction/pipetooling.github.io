@@ -180,6 +180,8 @@ export default function Jobs() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [error, setError] = useState<string | null>(null)
+  /** The Job Summary search box — declared before the data hook, which lifts an exact job number from under the HCP # floor for it (v2.5745). */
+  const [jobSummarySearch, setJobSummarySearch] = useState('')
   // Job Summary data layer (ledger snapshot + lazy per-job caches + loaders) —
   // seam hook since v2.826; the destructure keeps every downstream name. Called
   // BEFORE useJobsMercuryAllocations, which consumes jobSummaryLedgerJobs (via
@@ -191,6 +193,9 @@ export default function Jobs() {
     jobSummaryHiddenByMinHcp,
     jobSummaryMinHcpExclusive,
     setJobSummaryMinHcpExclusive,
+    jobSummaryLiftedJobIds,
+    jobSummaryLiftPending,
+    jobSummaryUnderFloorAlso,
     jobSummaryLedgerJobs,
     jobSummaryLedgerLoading,
     jobSummaryLedgerError,
@@ -208,7 +213,7 @@ export default function Jobs() {
     loadJobSummaryReportsForJob,
     jobSummaryReportPctByJobId,
     jobSummaryReportDateByJobId,
-  } = useJobSummaryData({ authUserId: authUser?.id, activeTab, extraReportPctJobIds: pipelineBurnReportIds })
+  } = useJobSummaryData({ authUserId: authUser?.id, activeTab, extraReportPctJobIds: pipelineBurnReportIds, search: jobSummarySearch })
   /** Debounce timer for post-Stages-mutation refresh (coalesce rapid moves into one fetch). */
   const loadJobsAfterMutationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** Coalesce rapid `useEffect` dependency churn (tab/customer) into one `loadJobs`. */
@@ -369,7 +374,6 @@ export default function Jobs() {
   const [subLaborSearch, setSubLaborSearch] = useState('')
   /** Where Subs → Work draws its toolbar: a slot on the Work / Pay row (`JobsSubsTab`), filled by portal. */
   const [subsWorkToolbarHost, setSubsWorkToolbarHost] = useState<HTMLDivElement | null>(null)
-  const [jobSummarySearch, setJobSummarySearch] = useState('')
   const [printCostBreakdownJobId, setPrintCostBreakdownJobId] = useState<string | null>(null)
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
@@ -2114,6 +2118,9 @@ export default function Jobs() {
           jobSummaryHiddenByMinHcp={jobSummaryHiddenByMinHcp}
           jobSummaryMinHcpExclusive={jobSummaryMinHcpExclusive}
           setJobSummaryMinHcpExclusive={setJobSummaryMinHcpExclusive}
+          jobSummaryLiftedJobIds={jobSummaryLiftedJobIds}
+          jobSummaryLiftPending={jobSummaryLiftPending}
+          jobSummaryUnderFloorAlso={jobSummaryUnderFloorAlso}
           jobSummaryData={jobSummaryData}
           view={jobSummaryView}
           canOpenSessionNotes={(['dev', 'master_technician', 'assistant', 'controller'] as const).some((r) => r === authRole || r === myRole)}

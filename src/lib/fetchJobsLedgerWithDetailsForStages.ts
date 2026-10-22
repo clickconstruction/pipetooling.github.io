@@ -66,6 +66,13 @@ export type FetchJobsLedgerWithDetailsResult =
        * count. Present only when a floor was applied.
        */
       hiddenByMinHcp?: number
+      /**
+       * v2.5745: the rows that floor dropped, shaped but not enriched (materials and
+       * fixtures empty) — the pool a Job Summary search lifts an exact job number
+       * from, so the tab never re-pulls the ledger to find one older job. Present
+       * only when a floor was applied.
+       */
+      flooredJobs?: JobWithDetails[]
     }
   | { ok: false; error: string }
 
@@ -292,7 +299,20 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
   if (rows.length === 0) {
     return []
   }
-  let jobsWithDetails: JobWithDetails[] = rows.map(primaryRowToJobWithDetails)
+  return attachJobSummaryMaterials(rows.map(primaryRowToJobWithDetails))
+}
+
+/**
+ * The slim pass on jobs already shaped (v2.5745): materials and the discount rows,
+ * batched. `enrichJobsLedgerPrimaryRowsJobSummarySlim` is the primary rows through
+ * this; the Job Summary data hook runs it on a job a search lifts from under the
+ * HCP # floor, whose `flooredJobs` copy came back with both lists empty.
+ */
+export async function attachJobSummaryMaterials(jobs: JobWithDetails[]): Promise<JobWithDetails[]> {
+  if (jobs.length === 0) {
+    return []
+  }
+  let jobsWithDetails: JobWithDetails[] = jobs
 
   const materialsByJobId = new Map<string, JobsLedgerMaterial[]>()
   const discountsByJobId = new Map<string, JobsLedgerFixture[]>()
@@ -363,7 +383,7 @@ export type FetchJobsLedgerWithDetailsForStagesOptions = {
 }
 
 export type FetchJobsLedgerStagesPrimaryResult =
-  | { ok: true; rows: JobsLedgerStagesPrimaryRow[]; hiddenByMinHcp?: number }
+  | { ok: true; rows: JobsLedgerStagesPrimaryRow[]; hiddenByMinHcp?: number; flooredRows?: JobsLedgerStagesPrimaryRow[] }
   | { ok: false; error: string }
 
 /**
@@ -425,13 +445,16 @@ export async function fetchJobsLedgerStagesPrimary(
     return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs') }
   }
   let hiddenByMinHcp: number | undefined
+  let flooredRows: JobsLedgerStagesPrimaryRow[] | undefined
   if (minHcp != null && !Number.isNaN(Number(minHcp)) && minHcp >= -1) {
     const floor = minHcp
     const before = rows.length
+    // v2.5745: keep the dropped rows — a search lifts an exact job number from them.
+    flooredRows = rows.filter((r) => !jobSummaryRowMatchesMinHcp(r.hcp_number, floor))
     rows = rows.filter((r) => jobSummaryRowMatchesMinHcp(r.hcp_number, floor))
     hiddenByMinHcp = before - rows.length
   }
-  return { ok: true, rows, hiddenByMinHcp }
+  return { ok: true, rows, hiddenByMinHcp, flooredRows }
 }
 
 export async function fetchJobsLedgerWithDetailsForStages(
@@ -440,11 +463,12 @@ export async function fetchJobsLedgerWithDetailsForStages(
   const primary = await fetchJobsLedgerStagesPrimary(options)
   if (!primary.ok) return primary
   const { rows, hiddenByMinHcp } = primary
+  const flooredJobs = primary.flooredRows?.map(primaryRowToJobWithDetails)
   if (rows.length === 0) {
-    return { ok: true, jobs: [], hiddenByMinHcp }
+    return { ok: true, jobs: [], hiddenByMinHcp, flooredJobs }
   }
   const jobs = options.jobSummaryEnrich === true
     ? await enrichJobsLedgerPrimaryRowsJobSummarySlim(rows)
     : await enrichJobsLedgerPrimaryRows(rows)
-  return { ok: true, jobs, hiddenByMinHcp }
+  return { ok: true, jobs, hiddenByMinHcp, flooredJobs }
 }

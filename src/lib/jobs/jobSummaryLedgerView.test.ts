@@ -266,9 +266,26 @@ describe('filter + sort + totals', () => {
     expect(jobSummaryRowsHiddenByStatus({ ...args, prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toBe(2)
     expect(jobSummaryRowsHiddenByStatus({ ...args, prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, status: 'in_progress' } })).toBe(3)
     expect(jobSummaryRowsHiddenByStatus({ ...args, prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, status: 'all' } })).toBe(0)
-    // A search for an in-progress job under Finished: nothing visible, one hidden.
-    expect(filterAndSortJobSummaryRows({ ...args, search: '990', prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toHaveLength(0)
-    expect(jobSummaryRowsHiddenByStatus({ ...args, search: '990', prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toBe(1)
+    // v2.5745: a search for an in-progress job under Finished draws the row — the search wins — so nothing is hidden.
+    expect(filterAndSortJobSummaryRows({ ...args, search: '990', prefs: JOB_SUMMARY_VIEW_DEFAULTS }).map((r) => r.row.job.id)).toEqual(['j990'])
+    expect(jobSummaryRowsHiddenByStatus({ ...args, search: '990', prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toBe(0)
+  })
+
+  it('the search wins over the Show, Worked in and Budget chips (v2.5745)', () => {
+    const id = (r: { row: { job: { id: string } } }) => r.row.job.id
+    const base = { rows: enriched, startYmd: '2026-08-25', endYmd: '2026-09-03' }
+    // j827 last worked 08-20, before this 90d window, and is finished: hidden with nothing typed …
+    expect(filterAndSortJobSummaryRows({ ...base, search: '', prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, window: '90d' } }).map(id)).not.toContain('j827')
+    // … drawn when asked for by number, with its real status and dates
+    expect(filterAndSortJobSummaryRows({ ...base, search: '827', prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, window: '90d' } }).map(id)).toEqual(['j827'])
+    // by name, across statuses (the fixture names are "Job <hcp>")
+    expect(filterAndSortJobSummaryRows({ ...base, search: 'job 9', prefs: JOB_SUMMARY_VIEW_DEFAULTS }).map(id).sort()).toEqual(['j904', 'j931', 'j990'])
+    // the Budget chip steps aside too
+    expect(filterAndSortJobSummaryRows({ ...base, search: '', prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, budgetFilter: 'bid' } })).toHaveLength(0)
+    expect(filterAndSortJobSummaryRows({ ...base, search: '904', prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, budgetFilter: 'bid' } }).map(id)).toEqual(['j904'])
+    // blanks are nothing typed; a miss is a miss
+    expect(filterAndSortJobSummaryRows({ ...base, search: '   ', prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, budgetFilter: 'bid' } })).toHaveLength(0)
+    expect(filterAndSortJobSummaryRows({ ...base, search: 'nothing here', prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toHaveLength(0)
   })
 
   it('sorts by any key with nulls last, and by job number numeric-aware with blanks first', () => {

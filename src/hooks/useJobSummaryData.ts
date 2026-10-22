@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { currentReportDateByJobId, currentReportPctByJobId, type LatestReportPctRow } from '../lib/jobSummaryPercentComplete'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
+import { fetchJobsLedgerWithDetailsForStages, attachJobSummaryMaterials } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import {
   applyMinHcpFilter,
+  jobSummaryRowMatchesMinHcp,
   readJobSummaryMinHcpExclusiveFromStorage,
 } from '../lib/jobSummaryHcpFilter'
+import { jobSummaryUnderFloorMatches } from '../lib/jobs/jobSummarySearchWins'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
 import type { JobSummaryClockSessionRow, JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow, JobSummaryReportRow } from '../types/jobSummary'
@@ -43,22 +45,83 @@ export function useJobSummaryData({
   authUserId,
   activeTab,
   extraReportPctJobIds = null,
+  search = '',
 }: {
   authUserId: string | undefined
   /** The page's `activeTab` (JobsTab union; only `'job-summary'` is meaningful here) — keys the report-% batch effect. */
   activeTab: string
   /** v2.3191: job ids to batch the report % for OFF the Job Summary tab (the Pipeline burn card). */
   extraReportPctJobIds?: string[] | null
+  /** v2.5745: the tab's search box — an exact job number lifts its row from under the HCP # floor. */
+  search?: string
 }) {
   /** Full org job list for Job Summary tab (all statuses, ignores `?customer=`). */
   const [jobSummaryLedgerAllJobs, setJobSummaryLedgerAllJobs] = useState<JobWithDetails[] | null>(null)
   const [jobSummaryMinHcpExclusive, setJobSummaryMinHcpExclusive] = useState(() =>
     readJobSummaryMinHcpExclusiveFromStorage(),
   )
-  const jobSummaryLedgerJobs = useMemo(() => {
+  const jobSummaryLedgerFlooredJobs = useMemo(() => {
     if (jobSummaryLedgerAllJobs == null) return null
     return applyMinHcpFilter(jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive)
   }, [jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive])
+  /**
+   * v2.5745: the search wins over the floor for an exact job number. The fetch hands back
+   * the rows the floor dropped, shaped but unenriched (`flooredJobs`); a search that names
+   * one of them by its HCP or Click number lifts it — the slim materials pass runs on that
+   * one job, and the row joins `jobSummaryLedgerJobs` so the P&L memo, the card-charge
+   * batch and the money-story door all see it. A looser name or address match under the
+   * floor is only counted (`jobSummaryUnderFloorAlso`): the card-charge batch refetches on
+   * every change to the listed ids, so a keystroke must not lift dozens of legacy rows.
+   */
+  const [jobSummaryFlooredJobs, setJobSummaryFlooredJobs] = useState<JobWithDetails[]>([])
+  const [jobSummaryLiftedById, setJobSummaryLiftedById] = useState<Map<string, JobWithDetails>>(() => new Map())
+  const liftInFlightRef = useRef<Set<string>>(new Set())
+  const jobSummaryFlooredPool = useMemo(() => {
+    // The client-side raise of the floor drops enriched rows; the fetch's floor dropped unenriched ones.
+    const clientDropped = jobSummaryLedgerAllJobs == null ? [] : jobSummaryLedgerAllJobs.filter((j) => !jobSummaryRowMatchesMinHcp(j.hcp_number, jobSummaryMinHcpExclusive))
+    return clientDropped.length === 0 ? jobSummaryFlooredJobs : [...clientDropped, ...jobSummaryFlooredJobs]
+  }, [jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive, jobSummaryFlooredJobs])
+  const serverFlooredIds = useMemo(() => new Set(jobSummaryFlooredJobs.map((j) => j.id)), [jobSummaryFlooredJobs])
+  const underFloor = useMemo(() => jobSummaryUnderFloorMatches(jobSummaryFlooredPool, search), [jobSummaryFlooredPool, search])
+  useEffect(() => {
+    const need = underFloor.lift.filter((j) => serverFlooredIds.has(j.id) && !jobSummaryLiftedById.has(j.id) && !liftInFlightRef.current.has(j.id))
+    if (need.length === 0) return
+    for (const j of need) liftInFlightRef.current.add(j.id)
+    void attachJobSummaryMaterials(need)
+      .then((jobs) => {
+        setJobSummaryLiftedById((prev) => {
+          const next = new Map(prev)
+          for (const j of jobs) next.set(j.id, j)
+          return next
+        })
+      })
+      .catch(() => {
+        /* the row stays under the floor; the note keeps saying it is looking until the next try */
+      })
+      .finally(() => {
+        for (const j of need) liftInFlightRef.current.delete(j.id)
+      })
+  }, [underFloor.lift, serverFlooredIds, jobSummaryLiftedById])
+  const jobSummaryLiftedJobs = useMemo(() => {
+    const out: JobWithDetails[] = []
+    for (const j of underFloor.lift) {
+      if (!serverFlooredIds.has(j.id)) out.push(j)
+      else {
+        const lifted = jobSummaryLiftedById.get(j.id)
+        if (lifted) out.push(lifted)
+      }
+    }
+    return out
+  }, [underFloor.lift, serverFlooredIds, jobSummaryLiftedById])
+  const jobSummaryLiftedJobIds = useMemo(() => new Set(jobSummaryLiftedJobs.map((j) => j.id)), [jobSummaryLiftedJobs])
+  const jobSummaryLiftPending = underFloor.lift.length - jobSummaryLiftedJobs.length
+  const jobSummaryUnderFloorAlso = underFloor.alsoMatch
+  const jobSummaryLedgerJobs = useMemo(() => {
+    if (jobSummaryLedgerFlooredJobs == null) return null
+    if (jobSummaryLiftedJobs.length === 0) return jobSummaryLedgerFlooredJobs
+    const seen = new Set(jobSummaryLedgerFlooredJobs.map((j) => j.id))
+    return [...jobSummaryLedgerFlooredJobs, ...jobSummaryLiftedJobs.filter((j) => !seen.has(j.id))]
+  }, [jobSummaryLedgerFlooredJobs, jobSummaryLiftedJobs])
   /**
    * v2.2914: rows the server-side floor dropped before enrichment. The fetch
    * already applies `minHcpExclusive`, so `jobSummaryLedgerAllJobs` never
@@ -68,9 +131,9 @@ export function useJobSummaryData({
    */
   const [jobSummaryHiddenByMinHcpServer, setJobSummaryHiddenByMinHcpServer] = useState(0)
   const jobSummaryHiddenByMinHcp =
-    jobSummaryLedgerAllJobs == null || jobSummaryLedgerJobs == null
+    jobSummaryLedgerAllJobs == null || jobSummaryLedgerFlooredJobs == null
       ? null
-      : jobSummaryHiddenByMinHcpServer + (jobSummaryLedgerAllJobs.length - jobSummaryLedgerJobs.length)
+      : jobSummaryHiddenByMinHcpServer + (jobSummaryLedgerAllJobs.length - jobSummaryLedgerFlooredJobs.length)
   const [jobSummaryLedgerLoading, setJobSummaryLedgerLoading] = useState(false)
   const [jobSummaryLedgerError, setJobSummaryLedgerError] = useState<string | null>(null)
   const loadJobSummaryLedgerRef = useRef<() => void>(() => {})
@@ -92,6 +155,8 @@ export function useJobSummaryData({
         return
       }
       setJobSummaryLedgerAllJobs(result.jobs)
+      setJobSummaryFlooredJobs(result.flooredJobs ?? [])
+      setJobSummaryLiftedById(new Map())
       setJobSummaryHiddenByMinHcpServer(result.hiddenByMinHcp ?? 0)
       jobSummaryLedgerSnapshotLoadedRef.current = true
     } catch (e: unknown) {
@@ -306,6 +371,13 @@ export function useJobSummaryData({
     jobSummaryHiddenByMinHcp,
     jobSummaryMinHcpExclusive,
     setJobSummaryMinHcpExclusive,
+    /** v2.5745: rows a search lifted from under the HCP # floor (already inside `jobSummaryLedgerJobs`). */
+    jobSummaryLiftedJobs,
+    jobSummaryLiftedJobIds,
+    /** Exact number matches under the floor still being read. */
+    jobSummaryLiftPending,
+    /** Looser name or address matches under the floor, counted but not lifted. */
+    jobSummaryUnderFloorAlso,
     jobSummaryLedgerJobs,
     jobSummaryLedgerLoading,
     jobSummaryLedgerError,
