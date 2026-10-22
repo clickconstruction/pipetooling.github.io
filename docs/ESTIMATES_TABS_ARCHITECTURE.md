@@ -53,7 +53,7 @@ Each section lists: anchor (symbol + line range as of a05cef4c4), **owned local 
 
 ## Shared substrate
 
-**There is no in-memory shared selection pointer** — no `setSharedBid` equivalent. The selection pointer **is the URL**: `/estimates/:number` selects the record, and `EstimateList` and `EstimateDetail` never mount together and share zero runtime state. UUID deep links (`isEstimateUuidSegment`) load by `id` then rewrite to `/estimates/:estimate_number` (`replace: true`) via [`lib/estimateRouteSegment.ts`](../src/lib/estimateRouteSegment.ts). The only cross-component handoff is `navigate(..., { state: { freshEstimateDraft: true } })` from `createDraft` (read by `locationFreshDraftRef`, 2546).
+**There is no in-memory shared selection pointer** — no `setSharedBid` equivalent. The selection pointer **is the URL**: `/estimates/:number` selects the record, and `EstimateList` and `EstimateDetail` never mount together and share zero runtime state. UUID deep links (`isEstimateUuidSegment`) load by `id` then rewrite to `/estimates/:estimate_number` (`replace: true`) via [`lib/estimateRouteSegment.ts`](../src/lib/estimateRouteSegment.ts). The only cross-component handoff is `navigate(..., { state: { freshEstimateDraft: true } })` from `createDraft` (read by `locationFreshDraftRef`, 2546) — and, since v2.5711, from Messages' `useLeadDoors.ts` after `leadDoorsIo.startEstimate` inserts the same draft row with `customer_id` on it (a second copy of `createDraft`'s insert, to fold into it).
 
 Consequences for extraction:
 
@@ -194,7 +194,7 @@ Consequences for extraction:
 - **Owned local state:** `unlinkingJob`, `unlinkJobConfirmOpen`, `createJobModalOpen`, `acceptorSignatureSignedUrl` (also read by the CX Page tab 6728 — keep it in the seam or pass it down), `detailCustomerSnapshotId`, `resending`, `resentInfo` (cleared per row by effect 3559–3561), `recordingDecline`.
 - **Cross-region/shared state:** `row`, `customers`, `estimateCustomerEvents(+Loading)`, `acceptNotifyResolvedUsers`, `customerAcceptUrl` 3442–3456, `acceptancePreviewForLine` 3458–3467, `acceptanceDocHeaderBrand` 3469–3473, `staffResolvedExperience`, `customerAttachmentPreview`, `linkedCustomerPrefillForCreateJobModal` 3347–3352, `customerId`, `coFields`.
 - **Handlers:** `openCreateJobModal` 4183, `openUnlinkJobConfirm`/`closeUnlinkJobConfirm`/`confirmUnlinkLinkedJob` 4188–4219 (UPDATE `job_ledger_id = null` **gated `.eq('status','customer_accepted')`**), `copyCustomerAcceptUrl` 3504, `openCustomerAcceptUrl` 3513 (`withEstimatePreviewMarker`), `recordStaffDecline` 3525–3546 (RPC `record_estimate_decline`, gated by `declineVerdict` 3524), `resendCustomerLink` 3578–3636 (edge `send-estimate-to-customer` `mode: 'resend'`, direct `fetch` 3589; gated by `resendVerdict` 3549–3556 = shared `canResendEstimateLink`), `copyResentUrl` 3563–3571.
-- **Supabase:** `estimates` (UPDATE unlink), RPC `record_estimate_decline`, edge `send-estimate-to-customer`, storage `estimate-acceptor-signatures`, `estimate_customer_events` (parent loader).
+- **Supabase:** `estimates` (UPDATE unlink), RPC `record_estimate_decline`, edge `send-estimate-to-customer`, storage `estimate-acceptor-signatures`, `estimate_customer_events` (parent loader); since v2.5706 `contacts` and `messages` (SELECT) and RPC `tie_message` through `estimateTextsTieIo.ts` on Create job. The customer's open, accept and decline also reach their Messages thread as the app's event lines since v2.5705, written by the edge (`_shared/estimateThreadLine.ts`), nothing of it in this page.
 - **Sub-components:** `EstimateCustomerDocument`/`EstimateLineItemsTable`, `EstimateCustomerAttachmentCard`, `EstimateAcceptTypedSignatureLine`, `IpAddressMapButton`, `EstimateResendLinkPanel`, `EstimateCustomerAcceptLinkButtons`, `EstimateRecordDeclineControl`, `CreateJobFromEstimateModal`, `CustomerSnapshotModal` (**extracted**); `EstimateDetailCustomerActivitySection` (in-file); unlink dialog (inline).
 - **Tests:** `EstimateResendLinkPanel.render.test`, `EstimateCustomerDocument.render.test`, `CreateJobFromEstimateModal.render.test` (+ `createJobFromEstimateSubmit.test`, `jobFromEstimateDefaults.test`), `estimateLinkResend.test`, `estimateDecline.test`, `estimateViewPreview.test`, `estimateAcceptedRecord.test`.
 - **Extraction status + risk + approach:** Inline. **Medium risk**, read-mostly (one write + one RPC). Extract as `EstimateSentAcceptedView` after the seam, together with the read-only header, the unlink dialog, the detail `CreateJobFromEstimateModal` and `CustomerSnapshotModal` (only openers). The `#estimate-job` and `?createJob=1` effects stay in the parent (the `?createJob=1` effect sets `createJobModalOpen` → lift that one state or pass an opener; the hash effect only scrolls).
@@ -212,7 +212,7 @@ Consequences for extraction:
 
 ### `EstimateDetail` — page-level modals (6856–6975)
 
-- **Contents:** create-customer overlay 6856–6897 (`NewCustomerForm`; `onCreated` patches `customers` + `handleSelectCustomer`), unlink-job confirm 6899–6953, `CreateJobFromEstimateModal` 6955–6967 (`onSuccess` → `load()` → `/jobs?edit=<jobId>`), `CustomerSnapshotModal` 6968–6973.
+- **Contents:** create-customer overlay 6856–6897 (`NewCustomerForm`; `onCreated` patches `customers` + `handleSelectCustomer`), unlink-job confirm 6899–6953, `CreateJobFromEstimateModal` 6955–6967 (`onSuccess` → since v2.5706 `tieEstimateTextsToJob` first, `lib/estimates/estimateTextsTieIo.ts`: the customer's contact, then its outbound texts carrying `/estimate/accept` from ten minutes before `sent_at` on no job, matched by `acceptLinkTie.ts`'s `textsCarryingLink` and tied through `tie_message` to `pipeline:<job>`, best effort and never thrown; the list's Create job and `accept-estimate`'s own job tie nothing → `load()` → `/jobs?edit=<jobId>`), `CustomerSnapshotModal` 6968–6973.
 - **Extraction status:** create-customer moves with the draft customer section (only opener); the other three move with the sent/accepted view. Nothing here is opened from 2+ regions.
 
 ---
@@ -257,6 +257,7 @@ The fact sheet lists no edge functions because both calls are direct `fetch`es; 
 | RPC `record_estimate_decline` | `recordStaffDecline` (`(supabase as any).rpc` until gen-types) | detail sent |
 | RPC `publish_co_to_bid_room` | `publishCoToBidRoom` (SECURITY DEFINER; draft→sent is privileged) | detail CO |
 | RPC `create_job_from_estimate` | via `CreateJobFromEstimateModal` (extracted) | list + detail |
+| RPC `tie_message` (+ `contacts`, `messages` SELECT) | `tieEstimateTextsToJob` (`lib/estimates/estimateTextsTieIo.ts`) on the detail modal's success, v2.5706 | detail |
 | storage `estimate-acceptor-signatures` | `createSignedUrl(path, 3600)` | detail accepted |
 | edge `send-estimate-to-customer` | direct `fetch` (JWT + anon apikey): send 4118; `mode: 'resend'` 3589 | detail send / resend |
 | edge `check-estimate-attachment-url` | via `checkGoogleDriveAttachmentUrl` | detail attachment |

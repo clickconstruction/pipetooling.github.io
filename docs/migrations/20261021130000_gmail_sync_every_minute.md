@@ -6,6 +6,8 @@
 
 **Tables**: none. **RLS**: none. **Fences**: none (no table).
 
+**Applied to prod on 2026-10-21**: the ledger carries `20261021130000 gmail_sync_every_minute` (read over the session pooler the same day, read-only, after #5967 merged); the function is unchanged, and `npm run check:edge-drift` read all 162 functions current. A DDL-only push, so the hour is not dated.
+
 **Apply**: `supabase db push` from a clean checkout of `main` after this merges; the client's words (the Read bids@ card, its dialog and toast, the guide) say *every minute* from the same version, and read right either way.
 
 **Check**: `select schedule from cron.job where jobname = 'gmail-sync'` reads `* * * * *`; `gmail_sync_state.last_run_at` moves every minute while the switch is on.
