@@ -1397,3 +1397,14 @@ describe('robot-asleep and robot-blocked (v2.5734, punch list #142)', () => {
     expect(buildNeedsYouItems(inputs({ robotBlockedEnabled: true, robotBlocked: { count: 0, first: null } })).some((i) => i.key === 'robot-blocked')).toBe(false)
   })
 })
+
+describe('robot-answered (v2.5737, punch list #142)', () => {
+  it('the asker hears the robot answered, blue, with the Plans panel as the door', () => {
+    const items = buildNeedsYouItems(inputs({ robotAnswered: { count: 1, title: 'The robot answered your question on b511', detail: 'Is there a grease interceptor on this job? Open the bid\'s Plans panel to read the answer.', firstBidId: 'h1' } }))
+    const it1 = items.find((i) => i.key === 'robot-answered')!
+    expect(it1.severity).toBe('blue')
+    expect(it1.actionLabel).toBe('Open the Plans panel')
+    expect(it1.figure).toBe('1')
+    expect(buildNeedsYouItems(inputs({ robotAnswered: null })).some((i) => i.key === 'robot-answered')).toBe(false)
+  })
+})

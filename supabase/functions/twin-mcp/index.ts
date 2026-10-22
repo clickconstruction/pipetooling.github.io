@@ -559,6 +559,26 @@ const TOOLS = [
     },
   },
   {
+    name: 'next_plan_question',
+    description:
+      "Ask the robot to look (v1.7.0, punch list #142): claim the oldest open question a person asked about a bid's plans from the Plans panel — ONLY on a bid whose shadow you have sealed (locked or scored) or that has no shadow at all, so a question never reaches you before your own number exists (blind both ways). Returns the question, the human bid, YOUR shell on it (read its pages with get_plan_pages and its substrate with get_plan_brief), and the page text already on the human bid. Answer with put_plan_answer. Say what the plans SAY and WHERE, citing sheets; before the bid is sent never give a count or a price of your own — when asked how many, name the sheets and say you do not give counts before they send. done: true when nothing waits.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'put_plan_answer',
+    description:
+      "Answer a plan question you claimed with next_plan_question: the answer in plain words (two to four sentences; what the plans say and where; never a count or a price of your own before the bid is sent) and the sheets it cites (at least one, e.g. ['P-001','P-201']). Dollar figures are withheld before the row is written. The person who asked sees it on the bid's Plans panel and on their Dashboard.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question_id: { type: 'string' },
+        answer: { type: 'string' },
+        sheet_refs: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['question_id', 'answer', 'sheet_refs'],
+    },
+  },
+  {
     name: 'seed_audit_questions',
     description:
       "Seed your open questions onto the bid's audit card (v2.2881) — the bid_audit_notes insert that agent environments kept blocking client-side. Questions land as kind='question' with your authorship; anchor every one you can (sheet_ref + one-line context — an unanchored question makes the auditor hunt). Plain trade words, one ask each, never asking the auditor to grade your number. Finds the bid's audit row (ct_finish_takeoff opens it) or opens one if missing.",
@@ -3081,6 +3101,63 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({ ok: true, bid: `b${shell.bid_number}`, pages: rows.length, with_text: withText, landed_on: targetBidId === shell.id ? 'this shell' : 'the human bid this shell shadows' }))
     }
+    case 'next_plan_question': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const nowIso = new Date().toISOString()
+      // A question this robot already holds comes back first.
+      const { data: held } = await admin.from('bid_plan_questions').select('id, bid_id, question, asked_at').eq('status', 'open').eq('claimed_by', twin.twinUserId).order('asked_at').limit(1).maybeSingle()
+      let q = held as { id: string; bid_id: string; question: string; asked_at: string } | null
+      let resumed = !!q
+      if (!q) {
+        const { data: open } = await admin.from('bid_plan_questions').select('id, bid_id, question, asked_at').eq('status', 'open').is('claimed_by', null).order('asked_at').limit(50)
+        for (const cand of (open ?? []) as Array<{ id: string; bid_id: string; question: string; asked_at: string }>) {
+          // Blind both ways: the bid's shadow must be sealed (or there must be none).
+          const { data: run } = await admin.from('twin_shadow_runs').select('status, locked_at').eq('reference_bid_id', cand.bid_id).maybeSingle()
+          const r = run as { status: string; locked_at: string | null } | null
+          if (r && r.status !== 'void' && !r.locked_at) continue
+          const { data: won } = await admin.from('bid_plan_questions').update({ claimed_by: twin.twinUserId, claimed_at: nowIso, updated_at: nowIso }).eq('id', cand.id).eq('status', 'open').is('claimed_by', null).select('id').maybeSingle()
+          if (won) { q = cand; break }
+        }
+      }
+      if (!q) return textContent(JSON.stringify({ done: true, note: 'No plan question waits on a sealed bid.' }))
+      const { data: bid } = await admin.from('bids').select('id, bid_number, project_name, plans_link, bid_date_sent').eq('id', q.bid_id).maybeSingle()
+      const { data: shell } = await admin.from('bids').select('id, bid_number').eq('twin_source_bid_id', q.bid_id).or(`created_by.eq.${twin.twinUserId},estimator_id.eq.${twin.twinUserId}`).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      const { data: pages } = await admin.from('bids_plan_pages').select('page, sheet_no, title, text').eq('bid_id', q.bid_id).order('page').limit(400)
+      const b = bid as { id: string; bid_number: string | number | null; project_name: string | null; plans_link: string | null; bid_date_sent: string | null } | null
+      const sh = shell as { id: string; bid_number: string | number | null } | null
+      return textContent(JSON.stringify({
+        ok: true, resumed, question_id: q.id, question: q.question, asked_at: q.asked_at,
+        bid: b ? { bid: `b${b.bid_number}`, bid_id: b.id, project: b.project_name, plans: b.plans_link, sent: !!b.bid_date_sent } : null,
+        your_shell: sh ? { bid: `b${sh.bid_number}`, bid_id: sh.id, note: 'get_plan_pages and get_plan_brief work on this shell' } : null,
+        page_text: (pages ?? []).map((p: Record<string, unknown>) => ({ page: p.page, sheet: p.sheet_no, title: p.title, text: String(p.text ?? '').slice(0, 4000) })),
+        rules: b?.bid_date_sent ? 'The bid is sent: counts may be said.' : 'Before the bid is sent say what the plans say and where; never a count or a price of your own. If asked how many, name the sheets and say you do not give counts before they send.',
+        next: 'put_plan_answer(question_id, answer, sheet_refs)',
+      }, null, 2))
+    }
+    case 'put_plan_answer': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const id = String(args.question_id ?? '').trim()
+      let answer = String(args.answer ?? '').trim()
+      const refs = Array.isArray(args.sheet_refs) ? (args.sheet_refs as unknown[]).map((r) => String(r).trim()).filter(Boolean).slice(0, 12) : []
+      if (!id || !answer) return textContent('put_plan_answer needs question_id + answer + sheet_refs', true)
+      if (refs.length === 0) return textContent('put_plan_answer needs at least one sheet reference — say where on the plans.', true)
+      if (answer.length > 1200) return textContent(`Answer too long (${answer.length} chars > 1200): two to four sentences.`, true)
+      const { data: q } = await admin.from('bid_plan_questions').select('id, bid_id, status, claimed_by').eq('id', id).maybeSingle()
+      const row = q as { id: string; bid_id: string; status: string; claimed_by: string | null } | null
+      if (!row) return textContent(`No plan question ${id}`, true)
+      if (row.status !== 'open') return textContent(`Question ${id} is ${row.status} — nothing to answer.`, true)
+      if (row.claimed_by !== twin.twinUserId) return textContent(`Question ${id} is not yours — next_plan_question claims it first.`, true)
+      const { data: bid } = await admin.from('bids').select('bid_date_sent').eq('id', row.bid_id).maybeSingle()
+      if (!(bid as { bid_date_sent: string | null } | null)?.bid_date_sent) answer = scrubMoney(answer).text
+      const nowIso = new Date().toISOString()
+      const { error } = await admin.from('bid_plan_questions').update({ status: 'answered', answer, sheet_refs: refs, answered_by: twin.twinUserId, answered_at: nowIso, updated_at: nowIso }).eq('id', id).eq('status', 'open')
+      if (error) return textContent(`Answer not saved: ${error.message}`, true)
+      return textContent(JSON.stringify({ ok: true, question_id: id, next: 'heartbeat done, then next_plan_question again.' }))
+    }
     case 'seed_audit_questions': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -3546,7 +3623,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.6.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.7.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

@@ -517,6 +517,18 @@ export default function Bids() {
               : activeTab === 'lien-release'
                 ? selectedBidForLienRelease
                 : null
+  // v2.5737: the Dashboard's "The robot answered your question" line lands here with ?plans=1 — open the panel once the bid is in hand, then drop the flag.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('plans') !== '1') return
+    if (!plansBid) return
+    setPlansPanelOpen(true)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('plans')
+      return next
+    }, { replace: true })
+  }, [location.search, plansBid, setSearchParams])
 
   // v2.2400 (Wendi): the Margin breakdown's jump chips hand the destination tab a row to
   // land on — the tab scrolls to it and flashes it (Jobs → Pipeline idiom), then clears this.
@@ -1823,6 +1835,8 @@ export default function Bids() {
         canWrite={(['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as readonly string[]).includes(myRole ?? '')}
         open={plansPanelOpen && !!plansBid}
         onClose={() => setPlansPanelOpen(false)}
+        userId={authUser?.id ?? null}
+        shadowSealed={plansBid ? (robotProgressFor(plansBid.id)?.sealed ?? (twinBidBySourceId.has(plansBid.id) ? false : null)) : null}
       />
 
       <WorkingBoardArchiveConfirmDialog

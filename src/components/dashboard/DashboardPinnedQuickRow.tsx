@@ -58,6 +58,8 @@ import { canOpenGcProjects } from '../../lib/gc/access'
 import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useRobotSilenceNudge } from '../../hooks/useRobotSilenceNudge'
+import { useRobotAnsweredNudge } from '../../hooks/usePlanQuestions'
+import { answeredLine } from '../../lib/bids/planQuestions'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
 import { useOwnerRecordsSignedNudge } from '../../hooks/useOwnerRecordsSignedNudge'
@@ -554,6 +556,9 @@ export function DashboardPinnedQuickRow({
   // Robot rounds PR 4 (v2.5734, punch list #142): the fleet's silence — the owner's (dev or master); the Console is its door.
   const robotSilenceEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'master_technician')
   const robotSilenceNudge = useRobotSilenceNudge(robotSilenceEnabled, robotSilenceEnabled ? authUserId : undefined)
+  // Robot rounds PR 7 (v2.5737): the robot answered the viewer's own plan question — the bid's Plans panel is its door.
+  const robotAnsweredNudge = useRobotAnsweredNudge(robotAuditsEnabled, robotAuditsEnabled ? authUserId : undefined)
+  const robotAnswered = answeredLine(robotAnsweredNudge.rows, robotAnsweredNudge.bidNumberOf)
   // Collections accounts awaiting a dev's attorney-ready review (Legal portal PR 2, v2.3313) — devs only; the desk is its door.
   const legalReviewEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const { review: legalReview } = useLegalReviewNudge(legalReviewEnabled)
@@ -649,6 +654,7 @@ export function DashboardPinnedQuickRow({
     robotSilence: robotSilenceNudge.silence,
     robotBlockedEnabled: robotAuditsEnabled,
     robotBlocked,
+    robotAnswered,
     legalReviewEnabled,
     legalReview,
     legalFirmActivityEnabled,
@@ -895,6 +901,8 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=robot-board')
             } else if (item.key === 'robot-backlog' || item.key === 'robot-asleep') {
               navigate('/bids?tab=robot-console')
+            } else if (item.key === 'robot-answered') {
+              navigate(robotAnswered?.firstBidId ? `/bids?tab=submission-followup&bidId=${robotAnswered.firstBidId}&plans=1` : '/bids?tab=bid-board')
             } else if (item.key === 'robot-blocked') {
               navigate(robotBlocked.first ? `/bids?tab=bid-board&bidId=${robotBlocked.first.bidId}&robot=needs` : '/bids?tab=robot-board')
             } else if (item.key === 'legal-review') {
