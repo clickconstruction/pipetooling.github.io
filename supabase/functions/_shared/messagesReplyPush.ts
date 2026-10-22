@@ -7,6 +7,9 @@
 // its insert; the writers call it in a later PR) and { sweep: true } (the cron, R5's PR 3, every minute). Both send
 // nothing while the owner's switch (REPLY_PUSH_ON_KEY, R5's PR 3, 'false' as it ships) is off. The sweep reads the lines
 // in from the last wait plus thirty minutes plus five (sweepSince).
+//
+// The walk kit (punch list #142 PR 6): walk_kit_v1 is read once per run; a line on the kit's contact pushes the real
+// dev accounts alone (notifyPlan's kit branch), so a walk buzzes nobody in the office.
 // deno-lint-ignore-file no-explicit-any
 // The kernels straight from the copy, not its index: the index re-exports every kernel in it, which the check would
 // then walk too.
@@ -17,6 +20,7 @@ import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_KINDS, REPLY_PUSH_ON_KEY, sweep
 import { OFFICE_WAIT_KEY, PUSH_CHANNELS, pushSentRow, type Push } from './gcKernels/lib/messages/notifyRule.ts'
 import { MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from './messagesTeams.ts'
 import { REAL_ACCOUNT } from './realAccount.ts'
+import { loadWalkKit } from './walkKit.ts'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -116,7 +120,7 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
   const pushIds = contacts.map((c) => c.id)
   const oldest = Math.min(...lines.map((l) => Date.parse(l.at)))
 
-  const [{ data: outData }, { data: userData }, { data: sentData }, legal] = await Promise.all([
+  const [{ data: outData }, { data: userData }, { data: sentData }, legal, kit] = await Promise.all([
     admin
       .from('messages')
       .select('contact_id, channel, direction, at, who_user_id')
@@ -127,6 +131,7 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
     admin.from('users').select('id, name, role').match(REAL_ACCOUNT).in('role', [...MESSAGES_OFFICE_ROLES, ...MESSAGES_TECH_ROLES]).is('archived_at', null),
     admin.from('notification_history').select('message_id, template_type').in('message_id', lines.map((l) => l.id)),
     legalSendsFor(admin, contactRows.filter((c) => c.kind === 'customer')),
+    loadWalkKit(admin),
   ])
   const outs: PlanOut[] = ((outData ?? []) as any[]).map((r) => ({ contactId: r.contact_id, channel: r.channel, direction: r.direction, at: r.at, whoUserId: r.who_user_id ?? null }))
   const users = (userData ?? []) as Array<{ id: string; name: string | null; role: string }>
@@ -144,6 +149,8 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
     waitMinutes,
     legal,
     sent: (sentData ?? []) as Array<{ message_id: string; template_type: 'message_reply' | 'message_reply_wait' }>,
+    kit: kit ? { contactId: kit.contactId } : null,
+    devs: users.filter((u) => u.role === 'dev').map(person),
   })
 
   let sent = 0

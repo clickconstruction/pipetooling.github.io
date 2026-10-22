@@ -297,6 +297,21 @@ describe('nudgeRunReads: everyone’s flow for the morning run', () => {
     expect(unread).toEqual(['greg'])
   })
 
+  it('leaves the walk kit’s contact out of the morning entirely, not even as unread (punch list #142 PR 6)', () => {
+    const rows = rowsFor({
+      contacts: [
+        { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null },
+        { id: 'zz-walk', kind: 'customer', name: 'ZZ Walk Messages Desk', goes_by: null, snoozed_until: null },
+      ],
+    })
+    const { input, unread } = nudgeRunReads(rows, MORNING, { origin: ORIGIN, walkKitContactId: 'zz-walk' })
+    expect(input.people.map((p) => p.id)).toEqual(['tom'])
+    expect(unread).toEqual([])
+    // With no kit the same contact is read as any other: its rows did not come back here, so it is named for the log.
+    expect(nudgeRunReads(rows, MORNING, { origin: ORIGIN }).unread).toEqual(['zz-walk'])
+    expect(nudgeRunReads(rows, MORNING, { origin: ORIGIN, walkKitContactId: null }).unread).toEqual(['zz-walk'])
+  })
+
   it('gives a customer their page link only when the run has one', () => {
     const elena: FlowRows = {
       contact: { id: 'elena', kind: 'customer', off_since: null, off_why: null, off_by: null },

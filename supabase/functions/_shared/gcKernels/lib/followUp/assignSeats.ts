@@ -54,8 +54,10 @@ export const CUSTOMER_SEAT_KINDS: ReadonlySet<ContactKind> = new Set<ContactKind
  * Who gets a new message, by the rule (proposed in the prototype, the owner's call): whoever answered this person
  * last, when they are here today; else the seat for who they are. A lead, a sub, a supply house and a candidate sit
  * in the Customers seat with a customer. A number nobody knows goes to nobody, so whoever answers first takes it.
+ * The walk kit's contact (`walkKit`, punch list #142 PR 6) goes to nobody: a test thread is never handed to a person.
  */
-export function whoGetsIt(input: { kind: ContactKind; answeredLastBy: string | null; hereToday: ReadonlySet<string>; seats: AssignSeats }): string | null {
+export function whoGetsIt(input: { kind: ContactKind; answeredLastBy: string | null; hereToday: ReadonlySet<string>; seats: AssignSeats; walkKit?: boolean }): string | null {
+  if (input.walkKit) return null
   if (input.answeredLastBy && input.hereToday.has(input.answeredLastBy)) return input.answeredLastBy
   if (CUSTOMER_SEAT_KINDS.has(input.kind)) return input.seats.customer
   if (input.kind === 'trade') return input.seats.trade

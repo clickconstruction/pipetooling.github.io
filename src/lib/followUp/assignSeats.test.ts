@@ -37,4 +37,10 @@ describe('followUp/assignSeats: the four kinds with no seat of their own', () =>
     expect([got('trade'), got('arch'), got('unknown')]).toEqual(['u-robert', 'u-robert', null])
     expect([...CUSTOMER_SEAT_KINDS].sort()).toEqual(['candidate', 'customer', 'lead', 'sub', 'supply_house'])
   })
+
+  it('hands the walk kit’s contact to nobody, whoever answered last and whatever the seats (punch list #142 PR 6)', () => {
+    expect(whoGetsIt({ kind: 'customer', answeredLastBy: 'u-tom', hereToday: HERE, seats: SEATS, walkKit: true })).toBeNull()
+    expect(whoGetsIt({ kind: 'trade', answeredLastBy: null, hereToday: HERE, seats: SEATS, walkKit: true })).toBeNull()
+    expect(whoGetsIt({ kind: 'customer', answeredLastBy: null, hereToday: HERE, seats: SEATS, walkKit: false })).toBe('u-rosa')
+  })
 })

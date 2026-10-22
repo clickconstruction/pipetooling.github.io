@@ -82,6 +82,11 @@ describe('Who gets a new message (cut 2, PR D)', () => {
     expect(rows.map((r) => r.goesTo.split(',')[0])).toEqual(['Rosa', 'Robert', 'Robert', 'Nobody. Whoever answers first takes it.'])
   })
 
+  it('hands the walk kit’s contact to nobody, seats or no seats (punch list #142 PR 6)', () => {
+    const seats = { customer: ROSA, trade: ROBERT, arch: null }
+    expect(whoGetsIt({ kind: 'customer', answeredLastBy: ROSA, hereToday: new Set([ROSA]), seats, walkKit: true })).toBeNull()
+  })
+
   it('keeps its words plain', () => {
     const words = [ASSIGN_RULE_FIRST, ASSIGN_RULE_AFTER, SEATS_SAVED_TOAST, ...assignRuleRows(NO_SEATS, nameOf).map((r) => `${r.who} goes to ${r.goesTo}`)]
     for (const w of words) expect(plainWordsFailures(w)).toEqual([])

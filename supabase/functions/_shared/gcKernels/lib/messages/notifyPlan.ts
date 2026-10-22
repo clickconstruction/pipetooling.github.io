@@ -16,12 +16,16 @@
  * The owner's calls (2026-10-13): a push only for a customer's, a lead's or a sub's line until Quo's functions write lines
  * in for everyone; the office is the Customers seat when one is picked, else the five office roles; no after-hours
  * answer goes until `quo-send` exists, so the after-hours push says the line waits for the morning.
+ *
+ * The walk kit (punch list #142 PR 6, README decision 6): while `walk_kit_v1` names a contact, a line on it pushes the
+ * real dev accounts alone, at once, as one `message_reply`: never the holder, never the office's wait push, never the
+ * after-hours push. The office still sees the kit's thread in Needs a reply; nobody's phone buzzes for a test.
  */
 import type { ContactKind } from '../contacts/names.ts'
 import { whoGetsIt, type AssignRuleSeats } from '../followUp/assignSeats.ts'
 import { whoHasReply, type OfficeHours, type TechText } from './hasRule.ts'
 import { legalLines, routeReply, standingLegalLine, type LegalSend } from './legalRoute.ts'
-import { answeredBefore, OFFICE_WAIT_MINUTES, pushDue, pushesFor, type Push, type PushSentRow, type ReplyHas, type ReplyLine } from './notifyRule.ts'
+import { answeredBefore, OFFICE_WAIT_MINUTES, pushDue, pushesFor, replyWords, threadUrl, type Push, type PushSentRow, type ReplyHas, type ReplyLine } from './notifyRule.ts'
 import type { MessageChannel, MessageDirection } from './thread.ts'
 
 /**
@@ -95,6 +99,10 @@ export interface NotifyPlanInput {
   legal: Readonly<Record<string, readonly LegalSend[]>>
   /** The pushes already sent for these lines (`notification_history.message_id`). */
   sent: ReadonlyArray<Pick<PushSentRow, 'message_id' | 'template_type'>>
+  /** The walk kit's contact (`walk_kit_v1`), while a walk is set up: its lines push `devs` alone. */
+  kit?: { contactId: string } | null
+  /** The real dev accounts, not archived: who hears the kit's lines. */
+  devs?: readonly PlanUser[]
 }
 
 export interface NotifyPlan {
@@ -149,6 +157,23 @@ function hasFor(line: PlanLine, contact: PlanContact, theirs: readonly PlanOut[]
   return { has: rule.has, userId: rule.userId, name: rule.name, reason: rule.reason, autoAnswer: null }
 }
 
+/** The kit's push: one `message_reply` to the devs, due at the line, never dropped for an answer. */
+function kitPush(line: PlanLine, contact: PlanContact, devIds: readonly string[]): Push {
+  return {
+    messageId: line.id,
+    contactId: contact.id,
+    audience: 'office',
+    userIds: [...new Set(devIds)],
+    title: contact.name,
+    body: replyWords({ channel: line.channel, body: line.body, subject: line.subject ?? null }),
+    url: threadUrl(contact.id, line.id),
+    tag: `messages-${contact.id}`,
+    template: 'message_reply',
+    dueAt: line.at,
+    cancelIfAnswered: false,
+  }
+}
+
 /** The pushes the lines should send now, and what waits, what was answered first and what came too late. */
 export function planReplyPushes(input: NotifyPlanInput): NotifyPlan {
   const contacts = new Map(input.contacts.map((c) => [c.id, c]))
@@ -160,9 +185,17 @@ export function planReplyPushes(input: NotifyPlanInput): NotifyPlan {
     const contact = contacts.get(line.contactId)
     if (!contact || line.direction !== 'in' || !PUSH_KINDS.has(contact.kind)) continue
     const theirs = input.outs.filter((o) => o.contactId === contact.id)
-    const has = hasFor(line, contact, theirs, input, names)
-    const reply: ReplyLine = { ...line, subject: line.subject ?? null, name: contact.name, goesBy: contact.goesBy ?? null, kind: contact.kind }
-    const pushes = pushesFor(reply, has, { officeWaitMinutes: input.waitMinutes ?? undefined, officeUserIds }, input.sent)
+    let pushes: Push[]
+    if (input.kit && contact.id === input.kit.contactId) {
+      // The walk kit's thread: the devs alone, and only once per line.
+      const devIds = (input.devs ?? []).map((u) => u.id)
+      const done = input.sent.some((s) => s.message_id === line.id && s.template_type === 'message_reply')
+      pushes = devIds.length > 0 && !done ? [kitPush(line, contact, devIds)] : []
+    } else {
+      const has = hasFor(line, contact, theirs, input, names)
+      const reply: ReplyLine = { ...line, subject: line.subject ?? null, name: contact.name, goesBy: contact.goesBy ?? null, kind: contact.kind }
+      pushes = pushesFor(reply, has, { officeWaitMinutes: input.waitMinutes ?? undefined, officeUserIds }, input.sent)
+    }
     for (const push of pushes) {
       if (!pushDue(push, input.now)) {
         plan.waiting++
