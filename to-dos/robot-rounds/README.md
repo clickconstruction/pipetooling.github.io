@@ -2,17 +2,18 @@
 name: "Robot rounds: the robots watch from the Mac Mini and say where they are every five minutes"
 number: 142
 group: ready
-status: proposed 2026-10-21, second pass; nothing built
+status: proposed 2026-10-21, third pass (the ring on the icon, the owner's ask after the second); nothing built
 summary: >
   The owner wants a loop on his home Mac Mini that watches ClickTooling for work it can do, starting
   with bidding and pricing, and that tells the app every five minutes where it is, like a slow
   loading bar. Most of the loop exists: the robot estimator, its dispatcher, the hourly weekday
   routine, the heartbeat verb and the stage stamps every pipeline verb already writes. What is new
-  is small: the rounds run every 15 minutes all day from a key that names the Mac, the heartbeat
+  is small: the rounds run every five minutes all day from a key that names the Mac, the heartbeat
   grows a plain-words shape and a five-minute rule, one reader turns the robot's own stamps into a
-  seven-step bar an estimator can see on the bid, silence has a meaning and a door, and a press on
-  the app reaches the Mac on its next signal. No new lens, no new table, one migration.
-next: The owner's four calls below, then PR 1.
+  seven-step bar an estimator can see on the bid, the Bid Board's robot icon becomes a ring that
+  fills one segment per step so the stage reads at a glance, silence has a meaning and a door, and a
+  press on the app reaches the Mac on its next signal. No new lens, no new table, one migration.
+next: The owner's three open calls below, then PR 1. The round's cadence is decided: five minutes.
 size: M as a train of five (S S M S S); one migration, one edge redeploy per PR
 blocker: none
 ver: proposed
@@ -39,6 +40,10 @@ And: *come up with a mock-up of what this could look like and ask yourself holis
 the right move? And then refine the mock-up and then ask yourself is this the best we can do? Do
 we educate the user as well as we can?*
 
+And, on the second pass the same day: *On the bid board robot icons, I would like to see a circle
+that completes to 100 percent, so at a glance a user can see what stage or percent it's on, and
+still click on it to see more.* That is the third pass, decision 3b.
+
 Two asks in one. A **loop that stays up** on a machine that stays on, working the robots' queues
 without a person pasting a kickoff. And a **signal while it works**, read by the people who wonder
 where a bid's robot is, not only by the dev who runs the fleet.
@@ -64,7 +69,7 @@ and shown to the wrong audience.
 | Needs You | `dashboardNeedsYou.ts` | Devs: *Robots have work waiting*. Estimators and devs: *N robot bids are waiting on your audit*. | two items added, only when a person is needed |
 | The fence | `apply_digital_twin_write_blocks`, the no-send trigger, the seat gate, rung 2 | A robot writes only its own shells. Nothing leaves the app by a robot's hand. | reused as the answer to "what will it touch" |
 
-**New, in one line each:** rounds every 15 minutes all day from the Mac Mini's key; the heartbeat's
+**New, in one line each:** rounds every five minutes all day from the Mac Mini's key; the heartbeat's
 shape and cadence; one reader, `robot_progress()`, that any bid role may call and that never
 carries a dollar figure; the bar on the bid, the live row, the Console's Rounds card, two Needs You
 items; a pause and a stop that the Mac reads on its next signal; the words.
@@ -92,10 +97,21 @@ fails silently.
 
 **Setup on the Mac Mini, in order:** System Settings → Energy, never sleep, and open at login;
 sign in to the Claude app with the owner's own Anthropic account; press **Set up on this Mac** on
-the Console, label *Robert's Mac Mini*; in Claude Code, make the routine **Robot rounds** with the
-round's kickoff (PR 5) every 15 minutes, press **Run now** once so the approvals are saved. The
-key is minted on the server and never shown; the owner's app account is only the harness. The
-twin's writes are fenced by the key, not by whose Mac it is.
+the Console, label *Robert's Mac Mini*; press **Copy rounds kickoff** and paste it into a Claude
+Code session on that Mac. The paste makes the routine and runs it once (decision 7). The key is
+minted on the server and never shown; the owner's app account is only the harness. The twin's
+writes are fenced by the key, not by whose Mac it is.
+
+**Every five minutes, and the overlap rule that makes it cheap.** The owner's call (2026-10-21):
+fifteen minutes is too slow. A round every five minutes means a bid filed at 2:03 is picked up by
+2:05 and *front of the line* is near instant. A bid takes about an hour, so most rounds will wake
+while an earlier round of the same key still holds one. The rule: a round's first call is its idle
+heartbeat, and the reply says whether this key already has a round on a bid. If two do, the round
+leaves at once, before it reads a guide or opens the queue, so an idle round costs seconds. If
+fewer than two do, it claims one and works it to the lock. The clock is five minutes; the work is
+one bid at a time, two at most, per Mac. Idle rounds collapse to one ledger row a day, so 288
+rounds leave one line. The cost that remains is the owner's Claude plan, one short session every
+five minutes; the kickoff keeps the idle path to one call so that stays small.
 
 ### 2. The signal: widen `heartbeat`, do not add a verb or a table
 
@@ -140,33 +156,81 @@ disagree.
 - **The bid's robot status sheet** (estimators): the *Reads the plans, counts, and prices* step
   opens into a seven-step bar with the lit step and its detail, the last-word time, and the Mac.
   Below it, a fold, **What the robot touches**, with the four sentences from decision 6.
-- **The Bid Board's robot icon** gets the same tooltip words: *Reading the sheets, 12 of 31. Last
-  word 2 minutes ago.*
+- **The Bid Board's robot icon** becomes a **ring** (decision 3b): seven segments, one per step,
+  filled as the robot passes them, the glyph it has today at the centre. The tooltip says the step in
+  words: *Step 3 of 7. Reading the sheets, 12 of 31. Last word 2 minutes ago.* A tap opens the sheet
+  as today.
 - **The Robot Board row**: *estimating · reading the sheets, 12 of 31 · 2 min ago*.
-- **The Robots lenses' caption** gains one sentence: *The robots make a round every 15 minutes
+- **The Robots lenses' caption** gains one sentence: *The robots make a round every five minutes
   from Robert's Mac Mini. Last round 2:35 PM.*
-- **The Console** gains a **Rounds** card at the top: one row per key that has made a round in
-  seven days, awake or asleep, on which bid, the last round, the next, and the presses in decision
-  5. Under it, the current bid's signals in order, oldest first, which is the slow loading bar's
-  history and the *Read the run* door.
+- **The Console** gains a **Rounds** card at the top: one row per key that has checked in within
+  seven days, with the robot's status light and word, when it last checked in, what it has in hand,
+  what it finished recently, and the presses in decision 5 (decision 8 has the whole row). Under
+  it, the current bid's signals in order, oldest first, which is the slow loading bar's history and
+  the *Read the run* door.
 - **The Dashboard** says nothing while all is well. It speaks in decision 4.
 
-**The bar is seven named steps, not a percent.** Picked it up · Plans filed · Reading the sheets ·
-Counting · Pricing · Sealed · Questions for you. A percent would promise a pace nobody knows. The
-sheet says *Most bids take about an hour* only once ten runs have stamped their LOCK, from the
-median of start to lock in `twin_runs`.
+**The bar is seven named steps, not a percent of time.** Picked it up · Plans filed · Reading the
+sheets · Counting · Pricing · Sealed · Questions for you. A percent of minutes would promise a pace
+nobody knows. The sheet says *Most bids take about an hour* only once ten runs have stamped their
+LOCK, from the median of start to lock in `twin_runs`. The ring (3b) is the same seven steps drawn
+round the icon, so its fill is a percent of steps, which is honest, and never a percent of minutes.
+
+### 3b. The ring on the icon: a circle that fills one segment per step
+
+The owner's third-pass ask: a circle on the Bid Board's robot icon that completes to 100 percent,
+so the stage reads at a glance, and the icon still opens the sheet.
+
+**Alternatives.**
+
+- *A. A ring that fills with time.* Elapsed minutes over the median run. Smooth, and a guess: a
+  31-sheet set and a 9-sheet set would show the same fill at the same minute, and the ring would
+  sit at 100 percent while the robot was still counting.
+- *B. A ring of seven segments, one per step, filled as the stamps land.* The fill is steps done
+  of seven. The segment the robot is on fills by the signal's inside-step count when it has one
+  (12 of 31 sheets read fills the third segment 39 percent) and pulses when it has none. The gaps
+  between segments are the stage marks, so a glance reads *third of seven* without a number.
+- *C. B, with the segments weighted by the median minutes each step takes.* A truer loading bar,
+  once ten runs have locked and the medians exist. Not the first cut: it changes the segments'
+  lengths, not their meaning, and the ring from B upgrades in place.
+
+**Recommendation: B, with C named as the later upgrade.** The ring is the bar from decision 3 drawn
+round the glyph the row already has, from the same reader and kernel, so the icon, the sheet and
+the Robot Board row can never disagree. A person who learns the ring on the board recognises the
+bar on the sheet, and the other way round.
+
+**The ring in each state of the icon** (`robotRowState` already names them):
+
+| State | The ring | The centre | The tooltip |
+|---|---|---|---|
+| queued | seven empty segments, gray | the robot, as today | *Queued. The next round is within five minutes.* |
+| working | the done segments blue, the current one filling or pulsing | the robot | *Step 3 of 7. Reading the sheets, 12 of 31. Last word 2 minutes ago.* |
+| quiet | the same fill, amber | the robot | *Quiet since 2:41 PM. Another round picks it up within ten minutes.* |
+| needs | seven empty segments, amber | **!** as today | *Needs something from you. Tap to see what.* |
+| sealed | full, green | the lock, as today | *Sealed. Its number shows when you send.* |
+| scored | full, green | the check, the delta beside it as today | *Scored. Tap to compare.* |
+| off, none, grade | no ring | as today | as today |
+
+**Size and touch.** The icon is 22 px today. The ring is 28 px outside, a 3 px band, the glyph 20 px
+inside it, and the tap target stays the row's 44 px cell. The seven gaps are 2.5 degrees each, so a
+segment is still a segment at 28 px. The ring is one component, `RobotRing`, drawn by CSS conic
+gradients, no SVG per row, and it carries the tooltip words as its label for a screen reader.
+
+**Where the ring draws.** The Bid Board's robot icon (desktop and the phone board), the Robot Board
+row's Robot cell, and the status sheet's header, so the sheet opens on the ring the person tapped.
+The Rounds card uses the words, not the ring.
 
 ### 4. What silence means: a quiet robot and a sleeping Mac are two different facts
 
 Two clocks, each read from `last_seen_at` and the latest heartbeat.
 
 - **Quiet on a bid.** A shell open and unlocked, and no verb from that key for ten minutes. The
-  sheet reads *The robot went quiet on this bid at 2:41 PM. Another round picks it up within 15
+  sheet reads *The robot went quiet on this bid at 2:41 PM. Another round picks it up within ten
   minutes.* Amber. Nothing for a person to do yet. The dispatcher's orphan rule tightens from 60
   minutes to 15: with a signal every five, fifteen minutes of nothing is a dead session, not a
-  slow one.
-- **Asleep.** No round from a key for 30 minutes inside its hours. The caption reads *No round
-  from Robert's Mac Mini since 2:35 PM.* Gray. A Needs You item for the owner and devs: **The
+  slow one, and the round after that claims it.
+- **Asleep.** No round from a key for 15 minutes inside its hours, three rounds missed. The
+  caption reads *No round from Robert's Mac Mini since 2:35 PM.* Gray. A Needs You item for the owner and devs: **The
   robots have not made a round since 2:35 PM**, detail *Robert's Mac Mini is asleep, or Claude is
   closed on it. Wake it and open Claude. The rounds start again on their own.*, action *Open the
   Console*. Snooze and dismiss as the backlog item has.
@@ -215,9 +279,113 @@ to another role's work is an owner decision on the locked list in `DIGITAL_TWINS
 
 **The name.** The owner said *assistant* and *helper*. Both are role names in this app, so neither
 can be the loop's. The people who do the work stay **the robots**, the word every screen already
-uses. The loop is **the rounds**: *the robots make a round every 15 minutes*. A round is one pass
+uses. The loop is **the rounds**: *the robots make a round every five minutes*. A round is one pass
 over the three queues from one Mac. Nothing on a screen says *loop*, *Mac Mini* or *heartbeat*
 except the key's label the owner typed.
+
+### 7. Starting the rounds stays one press, in the place a dev already presses
+
+The owner's check: *is it still as easy as before for a dev to copy the prompt they need to set
+this loop in motion?* Today a dev presses **Set up on this Mac** once and **Copy Code kickoff** per
+batch, both on the Console's *Run the robots* card, and reads the prompt first through *Preview*.
+The rounds keep that shape exactly and add one row.
+
+- **One more row on the same card.** *Run the robots* → the Claude Code column gains a row between
+  *Start a batch* and *Hand shadow coverage to someone*: **Make this Mac the rounds**, with a
+  **Copy rounds kickoff** button and a *Preview the rounds kickoff* link under it, as the other
+  three rows have. The three rows that exist do not move or change.
+- **One paste does everything.** The copied kickoff opens the way `code-operator.md` does, *run
+  this now*, and tells the Code session to make the routine itself: the name **Robot rounds**, the
+  schedule (every five minutes, all day), the round's prompt verbatim, and one run now so the tool
+  approvals are saved. Today's shadow handoff asks the person to create the
+  routine by hand from a cron line; the rounds kickoff does not. The Mac's three settings (never
+  sleep, open at login, the Claude sign-in) are the first lines of the prompt, as a checklist the
+  session reads back to the person, so nobody opens a doc to find them.
+- **The setup command can carry it.** The **Set up on this Mac** dialog gains one tick, *This Mac
+  makes the rounds*. With it on, the Terminal command puts the rounds kickoff on the clipboard
+  instead of the batch kickoff when it reopens Claude, so a fresh Mac is two presses and one paste:
+  set up, tick, paste. The dialog's words change by one line.
+- **The Rounds card is a door too.** When no key has made a round in seven days, the card's only
+  row reads *No Mac makes the rounds yet. Copy the rounds kickoff and paste it into Claude Code on
+  the Mac that will.* with the same button, so a dev who lands on the card first is not sent to
+  another card.
+- **Nothing about the key changes.** The rounds use the key **Set up on this Mac** minted; there
+  is no second key, no second connector, no new allow rule. A dev who already set up the Mac for
+  batches pastes the rounds kickoff and is done.
+
+The kickoff is one markdown file, `docs/twins/kickoffs/rounds-operator.md`, copied whole with the
+connector filled in, the way the other three are, so the Console's button and the doc can never
+drift. `scripts/build-twin-mcp-briefs.mjs` bundles it with the rest.
+
+### 8. The robots' status on the Console: alive, last check-in, what it worked on
+
+The owner's ask, after the third pass: *on the Robot Console I think it would be important to see
+a signal of the status of the agent, if it is alive, its last check-in and what it worked on
+recently.* Thought through against what the ledger already holds.
+
+**What answers each question today, and what is missing.**
+
+| Question | What exists | What is missing |
+|---|---|---|
+| Is it alive? | The fleet strip reads `twin_credentials.last_used_at`, stamped by `twin-login` at sign-in only. The Recent runs ledger shows the newest 15 rows across every robot. | A per-key last call. A robot that fell silent is invisible by omission: nothing on the page says *not heard from*. |
+| When did it last check in? | A heartbeat at start, block and done. | A cadence, and the row that shows the latest one per key. PR 1 gives the cadence. |
+| What did it work on? | `twin_runs` reports (`report:SHADOW-b2041`), `twin_shadow_runs` locks and scores, `bid_price_matrix_requests` finished by a twin, `bid_submittal_tasks` finished by a twin. | Nothing joins them per robot in time order, and nothing says it in words. |
+
+**The row, one per key.** A key is a seat on a Mac, so *Twin Estimator 1 on Robert's Mac Mini*
+and *Twin Pricer 1 on Robert's Mac Mini* are two rows, and a second Mac is a third.
+
+- **The light and the word**, never colour alone: **Alive** (green: checked in within seven
+  minutes, the five-minute round plus two of grace), **Quiet** (amber: seven to fifteen), **Asleep**
+  (gray: over fifteen, three rounds missed), **Paused until 6 PM**, **Stopping after b511**, and
+  **Never checked in** for a key minted and not yet used. Computed at read time from
+  `last_seen_at` and the two flags; nothing is stored.
+- **Checked in 2 minutes ago**, the exact time on hover. For an asleep key, *Last check-in Fri
+  5:12 PM*.
+- **Now**: the latest heartbeat's words for that key, *Reading the sheets on b511, 12 of 31, since
+  2:04 PM*, or *Nothing in hand*.
+- **Recently**: the last five things the robot finished, newest first, each with its time and a
+  door. *Sealed b2038 for b509 Cedar Park Vet Clinic. Asked 2 questions.* opens the bid's robot
+  sheet. *Matrix ready for b503, 2 asks.* opens the Pricing tab. *Filed 6 cut sheets on b498.*
+  opens Submittals. *Parked b2035 for b507. Waiting on the plans.* opens the robot needs sheet.
+  Open on the first row, folded to its newest line on the rest.
+- **Today**: *1 bid sealed, 1 parked. 88 rounds found nothing to do.*
+- The two presses from decision 5.
+
+Finished work is stamped with the robot's user, not the key, so **Recently** is the robot's and
+shows on every key of that robot; **Now** and the check-in are the key's, because PR 1 stamps
+`credential_id` on each heartbeat. Two Macs on one seat would show the same Recently list twice,
+which is true.
+
+**How to build it.**
+
+1. **Reader `robot_agents()`**, SECURITY DEFINER, devs only because it names keys. Per unrevoked
+   key: the label, the robot's name and `twin_kind`, `last_seen_at`, `paused_until`,
+   `stop_after_bid`, the latest heartbeat row for that `credential_id`, and `recent`: a UNION of the
+   robot's finished work in the last seven days, newest five, each as `{kind, at, bid, shadow,
+   count}`: reports, shadow locks and scores, matrices with their status and asks, submittal tasks
+   with their kind and rows written. One call returns the card.
+2. **Kernel `src/lib/bids/robotAgents.ts`**, pure: `agentState(row, now)` gives the tone, the word
+   and the check-in sentence; `ROBOT_ALIVE_MS` (7 min) and `ROBOT_ASLEEP_MS` (15 min) sit beside
+   `ROBOT_BACKLOG_HEARTBEAT_STALE_MS`; `recentWorkLine(item)` gives the words and the door;
+   `todayLine(items, idleRounds)`. Tests: each state, the minute either side of each threshold, a
+   paused and a stopping key, a never-used key, every kind of recent line, and the words through
+   `plainWordsFailures`.
+3. **`useRobotAgents()`**: the RPC on mount and every 30 seconds while the Console is mounted,
+   paused while the tab is hidden. Status is the point of the card, so it does not wait for a
+   reload.
+4. **`TwinRoundsCard`**: the rows, the light as a dot with the word beside it, the folds, the
+   doors, the presses. The Recent runs ledger stays below it as the raw ledger, idle rows collapsed.
+5. **The estimators' line** reads the same thresholds through `robot_progress()`, which names no
+   key: the lenses' caption says *The robots checked in 2 minutes ago.*
+
+**The two-key fact, and what it does to the rounds.** The setup command writes one connector
+entry, `twin-mcp`, whichever seat's key it carries, so a Mac today holds one seat at a time and a
+pricer key is refused every bid verb. A round that covers prices as well as bids needs both keys on
+the Mac. PR 5's tick writes the pricer's key under its own name, `twin-pricer-mcp`, and the rounds
+kickoff says which connector each queue uses. Until that lands, the rounds cover the shadow queue
+and the submittal tasks, which both answer to the estimator's key, and the pricer keeps its own
+kickoff. The Console shows one row per key either way, so the owner sees at once which seats the
+Mac holds.
 
 ## Holistically, is this the right move?
 
@@ -233,7 +401,7 @@ a bid into a colleague whose progress you can glance at, and silence into a fact
 
 - *A stale session on the Mac.* The robot's authority is its key, minted by **Set up on this
   Mac**, never the owner's app sign-in. A lapsed Claude sign-in stops the rounds and nothing else;
-  the asleep detector says so within 30 minutes, to the owner, with the fix in the sentence.
+  the asleep detector says so within 15 minutes, to the owner, with the fix in the sentence.
 - *Two robots on one bid.* Already impossible: the `twin_shadow_runs` row is the claim, and
   `next_shadow` never hands two sessions one bid. The signal makes the orphan rule honest at 15
   minutes instead of 60, so a Code session someone starts beside the rounds waits less.
@@ -259,13 +427,17 @@ over without a release.
 made up (the GC is *Ridgeway Builders*, the jobs are *Oak Hollow Dental* and *Cedar Park Vet
 Clinic*, the Mac is *Robert's Mac Mini*, today is Tue Oct 21, 2026, 2:38 PM):
 
-1. **The bid**: the Bid Board row's robot icon with its tooltip, and the robot status sheet with
-   the seven-step bar lit at *Reading the sheets*, the last word, the fold **What the robot
-   touches**, and the two presses. The same sheet at phone width.
+1. **The bid**: the Bid Board rows' robot icons as rings, a key of the ring in every state, the
+   tooltip, and the robot status sheet with the seven-step bar lit at *Reading the sheets*, the
+   last word, the fold **What the robot touches**, and the two presses. The same sheet at phone
+   width.
 2. **The Robot Board row and the lenses' caption**: the live sub-line, the round sentence.
-3. **The Console's Rounds card**: one Mac awake on b511, the last and next round, **Stop after
-   this bid** and **Pause the rounds**, and *Read the run*: the bid's signals oldest first.
-4. **Silence**: the same line in its three states, awake, quiet, asleep, and the two Needs You
+3. **The Console**: the *Run the robots* card's Claude Code column with its one new row and
+   button; the Rounds card with one row per key, the estimator alive on b511, the pricer alive with
+   nothing in hand, a second Mac asleep, each with its check-in, its Now and its Recently list,
+   **Stop after this bid** and **Pause the rounds**; *Read the run* with the bid's signals oldest
+   first; and the Rounds card's empty state with the same button.
+4. **Silence**: the same line in its three states, alive, quiet, asleep, and the two Needs You
    items with their words and doors.
 5. **The signal**: what one heartbeat carries, field by field, and the words each becomes.
 6. **The second pass**: what changed from the first draft, in the house's five lenses.
@@ -282,40 +454,56 @@ money on a sealed shadow, and answers with `orders`. `twinConsoleDisplay.ts` rea
 notes, a bed for the collapse and the scrub. Docs: `EDGE_FUNCTIONS.md` → twin-mcp conversation
 layer, `docs/migrations/`. Deploy twin-mcp after the push.
 
-**PR 2 · The reader and the bar on the bid (S + M).** Migration: `robot_progress(bid_ids uuid[])`,
-SECURITY DEFINER, the bid roles, no money columns. Kernel `src/lib/bids/robotProgress.ts`: the
-seven steps from the stamps and the heartbeat, the words for each state, quiet and asleep from the
-two clocks, *Most bids take about an hour* from the median once ten runs have locked. `useRobotProgress`
-(one call per visible set of bids, refreshed every minute while the sheet is open). The status
-sheet's bar, the icon's tooltip, the Robot Board row's sub-line, the lenses' caption sentence, the
-**What the robot touches** fold, **Read the run** and **Leave this one to me** (the opt-out that
-exists, plus `orders: leave`). Tests: `robotProgress.test.ts` for every state and the words'
-plain-words check, the sheet's render smoke, the mirror's label test. Guide: *let the robots shadow
+**PR 2 · The reader, the bar on the bid and the ring on the icon (S + M).** Migration:
+`robot_progress(bid_ids uuid[])`, SECURITY DEFINER, the bid roles, no money columns. Kernel
+`src/lib/bids/robotProgress.ts`: the seven steps from the stamps and the heartbeat, the words for
+each state, quiet and asleep from the two clocks, *Most bids take about an hour* from the median
+once ten runs have locked, and `ringFill(progress)`: steps done of seven plus the current step's
+inside fraction, 0 to 1, with the tone (blue, amber, green, gray). `useRobotProgress` (one call per
+visible set of bids, refreshed every minute while the board or the sheet is open). `RobotRing`
+(conic gradients, the seven gaps, the glyph inside, the label) wrapping `RobotGlyph` on the Bid
+Board, the phone board, the Robot Board row and the sheet's header. The status sheet's bar, the
+ring's tooltip, the Robot Board row's sub-line, the lenses' caption sentence, the **What the robot
+touches** fold, **Read the run** and **Leave this one to me** (the opt-out that exists, plus
+`orders: leave`). Tests: `robotProgress.test.ts` for every state, `ringFill` at each step and with
+and without an inside count, and the words' plain-words check; `RobotRing.render.test.tsx` for the
+seven states; the sheet's render smoke; the mirror's label test. Guide: *let the robots shadow
 a bid* gains **See where the robot is**. Docs: `BIDS_TABS_ARCHITECTURE.md` §Robots, `GLOSSARY.md`
 *round*, `docs/migrations/`.
 
-**PR 3 · The Console's Rounds card (S, edge).** `TwinRoundsCard` at the top of the Console: one
-row per key seen in seven days, awake, quiet or asleep, the bid, the last and next round, **Stop
-after this bid**, **Pause the rounds** (until a time, or until pressed again), the current bid's
-signals under *Read the run*. The two flags are writes a dev or the owner may make
-(`twin_credentials` UPDATE policy for those two columns only). The round's reply shows the robot's
-own word for its state. Tests: render smoke, the flag writes. Docs: the Console's section in
-`BIDS_TABS_ARCHITECTURE.md`, `ACCESS_CONTROL.md` for the owner's write.
+**PR 3 · The Console's Rounds card: the robots' status (M, migration, edge).** Migration:
+`robot_agents()` (decision 8), devs only, and the `twin_credentials` UPDATE policy for the two
+flag columns. Kernel `robotAgents.ts` (`agentState`, the thresholds, `recentWorkLine`,
+`todayLine`) and `useRobotAgents` (every 30 seconds while mounted). `TwinRoundsCard` at the top of
+the Console: one row per key seen in seven days with the light and word, *Checked in … ago*, Now,
+Recently (five, folded after the first row, each a door), Today, **Stop after this bid**, **Pause
+the rounds** (until a time, or until pressed again), and the current bid's signals under *Read the
+run*. The round's reply shows the robot's own word for its state. The lenses' caption gains *The
+robots checked in 2 minutes ago* through `robot_progress()`. Tests: `robotAgents.test.ts` (every
+state and threshold, every recent kind, the words), the card's render smoke (three rows, the folds,
+the flag writes), the caption's test. Docs: the Console's section in `BIDS_TABS_ARCHITECTURE.md`,
+`ACCESS_CONTROL.md` for the owner's write, `docs/migrations/`.
 
 **PR 4 · Silence on the Dashboard (S).** `dashboardNeedsYou.ts`: **The robots have not made a
-round since …** (owner and devs, 30 minutes inside the hours, snooze and dismiss) and **The robot
+round since …** (owner and devs, 15 minutes inside the hours, snooze and dismiss) and **The robot
 is blocked on b511** (the people who can clear it, with the door the block names). The orphan rule
 in `code-operator.md` and the dispatcher's lookback go from 60 minutes to 15. Tests: the Needs You
 kernel's cases. Guide: *run the robot estimator from the Claude app* → **Know when there is work**
 gains the two items.
 
-**PR 5 · The round itself (S, docs, edge).** `docs/twins/kickoffs/rounds-operator.md`: the routine
-prompt (one pass over the three queues, oldest first, at most one shell per round and two rounds at
-once, heartbeat every five minutes with the shape, obey `orders`, idle heartbeat when nothing is to
-do), the Mac's setup list from decision 1, and what the owner sees. `scripts/build-twin-mcp-briefs.mjs`
-and the twin-mcp redeploy, as every kickoff change needs. The Console's *Run the robots* card gains
-**Copy rounds kickoff** beside the handoff prompt. The `/bid` skill and `code-operator.md` gain the
-five-minute rule. Guide: *run the robot estimator from the Claude app* gains **Rounds from a Mac
+**PR 5 · The round itself, one press to start it (S, docs, edge).**
+`docs/twins/kickoffs/rounds-operator.md`: the *run this now* opening, the Mac's three settings as a
+checklist the session reads back, the instruction to make the routine **Robot rounds** (every five
+minutes, the prompt verbatim) and run it once, then the round's prompt itself (the idle heartbeat
+first and leave if two rounds of this key already hold a bid; else one pass over the three queues,
+oldest first, one shell per round, heartbeat every five minutes with the shape, obey `orders`), and
+what the owner sees. `scripts/build-twin-mcp-briefs.mjs` and the twin-mcp redeploy, as every kickoff change needs.
+The Console's *Run the robots* card gains the row **Make this Mac the rounds** with **Copy rounds
+kickoff** and its *Preview* link (decision 7); `TwinSetupDialog` gains the tick *This Mac makes
+the rounds* and `twin-setup` puts the rounds kickoff on the clipboard when it is on; the Rounds
+card's empty state carries the button. The `/bid` skill and `code-operator.md` gain the five-minute
+rule. Tests: the Console's render smoke (the new row, the preview), `desktopKickoff.test.ts` for the
+rounds kickoff's connector fill, the setup dialog's smoke. Guide: *run the robot estimator from the Claude app* gains **Rounds from a Mac
 that stays on**. Docs: `docs/twins/HANDOFF.md` → Day-to-day operation.
 
 Each PR: `npm run claim`, a release note, a `docs/recent-features/` fragment, `npm run check:todos`
@@ -328,26 +516,44 @@ is deployed; nothing before it changes what the hourly routine does.
   the Console's ledger shows the step and the detail; a second idle heartbeat from the same key
   moves the first row's `ended_at` and adds no row; a heartbeat note with *$41,200* on a sealed
   shell lands as *[amount withheld]*.
-- **PR 2**: dev-login as Robert, open a live bid whose robot is working: the sheet shows the lit
-  step, the detail and the last word; stop the robot's session and wait eleven minutes: the line
-  turns amber and names the time; `?as=twin:estimator:1` cannot call `robot_progress` on a human
+- **PR 2**: dev-login as Robert, open the Bid Board while a robot works: the bid's ring shows two
+  full segments and a third part filled, the tooltip names the step, and the Robot Board row and
+  the sheet show the same ring; open the sheet: the lit step, the detail and the last word; stop
+  the robot's session and wait eleven minutes: the ring and the line turn amber and name the time; `?as=twin:estimator:1` cannot call `robot_progress` on a human
   bid's value (the function returns none).
-- **PR 3**: press **Stop after this bid** while a round is on a shell: the next heartbeat's reply
-  carries the order, the shell locks and reports, no new claim follows, the row reads *stopped*.
-- **PR 4**: pause the rounds for 40 minutes: the Dashboard item appears for the owner, snoozes,
+- **PR 3**: open the Console while a round holds a bid: the key's row reads *Alive*, *Checked in
+  1 minute ago*, and Now names the step; quit Claude on the Mac: within seven minutes the row reads
+  *Quiet*, within fifteen *Asleep*, with the last check-in's time; Recently lists today's lock and
+  the matrix with the right times and each line opens its door; press **Stop after this bid**
+  while a round is on a shell: the next heartbeat's reply carries the order, the shell locks and
+  reports, no new claim follows, the row reads *Stopped*.
+- **PR 4**: pause the rounds for 20 minutes: the Dashboard item appears for the owner, snoozes,
   and clears on the next round.
-- **PR 5**: the Mac Mini runs for one day: the ledger shows one idle row per quiet stretch, every
-  shadow's bar reached *Sealed* or *Waiting on you*, and the Robot Board's coverage tile matches
-  the round's reports.
+- **PR 5**: on a Mac with the connector set up, press **Copy rounds kickoff**, open Claude Code,
+  paste: the session reads the three settings back, makes the routine **Robot rounds** and runs it
+  once; within a minute the Rounds card shows the Mac alive with its first round; while that round
+  holds a bid, the next two rounds leave after one call and the ledger shows one idle row. Then the Mac
+  Mini runs for one day: the ledger shows one idle row per quiet stretch, every shadow's bar
+  reached *Sealed* or *Waiting on you*, and the Robot Board's coverage tile matches the round's
+  reports.
 
 ## Is this the best we can do? Do we educate the user as well as we can?
+
+**The third pass, the owner's ask after the second.** The second pass had cut the percent for seven
+named steps on the sheet, and left the Bid Board's icon with words in a tooltip. The owner asked for
+the glance back: a circle that completes to 100 percent on the icon itself. The ring keeps what the
+cut was for, no percent of minutes, no guessed pace, and gives the glance by drawing the seven steps
+round the icon. It is the same kernel, so it added one component and one function to PR 2 and no
+new source of truth. What it changed in the teaching: a person now meets the seven steps on the
+board, before the sheet, and the sheet confirms them.
 
 The first draft, read back against the house's five lenses, changed in each:
 
 1. **Fewer presses on a phone.** The first draft put a *Rounds* lens on the Bids page and a
    percent bar with a time estimate on it. The second puts the progress where a thumb already
    lands, the robot icon on the bid, and the sheet's bar is seven named steps that need no reading
-   of a number. *Read the run* is one press from the same sheet. Nothing new to find.
+   of a number. The third makes the icon itself the answer: the ring says *third of seven* with no
+   press at all. *Read the run* is one press from the same sheet. Nothing new to find.
 2. **Plain words.** The first draft's sheet said *substrate*, *STG-3*, *shell* and *heartbeat*.
    The second says *reading the sheets*, *counting*, *its own copy of the bid*, *last word*. Every
    sentence a person reads in the mock-up passes `plainWordsFailures`, and the kernel's words test
@@ -361,10 +567,15 @@ The first draft, read back against the house's five lenses, changed in each:
    reader. The second widens `heartbeat`, puts two columns on the key that already is the Mac,
    derives the step from stamps that exist, copies `submittal_robot_liveness()`'s shape for the
    reader and `robotBacklog.ts`'s stale rule for the clocks, and reuses the opt-out, the orphan
-   rule, the Needs You snooze and the Console's setup button.
-5. **Cut.** Gone from the first draft: the percent, the time estimate before ten runs exist, the
-   Dashboard line on every signal, *Take over*, a push for silence, a new lens, a new table, a new
-   guide. Left: one migration, one reader, one kernel, four surfaces that read it, two flags.
+   rule, the Needs You snooze and the Console's setup button. Starting the rounds reuses the
+   *Run the robots* card's row shape, its copy and preview pattern, the setup command's clipboard
+   step and the same key, so a dev learns nothing new to set the loop in motion. The status row
+   reads the ledger rows the robots already write, reports, locks, matrices and tasks, and adds no
+   table for them.
+5. **Cut.** Gone from the first draft: the percent of minutes, the time estimate before ten runs
+   exist, the Dashboard line on every signal, *Take over*, a push for silence, a new lens, a new
+   table, a new guide. Left: one migration, one reader, one kernel, four surfaces that read it, one
+   ring, two flags.
 
 **Do we educate as well as we can?** The first time an estimator opens a working robot's sheet,
 the bar itself is the lesson: seven steps, one lit, a time. Under it, **What the robot touches**
@@ -381,7 +592,11 @@ for a person on a bid; the rest is in *see how close the robots are*.
 - **A push when the rounds stop.** The Dashboard item first; a push if the owner misses it twice.
 - **A cloud round.** The kickoff is host-blind; run it in the cloud the day the Mac disappoints.
 - **Rounds for other roles.** An owner decision on the locked list.
-- **A percent or a countdown.** Seven steps and a median, once there is one.
+- **A percent number or a countdown.** The ring is the percent, of steps; a median sentence once
+  there is one.
+- **A ring weighted by the clock** (3b, alternative C). Once ten runs have locked, the segments can
+  take the median minutes of each step, so the ring's pace matches a watch. The ring from B upgrades
+  in place; nothing a person learned changes.
 - **Pausing one robot but not another.** The pause is per key, and a key is a Mac. Two robots on
   one Mac pause together.
 - **Progress on backtests.** A backtest is a dev's run; the Console's ledger shows it as today.
@@ -393,9 +608,11 @@ for a person on a bid; the rest is in *see how close the robots are*.
 
 Each drawn with the recommended answer; the mock-up shows that answer.
 
-1. **How often a round.** 15 minutes (recommended: a bid filed at 2:03 is picked up by 2:15, and
-   two rounds never overlap on one bid); 5 minutes; 30 minutes.
-2. **When the rounds run.** All day, every day (recommended: a bid filed Saturday is shadowed
+**Taken 2026-10-21: how often a round.** The draft said 15 minutes; the owner said that is too
+slow and five is better. Five it is: a bid is picked up within five minutes of filing, and the
+overlap rule in decision 1 keeps an idle round to one call. The asleep clock tightens with it.
+
+1. **When the rounds run.** All day, every day (recommended: a bid filed Saturday is shadowed
    Saturday, and nothing a robot does reaches a customer); the hourly routine's weekday 7 to 6.
-3. **Who may pause.** The owner and devs (recommended); estimators too.
-4. **Where silence reaches you.** The Dashboard's Needs You card (recommended); a push as well.
+2. **Who may pause.** The owner and devs (recommended); estimators too.
+3. **Where silence reaches you.** The Dashboard's Needs You card (recommended); a push as well.
