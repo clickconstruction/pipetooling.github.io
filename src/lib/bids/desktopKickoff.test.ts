@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import kickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import codeKickoffDoc from '../../../docs/twins/kickoffs/code-operator.md?raw'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
+import roundsKickoffDoc from '../../../docs/twins/kickoffs/rounds-operator.md?raw'
 import { DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER, TWIN_MCP_PUBLIC_URL, buildDesktopKickoff, buildDesktopSetupCommand, buildDesktopSetupCommandFromCode, twinMcpConnectorUrl, twinSetupUrl } from './desktopKickoff'
 import { isTwinMcpConnectorUrl } from '../../../supabase/functions/_shared/twinConnectorUrl'
 
@@ -128,7 +129,7 @@ describe('docs/twins/kickoffs/code-operator.md (the Claude Code kickoff, v2.4231
 
   it('keeps two sessions on one key apart: a shell whose ledger just moved is another session’s', () => {
     expect(filled).toContain('every session on this key is the same robot')
-    expect(filled).toContain('its ledger moved in the last **60 minutes**')
+    expect(filled).toContain('its ledger or its heartbeat moved in the last **15 minutes**')
     expect(filled).toContain('it is orphaned')
     expect(filled).toContain('No more than two at once.')
   })
@@ -280,5 +281,35 @@ describe('buildDesktopSetupCommandFromCode (Set up on this Mac, Price Matrix PR 
 
   it('twinSetupUrl points at the twin-setup door', () => {
     expect(twinSetupUrl('https://abc.supabase.co/')).toBe('https://abc.supabase.co/functions/v1/twin-setup')
+  })
+})
+
+describe('the rounds (v2.5735, punch list #142)', () => {
+  const base = { connectorUrl: 'https://mcp.clicktooling.com/twin', setupUrl: 'https://abc.supabase.co/functions/v1/twin-setup', code: 'K7Q2-M9XD-4T' }
+  it('the setup command sends rounds on redeem and names the connector, the server winning', () => {
+    const cmd = buildDesktopSetupCommandFromCode({ ...base, rounds: true, connectorName: 'twin-pricer-mcp' })
+    expect(cmd).toContain('ROUNDS="1"')
+    expect(cmd).toContain('CONNECTOR_NAME="twin-pricer-mcp"')
+    expect(cmd).toContain("rounds: process.env.ROUNDS === '1'")
+    expect(cmd).toContain("const name = body.connector_name || process.env.CONNECTOR_NAME || 'twin-mcp'")
+    expect(cmd).toContain("body.kickoff_for === 'rounds'")
+    const plain = buildDesktopSetupCommandFromCode(base)
+    expect(plain).toContain('ROUNDS="0"')
+    expect(plain).toContain('CONNECTOR_NAME="twin-mcp"')
+    expect(() => buildDesktopSetupCommandFromCode({ ...base, connectorName: 'bad name!' })).toThrow(/plain connector name/)
+  })
+  it('the shipped rounds template: the placeholder, the five-minute rule, round: true, the stop, the fifteen-minute overlap rule, never a key', () => {
+    const doc = roundsKickoffDoc
+    expect(doc).toContain(DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER)
+    expect(doc).toMatch(/every five minutes/i)
+    expect(doc).toContain('`round: true`')
+    expect(doc).toContain('Stop the rounds')
+    expect(doc).toContain('15 minutes')
+    expect(doc).toContain('*/5 * * * *')
+    expect(doc).toContain('`next_shadow` once')
+    expect(doc).toContain('twin-pricer-mcp')
+    expect(doc).not.toMatch(/ptt_[0-9a-f]{8}/)
+    const filled = buildDesktopKickoff(doc, { connectorUrl: 'https://mcp.clicktooling.com/twin' })
+    expect(filled).not.toContain(DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER)
   })
 })

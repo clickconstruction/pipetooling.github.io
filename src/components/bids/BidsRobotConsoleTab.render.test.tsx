@@ -67,3 +67,16 @@ describe('BidsRobotConsoleTab — Run the robots', () => {
     expect(document.querySelector('pre')?.textContent).toContain('You fetch the plan set yourself; nobody attaches it.')
   })
 })
+
+describe('the rounds row (v2.5735, punch list #142)', () => {
+  it('the Claude Code column offers Copy rounds kickoff with a preview, in the shape of its other rows', async () => {
+    renderWithProviders(<BidsRobotConsoleTab bids={[]} twinBidBySourceId={new Map()} onOpenQueue={() => {}} />)
+    await settle()
+    expect(document.body.textContent).toContain('Make this Mac the rounds')
+    // The row's button, and the Rounds card's empty state carries the same door.
+    expect(screen.getAllByText('Copy rounds kickoff').length).toBeGreaterThanOrEqual(1)
+    fireEvent.click(screen.getByText('Preview the rounds kickoff'))
+    await waitFor(() => expect(document.body.textContent).toContain('Robot rounds from a Mac that stays on'))
+    expect(document.body.textContent).toContain('https://mcp.clicktooling.com/twin')
+  })
+})

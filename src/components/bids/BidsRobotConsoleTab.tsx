@@ -11,6 +11,7 @@ import codeKickoffDoc from '../../../docs/twins/kickoffs/code-operator.md?raw'
 import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
+import roundsKickoffDoc from '../../../docs/twins/kickoffs/rounds-operator.md?raw'
 import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
 import { TwinPricerCard } from './TwinPricerCard'
 import { TwinSetupDialog, type TwinSetupTarget } from './TwinSetupDialog'
@@ -39,7 +40,7 @@ type Props = {
   onOpenQueue: () => void
 }
 
-type PreviewKey = 'setup' | 'code' | 'kickoff' | 'handoff' | 'pricing'
+type PreviewKey = 'setup' | 'code' | 'kickoff' | 'handoff' | 'pricing' | 'rounds'
 
 type TwinRow = { id: string; name: string | null; email: string; read_only: boolean; counttooling_user_id?: string | null }
 type CredRow = { twin_user_id: string; label: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
@@ -62,6 +63,8 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   const desktopKickoff = useMemo(() => buildDesktopKickoff(desktopKickoffDoc, { connectorUrl }), [connectorUrl])
   // Price Matrix PR 3: the pricing robot's kickoff — same connector, its own seat and key.
   const pricingKickoff = useMemo(() => buildDesktopKickoff(pricingKickoffDoc, { connectorUrl }), [connectorUrl])
+  // Robot rounds PR 5 (v2.5735): the routine on a Mac that stays on — one paste makes it and runs the first round.
+  const roundsKickoff = useMemo(() => buildDesktopKickoff(roundsKickoffDoc, { connectorUrl }), [connectorUrl])
 
   // Same rule as the Queue lens, so the counts here and the rows there can never disagree.
   const queue = useMemo(() => {
@@ -140,7 +143,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
       </p>
 
       {/* v2.5733 (punch list #142): the robots' status rows — alive, checked in, now, recently — and Stop the rounds. */}
-      <TwinRoundsCard />
+      <TwinRoundsCard onCopyRoundsKickoff={() => void copy(roundsKickoff, 'the rounds kickoff')} />
 
       {/* Run the robots — Claude Code first (it reads the plans itself), a chat as the fallback. */}
       <div style={CARD}>
@@ -175,6 +178,16 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
                 Copy Code kickoff
               </button>
             </div>
+            <div style={{ ...stepRow, background: 'var(--bg-violet-100)', borderRadius: 8, padding: '0.4rem 0.5rem', margin: '0 -0.5rem' }}>
+              <span style={{ ...stepNo('↻'), background: 'var(--surface)' }}>↻</span>
+              <span style={stepText}>
+                Make this Mac the rounds
+                <span style={stepSub}>One paste into Claude Code on the Mac that stays on. It makes the routine, every five minutes, and runs it once. The first lines list the Mac's three settings.</span>
+              </span>
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(roundsKickoff, 'the rounds kickoff')} title="Copies the rounds kickoff for a Claude Code session on the Mac that stays on, with this project's connector filled in">
+                Copy rounds kickoff
+              </button>
+            </div>
             <div style={stepRow}>
               <span style={stepNo('↗')}>↗</span>
               <span style={stepText}>
@@ -188,10 +201,12 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
             <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap' }}>
               {previewLink('setup', 'the setup command')}
               {previewLink('code', 'the Code kickoff')}
+              {previewLink('rounds', 'the rounds kickoff')}
               {previewLink('handoff', 'the handoff prompt')}
             </div>
             {openPreview === 'setup' ? <pre style={PROMPT_PRE}>{setupCommand}</pre> : null}
             {openPreview === 'code' ? <pre style={PROMPT_PRE}>{codeKickoff}</pre> : null}
+            {openPreview === 'rounds' ? <pre style={PROMPT_PRE}>{roundsKickoff}</pre> : null}
             {openPreview === 'handoff' ? <pre style={PROMPT_PRE}>{shadowOperatorPrompt}</pre> : null}
           </div>
           <div style={pathCol}>
@@ -243,7 +258,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
         <p style={{ ...MUTED, margin: '0.6rem 0 0' }}>
           Sources of truth: <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/code-operator.md</code>,{' '}
           <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/desktop-operator.md</code>,{' '}
-          <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/shadow-operator.md</code> and <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/pricing-operator.md</code>.
+          <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/shadow-operator.md</code>, <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/rounds-operator.md</code> and <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/pricing-operator.md</code>.
         </p>
       </div>
 

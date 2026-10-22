@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { CODE_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF } from '../_shared/twinKickoffs.ts'
+import { CODE_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF, ROUNDS_KICKOFF } from '../_shared/twinKickoffs.ts'
 import { twinMcpConnectorUrl } from '../_shared/twinConnectorUrl.ts'
 import { formatTwinMcpKey } from '../_shared/mcpKeyPrefixes.ts'
 
@@ -91,8 +91,13 @@ function kickoffHarness(kind: TwinKind): 'code' | 'chat' {
   return kind === 'pricer' ? 'chat' : 'code'
 }
 
-function kickoffFor(kind: TwinKind, connectorUrl: string): string {
-  const doc = kind === 'pricer' ? PRICING_KICKOFF : CODE_KICKOFF
+/** The connector's name in Claude's config: one Mac can hold both seats (Robot rounds PR 5, v2.5735). */
+function connectorNameFor(kind: TwinKind): string {
+  return kind === 'pricer' ? 'twin-pricer-mcp' : 'twin-mcp'
+}
+
+function kickoffFor(kind: TwinKind, connectorUrl: string, rounds = false): string {
+  const doc = kind === 'pricer' ? PRICING_KICKOFF : rounds ? ROUNDS_KICKOFF : CODE_KICKOFF
   return doc.split(KICKOFF_CONNECTOR_PLACEHOLDER).join(connectorUrl)
 }
 
@@ -226,15 +231,20 @@ serve(async (req) => {
         ended_at: nowIso,
       })
 
+      // v2.5735 (Robot rounds PR 5): `rounds: true` on an estimator key hands back the rounds
+      // kickoff — the routine that makes a round every five minutes from a Mac that stays on.
+      const rounds = body.rounds === true && kind === 'estimator'
+      const connectorName = connectorNameFor(kind)
       return json({
         token,
         twin_email: twin.email,
         twin_kind: kind,
         label: claimed.label,
         connector_url: connectorUrl,
-        kickoff: kickoffFor(kind, connectorUrl),
-        kickoff_for: kickoffHarness(kind),
-        check_call: kind === 'pricer' ? 'call get_pricing_guide on twin-mcp' : 'call get_brief on twin-mcp',
+        connector_name: connectorName,
+        kickoff: kickoffFor(kind, connectorUrl, rounds),
+        kickoff_for: rounds ? 'rounds' : kickoffHarness(kind),
+        check_call: kind === 'pricer' ? `call get_pricing_guide on ${connectorName}` : `call get_brief on ${connectorName}`,
       })
     }
 

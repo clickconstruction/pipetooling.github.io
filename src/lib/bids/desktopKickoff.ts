@@ -82,7 +82,15 @@ export type SetupCodeCommandOpts = {
   setupUrl: string
   /** The one-time code from twin-setup `mint` (K7Q2-M9XD-4T). Public by design: ten minutes, single use, worth one key. */
   code: string
+  /** Robot rounds PR 5 (v2.5735): this Mac makes the rounds — twin-setup hands back the rounds kickoff instead of the batch kickoff. */
+  rounds?: boolean
+  /** The connector's name in Claude's config: `twin-mcp` for the bid robot, `twin-pricer-mcp` for the pricer, so one Mac can hold both seats. The server's answer wins. */
+  connectorName?: string
 }
+
+const CONNECTOR_NAME_RE = /^[a-z][a-z0-9-]{1,40}$/
+export const TWIN_MCP_CONNECTOR_NAME = 'twin-mcp'
+export const TWIN_PRICER_CONNECTOR_NAME = 'twin-pricer-mcp'
 
 const SETUP_CODE_RE = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2}$/
 
@@ -113,31 +121,37 @@ export function buildDesktopSetupCommandFromCode(opts: SetupCodeCommandOpts): st
   if (!SETUP_CODE_RE.test(code)) {
     throw new Error(`setup command needs a code like K7Q2-M9XD-4T, got ${JSON.stringify(opts.code)}`)
   }
+  const connectorName = (opts.connectorName ?? TWIN_MCP_CONNECTOR_NAME).trim()
+  if (!CONNECTOR_NAME_RE.test(connectorName)) {
+    throw new Error(`setup command needs a plain connector name, got ${JSON.stringify(opts.connectorName)}`)
+  }
   return [
     'NPX="$(command -v npx)" || { echo "Node not found. Install Node 18+ from nodejs.org, then run this again."; exit 1; }',
-    `SETUP_CODE="${code}" TWIN_SETUP_URL="${setupUrl}" TWIN_MCP_URL="${url}" NPX="$NPX" node - <<'NODEEOF'`,
+    `SETUP_CODE="${code}" TWIN_SETUP_URL="${setupUrl}" TWIN_MCP_URL="${url}" CONNECTOR_NAME="${connectorName}" ROUNDS="${opts.rounds ? '1' : '0'}" NPX="$NPX" node - <<'NODEEOF'`,
     "const fs = require('node:fs'), os = require('node:os'), path = require('node:path'), { spawnSync } = require('node:child_process')",
     "const say = (s) => console.log(s)",
     ';(async () => {',
     "  if (typeof fetch !== 'function') { say('This Node is too old. Install Node 18+ from nodejs.org, then run this again.'); process.exit(1) }",
-    "  const res = await fetch(process.env.TWIN_SETUP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'redeem', code: process.env.SETUP_CODE, machine: os.hostname() }) })",
+    // v2.5735: `rounds` asks for the rounds kickoff; the server names the connector (`connector_name`) so one Mac can hold both seats.
+    "  const res = await fetch(process.env.TWIN_SETUP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'redeem', code: process.env.SETUP_CODE, machine: os.hostname(), rounds: process.env.ROUNDS === '1' }) })",
     '  const body = await res.json().catch(() => ({}))',
     "  if (!res.ok || !body.token) { say('Setup code refused: ' + (body.error || ('HTTP ' + res.status)) + ' Press \"Set up on this Mac\" again for a fresh command.'); process.exit(1) }",
     "  const p = path.join(os.homedir(), 'Library/Application Support/Claude/claude_desktop_config.json')",
     '  let cfg = {}',
     "  try { const t = fs.readFileSync(p, 'utf8'); if (t.trim()) cfg = JSON.parse(t) } catch (e) { if (e.code !== 'ENOENT') { say('Claude Desktop\\'s config could not be read (' + e.message + '). Fix or move ' + p + ' and run this again.'); process.exit(1) } }",
     '  cfg.mcpServers = cfg.mcpServers || {}',
-    "  cfg.mcpServers['twin-mcp'] = { command: process.env.NPX, args: ['-y', 'mcp-remote', body.connector_url || process.env.TWIN_MCP_URL, '--header', 'X-Twin-Token:${TWIN_TOKEN}'], env: { TWIN_TOKEN: body.token } }",
+    "  const name = body.connector_name || process.env.CONNECTOR_NAME || 'twin-mcp'",
+    "  cfg.mcpServers[name] = { command: process.env.NPX, args: ['-y', 'mcp-remote', body.connector_url || process.env.TWIN_MCP_URL, '--header', 'X-Twin-Token:${TWIN_TOKEN}'], env: { TWIN_TOKEN: body.token } }",
     '  fs.mkdirSync(path.dirname(p), { recursive: true })',
     '  fs.writeFileSync(p, JSON.stringify(cfg, null, 2))',
-    "  say('twin-mcp connected for ' + body.twin_email + '. The key went straight into Claude Desktop\\'s config — it was never shown.')",
+    "  say(name + ' connected for ' + body.twin_email + '. The key went straight into Claude Desktop\\'s config — it was never shown.')",
     "  if (spawnSync('pgrep', ['-x', 'Claude']).status === 0) {",
     "    spawnSync('osascript', ['-e', 'quit app \"Claude\"'])",
     "    for (let i = 0; i < 30 && spawnSync('pgrep', ['-x', 'Claude']).status === 0; i++) spawnSync('sleep', ['0.5'])",
     '  }',
     "  spawnSync('open', ['-a', 'Claude'])",
     // v2.4231: twin-setup says where its kickoff is pasted — the bid robot's in a Code session, the pricer's in a chat.
-    "  const where = body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'",
+    "  const where = body.kickoff_for === 'rounds' ? 'open the Code tab, start a NEW session and paste it. It makes the Robot rounds routine and runs the first round.' : body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'",
     "  if (body.kickoff) { spawnSync('pbcopy', { input: body.kickoff }); say('Claude is reopening. The kickoff is on your clipboard: ' + where) }",
     "  else say('Claude is reopening. In a new chat type: ' + (body.check_call || 'call get_brief on twin-mcp'))",
     "})().catch((e) => { say('Setup failed: ' + e.message + '. Run it again, or ask a dev.'); process.exit(1) })",

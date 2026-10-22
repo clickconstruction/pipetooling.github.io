@@ -75,5 +75,6 @@ yourself, resuming directly is fine too — never reclaim the human bid.
 
 - Never send anything to a customer, never mark a bid sent, never touch a bid that is not yours, never invent a number without plans.
 - Anything blocked by the permission layer: stamp it, `ask_question`, heartbeat `blocked`, continue with what you can.
+- Heartbeat every five minutes while you work, with the `progress` shape (`step`, `read`, `wrote`, `waiting_on`, `next`; never a dollar figure), and obey `orders` in the reply: `leave bNNN` → `void_shadow` your shell and move on; `stop` → finish the shell in hand, lock, report, claim no more. A shell another session touched in the last 15 minutes is theirs.
 - Parallel runs: at most two agents at once (twin mint cap 6/min); each agent owns one shell.
 - If the run is a batch (the coverage task), launch one Fable subagent per shadow with this skill's text as its prompt and `/bid next` as its argument.

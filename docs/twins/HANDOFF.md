@@ -144,6 +144,8 @@ revoke a token to cut one partner off, flip rungs, set the calibration standard.
 Claude Code handoff, the queue door, the robots' operator-lane questions, and the runs
 ledger (sign-ins, reports, heartbeats).
 
+**The rounds (v2.5735, punch list #142).** A Mac that stays on makes a round every five minutes: the routine **Robot rounds** from `kickoffs/rounds-operator.md` (Console → *Run the robots* → **Copy rounds kickoff**, or **Set up on this Mac** with *This Mac makes the rounds* ticked). A round checks in (`heartbeat` idle, `round: true`), leaves when two rounds of its key already hold a bid or when the Console pressed **Stop the rounds**, else works one shell to the lock with a heartbeat every five minutes, one submittal task, and a price matrix when the Mac holds `twin-pricer-mcp`. The Console's **Rounds** card (v2.5733) shows each key alive, quiet or asleep; the Dashboard says when no round has come for fifteen minutes (v2.5734). The hourly weekday routine below stays for a checkout that is not that Mac.
+
 The working loops, in the order a day usually runs:
 1. **Audits first** — the Dashboard card / Audits tab; verdicts + answers unblock
    everything downstream. Finished audits get digested by the twin next session.
