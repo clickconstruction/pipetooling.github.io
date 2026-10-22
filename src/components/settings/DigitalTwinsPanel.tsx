@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { nextTwinSeat, relativeTimeFrom, twinSeatKindFromEmail, type TwinSeatKind } from '../../lib/twinConsoleDisplay'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
@@ -10,6 +11,8 @@ import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VI
 import { TwinSetupDialog } from '../bids/TwinSetupDialog'
 import SampleAccountsCard from './SampleAccountsCard'
 import WalkTesterLine from './WalkTesterLine'
+import TwinArchivedFold from './TwinArchivedFold'
+import { ARCHIVED_TOAST, RESTORED_TOAST, archiveTwinBody, archiveTwinConfirm, liveKeysOf, restoreTwinConfirm, splitFleet } from '../../lib/twins/fleetArchive'
 import TwinFreshKeyPanel from './TwinFreshKeyPanel'
 
 /**
@@ -27,8 +30,20 @@ import TwinFreshKeyPanel from './TwinFreshKeyPanel'
  * Twin tables aren't in generated types yet — cast queries, fail-soft.
  */
 
-type TwinRow = { id: string; name: string | null; email: string; role: string; read_only: boolean }
+type TwinRow = { id: string; name: string | null; email: string; role: string; read_only: boolean; archived_at: string | null }
 type CredRow = { id: string; twin_user_id: string; label: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
+
+/** An edge function's refusal in its own words, else the error's. */
+async function functionErrorMessage(e: unknown): Promise<string> {
+  let msg = e instanceof Error ? e.message : String(e)
+  if (e instanceof FunctionsHttpError && e.context?.json) {
+    try {
+      const b = (await e.context.json()) as { error?: string } | null
+      if (b?.error) msg = b.error
+    } catch { /* keep msg */ }
+  }
+  return msg
+}
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 const VIOLET = TWIN_VIOLET
 const CONSOLE_HREF = '/bids?tab=robot-console'
@@ -67,6 +82,7 @@ const RUNGS: { rung: 1 | 2 | 3; title: string; sub: string }[] = [
 
 export default function DigitalTwinsPanel() {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [twins, setTwins] = useState<TwinRow[]>([])
   const [creds, setCreds] = useState<CredRow[]>([])
   const [available, setAvailable] = useState(true)
@@ -97,7 +113,7 @@ export default function DigitalTwinsPanel() {
           }
         }
       }
-      const t = await sb.from('users').select('id, name, email, role, read_only').eq('is_digital_twin', true).order('email')
+      const t = await sb.from('users').select('id, name, email, role, read_only, archived_at').eq('is_digital_twin', true).order('email')
       if (t.error) {
         setAvailable(false)
         return
@@ -359,6 +375,53 @@ export default function DigitalTwinsPanel() {
     }
   }
 
+  // Archive from the fleet (v2.5741): the twin's live keys go first, then archive-user bans the sign-in and stamps
+  // archived_at; the row moves to the fold under the fleet, where Restore brings it back with no key.
+  async function archiveTwin(t: TwinRow) {
+    const live = liveKeysOf(creds, t.id)
+    if (!(await confirmDialog(archiveTwinConfirm(t, live.length)))) return
+    setBusy(true)
+    try {
+      if (live.length) {
+        const { error } = await (supabase as never as {
+          from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { is: (k: string, v: null) => Promise<{ error: { message: string } | null }> } } }
+        })
+          .from('twin_credentials')
+          .update({ revoked_at: new Date().toISOString() })
+          .eq('twin_user_id', t.id)
+          .is('revoked_at', null)
+        if (error) throw new Error(error.message)
+      }
+      const { data, error } = await supabase.functions.invoke('archive-user', { body: archiveTwinBody(t) })
+      if (error) throw new Error(await functionErrorMessage(error))
+      const refused = (data as { error?: string } | null)?.error
+      if (refused) throw new Error(refused)
+      showToast(ARCHIVED_TOAST(t, live.length), 'success')
+      await loadAll()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function restoreTwin(t: TwinRow) {
+    if (!(await confirmDialog(restoreTwinConfirm(t)))) return
+    setBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('restore-user', { body: { user_id: t.id } })
+      if (error) throw new Error(await functionErrorMessage(error))
+      const refused = (data as { error?: string } | null)?.error
+      if (refused) throw new Error(refused)
+      showToast(RESTORED_TOAST(t), 'success')
+      await loadAll()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function revokeToken(c: CredRow) {
     setBusy(true)
     try {
@@ -383,8 +446,10 @@ export default function DigitalTwinsPanel() {
   }
 
   const nowMs = Date.now()
+  // Seat numbers count archived twins too: an archived seat's email still exists, so the next mint skips it.
   const seat = nextTwinSeat(twins.map((t) => t.email))
   const pricerSeat = nextTwinSeat(twins.map((t) => t.email), 'pricer')
+  const { live: liveTwins, archived: archivedTwins } = splitFleet(twins)
 
   return (
     <div>
@@ -424,7 +489,7 @@ export default function DigitalTwinsPanel() {
       <div style={CARD}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
           <h4 style={{ ...CARD_TITLE, margin: 0 }}>
-            <span style={STEP_REF}>1–2</span>Fleet · {twins.length} twin{twins.length === 1 ? '' : 's'}
+            <span style={STEP_REF}>1–2</span>Fleet · {liveTwins.length} twin{liveTwins.length === 1 ? '' : 's'}
           </h4>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             <button
@@ -447,8 +512,8 @@ export default function DigitalTwinsPanel() {
             </button>
           </div>
         </div>
-        {twins.length === 0 ? <p style={MUTED}>No twins yet — mint the first seat above.</p> : null}
-        {twins.map((t) => {
+        {liveTwins.length === 0 ? <p style={MUTED}>{twins.length ? 'Every twin is archived. Restore one below, or mint a seat above.' : 'No twins yet — mint the first seat above.'}</p> : null}
+        {liveTwins.map((t) => {
           const tCreds = creds.filter((c) => c.twin_user_id === t.id)
           const liveCreds = tCreds.filter((c) => !c.revoked_at)
           const currentRung = t.read_only ? 1 : 2
@@ -561,6 +626,15 @@ export default function DigitalTwinsPanel() {
                       >
                         Set up on this Mac
                       </button>
+                      <button
+                        type="button"
+                        style={{ font: 'inherit', fontSize: '0.72rem', color: 'var(--text-muted)', border: 'none', background: 'transparent', padding: '0.16rem 0.3rem', cursor: 'pointer', marginLeft: 'auto' }}
+                        disabled={busy}
+                        onClick={() => void archiveTwin(t)}
+                        title="Take this twin out of the fleet: its live keys are revoked first, its runs and bids stay, and Restore under the fleet brings it back"
+                      >
+                        Archive
+                      </button>
                     </>
                   )}
                 </div>
@@ -596,6 +670,7 @@ export default function DigitalTwinsPanel() {
             </div>
           )
         })}
+        <TwinArchivedFold archived={archivedTwins} busy={busy} onRestore={(t) => void restoreTwin(t as TwinRow)} />
       </div>
 
       {/* Step 3: what a harness or MCP client needs, one fact per row. */}
