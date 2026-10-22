@@ -244,6 +244,7 @@ contact).
 | 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
 | 9 | One front door; the guides | v2.5717 | #5966 | armed 2026-10-21 |
 | — | Live test (BUILD_PLAN § 3) | | | next, once PR 9 is on main: the ZZ customer is the team inbox and the owner's cell; the session sets up and reads, the owner presses Send |
+| — | Follow-up: **Reminders the app offers** card on Phone and texts (the owner's ask on the switch-on: the Offers setting with the other Messages switches; the switch card's door lands on it) | v2.5720 | #5970 | armed 2026-10-21 |
 
 Keep this table true after each PR (version, PR number, armed / merged / live). The session that
 proposed it (2026-10-21) built nothing; the owner chose another session to build the train.

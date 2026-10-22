@@ -12,6 +12,11 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#settings-legal-firm')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-legal-firm' })
   })
 
+  it('lands the switch card’s doors on their Phone and texts cards', () => {
+    expect(resolveSettingsDeepLink('?tab=settings-phone-texts', '#settings-phone-texts-hours')).toEqual({ tabId: 'settings-phone-texts', anchorId: 'settings-phone-texts-hours' })
+    expect(resolveSettingsDeepLink('', '#settings-phone-texts-reminders')).toEqual({ tabId: 'settings-phone-texts', anchorId: 'settings-phone-texts-reminders' })
+  })
+
   it('lands the Dev MCP keys anchor on Your account', () => {
     expect(resolveSettingsDeepLink('', '#settings-dev-mcp-keys')).toEqual({ tabId: 'settings-account', anchorId: 'settings-dev-mcp-keys' })
   })

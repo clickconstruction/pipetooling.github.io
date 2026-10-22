@@ -17,7 +17,7 @@ The line only shows when a text waits.
 
 ## Where the texts come from
 
-A step in Flows can be set to **Offers**. Each morning at 9 AM the app prepares that step's text for every customer who is due. It writes the words and puts them here. See [let the app send a reminder](/help/set-up-the-steps-a-person-goes-through#let-the-app-send-a-reminder).
+A step in Flows can be set to **Offers**. Each morning at 9 AM the app prepares that step's text for every customer who is due. It writes the words and puts them here. See [let the app send a reminder](/help/set-up-the-steps-a-person-goes-through#let-the-app-send-a-reminder). The owner can also set it on Phone and texts, under **Reminders the app offers**. See [offer the app's reminders](/help/offer-the-apps-reminders).
 
 The office can also hand a text to the morning. On the Tell the customer sheet, press **Send in the morning**. The text waits here until 9 AM on its day, then the app sends it. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer#send-it-in-the-morning-instead).
 

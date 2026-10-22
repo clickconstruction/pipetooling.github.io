@@ -32,7 +32,7 @@ The owner and devs see one more line at the top of the page. It reads **Finish s
 2. Press the door beside a switch that is off. It opens that setting.
 3. Press {{button:outline|Later}} to fold the card for a week on this device.
 
-The card goes on its own once all eight are on. The switches themselves are set on [Phone and texts](/settings?tab=settings-phone-texts) and [Flows](/settings?tab=settings-flows).
+The card goes on its own once all eight are on. The switches themselves are set on [Phone and texts](/settings?tab=settings-phone-texts). The reminders' door {{button:outline|Offer them}} opens the card **Reminders the app offers** there. See [offer the app's reminders](/help/offer-the-apps-reminders).
 
 ## Show one kind of person
 
