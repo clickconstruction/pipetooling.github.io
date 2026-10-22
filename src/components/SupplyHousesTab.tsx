@@ -186,6 +186,9 @@ interface SupplyHousesTabProps {
   /** Opens this house's detail once the house list is available (Held for suppliers → "Open house"). */
   autoOpenHouseId?: string | null
   onAutoOpenHouseHandled?: () => void
+  /** The Needs You line's door (v2.5723): `?list=movable` opens the move window's worked list once the book and its move data are read. */
+  openList?: 'movable' | null
+  onOpenListHandled?: () => void
 }
 
 export function SupplyHousesTab({
@@ -197,6 +200,8 @@ export function SupplyHousesTab({
   onNavigateToPO,
   autoOpenHouseId,
   onAutoOpenHouseHandled,
+  openList,
+  onOpenListHandled,
 }: SupplyHousesTabProps) {
   const navigate = useNavigate()
   const { user: authUser, role: authRole } = useAuth()
@@ -244,6 +249,9 @@ export function SupplyHousesTab({
     asks: Record<string, MoveAskRow>
     loaded: boolean
   }>({ allocations: {}, asks: {}, loaded: false })
+  /** Which unpaid book (by identity) the move data above was read for, and whether the book itself has loaded once — the worked-list door waits on both. */
+  const [agingMoveDataBook, setAgingMoveDataBook] = useState<AgingInvoiceRow[] | null>(null)
+  const [agingBookLoaded, setAgingBookLoaded] = useState(false)
   const [agingMoveModalFor, setAgingMoveModalFor] = useState<string | null>(null)
   const [agingMoveAttest, setAgingMoveAttest] = useState(false)
   const [agingMoveBusy, setAgingMoveBusy] = useState<null | 'send' | 'move' | string>(null)
@@ -438,6 +446,7 @@ export function SupplyHousesTab({
       .select('id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id')
     const invoicesList = (invoices ?? []) as (AgingInvoiceRow & { is_paid: boolean; updated_at: string | null; paid_at: string | null })[]
     setAgingUnpaidInvoices(invoicesList.filter((inv) => !inv.is_paid))
+    setAgingBookLoaded(true)
     // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
     const rows: SupplyHouseSummaryRow[] = summarizeSupplyHouseBalances(housesList, invoicesList)
     setSupplyHouseSummary(rows)
@@ -663,6 +672,7 @@ export function SupplyHousesTab({
     const ids = candidates.map((r) => r.id)
     if (ids.length === 0) {
       setAgingMoveData({ allocations: {}, asks: {}, loaded: true })
+      setAgingMoveDataBook(agingUnpaidInvoices)
       return
     }
     let cancelled = false
@@ -684,11 +694,22 @@ export function SupplyHousesTab({
       // askRes.error: the table may not be pushed yet — the strip still works, with no asks.
       for (const r of (askRes.error ? [] : askRes.data ?? []) as MoveAskRow[]) asks[r.invoice_id] = r
       setAgingMoveData({ allocations, asks, loaded: true })
+      setAgingMoveDataBook(agingUnpaidInvoices)
     })()
     return () => {
       cancelled = true
     }
   }, [agingUnpaidInvoices])
+
+  // The Needs You line's door (v2.5723): `?list=movable` opens the worked list — the same modal
+  // the strip's Work the list opens — once the move data is for the book on screen, so the
+  // modal's one-time jobs fetch sees the rows. Handled once; the parent drops the param.
+  useEffect(() => {
+    if (openList !== 'movable' || !agingBookLoaded || agingMoveDataBook !== agingUnpaidInvoices) return
+    setAgingCellModal({ houseId: null, cell: 'movable' })
+    onOpenListHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openList, agingBookLoaded, agingMoveDataBook, agingUnpaidInvoices])
 
   /** PR 3: email the house's job-accounts rep the move request for these invoices (one house per call). */
   async function sendMoveRequest(invoiceIds: string[], busyKey: string, includeAsked: boolean): Promise<void> {

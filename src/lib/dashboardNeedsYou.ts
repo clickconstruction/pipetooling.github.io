@@ -39,6 +39,7 @@ import { docsmitCreditLine } from './mail/docsmitSettings'
 import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
+import { SUPPLY_MOVE_WINDOW_CLOSE } from './ageState'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
 import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
@@ -136,6 +137,7 @@ export type NeedsYouItem = {
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
     | 'job-account-missing'
+    | 'job-account-window'
     | 'vehicle-records-missing'
     | 'customer-waiting'
     | 'price-matrix-ready'
@@ -242,6 +244,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lost-bids': 60,
   'd22-uncoded': 60,
   'job-account-missing': 60,
+  // Billing accuracy tier: a charge the house would still move onto the owner's account, and the window closes on a date.
+  'job-account-window': 40,
   // Hygiene tier: records to enter, though Review prices a company truck from them (v2.4700).
   'vehicle-records-missing': 60,
   'price-matrix-ready': 40,
@@ -281,6 +285,29 @@ const KIND_ORDER: Record<NeedsYouKind, number> = { company: 0, roadmap: 1 }
  * reuse it. Company items first (by tier, then biggest figure); roadmap items
  * follow as their own group, ranked the same way among themselves (Tier-2 #41).
  */
+/**
+ * The move window's urgency (punch list #132, the Needs You line): red when the soonest
+ * window closes within `SUPPLY_MOVE_WINDOW_CLOSE.redWithinDays`, amber within
+ * `amberWithinDays`, gray beyond — and gray when no date is known.
+ */
+export function supplyMoveWindowSeverity(daysLeft: number | null): NeedsYouSeverity {
+  if (daysLeft == null) return 'gray'
+  if (daysLeft <= SUPPLY_MOVE_WINDOW_CLOSE.redWithinDays) return 'red'
+  if (daysLeft <= SUPPLY_MOVE_WINDOW_CLOSE.amberWithinDays) return 'amber'
+  return 'gray'
+}
+
+/** "Sun Oct 25, in 4 days" · "tomorrow, Thu Oct 22" · "today, Wed Oct 21" — when the soonest window closes, for the line's detail. */
+export function supplyMoveWindowCloseWords(ymd: string, daysLeft: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const day = new Date(Date.UTC(y || 1970, (m || 1) - 1, d || 1))
+    .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+    .replace(',', '')
+  if (daysLeft <= 0) return `today, ${day}`
+  if (daysLeft === 1) return `tomorrow, ${day}`
+  return `${day}, in ${daysLeft} days`
+}
+
 export function rankNeedsYouItems(items: NeedsYouItem[]): NeedsYouItem[] {
   // Array.prototype.sort is stable, so equal (kind, rank, figure) triples keep build order.
   return [...items].sort((a, b) => {
@@ -568,6 +595,14 @@ export type NeedsYouInputs = {
   jobAccountGapsEnabled?: boolean
   /** v2.3430 — the evidence rule: jobs that bought at a house expecting a job account with none on record. */
   jobAccountGaps?: { jobs: number; pairs: number; allocatedTotal: number; houseNames: string } | null
+  /**
+   * The move window (punch list #132, the owner's ask of 2026-10-21): the Accounts payable
+   * strip's numbers from count_supply_house_move_window() — the still-current charges not on
+   * a job account, their dollars, the asks out, the soonest window to close. Office set, both
+   * hosts; null while loading, disabled, or at zero (no line).
+   */
+  supplyMoveWindowEnabled?: boolean
+  supplyMoveWindow?: { count: number; dollars: number; asked: number; soonestDueYmd: string | null } | null
   /** v2.4700 — dev, assistant and controller: active vehicles with no insurance, registration or service on file. */
   vehicleRecordGapsEnabled?: boolean
   /** `useVehicleRecordGapsNudge`: most missing first; null while loading or when none is missing. */
@@ -1574,6 +1609,24 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'The house bills the property owner either way; the account is what puts the job on its own statement. Mark each one opened, or not needed.',
       figure: String(n),
       actionLabel: 'Review them',
+    })
+  }
+
+  if (inputs.supplyMoveWindowEnabled && (inputs.supplyMoveWindow?.count ?? 0) > 0) {
+    const { count: n, dollars, asked, soonestDueYmd } = inputs.supplyMoveWindow!
+    const money = dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const daysLeft = soonestDueYmd ? daysBetweenYmd(inputs.todayYmd ?? todayYmdInAppTz(), soonestDueYmd) : null
+    items.push({
+      key: 'job-account-window',
+      severity: supplyMoveWindowSeverity(daysLeft),
+      kicker: 'Job accounts',
+      title: `${money} on ${n === 1 ? 'one current invoice' : `${n} current invoices`} is not on a job account yet`,
+      detail:
+        'A house moves a charge only while it is current.' +
+        (soonestDueYmd && daysLeft != null ? ` Soonest window closes ${supplyMoveWindowCloseWords(soonestDueYmd, daysLeft)}.` : '') +
+        (asked > 0 ? ` ${asked} asked, awaiting the house.` : ''),
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Work the list',
     })
   }
 

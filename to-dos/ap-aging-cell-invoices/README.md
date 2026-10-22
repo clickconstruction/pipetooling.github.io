@@ -2,7 +2,7 @@
 name: "Accounts payable: an aging cell opens onto the invoices behind it"
 number: 132
 group: waiting
-status: built and live 2026-10-21 — proposed, clarified twice, mocked up and approved 2026-10-20 ("Build it", on the recommended defaults for all nine calls); PR 1 the cell modal (v2.5673 #5911), PR 2 the chip as an act (v2.5675 #5915), PR 3 the move window (v2.5677 #5927; migration 20261020130000 pushed, edge request-job-account-move deployed, the test-mode send verified end to end); PR 4 (the doors) waits on real use
+status: built and live 2026-10-21 — proposed, clarified twice, mocked up and approved 2026-10-20 ("Build it", on the recommended defaults for all nine calls); PR 1 the cell modal (v2.5673 #5911), PR 2 the chip as an act (v2.5675 #5915), PR 3 the move window (v2.5677 #5927; migration 20261020130000 pushed, edge request-job-account-move deployed, the test-mode send verified end to end); the Needs You line on the Dashboard and Quickfill on the owner's ask of 2026-10-21 (v2.5723, decision 8 amended); PR 4 (the doors) waits on real use
 summary: >
   The aging heat map on Supply houses → Accounts payable sums unpaid invoices into cells —
   a house's 60–90 dollars, the No due date column, the footer totals — and none of those
@@ -28,7 +28,7 @@ next: >
   modals). The plan's PR 4 section below is the spec.
 size: S (PR 1 — kernel, widened select, read-only modal) + S (PR 2 — the Job acct chip flow) + M (PR 3 — the move window: modal workflow, migration, edge function) + S (PR 4 — the doors out of it)
 blocker: "Time: a few days of real use before PR 4."
-ver: v2.5673 (PR 1, the cell modal) · v2.5675 (PR 2, the chip as an act) · v2.5677 (PR 3, the move window)
+ver: v2.5673 (PR 1, the cell modal) · v2.5675 (PR 2, the chip as an act) · v2.5677 (PR 3, the move window) · v2.5723 (the Needs You line, decision 8 amended)
 opinion: build — the cell already knows exactly which papers it summed; making the office re-derive that by eye before every credit-desk call is the kind of detour the rest of the app has already paved over.
 ---
 
@@ -266,10 +266,16 @@ PRs 1 and 2 are client-only; PR 3 adds the one table (`supply_house_invoice_move
    modal, or one email covering a house's whole list from the group line. Alternative: a
    `mailto:` draft the office sends from their own mail — no edge function, but the app
    cannot then record the ask reliably.
-8. **Where does the nudge live?** Recommended: the strip on this screen only, for now.
-   Alternative: a Dashboard / Quickfill line when a window is about to close ("$2,210 still
-   movable, soonest closes Friday") — the app's Needs You pattern fits, but it should earn
-   its place after the strip has been used for a month.
+8. **Where does the nudge live?** Recommended on 2026-10-20: the strip on this screen only,
+   for now; the alternative was a Dashboard / Quickfill line when a window is about to close
+   ("$2,210 still movable, soonest closes Friday"), once the strip had earned it. **Built on
+   the owner's ask of 2026-10-21 (v2.5723):** the Needs You line `job-account-window` on both
+   hosts — the strip's four numbers from `count_supply_house_move_window()` (migration
+   20261021220000, the kernel's predicate; the `supply-house-move-window` bed and
+   `supplyHouseMoveWindow.parity.test.ts` hold the two readers to one set of rows), red within
+   three days of the soonest window, amber within a week (`SUPPLY_MOVE_WINDOW_CLOSE`), **Work
+   the list** → `/materials?tab=supply-houses&list=movable`, which opens the worked list. The
+   strip stays as the screen's own summary.
 9. **When does an unanswered ask escalate?** Recommended: the app's waiting convention —
    amber at 3 days, red at 7 (named constants in `ageState.ts`), red asks lead the worked
    list. Alternative: no aging; the office just sees "asked".

@@ -60,6 +60,8 @@ A house moves a charge onto a job account only while the invoice is current. Onc
 
 Tick the box after your call and press {{button:green|Mark it moved ✓}}. Or press {{button:green|Send the request ›}} to email the rep from the app. Replies come to you. The row then reads **asked** with the date. Follow up with a call until the house confirms. An ask with no answer turns amber after 3 days and red after 7.
 
+The Dashboard and Quickfill carry the same count as a Needs You line. It reads **Job accounts** with the dollars and the number of invoices. It turns amber a week before the soonest window closes and red three days before. Press {{button:outline|Work the list}} there to open the same list.
+
 ## The account itself lives on the house
 
 Whether a job **has** an account at a house is its own record, separate from this invoice flag. Open **Materials → Supply houses** and expand the house. **Job accounts** lists every job with an account there. Each shows {{chip:green|open}} with the house's reference, {{chip:purple|requested}}, or {{chip:gray|not needed}}. It also lists every job that bought there with none on record. {{button:green|Mark opened…}} records it in two taps after the call. See [find a supply house and its rep](?g=find-a-supply-house-and-its-rep).

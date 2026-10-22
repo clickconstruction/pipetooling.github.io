@@ -25,6 +25,7 @@ import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
 import { usePendingHrReportsNudge } from '../../hooks/usePendingHrReportsNudge'
 import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
+import { useSupplyMoveWindowNudge } from '../../hooks/useSupplyMoveWindowNudge'
 import {
   DISPATCH_REQUEST_AGE,
   DISPATCH_REQUESTS_MIN_AGE_DAYS,
@@ -116,6 +117,9 @@ export function QuickfillNeedsYouSection({
   // The owner, 2026-10-06 (v2.4700): the Dashboard's vehicle-records card here too, for dev, assistant and controller.
   const vehicleRecordGapsEnabled = Boolean(authUser?.id) && (role === 'dev' || isAssistantLike(role))
   const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
+  // The move window (punch list #132, the owner's ask of 2026-10-21): the same line as the Dashboard, for the office set that works Accounts payable.
+  const supplyMoveWindowEnabled = Boolean(authUser?.id) && tallyStaffEligible
+  const { moveWindow: supplyMoveWindow } = useSupplyMoveWindowNudge(supplyMoveWindowEnabled)
 
   const items = buildNeedsYouItems({
     role,
@@ -188,6 +192,8 @@ export function QuickfillNeedsYouSection({
     hrReportsRedDays: HR_PENDING_REPORT_AGE.redDays,
     vehicleRecordGapsEnabled,
     vehicleRecordGaps,
+    supplyMoveWindowEnabled,
+    supplyMoveWindow,
   })
 
   useEffect(() => {
@@ -268,6 +274,9 @@ export function QuickfillNeedsYouSection({
             navigate('/people?tab=hr')
           } else if (item.key === 'vehicle-records-missing') {
             navigate('/people?tab=vehicles')
+          } else if (item.key === 'job-account-window') {
+            // The worked list on Accounts payable (v2.5723): the tab opens it from the param once its book is read.
+            navigate('/materials?tab=supply-houses&list=movable')
           }
         }}
         onSecondary={(item, key) => {
