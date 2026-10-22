@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { leftOut, outsideInbox } from './leftOut'
+import { isOwnAddress, ownChannels } from '../messages/ownChannels'
+import { kitCarries, type WalkKit } from '../walk/kit'
 
 const THE_BOX = new Set(['bids@clickconstruction.example', 'app@clickconstruction.example'])
 const isTheBox = (a: string) => THE_BOX.has(a.toLowerCase())
@@ -47,5 +49,35 @@ describe('leftOut: the mail the reader leaves in Gmail', () => {
     for (const c of ['CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS']) {
       expect(leftOut(email({ labels: ['INBOX', c] }), isTheBox)).toBe('category')
     }
+  })
+})
+
+describe("the walk kit's rule (punch list #142 PR 1): our own address is a person only while the kit's contact carries it", () => {
+  // As gmail-sync's loadTeam composes it: the box set answers false for an own address the kit carries.
+  const own = ownChannels(null, 'app@clickconstruction.example', ['bids@clickconstruction.example'])
+  const kit: WalkKit = {
+    customerId: 'cu-walk',
+    contactId: 'c-walk',
+    emailChannelId: 'ch-walk-email',
+    phoneChannelId: null,
+    estimateId: null,
+    email: 'bids@clickconstruction.example',
+    phone: null,
+    testerId: null,
+    sharedPhone: false,
+    madeAt: null,
+  }
+  const theBoxWith = (k: WalkKit | null) => (a: string) => !(isOwnAddress(own, a) && kitCarries(k, 'email', a)) && isOwnAddress(own, a)
+
+  it('takes mail from bids@ while the kit carries it', () => {
+    expect(leftOut(email({ from: 'Bids@ClickConstruction.example' }), theBoxWith(kit))).toBeNull()
+  })
+
+  it('leaves mail from bids@ out with no kit, as before', () => {
+    expect(leftOut(email({ from: 'bids@clickconstruction.example' }), theBoxWith(null))).toBe('ours')
+  })
+
+  it("leaves the app's own sender out while the kit carries bids@: the kit carries the one address, not every own one", () => {
+    expect(leftOut(email({ from: 'app@clickconstruction.example' }), theBoxWith(kit))).toBe('ours')
   })
 })

@@ -50,7 +50,10 @@ import { GMAIL_SCOPES, GmailError, gmailAddLabel, gmailAttachment, gmailHistory,
 import { googleServiceToken } from '../_shared/googleToken.ts'
 import { emailFileRows, emailLine, emailParty, rfcMessageId } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
 import { readerBoxes, type ReaderBox } from '../_shared/gcKernels/lib/emailIn/readerBoxes.ts'
-import { BOXES_SETTINGS_KEY, parseBoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
+import { BOXES_SETTINGS_KEY, parseBoxSettings, type BoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
+import { isOwnAddress, ownChannels } from '../_shared/gcKernels/lib/messages/ownChannels.ts'
+import { kitCarries, type WalkKit } from '../_shared/gcKernels/lib/walk/kit.ts'
+import { loadWalkKit } from '../_shared/walkKit.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
 import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/lib/emailIn/historyWalk.ts'
 import { base64UrlBytes, parseAddress, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
@@ -89,6 +92,12 @@ interface Ctx {
   /** The boxes and the app's sender alone: mail from these is a copy of ours and is left out. */
   isTheBox: (address: string) => boolean
   member: (address: string) => TeamMember | null
+  /**
+   * The walk kit (punch list #142), while one is set up: an address of our own the kit's contact carries is a person
+   * writing in, so `isOurs` and `isTheBox` answer false for it, and `carried` says which it is.
+   */
+  kit: WalkKit | null
+  carried: (address: string) => boolean
   prefixes: LedgerPrefixMap
 }
 
@@ -108,8 +117,14 @@ async function saveState(admin: Admin, box: Mailbox, fields: Record<string, unkn
   if (error) throw new Error(`Saving the ${box} reader's state failed: ${error.message}`)
 }
 
-/** Our addresses: the boxes, the app's sender and the staff's, each to its team member when one is. */
-async function loadTeam(admin: Admin, boxes: readonly string[]): Promise<Pick<Ctx, 'isOurs' | 'isTheBox' | 'member'>> {
+type Team = Pick<Ctx, 'isOurs' | 'isTheBox' | 'member' | 'kit' | 'carried'>
+
+/**
+ * Our addresses: the boxes, the app's sender and the staff's, each to its team member when one is. The walk kit's rule
+ * (punch list #142 PR 1): an own address the kit's contact carries (the bids box's, while a walk is set up) is not ours
+ * and not the box, so `leftOut` takes mail from it and `emailParty` reads it as a person writing in.
+ */
+async function loadTeam(admin: Admin, settings: BoxSettings | null, boxes: readonly string[]): Promise<Team> {
   const { data, error } = await admin.from('users').select('id, name, email, role').in('role', STAFF_ROLES).not('email', 'is', null)
   if (error) throw new Error(`Reading the team failed: ${error.message}`)
   const byAddress = new Map<string, TeamMember>()
@@ -117,14 +132,18 @@ async function loadTeam(admin: Admin, boxes: readonly string[]): Promise<Pick<Ct
     const key = (u.email ?? '').trim().toLowerCase()
     if (key) byAddress.set(key, { id: u.id, name: (u.name ?? '').trim() || key })
   }
-  const theBox = new Set(boxes.map((b) => b.trim().toLowerCase()))
   const appFrom = parseAddress(EMAIL_FROM)?.address.trim().toLowerCase()
-  if (appFrom) theBox.add(appFrom)
+  const own = ownChannels(settings, appFrom, boxes)
+  const theBox = new Set(own.addresses)
   const ours = new Set([...byAddress.keys(), ...theBox])
+  const kit = await loadWalkKit(admin)
+  const carried = (address: string) => isOwnAddress(own, address) && kitCarries(kit, 'email', address)
   return {
-    isOurs: (address) => ours.has(address.trim().toLowerCase()),
-    isTheBox: (address) => theBox.has(address.trim().toLowerCase()),
+    isOurs: (address) => !carried(address) && ours.has(address.trim().toLowerCase()),
+    isTheBox: (address) => !carried(address) && theBox.has(address.trim().toLowerCase()),
     member: (address) => byAddress.get(address.trim().toLowerCase()) ?? null,
+    kit,
+    carried,
   }
 }
 
@@ -224,6 +243,13 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   const placed = await ctx.admin.rpc('email_place_address', { p_value: party.address.address, p_name: party.address.name }).single()
   if (placed.error) throw new Error(`Placing ${email.gmailId}'s address failed: ${placed.error.message}`)
   const contactId = placed.data.placed_contact as string
+  // Our own address the walk kit carries lands on the kit's contact alone (punch list #142). Placed anywhere else (a
+  // record that carries the same address with a newer line), the mail is passed over with no label: it stays in Gmail,
+  // and the week's fallback search would offer it again.
+  if (ctx.carried(party.address.address) && contactId !== ctx.kit?.contactId) {
+    console.warn(`gmail-sync: ${email.gmailId} from ${party.address.address}, our own address the walk kit carries, was placed on ${contactId}, not the kit's contact ${ctx.kit?.contactId}: passed over`)
+    return 'left'
+  }
 
   const by = fwd ? ctx.member(fwd.by.address) : null
   const line = emailLine(email, fwd, party, ctx.mailbox, by?.name ?? null)
@@ -281,7 +307,7 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
-async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Pick<Ctx, 'isOurs' | 'isTheBox' | 'member'>, prefixes: LedgerPrefixMap): Promise<Record<string, unknown>> {
+async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap): Promise<Record<string, unknown>> {
   const startedAt = nowIso()
   await saveState(admin, b.mailbox, { last_run_at: startedAt })
   try {
@@ -329,13 +355,14 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Pick<Ctx
 async function run(admin: Admin): Promise<{ ok: boolean; boxes: Record<string, unknown> }> {
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   const { data: boxesSetting } = await admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle()
-  const boxes = readerBoxes(parseBoxSettings(boxesSetting?.value_text), Deno.env.get('GMAIL_IMPERSONATE_USER'))
+  const settings = parseBoxSettings(boxesSetting?.value_text)
+  const boxes = readerBoxes(settings, Deno.env.get('GMAIL_IMPERSONATE_USER'))
   if (!saJson || boxes.length === 0) {
     const message = 'GOOGLE_SERVICE_ACCOUNT_JSON and GMAIL_IMPERSONATE_USER must be set.'
     await saveState(admin, 'bids', { last_run_at: nowIso(), last_error: message }).catch(() => undefined)
     throw new Error(message)
   }
-  const team = await loadTeam(admin, boxes.map((b) => b.address))
+  const team = await loadTeam(admin, settings, boxes.map((b) => b.address))
   const prefixes = await loadPrefixes(admin)
   const out: Record<string, unknown> = {}
   let ok = true

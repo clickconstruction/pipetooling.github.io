@@ -53,7 +53,9 @@ contact with the roster's number, and *Who is this?* names a number the roster l
 and their text left Follow up's lanes — its known kinds are a `Record<ContactKind, true>` now, so a kind the loader
 does not read fails the type check), unknown), `goes_by`, the Follow up state (`state`, `snoozed_until`, `has_user_id`,
 `has_until`, `has_since`, `has_how`), the customer's say (`prefers`, `prefers_how`, `prefers_at`, v2.5597) and the off-the-list columns. A number nobody knows is a contact of kind `unknown`
-with one channel until **Who is this?** names it (`name_contact`), which re-points the contact and keeps its thread.
+with one channel until **Who is this?** names it (`name_contact`), which re-points the contact and keeps its thread. One of
+our own numbers or addresses never becomes one: the readers place it only while the walk kit's contact carries it
+(punch list #142, v2.5726, `walk/kit.ts`'s `numberPlan` and `kitCarries`), and skip or ignore it otherwise.
 
 - `contact_channels` — a phone number or email that is theirs, with the opt-out (`opted_out_at`, and per box since R6,
   `opted_out_by_box`, because a carrier's STOP is per number pair).
@@ -180,7 +182,9 @@ service account's delegation, every minute (v2.5719) while **Read bids@** is on 
 each email lands in its sender's thread with its files as `message_attachments`, and a file that reads as a trade
 partner's paper is offered under its line (`PaperOffers.tsx`) until someone answers it. A teammate's mail lands too
 since v2.5722: on their Our team thread, or, copied to the box on a mail to a customer, on the customer's thread as
-ours (`emailIn/emailLine.ts`'s `emailParty`); only the boxes' own addresses and the app's sender are left out as ours.
+ours (`emailIn/emailLine.ts`'s `emailParty`); only the boxes' own addresses and the app's sender are left out as ours,
+and one of those is a person only while the walk kit's contact carries it (punch list #142, v2.5726: `walk/kit.ts`,
+`messages/ownChannels.ts`), so the kit's reply from bids@ lands on the kit's thread and real mail never moves.
 
 **The portals.** The customer's page (`customer-portal`, cut 8 and R8) draws **Your move** and **Where you are** from the
 flow read on their side, the money story, the papers, and a Messages tab whose write is a portal line in the thread;

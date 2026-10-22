@@ -1,0 +1,54 @@
+/**
+ * The company's own addresses and numbers, as the two readers know them (punch list #142 PR 1, the walk kit's rule):
+ * both boxes' addresses, the app's sender (`EMAIL_FROM`'s address) and both boxes' numbers, read from Settings' boxes
+ * row (`messages_boxes_v1`, `boxes.ts`) and the function's secrets, never written here. `gmail-sync` and `quo-webhook`
+ * ask `isOwnAddress` / `isOwnNumber` before they take a mail or a text as a person's: an address or number of our own
+ * is a person only when the walk kit's contact carries it (`walk/kit.ts`'s `kitCarries`); otherwise it is left out, as
+ * it always was. Pure, mirrored to the edge by `scripts/edge-kernels.mjs`.
+ */
+import type { BoxSettings } from './boxes'
+import { toE164 } from '../quo/events'
+
+/** The own side, each address lower-cased and trimmed, each number as E.164. */
+export interface OwnChannels {
+  addresses: ReadonlySet<string>
+  numbers: ReadonlySet<string>
+}
+
+const addressKey = (a: string): string => a.trim().toLowerCase()
+
+/**
+ * The own set from the boxes row (null reads as empty), the app's sender's address, and any more addresses the caller
+ * reads as its own (the bids@ reader's secret address, which the row may leave empty). A number that is not one
+ * `toE164` reads is left out: nothing of ours is outside the US and Canada.
+ */
+export function ownChannels(boxes: BoxSettings | null, appFrom: string | null | undefined, moreAddresses: readonly string[] = []): OwnChannels {
+  const addresses = new Set<string>()
+  const numbers = new Set<string>()
+  const addAddress = (a: string | null | undefined) => {
+    const key = addressKey(a ?? '')
+    if (key) addresses.add(key)
+  }
+  const addNumber = (n: string | null | undefined) => {
+    const e164 = n ? toE164(n) : null
+    if (e164) numbers.add(e164)
+  }
+  for (const box of boxes ? [boxes.team, boxes.bids] : []) {
+    addAddress(box.address)
+    addNumber(box.phone)
+  }
+  addAddress(appFrom)
+  for (const a of moreAddresses) addAddress(a)
+  return { addresses, numbers }
+}
+
+/** Whether an address is one of ours, in any case and spacing. */
+export function isOwnAddress(own: OwnChannels, address: string): boolean {
+  return own.addresses.has(addressKey(address))
+}
+
+/** Whether a number is one of ours, however it is written. A number `toE164` cannot read is never ours. */
+export function isOwnNumber(own: OwnChannels, number: string): boolean {
+  const e164 = toE164(number)
+  return e164 !== null && own.numbers.has(e164)
+}
