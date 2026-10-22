@@ -118,8 +118,9 @@ Before filing each PR, answer these in the PR description (two lines each):
   `git ls-tree origin/main supabase/migrations/ | tail`, `npm run claim -- --migration <file>`,
   `docs/migrations/<version>_<slug>.md`, applied **only** with `supabase db push` after the PR
   is on `main`. No table is created, so the three `apply_*` calls are not needed.
-- Prod sends are the owner's presses (Route B, §3): the session sets up and reads; a human
-  presses Send.
+- Prod sends were the owner's presses (Route B, §3) until the walk kit (punch list #142,
+  `docs/WALK_KIT.md`): `npm run walk` now runs the loop with the hidden tester's presses on the
+  company's own inbox and number. Route B stays the fallback (`--owner-presses`).
 
 ---
 
@@ -404,6 +405,8 @@ Each PR below lists: goal · the decision it carries · files (**new** / existin
 ---
 
 ## 3. The live test (after the train is on main)
+
+Since the walk kit (punch list #142, `docs/WALK_KIT.md`) this walk runs with one command, `npm run walk`, the hidden tester pressing the sends at the kit's own customer; what follows is Route B, the fallback a person presses (`npm run walk -- --owner-presses` does the reading around it).
 
 Route B: the session sets up and reads; **a human presses every Send**. The point of this walk is the loop, both halves of it: a send goes out, the reply comes back **by email to an address we own** and lands in the thread through the team inbox, and a text goes out **to a phone we carry** and the reply from that phone lands in the thread through the Quo webhook (live since 2026-10-14). The ZZ customer is therefore *us*: the team inbox's address and the owner's own cell.
 

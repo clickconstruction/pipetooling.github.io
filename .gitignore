@@ -50,3 +50,6 @@ docs/runbooks/supabase-inspect-snapshot/
 e2e/.auth/
 playwright-report/
 test-results/
+
+# The walk kit's reports (npm run walk), one JSON per run; never committed
+tmp/walk/
