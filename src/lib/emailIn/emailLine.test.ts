@@ -4,8 +4,12 @@ import type { Forwarded } from './forwarded'
 import type { EmailIn } from './gmailMessage'
 
 const isOurs = (a: string) => a.toLowerCase().endsWith('@clickconstruction.example')
+const isTheBox = (a: string) => a.toLowerCase() === 'bids@clickconstruction.example'
+const ours = { isOurs, isTheBox }
 const greg = { name: 'Greg Paulk', address: 'greg@hillside.example' }
 const rosa = { name: 'Rosa Diaz', address: 'rosa@clickconstruction.example' }
+const malachi = { name: 'Malachi', address: 'malachi@clickconstruction.example' }
+const bids = { name: null, address: 'bids@clickconstruction.example' }
 const elena = { name: 'Elena Marchetti', address: 'elena@cibolocreek.example' }
 
 const email = (over: Partial<EmailIn> = {}): EmailIn => ({
@@ -48,18 +52,28 @@ describe('fileKeep', () => {
 
 describe('emailParty: whose thread, and which way', () => {
   it('is the sender, coming in', () => {
-    expect(emailParty(email(), null, isOurs)).toEqual({ address: greg, direction: 'in' })
+    expect(emailParty(email(), null, ours)).toEqual({ address: greg, direction: 'in' })
   })
 
-  it('is nobody when one of us wrote with no forward', () => {
-    expect(emailParty(email({ from: rosa }), null, isOurs)).toBeNull()
-    expect(emailParty(email({ from: null }), null, isOurs)).toBeNull()
+  it('is nobody when the box itself or the app wrote, or no sender is named', () => {
+    expect(emailParty(email({ from: bids }), null, ours)).toBeNull()
+    expect(emailParty(email({ from: null }), null, ours)).toBeNull()
+  })
+
+  it("is the teammate, coming in, when one of us wrote to the box with nobody outside named (v2.5722)", () => {
+    expect(emailParty(email({ from: rosa, to: [bids] }), null, ours)).toEqual({ address: rosa, direction: 'in' })
+    expect(emailParty(email({ from: rosa, to: [bids, malachi] }), null, ours)).toEqual({ address: rosa, direction: 'in' })
+  })
+
+  it("is the customer, going out, when one of us wrote to them with the box copied (v2.5722)", () => {
+    expect(emailParty(email({ from: rosa, to: [elena], cc: [bids] }), null, ours)).toEqual({ address: elena, direction: 'out' })
+    expect(emailParty(email({ from: rosa, to: [bids, elena] }), null, ours)).toEqual({ address: elena, direction: 'out' })
   })
 
   it("is a forwarded copy's first sender, or, when that was one of us, the one we wrote to, going out", () => {
-    expect(emailParty(email({ from: rosa }), fwd(), isOurs)).toEqual({ address: elena, direction: 'in' })
-    expect(emailParty(email({ from: rosa }), fwd({ from: rosa, to: [rosa, elena] }), isOurs)).toEqual({ address: elena, direction: 'out' })
-    expect(emailParty(email({ from: rosa }), fwd({ from: rosa, to: [rosa] }), isOurs)).toBeNull()
+    expect(emailParty(email({ from: rosa }), fwd(), ours)).toEqual({ address: elena, direction: 'in' })
+    expect(emailParty(email({ from: rosa }), fwd({ from: rosa, to: [rosa, elena] }), ours)).toEqual({ address: elena, direction: 'out' })
+    expect(emailParty(email({ from: rosa }), fwd({ from: rosa, to: [rosa] }), ours)).toBeNull()
   })
 })
 
@@ -78,6 +92,17 @@ describe('emailLine', () => {
     expect(emailLine(email({ from: { name: null, address: 'dee@alamoconcrete.example' }, subject: '' }), null, { address: { name: null, address: 'dee@alamoconcrete.example' }, direction: 'in' }, 'bids@')).toMatchObject({
       subject: null,
       whoText: 'dee@alamoconcrete.example to bids@',
+    })
+  })
+
+  it("names a teammate's mail to the box as theirs, and one to a customer with the box copied as ours to them (v2.5722)", () => {
+    expect(emailLine(email({ from: rosa, to: [bids] }), null, { address: rosa, direction: 'in' }, 'team@')).toMatchObject({
+      direction: 'in',
+      whoText: 'Rosa Diaz <rosa@clickconstruction.example> to team@',
+    })
+    expect(emailLine(email({ from: rosa, to: [elena], cc: [bids] }), null, { address: elena, direction: 'out' }, 'team@')).toMatchObject({
+      direction: 'out',
+      whoText: 'Rosa Diaz <rosa@clickconstruction.example> to Elena Marchetti <elena@cibolocreek.example> · copied to team@',
     })
   })
 

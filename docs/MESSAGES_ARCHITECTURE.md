@@ -178,7 +178,9 @@ function reads, writes and calls.
 `sent_documents`, which the thread reads back as lines. **Email in** is `gmail-sync` (cut 6): the bids@ reader, under a
 service account's delegation, every minute (v2.5719) while **Read bids@** is on (`gmail_sync_on_v1`, `gmail_sync_state`);
 each email lands in its sender's thread with its files as `message_attachments`, and a file that reads as a trade
-partner's paper is offered under its line (`PaperOffers.tsx`) until someone answers it.
+partner's paper is offered under its line (`PaperOffers.tsx`) until someone answers it. A teammate's mail lands too
+since v2.5722: on their Our team thread, or, copied to the box on a mail to a customer, on the customer's thread as
+ours (`emailIn/emailLine.ts`'s `emailParty`); only the boxes' own addresses and the app's sender are left out as ours.
 
 **The portals.** The customer's page (`customer-portal`, cut 8 and R8) draws **Your move** and **Where you are** from the
 flow read on their side, the money story, the papers, and a Messages tab whose write is a portal line in the thread;

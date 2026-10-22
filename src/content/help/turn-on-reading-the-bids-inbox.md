@@ -2,7 +2,7 @@
 title: turn on reading the bids inbox
 category: Office
 roles: dev, master_technician
-keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages
+keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc
 order: 117
 ---
 The app can read new email in the bids inbox and put each email on its sender's thread in Messages. The owner or a dev turns it on.
@@ -17,11 +17,22 @@ The switch now reads {{button:green|On}}. The first read comes within a minute. 
 
 Each email it reads lands on its sender's thread. In Gmail, that email gets the label **In ClickTooling**.
 
+## A teammate's email
+
+An email from someone on the team lands too. It goes on their own thread, under the **Our team** pill on Messages. It shows in New or Needs a reply like their texts do.
+
+A teammate who emails a customer can copy the inbox. That email then lands on the customer's thread as ours, with the teammate's name. The office sees it without asking.
+
+:::example A tech writes from the job
+Rosa emails Elena about Thursday and copies team@. Elena's thread shows *Rosa Diaz to Elena Marchetti · copied to team@*.
+:::
+
 ## What it never does
 
 - The app never deletes, moves or archives an email.
 - The app never marks an email read.
 - Newsletters and notices stay in Gmail with no label.
+- An email the inbox sent itself, or the app sent, stays in Gmail with no label.
 
 ## See how it is doing
 

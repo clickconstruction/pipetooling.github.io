@@ -3,9 +3,12 @@
 /**
  * Messages, cut 6 (email in): the mail the bids@ reader leaves out, so a thread holds people and not notices. It stays
  * in Gmail with no label. The rules, in order: spam and trash; anything not in the Inbox (the lead's answer to Q2:
- * Inbox only for now); our own address or the app's (the thread already shows what the app sent, as a sent copy); mail
- * marked as a list, as bulk or as sent by a machine (an unsubscribe line, `Precedence`, `Auto-Submitted`, which also
- * catches an out-of-office reply); a no-reply sender; and Gmail's Promotions, Social, Updates and Forums.
+ * Inbox only for now); the box's own address or the app's sender (the thread already shows what the app sent, as a
+ * sent copy); mail marked as a list, as bulk or as sent by a machine (an unsubscribe line, `Precedence`,
+ * `Auto-Submitted`, which also catches an out-of-office reply); a no-reply sender; and Gmail's Promotions, Social,
+ * Updates and Forums. A teammate's mail is taken since v2.5722 (the owner's call of 2026-10-21, the field writing to
+ * the office): `emailLine.ts`'s `emailParty` puts it on their Our team thread, or, copied to the box on a mail to a
+ * customer, on the customer's thread as ours. Before that every staff address was left out with the box's.
  */
 import type { EmailIn } from './gmailMessage.ts'
 
@@ -24,16 +27,16 @@ export function outsideInbox(email: Pick<EmailIn, 'labels'>): 'spamOrTrash' | 'n
 }
 
 /**
- * Why the reader leaves an email out, or null when it takes it. `isOurs` says whether an address is ours: the mailbox,
- * the app's own sender, or one of the team's. One of us writing to bids@ is left out unless it is a forwarded copy,
- * which `forwarded.ts` reads first.
+ * Why the reader leaves an email out, or null when it takes it. `isTheBox` says whether an address is the box's own or
+ * the app's sender: mail from either is a copy of ours. A teammate writing to the box is taken (v2.5722); a forwarded
+ * copy, which `forwarded.ts` reads first, never comes here.
  */
-export function leftOut(email: Pick<EmailIn, 'labels' | 'from' | 'headers'>, isOurs: (address: string) => boolean): LeftOut | null {
+export function leftOut(email: Pick<EmailIn, 'labels' | 'from' | 'headers'>, isTheBox: (address: string) => boolean): LeftOut | null {
   const outside = outsideInbox(email)
   if (outside) return outside
   const labels = new Set(email.labels)
   const from = email.from?.address.trim().toLowerCase() ?? ''
-  if (from && isOurs(from)) return 'ours'
+  if (from && isTheBox(from)) return 'ours'
   const h = email.headers
   const precedence = (h['precedence'] ?? '').trim().toLowerCase()
   const auto = (h['auto-submitted'] ?? '').trim().toLowerCase()
