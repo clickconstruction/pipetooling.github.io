@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { allOn, cardLine, laterHolds, laterUntil, onCount, stateTone, SWITCH_ROWS, SWITCH_SETTING_KEYS, SWITCH_WORDS, switchStates, type SwitchRaw } from './switchCard'
+import { allOn, cardLine, HOURS_ALWAYS_WHY, laterHolds, laterUntil, onCount, stateTone, SWITCH_ROWS, SWITCH_SETTING_KEYS, SWITCH_WORDS, switchStates, switchWhys, type SwitchRaw } from './switchCard'
 
 const row = (value_text: string | null): SwitchRaw => ({ value_text, value_num: null })
 
@@ -44,6 +44,18 @@ describe('the switch card (punch list #140 PR 2)', () => {
     expect(switchStates({ ...ALL_ON, messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: true } })) }).reminders).toBe('off')
     expect(switchStates({ ...ALL_ON, messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: true, paid: 'offer' } })) }).reminders).toBe('on')
     expect(switchStates({ ...ALL_ON, messages_office_hours_v1: row('{"days":[1,2,3],"opens":"07:30","closes":"17:00"}') }).hours).toBe('not_set')
+  })
+
+  it('reads the Office hours row’s why from its switch: around the clock while it is on (punch list #141 PR 1)', () => {
+    const hoursRow = SWITCH_ROWS.find((r) => r.key === 'hours')!
+    expect(switchWhys(ALL_ON).hours).toBe(hoursRow.why)
+    expect(switchWhys({}).hours).toBe(hoursRow.why)
+    const always = row(JSON.stringify({ days: [1, 2, 3, 4, 5], opens: '07:30', closes: '17:00', techUntil: '17:00', emergency: null, always: true, savedAt: '2026-10-21T15:00:00.000Z' }))
+    const whys = switchWhys({ ...ALL_ON, messages_office_hours_v1: always })
+    expect(whys.hours).toBe(HOURS_ALWAYS_WHY)
+    expect(whys.texts).toBe(SWITCH_ROWS[0]!.why)
+    expect(switchStates({ ...ALL_ON, messages_office_hours_v1: always }).hours).toBe('on')
+    expect(plainWordsFailures(HOURS_ALWAYS_WHY)).toEqual([])
   })
 
   it('says the team inbox is named but not read while Read bids@ is off', () => {

@@ -25,8 +25,8 @@ mockup: to-dos/bid-price-breakout/mockup.html
 Proposed 2026-10-19 after a read of the Pricing, Labor and Takeoffs code and the cover letter's
 schedule of values. The owner picked **D1** and **D2** the same day, as recommended: one material
 markup number (the schedule-of-values factor, set to 1.4), and when hours exist Labor is hours ×
-rate with Margin what is left, Wendi's residual rule only on a bid with no hours. D3 and D4 are
-open. The second pass (the section below) redrew the card and added PR 0 and D5. `prototype.html` beside this file is the card to play with: a made-up bid whose rows, markup, tax, rate, hours, kinds and tags change while the card recomputes (`/to-dos/bid-price-breakout/prototype.html` on the board). Nothing is built. The mock-up draws the recommended card in both of its
+rate with Margin what is left, Wendi's residual rule only on a bid with no hours; with the go on
+2026-10-20, **D4** (free tags) and **D5** (the crew rate stands in) as recommended; D3 is open. The second pass (the section below) redrew the card and added PR 0 and D5. `prototype.html` beside this file is the card to play with: a made-up bid whose rows, markup, tax, rate, hours, kinds and tags change while the card recomputes (`/to-dos/bid-price-breakout/prototype.html` on the board). PR 0 to PR 3 are built and on main (v2.5652, v2.5653, v2.5654, v2.5660; migrations 20261020010000 and 20261020020000 pushed, types v2.5662); PR 5 waits on D3. The mock-up draws the recommended card in both of its
 states, the two ways not taken, the kind chip, the tag card and the paper question.
 
 ## The ask, in the owner's words

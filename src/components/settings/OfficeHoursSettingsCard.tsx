@@ -4,6 +4,11 @@
  * `officeHoursCardIo.ts`, the tech's hour and the after-hours number kept as they are (`officeHoursCard.ts`). Everyone
  * else on the page reads the line. After hours nothing answers on its own: the office hears first and the reply waits
  * for the morning, which is all the card says.
+ *
+ * Punch list #141 PR 1: the switch **The office is open around the clock** sits first, the On/Off pill the Reply push
+ * card uses. On, the day toggles and the two times fold away, the line reads *Open around the clock*, and two lines
+ * say what that means for the reply push. The days and times stay in the row under the switch, so Off puts them back.
+ * The tech's hour is read back as a line for everyone; a field for it is a later PR.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -19,6 +24,7 @@ import {
   OFFICE_HOURS_WORDS,
   sameDraft,
   serializeOfficeHours,
+  techHourLine,
   toggleDay,
   type OfficeHoursDraft,
 } from '../../lib/messages/officeHoursCard'
@@ -41,6 +47,21 @@ function dayStyle(on: boolean, saving: boolean): CSSProperties {
     fontWeight: 600,
     cursor: saving ? 'default' : 'pointer',
     background: on ? 'var(--text-blue-500)' : 'var(--surface)',
+    color: on ? 'white' : 'var(--text-base)',
+    opacity: saving ? 0.6 : 1,
+  }
+}
+
+/** The On/Off pill, as the Reply push card draws its switch. */
+function switchStyle(on: boolean, saving: boolean): CSSProperties {
+  return {
+    border: '1px solid var(--border-strong)',
+    borderRadius: 999,
+    padding: '0.15rem 0.7rem',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    cursor: saving ? 'default' : 'pointer',
+    background: on ? '#16a34a' : 'var(--surface)',
     color: on ? 'white' : 'var(--text-base)',
     opacity: saving ? 0.6 : 1,
   }
@@ -106,6 +127,14 @@ export function OfficeHoursSettingsCard({
     if (hours) setDraft(draftFrom(hours))
   }
 
+  /** The two lines under the switch while it is on, and the tech's hour for everyone. */
+  const alwaysLines = (
+    <>
+      <p data-office-hours-always-line style={muted}>{W.alwaysWhoever}</p>
+      <p style={muted}>{W.alwaysOffice}</p>
+    </>
+  )
+
   return (
     <section aria-labelledby="phone-texts-hours" id="settings-phone-texts-hours" data-settings-hours style={cardStyle}>
       <h3 id="phone-texts-hours" style={{ margin: 0, fontSize: '1rem' }}>
@@ -115,53 +144,75 @@ export function OfficeHoursSettingsCard({
       {!hours && !problem && <p style={muted}>{W.loading}</p>}
       {hours && draft && canSet && (
         <div data-office-hours-form style={{ display: 'grid', gap: '0.5rem' }}>
-          <div role="group" aria-label={W.days} style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.9rem', marginRight: '0.2rem' }}>{W.days}</span>
-            {DAY_SHORT.map((short, d) => {
-              const on = draft.days.includes(d)
-              return (
-                <button
-                  key={short}
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={DAY_LONG[d]}
-                  disabled={saving}
-                  onClick={() => setDraft({ ...draft, days: toggleDay(draft.days, d) })}
-                  style={dayStyle(on, saving)}
-                >
-                  {short}
-                </button>
-              )
-            })}
-          </div>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <label htmlFor="phone-texts-hours-opens" style={{ fontSize: '0.9rem' }}>
-              {W.opens}
-            </label>
-            <input
-              id="phone-texts-hours-opens"
-              type="time"
-              step={900}
-              value={draft.opens}
+            <span style={{ fontSize: '0.9rem' }}>{W.always}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={draft.always}
+              aria-label={W.always}
               disabled={saving}
-              onChange={(e) => setDraft({ ...draft, opens: e.target.value })}
-              style={timeStyle}
-            />
-            <label htmlFor="phone-texts-hours-closes" style={{ fontSize: '0.9rem' }}>
-              {W.closes}
-            </label>
-            <input
-              id="phone-texts-hours-closes"
-              type="time"
-              step={900}
-              value={draft.closes}
-              disabled={saving}
-              onChange={(e) => setDraft({ ...draft, closes: e.target.value })}
-              style={timeStyle}
-            />
+              onClick={() => setDraft({ ...draft, always: !draft.always })}
+              style={switchStyle(draft.always, saving)}
+            >
+              {draft.always ? 'On' : 'Off'}
+            </button>
           </div>
+          {!draft.always && (
+            <>
+              <div role="group" aria-label={W.days} style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.9rem', marginRight: '0.2rem' }}>{W.days}</span>
+                {DAY_SHORT.map((short, d) => {
+                  const on = draft.days.includes(d)
+                  return (
+                    <button
+                      key={short}
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={DAY_LONG[d]}
+                      disabled={saving}
+                      onClick={() => setDraft({ ...draft, days: toggleDay(draft.days, d) })}
+                      style={dayStyle(on, saving)}
+                    >
+                      {short}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label htmlFor="phone-texts-hours-opens" style={{ fontSize: '0.9rem' }}>
+                  {W.opens}
+                </label>
+                <input
+                  id="phone-texts-hours-opens"
+                  type="time"
+                  step={900}
+                  value={draft.opens}
+                  disabled={saving}
+                  onChange={(e) => setDraft({ ...draft, opens: e.target.value })}
+                  style={timeStyle}
+                />
+                <label htmlFor="phone-texts-hours-closes" style={{ fontSize: '0.9rem' }}>
+                  {W.closes}
+                </label>
+                <input
+                  id="phone-texts-hours-closes"
+                  type="time"
+                  step={900}
+                  value={draft.closes}
+                  disabled={saving}
+                  onChange={(e) => setDraft({ ...draft, closes: e.target.value })}
+                  style={timeStyle}
+                />
+              </div>
+            </>
+          )}
           <p data-office-hours-line style={bad ? { ...muted, color: 'var(--text-red-700)' } : muted}>
             {bad ?? hoursLine(draft)}
+          </p>
+          {draft.always && alwaysLines}
+          <p data-office-hours-tech style={muted}>
+            {techHourLine(hours.techUntil)}
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
@@ -204,6 +255,10 @@ export function OfficeHoursSettingsCard({
         <div data-office-hours-read style={{ display: 'grid', gap: '0.25rem' }}>
           <p data-office-hours-line style={{ margin: 0, fontSize: '0.9rem' }}>
             {hoursLine(hours)}
+          </p>
+          {hours.always && alwaysLines}
+          <p data-office-hours-tech style={muted}>
+            {techHourLine(hours.techUntil)}
           </p>
           <p style={muted}>{W.notAllowed}</p>
         </div>

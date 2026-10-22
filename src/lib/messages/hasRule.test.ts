@@ -52,6 +52,24 @@ describe('the office hours setting', () => {
       closes: '17:00',
       techUntil: '16:30',
       emergency: '512-555-0144',
+      always: false,
+    })
+  })
+
+  it('reads a row written before the switch as before: not around the clock', () => {
+    expect(parseOfficeHours('{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00","techUntil":"17:00","emergency":null,"savedAt":"2026-10-21T15:00:00.000Z"}').always).toBe(false)
+    expect(parseOfficeHours('{"always":"true"}').always).toBe(false)
+    expect(parseOfficeHours('{"always":1}').always).toBe(false)
+  })
+
+  it('reads the switch on, and keeps the days and times under it', () => {
+    expect(parseOfficeHours('{"days":[1,2,3],"opens":"08:00","closes":"16:00","always":true}')).toEqual({
+      days: [1, 2, 3],
+      opens: '08:00',
+      closes: '16:00',
+      techUntil: '17:00',
+      emergency: null,
+      always: true,
     })
   })
 
@@ -93,6 +111,45 @@ describe('when the office is open, in Chicago', () => {
     expect(lastClosing(cdt(TUE, '21:00'))).toBe(cdt(TUE, '17:00'))
     expect(lastClosing(cdt(WED, '06:00'))).toBe(cdt(TUE, '17:00'))
     expect(lastClosing(cdt(SAT, '10:00'))).toBe(cdt(FRI, '17:00'))
+  })
+})
+
+describe('the office around the clock (punch list #141 PR 1)', () => {
+  const always = parseOfficeHours('{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00","always":true}')
+  const SUN = '2026-10-18'
+
+  it('is open at 3 AM on a Sunday, with no next opening but now, no last close and no answer due', () => {
+    expect(officeOpen(cdt(SUN, '03:00'), always)).toBe(true)
+    expect(officeOpen(cdt(TUE, '23:59'), always)).toBe(true)
+    expect(nextOpening(cdt(SUN, '03:00'), always)).toBe(cdt(SUN, '03:00'))
+    expect(lastClosing(cdt(SUN, '03:00'), always)).toBeNull()
+    expect(autoAnswerDue(cdt(SUN, '03:00'), null, always)).toBe(false)
+    expect(autoAnswerDue(cdt(SUN, '03:00'), cdt(FRI, '19:00'), always)).toBe(false)
+  })
+
+  it('never gives a reply to nobody: the tech’s hold, then the office’s pick, at any hour', () => {
+    const night = whoHasReply({ ...noTech, hours: always }, cdt(SUN, '03:00'))
+    expect(night).toMatchObject({ has: 'office', userId: ROSA, name: 'Rosa', until: null, reason: 'noTech', autoAnswer: null })
+    expect(hasPill(night)).toBe('Open · Rosa')
+    expect(hasHover(night, 'Dana')).toBe('No tech has texted Dana from a job today. Rosa has the replies.')
+    const evening = whoHasReply({ ...withLuis, hours: always }, cdt(TUE, '17:10'))
+    expect(evening).toMatchObject({ has: 'office', userId: ROSA, reason: 'techDone', autoAnswer: null })
+    expect(hasHover(evening, 'Dana')).toBe('Luis had the replies until 5 PM. Rosa has them now.')
+    const held = whoHasReply({ ...withLuis, hours: always }, cdt(TUE, '09:04'))
+    expect(held).toMatchObject({ has: 'tech', userId: LUIS, until: cdt(TUE, '17:00') })
+  })
+
+  it('still ends the tech’s hold at the tech’s hour', () => {
+    expect(techHoldUntil(cdt(TUE, '09:02'), always)).toBe(cdt(TUE, '17:00'))
+    expect(techHoldUntil(cdt(TUE, '19:00'), always)).toBe(cdt(WED, '00:00'))
+  })
+
+  it('hands off to the office with no opening time, at 5 PM on a Friday as on a Tuesday', () => {
+    expect(handOff({ from: 'Luis', officeUserId: ROSA, officeName: 'Rosa', hours: always }, cdt(FRI, '17:00'))).toEqual({
+      write: { has_user_id: ROSA, has_since: cdt(FRI, '17:00'), has_how: 'rule', has_until: null },
+      line: 'Passed from Luis to Rosa.',
+    })
+    expect(handOffEvent('Luis', null, cdt(SAT, '00:00'), always)).toBe('Passed from Luis to the office.')
   })
 })
 

@@ -4,13 +4,24 @@
  * the JSON a save writes (the tech's hour and the after-hours number kept as they are, `savedAt` added so the switch
  * card of PR 2 can say the hours were set at least once), and the one line that reads the hours back.
  * `hasRule.ts` is a mirrored kernel (`scripts/edge-kernels.mjs`), so nothing here touches it: `parseOfficeHours` reads
- * only its five fields and ignores `savedAt`.
+ * its six fields and ignores `savedAt`.
+ *
+ * Punch list #141 PR 1: the switch **The office is open around the clock** (`always` on the draft and in the JSON). On,
+ * the day and time checks are skipped and the days and times are written as the draft keeps them, so the switch off
+ * puts the old hours back; the line reads *Open around the clock*; the tech's hour is read back as a line.
  */
 import type { OfficeHours } from './hasRule'
 
 export const OFFICE_HOURS_WORDS = {
   title: 'Office hours',
   note: 'When the office is in. After hours a reply waits for the morning, and the office hears it first.',
+  /** The switch row. */
+  always: 'The office is open around the clock',
+  /** What the line reads while the switch is on. */
+  alwaysLine: 'Open around the clock',
+  /** The two lines under the switch while it is on: what 24/7 means for the reply push. */
+  alwaysWhoever: 'Whoever has a reply hears at once.',
+  alwaysOffice: 'The office hears after the reply push wait, at 3 AM as at 3 PM.',
   days: 'Days',
   opens: 'Opens',
   closes: 'Closes',
@@ -30,8 +41,10 @@ export const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as co
 /** The days' full names, for the toggles' accessible names. */
 export const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
 
-/** What the card edits: the open days and the two times, "HH:MM" as the inputs hold them. */
+/** What the card edits: the switch, the open days and the two times, "HH:MM" as the inputs hold them. */
 export interface OfficeHoursDraft {
+  /** The office is open around the clock: the days and times are kept, hidden and not checked. */
+  always: boolean
   days: number[]
   opens: string
   closes: string
@@ -48,14 +61,14 @@ const sortedDays = (days: readonly number[]): number[] => [...new Set(days)].sor
 
 /** The draft the card starts from: the hours as they are. */
 export function draftFrom(hours: OfficeHours): OfficeHoursDraft {
-  return { days: sortedDays(hours.days), opens: hours.opens, closes: hours.closes }
+  return { always: hours.always, days: sortedDays(hours.days), opens: hours.opens, closes: hours.closes }
 }
 
-/** Whether two drafts say the same hours, so Save knows nothing changed. */
+/** Whether two drafts say the same hours, the switch included, so Save knows nothing changed. */
 export function sameDraft(a: OfficeHoursDraft, b: OfficeHoursDraft): boolean {
   const da = sortedDays(a.days)
   const db = sortedDays(b.days)
-  return da.length === db.length && da.every((d, i) => d === db[i]) && a.opens.trim() === b.opens.trim() && a.closes.trim() === b.closes.trim()
+  return a.always === b.always && da.length === db.length && da.every((d, i) => d === db[i]) && a.opens.trim() === b.opens.trim() && a.closes.trim() === b.closes.trim()
 }
 
 /** A day pressed on or off, the list kept sorted. */
@@ -63,8 +76,9 @@ export function toggleDay(days: readonly number[], day: number): number[] {
   return days.includes(day) ? days.filter((d) => d !== day) : sortedDays([...days, day])
 }
 
-/** What stops a save, in the card's words, or null when the draft is good. */
+/** What stops a save, in the card's words, or null when the draft is good. Nothing stops it while the switch is on. */
 export function draftProblem(draft: OfficeHoursDraft): string | null {
+  if (draft.always) return null
   if (draft.days.length === 0) return OFFICE_HOURS_WORDS.noDays
   const opens = minutesOf(draft.opens)
   const closes = minutesOf(draft.closes)
@@ -76,8 +90,9 @@ export function draftProblem(draft: OfficeHoursDraft): string | null {
 const pad = (hm: string): string => hm.trim().padStart(5, '0')
 
 /**
- * The JSON a save writes: the draft's days and times, the tech's hour and the after-hours number as the row keeps
- * them, and when the card saved. `parseOfficeHours` reads it back and ignores `savedAt`.
+ * The JSON a save writes: the switch, the draft's days and times as it holds them even while the switch is on (so the
+ * switch off puts them back), the tech's hour and the after-hours number as the row keeps them, and when the card
+ * saved. `parseOfficeHours` reads it back and ignores `savedAt`.
  */
 export function serializeOfficeHours(current: OfficeHours, draft: OfficeHoursDraft, savedAtIso: string): string {
   return JSON.stringify({
@@ -86,6 +101,7 @@ export function serializeOfficeHours(current: OfficeHours, draft: OfficeHoursDra
     closes: pad(draft.closes),
     techUntil: current.techUntil,
     emergency: current.emergency,
+    always: draft.always,
     savedAt: savedAtIso,
   })
 }
@@ -125,7 +141,13 @@ export function daysWords(days: readonly number[]): string {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
-/** The line that reads the hours back: "Mon to Fri, 7:30 AM to 5:00 PM". */
-export function hoursLine(hours: Pick<OfficeHours, 'days' | 'opens' | 'closes'>): string {
+/** The line that reads the hours back: "Mon to Fri, 7:30 AM to 5:00 PM", or "Open around the clock" under the switch. */
+export function hoursLine(hours: Pick<OfficeHours, 'days' | 'opens' | 'closes'> & { always?: boolean }): string {
+  if (hours.always) return OFFICE_HOURS_WORDS.alwaysLine
   return `${daysWords(hours.days)}, ${timeWords(hours.opens)} to ${timeWords(hours.closes)}`
+}
+
+/** The tech's hour read back as a line: "A tech who texts a customer keeps the replies until 5:00 PM." */
+export function techHourLine(techUntil: string): string {
+  return `A tech who texts a customer keeps the replies until ${timeWords(techUntil)}.`
 }

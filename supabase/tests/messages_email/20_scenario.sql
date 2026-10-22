@@ -183,9 +183,9 @@ SELECT mem.same('the reader has one row, with no place yet',
 -- One row a box since R6 (*_messages_two_boxes): today's is bids@'s.
 SELECT mem.refused('and only one for bids@', $q$INSERT INTO public.gmail_sync_state (mailbox) VALUES ('bids')$q$, 'gmail_sync_state_pkey');
 SELECT mem.same('the switch ships off', (SELECT value_text FROM public.app_settings WHERE key = 'gmail_sync_on_v1'), 'false');
-SELECT mem.same('the cron runs every 3 minutes, and only while the switch is on',
+SELECT mem.same('the cron runs every minute (v2.5719; every 3 before), and only while the switch is on',
   (SELECT concat_ws('|', schedule, (position('gmail_sync_on_v1' IN command) > 0)::text, (position('/functions/v1/gmail-sync' IN command) > 0)::text) FROM cron.job WHERE jobname = 'gmail-sync'),
-  '*/3 * * * *|true|true');
+  '* * * * *|true|true');
 SELECT mem.same('with the switch off, the cron''s own statement selects nothing to post', mem.cron_posts(), '0');
 INSERT INTO storage.objects (bucket_id, name) VALUES ('message-attachments', 'g-1/1-Hillside-Boerne-sitework-rev1.pdf');
 

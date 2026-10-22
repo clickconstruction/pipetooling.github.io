@@ -16,13 +16,13 @@ export interface ReaderHealth {
 }
 
 export const READER_TITLE = 'Read bids@'
-export const READER_WHAT = 'Every 3 minutes the app reads new email in bids@ and puts each one on its sender’s thread. In Gmail, each email it read gets the label In ClickTooling.'
+export const READER_WHAT = 'Every minute the app reads new email in bids@ and puts each one on its sender’s thread. In Gmail, each email it read gets the label In ClickTooling.'
 export const READER_CONFIRM = {
   title: 'Turn on reading bids@?',
-  message: 'Every 3 minutes the app reads new email in bids@ into Messages. It never deletes, moves or archives an email, and never marks one read.',
+  message: 'Every minute the app reads new email in bids@ into Messages. It never deletes, moves or archives an email, and never marks one read.',
   confirmLabel: 'Turn it on',
 } as const
-export const READER_ON_TOAST = 'Reading bids@ is on. The first read comes within 3 minutes.'
+export const READER_ON_TOAST = 'Reading bids@ is on. The first read comes within a minute.'
 export const READER_OFF_TOAST = 'Reading bids@ is off. Email to bids@ stays in Gmail only.'
 export const READER_NOT_SAVED = 'The switch did not change. Only the owner or a dev can turn reading bids@ on or off.'
 

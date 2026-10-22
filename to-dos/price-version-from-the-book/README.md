@@ -2,7 +2,7 @@
 name: "Pricing: price a fresh version from the book, right in the Workbench"
 number: 137
 group: close
-status: built 2026-10-20 on the owner's go, all four defaults taken — PR 1 v2.5687, PR 2 v2.5689, PR 3 v2.5690; merges + the live walk left
+status: built 2026-10-20 on the owner's go, all four defaults taken — PR 1 v2.5687 (#5930), PR 2 v2.5689 (#5931), PR 3 v2.5690 (#5932), all on main 2026-10-21; the walk on ZZ bid B517 that day found the unsplit Split window ignoring an unticked Copy prices, fixed as v2.5692 (migration 20261020110000); left: the rest of the live walk per How to verify, then delete the folder
 summary: >
   Wendi: on a side-by-side rebid she makes a second version with its own counts, and the newer
   Pricing view gives her no way to price it — only "Copy the base price" (wrong: the counts
@@ -14,7 +14,7 @@ summary: >
   door kept honest beside it. The Workbench then opens on the version's own counts with Fill
   from book and the solver — Old's flow, inline.
 next: >
-  The three PRs merge, then the live walk per How to verify (ZZ bid: + version unchecked, the
+  The three PRs are on main; the live walk per How to verify (ZZ bid: + version unchecked, the
   book door, the copy door, the labor line, the modal words); delete the ZZ rows after.
 size: M (PR 1 the start panel) + S (PR 2 the labor line) + S (PR 3 the + version modal tells the truth)
 blocker: none — built on the owner's go 2026-10-20 (calls 1–4 all took the recommended defaults).
