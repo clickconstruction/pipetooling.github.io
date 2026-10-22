@@ -2,7 +2,7 @@
 title: search the plans on a bid
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: plans, plan set, sheets, search, find, ask, question, grease interceptor, floor drain, sheet index, schedule, fixture schedule, notes, flags, exclusion, robot, read, rounds, pdf, text, scanned
+keywords: plans, plan set, sheets, search, find, ask, question, ask the robot to look, make this an RFI, rfi, grease interceptor, floor drain, sheet index, schedule, fixture schedule, notes, flags, exclusion, robot, read, rounds, pdf, text, scanned
 ---
 Every bid tab has a **Plans** button beside the bid's name. You press it and type a word or a question. The plans answer at once.
 
@@ -34,4 +34,12 @@ A bid the robots skip, or a bid filed a minute ago, has no page text yet. The pa
 
 Under the hits are three folds. **Sheet index** lists every sheet by number and title. **Schedules** shows each schedule as a table. **Notes with flags** lists the general notes the robot flagged. An exclusion flag means the note may belong on the letter as an exclusion. You read the note and decide.
 
-The panel shows you what the plans say. Make this an RFI and Ask the robot to look come in the next update.
+## Ask the robot to look
+
+When the plans' own answer is not enough, you press {{button:blue|Ask the robot to look}} under the card. Your question goes to the robots' rounds. The robot reads the sheets and answers within a few minutes. The answer names the sheets it read. It lands in the thread under the box, where the whole office can see it. Your Dashboard says when it is there.
+
+The robot looks at a bid only after it has sealed its own number on that bid. Until then the card says so. The plans still answer at once. Most bids seal within an hour of filing.
+
+Before you send the bid, the robot never gives a count or a price of its own. Ask how many floor drains and it names the sheets and tells you to count them there. Counts come after you send.
+
+When the answer says the plans do not say, you press {{button:gray|Make this an RFI}}. That files the question on the RFI tab with the sheet the robot cited. You send it to the GC from there. The GC is the general contractor.

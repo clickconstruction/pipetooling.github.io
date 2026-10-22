@@ -21,17 +21,24 @@ const substrate = {
   ],
   rollup: { sheet_inventory: { total: 3, in_trade: ['P-001', 'P-201', 'P-601'] } },
 }
-const state = { pages: rows as unknown[] }
+const state = { pages: rows as unknown[], questions: [] as unknown[], asked: [] as Record<string, unknown>[] }
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
+      // v2.5737: the thread (bid_plan_questions) reads as an empty list; asks and RFIs resolve.
       const chain = {
         select: () => chain,
         eq: () => chain,
-        order: () => (table === 'bids_plan_pages' ? Promise.resolve({ data: state.pages, error: null }) : chain),
-        limit: () => chain,
+        neq: () => chain,
+        in: () => Promise.resolve({ data: [], error: null }),
+        is: () => chain,
+        order: () => (table === 'bids_plan_pages' ? Promise.resolve({ data: state.pages, error: null }) : table === 'bid_plan_questions' ? chain : chain),
+        limit: () => (table === 'bid_plan_questions' ? Promise.resolve({ data: state.questions, error: null }) : chain),
         maybeSingle: () => Promise.resolve({ data: table === 'bids_plan_substrates' ? { substrate, created_at: '2026-10-21T19:06:00Z' } : null, error: null }),
+        single: () => Promise.resolve({ data: { id: 'rfi-1', rfi_number: 7 }, error: null }),
         upsert: () => Promise.resolve({ error: null }),
+        insert: (row: Record<string, unknown>) => { state.asked.push(row); return table === 'bids_rfis' ? chain : Promise.resolve({ error: null }) },
+        update: () => chain,
       }
       return chain
     },
@@ -77,5 +84,26 @@ describe('BidPlansPanel', () => {
     const onOpen = vi.fn()
     const { container } = renderWithProviders(<BidPlansButton bid={null} onOpen={onOpen} />)
     expect(container.textContent).toBe('')
+  })
+})
+
+describe('Ask the robot to look (v2.5737)', () => {
+  it('asks as yourself, shows the once-only count line, and lists the thread with Make this an RFI on an answer that says the plans do not say', async () => {
+    state.pages = rows as unknown[]
+    state.questions = [
+      { id: 'q1', bid_id: 'h1', question: 'Is there a grease interceptor on this job?', asked_by: 'u1', asked_at: '2026-10-21T19:41:00Z', status: 'answered', answer: 'The plans do not show a grease interceptor. Note 14 on P-001 puts the kitchen with others.', sheet_refs: ['P-001', 'P-201'], answered_at: '2026-10-21T19:47:00Z', seen_at: null, rfi_id: null },
+      { id: 'q2', bid_id: 'h1', question: 'How many floor drains on the first floor?', asked_by: 'u2', asked_at: '2026-10-21T18:12:00Z', status: 'open', answer: null, sheet_refs: [], answered_at: null, seen_at: null, rfi_id: null },
+    ]
+    localStorage.removeItem('pipetooling_plans_count_line_seen')
+    renderWithProviders(<BidPlansPanel bid={bid} shellBidId="s1" canWrite open onClose={() => {}} userId="u1" shadowSealed />)
+    await waitFor(() => expect(screen.getByTestId('plans-thread')).toBeTruthy())
+    expect(screen.getByTestId('plans-robot-answer').textContent).toContain('cites P-001, P-201')
+    expect(screen.getByText('Open P-001')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Search the plans'), { target: { value: 'how many floor drains' } })
+    expect(screen.getByTestId('plans-count-line').textContent).toContain('Counts come after you send.')
+    fireEvent.click(screen.getByTestId('plans-ask-robot'))
+    await waitFor(() => expect(state.asked.some((r) => r.question === 'how many floor drains' && r.asked_by === 'u1')).toBe(true))
+    fireEvent.click(screen.getByTestId('plans-make-rfi'))
+    await waitFor(() => expect(state.asked.some((r) => typeof r.question === 'string' && (r.question as string).startsWith('Is there a grease interceptor on this job?') && r.sheet_ref === 'P-001')).toBe(true))
   })
 })

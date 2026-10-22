@@ -114,6 +114,7 @@ export type NeedsYouItem = {
     | 'robot-locked'
     | 'robot-asleep'
     | 'robot-blocked'
+    | 'robot-answered'
     | 'lien-unconditional'
     | 'lien-waivers-to-sign'
     | 'demand-deadline'
@@ -235,6 +236,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'robot-locked': 50,
   'robot-asleep': 50,
   'robot-blocked': 50,
+  'robot-answered': 50,
   'hours-approvals': 50,
   'typed-hours': 50,
   'label-approvals': 40,
@@ -692,6 +694,8 @@ export type NeedsYouInputs = {
   robotBlocked?: import('./bids/robotSilence').RobotBlocked | null
   /** The clock for the silence item's words; Date.now() when absent. */
   nowMs?: number
+  /** Robot rounds PR 7 (v2.5737): the robot answered the viewer's own plan question(s); null with none fresh. */
+  robotAnswered?: { count: number; title: string; detail: string; firstBidId: string | null } | null
   /** Legal portal PR 2 (v2.3313): Collections accounts a dev has not yet marked attorney-ready — devs only. */
   legalReviewEnabled?: boolean
   legalReview?: import('./legal/legalMatters').LegalReviewSummary | null
@@ -1831,6 +1835,10 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   // Robot rounds PR 4 (v2.5734, punch list #142): silence has two meanings and two owners. A robot
   // blocked on a bid's plans is the estimator's, with the door; a fleet with no round for fifteen
   // minutes is the owner's, with the fix in the sentence. Progress itself never lands here.
+  if (inputs.robotAnswered && inputs.robotAnswered.count > 0) {
+    const a = inputs.robotAnswered
+    items.push({ key: 'robot-answered', severity: 'blue', kicker: 'Robots', title: a.title, detail: a.detail, figure: String(a.count), actionLabel: 'Open the Plans panel' })
+  }
   if (inputs.robotBlockedEnabled && inputs.robotBlocked && inputs.robotBlocked.count > 0) {
     const w = robotBlockedWords(inputs.robotBlocked)
     items.push({

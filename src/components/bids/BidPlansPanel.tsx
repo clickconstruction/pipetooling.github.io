@@ -6,6 +6,9 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { usePlanPages } from '../../hooks/usePlanPages'
 import { answerWords, searchPlanPages, searchRead, searchTerms, setWords, sheetLabel, substrateNotes, substrateSchedules, type PlanHit, type PlanPageRow } from '../../lib/bids/planText'
 import { PdfPageCanvas } from '../contracts/formStudio/PdfPageCanvas'
+import { usePlanQuestions } from '../../hooks/usePlanQuestions'
+import { COUNT_LINE, answerInvitesRfi, asksForACount, citesWords, waitingWords } from '../../lib/bids/planQuestions'
+import { useToastContext } from '../../contexts/ToastContext'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 const db = supabase as unknown as SupabaseClient
@@ -45,8 +48,19 @@ export function BidPlansButton({ bid, onOpen }: { bid: BidWithBuilder | null; on
  * never a count of the robot's own. Under it: the hits with Open sheet, the sheet index, the
  * schedules as tables, the notes with their flags.
  */
-export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose }: { bid: BidWithBuilder | null; shellBidId: string | null; canWrite: boolean; open: boolean; onClose: () => void }) {
+export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose, userId = null, shadowSealed = null }: { bid: BidWithBuilder | null; shellBidId: string | null; canWrite: boolean; open: boolean; onClose: () => void; /** v2.5737: who asks. */ userId?: string | null; /** v2.5737: the bid's shadow is sealed (true), open (false) or there is none (null) — the robot looks only once sealed or none. */ shadowSealed?: boolean | null }) {
   const phone = useMatchMedia('(max-width: 640px)')
+  const { showToast } = useToastContext()
+  // v2.5737 (PR 7): Ask the robot to look — the thread on the bid, an ask as yourself, an RFI from an answer.
+  const questions = usePlanQuestions({ bidId: open ? (bid?.id ?? null) : null, enabled: open && !!bid, userId })
+  const [asking, setAsking] = useState(false)
+  const [countLineSeen, setCountLineSeen] = useState(() => {
+    try {
+      return localStorage.getItem('pipetooling_plans_count_line_seen') === '1'
+    } catch {
+      return false
+    }
+  })
   const plansLink = (bid?.plans_link ?? '').trim() || null
   const { state, substrate } = usePlanPages({ bidId: open ? (bid?.id ?? null) : null, plansLink, shellBidId, enabled: open && !!bid, canWrite })
   const [q, setQ] = useState('')
@@ -150,6 +164,45 @@ export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose }: { bi
         </div>
       ) : null}
 
+      {answer && canWrite && userId ? (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+          <button
+            type="button"
+            data-testid="plans-ask-robot"
+            disabled={asking}
+            onClick={() => {
+              void (async () => {
+                setAsking(true)
+                const err = await questions.ask(q)
+                setAsking(false)
+                if (err) showToast(`Could not ask: ${err}`, 'error')
+                else {
+                  showToast('Asked. The robot looks on its next round.', 'success')
+                  if (asksForACount(q) && !bid.bid_date_sent && !countLineSeen) {
+                    setCountLineSeen(true)
+                    try {
+                      localStorage.setItem('pipetooling_plans_count_line_seen', '1')
+                    } catch {
+                      /* shown again next time */
+                    }
+                  }
+                }
+              })()
+            }}
+            style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+          >
+            Ask the robot to look
+          </button>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{shadowSealed === false ? 'It answers once its own number is sealed, usually within the hour.' : 'It answers within a few minutes, citing sheets.'}</span>
+        </div>
+      ) : null}
+      {asked && asksForACount(q) && !bid.bid_date_sent && !countLineSeen ? (
+        <div data-testid="plans-count-line" style={{ marginTop: '0.4rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '0.45rem 0.7rem', fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
+          <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Shown once</div>
+          {COUNT_LINE}
+        </div>
+      ) : null}
+
       {asked && hits.length > 0 ? (
         <div data-testid="plans-hits" style={{ marginTop: '0.5rem' }}>
           {hits.slice(0, 12).map((h) => (
@@ -240,8 +293,55 @@ export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose }: { bi
         </ul>
       ) : null}
 
+      {questions.rows.length > 0 ? (
+        <div data-testid="plans-thread" style={{ marginTop: '0.7rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-strong)', display: 'flex', gap: '0.4rem', alignItems: 'baseline' }}>
+            The robot looked <span style={muted}>within a round, after its own seal, saved on the bid</span>
+          </div>
+          <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.4rem' }}>
+            {questions.rows.map((r) => (
+              <div key={r.id} style={{ display: 'grid', gap: '0.3rem' }}>
+                <div style={{ justifySelf: 'end', maxWidth: '88%', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}>
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>{r.asked_by && r.asked_by === userId ? 'You' : 'Someone in the office'} · {waitingWords(r, shadowSealed, Date.now())}</span>
+                  {r.question}
+                </div>
+                {r.status === 'answered' && r.answer ? (
+                  <div style={{ maxWidth: '92%', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.4rem 0.7rem', fontSize: '0.8rem' }} data-testid="plans-robot-answer">
+                    <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}><b style={{ color: 'var(--text-violet-800)' }}>The robot</b>{citesWords(r.sheet_refs) ? ` · ${citesWords(r.sheet_refs)}` : ''}</span>
+                    {r.answer}
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                      {(r.sheet_refs ?? []).slice(0, 3).map((ref) => {
+                        const pg = pages.find((p) => (p.sheet_no ?? '').trim().toLowerCase() === ref.trim().toLowerCase())
+                        return pg ? <button key={ref} type="button" onClick={() => void openSheet(pg.page)} style={{ font: 'inherit', fontSize: '0.74rem', padding: '0.22rem 0.5rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer' }}>Open {ref}</button> : null
+                      })}
+                      {r.rfi_id ? (
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', alignSelf: 'center' }}>An RFI was made of this.</span>
+                      ) : canWrite && answerInvitesRfi(r.answer) ? (
+                        <button
+                          type="button"
+                          data-testid="plans-make-rfi"
+                          onClick={() => {
+                            void questions.makeRfi(r).then((res) => {
+                              if (res.error) showToast(`Could not make the RFI: ${res.error}`, 'error')
+                              else showToast(`RFI-${res.rfiNumber ?? ''} is on the RFI tab. Send it to the GC from there.`, 'success')
+                            })
+                          }}
+                          style={{ font: 'inherit', fontSize: '0.74rem', padding: '0.22rem 0.5rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer' }}
+                        >
+                          Make this an RFI
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <p style={{ margin: '0.8rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}>
-        The panel says what the plans say and where. Counts come after you send. Ask the robot to look comes in the next update.
+        The panel says what the plans say and where. Counts come after you send. Everyone in the office sees this thread on the bid.
       </p>
     </aside>
   )
