@@ -12,7 +12,11 @@
  *   - A message already labelled is passed over.
  *   - A forwarded copy one of us sent on lands on its first sender, with the forwarder's note as a team note
  *     (`src/lib/emailIn/forwarded.ts`).
- *   - Mail the reader leaves out (`leftOut.ts`: bulk, no-reply, Gmail's other tabs, our own) stays with no label.
+ *   - A teammate's own mail (v2.5722, the owner's call of 2026-10-21): to the box, with nobody outside named, it lands
+ *     on their Our team thread, coming in; to a customer with the box copied, on the customer's thread as ours, going
+ *     out, under the teammate's name (`emailLine.ts`'s `emailParty`). Before that every staff address was left out.
+ *   - Mail the reader leaves out (`leftOut.ts`: bulk, no-reply, Gmail's other tabs, the box's own and the app's) stays
+ *     with no label.
  * - The sender's address finds its contact or makes the Who is this? row (`email_place_address`).
  * - The subject's job number, or a job's name among the sender's own, ties the line (`jobInSubject.ts`). Else the
  *   person's star does, and with no star the line sits on the person.
@@ -80,7 +84,10 @@ interface Ctx {
   box: Mailbox
   /** How a line names the box: `bids@`. */
   mailbox: string
+  /** The boxes, the app's sender and the staff's addresses. */
   isOurs: (address: string) => boolean
+  /** The boxes and the app's sender alone: mail from these is a copy of ours and is left out. */
+  isTheBox: (address: string) => boolean
   member: (address: string) => TeamMember | null
   prefixes: LedgerPrefixMap
 }
@@ -102,7 +109,7 @@ async function saveState(admin: Admin, box: Mailbox, fields: Record<string, unkn
 }
 
 /** Our addresses: the boxes, the app's sender and the staff's, each to its team member when one is. */
-async function loadTeam(admin: Admin, boxes: readonly string[]): Promise<Pick<Ctx, 'isOurs' | 'member'>> {
+async function loadTeam(admin: Admin, boxes: readonly string[]): Promise<Pick<Ctx, 'isOurs' | 'isTheBox' | 'member'>> {
   const { data, error } = await admin.from('users').select('id, name, email, role').in('role', STAFF_ROLES).not('email', 'is', null)
   if (error) throw new Error(`Reading the team failed: ${error.message}`)
   const byAddress = new Map<string, TeamMember>()
@@ -110,11 +117,13 @@ async function loadTeam(admin: Admin, boxes: readonly string[]): Promise<Pick<Ct
     const key = (u.email ?? '').trim().toLowerCase()
     if (key) byAddress.set(key, { id: u.id, name: (u.name ?? '').trim() || key })
   }
-  const ours = new Set([...byAddress.keys(), ...boxes.map((b) => b.trim().toLowerCase())])
+  const theBox = new Set(boxes.map((b) => b.trim().toLowerCase()))
   const appFrom = parseAddress(EMAIL_FROM)?.address.trim().toLowerCase()
-  if (appFrom) ours.add(appFrom)
+  if (appFrom) theBox.add(appFrom)
+  const ours = new Set([...byAddress.keys(), ...theBox])
   return {
     isOurs: (address) => ours.has(address.trim().toLowerCase()),
+    isTheBox: (address) => theBox.has(address.trim().toLowerCase()),
     member: (address) => byAddress.get(address.trim().toLowerCase()) ?? null,
   }
 }
@@ -203,8 +212,8 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   if (m.labelIds?.includes(ctx.labelId)) return 'already'
   const email = readGmailMessage(m)
   const fwd = readForwarded(email, ctx.isOurs)
-  if (fwd ? outsideInbox(email) : leftOut(email, ctx.isOurs)) return 'left'
-  const party = emailParty(email, fwd, ctx.isOurs)
+  if (fwd ? outsideInbox(email) : leftOut(email, ctx.isTheBox)) return 'left'
+  const party = emailParty(email, fwd, { isOurs: ctx.isOurs, isTheBox: ctx.isTheBox })
   if (!party) return 'left'
   // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
   if (await heldLine(ctx, rfcMessageId(email))) {
@@ -245,7 +254,8 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
     }
   }
 
-  const ourSender = party.direction === 'out' && fwd ? ctx.member(fwd.from.address) : null
+  // Our line going out: the forwarded copy's first sender, or the teammate who copied the box (v2.5722).
+  const ourSender = party.direction === 'out' ? ctx.member((fwd ? fwd.from : email.from)?.address ?? '') : null
   const row = {
     contact_id: contactId,
     channel_id: placed.data.placed_channel,
@@ -271,7 +281,7 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
-async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Pick<Ctx, 'isOurs' | 'member'>, prefixes: LedgerPrefixMap): Promise<Record<string, unknown>> {
+async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Pick<Ctx, 'isOurs' | 'isTheBox' | 'member'>, prefixes: LedgerPrefixMap): Promise<Record<string, unknown>> {
   const startedAt = nowIso()
   await saveState(admin, b.mailbox, { last_run_at: startedAt })
   try {

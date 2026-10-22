@@ -31,12 +31,28 @@ export interface EmailParty {
   direction: 'in' | 'out'
 }
 
+/** Whose addresses are ours: `isOurs` the boxes, the app's sender and the team's; `isTheBox` the boxes and the app's sender alone. */
+export interface OurAddresses {
+  isOurs: (address: string) => boolean
+  isTheBox: (address: string) => boolean
+}
+
 /**
  * The person an email's line is with: its sender. On a forwarded copy, the block's first sender; when that is one of
- * us, the first person they wrote to who is not, and the line is ours, going out. Null when nobody outside is named.
+ * us, the first person they wrote to who is not, and the line is ours, going out. A teammate's own mail (v2.5722): to
+ * the box, with nobody outside named, it is theirs, coming in, on their Our team thread; to a customer with the box
+ * copied, it is ours to that customer, going out. Null when the box or the app wrote, or nobody outside is named on a
+ * forwarded copy.
  */
-export function emailParty(email: Pick<EmailIn, 'from'>, fwd: Forwarded | null, isOurs: (address: string) => boolean): EmailParty | null {
-  if (!fwd) return email.from && !isOurs(email.from.address) ? { address: email.from, direction: 'in' } : null
+export function emailParty(email: Pick<EmailIn, 'from' | 'to' | 'cc'>, fwd: Forwarded | null, ours: OurAddresses): EmailParty | null {
+  const { isOurs, isTheBox } = ours
+  if (!fwd) {
+    if (!email.from) return null
+    if (!isOurs(email.from.address)) return { address: email.from, direction: 'in' }
+    if (isTheBox(email.from.address)) return null
+    const them = [...email.to, ...email.cc].find((a) => !isOurs(a.address))
+    return them ? { address: them, direction: 'out' } : { address: email.from, direction: 'in' }
+  }
   if (!isOurs(fwd.from.address)) return { address: fwd.from, direction: 'in' }
   const them = fwd.to.find((a) => !isOurs(a.address))
   return them ? { address: them, direction: 'out' } : null
@@ -75,10 +91,12 @@ const unforwarded = (subject: string): string => subject.replace(/^\s*(?:(?:fwd?
 
 /**
  * The line for an email. `mailbox` is how the line names the box it reached (`bids@`); `forwarderName` is the team
- * member's name when the forwarder is one, else the forwarded block's own words name them.
+ * member's name when the forwarder is one, else the forwarded block's own words name them. A teammate's mail to a
+ * customer with the box copied names both: `Rosa <rosa@…> to Greg <greg@…> · copied to bids@`.
  */
 export function emailLine(email: EmailIn, fwd: Forwarded | null, party: EmailParty, mailbox: string, forwarderName: string | null = null): EmailLine {
   if (!fwd) {
+    const from = display(email.from ?? party.address)
     return {
       gmailId: email.gmailId,
       gmailThreadId: email.threadId,
@@ -86,7 +104,7 @@ export function emailLine(email: EmailIn, fwd: Forwarded | null, party: EmailPar
       at: email.at,
       subject: email.subject || null,
       body: email.text,
-      whoText: `${display(email.from ?? party.address)} to ${mailbox}`,
+      whoText: party.direction === 'out' ? `${from} to ${display(party.address)} · copied to ${mailbox}` : `${from} to ${mailbox}`,
       rfcMessageId: rfcMessageId(email),
     }
   }
