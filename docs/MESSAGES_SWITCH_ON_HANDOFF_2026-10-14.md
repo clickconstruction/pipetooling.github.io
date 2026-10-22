@@ -9,7 +9,7 @@ switch-on stands and what comes next.*
 
 ## Where it stands
 
-- **Built and tested.** Every PR of both builds is on main and deployed except #5722 (below). The live test of the
+- **Built and tested.** Every PR of both builds is on main and deployed (#5722 landed as 89833d82c; below). The live test of the
   morning of 2026-10-14 is in the residential plan's Status.
 - **Quo is live for texts in.** Carrier registration cleared on 2026-10-14. The Caller ID name "Click Plumbing" is approved
   and on the company number, (737) 300-9478. `QUO_COMPANY_NAME` is "Click Plumbing and Electrical", the name that signs
@@ -33,14 +33,14 @@ Each step is the owner's or a dev's press. The order was checked by the GC lead 
    `turn-on-texts-from-the-company-number`.
 4. **The outbound proof, only to the owner's own thread.** Reply with the Text kind. The first text carries "Click
    Plumbing and Electrical. Reply STOP to opt out." It shows on the thread at once, and Quo's delivered event lands on
-   the same line, so there is one line, not two. Then from the owner's phone: STOP (the app answers and a reply from the
+   the same line, so there is one line, not two, its time reading **✓ delivered** since v2.5703. Then from the owner's phone: STOP (the app answers and a reply from the
    thread is refused), START, HELP (the answer names the company). Then one picture texted in should show on its line
    within five minutes with the photo tick.
-5. **Reply push** when the owner wants pushes, and **Who gets a new message** when new numbers should go to someone.
+5. **Reply push** when the owner wants pushes, **Office hours** (after Reply push, v2.5709, a 24/7 switch since v2.5721: the days and the open and close the reply push and the tech's texting read, or open around the clock; the switch card's eighth row) and **Who gets a new message** when new numbers should go to someone.
 6. **Later:** Inboxes with the second Quo number for the bids box; Read bids@, which needs the Google domain-wide
    delegation grant first; counsel's word on whether a STOP to one number silences the other (§7 of the residential plan).
 7. **Per-step reminders stay off** until the dry run is read: `POST /functions/v1/messages-nudge-dispatch` with
-   `X-Cron-Secret` and `{"dry": true}`. A customer step also waits on the portal grants follow-up; the run's summary says
+   `X-Cron-Secret` and `{"dry": true}`; the card's door for the reminders is `#settings-phone-texts-reminders` since v2.5720, the **Reminders the app offers** card last on Phone and texts, and the dry run shows v2.5714's Approved and Paid lines. A customer step also waits on the portal grants follow-up; the run's summary says
    "Customers wait until the run can read their page" until then.
 
 Test texts go only to the owner's own phone or to the GC side's "Test contact", never to a real contact's thread.
@@ -72,7 +72,6 @@ Test texts go only to the owner's own phone or to the GC side's "Test contact", 
 
 ## Open at hand-off
 
-- **#5722** (v2.5536), the older signature scheme in `verifySignature`: armed in the merge queue. `quo-webhook` was
-  deployed from its branch at 20:37 UTC to test it, so until it lands prod runs code main does not have. After it lands,
-  deploy `quo-webhook` from main and read `npm run check:edge-drift`.
+- **#5722** (v2.5536), the older signature scheme in `verifySignature`: merged (89833d82c). `quo-webhook` had been
+  deployed from its branch at 20:37 UTC to test it; `npm run check:edge-drift` read every function current on 2026-10-21.
 - The owner's open calls are the residential plan's §7, and what waits until after live is its §9.
