@@ -6,14 +6,16 @@ import { buildMessagesEmail, letterheadFor, MESSAGES_EMAIL_KIND, parseMessagesEm
 import { emailLinkLines, parseEmailFiles } from '../_shared/messagesEmailFiles.ts'
 // The box their answer comes back to (R6), straight from the copy, not its index.
 import { BOXES_SETTINGS_KEY, boxForReply, mailboxFor, NO_BOX_FALLBACK, parseBoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
-import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { KIT_DOOR_WORDS, isFixtureAccount, isWalkTester, kitDoorVerdict } from '../_shared/gcKernels/lib/walk/kitDoor.ts'
+import { loadWalkKit } from '../_shared/walkKit.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { placeFiles, readFiles, takeBack } from './files.ts'
 
 /**
  * messages-email — Messages, cut 3: an email from the reply box's send window, to one person at one of their
  * addresses. The caller is someone in the office (`gc_office_team()`, asked as them), a real account (never a sample
- * or a digital twin), and never a training account. The body is `parseMessagesEmailBody`'s (`_shared/messagesEmail.ts`):
+ * or a digital twin), and never a training account, but for the walk kit's tester (punch list #142 PR 5, `kitDoor.ts`):
+ * a training account let through only at the kit's own address on the kit's contact, with no files. The body is `parseMessagesEmailBody`'s (`_shared/messagesEmail.ts`):
  * the contact, the address (one of their `contact_channels`), the job it is tied to, and the words the app put
  * together with `compose.emailDraft`.
  *
@@ -60,12 +62,25 @@ serve(async (req) => {
 
     const { data: u } = await caller.auth.getUser()
     if (!u?.user) return refuse('signIn', 'Sign in to send an email.', 401)
-    const { data: who } = await admin.from('users').select('id, name, email, read_only').match(REAL_ACCOUNT).eq('id', u.user.id).maybeSingle()
-    if (!who || who.read_only) return refuse('readOnly', 'This account cannot send emails.', 403)
+    const { data: who } = await admin
+      .from('users')
+      .select('id, name, email, read_only, is_sample, is_digital_twin, is_walk_tester')
+      .eq('id', u.user.id)
+      .maybeSingle()
+    if (!who || isFixtureAccount(who)) return refuse('readOnly', 'This account cannot send emails.', 403)
+    const tester = isWalkTester(who)
+    if (!tester && who.read_only) return refuse('readOnly', 'This account cannot send emails.', 403)
+    const raw = (await req.json().catch(() => null)) as Record<string, unknown> | null
+    // The walk tester's only way past training mode: the kit exists, the target is its address, and no file goes.
+    if (tester) {
+      const ask = parseMessagesEmailBody(raw)
+      const verdict = kitDoorVerdict(who, await loadWalkKit(admin), ask ? { kind: 'channel', contactId: ask.contactId, channelId: ask.channelId } : null)
+      if (!verdict.ok) return refuse(verdict.refused, verdict.words, 403)
+      if (Array.isArray(raw?.files) && raw.files.length > 0) return refuse('walkTesterOnly', 'The walk tester sends no files.', 403)
+    }
     const { data: office, error: officeError } = await caller.rpc('gc_office_team')
     if (officeError || office !== true) return refuse('officeOnly', 'Only the office sends from here.', 403)
 
-    const raw = (await req.json().catch(() => null)) as Record<string, unknown> | null
     const input = parseMessagesEmailBody(raw)
     if (!input) return refuse('badRequest', 'The email is missing its person, address, subject or words.', 400)
     const asks = parseEmailFiles(raw?.files)

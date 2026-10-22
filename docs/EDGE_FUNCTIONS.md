@@ -1330,6 +1330,8 @@ Each window does its own write first, then the email: the pay application (`gc_s
 
 ### messages-email
 
+> **v2.5729 — the walk tester's door** (punch list #142 PR 5): as quo-send's (above): the tester goes only at the kit's address on the kit's contact and with no files (*The walk tester sends no files.*); a sample, a twin and any other training account are refused as before; the office is unchanged. **Deploy after PR 2's push.** `src/lib/walk/messagesEmailDoor.run.test.ts`.
+
 **Purpose**: Messages, cut 3: an email from the reply box in a person's thread, to one person at one of their addresses (`contact_channels`). The reply box (`src/components/gc/messages/reply/ReplyBox.tsx`) opens the send window, which shows the email as it will go; its **Send as email** calls this function through `replyIo.sendEmail` (`src/lib/messages/replyIo.ts`). In order:
 
 1. **The caller**: signed in, a real account (`REAL_ACCOUNT`: never a sample or a digital twin), not a training account, and on the office team (`gc_office_team()`, asked as the caller). Else `401 signIn`, `403 readOnly` or `403 officeOnly`.
@@ -2444,6 +2446,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### send-estimate-to-customer
+
+> **v2.5729 — a real account sends** (punch list #142 PR 5; README found item 4): the function checked no account, so a View-as sample, a twin or a training account that could read a draft could send it to a real customer. Now the caller's `users` row is read first: a sample or a twin is refused (403 `not_a_real_account`), a training account is refused (403 `read_only`), but for the walk kit's tester, which sends only the kit's estimate at the kit's address (`kitDoorVerdict`, 403 `walkTesterOnly` elsewhere). The letterhead's sender comes from the same row. **Deploy after PR 2's push.** `src/lib/walk/sendEstimateDoor.run.test.ts`.
 
 > **v2.5681 — a first-send refusal names itself** (punch list #133): `mode: "send"` on a non-draft row answers 400 with a `code` — `already_sent` with the row's `sent_at` when `status = sent` (the Tell sheet then offers **Send the link again**, its resend), else `not_draft` with `estimate_status`, which the client words through `canResendEstimateLink`. **Redeploy required.**
 
@@ -5178,6 +5182,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ---
 
 ### quo-send
+
+> **v2.5729 — the walk tester's door** (punch list #142 PR 5): the caller's row is read with its flags instead of `.match(REAL_ACCOUNT)`; a sample or a twin is refused as before, a training account too, but for the walk kit's tester (`users.is_walk_tester`, v2.5727), which `kitDoorVerdict` (`gcKernels/lib/walk/kitDoor.ts`) lets through only while a kit exists and the text goes to one of the kit's two channels on the kit's contact (*The walk tester sends to the walk kit only.*, 403 `walkTesterOnly`); Job Mode refuses the tester. The office is unchanged and no kit row is read for it. **Deploy after PR 2's push** (the row read names the column). `src/lib/walk/quoSendDoor.run.test.ts`.
 
 **Purpose**: Messages, cut 5 (v2.5281): a text from the reply box's send window goes out through Quo from its box's number. `sendText` (`_shared/quoLines.ts`) is the path the webhook's HELP answer takes too:
 - **The box** (residential R6, v2.5469): the one their newest text on this number came to, else the one their kind of contact is for (`boxForReply`). While that box has no number of its own, the text goes from the company number and the line says so (`sendBox`). No caller picks the box yet.
