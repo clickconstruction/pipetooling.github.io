@@ -45,6 +45,7 @@ import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
+import { useSupplyMoveWindowNudge } from '../../hooks/useSupplyMoveWindowNudge'
 import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
@@ -522,6 +523,9 @@ export function DashboardPinnedQuickRow({
   // Supply-house job accounts (v2.3430): jobs that bought at a house expecting an account with none on record — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { gaps: jobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
+  // The move window (punch list #132, the owner's ask of 2026-10-21): the Accounts payable strip's numbers as one line — the office set, the tab's own gate.
+  const supplyMoveWindowEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { moveWindow: supplyMoveWindow } = useSupplyMoveWindowNudge(supplyMoveWindowEnabled)
   // The owner, 2026-10-06 (v2.4700): dev, assistant and controller see active vehicles with no insurance, registration or service on file.
   const vehicleRecordGapsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
   const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
@@ -615,6 +619,8 @@ export function DashboardPinnedQuickRow({
     capacityUnder,
     jobAccountGapsEnabled,
     jobAccountGaps,
+    supplyMoveWindowEnabled,
+    supplyMoveWindow,
     vehicleRecordGapsEnabled,
     vehicleRecordGaps,
     priceMatrixEnabled,
@@ -817,6 +823,9 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-missing') {
               navigate('/materials?tab=job-accounts&filter=no_account')
+            } else if (item.key === 'job-account-window') {
+              // The worked list on Accounts payable (v2.5723): the tab opens it from the param once its book is read.
+              navigate('/materials?tab=supply-houses&list=movable')
             } else if (item.key === 'vehicle-records-missing') {
               navigate('/people?tab=vehicles')
             } else if (item.key.startsWith('submittal-')) {

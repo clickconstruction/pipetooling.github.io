@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { NEEDS_YOU_RANK, buildNeedsYouItems, needsYouKind, rankNeedsYouItems, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
+import { NEEDS_YOU_RANK, buildNeedsYouItems, needsYouKind, rankNeedsYouItems, supplyMoveWindowSeverity, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
+import { SUPPLY_MOVE_WINDOW_CLOSE } from './ageState'
 import type { BankReturnedPayments } from './jobs/bankReturnedDeposits'
 import type { BulkHoursAlert } from './clock/bulkHoursAlert'
 
@@ -1042,6 +1043,59 @@ describe('job-account gap items', () => {
     const item = only.find((i) => i.key === 'job-account-missing')!
     expect(item.title).toBe('A job bought parts at a house with no job account')
     expect(item.detail).not.toContain('pairs')
+  })
+})
+
+describe('job-account-window (the move window’s Needs You line, punch list #132)', () => {
+  const TODAY = '2026-10-21'
+  const win: NonNullable<NeedsYouInputs['supplyMoveWindow']> = { count: 14, dollars: 7474.71, asked: 3, soonestDueYmd: '2026-10-25' }
+  const build = (over: Partial<typeof win>, today = TODAY) =>
+    buildNeedsYouItems(inputs({ supplyMoveWindowEnabled: true, supplyMoveWindow: { ...win, ...over }, todayYmd: today })).find((i) => i.key === 'job-account-window')
+
+  it('reads the strip’s four numbers as one line, amber while the soonest window closes within a week', () => {
+    const item = build({})!
+    expect(item.kicker).toBe('Job accounts')
+    expect(item.title).toBe('$7,474.71 on 14 current invoices is not on a job account yet')
+    expect(item.detail).toBe('A house moves a charge only while it is current. Soonest window closes Sun Oct 25, in 4 days. 3 asked, awaiting the house.')
+    expect(item.figure).toBe('14')
+    expect(item.actionLabel).toBe('Work the list')
+    expect(item.severity).toBe('amber')
+    expect(NEEDS_YOU_RANK['job-account-window']).toBe(40)
+  })
+
+  it('reads singular at one, drops the asked clause at zero, and is gray past a week', () => {
+    const item = build({ count: 1, dollars: 213.5, asked: 0, soonestDueYmd: '2026-11-05' })!
+    expect(item.title).toBe('$213.50 on one current invoice is not on a job account yet')
+    expect(item.detail).toBe('A house moves a charge only while it is current. Soonest window closes Thu Nov 5, in 15 days.')
+    expect(item.severity).toBe('gray')
+  })
+
+  it('turns red within three days, with today and tomorrow in words — the thresholds are the named ones', () => {
+    expect(SUPPLY_MOVE_WINDOW_CLOSE).toEqual({ redWithinDays: 3, amberWithinDays: 7 })
+    const today = build({ soonestDueYmd: '2026-10-21' })!
+    expect(today.severity).toBe('red')
+    expect(today.detail).toContain('Soonest window closes today, Wed Oct 21.')
+    const tomorrow = build({ soonestDueYmd: '2026-10-22' })!
+    expect(tomorrow.severity).toBe('red')
+    expect(tomorrow.detail).toContain('Soonest window closes tomorrow, Thu Oct 22.')
+    expect(build({ soonestDueYmd: '2026-10-24' })!.severity).toBe('red')
+    expect(build({ soonestDueYmd: '2026-10-24' })!.detail).toContain('Sat Oct 24, in 3 days.')
+    expect(build({ soonestDueYmd: '2026-10-25' })!.severity).toBe('amber')
+    expect(build({ soonestDueYmd: '2026-10-28' })!.severity).toBe('amber')
+    expect(build({ soonestDueYmd: '2026-10-29' })!.severity).toBe('gray')
+    expect(supplyMoveWindowSeverity(null)).toBe('gray')
+    // No date known (never from the RPC while count > 0): the sentence is left out, the line stays gray.
+    const undated = build({ soonestDueYmd: null })!
+    expect(undated.severity).toBe('gray')
+    expect(undated.detail).toBe('A house moves a charge only while it is current. 3 asked, awaiting the house.')
+  })
+
+  it('draws nothing at zero, when disabled, or while loading', () => {
+    const none = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs(over)).some((i) => i.key === 'job-account-window')
+    expect(none({ supplyMoveWindowEnabled: true, supplyMoveWindow: { ...win, count: 0, dollars: 0 } })).toBe(false)
+    expect(none({ supplyMoveWindowEnabled: false, supplyMoveWindow: win })).toBe(false)
+    expect(none({ supplyMoveWindowEnabled: true, supplyMoveWindow: null })).toBe(false)
+    expect(none({ supplyMoveWindowEnabled: true })).toBe(false)
   })
 })
 

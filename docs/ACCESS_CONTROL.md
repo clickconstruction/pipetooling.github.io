@@ -1572,7 +1572,7 @@ Owner decision 2026-09-11: only a dev releases; the office asks with a note. A w
 
 The strip's read is the RPC **`list_job_account_strip(uuid[])`** (v2.3424) — `SECURITY DEFINER` with the same gate inside (`can_read_job_activity(job, false)`), so the crew sees the houses that expect an account and each house's job-accounts rep without a direct `supply_houses` read; `authenticated` + `service_role` may execute, never `anon`. The field's ask writes a `dispatch_requests` row as themselves (`dispatch_requests_insert`: `from_user_id = auth.uid()`); closing it from the errand card is the inbox's existing closer set (dispatch group members and dev).
 
-The evidence rule (v2.3430) — `list_job_account_evidence_gaps()` / `count_job_account_evidence_gaps()`, the Needs You card, the Pipeline *No job account* chip and the Held for suppliers *Bought, no account* filter — is gated inside on `is_office_staff()` (dev, master_technician, assistant, controller); every other role gets the empty answer, and the RPCs are never executable by `anon`.
+The evidence rule (v2.3430) — `list_job_account_evidence_gaps()` / `count_job_account_evidence_gaps()`, the Needs You card, the Pipeline *No job account* chip and the Held for suppliers *Bought, no account* filter — is gated inside on `is_office_staff()` (dev, master_technician, assistant, controller); every other role gets the empty answer, and the RPCs are never executable by `anon`. The move window's Needs You line (v2.5723) reads `count_supply_house_move_window()` under the same gate — the zero row for every other role.
 
 ## Job accounts from the bid (v2.3451)
 

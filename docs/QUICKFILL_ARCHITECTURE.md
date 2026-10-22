@@ -9,7 +9,7 @@ covers:
   - src/components/quickfill/QuickfillScheduleSection.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-06
+last_updated: 2026-10-21
 ---
 
 > **Line numbers are exact as of `a05cef4c4`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map` before trusting a range.
@@ -153,7 +153,7 @@ Precedent: `markStampInitial`/`markStampTime` in [`lib/quickfillMarkStamp.ts`](.
 
 - **`warnings` 979–1015:** `QuickfillMetricReporter` (reports the stale-tally **transaction** count) + `DashboardTallyStaleStaffBanner` (opens `DashboardStaleTallyStaffFollowUpModal` via `warningsModalOpen` 496) + the modal (`onDataChanged` → `refetchStaleTallyStaffFollowUp`). Data: `useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)` 491–495. The AR-bank-unallocated banner and its synthetic `ar-bank-unallocated` metric left in v2.2189 (now a Jobs Cleanup card).
 - **Nudge stations (v2.2347)** reuse the Dashboard cards: `lost-bid-reasons` 1221–1247 (`useLostBidNudge(warningsSectionEligible)` 701 → `DashboardLostBidsMissingReasonBanner`, call mode → `/bids?tab=why-we-lost`); `gc-weekly-review` 1248–1270 (`DashboardGcReviewWeeklyBanner onCount={setGcReviewRemaining}`); `job-followups` 1271–1293 (`DashboardJobFollowupsBanner onCount={setJobFollowupsCount}`). Wrappers always render for eligible roles; the cards self-hide at zero.
-- **`needs-you` 1294–1323 (v2.2350, journey-map #40):** `QuickfillNeedsYouSection onCount={setNeedsYouSectionCount}` + `dispatchAged` (memo 466–472, `summarizeOpenDispatchAging(dispatchRequests, DISPATCH_REQUESTS_MIN_AGE_DAYS)` from the inbox rows the page already holds) + `onOpenDispatchInbox` (`openSectionNow('dispatch-inbox')` + scroll).
+- **`needs-you` 1294–1323 (v2.2350, journey-map #40):** `QuickfillNeedsYouSection onCount={setNeedsYouSectionCount}` + `dispatchAged` (memo 466–472, `summarizeOpenDispatchAging(dispatchRequests, DISPATCH_REQUESTS_MIN_AGE_DAYS)` from the inbox rows the page already holds) + `onOpenDispatchInbox` (`openSectionNow('dispatch-inbox')` + scroll). Since v2.5723 the station also carries the move window's line, `job-account-window` (`useSupplyMoveWindowNudge`, the office set), whose **Work the list** lands on `/materials?tab=supply-houses&list=movable`.
 - **Page-held counts:** `jobFollowupsCount` 702, `gcReviewRemaining` 703, `needsYouSectionCount` 704 — written only through the children's `onCount` props, read only by the sibling reporter.
 - **Extraction:** low risk → `QuickfillWarningsSection` (owns `warningsModalOpen`; the stale-tally counts + `refetch` come in as props) and a `QuickfillNudgeStation` per card owning its count state + reporter. Moving a page-level hook (`useStaleTallyStaffFollowUp`, `useLostBidNudge`, `useUnpricedFixturesCount`) into a body changes **when it fetches** (bodies unmount on a collapsed desktop strip) — keep the hooks at page level unless that change is intended.
 

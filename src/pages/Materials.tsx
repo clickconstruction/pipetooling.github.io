@@ -66,6 +66,8 @@ export default function Materials() {
   >('parts-book')
   /** Set when Held for suppliers sends the user to a specific house on the Supply Houses tab. */
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
+  /** The Needs You line's door (v2.5723): `?list=movable` opens the Supply houses tab's worked list — read once, then dropped from the URL. */
+  const [supplyHousesListToOpen, setSupplyHousesListToOpen] = useState<'movable' | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -509,6 +511,18 @@ export default function Materials() {
   }, [activeTab, selectedServiceTypeId])
 
 
+
+  // The move window's worked list (v2.5723): the Needs You line on the Dashboard and Quickfill
+  // lands on /materials?tab=supply-houses&list=movable; the tab opens the modal once its book is read.
+  useEffect(() => {
+    if (searchParams.get('list') !== 'movable') return
+    setSupplyHousesListToOpen('movable')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('list')
+      return next
+    }, { replace: true })
+  }, [searchParams])
 
   // Open a specific PO when navigating from Jobs Parts, Bids, Quickfill (state or ?po= URL param)
   useEffect(() => {
@@ -2000,6 +2014,8 @@ export default function Materials() {
           onNavigateToPO={handleNavigateToPOFromSupplyHouses}
           autoOpenHouseId={supplyHouseToAutoOpen}
           onAutoOpenHouseHandled={() => setSupplyHouseToAutoOpen(null)}
+          openList={supplyHousesListToOpen}
+          onOpenListHandled={() => setSupplyHousesListToOpen(null)}
         />
       )}
 
