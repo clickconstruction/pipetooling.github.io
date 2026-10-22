@@ -5,6 +5,9 @@ import { keepTextMedia } from '../_shared/quoMedia.ts'
 import { verifySignature, webhookAnswer, type WebhookOutcome } from '../_shared/gcKernels/lib/quo/webhook.ts'
 import { boxOfInbound, sendBox, type BoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { loadBoxes, loadSeats, notePauseRow, placeNumber, quoCompany, sendText, writeLine, writeStops, type Placed } from '../_shared/quoLines.ts'
+import { isOwnNumber, ownChannels, type OwnChannels } from '../_shared/gcKernels/lib/messages/ownChannels.ts'
+import { numberPlan, type WalkKit } from '../_shared/gcKernels/lib/walk/kit.ts'
+import { loadWalkKit } from '../_shared/walkKit.ts'
 
 /**
  * quo-webhook — Messages, cut 5: Quo's calls and texts land in a person's thread. Quo posts every event of our numbers
@@ -19,8 +22,11 @@ import { loadBoxes, loadSeats, notePauseRow, placeNumber, quoCompany, sendText, 
  * 4. The box it came to (R6): our number's Quo id (`phoneNumberId`) against Settings' boxes (`messages_boxes_v1`, with
  *    QUO_PHONE_NUMBER_ID as the team box's until the row has it), else the team box, today's one number.
  * 5. For each number the event is about: quo_place_number (the contact, made when nobody has the number) with its STOP
- *    to that box, then planQuoEvent merged and written through quo_write_line over the revision read, stamped with the
- *    box, then the number's STOP or START for that box alone (`opted_out_by_box`; both boxes when our number is not
+ *    to that box. A number of our own (either box's, `ownChannels`) is placed only while the walk kit's contact carries
+ *    it (punch list #142 PR 1, `numberPlan`): a text between two of our own numbers otherwise makes a Who is this? row
+ *    for each. Not carried, a sent event skips that recipient and a text or a call in is ignored with its reason. Then
+ *    planQuoEvent merged and written through quo_write_line over the revision read, stamped with the box, then the
+ *    number's STOP or START for that box alone (`opted_out_by_box`; both boxes when our number is not
  *    placed), a team event, and the app's own answer through quo-send's path from the same box's number (HELP, or the
  *    one confirmation of a stop Quo did not catch), the answer last. A text of ours that reached a phone ends a pause
  *    for the balance (`notePauseRow`). A failed or undelivered one never pauses: its code is the carrier's, and none
@@ -85,29 +91,48 @@ async function handle(admin: any, reading: QuoReading): Promise<void> {
   const boxes = await loadBoxes(admin)
   // The box it came to: null when our number is not one Settings or the secret names.
   const to = boxOfInbound({ toNumberId: reading.ourNumberId }, boxes)
-  const boxed: Boxed = { to, box: to ?? 'team', boxes }
+  const boxed: Boxed = { to, box: to ?? 'team', boxes, own: ownChannels(boxes, null), kit: await loadWalkKit(admin) }
   if (reading.kind === 'sent') {
-    // A text of ours: one line a person it went to.
+    // A text of ours: one line a person it went to. One of our own numbers is a person only while the kit carries it.
     let placedAny = false
+    let skipped = 0
     for (const number of reading.recipients) {
+      if (numberPlan(number, boxed.own, boxed.kit) === 'skip') {
+        skipped += 1
+        continue
+      }
       const placed = await placeNumber(admin, number, boxed.box)
       if (!placed) continue
+      if (!onTheKit(placed, number, boxed)) {
+        console.log(`[quo-webhook] our own number ${number} was placed on ${placed.contactId}, not the walk kit's contact: skipped`)
+        skipped += 1
+        continue
+      }
       placedAny = true
       await planAndWrite(admin, reading, placed, { users, company, recipient: number }, sentKey(reading, number), boxed)
     }
-    if (!placedAny) throw new Ignored('none of its numbers is a phone number')
+    if (!placedAny) throw new Ignored(skipped > 0 && skipped === reading.recipients.length ? 'our own numbers' : 'none of its numbers is a phone number')
     if (reading.outcome === 'delivered') await notePauseRow(admin, { kind: 'go', at: reading.at })
     return
   }
-  const placed = await placeEvent(admin, reading, boxed.box)
+  const placed = await placeEvent(admin, reading, boxed)
   await planAndWrite(admin, reading, placed, { users, company }, reading.quoId, boxed)
 }
 
-/** The box an event came to (`to`, null when not placed), the box its line takes, and both boxes' numbers. */
+/** The box an event came to (`to`, null when not placed), the box its line takes, both boxes' numbers, and the walk kit. */
 interface Boxed {
   to: Mailbox | null
   box: Mailbox
   boxes: BoxSettings
+  /** Our own numbers, both boxes' (punch list #142). */
+  own: OwnChannels
+  /** The walk kit while one is set up, whose contact alone may carry one of our own numbers. */
+  kit: WalkKit | null
+}
+
+/** Whether a placed number is where it may be: anywhere for a number that is not ours; the kit's contact for one of ours. */
+function onTheKit(placed: Placed, number: string, boxed: Boxed): boolean {
+  return !isOwnNumber(boxed.own, number) || placed.contactId === boxed.kit?.contactId
 }
 
 /**
@@ -115,9 +140,14 @@ interface Boxed {
  * call already wrote; with no line yet it fails, and Quo's retry comes after the call's own event.
  */
 // deno-lint-ignore no-explicit-any
-async function placeEvent(admin: any, reading: Exclude<QuoReading, { kind: 'sent' }>, box: Mailbox): Promise<Placed> {
+async function placeEvent(admin: any, reading: Exclude<QuoReading, { kind: 'sent' }>, boxed: Boxed): Promise<Placed> {
+  const box = boxed.box
   if (reading.external) {
+    // One of our own numbers writing in (a text from the bids number to the company number) is a person only while
+    // the walk kit carries it (punch list #142); otherwise the event is Quo's mirror of our own send, and is ignored.
+    if (numberPlan(reading.external, boxed.own, boxed.kit) === 'skip') throw new Ignored('our own number, the kit does not carry it')
     const placed = await placeNumber(admin, reading.external, box)
+    if (placed && !onTheKit(placed, reading.external, boxed)) throw new Ignored(`our own number was placed on ${placed.contactId}, not the walk kit's contact`)
     if (placed) return placed
     if (reading.kind === 'text') throw new Ignored('the sender is not a phone number')
   }

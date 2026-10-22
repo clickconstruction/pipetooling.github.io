@@ -1410,6 +1410,8 @@ The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildG
 
 ### gmail-sync
 
+> **v2.5726 — our own address is a person only while the walk kit carries it** (punch list #142 PR 1): `loadTeam` reads `app_settings` `walk_kit_v1` once per run ([`_shared/walkKit.ts`](../supabase/functions/_shared/walkKit.ts), [`src/lib/walk/kit.ts`](../src/lib/walk/kit.ts)) and the own set, both boxes' addresses and `EMAIL_FROM`'s ([`src/lib/messages/ownChannels.ts`](../src/lib/messages/ownChannels.ts)); `isOurs` and `isTheBox` answer false for an own address the kit's contact carries (the bids box's, while a walk is set up), so `leftOut` takes mail from it and `emailParty` reads it as a person writing in. `takeOne` passes such a mail over with a log line and no label when `email_place_address` lands it anywhere but the kit's contact. With no kit nothing changes. **Redeploy** once merged.
+
 **Purpose**: Messages, cut 6 (email in), the bids@ reader (v2.5354; `MESSAGES_BUILD_PLAN.md` → Cut 6 and the mock-up `email-in-mockups.html` on branch `spike/gc-mode`). Every email that reaches bids@ lands in its sender's thread. It reads Gmail as the bids@ mailbox under the service account's domain-wide delegation, takes each email once by its Gmail id (`email_write_line`), and marks it with the label **In ClickTooling**. Nothing in Gmail is deleted, archived, moved or marked read.
 
 **Endpoint**: `POST /functions/v1/gmail-sync` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret` only.
@@ -5124,6 +5126,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ---
 
 ### quo-webhook
+
+> **v2.5726 — our own number is a person only while the walk kit carries it** (punch list #142 PR 1): `handle` reads `walk_kit_v1` and both boxes' numbers (`ownChannels`), and `numberPlan` ([`src/lib/walk/kit.ts`](../src/lib/walk/kit.ts)) says *place* or *skip* for each number an event is about: a number that is not ours is placed as always; one of ours is placed only when the kit's contact carries it. A sent event skips a recipient of our own the kit does not carry (every recipient skipped answers *ignored: our own numbers*), and a text or a call in from one is ignored (*our own number, the kit does not carry it*); placed anywhere but the kit's contact, it is ignored and logged. So a text between two of our own numbers never makes a Who is this? row, which before this each of its two events would have. `src/lib/quo/walkKitWebhook.run.test.ts` runs the handler on the four events of a walk's text legs. **Redeploy** once merged.
 
 **Purpose**: Messages, cut 5 (v2.5281): every event of our numbers on Quo lands in a person's thread. The rules are the kernels in `src/lib/quo/` (`webhook.ts`, `events.ts`, `send.ts`, `rows.ts`, copied to `_shared/gcKernels/`), and the function reads, writes and calls.
 - **Calls**: completed, missed, voicemail, recording, transcript and summary merge into one line per call, keyed by `messages.quo_id`. Quo promises no order, so every order ends on the same line. An answered call to or from a person closes every open call task to them (`call_tasks_close_by_call`, v2.5596, Follow up's We owe them) with the call's line. A text that is the one word EMAIL or TEXT (v2.5597, `PREFER_WORDS`) sets `contacts.prefers` as the service role (`prefers_how` `reply`), with a gray line and no answer.

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { emailFileRows, emailLine, emailParty, fileKeep, KEEP_FILE_BYTES, RFC_MESSAGE_ID_MAX, rfcMessageId, SKIP_INLINE_PICTURE_BYTES } from './emailLine'
 import type { Forwarded } from './forwarded'
 import type { EmailIn } from './gmailMessage'
+import { isOwnAddress, ownChannels } from '../messages/ownChannels'
+import { kitCarries, type WalkKit } from '../walk/kit'
 
 const isOurs = (a: string) => a.toLowerCase().endsWith('@clickconstruction.example')
 const isTheBox = (a: string) => a.toLowerCase() === 'bids@clickconstruction.example'
@@ -156,5 +158,40 @@ describe('emailFileRows', () => {
       { kind: 'file', name: 'full-set.zip', mime: 'application/zip', size: 31_000_000, partId: '3', attachmentId: 'a3', keep: 'tooBig', paper: null },
       { kind: 'link', name: 'WeTransfer link', url: 'https://we.tl/t-AbC123', host: 'wetransfer' },
     ])
+  })
+})
+
+describe("emailParty under the walk kit's rule (punch list #142 PR 1)", () => {
+  // As gmail-sync's loadTeam composes it: an own address the kit carries is neither ours nor the box.
+  const own = ownChannels(null, 'app@clickconstruction.example', ['bids@clickconstruction.example'])
+  const kit: WalkKit = {
+    customerId: 'cu-walk',
+    contactId: 'c-walk',
+    emailChannelId: 'ch-walk-email',
+    phoneChannelId: null,
+    estimateId: null,
+    email: 'bids@clickconstruction.example',
+    phone: null,
+    testerId: null,
+    sharedPhone: false,
+    madeAt: null,
+  }
+  const withKit = (k: WalkKit | null) => {
+    const carried = (a: string) => isOwnAddress(own, a) && kitCarries(k, 'email', a)
+    return { isOurs: (a: string) => !carried(a) && isOurs(a), isTheBox: (a: string) => !carried(a) && isOwnAddress(own, a) }
+  }
+  const app = { name: 'ClickTooling', address: 'app@clickconstruction.example' }
+  const team = { name: null, address: 'team@clickconstruction.example' }
+
+  it('reads a reply from bids@ to the team box as bids@ writing in, while the kit carries it', () => {
+    expect(emailParty(email({ from: bids, to: [team] }), null, withKit(kit))).toEqual({ address: bids, direction: 'in' })
+  })
+
+  it('reads a mail from bids@ as nobody with no kit, as before', () => {
+    expect(emailParty(email({ from: bids, to: [team] }), null, withKit(null))).toBeNull()
+  })
+
+  it("reads the app's own estimate email to bids@ as nobody while the kit carries bids@: the sent copy is already on the thread", () => {
+    expect(emailParty(email({ from: app, to: [bids] }), null, withKit(kit))).toBeNull()
   })
 })

@@ -122,6 +122,10 @@ export const ENTRIES = {
   },
   'lib/flows/nudgeDispatch.ts': { values: ['planNudgeRun'], types: ['NudgeOffer', 'NudgeRun', 'NudgeText'] },
   'lib/flows/nudgeRunLog.ts': { values: ['runHourNow', 'runSummary'], types: ['RunRefused', 'RunSummary'] },
+  // The walk kit (punch list #142 PR 1): our own addresses and numbers, and the kit whose contact may carry one. Both
+  // readers (gmail-sync, quo-webhook) take an own address or number as a person only when the kit carries it.
+  'lib/messages/ownChannels.ts': { values: ['isOwnAddress', 'isOwnNumber', 'ownChannels'], types: ['OwnChannels'] },
+  'lib/walk/kit.ts': { values: ['WALK_KIT_KEY', 'channelKey', 'kitCarries', 'numberPlan', 'parseWalkKit'], types: ['WalkKit'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
