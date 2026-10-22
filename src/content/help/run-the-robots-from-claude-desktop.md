@@ -67,6 +67,16 @@ On a Mac the setup above already covers chats. With no Mac, on claude.ai or the 
 The connector holds one key, and a key is one robot's seat. A second robot — the pricing twin — is a second connector with its own key and its own kickoff. Revoking the key's label on the Digital twins page cuts that connector off wherever it was added.
 :::
 
+## See which robot is alive
+
+The Console's first card is **Rounds**. It has one row per robot key. A key is one robot on one Mac. Each row answers four questions in order. Is it alive. When did it last check in. What is it on now. What did it finish recently.
+
+- **Alive** means it checked in within seven minutes. **Quiet** means seven to fifteen minutes. **Asleep** means over fifteen, three rounds missed. The word sits beside a dot, so you never read colour alone.
+- **Now** names the bid it holds and the step it is on. You click it to open the bid.
+- **Recently** lists the last five things it finished. Each line opens the bid, the Pricing tab or Submittals.
+
+You press {{button:gray|Stop the rounds}} to make that Mac finish the bid in hand and claim no more. The row reads *Stopping after* that bid until the robot says it stopped. You press {{button:gray|Start again}} and the next round comes within five minutes. The stop never touches a session you start by hand.
+
 ## Know when there is work
 
 You do not have to check the Console to know. Bids may want a shadow, or price matrices may be queued. A price matrix is a request for the robot to compare the supply houses' quotes on a bid. Then your Dashboard's **Needs you** card carries one line: {{chip:blue|Robots}} *Robots have work waiting · 4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours)*. The line names the first of each. It turns {{chip:yellow|amber}} only when something is stuck. That is a matrix the robot went quiet on for over an hour. Or it is a bid request older than a week. {{button:blue|Open the Console}} lands here. You snooze it for a day or dismiss it until the count rises. It disappears on its own when the robots are caught up.
