@@ -242,9 +242,9 @@ contact).
 | 6 | Answer all | v2.5716 | #5964 | merged 2026-10-21 |
 | 7 | Log a call (+ migration `20261021010000_log_call`, applied on prod 2026-10-21; types PR #5965 merged) | v2.5710 | #5958 | merged 2026-10-21 |
 | 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
-| 9 | One front door; the guides | v2.5717 | #5966 | armed 2026-10-21 |
-| — | Live test (BUILD_PLAN § 3) | | | next, once PR 9 is on main: the ZZ customer is the team inbox and the owner's cell; the session sets up and reads, the owner presses Send |
-| — | Follow-up: **Reminders the app offers** card on Phone and texts (the owner's ask on the switch-on: the Offers setting with the other Messages switches; the switch card's door lands on it) | v2.5720 | #5970 | armed 2026-10-21 |
+| 9 | One front door; the guides | v2.5717 | #5966 | merged 2026-10-21 |
+| — | Live test (BUILD_PLAN § 3) | | | under way 2026-10-21: the ZZ customer is the existing **Robert Test** (the owner's cell and his own address; a second contact on his cell would split the thread). The text loop is proven: the owner's text from the thread went ✓ delivered and his reply from his cell landed in New within two minutes. The email leg waits on v2.5722 (#5977): the reader left out mail from any staff address, the owner's included. Every press goes in the owner's own browser: the Claude app's browser pane is signed in as the sample assistant, which cannot text |
+| — | Follow-up: **Reminders the app offers** card on Phone and texts (the owner's ask on the switch-on: the Offers setting with the other Messages switches; the switch card's door lands on it) | v2.5720 | #5970 | merged 2026-10-21 |
 
 Keep this table true after each PR (version, PR number, armed / merged / live). The session that
 proposed it (2026-10-21) built nothing; the owner chose another session to build the train.
