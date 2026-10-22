@@ -47,7 +47,7 @@ describe('SwitchOnCard (punch list #140 PR 2)', () => {
     const rows = [...document.querySelectorAll('[data-switch-row]')].map((li) => `${li.getAttribute('data-switch-row')}:${li.getAttribute('data-switch-state')}`)
     expect(rows).toEqual(['texts:on', 'reader:off', 'assign:nobody', 'teamBox:not_set', 'replyPush:on', 'seats:nobody', 'reminders:off', 'hours:on'])
     expect(open.getAllByRole('link').map((a) => a.textContent)).toEqual(['Turn it on ›', 'Pick the seats ›', 'Set the address ›', 'Pick the seats ›', 'Offer them ›'])
-    expect(open.getByRole('link', { name: 'Offer them ›' }).getAttribute('href')).toBe('/settings?tab=settings-flows&kind=residential')
+    expect(open.getByRole('link', { name: 'Offer them ›' }).getAttribute('href')).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-reminders')
     expect(open.getByRole('link', { name: 'Set the address ›' }).getAttribute('href')).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-boxes')
     expect(open.getByText(SWITCH_WORDS.footer)).toBeTruthy()
   })

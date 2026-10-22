@@ -3,7 +3,9 @@
  * that reads the newest morning run. The switch is `app_settings` `messages_nudge_app_sends_v1`,
  * `{"<kind>": {"<step id>": true}}`, read the way the run reads it (`appSendsFrom`); only the owner and a dev change it
  * (`is_master_or_dev()`). The run's summary is `messages_nudge_last_run_v1`, which `messages-nudge-dispatch` writes;
- * it is read here without trusting its shape, since the run that writes it lands after this screen. Pure.
+ * it is read here without trusting its shape, since the run that writes it lands after this screen. Pure. Since v2.5720
+ * Settings → Phone and texts' Reminders the app offers card (`messages/remindersCard.ts`) draws the same control over
+ * the same switch, through the same io.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { lineWhen } from '../messages/thread'

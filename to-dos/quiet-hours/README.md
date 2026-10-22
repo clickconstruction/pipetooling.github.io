@@ -2,7 +2,7 @@
 name: "Quiet hours: a 24/7 switch on Office hours, and each person's own hours for pushes"
 number: 141
 group: ready
-status: proposed 2026-10-21, revised the same day after "is this the best we can do?"; nothing built; waits on the owner's yes
+status: the owner's yes 2026-10-21; PR 1 (v2.5721, the 24/7 switch) merged as #5972 the same day, the three functions redeployed; PRs 2 to 5 not started
 summary: >
   Two related asks. One: the Office hours card gets a switch, The office is open around the clock,
   that saves the hours as always open, hides the day and time fields while it is on, and tells
@@ -12,9 +12,9 @@ summary: >
   hours. A push outside a person's hours is held for them, and a customer's reply is handed to
   the office at once, so no customer waits on a sleeping phone. The company's hours gate what
   customers see. A person's hours gate only what reaches that person.
-next: The owner's yes, then PR 1 goes. No call is left open; the weekend question became a day toggle.
+next: The owner presses the switch on Settings → Phone and texts → Office hours, then PR 2. No call is left open; the weekend question became a day toggle.
 size: M as a train of five (S S S S S); one migration, one mirrored kernel, three function redeploys
-blocker: the owner's yes
+blocker: none; PR 2 waits on nothing but a session
 ver: proposed
 opinion: build — the 24/7 switch is an afternoon and fixes a real lie on the card today; the person's hours are the first per-person control over the phone the app has ever had, reuse the office card's kernel whole, and the hand-on rule keeps them from ever costing a customer an answer.
 mockup: to-dos/quiet-hours/mockup.html

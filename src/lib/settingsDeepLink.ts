@@ -15,6 +15,8 @@
  * - /settings#settings-contract-<id>   (one card on Contracts & terms; What customers see links here)
  * - /settings?tab=settings-phone-texts#settings-phone-texts-hours (the Office hours card, punch list #140 PR 1;
  *                                       PR 2's switch card on Messages lands on it)
+ * - /settings?tab=settings-phone-texts#settings-phone-texts-reminders (the Reminders the app offers card, v2.5720;
+ *                                       the switch card's Reminders door lands on it)
  *
  * `?tab=` values are settings tab/group ids (e.g. `settings-data`). Hashes are
  * either a section anchor inside a tab (mapped below) or a tab id themselves.
@@ -45,6 +47,7 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-phone-texts-quo-seats': 'settings-phone-texts',
   'settings-phone-texts-quo': 'settings-phone-texts',
   'settings-phone-texts-hours': 'settings-phone-texts',
+  'settings-phone-texts-reminders': 'settings-phone-texts',
 }
 
 /** `#settings-contract-<entry id>`: one card on Contracts & terms (the prefix the catalog's anchors carry). */
