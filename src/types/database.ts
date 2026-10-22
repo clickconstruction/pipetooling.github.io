@@ -36879,6 +36879,12 @@ export type Database = {
           stopped_at: string
         }[]
       }
+      quo_secret_get: { Args: never; Returns: string }
+      quo_secret_set: {
+        Args: { p_saved_by?: string; p_value: string }
+        Returns: boolean
+      }
+      quo_secret_status: { Args: never; Returns: Json }
       quo_webhook_claim: { Args: { p_id: string }; Returns: boolean }
       quo_webhook_ids_forget: { Args: { p_keep?: string }; Returns: number }
       quo_webhook_release: { Args: { p_id: string }; Returns: boolean }
