@@ -242,8 +242,8 @@ contact).
 | 6 | Answer all | v2.5716 | #5964 | merged 2026-10-21 |
 | 7 | Log a call (+ migration `20261021010000_log_call`, applied on prod 2026-10-21; types PR #5965 merged) | v2.5710 | #5958 | merged 2026-10-21 |
 | 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
-| 9 | One front door; the guides | v2.5717 | #5966 | armed 2026-10-21 |
-| — | Live test (BUILD_PLAN § 3) | | | next, once PR 9 is on main: the ZZ customer is the team inbox and the owner's cell; the session sets up and reads, the owner presses Send |
+| 9 | One front door; the guides | v2.5717 | #5966 | merged 2026-10-21 |
+| — | Live test (BUILD_PLAN § 3) | | | next, once the owner has pasted the Quo key into the Quo connection card (v2.5718) and picked the seats: the ZZ customer is the team inbox and the owner's cell; the session sets up and reads, the owner presses Send |
 
 Keep this table true after each PR (version, PR number, armed / merged / live). The session that
 proposed it (2026-10-21) built nothing; the owner chose another session to build the train.
