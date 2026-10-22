@@ -546,6 +546,19 @@ const TOOLS = [
     },
   },
   {
+    name: 'put_plan_text',
+    description:
+      "STG-2's second write (v1.6.0, punch list #142): the plan set's text layer, one entry per page — page number, the sheet number and title from the title block, and the page's text (`pdftotext -layout` on each page file get_plan_pages handed you, or on the whole set). It lands under the HUMAN bid your shell is paired to (the shell itself for a backtest), so the estimator's Plans panel can search the set at once and the robot's read beside it; nothing here is a count or a price. Send every page in one call (a page with no text layer sends text '' so the panel can say so). Idempotent per page.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "YOUR shell (e.g. 'b2041' or uuid)" },
+        pages: { type: 'array', description: 'One per page, in order', items: { type: 'object', properties: { page: { type: 'integer' }, sheet_no: { type: 'string' }, title: { type: 'string' }, text: { type: 'string' } }, required: ['page'] } },
+      },
+      required: ['bid', 'pages'],
+    },
+  },
+  {
     name: 'seed_audit_questions',
     description:
       "Seed your open questions onto the bid's audit card (v2.2881) — the bid_audit_notes insert that agent environments kept blocking client-side. Questions land as kind='question' with your authorship; anchor every one you can (sheet_ref + one-line context — an unanchored question makes the auditor hunt). Plain trade words, one ask each, never asking the auditor to grade your number. Finds the bid's audit row (ct_finish_takeoff opens it) or opens one if missing.",
@@ -3028,6 +3041,46 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({ ok: true, bid: `b${bid.bid_number}`, version, next: 'get_plan_brief now reads this substrate; set-class triage per the placement guide, then the takeoff.' }, null, 2))
     }
+    case 'put_plan_text': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const pagesIn = Array.isArray(args.pages) ? (args.pages as Array<Record<string, unknown>>) : null
+      if (!ref || !pagesIn || pagesIn.length === 0) return textContent('put_plan_text needs bid + pages (one per page: page, sheet_no, title, text)', true)
+      if (pagesIn.length > 400) return textContent(`put_plan_text takes at most 400 pages (got ${pagesIn.length})`, true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, created_by, estimator_id, twin_source_bid_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: shell } = await bq.maybeSingle()
+      if (!shell) return textContent(`No bid found for "${ref}"`, true)
+      if (shell.created_by !== twin.twinUserId && shell.estimator_id !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — page text lands only through your own shell.`, true)
+      }
+      // The human bid the shell is paired to carries the text (the Plans panel opens on it); a backtest shell keeps its own.
+      const targetBidId = (shell as { twin_source_bid_id?: string | null }).twin_source_bid_id ?? shell.id
+      const rows = pagesIn
+        .map((p) => ({
+          bid_id: targetBidId,
+          page: Number(p.page),
+          sheet_no: typeof p.sheet_no === 'string' ? p.sheet_no.trim().slice(0, 40) || null : null,
+          title: typeof p.title === 'string' ? p.title.trim().slice(0, 200) || null : null,
+          text: typeof p.text === 'string' ? p.text.slice(0, 200_000) : '',
+          has_text: typeof p.text === 'string' && p.text.trim().length > 0,
+          source: 'round',
+          created_by: twin.twinUserId,
+        }))
+        .filter((r) => Number.isInteger(r.page) && r.page > 0)
+      if (rows.length === 0) return textContent('put_plan_text: no page had a positive page number', true)
+      const { error } = await admin.from('bids_plan_pages').upsert(rows, { onConflict: 'bid_id,page' })
+      if (error) return textContent(`Page text not saved: ${error.message}`, true)
+      const withText = rows.filter((r) => r.has_text).length
+      await admin.from('bids_submission_entries').insert({
+        bid_id: shell.id,
+        notes: `[pipeline STG-2] page text for ${rows.length} page${rows.length === 1 ? '' : 's'} (${withText} with a text layer) via twin-mcp put_plan_text — the Plans panel searches it.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({ ok: true, bid: `b${shell.bid_number}`, pages: rows.length, with_text: withText, landed_on: targetBidId === shell.id ? 'this shell' : 'the human bid this shell shadows' }))
+    }
     case 'seed_audit_questions': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -3493,7 +3546,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.5.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.6.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

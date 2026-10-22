@@ -70,6 +70,7 @@ import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTa
 import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
 import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
 import { RobotCheckedInLine } from '../components/bids/RobotCheckedInLine'
+import { BidPlansButton, BidPlansPanel } from '../components/bids/BidPlansPanel'
 
 /** The lenses under the one 🤖 Robots tab (v2.2527); `robot-shadows` is a redirect alias, `robot-queue` / `robot-console` are dev-only. */
 import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabKey } from '../lib/bids/bidsTabAccess'
@@ -325,6 +326,8 @@ export default function Bids() {
 
   // Lien Release tab (selection stays in parent for cross-tab sync via setSharedBid; form/search/collapse state lives in BidLienReleaseTab)
   const [selectedBidForLienRelease, setSelectedBidForLienRelease] = useState<BidWithBuilder | null>(null)
+  // Robot rounds PR 6 (v2.5736, punch list #142): the Plans panel, one press from every bid tab.
+  const [plansPanelOpen, setPlansPanelOpen] = useState(false)
 
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
@@ -499,6 +502,21 @@ export default function Bids() {
 
   // Pricing tab
   const [selectedBidForPricing, setSelectedBidForPricing] = useState<BidWithBuilder | null>(null)
+  // Robot rounds PR 6 (v2.5736): the bid the active detail tab holds — the Plans panel opens on it.
+  const plansBid: BidWithBuilder | null =
+    activeTab === 'counts' || activeTab === 'takeoffs' || activeTab === 'labor'
+      ? (selectedBidForCounts ?? selectedBidForPricing)
+      : activeTab === 'pricing' || activeTab === 'cover-letter' || activeTab === 'submittals'
+        ? (selectedBidForPricing ?? selectedBidForCounts)
+        : activeTab === 'submission-followup'
+          ? selectedBidForSubmission
+          : activeTab === 'rfi'
+            ? selectedBidForRfi
+            : activeTab === 'change-order'
+              ? selectedBidForChangeOrder
+              : activeTab === 'lien-release'
+                ? selectedBidForLienRelease
+                : null
 
   // v2.2400 (Wendi): the Margin breakdown's jump chips hand the destination tab a row to
   // land on — the tab scrolls to it and flashes it (Jobs → Pipeline idiom), then clears this.
@@ -1705,8 +1723,10 @@ export default function Bids() {
       </div>
 
       {/* Bid-detail tabs (v2.1331): one row always — centered while they fit,
-          horizontally scrollable with edge fades when they don't. */}
-      <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '2rem' }}>
+          horizontally scrollable with edge fades when they don't. v2.5736: the Plans
+          button at the row's end opens the Plans panel on the bid the tab holds. */}
+      <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
         <ScrollableTabStrip activeKey={activeTab} ariaLabel="Bid detail tabs">
         {bidsTabOpenFor('counts', myRole) && (
         <>
@@ -1794,7 +1814,16 @@ export default function Bids() {
           Lien Release
         </button>
         </ScrollableTabStrip>
+        </div>
+        <BidPlansButton bid={plansBid} onOpen={() => setPlansPanelOpen(true)} />
       </div>
+      <BidPlansPanel
+        bid={plansBid}
+        shellBidId={plansBid ? (twinBidBySourceId.get(plansBid.id)?.id ?? null) : null}
+        canWrite={(['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as readonly string[]).includes(myRole ?? '')}
+        open={plansPanelOpen && !!plansBid}
+        onClose={() => setPlansPanelOpen(false)}
+      />
 
       <WorkingBoardArchiveConfirmDialog
         bidId={workingBoardArchiveConfirmBidId}
