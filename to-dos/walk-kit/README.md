@@ -2,7 +2,7 @@
 name: "Walk kit — a session runs the Messages loop on prod end to end, on the company's own inbox and number, reads what landed where, and cleans up"
 number: 142
 group: ready
-status: planned 2026-10-21 with the owner's three answers taken; nothing built
+status: building 2026-10-22; PRs 0 (#5981), 1 (#5983), 2 (#5984), 4 (#5985) and 6 (#5986) merged, both migrations applied and 36 functions redeployed; the types PR (#5997), PR 5 (#5998), PR 7 (#5999) and PR 3 (#6001) open and armed or stacked; PR 8 (the driver) in hand; no walk run yet
 summary: >
   Today the live walk of Messages needs the owner's press on every send, sample accounts cannot
   text, and the readers leave out (or make a Who is this? of) the company's own addresses and
@@ -12,9 +12,9 @@ summary: >
   text from the bids number to the company number, sends STOP and START, then reads the thread,
   the queues, Went out and the 7-day strip through the app's own code, prints what landed where
   with times, and deletes its rows. One command, run by any session.
-next: PR 0 (dev-login reads every page of accounts), which has no dependency and must ship before any 51st account exists, the kit's tester included; BUILD_PLAN.md is the whole plan
+next: PR 5 merges, then its three doors deploy; PR 7 rebases onto main and deploys the walk function; PR 3 after the types PR; PR 8 lands the driver; then § 0.4 (bids@ off two test records, the owner's press) and the first `npm run walk`; BUILD_PLAN.md is the whole plan
 size: L as a train of nine (S M S+migration M M+migration M S L M); two migrations, one new edge function, eight functions changed, and about thirty redeployed once for the shared real-account rule
-blocker: none for PRs 0 to 7; the first walk waits on bids@ leaving two test records (BUILD_PLAN § 0.4, the owner's word); the one unknown, Quo between two numbers of one workspace, is answered by one text the owner sends from Quo's app after PR 1 deploys
+blocker: the first walk waits on bids@ leaving two test records (BUILD_PLAN § 0.4, the owner's word) and on a prod read path for the session (the Supabase connector authorized, or the dev-mcp key set); the one unknown, Quo between two numbers of one workspace, is answered by one text the owner sends from Quo's app now that PR 1 is deployed
 ver: proposed
 opinion: build — every Messages train so far has ended on a walk only the owner could press; this one ends on a walk any session can run in about ten minutes after any deploy, touching only the company's own inbox and number, with nothing left behind in the app.
 mockup: not required — a test harness; the one screen change is a read-only line on the existing Digital twins & samples page, in its own row shape
