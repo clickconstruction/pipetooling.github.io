@@ -9,7 +9,7 @@ import { LEGAL_OFFICE_CONTACT_ROLES, officeContactsFromUsers, type LegalOfficeCo
  */
 export async function readLegalOfficeContacts(db: SupabaseClient): Promise<LegalOfficeContacts | null> {
   try {
-    const { data, error } = await db.from('users').select('name, phone, role').eq('is_sample', false).eq('is_digital_twin', false).is('archived_at', null).in('role', [...LEGAL_OFFICE_CONTACT_ROLES]).order('name')
+    const { data, error } = await db.from('users').select('name, phone, role').eq('is_sample', false).eq('is_digital_twin', false).eq('is_walk_tester', false).is('archived_at', null).in('role', [...LEGAL_OFFICE_CONTACT_ROLES]).order('name')
     if (error || !Array.isArray(data)) return null
     return officeContactsFromUsers(data as Array<{ name: string | null; phone: string | null; role: string }>, PORTAL_COMPANY.phone)
   } catch {

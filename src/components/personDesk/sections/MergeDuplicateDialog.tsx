@@ -34,7 +34,7 @@ export function MergeDuplicateDialog({ survivor, onClose, onMerged }: { survivor
     void (async () => {
       const { data, error: e } = await supabase
         .from('users')
-        .select('id, name, email, role, archived_at, last_sign_in_at, is_sample, is_digital_twin')
+        .select('id, name, email, role, archived_at, last_sign_in_at, is_sample, is_digital_twin, is_walk_tester')
         .eq('role', (survivor.role ?? '') as Database['public']['Enums']['user_role'])
         .order('name')
       if (cancelled) return
@@ -43,7 +43,7 @@ export function MergeDuplicateDialog({ survivor, onClose, onMerged }: { survivor
         setAccounts([])
         return
       }
-      setAccounts(((data ?? []) as Array<Account & { is_sample?: boolean | null; is_digital_twin?: boolean | null }>).filter((a) => !a.is_sample && !a.is_digital_twin))
+      setAccounts(((data ?? []) as Array<Account & { is_sample?: boolean | null; is_digital_twin?: boolean | null; is_walk_tester?: boolean | null }>).filter((a) => !a.is_sample && !a.is_digital_twin && !a.is_walk_tester))
       if (survivor.role === 'subcontractor') {
         const { data: p } = await supabase.from('people').select('id, name, kind, account_user_id, archived_at').eq('kind', 'sub').is('archived_at', null).is('account_user_id', null).order('name')
         if (!cancelled) setPeople((p ?? []) as Person[])

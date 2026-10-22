@@ -38,7 +38,7 @@ describe('teamsWithoutArchivedMembers', () => {
   it('the id decides before the name (#29 item 3): a renamed member still drops, a living member under an archived name stays', () => {
     const roster = (over: Partial<RosterPerson> & { pay_name: string }): RosterPerson => ({
       user_id: null, person_id: null, row_key: `p:${over.pay_name}`, account_name: null, roster_name: null, role: null, kind: null,
-      account_kind: 'person', is_digital_twin: false, is_sample: false, is_dev: false, read_only: false, needs_supervision: false,
+      account_kind: 'person', is_digital_twin: false, is_sample: false, is_walk_tester: false, is_dev: false, read_only: false, needs_supervision: false,
       user_archived_at: null, person_archived_at: null, is_archived: false, is_pay_roster: true, is_active_roster: true,
       has_login: true, has_roster_row: true, start_date: null, end_date: null, master_user_id: null, ...over,
     })

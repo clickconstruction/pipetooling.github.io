@@ -187,6 +187,7 @@ export function usePeopleRoster(
       .select('id, name')
       .is('archived_at', null)
       .eq('is_sample', false) // v2.3606: sample accounts hide like twins
+      .eq('is_walk_tester', false) // v2.5738: the walk kit's tester hides like a sample
 
     // Case-insensitive comparison
     const hasDuplicateInPeople = peopleData?.some(p => p.name?.toLowerCase() === trimmedName) ?? false

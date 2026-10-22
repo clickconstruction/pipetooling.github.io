@@ -22,6 +22,8 @@ export type ShareableAccount = {
   team_prospects_access?: boolean | null
   archived_at?: string | null
   is_sample?: boolean | null
+  /** v2.5738: the walk kit's tester, never shareable. */
+  is_walk_tester?: boolean | null
 }
 
 const PROSPECTS_STAFF_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
@@ -40,7 +42,7 @@ export function hasProspectsStaffAccess(u: Pick<ShareableAccount, 'role' | 'esti
  */
 export function shareableAccounts<T extends ShareableAccount>(users: readonly T[], opts: { includeSamples?: boolean } = {}): T[] {
   return users
-    .filter((u) => hasProspectsStaffAccess(u) && !u.team_prospects_access && !u.archived_at && (opts.includeSamples || !u.is_sample))
+    .filter((u) => hasProspectsStaffAccess(u) && !u.team_prospects_access && !u.archived_at && !u.is_walk_tester && (opts.includeSamples || !u.is_sample))
     .sort((a, b) => displayName(a).localeCompare(displayName(b)))
 }
 

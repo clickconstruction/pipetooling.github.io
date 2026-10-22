@@ -125,7 +125,7 @@ type Team = Pick<Ctx, 'isOurs' | 'isTheBox' | 'member' | 'kit' | 'carried'>
  * and not the box, so `leftOut` takes mail from it and `emailParty` reads it as a person writing in.
  */
 async function loadTeam(admin: Admin, settings: BoxSettings | null, boxes: readonly string[]): Promise<Team> {
-  const { data, error } = await admin.from('users').select('id, name, email, role').in('role', STAFF_ROLES).not('email', 'is', null)
+  const { data, error } = await admin.from('users').select('id, name, email, role').in('role', STAFF_ROLES).not('email', 'is', null).eq('is_walk_tester', false)
   if (error) throw new Error(`Reading the team failed: ${error.message}`)
   const byAddress = new Map<string, TeamMember>()
   for (const u of (data ?? []) as { id: string; name: string | null; email: string | null }[]) {

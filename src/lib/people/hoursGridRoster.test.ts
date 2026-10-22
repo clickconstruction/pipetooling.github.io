@@ -15,6 +15,7 @@ function person(pay_name: string, over: Partial<RosterPerson> = {}): RosterPerso
     account_kind: 'person',
     is_digital_twin: false,
     is_sample: false,
+    is_walk_tester: false,
     is_dev: false,
     read_only: false,
     needs_supervision: false,
