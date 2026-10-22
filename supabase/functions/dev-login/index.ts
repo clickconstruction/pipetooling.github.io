@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { findAuthUserByEmail } from '../_shared/authUserByEmail.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,15 +63,20 @@ serve(async (req) => {
       },
     })
 
-    const { data: targetUser, error: findError } = await adminClient.auth.admin.listUsers()
-    if (findError) {
+    // Every page of accounts, not the first 50 alone (v2.5724): the 51st account would otherwise
+    // hide any account past the page, and this would answer "User not found" for it.
+    const found = await findAuthUserByEmail(
+      (page, perPage) => adminClient.auth.admin.listUsers({ page, perPage }),
+      email,
+    )
+    if (found.error) {
       return new Response(
-        JSON.stringify({ error: `Failed to find user: ${findError.message}` }),
+        JSON.stringify({ error: `Failed to find user: ${found.error}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const user = targetUser.users.find((u) => u.email === email.trim())
+    const user = found.user
     if (!user) {
       return new Response(
         JSON.stringify({ error: 'User not found' }),
