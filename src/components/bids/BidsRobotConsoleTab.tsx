@@ -182,7 +182,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
               <span style={{ ...stepNo('↻'), background: 'var(--surface)' }}>↻</span>
               <span style={stepText}>
                 Make this Mac the rounds
-                <span style={stepSub}>One paste into Claude Code on the Mac that stays on. It makes the routine, every five minutes, and runs it once. The first lines list the Mac's three settings.</span>
+                <span style={stepSub}>One paste into Claude Code on the Mac that stays on. It makes the routine, every five minutes, and runs it once. The first lines list the Mac's three settings. If Auto mode refuses the routine, switch that session's mode to the one that asks and retry.</span>
               </span>
               <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(roundsKickoff, 'the rounds kickoff')} title="Copies the rounds kickoff for a Claude Code session on the Mac that stays on, with this project's connector filled in">
                 Copy rounds kickoff

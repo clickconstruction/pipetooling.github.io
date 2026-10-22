@@ -14,7 +14,7 @@ Check what you can and say the three in one line, then go on. A setting you cann
 
 ## 2 · Make the routine, then run it once
 
-Create a routine (a scheduled task) in Claude Code named **Robot rounds**, every five minutes, all day, every day — cron `*/5 * * * *` — whose prompt is everything under **The round** below, verbatim, with this connector address in it. Then run it once now, so the tool approvals it needs are saved to the routine. If this session cannot create a scheduled task, say exactly that and paste **The round** back to the person so they can create it by hand.
+Create a routine (a scheduled task) in Claude Code named **Robot rounds**, every five minutes, all day, every day — cron `*/5 * * * *` — whose prompt is everything under **The round** below, verbatim, with this connector address in it. Then run it once now, so the tool approvals it needs are saved to the routine. If the permission layer refuses to create the scheduled task (Auto mode does, 2026-10-22), say exactly that and tell the person: switch this session's permission mode from **Auto** to the one that asks — the control at the bottom left of the message box — then answer *retry*; create it on the retry and run it once. Only if that fails too, paste **The round** back to the person so they can create it by hand.
 
 ## The round
 
