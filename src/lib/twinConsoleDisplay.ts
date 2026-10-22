@@ -8,15 +8,23 @@
  * panel must keep up with both.
  */
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { heartbeatDetailWords, heartbeatWords, type HeartbeatProgress } from '../../supabase/functions/_shared/twinHeartbeat'
 
 export type TwinRunVerb = 'sign-in' | 'report' | 'run' | 'heartbeat'
 
 export type TwinRunDisplay = {
   verb: TwinRunVerb
-  /** Mission shown to the operator ("report:" prefix stripped for reports). */
+  /** Mission shown to the operator ("report:" prefix stripped for reports; a heartbeat's state). */
   mission: string
   /** Plain-English remainder ("via key “xAI harness” → /bids", or the report text). */
   detail: string
+}
+
+/** The heartbeat columns a ledger row carries since v2.5730 (punch list #142); older rows have none. */
+export type TwinRunShape = {
+  stage?: string | null
+  state?: string | null
+  progress?: HeartbeatProgress | null
 }
 
 /** Resolve a credential id to its human label; null/undefined → unknown key. */
@@ -26,6 +34,7 @@ export function describeTwinRun(
   mission: string,
   notes: string | null,
   credLabel?: CredLabelLookup,
+  shape?: TwinRunShape | null,
 ): TwinRunDisplay {
   const note = (notes ?? '').trim()
   if (mission.startsWith('report:')) {
@@ -34,8 +43,14 @@ export function describeTwinRun(
   if (mission === 'heartbeat') {
     // twin-mcp heartbeat (R3/4.5): notes format `heartbeat stage=<s> state=<st> [free text]`.
     const stage = /stage=(\S+(?:\s\S+)*?)\sstate=/.exec(note)?.[1] ?? /stage=(\S+)/.exec(note)?.[1] ?? ''
-    const state = /state=(working|blocked|done)/.exec(note)?.[1] ?? ''
-    const free = note.replace(/^heartbeat\s+stage=.*?state=(working|blocked|done)\s*/, '').trim()
+    const state = shape?.state ?? /state=(working|blocked|done|idle)/.exec(note)?.[1] ?? ''
+    const free = note.replace(/^heartbeat\s+stage=.*?state=(working|blocked|done|idle)\s*/, '').trim()
+    // v2.5730 (punch list #142): a row with the shape reads in the shape's words — the same
+    // sentence the bid's sheet and the icon's tooltip print — then what it wrote and what is next.
+    if (shape?.progress || state === 'idle') {
+      const words = [heartbeatWords(shape?.progress ?? null, state), heartbeatDetailWords(shape?.progress ?? null), free].filter(Boolean).join(' ')
+      return { verb: 'heartbeat', mission: state || 'working', detail: words }
+    }
     return { verb: 'heartbeat', mission: state || 'working', detail: `${stage}${free ? ` — ${free}` : ''}` }
   }
   if (note.startsWith('mint ')) {

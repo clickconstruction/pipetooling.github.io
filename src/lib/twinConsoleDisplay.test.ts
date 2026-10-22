@@ -86,6 +86,32 @@ describe('nextTwinSeat', () => {
   })
 })
 
+describe('describeTwinRun — heartbeat rows with the shape (v2.5730, punch list #142)', () => {
+  it('a row with progress reads in the shape\'s words, then wrote and next, then the free note', () => {
+    const d = describeTwinRun('heartbeat', 'heartbeat stage=STG-2 state=working P-401 is small', undefined, {
+      stage: 'STG-2',
+      state: 'working',
+      progress: { step: 'reading', read: '12 of 31 sheets', wrote: 'two notes on my copy', next: 'the fixture schedule on P-601' },
+    })
+    expect(d.verb).toBe('heartbeat')
+    expect(d.mission).toBe('working')
+    expect(d.detail).toBe('Reading the sheets, 12 of 31 sheets. Wrote: two notes on my copy. Next: the fixture schedule on P-601. P-401 is small')
+  })
+  it('an idle row is a round that found nothing, with the count of the stretch', () => {
+    const d = describeTwinRun('heartbeat', 'heartbeat stage=round state=idle coverage full', undefined, { state: 'idle', progress: { rounds: 88 } })
+    expect(d.mission).toBe('idle')
+    expect(d.detail).toBe('Nothing to do. 88 rounds found nothing. coverage full')
+  })
+  it('a blocked row with the shape says what it waits on', () => {
+    const d = describeTwinRun('heartbeat', 'heartbeat stage=STG-2 state=blocked', undefined, { state: 'blocked', progress: { waiting_on: 'you: the plans' } })
+    expect(d.detail).toBe('Waiting on you: the plans.')
+  })
+  it('an old row without the shape reads as before', () => {
+    const d = describeTwinRun('heartbeat', 'heartbeat stage=STG-3 takeoff state=working placing counters', undefined, { state: null, progress: null })
+    expect(d.detail).toBe('STG-3 takeoff — placing counters')
+  })
+})
+
 describe('describeTwinRun — heartbeat rows (v2.2483)', () => {
   it('parses stage/state and frees the note', () => {
     const d = describeTwinRun('heartbeat', 'heartbeat stage=STG-3 takeoff state=working placing counters on P200', undefined)
