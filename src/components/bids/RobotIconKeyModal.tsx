@@ -5,7 +5,7 @@ import { RobotGlyph } from './RobotGlyph'
 import { GRADE_COLORS } from './RobotReferenceGradeModal'
 
 const LIVE_ROWS: Array<{ state: RobotRowState; title: string; text: string }> = [
-  { state: { kind: 'queued', title: '' }, title: 'Robot is on it', text: 'Outline = queued for the next batch. Solid = reading the plans and counting. A lock badge = it sealed its number; nobody sees that number until you send. Click for its status.' },
+  { state: { kind: 'queued', title: '' }, title: 'Robot is on it', text: 'Outline = queued for the next batch. Solid = reading the plans and counting. The ring round it fills one segment per step, seven in all. A lock badge = it sealed its number; nobody sees that number until you send. Click for its status.' },
   { state: { kind: 'needs', badge: '?', title: '', gaps: [], questions: 0 }, title: 'Robot needs something from you', text: 'Plans it can’t open, or a question it asked (the badge counts the questions). Click to see exactly what, with the fix.' },
   { state: { kind: 'scored', title: '', deltaPct: null, twinBidNumber: null }, title: 'Scored', text: 'You sent the bid and the robot’s sealed number was checked against yours. Hover for how far off it was; click to compare counts and pricing.' },
   { state: { kind: 'off', reason: 'opt-out', title: '' }, title: 'Not this bid', text: 'Opted out on the bid form, or a division robots don’t bid yet.' },

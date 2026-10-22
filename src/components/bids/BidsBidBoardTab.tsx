@@ -20,6 +20,8 @@ import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } f
 import { shouldShowEmptyBidValueAlert } from '../../lib/bidBoardEmptyBidValueAlert'
 import { robotRowState, type RobotRowInput } from '../../lib/bids/robotRowState'
 import { RobotGlyph } from './RobotGlyph'
+import { RobotRing } from './RobotRing'
+import type { RobotProgress } from '../../lib/bids/robotProgress'
 import { RobotIconKeyModal } from './RobotIconKeyModal'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
@@ -138,6 +140,8 @@ type BidsBidBoardTabProps = {
     onOpenNeeds: (bid: BidWithBuilder) => void
     onOpenTwinBid: (twin: BidWithBuilder, source: BidWithBuilder) => void
     onOpenGrade: (bid: BidWithBuilder) => void
+    /** v2.5732: the robot's progress on this bid, for the ring and the tooltip; null when none or not loaded. */
+    progressFor?: (bidId: string) => RobotProgress | null
   }
 }
 
@@ -677,16 +681,21 @@ export function BidsBidBoardTab({
             : state.kind === 'off'
               ? null
               : () => robotReadiness.onOpenStatus(bid)
+    // v2.5732 (punch list #142): the ring round the icon fills one segment per step, and the
+    // tooltip says the step in words, from the same kernel as the sheet's bar.
+    const progress = robotReadiness.progressFor?.(bid.id) ?? null
+    const live = state.kind === 'queued' || state.kind === 'working' || state.kind === 'sealed'
+    const title = progress && live ? progress.sentence : state.title
     return (
       <button
         type="button"
         onClick={onClick ?? undefined}
         disabled={!onClick}
-        title={state.title}
-        aria-label={state.title}
+        title={title}
+        aria-label={title}
         style={{ ...actionStyle, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}
       >
-        <RobotGlyph state={state} size={18} />
+        <RobotRing state={state} progress={live ? progress : null} size={26} />
       </button>
     )
   }

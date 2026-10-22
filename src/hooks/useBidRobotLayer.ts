@@ -32,6 +32,8 @@ import { mirrorRunReviewable, type RobotMirrorRun } from '../lib/bids/robotMirro
 import { robotRowState, type RobotRowInput } from '../lib/bids/robotRowState'
 import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
+import { useRobotProgress } from './useRobotProgress'
+import type { RobotProgress } from '../lib/bids/robotProgress'
 
 export function useBidRobotLayer(input: {
   authUserId: string | null | undefined
@@ -197,6 +199,29 @@ export function useBidRobotLayer(input: {
   const robotQuestionsWaiting = useMemo(() => robotQuestionsWaitingCount(openRobotQuestionRows), [openRobotQuestionRows])
   /** v2.3225: the icon's state for a human bid — the Robot Board mirror lists live bids with no run from it. */
   const robotRowStateFor = useCallback((bid: BidWithBuilder) => robotRowState(robotRowInputFor(bid)), [robotRowInputFor])
+  // Robot rounds PR 2 (v2.5732, punch list #142): the robots' progress on every bid of ours with a
+  // run and not yet sent (a sent bid's icon reads its score, not its progress), one reader for the
+  // ring on the icon, the sheet's bar and the Robot Board row. The bid roles only — the same gate as
+  // the questions.
+  const progressBidIds = useMemo(
+    () => bids.filter((b) => !b.bid_date_sent && (twinBidBySourceId.has(b.id) || shadowRunByBidNumber.has((b.bid_number ?? '').trim()))).map((b) => b.id),
+    [bids, twinBidBySourceId, shadowRunByBidNumber],
+  )
+  const { byBid: robotProgressByBidId, reload: reloadRobotProgress } = useRobotProgress(progressBidIds, { enabled: !!authUserId && canAnswerRobotQuestions })
+  const robotProgressFor = useCallback((bidId: string): RobotProgress | null => robotProgressByBidId.get(bidId) ?? null, [robotProgressByBidId])
+  /** Leave this one to me (v2.5732): the bid's robot opt-out, the tick the form has; the robot reads `leave` on its next heartbeat. */
+  const leaveToMe = useCallback(async (bid: BidWithBuilder) => {
+    const before = bid.robot_opt_out ?? false
+    setBids((prev) => prev.map((b) => (b.id === bid.id ? { ...b, robot_opt_out: true } : b)))
+    const { data: updRows, error: updErr } = await supabase.from('bids').update({ robot_opt_out: true }).eq('id', bid.id).select('id')
+    if (updErr || bidUpdateRefused(updRows)) {
+      setBids((prev) => prev.map((b) => (b.id === bid.id ? { ...b, robot_opt_out: before } : b)))
+      showToast(updErr ? `Couldn't take the bid back: ${updErr.message}` : BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      return
+    }
+    showToast('The robot leaves this bid to you. It stops within five minutes.', 'success')
+    reloadRobotProgress()
+  }, [reloadRobotProgress, setBids, showToast])
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
 
   // v2.3222: the robot's envelope, opened at send. The trigger scored the shadow the instant
@@ -334,6 +359,9 @@ export function useBidRobotLayer(input: {
     noteBestEffortGap,
     noteRobotReviewRevision,
     toggleRobotRequest,
+    robotProgressFor,
+    reloadRobotProgress,
+    leaveToMe,
   }
 }
 

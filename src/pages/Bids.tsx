@@ -69,6 +69,7 @@ import { RobotGroupStrip } from '../components/bids/RobotGroupStrip'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
 import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
 import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
+import { RobotCheckedInLine } from '../components/bids/RobotCheckedInLine'
 
 /** The lenses under the one 🤖 Robots tab (v2.2527); `robot-shadows` is a redirect alias, `robot-queue` / `robot-console` are dev-only. */
 import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabKey } from '../lib/bids/bidsTabAccess'
@@ -375,6 +376,7 @@ export default function Bids() {
     robotRowStateForScoreboard,
     robotQuestionsWaiting,
     robotRowStateFor,
+    robotProgressFor,
     setRobotComparePair,
     focusAuditId,
     setFocusAuditId,
@@ -1813,7 +1815,7 @@ export default function Bids() {
           onSelect={selectBidsTab}
         >
           {/* v2.4256 (punch list #63): the one line that says what the open lens is for, like the Followup bar's. */}
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{robotLensCaption(activeTab)}</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{robotLensCaption(activeTab)} <RobotCheckedInLine /></span>
         </BidsLensBar>
       )}
       {/* v2.4256: the group's header — the program in six numbers on every lens, each tile a door (was the Robot Board's alone). */}
@@ -1882,6 +1884,7 @@ export default function Bids() {
           onReviewNow={openEnvelopeFromMirror}
           // v2.3225: the live bids with no run list too, from the icon's own kernel, with their doors.
           rowStateFor={robotRowStateFor}
+          progressFor={robotProgressFor}
           onOpenNeeds={setRobotNeedsBid}
           onPasteThePlans={(bid) => openEditBid(bid, { focus: 'plansLink' })}
           onOpenStatus={setRobotStatusBid}
@@ -1944,6 +1947,7 @@ export default function Bids() {
           robotReadiness={{
             twinBidBySourceId,
             inputFor: robotRowInputFor,
+            progressFor: robotProgressFor,
             onOpenStatus: setRobotStatusBid,
             onOpenNeeds: setRobotNeedsBid,
             onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),

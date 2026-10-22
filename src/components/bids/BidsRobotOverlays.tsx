@@ -50,6 +50,8 @@ export function BidsRobotOverlays({
     setRobotGradeBid,
     referencePresence,
     robotComparePair,
+    robotProgressFor,
+    leaveToMe,
   } = robot
   return (
     <>
@@ -71,6 +73,9 @@ export function BidsRobotOverlays({
         onCompare={(twin, source) => { setRobotStatusBid(null); setRobotComparePair({ source: source as BidWithBuilder, twin: twin as BidWithBuilder }) }}
         onToggleRequest={(bid) => { void toggleRobotRequest(bid as BidWithBuilder); bumpShadowRuns() }}
         onOpenQuestions={() => { setRobotStatusBid(null); selectBidsTab('audits') }}
+        // v2.5732: the bar on the sheet and Leave this one to me.
+        progress={robotStatusBid ? robotProgressFor(robotStatusBid.id) : null}
+        onLeaveToMe={(bid) => { void leaveToMe(bid as BidWithBuilder); setRobotStatusBid(null) }}
       />
 
       <RobotNeedsSheet

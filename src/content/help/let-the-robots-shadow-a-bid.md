@@ -39,6 +39,18 @@ The robot icon beside the bid number says how the shadow is going. Nobody has to
 
 You tap the small **?** beside the **Bid #** header for the full key. On a phone it sits beside the trade chip in the pill row. The key includes the A to X grades a sent or decided bid wears.
 
+## See where the robot is
+
+The robot icon is a ring of seven segments, one per step. The steps are picked up, plans filed, reading the sheets, counting, pricing, sealed, and questions for you. A segment fills when the robot passes that step. The segment it is on fills by the sheets it has read. So a glance says third of seven. You hover the icon and it says the step in words, with when the robot last spoke.
+
+You tap the icon for the sheet. The sheet draws the same seven steps as a bar. The lit step says what is inside it, like 12 of 31 sheets. Under the bar it says when the robot last spoke and which Mac it spoke from. Once ten runs have finished, it also says how long most bids take.
+
+You press {{button:blue|Read the run}} to see every signal the robot sent on this bid, oldest first. You press {{button:gray|Leave this one to me}} to take the bid off the robots. The robot stops within five minutes and sets its copy aside.
+
+The first time you open the sheet, a short note says what the robot touches. The robot reads the plans and works on its own copy of the bid. It never edits your bid. It never sends anything to anyone. Its number stays sealed until you send yours.
+
+If no robot has spoken on a bid for ten minutes, the ring turns amber. The sheet says the robot went quiet and when. Another round picks the bid up within ten minutes. You do not need to do anything.
+
 ## Ask for it sooner
 
 You open the robot's timeline from the icon and tap {{button:outline-blue|Front of the line next batch}}. The next batch takes that bid first. The sealed number shows up on your Dashboard as {{chip:blue|Robot bid}}. The score lands the moment you mark the bid sent. The envelope opens for you right then. See [review the robot's number when you send](?g=review-the-robots-number-when-you-send).

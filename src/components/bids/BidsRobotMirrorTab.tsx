@@ -26,6 +26,9 @@ import { needsDoorFor } from '../../lib/bids/bidFormFocus'
 import { diffTakeoffs, diffWaterfall, type DiffWaterfall } from '../../lib/bids/takeoffDiff'
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
 import { ROBOT_ICON_PATH, ROBOT_STATE_COLOR } from './RobotGlyph'
+import { RobotRing } from './RobotRing'
+import type { RobotProgress } from '../../lib/bids/robotProgress'
+import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 
 // twin_run_scores / bid_audits predate the generated types (BidsAuditsTab pattern).
 const db = supabase as unknown as SupabaseClient
@@ -47,6 +50,8 @@ type BidsRobotMirrorTabProps = {
    * run lists too — queued, needs a person, or off — so the mirror is the human board row for row.
    */
   rowStateFor?: (bid: BidWithBuilder) => RobotRowState
+  /** v2.5732: the robot's progress on a human bid — the ring on the lead row and the live sub-line while it works. */
+  progressFor?: (bidId: string) => RobotProgress | null
   onEditBid: (bid: BidWithBuilder) => void
   /** Robot vs ours counts + pricing — the comparison modal (scored rows only). */
   onCompare: (source: BidWithBuilder, twin: BidWithBuilder) => void
@@ -139,7 +144,7 @@ type RowDetail = { loading: boolean; waterfall: DiffWaterfall | null; why: strin
  * and the robot's own note. The six-number strip that headed this lens is the
  * group's since v2.4256 (`RobotGroupStrip`, drawn by the page on every lens).
  */
-export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, highlightBidId, rowStateFor, onEditBid, onCompare, onOpenShell, onOpenAudit, onReviewNow, onOpenNeeds, onPasteThePlans, onOpenStatus, onAddBidValue, onRowCount }: BidsRobotMirrorTabProps) {
+export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, highlightBidId, rowStateFor, progressFor, onEditBid, onCompare, onOpenShell, onOpenAudit, onReviewNow, onOpenNeeds, onPasteThePlans, onOpenStatus, onAddBidValue, onRowCount }: BidsRobotMirrorTabProps) {
   const [shadowRuns, setShadowRuns] = useState<ShadowRunRow[] | null>(null)
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
   const [audits, setAudits] = useState<MirrorAuditRow[]>([])
@@ -304,6 +309,9 @@ export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, hi
 
   const renderRun = (row: RobotMirrorRow<BidWithBuilder>, run: RobotMirrorRun, lead: boolean, repeatSub = false) => {
     const status = mirrorStatusLabel(run)
+    // v2.5732: the same ring and words as the Bid Board icon, while the robot is on the bid.
+    const progress = lead && progressFor && (run.status === 'working' || run.status === 'queued' || run.status === 'sealed') ? progressFor(row.bid.id) : null
+    const ringState: RobotRowState = run.status === 'sealed' ? { kind: 'sealed', title: '', lockedAt: null, twinBidNumber: null } : run.status === 'queued' ? { kind: 'queued', title: '' } : { kind: 'working', title: '', twinBidNumber: null }
     const chip = mirrorAuditChip(run)
     const shell = run.shellBidId ? shellById.get(run.shellBidId) : undefined
     const scored = run.status === 'scored' || run.status === 'audited'
@@ -317,7 +325,7 @@ export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, hi
       <>
         <td style={td}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-            {lead ? <RunGlyph run={run} /> : <span style={{ width: 18, display: 'inline-block' }} />}
+            {lead ? (progress ? <RobotRing state={ringState} progress={progress} size={24} /> : <RunGlyph run={run} />) : <span style={{ width: 18, display: 'inline-block' }} />}
             {scored ? (
               <span style={{ ...mono, fontWeight: 600 }}>{money(run.robotTotal)}</span>
             ) : (
@@ -328,7 +336,9 @@ export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, hi
             {needs || off ? (repeatSub ? <span style={{ fontStyle: 'italic' }}>same as above</span> : status.sub) : (
               <>
                 {run.label}
-                {status.sub ? ` · ${status.sub}` : ''}
+                {progress && run.status === 'working'
+                  ? ` · ${progress.words}${progress.lastWordAt ? ` · ${relativeTimeFrom(progress.lastWordAt, Date.now())}` : ''}`
+                  : status.sub ? ` · ${status.sub}` : ''}
                 {row.note && lead ? ` · ${row.note}` : ''}
                 {teacherBit}
               </>
