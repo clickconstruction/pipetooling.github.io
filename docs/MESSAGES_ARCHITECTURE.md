@@ -131,7 +131,7 @@ a fake. While texts are off (`useTextsOn`), the Text kind draws the wait line in
 `has_how`), the move line, and the lanes the screens group by — **New** (R7, what came in and still needs sorting:
 `newLane.ts`, **Sort all** in `sortDesk.ts`), Needs a reply (since v2.5716 **Answer all** on its header, `answerDesk.ts` and `AnswerAllDesk.tsx`: a desk built like Sort all that walks the lane one person at a time with the reply box, the person pinned so a live re-read never swaps the card, on `/messages` alone since the page holds whether it is open through the panel's `answerAll` prop; a lead's row carries **Book a visit** and **Start an estimate** since v2.5711, `needsReply`'s acts through the panel's `leadIo`; a logged call reads as a reply and clears the row), We owe them (`owed.ts`; since v2.5596 the call rows too, `FollowUpQueue.calls` from `callTasksFromRows`, `CallRowView`), They owe us (`theyOweUs.ts`). On `/messages` the page's `narrow` composes `queueForShow` (v2.5713, `messages/showLens.ts`: Mine keeps the people whose `hasUserId` is mine, Everyone the queue as built) over `queueForPill`, the whole queue still counted through the panel's `onQueue` and `onCount`. **Waiting on them** (v2.5704, `messages/waitingOnThem.ts`) is the other direction and sits outside the queue: the people whose newest line is ours and two days old.
 `team.ts` says who a conversation can be handed to; `assignSeats.ts` is **Who gets a new message** (the rule and its
-seats, `app_settings.messages_assign_rule_v1`); `hasRule.ts` is R5's answer to who answers a customer's reply (the tech
+seats, `app_settings.messages_assign_rule_v1`; the walk kit's contact goes to nobody, `walkKit`, v2.5728); `hasRule.ts` is R5's answer to who answers a customer's reply (the tech
 who last texted them until 5 PM, `has_until`, then the office in its hours, or at any hour under the Office hours card's
 around-the-clock switch, v2.5721). The screens are `src/components/followUp/`
 (`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`, `AnswerAllDesk`; since v2.5332 `NudgesFromTheFlow` over `useFlowNudges`, whose *Text Greg* and *Email Jonah* open the thread with the nudge written since v2.5714) and the
@@ -160,7 +160,7 @@ The **morning run** is `messages-nudge-dispatch`, fired by the cron `messages-nu
 with `X-Cron-Secret` from the vault. Its decisions are the kernels' (`nudgeRunInputs.ts`, `nudgeDispatch.ts`,
 `nudgeRunLog.ts`, copied to the edge; `nudgeDispatch.ts`'s `nudgeLine` is the one place a reminder's words come from, the thread's Nudge drawing from it since v2.5714, when the residential Approved and Paid steps gained lines of their own): everyone's flow, the steps due, what was already sent (`nudge_sent`, never
 doubled), what is held (`nudge_holds`, **Hold until Mon**), and the per-step switch
-`app_settings.messages_nudge_app_sends_v1` — **off until the owner turns a step on** (the plan's decision 3); since v2.5595 three ways per step, off, **offers** (`'offer'`: the run writes the text to `nudge_offers` for the office to press on the Dashboard's Today's sends, held with why when the number is missing, sent STOP or asked for email, v2.5597) and **sends** (`true`), and the run also sends the texts the office handed to a morning (Send in the morning, `prepared_by` office with a `send_on`); a moved first visit's Rescheduled offer has no `send_on` and waits for a press, and an email-only person's text is kept back (`prefers email`, v2.5597). The run
+`app_settings.messages_nudge_app_sends_v1` — **off until the owner turns a step on** (the plan's decision 3); since v2.5595 three ways per step, off, **offers** (`'offer'`: the run writes the text to `nudge_offers` for the office to press on the Dashboard's Today's sends, held with why when the number is missing, sent STOP or asked for email, v2.5597) and **sends** (`true`), and the run also sends the texts the office handed to a morning (Send in the morning, `prepared_by` office with a `send_on`); a moved first visit's Rescheduled offer has no `send_on` and waits for a press, and an email-only person's text is kept back (`prefers email`, v2.5597); the walk kit's contact is left out of the morning entirely while a walk is set up (v2.5728, punch list #142 PR 6: `nudgeRunReads`' `walkKitContactId`, the kit read once per run). The run
 writes its summary to `messages_nudge_last_run_v1`, which Settings → Flows reads as *Last morning run …*. The first run
 fired 2026-10-14 with nothing switched on: *no text went, none kept back*.
 
@@ -194,7 +194,9 @@ the words are the office's (`customer_page_words`, Settings → What customers s
 
 **Push.** `messages-notify` pushes a customer's, a lead's or a sub's reply to whoever has it (R5, `notifyRule.ts`,
 `notifyPlan.ts`), driven by the `messages-reply-push` cron every minute while **Reply push** is on, and tells the
-people a clause change waits on.
+people a clause change waits on. A line on the walk kit's contact pushes the real dev accounts alone, at once, never
+the holder, the office's wait or the after-hours push (v2.5728, punch list #142 PR 6: `notifyPlan.ts`'s kit branch,
+the kit read once per run through `_shared/walkKit.ts`).
 
 **Files.** A file on a line is our copy in the private bucket; its lasting link is `/files/messages/<id>`; **Save to
 Drive** (`drive-link`, cut 7b) files it to the job's Drive folder and the link becomes `/files/drive/…`. A reply's files

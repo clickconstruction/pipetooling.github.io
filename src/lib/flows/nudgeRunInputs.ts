@@ -237,7 +237,11 @@ const byContact = <T extends { contact_id: string }>(rows: readonly T[]): Map<st
 }
 
 /** Everyone's flow and everything `planNudgeRun` reads, from the morning's rows. */
-export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: string; options?: NudgeOptions }): NudgeRunReads {
+/**
+ * `walkKitContactId` (punch list #142 PR 6): the walk kit's contact, left out of the morning entirely while a walk is
+ * set up, so the run never texts or offers a reminder to the company's own number. Not counted as unread.
+ */
+export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: string; options?: NudgeOptions; walkKitContactId?: string | null }): NudgeRunReads {
   const flows = flowsByKind(rows.steps)
   const holds = byContact(rows.holds)
   const sent = byContact(rows.sent)
@@ -252,6 +256,7 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
   const prefers: NonNullable<NudgeRunInput['prefers']> = {}
   const unread: string[] = []
   for (const contact of rows.contacts) {
+    if (opts.walkKitContactId && contact.id === opts.walkKitContactId) continue
     const flowRows = rows.flowRows[contact.id]
     const flow = flows[contact.kind]
     if (!flowRows || !flow) {

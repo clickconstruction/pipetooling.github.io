@@ -118,6 +118,40 @@ describe('planReplyPushes: who hears a line, now', () => {
   })
 })
 
+describe('the walk kit’s thread (punch list #142 PR 6): the devs alone', () => {
+  const ROBERT = 'u-robert'
+  const kit = { contactId: 'dana' }
+  const devs = [{ id: ROBERT, name: 'Robert' }]
+
+  it('pushes the devs at once, though Luis texted last and Rosa holds the seat, with no wait behind it', () => {
+    const plan = planReplyPushes(base({ kit, devs, seats: { ...NO_SEATS, customer: ROSA } }))
+    expect(plan.send).toEqual([
+      expect.objectContaining({ audience: 'office', userIds: [ROBERT], template: 'message_reply', messageId: 'm-09:04', url: '/gc?view=messages&thread=dana&at=m-09%3A04', cancelIfAnswered: false }),
+    ])
+    expect(plan.waiting).toBe(0)
+    expect(sent(base({ kit, devs, now: at('09:20') }))).toEqual(['message_reply office u-robert'])
+  })
+
+  it('says the line itself after hours too, never that it waits for the morning', () => {
+    const plan = planReplyPushes(base({ kit, devs, lines: [line('17:30')], outs: [], now: at('17:31') }))
+    expect(plan.send).toEqual([expect.objectContaining({ userIds: [ROBERT], template: 'message_reply' })])
+    expect(plan.send[0]!.body).not.toContain('waits for the morning')
+  })
+
+  it('sends nothing with no dev to tell, nothing twice, and nothing past thirty minutes', () => {
+    expect(sent(base({ kit, devs: [] }))).toEqual([])
+    expect(sent(base({ kit, devs, sent: [{ message_id: 'm-09:04', template_type: 'message_reply' }] }))).toEqual([])
+    const late = planReplyPushes(base({ kit, devs, now: at('09:50') }))
+    expect(late.send).toEqual([])
+    expect(late.late).toBe(1)
+  })
+
+  it('changes nothing for anyone else’s line, with or without a kit', () => {
+    expect(sent(base({ kit: { contactId: 'zz-walk' }, devs }))).toEqual(['message_reply tech u-luis'])
+    expect(sent(base({ kit: null, devs }))).toEqual(['message_reply tech u-luis'])
+  })
+})
+
 describe('sweepSince', () => {
   it('reads back the wait, the thirty minutes and a margin of five', () => {
     expect(sweepSince(at('10:00'), 15)).toBe(at('09:10'))

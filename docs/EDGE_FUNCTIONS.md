@@ -3174,6 +3174,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ### messages-notify
 
+> **v2.5728 — the walk kit's thread pushes the devs alone** (punch list #142 PR 6): a reply's push reads `walk_kit_v1` once per run (`_shared/walkKit.ts`) and a line on the kit's contact pushes the real dev accounts at once, as one `message_reply`, never the holder, the office's wait push or the after-hours push (`notifyPlan.ts`'s kit branch, `kit` and `devs` on its input). Nothing changes while no kit is set up. **Redeploy** once merged.
+
 **Purpose** (v2.5317, Messages cut 4c): the people a change to a contract clause waits on hear of it. Since v2.5479 (residential R5) it also pushes a customer's, a lead's or a sub's reply to whoever has it ([A reply](#a-reply-r5-v25479) below). When the office sends a clause change for approval (`edit_clause` answered `proposed`), the approvers get a push on every device **and** an email with the change. When a controller or a dev decides one (`approve_clause_proposal`, `decline_clause_proposal`), the editor gets an email: it went out as the clause's next version, or the why. The editor's **text** by phone is a named follow-up: it comes with Quo (cut 5). The app calls it right after the RPC, best effort (`tellClauseApprovers` and `tellClauseEditor` in `src/lib/contracts/clausesIo.ts`): a call that fails never undoes the change, which still waits on the approvers' Needs you, and the toast then says nothing of a send.
 
 **Endpoint**: `POST /functions/v1/messages-notify`
@@ -5250,6 +5252,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ---
 
 ### messages-nudge-dispatch
+
+> **v2.5728 — the walk kit's contact is left out of the morning** (punch list #142 PR 6): the run reads `walk_kit_v1` once (`_shared/walkKit.ts`) and `nudgeRunReads` takes `walkKitContactId`, leaving that contact out of everyone's flow (not even unread); the office's morning texts on it are not sent either. Nothing changes while no kit is set up. **Redeploy** once merged.
 
 **Purpose**: Messages, cut 5: the morning run of the reminders the app sends itself (`MESSAGES_BUILD_PLAN.md` → Cut 5 and section 6; section 7's decision 3: per step, off until the owner turns it on). Every decision is a kernel's, from the copy (`_shared/gcKernels/`):
 - `nudgeRunReads` (`src/lib/flows/nudgeRunInputs.ts`) puts everyone's flow together the way each person's panel does;

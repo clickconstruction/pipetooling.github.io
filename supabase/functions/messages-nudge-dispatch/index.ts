@@ -22,6 +22,10 @@
  * a morning (Send in the morning on the Tell the customer sheet; `prepared_by` office with a `send_on`) is sent by the
  * run on that day as the office's own, stamped on the row, with its `nudge_sent` record and the thread's event line.
  *
+ * The walk kit (punch list #142 PR 6): `walk_kit_v1` is read once per run, and the kit's contact is left out of the
+ * morning entirely (`nudgeRunReads`' `walkKitContactId`, and the office's morning texts), so a walk never texts or
+ * offers a reminder to the company's own number.
+ *
  * Customers wait until the run can read their page: `customer_portal_views` and `customer_portal_papers` are the
  * office's alone, so the service role cannot read them, and the run never texts a customer off a partial read.
  * The switch (`messages_nudge_app_sends_v1`) is `{}` as it ships, so every step is off and every run sends nothing. A
@@ -37,6 +41,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { lastOurTextAt, loadBoxes, quoCompany, sendText } from '../_shared/quoLines.ts'
+import { loadWalkKit } from '../_shared/walkKit.ts'
 // The kernels straight from the copy, not its index, as quoLines.ts reads them.
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 } from '../_shared/gcKernels/lib/appSettingsKeys.ts'
 import { FLOW_KINDS } from '../_shared/gcKernels/lib/flows/facts.ts'
@@ -181,12 +186,13 @@ serve(async (req) => {
     if (!dry && !runHourNow(now)) return json({ ok: true, ran: false, why: 'Not 9 AM Central. The other tick runs.' })
 
     const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
-    const { rows, customersHeld, offers } = await readRows(admin)
-    const reads = nudgeRunReads(rows, now, { origin })
+    const [{ rows, customersHeld, offers }, kit] = await Promise.all([readRows(admin), loadWalkKit(admin)])
+    const walkKitContactId = kit?.contactId ?? null
+    const reads = nudgeRunReads(rows, now, { origin, walkKitContactId })
     const run = planNudgeRun(reads.input)
     const today = todayYmdInAppTz(now)
-    /** The texts the office prepared for this morning, or an earlier one that was missed, with a number to go to. */
-    const due = offers.filter((o) => o.prepared_by === 'office' && o.send_on !== null && o.send_on <= today && o.channel_id)
+    /** The texts the office prepared for this morning, or an earlier one that was missed, with a number to go to. Never the kit's. */
+    const due = offers.filter((o) => o.prepared_by === 'office' && o.send_on !== null && o.send_on <= today && o.channel_id && o.contact_id !== walkKitContactId)
 
     if (dry) {
       const summary = runSummary({ run, sent: run.texts.length + due.length, refused: [], unread: reads.unread.length, customersHeld, prepared: run.offers.length, morningSent: due.length, now, dry: true })
