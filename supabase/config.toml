@@ -359,6 +359,10 @@ allow_dynamic_registration = false
 [functions.test-email]
 verify_jwt = false
 
+# The walk kit (punch list #142): gated by X-Dev-Login-Secret inside, as dev-login is.
+[functions.walk]
+verify_jwt = false
+
 # Same as test-email: validate JWT in function body (getUser); gateway verify_jwt caused 401s.
 [functions.send-workflow-notification]
 verify_jwt = false

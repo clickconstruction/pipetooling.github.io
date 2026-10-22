@@ -70,6 +70,14 @@ export function gmailAttachment(token: string, messageId: string, attachmentId: 
 }
 
 /** The id of the label named `name`, made when the box has none. */
+/**
+ * Send a message as the mailbox (the walk kit's reply from bids@, punch list #142 PR 7): `raw` is the RFC 2822 message
+ * as base64url, `threadId` keeps it in the estimate email's thread. Needs `gmail.modify` or `gmail.send`.
+ */
+export function gmailSend(token: string, raw: string, threadId?: string | null): Promise<{ id: string; threadId: string; labelIds?: string[] }> {
+  return call(token, '/messages/send', { method: 'POST', body: { raw, ...(threadId ? { threadId } : {}) } })
+}
+
 export async function gmailLabelId(token: string, name: string): Promise<string> {
   const { labels } = await call<{ labels?: { id: string; name: string }[] }>(token, '/labels')
   const found = labels?.find((l) => l.name === name)
