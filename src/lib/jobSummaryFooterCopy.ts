@@ -16,6 +16,12 @@ export type JobSummaryFloorFooterInput = {
   hidden: number
   /** The floor itself; −1 means "no floor" (every HCP # shows). */
   floor: number
+  /**
+   * v2.5745: while the search box holds something, `shown` is the search's rows (not the
+   * whole list) and `lifted` of them came from under the floor by an exact job number —
+   * so the line never claims "476 shown" over one drawn row.
+   */
+  search?: { lifted: number } | null
 }
 
 export type JobSummaryFloorFooter = {
@@ -26,13 +32,20 @@ export type JobSummaryFloorFooter = {
 
 const jobs = (n: number) => (n === 1 ? 'job' : 'jobs')
 
-export function jobSummaryFloorFooter({ shown, hidden, floor }: JobSummaryFloorFooterInput): JobSummaryFloorFooter {
+export function jobSummaryFloorFooter({ shown, hidden, floor, search }: JobSummaryFloorFooterInput): JobSummaryFloorFooter {
   const shownN = Math.max(0, Math.floor(shown))
-  const hiddenN = Math.max(0, Math.floor(hidden))
+  const liftedN = search ? Math.max(0, Math.floor(search.lifted)) : 0
+  const hiddenN = Math.max(0, Math.floor(hidden) - liftedN)
+  const floorName = floor === DEFAULT_MIN_HCP_EXCLUSIVE ? `the default HCP # ${floor} floor` : `the HCP # ${floor} floor`
+  if (search) {
+    const head = `${shownN} ${jobs(shownN)} shown for the search${liftedN > 0 ? `, ${liftedN} from under the floor` : ''}`
+    if (floor < 0) return { sentence: `${head} · no HCP # floor`, offerShowAll: false }
+    if (hiddenN === 0) return { sentence: `${head} · nothing hidden by ${floorName}`, offerShowAll: false }
+    return { sentence: `${head} · ${hiddenN} older imported ${jobs(hiddenN)} (HCP # ${floor} and below) hidden by ${floorName}`, offerShowAll: true }
+  }
   if (floor < 0) {
     return { sentence: `All ${shownN} ${jobs(shownN)} shown · no HCP # floor`, offerShowAll: false }
   }
-  const floorName = floor === DEFAULT_MIN_HCP_EXCLUSIVE ? `the default HCP # ${floor} floor` : `the HCP # ${floor} floor`
   if (hiddenN === 0) {
     return { sentence: `${shownN} ${jobs(shownN)} shown · nothing hidden by ${floorName}`, offerShowAll: false }
   }

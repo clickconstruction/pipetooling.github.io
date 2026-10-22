@@ -2,7 +2,7 @@
 title: read true profit on Job Summary
 category: Office
 roles: dev, master_technician, controller
-keywords: burn, projected margin, spent vs done, money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, smoothing, carry share, idle cap, overhead dials, in flight, open jobs, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit, budget, from bid, typed, assumed, footing, linking backlog
+keywords: search, find a job, look up a job, job number, burn, projected margin, spent vs done, money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, smoothing, carry share, idle cap, overhead dials, in flight, open jobs, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit, budget, from bid, typed, assumed, footing, linking backlog
 order: 36
 ---
 
@@ -24,6 +24,7 @@ The link shows for dev, leader and controller. Assistants keep the tab but not t
 
 You go to **Jobs → Job Summary**. Above the table:
 
+- **Search**: type a job number, a name or an address in the box above the chips. The job you name always shows. The Show and Worked in chips step aside for it, and so does the Budget chip. A line under the controls says what matched and which chip stepped aside. An exact job number also reaches under the HCP # floor. A name under the floor is only counted, with **show all** as the door.
 - **Show**: {{chip:blue|Finished (100%)}} opens by default. Those are jobs whose % complete resolves to 100. Either the work is done, by the latest report or the job's own %. Or the whole contract is billed and paid. One paid progress bill no longer marks a job finished. So a job still being worked stays under **In progress** with earned revenue. **In progress** is everything else. **All** is every job.
 - **Worked in**: 90d, 6 mo, **This year**, 12 mo, or All. This year is the default. A job is in the window when it has approved field hours there. It is also in when its last work date falls inside it.
 - **Overhead**: how each job's overhead share is figured. **Day-share** is the default, explained below. The grey chip beside it, {{chip:gray|30 days · 20% carry · 14-day idle cap}}, names the constants day-share runs on. A, B, and C are the same three lenses People → Overhead shows, applied to one job.
@@ -112,10 +113,10 @@ Per-hour lenses barely touch a job that sold well on few hours. A per-revenue le
 
 ## Older imported jobs
 
-Under the table sits the tab's one scope control: **Hide older imported jobs with HCP # at or below** {{chip:gray|500}}. The legacy jobs imported with low HCP numbers stay out of the way by default. The line beneath says exactly what that costs you. It reads like *417 shown · 398 older imported jobs (HCP # 500 and below) hidden by the default HCP # 500 floor*. A **show all** link drops the floor and reloads the table with every job. Jobs with no HCP #, or a non-numeric one, always show. The floor you pick is remembered on this device.
+Under the table sits the tab's one scope control: **Hide older imported jobs with HCP # at or below** {{chip:gray|500}}. The legacy jobs imported with low HCP numbers stay out of the way by default. The line beneath says exactly what that costs you. It reads like *417 shown · 398 older imported jobs (HCP # 500 and below) hidden by the default HCP # 500 floor*. While a search is on, the line counts the search's rows instead. A **show all** link drops the floor and reloads the table with every job. Jobs with no HCP #, or a non-numeric one, always show. The floor you pick is remembered on this device.
 
 :::example When the count matters
-Looking for a 2024 job that isn't in the table? Read the footer first: if it says jobs are hidden, click **show all** before assuming the job is missing.
+Looking for a 2024 job that isn't in the table? Type its number in the search box. An exact number reaches under the floor. A name does not, so read the footer, and press **show all** when it says jobs are hidden.
 :::
 
 ## Watch-outs

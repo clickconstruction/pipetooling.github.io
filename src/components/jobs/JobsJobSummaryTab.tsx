@@ -76,7 +76,8 @@ import JobSummaryReworkView from './JobSummaryReworkView'
 import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
-import { JOB_SUMMARY_CUT_OPTIONS, jobSummaryRowUnderTarget } from '../../lib/jobs/jobSummaryLedgerView'
+import { JOB_SUMMARY_CUT_OPTIONS, jobSummaryRowUnderTarget, jobSummarySearchOn, type JobSummaryViewMode } from '../../lib/jobs/jobSummaryLedgerView'
+import { jobSummarySearchNote } from '../../lib/jobs/jobSummarySearchWins'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -416,6 +417,12 @@ export type JobsJobSummaryTabProps = {
   jobSummaryHiddenByMinHcp: number | null
   jobSummaryMinHcpExclusive: number
   setJobSummaryMinHcpExclusive: (n: number) => void
+  /** v2.5745: ids of the rows a search lifted from under the HCP # floor (they are inside `jobSummaryLedgerJobs`). */
+  jobSummaryLiftedJobIds?: ReadonlySet<string>
+  /** Exact number matches under the floor still being read. */
+  jobSummaryLiftPending?: number
+  /** Looser name or address matches under the floor, counted but not lifted. */
+  jobSummaryUnderFloorAlso?: number
   jobSummaryData: JobSummaryRow[]
   jobSummarySearch: string
   setJobSummarySearch: (v: string) => void
@@ -473,6 +480,9 @@ export type JobsJobSummaryTabProps = {
 
 const EMPTY_REPORT_DATES: ReadonlyMap<string, string> = new Map()
 
+/** The views that draw the search's rows (the Show chip's views): the search note and the floor line count for them (v2.5745). */
+const SEARCH_ROWS_VIEWS: ReadonlySet<JobSummaryViewMode> = new Set<JobSummaryViewMode>(['jobs', 'months', 'cycle', 'scatter'])
+
 export default function JobsJobSummaryTab({
   view,
   canOpenSessionNotes,
@@ -485,6 +495,9 @@ export default function JobsJobSummaryTab({
   jobSummaryHiddenByMinHcp,
   jobSummaryMinHcpExclusive,
   setJobSummaryMinHcpExclusive,
+  jobSummaryLiftedJobIds,
+  jobSummaryLiftPending = 0,
+  jobSummaryUnderFloorAlso = 0,
   jobSummaryData,
   jobSummarySearch,
   setJobSummarySearch,
@@ -518,6 +531,10 @@ export default function JobsJobSummaryTab({
   handleJobSummaryMercuryReassignFromDrilldown,
   printJobSummaryCostBreakdown,
 }: JobsJobSummaryTabProps) {
+  // v2.5745: while the box holds something, the search's rows are what the rows views draw.
+  const searching = jobSummarySearchOn(jobSummarySearch) && SEARCH_ROWS_VIEWS.has(view.prefs.view)
+  const ledgerReady = jobSummaryLedgerJobs != null && !tallyPartsLoading && !laborJobsLoading
+  const liftedDrawn = searching && jobSummaryLiftedJobIds ? view.rows.filter((r) => jobSummaryLiftedJobIds.has(r.row.job.id)).length : 0
   return (
         <div>
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
@@ -525,6 +542,24 @@ export default function JobsJobSummaryTab({
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{jobSummaryLedgerError}</p>
           )}
           <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} canEditOverheadDials={canEditOverheadDials} />
+          {searching && ledgerReady ? (
+            // v2.5745: the search wins — the line says what it matched and which chips or floor stepped aside.
+            <p role="status" data-testid="job-summary-search-note" style={{ margin: '-0.25rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {
+                jobSummarySearchNote({
+                  search: jobSummarySearch,
+                  rows: view.rows,
+                  prefs: view.prefs,
+                  startYmd: view.startYmd,
+                  endYmd: view.endYmd,
+                  floor: jobSummaryMinHcpExclusive,
+                  liftedJobIds: jobSummaryLiftedJobIds,
+                  liftPending: jobSummaryLiftPending,
+                  underFloorAlso: jobSummaryUnderFloorAlso,
+                }).sentence
+              }
+            </p>
+          ) : null}
           {/* Job Summary uses jobSummaryLedgerJobs, not the Stages/Billing/Parts jobs list — do not gate on jobsListLoading or it stays true when users open this tab first. */}
           {view.prefs.view === 'timeline' ? (
             <JobSummaryTimelineView
@@ -638,6 +673,9 @@ export default function JobsJobSummaryTab({
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
+          ) : view.rows.length === 0 && searching ? (
+            // v2.5745: the search note above already says no job matches; nothing to add here.
+            null
           ) : view.rows.length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>
               {view.hiddenByStatus > 0 ? (
@@ -3231,10 +3269,12 @@ export default function JobsJobSummaryTab({
               // v2.2914 (J6-7): say what the floor hides. The old "Showing N of N after
               // filter" compared two already-floored lists and could never disclose the
               // legacy rows the fetch dropped.
+              // v2.5745: while a search is on the line counts the search's rows, not the whole list.
               const footer = jobSummaryFloorFooter({
-                shown: jobSummaryLedgerJobs.length,
+                shown: searching ? view.rows.length : jobSummaryLedgerJobs.length,
                 hidden: jobSummaryHiddenByMinHcp,
                 floor: jobSummaryMinHcpExclusive,
+                search: searching ? { lifted: liftedDrawn } : null,
               })
               return (
                 <p role="status" style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

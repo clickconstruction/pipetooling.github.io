@@ -192,18 +192,25 @@ describe('the min-HCP floor (Job Summary)', () => {
     expect(r.ok && r.hiddenByMinHcp).toBe(1)
     const mats = queries.find((q) => q.table === 'jobs_ledger_materials')!
     expect(stepArgs(mats, 'in')).toEqual([['job_id', ['a', 'c', 'd']]])
+    // v2.5745: the dropped row comes back shaped but unenriched — the pool a search lifts a job number from.
+    expect(r.ok && r.flooredJobs?.map((j) => j.id)).toEqual(['b'])
+    expect(r.ok && r.flooredJobs?.[0]?.materials).toEqual([])
   })
   it('a floor that hides every row short-circuits enrichment', async () => {
     route = (table) => (table === 'jobs_ledger' ? [row({ id: 'a', hcp_number: '250' }), row({ id: 'b', hcp_number: '100' })] : [])
     const r = await fetchJobsLedgerWithDetailsForStages({ minHcpExclusive: 999, jobSummaryEnrich: true })
-    expect(r).toEqual({ ok: true, jobs: [], hiddenByMinHcp: 2 })
+    expect(r.ok && r.jobs).toEqual([])
+    expect(r.ok && r.hiddenByMinHcp).toBe(2)
+    expect(r.ok && r.flooredJobs?.map((j) => j.id)).toEqual(['a', 'b'])
     expect(tables()).toEqual(['jobs_ledger'])
   })
   it('-1 is the lowest floor (nothing hidden); NaN and null apply no floor', async () => {
     const r1 = await fetchJobsLedgerWithDetailsForStages({ minHcpExclusive: -1, jobSummaryEnrich: true })
     expect(r1.ok && r1.hiddenByMinHcp).toBe(0)
+    expect(r1.ok && r1.flooredJobs).toEqual([])
     const r2 = await fetchJobsLedgerWithDetailsForStages({ minHcpExclusive: Number.NaN, jobSummaryEnrich: true })
     expect(r2.ok && r2.hiddenByMinHcp).toBeUndefined()
+    expect(r2.ok && r2.flooredJobs).toBeUndefined()
     const r3 = await fetchJobsLedgerWithDetailsForStages({ minHcpExclusive: null, jobSummaryEnrich: true })
     expect(r3.ok && r3.hiddenByMinHcp).toBeUndefined()
   })

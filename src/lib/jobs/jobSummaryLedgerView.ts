@@ -550,6 +550,11 @@ export function jobSummaryRowMatchesSearch(job: JobSummaryLedgerRowInput['job'] 
   return [job.hcp_number, job.click_number, job.job_name, job.job_address].some((v) => (v ?? '').toLowerCase().includes(q))
 }
 
+/** True while the search box holds something — the rows it matches win over every chip (v2.5745). */
+export function jobSummarySearchOn(search: string): boolean {
+  return search.trim() !== ''
+}
+
 /** The Budget chip (v2.3300): all, or only the rows whose Burn budget stands on that footing. */
 export function jobSummaryRowInBudgetFilter(row: Pick<JobSummaryEnrichedRow, 'budgetFooting'>, filter: JobSummaryBudgetFilter): boolean {
   return filter === 'all' || row.budgetFooting === filter
@@ -647,18 +652,27 @@ export function filterAndSortJobSummaryRows<R extends JobSummaryLedgerRowInput &
   endYmd: string
 }): JobSummaryEnrichedRow<R>[] {
   const { rows, prefs, search, startYmd, endYmd } = args
-  const visible = rows.filter(
-    (r) => jobSummaryRowMatchesSearch(r.row.job, search) && jobSummaryRowInStatus(r, prefs.status) && jobSummaryRowInWindow(r, prefs.window, startYmd, endYmd) && jobSummaryRowInBudgetFilter(r, prefs.budgetFilter),
-  )
+  // The search wins (v2.5745): a job number, a name or an address typed in the box is an
+  // explicit ask, so the Show, Worked in and Budget chips step aside for the rows it matches.
+  // The owner typed 891 on the default view (Finished · This year) and saw no row — the tab
+  // answered "1 job matches but isn't finished yet" and drew nothing. The row is drawn with
+  // its real status and dates; `jobSummarySearchNote` says which chips stepped aside.
+  const visible = jobSummarySearchOn(search)
+    ? rows.filter((r) => jobSummaryRowMatchesSearch(r.row.job, search))
+    : rows.filter(
+        (r) => jobSummaryRowInStatus(r, prefs.status) && jobSummaryRowInWindow(r, prefs.window, startYmd, endYmd) && jobSummaryRowInBudgetFilter(r, prefs.budgetFilter),
+      )
   return sortJobSummaryRows(visible, prefs.sortKey, prefs.sortDir)
 }
 
 /**
- * How many rows the search would show if the Show filter were widened (v2.3178).
+ * How many rows the Show filter hides from the window (v2.3178).
  * Owner tripped on this: the tab opens on Finished (100%), so a job still in the
- * field "wasn't on Job Summary" — it was, one chip away. Counts rows that match
- * the search + window but not the status filter; 0 when the filter is already
- * `all` or nothing is hidden.
+ * field "wasn't on Job Summary" — it was, one chip away. Counts rows in the window
+ * that fail the status filter; 0 when the filter is already `all` or nothing is
+ * hidden. Since v2.5745 a search hides nothing (its rows win over the chips), so
+ * the count is 0 whenever the box holds something; the empty state is the
+ * no-search case only, and `jobSummarySearchNote` speaks for a search.
  */
 export function jobSummaryRowsHiddenByStatus<R extends JobSummaryLedgerRowInput & { job: { job_address?: string | null } }>(args: {
   rows: readonly JobSummaryEnrichedRow<R>[]
@@ -668,10 +682,9 @@ export function jobSummaryRowsHiddenByStatus<R extends JobSummaryLedgerRowInput 
   endYmd: string
 }): number {
   const { rows, prefs, search, startYmd, endYmd } = args
-  if (prefs.status === 'all') return 0
+  if (prefs.status === 'all' || jobSummarySearchOn(search)) return 0
   let n = 0
   for (const r of rows) {
-    if (!jobSummaryRowMatchesSearch(r.row.job, search)) continue
     if (!jobSummaryRowInWindow(r, prefs.window, startYmd, endYmd)) continue
     if (jobSummaryRowInStatus(r, prefs.status)) continue
     n += 1
