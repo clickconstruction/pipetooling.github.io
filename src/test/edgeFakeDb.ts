@@ -13,7 +13,7 @@ export type FakeDb = {
   /** `op table` per finished query, in order. */
   calls: string[]
   /** Every update and insert, with the rows it matched. */
-  writes: Array<{ op: 'update' | 'insert'; table: string; values: FakeRow; matched: FakeRow[] }>
+  writes: Array<{ op: 'update' | 'insert' | 'upsert'; table: string; values: FakeRow; matched: FakeRow[] }>
   /** RPC results by name. */
   rpcs: Record<string, unknown>
 }
@@ -25,7 +25,7 @@ export function makeFakeDb(): FakeDb {
 type Chain = Record<string, (...args: never[]) => unknown>
 
 export function fakeTable(db: FakeDb, name: string): Chain {
-  let op: 'select' | 'update' | 'insert' = 'select'
+  let op: 'select' | 'update' | 'insert' | 'upsert' = 'select'
   let values: FakeRow = {}
   const where: Array<(r: FakeRow) => boolean> = []
   const run = (): FakeRow[] => {
@@ -46,6 +46,7 @@ export function fakeTable(db: FakeDb, name: string): Chain {
   chain.is = ((c: string, v: unknown) => (where.push((r) => (r[c] ?? null) === v), chain)) as never
   chain.update = ((v: FakeRow) => ((op = 'update'), (values = v), chain)) as never
   chain.insert = ((v: FakeRow) => ((op = 'insert'), (values = v), chain)) as never
+  chain.upsert = ((v: FakeRow) => ((op = 'upsert'), (values = v), chain)) as never
   chain.maybeSingle = (() => Promise.resolve({ data: run()[0] ?? null, error: null })) as never
   chain.single = (() => {
     const row = run()[0]

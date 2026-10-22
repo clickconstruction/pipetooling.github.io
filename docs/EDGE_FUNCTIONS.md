@@ -87,6 +87,7 @@ when_to_read:
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
    - [dev-login](#dev-login)
+   - [walk](#walk)
    - [dev-mcp](#dev-mcp)
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
@@ -865,6 +866,25 @@ const response = await supabase.functions.invoke('dev-login', {
 #### Supabase Auth Config
 
 The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned `action_link` — it parses the link's `token` and verifies it directly via `supabase.auth.verifyOtp({ type: 'magiclink', token_hash })`, establishing the session on the current origin. This makes dev-login **port-agnostic**: any localhost port works, so parallel dev servers (5174, 5177, …) no longer get bounced to production when their port is missing from the auth redirect allow-list. `additional_redirect_urls` (`http://localhost:5175/**`, `http://localhost:5173/**`, production `https://pipetooling.com/**`) still matters for any flow that follows a magic link directly, but dev-login itself no longer depends on it.
+
+---
+
+### walk
+
+**Purpose**: the walk kit's server half (v2.5731, punch list #142 PR 7; `to-dos/walk-kit/`). A session's driver (`npm run walk`) runs the Messages loop on prod end to end, on the company's own inbox and number, and this is the one place that needs a server secret: making the hidden tester account, reading and sending as bids@ through the Google service account, texting from the bids number through Quo, and the kit's rows through `walk_setup` / `walk_cleanup` (`20261022045047_walk_kit.sql`). The tester's own three sends (the estimate email, the estimate text, a reply by email) go through the app's doors with the tester's session, never through here.
+
+**Endpoint**: `POST /functions/v1/walk` with `{ action, … }`. **Authentication**: `X-Dev-Login-Secret` must equal `DEV_LOGIN_SECRET`, the secret dev-login holds (401 otherwise); `verify_jwt = false` in `config.toml`. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the open's headers), `GOOGLE_SERVICE_ACCOUNT_JSON` (as gmail-sync), `EMAIL_FROM`, and the Quo key from the vault (`quo_secret_get`) or `QUO_API_KEY`.
+
+| Action | What it does |
+|---|---|
+| `setup` | The tester when missing: `walk-tester@walk.pipetooling.local`, *ZZ Walk tester*, an assistant in training mode flagged `is_walk_tester` (found on any page of accounts, else `auth.admin.createUser`, then the `users` row upserted as `create-user` does). Then `walk_setup(tester, EMAIL_FROM's address, phone, sharedOk)`. `fallback: true` with `ownerEmail` takes that account's own phone and `sharedOk` true (BUILD_PLAN § 4). Answers the kit and the tester's id, or `walk_setup`'s refusal in its words (409). |
+| `open` | As bids@: the estimate email from the app's sender for the kit's estimate (`from:… subject:"Estimate #N" newer_than:7d`, the subject checked), `{ arrived: false }` while there is none; else its accept link opened with a Mac Safari user agent through `get-estimate-for-customer?token=…`, never `preview=1`, so the 👀 line is written. Answers when it arrived, its Gmail and RFC ids, the link's last four characters and the open's status. |
+| `reply-email` | As bids@: `words` To the team box's address from Settings, Subject `Re: <the estimate email's subject>`, `In-Reply-To` and `References` its Message-ID, in its Gmail thread (`gmailSend`). Answers the sent ids and time; 409 before the estimate email has arrived. |
+| `text` | `words` from the bids box's Quo number to the team box's number, the same request `sendText` makes (`POST /v1/messages`, the bare key as Authorization). Refused in the fallback walk (the owner texts by hand). Answers Quo's message id and time. |
+| `seed-old` | One `out` text on the kit's phone channel, three days old, `who_text` *ZZ walk seed*, delivered, from the team box, so Waiting on them can be read in a same-day walk. |
+| `cleanup` | `walk_cleanup()`: its counts per table, or its refusal in words (409). |
+
+**No secret leaves**: every answer carries ids, times and words; `leakedSecret` (`gcKernels/lib/walk/walkFunction.ts`) scans each answer for the gate, the keys, the service account, the Google token minted and the Quo key loaded, and holds one back that carries any (500 `held`). Tests: `src/lib/walk/walkFunction.test.ts` (the kernel) and `walkFunction.run.test.ts` (the handler on the fake database with `fetch` caught). **Deploy** `bash scripts/deploy-functions.sh walk` after PR 2's and PR 4's migrations are pushed and PR 5's doors are deployed.
 
 ---
 
