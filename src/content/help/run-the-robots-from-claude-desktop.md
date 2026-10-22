@@ -101,4 +101,4 @@ The prompt carries the owner's rules. It never sends anything to a customer. It 
 
 A bid whose plans it cannot read is **parked**, not abandoned. The robot files a plans ask on that bid, the amber icon on the Bid Board. It leaves its shell open and moves to the next bid. When someone taps {{button:blue|★ Attached — rerun}}, the next batch hands that shell back first. Questions about the job go to the estimator's Standing rulings. Questions about the robot's own machine go to the operator on the Console.
 
-To cut a machine off, you revoke its key label on the Digital twins page.
+To cut a machine off, you revoke its key label on the Digital twins page. To retire a robot, you press {{button:gray|Archive}} on its row there. Its keys are revoked first. Its runs and bids stay. The robot moves to the archived line under the fleet. {{button:gray|Restore}} brings it back with no key.

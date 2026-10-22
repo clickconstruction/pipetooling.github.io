@@ -139,7 +139,10 @@ session artifacts; this is its doc home):
 
 Two dev-only pages (v2.3224). **Settings → System → Digital twins** is fleet admin: mint a
 twin, issue a token (shown once — the same card offers **Copy Desktop setup command**),
-revoke a token to cut one partner off, flip rungs, set the calibration standard. **Bids →
+revoke a token to cut one partner off, flip rungs, set the calibration standard, and since
+v2.5741 **Archive** a twin that is done (its live keys are revoked first; its runs, shadows
+and bids stay) — it moves to the *archived* fold under the fleet, where **Restore** brings it
+back with no key. Seat numbers count archived twins, so the next mint never reuses an email. **Bids →
 🤖 Robots → Console** is the operator's desk: the Desktop setup command and kickoff, the
 Claude Code handoff, the queue door, the robots' operator-lane questions, and the runs
 ledger (sign-ins, reports, heartbeats).
