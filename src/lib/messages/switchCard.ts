@@ -12,7 +12,7 @@ import { parseQuoSeats } from '../quo/seatsCard'
 import { TEXTS_SWITCH_KEY, textsAreOn } from '../quo/textsSwitch'
 import { BOXES_SETTINGS_KEY, parseBoxSettings } from './boxes'
 import { readerIsOn } from './emailReader'
-import { OFFICE_HOURS_KEY } from './hasRule'
+import { OFFICE_HOURS_KEY, parseOfficeHours } from './hasRule'
 import { REPLY_PUSH_ON_KEY } from './notifyPlan'
 import { officeHoursSet } from './officeHoursCard'
 import { replyPushIsOn } from './replyPushSwitch'
@@ -76,6 +76,19 @@ export function switchStates(raw: Readonly<Record<string, SwitchRaw | undefined>
     reminders: offered ? 'on' : 'off',
     hours: officeHoursSet(text(OFFICE_HOURS_KEY)) ? 'on' : 'not_set',
   }
+}
+
+/** The Office hours row's why while the card's switch is on (punch list #141 PR 1). */
+export const HOURS_ALWAYS_WHY = 'the office is open around the clock'
+
+/**
+ * Each row's why from the rows as read: the row's own words, except Office hours, which reads
+ * `the office is open around the clock` while the card's switch is on.
+ */
+export function switchWhys(raw: Readonly<Record<string, SwitchRaw | undefined>>): Record<SwitchKey, string> {
+  const whys = Object.fromEntries(SWITCH_ROWS.map((r) => [r.key, r.why])) as Record<SwitchKey, string>
+  if (parseOfficeHours(raw[OFFICE_HOURS_KEY]?.value_text).always) whys.hours = HOURS_ALWAYS_WHY
+  return whys
 }
 
 export interface SwitchCount {

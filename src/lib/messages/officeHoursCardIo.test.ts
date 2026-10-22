@@ -43,7 +43,7 @@ describe('the Office hours card’s read and write (punch list #140 PR 1)', () =
   it('reads the hours from their row and keeps the row’s own text', async () => {
     const { client, calls } = fakeClient({ read: { data: { value_text: SAVED }, error: null } })
     await expect(supabaseOfficeHoursIo(client).load()).resolves.toEqual({
-      hours: { days: [1, 2, 3, 4, 5], opens: '08:00', closes: '16:00', techUntil: '17:00', emergency: null },
+      hours: { days: [1, 2, 3, 4, 5], opens: '08:00', closes: '16:00', techUntil: '17:00', emergency: null, always: false },
       raw: SAVED,
     })
     expect(calls).toContainEqual(['eq', 'key', 'messages_office_hours_v1'])

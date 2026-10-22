@@ -7,7 +7,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { allOn, cardLine, laterHolds, laterUntil, onCount, stateTone, SWITCH_LATER_STORAGE_KEY, SWITCH_ROWS, SWITCH_WORDS, switchStates, type SwitchKey, type SwitchState } from '../../lib/messages/switchCard'
+import { allOn, cardLine, laterHolds, laterUntil, onCount, stateTone, SWITCH_LATER_STORAGE_KEY, SWITCH_ROWS, SWITCH_WORDS, switchStates, switchWhys, type SwitchKey, type SwitchState } from '../../lib/messages/switchCard'
 import { supabaseSwitchCardIo, type SwitchCardIo } from '../../lib/messages/switchCardIo'
 import { Chip } from '../gc/gcUi'
 
@@ -34,13 +34,19 @@ const quiet: CSSProperties = { border: '1px solid var(--border-strong)', borderR
 
 export function SwitchOnCard({ io = DEFAULT_IO, now = () => new Date().toISOString() }: { io?: SwitchCardIo; now?: () => string }) {
   const [states, setStates] = useState<Record<SwitchKey, SwitchState> | null>(null)
+  // Each row's why: the row's own, except Office hours under its around-the-clock switch.
+  const [whys, setWhys] = useState<Record<SwitchKey, string> | null>(null)
   const [open, setOpen] = useState(false)
   const [later, setLater] = useState<string | null>(readLater)
 
   useEffect(() => {
     let live = true
     io.load().then(
-      (raw) => live && setStates(switchStates(raw)),
+      (raw) => {
+        if (!live) return
+        setStates(switchStates(raw))
+        setWhys(switchWhys(raw))
+      },
       () => undefined,
     )
     return () => {
@@ -69,7 +75,7 @@ export function SwitchOnCard({ io = DEFAULT_IO, now = () => new Date().toISOStri
                     {SWITCH_WORDS.state[state]}
                   </Chip>
                   <strong>{r.title}</strong>
-                  <span style={{ color: 'var(--text-muted)' }}>{r.why}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{whys?.[r.key] ?? r.why}</span>
                   {state !== 'on' && (
                     <Link to={r.href} style={{ marginLeft: 'auto', fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {r.door} ›
