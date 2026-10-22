@@ -57,6 +57,7 @@ import { clausePaperHref } from '../../lib/contracts/clauseRows'
 import { canOpenGcProjects } from '../../lib/gc/access'
 import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
+import { useRobotSilenceNudge } from '../../hooks/useRobotSilenceNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
 import { useOwnerRecordsSignedNudge } from '../../hooks/useOwnerRecordsSignedNudge'
@@ -431,7 +432,7 @@ export function DashboardPinnedQuickRow({
   // (ROBOT_AUDIT_ROLES, v2.2920 — the same list gates the Bids 🤖 door). The
   // hook's sealed-shadow hold keeps unworkable audits out.
   const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && canWorkRobotAudits(role)
-  const { pending: robotAuditsPending, questions: robotQuestionsWaiting } = useBidAuditsPendingCount(robotAuditsEnabled)
+  const { pending: robotAuditsPending, questions: robotQuestionsWaiting, plansAsks: robotBlocked } = useBidAuditsPendingCount(robotAuditsEnabled)
   // Sealed robot numbers on live bids (v2.3126) — same audience; the head start, not a queue.
   const { locked: robotLockedShadows } = useRobotLockedShadows(robotAuditsEnabled)
 
@@ -550,6 +551,9 @@ export function DashboardPinnedQuickRow({
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
+  // Robot rounds PR 4 (v2.5734, punch list #142): the fleet's silence — the owner's (dev or master); the Console is its door.
+  const robotSilenceEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'master_technician')
+  const robotSilenceNudge = useRobotSilenceNudge(robotSilenceEnabled, robotSilenceEnabled ? authUserId : undefined)
   // Collections accounts awaiting a dev's attorney-ready review (Legal portal PR 2, v2.3313) — devs only; the desk is its door.
   const legalReviewEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const { review: legalReview } = useLegalReviewNudge(legalReviewEnabled)
@@ -641,6 +645,10 @@ export function DashboardPinnedQuickRow({
     contractClauses,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
+    robotSilenceEnabled,
+    robotSilence: robotSilenceNudge.silence,
+    robotBlockedEnabled: robotAuditsEnabled,
+    robotBlocked,
     legalReviewEnabled,
     legalReview,
     legalFirmActivityEnabled,
@@ -885,8 +893,10 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=audits')
             } else if (item.key === 'robot-locked') {
               navigate('/bids?tab=robot-board')
-            } else if (item.key === 'robot-backlog') {
+            } else if (item.key === 'robot-backlog' || item.key === 'robot-asleep') {
               navigate('/bids?tab=robot-console')
+            } else if (item.key === 'robot-blocked') {
+              navigate(robotBlocked.first ? `/bids?tab=bid-board&bidId=${robotBlocked.first.bidId}&robot=needs` : '/bids?tab=robot-board')
             } else if (item.key === 'legal-review') {
               navigate(`/jobs?tab=stages&legal=${encodeURIComponent(legalReview?.firstKey ?? '1')}`)
             } else if (item.key === 'legal-firm-activity') {
@@ -972,6 +982,9 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'robot-backlog') {
               if (key === 'snooze') robotBacklogNudge.snooze24h()
               else if (key === 'dismiss') robotBacklogNudge.dismissUntilCountIncreases()
+            } else if (item.key === 'robot-asleep') {
+              if (key === 'snooze') robotSilenceNudge.snooze24h()
+              else if (key === 'dismiss') robotSilenceNudge.dismissUntilNextRound()
             }
           }}
         />

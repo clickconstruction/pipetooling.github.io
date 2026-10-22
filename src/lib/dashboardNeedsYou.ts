@@ -1,6 +1,7 @@
 import type { UserRole } from '../hooks/useAuth'
 import type { SubmittalNudge } from './submittals/submittalNeedsYou'
 import { describeBacklogAge } from './bids/robotBacklog'
+import { robotAsleepWords, robotBlockedWords } from './bids/robotSilence'
 import { questionMinutesEstimate } from './bids/standingRulings'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
 import { withScopeLabel } from './bids/bidSentCounts'
@@ -111,6 +112,8 @@ export type NeedsYouItem = {
     | 'claim-dev'
     | 'robot-audits'
     | 'robot-locked'
+    | 'robot-asleep'
+    | 'robot-blocked'
     | 'lien-unconditional'
     | 'lien-waivers-to-sign'
     | 'demand-deadline'
@@ -230,6 +233,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'roadmap-needs-person': 50,
   'robot-audits': 50,
   'robot-locked': 50,
+  'robot-asleep': 50,
+  'robot-blocked': 50,
   'hours-approvals': 50,
   'typed-hours': 50,
   'label-approvals': 40,
@@ -679,6 +684,14 @@ export type NeedsYouInputs = {
    */
   robotBacklogEnabled?: boolean
   robotBacklog?: import('./bids/robotBacklog').RobotBacklog | null
+  /** Robot rounds PR 4 (v2.5734, punch list #142): the fleet's silence — the owner's (dev or master). Asleep after fifteen minutes with no call. */
+  robotSilenceEnabled?: boolean
+  robotSilence?: import('./bids/robotSilence').RobotSilence | null
+  /** The robot blocked on a bid's plans — the bid roles'; the needs sheet is the door. */
+  robotBlockedEnabled?: boolean
+  robotBlocked?: import('./bids/robotSilence').RobotBlocked | null
+  /** The clock for the silence item's words; Date.now() when absent. */
+  nowMs?: number
   /** Legal portal PR 2 (v2.3313): Collections accounts a dev has not yet marked attorney-ready — devs only. */
   legalReviewEnabled?: boolean
   legalReview?: import('./legal/legalMatters').LegalReviewSummary | null
@@ -1812,6 +1825,38 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${asked}${oldest}Open each on the Legal desk, work the gaps, and mark it attorney-ready — that is the moment it reaches the firm — or write it down.${r.withFirm ? ` ${r.withFirm} already with the firm.` : ''}`,
       figure: String(n),
       actionLabel: 'Review',
+    })
+  }
+
+  // Robot rounds PR 4 (v2.5734, punch list #142): silence has two meanings and two owners. A robot
+  // blocked on a bid's plans is the estimator's, with the door; a fleet with no round for fifteen
+  // minutes is the owner's, with the fix in the sentence. Progress itself never lands here.
+  if (inputs.robotBlockedEnabled && inputs.robotBlocked && inputs.robotBlocked.count > 0) {
+    const w = robotBlockedWords(inputs.robotBlocked)
+    items.push({
+      key: 'robot-blocked',
+      severity: 'amber',
+      kicker: 'Robots',
+      title: w.title,
+      detail: w.detail,
+      figure: String(inputs.robotBlocked.count),
+      actionLabel: 'Open the needs sheet',
+    })
+  }
+  if (inputs.robotSilenceEnabled && inputs.robotSilence?.asleep && inputs.robotSilence.lastSeenAt) {
+    const w = robotAsleepWords(inputs.robotSilence.lastSeenAt, inputs.nowMs ?? Date.now())
+    items.push({
+      key: 'robot-asleep',
+      severity: 'amber',
+      kicker: 'Robots',
+      title: w.title,
+      detail: w.detail,
+      figure: '1',
+      actionLabel: 'Open the Console',
+      secondary: [
+        { key: 'snooze', label: 'Snooze 24h' },
+        { key: 'dismiss', label: 'Dismiss until the next round' },
+      ],
     })
   }
 

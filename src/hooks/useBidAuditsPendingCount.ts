@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { countWorkablePendingAudits, pairTwinReferences } from '../lib/bids/bidAudits'
 import { openEstimatorQuestions, type OpenQuestionShape } from '../lib/bids/standingRulings'
+import { effectiveTwinQuestionKind } from '../../supabase/functions/_shared/twinQuestionKind'
+import type { RobotBlocked } from '../lib/bids/robotSilence'
 
 // bid_audits reaches the generated types only with the post-push gen-types run
 // (BidRfiQueue pattern) — untyped view until then.
@@ -27,8 +29,10 @@ const auditDb = supabase as unknown as SupabaseClient
  * estimator, counted by the one kernel the Audits panel and the Scoreboard read
  * (`openEstimatorQuestions`), so the Dashboard card can lead with the fifteen-minute item.
  */
-export function useBidAuditsPendingCount(enabled: boolean): { pending: number; anyAudits: boolean; questions: number } {
-  const [state, setState] = useState<{ pending: number; anyAudits: boolean; questions: number }>({ pending: 0, anyAudits: false, questions: 0 })
+const NO_BLOCKED: RobotBlocked = { count: 0, first: null }
+
+export function useBidAuditsPendingCount(enabled: boolean): { pending: number; anyAudits: boolean; questions: number; plansAsks: RobotBlocked } {
+  const [state, setState] = useState<{ pending: number; anyAudits: boolean; questions: number; plansAsks: RobotBlocked }>({ pending: 0, anyAudits: false, questions: 0, plansAsks: NO_BLOCKED })
 
   useEffect(() => {
     if (!enabled) return
@@ -78,17 +82,29 @@ export function useBidAuditsPendingCount(enabled: boolean): { pending: number; a
         }
         // The robots' open questions (fail-soft: RLS-closed or a missing table reads as none).
         let questions = 0
+        let plansAsks: RobotBlocked = NO_BLOCKED
         try {
           const { data: qs } = await auditDb.from('twin_questions').select('*').eq('status', 'open').limit(500)
-          questions = openEstimatorQuestions((qs ?? []) as OpenQuestionShape[])
+          const open = (qs ?? []) as Array<OpenQuestionShape & { about_bid_id?: string | null; created_at?: string }>
+          questions = openEstimatorQuestions(open)
+          // Robot rounds PR 4 (v2.5734): the robot blocked on a bid's plans — the oldest open plans ask is the door.
+          const plans = open.filter((q) => effectiveTwinQuestionKind(q) === 'plans' && q.about_bid_id).sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+          const bidIds = [...new Set(plans.map((q) => q.about_bid_id as string))]
+          if (bidIds.length > 0) {
+            const { data: bids } = await auditDb.from('bids').select('id, bid_number, project_name').in('id', bidIds.slice(0, 50))
+            const byId = new Map(((bids ?? []) as Array<{ id: string; bid_number: string | number | null; project_name: string | null }>).map((b) => [b.id, b]))
+            const firstId = bidIds[0]!
+            const fb = byId.get(firstId)
+            plansAsks = { count: bidIds.length, first: { bidId: firstId, bidNumber: fb?.bid_number != null ? String(fb.bid_number) : null, project: fb?.project_name ?? null } }
+          }
         } catch {
           // no questions surface — the audits count still does
         }
         if (cancelled) return
-        setState({ pending: countWorkablePendingAudits(rows, sealedBidIds, unpricedBidIds), anyAudits: rows.length > 0, questions })
+        setState({ pending: countWorkablePendingAudits(rows, sealedBidIds, unpricedBidIds), anyAudits: rows.length > 0, questions, plansAsks })
       } catch {
         // Missing table or transient error: keep the tab hidden rather than toasting.
-        if (!cancelled) setState({ pending: 0, anyAudits: false, questions: 0 })
+        if (!cancelled) setState({ pending: 0, anyAudits: false, questions: 0, plansAsks: NO_BLOCKED })
       }
     })()
     return () => {

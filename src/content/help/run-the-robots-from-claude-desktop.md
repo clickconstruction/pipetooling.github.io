@@ -81,6 +81,8 @@ You press {{button:gray|Stop the rounds}} to make that Mac finish the bid in han
 
 You do not have to check the Console to know. Bids may want a shadow, or price matrices may be queued. A price matrix is a request for the robot to compare the supply houses' quotes on a bid. Then your Dashboard's **Needs you** card carries one line: {{chip:blue|Robots}} *Robots have work waiting · 4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours)*. The line names the first of each. It turns {{chip:yellow|amber}} only when something is stuck. That is a matrix the robot went quiet on for over an hour. Or it is a bid request older than a week. {{button:blue|Open the Console}} lands here. You snooze it for a day or dismiss it until the count rises. It disappears on its own when the robots are caught up.
 
+Two more lines come from the rounds. **The robots have not made a round since 2:05 PM** goes to the owner and devs. The Mac is asleep, or Claude is closed on it. You wake it and open Claude. The rounds start again on their own. You can snooze it for a day, or dismiss it until the next round. **The robot is blocked on b507** goes to whoever can fix the plans. You press {{button:blue|Open the needs sheet}}. You share the folder or attach the PDF. The robot reruns on the next round.
+
 ## What it will not do
 
 The prompt carries the owner's rules. It never sends anything to a customer. It never marks a bid sent. It never edits a human's bid. It never touches a bid that is not its ZZ shell. It never invents a number without plans. It never asks for, reads or repeats the key. Anything the permission layer blocks is stamped on the ledger and asked as a question. It is not worked around.

@@ -1369,3 +1369,31 @@ describe('lien-notice-sign (v2.5087)', () => {
     expect(NEEDS_YOU_RANK['lien-notice-sign']).toBeLessThan(NEEDS_YOU_RANK['lien-notice-approve'])
   })
 })
+
+describe('robot-asleep and robot-blocked (v2.5734, punch list #142)', () => {
+  const nowMs = Date.parse('2026-10-21T19:38:00Z')
+  it('the fleet asleep: the owner hears since when, with the fix, snooze and dismiss until the next round', () => {
+    const items = buildNeedsYouItems(inputs({ robotSilenceEnabled: true, robotSilence: { lastSeenAt: '2026-10-21T19:05:00Z', asleep: true }, nowMs }))
+    const it1 = items.find((i) => i.key === 'robot-asleep')!
+    expect(it1.severity).toBe('amber')
+    expect(it1.title).toBe('The robots have not made a round since 2:05 PM')
+    expect(it1.detail).toBe('The Mac is asleep, or Claude is closed on it. Wake it and open Claude. The rounds start again on their own.')
+    expect(it1.actionLabel).toBe('Open the Console')
+    expect(it1.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
+  })
+  it('awake, disabled or never → no item', () => {
+    expect(buildNeedsYouItems(inputs({ robotSilenceEnabled: true, robotSilence: { lastSeenAt: '2026-10-21T19:36:00Z', asleep: false }, nowMs })).some((i) => i.key === 'robot-asleep')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ robotSilenceEnabled: false, robotSilence: { lastSeenAt: '2026-10-21T19:05:00Z', asleep: true }, nowMs })).some((i) => i.key === 'robot-asleep')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ robotSilenceEnabled: true, robotSilence: { lastSeenAt: null, asleep: false }, nowMs })).some((i) => i.key === 'robot-asleep')).toBe(false)
+  })
+  it('the robot blocked on the plans: one bid names it, several count them, the needs sheet is the door', () => {
+    const one = buildNeedsYouItems(inputs({ robotBlockedEnabled: true, robotBlocked: { count: 1, first: { bidId: 'b-507', bidNumber: '507', project: 'Live Oak Pediatrics' } } })).find((i) => i.key === 'robot-blocked')!
+    expect(one.title).toBe('The robot is blocked on b507 Live Oak Pediatrics')
+    expect(one.detail).toBe("It cannot open the plans. Share the folder with the robots' account, or attach the PDF. It reruns on the next round.")
+    expect(one.actionLabel).toBe('Open the needs sheet')
+    expect(one.figure).toBe('1')
+    const two = buildNeedsYouItems(inputs({ robotBlockedEnabled: true, robotBlocked: { count: 2, first: { bidId: 'b-507', bidNumber: '507', project: 'Live Oak Pediatrics' } } })).find((i) => i.key === 'robot-blocked')!
+    expect(two.title).toBe('The robot is blocked on 2 bids')
+    expect(buildNeedsYouItems(inputs({ robotBlockedEnabled: true, robotBlocked: { count: 0, first: null } })).some((i) => i.key === 'robot-blocked')).toBe(false)
+  })
+})
