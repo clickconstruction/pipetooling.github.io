@@ -489,8 +489,10 @@ export async function main(argv: readonly string[]): Promise<number> {
   return report.ok ? 0 : 1
 }
 
-const entry = process.argv[1] ?? ''
-if (/scripts[\\/]walk[\\/]run\.ts$/.test(entry)) {
+// vite-node strips the script from argv: argv[1] is vite-node itself and the flags follow. Plain node keeps the
+// script at argv[1]. Under vitest (the driver test imports `main`) argv[1] is vitest, and nothing runs on import.
+const runner = process.argv[1] ?? ''
+if (/[\\/]vite-node$/.test(runner) || /scripts[\\/]walk[\\/]run\.ts$/.test(runner)) {
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (e) => {
