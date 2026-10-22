@@ -1280,6 +1280,96 @@ export type Database = {
           },
         ]
       }
+      bid_plan_questions: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          answered_by: string | null
+          asked_at: string
+          asked_by: string | null
+          bid_id: string
+          claimed_at: string | null
+          claimed_by: string | null
+          id: string
+          question: string
+          rfi_id: string | null
+          seen_at: string | null
+          sheet_refs: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          bid_id: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          id?: string
+          question: string
+          rfi_id?: string | null
+          seen_at?: string | null
+          sheet_refs?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          bid_id?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          id?: string
+          question?: string
+          rfi_id?: string | null
+          seen_at?: string | null
+          sheet_refs?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_plan_questions_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_questions_asked_by_fkey"
+            columns: ["asked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_questions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_questions_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_questions_rfi_id_fkey"
+            columns: ["rfi_id"]
+            isOneToOne: false
+            referencedRelation: "bids_rfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_price_matrix_requests: {
         Row: {
           bid_id: string
@@ -4130,6 +4220,60 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids_plan_pages: {
+        Row: {
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          has_text: boolean
+          id: string
+          page: number
+          sheet_no: string | null
+          source: string
+          text: string | null
+          title: string | null
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          has_text?: boolean
+          id?: string
+          page: number
+          sheet_no?: string | null
+          source?: string
+          text?: string | null
+          title?: string | null
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          has_text?: boolean
+          id?: string
+          page?: number
+          sheet_no?: string | null
+          source?: string
+          text?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_plan_pages_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_plan_pages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -30326,8 +30470,11 @@ export type Database = {
           created_by: string | null
           id: string
           label: string
+          last_seen_at: string | null
           last_used_at: string | null
           revoked_at: string | null
+          stopped_at: string | null
+          stopped_by: string | null
           token_hash: string
           twin_user_id: string
         }
@@ -30336,8 +30483,11 @@ export type Database = {
           created_by?: string | null
           id?: string
           label?: string
+          last_seen_at?: string | null
           last_used_at?: string | null
           revoked_at?: string | null
+          stopped_at?: string | null
+          stopped_by?: string | null
           token_hash: string
           twin_user_id: string
         }
@@ -30346,8 +30496,11 @@ export type Database = {
           created_by?: string | null
           id?: string
           label?: string
+          last_seen_at?: string | null
           last_used_at?: string | null
           revoked_at?: string | null
+          stopped_at?: string | null
+          stopped_by?: string | null
           token_hash?: string
           twin_user_id?: string
         }
@@ -30355,6 +30508,13 @@ export type Database = {
           {
             foreignKeyName: "twin_credentials_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_credentials_stopped_by_fkey"
+            columns: ["stopped_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -30526,10 +30686,13 @@ export type Database = {
       twin_runs: {
         Row: {
           bid_id: string | null
+          credential_id: string | null
           ended_at: string | null
           id: string
+          is_round: boolean
           mission: string
           notes: string | null
+          progress: Json | null
           stage: string | null
           started_at: string
           state: string | null
@@ -30537,10 +30700,13 @@ export type Database = {
         }
         Insert: {
           bid_id?: string | null
+          credential_id?: string | null
           ended_at?: string | null
           id?: string
+          is_round?: boolean
           mission?: string
           notes?: string | null
+          progress?: Json | null
           stage?: string | null
           started_at?: string
           state?: string | null
@@ -30548,10 +30714,13 @@ export type Database = {
         }
         Update: {
           bid_id?: string | null
+          credential_id?: string | null
           ended_at?: string | null
           id?: string
+          is_round?: boolean
           mission?: string
           notes?: string | null
+          progress?: Json | null
           stage?: string | null
           started_at?: string
           state?: string | null
@@ -30563,6 +30732,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_runs_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "twin_credentials"
             referencedColumns: ["id"]
           },
           {
@@ -31353,6 +31529,7 @@ export type Database = {
           id: string
           is_digital_twin: boolean
           is_sample: boolean
+          is_walk_tester: boolean
           last_sign_in_at: string | null
           name: string
           needs_supervision: boolean
@@ -31383,6 +31560,7 @@ export type Database = {
           id: string
           is_digital_twin?: boolean
           is_sample?: boolean
+          is_walk_tester?: boolean
           last_sign_in_at?: string | null
           name: string
           needs_supervision?: boolean
@@ -31413,6 +31591,7 @@ export type Database = {
           id?: string
           is_digital_twin?: boolean
           is_sample?: boolean
+          is_walk_tester?: boolean
           last_sign_in_at?: string | null
           name?: string
           needs_supervision?: boolean
@@ -32534,6 +32713,7 @@ export type Database = {
           is_digital_twin: boolean | null
           is_pay_roster: boolean | null
           is_sample: boolean | null
+          is_walk_tester: boolean | null
           kind: string | null
           master_user_id: string | null
           needs_supervision: boolean | null
@@ -33270,6 +33450,15 @@ export type Database = {
           people: number
           sessions: number
           total_hours: number
+        }[]
+      }
+      count_supply_house_move_window: {
+        Args: never
+        Returns: {
+          asked: number
+          count: number
+          dollars: number
+          soonest_due: string
         }[]
       }
       count_unattributed_noncard_mercury_transactions: {
@@ -37179,6 +37368,72 @@ export type Database = {
         Returns: Json
       }
       revoke_sub_portal_link: { Args: { p_person_id: string }; Returns: Json }
+      robot_agents: {
+        Args: never
+        Returns: {
+          credential_id: string
+          heartbeat_at: string
+          heartbeat_bid_number: string
+          heartbeat_is_round: boolean
+          heartbeat_progress: Json
+          heartbeat_project: string
+          heartbeat_source_bid_id: string
+          heartbeat_source_bid_number: string
+          heartbeat_stage: string
+          heartbeat_state: string
+          holds_open_shell: boolean
+          idle_rounds_today: number
+          key_created_at: string
+          key_label: string
+          last_seen_at: string
+          recent: Json
+          stopped_at: string
+          stopped_by_name: string
+          twin_kind: string
+          twin_name: string
+          twin_user_id: string
+        }[]
+      }
+      robot_progress: {
+        Args: { p_bid_ids: string[] }
+        Returns: {
+          bid_id: string
+          claimed_at: string
+          counted_at: string
+          heartbeat_at: string
+          heartbeat_is_round: boolean
+          heartbeat_progress: Json
+          heartbeat_stage: string
+          heartbeat_state: string
+          key_label: string
+          key_last_seen_at: string
+          locked_at: string
+          median_minutes: number
+          plans_filed: boolean
+          priced_at: string
+          questions_at: string
+          read_at: string
+          run_status: string
+          scored_at: string
+          shell_bid_id: string
+          shell_bid_number: string
+        }[]
+      }
+      robot_rounds_stop: {
+        Args: { p_credential_id: string; p_stop: boolean }
+        Returns: Json
+      }
+      robot_run_signals: {
+        Args: { p_bid_id: string }
+        Returns: {
+          at: string
+          kind: string
+          progress: Json
+          stage: string
+          state: string
+          words: string
+        }[]
+      }
       rotate_legal_portal_link: {
         Args: { p_address?: string; p_link_id: string }
         Returns: Json
@@ -37995,6 +38250,21 @@ export type Database = {
       void_job_payment_promise: { Args: { p_id: string }; Returns: Json }
       void_pay_report: {
         Args: { p_reason: string; p_stub: string }
+        Returns: Json
+      }
+      walk_cleanup: { Args: never; Returns: Json }
+      walk_contact_record: {
+        Args: { p_contact: Database["public"]["Tables"]["contacts"]["Row"] }
+        Returns: string
+      }
+      walk_setting_json: { Args: { p_key: string }; Returns: Json }
+      walk_setup: {
+        Args: {
+          p_app_from: string
+          p_phone?: string
+          p_shared_phone_ok?: boolean
+          p_tester: string
+        }
         Returns: Json
       }
       write_down: {
