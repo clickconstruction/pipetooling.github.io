@@ -20,7 +20,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { buildDesktopSetupCommandFromCode, TWIN_MCP_PUBLIC_URL, twinSetupUrl } from '../../lib/bids/desktopKickoff'
+import { buildDesktopSetupCommandFromCode, TWIN_MCP_CONNECTOR_NAME, TWIN_MCP_PUBLIC_URL, TWIN_PRICER_CONNECTOR_NAME, twinSetupUrl } from '../../lib/bids/desktopKickoff'
 import { BTN, BTN_PRIMARY, MUTED, PROMPT_PRE, TWIN_VIOLET } from './twinConsoleStyles'
 
 export type TwinSetupTarget =
@@ -87,6 +87,8 @@ function mmss(ms: number): string {
 export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps) {
   const { showToast } = useToastContext()
   const [label, setLabel] = useState('')
+  // Robot rounds PR 5 (v2.5735): this Mac makes the rounds — the rounds kickoff goes on the clipboard instead of the batch kickoff.
+  const [rounds, setRounds] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [minted, setMinted] = useState<{ command: string; res: MintResponse } | null>(null)
@@ -146,6 +148,8 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
         connectorUrl: res.connector_url || TWIN_MCP_PUBLIC_URL,
         setupUrl: res.setup_url || twinSetupUrl(supaUrl),
         code: res.code,
+        rounds: target.kind === 'estimator' && rounds,
+        connectorName: target.kind === 'pricer' ? TWIN_PRICER_CONNECTOR_NAME : TWIN_MCP_CONNECTOR_NAME,
       })
       setMinted({ command, res })
       setNowMs(Date.now())
@@ -197,6 +201,15 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
                 onKeyDown={(e) => { if (e.key === 'Enter' && !busy) void mint() }}
               />
             </label>
+            {target.kind === 'estimator' ? (
+              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8rem', color: 'var(--text-700)' }}>
+                <input type="checkbox" checked={rounds} onChange={(e) => setRounds(e.target.checked)} style={{ marginTop: 2 }} />
+                <span>
+                  This Mac makes the rounds
+                  <span style={{ ...MUTED, display: 'block' }}>A Mac that stays on. The command puts the rounds kickoff on the clipboard. One paste into Claude Code makes the routine, every five minutes, and runs it once.</span>
+                </span>
+              </label>
+            ) : null}
             {error ? <div style={{ fontSize: '0.8rem', color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', borderRadius: 6, padding: '0.4rem 0.6rem' }}>{error}</div> : null}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" style={BTN} onClick={onClose}>Cancel</button>
@@ -238,7 +251,7 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
               <div style={stepRow}>
                 <span style={stepNo}>4</span>
                 <span>
-                  <b>{isPricer ? 'In Claude, start a new incognito chat and paste.' : 'In Claude, open the Code tab, start a new session and paste.'}</b>{' '}
+                  <b>{isPricer ? 'In Claude, start a new incognito chat and paste.' : rounds ? 'In Claude, open the Code tab, start a new session and paste. It makes the Robot rounds routine and runs the first round.' : 'In Claude, open the Code tab, start a new session and paste.'}</b>{' '}
                   <span style={MUTED}>
                     {isPricer
                       ? 'The robot reads its brief, then prices every queued request, oldest first, and asks you where the plans decide.'

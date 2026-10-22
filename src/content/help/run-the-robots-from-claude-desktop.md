@@ -67,6 +67,18 @@ On a Mac the setup above already covers chats. With no Mac, on claude.ai or the 
 The connector holds one key, and a key is one robot's seat. A second robot — the pricing twin — is a second connector with its own key and its own kickoff. Revoking the key's label on the Digital twins page cuts that connector off wherever it was added.
 :::
 
+## Rounds from a Mac that stays on
+
+A round is one pass over the robots' work from one Mac, every five minutes, all day. The robots check in, take one bid if one waits, do one submittal task, and leave. You start the rounds once, on the Mac that stays on. After that they run on their own while Claude is open.
+
+1. On that Mac, open System Settings. Set Energy so the Mac never sleeps. Add Claude to the login items. Sign in to Claude.
+2. Open **Bids → 🤖 Robots → Console** and press {{button:purple|Set up on this Mac}}. Type whose Mac it is. Tick **This Mac makes the rounds**. Press {{button:purple|Make my setup command}}, then {{button:purple|Copy the command}}. Paste it into Terminal and press Return.
+3. Claude reopens with the rounds kickoff on your clipboard. Open the **Code** tab, start a new session and paste. The session reads the three settings back, makes the routine named Robot rounds, and runs the first round.
+
+A Mac that already has the key skips step 2. You press {{button:blue|Copy rounds kickoff}} on the *Run the robots* card and paste it into Claude Code there. The Rounds card above shows the Mac as Alive within a minute.
+
+The round takes one bid at a time. A round that finds another round on a bid leaves after one call, so nothing runs twice. The pricing robot joins the rounds only when that Mac holds its own key too. You set that up with the pricer's {{button:purple|Set up on this Mac}} on the same card.
+
 ## See which robot is alive
 
 The Console's first card is **Rounds**. It has one row per robot key. A key is one robot on one Mac. Each row answers four questions in order. Is it alive. When did it last check in. What is it on now. What did it finish recently.

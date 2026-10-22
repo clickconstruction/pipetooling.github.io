@@ -1019,7 +1019,9 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Endpoint**: `POST /functions/v1/twin-setup` · **Auth**: in-function (mint: staff JWT via `auth.getUser`; redeem: the code). `verify_jwt = false` in `config.toml` — preserve on redeploys. **Env**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `TWIN_MCP_PUBLIC_URL` (set to `https://mcp.clicktooling.com/twin` since v2.3634) when the connector is reached at another address — a bare origin gets `/functions/v1/twin-mcp` appended, an address with a path (`https://mcp.clicktooling.com/twin`) is taken verbatim (`_shared/twinConnectorUrl.ts`, shared with the client's copy buttons; v2.3633).
 
-**Generated input**: `supabase/functions/_shared/twinKickoffs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/kickoffs/{code,desktop,pricing}-operator.md` — regenerate + redeploy `twin-setup` after editing those docs (the same run regenerates twin-mcp's `briefs.ts`).
+**Generated input**: `supabase/functions/_shared/twinKickoffs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/kickoffs/{code,desktop,pricing,rounds}-operator.md` — regenerate + redeploy `twin-setup` after editing those docs (the same run regenerates twin-mcp's `briefs.ts`).
+
+**Rounds and the connector name (v1.2.0 / v2.5735, Robot rounds PR 5, punch list #142)**: `redeem` takes `rounds: true` (the setup command sends it when the dialog's *This Mac makes the rounds* tick is on) and, for an estimator key, hands back `ROUNDS_KICKOFF` with `kickoff_for: 'rounds'` — the routine that makes a round every five minutes from a Mac that stays on; the response also carries `connector_name` (`twin-mcp` for the bid robot, `twin-pricer-mcp` for the pricer), which the command uses as the config key so one Mac can hold both seats, and `check_call` names it.
 
 **Tables**: `twin_setup_codes` (migration `20260911043553`), `twin_credentials`, `twin_runs`, `users`.
 

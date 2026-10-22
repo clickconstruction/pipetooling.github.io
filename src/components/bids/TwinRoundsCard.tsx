@@ -27,7 +27,7 @@ function whenTitle(iso: string | null): string | undefined {
   return iso ? toDatetimeLocal(iso).replace('T', ' ') : undefined
 }
 
-export function TwinRoundsCard({ canStop = true }: { canStop?: boolean }) {
+export function TwinRoundsCard({ canStop = true, onCopyRoundsKickoff }: { canStop?: boolean; /** v2.5735: the empty state's door — copies the rounds kickoff. */ onCopyRoundsKickoff?: () => void }) {
   const { showToast } = useToastContext()
   const { agents, stopRounds } = useRobotAgents({ enabled: true, canStop })
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -52,8 +52,9 @@ export function TwinRoundsCard({ canStop = true }: { canStop?: boolean }) {
         A round is one pass over the three queues from one Mac. Bids to shadow, prices to read, submittals to file, oldest first. Every five minutes, all day. A press here reaches the Mac on its next signal, within five minutes.
       </p>
       {agents.length === 0 ? (
-        <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-subtle)', fontSize: '0.84rem' }} data-testid="twin-rounds-empty">
-          No robot has checked in yet. Set up a Mac in Run the robots below, and its first check-in lands here.
+        <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-subtle)', fontSize: '0.84rem', display: 'flex', gap: '0.7rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="twin-rounds-empty">
+          <span style={{ flex: '1 1 18rem' }}>No robot has checked in yet. Copy the rounds kickoff and paste it into Claude Code on the Mac that will. Set up on this Mac first if that Mac has no key.</span>
+          {onCopyRoundsKickoff ? <button type="button" style={{ ...BTN, background: '#3b82f6', color: '#fff', border: 'none' }} onClick={onCopyRoundsKickoff}>Copy rounds kickoff</button> : null}
         </div>
       ) : (
         agents.map((a, i) => {
