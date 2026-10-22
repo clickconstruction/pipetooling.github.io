@@ -2,7 +2,7 @@
 name: "Robot rounds: the robots watch from the Mac Mini and say where they are every five minutes"
 number: 142
 group: ready
-status: proposed 2026-10-21, third pass (the ring on the icon, the owner's ask after the second); nothing built
+status: proposed 2026-10-21, fourth pass 2026-10-22 (Ask the plans, and Pause folded into Stop the rounds); nothing built
 summary: >
   The owner wants a loop on his home Mac Mini that watches ClickTooling for work it can do, starting
   with bidding and pricing, and that tells the app every five minutes where it is, like a slow
@@ -12,9 +12,9 @@ summary: >
   grows a plain-words shape and a five-minute rule, one reader turns the robot's own stamps into a
   seven-step bar an estimator can see on the bid, the Bid Board's robot icon becomes a ring that
   fills one segment per step so the stage reads at a glance, silence has a meaning and a door, and a
-  press on the app reaches the Mac on its next signal. No new lens, no new table, one migration.
+  press on the app reaches the Mac on its next signal. And a Plans panel on every bid tab: search the set from its text layer at once, read what the robot already read, and ask the plans a question the rounds answer within minutes, never with a count before the bid is sent. No new lens; the rounds take one migration, the Plans panel two more.
 next: The owner's three open calls below, then PR 1. The round's cadence is decided: five minutes.
-size: M as a train of five (S S M S S); one migration, one edge redeploy per PR
+size: L as a train of seven (S S M S S M M); the rounds are PRs 1 to 5 with one migration, the Plans panel PRs 6 and 7 with two
 blocker: none
 ver: proposed
 opinion: build — the rounds are the routine that already ran on the operator machine, moved to a Mac that stays on; the signal is the robot's own stamps read back in plain words, so the estimator stops guessing between "queued" and "sealed"; and silence finally has a meaning, which is what a loop nobody watches needs most.
@@ -72,7 +72,7 @@ and shown to the wrong audience.
 **New, in one line each:** rounds every five minutes all day from the Mac Mini's key; the heartbeat's
 shape and cadence; one reader, `robot_progress()`, that any bid role may call and that never
 carries a dollar figure; the bar on the bid, the live row, the Console's Rounds card, two Needs You
-items; a pause and a stop that the Mac reads on its next signal; the words.
+items; a stop that the Mac reads on its next signal; the words. And, from the fourth pass, the Plans panel (decision 9).
 
 ## The decisions
 
@@ -251,17 +251,49 @@ reads in the reply to its next signal, within five minutes, and the button says 
 |---|---|---|---|---|
 | **Read the run** | the bid's sheet, the Robot Board row, the Console | bid roles | Opens the bid's signals, oldest first, with the stamps between them | *Read the run* |
 | **Leave this one to me** | the bid's sheet | estimator and up | Sets `robot_opt_out` on the bid, the tick the bid form already has, and voids the open shell on the next signal. The row leaves the queue and the coverage count. | *Leave this one to me · the robot stops within five minutes* |
-| **Stop after this bid** | the Console's Rounds card | owner and devs | `twin_credentials.stop_after_bid = true`; the round finishes the shell it holds, locks it, reports, and makes no more claims until the flag is cleared | *Stop after this bid* |
-| **Pause the rounds** | the Console's Rounds card | owner and devs | `paused_until` set to a chosen time or until pressed again; a round that wakes paused sends one idle heartbeat and leaves | *Pause the rounds · until 6 PM* |
+| **Stop the rounds** | the Console's Rounds card | owner and devs | `twin_credentials.stopped_at` and `stopped_by` set; the round finishes the shell it holds, locks it, reports, and claims no more; a round that wakes stopped sends one idle heartbeat and leaves; the button turns into **Start again**, which clears both columns | *Stop the rounds*, then *Start again* |
+
 | **Set up on this Mac** | the Console, as today | devs | Mints the Mac's key | unchanged |
 
 Not a press: *Take over*. A shadow is the robot's own blind copy. Nobody continues it; a person
 either lets it finish or tells it to leave the bid alone. The owner's word *take over* is *Leave
 this one to me*.
 
-The reply to `heartbeat` grows one field, `orders`: `carry on`, `stop after this bid`, `pause
-until <time>`, `leave <bid>`. The round obeys and says so in its next heartbeat, so the Console's
-row changes from *stopping after b511* to *stopped* on the robot's word, not the button's.
+**Why one press, and not a timed pause.** The third pass drew *Stop after this bid* and *Pause the
+rounds until 6 PM, until tomorrow, until pressed again*. The owner asked who would ever press pause.
+The honest reasons are three: the robot is doing something wrong on bid after bid and you want no
+new shells until the cause is fixed; a deploy or a migration the robots use is about to run; you do
+not want the robot to spend today. Every one of them is *stop until I say*, from wherever you are,
+without revoking the key and redoing the setup. So one press, **Stop the rounds**, and **Start
+again**. Safety is not a reason: the fence, the no-send trigger and the seal already hold a running
+robot, and revoking the key on Settings → Digital twins is the hard kill, as today.
+
+**The stop reaches the rounds only.** A round's heartbeat says it is a round (`round: true`), and
+the stop order goes to rounds alone. A Code session a person starts by hand on the same Mac is not
+stopped, and another Mac is not stopped, because the stop is per key. The reply to `heartbeat`
+grows one field, `orders`: `carry on`, `stop` (finish the shell in hand, claim no more), `leave
+<bid>`. The round obeys and says so in its next heartbeat, so the Console's row changes from
+*Stopping after b511* to *Stopped by Robert at 3:10 PM* on the robot's word, not the button's.
+
+**The words a person reads**, on the button's hover and in the guide, each sentence under the
+plain-words rules:
+
+> *When to press it.* Press it when the robot is doing something wrong on bid after bid. Fix the
+> cause first, then start it again. Press it before you deploy a change the robots use. Start it
+> again when the deploy is done. Press it when you do not want the robot to spend today. It costs
+> nothing while it is stopped. You do not need it to protect a bid. The robot never edits your bid
+> and never sends anything. To keep the robot off one bid, press Leave this one to me on that bid
+> instead.
+>
+> *What happens after.* The robot finishes the bid it is on. It seals it and files its report as
+> usual. It claims no new bid after that. The queue waits for it. The rounds still check in every
+> five minutes. Each one sees the stop and leaves at once. The row reads Stopped, with who pressed
+> it and when. The robot said so itself in its last signal. A session you start by hand is not
+> stopped. Only the rounds are. Another Mac is not stopped. Each Mac has its own button. Press
+> Start again when you are ready. The next round comes within five minutes.
+>
+> *The hover line.* Finishes the bid in hand, then claims no more. Start again brings the next
+> round within five minutes.
 
 ### 6. What the rounds may touch, and what they are called
 
@@ -336,9 +368,7 @@ and *Twin Pricer 1 on Robert's Mac Mini* are two rows, and a second Mac is a thi
 
 - **The light and the word**, never colour alone: **Alive** (green: checked in within seven
   minutes, the five-minute round plus two of grace), **Quiet** (amber: seven to fifteen), **Asleep**
-  (gray: over fifteen, three rounds missed), **Paused until 6 PM**, **Stopping after b511**, and
-  **Never checked in** for a key minted and not yet used. Computed at read time from
-  `last_seen_at` and the two flags; nothing is stored.
+  (gray: over fifteen, three rounds missed), **Stopping after b511**, **Stopped by Robert at 3:10 PM**, and **Never checked in** for a key minted and not yet used. Computed at read time from `last_seen_at` and the stop columns; nothing is stored.
 - **Checked in 2 minutes ago**, the exact time on hover. For an asleep key, *Last check-in Fri
   5:12 PM*.
 - **Now**: the latest heartbeat's words for that key, *Reading the sheets on b511, 12 of 31, since
@@ -349,7 +379,7 @@ and *Twin Pricer 1 on Robert's Mac Mini* are two rows, and a second Mac is a thi
   opens Submittals. *Parked b2035 for b507. Waiting on the plans.* opens the robot needs sheet.
   Open on the first row, folded to its newest line on the rest.
 - **Today**: *1 bid sealed, 1 parked. 88 rounds found nothing to do.*
-- The two presses from decision 5.
+- The press from decision 5: **Stop the rounds**, or **Start again**.
 
 Finished work is stamped with the robot's user, not the key, so **Recently** is the robot's and
 shows on every key of that robot; **Now** and the check-in are the key's, because PR 1 stamps
@@ -359,16 +389,14 @@ which is true.
 **How to build it.**
 
 1. **Reader `robot_agents()`**, SECURITY DEFINER, devs only because it names keys. Per unrevoked
-   key: the label, the robot's name and `twin_kind`, `last_seen_at`, `paused_until`,
-   `stop_after_bid`, the latest heartbeat row for that `credential_id`, and `recent`: a UNION of the
+   key: the label, the robot's name and `twin_kind`, `last_seen_at`, `stopped_at`, `stopped_by`, the latest heartbeat row for that `credential_id`, and `recent`: a UNION of the
    robot's finished work in the last seven days, newest five, each as `{kind, at, bid, shadow,
    count}`: reports, shadow locks and scores, matrices with their status and asks, submittal tasks
    with their kind and rows written. One call returns the card.
 2. **Kernel `src/lib/bids/robotAgents.ts`**, pure: `agentState(row, now)` gives the tone, the word
    and the check-in sentence; `ROBOT_ALIVE_MS` (7 min) and `ROBOT_ASLEEP_MS` (15 min) sit beside
    `ROBOT_BACKLOG_HEARTBEAT_STALE_MS`; `recentWorkLine(item)` gives the words and the door;
-   `todayLine(items, idleRounds)`. Tests: each state, the minute either side of each threshold, a
-   paused and a stopping key, a never-used key, every kind of recent line, and the words through
+   `todayLine(items, idleRounds)`. Tests: each state, the minute either side of each threshold, a stopping and a stopped key, a never-used key, every kind of recent line, and the words through
    `plainWordsFailures`.
 3. **`useRobotAgents()`**: the RPC on mount and every 30 seconds while the Console is mounted,
    paused while the tab is hidden. Status is the point of the card, so it does not wait for a
@@ -386,6 +414,98 @@ kickoff says which connector each queue uses. Until that lands, the rounds cover
 and the submittal tasks, which both answer to the estimator's key, and the pricer keeps its own
 kickoff. The Console shows one row per key either way, so the owner sees at once which seats the
 Mac holds.
+
+### 9. Ask the plans: one box, the plans answer first, the robot second, never a count before you send
+
+The owner's ask, after the third pass: *a way for a user to search and ask questions of a set of
+plans. During the estimating process the robot pulls all the text from those plans. What is an
+appropriate and efficient way to expose this to a user before they finish their bid?* And on the
+first draft of this decision: *is this the best we can do?* The second look changed three things,
+named at the end.
+
+**What exists.**
+
+| Piece | Where | What it gives |
+|---|---|---|
+| The robot's read of the set | `bids_plan_substrates`, written at the robot's second step on its shell; the bid roles may read it; shown nowhere | one record per sheet with number, title and discipline; every schedule as a table; every general note with its text and a flag such as *exclusion candidate* or *RFI candidate*; the legend; a rollup with the sheet inventory, fixture tags, risks and open questions. The migration's own comment planned *a bid-window panel for humans* as the follow-up. |
+| The robot's session | the Code session on the Mac, which already pulls the set and renders pages with `pdftoppm` and `sips` | it can run `pdftotext` on the same set for nothing |
+| The plans door | `plan-fetch` | serves the set to a signed-in estimator, not only to a robot key |
+| PDF reading in the browser | `src/lib/pdfjsDocument.ts`, `GcNewProjectSheetIndex.tsx`, `PdfPageCanvas.tsx` | GC mode already builds a sheet index from a PDF in the browser; a page can be drawn on a canvas |
+| The RFI lane | `bids_rfis` with `sheet_ref` | the robot's questions already promote into it |
+| A model call from the app | none | the robots run inside Claude sessions through twin-mcp; the app itself calls no model today |
+
+**One box, three answers, in order.** A person types a word or a question into one box. The panel
+answers at once from what it holds, offers the robot when that is not enough, and offers an RFI
+when the plans do not say.
+
+1. **The plans answer at once.** A small kernel turns the typed words into search terms (*grease
+   interceptor*, *FD-1*, *P-401*) and looks in three places: the page text, the schedule rows and
+   the notes of the robot's read. The answer card says what it found in one or two sentences, with
+   the hits by sheet under it: *No sheet mentions a grease interceptor. Note 14 on P-001 says the
+   kitchen equipment and its connections are by others.* Or: *FD-1 is on three sheets. The schedule
+   on P-601 names it a Zurn Z415.* Instant, free, no model, and it works the moment the text exists.
+2. **Ask the robot to look.** One press under the card. The question becomes the rounds' fourth
+   queue (`bid_plan_questions`, two verbs, `next_plan_question` and `put_plan_answer`), and the
+   robot answers within a round with the sheets it cites, in the thread on the bid. The model paths
+   compared: *A*, an edge function with the Claude API, seconds, a new secret, a cost per question,
+   the first model call the app itself makes; *B*, the rounds, minutes, no new dependency, and the
+   five-minute signal already reads *Answering your question on b511*. **B first, A as the
+   upgrade** if minutes prove too slow; the table and the thread stay the same.
+3. **Make this an RFI.** On any answer that says the plans do not say, one press files a
+   `bids_rfis` row with the sheet reference, as the robot's own questions already do.
+
+**The text layer comes from the round, not from a phone.** The first draft had the browser pull a
+60 MB set and read it with pdf.js on the first open, which is a long wait on a phone. The robot's
+session already holds the set at its second step, so its kickoff gains one line, `pdftotext` per
+page, and one verb, `put_plan_text(bid, pages)`, writes one row per page to `bids_plan_pages`
+(bid, page, sheet number, title, text, a text-search index) under the human bid. Under five-minute
+rounds the text exists within minutes of the plans being filed, before the estimator has opened
+the bid. The browser path stays as the fallback for a set no robot has read, an opted-out or a
+non-plumbing bid, and it says *Reading 31 sheets…* while it works. A scanned set has no text
+layer: the card says so, the robot's read still answers, and the robot's visual read of a named
+sheet is one *Ask the robot to look* away.
+
+**Blind both ways.** The seal keeps the robot's number from anchoring yours, and a count is a piece
+of that number. So an answer says what the plans **say** and where, never how many the robot
+counted or what it priced, until the bid is sent; the robot's own answer says so in words when
+asked for a count (owner's call 4). The other direction matters too: an estimator's question is a
+piece of her thinking, and a robot that reads *should the grease interceptor be in?* before it
+seals is no longer an independent shadow. So `next_plan_question` serves a question on a bid only
+once that bid's shadow is sealed, or when no shadow exists; until then the card says *The robot
+answers once its own number is sealed, usually within the hour. The plans answer now.* Most bids
+seal within an hour of filing and are estimated over days, so the wait is rare.
+
+**Where it lives.** A **Plans** button in the bid's header beside its name, on every bid tab, so
+an estimator asks from Counts or Pricing without leaving. A side panel on desktop, a full-screen
+sheet on a phone. Top to bottom: the one box, the answer card with **Ask the robot to look**, the
+hits by sheet with *Open sheet* (`PdfPageCanvas` at that page, and the CountTooling link when the
+bid has one), the sheet index, the schedules as tables, the notes with their flags, and the thread
+of the robot's answers. The robot's read comes from the shell paired by `twin_source_bid_id`,
+read-only.
+
+**Who sees what.** The bid roles read the panel and ask; the thread is the office's, on the bid.
+The robot writes the page text and its answers through twin-mcp's service role behind the seat
+gate, not through the fence, because the human bid is not the robot's to write.
+
+**What a person learns, and when.** The first open shows one line under the box: *Type a word or
+a question. The plans answer first. The robot can look after.* The first time anyone asks for a
+count before the bid is sent, the card explains once: *The robot answers what the plans say and
+where. Counts come after you send.* The guide *search the plans on a bid* carries the rest.
+
+**Efficiency, in one line.** The round writes the text once, for nothing. The panel answers from
+it and from the read that already exists, instantly. The robot is asked only when that is not
+enough, and only after its own seal. One table for pages, one for questions, three verbs, one
+panel.
+
+**What the robots gain.** The page text lets a robot search a set for one word instead of reading
+31 sheets to find it, and the estimators' questions, read after the seal, show it what it should
+have asked.
+
+**The second look changed three things.** The two boxes became one, and the plans answer before
+anyone waits on a round, so *Ask* stops being a five-minute feature for the questions a search
+settles. The text layer moved from the first opener's phone to the round that already holds the
+set. And the robot reads a question only after it seals, which the first draft had not thought
+about, so the shadow stays blind in both directions.
 
 ## Holistically, is this the right move?
 
@@ -406,9 +526,7 @@ a bid into a colleague whose progress you can glance at, and silence into a fact
   `next_shadow` never hands two sessions one bid. The signal makes the orphan rule honest at 15
   minutes instead of 60, so a Code session someone starts beside the rounds waits less.
 - *Writes the owner did not ask for.* The fence holds a robot to its own shells; the no-send
-  trigger holds everyone's robots off customers; the seat gate keeps the pricer off bids. The
-  rounds add no write. The new columns are on the robot's own tables, and the two presses write a
-  flag the owner or a dev set.
+  trigger holds everyone's robots off customers; the seat gate keeps the pricer off bids. The rounds add no write. The new columns are on the robot's own tables, and the stop writes two columns the owner or a dev set.
 - *The robot forgets to signal.* Then the bar still moves on the verbs' stamps, and *last word*
   reads from the once-a-minute `last_seen_at`. Only the *12 of 31* goes missing.
 - *The Dashboard turns into a ticker.* It does not. Progress lives on the bid; the Dashboard
@@ -435,18 +553,17 @@ Clinic*, the Mac is *Robert's Mac Mini*, today is Tue Oct 21, 2026, 2:38 PM):
 3. **The Console**: the *Run the robots* card's Claude Code column with its one new row and
    button; the Rounds card with one row per key, the estimator alive on b511, the pricer alive with
    nothing in hand, a second Mac asleep, each with its check-in, its Now and its Recently list,
-   **Stop after this bid** and **Pause the rounds**; *Read the run* with the bid's signals oldest
-   first; and the Rounds card's empty state with the same button.
+   **Stop the rounds** with its hover line and the guide words beside it; *Read the run* with the bid's signals oldest first; and the Rounds card's empty state with the same button.
 4. **Silence**: the same line in its three states, alive, quiet, asleep, and the two Needs You
    items with their words and doors.
 5. **The signal**: what one heartbeat carries, field by field, and the words each becomes.
 6. **The second pass**: what changed from the first draft, in the house's five lenses.
+7. **Ask the plans** (decision 9): the Plans button on the bid's header, the panel with its one box, the answer card with *Ask the robot to look*, the hits by sheet, the sheet index, the schedules and the notes with their flags from the robot's read, the thread with the seal rule in the robot's own answer, the panel on a phone, the three states, and how each part is built.
 
 ## The plan
 
 **PR 1 · The heartbeat grows (S, migration, edge).** Migration: `twin_runs.state` CHECK admits
-`idle`; `twin_runs` gains `credential_id uuid` and `progress jsonb`; `twin_credentials` gains
-`last_seen_at`, `paused_until`, `stop_after_bid`; an index on `twin_runs (twin_user_id,
+`idle`; `twin_runs` gains `credential_id uuid` and `progress jsonb`; `twin_credentials` gains `last_seen_at`, `stopped_at`, `stopped_by`; an index on `twin_runs (twin_user_id,
 started_at desc) where mission = 'heartbeat'`. twin-mcp: `resolveTwin` stamps `last_seen_at` once a
 minute per key; `heartbeat` takes `progress`, collapses consecutive idle rows per key, scrubs
 money on a sealed shadow, and answers with `orders`. `twinConsoleDisplay.ts` reads the new shape
@@ -472,13 +589,10 @@ a bid* gains **See where the robot is**. Docs: `BIDS_TABS_ARCHITECTURE.md` §Rob
 *round*, `docs/migrations/`.
 
 **PR 3 · The Console's Rounds card: the robots' status (M, migration, edge).** Migration:
-`robot_agents()` (decision 8), devs only, and the `twin_credentials` UPDATE policy for the two
-flag columns. Kernel `robotAgents.ts` (`agentState`, the thresholds, `recentWorkLine`,
+`robot_agents()` (decision 8), devs only, and the `twin_credentials` UPDATE policy for the two stop columns. Kernel `robotAgents.ts` (`agentState`, the thresholds, `recentWorkLine`,
 `todayLine`) and `useRobotAgents` (every 30 seconds while mounted). `TwinRoundsCard` at the top of
 the Console: one row per key seen in seven days with the light and word, *Checked in … ago*, Now,
-Recently (five, folded after the first row, each a door), Today, **Stop after this bid**, **Pause
-the rounds** (until a time, or until pressed again), and the current bid's signals under *Read the
-run*. The round's reply shows the robot's own word for its state. The lenses' caption gains *The
+Recently (five, folded after the first row, each a door), Today, **Stop the rounds** and **Start again** with the hover line and the guide words from decision 5, and the current bid's signals under *Read the run*. The round's reply shows the robot's own word for its state. The lenses' caption gains *The
 robots checked in 2 minutes ago* through `robot_progress()`. Tests: `robotAgents.test.ts` (every
 state and threshold, every recent kind, the words), the card's render smoke (three rows, the folds,
 the flag writes), the caption's test. Docs: the Console's section in `BIDS_TABS_ARCHITECTURE.md`,
@@ -506,9 +620,42 @@ rule. Tests: the Console's render smoke (the new row, the preview), `desktopKick
 rounds kickoff's connector fill, the setup dialog's smoke. Guide: *run the robot estimator from the Claude app* gains **Rounds from a Mac
 that stays on**. Docs: `docs/twins/HANDOFF.md` → Day-to-day operation.
 
+**PR 6 · The Plans panel: the plans answer first (M, migration, edge).** Migration
+`bids_plan_pages` (bid, page, sheet number, title, text, a `tsvector` with a GIN index; the bid
+roles read, estimator and up write; the three calls at the end). twin-mcp: `put_plan_text(bid,
+pages)` for the round, writing under the paired human bid; the kickoff's one `pdftotext` line at
+the second step. Kernel `src/lib/bids/planText.ts`: the typed words to search terms, the hits by
+sheet across the page text, the schedule rows and the notes, the answer card's sentence, the
+sheet number and title from a page's title block (the rule `GcNewProjectSheetIndex` uses), the
+words for each state. `usePlanPages`: reads the rows; when none exist it reads the set through
+plan-fetch with `pdfjsDocument.ts`, writes once, and flags a set with no text layer.
+`BidPlansPanel`: the **Plans** button in the bid's header on every bid tab, the panel on desktop
+and the sheet on a phone, the one box, the answer card, the hits with *Open sheet*
+(`PdfPageCanvas` at that page, and the CountTooling link when the bid has one), the sheet index,
+the schedules and the notes with their flags from the paired shell's substrate, the first-open
+line, the no-text state. **Ask the robot to look** is drawn and disabled with *comes with the next
+update* until PR 7. Tests: `planText.test.ts` (terms, hits, the card's sentences, the states, the
+words through `plainWordsFailures`), the panel's render smoke, the button on the header's smoke,
+the verb's bed. Guide: *search the plans on a bid* (estimator and up). Docs: `EDGE_FUNCTIONS.md`
+→ twin-mcp, `BIDS_TABS_ARCHITECTURE.md` (the header), `GLOSSARY.md`, `PROJECT_DOCUMENTATION.md`,
+`docs/migrations/`.
+
+**PR 7 · Ask the robot to look, through the rounds (M, migration, edge).** Migration
+`bid_plan_questions` (bid, question, asked by and when, status, answer, the sheets cited, answered
+by and when, the RFI it became; the bid roles read and ask; the three calls). twin-mcp:
+`next_plan_question` (the oldest open question on a bid whose shadow is sealed, or that has none),
+`put_plan_answer` (sheet references required; the answer passes `scrubMoney` and the count rule
+before send). The rounds kickoff gains the fourth queue and the signal *Answering your question on
+b511*. The panel's button comes alive, the thread, **Make this an RFI** (a `bids_rfis` row with the
+sheet reference), the once-only count explanation, and a Needs You line for the asker, *The robot
+answered your question on b511*. Tests: the verbs' bed (a question on an unsealed shadow is not
+served), the thread's render smoke, the Needs You case. Guide: the *Ask the robot to look* section.
+Docs: `EDGE_FUNCTIONS.md` → twin-mcp, the kickoff, `docs/migrations/`.
+
 Each PR: `npm run claim`, a release note, a `docs/recent-features/` fragment, `npm run check:todos`
 while this file stands. The last PR deletes the folder. The owner sets up the Mac Mini after PR 5
-is deployed; nothing before it changes what the hourly routine does.
+is deployed; nothing before it changes what the hourly routine does. PRs 6 and 7 stand on their
+own; PR 7 needs PR 5's rounds to answer.
 
 ## How to verify
 
@@ -524,11 +671,8 @@ is deployed; nothing before it changes what the hourly routine does.
 - **PR 3**: open the Console while a round holds a bid: the key's row reads *Alive*, *Checked in
   1 minute ago*, and Now names the step; quit Claude on the Mac: within seven minutes the row reads
   *Quiet*, within fifteen *Asleep*, with the last check-in's time; Recently lists today's lock and
-  the matrix with the right times and each line opens its door; press **Stop after this bid**
-  while a round is on a shell: the next heartbeat's reply carries the order, the shell locks and
-  reports, no new claim follows, the row reads *Stopped*.
-- **PR 4**: pause the rounds for 20 minutes: the Dashboard item appears for the owner, snoozes,
-  and clears on the next round.
+  the matrix with the right times and each line opens its door; press **Stop the rounds** while a round is on a shell: the next heartbeat's reply carries the order, the shell locks and reports, no new claim follows, the row reads *Stopped by Robert at …*; a Code session started by hand on the same Mac keeps working; press **Start again**: the next round comes within five minutes.
+- **PR 4**: quit Claude on the Mac for 20 minutes: the Dashboard item appears for the owner, snoozes, and clears on the next round.
 - **PR 5**: on a Mac with the connector set up, press **Copy rounds kickoff**, open Claude Code,
   paste: the session reads the three settings back, makes the routine **Robot rounds** and runs it
   once; within a minute the Rounds card shows the Mac alive with its first round; while that round
@@ -536,8 +680,24 @@ is deployed; nothing before it changes what the hourly routine does.
   Mini runs for one day: the ledger shows one idle row per quiet stretch, every shadow's bar
   reached *Sealed* or *Waiting on you*, and the Robot Board's coverage tile matches the round's
   reports.
+- **PR 6**: file plans on a live bid and wait one round: `bids_plan_pages` holds one row per
+  page; press **Plans** and type *floor drain*: the card's sentence names the sheets and the hits
+  open the pages; type *grease interceptor* on a set without one: the card says no sheet mentions
+  it and quotes the note; open a bid no robot has read: the panel reads the set itself and says so;
+  open a scanned set: the card says there is no text to search and the robot's read still answers.
+- **PR 7**: press **Ask the robot to look** on a bid whose shadow is still open: the card says the
+  robot answers once its own number is sealed; on a sealed bid, within a round the answer names its
+  sheets and the thread shows it; ask *How many floor drains?* before the bid is sent: the answer
+  names the sheets and says it gives no count before you send; press **Make this an RFI**: a row
+  lands on the RFI tab with the sheet reference.
 
 ## Is this the best we can do? Do we educate the user as well as we can?
+
+**The fourth pass.** Two things. The owner asked who would ever press Pause; the honest answer
+was nobody who would not rather press Stop, so the timed menu is gone and one press remains, with
+the rule that it reaches rounds only. And the owner asked for a way to search and ask the plans
+before a bid is finished. The answer reuses the robot's read that already exists and the rounds
+that this proposal builds, adds a text layer the round writes once, and holds the seal in the robot's own words. Asked *is this the best we can do* of that section, the second look made the plans answer first from one box, moved the text layer off the opener's phone to the round, and closed a blind spot: the robot reads a question only after it seals.
 
 **The third pass, the owner's ask after the second.** The second pass had cut the percent for seven
 named steps on the sheet, and left the Bid Board's icon with words in a tooltip. The owner asked for
@@ -560,8 +720,7 @@ The first draft, read back against the house's five lenses, changed in each:
    holds them in PR 2. The one trade word left, *takeoff*, is not on these screens.
 3. **Do what is ready.** The first draft's *Stop* stopped everything. The second's **Leave this
    one to me** stops one bid and the round carries on with the rest; **Stop after this bid**
-   finishes the shell in hand rather than orphaning it; a paused round still sends its idle signal
-   so the screen never lies about it. And the bar moves on the verbs' stamps even when the robot
+   finishes the shell in hand rather than orphaning it; a stopped round still sends its idle signal so the screen never lies about it. And the bar moves on the verbs' stamps even when the robot
    forgets to signal.
 4. **Reuse.** The first draft added a `round` verb, a `twin_presence` table and a new liveness
    reader. The second widens `heartbeat`, puts two columns on the key that already is the Mac,
@@ -574,8 +733,7 @@ The first draft, read back against the house's five lenses, changed in each:
    table for them.
 5. **Cut.** Gone from the first draft: the percent of minutes, the time estimate before ten runs
    exist, the Dashboard line on every signal, *Take over*, a push for silence, a new lens, a new
-   table, a new guide. Left: one migration, one reader, one kernel, four surfaces that read it, one
-   ring, two flags.
+   table, a new guide, and in the fourth pass the timed pause. Left: one migration, one reader, one kernel, four surfaces that read it, one ring, one stop.
 
 **Do we educate as well as we can?** The first time an estimator opens a working robot's sheet,
 the bar itself is the lesson: seven steps, one lit, a time. Under it, **What the robot touches**
@@ -597,8 +755,14 @@ for a person on a bid; the rest is in *see how close the robots are*.
 - **A ring weighted by the clock** (3b, alternative C). Once ten runs have locked, the segments can
   take the median minutes of each step, so the ring's pace matches a watch. The ring from B upgrades
   in place; nothing a person learned changes.
-- **Pausing one robot but not another.** The pause is per key, and a key is a Mac. Two robots on
-  one Mac pause together.
+- **A timed pause.** The third pass had *Pause until 6 PM, until tomorrow, until pressed again*.
+  Every reason to press it is *stop until I say*, so it folded into **Stop the rounds** (decision 5).
+- **A stop-everything press.** The stop is per key, a seat on a Mac. Revoking a key on Settings →
+  Digital twins is the hard kill, as today.
+- **Search across every bid's plans** (*which jobs had a grease interceptor*): the page rows make it a later query; nobody has asked.
+- **A model call from the app itself** for Ask the plans (decision 9, alternative A). The rounds
+  answer first; an edge function with the Claude API is the upgrade if minutes prove too slow, and
+  the thread and the table stay the same.
 - **Progress on backtests.** A backtest is a dev's run; the Console's ledger shows it as today.
 - **The pricing robot's bar.** Its three stages already stamp; the Rounds card lists a matrix in
   hand with its stage, and the matrix request's own row keeps its heartbeat column. A bar on the
@@ -614,5 +778,8 @@ overlap rule in decision 1 keeps an idle round to one call. The asleep clock tig
 
 1. **When the rounds run.** All day, every day (recommended: a bid filed Saturday is shadowed
    Saturday, and nothing a robot does reaches a customer); the hourly routine's weekday 7 to 6.
-2. **Who may pause.** The owner and devs (recommended); estimators too.
+2. **Who may stop the rounds.** The owner and devs (recommended); estimators too.
 3. **Where silence reaches you.** The Dashboard's Needs You card (recommended); a push as well.
+4. **Counts in an answer from the plans before the bid is sent** (decision 9). Never, the answer
+   says what the plans say and where (recommended); allow counts, and accept that the robot's count
+   can anchor yours.

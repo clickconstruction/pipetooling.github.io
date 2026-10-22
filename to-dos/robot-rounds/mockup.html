@@ -168,6 +168,56 @@
   .recent.fold li { color: var(--text-muted); }
   .rl { font-size: .78rem; font-weight: 700; color: var(--text-strong); margin: .4rem 0 0; display: flex; gap: .4rem; align-items: center; }
   .rl span { color: var(--text-muted); font-weight: 400; }
+  .words { border: 1px solid var(--border); border-radius: 8px; padding: .55rem .7rem; background: var(--surface); font-size: .8rem; color: var(--text-700); display: grid; gap: .3rem; }
+  .words b { color: var(--text-strong); }
+  /* the bid header and the Plans panel */
+  .bidhead { width: 100%; max-width: 900px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); padding: 10px 14px; display: grid; gap: 8px; }
+  .bidhead .t { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .bidhead .t b { font-size: 15px; color: var(--text-strong); }
+  .bidhead .t .m { color: var(--text-muted); font-size: 12.5px; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tab { font-size: 12px; padding: 4px 9px; border-radius: 6px; color: var(--text-700); border: 1px solid transparent; }
+  .tab.on { background: var(--bg-blue-tint); color: var(--text-blue-800); border-color: var(--border-blue); font-weight: 600; }
+  .panel { width: 440px; flex: 0 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); display: grid; gap: 10px; padding: 12px 14px 14px; }
+  .panel.phone { width: 340px; }
+  .panel .ph2 { display: flex; gap: 8px; align-items: baseline; }
+  .panel .ph2 b { font-size: 15px; color: var(--text-strong); }
+  .panel .ph2 span { color: var(--text-muted); font-size: 12px; }
+  .panel .x { margin-left: auto; color: var(--text-muted); font-size: 1.05rem; }
+  .srch { border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 10px; font-size: 13.5px; display: flex; gap: 8px; align-items: center; background: var(--bg-subtle); color: var(--text-base); }
+  .srch i { color: var(--text-muted); font-style: normal; }
+  .first { font-size: 11.5px; color: var(--text-muted); margin: -4px 0 0; }
+  .card2 { border: 1px solid var(--border-blue); background: var(--bg-blue-tint); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: var(--text-base); display: grid; gap: 6px; }
+  .card2 .k { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-blue-800); }
+  .card2 .acts2 { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card2 .acts2 .btn { font-size: .76rem; padding: .25rem .55rem; }
+  .card2.amber { border-color: var(--border-amber); background: var(--bg-amber-tint); }
+  .card2.amber .k { color: var(--text-amber-800); }
+  .hit { display: grid; grid-template-columns: 4.2rem 1fr auto; gap: 8px; align-items: start; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .hit:last-child { border-bottom: 0; }
+  .hit .sn { font-weight: 700; color: var(--text-strong); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .hit .ti { color: var(--text-muted); font-size: 11.5px; display: block; }
+  .hit q { quotes: none; color: var(--text-700); }
+  .hit q mark { background: var(--bg-amber-tint); color: inherit; padding: 0 2px; border-radius: 2px; }
+  .pf { font-size: 12.5px; font-weight: 700; color: var(--text-strong); display: flex; gap: 6px; align-items: center; padding-top: 4px; border-top: 1px solid var(--border); }
+  .pf span { color: var(--text-muted); font-weight: 400; font-size: 11.5px; }
+  .pf .car { margin-left: auto; color: var(--text-muted); font-weight: 400; }
+  table.sched { border-collapse: collapse; width: 100%; font-size: 12px; }
+  table.sched th, table.sched td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.sched th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+  .noteln { font-size: 12.5px; color: var(--text-700); display: flex; gap: 8px; align-items: baseline; }
+  .noteln .n { color: var(--text-muted); font-variant-numeric: tabular-nums; flex: 0 0 1.6rem; }
+  .flag { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 4px; padding: 1px 5px; background: var(--bg-amber-tint); color: var(--text-amber-800); white-space: nowrap; margin-left: auto; }
+  .flag.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .thread { display: grid; gap: 8px; }
+  .q, .ans { border-radius: 10px; padding: 7px 10px; font-size: 12.5px; }
+  .q { background: var(--bg-blue-tint); border: 1px solid var(--border-blue); justify-self: end; max-width: 88%; }
+  .ans { background: var(--bg-subtle); border: 1px solid var(--border); max-width: 92%; }
+  .q .by, .ans .by { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+  .ans .by b { color: var(--text-violet-800); }
+  .ans .acts2 { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .ans .acts2 .btn { font-size: .76rem; padding: .25rem .55rem; }
+  .pfoot { font-size: 11.5px; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 6px; }
   .menu { font-size: .78rem; color: var(--text-muted); border: 1px dashed var(--border-strong); border-radius: 6px; padding: .3rem .5rem; width: 100%; }
   .menu b { color: var(--text-base); font-weight: 600; }
   /* the Run the robots card's column, as the Console draws it */
@@ -226,7 +276,7 @@
   .lens p { margin: 0; color: var(--text-700); font-size: 13px; }
   .lens p + p { margin-top: 6px; }
   .lens .was { color: var(--text-muted); font-size: 12px; }
-  @media (max-width: 640px) { .sheet, .card, .mirror, .needs { width: 100%; } .agent, .empty { grid-template-columns: 2.2rem 1fr; } .agent .acts, .empty .btn { grid-column: 1 / -1; justify-content: flex-start; justify-self: start; } .recent li { grid-template-columns: 5rem 1fr; } header.top { grid-template-columns: 1fr; } .theme { margin-top: 0; justify-self: start; } .board .bh, .board .br { grid-template-columns: 48px 1fr 36px; } .board .bh :nth-child(3), .board .bh :nth-child(4), .board .br :nth-child(3), .board .br :nth-child(4) { display: none; } .mirror .mh, .mirror .mr { grid-template-columns: 80px 1fr; } .mirror .mh :nth-child(n+3), .mirror .mr :nth-child(n+3) { display: none; } }
+  @media (max-width: 640px) { .sheet, .card, .mirror, .needs, .panel { width: 100%; } .agent, .empty { grid-template-columns: 2.2rem 1fr; } .agent .acts, .empty .btn { grid-column: 1 / -1; justify-content: flex-start; justify-self: start; } .recent li { grid-template-columns: 5rem 1fr; } header.top { grid-template-columns: 1fr; } .theme { margin-top: 0; justify-self: start; } .board .bh, .board .br { grid-template-columns: 48px 1fr 36px; } .board .bh :nth-child(3), .board .bh :nth-child(4), .board .br :nth-child(3), .board .br :nth-child(4) { display: none; } .mirror .mh, .mirror .mr { grid-template-columns: 80px 1fr; } .mirror .mh :nth-child(n+3), .mirror .mr :nth-child(n+3) { display: none; } }
 </style>
 </head>
 <body>
@@ -235,7 +285,7 @@
     <div>
       <p class="eyebrow">Punch list #142 · proposed 2026-10-21, second pass · nothing built</p>
       <h1>Robot rounds: the robots watch from the Mac Mini and say where they are every five minutes</h1>
-      <p>The robots already estimate blind and the hourly routine already runs them. This adds <b>rounds</b>, a pass over the three queues every five minutes from a Mac that stays on, and a <b>signal</b> every five minutes while a robot works, shown where a person already looks: the robot icon on the bid, which becomes a ring that fills one segment per step. Silence gets a meaning and a door. A press on the app reaches the Mac on its next signal, and the button says so.</p>
+      <p>The robots already estimate blind and the hourly routine already runs them. This adds <b>rounds</b>, a pass over the three queues every five minutes from a Mac that stays on, and a <b>signal</b> every five minutes while a robot works, shown where a person already looks: the robot icon on the bid, which becomes a ring that fills one segment per step. Silence gets a meaning and a door. A press on the app reaches the Mac on its next signal, and the button says so. And a <b>Plans</b> button on every bid tab searches the set at once, shows what the robot already read, and asks the plans a question the rounds answer within minutes, never with a count before the bid is sent.</p>
     </div>
     <button class="theme" type="button" onclick="(function(){var h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark';})()">Light / Dark</button>
   </header>
@@ -411,9 +461,13 @@
           </ul>
           <p class="ln" style="color:var(--text-muted)"><b>Today</b> <span data-app>1 bid sealed, 1 parked.</span> <span data-app>88 rounds found nothing to do and left after one call.</span></p>
         </div>
-        <div class="acts"><span class="btn sm">Stop after this bid</span><span class="btn sm">Pause the rounds ▾</span></div>
+        <div class="acts"><span class="btn sm" title="Finishes the bid in hand, then claims no more. Start again brings the next round within five minutes.">Stop the rounds</span></div>
       </div>
-      <div class="menu"><b>Pause the rounds</b> → until 6 PM · until tomorrow 7 AM · until I press again. <span data-app>A paused round still sends one signal, so this row never guesses.</span></div>
+      <div class="words">
+        <div><b>On the button, as its hover line.</b> <span data-app>Finishes the bid in hand, then claims no more.</span> <span data-app>Start again brings the next round within five minutes.</span></div>
+        <div><b>When to press it.</b> <span data-app>Press it when the robot is doing something wrong on bid after bid.</span> <span data-app>Fix the cause first, then start it again.</span> <span data-app>Press it before you deploy a change the robots use.</span> <span data-app>Start it again when the deploy is done.</span> <span data-app>Press it when you do not want the robot to spend today.</span> <span data-app>It costs nothing while it is stopped.</span> <span data-app>You do not need it to protect a bid.</span> <span data-app>The robot never edits your bid and never sends anything.</span> <span data-app>To keep the robot off one bid, press Leave this one to me on that bid instead.</span></div>
+        <div><b>What happens after.</b> <span data-app>The robot finishes the bid it is on.</span> <span data-app>It seals it and files its report as usual.</span> <span data-app>It claims no new bid after that.</span> <span data-app>The queue waits for it.</span> <span data-app>The rounds still check in every five minutes.</span> <span data-app>Each one sees the stop and leaves at once.</span> <span data-app>The row reads Stopped, with who pressed it and when.</span> <span data-app>The robot said so itself in its last signal.</span> <span data-app>A session you start by hand is not stopped.</span> <span data-app>Only the rounds are.</span> <span data-app>Another Mac is not stopped.</span> <span data-app>Each Mac has its own button.</span> <span data-app>Press Start again when you are ready.</span> <span data-app>The next round comes within five minutes.</span></div>
+      </div>
       <div class="agent" style="margin-top:.5rem">
         <div class="ic">🖥</div>
         <div>
@@ -423,7 +477,7 @@
           <p class="rl">Recently <span>▸ folded to the newest</span></p>
           <ul class="recent fold"><li><span class="t">1:10 PM</span><span><u data-app>Matrix ready for b503 Bluebonnet Oil Change, 2 asks.</u></span></li></ul>
         </div>
-        <div class="acts"><span class="btn sm">Pause the rounds ▾</span></div>
+        <div class="acts"><span class="btn sm" title="Finishes the bid in hand, then claims no more. Start again brings the next round within five minutes.">Stop the rounds</span></div>
       </div>
       <div class="agent" style="margin-top:.5rem">
         <div class="ic">💻</div>
@@ -450,7 +504,7 @@
       </div>
     </div>
   </div>
-  <p class="note"><b>Alive, Quiet, Asleep are read, never stored.</b> Alive is a check-in within seven minutes, the five-minute round plus two of grace; Quiet is seven to fifteen; Asleep is over fifteen, three rounds missed. Every twin-mcp call stamps the key once a minute, so a robot that forgets its heartbeat still reads Alive. Recently is the robot's finished work from the rows it already writes: reports, locks, matrices, submittal tasks; each line is a door. The card refreshes every 30 seconds while the Console is open. <b>A round every five minutes, one bid at a time.</b> A bid takes about an hour, so most rounds wake while an earlier round still holds one. A round's first call is its idle signal, and the reply says whether this key already has two rounds on bids; if so it leaves at once, before it reads a guide. <b>Stop after this bid</b> lets the robot lock and report the bid in hand, then claims no more until the flag is cleared. <b>Pause the rounds</b> is per key, so it pauses this Mac and no other. Both are flags on the key; the round reads them in the reply to its next signal and says what it did in the signal after, so the row's state is the robot's word, never the button's. A run's amounts never appear here: a signal on a sealed bid is scrubbed the way the robot's questions are.</p>
+  <p class="note"><b>Alive, Quiet, Asleep are read, never stored.</b> Alive is a check-in within seven minutes, the five-minute round plus two of grace; Quiet is seven to fifteen; Asleep is over fifteen, three rounds missed. Every twin-mcp call stamps the key once a minute, so a robot that forgets its heartbeat still reads Alive. Recently is the robot's finished work from the rows it already writes: reports, locks, matrices, submittal tasks; each line is a door. The card refreshes every 30 seconds while the Console is open. <b>A round every five minutes, one bid at a time.</b> A bid takes about an hour, so most rounds wake while an earlier round still holds one. A round's first call is its idle signal, and the reply says whether this key already has two rounds on bids; if so it leaves at once, before it reads a guide. <b>Stop the rounds</b> lets the robot lock and report the bid in hand, then claims no more until <b>Start again</b>. It is per key, so it stops this seat on this Mac and no other, and it never stops a session a person starts by hand. The owner asked who would ever press a timed pause; nobody who would not rather press stop, so the menu is gone. The stop is two columns on the key; the round reads them in the reply to its next signal and says what it did in the signal after, so the row's state is the robot's word, never the button's. A run's amounts never appear here: a signal on a sealed bid is scrubbed the way the robot's questions are.</p>
 
   <!-- 4 · SILENCE -->
   <h2><span class="num">4</span>What silence means: a quiet robot and a sleeping Mac are two facts</h2>
@@ -501,7 +555,7 @@
     <tr><td><code>note</code></td><td>one line, 400 characters, money scrubbed on a sealed bid</td><td>the line after the step</td><td>Read the run, the Console ledger</td></tr>
     <tr><td><code>credential_id</code> (new)</td><td>the key the Mac holds</td><td data-app>From Robert's Mac Mini.</td><td>the sheet, the caption, the Rounds card</td></tr>
     <tr><td><code>started_at</code></td><td>2:36 PM</td><td data-app>Last word 2:36 PM.</td><td>everywhere a time shows</td></tr>
-    <tr><td>the reply's <code>orders</code> (new)</td><td>carry on · stop after this bid · pause until 6 PM · leave b511</td><td>what the robot does next, said in its next signal</td><td>the Rounds card's chip</td></tr>
+    <tr><td>the reply's <code>orders</code> (new)</td><td>carry on · stop · leave b511</td><td>what the robot does next, said in its next signal</td><td>the Rounds card's chip</td></tr>
   </table>
   <p class="note"><b>Not in the signal:</b> any amount, the reference bid, the score. <b>Not needed from the signal:</b> the step itself, which the verbs' stamps already write, and <i>last word</i>, which every verb stamps on the key once a minute. A robot that forgets to signal still shows alive and on the right step. It only loses <i>12 of 31</i>.</p>
 
@@ -511,10 +565,113 @@
   <div class="lenses">
     <div class="lens"><h3>Fewer presses on a phone</h3><p class="was">Was: a Rounds lens on the Bids page, a percent bar with a time estimate.</p><p>Now: the icon itself answers. The ring says third of seven with no press at all, the sheet's bar is the same seven steps, and Read the run is one press from the same sheet. Nothing new to find.</p></div>
     <div class="lens"><h3>Plain words</h3><p class="was">Was: substrate, STG-3, shell, heartbeat, on the sheet.</p><p>Now: reading the sheets, counting, its own copy of the bid, last word. Every sentence a person reads here passes the plain-words check, and the kernel's words test holds them.</p></div>
-    <div class="lens"><h3>Do what is ready</h3><p class="was">Was: one Stop that stopped everything and orphaned the bid in hand.</p><p>Now: Leave this one to me stops one bid and the round carries on. Stop after this bid finishes the bid in hand. A paused round still signals. The bar moves on the verbs' stamps when the robot forgets to.</p></div>
+    <div class="lens"><h3>Do what is ready</h3><p class="was">Was: one Stop that stopped everything and orphaned the bid in hand.</p><p>Now: Leave this one to me stops one bid and the round carries on. Stop the rounds finishes the bid in hand, and a stopped round still signals. The bar moves on the verbs' stamps when the robot forgets to.</p></div>
     <div class="lens"><h3>Reuse</h3><p class="was">Was: a round verb, a presence table, a new liveness reader.</p><p>Now: heartbeat widened, two columns on the key that already is the Mac, the step from stamps that exist, the submittal liveness reader's shape, the matrix backlog's stale rule, the opt-out, the orphan rule, the Needs you snooze.</p></div>
-    <div class="lens"><h3>Cut</h3><p class="was">Was: a percent of minutes, a countdown, a Dashboard line on every signal, Take over, a push, a new lens, a new table, a new guide.</p><p>Now: one migration, one reader, one kernel, four surfaces that read it, one ring, two flags. Two guides grow a section each.</p></div>
+    <div class="lens"><h3>Cut</h3><p class="was">Was: a percent of minutes, a countdown, a Dashboard line on every signal, Take over, a push, a new lens, a new table, a new guide.</p><p>Now: one migration, one reader, one kernel, four surfaces that read it, one ring, one stop. Two guides grow a section each. The fourth pass dropped the timed pause.</p></div>
     <div class="lens"><h3>Do we educate?</h3><p>The ring teaches the seven steps on the board before the sheet does, and the sheet confirms them. The bar is the same lesson: seven steps, one lit, a time. What the robot touches is four sentences, open the first time and folded after. The tooltip and the sheet say the same step in the same words. Leave this one to me says what happens and when. The Console card says what a round is before what this one is doing.</p></div>
+  </div>
+
+  <!-- 7 · ASK THE PLANS -->
+  <h2><span class="num">7</span>Ask the plans: search the set now, ask within a round, never a count before you send</h2>
+  <p class="lede">The robot already writes a read of every plan set it shadows: one record per sheet, every schedule as a table, every general note with a flag. Estimators may read that table and nothing shows it to them. This puts a <b>Plans</b> button in the bid's header on every bid tab, and one box behind it. Type a word or a question and the plans answer at once, from the page text the round wrote and the robot's read, with the hits by sheet. When that is not enough, one press asks the robot to look, and it answers within a round, after its own number is sealed, citing sheets. An answer says what the plans say and where, never how many the robot counted, until the bid is sent. <b>Second look:</b> one box instead of two, the plans before the robot, the text from the round instead of a phone, and the robot reads a question only after it seals.</p>
+  <div class="row">
+    <div>
+      <div class="cap blue">The bid's header on every bid tab <span class="r">the Plans button</span></div>
+      <div class="fit">
+        <div class="bidhead">
+          <div class="t"><b>b511 · Oak Hollow Dental TI</b><span class="m">Ridgeway Builders · Boerne · due Fri 10/24</span><span class="btn sm p" style="margin-left:auto">Plans</span></div>
+          <div class="tabs"><span class="tab">Counts</span><span class="tab on">Takeoff</span><span class="tab">Labor</span><span class="tab">Pricing</span><span class="tab">Cover Letter</span><span class="tab">RFIs</span><span class="tab">Submittals</span><span class="tab">…</span></div>
+        </div>
+      </div>
+      <p class="note">One button beside the bid's name, present on every bid tab, so an estimator asks from Counts or Pricing without leaving the work. On desktop it opens a side panel and the tab keeps working underneath; on a phone it is a full-screen sheet.</p>
+      <div class="cap green" style="margin-top:18px">The three states the panel can open in</div>
+      <div class="fit">
+        <div class="states">
+          <div class="state"><p class="h"><i class="b"></i>Read, with text</p><p data-app>31 sheets, text from the round at 2:06 PM. Type a word or a question.</p><p class="who">The usual case: the round wrote the page text within minutes of the plans being filed.</p></div>
+          <div class="state"><p class="h"><i class="a"></i>No text layer</p><p data-app>This set has no text to search. The robot read these sheets by eye. Its read answers below.</p><p data-app>Ask the robot to look at a named sheet.</p><p class="who">A scanned set. The schedules and notes still answer; the box offers the robot.</p></div>
+          <div class="state"><p class="h"><i class="g"></i>No robot has read it</p><p data-app>Reading 31 sheets in this browser. About a minute.</p><p class="who">An opted-out or non-plumbing bid: the browser reads the set once and saves it for everyone.</p></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap green">The Plans panel · desktop <span class="r">search, the robot's read, the thread</span></div>
+      <div class="fit">
+        <div class="panel">
+          <div class="ph2"><b>Plans · b511</b><span>31 sheets · 9 plumbing · text read 2:06 PM</span><span class="x">×</span></div>
+          <div class="srch"><i>⌕</i>is there a grease interceptor?</div>
+          <p class="first" data-app>Type a word or a question. The plans answer first. The robot can look after.</p>
+          <div class="card2"><span class="k">The plans say</span><span><span data-app>No sheet mentions a grease interceptor.</span> <span data-app>Note 14 on P-001 says the kitchen equipment and its connections are by others.</span></span><div class="acts2"><span class="btn sm p">Ask the robot to look</span><span class="btn sm">Open P-001</span><span class="btn sm">Make this an RFI</span></div></div>
+          <div class="pf">Earlier: floor drain <span>3 sheets</span></div>
+          <div>
+            <div class="hit"><span class="sn">P-201<span class="ti">First floor plumbing</span></span><span><q><mark>FD-1</mark> typ. See detail 4 on P-501.</q> <span class="ti">3 hits on this sheet</span></span><span class="btn sm">Open sheet</span></div>
+            <div class="hit"><span class="sn">P-202<span class="ti">Second floor plumbing</span></span><span><q><mark>FD-1</mark> at mop sink. Slope floor to drain.</q> <span class="ti">2 hits</span></span><span class="btn sm">Open sheet</span></div>
+            <div class="hit"><span class="sn">P-601<span class="ti">Plumbing schedules</span></span><span><q><mark>FD-1</mark> floor drain, Zurn Z415, 3 in. outlet, nickel bronze strainer.</q> <span class="ti">1 hit</span></span><span class="btn sm">Open sheet</span></div>
+          </div>
+          <div class="pf">Sheet index <span>31 sheets, 9 plumbing</span><span class="car">▸</span></div>
+          <div class="pf">Schedules <span>from the robot's read</span><span class="car">▾</span></div>
+          <table class="sched">
+            <tr><th>Tag</th><th>Description</th><th>Connections</th></tr>
+            <tr><td>WC-1</td><td>Wall-hung water closet, flush valve</td><td>1 in. CW, 4 in. W</td></tr>
+            <tr><td>LAV-1</td><td>Wall-hung lavatory, sensor faucet</td><td>1/2 in. CW and HW, 1 1/2 in. W</td></tr>
+            <tr><td>FD-1</td><td>Floor drain, Zurn Z415, nickel bronze strainer</td><td>3 in. W</td></tr>
+            <tr><td>WH-1</td><td>Water heater, 50 gal electric</td><td>3/4 in. CW and HW</td></tr>
+          </table>
+          <div class="pf">Notes with flags <span>6 of 34</span><span class="car">▾</span></div>
+          <div class="noteln"><span class="n">14</span><span data-app>Kitchen equipment and its connections by others.</span><span class="flag">exclusion</span></div>
+          <div class="noteln"><span class="n">22</span><span data-app>Verify invert elevations before rough-in.</span><span class="flag blue">coordination</span></div>
+          <div class="noteln"><span class="n">31</span><span data-app>The backflow preventer is tested by a licensed tester.</span><span class="flag">certification</span></div>
+          <div class="pf">The robot looked <span>within a round, after its own seal, saved on the bid</span></div>
+          <div class="thread">
+            <div class="q"><span class="by">Wendi · 2:41 PM · asked the robot to look</span><span data-app>Is there a grease interceptor on this job?</span></div>
+            <div class="ans"><span class="by"><b>The robot</b> · 2:47 PM · cites P-001, P-201, P-501</span><span data-app>No. The kitchen line on P-201 runs to the sanitary main with no interceptor drawn.</span> <span data-app>Detail 4 on P-501 shows a plain cleanout there.</span> <span data-app>Note 14 puts the kitchen equipment with others, so the interceptor may be theirs.</span><div class="acts2"><span class="btn sm">Make this an RFI</span><span class="btn sm">Open P-501</span></div></div>
+            <div class="q"><span class="by">Stephen · 1:12 PM · asked the robot to look</span><span data-app>How many floor drains on the first floor?</span></div>
+            <div class="ans"><span class="by"><b>The robot</b> · 1:16 PM · cites P-201, P-202, P-601</span><span data-app>FD-1 is drawn on P-201 and P-202.</span> <span data-app>The schedule on P-601 lists it with no quantity.</span> <span data-app>I do not give counts before you send.</span> <span data-app>Open P-201 to count them.</span><div class="acts2"><span class="btn sm">Open P-201</span></div></div>
+            <div class="card2 amber"><span class="k">Shown once</span><span><span data-app>The robot answers what the plans say and where.</span> <span data-app>Counts come after you send.</span></span></div>
+          </div>
+          <div class="pfoot"><span data-app>Everyone in the office sees this thread on the bid.</span> <span data-app>The robot reads a question only after its own number is sealed.</span></div>
+        </div>
+      </div>
+      <p class="note"><b>Three answers, in order.</b> The blue card is the plans answering at once, from the page text and the robot's read, no model, no wait. <b>Ask the robot to look</b> is the escalation, and the robot takes a question only after its own number on that bid is sealed, so the shadow stays blind in both directions. <b>Make this an RFI</b> is the third door. The count answer is the seal rule in the robot's own words; after the bid is sent, <i>Compare counts and pricing</i> opens as today.</p>
+    </div>
+  </div>
+  <div class="row" style="margin-top:18px">
+    <div>
+      <div class="cap green">The panel on a phone <span class="r">340 px · a full-screen sheet</span></div>
+      <div class="fit">
+        <div class="panel phone">
+          <div class="ph2"><b>Plans · b511</b><span>31 sheets</span><span class="x">×</span></div>
+          <div class="srch"><i>⌕</i>floor drain</div>
+          <div class="card2"><span class="k">The plans say</span><span><span data-app>FD-1 is on three sheets.</span> <span data-app>The schedule on P-601 names it a Zurn Z415.</span></span><div class="acts2"><span class="btn sm p">Ask the robot to look</span></div></div>
+          <div>
+            <div class="hit" style="grid-template-columns:3.6rem 1fr"><span class="sn">P-201</span><span><q><mark>FD-1</mark> typ. See detail 4 on P-501.</q> <span class="ti">3 hits · Open sheet</span></span></div>
+            <div class="hit" style="grid-template-columns:3.6rem 1fr"><span class="sn">P-601</span><span><q><mark>FD-1</mark> floor drain, Zurn Z415, 3 in. outlet.</q> <span class="ti">1 hit · Open sheet</span></span></div>
+          </div>
+          <div class="pf">Sheet index <span class="car">▸</span></div>
+          <div class="pf">Schedules <span class="car">▸</span></div>
+          <div class="pf">Notes with flags <span>6</span><span class="car">▸</span></div>
+          <div class="pf">The robot looked</div>
+          <div class="thread">
+            <div class="q"><span class="by">Wendi · 2:41 PM</span><span data-app>Is there a grease interceptor on this job?</span></div>
+            <div class="ans"><span class="by"><b>The robot</b> · 2:47 PM</span><span data-app>No. The kitchen line on P-201 runs to the main with no interceptor drawn.</span><div class="acts2"><span class="btn sm">Make this an RFI</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">How each part is built <span class="r">reuse first</span></div>
+      <table class="map" style="margin-top:0;border-radius:0 0 10px 10px">
+        <tr><th>Part</th><th>Built from</th><th>Speed and cost</th></tr>
+        <tr><td>The page text</td><td>the round runs <code>pdftotext</code> on the set it already holds and writes one row per page to <code>bids_plan_pages</code> with a text index; the browser reads a set no robot has read, once</td><td>free, within minutes of filing</td></tr>
+        <tr><td>The plans answer</td><td>a small kernel: the typed words to terms, the hits across the page text, the schedule rows and the notes, one or two sentences</td><td>instant, no model</td></tr>
+        <tr><td>Sheet index, schedules, notes</td><td>the robot's read in <code>bids_plan_substrates</code>, written at its second step, paired to the bid by <code>twin_source_bid_id</code></td><td>already there, shown for the first time</td></tr>
+        <tr><td>Open sheet</td><td><code>PdfPageCanvas</code> at that page, and the CountTooling link when the bid has one</td><td>instant</td></tr>
+        <tr><td>Ask the robot to look</td><td>the rounds' fourth queue, <code>bid_plan_questions</code>, two verbs, the answer saved on the bid with the sheets it cites; served only after that bid's shadow is sealed</td><td>within a round, no new dependency</td></tr>
+        <tr><td>Make this an RFI</td><td>the RFI lane that exists, with the sheet reference</td><td>one press</td></tr>
+        <tr><td>The rule</td><td><code>scrubMoney</code> and a count rule on every answer before the bid is sent</td><td>what the plans say and where, never a count</td></tr>
+        <tr><td>The upgrade</td><td>an edge function with the Claude API when minutes prove too slow; the table and the thread stay the same</td><td>seconds, a new secret, a cost per question</td></tr>
+      </table>
+      <p class="note">PRs 6 and 7 of the train, after the rounds. PR 6 ships the box, the plans' answer and the robot's read with no model at all. PR 7 brings <b>Ask the robot to look</b> alive through the rounds.</p>
+    </div>
   </div>
 </div>
 </body>
