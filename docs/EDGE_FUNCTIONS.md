@@ -693,6 +693,8 @@ const response = await supabase.functions.invoke('restore-user', {
 
 ### login-as-user
 
+> **v2.5724 — every page of accounts** (punch list #142 PR 0): the target's lookup reads every page through `findAuthUserByEmail` (`_shared/authUserByEmail.ts`), as dev-login's does; see [dev-login](#dev-login). **Redeploy** once merged.
+
 > **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Generate magic link for user impersonation (dev, master, and assistant access). The client (`lib/loginAsUser.ts`) passes `redirectTo` = the page the operator is on (v2.3606; was the role's home page) and stashes `returnTo` beside the tokens so Exit lands back there.
@@ -813,6 +815,8 @@ const response = await supabase.functions.invoke('login-as-user', {
 ---
 
 ### dev-login
+
+> **v2.5724 — every page of accounts** (punch list #142 PR 0): the lookup read `listUsers()` with no page, the first 50 accounts, and prod held exactly 50; the 51st account (the walk kit's tester, a new hire) would have hidden any account past the page, the dev-login identity included, and every session's sign-in would have answered *User not found*. `findAuthUserByEmail` in [`_shared/authUserByEmail.ts`](../supabase/functions/_shared/authUserByEmail.ts) reads 1,000 a page until the address is found (trimmed, case-insensitive) or the last page is read; `login-as-user` had the same read and takes the same helper. **Redeploy both** once merged.
 
 > **v2.5401 — `deno check` passes again**: the outer `catch` read `error?.message` off an `unknown`, which the optional chain narrows to `{}` (TS2339). It reads `(error as Error)?.message` now, as `merge-users` does. What its `try` can throw is an `Error`: a body that is not JSON. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
