@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
-import { describeTwinRun, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
+import { describeTwinRun, relativeTimeFrom, type TwinRunShape } from '../../lib/twinConsoleDisplay'
 import { CARD, CARD_TITLE, CHIP, MUTED, STEP_REF } from './twinConsoleStyles'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
 
@@ -12,7 +12,7 @@ import { toDatetimeLocal } from '../../utils/datetimeLocal'
  * Settings → Digital twins). Twin tables predate the generated types — untyped
  * client, fail-soft: no table, no card.
  */
-type RunRow = { twin_user_id: string; mission: string; notes: string | null; started_at: string }
+type RunRow = { twin_user_id: string; mission: string; notes: string | null; started_at: string; ended_at?: string | null } & TwinRunShape
 type CredRow = { id: string; label: string }
 type TwinName = { id: string; name: string | null; email: string }
 
@@ -29,7 +29,7 @@ export function TwinRunsLedger() {
     void (async () => {
       try {
         const [r, c, t] = await Promise.all([
-          db.from('twin_runs').select('twin_user_id, mission, notes, started_at').order('started_at', { ascending: false }).limit(LIMIT),
+          db.from('twin_runs').select('twin_user_id, mission, notes, started_at, ended_at, stage, state, progress').order('started_at', { ascending: false }).limit(LIMIT),
           db.from('twin_credentials').select('id, label').order('created_at', { ascending: false }).limit(100),
           db.from('users').select('id, name, email').eq('is_digital_twin', true).order('email'),
         ])
@@ -66,7 +66,7 @@ export function TwinRunsLedger() {
       </h4>
       {runs.length === 0 ? <p style={{ ...MUTED, marginBottom: 0 }}>No runs logged yet — the first sign-in or mission report lands here.</p> : null}
       {runs.map((r, i) => {
-        const d = describeTwinRun(r.mission, r.notes, credLabel)
+        const d = describeTwinRun(r.mission, r.notes, credLabel, r)
         const chip =
           d.verb === 'sign-in'
             ? { text: 'SIGN-IN', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' }
@@ -75,7 +75,9 @@ export function TwinRunsLedger() {
               : d.verb === 'heartbeat'
                 ? d.mission === 'blocked'
                   ? { text: 'BLOCKED', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
-                  : { text: 'PULSE', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' }
+                  : d.mission === 'idle'
+                    ? { text: 'ROUND', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' }
+                    : { text: 'PULSE', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' }
                 : { text: 'RUN', bg: 'var(--bg-violet-100)', fg: 'var(--text-violet-800)' }
         return (
           <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', fontSize: '0.76rem', padding: '0.26rem 0', borderBottom: i < runs.length - 1 ? '1px solid var(--border)' : 'none', flexWrap: 'wrap' }}>

@@ -10,6 +10,7 @@ import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared
 import { backtestRunLabelOwner, isBacktestLockNote } from '../_shared/twinBacktestScoreGate.ts'
 import { referenceWhole, referenceWholeLabel } from '../_shared/referenceWhole.ts'
 import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices, questionTouchesSealedShadow, scrubMoney, type SealedShadow } from '../_shared/twinQuestionShape.ts'
+import { HEARTBEAT_STATES, HEARTBEAT_STEPS, normalizeHeartbeatProgress, type HeartbeatProgress } from '../_shared/twinHeartbeat.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
@@ -282,14 +283,26 @@ const TOOLS = [
   {
     name: 'heartbeat',
     description:
-      "Tell the fleet console what you're doing right now: current bid, pipeline stage, and state (working|blocked|done). Send one when you start, when you block (pair it with ask_question), and when you finish. Cheap; send freely.",
+      "Tell the fleet console what you're doing right now, in a shape a person reads on the bid (v1.5.0, punch list #142). Send one when you start, EVERY FIVE MINUTES while you work, when you block (pair it with ask_question), when you finish, and once per round with nothing to do (state 'idle'). Cheap; send freely. `progress` is what the Bid Board shows: step (picked_up | plans | reading | counting | pricing | sealed | questions), read ('12 of 31 sheets'), wrote ('two notes on my copy'), waiting_on (the words after 'Waiting on': 'you: the plans'), next ('the fixture schedule on P-601'). On a sealed shadow every dollar figure is withheld before the row is written, so never put a total here. Consecutive idle heartbeats from one key collapse into one row. The reply carries `orders`: 'carry on'; 'stop' (finish the shell in hand, lock and report it, then claim no more — sent to rounds only); or 'leave <bid>' (a person took that bid back: void_shadow your shell and move on). Obey it.",
     inputSchema: {
       type: 'object',
       properties: {
         bid: { type: 'string', description: "Bid (e.g. 'b403' or uuid), if the work is bid-scoped" },
         stage: { type: 'string', description: "Pipeline stage, e.g. 'STG-3 takeoff'" },
-        state: { type: 'string', enum: ['working', 'blocked', 'done'] },
+        state: { type: 'string', enum: ['working', 'blocked', 'done', 'idle'] },
         note: { type: 'string', description: 'One line of detail' },
+        progress: {
+          type: 'object',
+          description: 'The plain-words shape a person reads on the bid',
+          properties: {
+            step: { type: 'string', enum: ['picked_up', 'plans', 'reading', 'counting', 'pricing', 'sealed', 'questions'] },
+            read: { type: 'string', description: "What you have read, e.g. '12 of 31 sheets'" },
+            wrote: { type: 'string', description: "What you have written, e.g. 'two notes on my copy'" },
+            waiting_on: { type: 'string', description: "What you wait on, as the words after 'Waiting on': 'you: the plans', 'nothing'" },
+            next: { type: 'string', description: "What you do next, e.g. 'the fixture schedule on P-601'" },
+          },
+        },
+        round: { type: 'boolean', description: 'true when a round (the routine on a Mac that stays on) is speaking; a Code session a person started leaves it out' },
       },
       required: ['stage', 'state'],
     },
@@ -707,6 +720,15 @@ async function resolveTwin(req: Request): Promise<ResolvedTwin | { error: string
   const { data: cred, error } = await admin.from('twin_credentials').select('id, twin_user_id, revoked_at').eq('token_hash', hash).maybeSingle()
   if (error) return { error: `Credential lookup failed: ${error.message}`, status: 500 }
   if (!cred || cred.revoked_at) return { error: 'Unknown or revoked twin token', status: 401 }
+  // v1.5.0 (punch list #142): the key's last call, stamped at most once a minute, so the Console
+  // can say a robot is alive without trusting it to heartbeat. Before the column lands the
+  // update fails and is swallowed.
+  try {
+    const seenCutoff = new Date(Date.now() - 60_000).toISOString()
+    await admin.from('twin_credentials').update({ last_seen_at: new Date().toISOString() }).eq('id', cred.id).or(`last_seen_at.is.null,last_seen_at.lt.${seenCutoff}`)
+  } catch {
+    /* additive stamp; never blocks a verb */
+  }
   // twin_kind lands with 20260911023538 (Price Matrix PR 1); before the push the column is
   // unknown to PostgREST — read the legacy shape and treat every twin as an estimator.
   let user: TwinUserRow | null = null
@@ -943,6 +965,34 @@ async function createShadowShell(
     notes: `[shadow STG-0] Shadow of live b${refBid.bid_number} (${refBid.project_name}) opened by ${twin.email}. Axis: ${axis || 'unclassified'}. Lock the blind total with lock_shadow BEFORE the human bid is sent; score_shadows finishes the loop automatically.`,
   }).then(() => {}, () => {})
   return { id: created.id as string, bid_number: String(created.bid_number) }
+}
+
+/**
+ * What the heartbeat's reply tells the robot to do next (v1.5.0, punch list #142). A person's
+ * *Leave this one to me* (bids.robot_opt_out on the human bid) reaches every session holding a
+ * shell for that bid; the Console's *Stop the rounds* (twin_credentials.stopped_at on the key)
+ * reaches rounds only, never a Code session a person started by hand. Read-only; a failed read
+ * is 'carry on'.
+ */
+async function heartbeatOrders(admin: SupabaseClient, twin: { credId: string }, bidId: string | null, isRound: boolean): Promise<string> {
+  try {
+    if (bidId) {
+      const { data: shell } = await admin.from('bids').select('twin_source_bid_id').eq('id', bidId).maybeSingle()
+      const src = (shell as { twin_source_bid_id?: string | null } | null)?.twin_source_bid_id ?? null
+      if (src) {
+        const { data: human } = await admin.from('bids').select('bid_number, robot_opt_out').eq('id', src).maybeSingle()
+        const h = human as { bid_number: number | string | null; robot_opt_out: boolean | null } | null
+        if (h?.robot_opt_out) return h.bid_number != null ? `leave b${h.bid_number}` : 'leave'
+      }
+    }
+    if (isRound) {
+      const { data: cred } = await admin.from('twin_credentials').select('stopped_at').eq('id', twin.credId).maybeSingle()
+      if ((cred as { stopped_at?: string | null } | null)?.stopped_at) return 'stop'
+    }
+  } catch {
+    /* orders are advice; a failed read is carry on */
+  }
+  return 'carry on'
 }
 
 /**
@@ -1874,7 +1924,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     case 'heartbeat': {
       const stage = String(args.stage ?? '').trim()
       const state = String(args.state ?? '').trim()
-      if (!stage || !['working', 'blocked', 'done'].includes(state)) return textContent("heartbeat needs stage + state in {working|blocked|done}", true)
+      if (!stage || !(HEARTBEAT_STATES as readonly string[]).includes(state)) return textContent(`heartbeat needs stage + state in {${HEARTBEAT_STATES.join('|')}}; progress.step is one of ${HEARTBEAT_STEPS.join('|')}`, true)
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
@@ -1887,17 +1937,59 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           : admin.from('bids').select('id').eq('bid_number', bidRef.replace(/^(bp|b)/i, '')).maybeSingle())
         bidId = (b as { id: string } | null)?.id ?? null
       }
-      const { error } = await admin.from('twin_runs').insert({
-        twin_user_id: twin.twinUserId,
-        mission: 'heartbeat',
-        bid_id: bidId,
-        stage,
-        state,
-        notes: `heartbeat stage=${stage} state=${state}${args.note ? ` ${String(args.note).slice(0, 400)}` : ''}`,
-        ended_at: state === 'done' ? new Date().toISOString() : null,
-      })
-      if (error) return textContent(`Heartbeat not recorded: ${error.message}`, true)
-      return textContent('Heartbeat recorded.')
+      const isRound = args.round === true
+      const nowIso = new Date().toISOString()
+      // v1.5.0 (punch list #142): the plain-words shape, and the seal — a heartbeat on a sealed
+      // shadow carries no dollar figure, the same rule as the questions'. A failed read scrubs anyway.
+      let progress = normalizeHeartbeatProgress(args.progress)
+      let note = args.note ? String(args.note).slice(0, 400) : ''
+      const sealed = await loadSealedShadows(admin)
+      const texts = [note, ...(progress ? Object.values(progress).filter((v): v is string => typeof v === 'string') : [])]
+      if (sealed === null || questionTouchesSealedShadow({ aboutBidId: bidId, texts }, sealed)) {
+        note = scrubMoney(note).text
+        if (progress) {
+          const scrubbed: Record<string, unknown> = {}
+          for (const [k, v] of Object.entries(progress)) scrubbed[k] = typeof v === 'string' ? scrubMoney(v).text : v
+          progress = scrubbed as HeartbeatProgress
+        }
+      }
+      const notes = `heartbeat stage=${stage} state=${state}${note ? ` ${note}` : ''}`
+      // Consecutive idle heartbeats from one key collapse into one row, so a day of rounds that
+      // found nothing is one line in the ledger, its ended_at the latest round.
+      let collapsed = false
+      if (state === 'idle') {
+        const { data: last } = await admin
+          .from('twin_runs')
+          .select('id, mission, state, credential_id, progress')
+          .eq('twin_user_id', twin.twinUserId)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        const l = last as { id: string; mission: string; state: string | null; credential_id: string | null; progress: { rounds?: number } | null } | null
+        if (l && l.mission === 'heartbeat' && l.state === 'idle' && l.credential_id === twin.credId) {
+          const rounds = Math.max(1, Number(l.progress?.rounds ?? 1)) + 1
+          const { error } = await admin.from('twin_runs').update({ ended_at: nowIso, notes, progress: { ...(progress ?? {}), rounds } }).eq('id', l.id)
+          if (error) return textContent(`Heartbeat not recorded: ${error.message}`, true)
+          collapsed = true
+        }
+      }
+      if (!collapsed) {
+        const { error } = await admin.from('twin_runs').insert({
+          twin_user_id: twin.twinUserId,
+          mission: 'heartbeat',
+          bid_id: bidId,
+          stage,
+          state,
+          notes,
+          ended_at: state === 'done' || state === 'idle' ? nowIso : null,
+          credential_id: twin.credId,
+          progress: state === 'idle' ? { ...(progress ?? {}), rounds: 1 } : progress,
+          is_round: isRound,
+        })
+        if (error) return textContent(`Heartbeat not recorded: ${error.message}`, true)
+      }
+      const orders = await heartbeatOrders(admin, twin, bidId, isRound)
+      return textContent(JSON.stringify({ ok: true, recorded: collapsed ? 'idle row extended' : 'row written', orders }))
     }
     case 'get_assignments': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -1982,7 +2074,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const { data: rfiRows } = await admin.from('bids_rfis').select('rfi_number, status').eq('bid_id', bid.id).order('rfi_number')
       const { data: hb } = await admin
         .from('twin_runs')
-        .select('stage, state, notes, started_at')
+        .select('stage, state, notes, started_at, progress')
         .eq('twin_user_id', twin.twinUserId)
         .eq('mission', 'heartbeat')
         .eq('bid_id', bid.id)
@@ -2026,7 +2118,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         },
         rfis: (rfiRows ?? []).map((r: Record<string, unknown>) => ({ n: r.rfi_number, status: r.status })),
         open_questions_here: openQuestions,
-        latest_heartbeat: hb ? { at: hb.started_at, stage: hb.stage, state: hb.state } : null,
+        latest_heartbeat: hb ? { at: hb.started_at, stage: hb.stage, state: hb.state, progress: (hb as { progress?: unknown }).progress ?? null } : null,
         audit_ledger_tail: (entries ?? []).map((e: Record<string, unknown>) => ({
           at: e.occurred_at, method: e.contact_method ?? 'note', note: String(e.notes ?? '').slice(0, 300),
         })),
@@ -3401,7 +3493,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.6' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.5.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
