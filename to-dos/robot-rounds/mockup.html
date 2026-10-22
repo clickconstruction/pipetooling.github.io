@@ -63,6 +63,19 @@
   .glyph.sealed { border-color: #16a34a; background: var(--bg-green-tint); box-shadow: none; }
   .glyph.queued { border-color: var(--border-strong); background: var(--bg-subtle); box-shadow: none; }
   .glyph.needs { border-color: #f59e0b; background: var(--bg-amber-tint); box-shadow: none; }
+  /* the ring: seven segments, one per step, CSS conic gradients, the glyph inside (RobotRing) */
+  .ring { --fill: 0%; --tone: #2563eb; --track: var(--border); position: relative; width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: conic-gradient(var(--tone) 0 var(--fill), var(--track) var(--fill) 100%); flex: 0 0 auto; }
+  .ring:before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: repeating-conic-gradient(from -1.25deg, var(--surface) 0 2.5deg, transparent 2.5deg 51.4286deg); }
+  .ring > i { position: relative; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font-style: normal; font-size: 11px; line-height: 1; color: var(--text-base); }
+  .ring.lg { width: 38px; height: 38px; } .ring.lg > i { width: 28px; height: 28px; font-size: 15px; }
+  .ring.pulse { box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+  .ring.amber { --tone: #f59e0b; } .ring.green { --tone: #16a34a; }
+  .ring.asks { --track: #f59e0b; } .ring.asks > i { color: var(--text-amber-800); font-weight: 800; }
+  .ring.green > i { color: var(--text-green-700); font-weight: 800; }
+  .key { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; width: 100%; max-width: 980px; }
+  .key > div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 8px 8px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+  .key .kl { font-size: 11px; font-weight: 700; color: var(--text-strong); }
+  .key .kt { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; }
   .tip { position: absolute; right: 54px; top: 54px; background: var(--text-strong); color: var(--bg-page); font-size: 12px; padding: 6px 10px; border-radius: 6px; max-width: 260px; box-shadow: var(--shadow); }
   .tip:after { content: ''; position: absolute; right: -5px; top: 10px; border: 5px solid transparent; border-left-color: var(--text-strong); border-right: 0; }
   /* the robot status sheet, as RobotStatusSheet draws it */
@@ -136,8 +149,39 @@
   .chip.violet { background: var(--bg-violet-100); color: var(--text-violet-800); }
   .host .ln { font-size: .82rem; color: var(--text-700); margin: .15rem 0 0; }
   .host .acts { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 4px; background: var(--border-strong); }
+  .dot.g { background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.18); } .dot.a { background: #f59e0b; } .dot.x { background: var(--border-strong); }
+  .agent { display: grid; grid-template-columns: 2.2rem 1fr auto; gap: .7rem; align-items: start; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); margin-bottom: .5rem; }
+  .agent .ic { width: 2.2rem; height: 2.2rem; border-radius: 8px; background: var(--bg-violet-100); display: grid; place-items: center; font-size: 1.1rem; }
+  .agent .nm { font-weight: 700; color: var(--text-strong); display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .agent .nm .seat { font-weight: 500; color: var(--text-muted); }
+  .agent .st { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; font-size: .82rem; margin: .2rem 0 0; }
+  .agent .st b { color: var(--text-strong); }
+  .agent .st .ci { color: var(--text-700); }
+  .agent .ln { font-size: .82rem; color: var(--text-700); margin: .25rem 0 0; }
+  .agent .ln b { color: var(--text-strong); font-weight: 600; }
+  .agent .acts { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+  .recent { margin: .35rem 0 0; padding: 0; list-style: none; display: grid; gap: .15rem; }
+  .recent li { display: grid; grid-template-columns: 6.2rem 1fr; gap: .5rem; font-size: .78rem; color: var(--text-700); }
+  .recent li .t { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .recent li u { text-decoration: none; border-bottom: 1px dotted var(--border-strong); color: var(--text-base); }
+  .recent.fold li { color: var(--text-muted); }
+  .rl { font-size: .78rem; font-weight: 700; color: var(--text-strong); margin: .4rem 0 0; display: flex; gap: .4rem; align-items: center; }
+  .rl span { color: var(--text-muted); font-weight: 400; }
   .menu { font-size: .78rem; color: var(--text-muted); border: 1px dashed var(--border-strong); border-radius: 6px; padding: .3rem .5rem; width: 100%; }
   .menu b { color: var(--text-base); font-weight: 600; }
+  /* the Run the robots card's column, as the Console draws it */
+  .col { border: 1px solid var(--border); border-radius: 8px; padding: .6rem .75rem; display: grid; gap: .55rem; background: var(--surface); max-width: 560px; width: 100%; }
+  .col .ph { font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-violet-800); }
+  .srow { display: grid; grid-template-columns: 1.4rem 1fr auto; gap: .6rem; align-items: center; }
+  .srow.new { background: var(--bg-violet-100); border-radius: 8px; padding: .4rem .5rem; margin: 0 -.5rem; }
+  .srow .no { width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--bg-violet-100); color: var(--text-violet-800); font-size: .7rem; font-weight: 800; display: inline-grid; place-items: center; }
+  .srow.new .no { background: var(--surface); }
+  .srow .tx { font-size: .84rem; color: var(--text-base); }
+  .srow .tx span { display: block; color: var(--text-muted); font-size: .76rem; }
+  .srow .bb { display: inline-flex; gap: .35rem; flex-wrap: wrap; justify-content: flex-end; }
+  .prev { font-size: .76rem; color: var(--text-muted); text-decoration: underline; display: flex; gap: .9rem; flex-wrap: wrap; }
+  .empty { display: grid; grid-template-columns: 2.2rem 1fr auto; gap: .7rem; align-items: center; padding: .6rem .7rem; border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--bg-subtle); }
   .run { margin-top: .6rem; border-top: 1px solid var(--border); padding-top: .5rem; }
   .run .rh { font-size: .82rem; font-weight: 700; color: var(--text-strong); display: flex; gap: .5rem; align-items: baseline; }
   .run .rh span { color: var(--text-muted); font-weight: 400; font-size: .76rem; }
@@ -182,7 +226,7 @@
   .lens p { margin: 0; color: var(--text-700); font-size: 13px; }
   .lens p + p { margin-top: 6px; }
   .lens .was { color: var(--text-muted); font-size: 12px; }
-  @media (max-width: 640px) { .sheet, .card, .mirror, .needs { width: 100%; } header.top { grid-template-columns: 1fr; } .theme { margin-top: 0; justify-self: start; } .board .bh, .board .br { grid-template-columns: 48px 1fr 36px; } .board .bh :nth-child(3), .board .bh :nth-child(4), .board .br :nth-child(3), .board .br :nth-child(4) { display: none; } .mirror .mh, .mirror .mr { grid-template-columns: 80px 1fr; } .mirror .mh :nth-child(n+3), .mirror .mr :nth-child(n+3) { display: none; } }
+  @media (max-width: 640px) { .sheet, .card, .mirror, .needs { width: 100%; } .agent, .empty { grid-template-columns: 2.2rem 1fr; } .agent .acts, .empty .btn { grid-column: 1 / -1; justify-content: flex-start; justify-self: start; } .recent li { grid-template-columns: 5rem 1fr; } header.top { grid-template-columns: 1fr; } .theme { margin-top: 0; justify-self: start; } .board .bh, .board .br { grid-template-columns: 48px 1fr 36px; } .board .bh :nth-child(3), .board .bh :nth-child(4), .board .br :nth-child(3), .board .br :nth-child(4) { display: none; } .mirror .mh, .mirror .mr { grid-template-columns: 80px 1fr; } .mirror .mh :nth-child(n+3), .mirror .mr :nth-child(n+3) { display: none; } }
 </style>
 </head>
 <body>
@@ -191,36 +235,52 @@
     <div>
       <p class="eyebrow">Punch list #142 · proposed 2026-10-21, second pass · nothing built</p>
       <h1>Robot rounds: the robots watch from the Mac Mini and say where they are every five minutes</h1>
-      <p>The robots already estimate blind and the hourly routine already runs them. This adds <b>rounds</b>, a pass over the three queues every 15 minutes from a Mac that stays on, and a <b>signal</b> every five minutes while a robot works, shown where a person already looks: the robot icon on the bid. Silence gets a meaning and a door. A press on the app reaches the Mac on its next signal, and the button says so.</p>
+      <p>The robots already estimate blind and the hourly routine already runs them. This adds <b>rounds</b>, a pass over the three queues every five minutes from a Mac that stays on, and a <b>signal</b> every five minutes while a robot works, shown where a person already looks: the robot icon on the bid, which becomes a ring that fills one segment per step. Silence gets a meaning and a door. A press on the app reaches the Mac on its next signal, and the button says so.</p>
     </div>
     <button class="theme" type="button" onclick="(function(){var h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark';})()">Light / Dark</button>
   </header>
 
   <!-- 1 · THE BID -->
-  <h2><span class="num">1</span>The bid: the robot icon and its sheet carry the progress</h2>
-  <p class="lede">An estimator wonders where the robot is on a bid while she is on the Bid Board. The icon's tooltip says the step in six words. The sheet behind it opens the <i>Reads the plans</i> step into seven named steps, one lit, with the last word and the Mac that said it. Below the steps, the first time, four sentences say what the robot touches.</p>
+  <h2><span class="num">1</span>The bid: the robot icon is a ring that fills, and its sheet carries the steps</h2>
+  <p class="lede">An estimator wonders where the robot is on a bid while she is on the Bid Board. The icon is a ring of seven segments, one per step, filled as the robot passes them; the segment it is on fills by the sheets it has read. A glance says <i>third of seven</i>. The tooltip says it in words. A tap opens the sheet, which draws the same seven steps as a bar, one lit, with the last word and the Mac that said it. Below the steps, the first time, four sentences say what the robot touches.</p>
   <div class="row">
     <div>
       <div class="cap blue">Bid Board · the robot icon on a working bid <span class="r">hover or tap</span></div>
       <div class="fit left">
         <div class="board">
           <div class="bh"><span>Bid</span><span>Project</span><span>GC</span><span>Due</span><span></span></div>
-          <div class="br"><span>b511</span><span><b>Oak Hollow Dental TI</b><span class="s">Boerne · plumbing · 41 mi</span></span><span>Ridgeway Builders</span><span>Fri 10/24</span><span class="glyph">🤖</span></div>
-          <div class="br"><span>b509</span><span><b>Cedar Park Vet Clinic</b><span class="s">Cedar Park · plumbing · 38 mi</span></span><span>Lantern Commercial</span><span>Mon 10/27</span><span class="glyph sealed">🔒</span></div>
-          <div class="br"><span>b512</span><span><b>Bluebonnet Oil Change</b><span class="s">Seguin · plumbing · 52 mi</span></span><span>Northgate GC</span><span>Wed 10/29</span><span class="glyph queued">🤖</span></div>
-          <div class="tip" data-app>Reading the sheets, 12 of 31. Last word 2 minutes ago.</div>
+          <div class="br"><span>b511</span><span><b>Oak Hollow Dental TI</b><span class="s">Boerne · plumbing · 41 mi</span></span><span>Ridgeway Builders</span><span>Fri 10/24</span><span class="ring pulse" style="--fill:34%" title="Step 3 of 7"><i>🤖</i></span></div>
+          <div class="br"><span>b509</span><span><b>Cedar Park Vet Clinic</b><span class="s">Cedar Park · plumbing · 38 mi</span></span><span>Lantern Commercial</span><span>Mon 10/27</span><span class="ring green" style="--fill:100%" title="Sealed"><i>🔒</i></span></div>
+          <div class="br"><span>b512</span><span><b>Bluebonnet Oil Change</b><span class="s">Seguin · plumbing · 52 mi</span></span><span>Northgate GC</span><span>Wed 10/29</span><span class="ring" style="--fill:0%" title="Queued"><i>🤖</i></span></div>
+          <div class="br"><span>b507</span><span><b>Live Oak Pediatrics</b><span class="s">New Braunfels · plumbing · 29 mi</span></span><span>Ridgeway Builders</span><span>Thu 10/30</span><span class="ring asks" style="--fill:0%" title="Needs something from you"><i>!</i></span></div>
+          <div class="tip" data-app>Step 3 of 7. Reading the sheets, 12 of 31. Last word 2 minutes ago.</div>
         </div>
       </div>
-      <p class="note">The icon's states are the ones <code>robotRowState</code> already draws. Only the tooltip's words change: the step and the last word, from the same reader as the sheet, so the two never disagree.</p>
+      <p class="note">The icon's states are the ones <code>robotRowState</code> already draws, with the ring round them. The fill is steps done of seven, plus the current step's inside count when the signal has one: two steps done and 12 of 31 sheets read is 34 percent. The ring, the tooltip and the sheet read the same kernel, so the three never disagree. The row's 44 px cell stays the tap target.</p>
     </div>
   </div>
+
+  <div class="cap" style="margin-top:18px">The ring in every state <span class="r">28 px on the board, 38 px on the sheet's header</span></div>
+  <div class="fit">
+    <div class="key">
+      <div><span class="ring" style="--fill:0%"><i>🤖</i></span><span class="kl">Queued</span><span class="kt" data-app>Queued. The next round is within five minutes.</span></div>
+      <div><span class="ring pulse" style="--fill:14.3%"><i>🤖</i></span><span class="kl">Step 1 of 7</span><span class="kt" data-app>Picked it up. Filing the plans.</span></div>
+      <div><span class="ring pulse" style="--fill:34%"><i>🤖</i></span><span class="kl">Step 3 of 7</span><span class="kt" data-app>Reading the sheets, 12 of 31.</span></div>
+      <div><span class="ring pulse" style="--fill:57.1%"><i>🤖</i></span><span class="kl">Step 5 of 7</span><span class="kt" data-app>Pricing from its book.</span></div>
+      <div><span class="ring amber" style="--fill:34%"><i>🤖</i></span><span class="kl">Quiet</span><span class="kt" data-app>Quiet since 2:41 PM. Another round picks it up within ten minutes.</span></div>
+      <div><span class="ring asks" style="--fill:0%"><i>!</i></span><span class="kl">Needs you</span><span class="kt" data-app>Needs something from you. Tap to see what.</span></div>
+      <div><span class="ring green" style="--fill:100%"><i>🔒</i></span><span class="kl">Sealed</span><span class="kt" data-app>Sealed. Its number shows when you send.</span></div>
+      <div><span class="ring green" style="--fill:100%"><i>✓</i></span><span class="kl">Scored</span><span class="kt" data-app>Scored. Tap to compare.</span></div>
+    </div>
+  </div>
+  <p class="note"><b>The fill is a percent of steps, never of minutes.</b> A ring filled by the clock would show the same fill for a 31-sheet set and a 9-sheet set at the same minute, and sit at full while the robot still counted. The segment the robot is on pulses when the signal has no inside count. Once ten runs have locked, the segments can take the median minutes of each step, so the ring's pace matches a watch; the ring upgrades in place and nothing a person learned changes.</p>
 
   <div class="row" style="margin-top:18px">
     <div>
       <div class="cap green">The robot status sheet · a working bid, first visit <span class="r">RobotStatusSheet, the second step opened</span></div>
       <div class="fit">
         <div class="sheet">
-          <div class="hd"><span class="glyph">🤖</span><div><h3>Robot on b511 · Oak Hollow Dental TI</h3><div class="sub" data-app>Working. Reading the sheets, 12 of 31.</div></div><span class="x">×</span></div>
+          <div class="hd"><span class="ring lg pulse" style="--fill:34%"><i>🤖</i></span><div><h3>Robot on b511 · Oak Hollow Dental TI</h3><div class="sub" data-app>Working. Reading the sheets, 12 of 31.</div></div><span class="x">×</span></div>
           <ol class="tl">
             <li class="done"><span class="l">Picked it up</span><span class="d">Tue 10/21, 2:04 PM · robot bid b2041</span></li>
             <li class="now"><span class="l">Reads the plans, counts, and prices on its own book</span>
@@ -233,7 +293,7 @@
                 <div class="st"><div class="seg"></div>Sealed</div>
                 <div class="st"><div class="seg"></div>Questions for you</div>
               </div>
-              <p class="live"><span data-app>Last word <b>2:36 PM</b>, from Robert's Mac Mini.</span> <span data-app>Most bids take about an hour.</span></p>
+              <p class="live"><i class="dot g"></i><span data-app>Last word <b>2:36 PM</b>, from Robert's Mac Mini.</span> <span data-app>Most bids take about an hour.</span></p>
             </li>
             <li class="todo"><span class="l">Seals its number</span><span class="d">Locked away before your number exists, so it cannot anchor you.</span></li>
             <li class="todo"><span class="l">You send the bid</span><span class="d">Mark sent on the Cover Letter or Edit Bid. The score lands the moment a bid value is on record.</span></li>
@@ -260,7 +320,7 @@
       <div class="cap green">The same sheet on a phone <span class="r">340 px</span></div>
       <div class="fit">
         <div class="sheet phone">
-          <div class="hd"><span class="glyph">🤖</span><div><h3 style="font-size:.92rem">Robot on b511</h3><div class="sub" data-app>Working. Reading the sheets, 12 of 31.</div></div><span class="x">×</span></div>
+          <div class="hd"><span class="ring lg pulse" style="--fill:34%"><i>🤖</i></span><div><h3 style="font-size:.92rem">Robot on b511</h3><div class="sub" data-app>Working. Reading the sheets, 12 of 31.</div></div><span class="x">×</span></div>
           <div class="bar">
             <div class="st done"><div class="seg"></div>Picked up</div>
             <div class="st done"><div class="seg"></div>Plans</div>
@@ -289,42 +349,92 @@
   <p class="lede">Every 🤖 lens already draws a caption under its bar. One sentence joins it, and the Robot Board row's sub-line stops saying <i>counting in CountTooling</i> for an hour and says which sheet.</p>
   <div class="cap blue">Bids → 🤖 Robots → Robot Board <span class="r">the caption, then the rows</span></div>
   <div class="fit stack">
-    <div class="caption"><b>Robot Board.</b> <span data-app>One row per bid of ours with a robot run.</span> <span data-app>The robots make a round every 15 minutes from Robert's Mac Mini.</span> <span data-app>Last round 2:35 PM.</span> <span data-app>On b511 now.</span></div>
+    <div class="caption"><b>Robot Board.</b> <span data-app>One row per bid of ours with a robot run.</span> <span data-app>The robots make a round every five minutes from Robert's Mac Mini.</span> <span data-app>The robots checked in 2 minutes ago.</span> <span data-app>On b511 now.</span></div>
     <div class="mirror">
       <div class="mh"><span>Bid</span><span>Project</span><span>Robot</span><span>Due</span></div>
-      <div class="mr"><span class="mono">b511 → b2041</span><span><b>Oak Hollow Dental TI</b><span class="s">Ridgeway Builders · Boerne</span></span><span><span class="word blue">estimating</span><span class="s">reading the sheets, 12 of 31 · 2 min ago</span></span><span>Fri 10/24</span></div>
-      <div class="mr"><span class="mono">b509 → b2038</span><span><b>Cedar Park Vet Clinic</b><span class="s">Lantern Commercial · Cedar Park</span></span><span><span class="word green">sealed</span><span class="s">opens when we send · sealed 11:52 AM</span></span><span>Mon 10/27</span></div>
-      <div class="mr"><span class="mono">b512</span><span><b>Bluebonnet Oil Change</b><span class="s">Northgate GC · Seguin</span></span><span><span class="word gray">queued</span><span class="s">next round, about 2:50 PM</span></span><span>Wed 10/29</span></div>
-      <div class="mr"><span class="mono">b507</span><span><b>Live Oak Pediatrics</b><span class="s">Ridgeway Builders · New Braunfels</span></span><span><span class="word amber">plans it cannot open</span><span class="s">share the folder with the robots' account</span></span><span>Thu 10/30</span></div>
+      <div class="mr"><span class="mono">b511 → b2041</span><span><b>Oak Hollow Dental TI</b><span class="s">Ridgeway Builders · Boerne</span></span><span style="display:flex;gap:8px;align-items:center"><span class="ring pulse" style="--fill:34%"><i>🤖</i></span><span><span class="word blue">estimating</span><span class="s">reading the sheets, 12 of 31 · 2 min ago</span></span></span><span>Fri 10/24</span></div>
+      <div class="mr"><span class="mono">b509 → b2038</span><span><b>Cedar Park Vet Clinic</b><span class="s">Lantern Commercial · Cedar Park</span></span><span style="display:flex;gap:8px;align-items:center"><span class="ring green" style="--fill:100%"><i>🔒</i></span><span><span class="word green">sealed</span><span class="s">opens when we send · sealed 11:52 AM</span></span></span><span>Mon 10/27</span></div>
+      <div class="mr"><span class="mono">b512</span><span><b>Bluebonnet Oil Change</b><span class="s">Northgate GC · Seguin</span></span><span style="display:flex;gap:8px;align-items:center"><span class="ring" style="--fill:0%"><i>🤖</i></span><span><span class="word gray">queued</span><span class="s">next round within five minutes</span></span></span><span>Wed 10/29</span></div>
+      <div class="mr"><span class="mono">b507</span><span><b>Live Oak Pediatrics</b><span class="s">Ridgeway Builders · New Braunfels</span></span><span style="display:flex;gap:8px;align-items:center"><span class="ring asks" style="--fill:0%"><i>!</i></span><span><span class="word amber">plans it cannot open</span><span class="s">share the folder with the robots' account</span></span></span><span>Thu 10/30</span></div>
     </div>
   </div>
-  <p class="note"><b>One word changes on a queued row:</b> <i>next weekday batch</i> becomes <i>next round, about 2:50 PM</i>, read from the last round's time. The needs row is unchanged. The sealed row is unchanged.</p>
+  <p class="note"><b>The Robot cell carries the same ring as the board.</b> One word changes on a queued row: <i>next weekday batch</i> becomes <i>next round within five minutes</i>. The needs row and the sealed row keep their words.</p>
 
   <!-- 3 · THE CONSOLE -->
-  <h2><span class="num">3</span>The Console's Rounds card: who is awake, on what, and the two presses</h2>
-  <p class="lede">The dev Console gains one card at the top. One row per key that made a round in the last seven days. A key is a Mac, named by whoever pressed <i>Set up on this Mac</i>. Under the row, the current bid's signals oldest first: the slow loading bar's history, and the <i>Read the run</i> door from the bid opens the same list.</p>
-  <div class="cap blue">Bids → 🤖 Robots → Console · the first card <span class="r">devs and the owner</span></div>
+  <h2><span class="num">3</span>The Console: one press starts the rounds, and the Rounds card says which robot is alive, when it last checked in, and what it did</h2>
+  <p class="lede">Starting the loop stays as easy as a batch is today. The <i>Run the robots</i> card's Claude Code column gains one row in the same shape as its three: a button that copies the rounds kickoff and a preview link under it. One paste into Claude Code on the Mac makes the routine and runs it once. The Rounds card below it is new: one row per key that checked in within the last seven days. A key is a seat on a Mac, named by whoever pressed <i>Set up on this Mac</i>, so the estimator robot and the pricing robot on the same Mac are two rows. Each row answers four questions in order: is it alive, when did it last check in, what is it on now, what did it finish recently. The light is a dot with the word beside it, never colour alone. Under the rows, the current bid's signals oldest first: the slow loading bar's history, and the <i>Read the run</i> door from the bid opens the same list.</p>
+  <div class="row">
+    <div>
+      <div class="cap green">Run the robots · the Claude Code column, as today, with one more row <span class="r">BidsRobotConsoleTab</span></div>
+      <div class="fit">
+        <div class="col">
+          <div class="ph">From Claude Code · reads the plans itself</div>
+          <div class="srow"><span class="no">1</span><span class="tx">Set up the connector<span>One Terminal command, once per machine. It mints the key on the server and writes it into Claude's config.</span></span><span class="bb"><span class="btn sm violet">Set up on this Mac</span><span class="btn sm">Key-based command</span></span></div>
+          <div class="srow"><span class="no">2</span><span class="tx">Start a batch<span>Paste into a new Code session. Up to three bids, one at a time.</span></span><span class="bb"><span class="btn sm p">Copy Code kickoff</span></span></div>
+          <div class="srow new"><span class="no">↻</span><span class="tx">Make this Mac the rounds<span><span data-app>One paste into Claude Code on the Mac that stays on.</span> <span data-app>It makes the routine, every five minutes, and runs it once.</span> <span data-app>The first lines list the Mac's three settings.</span></span></span><span class="bb"><span class="btn sm p">Copy rounds kickoff</span></span></div>
+          <div class="srow"><span class="no">↗</span><span class="tx">Hand shadow coverage to someone<span>The hourly routine on a repo checkout, with its prompt verbatim.</span></span><span class="bb"><span class="btn sm">Copy handoff prompt</span></span></div>
+          <div class="prev"><span>Preview the setup command</span><span>Preview the Code kickoff</span><span>Preview the rounds kickoff</span><span>Preview the handoff prompt</span></div>
+        </div>
+      </div>
+      <p class="note"><b>The three rows that exist do not move.</b> The new row is the shaded one. The same key serves batches and rounds, so a Mac already set up for batches is one paste away. <b>Set up on this Mac</b> gains one tick, <i>This Mac makes the rounds</i>, which puts the rounds kickoff on the clipboard instead of the batch kickoff when the command reopens Claude: a fresh Mac is set up, tick, paste.</p>
+    </div>
+    <div>
+      <div class="cap blue">The Rounds card before any key has checked in <span class="r">the empty state is the same door</span></div>
+      <div class="fit">
+        <div class="card" style="max-width:560px">
+          <h4><span class="ref">▶</span>Rounds</h4>
+          <p class="muted"><span data-app>A round is one pass over the three queues from one Mac.</span> <span data-app>Bids to shadow, prices to read, submittals to file, oldest first.</span></p>
+          <div class="empty"><div class="ic" style="width:2.2rem;height:2.2rem;border-radius:8px;background:var(--bg-violet-100);display:grid;place-items:center">🖥</div><p class="ln" style="margin:0;font-size:.84rem"><span data-app>No Mac makes the rounds yet.</span> <span data-app>Copy the rounds kickoff and paste it into Claude Code on the Mac that will.</span></p><span class="btn sm p">Copy rounds kickoff</span></div>
+        </div>
+      </div>
+      <p class="note">A dev who lands on the Rounds card first is not sent to another card. The hourly weekday routine keeps running wherever it runs today; the rounds replace it on the Mac the owner picks, and the handoff prompt stays for a checkout that is not that Mac.</p>
+    </div>
+  </div>
+  <div class="cap blue" style="margin-top:18px">Bids → 🤖 Robots → Console · the Rounds card with the robots on it <span class="r">devs and the owner</span></div>
   <div class="fit stack">
     <div class="card">
       <h4><span class="ref">▶</span>Rounds</h4>
-      <p class="muted"><span data-app>A round is one pass over the three queues from one Mac.</span> <span data-app>Bids to shadow, prices to read, submittals to file, oldest first.</span> <span data-app>Every 15 minutes, all day.</span> <span data-app>A press here reaches the Mac on its next signal, within five minutes.</span></p>
-      <div class="host">
+      <p class="muted"><span data-app>A round is one pass over the three queues from one Mac.</span> <span data-app>Bids to shadow, prices to read, submittals to file, oldest first.</span> <span data-app>Every five minutes, all day.</span> <span data-app>A press here reaches the Mac on its next signal, within five minutes.</span></p>
+      <div class="agent">
         <div class="ic">🖥</div>
         <div>
-          <div class="nm">Robert's Mac Mini <span class="chip green">awake</span> <span class="chip blue">on b511</span></div>
-          <p class="ln"><span data-app>Reading the sheets on b511, 12 of 31, since 2:04 PM.</span> <span data-app>Last word 2:36 PM.</span> <span data-app>Last round 2:35 PM, next about 2:50 PM.</span></p>
-          <p class="ln" style="color:var(--text-muted)"><span data-app>Today: 6 rounds, 2 bids sealed, 1 price matrix ready, 4 rounds with nothing to do.</span></p>
+          <div class="nm">Twin Estimator 1 <span class="seat">on Robert's Mac Mini</span> <span class="chip violet">estimator</span> <span class="chip blue">on b511</span></div>
+          <p class="st"><span><i class="dot g"></i><b>Alive</b></span><span class="ci" title="2:36 PM" data-app>Checked in 2 minutes ago.</span></p>
+          <p class="ln"><b>Now</b> <span data-app>Reading the sheets on b511, 12 of 31, since 2:04 PM.</span> <span data-app>Waits on nothing.</span></p>
+          <p class="rl">Recently <span>the last five it finished, newest first</span></p>
+          <ul class="recent">
+            <li><span class="t">11:52 AM</span><span><u data-app>Sealed b2038 for b509 Cedar Park Vet Clinic.</u> <span data-app>Asked 2 questions.</span></span></li>
+            <li><span class="t">9:41 AM</span><span><u data-app>Parked b2035 for b507 Live Oak Pediatrics.</u> <span data-app>Waiting on the plans.</span></span></li>
+            <li><span class="t">Yesterday 4:18 PM</span><span><u data-app>Sealed b2031 for b505 Hill Country Coffee.</u> <span data-app>Asked 3 questions.</span></span></li>
+            <li><span class="t">Yesterday 1:05 PM</span><span><u data-app>Filed 6 cut sheets on b498 Saddle Creek Storage.</u></span></li>
+            <li><span class="t">Yesterday 10:30 AM</span><span><u data-app>Sealed b2029 for b501 Ridgeway shop addition.</u> <span data-app>Scored since, 4 percent under ours.</span></span></li>
+          </ul>
+          <p class="ln" style="color:var(--text-muted)"><b>Today</b> <span data-app>1 bid sealed, 1 parked.</span> <span data-app>88 rounds found nothing to do and left after one call.</span></p>
         </div>
         <div class="acts"><span class="btn sm">Stop after this bid</span><span class="btn sm">Pause the rounds ▾</span></div>
       </div>
       <div class="menu"><b>Pause the rounds</b> → until 6 PM · until tomorrow 7 AM · until I press again. <span data-app>A paused round still sends one signal, so this row never guesses.</span></div>
-      <div class="host" style="margin-top:.5rem">
+      <div class="agent" style="margin-top:.5rem">
+        <div class="ic">🖥</div>
+        <div>
+          <div class="nm">Twin Pricer 1 <span class="seat">on Robert's Mac Mini</span> <span class="chip violet">pricer</span></div>
+          <p class="st"><span><i class="dot g"></i><b>Alive</b></span><span class="ci" title="2:34 PM" data-app>Checked in 4 minutes ago.</span></p>
+          <p class="ln"><b>Now</b> <span data-app>Nothing in hand.</span></p>
+          <p class="rl">Recently <span>▸ folded to the newest</span></p>
+          <ul class="recent fold"><li><span class="t">1:10 PM</span><span><u data-app>Matrix ready for b503 Bluebonnet Oil Change, 2 asks.</u></span></li></ul>
+        </div>
+        <div class="acts"><span class="btn sm">Pause the rounds ▾</span></div>
+      </div>
+      <div class="agent" style="margin-top:.5rem">
         <div class="ic">💻</div>
         <div>
-          <div class="nm">Stephen's MacBook <span class="chip gray">asleep</span></div>
-          <p class="ln"><span data-app>Last round Fri 5:12 PM.</span> <span data-app>No bid in hand.</span></p>
+          <div class="nm">Twin Estimator 1 <span class="seat">on Stephen's MacBook</span> <span class="chip violet">estimator</span></div>
+          <p class="st"><span><i class="dot x"></i><b>Asleep</b></span><span class="ci" data-app>Last check-in Fri 5:12 PM.</span></p>
+          <p class="ln"><b>Now</b> <span data-app>Nothing in hand.</span></p>
+          <p class="rl">Recently <span>▸ folded to the newest</span></p>
+          <ul class="recent fold"><li><span class="t">Fri 4:40 PM</span><span><u data-app>Sealed b2024 for b497 Lantern office remodel.</u> <span data-app>Asked 1 question.</span></span></li></ul>
         </div>
-        <div class="acts"><span class="btn sm">Set up on this Mac</span></div>
+        <div class="acts"><span class="btn sm plain" style="color:var(--text-muted)">Keys on Settings ↗</span></div>
       </div>
       <div class="run">
         <div class="rh">Read the run · b511 Oak Hollow Dental TI <span>robot bid b2041 · oldest first</span></div>
@@ -340,25 +450,25 @@
       </div>
     </div>
   </div>
-  <p class="note"><b>Stop after this bid</b> lets the robot lock and report the bid in hand, then claims no more until the flag is cleared. <b>Pause the rounds</b> is per key, so it pauses this Mac and no other. Both are flags on the key; the round reads them in the reply to its next signal and says what it did in the signal after, so the row's state is the robot's word, never the button's. A run's amounts never appear here: a signal on a sealed bid is scrubbed the way the robot's questions are.</p>
+  <p class="note"><b>Alive, Quiet, Asleep are read, never stored.</b> Alive is a check-in within seven minutes, the five-minute round plus two of grace; Quiet is seven to fifteen; Asleep is over fifteen, three rounds missed. Every twin-mcp call stamps the key once a minute, so a robot that forgets its heartbeat still reads Alive. Recently is the robot's finished work from the rows it already writes: reports, locks, matrices, submittal tasks; each line is a door. The card refreshes every 30 seconds while the Console is open. <b>A round every five minutes, one bid at a time.</b> A bid takes about an hour, so most rounds wake while an earlier round still holds one. A round's first call is its idle signal, and the reply says whether this key already has two rounds on bids; if so it leaves at once, before it reads a guide. <b>Stop after this bid</b> lets the robot lock and report the bid in hand, then claims no more until the flag is cleared. <b>Pause the rounds</b> is per key, so it pauses this Mac and no other. Both are flags on the key; the round reads them in the reply to its next signal and says what it did in the signal after, so the row's state is the robot's word, never the button's. A run's amounts never appear here: a signal on a sealed bid is scrubbed the way the robot's questions are.</p>
 
   <!-- 4 · SILENCE -->
   <h2><span class="num">4</span>What silence means: a quiet robot and a sleeping Mac are two facts</h2>
-  <p class="lede">Two clocks. A robot that holds a bid and has not spoken for ten minutes is <b>quiet</b>: amber on the bid, nothing for a person to do yet, the next round picks it up. A Mac that has not made a round for thirty minutes is <b>asleep</b>: gray in the caption, and one line on the owner's Dashboard with the fix in the sentence. An estimator never hears about the Mac. The owner never hears about a slow sheet.</p>
+  <p class="lede">Two clocks. A robot that holds a bid and has not spoken for ten minutes is <b>quiet</b>: amber on the bid, nothing for a person to do yet, the next round picks it up. A Mac that has not made a round for fifteen minutes, three rounds missed, is <b>asleep</b>: gray in the caption, and one line on the owner's Dashboard with the fix in the sentence. An estimator never hears about the Mac. The owner never hears about a slow sheet.</p>
   <div class="cap amber">The sheet's live line in its three states <span class="r">one kernel, three tones</span></div>
   <div class="fit">
     <div class="states">
-      <div class="state"><p class="h"><i class="b"></i>Awake</p>
+      <div class="state"><p class="h"><i class="b"></i>Alive <span class="ring pulse" style="--fill:34%;margin-left:auto"><i>🤖</i></span></p>
         <div class="bar" style="margin:0 0 6px"><div class="st done"><div class="seg"></div></div><div class="st done"><div class="seg"></div></div><div class="st now"><div class="seg"></div></div><div class="st"><div class="seg"></div></div><div class="st"><div class="seg"></div></div><div class="st"><div class="seg"></div></div><div class="st"><div class="seg"></div></div></div>
         <p data-app>Reading the sheets, 12 of 31. Last word 2:36 PM, from Robert's Mac Mini.</p>
         <p class="who">Nothing to do. The usual case.</p></div>
-      <div class="state"><p class="h"><i class="a"></i>Quiet on the bid</p>
+      <div class="state"><p class="h"><i class="a"></i>Quiet on the bid <span class="ring amber" style="--fill:34%;margin-left:auto"><i>🤖</i></span></p>
         <div class="bar" style="margin:0 0 6px"><div class="st done"><div class="seg"></div></div><div class="st done"><div class="seg"></div></div><div class="st quiet"><div class="seg"></div></div><div class="st"><div class="seg"></div></div><div class="st"><div class="seg"></div></div><div class="st"><div class="seg"></div></div><div class="st"><div class="seg"></div></div></div>
-        <p data-app>The robot went quiet on this bid at 2:41 PM. Another round picks it up within 15 minutes.</p>
+        <p data-app>The robot went quiet on this bid at 2:41 PM. Another round picks it up within ten minutes.</p>
         <p class="who">Ten minutes with no word while it holds a bid. Shown on the bid and the Robot Board row. No Dashboard line.</p></div>
       <div class="state"><p class="h"><i class="g"></i>Asleep</p>
         <p style="margin-top:0" data-app>No round from Robert's Mac Mini since 2:35 PM.</p>
-        <p class="who">Thirty minutes with no round inside its hours. Shown in the lenses' caption and the Console. One Dashboard line for the owner and devs.</p></div>
+        <p class="who">Fifteen minutes with no round inside its hours, three rounds missed. Shown in the lenses' caption and the Console. One Dashboard line for the owner and devs.</p></div>
     </div>
   </div>
   <div class="row" style="margin-top:18px">
@@ -396,15 +506,15 @@
   <p class="note"><b>Not in the signal:</b> any amount, the reference bid, the score. <b>Not needed from the signal:</b> the step itself, which the verbs' stamps already write, and <i>last word</i>, which every verb stamps on the key once a minute. A robot that forgets to signal still shows alive and on the right step. It only loses <i>12 of 31</i>.</p>
 
   <!-- 6 · THE SECOND PASS -->
-  <h2><span class="num">6</span>The second pass: what changed, in the house's five lenses</h2>
-  <p class="lede">The first draft was read back against the five questions every proposal answers. Each lens changed something.</p>
+  <h2><span class="num">6</span>The second and third passes: what changed, in the house's five lenses</h2>
+  <p class="lede">The first draft was read back against the five questions every proposal answers, and each lens changed something. Then the owner asked for the glance back: a circle on the icon that completes to 100 percent. The ring is that glance, drawn from the seven steps the second pass had chosen, so no percent of minutes came back with it.</p>
   <div class="lenses">
-    <div class="lens"><h3>Fewer presses on a phone</h3><p class="was">Was: a Rounds lens on the Bids page, a percent bar with a time estimate.</p><p>Now: the progress is on the robot icon a thumb already lands on, the bar is seven named steps, and Read the run is one press from the same sheet. Nothing new to find.</p></div>
+    <div class="lens"><h3>Fewer presses on a phone</h3><p class="was">Was: a Rounds lens on the Bids page, a percent bar with a time estimate.</p><p>Now: the icon itself answers. The ring says third of seven with no press at all, the sheet's bar is the same seven steps, and Read the run is one press from the same sheet. Nothing new to find.</p></div>
     <div class="lens"><h3>Plain words</h3><p class="was">Was: substrate, STG-3, shell, heartbeat, on the sheet.</p><p>Now: reading the sheets, counting, its own copy of the bid, last word. Every sentence a person reads here passes the plain-words check, and the kernel's words test holds them.</p></div>
     <div class="lens"><h3>Do what is ready</h3><p class="was">Was: one Stop that stopped everything and orphaned the bid in hand.</p><p>Now: Leave this one to me stops one bid and the round carries on. Stop after this bid finishes the bid in hand. A paused round still signals. The bar moves on the verbs' stamps when the robot forgets to.</p></div>
     <div class="lens"><h3>Reuse</h3><p class="was">Was: a round verb, a presence table, a new liveness reader.</p><p>Now: heartbeat widened, two columns on the key that already is the Mac, the step from stamps that exist, the submittal liveness reader's shape, the matrix backlog's stale rule, the opt-out, the orphan rule, the Needs you snooze.</p></div>
-    <div class="lens"><h3>Cut</h3><p class="was">Was: a percent, a countdown, a Dashboard line on every signal, Take over, a push, a new lens, a new table, a new guide.</p><p>Now: one migration, one reader, one kernel, four surfaces that read it, two flags. Two guides grow a section each.</p></div>
-    <div class="lens"><h3>Do we educate?</h3><p>The bar is the lesson: seven steps, one lit, a time. What the robot touches is four sentences, open the first time and folded after. The tooltip and the sheet say the same step in the same words. Leave this one to me says what happens and when. The Console card says what a round is before what this one is doing.</p></div>
+    <div class="lens"><h3>Cut</h3><p class="was">Was: a percent of minutes, a countdown, a Dashboard line on every signal, Take over, a push, a new lens, a new table, a new guide.</p><p>Now: one migration, one reader, one kernel, four surfaces that read it, one ring, two flags. Two guides grow a section each.</p></div>
+    <div class="lens"><h3>Do we educate?</h3><p>The ring teaches the seven steps on the board before the sheet does, and the sheet confirms them. The bar is the same lesson: seven steps, one lit, a time. What the robot touches is four sentences, open the first time and folded after. The tooltip and the sheet say the same step in the same words. Leave this one to me says what happens and when. The Console card says what a round is before what this one is doing.</p></div>
   </div>
 </div>
 </body>
