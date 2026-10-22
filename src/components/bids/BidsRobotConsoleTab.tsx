@@ -17,6 +17,7 @@ import { TwinSetupDialog, type TwinSetupTarget } from './TwinSetupDialog'
 import { TwinOperatorQuestionsCard } from './TwinOperatorQuestionsCard'
 import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 import { TwinRunsLedger } from './TwinRunsLedger'
+import { TwinRoundsCard } from './TwinRoundsCard'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, PROMPT_PRE, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
@@ -137,6 +138,9 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
         </a>
         .
       </p>
+
+      {/* v2.5733 (punch list #142): the robots' status rows — alive, checked in, now, recently — and Stop the rounds. */}
+      <TwinRoundsCard />
 
       {/* Run the robots — Claude Code first (it reads the plans itself), a chat as the fallback. */}
       <div style={CARD}>
