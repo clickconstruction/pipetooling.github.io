@@ -187,7 +187,8 @@ export function buildDesktopSetupCommandFromCode(opts: SetupCodeCommandOpts): st
     // v2.5735: `rounds` asks for the rounds kickoff; the server names the connector (`connector_name`) so one Mac can hold both seats.
     "  const res = await fetch(process.env.TWIN_SETUP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'redeem', code: process.env.SETUP_CODE, machine: os.hostname(), rounds: process.env.ROUNDS === '1' }) })",
     '  const body = await res.json().catch(() => ({}))',
-    "  if (!res.ok || !body.token) { say('Setup code refused: ' + (body.error || ('HTTP ' + res.status)) + ' Press \"Set up on this Mac\" again for a fresh command.'); process.exit(1) }",
+    // v2.5744: twin-setup's own refusal already says to press Set up on this Mac again; the command adds that only when the reason does not.
+    "  if (!res.ok || !body.token) { const why = body.error || ('HTTP ' + res.status); say('Setup code refused: ' + why + (/Set up on this Mac/.test(why) ? '' : ' Press \"Set up on this Mac\" again for a fresh command.')); process.exit(1) }",
     "  const p = path.join(os.homedir(), 'Library/Application Support/Claude/claude_desktop_config.json')",
     '  let cfg = {}',
     "  try { const t = fs.readFileSync(p, 'utf8'); if (t.trim()) cfg = JSON.parse(t) } catch (e) { if (e.code !== 'ENOENT') { say('Claude Desktop\\'s config could not be read (' + e.message + '). Fix or move ' + p + ' and run this again.'); process.exit(1) } }",

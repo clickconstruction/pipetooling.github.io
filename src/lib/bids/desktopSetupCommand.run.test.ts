@@ -277,6 +277,17 @@ describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', (
     } finally { d.server.close() }
   })
 
+  it('a refusal that already says to press Set up on this Mac again is not told twice (v2.5744)', async () => {
+    const d = await door({ status: 410, body: { error: 'That setup code is not valid, was already used, or has expired (they last 10 minutes). Press "Set up on this Mac" again for a fresh one.' } })
+    try {
+      const b = mac({ claudeApp: true })
+      const r = await runScript(b, d.url)
+      expect(r.code).toBe(1)
+      expect(r.out).toContain('Setup code refused: That setup code is not valid')
+      expect(r.out.match(/Set up on this Mac/g)).toHaveLength(1)
+    } finally { d.server.close() }
+  })
+
   it('no Claude app on the Mac: it says so before the code is spent', async () => {
     const d = await door(GOOD)
     try {
