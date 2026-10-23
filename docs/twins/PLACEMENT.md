@@ -678,6 +678,16 @@ Rules the backtest/shadow scorecard MUST apply before a delta means anything:
   rows for the count/footage comparison. A re-run of a reference already
   backtested takes `open_backtest(…, round: 2)`; the round-1 shell and its
   audit are off limits until your scorecard is stamped.
+- **Read the comparison's fixtures and equipment line like for like (data
+  point, 2026-10-22; no rule changed, the owner decides any fix)**: that line
+  counts every row that is not `ft of …` footage or a fitting it can name
+  (`90`, `45`, `tee`, `ell`, `wye`, `coupling`). So the travel row's count,
+  miles × job days by the travel rule above, lands in it, and so do a human
+  takeoff's `T` and `Y` fittings. One shadow's line read about eight times
+  ours. The travel row made almost all of it and our T and Y fittings made
+  the rest. Like for like the robot had counted about a fifth more. Before
+  you call a count heavy or light, take the travel row out of the robot's
+  side and the T and Y rows out of ours.
 - **Check a reused shell's ledger BEFORE working it** (BT-4/BT-5 rediscovery):
   `open_backtest` with `reused: true` may hand back a shell that already ran
   through STG-6 — read `get_work_state`'s audit ledger first. A scored

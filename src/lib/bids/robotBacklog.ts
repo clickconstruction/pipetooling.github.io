@@ -2,10 +2,11 @@
  * The robots' backlog, for a dev's Dashboard (v2.3287): what wants a robot
  * bid and what wants a price matrix, in one sentence. Pure — the hook feeds
  * it the open human bids (through the same queue kernel the Console uses, so
- * the numbers can never disagree), the open price-matrix requests, and the
- * clock. Absent (null) when nothing is waiting: silence means caught up.
+ * the numbers can never disagree; since v2.5753 that kernel is the one rule
+ * the dispatcher claims by), the open price-matrix requests, and the clock.
+ * Absent (null) when nothing is waiting: silence means caught up.
  */
-import { buildRobotQueue, type RobotQueueBidFields } from './robotQueue'
+import { buildRobotQueue, type RobotQueueBidFields, type RobotQueueInput } from './robotQueue'
 
 export type RobotBacklogBid = RobotQueueBidFields
 
@@ -38,11 +39,8 @@ export type RobotBacklog = {
 
 export const ROBOT_BACKLOG_REQUEST_OVERDUE_MS = 7 * 86400000
 export const ROBOT_BACKLOG_HEARTBEAT_STALE_MS = 60 * 60000
-/** Same rule as the Console: a bid due more than 30 days ago is stale, not backlog. */
-export const ROBOT_BACKLOG_STALE_DUE_DAYS = 30
-
-function bidLabel(b: { bid_number: string | null; project_name: string | null }): string {
-  const num = (b.bid_number ?? '').trim()
+function bidLabel(b: { bid_number: string | number | null; project_name: string | null }): string {
+  const num = (b.bid_number == null ? '' : String(b.bid_number)).trim()
   const proj = (b.project_name ?? '').trim()
   const head = num ? `BP${num.replace(/^bp/i, '')}` : 'a bid'
   return proj ? `${head} ${proj}` : head
@@ -50,12 +48,12 @@ function bidLabel(b: { bid_number: string | null; project_name: string | null })
 
 export function buildRobotBacklog(
   bids: readonly RobotBacklogBid[],
-  twinExistsForBidId: (bidId: string) => boolean,
+  /** The one rule's inputs (`robotQueue.ts`): the Plumbing type, the runs, the pairing, today. */
+  rule: Omit<RobotQueueInput, 'nowMs'>,
   requests: readonly RobotBacklogRequest[],
   nowMs: number,
 ): RobotBacklog | null {
-  const staleDueBefore = new Date(nowMs - ROBOT_BACKLOG_STALE_DUE_DAYS * 86400000).toISOString().slice(0, 10)
-  const queue = buildRobotQueue(bids, twinExistsForBidId, { staleDueBefore })
+  const queue = buildRobotQueue(bids, { ...rule, nowMs })
   const bidsWaiting = queue.requested.length + queue.ready.length
   const oldestReq = queue.requested[0] ?? null
   const oldestRequestMs = oldestReq?.robot_requested_at ? Math.max(0, nowMs - new Date(oldestReq.robot_requested_at).getTime()) : null

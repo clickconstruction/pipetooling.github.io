@@ -86,6 +86,10 @@ The Console's first card is **Rounds**. It has one row per robot key. A key is o
 - **Alive** means it checked in within seven minutes. **Quiet** means seven to fifteen minutes. **Asleep** means over fifteen, three rounds missed. The word sits beside a dot, so you never read colour alone.
 - **Now** names the bid it holds and the step it is on. You click it to open the bid.
 - **Recently** lists the last five things it finished. Each line opens the bid, the Pricing tab or Submittals.
+- **Today** counts what it finished today. *3 rounds found nothing to do* counts only the rounds that saw no bid to take.
+- **Queue** says what its last check-in saw on the queue. It names each bid it passed over and the reason, like *made over 30 days ago and nobody asked*. The Queue page lists the same bids under **Held**. Both read the one rule the robot uses, so they never disagree.
+
+The robot takes the top row of **Ready** on the Queue page. A bid you took back with {{button:gray|Leave this one to me}} goes back on the list once you untick *Don’t let robots shadow this bid*.
 
 You press {{button:gray|Stop the rounds}} to make that Mac finish the bid in hand and claim no more. The row reads *Stopping after* that bid until the robot says it stopped. You press {{button:gray|Start again}} and the next round comes within five minutes. The stop never touches a session you start by hand.
 

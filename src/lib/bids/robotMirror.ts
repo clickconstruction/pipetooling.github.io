@@ -392,9 +392,10 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
   // bids robots leave alone.
   for (const key of MIRROR_SECTION_ORDER) sections[key].sort(compareMirrorRows)
 
+  // v2.5753: a voided run is not a robot on the bid — the next round may claim it again.
   const coverage = shadowCoverage(
     input.humanBids,
-    input.shadowRuns.map((r) => r.reference_bid_number),
+    input.shadowRuns.filter((r) => r.status !== 'void').map((r) => r.reference_bid_number),
   )
   return {
     sections,

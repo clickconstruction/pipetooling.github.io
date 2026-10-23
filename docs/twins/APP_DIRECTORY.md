@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-21
+last_updated: 2026-10-23
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -191,7 +191,8 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   door on the Console lens): every robot-able live bid,
   front-of-the-line requests (stamped from a bid's robot status sheet on the Bid Board,
   oldest ask first; nobody asks for a robot since v2.3202 — shadowing is the default)
-  above ready, each with a copyable kickoff prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
+  above ready, each with a copyable kickoff prompt — since v2.5753 the one rule the rounds claim by, so the top row is what
+  the next round takes, and **Held** lists the live bids with plans the rounds pass over with the reason; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
   by confidence axis with demand chips, starvation cards, `assign axis ▾` on unclassified
   rows, and blind backtest prompts.
 - `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560; every audit role since v2.3221,

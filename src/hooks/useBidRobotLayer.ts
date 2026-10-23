@@ -330,6 +330,8 @@ export function useBidRobotLayer(input: {
 
   return {
     twinBidBySourceId,
+    /** The latest shadow run per reference bid number (v2.5753: the Queue and Console read run status from here, one rule with the dispatcher). */
+    shadowRunByBidNumber,
     robotMirrorCount,
     setRobotMirrorCount,
     referencePresence,

@@ -130,7 +130,10 @@ describe('docs/twins/kickoffs/code-operator.md (the Claude Code kickoff, v2.4231
   it('keeps two sessions on one key apart: a shell whose ledger just moved is another session’s', () => {
     expect(filled).toContain('every session on this key is the same robot')
     expect(filled).toContain('its ledger or its heartbeat moved in the last **15 minutes**')
-    expect(filled).toContain('it is orphaned')
+    // v2.5753: the server's word on each shell, `shadow.hold`, decides; the robot no longer judges the bare list.
+    expect(filled).toContain('`shadow.hold`')
+    expect(filled).toContain('`orphaned` → pick it up')
+    expect(filled).toContain('`closed` → void, locked, scored')
     expect(filled).toContain('No more than two at once.')
   })
 
@@ -322,6 +325,10 @@ describe('the rounds (v2.5735, punch list #142)', () => {
     expect(doc).toContain('15 minutes')
     expect(doc).toContain('*/5 * * * *')
     expect(doc).toContain('`next_shadow` once')
+    // v2.5753: step 1 reads the server's hold on each shell, so a parked or runless shell never ends a round.
+    expect(doc).toContain('`shadow.hold`')
+    expect(doc).toContain('never heartbeat on them')
+    expect(doc).toContain('`held`')
     expect(doc).toContain('twin-pricer-mcp')
     expect(doc).not.toMatch(/ptt_[0-9a-f]{8}/)
     const filled = buildDesktopKickoff(doc, { connectorUrl: 'https://mcp.clicktooling.com/twin' })

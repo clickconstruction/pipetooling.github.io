@@ -15,7 +15,7 @@ import {
 } from '../../lib/bids/backtestCandidates'
 import { buildAxisCards, type RunScoreRow } from '../../lib/bids/confidenceBoard'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
-import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { usePriceMatrixRequests, type PriceMatrixRequestWithBid } from '../../hooks/usePriceMatrixRequests'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
@@ -28,6 +28,9 @@ const queueDb = supabase as unknown as SupabaseClient
 type BidsRobotQueueTabProps = {
   bids: BidWithBuilder[]
   twinBidBySourceId: ReadonlyMap<string, BidWithBuilder>
+  /** v2.5753: the one rule's inputs — the Plumbing service type and the latest run per reference, from the robot layer. */
+  plumbingServiceTypeId: string | null
+  shadowRunByBidNumber: ReadonlyMap<string, { status: string }>
   /** Counts/pricing presence per decided bid (v2.2547's list_reference_presence load). */
   referencePresence: ReadonlyMap<string, { hasCounts: boolean; hasPricing: boolean }>
   onOpenBid: (bid: BidWithBuilder) => void
@@ -56,12 +59,13 @@ function decidedMonth(ymd: string | null): string {
  * handoff are on the Console lens (v2.3224). Same candidate logic as the board
  * icons (one kernel), so the lens and the icons can never disagree.
  */
-export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, onOpenBid }: BidsRobotQueueTabProps) {
+export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceTypeId, shadowRunByBidNumber, referencePresence, onOpenBid }: BidsRobotQueueTabProps) {
   const { showToast } = useToastContext()
-  const queue = useMemo(() => {
-    const staleDueBefore = ymdAddDays(todayYmdInAppTz(), -30)
-    return buildRobotQueue(bids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
-  }, [bids, twinBidBySourceId])
+  // v2.5753: the one rule the dispatcher claims by, so Ready here is what the next round takes.
+  const queue = useMemo(
+    () => buildRobotQueue(bids, { plumbingServiceTypeId, shadowRunByBidNumber, twinExistsForBidId: (bidId) => twinBidBySourceId.has(bidId), todayYmd: todayYmdInAppTz(), nowMs: Date.now() }),
+    [bids, twinBidBySourceId, plumbingServiceTypeId, shadowRunByBidNumber],
+  )
   const [copiedBidId, setCopiedBidId] = useState<string | null>(null)
   const [requesterNames, setRequesterNames] = useState<Record<string, string>>({})
 
@@ -279,9 +283,11 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
   return (
     <div>
       <p style={{ margin: '0 0 0.9rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
-        Every bid a robot could do right now — same rules as the board icons. Front-of-the-line requests come
-        first (oldest ask on top); paste a prompt into the twin and it runs the pipeline blind. The Claude Desktop
-        setup and kickoff, and the Claude Code handoff, are on the Console lens.
+        Every bid a robot could do right now — the one rule the rounds claim by, so this list and the Console's
+        Rounds card never disagree. Front-of-the-line requests come first (oldest ask on top), then ready bids by
+        due date; the next round takes the top row. Held lists the live bids with plans the rounds pass over, and
+        why. Paste a prompt into the twin and it runs the pipeline blind. The Claude Desktop setup and kickoff,
+        and the Claude Code handoff, are on the Console lens.
       </p>
 
       <h4 style={sectionHeadStyle}>
@@ -340,12 +346,38 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
 
       <h4 style={sectionHeadStyle}>
         <span style={dotStyle('#eab308')} />
-        Ready · {queue.ready.length} — robot-able, nobody has asked yet
+        Ready · {queue.ready.length} — robot-able, nobody has asked yet; the next round takes the top row
       </h4>
       {queue.ready.length === 0 ? (
         <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-faint, var(--text-muted))' }}>Nothing ready right now.</p>
       ) : (
         <div>{queue.ready.map((b) => renderRow(b, false))}</div>
+      )}
+
+      <h4 style={{ ...sectionHeadStyle, marginTop: '1rem' }} data-testid="robot-queue-held-head">
+        <span style={dotStyle('var(--border-strong)')} />
+        Held · {queue.held.length} — live bids with plans the rounds pass over, and why
+      </h4>
+      {queue.held.length === 0 ? (
+        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-faint, var(--text-muted))' }}>None. Every live plumbing bid with plans is ready or has a robot on it.</p>
+      ) : (
+        <div data-testid="robot-queue-held">
+          {queue.held.map(({ bid, words }) => (
+            <div key={bid.id} style={{ ...rowStyle, opacity: 0.85 }}>
+              <span style={{ color: 'var(--text-blue-500)', fontWeight: 600 }}>b{bid.bid_number ?? '?'}</span>
+              <span style={{ fontWeight: 600 }}>{bid.project_name ?? 'Untitled'}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                {bid.bids_gc_builders?.name ?? bid.customers?.name ?? '—'}
+                {bid.bid_due_date ? ` · due ${bid.bid_due_date}` : ''}
+              </span>
+              <span style={{ color: 'var(--text-amber-800)', fontSize: '0.78rem', fontWeight: 600 }}>{words}</span>
+              <span style={{ flex: 1 }} />
+              <button type="button" onClick={() => onOpenBid(bid)} style={btnStyle}>
+                Open bid
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       <h4 style={{ ...sectionHeadStyle, marginTop: '1.4rem' }}>

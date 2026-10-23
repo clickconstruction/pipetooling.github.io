@@ -36,12 +36,44 @@ export type HeartbeatProgress = {
   waiting_on?: string
   /** What it does next, e.g. "the fixture schedule on P-601". */
   next?: string
-  /** On a collapsed idle row: how many rounds found nothing in this stretch. */
+  /** On a collapsed idle row: how many rounds checked in during this stretch. */
   rounds?: number
+  /**
+   * On a round's check-in (v2.5753): how many live bids the one rule would let it claim right
+   * then, counted by the server, and the bids it passes over with the reason. A stretch's
+   * `nothing` is how many of its rounds saw no bid to claim, the count the Console's Today line
+   * reads, so a round that went on to work a bid is not a round that found nothing.
+   */
+  ready?: number
+  held?: HeartbeatHeld[]
+  nothing?: number
 }
+
+/** One bid a round passed over: "b515", its project, and why in plain words. */
+export type HeartbeatHeld = { bid: string; project?: string; why: string }
 
 const TEXT_KEYS = ['read', 'wrote', 'waiting_on', 'next'] as const
 const MAX_TEXT = 200
+const MAX_HELD = 12
+const MAX_HELD_TEXT = 120
+
+const nonNegativeInt = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null)
+
+function normalizeHeld(raw: unknown): HeartbeatHeld[] | null {
+  if (!Array.isArray(raw)) return null
+  const out: HeartbeatHeld[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const r = item as Record<string, unknown>
+    const bid = typeof r.bid === 'string' ? r.bid.trim().slice(0, 24) : ''
+    const why = typeof r.why === 'string' ? r.why.trim().slice(0, MAX_HELD_TEXT) : ''
+    if (!bid || !why) continue
+    const project = typeof r.project === 'string' && r.project.trim() ? r.project.trim().slice(0, MAX_HELD_TEXT) : undefined
+    out.push(project ? { bid, project, why } : { bid, why })
+    if (out.length >= MAX_HELD) break
+  }
+  return out.length ? out : null
+}
 
 /**
  * The shape a heartbeat may carry: known keys only, strings trimmed and capped, an unknown step
@@ -58,6 +90,12 @@ export function normalizeHeartbeatProgress(raw: unknown): HeartbeatProgress | nu
     if (typeof v === 'string' && v.trim()) out[k] = v.trim().slice(0, MAX_TEXT)
   }
   if (typeof r.rounds === 'number' && Number.isFinite(r.rounds) && r.rounds > 0) out.rounds = Math.floor(r.rounds)
+  const ready = nonNegativeInt(r.ready)
+  if (ready != null) out.ready = ready
+  const nothing = nonNegativeInt(r.nothing)
+  if (nothing != null) out.nothing = nothing
+  const held = normalizeHeld(r.held)
+  if (held) out.held = held
   return Object.keys(out).length ? out : null
 }
 
@@ -74,6 +112,23 @@ export function heartbeatWords(progress: HeartbeatProgress | null | undefined, s
   if (!progress?.step) return 'Working.'
   const head = HEARTBEAT_STEP_WORDS[progress.step]
   return progress.read ? `${head}, ${stripStop(progress.read)}.` : `${head}.`
+}
+
+/**
+ * The bids a round passed over, from its check-in (v2.5753): "Passed over 2 bids. b516 Take 5,
+ * made over 30 days ago and nobody asked. b519 Dollar Tree, not a plumbing bid." Empty when the
+ * check-in carried none, so the Console's Today line never contradicts the Queue above it.
+ */
+export function heartbeatHeldWords(progress: HeartbeatProgress | null | undefined): string {
+  const held = progress?.held ?? []
+  if (held.length === 0) return ''
+  const head = `Passed over ${held.length} bid${held.length === 1 ? '' : 's'}.`
+  const items = held.map((h) => {
+    const why = stripStop(h.why)
+    const lower = why.charAt(0).toLowerCase() + why.slice(1)
+    return `${h.bid}${h.project ? ` ${stripStop(h.project)}` : ''}, ${lower}.`
+  })
+  return [head, ...items].join(' ')
 }
 
 /** The rest of the shape, after the sentence: what it wrote and what comes next. */

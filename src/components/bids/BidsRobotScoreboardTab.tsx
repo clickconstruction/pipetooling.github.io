@@ -243,7 +243,8 @@ export function BidsRobotScoreboardTab({
   const liveRuns = useMemo(() => buildLiveRuns(shadows ?? [], bids ?? [], viewerId ?? null), [shadows, bids, viewerId])
   const practice = useMemo(() => buildPracticeRuns(scores ?? [], standardIds), [scores, standardIds])
   const coverage = useMemo(
-    () => (bids ? shadowCoverage(bids, (shadows ?? []).map((r) => r.reference_bid_number)) : null),
+    // v2.5753: a voided run is not a robot on the bid — the next round may claim it again.
+    () => (bids ? shadowCoverage(bids, (shadows ?? []).filter((r) => r.status !== 'void').map((r) => r.reference_bid_number)) : null),
     [bids, shadows],
   )
   const yourPart = useMemo(

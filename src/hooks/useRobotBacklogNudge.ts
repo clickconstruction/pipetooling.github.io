@@ -3,6 +3,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../lib/supabase'
 import { buildRobotBacklog, type RobotBacklog, type RobotBacklogBid, type RobotBacklogRequest } from '../lib/bids/robotBacklog'
+import { plumbingServiceTypeIdOf } from '../lib/bids/robotQueue'
+import { latestShadowRunByBidNumber } from '../lib/bids/robotLayer'
+import type { ShadowRunRow } from '../lib/bids/shadowStory'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { isRobotBid } from '../lib/bidBoardScope'
 import { loadRobotBacklogDismissState, saveRobotBacklogDismissState, shouldShowRobotBacklog, type RobotBacklogDismissState } from '../lib/robotBacklogDismiss'
 
@@ -42,10 +46,12 @@ export function useRobotBacklogNudge(enabled: boolean, userId: string | null | u
     try {
       // Human vs robot is the board's rule (bidBoardScope.isRobotBid): a bid whose estimator or
       // creator is a twin account. Older shells carry no twin_source_bid_id, so the link alone lies.
-      const [bids, shells, twins, requests] = await Promise.all([
+      // v2.5753: the one rule the dispatcher claims by also needs the Plumbing type, the shadow runs
+      // (a voided run is not a robot on the bid) and the gate columns the rounds read.
+      const [bids, shells, twins, requests, types, runs] = await Promise.all([
         db
           .from('bids')
-          .select('id, bid_number, project_name, plans_link, service_type_id, distance_from_office, bid_due_date, gc_builder_id, customer_id, robot_requested_at, robot_requested_by, bid_date_sent, outcome, estimator_id, created_by')
+          .select('id, bid_number, project_name, plans_link, service_type_id, bid_due_date, created_at, robot_requested_at, robot_requested_by, robot_opt_out, plans_robot_readable, working_board_archived_at, bid_date_sent, outcome, estimator_id, created_by')
           .is('bid_date_sent', null)
           .is('outcome', null)
           // v2.2133: adopted-into-a-package bids leave every list — the board's one server-side filter besides the trade pill.
@@ -59,6 +65,8 @@ export function useRobotBacklogNudge(enabled: boolean, userId: string | null | u
           .in('status', ['queued', 'working', 'blocked'])
           .order('requested_at', { ascending: true })
           .limit(100),
+        db.from('service_types').select('id, name'),
+        db.rpc('list_shadow_runs'),
       ])
       if (bids.error || shells.error || twins.error) {
         setRaw(null)
@@ -78,7 +86,9 @@ export function useRobotBacklogNudge(enabled: boolean, userId: string | null | u
             heartbeat_at: r.heartbeat_at,
             bid: Array.isArray(r.bids) ? (r.bids[0] ?? null) : r.bids,
           }))
-      setRaw(buildRobotBacklog(humanBids, (id) => shadowed.has(id), reqRows, Date.now()))
+      const plumbingServiceTypeId = types.error ? null : plumbingServiceTypeIdOf((types.data ?? []) as Array<{ id: string; name: string | null }>)
+      const shadowRunByBidNumber = latestShadowRunByBidNumber(runs.error ? [] : ((runs.data ?? []) as ShadowRunRow[]))
+      setRaw(buildRobotBacklog(humanBids, { plumbingServiceTypeId, shadowRunByBidNumber, twinExistsForBidId: (id) => shadowed.has(id), todayYmd: todayYmdInAppTz() }, reqRows, Date.now()))
     } catch {
       setRaw(null)
     }
