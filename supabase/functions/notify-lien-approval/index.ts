@@ -13,7 +13,7 @@ import webpush from 'npm:web-push@3.6.7'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { lienApprovalPush, lienPenRecordedPush } from '../_shared/lienApprovalPush.ts'
+import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush } from '../_shared/lienApprovalPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,15 +45,20 @@ serve(async (req) => {
     const dueYmd = typeof due_ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(due_ymd) ? due_ymd : null
     // The pen train (PR 3): `kind: 'pen_recorded'` tells the leader the office wrote down his pen signature. The caller is the recorder, the leader is the signer.
     const penRecorded = kind === 'pen_recorded'
+    // v2.5791: `kind: 'code_used'` tells the leader his signing code signed a notice on someone else's screen. The caller is that screen's sign-in, the leader is the signer.
+    const codeUsed = kind === 'code_used'
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const { data: item } = await admin
       .from('job_lien_desk_items')
-      .select('id, job_id, status, drafted_by, fields, signed_by, signed_at, signer_signature_mode, signed_recorded_by, signed_witness_how')
+      .select('id, job_id, status, drafted_by, fields, signed_by, signed_at, signer_signature_mode, signed_recorded_by, signed_witness_how, signed_on_device_of')
       .eq('id', item_id)
       .maybeSingle()
     if (penRecorded) {
       if (!item || item.signed_recorded_by !== user.id || item.signer_signature_mode !== 'pen') return json({ error: 'Not your record' }, 403)
+    } else if (codeUsed) {
+      if (!item || item.signer_signature_mode !== 'code' || !item.signed_by) return json({ error: 'Not a code signature' }, 403)
+      if (item.signed_on_device_of !== user.id) return json({ error: item.signed_on_device_of ? 'Not your screen' : 'Signed on his own screen' }, item.signed_on_device_of ? 403 : 200)
     } else {
       if (!item || item.drafted_by !== user.id) return json({ error: 'Not your draft' }, 403)
       if (item.status !== 'awaiting_approval') return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
@@ -63,7 +68,7 @@ serve(async (req) => {
     if (!job) return json({ error: 'Job not found' }, 404)
 
     // The leader: the job's master when he is one, else every leader on the roster. A pen record goes to its signer only.
-    const leaderId = penRecorded ? (item.signed_by as string | null) : job.master_user_id
+    const leaderId = penRecorded || codeUsed ? (item.signed_by as string | null) : job.master_user_id
     const [{ data: master }, { data: sender }, { data: gc }] = await Promise.all([
       leaderId ? admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).eq('id', leaderId).maybeSingle() : Promise.resolve({ data: null }),
       admin.from('users').select('name').eq('id', user.id).maybeSingle(),
@@ -71,7 +76,7 @@ serve(async (req) => {
     ])
     let leaders: Array<{ id: string; name: string | null; email: string | null }> = []
     if (master && !master.archived_at && LEADER_ROLES.includes(String(master.role))) leaders = [master]
-    else if (!penRecorded) {
+    else if (!penRecorded && !codeUsed) {
       const { data: all } = await admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null)
       leaders = (all ?? []).filter((u) => u.id !== user.id)
     }
@@ -82,7 +87,15 @@ serve(async (req) => {
     const jobLabel = [number, name].filter(Boolean).join(' · ') || 'A job'
     const draft = (item.fields ?? {}) as { notice?: { claimAmount?: unknown } }
     const claimRaw = Number(draft.notice?.claimAmount)
-    const words = penRecorded
+    const words = codeUsed
+      ? lienCodeUsedPush({
+          jobLabel,
+          jobId: item.job_id,
+          claim: Number.isFinite(claimRaw) ? claimRaw : null,
+          signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
+          deviceName: sender?.name ?? null,
+        })
+      : penRecorded
       ? lienPenRecordedPush({
           jobLabel,
           jobId: item.job_id,
@@ -129,7 +142,7 @@ serve(async (req) => {
       if (sentToThisOne === 0 && resendApiKey && (leader.email ?? '').trim()) {
         const link = `${appOrigin}${words.url}`
         const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">Open the Lien desk</a></p>`
-        const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask' })
+        const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask' })
         if (mail.success) {
           emailSent++
           channel = 'email'
@@ -139,7 +152,7 @@ serve(async (req) => {
       if (channel) {
         await admin.from('notification_history').insert({
           recipient_user_id: leader.id,
-          template_type: penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask',
+          template_type: codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask',
           title: words.title,
           body_preview: words.body.substring(0, 200),
           channel,

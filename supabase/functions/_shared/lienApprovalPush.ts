@@ -111,3 +111,41 @@ export function lienPenRecordedPush(input: LienPenRecordedPushInput): LienApprov
   ].filter((l) => l !== null) as string[]
   return { title, body, url: lienPenRecordedUrl(input.jobId), tag: `lien-pen-${input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
 }
+
+export type LienCodeUsedPushInput = {
+  /** "891 · Take 5 Liberty Hill" */
+  jobLabel: string
+  jobId: string
+  /** The claim on the draft, dollars; null when the draft has none. */
+  claim: number | null
+  /** The day the code signed it, YYYY-MM-DD; null when it is not a date. */
+  signedYmd: string | null
+  /** Whose screen the code was typed on; null when unknown. */
+  deviceName: string | null
+}
+
+/**
+ * The words the leader gets when his signing code signs a notice on someone else's screen
+ * (v2.5791, punch list #150): one line, the job, the money, the day, whose screen. The tap lands on
+ * the notice in Ready, where Yes, it was me ▸ and Not me sit. Nothing waits on his answer; a code
+ * that was not his is cleared there and changed under Settings, Your account.
+ */
+export function lienCodeUsedPush(input: LienCodeUsedPushInput): LienApprovalPush {
+  const first = (input.deviceName ?? '').trim().split(/\s+/)[0] || null
+  const who = first ?? 'the office'
+  const owed = input.claim != null && input.claim > 0 ? money(input.claim) : null
+  const day = shortDay(input.signedYmd)
+  const body = [input.jobLabel, owed, day ? `signed ${day}` : null, `on ${who}’s screen`].filter(Boolean).join(' · ')
+  const title = 'Your signing code signed a lien notice'
+  const lines = [
+    `Your signing code was typed on ${who}’s screen to sign a lien notice.`,
+    '',
+    input.jobLabel,
+    owed ? `${owed}.` : null,
+    day ? `Signed ${day}.` : null,
+    '',
+    'Open the Lien desk and press Yes, it was me, or Not me. Nothing waits on your answer.',
+    'If that was not you, change your code under Settings, Your account.',
+  ].filter((l) => l !== null) as string[]
+  return { title, body, url: lienPenRecordedUrl(input.jobId), tag: `lien-code-${input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
+}

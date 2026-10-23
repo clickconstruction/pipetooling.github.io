@@ -292,3 +292,17 @@ describe('Signed by pen, as recorded (the pen train, PR 3)', () => {
     expect(build({ role: 'assistant', notices: [notice('j1', 'ready', { item: pen })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
   })
 })
+
+describe('Signed with your code, as recorded (v2.5791)', () => {
+  it('a code signature the leader has not confirmed is his own row with Yes, I signed it, naming whose screen; the group label says code', () => {
+    const code = { id: 'i-code', status: 'approved', approval_mode: 'leader', fields: {}, signed_at: '2026-10-23T19:14:00Z', signer_printed_name: 'Malachi', signer_signature_mode: 'code', signed_on_device_of: 'u-robert', signed_leader_confirmed_at: null } as unknown as LienDeskEntry['item']
+    const rows = build({ role: 'master_technician', notices: [notice('j1', 'ready', { item: code })], userName: (id) => (id === 'u-robert' ? 'Robert' : null) })
+    const row = rows.find((r) => r.jobId === 'j1')!
+    expect(row.action).toBe('confirm_pen')
+    expect(row.sub).toBe('Signed with your code Oct 23 · on Robert’s screen')
+    const groups = groupLienNextUp(rows)
+    expect(groups[0]!.group).toBe('pen')
+    expect(groups[0]!.label).toBe('Signed with your code, as recorded')
+    expect(build({ role: 'assistant', notices: [notice('j1', 'ready', { item: code })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
+  })
+})

@@ -191,12 +191,18 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
           push({ ...base, key: `notice:${e.jobId}`, sub: e.item?.approval_mode === 'word' ? 'Approved on your word · unsigned' : 'Approved · unsigned', action: 'sign', button: BUTTON.sign, target: pane('ready') })
           break
         }
-        // A pen record the leader has not confirmed (the pen train, PR 3): his own row, first on the list; it blocks nothing, so the office's row is the ready one below.
+        // A pen record the leader has not confirmed (the pen train, PR 3), or a signature by his code on someone else's screen (v2.5791): his own row, first on the list; it blocks nothing, so the office's row is the ready one below.
         if (leader && e.item && lienPenAwaitsConfirm(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields))) {
           const cols = signatureColumnsOf(e.item)
-          const who = (cols.signed_recorded_by ? input.userName?.(cols.signed_recorded_by) : null)?.trim() || 'the office'
           const day = cols.signed_at ? calendarYmdInAppTzFromIso(cols.signed_at) : ''
-          push({ ...base, key: `notice:${e.jobId}`, sub: `Signed by pen${/^\d{4}-\d{2}-\d{2}$/.test(day) ? ` ${formatYmdMonthDay(day)}` : ''} · recorded by ${who}`, action: 'confirm_pen', button: BUTTON.confirm_pen, target: pane('ready') })
+          const dayWords = /^\d{4}-\d{2}-\d{2}$/.test(day) ? ` ${formatYmdMonthDay(day)}` : ''
+          if (cols.signer_signature_mode === 'code') {
+            const screen = (cols.signed_on_device_of ? input.userName?.(cols.signed_on_device_of) : null)?.trim() || 'the office'
+            push({ ...base, key: `notice:${e.jobId}`, sub: `Signed with your code${dayWords} · on ${screen}’s screen`, action: 'confirm_pen', button: BUTTON.confirm_pen, target: pane('ready') })
+            break
+          }
+          const who = (cols.signed_recorded_by ? input.userName?.(cols.signed_recorded_by) : null)?.trim() || 'the office'
+          push({ ...base, key: `notice:${e.jobId}`, sub: `Signed by pen${dayWords} · recorded by ${who}`, action: 'confirm_pen', button: BUTTON.confirm_pen, target: pane('ready') })
           break
         }
         // A GC with several ready is one row below; a single job sends from its own pane.
@@ -379,7 +385,7 @@ export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { wait
   const coming = rest.filter((r) => r.group === 'coming')
   return [
     ...(sign.length ? [{ group: 'sign' as const, label: 'Only you can sign', rows: sign }] : []),
-    ...(pen.length ? [{ group: 'pen' as const, label: 'Signed by pen, as recorded', rows: pen }] : []),
+    ...(pen.length ? [{ group: 'pen' as const, label: pen.every((r) => r.sub.startsWith('Signed with your code')) ? 'Signed with your code, as recorded' : pen.some((r) => r.sub.startsWith('Signed with your code')) ? 'Signed by pen or code, as recorded' : 'Signed by pen, as recorded', rows: pen }] : []),
     ...(mine.length ? [{ group: 'mine' as const, label: 'Only you can approve', rows: mine }] : []),
     ...(now.length ? [{ group: 'now' as const, label: 'Needs you now', rows: now }] : []),
     ...(coming.length ? [{ group: 'coming' as const, label: 'Coming up', rows: coming }] : []),

@@ -260,7 +260,11 @@ A notice approved on your word reaches Ready to send unsigned. Open it and press
 
 A signing code lets you sign on someone else's screen. It is four to six digits that only you know. Open **Settings → Your account** and find **Your signing code**. Type the code twice and press {{button:blue|Set the code}}. The app keeps a scrambled copy and checks the code itself. Nobody can read it back. Five wrong tries lock the code for fifteen minutes. Press {{button:blue|Change the code}} to pick a new one. Press **Remove the code** to stop using one.
 
-The next release puts a code field on the notice. You type your code on the office's screen, and your name goes on the paper. The record names whose screen it was.
+### Signing on someone else's screen
+
+Open a notice on a screen that is not the master's own, and the line is his. His name waits on it in cursive. The tag reads *Malachi signs here with his code*. A code field sits under the rule. He types his code and presses {{button:green|Sign and approve ▸}}. The app checks the code and puts his name on the paper. The record names whose screen it was. A wrong code says so and counts the tries left. Five wrong tries lock the code for fifteen minutes. Press **Draw instead** and he draws on the line in his own hand. With no code set, the line opens on the pad and says where he sets one. The office sees the same line above **Leader here, Approve ▸**.
+
+His phone gets one line each time his code signs a notice. On his own screen the notice sits first under **Signed with your code, as recorded**. He presses {{button:green|Yes, it was me ▸}} and the record carries his word too. If it was not him, he presses **Not me**. The signature clears, the approval stands, and the run holds the notice. Then he changes his code in Settings.
 
 ### He signed it with a pen
 

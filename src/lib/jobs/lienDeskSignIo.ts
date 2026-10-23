@@ -233,7 +233,15 @@ export async function signLienDeskItemWithCode(args: SignLienDeskItemWithCodeArg
     return { ok: false, reason: 'error', message: error.message, triesLeft: null, lockedUntilIso: null }
   }
   const d = (data ?? {}) as { ok?: boolean; signed_at?: string; printed_name?: string; reason?: string; message?: string; tries_left?: number; locked_until?: string | null }
-  if (d.ok) return { ok: true, signedAtIso: d.signed_at ?? new Date().toISOString(), printedName: d.printed_name ?? '' }
+  if (d.ok) {
+    // Tell him his code was used (v2.5791): one line on his phone, or the same words by email; the function says nothing when it was his own screen. Best effort; the record stands either way.
+    try {
+      await supabase.functions.invoke('notify-lien-approval', { body: { item_id: args.itemId, kind: 'code_used' } })
+    } catch {
+      /* the desk's Signed with your code group tells him too */
+    }
+    return { ok: true, signedAtIso: d.signed_at ?? new Date().toISOString(), printedName: d.printed_name ?? '' }
+  }
   const reason = d.reason === 'format' || d.reason === 'none' || d.reason === 'wrong' || d.reason === 'locked' ? d.reason : 'error'
   return { ok: false, reason, message: d.message ?? 'The code did not sign it.', triesLeft: typeof d.tries_left === 'number' ? d.tries_left : null, lockedUntilIso: d.locked_until ?? null }
 }

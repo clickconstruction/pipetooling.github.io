@@ -18,6 +18,12 @@ vi.mock('../supabase', () => ({
       rpc.calls.push({ fn, args })
       return rpc.error ? { data: null, error: rpc.error } : { data: rpc.answer, error: null }
     },
+    functions: {
+      invoke: async (fn: string, opts: { body: Record<string, unknown> }) => {
+        rpc.calls.push({ fn: `invoke:${fn}`, args: opts.body })
+        return { data: null, error: null }
+      },
+    },
   },
 }))
 
@@ -49,7 +55,8 @@ describe('signLienDeskItemWithCode — one RPC, the database checks the code', (
     rpc.answer = { ok: true, signed_at: '2026-10-23T19:14:00Z', printed_name: 'Malachi' }
     const r = await signLienDeskItemWithCode({ itemId: 'item-1', fields: { ...FIELDS, dropped: undefined }, signerUserId: 'u-malachi', code: '2468', approve: true })
     expect(r).toEqual({ ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' })
-    expect(rpc.calls).toEqual([{ fn: 'sign_lien_desk_item_with_code', args: { p_item_id: 'item-1', p_signer_id: 'u-malachi', p_code: '2468', p_fields_hash: lienFieldsHash(FIELDS), p_approve: true } }])
+    // The RPC, then one line to him (v2.5791): the function says nothing when it was his own screen.
+    expect(rpc.calls).toEqual([{ fn: 'sign_lien_desk_item_with_code', args: { p_item_id: 'item-1', p_signer_id: 'u-malachi', p_code: '2468', p_fields_hash: lienFieldsHash(FIELDS), p_approve: true } }, { fn: 'invoke:notify-lien-approval', args: { item_id: 'item-1', kind: 'code_used' } }])
   })
 
   it('a wrong code says so with the tries left; the fifth locks it until a time', async () => {

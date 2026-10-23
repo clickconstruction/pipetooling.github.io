@@ -2,7 +2,7 @@
 name: "Lien desk: a dev's Approve opens a sign block that signs with the dev's name over the master's line — hold the mark to the job's master and give the dev's screen a door"
 number: 150
 group: gated
-status: building claude/nifty-jackson-b1dfaf 2026-10-23, the owner chose C with a code he sets himself; PR 1 the code in Settings, PR 2 the desk field
+status: building 2026-10-23, the owner chose C with a code he sets himself; PR 1 (v2.5788, #6054) the code in Settings, PR 2 (v2.5791, claude/lien-sign-code-desk) the desk field
 summary: >
   When a dev presses Approve on the Lien desk, the notice opens with the signature block in typed
   mode: the cursive reads the signed-in dev's name (Robert) while the line under it reads the
