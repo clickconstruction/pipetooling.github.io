@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
- * Waiting on them (v2.5704, punch list #139 PR 12) over a fake read: the quiet people longest first with the chip,
- * our last words and the day; Nudge opens the thread with the nudge asked and the name opens it as it is; Call dials; a
+ * Waiting on them (v2.5704, punch list #139 PR 12) over a fake read: the quiet people longest first, our last words
+ * and the day, the chip over Nudge and Call (v2.5790); Nudge opens the thread with the nudge asked and the name opens it as it is; Call dials; a
  * last text Quo could not deliver draws the row red with Call them and Send it as an email (#140 PR 4); the empty lane
  * and a failed read say so.
  */
@@ -25,11 +25,11 @@ const LINES: WaitLine[] = [
 ]
 
 describe('WaitingOnThem', { timeout: 15_000 }, () => {
-  it('lists the quiet people longest first, and Nudge or the name opens the thread, Call dials', async () => {
+  it('lists the quiet people longest first with the chip over the presses, and Nudge or the name opens the thread, Call dials', async () => {
     const onOpenThread = vi.fn()
     renderWithProviders(<WaitingOnThem pill="all" onOpenThread={onOpenThread} io={vi.fn(async () => LINES)} now={() => NOW} />)
     const rows = await screen.findAllByTestId('waiting-row')
-    expect(rows.map((r) => r.textContent)).toEqual(['Kim CoeTheir move · 6 dUs · Kim, the water heater is on the truck for Tuesday. · Wed, Oct 14Nudge', 'Dana WhitfieldTheir move · 2 dUs · Dana, your estimate is ready, $4,860.00. · Sun, Oct 18Nudge☎ Call'])
+    expect(rows.map((r) => r.textContent)).toEqual(['Kim CoeUs · Kim, the water heater is on the truck for Tuesday. · Wed, Oct 14Their move · 6 dNudge', 'Dana WhitfieldUs · Dana, your estimate is ready, $4,860.00. · Sun, Oct 18Their move · 2 dNudge☎ Call'])
     expect(screen.getByRole('heading', { name: 'Waiting on them (2)' })).toBeTruthy()
     fireEvent.click(screen.getAllByTestId('waiting-nudge')[0]!)
     expect(onOpenThread).toHaveBeenCalledWith('c-kim', { nudge: 'text' })
