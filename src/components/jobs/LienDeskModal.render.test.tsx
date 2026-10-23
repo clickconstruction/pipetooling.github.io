@@ -86,10 +86,36 @@ vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
   return { ...actual, saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
 })
-vi.mock('../../lib/jobs/lienDeskSignIo', () => ({
-  signLienDeskItem: async ({ itemId, approve }: { itemId: string; approve: boolean }) => {
-    signMock(itemId, approve)
+const codeState = { status: { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null } | null, signs: [] as Array<Record<string, unknown>>, answer: { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' } as Record<string, unknown> }
+vi.mock('../../lib/jobs/lienDeskSignIo', async () => ({
+  ...(await vi.importActual<typeof import('../../lib/jobs/lienDeskSignIo')>('../../lib/jobs/lienDeskSignIo')),
+  signLienDeskItem: async ({ itemId, approve, signer, onDevice, payload }: { itemId: string; approve: boolean; signer: unknown; onDevice: unknown; payload: unknown }) => {
+    signMock(itemId, approve, signer, onDevice, payload)
     return { ok: true, signedAtIso: '2026-10-09T19:14:00Z' }
+  },
+  lienSignCodeStatus: async () => codeState.status,
+  signLienDeskItemWithCode: async (args: Record<string, unknown>) => {
+    codeState.signs.push(args)
+    return codeState.answer
+  },
+}))
+// The pad (v2.5791): jsdom has no canvas, and the master's line opens on the pad when his code cannot be taken.
+vi.mock('signature_pad', () => ({
+  default: class {
+    constructor(_c: HTMLCanvasElement) {}
+    off() {}
+    on() {}
+    isEmpty() {
+      return true
+    }
+    toDataURL() {
+      return 'data:image/png;base64,AAAA'
+    }
+    toData() {
+      return []
+    }
+    fromData() {}
+    clear() {}
   },
 }))
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
@@ -1833,5 +1859,74 @@ describe('LienDeskModal — find on the list (v2.4721)', () => {
     // The gate's own door bills from the desk too.
     fireEvent.click(document.querySelector('[data-lien-gate-bill-from-here]') as HTMLElement)
     expect(openBillCustomerMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('LienDeskModal · the master signs on someone else’s screen with his code (v2.5791, punch list #150)', () => {
+  const awaitingOn = (jobOver: Record<string, unknown>) => {
+    const awaiting = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
+    } as LienDeskItemRow
+    const d = data(J650, [awaiting], true)
+    d.jobsById.j650 = { ...d.jobsById.j650!, ...jobOver } as NonNullable<typeof d.jobsById.j650>
+    return d
+  }
+
+  it('a dev who is not the job’s master sees the master’s name on the line, his code field, and the press goes to the code RPC as the master', async () => {
+    codeState.signs = []
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+    const line = screen.getByTestId('lien-sign-line')
+    expect(line.textContent).toContain('Malachi signs here with his code')
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi Whites')
+    expect(line.textContent).not.toContain('Your signature, as it will print')
+    const press = screen.getByRole('button', { name: /Sign and approve & next/ })
+    fireEvent.click(press)
+    await settle()
+    // No code typed: nothing is sent.
+    expect(codeState.signs).toHaveLength(0)
+    fireEvent.change(screen.getByLabelText('Malachi’s signing code'), { target: { value: '2468' } })
+    fireEvent.click(press)
+    await waitFor(() => expect(codeState.signs).toHaveLength(1))
+    expect(codeState.signs[0]).toMatchObject({ itemId: 'it1', signerUserId: 'u-malachi', code: '2468', approve: true })
+  })
+
+  it('a wrong code says so under the field with the tries left; Draw instead stays and is the master’s hand on this screen', async () => {
+    codeState.signs = []
+    codeState.answer = { ok: false, reason: 'wrong', message: 'That is not Malachi’s code.', triesLeft: 3, lockedUntilIso: null }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="dev" authUserId="u-robert" authName="Robert" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Robert')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    await waitFor(() => expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('code'))
+    fireEvent.change(screen.getByLabelText('Malachi’s signing code'), { target: { value: '0000' } })
+    fireEvent.click(screen.getByRole('button', { name: /Sign and approve & next/ }))
+    await waitFor(() => expect(document.querySelector('[data-lien-sign-code-words]')!.textContent).toBe('That is not Malachi’s code. 3 tries left.'))
+    fireEvent.click(screen.getByTestId('lien-sign-line-toggle'))
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('draw')
+    expect(screen.getByTestId('lien-sign-line').textContent).toContain('Malachi signs here, in his own hand')
+    codeState.answer = { ok: true, signedAtIso: '2026-10-23T19:14:00Z', printedName: 'Malachi' }
+  })
+
+  it('with no code set the line opens on the pad and says where he sets one; the office’s awaiting footer carries the same line and its own press', async () => {
+    codeState.status = { set: false, setAtIso: null, lastUsedAtIso: null, lockedUntilIso: null }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={(id) => (id === 'u-malachi' ? 'Malachi Whites' : 'Wendi')} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-sign-code-words]')).toBeTruthy())
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('draw')
+    expect(document.querySelector('[data-lien-sign-code-words]')!.textContent).toBe('Malachi has not set a signing code yet. He sets it under Settings, Your account. He can draw here instead.')
+    expect(screen.queryByTestId('lien-sign-line-toggle')).toBeNull()
+    expect(document.querySelector('[data-lien-desk-office-sign-press]')).toBeTruthy()
+    // The spoken word is still a door.
+    expect(screen.getByRole('button', { name: /Leader here, Approve/ })).toBeTruthy()
+    codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+  })
+
+  it('the master on his own screen is unchanged: his own name, a press', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" authUserId="u-malachi" authName="Malachi" leaderNameFor={() => 'Malachi Whites'} data={awaitingOn({ master_user_id: 'u-malachi' })} />)
+    await settle()
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('type')
+    expect(screen.getByTestId('lien-sign-line-name').textContent).toBe('Malachi')
+    expect(document.querySelector('[data-lien-sign-code-row]')).toBeNull()
   })
 })

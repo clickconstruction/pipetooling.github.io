@@ -34,7 +34,7 @@ export type LienFootChipItem = {
  * The chip's word on the signature (v2.5082): null = no word (the row does not carry the column yet), 'signed' with the day, or 'unsigned'.
  * The pen train: a pen record says so, names who wrote it down, and whether the leader has confirmed it.
  */
-export type LienFootChipSigned = { at: string; mode?: 'type' | 'draw' | 'pen' | 'code'; recordedByName?: string | null; confirmedAt?: string | null } | 'unsigned' | null
+export type LienFootChipSigned = { at: string; mode?: 'type' | 'draw' | 'pen' | 'code'; recordedByName?: string | null; confirmedAt?: string | null; /** Whose screen a code signature was typed on (v2.5791). */ onDeviceName?: string | null } | 'unsigned' | null
 
 /** "Oct 7" from an instant (company calendar) or a day. */
 export function shortDay(iso: string | null | undefined): string {
@@ -76,6 +76,12 @@ export function readyChip(
       const who = (signed.recordedByName ?? '').trim() || 'the office'
       const confirmed = signed.confirmedAt ? ' · confirmed' : ''
       return { ...chip, words: `${chip.words} · signed by pen${day ? ` ${day}` : ''} · recorded by ${who}${confirmed}`, title: `${chip.title} Signed by pen ${longDay(signed.at) ?? ''}, on the paper as printed; recorded by ${who}.${signed.confirmedAt ? ` Confirmed by the leader ${longDay(signed.confirmedAt) ?? ''}.` : ' The leader has not confirmed it yet; nothing waits on that.'}`.replace(/\s+\./g, '.').replace(/\s+;/g, ';') }
+    }
+    if (signed.mode === 'code') {
+      // His own signing code on someone else's screen (v2.5791); confirmed once he says so from his own sign-in.
+      const screen = (signed.onDeviceName ?? '').trim()
+      const confirmed = signed.confirmedAt ? ' · confirmed' : ''
+      return { ...chip, words: `${chip.words} · signed by code${day ? ` ${day}` : ''}${screen ? ` · on ${screen}’s screen` : ''}${confirmed}`, title: `${chip.title} Signed with his own code ${longDay(signed.at) ?? ''}${screen ? `, on ${screen}’s screen` : ''}.${signed.confirmedAt ? ` Confirmed by the leader ${longDay(signed.confirmedAt) ?? ''}.` : ' The leader has not confirmed it yet; nothing waits on that.'}`.replace(/\s+,/g, ',').replace(/\s+\./g, '.') }
     }
     return { ...chip, words: `${chip.words} · signed${day ? ` ${day}` : ''}`, title: `${chip.title} Signed ${longDay(signed.at) ?? ''}.`.replace(/\s+\./, '.') }
   }

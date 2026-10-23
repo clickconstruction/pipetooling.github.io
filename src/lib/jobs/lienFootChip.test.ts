@@ -60,3 +60,15 @@ describe('the ready chip on a pen signature (the pen train, PR 3)', () => {
     expect(confirmed.title).toContain('Confirmed by the leader October 12, 2026.')
   })
 })
+
+describe('signed by code (v2.5791)', () => {
+  it('says signed by code with the day and whose screen, and confirmed once the leader said so', () => {
+    const item = { approval_mode: 'leader', approved_at: '2026-10-23T19:14:00Z', word_note: null, word_channel: null } as unknown as Parameters<typeof readyChip>[0]
+    const code = readyChip(item, 'Summit GC', null, 'Malachi', null, { at: '2026-10-23T19:14:00Z', mode: 'code', onDeviceName: 'Robert' })
+    expect(code.words).toContain('· signed by code Oct 23 · on Robert’s screen')
+    expect(code.title).toContain('Signed with his own code October 23, 2026, on Robert’s screen. The leader has not confirmed it yet; nothing waits on that.')
+    const confirmed = readyChip(item, 'Summit GC', null, 'Malachi', null, { at: '2026-10-23T19:14:00Z', mode: 'code', onDeviceName: null, confirmedAt: '2026-10-24T15:00:00Z' })
+    expect(confirmed.words).toContain('· signed by code Oct 23 · confirmed')
+    expect(confirmed.title).toContain('Confirmed by the leader October 24, 2026.')
+  })
+})

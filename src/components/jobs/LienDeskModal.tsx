@@ -43,9 +43,9 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, lienFyiStrip, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
-import { confirmLienPenSignature, disownLienPenSignature, signLienDeskItem, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
-import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
-import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
+import { confirmLienPenSignature, disownLienPenSignature, lienSignCodeStatus, signLienDeskItem, signLienDeskItemWithCode, type LienDeskSignPayload, type LienSignCodeStatus } from '../../lib/jobs/lienDeskSignIo'
+import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, lienSignatureWhen, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
+import { LienNoticeSignLine, type LienNoticeSignLineCodeSigner, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
@@ -884,6 +884,39 @@ export default function LienDeskModal({
   const openBalance = selected?.openBalance ?? 0
   // The job's master by name (v2.4856): the word row, the record and the queue row say *on Malachi's word*.
   const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
+  // Someone else's screen (v2.5791, punch list #150): the job has a master and he is not the one signed in here. The
+  // signature line is then his — his name in cursive, his signing code or his hand — never the signed-in user's name.
+  const masterId = job?.master_user_id ?? null
+  const otherScreen = Boolean(masterId && masterId !== authUserId)
+  const [codeStatus, setCodeStatus] = useState<LienSignCodeStatus | 'not_live' | 'loading' | null>(null)
+  const [codeStatusTick, setCodeStatusTick] = useState(0)
+  const [codeProblem, setCodeProblem] = useState<string | null>(null)
+  useEffect(() => {
+    setCodeProblem(null)
+    if (!otherScreen || !masterId || !open) {
+      setCodeStatus(null)
+      return
+    }
+    let live = true
+    setCodeStatus('loading')
+    lienSignCodeStatus(masterId)
+      .then((s) => {
+        if (live) setCodeStatus(s ?? 'not_live')
+      })
+      .catch(() => {
+        if (live) setCodeStatus('not_live')
+      })
+    return () => {
+      live = false
+    }
+  }, [otherScreen, masterId, open, codeStatusTick, selected?.jobId])
+  const codeSigner: LienNoticeSignLineCodeSigner | null = otherScreen
+    ? {
+        firstName: leaderName.trim().split(/\s+/)[0] || 'The leader',
+        status: codeStatus === 'loading' || codeStatus === null ? 'loading' : codeStatus === 'not_live' ? 'not_live' : !codeStatus.set ? 'none' : codeStatus.lockedUntilIso ? 'locked' : 'ready',
+        lockedUntilClock: codeStatus && typeof codeStatus === 'object' && codeStatus.lockedUntilIso ? lienSignatureWhen(codeStatus.lockedUntilIso).clock : null,
+      }
+    : null
   const wordPreview = selected
     ? wordRecordPreview({ leaderName, note: wordNote, channel: wordChannel, recorderName: authName, jobLabel: jobLabel(job, selected.jobId), gcName: gc?.name ?? null, amountWords: formatUsdNoCents(openBalance) })
     : undefined
@@ -1269,16 +1302,39 @@ export default function LienDeskModal({
       'Recorded on the leader’s word — it is in the run.',
     )
   // Signing (v2.5082): one press under his own sign-in places his name in the cursive face; the line may hold a drawing instead.
-  const signerName = authName.trim() || leaderName
-  const signPayloadOrThrow = (): LienDeskSignPayload => {
+  // On someone else's screen (v2.5791) the name is the master's, and the press is his code or his hand, attributed to him.
+  const signerName = otherScreen ? leaderName : authName.trim() || leaderName
+  const signPayloadOrThrow = (): LienDeskSignPayload | { mode: 'code'; code: string } => {
     const h = signRef.current
-    if (!h || h.mode === 'type') return { mode: 'type' }
+    if (h?.mode === 'code') {
+      const code = h.code()
+      if (code.length < 4) throw new Error(`Type ${codeSigner?.firstName ?? 'his'}’s signing code first.`)
+      return { mode: 'code', code }
+    }
+    if (!h || h.mode === 'type') {
+      if (otherScreen) throw new Error(`${codeSigner?.firstName ?? 'The leader'} signs here with his code or his hand.`)
+      return { mode: 'type' }
+    }
     const png = h.toDataURL()
     if (!png) throw new Error('Sign on the line first.')
     return { mode: 'draw', signaturePngBase64: png }
   }
   const signItem = async (itemId: string, fields: unknown, approveToo: boolean) => {
-    const r = await signLienDeskItem({ itemId, fields, signer: { userId: authUserId, printedName: signerName }, payload: signPayloadOrThrow(), onDevice: null, approve: approveToo })
+    const payload = signPayloadOrThrow()
+    if (payload.mode === 'code') {
+      const r = await signLienDeskItemWithCode({ itemId, fields, signerUserId: masterId ?? '', code: payload.code, approve: approveToo })
+      if (!r.ok) {
+        const words = r.reason === 'wrong' && r.triesLeft != null ? `${r.message} ${r.triesLeft} ${r.triesLeft === 1 ? 'try' : 'tries'} left.` : r.message
+        setCodeProblem(words)
+        if (r.reason === 'locked' || r.reason === 'none' || r.reason === 'not_live') setCodeStatusTick((t) => t + 1)
+        throw new Error(words)
+      }
+      setCodeProblem(null)
+      return
+    }
+    const r = otherScreen
+      ? await signLienDeskItem({ itemId, fields, signer: { userId: masterId, printedName: signerName }, payload, onDevice: { userId: authUserId, name: authName.trim() || null }, approve: approveToo })
+      : await signLienDeskItem({ itemId, fields, signer: { userId: authUserId, printedName: signerName }, payload, onDevice: null, approve: approveToo })
     if (!r.ok) throw new Error(r.message)
   }
   const approve = () =>
@@ -2700,7 +2756,7 @@ export default function LienDeskModal({
     const offerProblem = offer ? lienOfferDayProblem(offer.by, todayYmd, affidavitDueOn) : null
     // The notice's own signature line (v2.5082): his name waiting in cursive, or a pad; the press writes the mark and the record.
     const signLine = (compact = false) => (
-      <LienNoticeSignLine ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} disabled={busy} compact={compact} />
+      <LienNoticeSignLine key={`${selected.jobId}:${otherScreen ? 'other' : 'own'}`} ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} codeSigner={codeSigner} codeProblem={codeProblem} disabled={busy} compact={compact} />
     )
     // v2.4745 (the owner's ask): the switch rides in the footer's bottom row; the details open above that row only while it is on.
     const offerBox = (onSave?: () => void, saved?: boolean) => (
@@ -2882,6 +2938,17 @@ export default function LienDeskModal({
           btn={btn}
         />
       ) : (
+        <>
+        {otherScreen && office ? (
+          // v2.5791: the master signs on the office's screen with his code or his hand; the spoken word stays the other door.
+          <div data-lien-desk-office-sign style={{ display: 'grid', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            {signLine()}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)} data-lien-desk-office-sign-press>Sign and approve ▸</button>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>His code or his hand here. The record names your screen.</span>
+            </div>
+          </div>
+        ) : null}
         <div className="lienFootRow" data-lien-desk-foot="awaiting">
           <FootChip chip={awaitingChip(selected.item)} data-lien-desk-awaiting-words />
           <span className="lienFootSpacer" />
@@ -2906,24 +2973,36 @@ export default function LienDeskModal({
             </button>
           ) : null}
         </div>
+        </>
       ))
     } else if (state === 'ready') {
       const itemOffer = lienOfferFromItem(selected.item)
       const readySignedRaw = selected.item ? lienChipSigned(signatureColumnsOf(selected.item), lienFieldsHash(selected.item.fields)) : null
-      const readySigned = readySignedRaw && readySignedRaw !== 'unsigned' ? { ...readySignedRaw, recordedByName: readySignedRaw.recordedBy ? (leaderNameFor?.(readySignedRaw.recordedBy) ?? null) : null } : readySignedRaw
-      const penAwaits = readySigned && readySigned !== 'unsigned' && readySigned.mode === 'pen' && !readySigned.confirmedAt
+      const readyDevice = selected.item ? signatureColumnsOf(selected.item).signed_on_device_of : null
+      const readySigned = readySignedRaw && readySignedRaw !== 'unsigned' ? { ...readySignedRaw, recordedByName: readySignedRaw.recordedBy ? (leaderNameFor?.(readySignedRaw.recordedBy) ?? null) : null, onDeviceName: readyDevice ? (leaderNameFor?.(readyDevice) ?? null) : null } : readySignedRaw
+      // The pen train, PR 3, and the code (v2.5791): a signature placed for him — by the office's pen record, or by his own code on someone else's screen — waits on his word; nothing blocks on it.
+      const penAwaits = readySigned && readySigned !== 'unsigned' && (readySigned.mode === 'pen' || readySigned.mode === 'code') && !readySigned.confirmedAt
+      const codeAwaits = Boolean(penAwaits && readySigned && typeof readySigned === 'object' && readySigned.mode === 'code')
       footer = byHandPane ?? penPane ?? (
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         {leader && readySigned === 'unsigned' ? signLine() : null}
         {leader && penAwaits && selected.item ? (
           // The pen train, PR 3: the office wrote down his pen signature; his word strengthens the record, his No clears it.
-          <div data-lien-desk-pen-confirm role="group" aria-label="A pen signature recorded for you" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
+          <div data-lien-desk-pen-confirm data-lien-desk-confirm-mode={codeAwaits ? 'code' : 'pen'} role="group" aria-label={codeAwaits ? 'A signature by your code, waiting on your word' : 'A pen signature recorded for you'} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
             <span style={{ flex: '1 1 16rem' }}>
-              <strong>{(readySigned.recordedByName ?? '').trim() || 'The office'} recorded your pen signature</strong> on this notice{readySigned.at ? ` · signed ${footShortDay(readySigned.at)}` : ''}. Nothing waits on your word; it makes the record stronger.
+              {codeAwaits ? (
+                <>
+                  <strong>Your signing code signed this notice</strong> on {(readySigned.onDeviceName ?? '').trim() || 'the office'}’s screen{readySigned.at ? ` · ${footShortDay(readySigned.at)}` : ''}. Nothing waits on your word; it makes the record stronger. Not you? Press Not me, then change your code under Settings, Your account.
+                </>
+              ) : (
+                <>
+                  <strong>{(readySigned.recordedByName ?? '').trim() || 'The office'} recorded your pen signature</strong> on this notice{readySigned.at ? ` · signed ${footShortDay(readySigned.at)}` : ''}. Nothing waits on your word; it makes the record stronger.
+                </>
+              )}
             </span>
-            <button type="button" onClick={() => run('Confirm the pen signature', () => confirmLienPenSignature(selected.item!.id), 'Confirmed — the record carries your word too.')} disabled={busy} style={btn('green', busy)} data-lien-desk-pen-yes>Yes, I signed it ▸</button>
-            <button type="button" className="lienFootLink" onClick={() => run('Disown the pen signature', () => disownLienPenSignature(selected.item!.id), 'Cleared — the notice is unsigned again and the run holds it.')} disabled={busy} data-lien-desk-pen-no title="The record is wrong: it clears, the approval stands, and the run holds the notice until it is signed again">Not what I signed</button>
+            <button type="button" onClick={() => run(codeAwaits ? 'Confirm the code signature' : 'Confirm the pen signature', () => confirmLienPenSignature(selected.item!.id), 'Confirmed — the record carries your word too.')} disabled={busy} style={btn('green', busy)} data-lien-desk-pen-yes>{codeAwaits ? 'Yes, it was me ▸' : 'Yes, I signed it ▸'}</button>
+            <button type="button" className="lienFootLink" onClick={() => run(codeAwaits ? 'Disown the code signature' : 'Disown the pen signature', () => disownLienPenSignature(selected.item!.id), 'Cleared — the notice is unsigned again and the run holds it.')} disabled={busy} data-lien-desk-pen-no title="The record is wrong: it clears, the approval stands, and the run holds the notice until it is signed again">{codeAwaits ? 'Not me' : 'Not what I signed'}</button>
           </div>
         ) : null}
         <div className="lienFootRow" data-lien-desk-foot="ready">
