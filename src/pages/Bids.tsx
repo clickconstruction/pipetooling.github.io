@@ -58,6 +58,7 @@ import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { BID_FORM_FOCUS_ELEMENT_ID } from '../lib/bids/bidFormFocus'
 import { envelopeParamBidNumber } from '../lib/bids/robotLayer'
+import { plumbingServiceTypeIdOf } from '../lib/bids/robotQueue'
 import { useBidRobotLayer } from '../hooks/useBidRobotLayer'
 import { BidsRobotOverlays } from '../components/bids/BidsRobotOverlays'
 import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
@@ -368,6 +369,7 @@ export default function Bids() {
   const robot = useBidRobotLayer({ authUserId: authUser?.id, myRole, bids, setBids, robotBids, serviceTypes, showToast })
   const {
     twinBidBySourceId,
+    shadowRunByBidNumber,
     robotMirrorCount,
     setRobotMirrorCount,
     referencePresence,
@@ -1880,7 +1882,7 @@ export default function Bids() {
 
       {/* Robot Queue lens (v2.2542, dev only) — requested above ready; prompts live here. */}
       {activeTab === 'robot-queue' && myRole === 'dev' && (
-        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} referencePresence={referencePresence} onOpenBid={openEditBid} />
+        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} plumbingServiceTypeId={plumbingServiceTypeIdOf(serviceTypes)} shadowRunByBidNumber={shadowRunByBidNumber} referencePresence={referencePresence} onOpenBid={openEditBid} />
       )}
 
       {/* Scoreboard (v2.2560; every audit role since v2.3221) — the rule, your part,
@@ -1909,7 +1911,7 @@ export default function Bids() {
 
       {/* Console lens (v2.3224, dev only) — the operator's desk; the Queue is one door away. */}
       {activeTab === 'robot-console' && myRole === 'dev' && (
-        <BidsRobotConsoleTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} onOpenQueue={() => selectBidsTab('robot-queue')} />
+        <BidsRobotConsoleTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} plumbingServiceTypeId={plumbingServiceTypeIdOf(serviceTypes)} shadowRunByBidNumber={shadowRunByBidNumber} onOpenQueue={() => selectBidsTab('robot-queue')} />
       )}
 
       {/* Robot Board (v2.3222) — a mirror of the Bid Board: our bids, the same sections, a

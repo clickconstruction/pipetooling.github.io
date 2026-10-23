@@ -111,6 +111,11 @@ export function TwinRoundsCard({ canStop = true, onCopyRoundsKickoff }: { canSto
                     <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>Today</b> {a.today}
                   </p>
                 ) : null}
+                {a.queue ? (
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="twin-rounds-queue" title="From the robot's own check-in: the one rule the Queue's Ready and Held counts read">
+                    <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>Queue</b> {a.queue}
+                  </p>
+                ) : null}
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {canStop ? (

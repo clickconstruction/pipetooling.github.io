@@ -5,7 +5,7 @@ file: HANDOFF.md
 type: Handoff / State of the program
 purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-09-30
+last_updated: 2026-10-23
 key_sections:
   - name: "What is live today"
   - name: "The fleet roadmap & gates"
@@ -147,7 +147,7 @@ back with no key. Seat numbers count archived twins, so the next mint never reus
 Claude Code handoff, the queue door, the robots' operator-lane questions, and the runs
 ledger (sign-ins, reports, heartbeats).
 
-**The rounds (v2.5735, punch list #142).** A Mac that stays on makes a round every five minutes: the routine **Robot rounds** from `kickoffs/rounds-operator.md` (Console → *Run the robots* → **Copy rounds kickoff**, or **Set up on this Mac** with *This Mac makes the rounds* ticked). A round checks in (`heartbeat` idle, `round: true`), leaves when two rounds of its key already hold a bid or when the Console pressed **Stop the rounds**, else works one shell to the lock with a heartbeat every five minutes, one submittal task, and a price matrix when the Mac holds `twin-pricer-mcp`. The Console's **Rounds** card (v2.5733) shows each key alive, quiet or asleep; the Dashboard says when no round has come for fifteen minutes (v2.5734). The hourly weekday routine below stays for a checkout that is not that Mac.
+**The rounds (v2.5735, punch list #142).** A Mac that stays on makes a round every five minutes: the routine **Robot rounds** from `kickoffs/rounds-operator.md` (Console → *Run the robots* → **Copy rounds kickoff**, or **Set up on this Mac** with *This Mac makes the rounds* ticked). A round checks in (`heartbeat` idle, `round: true`), leaves when a round of its key already holds a bid (`get_assignments` → `shadow.hold`, the server's word on each shell since v2.5753) or when the Console pressed **Stop the rounds**, else works one shell to the lock with a heartbeat every five minutes, one submittal task, and a price matrix when the Mac holds `twin-pricer-mcp`. **One rule** decides which live bid a robot takes (v2.5753, `supabase/functions/_shared/shadowEligibility.ts`): the Queue's Requested / Ready / Held lists, the Console's counts, the Dashboard's *Robots have work waiting*, `get_shadow_queue`, `next_shadow`'s claim order and the round's check-in all read it, and the check-in carries the server's `ready` count and the bids it passed over with the reason, which the Rounds card prints as its **Queue** line. A voided shell no longer blocks a re-claim (one *live* run per bid): a bid a person took back with *Leave this one to me* and then let the robot into again is claimed by the next round. The Console's **Rounds** card (v2.5733) shows each key alive, quiet or asleep; the Dashboard says when no round has come for fifteen minutes (v2.5734). The hourly weekday routine below stays for a checkout that is not that Mac.
 
 The working loops, in the order a day usually runs:
 1. **Audits first** — the Dashboard card / Audits tab; verdicts + answers unblock
@@ -224,7 +224,8 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
 5. **Owner ruling on 836b6c22** (small-TI residual + Take 5 package doctrine).
 6. **Wendi's LIVSTE takeoff to CT cloud** — M4/M6's reference diff has been blocked on
    it since 08-30; the review-gate walk needs it too.
-7. **Standing earlier threads**: metrics hygiene (`AND NOT is_digital_twin` as twins
+7. **The comparison's fixtures and equipment line misreads two kinds of row** (data point for the counting guide, 2026-10-22; nothing changed without the owner). Shell b500 for b497 Lone Star Market read 1,626 against our 193. The robot's 1,626 is its travel row (count 1,500 = 50 mi × 30 job days, the travel rule) plus 126 real fixtures and equipment; our 193 is 106 fixtures and equipment, 86 fittings our takeoff names `T` and `Y` (`2IN T WATER`, `4IN Y WASTE`) and our travel row (count 1). `classifyCountRow` (`src/lib/bids/robotBidComparison.ts`) knows only `90/45/tee/ell/wye/coupling` and puts every other row in the fixtures bucket. Like for like: 126 vs 106, the robot about a fifth heavy. The rule-shaped note is in `PLACEMENT.md` → Reference protocol at unseal, without the bid's numbers so b497 stays blind for a backtest. Owner's call: give travel its own class, and read `T`/`Y` as fittings. The 30 job days behind the robot's travel row (≈20 fixtures, 18 connections, 9 gas drops) is a second question for the same sitting.
+8. **Standing earlier threads**: metrics hygiene (`AND NOT is_digital_twin` as twins
    touch more surfaces), pooled seats if the fleet grows, other roles (Phase 2) only
    by explicit owner decision.
 

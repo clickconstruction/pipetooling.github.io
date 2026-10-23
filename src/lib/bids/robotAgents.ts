@@ -4,7 +4,7 @@
  * when it checked in; what it has in hand; the last five things the robot finished. Pure, over
  * one `robot_agents()` row; the words pass the plain-words rules under test.
  */
-import { heartbeatWords, type HeartbeatProgress } from '../../../supabase/functions/_shared/twinHeartbeat'
+import { heartbeatHeldWords, heartbeatWords, type HeartbeatProgress } from '../../../supabase/functions/_shared/twinHeartbeat'
 import { relativeTimeFrom } from '../twinConsoleDisplay'
 import { ROBOT_ALIVE_MS } from './robotProgress'
 
@@ -56,6 +56,13 @@ export type RobotAgentRow = {
   /** True while that shell is open and unlocked. */
   holds_open_shell: boolean
   idle_rounds_today: number
+  /**
+   * The key's latest idle check-in and its shape (v2.5753): `ready`, how many live bids the one
+   * rule let the round claim then, and `held`, the bids it passed over with the reason. Absent
+   * from a server before migration 20261023003000.
+   */
+  idle_at?: string | null
+  idle_progress?: HeartbeatProgress | null
   recent: RobotRecentItem[]
 }
 
@@ -86,6 +93,12 @@ export type RobotAgentView = {
   nowBidId: string | null
   /** "1 bid sealed, 1 parked. 88 rounds found nothing to do." */
   today: string | null
+  /**
+   * What today's last check-in said about the queue (v2.5753): "Passed over 2 bids. b516 Take 5,
+   * made over 30 days ago and nobody asked. …", and "Its last check-in saw 3 bids ready to claim."
+   * when the robot has not acted on a ready count. Null with nothing to say.
+   */
+  queue: string | null
   stoppedAt: string | null
   canStop: boolean
 }
@@ -191,6 +204,25 @@ export function nowWords(row: RobotAgentRow): string {
   return `${base} on b${bid}.`
 }
 
+/**
+ * The row's Queue sentence(s), from the latest idle check-in when it is today's: the bids passed
+ * over and why (`heartbeatHeldWords`), and a ready count the robot has not acted on — the check-in
+ * is the key's latest word and it holds no shell — which is the honest sign of a round that saw
+ * work and claimed none. Null when the check-in is older than today or carried nothing.
+ */
+export function queueWords(row: RobotAgentRow, todayStartMs: number): string | null {
+  const at = row.idle_at ? Date.parse(row.idle_at) : NaN
+  if (!Number.isFinite(at) || at < todayStartMs) return null
+  const p = row.idle_progress ?? null
+  const parts: string[] = []
+  const hbAt = row.heartbeat_at ? Date.parse(row.heartbeat_at) : NaN
+  const checkInIsLatest = !Number.isFinite(hbAt) || hbAt <= at
+  if (p?.ready && p.ready > 0 && checkInIsLatest && !row.holds_open_shell) parts.push(`Its last check-in saw ${p.ready} bid${p.ready === 1 ? '' : 's'} ready to claim.`)
+  const held = heartbeatHeldWords(p)
+  if (held) parts.push(held)
+  return parts.length ? parts.join(' ') : null
+}
+
 export function buildRobotAgentView(row: RobotAgentRow, nowMs: number, todayStartMs: number, canStop: boolean): RobotAgentView {
   const { state, word, tone } = agentState(row, nowMs)
   const checkedInAt = row.last_seen_at
@@ -211,6 +243,7 @@ export function buildRobotAgentView(row: RobotAgentRow, nowMs: number, todayStar
     nowBidId: row.holds_open_shell ? (row.heartbeat_source_bid_id ?? null) : null,
     recent: (row.recent ?? []).slice(0, 5).map(recentWorkLine),
     today: todayLine(row.recent ?? [], row.idle_rounds_today, todayStartMs),
+    queue: queueWords(row, todayStartMs),
     stoppedAt: row.stopped_at,
     canStop,
   }

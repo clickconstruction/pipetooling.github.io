@@ -39,12 +39,20 @@ export type OpenRobotQuestionRow = Omit<RobotOpenQuestionEntry, 'topic'> & {
   status?: string
 }
 
-type TwinPairing = { id: string; twin_source_bid_id?: string | null }
+type TwinPairing = { id: string; twin_source_bid_id?: string | null; created_at?: string | null }
 
-/** Source bid id → its twin copy (the board icon's "robot bid exists"). The last twin listed wins. */
+/**
+ * Source bid id → its twin copy (the board icon's "robot bid exists"). The newest shell wins
+ * (v2.5753: a bid a person took back and let the robot into again has a voided shell and a live
+ * one); with no `created_at` to go by, the last twin listed.
+ */
 export function twinBidBySourceId<T extends TwinPairing>(robotBids: readonly T[]): Map<string, T> {
   const m = new Map<string, T>()
-  for (const twin of robotBids) if (twin.twin_source_bid_id) m.set(twin.twin_source_bid_id, twin)
+  for (const twin of robotBids) {
+    if (!twin.twin_source_bid_id) continue
+    const cur = m.get(twin.twin_source_bid_id)
+    if (!cur || (twin.created_at ?? '') >= (cur.created_at ?? '')) m.set(twin.twin_source_bid_id, twin)
+  }
   return m
 }
 
