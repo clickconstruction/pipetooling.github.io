@@ -53,6 +53,7 @@ import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSave
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
+import { exhibitDetails, exhibitsSummaryWords } from '../../../lib/legal/exhibitDetail'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
@@ -729,7 +730,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 </div>
 
                 {packet ? (
-                  <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
+                  <PacketTab tab={tab} onTab={setTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
@@ -896,7 +897,7 @@ type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
 type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
 
-function PacketTab({ tab, packet, selected, props, openEditCustomer, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
+function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -1180,10 +1181,31 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, curation, e
       <Table head={['Date', 'Job', 'Step', 'What happened']}
         rows={packet.feesAndSteps.steps.map((s, i) => [s.ymd ?? '—', s.jobLabel ?? '', pill(s.kind, s.kind === 'demand' || s.kind === 'filing' ? 'warn' : s.kind === 'payment' || s.kind === 'contract' ? 'ok' : 'neutral'), <span key={i}>{s.text}</span>])}
         empty="No steps recorded." />
-      <SectionTitle>Exhibits the packet would carry</SectionTitle>
-      {packet.exhibits.length === 0 ? <p style={{ ...MUTED, fontSize: '0.84rem' }}>Nothing to letter yet.</p> : (
-        <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.84rem' }}>{packet.exhibits.map((x) => <li key={x.letter}><b>{x.letter}</b> · {x.title} <span style={MUTED}>({x.count})</span></li>)}</ul>
-      )}
+      <SectionTitle>What goes to the firm</SectionTitle>
+      {(() => {
+        const details = exhibitDetails(packet)
+        return (
+          <>
+            <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 6px' }}>{exhibitsSummaryWords(details)}</p>
+            {details.map((x) => (
+              <details key={x.letter} data-legal-exhibit style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', margin: '0 0 6px' }}>
+                <summary style={{ cursor: 'pointer', padding: '6px 10px', fontSize: '0.84rem', display: 'flex', gap: 8, alignItems: 'baseline', listStyle: 'none' }}>
+                  <span style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{x.section}</span>
+                  {x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? null : <span style={{ fontWeight: 600 }}>{x.title}</span>}
+                  <span style={MUTED}>· {x.count}</span>
+                </summary>
+                <div style={{ padding: '0 10px 8px', borderTop: '1px solid var(--border)' }}>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: '0.8rem' }}>
+                    {x.lines.map((l, i) => <li key={i}>{l}</li>)}
+                    {x.more > 0 ? <li style={MUTED}>and {x.more} more</li> : null}
+                  </ul>
+                  {onTab ? <div style={{ marginTop: 6 }}><Door label={`Open ${TAB_LABELS[x.tab]}`} onClick={() => onTab(x.tab)} /></div> : null}
+                </div>
+              </details>
+            ))}
+          </>
+        )
+      })()}
     </div>
   )
 }
