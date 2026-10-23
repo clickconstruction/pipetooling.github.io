@@ -26,7 +26,7 @@ You don’t have to link the PDF itself. Link the job’s plans folder and the r
 
 ## Keep a bid away from the robots
 
-You tick **Don’t let robots shadow this bid** under the line. The bid leaves the robot queue and the coverage count. Its robot icon on the Bid Board goes grey. You untick it any time to put it back.
+You tick **Don’t let robots shadow this bid** under the line. The bid leaves the robot queue and the coverage count. Its robot icon on the Bid Board becomes a dashed ring with the word *you* in it. You untick it any time to put it back. You can also tap that mark on the board and press {{button:blue|Let the robot back in}}.
 
 ## Watch it on the Bid Board
 
@@ -35,7 +35,8 @@ The robot icon beside the bid number says how the shadow is going. Nobody has to
 - **Outline robot** means the bid is queued for the next batch. **Solid robot** means it is reading the plans and counting. **Lock badge** means it sealed its number. Nobody sees that number until you send. You click any of these for the robot's timeline.
 - **Amber robot with a ?** or a number means the robot needs something from you. It may be plans it can't open, a different plan set, or a question it asked. You click it. The sheet lists each gap with the fix. It offers {{button:gray|Copy intake address}} when the plans aren't shared. It lets you answer the robot's questions right there. Every {{button:gray|Edit bid}} on it opens the form on the field that gap is fixed on. That field is Job Plans, the GC, the service type or the due date. The GC is the general contractor. When the robot says the wrong set is on the bid, that ask sits up with the gaps. It has {{button:gray|Edit bid}} beside it. You fix the plans link, then tap {{button:blue|★ Attached — rerun}}. That one tap answers the robot. It moves the bid to the front of the next robot batch. That is the same as asking with the green robot icon.
 - **Green ✓ badge** means you sent the bid and the robot's sealed number was scored against yours. You hover for how far off it was. You click to compare counts and pricing.
-- **Muted robot** means this bid is opted out, or it's a division robots don't bid yet.
+- **Muted robot** means a division robots don't bid yet.
+- **A dashed ring with you in it** means the bid is left to you. No robot touches it. You tap it to let the robot back in.
 
 You tap the small **?** beside the **Bid #** header for the full key. On a phone it sits beside the trade chip in the pill row. The key includes the A to X grades a sent or decided bid wears.
 
@@ -46,6 +47,10 @@ The robot icon is a ring of seven segments, one per step. The steps are picked u
 You tap the icon for the sheet. The sheet draws the same seven steps as a bar. The lit step says what is inside it, like 12 of 31 sheets. Under the bar it says when the robot last spoke and which Mac it spoke from. Once ten runs have finished, it also says how long most bids take.
 
 You press {{button:blue|Read the run}} to see every signal the robot sent on this bid, oldest first. You press {{button:gray|Leave this one to me}} to take the bid off the robots. The robot stops within five minutes and sets its copy aside.
+
+After that the card shows a dashed ring with the word *you* in it. The mark means the bid is left to you. No robot touches it. You tap the mark to open its sheet. You press {{button:blue|Let the robot back in}} to put the bid back. The next round may claim it again. The tick **Don’t let robots shadow this bid** on the bid form shows the same mark.
+
+A sent bid shows the ring too while a robot works on it. A round sometimes shadows a bid you already sent. You tap the icon to compare its counts and pricing with yours. The window says where the robot is. You press {{button:gray|Read the run}} there to see every signal the robot sent.
 
 The first time you open the sheet, a short note says what the robot touches. The robot reads the plans and works on its own copy of the bid. It never edits your bid. It never sends anything to anyone. Its number stays sealed until you send yours.
 

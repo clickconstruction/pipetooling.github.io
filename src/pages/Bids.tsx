@@ -381,6 +381,7 @@ export default function Bids() {
     robotRowStateFor,
     robotProgressFor,
     setRobotComparePair,
+    setRobotLeftBid,
     focusAuditId,
     setFocusAuditId,
     offerRobotEnvelope,
@@ -1995,6 +1996,8 @@ export default function Bids() {
             onOpenNeeds: setRobotNeedsBid,
             onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),
             onOpenGrade: setRobotGradeBid,
+            // v2.5751: the left-to-you mark's tap.
+            onOpenLeft: setRobotLeftBid,
           }}
         />
       )}
