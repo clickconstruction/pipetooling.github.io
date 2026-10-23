@@ -26,7 +26,7 @@ You don’t have to link the PDF itself. Link the job’s plans folder and the r
 
 ## Keep a bid away from the robots
 
-You tick **Don’t let robots shadow this bid** under the line. The bid leaves the robot queue and the coverage count. Its robot icon on the Bid Board becomes a dashed ring with the word *you* in it. You untick it any time to put it back. You can also tap that mark on the board and press {{button:blue|Let the robot back in}}.
+You tick **Don’t let robots shadow this bid** under the line. The bid leaves the robot queue and the coverage count. The bid's robot icon on the Bid Board becomes a dashed ring with the word *you* in it. You untick it any time to put it back. You can also tap that mark on the board and press {{button:blue|Let the robot back in}}.
 
 ## Watch it on the Bid Board
 
