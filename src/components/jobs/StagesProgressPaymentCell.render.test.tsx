@@ -45,6 +45,20 @@ describe('StagesProgressPaymentCell % done input', () => {
     fireEvent.blur(input)
     expect(onPctCommit).toHaveBeenCalledWith(null)
   })
+
+  // v2.5765: a scroll over the focused box used to step the % (the browser's default for a
+  // focused number input). The wheel drops focus, so the page scrolls and the number stays.
+  it('a wheel over the focused box drops focus and leaves the number as typed', () => {
+    const onPctCommit = vi.fn()
+    const input = renderPctInput(onPctCommit)
+    input.focus()
+    expect(document.activeElement).toBe(input)
+    fireEvent.wheel(input, { deltaY: -100 })
+    expect(document.activeElement).not.toBe(input)
+    expect(input.value).toBe('70')
+    // the blur commits the unchanged 70; the mutation behind onPctCommit skips an unchanged value
+    expect(onPctCommit).toHaveBeenCalledWith(70)
+  })
 })
 
 describe('StagesProgressPaymentCell bill-sent alert (v2.3411)', () => {

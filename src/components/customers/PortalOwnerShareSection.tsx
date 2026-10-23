@@ -9,7 +9,7 @@ import OwnerShareChip from '../jobs/OwnerShareChip'
 /**
  * The portal window's "On their jobs, billed to someone else" (v2.3827, punch list #45 PR 1): the
  * jobs where this customer is the owner and the GC pays, one line per property, with the same
- * switch the Pipeline row carries. Nothing renders when there are none. Office roles only (the
+ * switch the Pipeline row carries (the eye with its words beside it, since v2.5770). Nothing renders when there are none. Office roles only (the
  * window itself is).
  */
 type Row = OwnerShareJob & { job_address: string | null; revenue: number | null; payments_made: number | null; gc: { name: string | null } | null }
@@ -59,7 +59,7 @@ export default function PortalOwnerShareSection({ customerId, customerName, role
                 · {g.length} job{g.length === 1 ? '' : 's'} · {billed.length ? `${formatUsdNoCents(total)} on open bills` : 'no bill yet'} · billed to {gcName || 'the GC'}
               </span>
             </span>
-            <OwnerShareChip job={first} invoices={invoices} state={state ?? undefined} ownerName={customerName} gcName={gcName} role={role} onChanged={() => { void load(); onChanged?.() }} />
+            <OwnerShareChip words job={first} invoices={invoices} state={state ?? undefined} ownerName={customerName} gcName={gcName} role={role} onChanged={() => { void load(); onChanged?.() }} />
           </div>
         )
       })}

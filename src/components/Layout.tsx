@@ -690,7 +690,7 @@ export default function Layout() {
           {estimatorProspectsAccess && (
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
           )}
-          {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages<MessagesBadge /></NavLink>}
+          {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}><span style={{ position: 'relative', display: 'inline-block' }}>Messages<MessagesBadge /></span></NavLink>}
           {onNavClick ? <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink> : null}
         </>
       )
@@ -793,7 +793,7 @@ export default function Layout() {
               </>
             )}
             {/* Messages in the header (residential R2): the GC office team, as `canOpenMessages` says. Its count (R7) is everyone waiting on us. */}
-            {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages<MessagesBadge /></NavLink>}
+            {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}><span style={{ position: 'relative', display: 'inline-block' }}>Messages<MessagesBadge /></span></NavLink>}
             {canShowRoadmapNav && (
               <NavLink to="/roadmap" style={linkStyle} onClick={onNavClick}>Roadmap</NavLink>
             )}

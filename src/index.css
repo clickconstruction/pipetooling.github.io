@@ -1240,8 +1240,11 @@ button:focus-visible {
      stack pushed the 258px PAID/BILLED/UNBILLED rail past the screen edge. */
   .customers-projects-bids-links {
     flex: 1 1 100%;
-    justify-content: flex-start !important;
+    align-items: flex-start !important;
     margin-top: 0.35rem;
+  }
+  .customers-projects-bids-links > span {
+    justify-content: flex-start !important;
   }
 
   /* People Pay: cost matrix date headers on two lines (Mon / 2/16) */
@@ -5372,6 +5375,57 @@ tr[data-stages-row-stamped] {
      the row paints its background once, so they run straight through (the cells set none of their own). */
   background-image: repeating-linear-gradient(135deg, transparent 0 14px, rgba(127, 127, 127, 0.07) 14px 28px);
 }
+/* The stamp itself (StagesUncollectibleStamp.tsx). Light is the stamp as drawn in v2.4792: pale pink
+   panel, red stencil, red handwriting. Dark (punch list #145): the pink panel blended to mauve grey and
+   the salmon text sat on it at 1.09:1, so the panel goes deep red, the word red-orange, the reason in
+   the row's own ink — every line 4.5:1 or better on its panel, the frame 4.7:1 on the row. */
+.stagesUncollectibleStamp {
+  position: relative;
+  margin: 0.6rem 0 0.3rem;
+  padding: 0.35rem 0.6rem 0.45rem;
+  transform: rotate(-3deg);
+  transform-origin: left center;
+  border: 3px solid #b91c1c;
+  border-radius: 4px;
+  color: var(--text-red-700);
+  background: rgba(254, 226, 226, 0.6);
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.08);
+  max-width: 100%;
+}
+.stagesUncollectibleStampWord {
+  font-family: Impact, 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 rgba(185, 28, 28, 0.25);
+}
+.stagesUncollectibleStampReason {
+  margin-top: 0.25rem;
+  font-family: 'Marker Felt', 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: var(--text-red-900);
+  white-space: normal;
+  word-break: break-word;
+}
+.stagesUncollectibleStampFacts {
+  margin-top: 0.15rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  color: var(--text-red-800);
+  text-transform: uppercase;
+}
+:root[data-theme='dark'] .stagesUncollectibleStamp {
+  border-color: #ef4444;
+  color: #ff8a65;
+  background: var(--bg-red-100);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+:root[data-theme='dark'] .stagesUncollectibleStampWord { text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45); }
+:root[data-theme='dark'] .stagesUncollectibleStampReason { color: var(--text-strong); }
 /* The § Rules window redrawn (v2.4826): the rail, the chips, the job strip, the folded rules. `data-folded` is the fold (lienRulesFold.ts); `hidden` stays the find's (helpGuideFind.ts). */
 .lienRulesSplit { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 0; }
 .lienRulesSplit[data-mobile="yes"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }

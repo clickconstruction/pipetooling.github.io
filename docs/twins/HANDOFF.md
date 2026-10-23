@@ -181,7 +181,12 @@ The working loops, in the order a day usually runs:
    holding the key: Scoreboard → Pricing robot (estimators) or Console / Settings (devs) mints a
    10-minute one-time code wrapped in a Terminal command; the command redeems it at `twin-setup`,
    which mints the key server-side and the command writes it straight into Desktop's config,
-   restarts Desktop, and puts the kickoff on the clipboard. Same door exists for the estimator
+   restarts Desktop, and puts the kickoff on the clipboard. Since v2.5742 the command brings its own
+   Node (the Mac's own 18+, else a checksummed `v24` from nodejs.org unpacked under
+   `~/Library/Application Support/ClickTooling/node`, no admin password), writes the connector by
+   absolute paths, never ends the Terminal's shell on a miss (one plain line instead, said once since
+   v2.5744), skips the restart when pasted into Claude Code, and leaves a copy of the kickoff in
+   `last-kickoff.md` in the same ClickTooling folder. Same door exists for the estimator
    robot on the Console (devs only).
 3c. **Submittal reads** (v2.3544, `docs/twins/submittals.md`) — the office queues a task from
    Bids → Submittals (*Ask the robot…*: read the fixture schedule, file a house's cut sheets

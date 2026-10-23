@@ -120,7 +120,7 @@ describe('the Lien desk shortcut (v2.4520)', () => {
 })
 
 describe('the Legal desk shortcut (v2.5750)', () => {
-  it('rides before the gavel in the same square, wears the firm\u2019s waiting count, and opens the desk', () => {
+  it('rides after the gavel in the same square, wears the firm\u2019s waiting count, and opens the desk', () => {
     const onLegal = vi.fn()
     const onLien = vi.fn()
     const view = render(
@@ -131,8 +131,8 @@ describe('the Legal desk shortcut (v2.5750)', () => {
         sectionElementId={sectionElementId}
         tail={
           <>
-            <StagesLegalDeskShortcut count={2} onOpen={onLegal} />
             <StagesLienDeskShortcut count={23} onOpen={onLien} />
+            <StagesLegalDeskShortcut count={2} onOpen={onLegal} />
           </>
         }
       />,
@@ -144,10 +144,10 @@ describe('the Legal desk shortcut (v2.5750)', () => {
     expect(scales.dataset.desk).toBe('legal')
     expect(gavel.className).toBe('stagesDeskShortcut')
     expect(gavel.dataset.desk).toBe('lien')
-    // Collections segment, then the scales, then the gavel — the Collections header's order.
+    // Collections segment, then the gavel, then the scales (v2.5763: the owner's order — the Lien desk first, the Legal desk last).
     const group = scales.parentElement!
     expect(group.className).toContain('stagesStageSegTail')
-    expect([...group.children]).toEqual([screen.getByLabelText('Jump to Collections, 7 rows'), scales, gavel])
+    expect([...group.children]).toEqual([screen.getByLabelText('Jump to Collections, 7 rows'), gavel, scales])
     fireEvent.click(scales)
     expect(onLegal).toHaveBeenCalledTimes(1)
     expect(onLien).not.toHaveBeenCalled()

@@ -44,7 +44,7 @@ export function JobsStagesJumpStrip({
   leading?: ReactNode
   /** The way back from the Recently added view, at the bar's right end. */
   trailing?: ReactNode
-  /** Drawn right beside the last stage (v2.4520: the Lien desk shortcut; v2.5750: the Legal desk's scales before it). */
+  /** Drawn right beside the last stage (v2.4520: the Lien desk shortcut; v2.5750: the Legal desk's scales, after the gavel since v2.5763). */
   tail?: ReactNode
 }) {
   const items = stageBarItems(counts, totals)
@@ -173,7 +173,7 @@ export function StagesLienDeskShortcut({ count, onOpen }: { count: number | null
 }
 
 /**
- * The Legal desk in one click (v2.5750): the scales before the gavel, in the Collections
+ * The Legal desk in one click (v2.5750): the scales after the gavel since v2.5763 (the owner's order), in the Collections
  * header's order, with the count of the firm's acts awaiting the office while there are
  * any (the Dashboard's "the law firm has N things for you"). The tab draws it only while
  * Collections has rows — the stage the desk reviews, and the one the bar drops at 0.
