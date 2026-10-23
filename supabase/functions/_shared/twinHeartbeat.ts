@@ -54,6 +54,7 @@ export type HeartbeatHeld = { bid: string; project?: string; why: string }
 
 const TEXT_KEYS = ['read', 'wrote', 'waiting_on', 'next'] as const
 const MAX_TEXT = 200
+/** The same cap as `HELD_ON_CHECK_IN` in `shadowEligibility.ts`, which writes the list. */
 const MAX_HELD = 12
 const MAX_HELD_TEXT = 120
 
