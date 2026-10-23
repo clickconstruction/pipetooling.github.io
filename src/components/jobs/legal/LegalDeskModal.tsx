@@ -34,6 +34,7 @@ import {
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
+import { deskQuestions } from '../../../lib/legal/deskQuestions'
 import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { FirmMatterView } from './LegalFirmMatterView'
@@ -79,7 +80,7 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  */
 const TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
 type Tab = (typeof TABS)[number]
-const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Their word', evidence: 'Evidence', fees_steps: 'Fees & steps' }
+const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps' }
 
 export type LegalDeskModalProps = {
   open: boolean
@@ -184,6 +185,12 @@ function SectionTitle({ children, doors }: { children: ReactNode; doors?: ReactN
   )
 }
 
+/** A table cell that is a bare `YYYY-MM-DD` (v2.5757): drawn as MM/DD/YY on one line, so a date never wraps. */
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+function isYmdCell(c: ReactNode): c is string { return typeof c === 'string' && YMD_RE.test(c) }
+function deskDate(ymd: string): string { return `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}/${ymd.slice(2, 4)}` }
+const DATE_CELL: CSSProperties = { whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }
+
 function Table({ head, rows, empty, numCols = [], subRows = [] }: { head: string[]; rows: ReactNode[][]; empty: string; numCols?: number[]; /** A full-width row under row i when set (the answers band under a notice, #41 PR 1b). */ subRows?: Array<ReactNode | null> }) {
   if (rows.length === 0) return <p style={{ ...MUTED, fontSize: '0.84rem', margin: '4px 0' }}>{empty}</p>
   return (
@@ -194,7 +201,7 @@ function Table({ head, rows, empty, numCols = [], subRows = [] }: { head: string
         </thead>
         <tbody>
           {rows.flatMap((r, ri) => [
-            <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...TD, ...(numCols.includes(ci) ? NUM : null) }}>{c}</td>)}</tr>,
+            <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...TD, ...(numCols.includes(ci) ? NUM : null), ...(isYmdCell(c) ? DATE_CELL : null) }}>{isYmdCell(c) ? deskDate(c) : c}</td>)}</tr>,
             ...(subRows[ri] ? [<tr key={`${ri}-sub`}><td colSpan={head.length} style={{ ...TD, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
           ])}
         </tbody>
@@ -690,16 +697,11 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
                 {packet && w ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '12px 0 0' }}>
-                    {([
-                      { label: 'Theory', value: packet.theory.label, sub: packet.theory.basis },
-                      { label: 'If every dollar lands', value: formatLegalMoney(w.balance), sub: `less ${Math.round(w.contingencyPct * 100)}% (${formatLegalMoney(w.fee)}) and ${formatLegalMoney(w.filingCost)} costs` },
-                      { label: 'Click keeps', value: formatLegalMoney(w.net), sub: w.verdict, tone: w.verdict === 'worth it' ? 'ok' : w.verdict === 'marginal' ? 'warn' : 'stop' },
-                      { label: 'Against pursuing', value: w.flags.length ? w.flags.join(' · ') : 'nothing on record', sub: w.flags.length ? '' : 'no dispute, no broken promise, no “no money” note' },
-                    ] as Array<{ label: string; value: string; sub: string; tone?: Tone }>).map((c) => (
+                    {deskQuestions(packet).map((c) => (
                       <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
                         <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
-                        <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.value}{c.tone ? pill(c.sub, c.tone) : null}</div>
-                        {!c.tone && c.sub ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.sub}</div> : null}
+                        <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.answer}{c.chip ? pill(c.chip.text, c.chip.tone) : null}</div>
+                        {c.why ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.why}</div> : null}
                       </div>
                     ))}
                   </div>

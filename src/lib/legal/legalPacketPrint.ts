@@ -5,6 +5,7 @@
  * surfaces pin light — every color is literal on purpose.
  */
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
+import { canWeSue, whatCouldGoWrong, whatsLeftForUs } from './deskQuestions'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
@@ -49,6 +50,9 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const gapItems = packet.gaps.map((g) => `<li class="${g.severity}"><b>${esc(g.label)}</b> — ${esc(g.detail)}</li>`).join('')
   const exhibitItems = packet.exhibits.map((x) => `<li><b>${x.letter}</b> ${esc(x.title)} <span class="muted">(${x.count})</span></li>`).join('')
   const w = packet.worth
+  const sue = canWeSue(packet)
+  const left = whatsLeftForUs(packet)
+  const wrong = whatCouldGoWrong(packet)
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>Account packet · ${esc(a.payer.name)}</title>
 <style>
@@ -78,8 +82,9 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
 </div>
 <div class="totals">
   <div><span class="muted">Balance</span><b>${formatLegalMoney(a.totals.balance)}</b></div>
-  <div><span class="muted">Theory</span><b style="font-size:13px">${esc(packet.theory.label)}</b><span class="muted">${esc(packet.theory.basis)}</span></div>
-  <div><span class="muted">After ${Math.round(w.contingencyPct * 100)}% and ${formatLegalMoney(w.filingCost)} costs</span><b>${formatLegalMoney(w.net)}</b><span class="muted">${esc(w.verdict)}${w.flags.length ? ` · ${esc(w.flags.join(', '))}` : ''}</span></div>
+  <div><span class="muted">Can we sue?</span><b style="font-size:13px">${esc(sue.answer)}</b><span class="muted">${esc(sue.why)}</span></div>
+  <div><span class="muted">What's left for us?</span><b>${formatLegalMoney(w.net)}</b><span class="muted">${esc(w.verdict)} · ${esc(left.why)}</span></div>
+  <div><span class="muted">What could go wrong?</span><b style="font-size:13px">${esc(wrong.answer)}</b><span class="muted">${esc(wrong.why)}</span></div>
   <div><span class="muted">Oldest</span><b>${a.totals.oldestDays == null ? '—' : `${a.totals.oldestDays}d`}</b></div>
   <div><span class="muted">Terms</span><b style="font-size:12px">${esc(a.paymentTerms)}</b></div>
 </div>

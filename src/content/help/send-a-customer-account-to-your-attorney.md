@@ -24,14 +24,16 @@ On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|�
 
 An account is the **payer**. The payer is the GC when one pays, otherwise the customer. An account spans every Collections job that payer owes on. For each account, the desk says these at the top:
 
-- **Theory** is what an attorney could plead: {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}} or {{chip:red|None yet}}. The theory is the legal ground an attorney could sue on. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid.
-- **Click keeps** is the balance less the firm's contingency and a filing cost. The contingency is the firm's share of what it recovers. Click keeps comes with a verdict: *worth it*, *marginal* or *not worth it*.
+- **Can we sue?** answers first. It reads *Yes*, *Yes, on 2 of 3 jobs*, *Only on the lien* or *Not yet*, and the line under it says why. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid.
+- **How much?** is what they owe, on how many jobs, and how old the oldest bill is.
+- **What's left for us?** is the balance less the firm's contingency and a filing cost. The contingency is the firm's share of what it recovers. It comes with a verdict: *worth it*, *marginal* or *not worth it*.
+- **What could go wrong?** names what hurts the case. A note that they cannot pay, a dispute, broken promises, or a payer that is a name only.
 - **Before this goes to an attorney** lists {{chip:red|fix}} items an attorney asks for first. The list also shows {{chip:yellow|note}} items worth knowing. Most items have a button to the surface that owns the record.
 
-Then come the tabs: ***Narrative · Account · Paper · Their word · Evidence · Fees & steps***. **Narrative** is your own account of the matter, which the firm reads first. The tabs are built from the same records the firm's portal is built from. You fix what the gap list says. You tick or untick what the firm may read on **Their word**, and come back. The firm sees that tab as **Record of contact**. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
+Then come the tabs: ***Narrative · Account · Paper · Record of contact · Evidence · Fees & steps***. **Narrative** is your own account of the matter, which the firm reads first. The tabs are built from the same records the firm's portal is built from. You fix what the gap list says. You hold back what the firm should not read on **Record of contact**, and come back. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
 
 :::example Not every account should go
-Surf Thru Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads {{chip:red|None yet}} and **Click keeps −$182 · not worth it** — the firm's third and a filing cost eat more than the balance. {{button:outline|Write down…}} is the honest exit for that one; the firm never needs to see it.
+Surf Thru Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads **Can we sue? Not yet** and **What's left for us? −$182 · not worth it**. The firm's third and a filing cost eat more than the balance. {{button:outline|Write down…}} is the honest exit for that one; the firm never needs to see it.
 :::
 
 ## 4. Set the firm up once
