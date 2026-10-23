@@ -1,6 +1,6 @@
 ---
 name: "Needs you in Quickfill — the office-set lines the Dashboard has and Quickfill does not, and a fill-in deck for the ones an assistant clears with a few fields"
-number: 145
+number: 146
 group: gated
 status: the owner's yes 2026-10-23, all three calls as recommended; PR 1 (v2.5771, the shared gates, hook and door table) PR 2 (v2.5774, the deck shell with lost bids) and PR 3 (v2.5775, vehicles) built the same day; PRs 4 and 5 next
 summary: >
