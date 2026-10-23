@@ -2,6 +2,8 @@ import { memo } from 'react'
 import type { Database } from '../../types/database'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
+import { mercuryChargeDayPhrase } from '../../lib/mercurySwipeTime'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatBankingDate, formatUsd } from './bankingMercuryDragSortLedger'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
@@ -37,6 +39,8 @@ export type AccountingApprovalCardProps = {
   attributedPersonName?: string | null
   /** True when the tx already has a hand-set attribution the rule will keep. */
   attributionAlreadySet?: boolean
+  /** The company day (`todayYmdInAppTz()`), for the day the card was swiped (v2.5804); tests pin it. */
+  todayYmd?: string
 }
 
 export const AccountingApprovalCard = memo(function AccountingApprovalCard({
@@ -51,11 +55,14 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
   onOpenEditRule,
   attributedPersonName = null,
   attributionAlreadySet = false,
+  todayYmd,
 }: AccountingApprovalCardProps) {
   const debitCardId = p.tx ? mercuryDebitCardIdFromRaw(p.tx.raw) : null
   const debitCardLabel = debitCardId
     ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)
     : null
+  // The day the charge was made (the swipe), which every pending card has before it posts.
+  const chargeDayPhrase = p.tx ? mercuryChargeDayPhrase(p.tx, todayYmd ?? todayYmdInAppTz()) : null
 
   return (
     <div
@@ -133,9 +140,19 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
               )
             ) : null}
           </div>
-          {debitCardLabel ? (
+          {debitCardLabel || chargeDayPhrase ? (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', marginTop: 2 }}>
-              Card: {debitCardLabel}
+              {debitCardLabel ? <span style={{ whiteSpace: 'nowrap' }}>Card: {debitCardLabel}</span> : null}
+              {debitCardLabel && chargeDayPhrase ? ' · ' : null}
+              {chargeDayPhrase ? (
+                <span
+                  data-testid="accounting-approval-charge-day"
+                  title="The day the charge was made"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {chargeDayPhrase}
+                </span>
+              ) : null}
             </div>
           ) : null}
           {p.tx ? (

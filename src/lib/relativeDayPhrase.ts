@@ -57,3 +57,42 @@ export function formatRelativeDayPhrase(
   if (n > 1) return `${n} days ago`
   return `in ${-n} days`
 }
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+
+/** The weekday name of a `YYYY-MM-DD` (a day is a day: pure arithmetic, no zone), or null when malformed. */
+export function weekdayNameFromYmd(ymd: string): string | null {
+  const ms = ymdToUtcNoonMs(ymd)
+  if (ms == null) return null
+  return WEEKDAY_NAMES[new Date(ms).getUTCDay()] ?? null
+}
+
+/** `10/20/26` for `2026-10-20`: month and day without leading zeros, a two-digit year. Null when malformed. */
+export function formatShortUsDateFromYmd(ymd: string): string | null {
+  const m = YMD_RE.exec(ymd)
+  if (!m) return null
+  return `${parseInt(m[2] ?? '', 10)}/${parseInt(m[3] ?? '', 10)}/${(m[1] ?? '').slice(2)}`
+}
+
+/**
+ * The day in the owner's shape (Banking → Accounting approval cards, v2.5804):
+ * the weekday, how long ago, and the short date in parentheses.
+ *
+ * - today → `Today (10/23/26)`
+ * - one day → `Yesterday (10/22/26)` / `Tomorrow (10/24/26)`
+ * - further → `Tuesday · 3 days ago (10/20/26)` / `Monday · in 3 days (10/26/26)`
+ *
+ * The count stays in days however far back (no weeks), the same as
+ * `formatRelativeDayPhrase`. Null when either input is not a `YYYY-MM-DD`.
+ */
+export function formatWeekdayAgoPhrase(dayYmd: string, todayYmd: string): string | null {
+  const relative = formatRelativeDayPhrase(dayYmd, todayYmd)
+  const weekday = weekdayNameFromYmd(dayYmd)
+  const short = formatShortUsDateFromYmd(dayYmd)
+  if (relative == null || weekday == null || short == null) return null
+  const n = relativeDayOffset(dayYmd, todayYmd)
+  if (n != null && Math.abs(n) <= 1) {
+    return `${relative.charAt(0).toUpperCase()}${relative.slice(1)} (${short})`
+  }
+  return `${weekday} · ${relative} (${short})`
+}

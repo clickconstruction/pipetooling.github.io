@@ -5,6 +5,7 @@
 // day's jobs reads the swipe. Lists and floors that count posted money stay on `posted_at`. Pure.
 
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { formatWeekdayAgoPhrase } from './relativeDayPhrase'
 
 /** ISO with a T, whole seconds, an optional fraction, and Z or an offset: the server's own test. */
 const ISO_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/
@@ -42,4 +43,45 @@ export function mercuryPostedOnALaterDay(raw: unknown, postedAt: string | null |
   const swipeDay = mercurySwipeDayYmd(raw, postedAt)
   const postedDay = postedAt ? calendarYmdInAppTzFromIso(postedAt) : ''
   return Boolean(swipeDay && postedDay && postedDay !== swipeDay)
+}
+
+/** The columns an approval card reads for the charge's day. */
+export type MercuryChargeDayRow = {
+  raw: unknown
+  created_at: string | null | undefined
+  posted_at: string | null | undefined
+  source?: string | null
+}
+
+/**
+ * The instant the charge was made, for a row that may have been read without `raw`
+ * (`MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS` leaves it out): `raw.createdAt` when it is
+ * there, else the row's `created_at` (the sync stores Mercury's own `createdAt` in it, so a
+ * synced charge keeps its swipe day before it posts), else `posted_at`. A manual row's
+ * `created_at` is the upload, so it reads `posted_at` first. Null when nothing reads.
+ */
+export function mercuryChargeAtIso(tx: MercuryChargeDayRow): string | null {
+  const fromRaw = mercurySwipeAtIso(tx.raw, null)
+  if (fromRaw) return fromRaw
+  const order = tx.source === 'manual' ? [tx.posted_at, tx.created_at] : [tx.created_at, tx.posted_at]
+  for (const at of order) {
+    if (at && calendarYmdInAppTzFromIso(at)) return at
+  }
+  return null
+}
+
+/** The company day of the charge, or null when no time reads. */
+export function mercuryChargeDayYmd(tx: MercuryChargeDayRow): string | null {
+  const at = mercuryChargeAtIso(tx)
+  return at ? calendarYmdInAppTzFromIso(at) || null : null
+}
+
+/**
+ * The day in the owner's shape for an approval card (v2.5804): `Tuesday · 3 days ago (10/20/26)`,
+ * `Today (10/23/26)`, `Yesterday (10/22/26)`. `todayYmd` is the company day
+ * (`todayYmdInAppTz()`), never the browser's. Null when no time reads.
+ */
+export function mercuryChargeDayPhrase(tx: MercuryChargeDayRow, todayYmd: string): string | null {
+  const day = mercuryChargeDayYmd(tx)
+  return day ? formatWeekdayAgoPhrase(day, todayYmd) : null
 }
