@@ -73,6 +73,9 @@ const h1 = (n: number): string => `${(Math.round(n * 10) / 10).toLocaleString('e
 const d1 = (n: number): string => (Math.round(n * 10) / 10).toLocaleString('en-US')
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+/** The chart's two line colours, the packet's own red and blue. A printed page has no theme, so its colours are literal, as on the other print documents. */
+const PACKET_COST_RED = '#dc2626'
+const PACKET_EARNED_BLUE = '#2563eb'
 const isYmd = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}/.test(s)
 /** "Oct 7" from a YYYY-MM-DD; the raw string when it is not one. */
 export const jobCostsPacketDayLabel = (ymd: string): string => (isYmd(ymd) ? `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}` : ymd)
@@ -223,20 +226,20 @@ export function jobCostsPacketChartSvg(rows: readonly JobBurnCumulativeRow[], pr
   const lastEarned = [...rows].reverse().find((r) => r.earned != null)
   const g: string[] = []
   g.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Cost to date against value earned" style="display:block;font:9.5px system-ui,sans-serif" data-testid="packet-chart">`)
-  for (const v of ticks) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line-2)" stroke-dasharray="2 3"/><text x="${padL - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" fill="var(--muted)">${kFmt(v)}</text>`)
-  for (const ymd of xt) g.push(`<text x="${x(ymd).toFixed(1)}" y="${H - 8}" text-anchor="middle" fill="var(--muted)">${jobCostsPacketDayLabel(ymd)}</text>`)
-  g.push(`<line x1="${padL}" x2="${W - padR}" y1="${(padT + innerH).toFixed(1)}" y2="${(padT + innerH).toFixed(1)}" stroke="var(--line)"/>`)
-  if (priceUsd != null && priceUsd > 0) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(priceUsd).toFixed(1)}" y2="${y(priceUsd).toFixed(1)}" stroke="var(--muted)" stroke-dasharray="2 6"/><text x="${padL + 4}" y="${(y(priceUsd) - 4).toFixed(1)}" fill="var(--muted)">price ${usd0(priceUsd)}</text>`)
-  if (bidFigure) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(bidFigure.usd).toFixed(1)}" y2="${y(bidFigure.usd).toFixed(1)}" stroke="var(--muted)" stroke-dasharray="6 4" data-testid="packet-chart-bid"/><text x="${W - padR - 4}" y="${(y(bidFigure.usd) - 4).toFixed(1)}" text-anchor="end" fill="var(--muted)">${esc(bidFigure.label)} ${usd0(bidFigure.usd)}</text>`)
-  if (t(todayYmd) >= t0) g.push(`<line x1="${x(todayYmd).toFixed(1)}" x2="${x(todayYmd).toFixed(1)}" y1="${padT}" y2="${(padT + innerH).toFixed(1)}" stroke="var(--line)"/><text x="${(x(todayYmd) - 3).toFixed(1)}" y="${padT + 8}" text-anchor="end" fill="var(--muted)">today</text>`)
-  if (earnedD) g.push(`<path d="${earnedD}" fill="none" stroke="var(--blue)" stroke-width="2.2" data-testid="packet-chart-earned"/>`)
-  if (actualD) g.push(`<path d="${actualD}" fill="none" stroke="var(--red)" stroke-width="2.2" data-testid="packet-chart-cost"/>`)
-  if (forecastCount > 1) g.push(`<path d="${forecastD}" fill="none" stroke="var(--red)" stroke-width="1.8" stroke-dasharray="2 4" data-testid="packet-chart-forecast"/>`)
-  if (last?.actual != null) g.push(`<circle cx="${x(last.ymd).toFixed(1)}" cy="${y(last.actual).toFixed(1)}" r="3" fill="var(--red)"/>`)
+  for (const v of ticks) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#e5e7eb" stroke-dasharray="2 3"/><text x="${padL - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" fill="#6b7280">${kFmt(v)}</text>`)
+  for (const ymd of xt) g.push(`<text x="${x(ymd).toFixed(1)}" y="${H - 8}" text-anchor="middle" fill="#6b7280">${jobCostsPacketDayLabel(ymd)}</text>`)
+  g.push(`<line x1="${padL}" x2="${W - padR}" y1="${(padT + innerH).toFixed(1)}" y2="${(padT + innerH).toFixed(1)}" stroke="#d1d5db"/>`)
+  if (priceUsd != null && priceUsd > 0) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(priceUsd).toFixed(1)}" y2="${y(priceUsd).toFixed(1)}" stroke="#6b7280" stroke-dasharray="2 6"/><text x="${padL + 4}" y="${(y(priceUsd) - 4).toFixed(1)}" fill="#6b7280">price ${usd0(priceUsd)}</text>`)
+  if (bidFigure) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(bidFigure.usd).toFixed(1)}" y2="${y(bidFigure.usd).toFixed(1)}" stroke="#6b7280" stroke-dasharray="6 4" data-testid="packet-chart-bid"/><text x="${W - padR - 4}" y="${(y(bidFigure.usd) - 4).toFixed(1)}" text-anchor="end" fill="#6b7280">${esc(bidFigure.label)} ${usd0(bidFigure.usd)}</text>`)
+  if (t(todayYmd) >= t0) g.push(`<line x1="${x(todayYmd).toFixed(1)}" x2="${x(todayYmd).toFixed(1)}" y1="${padT}" y2="${(padT + innerH).toFixed(1)}" stroke="#d1d5db"/><text x="${(x(todayYmd) - 3).toFixed(1)}" y="${padT + 8}" text-anchor="end" fill="#6b7280">today</text>`)
+  if (earnedD) g.push(`<path d="${earnedD}" fill="none" stroke="#2563eb" stroke-width="2.2" data-testid="packet-chart-earned"/>`)
+  if (actualD) g.push(`<path d="${actualD}" fill="none" stroke="#dc2626" stroke-width="2.2" data-testid="packet-chart-cost"/>`)
+  if (forecastCount > 1) g.push(`<path d="${forecastD}" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="2 4" data-testid="packet-chart-forecast"/>`)
+  if (last?.actual != null) g.push(`<circle cx="${x(last.ymd).toFixed(1)}" cy="${y(last.actual).toFixed(1)}" r="3" fill="#dc2626"/>`)
   // The two end labels: the higher line's label sits above its end, the lower one's below, so they never collide.
   const labels: Array<{ v: number; color: string; text: string; x: number }> = []
-  if (last?.actual != null) labels.push({ v: last.actual, color: 'var(--red)', text: `cost to date ${usd0(last.actual)}`, x: x(last.ymd) })
-  if (lastEarned?.earned != null) labels.push({ v: lastEarned.earned, color: 'var(--blue)', text: `value earned ${usd0(lastEarned.earned)}`, x: x(lastEarned.ymd) })
+  if (last?.actual != null) labels.push({ v: last.actual, color: PACKET_COST_RED, text: `cost to date ${usd0(last.actual)}`, x: x(last.ymd) })
+  if (lastEarned?.earned != null) labels.push({ v: lastEarned.earned, color: PACKET_EARNED_BLUE, text: `value earned ${usd0(lastEarned.earned)}`, x: x(lastEarned.ymd) })
   labels.sort((a, b) => b.v - a.v)
   labels.forEach((l, i) => g.push(`<text x="${(l.x - 6).toFixed(1)}" y="${(y(l.v) + (i === 0 ? -6 : 12)).toFixed(1)}" text-anchor="end" fill="${l.color}" font-weight="600">${l.text}</text>`))
   g.push('</svg>')
@@ -260,21 +263,21 @@ export function jobCostsPacketDailySvg(days: readonly JobBurnDay[]): string {
   const y = (v: number): number => padT + innerH - (v / maxV) * innerH
   const g: string[] = [`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Daily spend, last 14 working days" style="display:block;font:9px system-ui,sans-serif" data-testid="packet-daily">`]
   const step = maxV > 4000 ? 2000 : maxV > 1500 ? 500 : maxV > 400 ? 200 : 100
-  for (let v = 0; v <= maxV; v += step) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line-2)" stroke-dasharray="2 3"/><text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" fill="var(--muted)">${v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`}</text>`)
+  for (let v = 0; v <= maxV; v += step) g.push(`<line x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#e5e7eb" stroke-dasharray="2 3"/><text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" fill="#6b7280">${v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`}</text>`)
   days.forEach((d, i) => {
     const cx = padL + slot * i + slot / 2
     const x0 = (cx - barW / 2).toFixed(1)
     let top = 0
-    for (const [key, color] of [['team', 'var(--red)'], ['sub', 'var(--violet)'], ['parts', 'var(--amber)']] as const) {
+    for (const [key, color] of [['team', '#dc2626'], ['sub', '#a855f7'], ['parts', '#f59e0b']] as const) {
       const v = d[key]
       if (v <= 0) continue
       g.push(`<rect x="${x0}" y="${y(top + v).toFixed(1)}" width="${barW.toFixed(1)}" height="${(y(top) - y(top + v)).toFixed(1)}" fill="${color}"/>`)
       top += v
     }
-    if (i % 2 === 0) g.push(`<text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle" fill="var(--muted)">${jobCostsPacketDayLabel(d.ymd)}</text>`)
+    if (i % 2 === 0) g.push(`<text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle" fill="#6b7280">${jobCostsPacketDayLabel(d.ymd)}</text>`)
   })
   const avg = days.map((d, i) => `${i === 0 ? 'M' : 'L'}${(padL + slot * i + slot / 2).toFixed(1)} ${y(d.avg7).toFixed(1)}`).join(' ')
-  g.push(`<path d="${avg}" fill="none" stroke="var(--muted)" stroke-width="2"/>`)
+  g.push(`<path d="${avg}" fill="none" stroke="#6b7280" stroke-width="2"/>`)
   g.push('</svg>')
   return g.join('')
 }
@@ -497,74 +500,74 @@ ${pageFoot(4)}
 <title>${esc(title)} · Job costs</title>
 <style>
 @page { size: letter; margin: 0.5in 0.5in 0.6in; @bottom-left { content: "${esc(stamp).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"; font: 8px -apple-system, "Segoe UI", system-ui, sans-serif; color: #6b7280; } @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8px -apple-system, "Segoe UI", system-ui, sans-serif; color: #6b7280; } }
-:root { color-scheme: light; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #ffffff; --subtle: #f9fafb; --page: #e5e7eb; --green: #15803d; --green-line: #86efac; --green-tint: #dcfce7; --red: #dc2626; --red-line: #fca5a5; --red-tint: #fee2e2; --amber: #f59e0b; --amber-tint: #fef3c7; --violet: #a855f7; --blue: #2563eb; --chip: #d97706; }
+:root { color-scheme: light; }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--page); color: var(--ink); font: 10.5px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 16px 0 40px; }
-.sheet { width: 8.5in; min-height: 11in; padding: 0.5in; margin: 0 auto 16px; background: var(--surface); box-shadow: 0 2px 10px rgba(0,0,0,.12); display: flex; flex-direction: column; position: relative; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 8px; }
-.head.slim { border-bottom: 1px solid var(--line); padding-bottom: 5px; margin-bottom: 6px; font-size: 10px; align-items: baseline; }
-.co { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+body { background: #e5e7eb; color: #111827; font: 10.5px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 16px 0 40px; }
+.sheet { width: 8.5in; min-height: 11in; padding: 0.5in; margin: 0 auto 16px; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,.12); display: flex; flex-direction: column; position: relative; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid #111827; padding-bottom: 8px; margin-bottom: 8px; }
+.head.slim { border-bottom: 1px solid #d1d5db; padding-bottom: 5px; margin-bottom: 6px; font-size: 10px; align-items: baseline; }
+.co { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; }
 h1 { font-size: 20px; margin: 2px 0 2px; line-height: 1.15; }
 .idline { font-size: 11px; margin-top: 2px; }
-.chip { display: inline-block; background: var(--chip); color: #fff; font-weight: 700; font-size: 10px; letter-spacing: .04em; border-radius: 4px; padding: 1px 6px; margin-right: 4px; vertical-align: 1px; }
-.stamp { text-align: right; font-size: 10px; color: var(--ink-2); white-space: nowrap; line-height: 1.45; }
-.stamp .kicker { font-size: 13px; font-weight: 700; color: var(--ink); }
-.muted { color: var(--muted); font-weight: 400; }
+.chip { display: inline-block; background: #d97706; color: #fff; font-weight: 700; font-size: 10px; letter-spacing: .04em; border-radius: 4px; padding: 1px 6px; margin-right: 4px; vertical-align: 1px; }
+.stamp { text-align: right; font-size: 10px; color: #374151; white-space: nowrap; line-height: 1.45; }
+.stamp .kicker { font-size: 13px; font-weight: 700; color: #111827; }
+.muted { color: #6b7280; font-weight: 400; }
 .small { font-size: 9.5px; margin: 0 0 4px; }
 .pctline { font-size: 11px; margin: 2px 0 8px; }
-.hero { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
-.hero.good { border-color: var(--green-line); background: var(--green-tint); }
-.hero.bad { border-color: var(--red-line); background: var(--red-tint); }
-.hero.good .big { color: var(--green); }
-.hero.bad .big { color: var(--red); }
-.hero.quiet .big { color: var(--muted); }
-.lab { font-size: 8.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hero { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
+.hero.good { border-color: #86efac; background: #dcfce7; }
+.hero.bad { border-color: #fca5a5; background: #fee2e2; }
+.hero.good .big { color: #15803d; }
+.hero.bad .big { color: #dc2626; }
+.hero.quiet .big { color: #6b7280; }
+.lab { font-size: 8.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
 .big { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 1px; }
-.sub { font-size: 10px; color: var(--ink-2); margin-top: 2px; }
+.sub { font-size: 10px; color: #374151; margin-top: 2px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
-.tile { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.tile { border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 10px; }
 .tile .big { font-size: 17px; }
-.chartbox { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px 6px; margin-bottom: 6px; }
+.chartbox { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px 6px; margin-bottom: 6px; }
 .chartbox .ttl { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
 .chartbox .ttl .muted { font-size: 9.5px; }
-.legend { display: flex; gap: 14px; font-size: 9.5px; color: var(--muted); margin-top: 2px; flex-wrap: wrap; }
+.legend { display: flex; gap: 14px; font-size: 9.5px; color: #6b7280; margin-top: 2px; flex-wrap: wrap; }
 .sw { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
-.sw.red { background: var(--red); } .sw.blue { background: var(--blue); } .sw.gray { background: var(--muted); } .sw.violet { background: var(--violet); } .sw.amber { background: var(--amber); }
+.sw.red { background: #dc2626; } .sw.blue { background: #2563eb; } .sw.gray { background: #6b7280; } .sw.violet { background: #a855f7; } .sw.amber { background: #f59e0b; }
 .sw.dashed { height: 0; border-top: 2px dashed currentColor; background: none; }
-.sw.red.dashed { color: var(--red); } .sw.gray.dashed { color: var(--muted); }
+.sw.red.dashed { color: #dc2626; } .sw.gray.dashed { color: #6b7280; }
 h2 { font-size: 12px; margin: 10px 0 4px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; page-break-after: avoid; }
 h2 .muted { font-size: 9.5px; font-weight: 400; text-align: right; max-width: 70%; }
 table { width: 100%; border-collapse: collapse; font-size: 10px; page-break-inside: auto; }
 thead { display: table-header-group; }
 tr { page-break-inside: avoid; }
-th { text-align: left; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding: 3px 6px; font-weight: 700; }
-td { padding: 3px 6px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+th { text-align: left; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #d1d5db; padding: 3px 6px; font-weight: 700; }
+td { padding: 3px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
 th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-tr.band td { background: var(--subtle); }
+tr.band td { background: #f9fafb; }
 tr.strong td { font-weight: 700; }
-tr.good td { background: var(--green-tint); }
-tr.bad td { background: var(--red-tint); }
+tr.good td { background: #dcfce7; }
+tr.bad td { background: #fee2e2; }
 .sections td:first-child { white-space: nowrap; }
 .sections .muted { font-size: 9px; }
-.money .bar { display: inline-block; height: 6px; background: var(--blue); opacity: .7; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+.money .bar { display: inline-block; height: 6px; background: #2563eb; opacity: .7; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
 .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-top: 8px; }
 .two table + table, .two table + p, .two p + p, .two p + table { margin-top: 10px; }
 .gap { margin-top: 10px; }
 .strip { border-radius: 8px; padding: 7px 10px; font-size: 10.5px; display: grid; gap: 3px; }
-.strip.none { border: 1px solid var(--amber); background: var(--amber-tint); }
-.strip.bid { border: 1px solid var(--green-line); background: var(--green-tint); }
+.strip.none { border: 1px solid #f59e0b; background: #fef3c7; }
+.strip.bid { border: 1px solid #86efac; background: #dcfce7; }
 .strip .facts { display: flex; gap: 14px; flex-wrap: wrap; }
 .pace td:first-child { width: 72%; }
-.notes { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px 2px; }
-.notes div { height: 20px; border-bottom: 1px dotted var(--line); }
+.notes { border: 1px solid #d1d5db; border-radius: 8px; padding: 6px 10px 2px; }
+.notes div { height: 20px; border-bottom: 1px dotted #d1d5db; }
 .notes div:last-child { border-bottom: 0; }
-.foot { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); font-size: 8.5px; color: var(--muted); display: flex; justify-content: space-between; }
+.foot { margin-top: auto; padding-top: 8px; border-top: 1px solid #d1d5db; font-size: 8.5px; color: #6b7280; display: flex; justify-content: space-between; }
 .byday td.date { white-space: nowrap; }
 .byday th:last-child, .byday td.note { min-width: 150px; }
 .byday td .muted { font-size: 8.5px; }
 .byday td.strongcell { font-weight: 700; }
-.byday td.note { font-size: 9px; color: var(--ink-2); }
+.byday td.note { font-size: 9px; color: #374151; }
 @media print {
   body { background: none; padding: 0; }
   .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; page-break-after: always; display: block; }
