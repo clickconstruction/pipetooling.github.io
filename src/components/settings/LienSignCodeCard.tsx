@@ -17,7 +17,7 @@ const INPUT: CSSProperties = { font: 'inherit', fontSize: '1.05rem', letterSpaci
 const GUIDE_HREF = '/help?g=send-lien-notices-from-the-lien-desk'
 
 /**
- * Settings → Your account → Your signing code (v2.5788, punch list #148, PR 1). A master or dev
+ * Settings → Your account → Your signing code (v2.5788, punch list #150, PR 1). A master or dev
  * sets a code only he knows, four to six digits; on the Lien desk he types it on anyone's screen
  * to put his name on a notice (PR 2). The database keeps a salted hash and checks the code itself
  * (`set_lien_sign_code`, `lien_sign_code_status`, `clear_lien_sign_code`); the card never sees

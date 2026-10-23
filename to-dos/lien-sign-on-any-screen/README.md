@@ -1,6 +1,6 @@
 ---
 name: "Lien desk: a dev's Approve opens a sign block that signs with the dev's name over the master's line — hold the mark to the job's master and give the dev's screen a door"
-number: 148
+number: 150
 group: gated
 status: building claude/nifty-jackson-b1dfaf 2026-10-23, the owner chose C with a code he sets himself; PR 1 the code in Settings, PR 2 the desk field
 summary: >
@@ -20,7 +20,7 @@ ver: proposed
 opinion: A then B. A typed name on someone else's device is the office placing his name unless he proves it is him, and if he has his phone to prove it he has his phone to sign on. Fix the screen so it never shows the wrong name, and send him the notice instead of the laptop.
 ---
 
-# Lien desk: sign on any screen? (#148)
+# Lien desk: sign on any screen? (#150)
 
 ## The owner's answer (2026-10-23)
 

@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- Lien desk signing by code (v2.5788, punch list #148, PR 1 of 2). The owner, 2026-10-23: a dev who presses
+-- Lien desk signing by code (v2.5788, punch list #150, PR 1 of 2). The owner, 2026-10-23: a dev who presses
 -- Approve on the desk opens the notice with the master's line under it and no way to act but to carry the
 -- laptop to him. The master should be able to put his name on the notice on any screen, proving it is him
 -- with a short code only he knows, set by himself in Settings → Your account (4 to 6 digits), never sent to

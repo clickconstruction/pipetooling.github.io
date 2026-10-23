@@ -168,7 +168,7 @@ export async function recordLienPenSignature(args: RecordLienPenSignatureArgs): 
 }
 
 /**
- * The leader's signing code (v2.5788, punch list #148): a 4-to-6-digit code he sets himself under
+ * The leader's signing code (v2.5788, punch list #150): a 4-to-6-digit code he sets himself under
  * Settings → Your account and types on any screen to put his name on a notice. The database holds only
  * a salted hash and checks it inside `sign_lien_desk_item_with_code` (migration 20261023150000); the
  * office never sees the code. Five wrong codes lock it for fifteen minutes. The answer says why a
