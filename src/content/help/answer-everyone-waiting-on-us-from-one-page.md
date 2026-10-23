@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers, answer all, one at a time, desk, no reply needed, skip for now, next
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents
 order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
@@ -58,6 +58,14 @@ The page's address keeps the pill. A link to [Messages for customers](/messages?
 - **Estimates** counts the estimates sent this week, how many the customer opened and how many they accepted. The line under it says how many were opened and then went quiet. Press it to open Waiting on them.
 
 Under **Mine** the strip still shows the office's numbers, not only yours. It says so.
+
+## Jump to a lane
+
+A bar sits under **The last 7 days**. It names each lane with its count: **New**, **Needs a reply**, **We owe them**, **Waiting on them** and **Went out**. **Needs you** joins the bar while it has rows. The counts are the same numbers the lane headings show.
+
+The bar stays at the top while you scroll. The lane you are reading is lit in its color.
+
+Press a lane on the bar to go to it. On a phone the bar is one line of names and counts. A press there opens the folded lists first, then goes to the lane.
 
 ## Answer everyone, one at a time
 

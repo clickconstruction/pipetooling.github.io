@@ -95,6 +95,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
   return (
     <section aria-label="Follow up: who is waiting on us" style={{ display: 'grid', gap: '0.9rem' }}>
       <Section
+        id="new-lane"
         title={`New (${queue.newLane.length})`}
         note="What came in and still needs sorting. Its row opens the thread, with the sort at the top."
         action={
@@ -112,13 +113,14 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         )}
       </Section>
       {youCount > 0 && (
-        <Section title={`Needs you (${youCount})`} note={[NEEDS_YOU_NOTE.back, NEEDS_YOU_NOTE.portal, ...(renderClauses ? [NEEDS_YOU_NOTE.clause] : [])].join(' ')}>
+        <Section id="needs-you" title={`Needs you (${youCount})`} note={[NEEDS_YOU_NOTE.back, NEEDS_YOU_NOTE.portal, ...(renderClauses ? [NEEDS_YOU_NOTE.clause] : [])].join(' ')}>
           {back.map((r) => byId.get(r.contactId) && <BackRowView key={r.noteId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
           {queue.clauses.length > 0 && renderClauses?.(queue.clauses)}
           {portal.map((r, i) => byId.get(r.contactId) && <PortalRowView key={`${r.contactId}-${i}`} row={r} contact={byId.get(r.contactId)!} {...props} />)}
         </Section>
       )}
       <Section
+        id="needs-reply"
         title={`Needs a reply (${queue.needsReply.length})`}
         note="Texts, voicemails, missed calls and emails nobody has answered. The one waiting longest is first."
         action={
@@ -135,7 +137,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
           queue.needsReply.map((r) => byId.get(r.contactId) && <ReplyRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
       </Section>
-      <Section title={`We owe them (${queue.weOwe.length + queue.calls.length})`} note={`What we still have to do for someone, with its day. It stays our move until a note or a message marks it done. ${CALL_WORDS.lane}`}>
+      <Section id="we-owe-them" title={`We owe them (${queue.weOwe.length + queue.calls.length})`} note={`What we still have to do for someone, with its day. It stays our move until a note or a message marks it done. ${CALL_WORDS.lane}`}>
         {queue.weOwe.length === 0 && queue.calls.length === 0 ? (
           <Empty>Nothing we owe anyone.</Empty>
         ) : (
@@ -150,9 +152,10 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
   )
 }
 
-function Section({ title, note, action, children }: { title: string; note: string; action?: ReactNode; children: ReactNode }) {
+/** A lane. Its `id` is where `/messages`' jump strip lands (`lib/messages/jumpStrip.ts`), under the bar by `.messagesLane`'s margin. */
+function Section({ id, title, note, action, children }: { id: string; title: string; note: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section aria-label={title.replace(/ \(\d+\)$/, '')}>
+    <section id={id} className="messagesLane" aria-label={title.replace(/ \(\d+\)$/, '')}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>{title}</h3>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{note}</span>

@@ -19,6 +19,8 @@ export interface WaitingOnThemProps {
   onOpenThread: (contactId: string, more?: OpenThreadMore) => void
   io?: (now?: Date) => Promise<WaitLine[]>
   now?: () => number
+  /** Hears the heading's count once the lines are read (and 0 on a failed read), for the page's jump strip. */
+  onCount?: (count: number) => void
 }
 
 const answer: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.85rem', color: 'var(--text-muted)', fontSize: '0.9rem' }
@@ -29,7 +31,7 @@ const chipBad: CSSProperties = { ...chip, border: '1px solid var(--border-red)',
 const nudge: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.3rem 0.8rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }
 const call: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.8rem', borderRadius: 999, background: '#1d4ed8', color: '#fff', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none' }
 
-export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now = Date.now }: WaitingOnThemProps) {
+export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now = Date.now, onCount }: WaitingOnThemProps) {
   const [lines, setLines] = useState<WaitLine[] | null | undefined>(undefined)
   useEffect(() => {
     let live = true
@@ -42,8 +44,12 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
   }, [io, now])
 
   const rows = waitingOnThem(lines ?? [], pill, new Date(now()))
+  const count = lines === undefined ? null : rows.length
+  useEffect(() => {
+    if (count !== null) onCount?.(count)
+  }, [count, onCount])
   return (
-    <section id="waiting-on-them" aria-label="Waiting on them" data-testid="waiting-on-them">
+    <section id="waiting-on-them" className="messagesLane" aria-label="Waiting on them" data-testid="waiting-on-them">
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>{WAITING_WORDS.title(rows.length)}</h3>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{WAITING_WORDS.note}</span>

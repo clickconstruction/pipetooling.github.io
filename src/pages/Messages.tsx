@@ -4,7 +4,8 @@
  * (`messages/kindPills.ts`), kept in the URL as `?kind=` so the Dashboard's Customers line lands filtered. Supply
  * houses and candidates are never on Follow up, so their pill shows the people list (cut 1's) for those two kinds.
  * A row opens the person's thread as cut 1's window over the page (`?thread=<contact id>&at=<message id>`), with
- * the job and record openers of `useMessagesHost`. The *New* lane and the header's badge are R7's.
+ * the job and record openers of `useMessagesHost`. The *New* lane and the header's badge are R7's. The jump strip over
+ * the lanes (v2.5799, punch list #151 PR 1) is the Pipeline's stage bar on this page: `components/messages/MessagesJumpStrip`.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
@@ -13,6 +14,7 @@ import { GcMessages } from '../components/gc/GcMessages'
 import { WaitingOnThem } from '../components/messages/WaitingOnThem'
 import { WeekStrip } from '../components/messages/WeekStrip'
 import { WentOutToday } from '../components/messages/WentOutToday'
+import { MessagesJumpStrip } from '../components/messages/MessagesJumpStrip'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useMessagesHost } from '../components/gc/messages/useMessagesHost'
 import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
@@ -24,6 +26,8 @@ import { SwitchOnCard } from '../components/messages/SwitchOnCard'
 import { pageGate } from '../lib/roleGate'
 import { loadGcTeam, type GcTeamMember } from '../lib/gc/gcIo'
 import { followUpTeamOf } from '../lib/followUp/team'
+import { needsYouCount } from '../lib/followUp/queue'
+import { JUMP_LANE_ANCHOR, QUEUE_LANES, type JumpCounts, type JumpLane } from '../lib/messages/jumpStrip'
 import { EVERYONE_WORDS } from '../lib/messages/everyone'
 import { QUEUES_FOLD_WORDS } from '../lib/messages/queuesFold'
 import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
@@ -107,6 +111,27 @@ export default function Messages() {
   }, [heard, pill, followUpTeam, me])
   const [wentOutFilter, setWentOutFilter] = useState<WentOutFilter>('both')
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  // The jump strip (v2.5799, punch list #151 PR 1): the lanes with the counts their headings show — the queue lanes from
+  // the queue the panel read, narrowed as the panel draws it; Waiting on them and Went out from their own reads. A press
+  // scrolls to the lane, unfolding the queues on a phone first.
+  const [waitingCount, setWaitingCount] = useState<number | null>(null)
+  const [wentOutCount, setWentOutCount] = useState<number | null>(null)
+  const jumpCounts = useMemo<JumpCounts>(() => {
+    const q = heard ? narrow(heard.queue, heard.contacts) : null
+    return {
+      new: q ? q.newLane.length : null,
+      needsYou: q ? needsYouCount(q) : null,
+      needsReply: q ? q.needsReply.length : null,
+      weOwe: q ? q.weOwe.length + q.calls.length : null,
+      waiting: waitingCount,
+      wentOut: wentOutCount,
+    }
+  }, [heard, narrow, waitingCount, wentOutCount])
+  const jump = (lane: JumpLane) => {
+    if (QUEUE_LANES.has(lane)) setQueuesOpen(true)
+    // The queues may have been folded: let them draw before the scroll.
+    requestAnimationFrame(() => scrollTo(JUMP_LANE_ANCHOR[lane]))
+  }
   const listView = useMemo(() => (host.view ? { ...host.view, contacts: peopleForPill(host.view.contacts, pill) } : null), [host.view, pill])
   const found = useMemo(() => (searching && host.view ? searchLines(host.view.messages, host.view.contacts, q, pill, host.nowIso) : null), [searching, host.view, host.nowIso, q, pill])
 
@@ -243,6 +268,8 @@ export default function Messages() {
         />
       )}
 
+      {!searching && onFollowUp && <MessagesJumpStrip counts={jumpCounts} onJump={jump} />}
+
       {!searching && onFollowUp && foldQueues && (
         <button
           type="button"
@@ -278,9 +305,9 @@ export default function Messages() {
 
       {/* Went out (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
       {/* Waiting on them (v2.5704): who went quiet after our send; Needs a reply above is who waits on us. */}
-      {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={(id, more) => thread.openThread(id, null, more)} />}
+      {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={(id, more) => thread.openThread(id, null, more)} onCount={setWaitingCount} />}
 
-      {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} filter={wentOutFilter} onFilter={setWentOutFilter} />}
+      {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} filter={wentOutFilter} onFilter={setWentOutFilter} onCount={setWentOutCount} />}
 
       {/* Everyone we have talked with (v2.5700): the people list with its search, for every pill the queues serve; the
           last pill already shows the list in the queues' place. */}

@@ -1,8 +1,8 @@
 ---
 name: "Messages: a tighter top, with a jump strip like the Pipeline's"
 number: 151
-group: gated
-status: proposed 2026-10-23, three mock-ups drawn and measured; waits on the owner's pick
+group: ready
+status: the owner picked C on 2026-10-23; PR 1 (v2.5799, the strip under today's header) built; PR 2 (the one-row header, the search glass, the week behind 7 days) and PR 3 (the lanes' sentences behind one ?, the bands) next
 summary: >
   The top of /messages is five rows of chrome before the first person: the title, the kind
   chips, Show, the search box and the week's four cards, then each lane's heading with a
@@ -13,9 +13,9 @@ summary: >
   counts, pinned while the page scrolls, lit on the lane you are in, a press scrolling to the
   lane): A adds the strip and folds the week's cards to one line; B puts the title, the chips and
   the week on three short rows over the strip; C is one bar that holds everything.
-next: the owner picks A, B or C from mockup.html; then one PR on src/pages/Messages.tsx with a MessagesJumpStrip over the stage bar's kernel, and a second for the bands and folds the pick needs
+next: PR 2, the one-row header on src/pages/Messages.tsx (the title in the bar, the kind picker, Mine · Everyone, the search glass, the strip in the row, 7 days opening the week's cards and kept per browser); then PR 3
 size: A S · B M · C M
-blocker: the owner's pick
+blocker: none
 ver: proposed
 opinion: build C — it is the Pipeline's own shape, it puts the first person on a phone's screen, and the two things it folds, the kind and the week's cards, each say what is behind them and stay open per browser
 mockup: to-dos/messages-header/mockup.html
@@ -135,8 +135,9 @@ short lines and scroll away, and the strip under them sticks on its own.
 
 ## Decisions
 
-1. **Which option** — the owner's pick. The recommendation is **C**; if he wants the week's
-   figures in view at all times on every screen, **B**.
+1. **Which option** — **C**, the owner's pick on 2026-10-23: "Build option C from the Messages header
+   mock-ups (to-dos/messages-header), the one-row top with the jump strip." Built as three PRs: the
+   strip under today's header, then the one-row header, then the lanes' sentences and bands.
 2. **The lanes' colors** — the strip's segments and the bands (B, C) take one color a lane: New
    blue (the *Who is this?* pill's), Needs a reply orange (the customer's, `CUSTOMER_BAR`), We
    owe them amber (our move), Waiting on them violet (their move), Went out green (a send's ✓).
@@ -190,6 +191,9 @@ and the strip wraps to two lines at most. For a lane at zero the segment stays i
 
 ## Where it stands
 
-| What | PR | State |
-|---|---|---|
-| Proposal and mock-up | this folder | docs-only PR, waits on the owner's pick |
+| What | Version | PR | State |
+|---|---|---|---|
+| Proposal and mock-up | — | #6070 | merged 2026-10-23; the owner picked C the same day |
+| PR 1 · the strip under today's header (`MessagesJumpStrip.tsx` over `lib/messages/jumpStrip.ts`, ids on the lanes, `onCount` on Waiting on them and Went out) | v2.5799 | | built 2026-10-23 |
+| PR 2 · the one-row header: the title in the bar, the kind picker, Mine · Everyone, the search glass, the week behind 7 days kept per browser | | | next |
+| PR 3 · the lanes' sentences behind one ? on the bar, the lane headings as bands with the count in a pill | | | after PR 2 |
