@@ -62,6 +62,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Calendar view → `/calendar`; map of work → `/map`
 - Price/labor/assembly books (catalog data behind pricing) → `/materials`
 - Your profile, theme, release notes → `/settings`
+- Color the Texas counties each collections law firm covers, and add the second firm → `/settings?tab=settings-jobs` (Collections law firms: a dev, v2.5756; guide `set-which-law-firm-covers-each-county`)
 - Change a clause of a contract our trade partners sign, or approve one waiting on you → `/settings?tab=settings-clauses` (Contracts and clauses: the office edits, a dev or the controller approves; guide `change-a-contract-clause`)
 - Paste Quo's API key once, so the seats and the inboxes pick from Quo's own lists → `/settings?tab=settings-phone-texts` (Quo connection, above Company phone seats: the owner or a dev, v2.5718; guide `connect-the-app-to-quo`)
 - See or set who gets a new text, call or email first → `/settings?tab=settings-phone-texts` (Phone and texts: the office reads the rule, the owner or a dev sets the seats; guide `choose-who-gets-a-new-message`), and which company phone seat is whose (Company phone seats, the owner or a dev, a **Quo member** pick since v2.5718; guide `match-each-company-phone-seat-to-a-person`)

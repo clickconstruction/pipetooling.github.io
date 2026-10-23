@@ -1,53 +1,104 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
-import { legalFirmSaveErrorWords } from '../../lib/legal/legalFirmSave'
-import { legalFirmInputProblem, particularsFilled } from '../../lib/legal/legalFirmFacts'
+import { particularsFilled } from '../../lib/legal/legalFirmFacts'
+import {
+  changedWords,
+  countiesOf,
+  countyChanges,
+  countyWritePlan,
+  firmHues,
+  firmLegend,
+  moveCounty,
+  moveQuestion,
+  movedWords,
+  pressCounty,
+  pressWords,
+  savedAssignments,
+  savedWords,
+  type LegalFirmCountyRow,
+} from '../../lib/legal/firmCounties'
+import type { LegalFirmRow } from '../../lib/legal/legalMatters'
+import LegalFirmCard from './LegalFirmCard'
+import LegalFirmCountyMap from './LegalFirmCountyMap'
 
 const db = supabase as unknown as SupabaseClient
 
 /**
- * Settings → Jobs & dispatch: the collections law firm (Legal portal PR 2,
- * v2.3313). One active row in legal_firms — its name, the handling person and
- * their email (who hears about a release today), and the fee model the Legal
- * desk's worth panel uses. Dev-only (RLS). Self-contained like the sub-portal
- * pay block beside it. Since v2.4711 the Legal desk's firm window mounts it too
- * (`inWindow`: no frame of its own, the window's facts under the firm, `onSaved` so
- * the desk reloads the firm the moment it is saved).
+ * Settings → Jobs & billing → **Collections law firms** (Legal portal PR 2, v2.3313; plural
+ * since v2.5756, punch list #144 PR 1). Dev-only (RLS). A card per active firm on the left,
+ * the Texas county map on the right: press a card to pick its firm, click counties to color
+ * them for it, click again to clear; a county another firm holds asks before it moves.
+ * Nothing writes until **Save counties** (`legal_firm_counties`: the old live row closed,
+ * a new one inserted, by `countyWritePlan`). Under it, Click's particulars for filing,
+ * shared by every firm. Since v2.4711 the Legal desk's firm window mounts it too
+ * (`inWindow` with `firmId`: that firm's form alone, the window's facts under it, `onSaved`
+ * so the desk reloads the firm the moment it is saved).
  */
-type Form = { id: string | null; name: string; handling_name: string; email: string; phone: string; contingency_pct: string; filing_cost: string }
 type Particulars = { entity: string; license: string; agent: string; custodian: string; affiant: string; phone: string; email: string; w9: string }
 const EMPTY_PARTICULARS: Particulars = { entity: '', license: '', agent: '', custodian: '', affiant: '', phone: '', email: '', w9: '' }
 const PARTICULARS_KEY = 'legal_particulars_v1'
-const EMPTY: Form = { id: null, name: '', handling_name: '', email: '', phone: '', contingency_pct: '33', filing_cost: '350' }
+const FIRM_COLUMNS = 'id, name, handling_name, email, phone, contingency_pct, filing_cost, active, created_at'
 
-export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firmFacts = null }: { onSaved?: () => void; inWindow?: boolean; firmFacts?: ReactNode } = {}) {
-  const { role } = useAuth()
+export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firmFacts = null, firmId = null }: { onSaved?: () => void; inWindow?: boolean; firmFacts?: ReactNode; firmId?: string | null } = {}) {
+  const { role, user } = useAuth()
   const { showToast } = useToastContext()
-  const [form, setForm] = useState<Form>(EMPTY)
+  const confirm = useConfirmDialog()
+  const [firms, setFirms] = useState<LegalFirmRow[]>([])
+  const [countyRows, setCountyRows] = useState<LegalFirmCountyRow[]>([])
+  const [countiesAvailable, setCountiesAvailable] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const [available, setAvailable] = useState(true)
-  const [dirty, setDirty] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [pickedFirmId, setPickedFirmId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Map<string, string>>(new Map())
+  const [savingCounties, setSavingCounties] = useState(false)
   const [particulars, setParticulars] = useState<Particulars>(EMPTY_PARTICULARS)
   const [pDirty, setPDirty] = useState(false)
   const [pSaving, setPSaving] = useState(false)
-  // v2.3742: unsaved edits live in a per-tab draft, so the auto-reload may land over them;
-  // the gate only waits while a save is in flight.
-  useHoldsUnsavedWork(saving || pSaving, 'Legal firm settings')
-  const formDraft = useReloadDraft<Form>(draftStorageKey('legal-firm', 'form'))
   const pDraft = useReloadDraft<Particulars>(draftStorageKey('legal-firm', 'particulars'))
-  useEffect(() => {
-    if (dirty) formDraft.write(form)
-  }, [dirty, form, formDraft])
   useEffect(() => {
     if (pDirty) pDraft.write(particulars)
   }, [pDirty, particulars, pDraft])
+
+  const activeFirms = useMemo(() => firms.filter((f) => f.active), [firms])
+  const saved = useMemo(() => savedAssignments(countyRows, new Set(activeFirms.map((f) => f.id))), [countyRows, activeFirms])
+  const changes = useMemo(() => countyChanges(saved, draft), [saved, draft])
+  // The map's draft is not kept across a reload, so the gate holds while counties are unsaved (v2.3742).
+  useHoldsUnsavedWork(changes.length > 0 || savingCounties || pSaving, 'Law firm counties')
+  const hues = useMemo(() => firmHues(activeFirms), [activeFirms])
+  const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
+  const legend = useMemo(() => firmLegend(activeFirms, draft), [activeFirms, draft])
+
+  const load = useCallback(async () => {
+    const q = db.from('legal_firms').select(FIRM_COLUMNS).eq('active', true).order('created_at')
+    const [f, c] = await Promise.all([inWindow && firmId ? db.from('legal_firms').select(FIRM_COLUMNS).eq('id', firmId) : q, db.from('legal_firm_counties').select('*').is('until', null)])
+    if (f.error) {
+      setAvailable(false)
+      setLoaded(true)
+      return
+    }
+    const rows = (f.data ?? []) as LegalFirmRow[]
+    setFirms(rows)
+    // The counties table lands with the v2.5756 migration; before the push the map reads, and says a save needs it.
+    setCountiesAvailable(!c.error)
+    const counties = c.error ? [] : ((c.data ?? []) as LegalFirmCountyRow[])
+    setCountyRows(counties)
+    setDraft(savedAssignments(counties, new Set(rows.filter((r) => r.active).map((r) => r.id))))
+    setPickedFirmId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : rows[0]?.id ?? null))
+    setLoaded(true)
+  }, [inWindow, firmId])
+
+  useEffect(() => {
+    if (role !== 'dev') return
+    void load()
+  }, [role, load])
 
   useEffect(() => {
     if (role !== 'dev') return
@@ -59,66 +110,70 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
       } catch {
         setParticulars(EMPTY_PARTICULARS)
       }
-      const draft = pDraft.read()
-      if (draft) {
-        setParticulars({ ...EMPTY_PARTICULARS, ...draft })
+      const kept = pDraft.read()
+      if (kept) {
+        setParticulars({ ...EMPTY_PARTICULARS, ...kept })
         setPDirty(true)
         showToast(DRAFT_RESTORED_TOAST, 'success')
       }
     })()
   }, [role, pDraft, showToast])
 
-  useEffect(() => {
-    if (role !== 'dev') return
-    void (async () => {
-      const { data, error } = await db.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active').eq('active', true).order('created_at').limit(1)
-      if (error) {
-        setAvailable(false)
-        setLoaded(true)
-        return
-      }
-      const row = (data ?? [])[0] as { id: string; name: string; handling_name: string; email: string; phone: string; contingency_pct: number; filing_cost: number } | undefined
-      if (row) setForm({ id: row.id, name: row.name, handling_name: row.handling_name, email: row.email, phone: row.phone, contingency_pct: String(row.contingency_pct), filing_cost: String(row.filing_cost) })
-      const draft = formDraft.read()
-      if (draft) {
-        setForm({ ...draft, id: row?.id ?? draft.id })
-        setDirty(true)
-        showToast(DRAFT_RESTORED_TOAST, 'success')
-      }
-      setLoaded(true)
-    })()
-  }, [role, formDraft, showToast])
-
   if (role !== 'dev') return null
 
-  const set = (k: keyof Form) => (e: { target: { value: string } }) => {
-    setForm((f) => ({ ...f, [k]: e.target.value }))
-    setDirty(true)
+  const firmSaved = (row: LegalFirmRow) => {
+    setFirms((list) => (list.some((f) => f.id === row.id) ? list.map((f) => (f.id === row.id ? { ...f, ...row } : f)) : [...list, row]))
+    setAdding(false)
+    setPickedFirmId((cur) => cur ?? row.id)
+    onSaved?.()
   }
 
-  const save = async () => {
-    const problem = legalFirmInputProblem(form)
-    if (problem) {
-      showToast(problem, 'error')
+  const pressCountyOnMap = async (county: string) => {
+    if (!pickedFirmId) {
+      showToast('Pick a firm on the left first.', 'error')
       return
     }
-    const pct = Number(form.contingency_pct)
-    const cost = Number(form.filing_cost)
-    setSaving(true)
+    const firmName = firmNames.get(pickedFirmId) ?? 'the firm'
+    const { next, press } = pressCounty(draft, county, pickedFirmId)
+    if (press.kind !== 'held') {
+      setDraft(next)
+      showToast(pressWords(press, county, firmName), 'success')
+      return
+    }
+    const holderName = firmNames.get(press.byFirmId) ?? 'another firm'
+    const yes = await confirm({ title: `${county} County`, message: moveQuestion(county, holderName, firmName), confirmLabel: `Move it to ${firmName}`, cancelLabel: 'Leave it', cancelIsSafe: true })
+    if (!yes) return
+    setDraft(moveCounty(draft, county, pickedFirmId))
+    showToast(movedWords(county, firmName), 'success')
+  }
+
+  const saveCounties = async () => {
+    if (changes.length === 0) return
+    const plan = countyWritePlan(changes, user?.id ?? null)
+    setSavingCounties(true)
     try {
-      const payload = { name: form.name.trim(), handling_name: form.handling_name.trim(), email: form.email.trim(), phone: form.phone.trim(), contingency_pct: pct, filing_cost: cost, active: true, updated_at: new Date().toISOString() }
-      const res = form.id ? await db.from('legal_firms').update(payload).eq('id', form.id).select('id').single() : await db.from('legal_firms').insert(payload).select('id').single()
-      if (res.error) {
-        showToast(legalFirmSaveErrorWords(res.error.message), 'error')
-        return
+      const now = new Date().toISOString()
+      for (const county of plan.close) {
+        const { error } = await db.from('legal_firm_counties').update({ until: now }).eq('county', county).is('until', null)
+        if (error) {
+          showToast(`Could not save ${county}: ${error.message}`, 'error')
+          await load()
+          return
+        }
       }
-      setForm((f) => ({ ...f, id: (res.data as { id: string }).id }))
-      setDirty(false)
-      formDraft.clear()
-      showToast('Law firm saved. The Legal desk reads it now.', 'success')
+      if (plan.insert.length > 0) {
+        const { error } = await db.from('legal_firm_counties').insert(plan.insert.map((r) => ({ ...r, since: now })))
+        if (error) {
+          showToast(error.code === '23505' ? 'Another tab saved a county first. The map shows what stands now.' : `Could not save: ${error.message}`, 'error')
+          await load()
+          return
+        }
+      }
+      await load()
+      showToast(savedWords(changes.length), 'success')
       onSaved?.()
     } finally {
-      setSaving(false)
+      setSavingCounties(false)
     }
   }
 
@@ -144,65 +199,85 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
 
   const input = { width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', fontSize: '0.9rem' } as const
   const label = { display: 'grid', gap: 4, fontSize: '0.8rem', color: 'var(--text-muted)' } as const
+  const windowFirm = inWindow ? (firmId ? firms.find((f) => f.id === firmId) ?? null : activeFirms[0] ?? null) : null
+  const dirtyCounties = changes.length > 0
 
   return (
     <div id={inWindow ? undefined : 'settings-legal-firm'} data-legal-firm-block={inWindow ? 'window' : 'settings'} style={inWindow ? undefined : { marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
       {inWindow ? (
         <div>
           <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Who we release accounts to</h4>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>One firm at a time. Its name and handling person print on every release and on the firm’s portal.</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>This firm’s name and handling person print on every release and on the firm’s portal. Its counties are set on Settings → Jobs & billing.</span>
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem' }}>⚖ Collections law firm</h3>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Who the Legal desk releases accounts to, and the fee model behind “Click keeps”. One firm today. The Legal desk opens this from the firm’s name in its header.</span>
+          <h3 style={{ margin: 0, fontSize: '1rem' }}>⚖ Collections law firms</h3>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Who the Legal desk releases accounts to, by county. Each firm keeps its own fee model behind “Click keeps”. A county nobody covers stays gray, and the desk says so on the account.</span>
         </div>
       )}
       {!available ? (
         <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '0.75rem 0 0' }}>The legal tables aren’t on this database yet — apply the v2.3313 migration first.</p>
       ) : !loaded ? (
         <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '0.75rem 0 0' }}>Loading…</p>
+      ) : inWindow ? (
+        <>
+          <LegalFirmCard key={windowFirm?.id ?? 'none'} firm={windowFirm} bare firmFacts={firmFacts} onSaved={firmSaved} />
+        </>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: '0.75rem' }}>
-            <label style={label}>Firm<input style={input} value={form.name} onChange={set('name')} placeholder="Example Law Firm, PLLC" /></label>
-            <label style={label}>Handling person<input style={input} value={form.handling_name} onChange={set('handling_name')} placeholder="A. Attorney" /></label>
-            <label style={label}>Email (contact — the firm’s people subscribe on their portal)<input style={input} type="email" value={form.email} onChange={set('email')} placeholder="attorney@firm.example" /></label>
-            <label style={label}>Phone<input style={input} value={form.phone} onChange={set('phone')} /></label>
-            <label style={label}>Contingency %<input style={input} type="number" min={0} max={100} step={1} value={form.contingency_pct} onChange={set('contingency_pct')} /></label>
-            <label style={label}>Filing cost ($)<input style={input} type="number" min={0} step={1} value={form.filing_cost} onChange={set('filing_cost')} /></label>
-          </div>
-          {inWindow && firmFacts ? <div style={{ marginTop: 10 }}>{firmFacts}</div> : null}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-            <button type="button" onClick={() => void save()} disabled={!dirty || saving} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: dirty ? 'var(--text-700)' : 'var(--bg-muted)', color: dirty ? 'var(--surface)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: dirty ? 'pointer' : 'default' }}>
-              {saving ? 'Saving…' : form.id ? 'Save firm' : 'Add firm'}
-            </button>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Saving changes this firm’s details. Its people, its link and its accounts stay with it.</span>
-          </div>
-          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Click’s particulars for filing</h4>
-              <ParticularsCount particulars={particulars} />
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>What a petition or lien affidavit needs from the claimant — shown on the firm’s portal.</span>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: '0.75rem', alignItems: 'flex-start' }}>
+            <div data-legal-firm-cards style={{ flex: '1 1 260px', maxWidth: 360, display: 'grid', gap: 10 }}>
+              {activeFirms.map((firm) => (
+                <LegalFirmCard key={firm.id} firm={firm} hue={hues.get(firm.id)} counties={countiesOf(draft, firm.id)} picked={pickedFirmId === firm.id} onPick={() => setPickedFirmId(firm.id)} onSaved={firmSaved} />
+              ))}
+              {adding ? (
+                <LegalFirmCard key="new" firm={null} startOpen onSaved={firmSaved} onDiscard={() => setAdding(false)} />
+              ) : (
+                <button type="button" onClick={() => setAdding(true)} style={{ justifySelf: 'start', padding: '0.35rem 0.8rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.84rem', cursor: 'pointer' }}>
+                  {activeFirms.length === 0 ? 'Add the firm' : 'Add a firm'}
+                </button>
+              )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: '0.75rem' }}>
-              <label style={label}>Legal entity<input style={input} value={particulars.entity} onChange={setP('entity')} placeholder="Click Plumbing and Electrical, LLC" /></label>
-              <label style={label}>License<input style={input} value={particulars.license} onChange={setP('license')} placeholder="TX RMP M-…" /></label>
-              <label style={label}>Registered agent<input style={input} value={particulars.agent} onChange={setP('agent')} /></label>
-              <label style={label}>Custodian of records<input style={input} value={particulars.custodian} onChange={setP('custodian')} placeholder="Who signs the business-records affidavit" /></label>
-              <label style={label}>Affiant for sworn accounts<input style={input} value={particulars.affiant} onChange={setP('affiant')} /></label>
-              <label style={label}>Office phone<input style={input} value={particulars.phone} onChange={setP('phone')} /></label>
-              <label style={label}>Office email<input style={input} value={particulars.email} onChange={setP('email')} /></label>
-              <label style={label}>W-9 / EIN note<input style={input} value={particulars.w9} onChange={setP('w9')} placeholder="on request from the office" /></label>
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <button type="button" onClick={() => void saveParticulars()} disabled={!pDirty || pSaving} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: pDirty ? 'var(--text-700)' : 'var(--bg-muted)', color: pDirty ? 'var(--surface)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: pDirty ? 'pointer' : 'default' }}>
-                {pSaving ? 'Saving…' : 'Save particulars'}
-              </button>
+            <div style={{ flex: '2 1 340px', minWidth: 0 }}>
+              <LegalFirmCountyMap assignments={draft} hues={hues} firmNames={firmNames} legend={legend} pickedFirmId={pickedFirmId} onPress={(county) => void pressCountyOnMap(county)} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => void saveCounties()} disabled={!dirtyCounties || savingCounties || !countiesAvailable} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: dirtyCounties && countiesAvailable ? 'var(--text-700)' : 'var(--bg-muted)', color: dirtyCounties && countiesAvailable ? 'var(--surface)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: dirtyCounties && countiesAvailable ? 'pointer' : 'default' }}>
+                  {savingCounties ? 'Saving…' : 'Save counties'}
+                </button>
+                <button type="button" onClick={() => setDraft(new Map(saved))} disabled={!dirtyCounties || savingCounties} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: dirtyCounties ? 'var(--text)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: dirtyCounties ? 'pointer' : 'default' }}>
+                  Undo changes
+                </button>
+                <span data-legal-counties-pending style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{countiesAvailable ? changedWords(changes.length) : 'The counties table isn’t on this database yet — push the v2.5756 migration, then save.'}</span>
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '6px 0 0' }}>Changing a county affects new releases only. A matter stays with the firm it went to.</p>
             </div>
           </div>
         </>
       )}
+      {available && loaded ? (
+        <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Click’s particulars for filing</h4>
+            <ParticularsCount particulars={particulars} />
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>What a petition or lien affidavit needs from the claimant — shown on every firm’s portal.</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: '0.75rem' }}>
+            <label style={label}>Legal entity<input style={input} value={particulars.entity} onChange={setP('entity')} placeholder="Click Plumbing and Electrical, LLC" /></label>
+            <label style={label}>License<input style={input} value={particulars.license} onChange={setP('license')} placeholder="TX RMP M-…" /></label>
+            <label style={label}>Registered agent<input style={input} value={particulars.agent} onChange={setP('agent')} /></label>
+            <label style={label}>Custodian of records<input style={input} value={particulars.custodian} onChange={setP('custodian')} placeholder="Who signs the business-records affidavit" /></label>
+            <label style={label}>Affiant for sworn accounts<input style={input} value={particulars.affiant} onChange={setP('affiant')} /></label>
+            <label style={label}>Office phone<input style={input} value={particulars.phone} onChange={setP('phone')} /></label>
+            <label style={label}>Office email<input style={input} value={particulars.email} onChange={setP('email')} /></label>
+            <label style={label}>W-9 / EIN note<input style={input} value={particulars.w9} onChange={setP('w9')} placeholder="on request from the office" /></label>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <button type="button" onClick={() => void saveParticulars()} disabled={!pDirty || pSaving} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: pDirty ? 'var(--text-700)' : 'var(--bg-muted)', color: pDirty ? 'var(--surface)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: pDirty ? 'pointer' : 'default' }}>
+              {pSaving ? 'Saving…' : 'Save particulars'}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

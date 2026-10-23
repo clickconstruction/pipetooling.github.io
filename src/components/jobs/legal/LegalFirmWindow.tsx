@@ -110,7 +110,7 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           {canEdit ? (
             <>
               {/* Keyed on the firm, so a replace remounts the block on the new one. */}
-              <LegalFirmSettingsBlock key={firm?.id ?? 'none'} inWindow onSaved={onSaved} firmFacts={factsLine} />
+              <LegalFirmSettingsBlock key={firm?.id ?? 'none'} inWindow firmId={firm?.id ?? null} onSaved={onSaved} firmFacts={factsLine} />
               {firm && facts ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} /> : null}
             </>
           ) : (

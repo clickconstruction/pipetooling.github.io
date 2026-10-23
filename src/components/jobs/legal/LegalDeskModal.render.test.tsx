@@ -122,6 +122,8 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     entriesByMatter: new Map(), documentsByMatter: new Map(),
     recipients: [],
     firmPaused: false,
+    activeFirms: [firm],
+    countiesByFirm: new Map(),
     reload: async () => {},
   }
   const renderDesk = async (extra: { canMarkReady?: boolean; canEditReview?: boolean }) => {

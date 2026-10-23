@@ -79,6 +79,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | `src/pages/Jobs.tsx` (tab router + the page side of the Pipeline) |
 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | `JobsStagesTab` + its table/row sub-files |
 | [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md) | `LienDeskModal` (the Lien desk, mounted by the Pipeline) |
+| [`TX_COUNTY_MAP.md`](./TX_COUNTY_MAP.md) | The Texas county map file (`public/geo/tx-counties.json`): its Census source and license, how to regenerate it, how the Legal desk reads it |
 | [`LIEN_RELEASE_MODAL_ARCHITECTURE.md`](./LIEN_RELEASE_MODAL_ARCHITECTURE.md) | `LienReleaseModal` (the Release of Lien window: six steps, draft, mint, signature, send) |
 | [`GC_REVIEW_MODAL_ARCHITECTURE.md`](./GC_REVIEW_MODAL_ARCHITECTURE.md) | `JobsGcReviewModal` (GC statement rounds and sends) |
 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | `JobsJobSummaryTab` (presentational cost-rollup ledger) |
