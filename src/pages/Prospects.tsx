@@ -70,7 +70,7 @@ import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
-import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
+import { GC_WORK_LABELS, NOTHING_BIDDING, SOONEST_BID_NOTE, biddingDueWords, deckBidWords, gcBiddingLines, gcWorkCounts, jobToHandOn, leadsWithOpenBid, newProjectSeedFromLead, orderLeadsBySoonestBid, type BiddingLine, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
@@ -424,6 +424,8 @@ export default function Prospects() {
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
   const [gcWork, setGcWork] = useState<StripRead<GcWorkCounts>>(undefined)
+  // The projects bidding now (v2.5785, punch list #148, PR 2): named under the counts, soonest due first.
+  const [gcBidding, setGcBidding] = useState<BiddingLine[]>([])
   const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null; since: string | null }[]>([])
   const [prospectDoubles, setProspectDoubles] = useState<ProspectDoubleRow[]>([])
   const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
@@ -764,7 +766,9 @@ export default function Prospects() {
     let live = true
     loadGcProjects()
       .then((projects) => {
-        if (live) setGcWork(gcWorkCounts(projects))
+        if (!live) return
+        setGcWork(gcWorkCounts(projects))
+        setGcBidding(gcBiddingLines(projects, todayYmdInAppTz()))
       })
       .catch(() => {
         if (live) setGcWork(null)
@@ -2822,6 +2826,33 @@ export default function Prospects() {
               <Link to="/gc" style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.75rem' }}>
                 from the Project Board
               </Link>
+              {gcWork != null && (
+                // The honesty under the counts (v2.5785): which projects are bidding and by when, and how many
+                // leads on this deck carry a job with a bid day, so the strip never reads as more than it is.
+                <div style={{ flexBasis: '100%', display: 'flex', flexDirection: 'column', gap: '0.2rem', color: 'var(--text-600)' }}>
+                  <span>
+                    <b style={{ color: 'var(--text-700)' }}>Bidding now:</b>{' '}
+                    {gcBidding.length === 0
+                      ? NOTHING_BIDDING
+                      : gcBidding.map((line, i) => {
+                          const due = biddingDueWords(line)
+                          return (
+                            <span key={line.id}>
+                              {i > 0 && ' · '}
+                              <Link to={gcProjectHref(line.id)} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                                {line.name}
+                              </Link>
+                              , <span style={{ color: due.tone === 'red' ? 'var(--text-red-700)' : 'inherit', fontWeight: due.tone === 'red' ? 600 : 400 }}>{due.text}</span>
+                            </span>
+                          )
+                        })}
+                  </span>
+                  <span>
+                    <b style={{ color: 'var(--text-700)' }}>On this deck:</b> {deckBidWords(leadsWithOpenBid(followUpProspects.map((p) => p.id), jobsByProspect), followUpProspects.length)}
+                    {followUpProspects.length > 0 && <span style={{ color: 'var(--text-muted)' }}> · a bid day goes in the lead’s Jobs box</span>}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           {!canAccessFollowUp ? (

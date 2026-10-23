@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  NOTHING_BIDDING,
+  biddingDueWords,
+  deckBidWords,
+  gcBiddingLines,
+  leadsWithOpenBid,
   EMPTY_JOB_DRAFT,
   customerRoleForLead,
   jobDraftOf,
@@ -167,5 +172,45 @@ describe('job drafts (v2.5580)', () => {
     expect(jobFromDraft({ ...EMPTY_JOB_DRAFT, name: 'x', sqFt: 'big' }).sq_ft).toBeNull()
     const row = { name: 'Retail shell', address: '4400 FM 1431', sq_ft: 12000, bid_due: '2026-11-03', plans_link: 'https://planhub.example/x' }
     expect(jobFromDraft(jobDraftOf(row))).toEqual({ ...row, size_note: null })
+  })
+})
+
+describe('gcLeadLane: the strip under the counts (v2.5785)', () => {
+  const projects = [
+    { id: 'a', name: 'Kyle warehouse', stage: 'bidding', bidDue: null, lostOn: null },
+    { id: 'b', name: 'Boerne dental build-out', stage: 'pursuing', bidDue: '2026-11-06', lostOn: null },
+    { id: 'c', name: 'Comal ISD field house', stage: 'bidding', bidDue: '2026-10-24', lostOn: null },
+    { id: 'd', name: 'Lost one', stage: 'bidding', bidDue: '2026-10-25', lostOn: '2026-10-20' },
+    { id: 'e', name: 'Building one', stage: 'building', bidDue: '2026-10-01', lostOn: null },
+  ]
+
+  it('names the projects bidding, soonest due first, no due day last, never a lost or a built one', () => {
+    expect(gcBiddingLines(projects, '2026-10-23').map((l) => [l.name, l.daysLeft])).toEqual([
+      ['Comal ISD field house', 1],
+      ['Boerne dental build-out', 14],
+      ['Kyle warehouse', null],
+    ])
+  })
+
+  it('reads the bid day', () => {
+    expect(biddingDueWords({ bidDue: '2026-10-24', daysLeft: 1 })).toEqual({ text: 'due Oct 24, tomorrow', tone: 'red' })
+    expect(biddingDueWords({ bidDue: '2026-10-23', daysLeft: 0 })).toEqual({ text: 'due Oct 23, today', tone: 'red' })
+    expect(biddingDueWords({ bidDue: '2026-10-28', daysLeft: 5 })).toEqual({ text: 'due Oct 28, in 5 days', tone: 'red' })
+    expect(biddingDueWords({ bidDue: '2026-11-06', daysLeft: 14 })).toEqual({ text: 'due Nov 6, in 14 days', tone: 'quiet' })
+    expect(biddingDueWords({ bidDue: '2026-10-20', daysLeft: -3 })).toEqual({ text: 'bids were due Oct 20', tone: 'red' })
+    expect(biddingDueWords({ bidDue: null, daysLeft: null })).toEqual({ text: 'no due day set', tone: 'quiet' })
+  })
+
+  it('counts the leads on the deck with an open job that has a bid day, and reads the line', () => {
+    const jobs = {
+      p1: [{ status: 'open', bid_due: '2026-11-01' }],
+      p2: [{ status: 'open', bid_due: null }],
+      p3: [{ status: 'lost', bid_due: '2026-10-01' }],
+    }
+    expect(leadsWithOpenBid(['p1', 'p2', 'p3', 'p4'], jobs)).toBe(1)
+    expect(deckBidWords(1, 4)).toBe('1 of 4 leads carry a job with a bid day')
+    expect(deckBidWords(0, 1)).toBe('0 of 1 lead carries a job with a bid day')
+    expect(deckBidWords(0, 0)).toBe('nobody on the deck yet')
+    expect(NOTHING_BIDDING).toBe('no project is out for a bid')
   })
 })
