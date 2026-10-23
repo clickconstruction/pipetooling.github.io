@@ -12,7 +12,26 @@ import { nextInRound, roundChipColors, roundQueue, roundRows, QUICKFILL_NOTE_FIR
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { QuickfillFocusContext } from '../components/quickfill/quickfillViewContext'
 import { QuickfillViewSwitch } from '../components/quickfill/QuickfillViewSwitch'
-import { focusBucket, focusGroups, focusHeading, focusHeadline, parseQuickfillViewRequest, readStoredQuickfillView, writeQuickfillView, type FocusBucket, type QuickfillView } from '../lib/quickfill/views'
+import { QuickfillRollerStrip } from '../components/quickfill/QuickfillRollerStrip'
+import { QuickfillBoard } from '../components/quickfill/QuickfillBoard'
+import {
+  focusBucket,
+  focusGroups,
+  focusHeading,
+  focusHeadline,
+  parseQuickfillViewRequest,
+  readStoredQuickfillView,
+  readStoredRollerShowDone,
+  rollerDeck,
+  rollerDot,
+  rollerNext,
+  rollerPrev,
+  rollerWords,
+  writeQuickfillView,
+  writeRollerShowDone,
+  type FocusBucket,
+  type QuickfillView,
+} from '../lib/quickfill/views'
 import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
 import { quickfillStationTelemetryTarget, resolveQuickfillStation, parseQuickfillStationRequest, quickfillStationHref } from '../lib/quickfill/stationDeepLink'
@@ -993,6 +1012,19 @@ function QuickfillPage() {
     },
     [authUser?.id],
   )
+  // The Roller's "Show the N marked today" (v2.5787), per person on the device.
+  const [rollerShowDone, setRollerShowDone] = useState<boolean>(() => readStoredRollerShowDone(authUser?.id))
+  useEffect(() => {
+    setRollerShowDone(readStoredRollerShowDone(authUser?.id))
+  }, [authUser?.id])
+  const chooseRollerShowDone = useCallback(
+    (on: boolean) => {
+      setRollerShowDone(on)
+      writeRollerShowDone(authUser?.id, on)
+    },
+    [authUser?.id],
+  )
+  const [rollerBoardOpen, setRollerBoardOpen] = useState(false)
   const focusBucketOf = useCallback(
     (sectionId: string): FocusBucket => {
       const m = sectionMetrics[sectionId]
@@ -1839,6 +1871,7 @@ function QuickfillPage() {
   // (`/quickfill#<sectionId>`, the station deep link), Looked · N open · next at the thumb.
   const [roundSearch, setRoundSearch] = useState('')
   const [roundMarking, setRoundMarking] = useState(false)
+  const [roundEventsLoaded, setRoundEventsLoaded] = useState(false)
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -1849,7 +1882,10 @@ function QuickfillPage() {
         .gte('marked_at', since)
         .order('marked_at', { ascending: false })
         .limit(2000)
-      if (!cancelled) setRoundEvents((data ?? []) as RoundEvent[])
+      if (!cancelled) {
+        setRoundEvents((data ?? []) as RoundEvent[])
+        setRoundEventsLoaded(true)
+      }
     })()
     return () => {
       cancelled = true
@@ -1886,6 +1922,51 @@ function QuickfillPage() {
     }
     goRound(nextInRound(roundRowsValue, roundMeta.sectionId))
   }
+  // The Roller (punch list #147, v2.5787): the round's screens on a desk. The deck is every
+  // station not marked today (the doors last), the station is the URL's, Previous and Next
+  // walk the deck, Looked marks and moves on, the Board is the index.
+  const rollerActive = !narrowViewport && view === 'roller' && layoutSettingsLoaded
+  const rollerDeckRows = useMemo(() => rollerDeck(roundRowsValue, rollerShowDone), [roundRowsValue, rollerShowDone])
+  const rollerMeta = rollerActive && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
+  const rollerIndex = rollerMeta ? rollerDeckRows.findIndex((r) => r.sectionId === rollerMeta.sectionId) : -1
+  const rollerDoneCount = roundRowsValue.filter((r) => !r.personal && r.state === 'fresh').length
+  const rollerFirstId = rollerDeckRows[0]?.sectionId ?? null
+  useEffect(() => {
+    // No station on the URL: start at the top of the deck once the marks' history is in (the
+    // rhythm rule sorts the deck). Replace, so Back leaves the page.
+    if (rollerActive && roundEventsLoaded && !roundStationRaw && rollerFirstId) navigate(quickfillStationHref(rollerFirstId), { replace: true })
+  }, [rollerActive, roundEventsLoaded, roundStationRaw, rollerFirstId, navigate])
+  const rollerGo = (sectionId: string | null) => navigate(sectionId ? quickfillStationHref(sectionId) : '/quickfill')
+  const rollerPrevId = rollerMeta ? rollerPrev(rollerDeckRows, rollerMeta.sectionId) : null
+  const rollerSkip = () => rollerGo(rollerMeta ? rollerNext(rollerDeckRows, rollerMeta.sectionId) : rollerFirstId)
+  const rollerLooked = async () => {
+    if (!rollerMeta || roundMarking) return
+    const nextId = rollerNext(rollerDeckRows, rollerMeta.sectionId)
+    setRoundMarking(true)
+    try {
+      await markSectionUpToDate(rollerMeta.sectionId)
+    } finally {
+      setRoundMarking(false)
+    }
+    rollerGo(nextId)
+  }
+  useEffect(() => {
+    if (!rollerActive || rollerBoardOpen || markHistoryModal) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        rollerGo(rollerMeta ? rollerNext(rollerDeckRows, rollerMeta.sectionId) : rollerFirstId)
+      } else if (e.key === 'ArrowLeft' && rollerPrevId) {
+        e.preventDefault()
+        rollerGo(rollerPrevId)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rollerGo is a navigate wrapper
+  }, [rollerActive, rollerBoardOpen, markHistoryModal, rollerMeta, rollerDeckRows, rollerFirstId, rollerPrevId])
   const dockSections = searchedSections
     .filter(({ sectionId }) => !dockHiddenThisVisit.has(sectionId))
     .map(({ id, label }) => ({ id, label }))
@@ -1930,7 +2011,7 @@ function QuickfillPage() {
         </QuickfillRoundScreenContext.Provider>
       ) : narrowViewport ? null : (
         <>
-      {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Quickfill sections" /> : null}
+      {dockSections.length > 1 && !rollerActive ? <SectionDock sections={dockSections} ariaLabel="Quickfill sections" /> : null}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '1.5rem' }}>
         <span />
         <h1 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, textAlign: 'center' }}>Quickfill</h1>
@@ -1938,6 +2019,58 @@ function QuickfillPage() {
           <QuickfillViewSwitch view={view} onChange={chooseView} />
         </span>
       </div>
+      {rollerActive ? (
+        <QuickfillRoundScreenContext.Provider value={rollerMeta != null}>
+          {rollerMeta ? (
+            <QuickfillRoundScreen
+              wide
+              label={rollerMeta.label}
+              position={rollerIndex >= 0 ? { index: rollerIndex + 1, total: rollerDeckRows.length } : null}
+              question={effectiveQuickfillSectionBanner(rollerMeta.sectionId, sectionBanners)}
+              countLine={(() => {
+                const row = roundRowsValue.find((r) => r.sectionId === rollerMeta.sectionId)
+                const live = getOutstandingCount(rollerMeta.sectionId)
+                const parts: string[] = []
+                if (typeof live === 'number') parts.push(`${live} open`)
+                if (row && !row.personal) parts.push(row.lastMarkedAt ? `last look ${formatRelativeTime(row.lastMarkedAt)}${row.lastMarkedByName ? ` · ${row.lastMarkedByName}` : ''}` : 'never marked')
+                return parts.join(' · ')
+              })()}
+              liveCount={getOutstandingCount(rollerMeta.sectionId)}
+              needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(rollerMeta.sectionId)}
+              personal={QUICKFILL_PERSONAL_SECTIONS.has(rollerMeta.sectionId)}
+              marking={roundMarking}
+              onBack={() => setRollerBoardOpen(true)}
+              onPrev={rollerPrevId ? () => rollerGo(rollerPrevId) : null}
+              onSkip={rollerSkip}
+              onLooked={() => void rollerLooked()}
+              onHistory={() => setMarkHistoryModal({ sectionId: rollerMeta.sectionId, label: rollerMeta.label })}
+              strip={
+                <QuickfillRollerStrip
+                  dots={rollerDeckRows.map((r) => ({ sectionId: r.sectionId, label: r.label, dot: rollerDot(r), current: r.sectionId === rollerMeta.sectionId }))}
+                  words={rollerIndex >= 0 ? rollerWords(rollerDeckRows, rollerIndex) : `${rollerMeta.label} · not in this round`}
+                  showDone={rollerShowDone}
+                  doneCount={rollerDoneCount}
+                  onShowDone={chooseRollerShowDone}
+                  onPick={(id) => rollerGo(id)}
+                  onGroups={() => setRollerBoardOpen(true)}
+                />
+              }
+            >
+              {quickfillSectionBlock(rollerMeta)}
+            </QuickfillRoundScreen>
+          ) : rollerDeckRows.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', borderRadius: 10, color: 'var(--text-green-800)' }}>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', fontWeight: 700 }}>Round done ✓</p>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem' }}>Every group has been looked at today.</p>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={rollerShowDone} onChange={(e) => chooseRollerShowDone(e.target.checked)} />
+                Show the {rollerDoneCount} marked today
+              </label>
+            </div>
+          ) : null}
+        </QuickfillRoundScreenContext.Provider>
+      ) : (
+        <>
       {/* Jump grid (v2.2184): phones get a one-line strip you flick sideways (the
           dock's own pattern) plus a freshness summary — the wrapped grid was 18
           rows tall at 375px, a whole screen before the first section. Desktop
@@ -2211,6 +2344,21 @@ function QuickfillPage() {
       )}
         </>
       )}
+        </>
+      )}
+      {rollerActive && rollerBoardOpen ? (
+        <QuickfillBoard
+          rows={rollerDeckRows}
+          currentId={rollerMeta?.sectionId ?? null}
+          questionOf={(id) => effectiveQuickfillSectionBanner(id, sectionBanners)}
+          now={roundNow}
+          onPick={(id) => {
+            setRollerBoardOpen(false)
+            rollerGo(id)
+          }}
+          onClose={() => setRollerBoardOpen(false)}
+        />
+      ) : null}
       <QuickfillSectionMarkHistoryModal
         open={markHistoryModal !== null}
         onClose={() => setMarkHistoryModal(null)}

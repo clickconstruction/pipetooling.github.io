@@ -2,7 +2,7 @@
 title: run the office day with Quickfill
 category: Office
 roles: dev, master_technician, assistant
-keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work
+keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work, roller, one at a time, board, groups
 order: 10
 ---
 Quickfill is the office's daily runway. It is one page of review sections, each with a button that says "I've looked at this."
@@ -57,7 +57,21 @@ On a desktop or tablet a small switch sits beside the title. It reads **Page** a
 
 A folded section is still on the page. A section at zero keeps its {{button:red|✓ Mark}} on its line. So a clean day still gets stamped. You press {{button:outline|Open now}} to open any folded section in place. A line under the search box counts the groups. It reads like ***13 groups with work · 7 at zero · 5 marked today · 3 doors***. Each folded run sits under its own small heading at the foot of the page.
 
-The switch remembers your choice on this device. A link can open either view. The address ends in `?view=focus` or `?view=page`. On a phone nothing changes. The round is already one section at a time.
+The switch remembers your choice on this device. A link can open any view. The address ends in `?view=focus`, `?view=page` or `?view=roller`. On a phone nothing changes. The round is already one section at a time.
+
+## One group at a time
+
+The switch's third choice is **Roller**. The page shows one section at a time. The name and the count sit at the top, then the question, then the section at full width. At the foot you find {{button:outline|← Previous}}, {{button:outline|Skip}}, {{button:green|Looked · 12 open · next →}} and {{button:outline|Next →}}. The left and right arrow keys do the same.
+
+:::example The strip under the name
+{{chip:red|●}} {{chip:gray|●}} {{chip:gray|●}} {{chip:green|●}} … ***7 of 23 · 12 left with work*** &nbsp; ☐ Show the 5 marked today &nbsp; {{button:outline|Groups ▾}}
+:::
+
+A strip of dots sits under the name. There is one dot for every section in the round, in the freshness colours. You tap a dot to jump to that section. The words beside the dots say where you are and how many sections with work are left. The round is every section not yet marked today. Due sections come first. The three doors come last. Tick **Show the 5 marked today** to put the marked ones back in.
+
+{{button:outline|Groups ▾}} opens the Board. The Board shows every section in the round as a card. Each card has the count, the question and when it was last looked at. You tap a card to go there.
+
+{{button:green|Looked · 12 open · next →}} marks the section for everyone and opens the next one. It is the same mark as the desktop ✓, with the count it saw. When every section has been looked at the page says **Round done ✓**.
 
 ## On a phone: the round
 

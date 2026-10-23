@@ -9,8 +9,17 @@ import {
   quickfillViewStorageKey,
   readStoredQuickfillView,
   writeQuickfillView,
+  rollerDeck,
+  rollerDot,
+  rollerHasWork,
+  rollerNext,
+  rollerPrev,
+  rollerWords,
+  readStoredRollerShowDone,
+  writeRollerShowDone,
   type FocusBucket,
 } from './views'
+import type { RoundRow } from './round'
 
 const base = { count: 3, loading: false, collapsed: false, personal: false, forced: false }
 
@@ -79,7 +88,8 @@ describe('the view on the URL and on the device', () => {
   it('reads ?view= and ignores anything it does not know', () => {
     expect(parseQuickfillViewRequest('?view=focus')).toBe('focus')
     expect(parseQuickfillViewRequest('view=page&station=texts')).toBe('page')
-    expect(parseQuickfillViewRequest('?view=roller')).toBeNull()
+    expect(parseQuickfillViewRequest('?view=roller')).toBe('roller')
+    expect(parseQuickfillViewRequest('?view=board')).toBeNull()
     expect(parseQuickfillViewRequest('')).toBeNull()
   })
   it('remembers per person on the device and reads nothing for nobody', () => {
@@ -91,5 +101,76 @@ describe('the view on the URL and on the device', () => {
     expect(readStoredQuickfillView(null)).toBeNull()
     localStorage.setItem(quickfillViewStorageKey('u1'), 'junk')
     expect(readStoredQuickfillView('u1')).toBeNull()
+  })
+})
+
+const row = (sectionId: string, state: RoundRow['state'], count: number | null, personal = false): RoundRow => ({
+  sectionId,
+  label: sectionId,
+  personal,
+  needsNote: false,
+  state,
+  rhythmDays: 1,
+  overDays: null,
+  dueAtMs: null,
+  count,
+  countSource: count === null ? 'none' : 'open',
+  lastMarkedAt: null,
+  lastMarkedByName: null,
+})
+// The round's order: due first, then due today, not yet, fresh, the doors last.
+const rows = [
+  row('percent-complete', 'never', 6),
+  row('dispatch-inbox', 'due_today', 2),
+  row('warnings', 'not_yet', 0),
+  row('people-hours-new', 'not_yet', 23),
+  row('field-photos', 'not_yet', null),
+  row('texts', 'fresh', 1),
+  row('office-arriving', 'fresh', 0),
+  row('schedule', 'never', null, true),
+  row('my-inbox', 'never', 7, true),
+]
+
+describe('the Roller', () => {
+  afterEach(() => localStorage.clear())
+
+  it('deals everything not marked today, the doors included, and the marked ones on the switch', () => {
+    expect(rollerDeck(rows, false).map((r) => r.sectionId)).toEqual(['percent-complete', 'dispatch-inbox', 'warnings', 'people-hours-new', 'field-photos', 'schedule', 'my-inbox'])
+    expect(rollerDeck(rows, true).map((r) => r.sectionId)).toEqual(rows.map((r) => r.sectionId))
+  })
+  it('counts the work left from this group on, doors and no-count stations excluded', () => {
+    const deck = rollerDeck(rows, false)
+    expect(rollerWords(deck, 0)).toBe('1 of 7 · 3 left with work')
+    expect(rollerWords(deck, 2)).toBe('3 of 7 · 1 left with work')
+    expect(rollerWords(deck, 6)).toBe('7 of 7 · 0 left with work')
+    expect(rollerWords(deck, 99)).toBe('7 of 7 · 0 left with work')
+    expect(rollerWords([], 0)).toBe('Round done ✓')
+    expect(rollerHasWork(row('my-inbox', 'never', 7, true))).toBe(false)
+  })
+  it('colours the dots by the chip rule, grey before due, hollow for a door', () => {
+    expect(rollerDot(row('a', 'never', 1))).toBe('red')
+    expect(rollerDot(row('a', 'due', 1))).toBe('red')
+    expect(rollerDot(row('a', 'due_today', 1))).toBe('amber')
+    expect(rollerDot(row('a', 'not_yet', 1))).toBe('grey')
+    expect(rollerDot(row('a', 'fresh', 1))).toBe('green')
+    expect(rollerDot(row('a', 'never', 1, true))).toBe('hollow')
+  })
+  it('walks the deck both ways and starts at the top for a station outside it', () => {
+    const deck = rollerDeck(rows, false)
+    expect(rollerNext(deck, null)).toBe('percent-complete')
+    expect(rollerNext(deck, 'texts')).toBe('percent-complete')
+    expect(rollerNext(deck, 'percent-complete')).toBe('dispatch-inbox')
+    expect(rollerNext(deck, 'my-inbox')).toBeNull()
+    expect(rollerPrev(deck, 'percent-complete')).toBeNull()
+    expect(rollerPrev(deck, 'dispatch-inbox')).toBe('percent-complete')
+    expect(rollerPrev(deck, 'texts')).toBeNull()
+  })
+  it('remembers the show-done switch per person on the device', () => {
+    expect(readStoredRollerShowDone('u1')).toBe(false)
+    writeRollerShowDone('u1', true)
+    expect(readStoredRollerShowDone('u1')).toBe(true)
+    expect(readStoredRollerShowDone('u2')).toBe(false)
+    writeRollerShowDone('u1', false)
+    expect(readStoredRollerShowDone('u1')).toBe(false)
   })
 })
