@@ -62,7 +62,8 @@ describe('buildPipelineMoneyMoves', () => {
   it('emits all four moves when every signal fires', () => {
     const moves = buildPipelineMoneyMoves({ stats: stats(), arUnallocatedCount: 2, canOpenAr: true })
     expect(moves.map((m) => m.key)).toEqual(['bill-capable', 'chase-90', 'allocate-deposits', 'fix-dates'])
-    expect(moves[0]!.claim).toBe('Bill the finished work — $71,969')
+    expect(moves[0]!.claim).toBe('Bill the finished work')
+    expect(moves[0]!.figure).toBe('$71,969')
     expect(moves[1]!.why).toBe('4 bills waiting 90+ days')
     expect(moves[2]!.claim).toBe('Allocate 2 bank deposits')
     expect(moves[3]!.claim).toBe('65 billed jobs have no bill line')

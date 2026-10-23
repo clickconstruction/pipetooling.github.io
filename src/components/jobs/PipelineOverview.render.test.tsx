@@ -48,7 +48,8 @@ describe('PipelineOverview fix-ups strip', () => {
   it('renders a chip per non-zero count and routes clicks by key', () => {
     const onFixup = vi.fn()
     render(<PipelineOverview {...props({ fixupCounts: { noCustomer: 1, noPictures: 3, noEmail: 2 }, onFixup })} />)
-    expect(screen.getByText('Fix-ups — missing data blocks billing')).toBeTruthy()
+    expect(screen.getByText(/^Fix-ups/)).toBeTruthy()
+    expect(screen.getByText('missing data blocks billing')).toBeTruthy()
     expect(screen.getByText('No customer pictures · 3')).toBeTruthy()
     fireEvent.click(screen.getByText('No customer · 1'))
     fireEvent.click(screen.getByText('No email · 2'))
@@ -58,7 +59,7 @@ describe('PipelineOverview fix-ups strip', () => {
 
   it('hides the whole strip when every count is zero', () => {
     render(<PipelineOverview {...props()} />)
-    expect(screen.queryByText(/Fix-ups —/)).toBeNull()
+    expect(screen.queryByText(/^Fix-ups/)).toBeNull()
   })
 
   it('strip still renders under an otherwise-empty opportunities queue', () => {
@@ -93,7 +94,8 @@ describe('PipelineOverview payment chase card (v2.2025)', () => {
     )
     // Compact anatomy (v2.2059): one-line claim (badge carries the count),
     // tiers as one plain why line — same shape as every neighbor card.
-    expect(screen.getByText("Ask when they'll pay — $36,029")).toBeTruthy()
+    expect(screen.getByText("Ask when they'll pay")).toBeTruthy()
+    expect(screen.getByText('$36,029')).toBeTruthy()
     expect(screen.getByText('3 customers past expected, never asked · 1 broken promise · 1 waiting · 2 disputes')).toBeTruthy()
     fireEvent.click(screen.getByText('Start call mode →'))
     expect(onStartChase).toHaveBeenCalledOnce()
