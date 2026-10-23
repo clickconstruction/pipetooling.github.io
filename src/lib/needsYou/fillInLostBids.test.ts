@@ -19,7 +19,7 @@ const bid = (p: Partial<LostBidSource> = {}): LostBidSource => ({
   ...p,
 })
 
-describe('fillInLostBids · the rows (punch list #145)', () => {
+describe('fillInLostBids · the rows (punch list #146)', () => {
   it('keeps the Why we lost lens’s rows: lost, no category, not adopted; biggest first', () => {
     const rows = lostBidFillInRows([
       bid({ id: 'small', bid_value: 1_000 }),

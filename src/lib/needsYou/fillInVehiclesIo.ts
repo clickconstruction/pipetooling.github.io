@@ -5,7 +5,7 @@ import type { VehicleRecordGap } from '../vehicleRecordGaps'
 import type { VehiclePlanOption, VehicleWrites } from './fillInVehicles'
 
 /**
- * The vehicle kind's reads and writes (v2.5775, punch list #145): the gaps are the Needs you
+ * The vehicle kind's reads and writes (v2.5775, punch list #146): the gaps are the Needs you
  * line's own loader, the plans the Vehicles tab's list; the writes are the tab's — the weekly
  * costs on the vehicle, a period on a plan, a service event and its reading. Undo zeroes the
  * costs it set and deletes the rows it inserted.

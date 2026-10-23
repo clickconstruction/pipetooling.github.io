@@ -3,7 +3,7 @@ import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import { fillInRowKey, type FillInRowBase } from './fillIn'
 
 /**
- * The lost-bid kind (v2.5774, punch list #145, PR 2): the rows behind the Needs you line
+ * The lost-bid kind (v2.5774, punch list #146, PR 2): the rows behind the Needs you line
  * *N lost bids have no reason recorded*, what the app knows about each, the fields the
  * assistant fills, and the writes. The rows are the Why we lost lens's own rule
  * (`bidSentCounts`: lost, no `loss_category`, not adopted into another bid), biggest value

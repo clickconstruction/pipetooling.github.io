@@ -8,7 +8,7 @@ import type { NeedsYouHost } from './needsYouSources'
 import type { UserRole } from '../hooks/useAuth'
 
 /**
- * Where a Needs You line's button goes (v2.5771, punch list #145): one table for both hosts.
+ * Where a Needs You line's button goes (v2.5771, punch list #146): one table for both hosts.
  *
  * Until v2.5771 each host held its own `if / else if` chain on `item.key`, and a line added to
  * one host's chain was not in the other's. `needsYouDoor` answers for every key the type
@@ -181,7 +181,7 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
     case 'lien-serve-copy':
       return href(d.lienServeFirstJobId ? lienWindowHref(d.lienServeFirstJobId, 'affidavit') : STAGES)
     case 'hours-approvals':
-      // On Quickfill the People Hours station on the same page carries the approvals (punch list #145, the owner's call 1).
+      // On Quickfill the People Hours station on the same page carries the approvals (punch list #146, the owner's call 1).
       return host === 'quickfill' ? { kind: 'station', station: 'people-hours-new', href: '/people?tab=hours&approvals=1' } : href('/people?tab=hours&approvals=1')
     case 'typed-hours':
       return href('/people?tab=hours&approvals=1&typed=1')

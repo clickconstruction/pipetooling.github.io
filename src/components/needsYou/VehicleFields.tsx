@@ -3,7 +3,7 @@ import { VEHICLE_COST_UNITS, VEHICLE_SERVICE_TYPES, type VehicleDecision, type V
 import type { InsuranceCostUnit } from '../../lib/vehicleInsuranceCost'
 
 /**
- * The vehicle kind's fields on the Fill them in deck (v2.5775, punch list #145): one block per
+ * The vehicle kind's fields on the Fill them in deck (v2.5775, punch list #146): one block per
  * missing record, and nothing for a record the vehicle has. Insurance asks the plan when the
  * vehicle is off one, and the cost in the unit the carrier quotes; registration the same way;
  * service the type, the day, the miles and a note, as the Vehicles tab's Log service does.
