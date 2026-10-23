@@ -37,7 +37,7 @@ function kindFromParam(k: string | null): EditorKind {
   return k && EDITOR_KINDS.some(([kind]) => kind === k) ? (k as EditorKind) : 'trade'
 }
 
-export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
+export function SettingsFlowsTab({ now, focusStep: focusStepProp }: { now?: () => Date; /** The step to land on (v2.5796); `?step=` when left out. */ focusStep?: string | null } = {}) {
   const { showToast } = useToastContext()
   const prompt = usePromptDialog()
   const confirm = useConfirmDialog()
@@ -47,6 +47,8 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
   // texts' own card instead, and `?kind=` stays for the links already out).
   const [params] = useSearchParams()
   const [kind, setKind] = useState<EditorKind>(() => kindFromParam(params.get('kind')))
+  // `?step=` (v2.5796): the receipt's Change the script in Settings lands on the step with its Call script open.
+  const focusStep = focusStepProp ?? params.get('step')
   const [view, setView] = useState<View>('flow')
   const editor = useFlowEditor(kind, { now })
   const appSends = useAppSends()
@@ -191,6 +193,7 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
         <FlowStepsTable
           kind={kind}
           draft={draft}
+          focusStep={focusStep}
           board={editor.board}
           usual={usual}
           seats={seats}

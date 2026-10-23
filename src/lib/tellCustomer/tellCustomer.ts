@@ -341,6 +341,18 @@ export function emailNotSentLine(email: string): string {
 }
 
 /** The call's script, filled for this customer, in the office's language: the step's own (`flow_steps.call_script`, v2.5596) when the office wrote one, else the app's. */
+/** The step whose call script the receipt reads, as Settings → Flows names it: a moved visit reads the Booked step's. */
+export function scriptStepName(moment: TellMoment): string {
+  if (moment === 'estimate') return 'Estimate'
+  if (moment === 'booked' || moment === 'rescheduled') return 'Booked'
+  return MOMENT_NAMES[moment]
+}
+
+/** The door under the receipt's script (v2.5796): Settings → Flows, the residential flow, landed on the step with its Call script open. */
+export function scriptSettingsHref(moment: TellMoment): string {
+  return `/settings?tab=settings-flows&kind=residential&step=${MOMENT_STEP[moment]}`
+}
+
 export function receiptScript(moment: TellMoment, fills: BlankFills, lang: PortalLang = 'en', script: { text: string; textEs: string } | null = null): string {
   const s = script ?? DEFAULT_SCRIPTS[moment]
   const words = lang === 'es' ? s.textEs || s.text : s.text || s.textEs
@@ -370,6 +382,10 @@ export const TELL_WORDS = {
   sending: 'Sending…',
   receiptTitle: (first: string | null) => `Sent to ${first ?? 'the customer'}`,
   callAsk: (first: string | null) => `Call ${first ?? 'them'} to talk it through?`,
+  /** Under the receipt's script (v2.5796): whose words they are. The office's script lives on the step in Settings → Flows. */
+  scriptSource: (office: boolean, moment: TellMoment) =>
+    office ? `The office’s ${scriptStepName(moment)} script, filled for this ${moment === 'estimate' ? 'estimate' : 'job'}.` : `The app’s own words, since the office has no ${scriptStepName(moment)} script yet.`,
+  scriptDoor: 'Change the script in Settings',
   whatToSay: 'What to say',
   callLands: (first: string | null) => `The call lands in ${first ? `${first}’s` : 'their'} thread when it ends.`,
   call: (number: string) => `Call ${number}`,

@@ -35,6 +35,8 @@ Dana, this is Rosa with Click Plumbing. Your estimate for Whitfield water heater
 
 After the send, the sheet shows what went and when. Under it, **Call Dana to talk it through?** with the words to say. Press {{button:blue|Call}} to dial, or **Done**.
 
+Under the words, the sheet says whose script it is. Press **Change the script in Settings** to write the office's own, in English and Spanish. It lands on the Estimate step of the Residential customer flow.
+
 The estimate keeps a **What went** card after that. It lists the email with its time and each text that carried the link. Press **Open the thread** to read the text where it landed. When no text went, the card says why.
 
 A send that cannot finish says so in the sheet. A red band names the reason and your typed words stay. Press {{button:green|Try again}} when you fixed the reason, or **Skip** to leave it. If the estimate already went, the band says when it went. The button then reads {{button:green|Send the link again}}. That press emails a fresh link and texts it. The old link stops working.

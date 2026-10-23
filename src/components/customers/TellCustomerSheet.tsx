@@ -7,13 +7,18 @@
  * the link the email came back with. The rules are `lib/tellCustomer/tellCustomer.ts`; the reads and the send are
  * `lib/tellCustomer/tellCustomerIo.ts`. Drawn for the office team (`GC_OFFICE_TEAM`); anyone else reads the hold.
  * A send that answers no draws the problem band in place with the reason and the move (v2.5681, punch list #133); an
- * estimate that already went offers **Send the link again**, the page's resend with a fresh link.
+ * estimate that already went offers **Send the link again**, the page's resend with a fresh link. Under the receipt's
+ * script (v2.5796) a line says whose words they are, with **Change the script in Settings** for anyone who edits
+ * flows: Settings → Flows, the residential flow, landed on the step with its Call script open; the Call button draws
+ * a white phone glyph, the same on every device.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
+import { Phone } from 'lucide-react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { UserRole } from '../../hooks/useAuth'
-import { GC_OFFICE_TEAM } from '../../lib/gc/access'
+import { canEditFlows, GC_OFFICE_TEAM } from '../../lib/gc/access'
 import { telHrefFor } from '../../lib/phoneContact'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
@@ -32,6 +37,7 @@ import {
   lineFor,
   MOMENT_STEP,
   receiptScript,
+  scriptSettingsHref,
   sentLine,
   tellActs,
   tellFills,
@@ -93,7 +99,7 @@ const actRow: CSSProperties = { display: 'grid', gridTemplateColumns: '1.4rem 1f
 const script: CSSProperties = { background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.8rem', fontSize: '0.9375rem', lineHeight: 1.45, margin: 0 }
 const footerRow: CSSProperties = { display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', width: '100%' }
 const primaryBtn: CSSProperties = { minHeight: 46, padding: '0 1rem', borderRadius: 10, border: 'none', background: '#16a34a', color: 'white', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }
-const callBtn: CSSProperties = { ...primaryBtn, background: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }
+const callBtn: CSSProperties = { ...primaryBtn, background: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }
 const secondaryBtn: CSSProperties = { minHeight: 46, padding: '0 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer' }
 const quietBtn: CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem 0.4rem' }
 const disabled: CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
@@ -348,7 +354,8 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
         </button>
         {tel && number ? (
           <a href={tel} style={callBtn} data-testid="tell-call">
-            📞 {TELL_WORDS.call(number.value)}
+            <Phone size={18} strokeWidth={2.25} aria-hidden />
+            {TELL_WORDS.call(number.value)}
           </a>
         ) : null}
       </div>
@@ -382,6 +389,17 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
               <p style={{ ...label, margin: '0 0 0.25rem', fontSize: '0.65rem' }}>{TELL_WORDS.whatToSay}</p>
               <p style={script} data-testid="tell-script">
                 {receiptScript(moment, fills, 'en', callScript?.script ?? null)}
+              </p>
+              <p style={muted} data-testid="tell-script-source">
+                {TELL_WORDS.scriptSource(Boolean(callScript?.script), moment)}
+                {canEditFlows(role) ? (
+                  <>
+                    {' '}
+                    <Link to={scriptSettingsHref(moment)} style={{ color: 'var(--text-link)', fontWeight: 600 }} data-testid="tell-script-door">
+                      {TELL_WORDS.scriptDoor} ›
+                    </Link>
+                  </>
+                ) : null}
               </p>
               <p style={muted}>{TELL_WORDS.callLands(first)}</p>
               {contact ? (
