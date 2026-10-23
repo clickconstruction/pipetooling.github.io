@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildHelpGuideRegistry } from './helpGuides'
-import { BUTTON_VARIANTS, CHIP_VARIANTS } from './helpGuideIllustrations'
+import { BLOCK_KINDS, BUTTON_VARIANTS, CHIP_VARIANTS } from './helpGuideIllustrations'
 import { headingAnchor } from './helpGuideAnchors'
 
 const CONTENT_DIR = join(__dirname, '../content/help')
@@ -78,6 +78,24 @@ describe('help guide content', () => {
         anchors.add(n === 1 ? base : `${base}-${n}`)
       }
       for (const link of links) expect(anchors.has(link), `guide "${g.slug}" links to #${link}, which is no heading in it`).toBe(true)
+    }
+  })
+
+  it('every ::: fence names a known block kind and is closed (v2.5747), so a typo never prints as text', () => {
+    const guides = buildHelpGuideRegistry(loadContent())
+    for (const g of guides) {
+      let depth = 0
+      for (const line of g.body.split('\n')) {
+        const open = /^:::([a-z]+)/.exec(line)
+        if (open) {
+          expect((BLOCK_KINDS as readonly string[]).includes(open[1]!), `guide "${g.slug}" opens an unknown block ":::${open[1]}" (known: ${BLOCK_KINDS.join(', ')})`).toBe(true)
+          depth += 1
+        } else if (/^:::[ \t]*$/.test(line)) {
+          depth -= 1
+          expect(depth, `guide "${g.slug}" closes a block it never opened`).toBeGreaterThanOrEqual(0)
+        }
+      }
+      expect(depth, `guide "${g.slug}" leaves ${depth} block(s) open`).toBe(0)
     }
   })
 

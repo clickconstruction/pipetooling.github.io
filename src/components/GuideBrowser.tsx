@@ -12,6 +12,7 @@ import {
 } from '../lib/helpGuides'
 import { searchHelpGuides } from '../lib/helpGuideSearch'
 import { helpGuideMarkdownToSafeHtml } from '../lib/helpGuideHtml'
+import { stepHelpRing } from '../lib/helpGuideRing'
 import { applyHeadingAnchors } from '../lib/helpGuideAnchors'
 import { displayLabelForUserRole } from '../lib/userRoleDisplay'
 import { guideLensRoleLabel, guideLensRolesFor } from '../lib/roleGuideLens'
@@ -177,6 +178,13 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
             className="help-guide-body"
             style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--text-700)' }}
             onClick={(e) => {
+              // The robot's ring (v2.5747): Next step and Start over move the seven segments in place.
+              const ringPress = (e.target as HTMLElement).closest('button[data-help-ring]')
+              if (ringPress) {
+                const ring = ringPress.closest('.help-ring')
+                if (ring) stepHelpRing(ring, ringPress.getAttribute('data-help-ring') === 'reset' ? 'reset' : 'next')
+                return
+              }
               // A guide-to-guide link (`/help/<slug>` in the markdown) comes through
               // helpGuideHtml as `a[data-guide]`; open it in place instead of reloading.
               const link = (e.target as HTMLElement).closest('a[data-guide], a[data-app], a[data-anchor]')

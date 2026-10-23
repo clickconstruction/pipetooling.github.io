@@ -12,6 +12,13 @@
  *   :::example <caption>           framed panel that looks like an app card
  *   …markdown…                     (regular markdown inside)
  *   :::
+ *   :::cards … :::                 (v2.5747) a grid of cards; inside it, each card is
+ *   :::card <title> … :::            a titled card, which may hold
+ *   :::tryit … :::                   a Try it line (the eyebrow TRY IT over the words) and
+ *   :::fold <summary> … :::          a fold, closed until pressed (More by default)
+ *   :::steps … :::                 a numbered list drawn with big numerals
+ *   :::ring … :::                  the robot's ring, seven segments the reader taps through
+ *   Blocks nest; every open has its own `:::` close, innermost first.
  *
  * How it works: tokens are URI-encoded into `[[[help-ill|…]]]` text markers
  * BEFORE marked runs, so they ride through markdown + the sanitizer as plain
@@ -19,7 +26,13 @@
  * labels — author input can never smuggle attributes or tags through.
  */
 
-const MARKER_PATTERN = /\[\[\[help-(?:ill|panel-open|panel-close)[^\]]*\]\]\]/g
+import { HEARTBEAT_STEPS, HEARTBEAT_STEP_WORDS } from '../../supabase/functions/_shared/twinHeartbeat'
+
+const MARKER_PATTERN = /\[\[\[help-(?:ill|panel-open|panel-close|block-open|block-close)[^\]]*\]\]\]/g
+
+/** The block fences a guide may open (`:::<kind> <caption>`); the conformance test refuses any other. */
+export const BLOCK_KINDS = ['example', 'cards', 'card', 'tryit', 'fold', 'steps', 'ring'] as const
+export type HelpBlockKind = (typeof BLOCK_KINDS)[number]
 
 const BUTTON_STYLES: Record<string, string> = {
   blue: 'background:#2563eb;color:white;border:none;',
@@ -73,12 +86,27 @@ function escapeHtml(s: string): string {
  * Runs on raw markdown BEFORE marked.
  */
 export function encodeHelpIllustrations(markdown: string): string {
-  return markdown
+  // Fences, line by line with a stack, so a close knows which kind it closes (a fold ends in </details>).
+  const stack: HelpBlockKind[] = []
+  const fenced = markdown
     .replace(MARKER_PATTERN, '') // defensive: authored text can't smuggle markers
-    .replace(/^:::example[ \t]*(.*)$/gm, (_m, caption: string) => {
-      return `[[[help-panel-open|${encodeURIComponent(caption.trim())}]]]`
+    .split('\n')
+    .map((line) => {
+      const open = /^:::([a-z]+)[ \t]*(.*)$/.exec(line)
+      if (open && (BLOCK_KINDS as readonly string[]).includes(open[1]!)) {
+        const kind = open[1] as HelpBlockKind
+        stack.push(kind)
+        const caption = encodeURIComponent((open[2] ?? '').trim())
+        return kind === 'example' ? `[[[help-panel-open|${caption}]]]` : `[[[help-block-open|${kind},${caption}]]]`
+      }
+      if (/^:::[ \t]*$/.test(line)) {
+        const kind = stack.pop() ?? 'example'
+        return kind === 'example' ? '[[[help-panel-close]]]' : `[[[help-block-close|${kind}]]]`
+      }
+      return line
     })
-    .replace(/^:::[ \t]*$/gm, '[[[help-panel-close]]]')
+    .join('\n')
+  return fenced
     .replace(/\{\{(button|chip|icon|gif):([a-z0-9._-]+)(?:\|([^}]*))?\}\}/gi, (_m, kind: string, variant: string, label?: string) => {
       const payload = [kind.toLowerCase(), variant, label ?? ''].map((p) => encodeURIComponent(p)).join(',')
       return `[[[help-ill|${payload}]]]`
@@ -132,6 +160,66 @@ const PANEL_OPEN_HTML = (caption: string) =>
   `<div style="font-size:0.7rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">` +
   `${caption ? `Example — ${escapeHtml(caption)}` : 'Example'}</div>`
 
+// The robot's ring (v2.5747): seven arcs around the icon, the same seven steps the Bid Board's ring fills, drawn
+// here so a guide can let the reader tap through them (`helpGuideRing.ts` moves it; GuideBrowser routes the press).
+const RING_STEP_WORDS = HEARTBEAT_STEPS.map((k) => HEARTBEAT_STEP_WORDS[k])
+const RING_ARCS = (() => {
+  const n = RING_STEP_WORDS.length
+  const cx = 48
+  const cy = 48
+  const r = 38
+  const gap = 6
+  const span = 360 / n - gap
+  const point = (deg: number) => {
+    const rad = ((deg - 90) * Math.PI) / 180
+    return `${(cx + r * Math.cos(rad)).toFixed(2)} ${(cy + r * Math.sin(rad)).toFixed(2)}`
+  }
+  const arcs: string[] = []
+  for (let i = 0; i < n; i += 1) {
+    const a0 = i * (360 / n) + gap / 2
+    const a1 = a0 + span
+    arcs.push(`<path class="help-ring-seg" data-seg="${i}" d="M ${point(a0)} A ${r} ${r} 0 0 1 ${point(a1)}" fill="none" stroke-width="10" />`)
+  }
+  return arcs.join('')
+})()
+
+function renderRing(): string {
+  const chips = RING_STEP_WORDS.map((w, i) => `<li data-step="${i}">${escapeHtml(w)}</li>`).join('')
+  return (
+    `<div class="help-ring" data-at="0">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="The robot's ring, seven segments">${RING_ARCS}` +
+    `<text x="48" y="56" text-anchor="middle" font-size="22">🤖</text></svg>` +
+    `<div><p class="help-ring-word" data-ring-word>Nothing yet</p>` +
+    `<p class="help-ring-sub" data-ring-sub>Each tap is one step of the robot’s work. Seven taps is a sealed number.</p>` +
+    `<button type="button" data-help-ring="next">Next step</button><button type="button" data-help-ring="reset">Start over</button>` +
+    `<ul class="help-ring-steps" aria-label="The seven steps">${chips}</ul></div>`
+  )
+}
+
+function blockOpen(kind: string, caption: string): string {
+  switch (kind) {
+    case 'cards':
+      return '<div class="help-cards">'
+    case 'card':
+      return `<div class="help-card"><div class="help-card-title">${escapeHtml(caption)}</div>`
+    case 'tryit':
+      return '<div class="help-tryit"><span class="help-eyebrow">Try it</span>'
+    case 'fold':
+      return `<details class="help-fold"><summary>${escapeHtml(caption || 'More')}</summary><div class="help-fold-body">`
+    case 'steps':
+      return '<div class="help-steps">'
+    case 'ring':
+      return renderRing()
+    default:
+      return ''
+  }
+}
+
+function blockClose(kind: string): string {
+  if (kind === 'fold') return '</div></details>'
+  return (BLOCK_KINDS as readonly string[]).includes(kind) ? '</div>' : ''
+}
+
 /**
  * Expand markers into fixed HTML templates. Runs LAST, on sanitized HTML —
  * everything emitted here is template-authored; labels are escaped.
@@ -140,7 +228,18 @@ export function expandHelpIllustrations(html: string): string {
   return html
     // Block markers end up wrapped in <p> by marked; unwrap so the divs nest cleanly.
     .replace(/<p>\s*(\[\[\[help-panel-(?:open\|[^\]]*|close)\]\]\])\s*<\/p>/g, '$1')
+    .replace(/<p>\s*(\[\[\[help-block-(?:open|close)\|[^\]]*\]\]\])\s*<\/p>/g, '$1')
     .replace(/<p>\s*(\[\[\[help-ill\|gif,[^\]]*\]\]\])\s*<\/p>/g, '$1')
+    .replace(/\[\[\[help-block-open\|([a-z]+),([^\]]*)\]\]\]/g, (_m, kind: string, enc: string) => {
+      let caption = ''
+      try {
+        caption = decodeURIComponent(enc)
+      } catch {
+        caption = ''
+      }
+      return blockOpen(kind, caption)
+    })
+    .replace(/\[\[\[help-block-close\|([a-z]+)\]\]\]/g, (_m, kind: string) => blockClose(kind))
     .replace(/\[\[\[help-panel-open\|([^\]]*)\]\]\]/g, (_m, enc: string) => {
       let caption = ''
       try {
