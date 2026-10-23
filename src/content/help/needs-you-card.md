@@ -2,12 +2,12 @@
 title: work the Needs you list on the dashboard
 category: Getting Started
 roles: all
-keywords: needs you, bid follow-ups, gc projects, trade partner quotes, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill, vehicles, insurance, registration, service
+keywords: needs you, fill them in, lost bids, bid follow-ups, gc projects, trade partner quotes, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill, vehicles, insurance, registration, service
 order: 13
 ---
 The Needs you card sits near the top of the Dashboard. It collects the things waiting on a decision from you.
 
-Those things are money received but not applied, and purchases with no job. They are approvals that have sat too long, and jobs quiet too long for their stage. They are paperwork gaps, and the Wednesday GC review while it is still owed. GC means the general contractor. The card's header shows a count. Each item carries one button. When nothing needs you, the card disappears entirely. **Quickfill** shows the same card, from the same numbers.
+Those things are money received but not applied, and purchases with no job. They are approvals that have sat too long, and jobs quiet too long for their stage. They are paperwork gaps, and the Wednesday GC review while it is still owed. GC means the general contractor. The card's header shows a count. Each item carries one button. When nothing needs you, the card disappears entirely. **Quickfill** shows the same card, from the same numbers, with the same buttons. On Quickfill the clock sessions line opens the People Hours station on that page.
 
 The list is ordered **worst first**. Red alerts sit on top. Money waiting to be applied comes next, then the weekly GC deadline. The work queues follow, with the biggest pile first. Hygiene items come last. Walk the list follows the same order. So walking from the top always tackles the worst thing next.
 
@@ -15,6 +15,8 @@ The list is ordered **worst first**. Red alerts sit on top. Money waiting to be 
 
 - **Cards** shows everything at once. Each row carries its number on the right. Its action sits on the far right, like {{button:blue|Match deposits}} or {{button:outline|Start call mode}}.
 - **Walk the list** takes you through one item at a time, call-mode style. You see a big card with the action front and center. You press {{button:outline|Skip for now}} to come back later. A progress bar shows where you are. A skipped item goes to the back of the round. It comes back later and is never gone. Once you have skipped everything, the round starts over from the top. Under the card, **Handled this visit** lists what you acted on or skipped since you opened the page. You tap one to bring its card back. An item your work cleared shows a ✓.
+
+- **Fill them in** is on Quickfill only. It walks the rows behind a few lines one at a time. Today those rows are the lost bids with no reason. Each card says what the app already knows. You tap a reason and add what they said. You can add who you talked to. Then you press {{button:blue|Save and next}}. With a name, the call lands on the bid's contact log too. {{button:outline|Skip}} sends the row to the back. Saved rows collect under the card with **Undo**. The end counts what you saved. It offers the station's Mark.
 
 You switch between them with the **Cards / Walk the list** toggle at the card's bottom-right. The app remembers your choice. On a phone, an office login that has never picked opens on **Walk the list**. Office logins are assistant, controller, primary and estimator. The first pick you make is the one it keeps.
 

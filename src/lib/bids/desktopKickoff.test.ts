@@ -130,7 +130,10 @@ describe('docs/twins/kickoffs/code-operator.md (the Claude Code kickoff, v2.4231
   it('keeps two sessions on one key apart: a shell whose ledger just moved is another session’s', () => {
     expect(filled).toContain('every session on this key is the same robot')
     expect(filled).toContain('its ledger or its heartbeat moved in the last **15 minutes**')
-    expect(filled).toContain('it is orphaned')
+    // v2.5753: the server's word on each shell, `shadow.hold`, decides; the robot no longer judges the bare list.
+    expect(filled).toContain('`shadow.hold`')
+    expect(filled).toContain('`orphaned` → pick it up')
+    expect(filled).toContain('`closed` → void, locked, scored')
     expect(filled).toContain('No more than two at once.')
   })
 
@@ -305,9 +308,16 @@ describe('the rounds (v2.5735, punch list #142)', () => {
     const cmd = buildDesktopSetupCommandFromCode({ ...base, rounds: true, connectorName: 'twin-pricer-mcp' })
     expect(cmd).toContain('ROUNDS="1"')
     expect(cmd).toContain('CONNECTOR_NAME="twin-pricer-mcp"')
-    expect(cmd).toContain("rounds: process.env.ROUNDS === '1'")
+    expect(cmd).toContain("const rounds = process.env.ROUNDS === '1'")
+    expect(cmd).toContain("machine: os.hostname(), rounds })")
     expect(cmd).toContain("const name = body.connector_name || process.env.CONNECTOR_NAME || 'twin-mcp'")
-    expect(cmd).toContain("body.kickoff_for === 'rounds'")
+    // v2.5752: the rounds branch installs the agent (the plist, round.sh, mcp.json, launchctl), and the command never pastes a rounds kickoff.
+    expect(cmd).toContain("if (rounds) {")
+    expect(cmd).toContain("spawnSync('launchctl', ['bootstrap', domain, plist]")
+    expect(cmd).toContain("const ROUND_SH = ")
+    expect(cmd).toContain("const PLIST = ")
+    expect(cmd).toContain("spawnSync(cli, ['auth', 'login']")
+    expect(cmd).not.toContain("body.kickoff_for === 'rounds'")
     const plain = buildDesktopSetupCommandFromCode(base)
     expect(plain).toContain('ROUNDS="0"')
     expect(plain).toContain('CONNECTOR_NAME="twin-mcp"')
@@ -320,8 +330,16 @@ describe('the rounds (v2.5735, punch list #142)', () => {
     expect(doc).toContain('`round: true`')
     expect(doc).toContain('Stop the rounds')
     expect(doc).toContain('15 minutes')
-    expect(doc).toContain('*/5 * * * *')
+    // v2.5752: the routine is gone; the LaunchAgent hands the whole document to the CLI, so the top reads as the robot's instruction.
+    expect(doc).not.toContain('*/5 * * * *')
+    expect(doc).not.toContain('scheduled task')
+    expect(doc).toContain('com.clicktooling.robot-rounds')
+    expect(doc.split('\n').slice(0, 4).join('\n')).toContain('**Run this now.**')
     expect(doc).toContain('`next_shadow` once')
+    // v2.5753: step 1 reads the server's hold on each shell, so a parked or runless shell never ends a round.
+    expect(doc).toContain('`shadow.hold`')
+    expect(doc).toContain('never heartbeat on them')
+    expect(doc).toContain('`held`')
     expect(doc).toContain('twin-pricer-mcp')
     expect(doc).not.toMatch(/ptt_[0-9a-f]{8}/)
     const filled = buildDesktopKickoff(doc, { connectorUrl: 'https://mcp.clicktooling.com/twin' })

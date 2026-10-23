@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,6 +10,7 @@ import { dirname, resolve } from 'node:path'
 import { realpathSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { buildDesktopSetupCommandFromCode, SETUP_NODE_LINE } from './desktopKickoff'
+import { ROUNDS_AGENT_LABEL, buildRoundScript, buildRoundsLaunchAgentPlist } from './roundsLaunchAgent'
 
 /**
  * The setup command's shell prelude, run (v2.5742). A bed stands in for the Mac: a HOME of its
@@ -204,7 +205,7 @@ function runScript(b: MacBed, setupUrl: string, extra: Record<string, string> = 
         TWIN_SETUP_URL: setupUrl,
         TWIN_MCP_URL: 'https://mcp.clicktooling.com/twin',
         CONNECTOR_NAME: 'twin-mcp',
-        ROUNDS: '1',
+        ROUNDS: '0',
         KICKOFF_FILE: 'Library/Application Support/ClickTooling/last-kickoff.md',
         ...extra,
       },
@@ -218,7 +219,7 @@ function runScript(b: MacBed, setupUrl: string, extra: Record<string, string> = 
 }
 
 const configOf = (b: MacBed) => JSON.parse(readFileSync(join(b.home, 'Library/Application Support/Claude/claude_desktop_config.json'), 'utf8'))
-const GOOD = { status: 200, body: { token: 'tok_never_shown_9f8e7d', twin_email: 'twin@example.com', connector_name: 'twin-mcp', connector_url: 'https://mcp.clicktooling.com/twin', kickoff: 'THE ROUNDS KICKOFF', kickoff_for: 'rounds' } }
+const GOOD = { status: 200, body: { token: 'tok_never_shown_9f8e7d', twin_email: 'twin@example.com', connector_name: 'twin-mcp', connector_url: 'https://mcp.clicktooling.com/twin', kickoff: 'THE CODE KICKOFF', kickoff_for: 'code' } }
 
 describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', () => {
   it('redeems the code, writes the connector by absolute paths with that Node’s bin first on its PATH, keeps other servers, copies and files the kickoff, restarts Claude', async () => {
@@ -230,7 +231,7 @@ describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', (
       writeFileSync(cfgPath, JSON.stringify({ mcpServers: { other: { command: 'x' } }, theme: 'dark' }))
       const r = await runScript(b, d.url)
       expect(r.code).toBe(0)
-      expect(d.asked).toEqual([{ action: 'redeem', code: 'K7Q2-M9XD-4T', machine: hostname(), rounds: true }])
+      expect(d.asked).toEqual([{ action: 'redeem', code: 'K7Q2-M9XD-4T', machine: hostname(), rounds: false }])
       const cfg = configOf(b)
       const nodeBin = realpathSync(process.execPath)
       expect(cfg.theme).toBe('dark')
@@ -242,10 +243,10 @@ describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', (
       expect(entry.env.TWIN_TOKEN).toBe('tok_never_shown_9f8e7d')
       expect(entry.env.PATH.split(':')[0]).toBe(dirname(nodeBin))
       expect(r.out).not.toContain('tok_never_shown')
-      expect(readFileSync(b.clip, 'utf8')).toBe('THE ROUNDS KICKOFF')
-      expect(readFileSync(join(b.home, 'Library/Application Support/ClickTooling/last-kickoff.md'), 'utf8')).toBe('THE ROUNDS KICKOFF')
+      expect(readFileSync(b.clip, 'utf8')).toBe('THE CODE KICKOFF')
+      expect(readFileSync(join(b.home, 'Library/Application Support/ClickTooling/last-kickoff.md'), 'utf8')).toBe('THE CODE KICKOFF')
       expect(r.out).toContain('twin-mcp connected for twin@example.com.')
-      expect(r.out).toContain('Claude is reopening. The kickoff is on your clipboard: open the Code tab, start a NEW session and paste it. It makes the Robot rounds routine and runs the first round. A copy is at ')
+      expect(r.out).toContain('Claude is reopening. The kickoff is on your clipboard: open the Code tab, start a NEW session and paste it. A copy is at ')
       expect(r.calls).toContain('open -Ra Claude')
       expect(r.calls).toContain('open -a Claude')
     } finally { d.server.close() }
@@ -258,7 +259,7 @@ describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', (
       const r = await runScript(b, d.url, { CLAUDECODE: '1' })
       expect(r.code).toBe(0)
       expect(configOf(b).mcpServers['twin-mcp'].env.TWIN_TOKEN).toBe('tok_never_shown_9f8e7d')
-      expect(readFileSync(b.clip, 'utf8')).toBe('THE ROUNDS KICKOFF')
+      expect(readFileSync(b.clip, 'utf8')).toBe('THE CODE KICKOFF')
       expect(r.out).toContain('Done here. Now quit Claude with Cmd+Q and open it again, so the connector loads. Then open the Code tab, start a NEW session and paste it.')
       expect(r.out).toContain('The kickoff is on your clipboard. A copy is at ')
       expect(r.calls).not.toContain('open -a Claude')
@@ -296,6 +297,151 @@ describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', (
       expect(r.code).toBe(1)
       expect(r.out).toContain('The Claude app is not on this Mac. Install it from claude.ai/download')
       expect(d.asked).toEqual([])
+    } finally { d.server.close() }
+  })
+})
+
+/**
+ * The rounds (v2.5752, punch list #142): the same Node half with ROUNDS=1, against a stand-in Mac
+ * whose `claude`, `launchctl`, `pmset` and `curl` are stubs that log their calls. The stub claude
+ * answers `auth status` from a flag file that `auth login` creates; the stub curl, asked for the
+ * installer, prints a script that puts the stub into ~/.local/bin. No real CLI, no network.
+ */
+type RoundsBed = MacBed & { flag: string }
+function roundsMac(opts: { signedIn: boolean; cli: 'path' | 'none'; sleep?: number; bootstrapFails?: boolean }): RoundsBed {
+  const b = mac({ claudeApp: true })
+  const flag = join(b.home, 'signed-in.flag')
+  if (opts.signedIn) writeFileSync(flag, '1')
+  const stub = `#!/bin/sh
+echo "claude $@" >> "${b.log}"
+if [ "$1" = "auth" ] && [ "$2" = "status" ]; then if [ -f "${flag}" ]; then echo '{"loggedIn":true,"authMethod":"claude.ai"}'; else echo '{"loggedIn":false,"authMethod":"none"}'; fi; exit 0; fi
+if [ "$1" = "auth" ] && [ "$2" = "login" ]; then touch "${flag}"; exit 0; fi
+exit 0
+`
+  exe(join(b.bin, opts.cli === 'path' ? 'claude' : 'claude-stub'), stub)
+  // claude.ai/install.sh stands in as a script that copies the stub into ~/.local/bin
+  exe(join(b.bin, 'curl'), `#!/bin/sh\necho "curl $@" >> "${b.log}"\necho 'mkdir -p "$HOME/.local/bin" && cp "${join(b.bin, 'claude-stub')}" "$HOME/.local/bin/claude" && chmod 755 "$HOME/.local/bin/claude"'\n`)
+  exe(join(b.bin, 'launchctl'), `#!/bin/sh\necho "launchctl $@" >> "${b.log}"\n[ "$1" = bootout ] && { echo "Boot-out failed: 3: No such process" >&2; exit 3; }\n${opts.bootstrapFails ? '[ "$1" = bootstrap ] && { echo "Bootstrap failed: 5: Input/output error" >&2; exit 5; }' : ''}\nexit 0\n`)
+  exe(join(b.bin, 'pmset'), `#!/bin/sh\necho " sleep                ${opts.sleep ?? 0}"\necho " displaysleep         10"\n`)
+  return { ...b, flag }
+}
+
+const pt = (b: MacBed) => join(b.home, 'Library/Application Support/ClickTooling')
+const plistOf = (b: MacBed) => join(b.home, 'Library/LaunchAgents', `${ROUNDS_AGENT_LABEL}.plist`)
+const ROUNDS_GOOD = { status: 200, body: { ...GOOD.body, kickoff: 'THE ROUND TEXT', kickoff_for: 'rounds' } }
+
+describe('the rounds: the command installs the Robot rounds agent (v2.5752, punch list #142)', () => {
+  it('writes the round text, the connector file, the wrapper and the plist, loads the agent, and never touches the clipboard or the Claude app', async () => {
+    const d = await door(ROUNDS_GOOD)
+    try {
+      const b = roundsMac({ signedIn: true, cli: 'path' })
+      const r = await runScript(b, d.url, { ROUNDS: '1' })
+      expect(r.code).toBe(0)
+      expect(d.asked).toEqual([{ action: 'redeem', code: 'K7Q2-M9XD-4T', machine: hostname(), rounds: true }])
+      // Desktop's config as before, and the rounds' own connector file: an HTTP server with the key as its header, mode 600.
+      expect(configOf(b).mcpServers['twin-mcp'].env.TWIN_TOKEN).toBe('tok_never_shown_9f8e7d')
+      const mcp = JSON.parse(readFileSync(join(pt(b), 'mcp.json'), 'utf8'))
+      expect(mcp).toEqual({ mcpServers: { 'twin-mcp': { type: 'http', url: 'https://mcp.clicktooling.com/twin', headers: { 'X-Twin-Token': 'tok_never_shown_9f8e7d' } } } })
+      expect(statSync(join(pt(b), 'mcp.json')).mode & 0o777).toBe(0o600)
+      expect(readFileSync(join(pt(b), 'round.md'), 'utf8')).toBe('THE ROUND TEXT')
+      expect(readFileSync(join(pt(b), 'round.sh'), 'utf8')).toBe(buildRoundScript())
+      expect(statSync(join(pt(b), 'round.sh')).mode & 0o111).toBe(0o111)
+      expect(existsSync(join(pt(b), 'work'))).toBe(true)
+      expect(existsSync(join(b.home, 'Library/Logs/ClickTooling'))).toBe(true)
+      expect(readFileSync(plistOf(b), 'utf8')).toBe(buildRoundsLaunchAgentPlist(b.home))
+      const uid = process.getuid!()
+      expect(r.calls.filter((c) => c.startsWith('launchctl'))).toEqual([
+        `launchctl bootout gui/${uid}/${ROUNDS_AGENT_LABEL}`,
+        `launchctl enable gui/${uid}/${ROUNDS_AGENT_LABEL}`,
+        `launchctl bootstrap gui/${uid} ${plistOf(b)}`,
+      ])
+      expect(r.calls.filter((c) => c.startsWith('claude'))).toEqual(['claude auth status'])
+      expect(r.calls).not.toContain('pbcopy')
+      expect(r.calls).not.toContain('open -a Claude')
+      expect(r.calls.some((c) => c.startsWith('osascript'))).toBe(false)
+      expect(existsSync(join(b.home, 'Library/Application Support/ClickTooling/last-kickoff.md'))).toBe(false)
+      expect(r.out).not.toContain('tok_never_shown')
+      expect(r.out).toContain('twin-mcp connected for twin@example.com.')
+      expect(r.out).toContain('The rounds are installed on this Mac: one every five minutes, with no Claude session open and no question asked. The first is running now. Bids → 🤖 Robots → Console shows this Mac Alive within a minute.')
+      expect(r.out).toContain(`To take the rounds off this Mac:  launchctl bootout gui/$UID/${ROUNDS_AGENT_LABEL}`)
+      expect(r.out).not.toContain('sleeps after')
+    } finally { d.server.close() }
+  })
+
+  it('signs the CLI in first when it is not, before the code is spent, and says when the Mac would sleep', async () => {
+    const d = await door(ROUNDS_GOOD)
+    try {
+      const b = roundsMac({ signedIn: false, cli: 'path', sleep: 10 })
+      const r = await runScript(b, d.url, { ROUNDS: '1' })
+      expect(r.code).toBe(0)
+      expect(r.calls.filter((c) => c.startsWith('claude'))).toEqual(['claude auth status', 'claude auth login', 'claude auth status'])
+      expect(r.out).toContain('Claude Code is not signed in on this Mac yet. A browser window opens once: sign in with the Claude account the rounds use.')
+      expect(r.out).toContain('This Mac sleeps after 10 minutes, and the rounds stop while it sleeps. System Settings → Energy: never sleep.')
+      expect(d.asked).toHaveLength(1)
+      expect(existsSync(plistOf(b))).toBe(true)
+    } finally { d.server.close() }
+  })
+
+  it('pasted into Claude Code while the CLI is not signed in: one line, nothing spent, nothing written', async () => {
+    const d = await door(ROUNDS_GOOD)
+    try {
+      const b = roundsMac({ signedIn: false, cli: 'path' })
+      const r = await runScript(b, d.url, { ROUNDS: '1', CLAUDECODE: '1' })
+      expect(r.code).toBe(1)
+      expect(r.out).toContain('Claude Code on this Mac is not signed in for the rounds. In Terminal run:  ')
+      expect(r.out).toContain(' auth login  and sign in, then press "Set up on this Mac" again and paste that command into Terminal. Nothing was changed.')
+      expect(r.calls.filter((c) => c.startsWith('claude'))).toEqual(['claude auth status'])
+      expect(d.asked).toEqual([])
+      expect(existsSync(join(pt(b), 'mcp.json'))).toBe(false)
+      expect(existsSync(plistOf(b))).toBe(false)
+    } finally { d.server.close() }
+  })
+
+  it('a Mac with no Claude Code anywhere gets it from claude.ai into ~/.local/bin, then carries on', async () => {
+    const d = await door(ROUNDS_GOOD)
+    try {
+      const b = roundsMac({ signedIn: true, cli: 'none' })
+      const r = await runScript(b, d.url, { ROUNDS: '1' })
+      expect(r.code).toBe(0)
+      expect(r.out).toContain('Getting Claude Code for this Mac from claude.ai, into your Library folder.')
+      expect(r.calls).toContain('curl -fsSL https://claude.ai/install.sh')
+      expect(existsSync(join(b.home, '.local/bin/claude'))).toBe(true)
+      expect(r.calls.filter((c) => c.startsWith('claude'))).toEqual(['claude auth status'])
+      expect(existsSync(plistOf(b))).toBe(true)
+    } finally { d.server.close() }
+  })
+
+  it('launchd refusing the agent is said in one line with the command to run by hand', async () => {
+    const d = await door(ROUNDS_GOOD)
+    try {
+      const b = roundsMac({ signedIn: true, cli: 'path', bootstrapFails: true })
+      const r = await runScript(b, d.url, { ROUNDS: '1' })
+      expect(r.code).toBe(1)
+      expect(r.out).toContain('launchd would not start the rounds: Bootstrap failed: 5: Input/output error. In Terminal run:  launchctl bootstrap gui/')
+      expect(r.out).not.toContain('The rounds are installed')
+    } finally { d.server.close() }
+  })
+
+  it('the pricer joins the rounds: a plain setup adds its key to a connector file that already exists, and writes none where there is none', async () => {
+    const pricer = { status: 200, body: { ...GOOD.body, connector_name: 'twin-pricer-mcp', token: 'tok_pricer_7a7a', kickoff: 'THE PRICING KICKOFF', kickoff_for: 'chat' } }
+    const d = await door(pricer)
+    try {
+      const b = mac({ claudeApp: true })
+      mkdirSync(pt(b), { recursive: true })
+      writeFileSync(join(pt(b), 'mcp.json'), JSON.stringify({ mcpServers: { 'twin-mcp': { type: 'http', url: 'https://mcp.clicktooling.com/twin', headers: { 'X-Twin-Token': 'tok_bid_robot' } } } }))
+      const r = await runScript(b, d.url, { ROUNDS: '0', CONNECTOR_NAME: 'twin-pricer-mcp' })
+      expect(r.code).toBe(0)
+      const mcp = JSON.parse(readFileSync(join(pt(b), 'mcp.json'), 'utf8'))
+      expect(Object.keys(mcp.mcpServers)).toEqual(['twin-mcp', 'twin-pricer-mcp'])
+      expect(mcp.mcpServers['twin-mcp'].headers['X-Twin-Token']).toBe('tok_bid_robot')
+      expect(mcp.mcpServers['twin-pricer-mcp'].headers['X-Twin-Token']).toBe('tok_pricer_7a7a')
+      expect(r.calls.some((c) => c.startsWith('launchctl'))).toBe(false)
+      expect(readFileSync(b.clip, 'utf8')).toBe('THE PRICING KICKOFF')
+
+      const b2 = mac({ claudeApp: true })
+      const r2 = await runScript(b2, d.url, { ROUNDS: '0' })
+      expect(r2.code).toBe(0)
+      expect(existsSync(join(pt(b2), 'mcp.json'))).toBe(false)
     } finally { d.server.close() }
   })
 })

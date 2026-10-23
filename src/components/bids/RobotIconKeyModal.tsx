@@ -1,14 +1,18 @@
 import type { ReferenceGradeLetter } from '../../lib/bids/referenceGrade'
 import type { RobotRowState } from '../../lib/bids/robotRowState'
 import { GATE_B_PCT, GATE_B_STREAK } from '../../lib/bids/confidenceBoard'
+import { robotLeftToYou } from '../../lib/bids/robotLeftToYou'
 import { RobotGlyph } from './RobotGlyph'
+import { RobotLeftMark } from './RobotLeftMark'
 import { GRADE_COLORS } from './RobotReferenceGradeModal'
 
 const LIVE_ROWS: Array<{ state: RobotRowState; title: string; text: string }> = [
-  { state: { kind: 'queued', title: '' }, title: 'Robot is on it', text: 'Outline = queued for the next batch. Solid = reading the plans and counting. The ring round it fills one segment per step, seven in all. A lock badge = it sealed its number; nobody sees that number until you send. Click for its status.' },
+  { state: { kind: 'queued', title: '' }, title: 'Robot is on it', text: 'Outline = queued for the next batch. Solid = reading the plans and counting. The ring round it fills one segment per step, seven in all. A lock badge = it sealed its number; nobody sees that number until you send. Click for its status. A sent bid wears the ring only while a robot is working on it; click to compare, and Read the run from there.' },
   { state: { kind: 'needs', badge: '?', title: '', gaps: [], questions: 0 }, title: 'Robot needs something from you', text: 'Plans it can’t open, or a question it asked (the badge counts the questions). Click to see exactly what, with the fix.' },
   { state: { kind: 'scored', title: '', deltaPct: null, twinBidNumber: null }, title: 'Scored', text: 'You sent the bid and the robot’s sealed number was checked against yours. Hover for how far off it was; click to compare counts and pricing.' },
-  { state: { kind: 'off', reason: 'opt-out', title: '' }, title: 'Not this bid', text: 'Opted out on the bid form, or a division robots don’t bid yet.' },
+  // v2.5751: the two off states split — a bid left to a person has a way back, a division has none.
+  { state: { kind: 'off', reason: 'opt-out', title: '' }, title: 'Left to you', text: 'You pressed Leave this one to me, or ticked Don’t let robots shadow this bid. No robot touches it. Click to let the robot back in.' },
+  { state: { kind: 'off', reason: 'division', title: '' }, title: 'Not this division', text: 'Robots bid plumbing only. An electrical or HVAC bid is left alone.' },
 ]
 
 const GRADE_ROWS: Array<{ grade: ReferenceGradeLetter; text: string }> = [
@@ -65,7 +69,7 @@ export function RobotIconKeyModal({ onClose }: { onClose: () => void }) {
         <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr', gap: '0.55rem 0.7rem', alignItems: 'start', fontSize: '0.85rem', marginBottom: '1rem' }}>
           {LIVE_ROWS.map((r) => (
             <div key={r.title} style={{ display: 'contents' }}>
-              <span style={{ display: 'inline-flex', justifyContent: 'center', paddingTop: 2 }}><RobotGlyph state={r.state} size={20} /></span>
+              <span style={{ display: 'inline-flex', justifyContent: 'center', paddingTop: 2 }}>{robotLeftToYou(r.state) ? <RobotLeftMark size={20} /> : <RobotGlyph state={r.state} size={20} />}</span>
               <div>
                 <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{r.title}</div>
                 <div style={{ color: 'var(--text-muted)' }}>{r.text}</div>

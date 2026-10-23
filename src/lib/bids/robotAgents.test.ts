@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { agentState, buildRobotAgentView, nowWords, recentWorkLine, sortRobotAgents, todayLine, type RobotAgentRow, type RobotRecentItem } from './robotAgents'
+import { agentState, buildRobotAgentView, nowWords, queueWords, recentWorkLine, sortRobotAgents, todayLine, type RobotAgentRow, type RobotRecentItem } from './robotAgents'
 
 const NOW = Date.parse('2026-10-21T19:38:00Z')
 const DAY = Date.parse('2026-10-21T05:00:00Z')
@@ -88,5 +88,27 @@ describe('buildRobotAgentView and the order', () => {
     expect(asleep.checkedIn).toBe('Last check-in 2d ago.')
     expect(asleep.now).toBe('Nothing in hand.')
     expect(sortRobotAgents([asleep, alive]).map((v) => v.credentialId)).toEqual(['k1', 'k2'])
+  })
+})
+
+describe('queueWords (v2.5753: the check-in’s word on the queue)', () => {
+  const held = [{ bid: 'b516', project: 'TAKE 5 N LAMAR', why: 'Made over 30 days ago and nobody asked.' }, { bid: 'b519', why: 'Not a plumbing bid.' }]
+  it('names the bids the last check-in passed over and why, when the check-in is today’s', () => {
+    const words = queueWords(row({ idle_at: ago(3), idle_progress: { ready: 0, held } }), DAY)
+    expect(words).toBe('Passed over 2 bids. b516 TAKE 5 N LAMAR, made over 30 days ago and nobody asked. b519, not a plumbing bid.')
+    expect(plainWordsFailures(words ?? '')).toEqual([])
+    expect(buildRobotAgentView(row({ idle_at: ago(3), idle_progress: { ready: 0, held } }), NOW, DAY, true).queue).toBe(words)
+  })
+  it('a ready count the robot has not acted on is said when the check-in is its latest word and it holds no shell', () => {
+    const idle = row({ heartbeat_at: ago(20), holds_open_shell: false, idle_at: ago(3), idle_progress: { ready: 3 } })
+    expect(queueWords(idle, DAY)).toBe('Its last check-in saw 3 bids ready to claim.')
+    expect(queueWords(row({ heartbeat_at: ago(1), holds_open_shell: true, idle_at: ago(3), idle_progress: { ready: 3 } }), DAY)).toBeNull()
+    expect(queueWords(row({ heartbeat_at: ago(1), holds_open_shell: false, idle_at: ago(3), idle_progress: { ready: 1 } }), DAY)).toBeNull()
+  })
+  it('an older check-in, or one with nothing to say, is silent', () => {
+    expect(queueWords(row({ idle_at: new Date(DAY - 60_000).toISOString(), idle_progress: { ready: 0, held } }), DAY)).toBeNull()
+    expect(queueWords(row({ idle_at: ago(3), idle_progress: { ready: 0, rounds: 4 } }), DAY)).toBeNull()
+    expect(queueWords(row({ idle_at: null, idle_progress: null }), DAY)).toBeNull()
+    expect(queueWords(row(), DAY)).toBeNull()
   })
 })

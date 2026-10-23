@@ -141,7 +141,7 @@ import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import JobBookModal from './JobBookModal'
 import LegalDeskModal from './legal/LegalDeskModal'
 import { legalRpc, useLegalMatters } from '../../hooks/useLegalMatters'
-import { matterIsWithFirm } from '../../lib/legal/legalMatters'
+import { buildFirmActivity, matterIsWithFirm } from '../../lib/legal/legalMatters'
 import { uncollectibleFirmWarning } from '../../lib/legal/uncollectibleFirmWarning'
 import { payerForJob } from '../../lib/legal/legalPacket'
 import { newAskMeta, signoffStateForJob } from '../../lib/legal/legalAsks'
@@ -254,7 +254,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsMenu'
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
-import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
+import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
 import LienOwnerRecordsModal from './LienOwnerRecordsModal'
@@ -1527,6 +1527,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     void cacheFetchScopeIfNeeded(scopeForStagesSection('billed'), customerFilterForFetch)
   }, [lienDesk, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   const lienDeskCount = lienDeskCountOf(lienDeskData?.summary)
+  // The Legal desk's doors outside the Collections header (v2.5750): the stage bar's scales and the ☰ menu's
+  // Collections row, for the header's own set (`canManageCollections`), with the firm's acts awaiting the office
+  // as their count — the Dashboard's "the law firm has N things for you", folded from the matters the tab holds.
+  const legalDeskEligible = stagesGates.canManageCollections(authRole)
+  const legalDeskCount = useMemo(
+    () => (legalMatters.available ? buildFirmActivity([...legalMatters.entriesByMatter.values()].flat(), legalMatters.matters).count : null),
+    [legalMatters.available, legalMatters.entriesByMatter, legalMatters.matters],
+  )
   // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
@@ -3072,6 +3080,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       'billed-aging-chart': () => setBilledAgingChartOpen(true),
       'billed-payment-forecast': () => setBilledPaymentForecastOpen(true),
       'lien-desk': () => setLienDesk({ jobId: null }),
+      'legal-desk': () => setLegalDesk({ payerKey: null }),
       'paid-notifications': () => setPaymentEmailSettingsOpen(true),
       'paid-profit-chart': () => setPaidProfitChartOpen(true),
       'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
@@ -3333,7 +3342,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               totals={jumpStripTotals}
               onFocusSection={focusStagesSection}
               sectionElementId={stagesSectionElementId}
-              tail={lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} onOpen={() => setLienDesk({ jobId: null })} /> : null}
+              tail={(() => {
+                // The Legal desk's scales (v2.5750) ride only while Collections has rows — the stage the desk reviews, and the one the bar drops at 0.
+                const legalInBar = legalDeskEligible && jumpStripCounts.collections !== '0'
+                if (!legalInBar && !lienDeskEligible) return null
+                return (
+                  <>
+                    {lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} onOpen={() => setLienDesk({ jobId: null })} /> : null}
+                    {legalInBar ? <StagesLegalDeskShortcut count={legalDeskCount} onOpen={() => setLegalDesk({ payerKey: null })} /> : null}
+                  </>
+                )
+              })()}
               leading={
             <JobsStagesSectionToolsMenu
               inputs={{
@@ -3347,6 +3366,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       capableToBillTotalFormatted: capableDisplay,
       recentViewOpen: stagesRecentViewOpen,
       lienDeskCount,
+      // The Legal desk row (v2.5750): the Collections header's own count gates it, the firm's waiting acts badge it.
+      collectionsHeaderCount: jumpStripCounts.collections,
+      legalDeskCount,
               }}
               onSelect={sectionToolsOnSelect}
             />
@@ -3949,6 +3971,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </span>
                   {canManageCollections ? (() => {
                     // ⚖ Legal (v2.3293): mirrors the Billed tier's Accounts Receivable button — a modal in place, `?legal=` deep link.
+                    // v2.5750: its count is the firm's acts awaiting the office, the one the stage bar's scales and the ☰ menu's row wear.
                     // Gate on the header's cached count, not the tier's rows: Collections loads its rows lazily on expand, so on a
                     // fresh page the rows are empty while the header already says "(8)" — the desk fetches the scope itself.
                     const legalEmpty = collectionsHdr.count === '0'
@@ -3967,7 +3990,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         }}
                       >
                         <StagesToolsMenuGlyph name="scales" inherit />
-                        Legal
+                        Legal{typeof legalDeskCount === 'number' && legalDeskCount > 0 ? ` · ${legalDeskCount}` : ''}
                       </button>
                     )
                   })() : null}

@@ -7,7 +7,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
+import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 
 const counts = { waiting: '21', working: '33', readyToBill: '0', billed: '66', collections: '0' }
 const totals = { waiting: '257.3k', working: '391.8k', readyToBill: '0', billed: '348.8k', collections: '0' }
@@ -116,6 +116,47 @@ describe('the Lien desk shortcut (v2.4520)', () => {
   it('draws no group when no shortcut is handed in', () => {
     const { container } = render(<JobsStagesJumpStrip counts={counts} totals={totals} onFocusSection={vi.fn()} sectionElementId={sectionElementId} />)
     expect(container.querySelector('.stagesStageSegTail')).toBeNull()
+  })
+})
+
+describe('the Legal desk shortcut (v2.5750)', () => {
+  it('rides after the gavel in the same square, wears the firm\u2019s waiting count, and opens the desk', () => {
+    const onLegal = vi.fn()
+    const onLien = vi.fn()
+    const view = render(
+      <JobsStagesJumpStrip
+        counts={{ ...counts, collections: '7' }}
+        totals={{ ...totals, collections: '19.3k' }}
+        onFocusSection={vi.fn()}
+        sectionElementId={sectionElementId}
+        tail={
+          <>
+            <StagesLienDeskShortcut count={23} onOpen={onLien} />
+            <StagesLegalDeskShortcut count={2} onOpen={onLegal} />
+          </>
+        }
+      />,
+    )
+    const scales = screen.getByRole('button', { name: 'Open the Legal desk, 2 from the firm waiting on you' })
+    const gavel = screen.getByRole('button', { name: 'Open the Lien desk, 23 to work' })
+    expect(scales.textContent).toBe('2')
+    expect(scales.className).toBe('stagesDeskShortcut')
+    expect(scales.dataset.desk).toBe('legal')
+    expect(gavel.className).toBe('stagesDeskShortcut')
+    expect(gavel.dataset.desk).toBe('lien')
+    // Collections segment, then the gavel, then the scales (v2.5763: the owner's order — the Lien desk first, the Legal desk last).
+    const group = scales.parentElement!
+    expect(group.className).toContain('stagesStageSegTail')
+    expect([...group.children]).toEqual([screen.getByLabelText('Jump to Collections, 7 rows'), gavel, scales])
+    fireEvent.click(scales)
+    expect(onLegal).toHaveBeenCalledTimes(1)
+    expect(onLien).not.toHaveBeenCalled()
+
+    // Nothing waiting: no badge, the plain name.
+    view.rerender(
+      <JobsStagesJumpStrip counts={{ ...counts, collections: '7' }} totals={{ ...totals, collections: '19.3k' }} onFocusSection={vi.fn()} sectionElementId={sectionElementId} tail={<StagesLegalDeskShortcut count={null} onOpen={onLegal} />} />,
+    )
+    expect(screen.getByRole('button', { name: 'Open the Legal desk' }).textContent).toBe('')
   })
 })
 

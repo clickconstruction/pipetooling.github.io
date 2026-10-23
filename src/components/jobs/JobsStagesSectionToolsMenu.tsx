@@ -3,7 +3,7 @@
  * the stage section headers' action buttons, reachable from the strip without scrolling
  * (v2.1419, in-strip since v2.1421). Moved verbatim out of `JobsStagesTab.tsx`. The open
  * flag is its own — nothing else read it; the items come from the tested kernel
- * `buildStagesSectionToolsMenu`; the tab keeps the fourteen doors in `onSelect`. Closes on
+ * `buildStagesSectionToolsMenu`; the tab keeps the fifteen doors in `onSelect`. Closes on
  * a click outside or Escape (`useCloseOnOutsideClick`, v2.3772) rather than a full-screen
  * backdrop, so the page still scrolls while the menu is open and its bottom rows stay reachable.
  */

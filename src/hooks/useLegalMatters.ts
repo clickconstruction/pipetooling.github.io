@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { listLegalMatterDocuments, type LegalMatterDocumentRow } from '../lib/legal/legalMatterDocumentsIo'
 import { supabase } from '../lib/supabase'
 import { indexMatters, type LegalEntryRow, type LegalFirmRow, type LegalMatterJobRow, type LegalMatterRow, type LegalRecipientRow } from '../lib/legal/legalMatters'
+import { countiesByFirm as countiesByFirmOf, type LegalFirmCountyRow } from '../lib/legal/firmCounties'
 
 // The legal_* tables land with the v2.3313 migration; until the generated types
 // catch up (and on a checkout ahead of the push) the reads go through an untyped client.
@@ -16,8 +17,14 @@ const db = supabase as unknown as SupabaseClient
 export type LegalMattersData = {
   available: boolean
   loading: boolean
+  /** The desk's one firm today: the oldest active row. PR 2 of punch list #144 replaces this read with the account's venue. */
   firm: LegalFirmRow | null
+  /** Every firm row, active first. */
   firms: LegalFirmRow[]
+  /** The firms that stand today (v2.5756, punch list #144); several since the one-active index went. */
+  activeFirms: LegalFirmRow[]
+  /** Each active firm's counties, sorted (`legal_firm_counties`, live rows); empty until the table exists. Nothing reads it before PR 2. */
+  countiesByFirm: Map<string, string[]>
   matters: LegalMatterRow[]
   byPayerKey: Map<string, LegalMatterRow>
   byJobId: Map<string, LegalMatterRow>
@@ -40,19 +47,21 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
   const [entries, setEntries] = useState<LegalEntryRow[]>([])
   const [recipients, setRecipients] = useState<LegalRecipientRow[]>([])
   const [documents, setDocuments] = useState<LegalMatterDocumentRow[]>([])
+  const [countyRows, setCountyRows] = useState<LegalFirmCountyRow[]>([])
   const [firmPaused, setFirmPaused] = useState(false)
 
   const reload = useCallback(async () => {
     if (!enabled) return
     setLoading(true)
     try {
-      const [f, m, l, e, r, d] = await Promise.all([
+      const [f, m, l, e, r, d, c] = await Promise.all([
         db.from('legal_firms').select('*').order('active', { ascending: false }).order('created_at'),
         db.from('legal_matters').select('*'),
         db.from('legal_matter_jobs').select('matter_id, job_id'),
         db.from('legal_matter_entries').select('*').order('created_at'),
         db.from('legal_firm_recipients').select('*').is('removed_at', null).order('created_at'),
         listLegalMatterDocuments(db as unknown as SupabaseClient).then((rows) => ({ data: rows, error: null }), () => ({ data: [] as LegalMatterDocumentRow[], error: 'missing' })),
+        db.from('legal_firm_counties').select('*').is('until', null),
       ])
       if (f.error || m.error || l.error || e.error) {
         // 42P01 / PGRST205: the tables aren't there yet — the desk stays read-only.
@@ -68,6 +77,8 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
       setRecipients(r.error ? [] : ((r.data ?? []) as LegalRecipientRow[]))
       // Documents land with the v2.4810 migration; a missing table leaves the list empty, not the desk broken.
       setDocuments(d.error ? [] : (d.data ?? []))
+      // Counties land with the v2.5756 migration; a missing table leaves every county uncovered, not the desk broken.
+      setCountyRows(c.error ? [] : ((c.data ?? []) as LegalFirmCountyRow[]))
       const activeFirm = ((f.data ?? []) as Array<LegalFirmRow & { paused_at?: string | null }>).find((x) => x.active)
       setFirmPaused(Boolean(activeFirm?.paused_at))
     } catch {
@@ -88,6 +99,9 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
     return out
   }, [entries])
 
+  const activeFirms = useMemo(() => firms.filter((f) => f.active), [firms])
+  const countiesByFirm = useMemo(() => countiesByFirmOf(countyRows, activeFirms), [countyRows, activeFirms])
+
   const documentsByMatter = useMemo(() => {
     const out = new Map<string, LegalMatterDocumentRow[]>()
     for (const doc of documents) out.set(doc.matter_id, [...(out.get(doc.matter_id) ?? []), doc])
@@ -99,6 +113,8 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
     loading,
     firm: firms.find((x) => x.active) ?? null,
     firms,
+    activeFirms,
+    countiesByFirm,
     matters,
     byPayerKey: idx.byPayerKey,
     byJobId: idx.byJobId,

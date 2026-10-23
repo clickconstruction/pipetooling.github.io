@@ -20,7 +20,7 @@ import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 import { TwinRunsLedger } from './TwinRunsLedger'
 import { TwinRoundsCard } from './TwinRoundsCard'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, PROMPT_PRE, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
-import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * The 🤖 Console lens (v2.3224, dev only): the operator's desk. Everything a
@@ -37,8 +37,13 @@ type Props = {
   /** The human bids (robot scope excluded) — the queue counts come from the same kernel the Queue lens uses. */
   bids: BidWithBuilder[]
   twinBidBySourceId: ReadonlyMap<string, BidWithBuilder>
+  /** v2.5753: the one rule's inputs — the Plumbing service type and the latest run per reference, from the robot layer. */
+  plumbingServiceTypeId?: string | null
+  shadowRunByBidNumber?: ReadonlyMap<string, { status: string }>
   onOpenQueue: () => void
 }
+
+const NO_RUNS: ReadonlyMap<string, { status: string }> = new Map()
 
 type PreviewKey = 'setup' | 'code' | 'kickoff' | 'handoff' | 'pricing' | 'rounds'
 
@@ -48,7 +53,7 @@ type CredRow = { twin_user_id: string; label: string; created_at: string; last_u
 const db = supabase as unknown as SupabaseClient
 const SETTINGS_TWINS_HREF = '/settings?tab=settings-digital-twins'
 
-export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Props) {
+export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTypeId = null, shadowRunByBidNumber = NO_RUNS, onOpenQueue }: Props) {
   const { showToast } = useToastContext()
   const [openPreview, setOpenPreview] = useState<PreviewKey | null>(null)
   const [fleet, setFleet] = useState<{ twins: TwinRow[]; creds: CredRow[] } | null>(null)
@@ -63,14 +68,15 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   const desktopKickoff = useMemo(() => buildDesktopKickoff(desktopKickoffDoc, { connectorUrl }), [connectorUrl])
   // Price Matrix PR 3: the pricing robot's kickoff — same connector, its own seat and key.
   const pricingKickoff = useMemo(() => buildDesktopKickoff(pricingKickoffDoc, { connectorUrl }), [connectorUrl])
-  // Robot rounds PR 5 (v2.5735): the routine on a Mac that stays on — one paste makes it and runs the first round.
+  // Robot rounds PR 5 (v2.5735): the round text. Since v2.5752 the setup command installs it as a LaunchAgent; copied, it makes one round by hand in a Code session.
   const roundsKickoff = useMemo(() => buildDesktopKickoff(roundsKickoffDoc, { connectorUrl }), [connectorUrl])
 
-  // Same rule as the Queue lens, so the counts here and the rows there can never disagree.
-  const queue = useMemo(() => {
-    const staleDueBefore = ymdAddDays(todayYmdInAppTz(), -30)
-    return buildRobotQueue(bids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
-  }, [bids, twinBidBySourceId])
+  // Same rule as the Queue lens and the dispatcher (v2.5753), so the counts here, the rows there and
+  // what the next round claims can never disagree.
+  const queue = useMemo(
+    () => buildRobotQueue(bids, { plumbingServiceTypeId, shadowRunByBidNumber, twinExistsForBidId: (bidId) => twinBidBySourceId.has(bidId), todayYmd: todayYmdInAppTz(), nowMs: Date.now() }),
+    [bids, twinBidBySourceId, plumbingServiceTypeId, shadowRunByBidNumber],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -143,7 +149,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
       </p>
 
       {/* v2.5733 (punch list #142): the robots' status rows — alive, checked in, now, recently — and Stop the rounds. */}
-      <TwinRoundsCard onCopyRoundsKickoff={() => void copy(roundsKickoff, 'the rounds kickoff')} />
+      <TwinRoundsCard onCopyRoundsKickoff={() => void copy(roundsKickoff, 'the round')} />
 
       {/* Run the robots — Claude Code first (it reads the plans itself), a chat as the fallback. */}
       <div style={CARD}>
@@ -182,10 +188,10 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
               <span style={{ ...stepNo('↻'), background: 'var(--surface)' }}>↻</span>
               <span style={stepText}>
                 Make this Mac the rounds
-                <span style={stepSub}>One paste into Claude Code on the Mac that stays on. It makes the routine, every five minutes, and runs it once. The first lines list the Mac's three settings.</span>
+                <span style={stepSub}>Press Set up on this Mac above with This Mac makes the rounds ticked. One Terminal paste installs a round every five minutes, with no Claude session open and no question asked. Copy the round to make one round by hand in a Code session.</span>
               </span>
-              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(roundsKickoff, 'the rounds kickoff')} title="Copies the rounds kickoff for a Claude Code session on the Mac that stays on, with this project's connector filled in">
-                Copy rounds kickoff
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(roundsKickoff, 'the round')} title="Copies one round for a Claude Code session by hand, with this project's connector filled in. The rounds themselves are installed by Set up on this Mac.">
+                Copy the round
               </button>
             </div>
             <div style={stepRow}>
@@ -201,7 +207,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
             <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap' }}>
               {previewLink('setup', 'the setup command')}
               {previewLink('code', 'the Code kickoff')}
-              {previewLink('rounds', 'the rounds kickoff')}
+              {previewLink('rounds', 'the round')}
               {previewLink('handoff', 'the handoff prompt')}
             </div>
             {openPreview === 'setup' ? <pre style={PROMPT_PRE}>{setupCommand}</pre> : null}
@@ -271,8 +277,11 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
           <span style={{ ...CHIP, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }} title="Stamped front of the line from a bid's robot status sheet — oldest ask first">
             Requested · {queue.requested.length}
           </span>
-          <span style={{ ...CHIP, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }} title="Robot-able live bids nobody has asked about">
+          <span style={{ ...CHIP, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }} title="Robot-able live bids nobody has asked about — the one rule the rounds claim by; the next round takes the first">
             Ready · {queue.ready.length}
+          </span>
+          <span style={{ ...CHIP, background: 'var(--bg-muted)', color: 'var(--text-muted)' }} title={queue.held.length ? queue.held.map((h) => `b${h.bid.bid_number ?? '?'}: ${h.words}`).join('\n') : 'Live bids with plans the rounds pass over, each with its reason on the Queue'}>
+            Held · {queue.held.length}
           </span>
           <span style={{ ...CHIP, background: 'var(--bg-violet-100)', color: TWIN_VIOLET }} title="Price-matrix requests waiting for the pricing robot (Bids → Pricing → Price it with the robot)">
             Price matrices · {matrixQueued.length}
@@ -282,7 +291,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
           </button>
         </div>
         <p style={{ ...MUTED, margin: '0.35rem 0 0' }}>
-          Front-of-the-line requests first, then every robot-able live bid, then the backtest candidates by axis. Same rule as the Bid Board icons. Price-matrix requests sit in their own section — the pricing robot's queue, not the bid robots'.
+          Front-of-the-line requests first, then every robot-able live bid by due date, then the bids the rounds pass over with the reason, then the backtest candidates by axis. One rule with the dispatcher, so the Rounds card above never contradicts these counts. Price-matrix requests sit in their own section — the pricing robot's queue, not the bid robots'.
         </p>
       </div>
 

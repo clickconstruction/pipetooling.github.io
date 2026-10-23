@@ -202,7 +202,7 @@ ${table(['Date', 'Job', 'Step', 'What happened'], officeStepRows, 'No steps reco
 </body></html>`
 }
 
-function exhibitHome(title: string): string {
+export function exhibitHome(title: string): string {
   const t = title.toLowerCase()
   if (t.startsWith('invoices')) return 'A · Statement of account'
   if (t.startsWith('property')) return 'A · Property record'

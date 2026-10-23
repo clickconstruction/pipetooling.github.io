@@ -76,6 +76,19 @@ describe('RobotStatusSheet with progress', () => {
     expect(rpc).toHaveBeenCalledWith('robot_run_signals')
   })
 
+  it('v2.5751: runOpenAtStart lands on Read the run already unfolded, and a sent bid\'s live run draws the bar', async () => {
+    localStorage.setItem('pipetooling_robot_touches_seen', '1')
+    const sentBid = { ...bid, bid_date_sent: '2026-10-20' } as unknown as Bid
+    renderWithProviders(
+      <RobotStatusSheet input={{ ...input, bid: sentBid }} twin={null} progress={buildRobotProgress(row(), NOW)} runOpenAtStart onClose={() => {}} onOpenRobotBoard={() => {}} onCompare={() => {}} onToggleRequest={() => {}} onOpenQuestions={() => {}} onLeaveToMe={() => {}} />,
+    )
+    await waitFor(() => expect(screen.getByTestId('robot-run').textContent).toContain('[pipeline STG-0] claimed'))
+    expect(screen.getByText('Hide the run')).toBeTruthy()
+    expect(screen.getByTestId('robot-progress-bar')).toBeTruthy()
+    // A sent bid cannot be left to a person: the robot's run on it is coverage, not a shadow of a number still to come.
+    expect(screen.queryByText('Leave this one to me')).toBeNull()
+  })
+
   it('a quiet robot says so in amber words, and a sealed one says its number shows when you send', async () => {
     const quiet = buildRobotProgress(row({ heartbeat_at: minutesAgo(12), key_last_seen_at: minutesAgo(12) }), NOW)
     const { unmount } = renderWithProviders(

@@ -87,7 +87,7 @@ function mmss(ms: number): string {
 export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps) {
   const { showToast } = useToastContext()
   const [label, setLabel] = useState('')
-  // Robot rounds PR 5 (v2.5735): this Mac makes the rounds — the rounds kickoff goes on the clipboard instead of the batch kickoff.
+  // Robot rounds PR 5 (v2.5735): this Mac makes the rounds. Since v2.5752 the command installs the Robot rounds agent (a LaunchAgent) instead of putting a kickoff on the clipboard.
   const [rounds, setRounds] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -206,7 +206,7 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
                 <input type="checkbox" checked={rounds} onChange={(e) => setRounds(e.target.checked)} style={{ marginTop: 2 }} />
                 <span>
                   This Mac makes the rounds
-                  <span style={{ ...MUTED, display: 'block' }}>A Mac that stays on. The command puts the rounds kickoff on the clipboard. One paste into Claude Code makes the routine, every five minutes, and runs it once.</span>
+                  <span style={{ ...MUTED, display: 'block' }}>A Mac that stays on. The command installs the rounds on this Mac: one every five minutes, with no Claude session open and no question asked.</span>
                 </span>
               </label>
             ) : null}
@@ -243,19 +243,22 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
                 <span>
                   <b>Paste, press Return.</b>{' '}
                   <span style={MUTED}>
-                    Claude quits and reopens by itself with the robot connected, and the robot's kickoff lands on your clipboard.
-                    Anything running in Claude stops with it, so finish or pause that first. A Mac with no Node fetches one first, about a minute.
+                    {rounds
+                      ? 'Claude Code signs in if it has to, in a browser window that opens once. The command then installs the rounds and runs the first one. A Mac with no Node fetches one first, about a minute.'
+                      : 'Claude quits and reopens by itself with the robot connected, and the robot\'s kickoff lands on your clipboard. Anything running in Claude stops with it, so finish or pause that first. A Mac with no Node fetches one first, about a minute.'}
                   </span>
                 </span>
               </div>
               <div style={stepRow}>
                 <span style={stepNo}>4</span>
                 <span>
-                  <b>{isPricer ? 'In Claude, start a new incognito chat and paste.' : rounds ? 'In Claude, open the Code tab, start a new session and paste. It makes the Robot rounds routine and runs the first round.' : 'In Claude, open the Code tab, start a new session and paste.'}</b>{' '}
+                  <b>{isPricer ? 'In Claude, start a new incognito chat and paste.' : rounds ? 'Open Bids → 🤖 Robots → Console. The Rounds card shows this Mac Alive within a minute.' : 'In Claude, open the Code tab, start a new session and paste.'}</b>{' '}
                   <span style={MUTED}>
                     {isPricer
                       ? 'The robot reads its brief, then prices every queued request, oldest first, and asks you where the plans decide.'
-                      : 'The robot reads its brief and works the shadow queue one bid at a time, pulling each plan set itself.'}
+                      : rounds
+                        ? 'The rounds run from your Library folder every five minutes, whether Claude is open or not. The log is at Library → Logs → ClickTooling → rounds.log.'
+                        : 'The robot reads its brief and works the shadow queue one bid at a time, pulling each plan set itself.'}
                   </span>
                 </span>
               </div>

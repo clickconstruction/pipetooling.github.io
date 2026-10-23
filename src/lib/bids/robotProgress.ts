@@ -75,6 +75,11 @@ export type RobotProgress = {
   void: boolean
   /** True while the shell is open and unlocked and nothing has spoken for ROBOT_QUIET_MS. */
   quiet: boolean
+  /**
+   * v2.5751: a heartbeat landed within ROBOT_QUIET_MS and the shell is open and unlocked — a robot
+   * is on this bid right now. The key's last call does not count: it may be on another bid.
+   */
+  live: boolean
   /** The newest of the heartbeat and the key's last call. */
   lastWordAt: string | null
   /** "Step 3 of 7. Reading the sheets, 12 of 31 sheets. Last word 2 minutes ago." */
@@ -157,6 +162,8 @@ export function buildRobotProgress(row: RobotProgressRow, nowMs: number): RobotP
 
   const lastWordAt = newest(row.heartbeat_at, row.key_last_seen_at)
   const quiet = !sealed && !isVoid && lastWordAt != null && nowMs - Date.parse(lastWordAt) > ROBOT_QUIET_MS
+  const hbAt = row.heartbeat_at ? Date.parse(row.heartbeat_at) : NaN
+  const live = !sealed && !isVoid && Number.isFinite(hbAt) && nowMs - hbAt <= ROBOT_QUIET_MS
   const inside = nowIndex != null && hb?.step && STEP_INDEX[hb.step] === nowIndex ? (insideFraction(hb.read) ?? 0) : 0
   const fraction = sealed ? 1 : Math.max(0, Math.min(1, (done + inside) / HEARTBEAT_STEPS.length))
   const tone: RobotProgressTone = isVoid ? 'gray' : sealed ? 'green' : quiet ? 'amber' : 'blue'
@@ -184,6 +191,7 @@ export function buildRobotProgress(row: RobotProgressRow, nowMs: number): RobotP
     sealed,
     void: isVoid,
     quiet,
+    live,
     lastWordAt,
     sentence,
     words,
@@ -207,6 +215,26 @@ export function ringFillForState(kind: string): { fraction: number; tone: RobotP
     default:
       return null
   }
+}
+
+/**
+ * v2.5751: the progress the icon, the sheet and the comparison modal draw for a bid. An unsent bid
+ * shows its row whatever it says. A sent bid's icon reads its score, not an old run, so it shows
+ * the row only while a robot is live on it — a coverage shadow worked after send (b497, 36 minutes
+ * of real work behind a one-step fill); a stale, void or sealed row leaves the icon to its own state.
+ */
+export function ringProgressFor(progress: RobotProgress | null | undefined, bid: { bid_date_sent: string | null }): RobotProgress | null {
+  if (!progress) return null
+  if (!bid.bid_date_sent) return progress
+  return progress.live ? progress : null
+}
+
+/**
+ * v2.5751: the bids `robot_progress()` is asked about — every undecided bid of ours with a run or a
+ * pairing, sent or not. A decided bid wears its grade and a backtest on it is the twins program's.
+ */
+export function progressBidIds<B extends { id: string; outcome: string | null }>(bids: readonly B[], hasRun: (bid: B) => boolean): string[] {
+  return bids.filter((b) => !b.outcome && hasRun(b)).map((b) => b.id)
 }
 
 /** The map the board, the row and the sheet share: bid id → progress. */

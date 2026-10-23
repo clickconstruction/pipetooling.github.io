@@ -13,6 +13,7 @@
  * Pure module — no React, no Supabase.
  */
 import { robotBidReadiness, type RobotReadinessBidFields } from './robotBidReadiness'
+import { robotLeftTitle } from './robotLeftToYou'
 import { ROBOT_INTAKE_ACCOUNT } from './robotReadinessLine'
 import { referenceGrade, type ReferenceGradeLetter, type ReferencePresence } from './referenceGrade'
 import type { ShadowRunRow } from './shadowStory'
@@ -117,7 +118,8 @@ export function robotRowState(input: RobotRowInput): RobotRowState {
   if (bid.outcome) return gradeState(input, project)
 
   if (bid.robot_opt_out === true) {
-    return { kind: 'off', reason: 'opt-out', title: `Robots leave ${project} alone — opted out on the bid form (untick “Don’t let robots shadow this bid” to put it back)` }
+    // v2.5751: the card wears the left-to-you mark here, and its tap opens the sheet with Let the robot back in.
+    return { kind: 'off', reason: 'opt-out', title: robotLeftTitle(project) }
   }
   if (input.serviceTypeName && !PLUMBING.test(input.serviceTypeName)) {
     return { kind: 'off', reason: 'division', title: `Robots don’t bid ${input.serviceTypeName.toLowerCase()} yet — plumbing only` }

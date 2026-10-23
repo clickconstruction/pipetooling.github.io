@@ -796,7 +796,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'firm-welcome-email',
           label: 'Welcome email',
-          sublabel: 'Legal desk → Firm’s link → Send the firm their link',
+          sublabel: 'Legal desk → Portal link → Send the firm their link',
           when: 'Once, on setup, and after a Rotate',
           customerCan: 'Learn who we are and what the portal is, open their link, and add the people who should hear from us.',
           guide: 'share-your-attorney-their-portal',

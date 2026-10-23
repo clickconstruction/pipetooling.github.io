@@ -60,6 +60,13 @@ describe('twin pairing', () => {
     const m = twinBidBySourceId([{ id: 'twin-a', twin_source_bid_id: 'bid-1' }, { id: 'twin-b', twin_source_bid_id: 'bid-1' }])
     expect(m.get('bid-1')?.id).toBe('twin-b')
   })
+
+  it('two shells of one bid with dates: the newest wins whatever the order (v2.5753, a voided shell and a live one)', () => {
+    const voided = { id: 'twin-void', twin_source_bid_id: 'bid-1', created_at: '2026-10-22T23:59:00Z' }
+    const live = { id: 'twin-live', twin_source_bid_id: 'bid-1', created_at: '2026-10-23T00:20:00Z' }
+    expect(twinBidBySourceId([live, voided]).get('bid-1')?.id).toBe('twin-live')
+    expect(twinBidBySourceId([voided, live]).get('bid-1')?.id).toBe('twin-live')
+  })
 })
 
 describe('latestShadowRunByBidNumber', () => {

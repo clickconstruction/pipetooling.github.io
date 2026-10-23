@@ -33,7 +33,8 @@ import { robotRowState, type RobotRowInput } from '../lib/bids/robotRowState'
 import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useRobotProgress } from './useRobotProgress'
-import type { RobotProgress } from '../lib/bids/robotProgress'
+import { progressBidIds as progressBidIdsFor, type RobotProgress } from '../lib/bids/robotProgress'
+import { LET_ROBOT_BACK_IN_TOAST } from '../lib/bids/robotLeftToYou'
 
 export function useBidRobotLayer(input: {
   authUserId: string | null | undefined
@@ -77,10 +78,17 @@ export function useBidRobotLayer(input: {
   // the line, an answered question) shows in the open sheet without reopening it.
   const [robotStatusBidId, setRobotStatusBidId] = useState<string | null>(null)
   const [robotNeedsBidId, setRobotNeedsBidId] = useState<string | null>(null)
+  // v2.5751: the left-to-you sheet behind the mark, by id like the other two.
+  const [robotLeftBidId, setRobotLeftBidId] = useState<string | null>(null)
+  // v2.5751: the comparison modal's Read the run opens the status sheet with the run unfolded.
+  const [robotStatusReadRun, setRobotStatusReadRun] = useState(false)
   const robotStatusBid = useMemo(() => (robotStatusBidId ? (bids.find((b) => b.id === robotStatusBidId) ?? null) : null), [bids, robotStatusBidId])
   const robotNeedsBid = useMemo(() => (robotNeedsBidId ? (bids.find((b) => b.id === robotNeedsBidId) ?? null) : null), [bids, robotNeedsBidId])
-  const setRobotStatusBid = useCallback((bid: BidWithBuilder | null) => setRobotStatusBidId(bid?.id ?? null), [])
+  const robotLeftBid = useMemo(() => (robotLeftBidId ? (bids.find((b) => b.id === robotLeftBidId) ?? null) : null), [bids, robotLeftBidId])
+  const setRobotStatusBid = useCallback((bid: BidWithBuilder | null) => { setRobotStatusReadRun(false); setRobotStatusBidId(bid?.id ?? null) }, [])
+  const openRobotStatusRun = useCallback((bid: BidWithBuilder) => { setRobotStatusReadRun(true); setRobotStatusBidId(bid.id) }, [])
   const setRobotNeedsBid = useCallback((bid: BidWithBuilder | null) => setRobotNeedsBidId(bid?.id ?? null), [])
+  const setRobotLeftBid = useCallback((bid: BidWithBuilder | null) => setRobotLeftBidId(bid?.id ?? null), [])
   // Shadow runs by reference bid number (list_shadow_runs never returns a sealed
   // total, so nothing here can anchor a number). Latest run per reference wins.
   const [shadowRunByBidNumber, setShadowRunByBidNumber] = useState<ReadonlyMap<string, ShadowRunRow>>(() => new Map())
@@ -200,11 +208,11 @@ export function useBidRobotLayer(input: {
   /** v2.3225: the icon's state for a human bid — the Robot Board mirror lists live bids with no run from it. */
   const robotRowStateFor = useCallback((bid: BidWithBuilder) => robotRowState(robotRowInputFor(bid)), [robotRowInputFor])
   // Robot rounds PR 2 (v2.5732, punch list #142): the robots' progress on every bid of ours with a
-  // run and not yet sent (a sent bid's icon reads its score, not its progress), one reader for the
-  // ring on the icon, the sheet's bar and the Robot Board row. The bid roles only — the same gate as
-  // the questions.
+  // run, one reader for the ring on the icon, the sheet's bar and the Robot Board row. The bid roles
+  // only — the same gate as the questions. v2.5751: sent bids ride along (a coverage shadow worked
+  // after send is real work); `ringProgressFor` shows a sent bid's row only while the run is live.
   const progressBidIds = useMemo(
-    () => bids.filter((b) => !b.bid_date_sent && (twinBidBySourceId.has(b.id) || shadowRunByBidNumber.has((b.bid_number ?? '').trim()))).map((b) => b.id),
+    () => progressBidIdsFor(bids, (b) => twinBidBySourceId.has(b.id) || shadowRunByBidNumber.has((b.bid_number ?? '').trim())),
     [bids, twinBidBySourceId, shadowRunByBidNumber],
   )
   const { byBid: robotProgressByBidId, reload: reloadRobotProgress } = useRobotProgress(progressBidIds, { enabled: !!authUserId && canAnswerRobotQuestions })
@@ -220,6 +228,19 @@ export function useBidRobotLayer(input: {
       return
     }
     showToast('The robot leaves this bid to you. It stops within five minutes.', 'success')
+    reloadRobotProgress()
+  }, [reloadRobotProgress, setBids, showToast])
+  /** Let the robot back in (v2.5751): clears the opt-out the mark stands for; the next round may claim the bid. */
+  const letRobotBackIn = useCallback(async (bid: BidWithBuilder) => {
+    const before = bid.robot_opt_out ?? false
+    setBids((prev) => prev.map((b) => (b.id === bid.id ? { ...b, robot_opt_out: false } : b)))
+    const { data: updRows, error: updErr } = await supabase.from('bids').update({ robot_opt_out: false }).eq('id', bid.id).select('id')
+    if (updErr || bidUpdateRefused(updRows)) {
+      setBids((prev) => prev.map((b) => (b.id === bid.id ? { ...b, robot_opt_out: before } : b)))
+      showToast(updErr ? `Couldn't let the robot back in: ${updErr.message}` : BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      return
+    }
+    showToast(LET_ROBOT_BACK_IN_TOAST, 'success')
     reloadRobotProgress()
   }, [reloadRobotProgress, setBids, showToast])
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
@@ -330,6 +351,8 @@ export function useBidRobotLayer(input: {
 
   return {
     twinBidBySourceId,
+    /** The latest shadow run per reference bid number (v2.5753: the Queue and Console read run status from here, one rule with the dispatcher). */
+    shadowRunByBidNumber,
     robotMirrorCount,
     setRobotMirrorCount,
     referencePresence,
@@ -341,6 +364,10 @@ export function useBidRobotLayer(input: {
     setRobotNeedsBid,
     /** Opens the needs sheet by id — the `?robot=needs` door, before the row is in hand. */
     setRobotNeedsBidId,
+    robotLeftBid,
+    setRobotLeftBid,
+    robotStatusReadRun,
+    openRobotStatusRun,
     bumpShadowRuns: () => setShadowRunsGen((g) => g + 1),
     openQuestionsByBidId,
     answerRobotQuestion,
@@ -362,6 +389,7 @@ export function useBidRobotLayer(input: {
     robotProgressFor,
     reloadRobotProgress,
     leaveToMe,
+    letRobotBackIn,
   }
 }
 

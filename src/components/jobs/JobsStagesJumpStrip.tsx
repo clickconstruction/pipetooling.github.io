@@ -13,6 +13,7 @@
  * a side road, not the step after Billed, so its arrow points back the way a job leaves it.
  */
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Scale } from 'lucide-react'
 import { StagesGavelGlyph } from './StagesRowActionButtons'
 import { stageBarItems, stageColorVar, stagesActiveSection, type StageBarKey } from '../../lib/jobs/stagesStageBar'
 
@@ -43,7 +44,7 @@ export function JobsStagesJumpStrip({
   leading?: ReactNode
   /** The way back from the Recently added view, at the bar's right end. */
   trailing?: ReactNode
-  /** Drawn right beside the last stage (v2.4520: the Lien desk shortcut). */
+  /** Drawn right beside the last stage (v2.4520: the Lien desk shortcut; v2.5750: the Legal desk's scales, after the gavel since v2.5763). */
   tail?: ReactNode
 }) {
   const items = stageBarItems(counts, totals)
@@ -134,26 +135,61 @@ export function JobsStagesJumpStrip({
 }
 
 /**
- * The Lien desk in one click (v2.4520): the gavel beside the last stage, with the count of
- * notices to work while there are any. The desk keeps its row in the ☰ menu.
+ * A desk in one click, beside the last stage: a square the desk's glyph fills, with the
+ * desk's queue count riding its corner while there is one. Both desks keep their rows in
+ * the ☰ menu; `data-desk` picks the glyph's color (the gavel's orange, the scales' ink).
  */
-export function StagesLienDeskShortcut({ count, onOpen }: { count: number | null; onOpen: () => void }) {
+function DeskShortcut({ desk, count, title, label, children, onOpen }: { desk: 'lien' | 'legal'; count: number | null; title: string; label: string; children: ReactNode; onOpen: () => void }) {
   const due = typeof count === 'number' && count > 0 ? count : 0
   return (
-    <button
-      type="button"
-      className="stagesLienDeskShortcut"
-      onClick={onOpen}
-      title="Lien desk: lien notices due per unpaid work month. Draft, approve, send"
-      aria-label={due > 0 ? `Open the Lien desk, ${due} to work` : 'Open the Lien desk'}
-    >
-      <StagesGavelGlyph size={17} />
+    <button type="button" className="stagesDeskShortcut" data-desk={desk} onClick={onOpen} title={title} aria-label={label}>
+      {children}
       {due > 0 ? (
-        <span className="stagesLienDeskShortcutBadge" aria-hidden>
+        <span className="stagesDeskShortcutBadge" aria-hidden>
           {due}
         </span>
       ) : null}
     </button>
+  )
+}
+
+/**
+ * The Lien desk in one click (v2.4520): the gavel beside the last stage, with the count of
+ * notices to work while there are any.
+ */
+export function StagesLienDeskShortcut({ count, onOpen }: { count: number | null; onOpen: () => void }) {
+  const due = typeof count === 'number' && count > 0 ? count : 0
+  return (
+    <DeskShortcut
+      desk="lien"
+      count={count}
+      onOpen={onOpen}
+      title="Lien desk: lien notices due per unpaid work month. Draft, approve, send"
+      label={due > 0 ? `Open the Lien desk, ${due} to work` : 'Open the Lien desk'}
+    >
+      <StagesGavelGlyph size={17} />
+    </DeskShortcut>
+  )
+}
+
+/**
+ * The Legal desk in one click (v2.5750): the scales after the gavel since v2.5763 (the owner's order), in the Collections
+ * header's order, with the count of the firm's acts awaiting the office while there are
+ * any (the Dashboard's "the law firm has N things for you"). The tab draws it only while
+ * Collections has rows — the stage the desk reviews, and the one the bar drops at 0.
+ */
+export function StagesLegalDeskShortcut({ count, onOpen }: { count: number | null; onOpen: () => void }) {
+  const waiting = typeof count === 'number' && count > 0 ? count : 0
+  return (
+    <DeskShortcut
+      desk="legal"
+      count={count}
+      onOpen={onOpen}
+      title="Legal desk: review every Collections account the way an attorney would receive it, before anything is released"
+      label={waiting > 0 ? `Open the Legal desk, ${waiting} from the firm waiting on you` : 'Open the Legal desk'}
+    >
+      <Scale size={17} strokeWidth={2} aria-hidden="true" />
+    </DeskShortcut>
   )
 }
 

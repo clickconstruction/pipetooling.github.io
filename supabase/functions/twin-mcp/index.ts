@@ -10,7 +10,8 @@ import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared
 import { backtestRunLabelOwner, isBacktestLockNote } from '../_shared/twinBacktestScoreGate.ts'
 import { referenceWhole, referenceWholeLabel } from '../_shared/referenceWhole.ts'
 import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices, questionTouchesSealedShadow, scrubMoney, type SealedShadow } from '../_shared/twinQuestionShape.ts'
-import { HEARTBEAT_STATES, HEARTBEAT_STEPS, normalizeHeartbeatProgress, type HeartbeatProgress } from '../_shared/twinHeartbeat.ts'
+import { HEARTBEAT_STATES, HEARTBEAT_STEPS, normalizeHeartbeatProgress, type HeartbeatHeld, type HeartbeatProgress } from '../_shared/twinHeartbeat.ts'
+import { bidRef, buildShadowQueue, HELD_ON_CHECK_IN, isShadowShellName, shadowHold, shellHold, shellHoldWords, type ShadowCandidateBid, type ShadowHoldReason, type ShadowQueue, type ShadowRunStatus } from '../_shared/shadowEligibility.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
@@ -229,7 +230,7 @@ const TOOLS = [
   {
     name: 'get_assignments',
     description:
-      "Bids where YOUR twin is the assigned estimator — your work queue (assignment is the grant: being the estimator is both the permission and the job). Returns bid number, project, GC, due date, status, and which pipeline links are present.",
+      "Bids where YOUR twin is the assigned estimator — your work queue (assignment is the grant: being the estimator is both the permission and the job). Returns bid number, project, GC, due date, status, and which pipeline links are present. Since v1.8.0 a shadow shell of yours also carries `shadow`: the run's status, whether its reference was sent, whether it is parked on a plans ask, its last word (heartbeat or ledger note), and `hold` — `closed` (void, locked, scored, the reference went out, or a ZZ Shadow with no run behind it: not yours to touch), `parked` (waiting on a person's plans: leave it), `in_hand` (a word inside 15 minutes: another round of this key is working it), `orphaned` (open and silent past 15 minutes: your first job, resume it). A round reads `hold` and never guesses from the bare list.",
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -302,7 +303,7 @@ const TOOLS = [
             next: { type: 'string', description: "What you do next, e.g. 'the fixture schedule on P-601'" },
           },
         },
-        round: { type: 'boolean', description: 'true when a round (the routine on a Mac that stays on) is speaking; a Code session a person started leaves it out' },
+        round: { type: 'boolean', description: "true when a round (the routine on a Mac that stays on) is speaking; a Code session a person started leaves it out. On a round's idle check-in the server adds `progress.ready` (how many live bids the one rule lets you claim right now) and `progress.held` (the bids it passes over, each with the reason) — you send neither; next_shadow claims by the same rule." },
       },
       required: ['stage', 'state'],
     },
@@ -619,16 +620,16 @@ const TOOLS = [
   {
     name: 'get_shadow_queue',
     description:
-      'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present AND readable by the Drive intake service account (probed via plan-fetch; unreadable ones are listed under `unreadable` for a human to repair, never queued), NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. HUMAN-REQUESTED bids (the green robot icon on the Bid Board) come FIRST, oldest ask on top, and bypass the lookback window — work those before the rest. Returns logistics only. Pick one and open_shadow it.',
+      'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate under THE ONE RULE (v1.8.0, `_shared/shadowEligibility.ts` — the same rule the Console\'s Queue draws and next_shadow claims by, in the same order): unsent, undecided, not archived, not a ZZ bid, not left to a person, plumbing, plans present AND readable by the Drive intake service account (probed via plan-fetch), no LIVE shadow run (a voided shell does not count), due date not 30 days gone, and made inside the lookback unless a person asked. HUMAN-REQUESTED bids come FIRST, oldest ask on top. `held` lists the live bids with plans the rule passes over, each with the reason in plain words. Returns logistics only. Pick one and open_shadow it.',
     inputSchema: {
       type: 'object',
-      properties: { days: { type: 'number', description: 'Lookback window in days (default 14)' } },
+      properties: { days: { type: 'number', description: 'Lookback window in days for unrequested bids (default 30, the rule\'s)' } },
     },
   },
   {
     name: 'next_shadow',
     description:
-      "The auto-shadow dispatcher (v2.2936): FIRST (v1.3.17) hands back one of YOUR own unlocked shells whose plans ask a person answered 'Attached — rerun' (resumed: true — redo STG-2 with the new set and lock; the ask is consumed once); otherwise claim the next live bid that needs a shadow — human-requested bids first (oldest ask, no age limit), then the oldest eligible bid inside the lookback. The claim is the shadow shell itself, so parallel agents never share a bid; done: true means every eligible live bid is covered. Bids whose plans the Drive intake service account cannot read are skipped (probed first via plan-fetch; see get_shadow_queue's `unreadable` list) — never claim a bid you cannot fetch plans for. The whole point (LEARNING_PLAN.md): a shadow costs the estimator zero minutes, locks blind before her number exists, and auto-scores when she sends — run agents on this verb until it says done and the live board is fully covered. Never call it again while your current shadow is unlocked.",
+      "The auto-shadow dispatcher (v2.2936): FIRST (v1.3.17) hands back one of YOUR own unlocked shells whose plans ask a person answered 'Attached — rerun' (resumed: true — redo STG-2 with the new set and lock; the ask is consumed once); otherwise claim the next live bid under THE ONE RULE (v1.8.0, `_shared/shadowEligibility.ts`): the list the Console's Queue shows, in its order — human-requested bids first (oldest ask, no age limit), then ready bids by due date. The claim is the shadow shell itself, so parallel agents never share a bid; a voided shell does not block a re-claim. done: true carries `ready: 0` and `held` — every live bid with plans the rule passed over, each with its reason in plain words (the round's check-in heartbeat carries the same list). The whole point (LEARNING_PLAN.md): a shadow costs the estimator zero minutes, locks blind before her number exists, and auto-scores when she sends — run agents on this verb until it says done. Never call it again while your current shadow is unlocked.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -998,6 +999,49 @@ async function createShadowShell(
     notes: `[shadow STG-0] Shadow of live b${refBid.bid_number} (${refBid.project_name}) opened by ${twin.email}. Axis: ${axis || 'unclassified'}. Lock the blind total with lock_shadow BEFORE the human bid is sent; score_shadows finishes the loop automatically.`,
   }).then(() => {}, () => {})
   return { id: created.id as string, bid_number: String(created.bid_number) }
+}
+
+// ---------------------------------------------------------------------------
+// The one rule (v2.5753 / v1.8.0, `_shared/shadowEligibility.ts`): the live board as every reader
+// sees it — `get_shadow_queue` lists it, `next_shadow` claims from it in its order, a round's
+// idle check-in reports it, and the client's Queue and Console draw the same lists from the same
+// kernel. Logistics columns only; the rule itself never reads a value or a count.
+// ---------------------------------------------------------------------------
+const SHADOW_RULE_COLS = 'id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, outcome, created_at, robot_requested_at, robot_requested_by, robot_opt_out, plans_robot_readable, working_board_archived_at, backtest_axis'
+type ShadowRuleRow = ShadowRefBid & ShadowCandidateBid & { robot_requested_by: string | null; backtest_axis: string | null }
+type ShadowBoardNow = {
+  queue: ShadowQueue<ShadowRuleRow>
+  /** Every unsent bid of ours with the rule's verdict, for the coverage block. */
+  holds: Array<{ bid: ShadowRuleRow; hold: ShadowHoldReason | null }>
+  error?: string
+}
+
+async function shadowBoardNow(admin: SupabaseClient, opts: { plumbingId: string; lookbackDays?: number }): Promise<ShadowBoardNow> {
+  const empty: ShadowBoardNow = { queue: { requested: [], ready: [], held: [] }, holds: [] }
+  // v2.5755: a bid adopted into another bid's package leaves every list (v2.2133), the dispatcher's too.
+  const { data: rows, error } = await admin.from('bids').select(SHADOW_RULE_COLS).is('bid_date_sent', null).is('adopted_into_bid_id', null).not('project_name', 'ilike', 'ZZ %').limit(1000)
+  if (error) return { ...empty, error: error.message }
+  const { data: runs, error: runErr } = await admin.from('twin_shadow_runs').select('reference_bid_id, status')
+  if (runErr) return { ...empty, error: runErr.message }
+  // The LIVE run per reference: a voided shell ended that shell, not the bid.
+  const liveRunByBid = new Map<string, ShadowRunStatus>()
+  for (const r of (runs ?? []) as Array<{ reference_bid_id: string; status: ShadowRunStatus }>) {
+    if (r.status !== 'void') liveRunByBid.set(r.reference_bid_id, r.status)
+  }
+  const ctx = {
+    plumbingServiceTypeId: opts.plumbingId,
+    nowMs: Date.now(),
+    todayYmd: todayYmdInAppTz(),
+    runStatusFor: (id: string) => liveRunByBid.get(id) ?? null,
+    lookbackDays: opts.lookbackDays,
+  }
+  const bids = (rows ?? []) as ShadowRuleRow[]
+  return { queue: buildShadowQueue(bids, ctx), holds: bids.map((bid) => ({ bid, hold: shadowHold(bid, ctx) })) }
+}
+
+/** The passed-over list as the dispatcher's reply and the round's check-in carry it. */
+function heldEntries(queue: ShadowQueue<ShadowRuleRow>): HeartbeatHeld[] {
+  return queue.held.map((h) => ({ bid: bidRef(h.bid.bid_number), ...(h.bid.project_name ? { project: h.bid.project_name } : {}), why: h.words }))
 }
 
 /**
@@ -1987,8 +2031,31 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         }
       }
       const notes = `heartbeat stage=${stage} state=${state}${note ? ` ${note}` : ''}`
+      // v2.5753: a round's idle check-in carries the server's own verdict on the queue — how many
+      // live bids the one rule lets it claim and which it passes over, with the reason — so the
+      // Console's Today line and the Queue above it read the same truth, whatever the round then does.
+      // `sawNothing` is null when the verdict could not be read: the check-in still lands and counts.
+      let sawNothing: boolean | null = null
+      if (state === 'idle' && isRound) {
+        try {
+          const plumbingId = await plumbingServiceTypeId(admin)
+          if (plumbingId) {
+            const board = await shadowBoardNow(admin, { plumbingId })
+            if (!board.error) {
+              const ready = board.queue.requested.length + board.queue.ready.length
+              const held = heldEntries(board.queue).slice(0, HELD_ON_CHECK_IN)
+              progress = { ...(progress ?? {}), ready, ...(held.length ? { held } : {}) }
+              sawNothing = ready === 0
+            }
+          }
+        } catch {
+          /* the verdict is extra; the check-in still lands */
+        }
+      }
       // Consecutive idle heartbeats from one key collapse into one row, so a day of rounds that
-      // found nothing is one line in the ledger, its ended_at the latest round.
+      // found nothing is one line in the ledger, its ended_at the latest round. `rounds` counts the
+      // stretch's check-ins; `nothing` the ones that saw no bid to claim (an older row without the
+      // verdict counts every check-in, as it did before).
       let collapsed = false
       if (state === 'idle') {
         const { data: last } = await admin
@@ -1998,10 +2065,13 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           .order('started_at', { ascending: false })
           .limit(1)
           .maybeSingle()
-        const l = last as { id: string; mission: string; state: string | null; credential_id: string | null; progress: { rounds?: number } | null } | null
+        const l = last as { id: string; mission: string; state: string | null; credential_id: string | null; progress: { rounds?: number; nothing?: number } | null } | null
         if (l && l.mission === 'heartbeat' && l.state === 'idle' && l.credential_id === twin.credId) {
-          const rounds = Math.max(1, Number(l.progress?.rounds ?? 1)) + 1
-          const { error } = await admin.from('twin_runs').update({ ended_at: nowIso, notes, progress: { ...(progress ?? {}), rounds } }).eq('id', l.id)
+          const prevRounds = Math.max(1, Number(l.progress?.rounds ?? 1))
+          const rounds = prevRounds + 1
+          const prevNothing = Number.isFinite(Number(l.progress?.nothing)) && l.progress?.nothing != null ? Number(l.progress.nothing) : prevRounds
+          const nothing = prevNothing + (sawNothing === false ? 0 : 1)
+          const { error } = await admin.from('twin_runs').update({ ended_at: nowIso, notes, progress: { ...(progress ?? {}), rounds, nothing } }).eq('id', l.id)
           if (error) return textContent(`Heartbeat not recorded: ${error.message}`, true)
           collapsed = true
         }
@@ -2016,7 +2086,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           notes,
           ended_at: state === 'done' || state === 'idle' ? nowIso : null,
           credential_id: twin.credId,
-          progress: state === 'idle' ? { ...(progress ?? {}), rounds: 1 } : progress,
+          progress: state === 'idle' ? { ...(progress ?? {}), rounds: 1, nothing: sawNothing === false ? 0 : 1 } : progress,
           is_round: isRound,
         })
         if (error) return textContent(`Heartbeat not recorded: ${error.message}`, true)
@@ -2036,7 +2106,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         .limit(50)
       if (error) return textContent(`Lookup failed: ${error.message}`, true)
       if (!bids?.length) return textContent('No bids are currently assigned to you (estimator = your twin). Ask the operator, or check get_brief for the mission flow.')
-      const rows = bids.map((b: Record<string, unknown>) => ({
+      const rows: Array<Record<string, unknown>> = bids.map((b: Record<string, unknown>) => ({
         bid: b.bid_number ? `b${b.bid_number}` : b.id,
         bid_id: b.id,
         project: b.project_name,
@@ -2047,7 +2117,76 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         address: b.address,
         links: { drive: !!b.drive_link, plans: !!b.plans_link, counttooling: !!b.count_tooling_plans_link },
       }))
-      return textContent(JSON.stringify({ assignments: rows }, null, 2))
+      // v2.5753 / v1.8.0: a shadow shell of yours carries the server's word on it — closed, parked,
+      // in another round's hands, or orphaned (`shellHold`) — so a round never guesses from the bare
+      // list. Seen live 2026-10-22: a round resumed b500, voided weeks before with its reference
+      // sent, and the next day's rounds kept re-parking b493 instead of reaching the dispatcher.
+      try {
+        const shellIds = (bids as Array<{ id: string }>).map((b) => b.id)
+        const { data: runs } = await admin.from('twin_shadow_runs').select('shadow_bid_id, reference_bid_id, status, created_at').in('shadow_bid_id', shellIds).order('created_at', { ascending: false })
+        const runByShell = new Map<string, { reference_bid_id: string; status: ShadowRunStatus }>()
+        for (const r of (runs ?? []) as Array<{ shadow_bid_id: string; reference_bid_id: string; status: ShadowRunStatus }>) {
+          if (!runByShell.has(r.shadow_bid_id)) runByShell.set(r.shadow_bid_id, r)
+        }
+        const namedShadow = (row: Record<string, unknown>) => isShadowShellName(row.project as string | null)
+        if (runByShell.size || rows.some(namedShadow)) {
+          const refIds = [...new Set([...runByShell.values()].map((r) => r.reference_bid_id))]
+          const none = Promise.resolve({ data: [] as unknown[] })
+          const [{ data: refs }, { data: asks }] = await Promise.all([
+            refIds.length ? admin.from('bids').select('id, bid_number, bid_date_sent').in('id', refIds) : none,
+            runByShell.size ? admin.from('twin_questions').select('about_bid_id, question, kind').eq('status', 'open').in('about_bid_id', [...runByShell.keys(), ...refIds]) : none,
+          ])
+          const refById = new Map(((refs ?? []) as Array<{ id: string; bid_number: string | number | null; bid_date_sent: string | null }>).map((r) => [r.id, r]))
+          const parkedBids = new Set<string>()
+          for (const q of (asks ?? []) as Array<{ about_bid_id: string | null; question: string; kind: string | null }>) {
+            if (q.about_bid_id && effectiveTwinQuestionKind(q) === 'plans') parkedBids.add(q.about_bid_id)
+          }
+          const nowMs = Date.now()
+          const shadowOf = await Promise.all(rows.map(async (row) => {
+            const shellId = row.bid_id as string
+            const run = runByShell.get(shellId)
+            if (!run) {
+              // A ZZ Shadow with no run behind it (its reference gone, 2026-10-23's b493): residue, closed.
+              if (!namedShadow(row)) return null
+              return { status: null, reference: null, reference_sent: false, parked: false, last_word_at: null, hold: 'closed', words: 'No shadow run behind it, so its reference is gone. Not yours to touch.' }
+            }
+            const ref = refById.get(run.reference_bid_id)
+            const referenceSent = !!ref?.bid_date_sent
+            const parked = parkedBids.has(shellId) || parkedBids.has(run.reference_bid_id)
+            let lastWordAt: string | null = null
+            if (run.status === 'open' && !referenceSent && !parked) {
+              const [{ data: hb }, { data: led }] = await Promise.all([
+                admin.from('twin_runs').select('started_at').eq('bid_id', shellId).eq('mission', 'heartbeat').order('started_at', { ascending: false }).limit(1).maybeSingle(),
+                admin.from('bids_submission_entries').select('created_at').eq('bid_id', shellId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+              ])
+              const times = [(hb as { started_at?: string | null } | null)?.started_at, (led as { created_at?: string | null } | null)?.created_at]
+                .filter((t): t is string => !!t)
+                .map((t) => Date.parse(t))
+                .filter((t) => Number.isFinite(t))
+              lastWordAt = times.length ? new Date(Math.max(...times)).toISOString() : null
+            }
+            const hold = shellHold({ status: run.status, referenceSent, parked, lastWordAt }, nowMs)
+            return {
+              status: run.status,
+              reference: ref ? bidRef(ref.bid_number) : null,
+              reference_sent: referenceSent,
+              parked,
+              last_word_at: lastWordAt,
+              hold,
+              words: hold ? shellHoldWords(hold) : null,
+            }
+          }))
+          rows.forEach((row, i) => {
+            row.shadow = shadowOf[i]
+          })
+        }
+      } catch {
+        /* the shadow block is extra; the list still answers */
+      }
+      return textContent(JSON.stringify({
+        assignments: rows,
+        round_rule: 'A shell\'s shadow.hold decides step 1 of a round: orphaned is your first job (resume it, no new claim); in_hand, parked and closed you leave alone. No shell orphaned or in hand: go on to next_shadow.',
+      }, null, 2))
     }
     case 'get_plan_brief':
     case 'get_work_state': {
@@ -3114,9 +3253,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         const { data: open } = await admin.from('bid_plan_questions').select('id, bid_id, question, asked_at').eq('status', 'open').is('claimed_by', null).order('asked_at').limit(50)
         for (const cand of (open ?? []) as Array<{ id: string; bid_id: string; question: string; asked_at: string }>) {
           // Blind both ways: the bid's shadow must be sealed (or there must be none).
-          const { data: run } = await admin.from('twin_shadow_runs').select('status, locked_at').eq('reference_bid_id', cand.bid_id).maybeSingle()
+          // v2.5753: the LIVE run — a bid may hold a voided run beside a newer one, and a failed
+          // single-row read must never pass for "no shadow". A failed read skips the question.
+          const { data: run, error: runErr } = await admin.from('twin_shadow_runs').select('status, locked_at').eq('reference_bid_id', cand.bid_id).neq('status', 'void').order('created_at', { ascending: false }).limit(1).maybeSingle()
+          if (runErr) continue
           const r = run as { status: string; locked_at: string | null } | null
-          if (r && r.status !== 'void' && !r.locked_at) continue
+          if (r && !r.locked_at) continue
           const { data: won } = await admin.from('bid_plan_questions').update({ claimed_by: twin.twinUserId, claimed_at: nowIso, updated_at: nowIso }).eq('id', cand.id).eq('status', 'open').is('claimed_by', null).select('id').maybeSingle()
           if (won) { q = cand; break }
         }
@@ -3254,63 +3396,25 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
-      const days = Number(args.days ?? 14)
-      const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 14) * 86400_000).toISOString()
-      // Logistics only — pricing fields don't exist yet on eligible bids by definition
-      // (bid_date_sent IS NULL is the blindness guarantee), and are never selected anyway.
-      const QUEUE_COLS = 'id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at, robot_requested_at, robot_requested_by, plans_robot_readable, plans_robot_probe_note'
-      // v2.2543: human-requested bids (the green robot icon) come first and bypass
-      // the lookback window — a person's ask shouldn't age out of the queue.
-      // v2.3032: plumbing-only — the twin's discipline (see disciplineRefusal).
-      // v2.3080: plans must be READABLE by the intake service account — probe first.
+      // v2.5753 / v1.8.0: the one rule (`_shared/shadowEligibility.ts`) — the list the client's Queue
+      // draws and `next_shadow` claims from, in the same order. The history the rule folds in:
+      // v2.2543 requested bids first with no age limit, v2.3032 plumbing only, v2.3080 readable
+      // plans only, v2.3142 the opt-out; and from the client's side: undecided, not archived, a due
+      // date not 30 days gone. `days` overrides the lookback for unrequested bids.
+      const daysArg = Number(args.days)
+      const lookbackDays = Number.isFinite(daysArg) && daysArg > 0 ? daysArg : undefined
       const plumbingId = await plumbingServiceTypeId(admin)
       if (!plumbingId) return textContent('No Plumbing service type found — cannot scope the queue to the twin\'s discipline', true)
       await probePlansSweep(req)
-      const [recentRes, requestedRes] = await Promise.all([
-        admin
-          .from('bids')
-          .select(QUEUE_COLS)
-          .is('bid_date_sent', null)
-          .not('plans_link', 'is', null)
-          .eq('service_type_id', plumbingId)
-          .eq('robot_opt_out', false)
-          .gte('created_at', since)
-          .not('project_name', 'ilike', 'ZZ %')
-          .order('created_at', { ascending: false })
-          .limit(25),
-        admin
-          .from('bids')
-          .select(QUEUE_COLS)
-          .is('bid_date_sent', null)
-          .not('plans_link', 'is', null)
-          .eq('service_type_id', plumbingId)
-          .eq('robot_opt_out', false)
-          .not('robot_requested_at', 'is', null)
-          .not('project_name', 'ilike', 'ZZ %')
-          .order('robot_requested_at', { ascending: true })
-          .limit(25),
-      ])
-      if (recentRes.error) return textContent(`Queue lookup failed: ${recentRes.error.message}`, true)
-      if (requestedRes.error) return textContent(`Queue lookup failed: ${requestedRes.error.message}`, true)
-      const { data: shadowed } = await admin.from('twin_shadow_runs').select('reference_bid_id')
-      const taken = new Set((shadowed ?? []).map((r: { reference_bid_id: string }) => r.reference_bid_id))
-      type QueueRow = { id: string; bid_number: string; project_name: string | null; address: string | null; distance_from_office: number | null; bid_due_date: string | null; plans_link: string | null; created_at: string | null; robot_requested_at: string | null; robot_requested_by: string | null; plans_robot_readable: boolean | null; plans_robot_probe_note: string | null }
-      const hasPlans = (b: QueueRow) => !taken.has(b.id) && String(b.plans_link ?? '').trim() !== ''
-      const eligible = (rows: QueueRow[] | null) => (rows ?? []).filter((b) => hasPlans(b) && b.plans_robot_readable !== false)
-      const requested = eligible(requestedRes.data as QueueRow[] | null)
-      const requestedIds = new Set(requested.map((b) => b.id))
-      const rest = eligible(recentRes.data as QueueRow[] | null).filter((b) => !requestedIds.has(b.id))
-      // Unreadable-by-robots (v2.3080): listed, never queued — a human repairs the link.
-      const unreadableSeen = new Set<string>()
-      const unreadable = [...((requestedRes.data ?? []) as QueueRow[]), ...((recentRes.data ?? []) as QueueRow[])]
-        .filter((b) => hasPlans(b) && b.plans_robot_readable === false && !unreadableSeen.has(b.id) && unreadableSeen.add(b.id))
-        .map((b) => ({ bid: `b${b.bid_number}`, project: b.project_name, why: b.plans_robot_probe_note, requested: !!b.robot_requested_at }))
+      const board = await shadowBoardNow(admin, { plumbingId, lookbackDays })
+      if (board.error) return textContent(`Queue lookup failed: ${board.error}`, true)
+      const { requested, ready, held } = board.queue
       const requesterIds = [...new Set(requested.map((b) => b.robot_requested_by).filter((x): x is string => !!x))]
       const { data: requesters } = requesterIds.length
         ? await admin.from('users').select('id, name').in('id', requesterIds)
         : { data: [] as Array<{ id: string; name: string | null }> }
       const nameById = new Map((requesters ?? []).map((u: { id: string; name: string | null }) => [u.id, u.name]))
-      const toEntry = (b: QueueRow) => ({
+      const toEntry = (b: ShadowRuleRow) => ({
         bid: `b${b.bid_number}`,
         project: b.project_name,
         address: b.address,
@@ -3321,24 +3425,26 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           ? { requested: true, requested_at: b.robot_requested_at, requested_by: (b.robot_requested_by && nameById.get(b.robot_requested_by)) || null }
           : {}),
       })
-      const queue = [...requested.map(toEntry), ...rest.map(toEntry)]
-      // Coverage (v2.2936, LEARNING_PLAN.md lever 2): how much of the live board is
-      // shadowed, windowless — the number the auto-shadow program drives to 100%.
-      const { data: allLive } = await admin.from('bids').select('id, plans_robot_readable')
-        .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', plumbingId).eq('robot_opt_out', false).not('project_name', 'ilike', 'ZZ %').limit(1000)
-      const liveRows = (allLive ?? []) as Array<{ id: string; plans_robot_readable: boolean | null }>
-      const liveIds = liveRows.map((b) => b.id)
-      const shadowedLive = liveIds.filter((id) => taken.has(id)).length
-      const unreadableLive = liveRows.filter((b) => b.plans_robot_readable === false && !taken.has(b.id)).length
+      const queue = [...requested.map(toEntry), ...ready.map(toEntry)]
+      // Unreadable-by-robots (v2.3080): listed under their own key still — a human repairs the link.
+      const unreadable = held.filter((h) => h.reason === 'plans_unreadable').map((h) => ({ bid: `b${h.bid.bid_number}`, project: h.bid.project_name, requested: !!h.bid.robot_requested_at }))
+      // Coverage (v2.2936, LEARNING_PLAN.md lever 2): how much of the live board is shadowed,
+      // windowless — the number the auto-shadow program drives to 100%. Live = past the gates a
+      // person decides (unsent, undecided, not archived, not left to a person, plumbing, plans).
+      const LIVE_HOLDS: ReadonlySet<ShadowHoldReason | null> = new Set<ShadowHoldReason | null>([null, 'has_shadow', 'plans_unreadable', 'stale_due', 'too_old'])
+      const live = board.holds.filter((h) => LIVE_HOLDS.has(h.hold))
+      const shadowedLive = live.filter((h) => h.hold === 'has_shadow').length
       return textContent(JSON.stringify({
         eligible: queue.length,
         requested: requested.length,
         coverage: {
-          live_with_plans: liveIds.length, shadowed: shadowedLive, unshadowed: liveIds.length - shadowedLive,
-          unreadable_by_robots: unreadableLive,
+          live_with_plans: live.length, shadowed: shadowedLive, unshadowed: live.length - shadowedLive,
+          unreadable_by_robots: live.filter((h) => h.hold === 'plans_unreadable').length,
         },
         queue,
+        held: heldEntries(board.queue),
         ...(unreadable.length ? { unreadable, unreadable_note: 'These live bids have a plans link the Drive intake service account cannot read — not queued. A human shares the file with the service account or links the PDF itself; the next probe (24h, or plan-fetch ?probe=1) clears them.' } : {}),
+        rule: 'One rule for every reader (the Console\'s Queue, next_shadow, a round\'s check-in): the top entry of queue is what next_shadow claims next; held is what it passes over and why.',
         next: 'next_shadow claims the first one for you (requested entries first) — or open_shadow(reference_bid, axis) to pick. Then estimate exactly like a backtest and lock_shadow before the human number exists.',
       }, null, 2))
     }
@@ -3363,7 +3469,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if ((refBid as { robot_opt_out?: boolean | null }).robot_opt_out === true) {
         return textContent(`b${refBid.bid_number} is opted out of robot shadowing on its bid form — the estimator asked for no shadow. Pick another reference.`, true)
       }
-      const { data: existingRun } = await admin.from('twin_shadow_runs').select('id, shadow_bid_id, status').eq('reference_bid_id', refBid.id).maybeSingle()
+      // v2.5753: the LIVE run only — a voided shell ended that shell, not the bid, so a fresh one may open.
+      const { data: existingRun } = await admin.from('twin_shadow_runs').select('id, shadow_bid_id, status').eq('reference_bid_id', refBid.id).neq('status', 'void').order('created_at', { ascending: false }).limit(1).maybeSingle()
       if (existingRun) {
         const { data: sb } = await admin.from('bids').select('bid_number').eq('id', existingRun.shadow_bid_id).maybeSingle()
         return textContent(JSON.stringify({ ok: true, reused: true, shadow_bid: `b${sb?.bid_number}`, status: existingRun.status }, null, 2))
@@ -3385,11 +3492,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
-      const days = Number(args.days ?? 30)
-      const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 30) * 86400_000).toISOString()
-      const CLAIM_COLS = 'id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, created_at, robot_requested_at, backtest_axis, plans_robot_readable'
+      const daysArg = Number(args.days)
+      const lookbackDays = Number.isFinite(daysArg) && daysArg > 0 ? daysArg : undefined
       // v2.3032: plumbing-only candidates — the 2026-09-07 b378 category error.
       // v2.3080: readable-plans-only candidates — the 2026-09-06 b480 blocked shadow.
+      // v2.5753: both, and every other gate, live in the one rule (`shadowBoardNow`).
       const claimPlumbingId = await plumbingServiceTypeId(admin)
       if (!claimPlumbingId) return textContent('No Plumbing service type found — cannot scope claims to the twin\'s discipline', true)
       // v2.3229 / v1.3.17: an answered plans ask ("Attached — rerun") against a shell
@@ -3447,43 +3554,30 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         // Resume is best-effort; a normal claim follows.
       }
       await probePlansSweep(req)
-      const [requestedRes, recentRes] = await Promise.all([
-        admin.from('bids').select(CLAIM_COLS)
-          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).eq('robot_opt_out', false).not('robot_requested_at', 'is', null)
-          .not('project_name', 'ilike', 'ZZ %').order('robot_requested_at', { ascending: true }).limit(25),
-        admin.from('bids').select(CLAIM_COLS)
-          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).eq('robot_opt_out', false).gte('created_at', since)
-          .not('project_name', 'ilike', 'ZZ %').order('created_at', { ascending: true }).limit(50),
-      ])
-      if (requestedRes.error) return textContent(`Queue lookup failed: ${requestedRes.error.message}`, true)
-      if (recentRes.error) return textContent(`Queue lookup failed: ${recentRes.error.message}`, true)
-      const { data: shadowed } = await admin.from('twin_shadow_runs').select('reference_bid_id')
-      const taken = new Set((shadowed ?? []).map((r: { reference_bid_id: string }) => r.reference_bid_id))
-      const seen = new Set<string>()
-      let skippedUnreadable = 0
-      const candidates = [...(requestedRes.data ?? []), ...(recentRes.data ?? [])].filter((b) => {
-        if (taken.has(b.id) || seen.has(b.id) || !String(b.plans_link ?? '').trim()) return false
-        seen.add(b.id)
-        if ((b as { plans_robot_readable?: boolean | null }).plans_robot_readable === false) {
-          skippedUnreadable += 1
-          return false
-        }
-        return true
-      }) as ShadowRefBid[]
+      // v2.5753 / v1.8.0: the one rule — the list the Console's Queue draws is the list this claims
+      // from, in its order (requested by oldest ask, then ready by due date). A voided run is not a
+      // claim, so a bid a person took back and then let the robot into again is claimable.
+      const board = await shadowBoardNow(admin, { plumbingId: claimPlumbingId, lookbackDays })
+      if (board.error) return textContent(`Queue lookup failed: ${board.error}`, true)
+      const candidates = [...board.queue.requested, ...board.queue.ready]
+      const held = heldEntries(board.queue)
       if (!candidates.length) {
         return textContent(JSON.stringify({
           done: true,
-          note: `Every eligible live bid (requested, or created in the last ${days} days) already has a shadow.`,
-          ...(skippedUnreadable ? { skipped_unreadable: skippedUnreadable, unreadable_note: 'Live bids whose plans the intake service account cannot read were skipped — get_shadow_queue lists them; a human repairs the link.' } : {}),
+          ready: 0,
+          held,
+          note: held.length
+            ? `No live bid is ready. ${held.length} bid${held.length === 1 ? '' : 's'} passed over, each with its reason under held — the same list the Console's Queue shows, and your check-in heartbeat carries it.`
+            : 'Every live bid the rule allows already has a robot bid on it.',
         }, null, 2))
       }
       for (const refBid of candidates) {
-        const axis = String((refBid as { backtest_axis?: string | null }).backtest_axis ?? '').trim() || null
+        const axis = String(refBid.backtest_axis ?? '').trim() || null
         const r = await createShadowShell(admin, twin, refBid, axis)
-        if ('error' in r) continue // someone else claimed between the list and the insert — next candidate
-        // Same-instant duplicate check: earliest-created run for this reference wins.
+        if ('error' in r) continue // someone else claimed between the list and the insert (the live-run index refuses a second) — next candidate
+        // Same-instant duplicate check: earliest-created LIVE run for this reference wins.
         const { data: runs } = await admin.from('twin_shadow_runs')
-          .select('id, shadow_bid_id, created_at').eq('reference_bid_id', refBid.id).order('created_at', { ascending: true })
+          .select('id, shadow_bid_id, created_at').eq('reference_bid_id', refBid.id).neq('status', 'void').order('created_at', { ascending: true })
         if (runs && runs.length > 1 && runs[0]!.shadow_bid_id !== r.id) {
           await admin.from('twin_shadow_runs').delete().eq('shadow_bid_id', r.id).then(() => {}, () => {})
           await admin.from('bids').delete().eq('id', r.id).then(() => {}, () => {})
@@ -3492,12 +3586,13 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         return textContent(JSON.stringify({
           ok: true, shadow_bid: `b${r.bid_number}`, shadow_bid_id: r.id,
           reference: `b${refBid.bid_number}`, project: refBid.project_name, axis,
-          requested: !!(refBid as { robot_requested_at?: string | null }).robot_requested_at,
+          requested: !!refBid.robot_requested_at,
           remaining_unshadowed: candidates.length - 1,
+          ...(held.length ? { held } : {}),
           next: 'This shadow is yours alone. Estimate like a backtest (substrate -> takeoff -> paste_counts) and lock_shadow BEFORE the human number exists. Do not call next_shadow again until this one is locked.',
         }, null, 2))
       }
-      return textContent(JSON.stringify({ done: true, note: 'All current candidates were claimed by parallel agents — nothing left to shadow right now.' }, null, 2))
+      return textContent(JSON.stringify({ done: true, ready: 0, held, note: 'All current candidates were claimed by parallel agents — nothing left to shadow right now.' }, null, 2))
     }
     case 'void_shadow': {
       // v2.3032: the door for a shadow that should never score — a category error, a
@@ -3623,7 +3718,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.7.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.8.1' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

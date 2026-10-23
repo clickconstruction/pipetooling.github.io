@@ -24,6 +24,8 @@ type RobotStatusSheetProps = {
   progress?: RobotProgress | null
   /** v2.5732: Leave this one to me — the bid's robot opt-out; the robot stops within five minutes. */
   onLeaveToMe?: (bid: Bid) => void
+  /** v2.5751: open with Read the run already unfolded — the comparison modal's door on a sent bid's live run. */
+  runOpenAtStart?: boolean
 }
 
 /** Remembered per browser: the first visit shows What the robot touches open; later visits fold it. */
@@ -54,7 +56,7 @@ export function RobotStatusSheet(props: RobotStatusSheetProps) {
   return <RobotStatusSheetBody {...props} input={props.input} />
 }
 
-function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRobotBoard, onCompare, onToggleRequest, onOpenQuestions, onLeaveToMe }: RobotStatusSheetProps & { input: RobotRowInput & { bid: Bid } }) {
+function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRobotBoard, onCompare, onToggleRequest, onOpenQuestions, onLeaveToMe, runOpenAtStart = false }: RobotStatusSheetProps & { input: RobotRowInput & { bid: Bid } }) {
   const { bid } = input
   const state = robotRowState(input)
   const steps = robotStatusTimeline(input)
@@ -90,7 +92,7 @@ function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRob
       /* a private window: the fold opens every time */
     }
   }, [])
-  const [runOpen, setRunOpen] = useState(false)
+  const [runOpen, setRunOpen] = useState(runOpenAtStart)
   const { signals, loading } = useRobotRunSignals(runOpen ? bid.id : null)
 
   return (

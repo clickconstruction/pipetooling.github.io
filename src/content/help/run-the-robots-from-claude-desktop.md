@@ -69,13 +69,16 @@ The connector holds one key, and a key is one robot's seat. A second robot — t
 
 ## Rounds from a Mac that stays on
 
-A round is one pass over the robots' work from one Mac, every five minutes, all day. The robots check in, take one bid if one waits, do one submittal task, and leave. You start the rounds once, on the Mac that stays on. After that they run on their own while Claude is open.
+A round is one pass over the robots' work from one Mac, every five minutes, all day. The robots check in, take one bid if one waits, do one submittal task, and leave. You set the rounds up once, on the Mac that stays on. After that they run on their own. No Claude window has to be open, and nothing asks you a question.
 
-1. On that Mac, open System Settings. Set Energy so the Mac never sleeps. Add Claude to the login items. Sign in to Claude.
+1. On that Mac, open System Settings. Set Energy so the Mac never sleeps. Sign in to Claude.
 2. Open **Bids → 🤖 Robots → Console** and press {{button:purple|Set up on this Mac}}. Type whose Mac it is. Tick **This Mac makes the rounds**. Press {{button:purple|Make my setup command}}, then {{button:purple|Copy the command}}. Paste it into Terminal and press Return.
-3. Claude reopens with the rounds kickoff on your clipboard. Open the **Code** tab, start a new session and paste. The session reads the three settings back, makes the routine named Robot rounds, and runs the first round.
+3. The command gets Claude Code ready on that Mac. If it is not signed in yet, a browser window opens once. Sign in with the same Claude account. The command then installs the rounds and runs the first one.
+4. Open the Console again. The Rounds card above shows the Mac as Alive within a minute.
 
-A Mac that already has the key skips step 2. You press {{button:blue|Copy rounds kickoff}} on the *Run the robots* card and paste it into Claude Code there. The Rounds card above shows the Mac as Alive within a minute.
+The rounds run from a small file in your Library folder, whether Claude is open or not. The log is at Library → Logs → ClickTooling → rounds.log. A Mac set up before this change still has a routine named Robot rounds in Claude Code. Delete that routine there, or two rounds run at once.
+
+{{button:blue|Copy the round}} on the *Run the robots* card copies one round. You paste it into a new Code session to make one round by hand. To stop the rounds for a while, press {{button:gray|Stop the rounds}} on the Rounds card. To take the rounds off a Mac for good, paste this into Terminal on it: `launchctl bootout gui/$UID/com.clicktooling.robot-rounds`
 
 The round takes one bid at a time. A round that finds another round on a bid leaves after one call, so nothing runs twice. The pricing robot joins the rounds only when that Mac holds its own key too. You set that up with the pricer's {{button:purple|Set up on this Mac}} on the same card.
 
@@ -86,6 +89,10 @@ The Console's first card is **Rounds**. It has one row per robot key. A key is o
 - **Alive** means it checked in within seven minutes. **Quiet** means seven to fifteen minutes. **Asleep** means over fifteen, three rounds missed. The word sits beside a dot, so you never read colour alone.
 - **Now** names the bid it holds and the step it is on. You click it to open the bid.
 - **Recently** lists the last five things it finished. Each line opens the bid, the Pricing tab or Submittals.
+- **Today** counts what it finished today. *3 rounds found nothing to do* counts only the rounds that saw no bid to take.
+- **Queue** says what its last check-in saw on the queue. It names each bid it passed over and the reason, like *made over 30 days ago and nobody asked*. The Queue page lists the same bids under **Held**. Both read the one rule the robot uses, so they never disagree.
+
+The robot takes the top row of **Ready** on the Queue page. A bid you took back with {{button:gray|Leave this one to me}} goes back on the list once you untick *Don’t let robots shadow this bid*.
 
 You press {{button:gray|Stop the rounds}} to make that Mac finish the bid in hand and claim no more. The row reads *Stopping after* that bid until the robot says it stopped. You press {{button:gray|Start again}} and the next round comes within five minutes. The stop never touches a session you start by hand.
 
@@ -93,7 +100,7 @@ You press {{button:gray|Stop the rounds}} to make that Mac finish the bid in han
 
 You do not have to check the Console to know. Bids may want a shadow, or price matrices may be queued. A price matrix is a request for the robot to compare the supply houses' quotes on a bid. Then your Dashboard's **Needs you** card carries one line: {{chip:blue|Robots}} *Robots have work waiting · 4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours)*. The line names the first of each. It turns {{chip:yellow|amber}} only when something is stuck. That is a matrix the robot went quiet on for over an hour. Or it is a bid request older than a week. {{button:blue|Open the Console}} lands here. You snooze it for a day or dismiss it until the count rises. It disappears on its own when the robots are caught up.
 
-Two more lines come from the rounds. **The robots have not made a round since 2:05 PM** goes to the owner and devs. The Mac is asleep, or Claude is closed on it. You wake it and open Claude. The rounds start again on their own. You can snooze it for a day, or dismiss it until the next round. **The robot is blocked on b507** goes to whoever can fix the plans. You press {{button:blue|Open the needs sheet}}. You share the folder or attach the PDF. The robot reruns on the next round.
+Two more lines come from the rounds. **The robots have not made a round since 2:05 PM** goes to the owner and devs. The Mac is asleep, or its rounds were never set up. You wake it. The rounds start again on their own. If they stay quiet, press {{button:purple|Set up on this Mac}} with the rounds ticked. You can snooze it for a day, or dismiss it until the next round. **The robot is blocked on b507** goes to whoever can fix the plans. You press {{button:blue|Open the needs sheet}}. You share the folder or attach the PDF. The robot reruns on the next round.
 
 ## What it will not do
 

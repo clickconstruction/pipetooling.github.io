@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
@@ -70,7 +70,14 @@ function AddressEditor({ draft, onChange, disabled, label }: { draft: Draft; onC
   )
 }
 
-export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: string; firmName: string }) {
+export default function LegalPortalLinkButton({ firmId, firmName, triggerStyle, triggerLabel, triggerClassName }: {
+  firmId: string
+  firmName: string
+  /** The trigger's look (v2.5750): the Legal desk's header hands in its firm group's segment style, class and label; alone, the old bordered button. */
+  triggerStyle?: CSSProperties
+  triggerLabel?: ReactNode
+  triggerClassName?: string
+}) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [open, setOpen] = useState(false)
@@ -287,7 +294,7 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} style={btn} title="The firm’s no-login portal links">🌐 Firm’s link</button>
+      <button type="button" className={triggerClassName} onClick={() => setOpen(true)} style={triggerStyle ?? btn} title="The firm’s no-login portal links">{triggerLabel ?? '🌐 Firm’s link'}</button>
       {open ? (
         <div role="presentation" onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 775, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="The firm’s portal links" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 600, width: '100%', maxHeight: '100%', overflowY: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>

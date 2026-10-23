@@ -32,7 +32,7 @@ function mountClipboard() {
 describe('BidsRobotConsoleTab — Run the robots', () => {
   it('puts Claude Code first and copies a kickoff that is the robot’s instructions, connector filled in', async () => {
     const writeText = mountClipboard()
-    renderWithProviders(<BidsRobotConsoleTab bids={[]} twinBidBySourceId={new Map()} onOpenQueue={() => {}} />)
+    renderWithProviders(<BidsRobotConsoleTab bids={[]} twinBidBySourceId={new Map()} plumbingServiceTypeId={null} shadowRunByBidNumber={new Map()} onOpenQueue={() => {}} />)
     await settle()
 
     const heads = screen.getAllByText(/^From |^Pricing robot/).map((el) => el.textContent)
@@ -51,7 +51,7 @@ describe('BidsRobotConsoleTab — Run the robots', () => {
 
   it('keeps the chat kickoff beside it, and says what a chat costs', async () => {
     const writeText = mountClipboard()
-    renderWithProviders(<BidsRobotConsoleTab bids={[]} twinBidBySourceId={new Map()} onOpenQueue={() => {}} />)
+    renderWithProviders(<BidsRobotConsoleTab bids={[]} twinBidBySourceId={new Map()} plumbingServiceTypeId={null} shadowRunByBidNumber={new Map()} onOpenQueue={() => {}} />)
     await settle()
 
     expect(screen.getByText(/asks you to drag in each plan PDF/)).toBeTruthy()
@@ -69,13 +69,15 @@ describe('BidsRobotConsoleTab — Run the robots', () => {
 })
 
 describe('the rounds row (v2.5735, punch list #142)', () => {
-  it('the Claude Code column offers Copy rounds kickoff with a preview, in the shape of its other rows', async () => {
-    renderWithProviders(<BidsRobotConsoleTab bids={[]} twinBidBySourceId={new Map()} onOpenQueue={() => {}} />)
+  it('the Claude Code column offers Copy the round with a preview, in the shape of its other rows (v2.5752: the agent, no routine)', async () => {
+    renderWithProviders(<BidsRobotConsoleTab bids={[]} twinBidBySourceId={new Map()} plumbingServiceTypeId={null} shadowRunByBidNumber={new Map()} onOpenQueue={() => {}} />)
     await settle()
     expect(document.body.textContent).toContain('Make this Mac the rounds')
     // The row's button, and the Rounds card's empty state carries the same door.
-    expect(screen.getAllByText('Copy rounds kickoff').length).toBeGreaterThanOrEqual(1)
-    fireEvent.click(screen.getByText('Preview the rounds kickoff'))
+    expect(screen.getAllByText('Copy the round').length).toBeGreaterThanOrEqual(1)
+    expect(document.body.textContent).toContain('One Terminal paste installs a round every five minutes, with no Claude session open and no question asked.')
+    expect(document.body.textContent).not.toContain('routine, every five minutes')
+    fireEvent.click(screen.getByText('Preview the round'))
     await waitFor(() => expect(document.body.textContent).toContain('Robot rounds from a Mac that stays on'))
     expect(document.body.textContent).toContain('https://mcp.clicktooling.com/twin')
   })

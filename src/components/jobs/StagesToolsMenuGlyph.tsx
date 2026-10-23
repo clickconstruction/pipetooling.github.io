@@ -8,8 +8,8 @@ import { Banknote, Bell, Building2, CalendarRange, ChartColumn, History, Landmar
 import type { StagesToolGlyph } from '../../lib/jobs/stagesSectionToolsMenu'
 import { StagesGavelGlyph } from './StagesRowActionButtons'
 
-/** The menu's icons, plus the scales the Collections header's Legal button wears (the Legal desk is not in the menu). */
-export type StagesGlyphName = StagesToolGlyph | 'scales'
+/** The menu's icons; the scales joined the kernel's names with the Legal desk's row (v2.5750), and the Collections header's Legal button wears them too. */
+export type StagesGlyphName = StagesToolGlyph
 
 const LINE: Record<Exclude<StagesGlyphName, 'gavel' | 'file-dollar'>, LucideIcon> = {
   history: History,

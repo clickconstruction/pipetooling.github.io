@@ -19,6 +19,7 @@ const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => {
           last_seen_at: ago(2), stopped_at: null, stopped_by_name: null, heartbeat_at: ago(2), heartbeat_state: 'working', heartbeat_stage: 'STG-2',
           heartbeat_progress: { step: 'reading', read: '12 of 31 sheets' }, heartbeat_is_round: true, heartbeat_bid_number: '2041', heartbeat_project: 'ZZ Shadow Oak Hollow',
           heartbeat_source_bid_number: '511', heartbeat_source_bid_id: 'bid-511', holds_open_shell: true, idle_rounds_today: 88,
+          idle_at: ago(7), idle_progress: { rounds: 3, nothing: 3, ready: 0, held: [{ bid: 'b516', project: 'TAKE 5 N LAMAR', why: 'Made over 30 days ago and nobody asked.' }] },
           recent: [{ kind: 'sealed', at: ago(60), bid_id: 'bid-509', bid_number: '509', project: 'Cedar Park Vet Clinic', shell_number: '2038', count: 2, label: null, delta_pct: null }],
         },
         {
@@ -48,6 +49,8 @@ describe('TwinRoundsCard', () => {
     expect(screen.getByText('Reading the sheets, 12 of 31 sheets on b511.').getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-511')
     expect(screen.getByTestId('twin-rounds-recent').textContent).toContain('Sealed b2038 for b509 Cedar Park Vet Clinic. Asked 2 questions.')
     expect(screen.getByText(/88 rounds found nothing to do\./)).toBeTruthy()
+    expect(screen.getByTestId('twin-rounds-queue').textContent).toBe('Queue Passed over 1 bid. b516 TAKE 5 N LAMAR, made over 30 days ago and nobody asked.')
+    expect(screen.getAllByTestId('twin-rounds-queue').length).toBe(1)
     fireEvent.click(screen.getAllByText('Stop the rounds')[0]!)
     await waitFor(() => expect(rpc).toHaveBeenCalledWith('robot_rounds_stop', { p_credential_id: 'k1', p_stop: true }))
   })

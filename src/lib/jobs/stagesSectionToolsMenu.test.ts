@@ -7,6 +7,7 @@ const base = {
   collectionsRowCount: 1,
   arBankTxUnallocatedCount: 16,
   capableToBillTotalFormatted: '12,345',
+  collectionsHeaderCount: '1',
 }
 
 function keysOf(groups: ReturnType<typeof buildStagesSectionToolsMenu>) {
@@ -21,6 +22,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'Working',
       'Ready to Bill',
       'Billed Awaiting Payment',
+      'Collections',
       'Paid in Full',
     ])
     expect(keysOf(groups)).toEqual([
@@ -36,6 +38,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-aging-chart',
       'billed-payment-forecast',
       'paid-notifications',
+      'legal-desk',
       'paid-profit-chart',
       'paid-in-full-notifications',
     ])
@@ -91,7 +94,7 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('assistant and controller get Share / Print but not the notification settings', () => {
     const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
-    expect(assistantKeys).toEqual(['lien-desk', 'recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast'])
+    expect(assistantKeys).toEqual(['lien-desk', 'recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast', 'legal-desk'])
     const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
     expect(keysOf(controllerGroups)).toEqual([
       'lien-desk',
@@ -104,6 +107,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-share-print',
       'billed-aging-chart',
       'billed-payment-forecast',
+      'legal-desk',
       'paid-profit-chart',
     ])
     // Controller's Paid in Full group holds only the profit chart (no ⚙).
@@ -155,6 +159,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-aging-chart': 'chart-bar',
       'billed-payment-forecast': 'calendar-bars',
       'paid-notifications': 'bell',
+      'legal-desk': 'scales',
       'paid-profit-chart': 'chart-bar',
       'paid-in-full-notifications': 'bell',
     })
@@ -220,13 +225,52 @@ describe('recently-added menu item (v2.1973)', () => {
   })
 })
 
+describe('Legal desk row (v2.5750): the Collections header\u2019s ⚖ Legal button, in the menu', () => {
+  const legalRow = (groups: ReturnType<typeof buildStagesSectionToolsMenu>) => groups.flatMap((g) => g.items).find((i) => i.key === 'legal-desk')
+
+  it('is the one row of a Collections group between Billed and Paid in Full, for the office, with the scales', () => {
+    for (const authRole of ['dev', 'master_technician', 'assistant', 'controller']) {
+      const groups = buildStagesSectionToolsMenu({ ...base, authRole })
+      const sections = groups.map((g) => g.section)
+      expect(sections.indexOf('Collections')).toBe(sections.indexOf('Billed Awaiting Payment') + 1)
+      expect(groups.find((g) => g.section === 'Collections')?.items).toEqual([
+        expect.objectContaining({ key: 'legal-desk', label: 'Legal desk', icon: 'scales', disabled: false }),
+      ])
+    }
+  })
+
+  it('is hidden, not disabled, for roles the header draws no button for', () => {
+    for (const authRole of ['primary', 'superintendent', 'estimator', 'helpers', null]) {
+      const groups = buildStagesSectionToolsMenu({ ...base, authRole })
+      expect(keysOf(groups)).not.toContain('legal-desk')
+      expect(groups.some((g) => g.section === 'Collections')).toBe(false)
+    }
+  })
+
+  it('disables on the Collections header\u2019s 0, as the header button does — never on the lazily loaded rows', () => {
+    expect(legalRow(buildStagesSectionToolsMenu({ ...base, authRole: 'dev', collectionsHeaderCount: '0', collectionsRowCount: 0 }))?.disabled).toBe(true)
+    // A fresh page: the header already says 6 while the rows are still unfetched.
+    expect(legalRow(buildStagesSectionToolsMenu({ ...base, authRole: 'dev', collectionsHeaderCount: '6', collectionsRowCount: 0 }))?.disabled).toBe(false)
+    // Stats still loading: open, like the header.
+    expect(legalRow(buildStagesSectionToolsMenu({ ...base, authRole: 'dev', collectionsHeaderCount: '…', collectionsRowCount: 0 }))?.disabled).toBe(false)
+  })
+
+  it('wears the firm\u2019s waiting acts as its badge, and none while that loads or is zero', () => {
+    expect(legalRow(buildStagesSectionToolsMenu({ ...base, authRole: 'controller', legalDeskCount: 3 }))?.badgeCount).toBe(3)
+    for (const legalDeskCount of [0, null, undefined]) {
+      expect(legalRow(buildStagesSectionToolsMenu({ ...base, authRole: 'controller', legalDeskCount }))).not.toHaveProperty('badgeCount')
+    }
+  })
+})
+
 describe('Lien desk row (v2.3405; leads the menu since v2.3799, punch list #34)', () => {
   it('is the first row of the Pipeline group for the office, with the desk count as its badge', () => {
     for (const authRole of ['dev', 'master_technician', 'assistant', 'controller']) {
       const groups = buildStagesSectionToolsMenu({ ...base, authRole, lienDeskCount: 16 })
       expect(groups[0]!.section).toBe('Pipeline')
       expect(groups[0]!.items[0]).toMatchObject({ key: 'lien-desk', label: 'Lien desk', icon: 'gavel', badgeCount: 16 })
-      expect(groups.some((g) => g.section === 'Collections')).toBe(false)
+      // Not under Collections, where the Legal desk's row lives (v2.5750).
+      expect(groups.find((g) => g.section === 'Collections')?.items.map((i) => i.key)).toEqual(['legal-desk'])
     }
   })
 

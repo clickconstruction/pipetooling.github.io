@@ -5,6 +5,8 @@
  * surfaces pin light — every color is literal on purpose.
  */
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
+import { canWeSue, whatCouldGoWrong, whatsLeftForUs } from './deskQuestions'
+import { exhibitDetails } from './exhibitDetail'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
@@ -47,8 +49,11 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const propertyRows = a.properties.map((p) => row([esc(p.jobLabels.join(', ')), esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.gaps.length ? `missing ${esc(p.gaps.join(', '))}` : 'complete']))
   const stepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(s.kind), esc(s.text)]))
   const gapItems = packet.gaps.map((g) => `<li class="${g.severity}"><b>${esc(g.label)}</b> — ${esc(g.detail)}</li>`).join('')
-  const exhibitItems = packet.exhibits.map((x) => `<li><b>${x.letter}</b> ${esc(x.title)} <span class="muted">(${x.count})</span></li>`).join('')
+  const exhibitItems = exhibitDetails(packet).map((x) => `<li><b>${esc(x.section)}</b>${x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? '' : ` ${esc(x.title)}`} <span class="muted">(${x.count})</span></li>`).join('')
   const w = packet.worth
+  const sue = canWeSue(packet)
+  const left = whatsLeftForUs(packet)
+  const wrong = whatCouldGoWrong(packet)
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>Account packet · ${esc(a.payer.name)}</title>
 <style>
@@ -78,15 +83,16 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
 </div>
 <div class="totals">
   <div><span class="muted">Balance</span><b>${formatLegalMoney(a.totals.balance)}</b></div>
-  <div><span class="muted">Theory</span><b style="font-size:13px">${esc(packet.theory.label)}</b><span class="muted">${esc(packet.theory.basis)}</span></div>
-  <div><span class="muted">After ${Math.round(w.contingencyPct * 100)}% and ${formatLegalMoney(w.filingCost)} costs</span><b>${formatLegalMoney(w.net)}</b><span class="muted">${esc(w.verdict)}${w.flags.length ? ` · ${esc(w.flags.join(', '))}` : ''}</span></div>
+  <div><span class="muted">Can we sue?</span><b style="font-size:13px">${esc(sue.answer)}</b><span class="muted">${esc(sue.why)}</span></div>
+  <div><span class="muted">What's left for us?</span><b>${formatLegalMoney(w.net)}</b><span class="muted">${esc(w.verdict)} · ${esc(left.why)}</span></div>
+  <div><span class="muted">What could go wrong?</span><b style="font-size:13px">${esc(wrong.answer)}</b><span class="muted">${esc(wrong.why)}</span></div>
   <div><span class="muted">Oldest</span><b>${a.totals.oldestDays == null ? '—' : `${a.totals.oldestDays}d`}</b></div>
   <div><span class="muted">Terms</span><b style="font-size:12px">${esc(a.paymentTerms)}</b></div>
 </div>
 <h2>Before release · ${esc(packet.readiness.label)}</h2>
 ${packet.gaps.length ? `<ul>${gapItems}</ul>` : '<p class="muted">No gaps found.</p>'}
-<h2>Exhibits</h2>
-${packet.exhibits.length ? `<ul>${exhibitItems}</ul>` : '<p class="muted">Nothing to letter yet.</p>'}
+<h2>What goes to the firm</h2>
+${packet.exhibits.length ? `<ul>${exhibitItems}</ul>` : '<p class="muted">Nothing goes with the packet yet.</p>'}
 <h2>Account</h2>
 <h3>Who owes</h3>
 <p>${esc(a.payer.name)}${a.payer.viaGc ? ' (general contractor on the job)' : ''}${a.customerType ? ` · ${esc(a.customerType)}` : ''}${a.customerAddress ? ` · ${esc(a.customerAddress)}` : ''}<br>Emails: ${a.emails.length ? esc(a.emails.join(', ')) : '<span class="muted">none on file</span>'} · Phones: ${a.phones.length ? esc(a.phones.join(', ')) : '<span class="muted">none on file</span>'}</p>

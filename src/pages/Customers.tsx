@@ -19,6 +19,9 @@ import ClassifyCustomersModal from '../components/customers/ClassifyCustomersMod
 import LinkJobsToCustomersModal from '../components/customers/LinkJobsToCustomersModal'
 import { type CustomerListRollup, type LcvInvoiceRow, type LcvJobRow, type LcvPaymentRow } from '../lib/customers/customersListLcv'
 import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle, withoutZzTestJobsInBundle, type CustomersListBundle } from '../lib/customers/customersListBundle'
+import { parsePaySpeedsRpc, type PaySpeedData } from '../lib/jobs/billedExpectedPay'
+import { paySpeedSpread } from '../lib/jobs/paymentReliability'
+import { paysInTitle, paysInWords } from '../lib/customers/customerRowPaysIn'
 import { telHrefFor } from '../lib/phoneContact'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { CustomersPhoneView } from '../components/customers/CustomersPhoneView'
@@ -228,6 +231,8 @@ export default function Customers() {
     Record<string, { projects: number; jobs: number; bids: number; notes: number }>
   >({})
   const [rollupByCustomerId, setRollupByCustomerId] = useState<Record<string, CustomerListRollup>>({})
+  /** v2.5767: how long each customer takes to pay after a bill — the Pipeline's own pay-speed read, once per list load; null for roles the money is hidden from. */
+  const [paySpeeds, setPaySpeeds] = useState<PaySpeedData | null>(null)
   /** Latest bid/estimate created_at per customer — the non-job half of the "active" signal. */
   const [recentSignalByCustomerId, setRecentSignalByCustomerId] = useState<Record<string, string>>({})
   const [expandedNotesCustomerId, setExpandedNotesCustomerId] = useState<string | null>(null)
@@ -396,6 +401,17 @@ export default function Customers() {
       const derived = deriveCustomersList(bundle, customerIds)
       setCountsByCustomerId(derived.countsByCustomerId)
       setRollupByCustomerId(derived.rollupByCustomerId)
+      if (!moneyHidden) {
+        // Best effort: the row says nothing about pay speed when this read fails or the RPC is missing.
+        void (async () => {
+          try {
+            const { data } = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+            if (!stale()) setPaySpeeds(parsePaySpeedsRpc(data as unknown))
+          } catch {
+            // nothing to say
+          }
+        })()
+      }
       setRecentSignalByCustomerId(derived.recentSignalByCustomerId)
       setUnrecordedPaidCount(derived.unrecordedPaidCount)
       setUnlinkedJobsCount(derived.unlinkedJobsCount)
@@ -1128,14 +1144,19 @@ export default function Customers() {
                   })()}
                 </div>
               </div>
-              <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <span className="customers-projects-bids-links" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end', justifyContent: 'center' }}>
                 {(() => {
                   const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0, notes: 0 }
                   const rollup = rollupByCustomerId[c.id]
                   const owes = rollup?.openBalance ?? 0
                   const activity = rollup ? lastActivityLabel(rollup.lastActivityIso, rollup.lastActivityKind) : null
+                  // v2.5767: two lines — what they have, then where the money stands (owes · the last touch · how fast they pay).
+                  const spread = !moneyHidden && paySpeeds ? paySpeedSpread(paySpeeds.receipts[c.id]) : null
+                  const paysIn = paysInWords(spread)
+                  const moneyLine = owes > 0.5 || activity || paysIn
                   return (
                     <>
+                      <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {counts.projects > 0 ? (
                         <Link
                           to={`/projects?customer=${c.id}`}
@@ -1179,6 +1200,23 @@ export default function Customers() {
                           {counts.jobs} job{counts.jobs === 1 ? '' : 's'}
                         </Link>
                       ) : null}
+                      {/* notes sits in a fixed slot just left of the value so rows align. */}
+                      <button
+                        type="button"
+                        aria-expanded={expandedNotesCustomerId === c.id}
+                        aria-label="Customer notes"
+                        title="Customer notes"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpandedNotesCustomerId((prev) => (prev === c.id ? null : c.id))
+                        }}
+                        style={signalChipStyle('gray')}
+                      >
+                        notes{counts.notes > 0 ? ` ${counts.notes}` : ''}
+                      </button>
+                      </span>
+                      {moneyLine ? (
+                        <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {owes > 0.5 ? (
                         <Link
                           to={`/customers/${c.id}?tab=invoices`}
@@ -1200,20 +1238,13 @@ export default function Customers() {
                           {activity.text}
                         </span>
                       ) : null}
-                      {/* notes sits in a fixed slot just left of the value so rows align. */}
-                      <button
-                        type="button"
-                        aria-expanded={expandedNotesCustomerId === c.id}
-                        aria-label="Customer notes"
-                        title="Customer notes"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedNotesCustomerId((prev) => (prev === c.id ? null : c.id))
-                        }}
-                        style={signalChipStyle('gray')}
-                      >
-                        notes{counts.notes > 0 ? ` ${counts.notes}` : ''}
-                      </button>
+                          {paysIn ? (
+                            <span title={paysInTitle(spread) ?? undefined} style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                              {paysIn}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
                       <CustomerMoneyRail rollup={rollup} hiddenByRls={moneyHidden} />
                     </>
                   )

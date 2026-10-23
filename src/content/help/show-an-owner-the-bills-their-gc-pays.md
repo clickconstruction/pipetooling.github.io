@@ -2,21 +2,23 @@
 title: show an owner the bills their GC pays
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: owner sees $0, owner sees the bills, owner sees some bills, show them, stop showing, billed to the GC, billed to your builder, property owner, shared bill, next bills, lien notice, notice on your property, 53.056, all paid up
+keywords: owner sees $0, owner sees the bills, crossed eye, eye beside the owner, show them, stop showing, billed to the GC, billed to your builder, property owner, shared bill, next bills, lien notice, notice on your property, 53.056, all paid up
 ---
-An owner's portal reads $0 while the GC pays the bills on their property. A switch for each property puts its open bills on the owner's portal, for their records.
+An owner's portal reads $0 while the GC pays the bills on their property. A small eye on the Pipeline row says so. A switch for each property puts its open bills on the owner's portal, for their records.
 
 ## When the GC pays: show the owner their property's bills
 
-Some jobs are billed to the GC, while the customer is the property owner. There, the owner's portal lists nothing, since they pay none of the bills. So the owner's portal reads **$0** and *all paid up*, even while the GC owes on their house. Beside the owner's 🌐 on the job's Pipeline row, a chip says so: {{chip:gray|☐ owner sees $0}}.
+Some jobs are billed to the GC, while the customer is the property owner. There, the owner's portal lists nothing, since they pay none of the bills. So the owner's portal reads **$0** and *all paid up*, even while the GC owes on their house. Beside the owner's 🌐 on the job's Pipeline row, a small eye says what their page shows. A crossed eye means their page shows none of the bills. The eye is grey while no bill is out. The eye turns amber once open bills exist that the owner cannot see.
 
-You click the chip. The app reads **every job at that property** with the same owner. The app asks *Show Umar Khan the bills at 9703 Lenox Hl?* The prompt lists each job, its open bills and what is open. A job not billed yet reads *no bill yet — shows once billed*.
+Rest the pointer on the eye, or move the keyboard focus to it. A card opens under it. The card says what the owner's page shows and why. The card names what is open to the GC. The card ends with a door, like {{button:blue|Show Nia the bills ›}}. Press Escape to close the card. On a phone, tap the eye instead.
 
-{{button:blue|Show them}} puts every open bill the GC pays on the owner's portal, for their records. Those bills show no Pay button, and never count in the owner's balance. Every bill after that shows too. The chip turns {{chip:blue|☑ owner sees the bills}}. The same click again offers {{button:dark|Stop showing}}. Stop showing takes the open bills back off. Paid ones stay in their history.
+You click the eye, or press the card's door. The app reads **every job at that property** with the same owner. The app asks *Show Umar Khan the bills at 9703 Lenox Hl?* The prompt lists each job, its open bills and what is open. A job not billed yet reads *no bill yet — shows once billed*.
 
-{{chip:yellow|☐ owner sees some bills}} means only part is shared. The shared part can be a bill ticked by hand at Bill Customer. The shared part can also come from Edit Job's older *next bills* tick. The switch finishes the job.
+{{button:blue|Show them}} puts every open bill the GC pays on the owner's portal, for their records. Those bills show no Pay button, and never count in the owner's balance. Every bill after that shows too. The eye opens and turns blue. Its card now reads *Nia Okafor sees this job's bills on their page*, with what is open. The same click again offers {{button:dark|Stop showing}}. Stop showing takes the open bills back off. Paid ones stay in their history.
 
-The owner's 🌐 window lists the same thing under **On <owner>'s jobs, billed to someone else**. The window has one line per property, with the switch. The live preview under it re-reads when you flip it.
+An amber eye with a hollow centre means only part is shared. The shared part can be a bill ticked by hand at Bill Customer. The shared part can also come from Edit Job's older *next bills* tick. The card's door reads *Show Nia the rest*. The switch finishes the job.
+
+The owner's 🌐 window lists the same thing under **On <owner>'s jobs, billed to someone else**. The window has one line per property, with the same eye and a few words beside it. The live preview under it re-reads when you flip it.
 
 ### When a lien notice has gone to the owner
 

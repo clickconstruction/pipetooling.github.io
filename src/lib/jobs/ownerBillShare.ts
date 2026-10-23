@@ -112,8 +112,3 @@ export function ownerShareTurnedOn(jobs: ReadonlyArray<OwnerShareJob>, invoices:
   const wasOn = new Set(jobs.filter((j) => j.show_bills_to_other_party === true).map((j) => j.id))
   return { jobIds: w.jobIds.filter((id) => !wasOn.has(id)), invoiceIds: w.invoiceIds, on: true }
 }
-
-/** The chip's words: `owner sees $0` · `owner sees the bills` · `owner sees some bills`. */
-export function ownerShareChipWords(state: OwnerShareState): string {
-  return state === 'on' ? 'owner sees the bills' : state === 'partly' ? 'owner sees some bills' : 'owner sees $0'
-}

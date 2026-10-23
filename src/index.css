@@ -1240,8 +1240,11 @@ button:focus-visible {
      stack pushed the 258px PAID/BILLED/UNBILLED rail past the screen edge. */
   .customers-projects-bids-links {
     flex: 1 1 100%;
-    justify-content: flex-start !important;
+    align-items: flex-start !important;
     margin-top: 0.35rem;
+  }
+  .customers-projects-bids-links > span {
+    justify-content: flex-start !important;
   }
 
   /* People Pay: cost matrix date headers on two lines (Mon / 2/16) */
@@ -4564,7 +4567,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .stagesStageSegTail > .stagesStageSeg {
   flex: 0 1 auto;
 }
-.stagesLienDeskShortcut {
+/* The stage bar's desk shortcuts (v2.4520 the Lien desk's gavel; v2.5750 the Legal desk's scales before it). */
+.stagesDeskShortcut {
   position: relative;
   flex: none;
   display: inline-flex;
@@ -4576,17 +4580,22 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--surface);
-  color: #ff6600;
   cursor: pointer;
 }
-.stagesLienDeskShortcut:hover {
+.stagesDeskShortcut[data-desk='lien'] {
+  color: #ff6600;
+}
+.stagesDeskShortcut[data-desk='legal'] {
+  color: var(--text-700);
+}
+.stagesDeskShortcut:hover {
   background: var(--bg-subtle);
 }
-.stagesLienDeskShortcut:focus-visible {
+.stagesDeskShortcut:focus-visible {
   outline: 2px solid var(--text-link);
   outline-offset: 1px;
 }
-.stagesLienDeskShortcutBadge {
+.stagesDeskShortcutBadge {
   position: absolute;
   top: -0.45rem;
   right: -0.55rem;
@@ -4601,6 +4610,16 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   line-height: 1.4;
   text-align: center;
   pointer-events: none;
+}
+/* The Legal desk's header (v2.5750): the firm group's segments and the quiet ✕ — an overlay on hover, since each carries its own background inline. */
+.legalDeskSeg:hover,
+.legalDeskClose:hover {
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--text-base) 6%, transparent);
+}
+.legalDeskSeg:focus-visible,
+.legalDeskClose:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: -2px;
 }
 .stagesSectionBand {
   padding: 0.5rem 0.75rem;
@@ -5356,6 +5375,57 @@ tr[data-stages-row-stamped] {
      the row paints its background once, so they run straight through (the cells set none of their own). */
   background-image: repeating-linear-gradient(135deg, transparent 0 14px, rgba(127, 127, 127, 0.07) 14px 28px);
 }
+/* The stamp itself (StagesUncollectibleStamp.tsx). Light is the stamp as drawn in v2.4792: pale pink
+   panel, red stencil, red handwriting. Dark (punch list #145): the pink panel blended to mauve grey and
+   the salmon text sat on it at 1.09:1, so the panel goes deep red, the word red-orange, the reason in
+   the row's own ink — every line 4.5:1 or better on its panel, the frame 4.7:1 on the row. */
+.stagesUncollectibleStamp {
+  position: relative;
+  margin: 0.6rem 0 0.3rem;
+  padding: 0.35rem 0.6rem 0.45rem;
+  transform: rotate(-3deg);
+  transform-origin: left center;
+  border: 3px solid #b91c1c;
+  border-radius: 4px;
+  color: var(--text-red-700);
+  background: rgba(254, 226, 226, 0.6);
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.08);
+  max-width: 100%;
+}
+.stagesUncollectibleStampWord {
+  font-family: Impact, 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 rgba(185, 28, 28, 0.25);
+}
+.stagesUncollectibleStampReason {
+  margin-top: 0.25rem;
+  font-family: 'Marker Felt', 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: var(--text-red-900);
+  white-space: normal;
+  word-break: break-word;
+}
+.stagesUncollectibleStampFacts {
+  margin-top: 0.15rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  color: var(--text-red-800);
+  text-transform: uppercase;
+}
+:root[data-theme='dark'] .stagesUncollectibleStamp {
+  border-color: #ef4444;
+  color: #ff8a65;
+  background: var(--bg-red-100);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+:root[data-theme='dark'] .stagesUncollectibleStampWord { text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45); }
+:root[data-theme='dark'] .stagesUncollectibleStampReason { color: var(--text-strong); }
 /* The § Rules window redrawn (v2.4826): the rail, the chips, the job strip, the folded rules. `data-folded` is the fold (lienRulesFold.ts); `hidden` stays the find's (helpGuideFind.ts). */
 .lienRulesSplit { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 0; }
 .lienRulesSplit[data-mobile="yes"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
@@ -5495,3 +5565,38 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
   .aging-win-row > .aging-win-rowstate { grid-column: 1 / -1; grid-row: 3; justify-self: start; justify-content: flex-start; }
   .aging-win-row > .aging-win-note { grid-row: 4; }
 }
+
+/* Help-guide blocks (v2.5747): cards, Try it, folds, steps and the tappable ring a guide's markdown can draw
+   (`src/lib/helpGuideIllustrations.ts`). Scoped to the guide body; every colour a token. */
+.help-guide-body .help-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.75rem; margin: 0.75rem 0 1rem; }
+.help-guide-body .help-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.85rem 0.95rem; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.help-guide-body .help-card > p { margin: 0; }
+.help-guide-body .help-card-title { font-weight: 700; font-size: 1rem; color: var(--text-strong); line-height: 1.2; }
+.help-guide-body .help-tryit { margin: 0.35rem 0; }
+.help-guide-body .help-tryit > p { margin: 0; color: var(--text-muted); font-size: 0.9em; }
+.help-guide-body .help-eyebrow { display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-violet-700); margin-bottom: 0.15rem; }
+.help-guide-body .help-fold { border-top: 1px solid var(--border); margin-top: 0.35rem; padding-top: 0.4rem; }
+.help-guide-body .help-fold > summary { cursor: pointer; font-weight: 600; font-size: 0.9em; color: var(--text-violet-700); list-style: none; }
+.help-guide-body .help-fold > summary::-webkit-details-marker { display: none; }
+.help-guide-body .help-fold > summary::before { content: '+'; display: inline-block; width: 1.1em; color: var(--text-violet-700); }
+.help-guide-body .help-fold[open] > summary::before { content: '–'; }
+.help-guide-body .help-fold-body > p { margin: 0.4rem 0 0; color: var(--text-muted); font-size: 0.92em; }
+.help-guide-body .help-steps ol { list-style: none; counter-reset: help-step; margin: 0.5rem 0 1rem; padding: 0; }
+.help-guide-body .help-steps li { counter-increment: help-step; display: grid; grid-template-columns: 2rem 1fr; gap: 0.6rem; padding: 0.5rem 0; border-top: 1px solid var(--border); align-items: start; }
+.help-guide-body .help-steps li:last-child { border-bottom: 1px solid var(--border); }
+.help-guide-body .help-steps li::before { content: counter(help-step); font-weight: 800; font-size: 1.15rem; color: var(--text-violet-700); line-height: 1.3; }
+.help-guide-body .help-ring { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem 1rem; margin: 0.75rem 0 1rem; }
+.help-guide-body .help-ring svg { width: 96px; height: 96px; display: block; }
+.help-guide-body .help-ring-seg { stroke: var(--border); transition: stroke 0.3s ease; }
+.help-guide-body .help-ring-seg.on { stroke: var(--text-violet-700); }
+.help-guide-body .help-ring-word { font-weight: 700; font-size: 1.05rem; color: var(--text-strong); margin: 0 0 0.2rem; }
+.help-guide-body .help-ring-sub { margin: 0 0 0.6rem; color: var(--text-muted); font-size: 0.9em; }
+.help-guide-body .help-ring button { font: inherit; font-weight: 700; font-size: 0.85em; padding: 0.4rem 0.85rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); cursor: pointer; margin-right: 0.4rem; }
+.help-guide-body .help-ring button[data-help-ring="next"] { background: var(--text-violet-700); color: #fff; border-color: transparent; }
+.help-guide-body .help-ring button:disabled { opacity: 0.55; cursor: default; }
+.help-guide-body .help-ring-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.6rem 0 0; padding: 0; }
+.help-guide-body .help-ring-steps li { font-size: 0.68rem; padding: 0.2rem 0.45rem; border-radius: 6px; border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-page); }
+.help-guide-body .help-ring-steps li.on { background: var(--bg-violet-100); color: var(--text-strong); border-color: transparent; }
+.help-guide-body .help-ring-steps li.now { background: var(--text-violet-700); color: #fff; border-color: transparent; }
+@media (max-width: 480px) { .help-guide-body .help-ring { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .help-guide-body .help-ring-seg { transition: none; } }

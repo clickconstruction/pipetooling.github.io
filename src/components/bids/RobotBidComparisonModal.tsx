@@ -19,6 +19,10 @@ type RobotBidComparisonModalProps = {
   onClose: () => void
   onOpenBidTab: (bid: Bid, tab: 'counts' | 'pricing') => void
   onOpenRobotBoard: (twin: Bid) => void
+  /** v2.5751: the door to the status sheet with Read the run unfolded — a sent bid's live run has its steps there. */
+  onReadRun?: (source: Bid) => void
+  /** v2.5751: the kernel's sentence while a robot is live on this bid ("Step 4 of 7. Counting. Last word 2m ago."); null when none. */
+  liveLine?: string | null
 }
 
 type LoadedComparison = {
@@ -33,7 +37,7 @@ type LoadedComparison = {
  * takeoff. Totals use the same draft-pricing rules as the Audits tab; the
  * human side prefers the real bid_value when one is set.
  */
-export function RobotBidComparisonModal({ pair, onClose, onOpenBidTab, onOpenRobotBoard }: RobotBidComparisonModalProps) {
+export function RobotBidComparisonModal({ pair, onClose, onOpenBidTab, onOpenRobotBoard, onReadRun, liveLine = null }: RobotBidComparisonModalProps) {
   const [loaded, setLoaded] = useState<LoadedComparison | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -192,6 +196,12 @@ export function RobotBidComparisonModal({ pair, onClose, onOpenBidTab, onOpenRob
           </div>
         )}
 
+        {liveLine ? (
+          <p data-testid="robot-compare-live" style={{ margin: '0.75rem 0 0', padding: '0.5rem 0.7rem', borderRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--border)', fontSize: '0.82rem', color: 'var(--text-700)' }}>
+            The robot is on this bid right now. {liveLine}
+          </p>
+        ) : null}
+
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', margin: '0.9rem 0 1rem' }}>
           <button type="button" style={linkChipStyle} onClick={() => { onClose(); onOpenBidTab(twin, 'counts') }}>Robot counts</button>
           <button type="button" style={linkChipStyle} onClick={() => { onClose(); onOpenBidTab(twin, 'pricing') }}>Robot pricing</button>
@@ -205,6 +215,16 @@ export function RobotBidComparisonModal({ pair, onClose, onOpenBidTab, onOpenRob
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {onReadRun ? (
+            <button
+              type="button"
+              onClick={() => { onClose(); onReadRun(source) }}
+              title="Every signal and stamp the robot left on this bid, oldest first"
+              style={{ padding: '0.5rem 0.85rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', cursor: 'pointer', marginRight: 'auto' }}
+            >
+              Read the run
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => { onClose(); onOpenRobotBoard(twin) }}

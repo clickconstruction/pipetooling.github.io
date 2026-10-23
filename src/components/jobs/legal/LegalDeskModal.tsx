@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronRight, Link2, Mail, Scale, X } from 'lucide-react'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
-import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
@@ -16,7 +16,6 @@ import {
   type LegalGap,
   type LegalPacket,
   type LegalPayerKey,
-  legalLargestOpenLine,
   legalSessionWords,
 } from '../../../lib/legal/legalPacket'
 import {
@@ -33,6 +32,7 @@ import {
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
+import { deskQuestions } from '../../../lib/legal/deskQuestions'
 import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { FirmMatterView } from './LegalFirmMatterView'
@@ -48,16 +48,18 @@ import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
-import { settlementFloorDollars, settlementFloorOf, settlementFloorWords, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
+import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
+import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
-import AgreedWriteDownModal from '../AgreedWriteDownModal'
+import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
+import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
+import { exhibitDetails, exhibitsSummaryWords } from '../../../lib/legal/exhibitDetail'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
-type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
 /**
  * The Legal desk (PR 1 v2.3293 read side; PR 2 v2.3313 the gate): the office's
@@ -78,7 +80,7 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  */
 const TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
 type Tab = (typeof TABS)[number]
-const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Their word', evidence: 'Evidence', fees_steps: 'Fees & steps' }
+const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps' }
 
 export type LegalDeskModalProps = {
   open: boolean
@@ -125,9 +127,20 @@ const TH: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacin
 const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.84rem' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
-/** The firm's name in the header, as the door to its window (v2.4711); amber while no firm is set. */
-const FIRM_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, maxWidth: '100%', padding: '0 8px', border: '1px solid var(--border-blue)', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', font: 'inherit', fontSize: '0.76rem', fontWeight: 600, lineHeight: 1.6, cursor: 'pointer', textAlign: 'left', verticalAlign: 'baseline' }
-const FIRM_CHIP_NONE: CSSProperties = { ...FIRM_CHIP, border: '1px solid var(--border-amber-soft)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+/**
+ * The header's firm group (v2.5750, the owner's call; the firm's name was a blue chip inside the subtitle since v2.4711):
+ * one bordered row whose first segment is the firm's name, the door to its window, followed by its emails and its portal
+ * link — so the two doors read as the firm's without repeating the word. `SEG` is one segment; the first is amber while no
+ * firm is set. Hover and focus live in `index.css` (`.legalDeskSeg`, `.legalDeskClose`).
+ */
+const FIRM_GROUP: CSSProperties = { display: 'inline-flex', alignItems: 'stretch', height: 30, maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', overflow: 'hidden' }
+const SEG: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', border: 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '0.76rem', fontWeight: 500, lineHeight: 1, whiteSpace: 'nowrap', cursor: 'pointer' }
+const FIRM_SEG: CSSProperties = { ...SEG, borderLeft: 'none', fontWeight: 600, maxWidth: 220, minWidth: 0 }
+const FIRM_SEG_NONE: CSSProperties = { ...FIRM_SEG, maxWidth: 'none', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+const SEG_RED: CSSProperties = { color: '#b42318' }
+const SEG_AMBER: CSSProperties = { color: '#9a6700' }
+/** The quiet ✕ the Lien desk's title bar wears: no box, so the firm group is the row's one box. */
+const CLOSE_X: CSSProperties = { width: 30, height: 30, padding: 0, border: 'none', background: 'none', borderRadius: 6, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }
 const sheetInput: CSSProperties = { width: '100%', font: 'inherit', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', margin: '4px 0 8px' }
 
 type Tone = 'stop' | 'warn' | 'ok' | 'neutral' | 'legal' | 'blue'
@@ -172,6 +185,12 @@ function SectionTitle({ children, doors }: { children: ReactNode; doors?: ReactN
   )
 }
 
+/** A table cell that is a bare `YYYY-MM-DD` (v2.5757): drawn as MM/DD/YY on one line, so a date never wraps. */
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+function isYmdCell(c: ReactNode): c is string { return typeof c === 'string' && YMD_RE.test(c) }
+function deskDate(ymd: string): string { return `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}/${ymd.slice(2, 4)}` }
+const DATE_CELL: CSSProperties = { whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }
+
 function Table({ head, rows, empty, numCols = [], subRows = [] }: { head: string[]; rows: ReactNode[][]; empty: string; numCols?: number[]; /** A full-width row under row i when set (the answers band under a notice, #41 PR 1b). */ subRows?: Array<ReactNode | null> }) {
   if (rows.length === 0) return <p style={{ ...MUTED, fontSize: '0.84rem', margin: '4px 0' }}>{empty}</p>
   return (
@@ -182,7 +201,7 @@ function Table({ head, rows, empty, numCols = [], subRows = [] }: { head: string
         </thead>
         <tbody>
           {rows.flatMap((r, ri) => [
-            <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...TD, ...(numCols.includes(ci) ? NUM : null) }}>{c}</td>)}</tr>,
+            <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...TD, ...(numCols.includes(ci) ? NUM : null), ...(isYmdCell(c) ? DATE_CELL : null) }}>{isYmdCell(c) ? deskDate(c) : c}</td>)}</tr>,
             ...(subRows[ri] ? [<tr key={`${ri}-sub`}><td colSpan={head.length} style={{ ...TD, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
           ])}
         </tbody>
@@ -239,7 +258,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [selectedKey, setSelectedKey] = useState<LegalPayerKey | null>(null)
   const [tab, setTab] = useState<Tab>('account')
   const [gapsOpen, setGapsOpen] = useState(true)
-  const [writeDown, setWriteDown] = useState<{ invoice: JobsLedgerInvoice; job: JobWithDetails } | null>(null)
+  /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
+  const [writeDownOpen, setWriteDownOpen] = useState(false)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [busy, setBusy] = useState(false)
   const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
@@ -289,18 +309,6 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (selected?.customerId && editCustomer) editCustomer.openEditCustomerModal(selected.customerId, { onSaved: reload })
     else if (firstJob) props.onOpenEditJob(firstJob.id)
   }
-  const openWriteDown = (jobId: string | null) => {
-    // No job named (the header's button): the account's largest open bill line, whichever job holds it.
-    const largest = jobId ? null : legalLargestOpenLine(packet?.account.jobs ?? [])
-    const job = jobById(jobId ?? largest?.jobId ?? null)
-    const line = packet?.account.jobs.find((l) => l.jobId === job?.id)
-    const inv = job?.invoices.find((i) => i.id === line?.primaryInvoiceId) ?? null
-    if (!job || !inv) {
-      showToast('No billed line to write down on this job — create its bill line first.', 'info')
-      return
-    }
-    setWriteDown({ invoice: inv, job })
-  }
   const fixGap = (g: LegalGap) => {
     const job = jobById(g.jobId)
     switch (g.fix) {
@@ -310,7 +318,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       case 'collections_note': if (job) props.onOpenEditJob(job.id); return
       case 'edit_customer': openEditCustomer(); return
       case 'call_mode': props.onOpenCallMode(); return
-      case 'write_down': openWriteDown(g.jobId); return
+      case 'write_down': setWriteDownOpen(true); return
       default: return
     }
   }
@@ -497,8 +505,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (ok) showToast(`Recorded: ${formatLegalMoney(amt)} applied, the firm's ${formatLegalMoney(cut)} as a legal cost on the matter.`, 'success')
   }
 
+  const afterAccountWriteDown = async (done: number, held: WriteDownHeld[]) => {
+    setWriteDownOpen(false)
+    showToast(writeDownResultWords(done, held), held.length ? 'info' : 'success')
+    if (done > 0) await afterWriteDown()
+  }
   const afterWriteDown = async () => {
-    setWriteDown(null)
     await props.onAfterWriteDown()
     if (stored && selected) {
       // Record the exit on the matter (create it first when the desk never touched this account).
@@ -519,7 +531,6 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   }
 
   const w = packet?.worth ?? null
-  const paidOnInvoice = writeDown ? writeDown.job.payments.filter((p) => p.invoice_id === writeDown.invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0) : 0
   const requestedDays = daysAgo(matter?.review_requested_at, todayYmd)
   const requesterName = matter?.review_requested_by ? (users.find((u) => u.id === matter.review_requested_by)?.name ?? 'the office') : null
   const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '', legal?.recipients ?? [])
@@ -557,30 +568,58 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <button type="button" onClick={() => setSheet({ kind: 'ask', note: '' })} disabled={busy} style={btn}>Ask a dev to review…</button>
         )
       ) : null}
-      {canEditReview ? <button type="button" onClick={() => openWriteDown(null)} style={btn}>Write down…</button> : null}
+      {canEditReview ? <button type="button" onClick={() => setWriteDownOpen((o) => !o)} aria-expanded={writeDownOpen} style={btn} data-legal-write-down-door>Write it down…</button> : null}
     </>
   )
 
   return (
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
-      <div role="dialog" aria-modal="true" aria-label="Legal desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()}
         style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, width: '100%', maxWidth: 1160, height: 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-          <span aria-hidden style={{ fontSize: '1.1rem' }}>⚖</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>Legal · Collections accounts</div>
-            <div style={{ ...MUTED, fontSize: '0.78rem' }}>
-              Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down.{' '}
-              {stored ? (
-                <button type="button" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_CHIP : FIRM_CHIP_NONE}>
-                  {firm ? <>⚖ {firm.name} <span aria-hidden>✎</span>{legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#b0662f', display: 'inline-block' }} /> : null}</> : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
-                </button>
-              ) : null}
+        {/* The header (v2.5750, the owner's call): the scales and "Legal Desk"; the firm's three doors — the firm itself, its
+            emails, its portal link — as one group whose first segment is the firm's name (until then a blue chip inside the
+            sentence, beside two emoji boxes); the ✕ borderless, as the Lien desk's. Emails is one quiet word until emails to
+            the firm are paused or an address bounces, when the segment says so in red or amber. The group and the ✕ wrap
+            together under the title when the row is tight. */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 14px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: '1 1 260px', minWidth: 0 }}>
+            <Scale size={20} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', marginTop: 3, color: 'var(--text-700)' }} />
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.3 }}>Legal Desk</h2>
+              <div style={{ ...MUTED, fontSize: '0.78rem', lineHeight: 1.45 }}>Collections accounts, the way the firm would receive them. Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down.</div>
             </div>
           </div>
-          {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}{notReaching ? ` · ${notReaching} not reaching` : ''}</button> : null}
-          {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
-          <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, height: 30, width: 30, justifyContent: 'center', padding: 0 }}>✕</button>
+          <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0 }}>
+            {stored ? (
+              <div data-legal-firm-group style={FIRM_GROUP}>
+                <button type="button" className="legalDeskSeg" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_SEG : FIRM_SEG_NONE}>
+                  {firm ? (
+                    <>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{firm.name}</span>
+                      {legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#b0662f', display: 'inline-block', flex: 'none' }} /> : null}
+                      <ChevronRight size={13} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }} />
+                    </>
+                  ) : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
+                </button>
+                {firm && canEditReview ? (
+                  <button type="button" className="legalDeskSeg" onClick={() => setEmailsOpen(true)} data-legal-firm-emails={firmPaused ? 'paused' : notReaching ? 'not-reaching' : 'ok'} aria-label={`Firm’s emails${firmPaused ? ', paused' : ''}${notReaching ? `, ${notReaching} not reaching` : ''}`} title="Who at the firm hears from us, by their own rules" style={{ ...SEG, ...(firmPaused ? SEG_RED : notReaching ? SEG_AMBER : {}) }}>
+                    <Mail size={15} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: firmPaused || notReaching ? 'inherit' : 'var(--text-muted)' }} />
+                    Emails{firmPaused ? ' · paused' : ''}{notReaching ? ` · ${notReaching} not reaching` : ''}
+                  </button>
+                ) : null}
+                {firm && canEditReview ? (
+                  <LegalPortalLinkButton
+                    firmId={firm.id}
+                    firmName={firm.name}
+                    triggerClassName="legalDeskSeg"
+                    triggerStyle={SEG}
+                    triggerLabel={<><Link2 size={15} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }} />Portal link</>}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 300px) 1fr', minHeight: 0 }}>
@@ -648,18 +687,15 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                   </p>
                 ) : null}
 
+                {writeDownOpen && packet && selected ? <AccountWriteDownPanel jobs={selected.jobs} lines={packet.account.jobs} onDone={afterAccountWriteDown} onCancel={() => setWriteDownOpen(false)} /> : null}
+
                 {packet && w ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '12px 0 0' }}>
-                    {([
-                      { label: 'Theory', value: packet.theory.label, sub: packet.theory.basis },
-                      { label: 'If every dollar lands', value: formatLegalMoney(w.balance), sub: `less ${Math.round(w.contingencyPct * 100)}% (${formatLegalMoney(w.fee)}) and ${formatLegalMoney(w.filingCost)} costs` },
-                      { label: 'Click keeps', value: formatLegalMoney(w.net), sub: w.verdict, tone: w.verdict === 'worth it' ? 'ok' : w.verdict === 'marginal' ? 'warn' : 'stop' },
-                      { label: 'Against pursuing', value: w.flags.length ? w.flags.join(' · ') : 'nothing on record', sub: w.flags.length ? '' : 'no dispute, no broken promise, no “no money” note' },
-                    ] as Array<{ label: string; value: string; sub: string; tone?: Tone }>).map((c) => (
+                    {deskQuestions(packet).map((c) => (
                       <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
                         <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
-                        <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.value}{c.tone ? pill(c.sub, c.tone) : null}</div>
-                        {!c.tone && c.sub ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.sub}</div> : null}
+                        <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.answer}{c.chip ? pill(c.chip.text, c.chip.tone) : null}</div>
+                        {c.why ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.why}</div> : null}
                       </div>
                     ))}
                   </div>
@@ -694,7 +730,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 </div>
 
                 {packet ? (
-                  <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
+                  <PacketTab tab={tab} onTab={setTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
@@ -825,7 +861,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>✉ Who at {firm.name} hears from us</h3>
             <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 10px' }}>Managed by the firm on their portal’s Notifications page. The office keeps two overrides: pause everything, and remove a person. A new address is inert until they click their confirmation; every email carries a one-click stop.</p>
-            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them their link from 🌐 Firm’s link: its email asks them to add their people.</p> : (
+            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them their link from Portal link, beside the firm’s name in the header: its email asks them to add their people.</p> : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr><th style={TH}>Person</th><th style={TH}>Hears</th><th style={TH}>Scope</th><th style={TH}>Status</th><th style={TH}></th></tr></thead>
                 <tbody>
@@ -850,17 +886,6 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           </div>
         </div>
       ) : null}
-      {writeDown ? (
-        <AgreedWriteDownModal
-          open
-          onClose={() => setWriteDown(null)}
-          invoice={writeDown.invoice}
-          paidOnInvoice={paidOnInvoice}
-          isStripeHosted={Boolean((writeDown.invoice.stripe_invoice_id ?? '').trim() && (writeDown.invoice.hosted_invoice_url ?? '').trim())}
-          onSuccess={afterWriteDown}
-          overlayZIndex={overlayZIndex + 20}
-        />
-      ) : null}
     </div>
   )
 }
@@ -872,7 +897,7 @@ type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
 type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
 
-function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
+function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -1067,7 +1092,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   return (
     <div>
       {officeActs && officeActs.canAsk ? <SettlementFloorEditor floor={officeActs.floor} balance={packet.account.totals.balance} busy={officeActs.busy} onSave={officeActs.setSettlementFloor} /> : null}
-      <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
+      <SectionTitle>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
         <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
           // #85 item 18 PR 2: a fee or cost the firm adds is acknowledged here like a step, which clears it from Needs You.
@@ -1156,35 +1181,83 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
       <Table head={['Date', 'Job', 'Step', 'What happened']}
         rows={packet.feesAndSteps.steps.map((s, i) => [s.ymd ?? '—', s.jobLabel ?? '', pill(s.kind, s.kind === 'demand' || s.kind === 'filing' ? 'warn' : s.kind === 'payment' || s.kind === 'contract' ? 'ok' : 'neutral'), <span key={i}>{s.text}</span>])}
         empty="No steps recorded." />
-      <SectionTitle>Exhibits the packet would carry</SectionTitle>
-      {packet.exhibits.length === 0 ? <p style={{ ...MUTED, fontSize: '0.84rem' }}>Nothing to letter yet.</p> : (
-        <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.84rem' }}>{packet.exhibits.map((x) => <li key={x.letter}><b>{x.letter}</b> · {x.title} <span style={MUTED}>({x.count})</span></li>)}</ul>
-      )}
+      <SectionTitle>What goes to the firm</SectionTitle>
+      {(() => {
+        const details = exhibitDetails(packet)
+        return (
+          <>
+            <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 6px' }}>{exhibitsSummaryWords(details)}</p>
+            {details.map((x) => (
+              <details key={x.letter} data-legal-exhibit style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', margin: '0 0 6px' }}>
+                <summary style={{ cursor: 'pointer', padding: '6px 10px', fontSize: '0.84rem', display: 'flex', gap: 8, alignItems: 'baseline', listStyle: 'none' }}>
+                  <span style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{x.section}</span>
+                  {x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? null : <span style={{ fontWeight: 600 }}>{x.title}</span>}
+                  <span style={MUTED}>· {x.count}</span>
+                </summary>
+                <div style={{ padding: '0 10px 8px', borderTop: '1px solid var(--border)' }}>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: '0.8rem' }}>
+                    {x.lines.map((l, i) => <li key={i}>{l}</li>)}
+                    {x.more > 0 ? <li style={MUTED}>and {x.more} more</li> : null}
+                  </ul>
+                  {onTab ? <div style={{ marginTop: 6 }}><Door label={`Open ${TAB_LABELS[x.tab]}`} onClick={() => onTab(x.tab)} /></div> : null}
+                </div>
+              </details>
+            ))}
+          </>
+        )
+      })()}
     </div>
   )
 }
 
-/** #85 item 20: the office's floor for this matter — dollars or a percent of the balance, or none. */
+/**
+ * Settlement authority (v2.5759): one line with the floor as a chip; a tap opens the panel under it, Save writes and
+ * folds it away, Cancel or Escape folds it with nothing written. The slider, the % box and the $ box move together
+ * (`settlementFloorControl.ts`); the box typed in last decides what is saved.
+ */
 function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalSettlementFloor | null; balance: number; busy: boolean; onSave: (amount: number | null, pct: number | null) => Promise<void> }) {
-  const [value, setValue] = useState(floor ? String(floor.amount ?? floor.pct ?? '') : '')
-  const [unit, setUnit] = useState<'pct' | 'usd'>(floor?.amount != null ? 'usd' : 'pct')
-  const n = Number(value)
-  const valid = Number.isFinite(n) && n > 0 && (unit === 'usd' || n <= 100)
-  const preview = valid ? settlementFloorDollars(unit === 'usd' ? { amount: n, pct: null } : { amount: null, pct: n }, balance) : null
-  const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
+  const [open, setOpen] = useState(false)
+  const [ctl, setCtl] = useState<FloorControl>(() => floorControlStart(floor, balance))
+  const start = () => { setCtl(floorControlStart(floor, balance)); setOpen(true) }
+  const valid = floorControlValid(ctl)
+  const save = async () => { const plan = floorControlSave(ctl); await onSave(plan.amount, plan.pct); setOpen(false) }
+  const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: open ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }
+  const box: CSSProperties = { font: 'inherit', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', textAlign: 'right' }
+  const boxOn: CSSProperties = { ...box, borderColor: '#2563eb' }
   return (
     <div data-legal-settlement-floor-editor>
       <SectionTitle>Settlement authority</SectionTitle>
-      <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 6px' }}>{settlementFloorWords(floor, balance).replace('You may', 'The firm may').replace('you may', 'the firm may')}</p>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
         <span>The firm may settle at</span>
-        <input type="number" min={0} step="0.01" value={value} onChange={(e) => setValue(e.target.value)} aria-label="Settlement floor" style={{ ...input, width: 100 }} />
-        <select value={unit} onChange={(e) => setUnit(e.target.value === 'usd' ? 'usd' : 'pct')} aria-label="Floor in" style={input}><option value="pct">% of the balance</option><option value="usd">dollars</option></select>
-        <span>or above.</span>
-        <button type="button" disabled={busy || !valid} onClick={() => void onSave(unit === 'usd' ? n : null, unit === 'usd' ? null : n)} style={btnPrimary}>Save floor</button>
-        {floor ? <button type="button" disabled={busy} onClick={() => { setValue(''); void onSave(null, null) }} style={btn}>No floor</button> : null}
-        {preview != null && unit === 'pct' ? <span style={MUTED}>Today that is {formatLegalMoney(preview)}.</span> : null}
+        <button type="button" onClick={() => (open ? setOpen(false) : start())} aria-expanded={open} aria-label={`Settlement floor: ${floorChipWords(floor, formatLegalMoney)}. Change it`} style={chip} data-legal-floor-chip>
+          {floorChipWords(floor, formatLegalMoney)}
+          <ChevronRight size={13} aria-hidden style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }} />
+        </button>
+        <span style={MUTED}>{floorTodayWords(floor, balance, formatLegalMoney)}</span>
       </div>
+      {open ? (
+        <div
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
+          style={{ margin: '8px 0 0', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)', maxWidth: 520 }}
+          data-legal-floor-panel
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6, fontSize: '0.84rem' }}>
+            <input type="text" inputMode="numeric" value={ctl.pctText} onChange={(e) => setCtl(floorControlTypePct(ctl, e.target.value, balance))} placeholder="0" aria-label="Settlement floor, percent of the balance" style={{ ...(ctl.unit === 'pct' ? boxOn : box), width: 52 }} />
+            <span style={{ fontWeight: 600 }}>%</span>
+            <span style={MUTED}>or</span>
+            <span style={{ fontWeight: 600 }}>$</span>
+            <input type="text" inputMode="decimal" value={ctl.usdText} onChange={(e) => setCtl(floorControlTypeUsd(ctl, e.target.value, balance))} placeholder="0.00" aria-label="Settlement floor in dollars" style={{ ...(ctl.unit === 'usd' ? boxOn : box), width: 110 }} />
+            <span style={MUTED}>of {formatLegalMoney(balance)}</span>
+          </div>
+          <input type="range" min={0} max={100} step={1} value={ctl.pct} onChange={(e) => setCtl(floorControlFromPct(Number(e.target.value), balance))} aria-label="Settlement floor slider" autoFocus style={{ width: '100%', accentColor: '#2563eb' }} />
+          <div style={{ ...MUTED, display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem' }}><span>Any amount</span><span>50%</span><span>The full balance</span></div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+            <button type="button" disabled={busy || !valid} onClick={() => void save()} style={btnPrimary}>Save</button>
+            <button type="button" disabled={busy} onClick={() => setOpen(false)} style={btn}>Cancel</button>
+            <span style={{ ...MUTED, fontSize: '0.74rem' }} data-legal-floor-saves>{floorControlSavesWords(ctl, formatLegalMoney)}</span>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

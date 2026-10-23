@@ -144,6 +144,9 @@ export function JobFormMoneyCard({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') e.currentTarget.blur()
                 }}
+                // v2.5768: a scroll over a focused number box steps its value in every browser.
+                // The wheel drops focus instead, so the page scrolls and the % stays what was typed.
+                onWheel={(e) => e.currentTarget.blur()}
                 disabled={pctSaving}
                 aria-label="Percent complete"
               />
