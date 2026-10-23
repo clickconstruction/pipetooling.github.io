@@ -42,6 +42,8 @@ import { QuickfillCompleteNoBillSection } from '../components/quickfill/Quickfil
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
 import { QuickfillPropertyKindsSection } from '../components/quickfill/QuickfillPropertyKindsSection'
 import { useQuickfillPropertyKinds } from '../hooks/useQuickfillPropertyKinds'
+import { QuickfillPercentCompleteSection } from '../components/quickfill/QuickfillPercentCompleteSection'
+import { useQuickfillPercentComplete } from '../hooks/useQuickfillPercentComplete'
 import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
 import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
@@ -118,6 +120,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-undated-bills', sectionId: 'undated-bills', label: 'Missing bill dates' },
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Missing job info' },
   { id: 'quickfill-property-kinds', sectionId: 'property-kinds', label: 'Property kinds' },
+  { id: 'quickfill-percent-complete', sectionId: 'percent-complete', label: 'Percent complete' },
   { id: 'quickfill-jobs-cleanup', sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-field-photos', sectionId: 'field-photos', label: 'Field photos → Drive' },
@@ -148,6 +151,7 @@ const SECTION_INSERT_AFTER: Record<string, string> = {
   'assistant-dailys': 'office-arriving',
   'undated-bills': 'complete-no-bill',
   'property-kinds': 'no-customer-stages',
+  'percent-complete': 'property-kinds',
 }
 
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
@@ -502,6 +506,13 @@ function QuickfillPage() {
     quickfillPropertyKinds.fetchEnabled ? (quickfillPropertyKinds.loading ? null : quickfillPropertyKinds.rows.length) : null,
     quickfillPropertyKinds.fetchEnabled && quickfillPropertyKinds.loading,
   )
+  // Percent complete (v2.5764): the open jobs whose ticked stages or paid money disagree with the % done; the count is jobs, reported from here so it stays live while the strip is collapsed.
+  const quickfillPercentComplete = useQuickfillPercentComplete()
+  useReportQuickfillSectionMetric(
+    'percent-complete',
+    quickfillPercentComplete.fetchEnabled ? (quickfillPercentComplete.loading ? null : quickfillPercentComplete.list.count) : null,
+    quickfillPercentComplete.fetchEnabled && quickfillPercentComplete.loading,
+  )
   const {
     peopleCount: staleTallyStaffPeopleCount,
     transactionCount: staleTallyStaffTxCount,
@@ -760,6 +771,7 @@ function QuickfillPage() {
       if (sectionId === 'needs-you') return warningsSectionEligible
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
       if (sectionId === 'property-kinds') return quickfillPropertyKinds.fetchEnabled
+      if (sectionId === 'percent-complete') return quickfillPercentComplete.fetchEnabled
       // Banking is controller and above (v2.3305); the snapshot is the Banking page in miniature.
       if (sectionId === 'banking-sorting') return canAccessBanking(role)
       if (sectionId === 'undated-bills') {
@@ -794,6 +806,7 @@ function QuickfillPage() {
       canAccessProspects,
       quickfillNoCustomerStages.fetchEnabled,
       quickfillPropertyKinds.fetchEnabled,
+      quickfillPercentComplete.fetchEnabled,
       quickfillCompleteNoBill.fetchEnabled,
       quickfillCantReach.fetchEnabled,
       quickfillCantReach.loading,
@@ -1554,6 +1567,32 @@ function QuickfillPage() {
               loading={quickfillPropertyKinds.loading}
               onKindSaved={quickfillPropertyKinds.setKind}
               onJobLinked={quickfillPropertyKinds.linkJob}
+            />
+          </QuickfillSectionWrapper>
+        )
+      case 'percent-complete':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={chipColorOf('percent-complete')}
+            collapsed={isCollapsed('percent-complete') && !forceExpandedSections.has('percent-complete')}
+            mark={sectionMarks['percent-complete']}
+            onMarkUpToDate={() => void markSectionUpToDate('percent-complete')}
+            onOpenNow={() => openSectionNow('percent-complete')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'percent-complete', label: 'Percent complete' })}
+          >
+            <QuickfillPercentCompleteSection
+              list={quickfillPercentComplete.list}
+              loading={quickfillPercentComplete.loading}
+              snoozeAvailable={quickfillPercentComplete.snoozeAvailable}
+              onSave={quickfillPercentComplete.save}
+              onUndoSave={quickfillPercentComplete.undoSave}
+              onDismiss={quickfillPercentComplete.dismiss}
+              onUndoDismiss={quickfillPercentComplete.undoDismiss}
             />
           </QuickfillSectionWrapper>
         )
