@@ -39,18 +39,24 @@ export function MessagesBadge({ load = loadFollowUpCount }: { load?: () => Promi
     <span
       data-messages-badge
       aria-label={`${count} waiting on us`}
+      // The top-right corner of the word, as the Inbox dock and the stage bar wear their counts (v2.5762); the link's
+      // text is wrapped in a relative span for it.
       style={{
-        marginLeft: '0.35rem',
+        position: 'absolute',
+        top: '-0.55rem',
+        right: '-0.9rem',
         display: 'inline-block',
         minWidth: '1.25rem',
         padding: '0 0.35rem',
         borderRadius: 999,
+        border: '2px solid var(--surface)',
         background: 'var(--text-red-700)',
         color: 'white',
         fontSize: '0.72rem',
         fontWeight: 700,
         lineHeight: '1.25rem',
         textAlign: 'center',
+        pointerEvents: 'none',
       }}
     >
       {count > 99 ? '99+' : count}

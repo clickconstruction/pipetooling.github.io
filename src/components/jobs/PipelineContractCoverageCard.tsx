@@ -166,7 +166,12 @@ export function PipelineContractCoverageCard({
       <div style={{ flex: '1 1 260px', minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-strong)' }}>
           <span aria-hidden>✍ </span>
-          Get contracts signed — {coverage.missingCount} live job{coverage.missingCount === 1 ? '' : 's'} without, {formatUsdNoCents(coverage.missingRevenue)} of work
+          Get contracts signed
+        </div>
+        {/* v2.5766: the figure on its own line, the count as its caption — no dash in the claim. */}
+        <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', flexWrap: 'wrap', marginTop: 2 }}>
+          <span style={{ fontSize: '0.98rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>{formatUsdNoCents(coverage.missingRevenue)}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>of work on {coverage.missingCount} live job{coverage.missingCount === 1 ? '' : 's'} without an agreement</span>
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
           {covered} of {coverage.liveTotal} live jobs have an agreement on file (accepted estimates and bid-room signatures count). Tap a stage to see its gaps.{' '}

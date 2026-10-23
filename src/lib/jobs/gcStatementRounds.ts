@@ -172,8 +172,9 @@ export function mergeMarksIntoLastSent(lastSentByGcId: Record<string, string>, m
  * "5 GC statements wait on sign-off — $154,166". `totalLabel` is formatted
  * by the caller so the kernel stays locale-free.
  */
-export function heldRoundHeadline(count: number, totalLabel: string): string {
+/** The held round's claim; the total is the card's own figure since v2.5766, not a tail after a dash. */
+export function heldRoundHeadline(count: number): string {
   const n = Math.max(0, Math.floor(count))
   const noun = n === 1 ? 'GC statement waits' : 'GC statements wait'
-  return `${n} ${noun} on sign-off — ${totalLabel}`
+  return `${n} ${noun} on sign-off`
 }

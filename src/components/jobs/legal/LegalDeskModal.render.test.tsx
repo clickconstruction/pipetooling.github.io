@@ -159,13 +159,17 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(desk()).toBeTruthy()
   })
 
-  it('a click in Apply discount, or outside it, leaves the desk open', async () => {
+  it('Write it down… opens the account panel under the header; a click inside it leaves the desk open; Cancel folds it', async () => {
     const onClose = await renderDesk({ canEditReview: true })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Write down…' })[0]!)
-    fireEvent.click(screen.getByRole('heading', { name: 'Apply discount' }))
-    fireEvent.click(screen.getByRole('dialog', { name: 'Apply discount' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Write it down…' }))
+    const heading = screen.getByRole('heading', { name: 'How much will we accept?' })
+    fireEvent.click(heading)
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog', { name: 'Apply discount' })).toBeTruthy()
+    expect(desk()).toBeTruthy()
+    // The split names the account's open bill and starts at the full balance: nothing to write down yet.
+    expect(screen.getByRole('button', { name: 'Nothing to write down' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('heading', { name: 'How much will we accept?' })).toBeNull()
     expect(desk()).toBeTruthy()
   })
 

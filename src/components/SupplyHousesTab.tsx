@@ -1997,14 +1997,20 @@ export function SupplyHousesTab({
             }}
             style={{ position: 'fixed', inset: 0, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}
           >
-            <div role="dialog" aria-modal="true" aria-label={isMovableList ? 'Still movable — current charges not on a job account' : `${houseName} — ${agingCellTitle(cell)}`} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(800) }}>
+            <div role="dialog" aria-modal="true" aria-label={isMovableList ? 'Still movable: current charges not on a job account' : `${houseName}, ${agingCellTitle(cell)}`} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(800) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
                 <div>
-                  <h3 style={{ margin: 0 }}>{isMovableList ? 'Still movable — current charges not on a job account' : `${houseName} — ${agingCellTitle(cell)}`}</h3>
+                  {/* v2.5766: the house is the title and the bucket a chip beside it; the subtitle says one thing. */}
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {isMovableList ? 'Still movable' : houseName}
+                    <span style={{ fontSize: '0.74rem', fontWeight: 600, padding: '1px 9px', borderRadius: 999, border: '1px solid var(--border-strong)', color: isMovableList || cell === 'current' || cell === 'noDueDate' || cell === 'owed' || cell === 'credits' ? 'var(--text-muted)' : '#b42318', whiteSpace: 'nowrap' }}>
+                      {isMovableList ? 'current charges not on a job account' : agingCellTitle(cell)}
+                    </span>
+                  </h3>
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     {isMovableList
-                      ? 'A house moves a charge onto the job account only while it is current. Call the rep — or email the request and follow up — then mark each one moved.'
-                      : `${cellRows.length} ${noun} · unpaid only — exactly what the cell sums`}
+                      ? 'A house moves a charge onto the job account only while it is current. Call the rep, or email the request and follow up, then mark each one moved.'
+                      : `${cellRows.length} unpaid ${noun}, the cell's sum`}
                   </p>
                 </div>
                 <button type="button" onClick={() => setAgingCellModal(null)} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>

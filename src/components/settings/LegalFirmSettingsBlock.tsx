@@ -25,8 +25,11 @@ import {
   type LegalFirmCountyRow,
 } from '../../lib/legal/firmCounties'
 import type { LegalFirmRow } from '../../lib/legal/legalMatters'
+import { useLegalFirmMapCases } from '../../hooks/useLegalFirmMapCases'
+import type { LegalMapCase } from '../../lib/legal/firmMap'
 import LegalFirmCard from './LegalFirmCard'
 import LegalFirmCountyMap from './LegalFirmCountyMap'
+import LegalCountyContentsCard from './LegalCountyContentsCard'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -36,8 +39,10 @@ const db = supabase as unknown as SupabaseClient
  * the Texas county map on the right: press a card to pick its firm, click counties to color
  * them for it, click again to clear; a county another firm holds asks before it moves.
  * Nothing writes until **Save counties** (`legal_firm_counties`: the old live row closed,
- * a new one inserted, by `countyWritePlan`). Under it, Click's particulars for filing,
- * shared by every firm. Since v2.4711 the Legal desk's firm window mounts it too
+ * a new one inserted, by `countyWritePlan`). Since PR 1b the map zooms and pans, draws
+ * today's cases as faint dots (`useLegalFirmMapCases`), and a contents card under the firm
+ * cards lists the county under the pointer; a dot click holds its case there and never
+ * colors. Under it, Click's particulars for filing, shared by every firm. Since v2.4711 the Legal desk's firm window mounts it too
  * (`inWindow` with `firmId`: that firm's form alone, the window's facts under it, `onSaved`
  * so the desk reloads the firm the moment it is saved).
  */
@@ -57,6 +62,8 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   const [available, setAvailable] = useState(true)
   const [adding, setAdding] = useState(false)
   const [pickedFirmId, setPickedFirmId] = useState<string | null>(null)
+  const [cardCounty, setCardCounty] = useState<string | null>(null)
+  const [heldCase, setHeldCase] = useState<LegalMapCase | null>(null)
   const [draft, setDraft] = useState<Map<string, string>>(new Map())
   const [savingCounties, setSavingCounties] = useState(false)
   const [particulars, setParticulars] = useState<Particulars>(EMPTY_PARTICULARS)
@@ -75,6 +82,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   const hues = useMemo(() => firmHues(activeFirms), [activeFirms])
   const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
   const legend = useMemo(() => firmLegend(activeFirms, draft), [activeFirms, draft])
+  const { cases } = useLegalFirmMapCases(role === 'dev' && !inWindow && loaded && available, firmNames)
 
   const load = useCallback(async () => {
     const q = db.from('legal_firms').select(FIRM_COLUMNS).eq('active', true).order('created_at')
@@ -128,7 +136,20 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
     onSaved?.()
   }
 
+  const hoverCounty = (county: string | null) => {
+    // A held case keeps the card on its county until another dot is clicked.
+    if (heldCase) return
+    if (county) setCardCounty(county)
+  }
+  const pressCase = (c: LegalMapCase) => {
+    setHeldCase(c)
+    setCardCounty(c.county)
+  }
+  const holdFromCard = (c: LegalMapCase) => setHeldCase((cur) => (cur?.id === c.id ? null : c))
+
   const pressCountyOnMap = async (county: string) => {
+    setHeldCase(null)
+    setCardCounty(county)
     if (!pickedFirmId) {
       showToast('Pick a firm on the left first.', 'error')
       return
@@ -237,19 +258,20 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
                   {activeFirms.length === 0 ? 'Add the firm' : 'Add a firm'}
                 </button>
               )}
-            </div>
-            <div style={{ flex: '2 1 340px', minWidth: 0 }}>
-              <LegalFirmCountyMap assignments={draft} hues={hues} firmNames={firmNames} legend={legend} pickedFirmId={pickedFirmId} onPress={(county) => void pressCountyOnMap(county)} />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => void saveCounties()} disabled={!dirtyCounties || savingCounties || !countiesAvailable} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: dirtyCounties && countiesAvailable ? 'var(--text-700)' : 'var(--bg-muted)', color: dirtyCounties && countiesAvailable ? 'var(--surface)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: dirtyCounties && countiesAvailable ? 'pointer' : 'default' }}>
                   {savingCounties ? 'Saving…' : 'Save counties'}
                 </button>
                 <button type="button" onClick={() => setDraft(new Map(saved))} disabled={!dirtyCounties || savingCounties} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: dirtyCounties ? 'var(--text)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: dirtyCounties ? 'pointer' : 'default' }}>
                   Undo changes
                 </button>
-                <span data-legal-counties-pending style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{countiesAvailable ? changedWords(changes.length) : 'The counties table isn’t on this database yet — push the v2.5756 migration, then save.'}</span>
               </div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '6px 0 0' }}>Changing a county affects new releases only. A matter stays with the firm it went to.</p>
+              <span data-legal-counties-pending style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{countiesAvailable ? changedWords(changes.length) : 'The counties table isn’t on this database yet — push the v2.5756 migration, then save.'}</span>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>Changing a county affects new releases only. A matter stays with the firm it went to.</p>
+              <LegalCountyContentsCard county={cardCounty} cases={cases} assignments={draft} firmNames={firmNames} heldId={heldCase?.id ?? null} onHold={holdFromCard} />
+            </div>
+            <div style={{ flex: '2 1 340px', minWidth: 0 }}>
+              <LegalFirmCountyMap assignments={draft} hues={hues} firmNames={firmNames} legend={legend} pickedFirmId={pickedFirmId} cases={cases} heldCaseId={heldCase?.id ?? null} onPress={(county) => void pressCountyOnMap(county)} onHoverCounty={hoverCounty} onPressCase={pressCase} />
             </div>
           </div>
         </>

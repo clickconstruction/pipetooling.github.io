@@ -86,6 +86,8 @@ export type PipelineMove = {
   key: PipelineMoveKey
   icon: string
   claim: string
+  /** The figure the claim is about, drawn on its own line under the claim (v2.5766); the claim no longer carries it after a dash. */
+  figure?: string
   why: string
   actionLabel: string
   /** Quiet standing card (v2.1977): nothing to act on, but the door stays open (AR's zero-deposit state). */
@@ -108,7 +110,8 @@ export function buildPipelineMoneyMoves(input: {
     moves.push({
       key: 'bill-capable',
       icon: '🧾',
-      claim: `Bill the finished work — ${formatUsdNoCents(stats.capableToBill)}`,
+      claim: 'Bill the finished work',
+      figure: formatUsdNoCents(stats.capableToBill),
       why: 'Working jobs are past their billable progress',
       actionLabel: 'Capable list',
     })
@@ -117,7 +120,8 @@ export function buildPipelineMoneyMoves(input: {
     moves.push({
       key: 'chase-90',
       icon: '⏰',
-      claim: `Chase the 90+ tail — ${formatUsdNoCents(stats.billedAging.sum90)}`,
+      claim: 'Chase the 90+ tail',
+      figure: formatUsdNoCents(stats.billedAging.sum90),
       why: `${stats.billedAging.count90} bill${stats.billedAging.count90 === 1 ? '' : 's'} waiting 90+ days`,
       actionLabel: 'Show 90+',
     })

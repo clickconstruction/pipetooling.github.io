@@ -88,6 +88,19 @@ describe('the money card — figures and the % done box', () => {
     fireEvent.blur(box)
     expect(onPctCommit).toHaveBeenLastCalledWith(null)
   })
+
+  // v2.5768: a scroll over the focused box used to step the % (the browser's default for a
+  // focused number input). The wheel drops focus, so the page scrolls and the number stays.
+  it('a wheel over the focused % done box drops focus and leaves the number as typed', () => {
+    const onPctCommit = vi.fn()
+    renderCard({ fixtures: [row({ id: 'a', name: 'Repipe' })], bar: { total: 1000, paid: 0, billedUnpaid: 0, draft: 0, remaining: 1000 }, pct: 20, onPctCommit })
+    const box = screen.getByLabelText('Percent complete') as HTMLInputElement
+    box.focus()
+    expect(document.activeElement).toBe(box)
+    fireEvent.wheel(box, { deltaY: -100 })
+    expect(document.activeElement).not.toBe(box)
+    expect(box.value).toBe('20')
+  })
 })
 
 describe('the money card — lines and coverage (v2.1132, v2.4303)', () => {

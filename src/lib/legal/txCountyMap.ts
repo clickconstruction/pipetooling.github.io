@@ -24,7 +24,13 @@ export type CountyShape = {
   cy: number
 }
 
-export type CountyMap = { shapes: CountyShape[]; width: number; height: number }
+export type CountyMap = {
+  shapes: CountyShape[]
+  width: number
+  height: number
+  /** A longitude and latitude as a point in the map's units, the same projection the shapes use (for a case's dot). */
+  project: (lon: number, lat: number) => [number, number]
+}
 
 function rings(f: CountyFeature): number[][][] {
   return f.geometry.type === 'Polygon' ? f.geometry.coordinates : f.geometry.coordinates.flat()
@@ -55,7 +61,7 @@ export function projectCounties(fc: CountyFeatureCollection, width = 600): Count
       }
     }
   }
-  if (!Number.isFinite(minLon)) return { shapes: [], width, height: 0 }
+  if (!Number.isFinite(minLon)) return { shapes: [], width, height: 0, project: () => [0, 0] }
   const cosLat = Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180)
   const k = width / ((maxLon - minLon) * cosLat)
   const height = r1((maxLat - minLat) * k)
@@ -88,5 +94,5 @@ export function projectCounties(fc: CountyFeatureCollection, width = 600): Count
     }
     return { name: f.properties.NAME, fips: f.properties.GEOID, d, cx: best.cx, cy: best.cy }
   })
-  return { shapes, width, height }
+  return { shapes, width, height, project: (lon, lat) => [px(lon), py(lat)] }
 }

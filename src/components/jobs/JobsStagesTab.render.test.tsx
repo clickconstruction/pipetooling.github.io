@@ -733,7 +733,9 @@ describe('JobsStagesTab — the round cards read through useGcStatementRound (v2
   it('an office role reads the week, six weeks of marks and the GCs’ senders, and the card counts from them', async () => {
     renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()] })} />)
     const card = await screen.findByTestId('pipeline-round-ready-card')
-    expect(card.textContent).toContain('Statements to send — 1 GC, $26,000')
+    expect(card.textContent).toContain('Statements to send')
+    expect(card.textContent).toContain('$26,000')
+    expect(card.textContent).toContain('1 GC checked and ready')
     // The broken promise rides on the six weeks of marks, not on this week's.
     expect(card.textContent).toContain('1 broke a promise')
     expect(vi.mocked(listGcReviewCertifications)).toHaveBeenCalledWith(WEEK)
