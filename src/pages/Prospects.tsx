@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, Fragment } from 'react'
+import { useCallback, useEffect, useRef, useState, Fragment, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -60,7 +60,9 @@ import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { stripReads, type StripRead } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
 import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
-import { BY_NEED_NOTE, benchNeedWords, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade, type BenchNeed } from '../lib/prospects/subsLane'
+import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
+import { NEEDS_GROUP_WORDS, NEEDS_RULE, benchLineParts, bestDoor, bookChipWords, dueWords, gcBenchInput, gcNeeds, needsHeadWords, quotesWords, tradePartnersHref, type GcBenchIn, type NeedTone } from '../lib/prospects/gcNeeds'
+import { gcProjectHref } from '../lib/gc/links'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
 import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
@@ -68,7 +70,7 @@ import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
-import { GC_WORK_LABELS, SOONEST_BID_NOTE, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
+import { GC_WORK_LABELS, NOTHING_BIDDING, SOONEST_BID_NOTE, biddingDueWords, deckBidWords, gcBiddingLines, gcWorkCounts, jobToHandOn, leadsWithOpenBid, newProjectSeedFromLead, orderLeadsBySoonestBid, type BiddingLine, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
@@ -172,6 +174,9 @@ type ProspectComment = {
 }
 
 const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert', 'activity']
+
+/** The needs panel's tones (v2.5782): the theme's text tokens, so dark mode lightens them. */
+const NEED_TONE_COLOR: Record<NeedTone, string> = { red: 'var(--text-red-700)', amber: 'var(--text-amber-700)', green: 'var(--text-green-700)', quiet: 'var(--text-600)' }
 
 const DIDNT_ANSWER_MOVE_NEXT_KEY = (userId: string) => `prospects_didnt_answer_move_next_${userId}`
 
@@ -409,6 +414,8 @@ export default function Prospects() {
   // and the call script's window.
   // The strips' reads (v2.5585): undefined until the first answer, null when the read failed, the rows once read.
   const [benchTrades, setBenchTrades] = useState<StripRead<{ trade: string; dependable: number }[]>>(undefined)
+  // What GC mode needs (v2.5782, punch list #148): the bench with its open asks, and the trades we do ourselves.
+  const [gcBench, setGcBench] = useState<{ benches: GcBenchIn[]; ownTrades: string[] }>({ benches: [], ownTrades: [] })
   const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null; trades: string[]; vetted?: boolean }[]>([])
   const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
   const [scriptOpen, setScriptOpen] = useState(false)
@@ -417,6 +424,8 @@ export default function Prospects() {
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
   const [gcWork, setGcWork] = useState<StripRead<GcWorkCounts>>(undefined)
+  // The projects bidding now (v2.5785, punch list #148, PR 2): named under the counts, soonest due first.
+  const [gcBidding, setGcBidding] = useState<BiddingLine[]>([])
   const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null; since: string | null }[]>([])
   const [prospectDoubles, setProspectDoubles] = useState<ProspectDoubleRow[]>([])
   const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
@@ -677,7 +686,9 @@ export default function Prospects() {
         const rows = await loadGcBoardRows(projects, todayYmdInAppTz(), { money: false })
         if (!live) return
         const state = boardStateFromRows(rows)
-        setBenchTrades(tradeBenches(state).map((b) => ({ trade: b.trade, dependable: b.dependable })))
+        const benches = tradeBenches(state)
+        setBenchTrades(benches.map((b) => ({ trade: b.trade, dependable: b.dependable })))
+        setGcBench({ benches: gcBenchInput(benches), ownTrades: state.projects.flatMap((p) => p.packages.filter((k) => k.selfPerform).map((k) => k.trade)) })
         setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null, trades: c.trades, vetted: c.vetting_status === 'approved' ? true : c.vetting_status === 'new' ? false : undefined })))
       } catch {
         if (live) setBenchTrades(null)
@@ -690,7 +701,18 @@ export default function Prospects() {
 
   // The strip counts the lane as it stands: a sub the deck took off (an outcome, a delete) leaves the count with it.
   const deckIds = new Set(followUpProspects.map((p) => p.id))
-  const benchNeedsNow: BenchNeed[] = kind === 'sub' ? benchNeeds(benchTrades ?? [], stillQueued(laneQueueAll, deckIds, tradeFilter)) : []
+  const laneQueueNow = kind === 'sub' ? stillQueued(laneQueueAll, deckIds, tradeFilter) : []
+  // The panel over the Subs deck (v2.5782): every trade short of quotes or short on the bench, then the book's.
+  const gcNeedsNow = kind === 'sub' ? gcNeeds(gcBench.benches, laneQueueNow, gcBench.ownTrades) : null
+  /** Add a sub (v2.5782): New Prospect as a sub with the trade filled in, from a need's row or a book chip. */
+  const openAddSub = (trade: string) => {
+    resetNewProspectForm()
+    setNewKind('sub')
+    setNewTrades(trade)
+    setNewCustomerLink(null)
+    setNewProspectError(null)
+    setNewProspectModalOpen(true)
+  }
 
   // One lookup for every double (v2.5579): the prospects of every lane and the customers load when New Prospect
   // opens, whatever its kind; both fail-soft, and the bench rides along from the Subs effect above.
@@ -744,7 +766,9 @@ export default function Prospects() {
     let live = true
     loadGcProjects()
       .then((projects) => {
-        if (live) setGcWork(gcWorkCounts(projects))
+        if (!live) return
+        setGcWork(gcWorkCounts(projects))
+        setGcBidding(gcBiddingLines(projects, todayYmdInAppTz()))
       })
       .catch(() => {
         if (live) setGcWork(null)
@@ -2679,54 +2703,107 @@ export default function Prospects() {
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <>
-          {kind === 'sub' && canAccessFollowUp && stripReads(benchTrades) !== 'loading' && (
-            <div
+          {kind === 'sub' && canAccessFollowUp && stripReads(benchTrades) !== 'loading' && gcNeedsNow && (
+            // What GC mode needs right now (v2.5782, punch list #148): one row a trade, worst first, each row
+            // leading to the companies to call in the owner's order: the bench, then the subs here, then Add a sub.
+            <section
               role="group"
-              aria-label="What the bench needs"
-              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
+              aria-label="What GC mode needs right now"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
             >
-              <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>The bench needs</span>
-              {benchNeedsNow.length === 0 && (
-                <span style={{ color: 'var(--text-muted)' }}>{stripReads(benchTrades) === 'failed' ? 'the bench could not be read' : 'nothing yet — no trade is on the bench'}</span>
-              )}
-              {benchNeedsNow.map((need) => {
-                const words = benchNeedWords(need)
-                const on = (tradeFilter ?? '').trim().toLowerCase() === need.trade.trim().toLowerCase()
-                return (
-                  <button
-                    key={need.trade}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => setTradeFilter(on ? null : need.trade)}
-                    title={need.onBench ? `${need.dependable} on the bench · the bench wants 3` : 'No project asks for this trade yet'}
-                    style={{
-                      font: 'inherit',
-                      fontSize: '0.8125rem',
-                      display: 'inline-flex',
-                      gap: '0.35rem',
-                      alignItems: 'baseline',
-                      border: `1px solid ${on ? '#3b82f6' : 'var(--border)'}`,
-                      background: on ? 'var(--bg-blue-200)' : 'var(--surface)',
-                      color: need.onBench && need.short === 0 && !on ? 'var(--text-muted)' : 'var(--text-strong)',
-                      borderRadius: 999,
-                      padding: '0.1rem 0.6rem',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <b>{need.trade}</b> {words.head} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>· {words.tail}</span>
-                  </button>
-                )
-              })}
-              <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.75rem', display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
-                3 a trade is the bench's rule
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.2rem' }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-700)', fontSize: '0.875rem' }}>What GC mode needs right now</span>
+                <span style={{ color: 'var(--text-muted)' }}>{stripReads(benchTrades) === 'failed' ? 'the bench could not be read' : `${needsHeadWords(gcNeedsNow)} · ${NEEDS_RULE}`}</span>
                 {tradeFilter && (
-                  <button type="button" onClick={() => setTradeFilter(null)} style={{ font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  <button type="button" onClick={() => setTradeFilter(null)} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
                     All subs
                   </button>
                 )}
-              </span>
-            </div>
+              </div>
+              {gcNeedsNow.rows.map((need, i) => {
+                const heading = gcNeedsNow.rows[i - 1]?.why !== need.why ? NEEDS_GROUP_WORDS[need.why] : null
+                const on = (tradeFilter ?? '').trim().toLowerCase() === need.trade.trim().toLowerCase()
+                const deep = need.why === 'bench' && need.benchShort === 0
+                const best = bestDoor(need)
+                const door = (primary: boolean): CSSProperties => ({
+                  font: 'inherit',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  border: `1px solid ${primary ? '#3b82f6' : 'var(--border)'}`,
+                  background: primary ? '#3b82f6' : 'var(--surface)',
+                  color: primary ? 'white' : 'var(--text-700)',
+                  borderRadius: 6,
+                  padding: '0.2rem 0.55rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  textDecoration: 'none',
+                })
+                return (
+                  <div key={need.trade}>
+                    {heading && <div style={{ fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.15rem' }}>{heading}</div>}
+                    <div className="gcNeedRow" aria-current={on ? 'true' : undefined} style={{ background: on ? 'var(--bg-blue-200)' : i % 2 ? 'var(--bg-subtle)' : 'transparent', color: deep ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                      <span style={{ fontWeight: 700 }}>{need.trade}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
+                        {need.asks.map((ask) => {
+                          const quotes = quotesWords(ask)
+                          const due = dueWords(ask.bidDue, ask.daysLeft)
+                          return (
+                            <span key={ask.projectId}>
+                              <Link to={gcProjectHref(ask.projectId)} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                                {ask.projectName}
+                              </Link>{' '}
+                              · <span style={{ color: NEED_TONE_COLOR[quotes.tone], fontWeight: quotes.tone === 'quiet' ? 400 : 600 }}>{quotes.text}</span> ·{' '}
+                              <span style={{ color: NEED_TONE_COLOR[due.tone], fontWeight: due.tone === 'quiet' ? 400 : 600 }}>{due.text}</span>
+                            </span>
+                          )
+                        })}
+                        <span style={{ color: deep ? 'var(--text-muted)' : 'var(--text-600)' }}>{benchLineParts(need).join(' · ')}</span>
+                      </div>
+                      <div className="gcNeedDoors">
+                        {need.asks.length > 0 && need.unasked > 0 && (
+                          <Link to={tradePartnersHref(need.trade)} style={door(best === 'ask')}>
+                            Ask them →
+                          </Link>
+                        )}
+                        {need.toCall > 0 && (
+                          <button type="button" aria-pressed={on} onClick={() => setTradeFilter(on ? null : need.trade)} style={door(best === 'call' && !on)}>
+                            {on ? 'All subs' : `Call for ${need.trade}`}
+                          </button>
+                        )}
+                        <button type="button" onClick={() => openAddSub(need.trade)} style={door(best === 'add')}>
+                          Add a sub
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {gcNeedsNow.book.length > 0 && (
+                <>
+                  <div style={{ fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.15rem' }}>
+                    {NEEDS_GROUP_WORDS.book} <span style={{ textTransform: 'none', letterSpacing: 0 }}>· the scope book's trades</span>
+                  </div>
+                  <div role="group" aria-label="Trades nobody does yet" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.2rem 0.5rem 0.3rem' }}>
+                    {gcNeedsNow.book.map((t) => {
+                      const on = t.toCall > 0 && (tradeFilter ?? '').trim().toLowerCase() === t.trade.trim().toLowerCase()
+                      return (
+                        <button
+                          key={t.trade}
+                          type="button"
+                          aria-pressed={t.toCall > 0 ? on : undefined}
+                          onClick={() => (t.toCall > 0 ? setTradeFilter(on ? null : t.trade) : openAddSub(t.trade))}
+                          title={t.toCall > 0 ? `${t.toCall} to call here: press to call for ${t.trade} alone` : `Add a sub that does ${t.trade}`}
+                          style={{ font: 'inherit', fontSize: '0.8125rem', border: `1px solid ${on ? '#3b82f6' : 'var(--border)'}`, background: on ? 'var(--bg-blue-200)' : 'var(--surface)', color: 'var(--text-strong)', borderRadius: 999, padding: '0.1rem 0.6rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {bookChipWords(t)} {t.toCall === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>+</span>}
+                        </button>
+                      )
+                    })}
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Press a chip to add a sub for that trade.</span>
+                  </div>
+                </>
+              )}
+            </section>
           )}
           {kind === 'gc_lead' && canAccessFollowUp && stripReads(gcWork) !== 'loading' && (
             <div
@@ -2749,6 +2826,33 @@ export default function Prospects() {
               <Link to="/gc" style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.75rem' }}>
                 from the Project Board
               </Link>
+              {gcWork != null && (
+                // The honesty under the counts (v2.5785): which projects are bidding and by when, and how many
+                // leads on this deck carry a job with a bid day, so the strip never reads as more than it is.
+                <div style={{ flexBasis: '100%', display: 'flex', flexDirection: 'column', gap: '0.2rem', color: 'var(--text-600)' }}>
+                  <span>
+                    <b style={{ color: 'var(--text-700)' }}>Bidding now:</b>{' '}
+                    {gcBidding.length === 0
+                      ? NOTHING_BIDDING
+                      : gcBidding.map((line, i) => {
+                          const due = biddingDueWords(line)
+                          return (
+                            <span key={line.id}>
+                              {i > 0 && ' · '}
+                              <Link to={gcProjectHref(line.id)} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                                {line.name}
+                              </Link>
+                              , <span style={{ color: due.tone === 'red' ? 'var(--text-red-700)' : 'inherit', fontWeight: due.tone === 'red' ? 600 : 400 }}>{due.text}</span>
+                            </span>
+                          )
+                        })}
+                  </span>
+                  <span>
+                    <b style={{ color: 'var(--text-700)' }}>On this deck:</b> {deckBidWords(leadsWithOpenBid(followUpProspects.map((p) => p.id), jobsByProspect), followUpProspects.length)}
+                    {followUpProspects.length > 0 && <span style={{ color: 'var(--text-muted)' }}> · a bid day goes in the lead’s Jobs box</span>}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           {!canAccessFollowUp ? (

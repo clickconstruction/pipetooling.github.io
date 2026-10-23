@@ -167,11 +167,11 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const capacityUnderEnabled = on('capacityUnder')
   const { streak: capacityUnder } = useCapacityUnderNudge(capacityUnderEnabled, authUserId)
   const jobAccountGapsEnabled = on('jobAccountGaps')
-  const { gaps: jobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
+  const { gaps: jobAccountGaps, reload: reloadJobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
   const supplyMoveWindowEnabled = on('supplyMoveWindow')
   const { moveWindow: supplyMoveWindow } = useSupplyMoveWindowNudge(supplyMoveWindowEnabled)
   const vehicleRecordGapsEnabled = on('vehicleRecordGaps')
-  const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
+  const { gaps: vehicleRecordGaps, reload: reloadVehicleRecords } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   const priceMatrixEnabled = on('priceMatrix')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
@@ -366,6 +366,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       refetchLienSignatureLanes: lienSignature.refetch,
       reloadTodaysSends: todaysSends.reload,
       reloadLostBids: lostBids.reload,
+      reloadVehicleRecords,
+      reloadJobAccountGaps,
       reloadTestReports: testReportsNudge.reload,
       contractNudge,
       gcReviewStatus,

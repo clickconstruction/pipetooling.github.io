@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
-import { baselineReadWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
+import { baselineKeptWords, baselineReadWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import type { JobBudgetState } from '../../hooks/useJobBudget'
 import type { JobBaselineState } from '../../hooks/useJobBaseline'
 
@@ -25,6 +25,8 @@ type Props = {
   /** The job's kept baseline (v2.3367) and the Keep now door. */
   kept: JobBaselineState
   jobFinished: boolean
+  /** The Costs tab on paper (v2.5749): a Print button after the % done words; null hides it. */
+  onPrint?: (() => void) | null
 }
 
 const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -43,13 +45,7 @@ const tdNum: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 't
 const muted: CSSProperties = { color: 'var(--text-muted)' }
 const btn = (primary = false): CSSProperties => ({ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: `1px solid ${primary ? '#3b82f6' : 'var(--border-strong)'}`, borderRadius: 6, background: primary ? '#3b82f6' : 'var(--surface)', color: primary ? 'white' : 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' })
 
-const keptWords = (k: JobBaselineState['row']): string => {
-  if (!k) return ''
-  const day = new Date(k.kept_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  return `Baseline kept ${day}${k.kept_on === 'billed' ? ' on billing' : ''} · ${k.grade === 'fixture' ? 'by fixture' : 'per $1k'}`
-}
-
-export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway, kept, jobFinished }: Props) {
+export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway, kept, jobFinished, onPrint = null }: Props) {
   const [sectionsOpen, setSectionsOpen] = useState(false)
   const [doorOpen, setDoorOpen] = useState(false)
   const tl = timeLeftWords(v.timeLeft, usd0)
@@ -61,8 +57,9 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
 
   return (
     <div style={{ display: 'grid', gap: '0.6rem' }} data-testid="job-costs-verdict">
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        {v.priceUsd != null ? `${usd0(v.priceUsd)} · ` : ''}{pctDoneWords(v, dayLabel)}
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <span>{v.priceUsd != null ? `${usd0(v.priceUsd)} · ` : ''}{pctDoneWords(v, dayLabel)}</span>
+        {onPrint ? <button type="button" onClick={onPrint} style={{ ...btn(), marginLeft: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.72rem' }} title="Print this tab as a packet, four Letter pages" data-testid="costs-print">Print</button> : null}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem' }} className="job-costs-verdict-tiles">
@@ -162,7 +159,7 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             </span>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            <span>{kept.row ? keptWords(kept.row) : jobFinished ? 'No baseline kept — the job had no recorded hours when it billed.' : 'Kept for the labor book when the job bills.'}</span>
+            <span>{kept.row ? baselineKeptWords(kept.row) : jobFinished ? 'No baseline kept — the job had no recorded hours when it billed.' : 'Kept for the labor book when the job bills.'}</span>
             {canWrite && !kept.row && !jobFinished ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Keep what the job has taken so far as its baseline now">Keep now</button> : null}
             {canWrite && kept.row ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Take the baseline again from today's hours">Keep again ↻</button> : null}
             {kept.error ? <span style={{ color: 'var(--text-red-700)' }}>{kept.error}</span> : null}
@@ -180,7 +177,7 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             <span><b>{usd0(b.materialsUsd)}</b> materials{b.materialsPctOfPrice != null ? ` · ${Math.round(b.materialsPctOfPrice)}% of price` : ''}</span>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="baseline-keep">
-            {kept.row ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{keptWords(kept.row)}</span> : null}
+            {kept.row ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{baselineKeptWords(kept.row)}</span> : null}
             {canWrite && !kept.row && !jobFinished && b.teamHours > 0 ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn(true)} title="Keep what the job has taken so far as its baseline now — billing keeps one on its own">Keep as baseline</button> : null}
             {canWrite && kept.row && !jobFinished ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Take the baseline again from today's hours">Keep again ↻</button> : null}
             {!kept.row && jobFinished ? <span>{b.teamHours > 0 ? 'Not kept yet.' : 'No recorded hours to keep.'}</span> : null}

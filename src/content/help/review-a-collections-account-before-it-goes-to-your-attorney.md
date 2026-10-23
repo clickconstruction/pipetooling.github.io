@@ -12,6 +12,10 @@ You fix what an attorney asks for first. The **⚖ Legal** desk is where you do 
 
 On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}}. On a computer the button sits at the header's right, just before **Lien desk**. The stage bar at the top has two more doors on a computer. The scales sit beside the Lien desk's orange gavel, at the bar's right end. The ☰ **Section tools** menu at the bar's left lists **Legal desk** under **Collections**. Each door carries a count when the firm has sent something you have not acknowledged yet. Billed Awaiting Payment carries Accounts Receivable on its own header. You press it to open the desk on every Collections account, largest net first. The desk also opens from a link: `/jobs?tab=stages&legal=1`. You use `legal=<payer key>` for one account.
 
+The desk opens as a window. Press the full screen button at the top right, beside the ✕, to fill the screen. Press it again to go back to the window. The desk remembers your choice on this computer.
+
+If the header reads *Could not read the legal tables*, the desk tries again on its own. Press {{button:outline|Retry}} to read now.
+
 An **account is the payer**. The payer is the GC, the general contractor, when one pays. Otherwise it is the customer. The account spans every Collections job that payer owes on. Two jobs for the same customer are one account. That is because a petition, the paper that starts a lawsuit, names one defendant.
 
 ## Read the top first
@@ -41,6 +45,16 @@ Most section titles carry an ↗ door to where their data is edited.
 :::example A red gap that is not really red
 The Learning Experience has no signed contract on either job. With a sent Stripe invoice and 22 GPS clock sessions on the property, the desk reads {{chip:yellow|Sworn account}} and the contract gap is a note, not a stop. The day a dispute is logged in call mode, the theory drops to {{chip:red|None yet}} and the gap turns red — that is the desk telling you the dispute has to be answered before the account is worth referring.
 :::
+
+## See every case on the map
+
+The desk has two views, **Accounts** and **Map**. The switch sits at the top right, before the firm's name. Press {{button:outline|Map}} to see every Collections account on a Texas county map.
+
+Each county wears the color of the law firm that covers it. A gray county has no firm yet. Each dot is one account at its job's address. A bigger dot owes more. The dot's color says where the account stands. Amber needs a dev's eyes. Green is with the firm. Gray is given up on. Red sits in a county no firm covers. A red line over the map names those accounts.
+
+**Who covers what** lists each firm with its counties, its cases and what they owe. Tap a county to list its cases on the card under it. Tap a dot to pick one case out. Press **Open on the desk ›** on a case and the desk opens on that account under **Accounts**.
+
+Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas}} or {{button:outline|All of Texas}} to reset the view. A dev colors the counties on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
 
 ## Documents for the firm
 

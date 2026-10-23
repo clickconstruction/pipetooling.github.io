@@ -2,7 +2,7 @@
 title: run the office day with Quickfill
 category: Office
 roles: dev, master_technician, assistant
-keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked
+keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work
 order: 10
 ---
 Quickfill is the office's daily runway. It is one page of review sections, each with a button that says "I've looked at this."
@@ -42,6 +42,22 @@ A mark means someone checked this today. It is not the week's close. Four statio
 Controllers and devs can tap the chip to open Moneyfill on that week. Moneyfill is the weekly money close page. The numbers are Moneyfill's own, so the two never disagree. The close itself is its own guide: *close the money week*. Everyone else sees a plain **Feeds the weekly close** label. Hover it for what the daily mark is and is not. {{chip:green|Close week: clear}} means every queue this station feeds is at zero for that week.
 
 Marking a section also removes its chip from the **floating section bar** at the bottom of the screen. It stays gone for the rest of your visit. The bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill. The sections themselves stay collapsed until their 12 hours are up. {{button:outline|Open now}} puts a section's chip back immediately.
+
+## Only the groups with work
+
+On a desktop or tablet a small switch sits beside the title. It reads **Page** and **Focus**. Page is the whole page, every section open top to bottom. Focus keeps only the sections with work open. Every other section folds to one line.
+
+:::example What folds in Focus
+{{chip:gray|○ Warnings · 0 open · Last marked 12:01 PM}} {{button:red|✓ Mark}} {{button:outline|Open now}}
+
+{{chip:green|✓ Office Arriving · Marked 9:54 AM by Dana}} {{button:outline|Open now}}
+
+{{chip:gray|› My Inbox · no mark}} {{button:outline|Open now}}
+:::
+
+A folded section is still on the page. A section at zero keeps its {{button:red|✓ Mark}} on its line. So a clean day still gets stamped. You press {{button:outline|Open now}} to open any folded section in place. A line under the search box counts the groups. It reads like ***13 groups with work · 7 at zero · 5 marked today · 3 doors***. Each folded run sits under its own small heading at the foot of the page.
+
+The switch remembers your choice on this device. A link can open either view. The address ends in `?view=focus` or `?view=page`. On a phone nothing changes. The round is already one section at a time.
 
 ## On a phone: the round
 

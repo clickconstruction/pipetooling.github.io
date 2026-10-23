@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospects → Subs opens on what GC mode needs — mock-up (#148)</title>
+<style>
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e5e7eb; color: #111827; padding: 16px; }
+  h1 { font-size: 1.2rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1rem; margin: 1.6rem 0 0.4rem; }
+  p.lead { margin: 0 0 1rem; color: #374151; max-width: 62rem; line-height: 1.4; }
+  .pane { --ink: #111827; --muted: #6b7280; --t700: #374151; --t600: #4b5563; --border: #cfd4db; --surface: #ffffff; --subtle: #f3f4f6; --link: #2563eb;
+    background: #f0f2f5; border-radius: 8px; padding: 14px; margin-bottom: 12px; max-width: 980px; }
+  .pane.phone { max-width: 390px; }
+  .pane > .label { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px; }
+  .tabs { display: flex; gap: 0.5rem; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; padding-bottom: 0.4rem; font-size: 0.85rem; }
+  .tabs .on { background: #3b82f6; color: #fff; border-radius: 6px; padding: 0.15rem 0.6rem; font-weight: 600; }
+  .tabs .off { color: var(--t600); padding: 0.15rem 0.6rem; }
+  .tabs h1 { margin-left: auto; font-size: 1.1rem; }
+  .sub { display: flex; gap: 0.4rem; align-items: center; border-bottom: 2px solid var(--border); margin-bottom: 1rem; padding-bottom: 0.3rem; font-size: 0.85rem; }
+  .sub .on { background: #3b82f6; color: #fff; border-radius: 4px; padding: 0.1rem 0.5rem; font-weight: 600; }
+  .sub .off { color: var(--t600); padding: 0.1rem 0.5rem; }
+  .sub .np { margin-left: auto; background: #3b82f6; color: #fff; border-radius: 4px; padding: 0.3rem 0.8rem; font-weight: 500; }
+  .strip { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.8125rem; }
+  .strip .t { font-weight: 700; color: var(--t700); }
+  .chip { display: inline-flex; gap: 0.35rem; align-items: baseline; border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.6rem; white-space: nowrap; background: var(--surface); }
+  .chip.on { border-color: #3b82f6; background: #dbeafe; }
+  .chip.grey { color: var(--muted); }
+  .chip .m { color: var(--muted); font-size: 0.75rem; }
+  .right { margin-left: auto; color: var(--muted); font-size: 0.75rem; }
+  .empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
+  .empty b { color: var(--link); }
+  /* the panel */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.8125rem; }
+  .panel .head { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; margin-bottom: 0.4rem; }
+  .panel .head .t { font-weight: 700; color: var(--t700); font-size: 0.875rem; }
+  .panel .head .n { color: var(--muted); }
+  .group { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0.55rem 0 0.2rem; }
+  .row { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto; gap: 0.25rem 0.75rem; align-items: start; padding: 0.4rem 0.5rem; border-radius: 8px; }
+  .row:nth-child(even) { background: var(--subtle); }
+  .row.deep { color: var(--muted); }
+  .row .trade { font-weight: 700; color: var(--ink); }
+  .row .trade.on { background: #dbeafe; border: 1px solid #3b82f6; border-radius: 999px; padding: 0 0.5rem; display: inline-block; }
+  .row.deep .trade { color: var(--muted); font-weight: 600; }
+  .row .lines { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .row .ask { color: var(--ink); }
+  .row .ask a, .row a { color: var(--link); font-weight: 600; text-decoration: none; }
+  .row .meta { color: var(--t600); }
+  .row .meta .red { color: #b91c1c; font-weight: 600; }
+  .row .meta .amber { color: #b45309; font-weight: 600; }
+  .row .doors { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
+  .btn { font-size: 0.75rem; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 0.2rem 0.55rem; color: var(--t700); white-space: nowrap; }
+  .btn.primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .btn.link { border: none; color: var(--link); font-weight: 600; padding-left: 0; }
+  .fold { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; padding: 0.4rem 0.5rem; }
+  .fold .m { color: var(--muted); }
+  .fold .chip { cursor: pointer; }
+  .fold .chip .plus { color: var(--muted); font-size: 0.7rem; }
+  .queue { display: flex; gap: 0.5rem; align-items: center; font-size: 0.8125rem; color: var(--muted); margin-top: 0.5rem; }
+  .queue b { color: var(--t700); }
+  /* phone */
+  .phone .row { grid-template-columns: 1fr; }
+  .phone .row .doors { justify-content: flex-start; }
+  .note { font-size: 0.78rem; color: #374151; max-width: 62rem; line-height: 1.45; }
+  .note b { font-weight: 600; }
+  table.cmp { border-collapse: collapse; font-size: 0.8rem; max-width: 62rem; }
+  table.cmp th, table.cmp td { border: 1px solid #cfd4db; padding: 0.3rem 0.5rem; text-align: left; vertical-align: top; }
+  table.cmp th { background: #f3f4f6; }
+</style>
+</head>
+<body>
+<h1>Prospects → Subs opens on what GC mode needs (#148)</h1>
+<p class="lead">The Subs lane today, then the pick: a panel in place of the chip strip, one row a trade, each row leading to the bench, then the prospects here, then Add a sub. Shown first on prod's real state (two test projects, one test company, no sub prospect), then on a fuller state so the shape reads. Then Jobs to GC, then the phone.</p>
+
+<h2>1. Today, on prod (2026-10-23)</h2>
+<div class="pane">
+  <div class="label">/prospects?tab=follow-up&amp;kind=subs · as it reads now</div>
+  <div class="tabs"><span class="off">Customers</span><span class="off">Jobs to GC</span><span class="on">Subs</span><span class="off">Hiring</span><h1>Prospects</h1></div>
+  <div class="sub"><span class="on">Follow Up</span><span class="off">| Prospect List</span><span class="off">| Activity</span><span class="np">New Prospect</span></div>
+  <div class="strip"><span class="t">The bench needs</span><span class="chip"><b>Concrete</b> 2 more <span class="m">· 0 to call</span></span><span class="right">3 a trade is the bench's rule</span></div>
+  <div class="empty">Nobody on Subs yet. <b>New Prospect</b> adds the first company.</div>
+</div>
+<p class="note"><b>Why one chip:</b> the strip names a trade only when a company does it or a live ask is out for it. One test company does Concrete; one live ask (the test bidding project, due Oct 24) is for Concrete. The building project's trades are not live asks. The scope book's other trades never reach the page. The chip filters a deck that holds nobody.</p>
+
+<h2>2. The pick, on the same prod state</h2>
+<div class="pane">
+  <div class="label">/prospects?tab=follow-up&amp;kind=subs · the panel in place of the strip</div>
+  <div class="tabs"><span class="off">Customers</span><span class="off">Jobs to GC</span><span class="on">Subs</span><span class="off">Hiring</span><h1>Prospects</h1></div>
+  <div class="sub"><span class="on">Follow Up</span><span class="off">| Prospect List</span><span class="off">| Activity</span><span class="np">New Prospect</span></div>
+  <div class="panel">
+    <div class="head"><span class="t">What GC mode needs right now</span><span class="n">1 ask short of quotes on 1 project bidding · 2 quotes on every ask, 3 a trade on the bench</span></div>
+    <div class="group">Short of quotes</div>
+    <div class="row">
+      <span class="trade">Concrete</span>
+      <div class="lines">
+        <span class="ask"><a href="#">GC test bidding project, delete me</a> · <span class="meta"><span class="amber">1 of 2 quotes</span> · <span class="red">due Oct 24, tomorrow</span></span></span>
+        <span class="meta">1 on the bench, everyone asked · 0 to call here</span>
+      </div>
+      <div class="doors"><span class="btn primary">Add a sub</span></div>
+    </div>
+    <div class="group">Nobody does these yet · the scope book's trades</div>
+    <div class="fold">
+      <span class="chip">Sitework <span class="plus">+</span></span><span class="chip">Landscaping <span class="plus">+</span></span><span class="chip">Masonry <span class="plus">+</span></span><span class="chip">Structural steel <span class="plus">+</span></span><span class="chip">Framing and drywall <span class="plus">+</span></span><span class="chip">Roofing <span class="plus">+</span></span><span class="chip">Doors and hardware <span class="plus">+</span></span><span class="chip">Glass and storefront <span class="plus">+</span></span><span class="chip">Painting <span class="plus">+</span></span><span class="chip">Flooring <span class="plus">+</span></span><span class="chip">Millwork <span class="plus">+</span></span><span class="chip">Fire sprinkler <span class="plus">+</span></span><span class="chip">HVAC <span class="plus">+</span></span><span class="chip">Electrical <span class="plus">+</span></span>
+      <span class="m">· a chip opens Add a sub on that trade</span>
+    </div>
+  </div>
+  <div class="empty">Nobody on Subs yet. <b>New Prospect</b> adds the first company.</div>
+</div>
+<p class="note"><b>Honest when thin.</b> One short ask, read with the project and the day. The bench line says the one company is already asked, so there is no Ask them door. The deck line says 0 to call here. The fourteen other trades are the canvas: a chip each, every one a door to Add a sub with the trade filled in. Plumbing is ours on the building project and not a trade we buy out, so it is not a chip.</p>
+
+<h2>3. The pick, on a fuller state (made-up data)</h2>
+<div class="pane">
+  <div class="label">three projects out for quotes, nine companies on the bench, five subs in the queue</div>
+  <div class="panel">
+    <div class="head"><span class="t">What GC mode needs right now</span><span class="n">4 asks short of quotes on 3 projects bidding · 2 quotes on every ask, 3 a trade on the bench</span></div>
+    <div class="group">Short of quotes</div>
+    <div class="row">
+      <span class="trade">Electrical</span>
+      <div class="lines">
+        <span class="ask"><a href="#">Comal ISD field house</a> · <span class="meta"><span class="red">0 of 2 quotes</span> · <span class="red">due Oct 28, in 5 days</span></span></span>
+        <span class="ask"><a href="#">Boerne dental build-out</a> · <span class="meta"><span class="amber">1 of 2 quotes</span> · due Nov 6, in 14 days</span></span>
+        <span class="meta">3 on the bench, 2 answer · 2 not asked yet on Comal · 1 to call here</span>
+      </div>
+      <div class="doors"><span class="btn link">Ask them →</span><span class="btn">Call for Electrical</span><span class="btn">Add a sub</span></div>
+    </div>
+    <div class="row">
+      <span class="trade on">HVAC</span>
+      <div class="lines">
+        <span class="ask"><a href="#">Comal ISD field house</a> · <span class="meta"><span class="amber">1 of 2 quotes</span> · <span class="red">due Oct 28, in 5 days</span></span></span>
+        <span class="meta">2 on the bench, everyone asked · 3 to call here</span>
+      </div>
+      <div class="doors"><span class="btn primary">Call for HVAC</span><span class="btn">Add a sub</span></div>
+    </div>
+    <div class="row">
+      <span class="trade">Roofing</span>
+      <div class="lines">
+        <span class="ask"><a href="#">Kyle warehouse</a> · <span class="meta"><span class="red">0 of 2 quotes</span> · no due day set</span></span>
+        <span class="meta">nobody on the bench · 0 to call here</span>
+      </div>
+      <div class="doors"><span class="btn primary">Add a sub</span></div>
+    </div>
+    <div class="group">Short on the bench</div>
+    <div class="row">
+      <span class="trade">Fire sprinkler</span>
+      <div class="lines"><span class="meta">no open ask · 1 on the bench, wants 2 more · 1 to call here</span></div>
+      <div class="doors"><span class="btn primary">Call for Fire sprinkler</span><span class="btn">Add a sub</span></div>
+    </div>
+    <div class="row deep">
+      <span class="trade">Concrete</span>
+      <div class="lines"><span class="meta">no open ask · 3 on the bench, deep enough · 0 to call here</span></div>
+      <div class="doors"><span class="btn">Add a sub</span></div>
+    </div>
+    <div class="group">Nobody does these yet · the scope book's trades</div>
+    <div class="fold">
+      <span class="chip">Sitework <span class="plus">+</span></span><span class="chip">Landscaping <span class="plus">+</span></span><span class="chip">Masonry <span class="plus">+</span></span><span class="chip">Structural steel <span class="plus">+</span></span><span class="chip">Framing and drywall <span class="plus">+</span></span><span class="chip">Doors and hardware <span class="plus">+</span></span><span class="chip">Glass and storefront <span class="plus">+</span></span><span class="chip">Painting <span class="plus">+</span></span><span class="chip">Flooring <span class="plus">+</span></span><span class="chip">Millwork <span class="plus">+</span></span><span class="chip">Pool <span class="plus">1 to call</span></span>
+    </div>
+  </div>
+  <div class="queue"><b>HVAC</b> · 3 in the queue · By need · <span>All subs</span></div>
+</div>
+<p class="note"><b>Reading a row.</b> The trade's name is the deck filter it is today: pressed, the queue under the panel holds that trade alone and the heading says it (HVAC above). The first lines are the open asks short of quotes, soonest first, each with its project as a door to the card on GC projects. The bench line reads the companies that do the trade, how many answer when asked, how many are not asked yet on the soonest ask, and how many subs wait here. The doors follow the owner's order: <b>Ask them →</b> opens Trade partners at the trade when a bench company is not asked yet; <b>Call for ‹trade›</b> filters the deck when subs wait here, blue when that is the best next press; <b>Add a sub</b> opens New Prospect as a sub with the trade filled in, blue when nothing else can be pressed. A trade only a sub names and the book does not (Pool) sits with the book's chips, with its count.</p>
+
+<table class="cmp">
+  <tr><th></th><th>Today's strip</th><th>The panel</th></tr>
+  <tr><td>Which trades</td><td>a company does it, or a live ask is out</td><td>the same, then every trade the scope book defines</td></tr>
+  <tr><td>The project and the day</td><td>never</td><td>on every short ask, soonest first, a door to the card</td></tr>
+  <tr><td>Quotes in</td><td>never</td><td><i>1 of 2 quotes</i>, red at none</td></tr>
+  <tr><td>The bench</td><td><i>2 more</i></td><td><i>3 on the bench, 2 answer · 2 not asked yet</i> with Ask them →</td></tr>
+  <tr><td>The deck</td><td><i>0 to call</i>, the chip filters</td><td>the same count, the name filters, Call for ‹trade› when any wait</td></tr>
+  <tr><td>Find more</td><td>New Prospect, trades blank</td><td>Add a sub with the trade filled in, on every row and chip</td></tr>
+</table>
+
+<h2>4. Jobs to GC, the same honesty</h2>
+<div class="pane">
+  <div class="label">today</div>
+  <div class="strip"><span class="t">GC work in flight</span><span class="chip"><b>Bidding</b> 1</span><span class="chip grey"><b>Buying out</b> 0</span><span class="chip"><b>Building</b> 1</span><span class="chip grey"><b>Lost</b> 0</span><span class="right">from the Project Board</span></div>
+</div>
+<div class="pane">
+  <div class="label">the pick</div>
+  <div class="strip" style="flex-direction: column; align-items: stretch; gap: 0.35rem;">
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;"><span class="t">GC work in flight</span><span class="chip"><b>Bidding</b> 1</span><span class="chip grey"><b>Buying out</b> 0</span><span class="chip"><b>Building</b> 1</span><span class="chip grey"><b>Lost</b> 0</span><span class="right">from the Project Board</span></div>
+    <div style="color: var(--t600);"><b style="color: var(--t700);">Bidding now:</b> <a href="#" style="color: var(--link); font-weight: 600; text-decoration: none;">GC test bidding project, delete me</a> · <span style="color: #b91c1c; font-weight: 600;">due Oct 24, tomorrow</span></div>
+    <div style="color: var(--t600);"><b style="color: var(--t700);">On this deck:</b> 0 leads carry a job with a bid day · <span style="color: var(--muted);">a lead's Jobs box is where a bid day goes</span></div>
+  </div>
+</div>
+<p class="note">The counts stay. Under them the projects bidding are named with their day, soonest first, each a door to its card, and the deck says how many of its leads carry an open job with a bid day. With no project bidding the line reads <i>Bidding now: none</i>. With no lead on the deck it reads <i>On this deck: nobody yet</i>.</p>
+
+<h2>5. The phone (390 px)</h2>
+<div class="pane phone">
+  <div class="label">the panel stacks; the doors sit under the lines</div>
+  <div class="panel">
+    <div class="head"><span class="t">What GC mode needs right now</span><span class="n">1 ask short of quotes on 1 project bidding</span></div>
+    <div class="group">Short of quotes</div>
+    <div class="row">
+      <span class="trade">Concrete</span>
+      <div class="lines">
+        <span class="ask"><a href="#">GC test bidding project, delete me</a></span>
+        <span class="meta"><span class="amber">1 of 2 quotes</span> · <span class="red">due Oct 24, tomorrow</span></span>
+        <span class="meta">1 on the bench, everyone asked · 0 to call here</span>
+      </div>
+      <div class="doors"><span class="btn primary">Add a sub</span></div>
+    </div>
+    <div class="group">Nobody does these yet</div>
+    <div class="fold"><span class="chip">Sitework <span class="plus">+</span></span><span class="chip">Landscaping <span class="plus">+</span></span><span class="chip">Masonry <span class="plus">+</span></span><span class="chip">Roofing <span class="plus">+</span></span><span class="chip">Doors and hardware <span class="plus">+</span></span><span class="chip">Painting <span class="plus">+</span></span><span class="chip">Flooring <span class="plus">+</span></span><span class="chip">Millwork <span class="plus">+</span></span><span class="chip">Fire sprinkler <span class="plus">+</span></span><span class="chip">HVAC <span class="plus">+</span></span><span class="chip">Electrical <span class="plus">+</span></span></div>
+  </div>
+</div>
+<p class="note">On a phone the three columns stack and the book's chips wrap to three short lines. The deck's card sits right under.</p>
+</body>
+</html>

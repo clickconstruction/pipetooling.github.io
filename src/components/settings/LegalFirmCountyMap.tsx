@@ -14,6 +14,9 @@ import type { CountyMap } from '../../lib/legal/txCountyMap'
  * tightens. A drag is never a click. A click on a county goes to the block (`onPress`),
  * which owns the draft and the rules; a click on a dot goes to `onPressCase` and never
  * colors. Real county lines from `public/geo/tx-counties.json` (docs/TX_COUNTY_MAP.md).
+ * Since v2.5784 (PR 3) the Legal desk's Map draws with the same component in `lens` mode: the
+ * words say tap, not color; the dots are full size; the county last tapped is outlined
+ * (`selectedCounty`); the legend's "for reference" tail is left off.
  */
 const MAP_W = 600
 const MIN_VIEW_W = 20
@@ -23,7 +26,7 @@ const CENTRAL_TEXAS = { w: -99.3, e: -96.9, s: 28.95, n: 31.05 }
 
 type ViewName = 'central' | 'all'
 
-export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase }: {
+export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null }: {
   assignments: CountyAssignments
   hues: ReadonlyMap<string, FirmHue>
   firmNames: ReadonlyMap<string, string>
@@ -35,6 +38,10 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   onPress: (county: string) => void
   onHoverCounty: (county: string | null) => void
   onPressCase: (c: LegalMapCase) => void
+  /** The desk's Map (v2.5784): the words and the dots of a lens, not a picker. */
+  lens?: boolean
+  /** The county whose cases the lens lists; outlined. */
+  selectedCounty?: string | null
 }) {
   const [map, setMap] = useState<CountyMap | null>(null)
   const [failed, setFailed] = useState(false)
@@ -184,14 +191,15 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
     const n = casesInCounty(cases, county).length
     return `${countyWords(county)} · ${firmNames.get(holderOf(county) ?? '') ?? 'no firm yet'}${n ? ` · ${n} ${n === 1 ? 'case' : 'cases'}` : ''}`
   }
-  const readout = hovered ? countyLine(hovered) : pickedFirmId ? 'Click a county to color it for the picked firm. Click it again to clear it.' : 'Pick a firm on the left, then click counties.'
-  const btn = { padding: '0.2rem 0.6rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer' } as const
+  const readout = hovered ? countyLine(hovered) : lens ? 'Tap a county to list its cases. Tap a dot to pick one out.' : pickedFirmId ? 'Click a county to color it for the picked firm. Click it again to clear it.' : 'Pick a firm on the left, then click counties.'
+  // Longhands: the view buttons flip between `btn` and `btnOn`, and React warns on a `border` shorthand under a `borderColor` (v2.5780).
+  const btn = { padding: '0.2rem 0.6rem', borderRadius: 4, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer' } as const
   const btnOn = { ...btn, borderColor: 'var(--text-base)', fontWeight: 600 } as const
 
   return (
     <div data-legal-county-map>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginRight: 'auto' }}>Click a county to color it for the firm picked · scroll to zoom, drag to pan</span>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginRight: 'auto' }}>{lens ? 'Tap a county for its cases · scroll to zoom, drag to pan' : 'Click a county to color it for the firm picked · scroll to zoom, drag to pan'}</span>
         <button type="button" aria-pressed={view === 'central'} onClick={() => views && setVb(views.central, 'central')} disabled={!views} style={view === 'central' ? btnOn : btn}>
           Central Texas
         </button>
@@ -210,7 +218,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
             viewBox={viewBoxAttr(vb)}
             data-legal-county-view={viewBoxAttr(vb)}
             role="img"
-            aria-label="Texas counties by law firm"
+            aria-label={lens ? 'Cases on the county map' : 'Texas counties by law firm'}
             style={{ width: '100%', height: 'auto', display: 'block', cursor: dragRef.current?.moved ? 'grabbing' : 'grab', touchAction: 'none' }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -225,15 +233,17 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
               {map.shapes.map((s) => {
                 const hue = hueOf(s.name)
                 const isHovered = hovered === s.name
+                const isSelected = lens && selectedCounty === s.name
                 return (
                   <path
                     key={s.fips}
                     d={s.d}
                     data-county={s.name}
                     data-firm={holderOf(s.name) ?? ''}
+                    data-selected={isSelected ? '1' : undefined}
                     fill={hue.fill}
-                    stroke={isHovered ? 'var(--text-base)' : 'var(--border-strong)'}
-                    strokeWidth={isHovered ? 1.6 : 0.6}
+                    stroke={isHovered || isSelected ? 'var(--text-base)' : 'var(--border-strong)'}
+                    strokeWidth={isSelected ? 2 : isHovered ? 1.6 : 0.6}
                     vectorEffect="non-scaling-stroke"
                     strokeLinejoin="round"
                     style={{ transition: 'fill 120ms' }}
@@ -279,9 +289,9 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                     key={c.id}
                     cx={x}
                     cy={y}
-                    r={dotRadiusView(vb, pageW, dotRadiusPx(c.balance) * 0.75)}
+                    r={dotRadiusView(vb, pageW, dotRadiusPx(c.balance) * (lens ? 1 : 0.75))}
                     fill={STAND_COLOR[stand]}
-                    fillOpacity={held ? 1 : 0.8}
+                    fillOpacity={held ? 1 : lens ? 0.9 : 0.8}
                     stroke="var(--text-base)"
                     strokeOpacity={held ? 1 : 0.55}
                     strokeWidth={held ? 2 : 1}
@@ -325,7 +335,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
             {row.name}
           </span>
         ))}
-        <span>· the dots are today’s cases, for reference; the desk’s Map works them</span>
+        {lens ? null : <span>· the dots are today’s cases, for reference; the desk’s Map works them</span>}
       </div>
     </div>
   )

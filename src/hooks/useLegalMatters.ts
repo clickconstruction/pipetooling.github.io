@@ -4,6 +4,7 @@ import { listLegalMatterDocuments, type LegalMatterDocumentRow } from '../lib/le
 import { supabase } from '../lib/supabase'
 import { indexMatters, type LegalEntryRow, type LegalFirmRow, type LegalMatterJobRow, type LegalMatterRow, type LegalRecipientRow } from '../lib/legal/legalMatters'
 import { countiesByFirm as countiesByFirmOf, type LegalFirmCountyRow } from '../lib/legal/firmCounties'
+import { classifyLegalRead, legalReadRetryDelay, type LegalReadState } from '../lib/legal/legalTablesRead'
 
 // The legal_* tables land with the v2.3313 migration; until the generated types
 // catch up (and on a checkout ahead of the push) the reads go through an untyped client.
@@ -13,9 +14,13 @@ const db = supabase as unknown as SupabaseClient
  * The stored side of the Legal desk (PR 2): the firm, every matter with its job
  * links, and the entry stream. Office roles only (RLS); fail-soft — before the
  * migration is applied `available` is false and the desk works read-only as in PR 1.
+ * Since v2.5780 a read that fails for any other reason is retried on its own, spaced
+ * out (`legalTablesRead.ts`), and `readState` says which it was so the desk tells the truth.
  */
 export type LegalMattersData = {
   available: boolean
+  /** `ok`, `missing` (the migration is not applied) or `failed` (the read did not go through; retried, and the desk offers Retry). */
+  readState: LegalReadState
   loading: boolean
   /** The desk's one firm today: the oldest active row. PR 2 of punch list #144 replaces this read with the account's venue. */
   firm: LegalFirmRow | null
@@ -39,7 +44,9 @@ export type LegalMattersData = {
 }
 
 export function useLegalMatters(enabled: boolean): LegalMattersData {
-  const [available, setAvailable] = useState(true)
+  const [readState, setReadState] = useState<LegalReadState>('ok')
+  /** Consecutive failed reads; the retry schedule counts from it and a good read clears it. */
+  const [failures, setFailures] = useState(0)
   const [loading, setLoading] = useState(false)
   const [firms, setFirms] = useState<LegalFirmRow[]>([])
   const [matters, setMatters] = useState<LegalMatterRow[]>([])
@@ -63,12 +70,16 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
         listLegalMatterDocuments(db as unknown as SupabaseClient).then((rows) => ({ data: rows, error: null }), () => ({ data: [] as LegalMatterDocumentRow[], error: 'missing' })),
         db.from('legal_firm_counties').select('*').is('until', null),
       ])
-      if (f.error || m.error || l.error || e.error) {
-        // 42P01 / PGRST205: the tables aren't there yet — the desk stays read-only.
-        setAvailable(false)
+      const state = classifyLegalRead([f.error, m.error, l.error, e.error])
+      if (state !== 'ok') {
+        // `missing` (42P01 / PGRST205): the tables aren't there yet — the desk stays read-only.
+        // `failed`: the read did not go through; the effect below tries again.
+        setReadState(state)
+        setFailures((n) => n + 1)
         return
       }
-      setAvailable(true)
+      setReadState('ok')
+      setFailures(0)
       setFirms((f.data ?? []) as LegalFirmRow[])
       setMatters((m.data ?? []) as LegalMatterRow[])
       setLinks((l.data ?? []) as LegalMatterJobRow[])
@@ -82,7 +93,9 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
       const activeFirm = ((f.data ?? []) as Array<LegalFirmRow & { paused_at?: string | null }>).find((x) => x.active)
       setFirmPaused(Boolean(activeFirm?.paused_at))
     } catch {
-      setAvailable(false)
+      // A read that threw (the network, an aborted request) failed; it is not the migration missing.
+      setReadState('failed')
+      setFailures((n) => n + 1)
     } finally {
       setLoading(false)
     }
@@ -91,6 +104,15 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
   useEffect(() => {
     void reload()
   }, [reload])
+
+  // v2.5780: a failed read tries again on its own, a few times, spaced out; after that the desk's Retry is the way back.
+  useEffect(() => {
+    if (readState !== 'failed') return
+    const delay = legalReadRetryDelay(failures)
+    if (delay == null) return
+    const t = window.setTimeout(() => void reload(), delay)
+    return () => window.clearTimeout(t)
+  }, [readState, failures, reload])
 
   const idx = useMemo(() => indexMatters(matters, links), [matters, links])
   const entriesByMatter = useMemo(() => {
@@ -109,7 +131,8 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
   }, [documents])
 
   return {
-    available,
+    available: readState === 'ok',
+    readState,
     loading,
     firm: firms.find((x) => x.active) ?? null,
     firms,

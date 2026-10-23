@@ -2,7 +2,7 @@
 name: "Needs you in Quickfill — the office-set lines the Dashboard has and Quickfill does not, and a fill-in deck for the ones an assistant clears with a few fields"
 number: 146
 group: gated
-status: the owner's yes 2026-10-23, all three calls as recommended; PR 1 (v2.5771, the shared gates, hook and door table) and PR 2 (v2.5774, the deck shell with lost bids) built the same day; PRs 3 to 5 next
+status: the owner's yes 2026-10-23, all three calls as recommended; PR 1 (v2.5771, the shared gates, hook and door table) PR 2 (v2.5774, the deck shell with lost bids), PR 3 (v2.5775, vehicles) and PR 4 (v2.5776, job accounts) built the same day; PR 5 next
 summary: >
   The Dashboard's Needs you card listed 30 lines today. Quickfill has carried the same card as its last
   station since v2.2350, drawn by the same builder, but the two hosts hand the builder different inputs:
@@ -16,7 +16,7 @@ summary: >
   is two moves. One, both hosts read their inputs from one hook, so the drift cannot recur. Two, the
   Quickfill station gains a fill-in deck: one row at a time, the fields for its kind, Save and next,
   Skip, a saved trail with Undo, a done count.
-next: PR 3, the vehicle kind on the deck.
+next: PR 5, the contracts-out-a-week kind on the deck.
 size: M as a train of five (S the hook, S the deck shell with lost bids, S vehicles, S job accounts, S contracts); no migration, no edge function
 blocker: none
 ver: proposed
@@ -218,4 +218,4 @@ reason shows on the Why we lost lens and in the bid's contact log, Undo removes 
 clock-sessions line expands the People Hours station, the deck is a third view on the station, lost
 bids first. PR 1 is v2.5771: `needsYouSources.ts` (the gates and the parity test), `useNeedsYouInputs`
 (one hook, both hosts), `needsYouDoors.ts` (one door table, exhaustive) and `useNeedsYouPress` (one press,
-the five windows). The Dashboard host lost ~500 lines and reads the same. PR 2 is v2.5774: the deck shell (`lib/needsYou/fillIn.ts`, `NeedsYouFillInDeck`, the card's `fillIn` prop, `useFillInRows`) and the lost-bid kind, walked live as the dev at desktop and phone width; Save was exercised through the deck's injected io, since prod has no ZZ lost bid without a reason. PRs 3 to 5 follow, a kind each.
+the five windows). The Dashboard host lost ~500 lines and reads the same. PR 2 is v2.5774: the deck shell (`lib/needsYou/fillIn.ts`, `NeedsYouFillInDeck`, the card's `fillIn` prop, `useFillInRows`) and the lost-bid kind, walked live as the dev at desktop and phone width; Save was exercised through the deck's injected io, since prod has no ZZ lost bid without a reason. PR 3 is v2.5775, the vehicle kind (`fillInVehicles.ts`, `VehicleFields`), asking only for the missing record. PR 4 is v2.5776, the job-account kind (`fillInJobAccounts.ts`, `JobAccountFields`), the Mark opened sheet's row with Undo. PR 5 follows.

@@ -3,6 +3,7 @@ import { GC_COMPANY } from '../../lib/gc/company'
 import { planLabel } from '../../lib/gc/lookups'
 import { questionsCloseOn } from '../../lib/gc/planQuestions'
 import { bidIsStale } from '../../lib/gc/bids'
+import { exclusionListWords } from '../../lib/gc/exclusions'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
 import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
@@ -274,6 +275,8 @@ function AskBlock({
           <div>
             {t('yourBidLabel')} <strong>{money(bid.amount)}</strong> {t('yourBidRest', { plans: planLabel(project, bid.basedOnRev), date: pDate(lang, bid.submittedOn) })}
             {goodUntil && !ranOut && <> {t('goodUntil', { date: pWeekday(lang, goodUntil) })}</>}
+            {/* What they ticked as left out, read back (v2.5779): before, a sent quote never said it. */}
+            {(bid.exclusions ?? []).length > 0 && <> {t('yourBidLeavesOut', { list: exclusionListWords(bid.exclusions ?? []) })}</>}
           </div>
         ) : promise && !press ? (
           <div style={promise.late ? { color: 'var(--text-red-700)', fontWeight: 600 } : undefined}>{promise.text}</div>

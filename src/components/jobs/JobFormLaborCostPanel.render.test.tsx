@@ -5,7 +5,7 @@
  * $1,700 and a $25 charge makes the tab say $1,700 and $25 — without the job being read again.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { renderSettled, useAuthModuleMock } from '../../test/renderSmokeMocks'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -44,6 +44,32 @@ describe('JobFormLaborCostPanel — the Costs tab follows the form', () => {
   it('counts an other job charge typed in the form as money spent', async () => {
     await renderSettled(<JobFormLaborCostPanel editing={job} editJobTeamLaborRow={null} livePriceUsd={1_700} liveMaterials={[{ id: 'new', description: 'ZZ test charge', amount: 25 }]} />, { loaded: () => screen.findAllByText(/\$1,700/) })
     expect(screen.getAllByText(/\$25/).length).toBeGreaterThan(0)
+  })
+
+  it('prints the Costs tab as a packet when the window hands it the lines (v2.5749)', async () => {
+    const written: string[] = []
+    const fakeWindow = { document: { write: (html: string) => written.push(html), close: () => {} }, focus: () => {}, print: () => {}, onafterprint: null as null | (() => void) }
+    const open = vi.spyOn(window, 'open').mockReturnValue(fakeWindow as unknown as Window)
+    const packet = {
+      supplyInvoiceTotal: 0, supplyInvoiceRpcFailed: false, supplyInvoiceLines: [],
+      mercuryCardTotal: 0, mercuryFetchFailed: false, mercuryAllocLines: [],
+      tallyPartsTotal: 0, tallyFetchFailed: false, tallyPartLines: [],
+      teamLabor: { loading: false, error: false, row: null }, subLabor: { loading: false, error: false, data: null },
+      otherCharges: [{ id: 'm1', description: 'Permit', amount: 25 }],
+    }
+    await renderSettled(<JobFormLaborCostPanel editing={job} editJobTeamLaborRow={null} livePriceUsd={1_700} liveMaterials={[]} packet={packet} />, { loaded: () => screen.findByTestId('costs-print') })
+    fireEvent.click(screen.getByTestId('costs-print'))
+    expect(open).toHaveBeenCalledWith('', '_blank')
+    expect(written).toHaveLength(1)
+    expect(written[0]).toContain('<title>ZZ test · Job costs</title>')
+    expect(written[0]).toContain('<div>by Smoke Dev</div>')
+    expect(written[0]).toContain('<tr><td>Permit</td><td class="num">$25.00</td></tr>')
+    open.mockRestore()
+  })
+
+  it('shows no Print without the lines behind the money table', async () => {
+    await renderSettled(<JobFormLaborCostPanel editing={job} editJobTeamLaborRow={null} livePriceUsd={1_700} liveMaterials={[]} />, { loaded: () => screen.findAllByText(/\$1,700/) })
+    expect(screen.queryByTestId('costs-print')).toBeNull()
   })
 
   it('renders nothing on a new job', () => {

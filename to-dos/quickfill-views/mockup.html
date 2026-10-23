@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quickfill views</title>
+<style>
+  /* Punch list #147. The tokens are src/index.css's, light and dark, so the frames read as the app draws them.
+     The station names, counts, states and heights are the dev's page on Fri Oct 23, 2026 (read on a local
+     preview). Every row is made up: the GCs are Ridgeway Builders, Halvorsen Commercial and Pinecrest
+     Development; the jobs are J1042 Maple Street remodel, J1038 Dana Whitfield and J1051 Cedar Loop clinic;
+     the trucks belong to Luis, Marco and Priya; the assistant who marks is Rosa. */
+  :root {
+    color-scheme: light;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #9ca3af; --text-link: #2563eb;
+    --text-blue-700: #1d4ed8; --text-red-700: #b91c1c; --text-green-700: #15803d; --text-green-800: #166534; --text-amber-800: #92400e;
+    --bg-amber-tint: #fffbeb; --border-amber: #fcd34d; --bg-blue-tint: #eff6ff; --border-blue: #bfdbfe;
+    --bg-green-tint: #f0fdf4; --border-green: #bbf7d0; --bg-red-tint: #fef2f2; --border-red: #fecaca; --bg-gray-tint: #f3f4f6;
+    --mark-green-bg: #dcfce7; --mark-green-bd: #22c55e; --mark-yellow-bg: #fef9c3; --mark-yellow-bd: #eab308; --mark-red-bg: #fee2e2; --mark-red-bd: #ef4444;
+    --dot-red: #dc2626; --dot-amber: #d97706; --dot-green: #16a34a; --dot-grey: #aab2bd;
+    --shadow: 0 8px 24px rgba(15, 23, 42, .12);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280; --text-link: #60a5fa;
+    --text-blue-700: #93c5fd; --text-red-700: #f87171; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d;
+    --bg-amber-tint: #3a2f11; --border-amber: #92400e; --bg-blue-tint: #1e3358; --border-blue: #1e40af;
+    --bg-green-tint: #14532d; --border-green: #166534; --bg-red-tint: #450a0a; --border-red: #7f1d1d; --bg-gray-tint: #374151;
+    --mark-green-bg: #14532d; --mark-green-bd: #22c55e; --mark-yellow-bg: #422006; --mark-yellow-bd: #eab308; --mark-red-bg: #450a0a; --mark-red-bd: #ef4444;
+    --dot-grey: #6b7280;
+    --shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 15px/1.45 var(--font); }
+  a { color: var(--text-link); text-decoration: none; }
+  button { font: inherit; cursor: pointer; }
+  .top { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+  .top h1 { margin: 0; font-size: 17px; font-weight: 700; color: var(--text-strong); }
+  .top .sub { color: var(--text-muted); font-size: 13px; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: transparent; color: var(--text-700); padding: 6px 14px; font-weight: 600; font-size: 13px; }
+  .seg button.on { background: var(--text-link); color: #fff; }
+  .seg.small button { padding: 4px 10px; font-size: 12px; }
+  .ghost { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .intro { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; }
+  .intro h2 { margin: 0 0 6px; font-size: 15px; }
+  .intro p { margin: 4px 0; font-size: 14px; color: var(--text-700); }
+  .ruler { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
+  .ruler > div { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--text-700); }
+  .ruler b { display: block; color: var(--text-strong); font-size: 13.5px; }
+  .ruler .bar { height: 8px; border-radius: 4px; background: var(--border-strong); margin: 6px 0; }
+  .ruler .bar i { display: block; height: 100%; border-radius: 4px; background: var(--text-link); }
+  .view { display: none; }
+  .view.on { display: block; }
+  .case { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; margin: 0 0 14px; font-size: 14px; color: var(--text-700); }
+  .case b { color: var(--text-strong); }
+  .case .mark { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+
+  /* the app frame */
+  .frame { background: var(--bg-page); border: 1px solid var(--border-strong); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); position: relative; }
+  .frame.desktop { max-width: 1024px; margin: 0 auto; }
+  .appbar { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-700); }
+  .appbar .ic { width: 26px; height: 26px; border-radius: 6px; display: inline-grid; place-items: center; font-size: 13px; }
+  .appbar .ic.b { background: #3b82f6; color: #fff; } .appbar .ic.p { background: #7c3aed; color: #fff; } .appbar .ic.i { background: #6366f1; color: #fff; }
+  .page { padding: 20px 24px 28px; max-width: 1024px; margin: 0 auto; }
+  .page h1 { font-size: 24px; font-weight: 600; text-align: center; margin: 0 0 14px; color: var(--text-strong); }
+  .titlerow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-bottom: 14px; }
+  .titlerow h1 { margin: 0; }
+  .titlerow .seg { justify-self: end; }
+  .titlerow .note { font-size: 12px; color: var(--text-muted); }
+  .jump { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 10px; margin-bottom: 16px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-base); white-space: nowrap; }
+  .chip.green { background: var(--mark-green-bg); border-color: var(--mark-green-bd); }
+  .chip.yellow { background: var(--mark-yellow-bg); border-color: var(--mark-yellow-bd); }
+  .chip.red { background: var(--mark-red-bg); border-color: var(--mark-red-bd); }
+  .chip .stamp { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+  .chip .stamp i { width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; color: #fff; font-style: normal; font-size: 10px; font-weight: 700; display: inline-grid; place-items: center; }
+  .chip .tick { font-size: 11px; color: var(--text-muted); padding-left: 4px; border-left: 1px solid var(--border-strong); margin-left: 2px; }
+  .search { width: 100%; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--text-base); font-size: 16px; margin-bottom: 18px; }
+  .strip { display: flex; align-items: center; gap: 10px; padding: 5px 12px; background: var(--bg-green-tint); border: 1px solid var(--border-green); border-radius: 6px; font-size: 13px; color: var(--text-green-800); margin-bottom: 10px; }
+  .strip h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-700); white-space: nowrap; }
+  .strip .sp { flex: 1; }
+  .strip.zero { background: var(--bg-gray-tint); border-color: var(--border); color: var(--text-muted); }
+  .strip.door { background: var(--surface); border-color: var(--border); color: var(--text-muted); }
+  .strip .count { font-size: 12px; color: var(--text-700); font-weight: 600; }
+  .btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+  .btn.open { border-color: #22c55e; color: var(--text-green-800); }
+  .btn.mark { font-size: 12px; font-weight: 600; }
+  .btn.mark.green { background: var(--mark-green-bg); border-color: var(--mark-green-bd); } .btn.mark.yellow { background: var(--mark-yellow-bg); border-color: var(--mark-yellow-bd); } .btn.mark.red { background: var(--mark-red-bg); border-color: var(--mark-red-bd); }
+  .btn.blue { background: var(--text-link); border-color: var(--text-link); color: #fff; font-weight: 600; }
+  .btn.goodgreen { background: #16a34a; border-color: #16a34a; color: #fff; font-weight: 700; }
+  .btn.outline-blue { border-color: var(--border-blue); color: var(--text-blue-700); background: var(--bg-blue-tint); }
+  .section { margin-bottom: 30px; }
+  .section.divider { border-top: 2px solid #94a3b8; padding-top: 22px; }
+  .shead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 12px; }
+  .shead h2 { margin: 0; flex: 1 1 auto; min-width: 12rem; font-size: 20px; font-weight: 600; color: var(--text-strong); }
+  .shead .open { font-size: 14px; color: var(--text-700); font-weight: 500; }
+  .shead .last { font-size: 13px; color: var(--text-muted); }
+  .shead .close { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-green); background: var(--bg-green-tint); color: var(--text-green-800); }
+  .question { font-size: 14px; color: var(--text-base); background: var(--bg-subtle); border-left: 3px solid var(--text-link); padding: 7px 10px; border-radius: 4px; margin-bottom: 12px; }
+  .body { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .row:last-child { border-bottom: 0; }
+  .row .t { flex: 1; min-width: 0; }
+  .row .t b { color: var(--text-strong); font-weight: 600; }
+  .row .t small { display: block; color: var(--text-muted); font-size: 12.5px; }
+  .row .amt { font-variant-numeric: tabular-nums; color: var(--text-700); white-space: nowrap; }
+  .row .age { color: var(--text-muted); font-size: 12.5px; white-space: nowrap; }
+  .more { padding: 8px 12px; font-size: 13px; color: var(--text-muted); background: var(--bg-subtle); }
+  .placeholder { background: repeating-linear-gradient(135deg, var(--bg-subtle) 0 14px, var(--bg-muted) 14px 28px); display: grid; place-items: center; color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px; }
+  .placeholder b { display: block; color: var(--text-700); font-size: 14px; }
+  .foot { margin-top: 12px; display: flex; justify-content: center; }
+  .foot .btn { font-size: 14px; padding: 8px 12px; }
+  .dock { position: sticky; bottom: 0; display: flex; gap: 8px; overflow: hidden; padding: 8px 12px; background: var(--surface); border-top: 1px solid var(--border); font-size: 12.5px; }
+  .dock span { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; }
+  .dock span.on { background: var(--text-link); border-color: var(--text-link); color: #fff; }
+  .heading { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 18px 0 8px; font-weight: 700; }
+  .fold-note { text-align: center; color: var(--text-muted); font-size: 13px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: 10px; margin: 10px 0 18px; }
+
+  /* the roller */
+  .roller-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .roller-head h2 { margin: 0; flex: 1; font-size: 22px; font-weight: 700; color: var(--text-strong); }
+  .roller-head .n { font-size: 22px; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .roller-head .n small { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: 4px; }
+  .dots { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--dot-grey); display: inline-block; transition: transform .12s; }
+  .dots i.red { background: var(--dot-red); } .dots i.amber { background: var(--dot-amber); } .dots i.green { background: var(--dot-green); } .dots i.hollow { background: transparent; border: 1.5px solid var(--dot-grey); }
+  .dots i.cur { transform: scale(1.7); outline: 2px solid var(--text-link); outline-offset: 1px; }
+  .stripline { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px; color: var(--text-700); }
+  .stripline .words { font-weight: 600; color: var(--text-strong); }
+  .stripline label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); cursor: pointer; }
+  .thumb { position: sticky; bottom: 0; display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; padding: 10px 0 10px; background: var(--surface); border-top: 1px solid var(--border); margin-top: 14px; }
+  .thumb .btn { font-size: 15px; padding: 11px 14px; border-radius: 10px; font-weight: 700; }
+  .countline { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+  .two { display: grid; grid-template-columns: 1fr 375px; gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+  .phone { width: 375px; border-radius: 28px; border: 8px solid #1f2937; background: var(--bg-page); overflow: hidden; margin: 0 auto; position: relative; }
+  .phone .appbar { padding: 8px 10px; }
+  .phone .page { padding: 12px 12px 0; }
+  .phone .roller-head h2 { font-size: 17px; }
+  .phone .roller-head .n { font-size: 17px; }
+  .phone .thumb { grid-template-columns: auto 1fr; margin-top: 10px; padding-bottom: 14px; }
+  .phone .thumb .btn { font-size: 14px; padding: 11px 12px; }
+  .phone .swipehint { position: absolute; left: 0; right: 0; top: 46%; text-align: center; pointer-events: none; font-size: 12px; color: var(--text-muted); opacity: .7; }
+  .index { position: absolute; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 5; }
+  .index.on { display: block; }
+  .index .panel { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); width: min(920px, 94%); max-height: 82%; overflow: auto; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 14px; box-shadow: var(--shadow); }
+  .index .panel h3 { margin: 0 0 10px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+
+  /* the board */
+  .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 760px) { .board { grid-template-columns: repeat(2, 1fr); } }
+  .card { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--dot-grey); border-radius: 10px; padding: 10px 12px; min-height: 148px; display: flex; flex-direction: column; gap: 6px; }
+  .card.red { border-left-color: var(--dot-red); } .card.amber { border-left-color: var(--dot-amber); } .card.green { border-left-color: var(--dot-green); }
+  .card .ch { display: flex; align-items: flex-start; gap: 8px; }
+  .card .ch b { flex: 1; font-size: 14.5px; color: var(--text-strong); line-height: 1.25; }
+  .card .ch .n { font-size: 24px; font-weight: 800; color: var(--text-strong); line-height: 1; font-variant-numeric: tabular-nums; }
+  .card .ch .n small { display: block; font-size: 10px; font-weight: 500; color: var(--text-muted); text-align: right; }
+  .card .items { font-size: 12.5px; color: var(--text-700); flex: 1; }
+  .card .items div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 0; border-bottom: 1px dotted var(--border); }
+  .card .items div:last-child { border-bottom: 0; }
+  .card .items .q { color: var(--text-muted); font-style: italic; white-space: normal; }
+  .card .cf { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--text-muted); }
+  .card .cf .tick { border: 1px solid var(--border-strong); border-radius: 6px; padding: 2px 8px; background: var(--surface); font-size: 12px; font-weight: 600; }
+  .card .cf .tick.red { background: var(--mark-red-bg); border-color: var(--mark-red-bd); } .card .cf .tick.yellow { background: var(--mark-yellow-bg); border-color: var(--mark-yellow-bd); } .card .cf .tick.green { background: var(--mark-green-bg); border-color: var(--mark-green-bd); }
+  .boardstrips { margin-top: 16px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+  /* the table */
+  .tbl { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 13.5px; }
+  .tbl th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border-strong); background: var(--bg-subtle); white-space: nowrap; }
+  .tbl th button { border: 0; background: none; color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit; padding: 0; }
+  .tbl th button.on { color: var(--text-link); }
+  .tbl td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .tbl td.g { white-space: nowrap; color: var(--text-700); font-weight: 600; font-size: 12.5px; }
+  .tbl td.amt { white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+  .tbl td.age { white-space: nowrap; color: var(--text-muted); }
+  .tbl tr.more td { color: var(--text-muted); background: var(--bg-subtle); font-size: 13px; }
+  .tbl tr.marked td { color: var(--text-faint); }
+  .tbl td .door { font-size: 12.5px; white-space: nowrap; }
+  .filters { display: flex; gap: 10px; align-items: center; margin: 10px 0 12px; font-size: 13px; color: var(--text-700); flex-wrap: wrap; }
+  .filters input { padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-base); font-size: 14px; min-width: 220px; }
+  .notlisted { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
+  kbd { font: 12px var(--font); border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg-subtle); }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Quickfill views <span class="sub">· punch list #147 · the page five ways, today's counts, made-up rows</span></h1>
+  <div class="seg" id="viewSwitch">
+    <button data-view="page" class="on">Page</button>
+    <button data-view="focus">Focus</button>
+    <button data-view="roller">Roller</button>
+    <button data-view="board">Board</button>
+    <button data-view="table">Table</button>
+  </div>
+  <button class="ghost" id="themeBtn" type="button">Dark</button>
+</div>
+
+<div class="wrap">
+  <div class="intro">
+    <h2>The same 28 stations, five layouts</h2>
+    <p>The dev's Quickfill on Fri Oct 23, 2026: 28 stations, 5 marked before 10 AM, 1 due (Percent complete, never marked), 19 looked at yesterday and due again at noon, 3 doors with no mark. 13 stations have work; 7 are at zero. The page is 20,999 px tall at 1,024 px wide, about 27 screens.</p>
+    <p>Each view below is drawn at the width of the page with today's counts. The rows are made up. The view switch beside the page title is the proposed one; it is remembered per person. Under 640 px the phone's round stays, which is the Roller already.</p>
+    <div class="ruler" id="ruler"></div>
+  </div>
+
+  <!-- 1. PAGE -->
+  <section class="view on" id="view-page">
+    <div class="case"><b>1 · The page as it is.</b> The jump grid, the search, five green bars, then 23 open stations top to bottom. The office knows it and every link in the app lands on it. The cost: 27 screens, with the tallest bodies (Supply Houses 2,439 px, Needs you 2,342 px, Schedule 2,201 px) between you and a two-row station. Tall bodies are drawn shorter here with their real height written on them.
+      <div class="mark"><b>The mark:</b> unchanged. ✓ Mark in every header, the big button at the foot, the green bar it collapses to, reopens in 12 h.</div></div>
+    <div class="frame desktop"><div class="appbar"><span>☰</span><span>⌂</span><span>🔍</span><span style="flex:1"></span><span class="ic b">▲</span><span class="ic p">✎</span><span class="ic i">✓</span><span>👥</span><span>⚙</span></div>
+      <div class="page" id="pagePage"></div></div>
+  </section>
+
+  <!-- 2. FOCUS -->
+  <section class="view" id="view-focus">
+    <div class="case"><b>2 · Focus: only the groups with work.</b> One rule on the same run: a station at zero folds to the one-line strip a marked station already folds to, with its ✓ Mark on the strip. Marked-today stations and the three doors fold the same way under small headings. Today: 13 open, 15 folded, about 16 screens instead of 27, nothing lost, every ritual still stampable. The honest question is whether this is a view or the page's own rule with <i>Show the empty groups</i> one click away.
+      <div class="mark"><b>The mark:</b> unchanged on open stations; a zero station's strip carries ✓ Mark so a clean day still gets stamped.</div></div>
+    <div class="frame desktop"><div class="appbar"><span>☰</span><span>⌂</span><span>🔍</span><span style="flex:1"></span><span class="ic b">▲</span><span class="ic p">✎</span><span class="ic i">✓</span><span>👥</span><span>⚙</span></div>
+      <div class="page" id="pageFocus"></div></div>
+  </section>
+
+  <!-- 3. ROLLER -->
+  <section class="view" id="view-roller">
+    <div class="case"><b>3 · The Roller: one group at a time.</b> The phone's round screen on the desktop. The station's name and count as the headline, its question, its body at full width. <b>← Previous</b> and <b>Next →</b> at the thumb (<kbd>←</kbd> <kbd>→</kbd> on a keyboard, a swipe on the phone). A strip of dots in the freshness colours and the words <b>7 of 23 · 12 left with work</b>. The deck is every station not yet marked today, due first then page order, the doors last; <i>Show the 5 marked today</i> puts the fresh ones back. <b>Groups ▾</b> opens the Board as the index. Mostly built: <code>QuickfillRoundScreen</code> does this under 640 px today.
+      <div class="mark"><b>The mark:</b> the round's bar. <b>Skip</b> moves on without marking. <b>Looked · 23 open · next →</b> is the same org-wide mark as the ✓, with the count it saw, then the next group. Texts, Email and Physical inbox mark inside with a note. A door reads <i>next →</i> only. A zero station reads <i>Nothing here · Looked · next →</i>.</div></div>
+    <div class="two">
+      <div class="frame desktop" id="rollerFrame"><div class="appbar"><span>☰</span><span>⌂</span><span>🔍</span><span style="flex:1"></span><span class="ic b">▲</span><span class="ic p">✎</span><span class="ic i">✓</span><span>👥</span><span>⚙</span></div>
+        <div class="page" id="pageRoller"></div>
+        <div class="index" id="rollerIndex"><div class="panel"><h3>Groups <button class="btn" id="indexClose" type="button">Close</button></h3><div class="board" id="rollerIndexBoard"></div></div></div></div>
+      <div class="phone" id="phoneFrame"><div class="appbar"><span>☰</span><span>⌂</span><span>🔍</span><span style="flex:1"></span><span class="ic b">▲</span><span class="ic p">✎</span><span class="ic i">✓</span></div>
+        <div class="page" id="pagePhone"></div></div>
+    </div>
+  </section>
+
+  <!-- 4. BOARD -->
+  <section class="view" id="view-board">
+    <div class="case"><b>4 · The Board: every group as a card on one screen.</b> 28 cards in four columns, about two screens. A colour rail in the station's state, the name, the count large, the first two items, <b>Open ›</b>, ✓ on the head. The five marked today sit as green strips at the foot; the doors are cards that open their page. The honest cost: <i>the first two items</i> needs every station to say what its rows are, and today only the count reaches the page. The cheap build shows count and question and no items; a station earns its two lines when it reports them. The Board is the Roller's index, so it ships inside the Roller.
+      <div class="mark"><b>The mark:</b> ✓ on the card head, the same mark; a marked card drops to the strips at the foot, and <b>Open now</b> lifts it back.</div></div>
+    <div class="frame desktop"><div class="appbar"><span>☰</span><span>⌂</span><span>🔍</span><span style="flex:1"></span><span class="ic b">▲</span><span class="ic p">✎</span><span class="ic i">✓</span><span>👥</span><span>⚙</span></div>
+      <div class="page" id="pageBoard"></div></div>
+  </section>
+
+  <!-- 5. TABLE -->
+  <section class="view" id="view-table">
+    <div class="case"><b>5 · The Table: every item across groups.</b> Group · Item · Detail · Age or amount · Door, in the page's order, sorted by age or amount with one tap, a filter box over every column. The group chips above the table carry the ✓ marks, since a sorted table has no group header to hang one on. Today about 460 items from 13 groups; 268 are Prospects and 60 are lost bids. The honest cost: a row adapter per station (25 components, 25 shapes), and four stations have nothing a table can hold (Schedule, Tomorrow's Schedule, My Inbox, Prospects). The assistant who sweeps is being served by the Needs you station's <b>Fill them in</b> deck this week. Parked.
+      <div class="mark"><b>The mark:</b> on the chips above the table only; marking greys the group's rows and keeps them, because a mark is a look and the rows are work.</div></div>
+    <div class="frame desktop"><div class="appbar"><span>☰</span><span>⌂</span><span>🔍</span><span style="flex:1"></span><span class="ic b">▲</span><span class="ic p">✎</span><span class="ic i">✓</span><span>👥</span><span>⚙</span></div>
+      <div class="page" id="pageTable"></div></div>
+  </section>
+</div>
+
+<script>
+// ---------- data: the dev's page on Fri Oct 23, 2026. Counts, states and heights are the page's; rows are made up.
+const Q = {
+  'office-arriving': 'Is the workspace ready for the day?',
+  'assistant-dailys': "Are today's assistant dailys done?",
+  texts: 'Did anything fall through the cracks from today or yesterday?',
+  'email-inbox': 'Are work@ and bids@ clean, and is nothing stuck in Follow Up or Next Actions?',
+  'physical-inbox': 'Can I get to the bottom of the pile?',
+  schedule: 'Are there any obvious schedule conflicts?',
+  'tomorrow-schedule': 'Who is on what job tomorrow?',
+  'dispatch-inbox': 'Has every field request been answered or sent on?',
+  warnings: 'Is anything flashing that nobody owns?',
+  'no-customer-stages': 'Can every job be billed — customer, pictures, email?',
+  'property-kinds': 'Is every unpaid job’s property marked residential or commercial?',
+  'percent-complete': 'Does every open job’s % done agree with its ticked stages and its paid money?',
+  'jobs-cleanup': "Is every sub labor sheet attached to a job, and is today's money moving?",
+  'people-hours-new': "Are yesterday's and today's hours right?",
+  'unassigned-field-time': 'Is every paid field hour tied to a job?',
+  'vehicle-odometers': 'Do we have a reading and a check-in on every truck?',
+  'billed-awaiting': 'Who owes us, and who do we lean on first?',
+  prospects: 'Did every prospect hear from us on time?',
+  'supply-houses': 'Is anything past due with a supply house?',
+  'complete-no-bill': 'Does every finished job have a bill total?',
+  'undated-bills': 'Do these bills have a bill date yet?',
+  'my-inbox': 'Anything due today or overdue?',
+  'office-leaving': 'Is the office closed up for the night?',
+  'lost-bid-reasons': 'Does every lost bid say why?',
+  'gc-weekly-review': 'Is every GC certified and sent this week?',
+  'job-followups': 'Is any working job quiet too long?',
+  'field-photos': 'Are the field photos in Google Drive?',
+  'needs-you': 'What is waiting on the office?',
+};
+// state: fresh | not_yet | due | never | door.  count: number | null ('—').  src: open | last.  h: px on the real page.
+// kind: list (rows) | grid (a day grid) | chart | page (its own page) | deck (the Needs you card)
+const S = [
+  { id: 'office-arriving', label: 'Office Arriving', state: 'fresh', at: '9:54 AM', count: 0, src: 'last', h: 37, kind: 'list', rows: [] },
+  { id: 'assistant-dailys', label: 'Assistant Dailys', state: 'fresh', at: '9:54 AM', count: 0, src: 'last', h: 49, kind: 'list', rows: [] },
+  { id: 'texts', label: 'Texts', state: 'fresh', at: '9:54 AM', count: 1, src: 'last', h: 49, kind: 'list', note: true, rows: [['Priya · Cedar Loop clinic', 'asked when the crew is back', null, '2 h']] },
+  { id: 'email-inbox', label: 'Email', state: 'fresh', at: '9:55 AM', count: 6, src: 'last', h: 49, kind: 'list', note: true, rows: [['bids@ · Ridgeway Builders', 'addendum 2 for Oak Street clinic', null, '1 d'], ['work@ · Halvorsen Commercial', 'W-9 request', null, '1 d']] },
+  { id: 'physical-inbox', label: 'Physical inbox', state: 'fresh', at: '9:56 AM', count: 7, src: 'last', h: 49, kind: 'list', note: true, rows: [['Ferguson statement', 'September', '$2,310', '3 d'], ['City permit · J1051', 'inspection card', null, '3 d']] },
+  { id: 'schedule', label: 'Schedule', state: 'door', count: null, h: 2201, kind: 'grid', rows: [] },
+  { id: 'dispatch-inbox', label: 'Dispatch inbox', state: 'not_yet', count: 2, src: 'open', h: 762, kind: 'list', rows: [['Marco · J1042 Maple Street remodel', 'needs a part number for the 2" PVC coupling', null, '2 d'], ['Priya · J1051 Cedar Loop clinic', 'customer asks when the crew is back', null, '4 h']] },
+  { id: 'warnings', label: 'Warnings', state: 'not_yet', count: 0, src: 'open', h: 169, kind: 'list', rows: [] },
+  { id: 'no-customer-stages', label: 'Missing job info', state: 'not_yet', count: 2, src: 'open', h: 493, kind: 'list', rows: [['J1038 Dana Whitfield', 'no customer linked', null, '5 d'], ['J1047 Birch Court duplex', 'no billing email · Ready to Bill', null, '1 d']] },
+  { id: 'jobs-cleanup', label: 'Jobs Cleanup', state: 'not_yet', count: 0, src: 'last', h: 268, kind: 'list', rows: [] },
+  { id: 'property-kinds', label: 'Property kinds', state: 'not_yet', count: 0, src: 'open', h: 304, kind: 'list', rows: [] },
+  { id: 'percent-complete', label: 'Percent complete', state: 'never', count: 6, src: 'open', h: 1320, kind: 'list', rows: [['J1042 Maple Street remodel', '40% done · 3 of 4 stages ticked · $18,200 of $24,000 paid → 75%', '$24,000', '9 d'], ['J1051 Cedar Loop clinic', '0% done · rough-in ticked → 25%', '$61,500', '12 d'], ['J1038 Dana Whitfield', '100% done · final not ticked', '$4,800', '3 d'], ['J1029 Hollis Avenue', '50% done · $9,400 of $9,400 paid → 100%', '$9,400', '20 d'], ['J1044 Fenwick Lane', '80% done · 2 of 4 stages ticked → 50%', '$13,250', '6 d'], ['J1053 Quarry Road', '0% done · $3,000 deposit paid → 10%', '$30,000', '1 d']] },
+  { id: 'people-hours-new', label: 'People Hours', state: 'not_yet', count: 23, src: 'open', h: 597, kind: 'list', close: 'clear', rows: [['Luis · Thu 10/22', '7.8 h · J1042 Maple Street remodel', '7.8 h', '1 d'], ['Marco · Thu 10/22', '8.1 h · J1051 Cedar Loop clinic', '8.1 h', '1 d'], ['Priya · Thu 10/22', '6.4 h · J1038 Dana Whitfield', '6.4 h', '1 d'], ['Luis · Fri 10/23', '3.2 h so far · J1042', '3.2 h', 'today']] },
+  { id: 'billed-awaiting', label: 'Billed Awaiting Payment', state: 'not_yet', count: 53, src: 'last', h: 600, kind: 'list', rows: [['Ridgeway Builders · J1031 Oak Street clinic', 'billed Sep 12', '$12,400', '41 d'], ['Halvorsen Commercial · J1019 Mill Pond phase 2', 'billed Sep 20', '$8,950', '33 d'], ['Pinecrest Development · J1027 lot 14', 'billed Oct 1', '$6,200', '22 d'], ['Dana Whitfield · J1038', 'billed Oct 20', '$4,800', '3 d']] },
+  { id: 'supply-houses', label: 'Supply Houses', state: 'not_yet', count: 3, src: 'last', h: 2439, kind: 'list', close: 'clear', rows: [['Ferguson', 'past due', '$2,310', '12 d'], ['Morrison Supply', 'due Friday', '$640', 'Fri'], ['Winsupply', 'September statement to reconcile', '$1,180', '3 d']] },
+  { id: 'tomorrow-schedule', label: "Tomorrow's Schedule", state: 'door', count: null, h: 925, kind: 'grid', rows: [] },
+  { id: 'prospects', label: 'Prospects', state: 'not_yet', count: 268, src: 'open', h: 805, kind: 'chart', rows: [['Warmth 3 · 1', 'Pinecrest Development · call back today', null, 'today'], ['Warmth 2 · 9', 'oldest touch 6 d', null, '6 d'], ['Warmth 1 · 41', 'oldest touch 19 d', null, '19 d'], ['Cold · 217', 'the long tail', null, '—']] },
+  { id: 'unassigned-field-time', label: 'Unassigned field time', state: 'not_yet', count: 0, src: 'open', h: 1013, kind: 'list', close: 'clear', rows: [] },
+  { id: 'complete-no-bill', label: 'Complete, no Total Bill', state: 'not_yet', count: 0, src: 'open', h: 256, kind: 'list', rows: [] },
+  { id: 'undated-bills', label: 'Missing bill dates', state: 'not_yet', count: 0, src: 'open', h: 278, kind: 'list', rows: [] },
+  { id: 'my-inbox', label: 'My Inbox', state: 'door', count: 7, src: 'open', h: 1031, kind: 'page', rows: [['Due today · 7', 'the same list as the Dashboard card', null, 'today']] },
+  { id: 'office-leaving', label: 'Office Leaving', state: 'not_yet', count: 1, src: 'open', h: 293, kind: 'list', rows: [['Trash out', 'not yet today', null, 'today']] },
+  { id: 'vehicle-odometers', label: 'Vehicle check-ins', state: 'not_yet', count: 10, src: 'open', h: 1138, kind: 'list', rows: [['2019 Ford F250 · Luis', 'last reading 231,400 · assigned, weekly', null, '9 d'], ['2021 Ram 2500 · Marco', 'last reading 88,120 · assigned, weekly', null, '8 d'], ['2017 Transit · Priya', 'last reading 142,900 · assigned, weekly', null, '8 d'], ['2015 F150 · motor pool', 'walk out & check · monthly', null, '34 d']] },
+  { id: 'lost-bid-reasons', label: 'Lost bid reasons', state: 'not_yet', count: 60, src: 'open', h: 211, kind: 'list', rows: [['b412 Oak Street clinic · Ridgeway Builders', 'lost Oct 2 · sent Sep 4 · no contact since', '$84,300', '21 d'], ['b398 Mill Pond phase 3 · Halvorsen Commercial', 'lost Sep 28 · sent Aug 30', '$61,900', '25 d'], ['b405 lot 22 · Pinecrest Development', 'lost Oct 9 · sent Sep 19', '$18,400', '14 d'], ['b377 Quarry Road shop', 'lost Sep 11 · sent Aug 2', '$15,200', '42 d'], ['b391 Hollis Avenue', 'lost Sep 25 · sent Sep 1', '$9,700', '28 d']] },
+  { id: 'gc-weekly-review', label: 'GC weekly review', state: 'not_yet', count: 7, src: 'open', h: 232, kind: 'list', rows: [['6 of 7 GCs certified · 0 statements sent', 'Pinecrest Development still open', null, 'Wed'], ['Ridgeway Builders', 'certified · statement not sent', '$12,400', 'Wed']] },
+  { id: 'job-followups', label: 'Job follow-ups', state: 'not_yet', count: 2, src: 'open', h: 211, kind: 'list', rows: [['J1029 Hollis Avenue', 'working · no note in 9 d', null, '9 d'], ['J1044 Fenwick Lane', 'working · no note in 7 d', null, '7 d']] },
+  { id: 'field-photos', label: 'Field photos → Drive', state: 'not_yet', count: null, src: 'none', h: 149, kind: 'list', rows: [] },
+  { id: 'needs-you', label: 'Needs you', state: 'not_yet', count: 23, src: 'open', h: 2342, kind: 'deck', rows: [['Bulk deletions detected', '35 records across 4 bursts by 3 people', null, '1 d'], ['3 checks came back', 'Accounts Receivable', '$13,680', '2 d'], ['85 live jobs have no contract', 'the Contract sweep', null, '—'], ['$4,042 on 10 current invoices', 'the move window', '$4,042', '—'], ['Fill them in · 114 rows', 'lost bids, vehicles, job accounts, contracts', null, '—']] },
+];
+const chipOf = (s) => s.state === 'fresh' ? 'green' : s.state === 'not_yet' ? 'green' : s.state === 'door' ? 'none' : s.state === 'due' ? 'yellow' : 'red';
+const dotOf = (s) => s.state === 'fresh' ? 'green' : s.state === 'not_yet' ? 'grey' : s.state === 'door' ? 'hollow' : s.state === 'due' ? 'amber' : 'red';
+const hasWork = (s) => typeof s.count === 'number' && s.count > 0 && s.state !== 'door';
+const isZero = (s) => (s.count === 0 || s.count === null) && s.state !== 'fresh' && s.state !== 'door';
+const marker = 'Rosa';
+const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const lastLine = (s) => s.state === 'fresh' ? `Marked ${s.at} by ${marker}` : s.state === 'never' ? 'Last marked: Never marked' : 'Last marked: Oct 22, 12:01 PM';
+const countWords = (s) => s.count === null ? '—' : `${s.count} open`;
+const fmt = (n) => n.toLocaleString('en-US');
+
+// ---------- pieces
+function jumpGrid(list) {
+  return `<div class="jump">${list.map((s) => `<span class="chip ${chipOf(s) === 'none' ? '' : chipOf(s)}">${esc(s.label)}${s.state === 'fresh' ? `<span class="stamp"><i>R</i>${s.at.replace(' AM', 'a')}</span>` : s.state === 'not_yet' ? `<span class="stamp"><i>R</i>22h</span>` : ''}</span>`).join('')}</div>`;
+}
+function markChips(list) {
+  return `<div class="jump">${list.map((s) => `<span class="chip ${chipOf(s) === 'none' ? '' : chipOf(s)}">${esc(s.label)}${s.state === 'door' ? '' : `<span class="tick">✓</span>`}</span>`).join('')}</div>`;
+}
+function rowsHtml(s, max) {
+  const rows = s.rows.slice(0, max);
+  let html = rows.map((r) => `<div class="row"><span class="t"><b>${esc(r[0])}</b><small>${esc(r[1])}</small></span>${r[2] ? `<span class="amt">${esc(r[2])}</span>` : ''}<span class="age">${esc(r[3])}</span><span class="btn outline-blue">Open ›</span></div>`).join('');
+  const rest = (s.count ?? 0) - rows.length;
+  if (rest > 0) html += `<div class="more">… ${fmt(rest)} more</div>`;
+  return html;
+}
+function bodyHtml(s, { max = 4, full = false } = {}) {
+  if (s.kind === 'grid') return `<div class="placeholder" style="height:${full ? 520 : 340}px"><span><b>${esc(s.label)} · the day grid, every person as a row</b>${fmt(s.h)} px tall on the real page · opens Schedule Dispatch</span></div>`;
+  if (s.kind === 'page') return `<div class="body">${rowsHtml(s, max)}<div class="more">Opens My Inbox · its own checkboxes, Forward and mute</div></div>`;
+  if (s.kind === 'chart') return `<div class="body"><div class="placeholder" style="height:${full ? 240 : 150}px"><span><b>Active prospects by warmth · 30-day team activity line</b>${fmt(s.h)} px tall on the real page</span></div>${rowsHtml(s, max)}</div>`;
+  if (s.kind === 'deck') return `<div class="body"><div class="more" style="display:flex;gap:8px;align-items:center;background:var(--surface)"><span class="chip" style="background:var(--text-link);color:#fff;border-color:var(--text-link)">Cards</span><span class="chip">Walk the list</span><span class="chip">Fill them in · 114 rows</span><span style="flex:1"></span>23 lines, worst first</div>${rowsHtml(s, max)}</div>`;
+  if (!s.rows.length) {
+    const words = s.id === 'warnings' ? 'Nothing flashing. ✓' : s.id === 'field-photos' ? "No field photos waiting — every write-up's photos are in Google Drive. ✓" : s.id === 'unassigned-field-time' ? 'All on a job. ✓ · window 7 d' : s.id === 'property-kinds' ? 'Every unpaid property has a kind. ✓' : s.id === 'complete-no-bill' ? 'Every finished job has a bill total. ✓' : s.id === 'undated-bills' ? 'Every bill has a date. ✓' : s.id === 'jobs-cleanup' ? 'Every sub labor sheet is on a job · the pipeline is clean. ✓' : s.id === 'office-arriving' ? 'Every arriving box ticked. ✓' : 'Every daily done. ✓';
+    return `<div class="body"><div class="row"><span class="t" style="color:var(--text-green-700)">${esc(words)}</span></div>${s.h > 400 ? `<div class="more">${fmt(s.h)} px tall on the real page: the window picker and the week lines sit under the card</div>` : ''}</div>`;
+  }
+  return `<div class="body">${rowsHtml(s, max)}</div>`;
+}
+function fullSection(s, { divider = false, max = 4 } = {}) {
+  const color = chipOf(s);
+  return `<div class="section ${divider ? 'divider' : ''}">
+    <div class="shead"><h2>${esc(s.label)}</h2>${s.state === 'door' && s.count === null ? '' : `<span class="open">${countWords(s)}</span>`}${s.state === 'door' ? '' : `<span class="last">${lastLine(s)}</span>`}${s.close ? `<span class="close">Close week: ${s.close}</span>` : ''}${s.state === 'door' || s.note ? '' : `<span class="btn mark ${color}">✓ Mark</span>`}<span class="btn" title="Mark history">📈</span></div>
+    ${Q[s.id] ? `<div class="question">${esc(Q[s.id])}</div>` : ''}
+    ${bodyHtml(s, { max })}
+    ${s.state === 'door' ? '' : s.note ? `<div class="foot"><span class="btn mark ${color}">Mark ${esc(s.label)} up to date, with a note…</span></div>` : `<div class="foot"><span class="btn mark ${color}">Mark ${esc(s.label)} up to date!</span></div>`}
+  </div>`;
+}
+function stripRow(s, kind) {
+  if (kind === 'fresh') return `<div class="strip"><span>✓</span><h2>${esc(s.label)}</h2>${hasWork(s) ? `<span class="count">${s.count} at last look</span>` : ''}<span>Marked ${s.at} by ${marker} · Reloads in 11.9h</span><span class="sp"></span><span class="btn" title="Mark history">📈</span><span class="btn open">Open now</span></div>`;
+  if (kind === 'door') return `<div class="strip door"><span>›</span><h2>${esc(s.label)}</h2>${s.count ? `<span class="count">${s.count} due today</span>` : ''}<span>no mark · opens the page</span><span class="sp"></span><span class="btn open">Open</span></div>`;
+  return `<div class="strip zero"><span>○</span><h2>${esc(s.label)}</h2><span class="count">${s.count === null ? '—' : '0 open'}</span><span>${lastLine(s)}</span><span class="sp"></span><span class="btn" title="Mark history">📈</span><span class="btn mark ${chipOf(s)}">✓ Mark</span><span class="btn open">Open now</span></div>`;
+}
+function titleRow(cur) {
+  const views = [['page', 'Page'], ['focus', 'Focus'], ['roller', 'Roller'], ['board', 'Board']];
+  return `<div class="titlerow"><span class="note">remembered for you</span><h1>Quickfill</h1><span class="seg small">${views.map(([k, l]) => `<button type="button" class="${k === cur ? 'on' : ''}" data-view="${k}">${l}</button>`).join('')}</span></div>`;
+}
+function dock(list) { return `<div class="dock">${list.slice(0, 11).map((s, i) => `<span class="${i === 0 ? 'on' : ''}">${esc(s.label)}</span>`).join('')}<span>…</span></div>`; }
+
+// ---------- 1. the page
+function renderPage() {
+  const el = document.getElementById('pagePage');
+  const fresh = S.filter((s) => s.state === 'fresh');
+  const rest = S.filter((s) => s.state !== 'fresh');
+  el.innerHTML = titleRow('page') + jumpGrid(S) + `<input class="search" placeholder="Search sections…">` +
+    fresh.map((s) => stripRow(s, 'fresh')).join('') +
+    rest.map((s, i) => fullSection(s, { divider: true })).join('') +
+    `<div class="fold-note">28 stations · 20,999 px on the real page · about 27 screens. The tall bodies are drawn shorter here with their height written on them.</div>` +
+    dock(rest);
+}
+
+// ---------- 2. focus
+function renderFocus() {
+  const el = document.getElementById('pageFocus');
+  const open = S.filter(hasWork).filter((s) => s.state !== 'fresh');
+  const zero = S.filter(isZero);
+  const fresh = S.filter((s) => s.state === 'fresh');
+  const doors = S.filter((s) => s.state === 'door');
+  el.innerHTML = titleRow('focus') + jumpGrid(S) + `<input class="search" placeholder="Search sections…">` +
+    `<div class="stripline"><span class="words">${open.length} groups with work · ${zero.length} at zero · ${fresh.length} marked today · ${doors.length} doors</span><label><input type="checkbox"> Show the empty groups open</label></div>` +
+    open.map((s) => fullSection(s, { divider: true })).join('') +
+    `<div class="heading">${zero.length} at zero · still get a ✓</div>` + zero.map((s) => stripRow(s, 'zero')).join('') +
+    `<div class="heading">${fresh.length} marked today</div>` + fresh.map((s) => stripRow(s, 'fresh')).join('') +
+    `<div class="heading">${doors.length} doors · no mark</div>` + doors.map((s) => stripRow(s, 'door')).join('') +
+    `<div class="fold-note">About 16 screens instead of 27. Nothing is hidden: Open now on any strip.</div>` + dock(open);
+}
+
+// ---------- 3. the roller
+const roller = { i: 0, showDone: false, marked: new Set() };
+function deck() {
+  const order = { never: 0, due: 0, due_today: 1, not_yet: 2, fresh: 3, door: 9 };
+  const base = S.filter((s) => (roller.showDone || s.state !== 'fresh') && !roller.marked.has(s.id) || (roller.showDone && roller.marked.has(s.id)));
+  return base.map((s, index) => ({ s, index })).sort((a, b) => (order[a.s.state] - order[b.s.state]) || (a.index - b.index)).map((x) => x.s);
+}
+function rollerWords(d, i) {
+  const left = d.slice(i).filter(hasWork).length;
+  return `${i + 1} of ${d.length} · ${left} left with work`;
+}
+function dotsHtml(d, i) { return `<span class="dots">${d.map((s, k) => `<i class="${roller.marked.has(s.id) ? 'green' : dotOf(s)} ${k === i ? 'cur' : ''}" title="${esc(s.label)}"></i>`).join('')}</span>`; }
+function thumbHtml(s, phone) {
+  const next = 'next →';
+  const mid = s.state === 'door' ? `<span class="btn">${next}</span>` : s.note ? `<span class="btn" title="Mark this one inside, with a note">Mark inside · ${next}</span>` : `<span class="btn goodgreen" data-act="looked">${isZero(s) ? 'Nothing here · Looked' : `Looked · ${s.count} open`} · ${next}</span>`;
+  return phone ? `<div class="thumb"><span class="btn" data-act="skip">Skip</span>${mid}</div>` : `<div class="thumb"><span class="btn" data-act="prev">← Previous</span><span class="btn" data-act="skip">Skip</span>${mid}<span class="btn" data-act="next">Next →</span></div>`;
+}
+function rollerScreen(phone) {
+  const d = deck();
+  if (roller.i >= d.length) roller.i = Math.max(0, d.length - 1);
+  const s = d[roller.i];
+  if (!s) return `<div class="fold-note">Round done ✓ · every group looked at today</div>`;
+  const fresh = S.filter((x) => x.state === 'fresh').length;
+  return `${phone ? '' : titleRow('roller')}
+    <div class="roller-head">${phone ? '<span class="btn" data-act="list">‹</span>' : ''}<h2>${esc(s.label)}</h2><span class="n">${s.count === null ? '—' : s.count}<small>${s.src === 'last' ? 'at last look' : s.count === null ? '' : 'open'}</small></span></div>
+    <div class="stripline">${dotsHtml(d, roller.i)}<span class="words">${rollerWords(d, roller.i)}</span>${phone ? '<span style="color:var(--text-faint)">← swipe →</span>' : `<label><input type="checkbox" data-act="showdone" ${roller.showDone ? 'checked' : ''}> Show the ${fresh} marked today</label><span class="btn" data-act="index">Groups ▾</span>`}</div>
+    ${Q[s.id] ? `<div class="question">${esc(Q[s.id])}</div>` : ''}
+    <div class="countline"><span>${s.state === 'door' ? 'no mark · opens the page' : `${countWords(s)} · ${lastLine(s).replace('Last marked: ', 'last look ').toLowerCase().replace('never marked', 'never marked')}${s.state === 'never' ? '' : ' · ' + marker}`}</span>${s.state === 'door' ? '' : '<span>📈 history</span>'}</div>
+    ${bodyHtml(s, { max: phone ? 4 : 6, full: !phone })}
+    ${thumbHtml(s, phone)}`;
+}
+function renderRoller() {
+  document.getElementById('pageRoller').innerHTML = rollerScreen(false);
+  document.getElementById('pagePhone').innerHTML = rollerScreen(true);
+  document.getElementById('rollerIndexBoard').innerHTML = deck().map((s, k) => cardHtml(s, { pos: k })).join('');
+}
+function rollerAct(act) {
+  const d = deck();
+  if (act === 'prev') roller.i = Math.max(0, roller.i - 1);
+  else if (act === 'next' || act === 'skip') roller.i = Math.min(d.length - 1, roller.i + 1);
+  else if (act === 'looked') { const s = d[roller.i]; roller.marked.add(s.id); if (!roller.showDone) { /* the marked one leaves the deck; same index is the next */ } else roller.i = Math.min(d.length - 1, roller.i + 1); }
+  else if (act === 'index') { document.getElementById('rollerIndex').classList.add('on'); return; }
+  else if (act === 'list') { return; }
+  renderRoller();
+}
+document.getElementById('view-roller').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  if (b.dataset.act === 'showdone') { roller.showDone = b.checked; renderRoller(); return; }
+  rollerAct(b.dataset.act);
+});
+document.getElementById('view-roller').addEventListener('change', (e) => { if (e.target.dataset.act === 'showdone') { roller.showDone = e.target.checked; renderRoller(); } });
+document.getElementById('indexClose').addEventListener('click', () => document.getElementById('rollerIndex').classList.remove('on'));
+document.getElementById('rollerIndexBoard').addEventListener('click', (e) => { const c = e.target.closest('[data-pos]'); if (!c) return; roller.i = Number(c.dataset.pos); document.getElementById('rollerIndex').classList.remove('on'); renderRoller(); });
+document.addEventListener('keydown', (e) => { if (!document.getElementById('view-roller').classList.contains('on')) return; if (e.key === 'ArrowLeft') rollerAct('prev'); if (e.key === 'ArrowRight') rollerAct('next'); });
+let tx = null;
+const ph = document.getElementById('phoneFrame');
+ph.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+ph.addEventListener('touchend', (e) => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if (dx < -40) rollerAct('next'); if (dx > 40) rollerAct('prev'); });
+ph.addEventListener('mousedown', (e) => { tx = e.clientX; });
+ph.addEventListener('mouseup', (e) => { if (tx == null) return; const dx = e.clientX - tx; tx = null; if (dx < -40) rollerAct('next'); if (dx > 40) rollerAct('prev'); });
+
+// ---------- 4. the board
+function cardHtml(s, { pos = null } = {}) {
+  const items = s.rows.slice(0, 2).map((r) => `<div>${esc(r[0])}${r[2] ? ` · ${esc(r[2])}` : ''}</div>`).join('') || (s.state === 'door' ? `<div class="q">opens the page ›</div>` : isZero(s) ? `<div class="q">nothing here · ✓ still counts</div>` : `<div class="q">${esc(Q[s.id] || '')}</div>`);
+  const tick = s.state === 'door' ? '' : `<span class="tick ${chipOf(s)}">✓</span>`;
+  return `<div class="card ${roller.marked.has(s.id) ? 'green' : dotOf(s) === 'grey' || dotOf(s) === 'hollow' ? '' : dotOf(s)}" ${pos === null ? '' : `data-pos="${pos}"`} style="${pos === null ? '' : 'cursor:pointer'}">
+    <div class="ch"><b>${esc(s.label)}</b><span class="n">${s.count === null ? '—' : s.count}<small>${s.src === 'last' ? 'at last look' : s.count === null ? '' : 'open'}</small></span></div>
+    <div class="items">${items}</div>
+    <div class="cf"><span>${s.state === 'door' ? 'no mark' : s.state === 'never' ? 'never marked' : s.state === 'fresh' ? `marked ${s.at}` : 'looked yesterday'}</span><span>${tick} <a>Open ›</a></span></div></div>`;
+}
+function renderBoard() {
+  const el = document.getElementById('pageBoard');
+  const live = S.filter((s) => s.state !== 'fresh');
+  const fresh = S.filter((s) => s.state === 'fresh');
+  el.innerHTML = titleRow('board') + `<div class="stripline"><span class="words">${live.length} groups · ${S.filter(hasWork).filter((s) => s.state !== 'fresh').length} with work · 1 due</span><span style="color:var(--text-muted)">tap a card to open the group as a Roller screen</span></div>` +
+    `<div class="board">${live.map((s) => cardHtml(s)).join('')}</div>` +
+    `<div class="heading">${fresh.length} marked today</div><div class="boardstrips">${fresh.map((s) => stripRow(s, 'fresh')).join('')}</div>`;
+}
+
+// ---------- 5. the table
+const tableState = { sort: 'group', q: '' };
+function tableRows() {
+  const out = [];
+  for (const s of S) {
+    if (s.kind === 'grid' || s.kind === 'page' || s.kind === 'chart' || s.state === 'fresh') continue;
+    if (!s.rows.length) continue;
+    for (const r of s.rows) out.push({ g: s.label, gid: s.id, item: r[0], detail: r[1], amt: r[2], age: r[3], s });
+  }
+  return out;
+}
+const ageDays = (a) => a === 'today' ? 0 : /h$/.test(a) ? 0.1 : /d$/.test(a) ? Number(a) : a === 'Wed' || a === 'Fri' ? -1 : 999;
+const amtNum = (a) => a ? Number(String(a).replace(/[^0-9.]/g, '')) : -1;
+function renderTable() {
+  const el = document.getElementById('pageTable');
+  let rows = tableRows();
+  if (tableState.q) { const q = tableState.q.toLowerCase(); rows = rows.filter((r) => `${r.g} ${r.item} ${r.detail} ${r.amt || ''}`.toLowerCase().includes(q)); }
+  if (tableState.sort === 'age') rows.sort((a, b) => ageDays(b.age) - ageDays(a.age));
+  if (tableState.sort === 'amount') rows.sort((a, b) => amtNum(b.amt) - amtNum(a.amt));
+  const groups = [...new Set(rows.map((r) => r.gid))].length;
+  const total = S.filter((s) => s.kind === 'list' || s.kind === 'deck').filter((s) => s.state !== 'fresh').reduce((n, s) => n + (s.count || 0), 0) + 268;
+  const th = (k, l) => `<th><button type="button" class="${tableState.sort === k ? 'on' : ''}" data-sort="${k}">${l}${tableState.sort === k ? ' ▾' : ''}</button></th>`;
+  let html = titleRow('table') + markChips(S.filter((s) => s.state !== 'fresh')) +
+    `<div class="filters"><input placeholder="Filter every column…" value="${esc(tableState.q)}" data-filter><span>${fmt(total)} items across 13 groups today · ${rows.length} rows drawn here</span></div>` +
+    `<table class="tbl"><thead><tr>${th('group', 'Group')}<th>Item</th><th>Detail</th>${th('amount', 'Amount')}${th('age', 'Age')}<th>Door</th></tr></thead><tbody>`;
+  let lastG = null;
+  for (const r of rows) {
+    if (tableState.sort === 'group' && r.gid !== lastG && lastG !== null) {
+      const prev = rows.find((x) => x.gid === lastG).s; const rest = (prev.count || 0) - rows.filter((x) => x.gid === lastG).length;
+      if (rest > 0) html += `<tr class="more"><td></td><td colspan="5">… ${fmt(rest)} more in ${esc(prev.label)}</td></tr>`;
+    }
+    html += `<tr><td class="g">${tableState.sort === 'group' && r.gid === lastG ? '' : esc(r.g)}</td><td>${esc(r.item)}</td><td>${esc(r.detail)}</td><td class="amt">${r.amt ? esc(r.amt) : ''}</td><td class="age">${esc(r.age)}</td><td><a class="door">Open ›</a></td></tr>`;
+    lastG = r.gid;
+  }
+  if (tableState.sort === 'group' && lastG) { const prev = rows.find((x) => x.gid === lastG).s; const rest = (prev.count || 0) - rows.filter((x) => x.gid === lastG).length; if (rest > 0) html += `<tr class="more"><td></td><td colspan="5">… ${fmt(rest)} more in ${esc(prev.label)}</td></tr>`; }
+  html += `</tbody></table><div class="notlisted">Not in the table: Schedule and Tomorrow's Schedule (day grids), My Inbox (its own page), Prospects (a warmth chart; its 268 are the four warmth rows). Each station that lists rows needs its own adapter.</div>`;
+  el.innerHTML = html;
+}
+document.getElementById('view-table').addEventListener('click', (e) => { const b = e.target.closest('[data-sort]'); if (!b) return; tableState.sort = b.dataset.sort; renderTable(); });
+document.getElementById('view-table').addEventListener('input', (e) => { if (e.target.dataset.filter !== undefined) { tableState.q = e.target.value; const pos = e.target.selectionStart; renderTable(); const i = document.querySelector('[data-filter]'); i.focus(); i.setSelectionRange(pos, pos); } });
+
+// ---------- the ruler
+function renderRuler() {
+  const items = [['Page', 20999, '27 screens'], ['Focus', 12600, '16 screens'], ['Roller', 900, '1 screen per group'], ['Board', 1300, '2 screens'], ['Table', 14800, 'as long as its rows · 2,800 folded']];
+  document.getElementById('ruler').innerHTML = items.map(([n, h, w]) => `<div><b>${n}</b>${fmt(h)} px<div class="bar"><i style="width:${Math.round(h / 20999 * 100)}%"></i></div>${w}</div>`).join('');
+}
+
+// ---------- switches
+function showView(v) {
+  document.querySelectorAll('.view').forEach((el) => el.classList.toggle('on', el.id === `view-${v}`));
+  document.querySelectorAll('#viewSwitch button').forEach((b) => b.classList.toggle('on', b.dataset.view === v));
+  history.replaceState(null, '', `#${v}`);
+  window.scrollTo({ top: 0 });
+}
+document.getElementById('viewSwitch').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showView(b.dataset.view); });
+document.body.addEventListener('click', (e) => { const b = e.target.closest('.titlerow [data-view]'); if (b) showView(b.dataset.view); });
+document.getElementById('themeBtn').addEventListener('click', () => { const r = document.documentElement; const dark = r.dataset.theme !== 'dark'; r.dataset.theme = dark ? 'dark' : 'light'; document.getElementById('themeBtn').textContent = dark ? 'Light' : 'Dark'; });
+
+renderRuler(); renderPage(); renderFocus(); renderRoller(); renderBoard(); renderTable();
+const start = (location.hash || '#page').slice(1);
+if (['page', 'focus', 'roller', 'board', 'table'].includes(start)) showView(start);
+</script>
+</body>
+</html>

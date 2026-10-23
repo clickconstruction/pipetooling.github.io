@@ -7,7 +7,7 @@ import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
 import { liveOtherCharges, type JobCostsLiveValues } from '../../lib/jobs/jobCostsLiveInputs'
 import type { MaterialRow } from '../../lib/jobs/jobFormTypes'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
-import { JobCostsTabCharts } from './JobCostsTabCharts'
+import { JobCostsTabCharts, type JobCostsPacketLines } from './JobCostsTabCharts'
 
 type JobFormLaborCostPanelProps = {
   editing: JobWithDetails | null
@@ -16,6 +16,8 @@ type JobFormLaborCostPanelProps = {
   livePriceUsd: number
   /** The form's other job charges, as typed. */
   liveMaterials: MaterialRow[]
+  /** The lines behind the money table, for the Costs tab on paper (v2.5749); null hides Print. */
+  packet?: JobCostsPacketLines | null
 }
 
 /**
@@ -27,7 +29,7 @@ type JobFormLaborCostPanelProps = {
  * The tab reads the job as it was loaded; the price and the other job charges
  * come from the form instead, so a change on the Bill tab shows here at once.
  */
-export function JobFormLaborCostPanel({ editing, editJobTeamLaborRow, livePriceUsd, liveMaterials }: JobFormLaborCostPanelProps) {
+export function JobFormLaborCostPanel({ editing, editJobTeamLaborRow, livePriceUsd, liveMaterials, packet = null }: JobFormLaborCostPanelProps) {
   const { role: authRole } = useAuth()
   const loadedMaterials = editing?.materials
   const live = useMemo<JobCostsLiveValues>(
@@ -42,5 +44,5 @@ export function JobFormLaborCostPanel({ editing, editJobTeamLaborRow, livePriceU
     [livePriceUsd, liveMaterials, loadedMaterials],
   )
   if (!editing?.id) return null
-  return <JobCostsTabCharts job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} teamPeople={editJobTeamLaborRow ? editJobTeamLaborRow.people.length : null} live={live} />
+  return <JobCostsTabCharts job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} teamPeople={editJobTeamLaborRow ? editJobTeamLaborRow.people.length : null} live={live} packet={packet} />
 }

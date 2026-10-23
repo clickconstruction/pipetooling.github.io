@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { caseNote, caseStand, casesInCounty, countyCardFacts, effectiveStand, legendCounts, shapeMapCases, uncoveredWords, type MapAccount } from './firmMap'
+import { caseNote, caseStand, casesInCounty, countyCardFacts, effectiveStand, legendCounts, lensSummaryWords, shapeMapCases, uncoveredCounties, uncoveredWords, type MapAccount } from './firmMap'
 
 const acc = (key: string, name: string, balance: number, jobs: MapAccount['jobs'], viaGc = false): MapAccount => ({ key, name, balance, viaGc, jobs })
 
@@ -74,11 +74,24 @@ describe('against the county map', () => {
   })
   it('the legend counts cases and dollars per firm, then the uncovered', () => {
     expect(legendCounts(cases, assignments, FIRMS)).toEqual([
-      { firmId: 'firm-a', name: 'Snell Law Firm', count: 1, dollars: 1712.5, moneyWords: '$1,712.50' },
-      { firmId: 'firm-b', name: 'Austin firm', count: 1, dollars: 15781.82, moneyWords: '$15,781.82' },
+      // TLE is with firm-a (Snell) though Travis is firm-b's county: a case counts for the firm it is with (v2.5784).
+      { firmId: 'firm-a', name: 'Snell Law Firm', count: 2, dollars: 17494.32, moneyWords: '$17,494.32' },
+      { firmId: 'firm-b', name: 'Austin firm', count: 0, dollars: 0, moneyWords: '$0.00' },
       { firmId: null, name: 'No firm covers it', count: 2, dollars: 2378.04, moneyWords: '$2,378.04' },
     ])
-    expect(uncoveredWords(cases, assignments)).toBe('2 cases in a county no firm covers · Burd & Assoc. (Williamson) · Bruce Hall (off the map). Pick a firm for the county on Settings, or the desk cannot release them.')
+    expect(uncoveredWords(cases, assignments)).toBe('2 cases in a county no firm covers · Burd & Assoc. (Williamson) · Bruce Hall (off the map). Color the county for a firm, or the desk cannot release them.')
     expect(uncoveredWords([], assignments)).toBeNull()
+  })
+})
+
+describe('the lens (v2.5784)', () => {
+  const cases = shapeMapCases({ accounts: ACCOUNTS, givenUp: GIVEN_UP, byPayerKey: MATTERS, firmNames: FIRM_NAMES, coords: COORDS, recordCounty: new Map([['addr-burd', 'Williamson']]), countyOf })
+  it('uncoveredCounties lists each uncovered case\'s county once, sorted; a case with the firm is never uncovered', () => {
+    expect(uncoveredCounties(cases, new Map([['Bexar', 'firm-a']]))).toEqual(['Williamson'])
+    expect(uncoveredCounties(cases, new Map([['Bexar', 'firm-a'], ['Williamson', 'firm-b']]))).toEqual([])
+  })
+  it('lensSummaryWords counts accounts, jobs and open dollars', () => {
+    expect(lensSummaryWords(cases)).toBe('4 accounts · 5 jobs · $19,872.36 open')
+    expect(lensSummaryWords([])).toBe('Nothing is in Collections.')
   })
 })

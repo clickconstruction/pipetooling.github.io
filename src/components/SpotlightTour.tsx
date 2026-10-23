@@ -34,6 +34,11 @@ export type SpotlightTourStep = {
     tone?: 'red' | 'plain'
     after?: string
   }
+  /**
+   * A guide of the stop's own (v2.5783, GC's Gaps stop): a link under the body, which closes the walk.
+   * The footer's `guideHref` stays the whole page's guide; this is the one stop's.
+   */
+  guide?: { href: string; label: string }
 }
 
 type SpotlightTourProps = {
@@ -235,6 +240,13 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
               </div>
               {step.example.after ? <div data-testid="tour-example-after" style={{ marginTop: '0.5rem' }}>{step.example.after}</div> : null}
             </>
+          ) : null}
+          {step.guide ? (
+            <div data-testid="tour-guide" style={{ marginTop: '0.5rem' }}>
+              <Link to={step.guide.href} onClick={onClose} style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
+                {step.guide.label}
+              </Link>
+            </div>
           ) : null}
           {step.terms ? (
             // The list scrolls inside the card on a short screen; the title and the buttons hold still.
