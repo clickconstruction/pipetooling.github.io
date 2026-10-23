@@ -68,7 +68,7 @@ function harness() {
           bump((n) => n + 1)
         }}
         onExit={() => {}}
-        io={{ lostBids: none, vehicles: noVehicles, jobAccounts: io }}
+        io={{ lostBids: none, vehicles: noVehicles, jobAccounts: io, contracts: { fetchSources: async () => ({ jobs: [], contracts: [], estimates: [], floorCents: 0 }), resend: async () => {}, text: async () => true, filePaper: async () => ({ uploadError: null }) } }}
       />
     )
   }

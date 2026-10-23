@@ -96,7 +96,7 @@ function Harness({ get, io, onRowSaved, onRowRestored, onExit, onMark }: { get: 
       }}
       onExit={onExit}
       onMarkUpToDate={onMark}
-      io={{ lostBids: io, vehicles: { fetchGaps: async () => [], fetchPlans: async () => [], save: async () => { throw new Error('not here') }, undo: async () => {} }, jobAccounts: { fetchGaps: async () => [], fetchJobs: async () => [], save: async () => { throw new Error('not here') }, undo: async () => {} } }}
+      io={{ lostBids: io, vehicles: { fetchGaps: async () => [], fetchPlans: async () => [], save: async () => { throw new Error('not here') }, undo: async () => {} }, jobAccounts: { fetchGaps: async () => [], fetchJobs: async () => [], save: async () => { throw new Error('not here') }, undo: async () => {} }, contracts: { fetchSources: async () => ({ jobs: [], contracts: [], estimates: [], floorCents: 0 }), resend: async () => {}, text: async () => true, filePaper: async () => ({ uploadError: null }) } }}
     />
   )
 }

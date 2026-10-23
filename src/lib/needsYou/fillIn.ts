@@ -20,7 +20,7 @@ export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
 }
 
 /** The kinds the deck handles today; a kind is added here the PR its fields ship. */
-export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account']
+export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract']
 
 export function fillInKindOfItem(key: NeedsYouItem['key']): FillInKind | null {
   for (const kind of FILL_IN_KINDS_BUILT) if (FILL_IN_KIND_ITEM[kind] === key) return kind
@@ -31,7 +31,7 @@ export const FILL_IN_KIND_WORDS: Record<FillInKind, { kicker: string; one: strin
   'lost-bid': { kicker: 'Win/loss hygiene · lost bid, no reason', one: 'lost bid', many: 'lost bids', saved: (n) => (n === 1 ? '1 lost bid has a reason.' : `${n} lost bids have a reason.`) },
   vehicle: { kicker: 'Vehicles · record missing', one: 'vehicle', many: 'vehicles', saved: (n) => (n === 1 ? '1 truck has a record.' : `${n} trucks have a record.`) },
   'job-account': { kicker: 'Job accounts · bought, no account', one: 'job account', many: 'job accounts', saved: (n) => (n === 1 ? '1 job account is settled.' : `${n} job accounts are settled.`) },
-  contract: { kicker: 'Contracts · out for signature', one: 'contract', many: 'contracts', saved: (n) => (n === 1 ? '1 contract was chased.' : `${n} contracts were chased.`) },
+  contract: { kicker: 'Contracts · out for signature', one: 'contract', many: 'contracts', saved: (n) => (n === 1 ? '1 contract was chased or filed.' : `${n} contracts were chased or filed.`) },
 }
 
 /** What every row carries, whatever its kind; the kind's own fields ride beside these. */

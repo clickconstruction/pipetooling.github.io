@@ -57,6 +57,7 @@ export function QuickfillNeedsYouSection({
       if (row.kind === 'lost-bid') reloadLostBids()
       else if (row.kind === 'vehicle') reloadVehicleRecords()
       else if (row.kind === 'job-account') reloadJobAccountGaps()
+      // A contract's io dispatches `job-contract-changed`, which the line's hook already listens for.
     },
     [reloadLostBids, reloadVehicleRecords, reloadJobAccountGaps],
   )

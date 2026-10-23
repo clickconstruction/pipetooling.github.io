@@ -31,6 +31,9 @@ import { vehicleFillInIo } from '../../lib/needsYou/fillInVehiclesIo'
 import { EMPTY_JOB_ACCOUNT_DECISION, jobAccountDecisionReady, jobAccountTrailWords, jobAccountWrites, type JobAccountDecision } from '../../lib/needsYou/fillInJobAccounts'
 import { jobAccountFillInIo } from '../../lib/needsYou/fillInJobAccountsIo'
 import { JobAccountFields } from './JobAccountFields'
+import { contractDecisionReady, contractTrailWords, contractWrites, emptyContractDecision, type ContractDecision } from '../../lib/needsYou/fillInContracts'
+import { contractFillInIo } from '../../lib/needsYou/fillInContractsIo'
+import { ContractFields } from './ContractFields'
 import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { FillInIo, FillInRow } from '../../hooks/useFillInRows'
@@ -62,7 +65,7 @@ export type NeedsYouFillInDeckProps = {
   io?: FillInIo
 }
 
-const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo }
+const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo }
 
 type Handled = FillInHandled<FillInRow> & { undo: (() => Promise<void>) | null }
 
@@ -159,6 +162,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
   const [lostBid, setLostBid] = useState<LostBidDecision>(EMPTY_LOST_BID_DECISION)
   const [vehicle, setVehicle] = useState<VehicleDecision>(() => emptyVehicleDecision(todayYmdInAppTz()))
   const [jobAccount, setJobAccount] = useState<JobAccountDecision>(EMPTY_JOB_ACCOUNT_DECISION)
+  const [contract, setContract] = useState<ContractDecision>(() => emptyContractDecision({ recipientName: null }, todayYmdInAppTz()))
   const openedOn = useRef<FillInKind | null>(startKind)
 
   const order = useMemo(() => fillInOrder(rows, skippedKeys), [rows, skippedKeys])
@@ -179,9 +183,20 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     setLostBid(EMPTY_LOST_BID_DECISION)
     setVehicle(emptyVehicleDecision(todayYmdInAppTz()))
     setJobAccount(EMPTY_JOB_ACCOUNT_DECISION)
+    setContract(emptyContractDecision(current?.kind === 'contract' ? current : { recipientName: null }, todayYmdInAppTz()))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a fresh draft per row, keyed on the row
   }, [current?.key])
 
-  const ready = current?.kind === 'lost-bid' ? lostBidDecisionReady(lostBid) : current?.kind === 'vehicle' ? vehicleDecisionReady(current, vehicle) : current?.kind === 'job-account' ? jobAccountDecisionReady(jobAccount) : false
+  const ready =
+    current?.kind === 'lost-bid'
+      ? lostBidDecisionReady(lostBid)
+      : current?.kind === 'vehicle'
+        ? vehicleDecisionReady(current, vehicle)
+        : current?.kind === 'job-account'
+          ? jobAccountDecisionReady(jobAccount)
+          : current?.kind === 'contract'
+            ? contractDecisionReady(current, contract)
+            : false
 
   const skip = (row: FillInRow) => {
     recordNavClick(userId, role, 'needs-you', '#fill-skip')
@@ -265,6 +280,32 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setBusy(false)
         }
       })()
+    } else if (row.kind === 'contract') {
+      const writes = contractWrites(row, contract)
+      if (!writes) return
+      setBusy(true)
+      void (async () => {
+        try {
+          const origin = window.location.origin
+          if (writes.choice === 'resend') await io.contracts.resend(writes, origin)
+          else if (writes.choice === 'text') await io.contracts.text(writes, origin)
+          else {
+            const { uploadError } = await io.contracts.filePaper(writes, row.contract, userId)
+            if (uploadError) showToast(`Filed as signed, but the scan did not upload: ${uploadError}`, 'error')
+          }
+          recordNavClick(userId, role, 'needs-you', `#fill-save-contract-${writes.choice}`)
+          // A send cannot be unsent and a filed paper is a record: no Undo on this kind.
+          setHandled((t) => pushHandled(t, { row, how: 'saved', words: contractTrailWords(writes, row), undo: null }))
+          setSavedKeys((k) => [...k, row.key])
+          setRevisitKey(null)
+          openedOn.current = null
+          onRowSaved(row)
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'Could not do that with the contract'), 'error')
+        } finally {
+          setBusy(false)
+        }
+      })()
     }
   }
 
@@ -310,7 +351,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     body = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem 0' }}>Reading the rows…</div>
   } else if (!current) {
     const savedOf = (kind: FillInKind) => handled.filter((h) => h.how === 'saved' && h.row.kind === kind).length
-    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account') }, skipped)
+    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract') }, skipped)
     body = (
       <div data-fill-in-done style={{ ...NEEDS_YOU_WALK_TINT.blue, borderRadius: 10, padding: '1.1rem 1.2rem', marginBottom: '0.75rem' }}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Fill them in</div>
@@ -355,6 +396,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           {current.kind === 'lost-bid' ? <LostBidFields decision={lostBid} onChange={setLostBid} disabled={busy} /> : null}
           {current.kind === 'vehicle' ? <VehicleFields row={current} decision={vehicle} onChange={setVehicle} disabled={busy} /> : null}
           {current.kind === 'job-account' ? <JobAccountFields houseName={current.houseName} decision={jobAccount} onChange={setJobAccount} disabled={busy} /> : null}
+          {current.kind === 'contract' ? <ContractFields row={current} decision={contract} onChange={setContract} disabled={busy} /> : null}
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.9rem' }}>
             <button
               type="button"
@@ -362,7 +404,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
               onClick={() => save(current)}
               style={{ background: 'var(--text-strong)', color: 'var(--bg-page, var(--surface))', border: 'none', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', fontWeight: 600, cursor: ready && !busy ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.45 }}
             >
-              Save and next
+              {current.kind === 'contract' && contract.choice === 'resend' ? 'Send and next' : current.kind === 'contract' && contract.choice === 'text' ? 'Open messages and next' : 'Save and next'}
             </button>
             {rows.length > 1 ? (
               <button type="button" disabled={busy} onClick={() => skip(current)} style={{ background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', cursor: 'pointer' }}>
