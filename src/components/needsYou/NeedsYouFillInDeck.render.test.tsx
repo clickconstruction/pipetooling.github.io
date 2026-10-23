@@ -96,7 +96,7 @@ function Harness({ get, io, onRowSaved, onRowRestored, onExit, onMark }: { get: 
       }}
       onExit={onExit}
       onMarkUpToDate={onMark}
-      io={{ lostBids: io }}
+      io={{ lostBids: io, vehicles: { fetchGaps: async () => [], fetchPlans: async () => [], save: async () => { throw new Error('not here') }, undo: async () => {} } }}
     />
   )
 }

@@ -95,8 +95,12 @@ export function lostBidFillInRows(bids: readonly LostBidSource[]): LostBidFillIn
         previous: { loss_category: b.loss_category, loss_reason: b.loss_reason },
       }
     })
-  // Biggest value first, as the line's dollars count them; no value last.
-  return rows.sort((a, b) => (b.value ?? -1) - (a.value ?? -1))
+  return rows.sort(compareLostBidRows)
+}
+
+/** Biggest value first, as the line's dollars count them; no value last. */
+export function compareLostBidRows(a: LostBidFillInRow, b: LostBidFillInRow): number {
+  return (b.value ?? -1) - (a.value ?? -1)
 }
 
 /** The fields the assistant fills: the reason chip, what they said, who they talked to. */
