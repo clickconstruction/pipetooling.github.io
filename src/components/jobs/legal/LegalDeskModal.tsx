@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, Link2, Mail, Scale, X } from 'lucide-react'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
-import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
@@ -17,7 +16,6 @@ import {
   type LegalGap,
   type LegalPacket,
   type LegalPayerKey,
-  legalLargestOpenLine,
   legalSessionWords,
 } from '../../../lib/legal/legalPacket'
 import {
@@ -53,14 +51,14 @@ import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor
 import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
-import AgreedWriteDownModal from '../AgreedWriteDownModal'
+import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
+import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
-type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
 /**
  * The Legal desk (PR 1 v2.3293 read side; PR 2 v2.3313 the gate): the office's
@@ -259,7 +257,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [selectedKey, setSelectedKey] = useState<LegalPayerKey | null>(null)
   const [tab, setTab] = useState<Tab>('account')
   const [gapsOpen, setGapsOpen] = useState(true)
-  const [writeDown, setWriteDown] = useState<{ invoice: JobsLedgerInvoice; job: JobWithDetails } | null>(null)
+  /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
+  const [writeDownOpen, setWriteDownOpen] = useState(false)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [busy, setBusy] = useState(false)
   const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
@@ -309,18 +308,6 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (selected?.customerId && editCustomer) editCustomer.openEditCustomerModal(selected.customerId, { onSaved: reload })
     else if (firstJob) props.onOpenEditJob(firstJob.id)
   }
-  const openWriteDown = (jobId: string | null) => {
-    // No job named (the header's button): the account's largest open bill line, whichever job holds it.
-    const largest = jobId ? null : legalLargestOpenLine(packet?.account.jobs ?? [])
-    const job = jobById(jobId ?? largest?.jobId ?? null)
-    const line = packet?.account.jobs.find((l) => l.jobId === job?.id)
-    const inv = job?.invoices.find((i) => i.id === line?.primaryInvoiceId) ?? null
-    if (!job || !inv) {
-      showToast('No billed line to write down on this job — create its bill line first.', 'info')
-      return
-    }
-    setWriteDown({ invoice: inv, job })
-  }
   const fixGap = (g: LegalGap) => {
     const job = jobById(g.jobId)
     switch (g.fix) {
@@ -330,7 +317,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       case 'collections_note': if (job) props.onOpenEditJob(job.id); return
       case 'edit_customer': openEditCustomer(); return
       case 'call_mode': props.onOpenCallMode(); return
-      case 'write_down': openWriteDown(g.jobId); return
+      case 'write_down': setWriteDownOpen(true); return
       default: return
     }
   }
@@ -517,8 +504,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (ok) showToast(`Recorded: ${formatLegalMoney(amt)} applied, the firm's ${formatLegalMoney(cut)} as a legal cost on the matter.`, 'success')
   }
 
+  const afterAccountWriteDown = async (done: number, held: WriteDownHeld[]) => {
+    setWriteDownOpen(false)
+    showToast(writeDownResultWords(done, held), held.length ? 'info' : 'success')
+    if (done > 0) await afterWriteDown()
+  }
   const afterWriteDown = async () => {
-    setWriteDown(null)
     await props.onAfterWriteDown()
     if (stored && selected) {
       // Record the exit on the matter (create it first when the desk never touched this account).
@@ -539,7 +530,6 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   }
 
   const w = packet?.worth ?? null
-  const paidOnInvoice = writeDown ? writeDown.job.payments.filter((p) => p.invoice_id === writeDown.invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0) : 0
   const requestedDays = daysAgo(matter?.review_requested_at, todayYmd)
   const requesterName = matter?.review_requested_by ? (users.find((u) => u.id === matter.review_requested_by)?.name ?? 'the office') : null
   const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '', legal?.recipients ?? [])
@@ -577,7 +567,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <button type="button" onClick={() => setSheet({ kind: 'ask', note: '' })} disabled={busy} style={btn}>Ask a dev to review…</button>
         )
       ) : null}
-      {canEditReview ? <button type="button" onClick={() => openWriteDown(null)} style={btn}>Write down…</button> : null}
+      {canEditReview ? <button type="button" onClick={() => setWriteDownOpen((o) => !o)} aria-expanded={writeDownOpen} style={btn} data-legal-write-down-door>Write it down…</button> : null}
     </>
   )
 
@@ -696,6 +686,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                   </p>
                 ) : null}
 
+                {writeDownOpen && packet && selected ? <AccountWriteDownPanel jobs={selected.jobs} lines={packet.account.jobs} onDone={afterAccountWriteDown} onCancel={() => setWriteDownOpen(false)} /> : null}
+
                 {packet && w ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '12px 0 0' }}>
                     {deskQuestions(packet).map((c) => (
@@ -737,7 +729,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 </div>
 
                 {packet ? (
-                  <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
+                  <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
@@ -893,17 +885,6 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           </div>
         </div>
       ) : null}
-      {writeDown ? (
-        <AgreedWriteDownModal
-          open
-          onClose={() => setWriteDown(null)}
-          invoice={writeDown.invoice}
-          paidOnInvoice={paidOnInvoice}
-          isStripeHosted={Boolean((writeDown.invoice.stripe_invoice_id ?? '').trim() && (writeDown.invoice.hosted_invoice_url ?? '').trim())}
-          onSuccess={afterWriteDown}
-          overlayZIndex={overlayZIndex + 20}
-        />
-      ) : null}
     </div>
   )
 }
@@ -915,7 +896,7 @@ type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
 type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
 
-function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
+function PacketTab({ tab, packet, selected, props, openEditCustomer, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -1110,7 +1091,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   return (
     <div>
       {officeActs && officeActs.canAsk ? <SettlementFloorEditor floor={officeActs.floor} balance={packet.account.totals.balance} busy={officeActs.busy} onSave={officeActs.setSettlementFloor} /> : null}
-      <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
+      <SectionTitle>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
         <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
           // #85 item 18 PR 2: a fee or cost the firm adds is acknowledged here like a step, which clears it from Needs You.

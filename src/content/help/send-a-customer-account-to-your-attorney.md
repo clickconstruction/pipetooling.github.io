@@ -33,7 +33,7 @@ An account is the **payer**. The payer is the GC when one pays, otherwise the cu
 Then come the tabs: ***Narrative · Account · Paper · Record of contact · Evidence · Fees & steps***. **Narrative** is your own account of the matter, which the firm reads first. The tabs are built from the same records the firm's portal is built from. You fix what the gap list says. You hold back what the firm should not read on **Record of contact**, and come back. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
 
 :::example Not every account should go
-Surf Thru Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads **Can we sue? Not yet** and **What's left for us? −$182 · not worth it**. The firm's third and a filing cost eat more than the balance. {{button:outline|Write down…}} is the honest exit for that one; the firm never needs to see it.
+Surf Thru Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads **Can we sue? Not yet** and **What's left for us? −$182 · not worth it**. The firm's third and a filing cost eat more than the balance. {{button:outline|Write it down…}} is the honest exit for that one. The firm never needs to see it.
 :::
 
 ## 4. Set the firm up once
@@ -68,7 +68,7 @@ The firm never marks anything paid, edits a job, or emails the customer through 
 ## 8. How it ends
 
 - **Settled**: the firm records the step. The matter stays on their portal, so they can record the payment and their last costs. The Pipeline chip reads *settled · close it*. Once the money is applied, press {{button:dark|Close the matter…}} on the desk. It then shows as {{chip:gray|Settled}}.
-- **Written down**: {{button:outline|Write down…}} on the desk records the agreed write-down on the largest open bill line. A write-down is the part of the balance we agree to give up. Write down… then closes the matter as {{chip:gray|Written down}}.
+- **Written down**: {{button:outline|Write it down…}} on the desk asks how much we will accept for the whole account. It writes each open bill down to its share. A write-down is the part of the balance we agree to give up. The matter then closes as {{chip:gray|Written down}}.
 - **Uncollectible** or **Dismissed**: the firm records it, and you close it the same way as Settled.
 - **Pulled back**: a dev's {{button:outline|Pull back}} returns the account to review. Type why first, because the firm reads it. The firm is emailed the reason. Their portal keeps a read-only page with the reason, their own fees and steps, and the conversation. The account's records leave their portal.
 
