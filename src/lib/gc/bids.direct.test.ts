@@ -28,7 +28,7 @@ import {
   uncostedWords,
 } from './bids'
 import { initialGcState } from './schedule/testState'
-import type { GcState } from './types'
+import type { GcState, Invite, TradePackage } from './types'
 
 const job = (s: GcState, id: string) => s.projects.find((p) => p.id === id)!
 const trade = (s: GcState, id: string, pkg: string) => job(s, id).packages.find((k) => k.id === pkg)!
@@ -66,6 +66,29 @@ describe('the quotes on a trade', () => {
     expect(proposalUncosted(job(s, 'boerne')).map((k) => k.id)).toEqual(['roof'])
     expect(proposalUncostedWords(job(s, 'boerne'))).toBe('In Roofing, 1 line has no cost yet: roof curbs.')
     expect(proposalUncostedWords(job(s, 'padb'))).toBe('')
+  })
+
+  it('v2.5779 · an exclusion the quote wrote with no cost to cover it is a hole too, until it is Known, priced per unit or covered', () => {
+    const s = initialGcState()
+    const roof = trade(s, 'boerne', 'roof')
+    const invite = roof.invites[0]!
+    const withEx = (extra: Partial<NonNullable<Invite['bid']>>, pkgExtra: Partial<TradePackage> = {}) => ({
+      ...roof,
+      ...pkgExtra,
+      invites: [{ ...invite, bid: { ...invite.bid!, ...extra } }, ...roof.invites.slice(1)],
+    })
+    const open = withEx({ exclusions: [{ name: 'Roof drains' }, { name: 'Rock', unitPrice: { amount: 38, unit: 'cy' } }] })
+    expect(uncostedLines(open, open.invites[0]!).map((x) => x.label)).toEqual(['Roof curbs', 'Roof drains'])
+    expect(uncostedWords(carriedUncosted(open))).toBe('1 line and 1 exclusion have no cost yet: roof curbs and roof drains.')
+    expect(proposalUncostedWords({ ...job(s, 'boerne'), packages: [open] })).toBe('In Roofing, 1 line and 1 exclusion have no cost yet: roof curbs and roof drains.')
+    // Only the exclusion open: the words count it as one, not as a line.
+    const lineCovered = withEx({ exclusions: [{ name: 'Roof drains' }], plugs: { 'roof-4': 4000 } })
+    expect(uncostedWords(carriedUncosted(lineCovered))).toBe('1 exclusion has no cost yet: roof drains.')
+    // A cost to cover it, or the trade's Known exclusion, closes it.
+    const covered = withEx({ exclusions: [{ name: 'Roof drains' }], plugs: { 'roof-4': 4000 }, exclusionCovers: { 'Roof drains': 1500 } })
+    expect(carriedUncosted(covered)).toEqual([])
+    const known = withEx({ exclusions: [{ name: 'Roof drains' }], plugs: { 'roof-4': 4000 } }, { excludes: [{ label: 'Roof drains', by: 'Plumbing' }] })
+    expect(carriedUncosted(known)).toEqual([])
   })
 
   it('a quote runs out past its good-for days, and one on older plans asks to be confirmed', () => {

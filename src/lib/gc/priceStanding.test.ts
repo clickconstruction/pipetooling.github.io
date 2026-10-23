@@ -62,6 +62,21 @@ describe('where the price stands', () => {
     expect([counts.real, counts.gap, counts.pick + counts.waiting + counts.notAsked + counts.ownBid]).toEqual([3, 1, 4])
   })
 
+  it('v2.5779 · a carried quote whose exclusion has no cost to cover it is a gap, not a real number', () => {
+    const s = initialGcState()
+    const boerne = projectOf(s, 'boerne')
+    const conc = boerne.packages.find((k) => k.id === 'conc')!
+    const invite = conc.invites.find((i) => i.id === conc.carried)!
+    const withEx = { ...conc, invites: conc.invites.map((i) => (i.id === invite.id ? { ...i, bid: { ...i.bid!, exclusions: [{ name: 'Pump truck' }] } } : i)) }
+    const row = priceStanding(s, { ...boerne, packages: [withEx] }).rows[0]!
+    expect(row.standing).toBe('gap')
+    expect(row.words).toBe(`${row.company} leaves out pump truck. No cost set yet, so it counts as $0.`)
+    const covered = { ...withEx, invites: withEx.invites.map((i) => (i.id === invite.id ? { ...i, bid: { ...i.bid!, exclusionCovers: { 'Pump truck': 900 } } } : i)) }
+    const fixed = priceStanding(s, { ...boerne, packages: [covered] }).rows[0]!
+    expect(fixed.standing).toBe('real')
+    expect(fixed.carried).toBe(conc.invites.find((i) => i.id === conc.carried)!.bid!.amount + 900)
+  })
+
   it('Pad B: nobody asked for sitework or concrete; about $395,800 at budget', () => {
     const s = initialGcState()
     const p = priceStanding(s, projectOf(s, 'padb'))
