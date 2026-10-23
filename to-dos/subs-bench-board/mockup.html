@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Subs: the path to the bench</title>
+<style>
+  /* Punch list #153. Every company, person, number and note here is made up: Ridgeway Concrete, Bluff Creek Concrete, Salado Flatwork, Cibolo Structures, Lone Oak Paving, Hays Foundations, Brazos Formworks, Hill Country Fire Protection, Alamo Sprinkler Co, Kendall Concrete, Cedar Park Sprinkler, Comal Air Mechanical, Travis Electric, Leon Creek Excavation; the caller Marisol; the project Oak Run Clinic. The counts follow the lane's shape on 2026-10-23 (104 subs over fifteen trades, seven a trade, one company on the bench) a week on. Tokens are src/index.css's. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --text-blue-500: #3b82f6; --text-blue-700: #1d4ed8; --bg-blue-tint: #eff6ff; --bg-blue-200: #bfdbfe; --bg-amber-100: #fef3c7; --text-amber-800: #92400e; --text-amber-700: #b45309; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-green-800: #166534; --bg-red-100: #fee2e2; --text-red-700: #b91c1c; --text-red-600: #dc2626; --bg-indigo-100: #e0e7ff; --text-indigo-800: #3730a3; --bg-purple-100: #f3e8ff; --text-purple-800: #6b21a8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1500px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  nav.jump a.pick { border-color: #16a34a; color: #15803d; background: #f0fdf4; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: #16a34a; color: #fff; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #15803d; background: #f0fdf4; border: 1px solid #16a34a; border-radius: 6px; padding: 1px 7px; }
+  h2 .tag.hold { color: var(--text-amber-800); background: var(--bg-amber-100); border-color: #f59e0b; }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 110ch; }
+  .note { margin: 8px 0 0; font-size: 12.5px; color: var(--text-700); max-width: 110ch; }
+  .note b { color: var(--text-strong); }
+  .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; }
+  .col.desk { flex: 1 1 980px; max-width: 1120px; }
+  .col.side { flex: 0 1 360px; }
+  .col.phone { flex: 0 0 375px; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .m { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-strong); font-size: 12px; }
+  .frame { position: relative; background: var(--bg-page); color: var(--text-base); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: auto; max-height: 640px; font-size: 16px; line-height: 1.5; }
+  .frame.phone { max-height: 720px; }
+  .frame.tall { max-height: 760px; }
+  /* the page, as src/pages/Prospects.tsx draws it */
+  .page { padding: 1rem 1.5rem; display: grid; gap: .9rem; }
+  .frame.phone .page { padding: .75rem; }
+  .toprow { display: flex; align-items: center; gap: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+  .toprow .tab { font-size: .9375rem; color: var(--text-600); padding: .3rem .9rem; }
+  .toprow .tab.on { background: #3b82f6; color: #fff; border-radius: 6px; font-weight: 600; }
+  .toprow .ttl { margin-left: auto; font-size: 1.4rem; font-weight: 700; color: var(--text-strong); }
+  .subrow { display: flex; align-items: center; gap: .6rem; font-size: .9375rem; color: var(--text-600); }
+  .subrow .sep { color: var(--border-strong); }
+  .subrow .on { background: #3b82f6; color: #fff; border-radius: 6px; font-weight: 600; padding: .3rem .75rem; }
+  .subrow .np { margin-left: auto; background: #3b82f6; color: #fff; border-radius: 6px; font-weight: 600; padding: .4rem .9rem; font-size: .875rem; }
+  .frame.phone .toprow { gap: .6rem; }
+  .frame.phone .toprow .tab { padding: .25rem .5rem; font-size: .85rem; }
+  .frame.phone .toprow .ttl { font-size: 1.1rem; }
+  .frame.phone .subrow { font-size: .85rem; flex-wrap: wrap; }
+  .search { padding: .6rem .8rem; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-muted); font-size: .95rem; }
+  .chips { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .chip { font-size: .75rem; font-weight: 600; padding: .1rem .55rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); white-space: nowrap; }
+  .chip.green { background: var(--bg-green-100); color: var(--text-green-700); border-color: transparent; }
+  .chip.amber { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: transparent; }
+  .chip.red { background: var(--bg-red-100); color: var(--text-red-700); border-color: transparent; }
+  .chip.grey { background: var(--bg-muted); color: var(--text-muted); border-color: transparent; }
+  .chip.purple { background: var(--bg-purple-100); color: var(--text-purple-800); border-color: transparent; }
+  .chip.indigo { background: var(--bg-indigo-100); color: var(--text-indigo-800); border-color: transparent; }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: transparent; }
+  .chip.trade { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: transparent; font-weight: 600; }
+  .sec { display: flex; align-items: baseline; gap: .5rem; font-weight: 700; color: var(--text-strong); font-size: 1rem; }
+  .sec small { font-weight: 400; color: var(--text-muted); font-size: .75rem; }
+  table.list { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: .9rem; }
+  table.list th { text-align: left; padding: .7rem .75rem; border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-strong); font-size: .9rem; }
+  table.list td { padding: .7rem .75rem; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-700); }
+  table.list tr:last-child td { border-bottom: 0; }
+  table.list tr.lit td { background: var(--bg-blue-tint); }
+  table.list a, .lnk { color: var(--text-link); text-decoration: underline; }
+  .door { color: var(--text-link); font-weight: 600; font-size: .8125rem; white-space: nowrap; }
+  .door.quiet { color: var(--text-muted); font-weight: 500; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: .8rem; }
+  .dash { color: var(--text-muted); }
+  .press { display: inline-block; font-size: .75rem; font-weight: 600; padding: .3rem .65rem; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--bg-subtle); color: var(--text-700); white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .press.blue { background: #2563eb; color: #fff; border-color: transparent; }
+  .press.green { background: #16a34a; color: #fff; border-color: transparent; }
+  .press.amber { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: transparent; }
+  .press.purple { background: var(--bg-purple-100); color: var(--text-purple-800); border-color: #c4b5fd; }
+  .press.red { background: none; color: var(--text-red-600); border-color: transparent; box-shadow: none; }
+  .press.ghost { background: var(--surface); }
+  .press.sm { padding: .2rem .5rem; font-size: .72rem; }
+  /* the strip, Hiring's shape (TeamProspectsTab: a 57 px row of boxes with arrows) */
+  .strip { display: flex; align-items: stretch; justify-content: center; gap: .4rem; flex-wrap: wrap; }
+  .strip .box { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: .45rem .9rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-subtle); min-width: 5.5rem; text-decoration: none; }
+  .strip .box.on { border: 2px solid #2563eb; background: var(--bg-blue-tint); }
+  .strip .box .l { font-size: .75rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+  .strip .box.on .l { color: var(--text-blue-700); }
+  .strip .box .c { font-size: 1.25rem; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .strip .box.door .l::after { content: " ↗"; color: var(--text-faint); }
+  .strip .arrow { align-self: center; color: var(--text-faint); font-size: 1.1rem; }
+  .strip.compact { justify-content: flex-start; }
+  .frame.phone .strip { gap: .3rem; }
+  .frame.phone .strip .box { min-width: 0; padding: .3rem .55rem; flex-direction: row; gap: .35rem; }
+  .frame.phone .strip .box .c { font-size: .95rem; }
+  .frame.phone .strip .arrow { display: none; }
+  .move { font-size: .8125rem; color: var(--text-700); text-align: center; margin: -.2rem 0 0; }
+  .move b { color: var(--text-strong); }
+  /* the trade group head: the panel's bench line */
+  .ghead { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; padding: .15rem 0; }
+  .ghead b { font-size: 1rem; color: var(--text-strong); }
+  .ghead .bl { font-size: .8125rem; color: var(--text-600); }
+  .ghead .bl .red { color: var(--text-red-700); font-weight: 600; }
+  .ghead .bl .amber { color: var(--text-amber-700); font-weight: 600; }
+  .ghead .r { margin-left: auto; }
+  .exits { display: flex; gap: .6rem; align-items: center; font-size: .85rem; color: var(--text-muted); }
+  /* the bench, as GcTradePartners draws a bench card */
+  .bench { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .75rem .9rem; font-size: .85rem; display: grid; gap: .5rem; }
+  .bench .bh { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+  .bench .bh strong { font-size: 1.05rem; color: #1e40af; }
+  .bench .bh .n { color: var(--text-muted); }
+  .bench .bh .short { font-size: .72rem; font-weight: 700; color: var(--text-red-700); background: var(--bg-red-100); border-radius: 999px; padding: .05rem .5rem; }
+  .bench table { width: 100%; border-collapse: collapse; }
+  .bench th { text-align: left; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: .3rem .4rem; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .bench td { padding: .45rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .bench tr:last-child td { border-bottom: 0; }
+  .bench .vet { font-size: .72rem; color: var(--text-amber-800); background: var(--bg-amber-100); border-radius: 999px; padding: .05rem .45rem; }
+  .bench .from { color: var(--text-green-800); font-size: .78rem; margin-top: .15rem; }
+  .bench .new { background: var(--bg-green-100); outline: 2px dashed #16a34a; outline-offset: -2px; }
+  /* the Follow Up card, as the deck draws it */
+  .deck { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 1rem; align-items: start; }
+  .frame.phone .deck { grid-template-columns: 1fr; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; display: grid; gap: .7rem; }
+  .card .who { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .card .who h3 { margin: 0; font-size: 1.35rem; color: var(--text-strong); }
+  .card .who .tel { margin-left: auto; background: #3b82f6; color: #fff; border-radius: 8px; padding: .45rem .8rem; font-weight: 600; font-size: .95rem; white-space: nowrap; }
+  .card .facts { display: flex; gap: .4rem .6rem; align-items: center; flex-wrap: wrap; font-size: .8rem; color: var(--text-muted); }
+  .card .q { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--text-600); border-top: 1px solid var(--border); padding-top: .7rem; }
+  .card .util { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; font-size: .8rem; color: var(--text-muted); }
+  .rail { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .6rem; font-size: .8rem; display: grid; gap: .4rem; }
+  .rail .rh { display: flex; justify-content: space-between; font-weight: 700; color: var(--text-strong); }
+  .rail .rh span { font-weight: 400; color: var(--text-muted); }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-size: .75rem; background: var(--surface); }
+  .seg span { padding: .2rem .6rem; color: var(--text-600); white-space: nowrap; }
+  .seg span + span { border-left: 1px solid var(--border-strong); }
+  .seg span.on { background: #2563eb; color: #fff; font-weight: 600; }
+  .rail .row { display: grid; grid-template-columns: 1.2rem 1fr auto; gap: .4rem; align-items: baseline; padding: .25rem .3rem; border-radius: 6px; }
+  .rail .row.you { background: var(--bg-blue-tint); }
+  .rail .row .n { color: var(--text-muted); }
+  .rail .row .a { color: var(--text-muted); font-size: .72rem; white-space: nowrap; }
+  .star { color: #d97706; font-weight: 700; }
+  .star.off { color: var(--border-strong); }
+  .pri { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-size: .72rem; background: var(--surface); vertical-align: middle; }
+  .pri span { padding: .1rem .5rem; color: var(--text-600); white-space: nowrap; }
+  .pri span + span { border-left: 1px solid var(--border-strong); }
+  .pri span.on { background: var(--bg-amber-100); color: var(--text-amber-800); font-weight: 700; }
+  .pri span.on.later { background: var(--bg-muted); color: var(--text-muted); }
+  .rec { display: grid; gap: .1rem; font-size: .78rem; color: var(--text-600); }
+  .rec .d { color: var(--text-muted); font-size: .72rem; }
+  /* the board, Hiring's columns (RoleColumn 300 px, SortableCandidateCard) */
+  .board { display: flex; gap: .75rem; overflow-x: auto; padding-bottom: .5rem; }
+  .colm { flex: 0 0 300px; max-width: 300px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); }
+  .colm header { display: flex; align-items: center; gap: .4rem; padding: .5rem .6rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .colm header b { font-size: .9375rem; }
+  .colm header .n { font-size: .75rem; color: var(--text-muted); }
+  .colm header .dots { margin-left: auto; color: var(--text-muted); }
+  .colm .need { font-size: .72rem; color: var(--text-600); padding: .3rem .6rem; border-bottom: 1px dashed var(--border); }
+  .colm .need .red { color: var(--text-red-700); font-weight: 600; }
+  .colm ul { list-style: none; margin: 0; padding: .5rem; display: grid; gap: .4rem; }
+  .ccard { padding: .5rem .6rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); font-size: .75rem; color: var(--text-muted); display: grid; gap: .2rem; }
+  .ccard .l1 { display: flex; align-items: flex-start; gap: .4rem; font-size: 1rem; color: var(--text-strong); }
+  .ccard .l1 .h { color: var(--text-faint); }
+  .ccard .l1 .r { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ccard .l1 .nm { font-weight: 600; flex: 1; }
+  .ccard .l1 .g { color: var(--text-faint); }
+  .ccard .ch { display: flex; gap: .3rem; flex-wrap: wrap; margin-left: 1.35rem; }
+  .ccard .ch .chip { font-size: .7rem; padding: .05rem .4rem; }
+  .ccard .f { margin-left: 1.35rem; display: grid; gap: .1rem; }
+  .ccard .p { margin-left: 1.35rem; display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .2rem; }
+  .ccard .p .press { padding: .3rem .5rem; }
+  .ccard .bars { margin: .3rem 0 0 1.35rem; display: grid; gap: .2rem; }
+  .ccard .bar { display: flex; align-items: center; gap: .4rem; font-size: .65rem; }
+  .ccard .bar .t { width: 3.4rem; }
+  .ccard .bar .b { flex: 1; height: 4px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; }
+  .ccard .bar .b i { display: block; height: 100%; background: #2563eb; border-radius: 999px; }
+  .colm footer { padding: .5rem; }
+  .colm footer .add { display: block; text-align: center; font-size: .8125rem; color: var(--text-blue-500); border: 1px dashed var(--border-strong); border-radius: 6px; padding: .4rem; }
+  .more { flex: 0 0 160px; display: grid; place-items: center; color: var(--text-muted); font-size: .85rem; text-align: center; border: 1px dashed var(--border-strong); border-radius: 8px; }
+  /* side by side */
+  table.cmp { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 14px; font-size: 13px; }
+  table.cmp th, table.cmp td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.cmp th { background: var(--bg-subtle); color: var(--text-strong); }
+  table.cmp td:first-child { font-weight: 600; color: var(--text-strong); width: 16%; }
+  table.cmp tr:last-child td { border-bottom: 0; }
+  table.cmp td.pick { background: #f0fdf4; }
+  ol.dec { margin: 10px 0 0; padding-left: 22px; color: var(--text-700); max-width: 110ch; }
+  ol.dec li { margin: 6px 0; }
+  ol.dec b { color: var(--text-strong); }
+  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #16a34a; border-radius: 8px; padding: 10px 14px; margin-top: 14px; max-width: 110ch; color: var(--text-700); }
+  .callout b { color: var(--text-strong); }
+  .arrowbox { display: grid; place-items: center; color: var(--text-muted); font-size: .8rem; text-align: center; padding: .5rem; }
+  .arrowbox .big { font-size: 2rem; color: var(--text-faint); line-height: 1; }
+  @media (max-width: 700px) { .frame { font-size: 14px; } .col.side { flex-basis: 100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #153 · Prospects → Subs · a proposal, nothing built</p>
+  <h1>Subs: the path off this page onto the bench, and who to call first</h1>
+  <p>The owner, 2026-10-23: the Subs lane does not say how a company moves off this page onto the list we call when we have jobs, and nothing ranks who answers or who we want first. He pointed at Hiring's columns. Three ways below, each drawn over the lane as it stood that day: 104 companies found by web research over fifteen trades, seven a trade, one company on the bench. <b>A</b> puts the path in sight. <b>B</b> is Hiring's board, one column a trade. <b>C</b> adds the record and the priority. The pick is <b>A, then C</b>.</p>
+  <nav class="jump"><a href="#today">Today</a><a href="#a" class="pick">A · The path in sight</a><a href="#b">B · The board by trade</a><a href="#c" class="pick">C · Who answers, who first</a><a href="#side">Side by side</a><a href="#dec">Decisions</a></nav>
+</header>
+
+<!-- ============================ TODAY ============================ -->
+<h2 id="today"><span class="num today">0</span> Today: one door, on the top card only</h2>
+<p class="lede">The Prospect List sorts the lane by how long since a touch. The row says nothing about the trade, nothing about the stage past "called or not", and its one press is Call now. The only door to the bench is <b>Add to the bench ✓</b> on the one card the deck shows. Trade partners is another page, and nothing here names it.</p>
+<div class="pair">
+  <div class="col desk">
+    <div class="cap">Prospects → Subs → Prospect List, as it stands <span class="m">104 rows · one press a row · the trade not shown</span></div>
+    <div class="frame">
+      <div class="page">
+        <div class="toprow"><span class="tab">Customers</span><span class="tab">Jobs to GC</span><span class="tab on">Subs</span><span class="tab">Hiring</span><span class="ttl">Prospects</span></div>
+        <div class="subrow"><span>Follow Up</span><span class="sep">|</span><span class="on">Prospect List</span><span class="sep">|</span><span>Activity</span><span class="np">New Prospect</span></div>
+        <div class="search">Search company, contact, phone, or email…</div>
+        <div class="chips"><span class="chip green">Never called 100</span><span class="chip">Recent 4</span><span class="chip">Going cold 0</span><span class="chip">Cold 0</span><span class="chip">On the bench 0</span></div>
+        <div class="sec">▼ Never called (100) <small>— oldest first, matches the calling queue</small></div>
+        <table class="list">
+          <tr><th>Company</th><th>Contact</th><th>Phone</th><th>Added</th><th>Last touch</th><th>Email / Links</th><th></th></tr>
+          <tr class="lit"><td>Ridgeway Concrete</td><td class="dash">—</td><td><a>(210) 555-0142</a></td><td>10/23/2026</td><td>added today</td><td><span class="dash">—</span><br><a>ridgewayconcrete.example</a></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Bluff Creek Concrete</td><td class="dash">—</td><td><a>(830) 555-0177</a></td><td>10/23/2026</td><td>added today</td><td><span class="dash">—</span><br><a>bluffcreekconcrete.example</a></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Salado Flatwork</td><td class="dash">—</td><td><a>(512) 555-0163</a></td><td>10/23/2026</td><td>added today</td><td><span class="dash">—</span><br><a>saladoflatwork.example</a></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Hill Country Fire Protection</td><td class="dash">—</td><td><a>(210) 555-0188</a></td><td>10/23/2026</td><td>added today</td><td><span class="dash">—</span><br><a>hillcountryfire.example</a></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Alamo Sprinkler Co</td><td class="dash">—</td><td><a>(210) 555-0131</a></td><td>10/23/2026</td><td>added today</td><td><span class="dash">—</span><br><a>alamosprinkler.example</a></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Comal Air Mechanical</td><td class="dash">—</td><td><a>(830) 555-0106</a></td><td>10/23/2026</td><td>added today</td><td><span class="dash">—</span><br><a>comalair.example</a></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td colspan="7" class="muted small">… 94 more rows, every one <i>added today</i>, every one <i>Call now →</i></td></tr>
+        </table>
+      </div>
+    </div>
+    <p class="note"><b>Measured on the page</b> (1024 wide, as the dev): the sub-tab row at 148 px; on Follow Up the panel <i>What GC mode needs right now</i> runs 228 to 472 px and the card starts at 484 px, with <b>Add to the bench ✓</b> at 688 px; Hiring's strip is a 57 px row of 88 px boxes. The list's chips are recency buckets (never called · recent · going cold · cold), and <i>On the bench 0</i> is a section of this list, not a door to Trade partners.</p>
+  </div>
+  <div class="col side">
+    <div class="cap">The Follow Up card's outcome row</div>
+    <div class="frame" style="max-height:none">
+      <div class="page" style="gap:.6rem">
+        <div class="card" style="padding:.8rem .9rem">
+          <div class="who"><h3 style="font-size:1.1rem">Ridgeway Concrete</h3><span class="chip green">never called</span></div>
+          <div class="facts"><span class="chip trade">Concrete</span><span>· from Web research 2026-10-23</span></div>
+          <div class="q"><span>How did the call end?</span><span class="press amber">Didn't Answer</span><span class="press green">Answered</span><span class="press ghost">Can't reach</span><span class="press ghost">Not a fit</span><span class="press purple">Add to the bench ✓</span></div>
+        </div>
+        <div class="arrowbox"><span class="big">↓</span>the one door, on the one card the deck shows</div>
+        <div class="bench">
+          <div class="bh"><strong>Concrete</strong><span class="n">1 company</span><span class="short">short 1 quote</span></div>
+          <div class="muted small">GC projects → Trade partners, another page. The list says nothing about it.</div>
+          <table><tr><th>Company</th><th>When we ask</th></tr>
+            <tr><td>Kendall Concrete <span class="vet">approved up to $50,000</span></td><td><span class="chip green">answers</span> quoted 2 of 2 asks</td></tr></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ A ============================ -->
+<h2 id="a"><span class="num pick">A</span> The path in sight: a stage strip, and the list by trade with the row's own door <span class="tag">the pick, first</span></h2>
+<p class="lede">Hiring's strip over the Subs lane, five stages with their counts: <b>To call → Called → Talked → On the bench → Quoted</b>. One sentence under it says what moves a company right. The Prospect List groups by trade in the panel's order, each group headed by the bench's own line, and every row carries its stage and the press that moves it: Call now on a company never called, <b>Add to the bench ✓</b> on one we have talked to. The last two stages are doors to Trade partners, so the list we call is one press away and never a mystery. The exits (can't reach, not a fit) fold under the list, as Hiring's Passed does.</p>
+<div class="pair">
+  <div class="col desk">
+    <div class="cap">Prospects → Subs → Prospect List, a week on <span class="m">no new column · no migration · the strip 57 px</span></div>
+    <div class="frame tall">
+      <div class="page">
+        <div class="toprow"><span class="tab">Customers</span><span class="tab">Jobs to GC</span><span class="tab on">Subs</span><span class="tab">Hiring</span><span class="ttl">Prospects</span></div>
+        <div class="subrow"><span>Follow Up</span><span class="sep">|</span><span class="on">Prospect List</span><span class="sep">|</span><span>Activity</span><span class="np">New Prospect</span></div>
+        <div class="strip">
+          <span class="box on"><span class="l">To call</span><span class="c">96</span></span><span class="arrow">→</span>
+          <span class="box"><span class="l">Called</span><span class="c">5</span></span><span class="arrow">→</span>
+          <span class="box"><span class="l">Talked</span><span class="c">3</span></span><span class="arrow">→</span>
+          <span class="box door"><span class="l">On the bench</span><span class="c">2</span></span><span class="arrow">→</span>
+          <span class="box door"><span class="l">Quoted</span><span class="c">1</span></span>
+        </div>
+        <p class="move">A company moves right as the calls land. <b>Answered</b> moves them to Talked. <b>Add to the bench ✓</b> puts them on Trade partners. That is the list we call when a job needs their trade.</p>
+        <div class="search">Search company, contact, phone, or email…</div>
+        <div class="ghead"><b>Concrete</b><span class="bl"><span class="red">Oak Run Clinic · 1 of 2 quotes · due Oct 30</span> · 1 on the bench, <span class="amber">wants 2 more</span> · 6 to call here</span><span class="r door">Ask the bench →</span></div>
+        <table class="list">
+          <tr><th>Company</th><th>Phone</th><th>Last call</th><th>Stage</th><th></th></tr>
+          <tr><td>Ridgeway Concrete <span class="muted small">· San Antonio</span></td><td><a>(210) 555-0142</a></td><td>answered Wed <span class="muted small">· "will quote, send the plans"</span></td><td><span class="chip green">talked</span></td><td><span class="press purple sm">Add to the bench ✓</span> <span class="door quiet">Call again →</span></td></tr>
+          <tr><td>Lone Oak Paving <span class="muted small">· Boerne</span></td><td><a>(830) 555-0121</a></td><td>answered Mon <span class="muted small">· "asked for our GC license"</span></td><td><span class="chip green">talked</span></td><td><span class="press purple sm">Add to the bench ✓</span> <span class="door quiet">Call again →</span></td></tr>
+          <tr><td>Bluff Creek Concrete <span class="muted small">· New Braunfels</span></td><td><a>(830) 555-0177</a></td><td>no answer Tue, Thu</td><td><span class="chip amber">called</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Salado Flatwork <span class="muted small">· Austin</span></td><td><a>(512) 555-0163</a></td><td class="muted">never called</td><td><span class="chip grey">to call</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Cibolo Structures <span class="muted small">· Schertz</span> <span class="chip indigo" style="font-size:.68rem">also: Sitework</span></td><td><a>(210) 555-0198</a></td><td class="muted">never called</td><td><span class="chip grey">to call</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Hays Foundations <span class="muted small">· Kyle</span></td><td><a>(512) 555-0109</a></td><td class="muted">never called</td><td><span class="chip grey">to call</span></td><td><span class="door">Call now →</span></td></tr>
+        </table>
+        <div class="ghead"><b>Fire sprinkler</b><span class="bl">nobody on the bench · <span class="amber">wants 3</span> · 7 to call here</span><span class="r door quiet">Add a sub</span></div>
+        <table class="list">
+          <tr><td>Hill Country Fire Protection <span class="muted small">· San Antonio</span></td><td><a>(210) 555-0188</a></td><td>no answer Wed</td><td><span class="chip amber">called</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Alamo Sprinkler Co <span class="muted small">· San Antonio</span></td><td><a>(210) 555-0131</a></td><td class="muted">never called</td><td><span class="chip grey">to call</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td colspan="5" class="muted small">… 5 more</td></tr>
+        </table>
+        <div class="ghead"><b>HVAC</b><span class="bl">nobody on the bench · <span class="amber">wants 3</span> · 7 to call here</span></div>
+        <table class="list"><tr><td colspan="5" class="muted small">Comal Air Mechanical, Medina Valley HVAC … 7 rows</td></tr></table>
+        <div class="muted small">Electrical · Sitework · Landscaping · Masonry … twelve more trades, in the panel's order</div>
+        <div class="exits">▸ Can't reach 2 · Not a fit 1 <span class="muted small">· folded, as Hiring folds Passed</span></div>
+      </div>
+    </div>
+    <p class="note"><b>What changes where.</b> The chips row becomes the strip, on the list and on Follow Up both (Follow Up's sits over the panel). <b>Call now →</b> is unchanged: it opens the deck on that card and takes the calling lock. <b>Add to the bench ✓</b> on a row opens the same Add a company window the card opens, filled from the row. <b>On the bench</b> and <b>Quoted</b> are doors to Trade partners at the trade. Activity's week report stops saying <i>converted</i> on Subs and says <i>to the bench</i>, so a week reads <i>Marisol · 31 calls · 9 answered · 2 to the bench</i>.</p>
+    <p class="note"><b>What the data holds.</b> Every count is here already: the three left stages from the lane's rows and their call comments (the list already scans every call to say <i>never called</i>), the two right stages from the bench the page already reads for the panel (each company's quotes of asks). The trade groups are the panel's rows in the panel's order. A sub that names two trades sits under the one the panel ranks worst and wears <i>also: Sitework</i>. Nothing new to store.</p>
+  </div>
+  <div class="col side">
+    <div class="cap">The same lane on a phone</div>
+    <div class="frame phone">
+      <div class="page">
+        <div class="toprow"><span class="tab">Customers</span><span class="tab">Jobs to GC</span><span class="tab on">Subs</span><span class="tab">Hiring</span></div>
+        <div class="subrow"><span>Follow Up</span><span class="sep">|</span><span class="on">Prospect List</span><span class="sep">|</span><span>Activity</span></div>
+        <div class="strip">
+          <span class="box on"><span class="l">To call</span><span class="c">96</span></span>
+          <span class="box"><span class="l">Called</span><span class="c">5</span></span>
+          <span class="box"><span class="l">Talked</span><span class="c">3</span></span>
+          <span class="box door"><span class="l">On the bench</span><span class="c">2</span></span>
+          <span class="box door"><span class="l">Quoted</span><span class="c">1</span></span>
+        </div>
+        <p class="move" style="text-align:left">Answered moves a company to Talked. Add to the bench ✓ puts them on Trade partners, the list we call when a job needs their trade.</p>
+        <div class="ghead"><b>Concrete</b><span class="bl"><span class="red">1 of 2 quotes</span> · <span class="amber">wants 2 more</span> · 6 to call</span></div>
+        <div class="card" style="padding:.7rem .8rem; gap:.4rem">
+          <div class="who"><h3 style="font-size:1rem">Ridgeway Concrete</h3><span class="chip green">talked</span></div>
+          <div class="facts"><a class="lnk">(210) 555-0142</a><span>· answered Wed · "will quote"</span></div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap"><span class="press purple sm">Add to the bench ✓</span><span class="press sm">Call again</span></div>
+        </div>
+        <div class="card" style="padding:.7rem .8rem; gap:.4rem">
+          <div class="who"><h3 style="font-size:1rem">Bluff Creek Concrete</h3><span class="chip amber">called</span></div>
+          <div class="facts"><a class="lnk">(830) 555-0177</a><span>· no answer Tue, Thu</span></div>
+          <div><span class="press blue sm">Call now →</span></div>
+        </div>
+        <div class="card" style="padding:.7rem .8rem; gap:.4rem">
+          <div class="who"><h3 style="font-size:1rem">Salado Flatwork</h3><span class="chip grey">to call</span></div>
+          <div class="facts"><a class="lnk">(512) 555-0163</a><span>· never called</span></div>
+          <div><span class="press blue sm">Call now →</span></div>
+        </div>
+        <div class="muted small">… 3 more in Concrete, then Fire sprinkler</div>
+      </div>
+    </div>
+    <div class="cap" style="margin-top:14px">Where the press lands: Trade partners, Concrete</div>
+    <div class="bench">
+      <div class="bh"><strong>Concrete</strong><span class="n">2 companies</span><span class="short">short 1 quote</span></div>
+      <table><tr><th>Company</th><th>When we ask</th></tr>
+        <tr><td>Kendall Concrete <span class="vet">approved up to $50,000</span></td><td><span class="chip green">answers</span> quoted 2 of 2 asks</td></tr>
+        <tr class="new"><td>Ridgeway Concrete <span class="vet">not vetted yet</span><div class="from">from Prospects · Marisol, Thu Oct 29 · answered 1 of 2 calls</div></td><td><span class="chip grey">new to us</span> never asked</td></tr></table>
+      <div class="muted small">The line under the name is new: where they came from, who added them, and what the calls said, until the first ask replaces it. A company is on one list at a time: the row leaves this page as it lands here.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ B ============================ -->
+<h2 id="b"><span class="num">B</span> The board by trade: Hiring's columns, ranked by hand <span class="tag hold">drawn, not the pick</span></h2>
+<p class="lede">The Hiring board's shape, one column a trade the bench needs, in the panel's order. Each column's head carries the bench's need. Cards are ranked by drag, #1 is who we call first, the top never-called card wears <i>call next</i>, a company that does two trades wears <i>also in</i>. The presses are the deck's outcomes in Hiring's places: <b>Didn't answer · Answered</b>, then <b>To the bench ✓ · Pass</b>. It reads well. It costs a new table for the ranks, a board of fifteen columns, and a second place to work the same queue beside the deck.</p>
+<div class="pair">
+  <div class="col desk" style="max-width:1400px">
+    <div class="cap">Prospects → Subs → Board (a fourth sub-tab, or the list's place on Subs) <span class="m">a migration for the ranks · fifteen columns · the deck stays for the headset</span></div>
+    <div class="frame tall">
+      <div class="page">
+        <div class="toprow"><span class="tab">Customers</span><span class="tab">Jobs to GC</span><span class="tab on">Subs</span><span class="tab">Hiring</span><span class="ttl">Prospects</span></div>
+        <div class="strip">
+          <span class="box on"><span class="l">To call</span><span class="c">96</span></span><span class="arrow">→</span>
+          <span class="box"><span class="l">Called</span><span class="c">5</span></span><span class="arrow">→</span>
+          <span class="box"><span class="l">Talked</span><span class="c">3</span></span><span class="arrow">→</span>
+          <span class="box door"><span class="l">On the bench</span><span class="c">2</span></span><span class="arrow">→</span>
+          <span class="box door"><span class="l">Quoted</span><span class="c">1</span></span>
+        </div>
+        <p class="muted" style="margin:0;font-size:.875rem">One column per trade the bench needs. Drag cards to re-rank. #1 is who we call first. Press To the bench ✓ on the ones who will quote.</p>
+        <div class="board">
+          <section class="colm">
+            <header><b>Concrete</b><span class="n">(6)</span><span class="chip amber" style="font-size:.7rem">4 never called</span><span class="dots">⋯</span></header>
+            <div class="need"><span class="red">Oak Run Clinic · 1 of 2 quotes · due Oct 30</span> · 1 on the bench, wants 2 more</div>
+            <ul>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#1</span><span class="nm">Ridgeway Concrete</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip green">talked</span></div>
+                <div class="f"><span>(210) 555-0142</span><span>ridgewayconcrete.example</span><span>via Web research 2026-10-23</span><span>Answered Wed · "will quote, send the plans"</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#2</span><span class="nm">Lone Oak Paving</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip green">talked</span></div>
+                <div class="f"><span>(830) 555-0121</span><span>loneoakpaving.example</span><span>Answered Mon · "asked for our GC license"</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#3</span><span class="nm">Salado Flatwork</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip amber">call next</span></div>
+                <div class="f"><span>(512) 555-0163</span><span>saladoflatwork.example</span><span>Never called</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#4</span><span class="nm">Cibolo Structures</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip indigo">also in: Sitework</span></div>
+                <div class="f"><span>(210) 555-0198</span><span>Never called</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#5</span><span class="nm">Bluff Creek Concrete</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip amber">called</span></div>
+                <div class="f"><span>(830) 555-0177</span><span>No answer Tue, Thu</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard muted"><div class="l1" style="font-size:.85rem"><span class="h">⠿</span><span class="r">#6</span><span class="nm">Hays Foundations</span></div><div class="f"><span>Never called</span></div></li>
+            </ul>
+            <footer><span class="add">+ Add a sub</span></footer>
+          </section>
+          <section class="colm">
+            <header><b>Fire sprinkler</b><span class="n">(7)</span><span class="chip amber" style="font-size:.7rem">6 never called</span><span class="dots">⋯</span></header>
+            <div class="need">nobody on the bench · wants 3</div>
+            <ul>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#1</span><span class="nm">Hill Country Fire Protection</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip amber">called</span></div>
+                <div class="f"><span>(210) 555-0188</span><span>hillcountryfire.example</span><span>No answer Wed</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#2</span><span class="nm">Alamo Sprinkler Co</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip amber">call next</span></div>
+                <div class="f"><span>(210) 555-0131</span><span>Never called</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard muted"><div class="l1" style="font-size:.85rem"><span class="h">⠿</span><span class="r">#3</span><span class="nm">Guadalupe Fire Systems</span></div><div class="f"><span>Never called</span></div></li>
+              <li class="ccard muted"><div class="l1" style="font-size:.85rem"><span class="h">⠿</span><span class="r">#4</span><span class="nm">Pedernales Fire &amp; Safety</span></div><div class="f"><span>Never called</span></div></li>
+              <li class="ccard muted"><div class="l1" style="font-size:.85rem"><span class="h">⠿</span><span class="r">#5</span><span class="nm">Cedar Park Sprinkler</span></div><div class="f"><span>Never called</span></div></li>
+            </ul>
+            <footer><span class="add">+ Add a sub</span></footer>
+          </section>
+          <section class="colm">
+            <header><b>HVAC</b><span class="n">(7)</span><span class="chip amber" style="font-size:.7rem">7 never called</span><span class="dots">⋯</span></header>
+            <div class="need">nobody on the bench · wants 3</div>
+            <ul>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#1</span><span class="nm">Comal Air Mechanical</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip amber">call next</span></div>
+                <div class="f"><span>(830) 555-0106</span><span>comalair.example</span><span>Never called</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard muted"><div class="l1" style="font-size:.85rem"><span class="h">⠿</span><span class="r">#2</span><span class="nm">Medina Valley HVAC</span></div><div class="f"><span>Never called</span></div></li>
+              <li class="ccard muted"><div class="l1" style="font-size:.85rem"><span class="h">⠿</span><span class="r">#3</span><span class="nm">Blanco Mechanical</span></div><div class="f"><span>Never called</span></div></li>
+            </ul>
+            <footer><span class="add">+ Add a sub</span></footer>
+          </section>
+          <section class="colm">
+            <header><b>Electrical</b><span class="n">(7)</span><span class="chip amber" style="font-size:.7rem">7 never called</span><span class="dots">⋯</span></header>
+            <div class="need">nobody on the bench · wants 3</div>
+            <ul>
+              <li class="ccard">
+                <div class="l1"><span class="h">⠿</span><span class="r">#1</span><span class="nm">Travis Electric</span><span class="g">⚙</span></div>
+                <div class="ch"><span class="chip amber">call next</span></div>
+                <div class="f"><span>(512) 555-0174</span><span>Never called</span></div>
+                <div class="p"><span class="press amber">Didn't answer</span><span class="press green">Answered</span><span class="press purple">To the bench ✓</span><span class="press red">Pass</span></div>
+              </li>
+              <li class="ccard muted"><div class="l1" style="font-size:.85rem"><span class="h">⠿</span><span class="r">#2</span><span class="nm">Kerr Power &amp; Light</span></div><div class="f"><span>Never called</span></div></li>
+            </ul>
+            <footer><span class="add">+ Add a sub</span></footer>
+          </section>
+          <div class="more">eleven more columns →<br><span class="small">Sitework, Landscaping, Masonry, Structural steel, Framing and drywall, Roofing …</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>What changes where.</b> A new board under Subs, Hiring's components reshaped (a 300 px column, a sortable card, the drag kernel's dense ranks). The ranks need a home: a sub holds one row and can name two trades, so the rank is per trade, a new table <code>prospect_trade_ranks</code> (prospect, trade, rank) with a migration. The four presses write the deck's own comments, so Activity counts the calls; nothing on the board takes the calling lock or runs the timer, so <i>14m on calls</i> stays the deck's. Call now on the list and the deck's queue orders stay as they are; the rank becomes a fourth order, <i>By rank</i>.</p>
+    <p class="note"><b>Is this the best we can do?</b> Hiring ranks ten people a role by hand because each hire is a judgment of a person. Here it is seven companies a trade and the judgment is <i>do they answer, will they quote</i>, which the calls themselves say (C). The deck is the calling machine: the lock so two callers never dial the same company, the clock, the callbacks, the script. A board beside it is a second view of one queue, and a caller working 104 numbers does not drag cards. The board's two real gains, the trade in view and a press on every row, A gives the list without a table or a drag. So B is drawn for the owner's eye, and held.</p>
+  </div>
+</div>
+
+<!-- ============================ C ============================ -->
+<h2 id="c"><span class="num pick">C</span> Who answers, who first: the record and the priority, on the row and the card <span class="tag">the pick, second</span></h2>
+<p class="lede">On top of A, two more things a row and the card say. <b>Answers</b> is what the app already knows about a company, in the bench's own words: <i>answers · hit or miss · often silent · new to us</i>, with the facts under it (answered 2 of 3 calls, replied by text Wed, asked us to call back Fri). <b>Priority</b> is the office's word, three steps: <i>Call first · Normal · Later</i>, set on the card or the row. The deck gains the order <b>By priority</b>: Call first, then the biggest gap on the bench, then who answers, then never called, then coldest. The record follows the company onto the bench, where it stands in for <i>new to us</i> until the first ask.</p>
+<div class="pair">
+  <div class="col desk">
+    <div class="cap">Prospects → Subs → Prospect List, Concrete, with A's strip over it <span class="m">one new column on prospects: priority · the record computed, never stored</span></div>
+    <div class="frame">
+      <div class="page">
+        <div class="strip compact" style="justify-content:center">
+          <span class="box on"><span class="l">To call</span><span class="c">96</span></span><span class="arrow">→</span>
+          <span class="box"><span class="l">Called</span><span class="c">5</span></span><span class="arrow">→</span>
+          <span class="box"><span class="l">Talked</span><span class="c">3</span></span><span class="arrow">→</span>
+          <span class="box door"><span class="l">On the bench</span><span class="c">2</span></span><span class="arrow">→</span>
+          <span class="box door"><span class="l">Quoted</span><span class="c">1</span></span>
+        </div>
+        <div class="ghead"><b>Concrete</b><span class="bl"><span class="red">Oak Run Clinic · 1 of 2 quotes · due Oct 30</span> · 1 on the bench, <span class="amber">wants 2 more</span> · 6 to call here</span><span class="r muted small">by priority, then who answers</span></div>
+        <table class="list">
+          <tr><th>Company</th><th>Phone</th><th>Answers</th><th>Priority</th><th>Stage</th><th></th></tr>
+          <tr><td>Ridgeway Concrete <span class="muted small">· San Antonio</span></td><td><a>(210) 555-0142</a></td><td><div class="rec"><span class="chip green" style="justify-self:start">answers</span><span>2 of 2 calls · replied by text Wed</span><span class="d">last Wed, 2 days ago</span></div></td><td><span class="pri"><span class="on">★ Call first</span><span>Normal</span><span>Later</span></span><div class="muted" style="font-size:.7rem">Grace · "Robert knows them"</div></td><td><span class="chip green">talked</span></td><td><span class="press purple sm">Add to the bench ✓</span></td></tr>
+          <tr><td>Lone Oak Paving <span class="muted small">· Boerne</span></td><td><a>(830) 555-0121</a></td><td><div class="rec"><span class="chip amber" style="justify-self:start">hit or miss</span><span>1 of 2 calls · asked us to call back Fri</span><span class="d">last Mon, 4 days ago</span></div></td><td><span class="pri"><span>Call first</span><span class="on">Normal</span><span>Later</span></span></td><td><span class="chip green">talked</span></td><td><span class="press purple sm">Add to the bench ✓</span></td></tr>
+          <tr><td>Salado Flatwork <span class="muted small">· Austin</span></td><td><a>(512) 555-0163</a></td><td><div class="rec"><span class="chip grey" style="justify-self:start">new to us</span><span class="d">never called</span></div></td><td><span class="pri"><span>Call first</span><span class="on">Normal</span><span>Later</span></span></td><td><span class="chip grey">to call</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Cibolo Structures <span class="muted small">· Schertz</span></td><td><a>(210) 555-0198</a></td><td><div class="rec"><span class="chip grey" style="justify-self:start">new to us</span><span class="d">never called</span></div></td><td><span class="pri"><span>Call first</span><span class="on">Normal</span><span>Later</span></span></td><td><span class="chip grey">to call</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Hays Foundations <span class="muted small">· Kyle</span></td><td><a>(512) 555-0109</a></td><td><div class="rec"><span class="chip grey" style="justify-self:start">new to us</span><span class="d">never called</span></div></td><td><span class="pri"><span>Call first</span><span class="on">Normal</span><span>Later</span></span></td><td><span class="chip grey">to call</span></td><td><span class="door">Call now →</span></td></tr>
+          <tr><td>Bluff Creek Concrete <span class="muted small">· New Braunfels</span></td><td><a>(830) 555-0177</a></td><td><div class="rec"><span class="chip red" style="justify-self:start">often silent</span><span>0 of 3 calls · no text back</span><span class="d">last Thu, yesterday</span></div></td><td><span class="pri"><span>Call first</span><span>Normal</span><span class="on later">Later</span></span></td><td><span class="chip amber">called</span></td><td><span class="door">Call now →</span></td></tr>
+        </table>
+        <div class="muted small">Later sinks a row to the foot of its trade and off the deck's first pass. It never hides a company. Nothing here is money.</div>
+      </div>
+    </div>
+    <p class="note"><b>What the record reads.</b> Calls and answers from the lane's own call log (every Didn't Answer and Answered the deck filed), a callback they asked for (Set callback), a text or email back on the thread Messages ties to the prospect, and the day of the last touch. The words are the bench's (<i>answers</i> at three of four, <i>hit or miss</i> under that, <i>often silent</i> under two of five, <i>new to us</i> under two calls), so a company reads the same on both pages. Computed on load, never stored, so it can never go stale.</p>
+    <p class="note"><b>What changes where.</b> One column, <code>prospects.priority</code>, a migration. The deck's order toggle gains <b>By priority</b> and By need folds it in. The card's head wears the record chip and the three-step picker. Call now and the outcome presses are unchanged. Activity gains nothing per user; the record is per company. On Trade partners, a company that came from Prospects reads its record under its name until the first ask writes the bench's own.</p>
+  </div>
+  <div class="col side">
+    <div class="cap">The Follow Up card and the queue, with C</div>
+    <div class="frame" style="max-height:none">
+      <div class="page" style="gap:.7rem">
+        <div class="deck" style="grid-template-columns:1fr">
+          <div class="card">
+            <div class="who"><h3 style="font-size:1.15rem">Ridgeway Concrete</h3><span class="chip green">answers</span><span class="tel">📞 (210) 555-0142</span></div>
+            <div class="facts"><span class="chip trade">Concrete</span><span>· San Antonio · from Web research</span></div>
+            <div class="facts"><span>2 of 2 calls · replied by text Wed · last Wed</span></div>
+            <div class="util"><span>Priority</span><span class="pri"><span class="on">★ Call first</span><span>Normal</span><span>Later</span></span><span class="muted">· Grace, Mon</span></div>
+            <div class="q"><span>How did the call end?</span><span class="press amber">Didn't Answer</span><span class="press green">Answered</span><span class="press ghost">Can't reach</span><span class="press ghost">Not a fit</span><span class="press purple">Add to the bench ✓</span></div>
+          </div>
+          <div class="rail">
+            <div class="rh">Queue <span>1 of 104</span></div>
+            <span class="seg"><span>Coldest</span><span>Never called</span><span>By need</span><span class="on">By priority</span></span>
+            <div class="muted" style="font-size:.72rem">Call first, then the biggest gap on the bench, then who answers, then never called, then coldest.</div>
+            <div class="row you"><span class="n">1</span><span><span class="star">★</span> Ridgeway Concrete</span><span class="a">answers · ← you</span></div>
+            <div class="row"><span class="n">2</span><span>Lone Oak Paving</span><span class="a">hit or miss</span></div>
+            <div class="row"><span class="n">3</span><span>Salado Flatwork</span><span class="a">never called</span></div>
+            <div class="row"><span class="n">4</span><span>Cibolo Structures</span><span class="a">never called</span></div>
+            <div class="row"><span class="n">5</span><span>Hill Country Fire Protection</span><span class="a">called Wed</span></div>
+            <div class="row"><span class="n">6</span><span>Alamo Sprinkler Co</span><span class="a">never called</span></div>
+            <div class="row muted"><span class="n">…</span><span>Bluff Creek Concrete</span><span class="a">later · often silent</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap" style="margin-top:14px">On the bench, the record stands in until the first ask</div>
+    <div class="bench">
+      <div class="bh"><strong>Concrete</strong><span class="n">2 companies</span></div>
+      <table><tr><th>Company</th><th>When we ask</th></tr>
+        <tr><td>Kendall Concrete <span class="vet">approved up to $50,000</span></td><td><span class="chip green">answers</span> quoted 2 of 2 asks</td></tr>
+        <tr class="new"><td>Ridgeway Concrete <span class="vet">not vetted yet</span><div class="from">from Prospects · answered 2 of 2 calls · replied by text</div></td><td><span class="chip green">answers</span> <span class="muted">on the phone · never asked</span></td></tr></table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ SIDE BY SIDE ============================ -->
+<h2 id="side"><span class="num">=</span> Side by side</h2>
+<table class="cmp">
+  <tr><th></th><th>A · The path in sight</th><th>B · The board by trade</th><th>C · Who answers, who first</th></tr>
+  <tr><td>What the owner sees</td><td class="pick">Five stages with counts over the lane, the sentence of what moves a company, the list by trade with the bench's line over each group, a press on every row, Trade partners one press away.</td><td>Hiring's board: a column a trade, cards ranked by drag, call next, also in, four presses a card.</td><td class="pick">A, plus <i>answers · hit or miss · often silent</i> on every company with the facts, a three-step priority, and the deck ordered by it.</td></tr>
+  <tr><td>What it stores</td><td class="pick">Nothing new. Every count is on the page already (the lane's call log, the bench the panel reads).</td><td>A new table for the ranks, one row a sub a trade, with a migration and the three fence calls.</td><td class="pick">One column, <code>prospects.priority</code>. The record is computed on load from the call log, the callbacks and the prospect's thread.</td></tr>
+  <tr><td>Call now and the deck</td><td class="pick">Call now unchanged. The strip sits over the deck too. Add to the bench ✓ from a row opens the same window.</td><td>Call now stays on the list. The board's presses file the deck's comments but take no lock and run no clock.</td><td class="pick">Call now unchanged. The deck gains By priority; the card wears the chip and the picker.</td></tr>
+  <tr><td>Activity</td><td class="pick"><i>converted</i> reads <i>to the bench</i> on Subs; the week line says how many moved.</td><td>Calls from the board count; minutes do not.</td><td class="pick">As A. The record is per company, so nothing per user changes.</td></tr>
+  <tr><td>Two lists, one company</td><td class="pick">The row leaves this page as it lands on the bench. The bench's line says where it came from and who added it.</td><td>As A.</td><td class="pick">As A, and the record rides along, so the bench's <i>new to us</i> is not blank on a company we talked to four times.</td></tr>
+  <tr><td>Size</td><td class="pick">S. One kernel for the stages and the groups, the list's sections redrawn, the strip, the row's press, Activity's word, the guide.</td><td>M to L. The table, the board, the drag, fifteen columns at phone width, a fourth order.</td><td class="pick">M. The migration, the record kernel and its reads, the picker, the order, the bench's line, the guide.</td></tr>
+  <tr><td>Honest cost</td><td class="pick">57 px more chrome on the list and on Follow Up. The phone's strip is two short rows.</td><td>A second place to work one queue. A caller on 104 numbers does not drag cards. Fifteen columns scroll sideways.</td><td class="pick">A second hand-set number beside the old 🔥 warmth, which should retire with it.</td></tr>
+</table>
+<div class="callout"><b>The pick: A now, C next, B held.</b> A answers the owner's first sentence with nothing new to store: the path is in sight and every row has its press. C answers the second with one column and the bench's own words, so a company reads the same on both pages. B is Hiring's shape, and Hiring earns its drag because a hire is a judgment of a person; here the calls make the judgment, and the deck, not a board, is the machine that places them.</div>
+
+<!-- ============================ DECISIONS ============================ -->
+<h2 id="dec"><span class="num">?</span> Decisions for the owner</h2>
+<ol class="dec">
+  <li><b>The stage names.</b> Drawn: To call · Called · Talked · On the bench · Quoted. The last could read <i>Working with us</i> and count awards instead of quotes.</li>
+  <li><b>Where the strip sits.</b> Drawn on the Prospect List and over Follow Up's panel both. The list alone saves Follow Up 57 px.</li>
+  <li><b>The list's groups.</b> Drawn by trade, in the panel's order, each group headed by the bench's line. The other way is by stage, Hiring's, with the trade as a chip on the row.</li>
+  <li><b>Priority's steps.</b> Drawn as three words, Call first · Normal · Later. One star on or off is simpler and loses <i>Later</i>.</li>
+  <li><b>The old 🔥 warmth.</b> It climbs by one on every Answered and is hand-set in Edit prospect. With C it should retire on Subs, or on every lane.</li>
+  <li><b>A way back.</b> No screen takes a company off the bench today. A company declined on Trade partners could get <i>Send back to Prospects</i>, the door a lost GC project already has, so the two lists never hold one company by accident.</li>
+  <li><b>B at all.</b> Drawn and held. Say the word if the drag is wanted, and it is one PR after A and C, with its migration.</li>
+</ol>
+</div>
+</body>
+</html>
