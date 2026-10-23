@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight, Link2, Mail, Scale, X } from 'lucide-react'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
@@ -37,7 +37,7 @@ import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmF
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
-import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
+import type { LegalEntryRow, LegalFirmRow } from '../../../lib/legal/legalMatters'
 import { INK as PORTAL_INK, MUTED as PORTAL_MUTED, PAPER as PORTAL_PAPER, PORTAL_FONT } from '../../../lib/portal/portalTheme'
 import { printAndFile } from '../../../lib/sent/sentCopiesIo'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
@@ -58,6 +58,12 @@ import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { ModalFullScreenButton, useModalFullScreen } from '../../ModalFullScreenToggle'
 import LegalDeskMapView from './LegalDeskMapView'
+import LegalFirmsWindow from './LegalFirmsWindow'
+import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
+import { assignmentsFromCountiesByFirm, countyWords } from '../../../lib/legal/firmCounties'
+import { cityOfAddress, firmForAccount, firmOf, firmSegmentWords, releaseHoldWords, switchWords, venueLineWords, type FirmForAccount, type VenueJob } from '../../../lib/legal/firmForAccount'
+import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
+import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
@@ -145,6 +151,8 @@ const FIRM_SEG_NONE: CSSProperties = { ...FIRM_SEG, maxWidth: 'none', background
 const VIEW_SEG: CSSProperties = { ...SEG, borderLeft: 'none' }
 const VIEW_SEG_ON: CSSProperties = { ...VIEW_SEG, background: 'var(--bg-muted)', color: 'var(--text)', fontWeight: 600 }
 type DeskView = 'accounts' | 'map'
+const EMPTY_COUNTIES: ReadonlyMap<string, string[]> = new Map()
+const EMPTY_MATTERS: ReadonlyMap<string, LegalMatterRow> = new Map()
 const SEG_RED: CSSProperties = { color: '#b42318' }
 const SEG_AMBER: CSSProperties = { color: '#9a6700' }
 /** The quiet ✕ the Lien desk's title bar wears: no box, so the firm group is the row's one box. */
@@ -256,17 +264,31 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   // v2.5780: the desk fills the screen the way the Lien desk and Put a GC on notice do, remembered per browser (`modalFullScreen.ts`).
   const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('legal-desk')
   const todayYmd = todayYmdInAppTz()
-  const firm = legal?.firm ?? null
-  const fee = useMemo(() => feeModelOf(firm), [firm])
-  const accounts = useMemo(
-    () => sortAccountsByNet(groupCollectionsByPayer(collectionsJobs, contractCoverage, todayYmd), (a) => quickNet(a.balance, fee)),
-    [collectionsJobs, contractCoverage, todayYmd, fee],
-  )
+  const rawAccounts = useMemo(() => groupCollectionsByPayer(collectionsJobs, contractCoverage, todayYmd), [collectionsJobs, contractCoverage, todayYmd])
   // v2.4794: the accounts the office gave up on — read like any other, never marked attorney-ready.
-  const givenUpAccounts = useMemo(
-    () => sortAccountsByNet(groupCollectionsByPayer(uncollectibleJobs, contractCoverage, todayYmd), (a) => quickNet(a.balance, fee)),
-    [uncollectibleJobs, contractCoverage, todayYmd, fee],
-  )
+  const rawGivenUp = useMemo(() => groupCollectionsByPayer(uncollectibleJobs, contractCoverage, todayYmd), [uncollectibleJobs, contractCoverage, todayYmd])
+  const firmNames = useMemo(() => new Map((legal?.firms ?? []).map((f) => [f.id, f.name] as const)), [legal?.firms])
+  const assignments = useMemo(() => assignmentsFromCountiesByFirm(legal?.countiesByFirm ?? EMPTY_COUNTIES), [legal?.countiesByFirm])
+  // v2.5792 (punch list #144 PR 2): every job's venue county — the property record's, else where its geocode falls — shared with the Map.
+  const mapCases = useLegalMapCases({ accounts: rawAccounts, givenUp: rawGivenUp, byPayerKey: legal?.byPayerKey ?? EMPTY_MATTERS, firmNames }, open && Boolean(legal?.available))
+  /** The office's switch on a two-county account: the firm id picked for this release; cleared when the account changes. */
+  const [firmOverride, setFirmOverride] = useState<string | null>(null)
+  /**
+   * Which firm an account belongs to and why (`firmForAccount`): a released matter's own firm, else the firm covering the
+   * venue county (the record's, else the geocode's, else a guess from the address's city), else none — never a default.
+   */
+  const firmFor = useCallback((a: LegalAccountSummary, override: string | null = null): FirmForAccount<LegalFirmRow> => {
+    const m = legal?.byPayerKey.get(a.key)
+    const jobs: VenueJob[] = a.jobs.map((j) => {
+      const placed = mapCases.countyByJobId.get(j.id)
+      const guess = placed ? '' : suggestTxCountyForCity(cityOfAddress(j.job_address))
+      return { jobId: j.id, label: j.hcp_number || (j.click_number == null ? '' : String(j.click_number)) || '—', county: placed?.county ?? guess, from: placed ? placed.from : guess ? 'address' : 'none', balance: jobOpenBalance(j) }
+    })
+    return firmForAccount({ jobs, matterFirmId: matterIsWithFirm(m) || matterAwaitsClose(m) ? m?.firm_id ?? null : null, assignments, firms: legal?.firms ?? [], override })
+  }, [legal?.byPayerKey, legal?.firms, mapCases.countyByJobId, assignments])
+  // The rail's "keeps ~" reads each account's own firm's fee model.
+  const accounts = useMemo(() => sortAccountsByNet(rawAccounts, (a) => quickNet(a.balance, feeModelOf(firmOf(firmFor(a))))), [rawAccounts, firmFor])
+  const givenUpAccounts = useMemo(() => sortAccountsByNet(rawGivenUp, (a) => quickNet(a.balance, feeModelOf(firmOf(firmFor(a))))), [rawGivenUp, firmFor])
   const [selectedKey, setSelectedKey] = useState<LegalPayerKey | null>(null)
   const [tab, setTab] = useState<Tab>('account')
   /** Accounts or Map (v2.5784). */
@@ -282,6 +304,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [emailsOpen, setEmailsOpen] = useState(false)
   /** The firm's window (v2.4711), opened from the firm's name in the header or the release sheet. */
   const [firmOpen, setFirmOpen] = useState(false)
+  /** Firms… (v2.5792): the Settings block over the desk — add a firm, color its counties. A dev's door. */
+  const [firmsOpen, setFirmsOpen] = useState(false)
   /** Hold back… on the Their word tab (#85 item 29): which entry, and the office's reason. */
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
@@ -299,6 +323,16 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const selectedGivenUp = selected != null && givenUpAccounts.some((a) => a.key === selected.key)
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
   const holdOverrides = useMemo(() => heldOverridesOf(matter), [matter])
+  useEffect(() => setFirmOverride(null), [selectedKey])
+  /** The selected account's firm and why (v2.5792); with nothing selected, the oldest active firm as before. */
+  const selectedFirm = useMemo(() => (selected ? firmFor(selected, firmOverride) : null), [selected, firmFor, firmOverride])
+  const firm: LegalFirmRow | null = selectedFirm ? firmOf(selectedFirm) : (legal?.firm ?? null)
+  const fee = useMemo(() => feeModelOf(firm), [firm])
+  const releaseHold = selectedFirm ? releaseHoldWords(selectedFirm) : null
+  const venueLine = selectedFirm ? venueLineWords(selectedFirm) : null
+  const seg = selectedFirm ? firmSegmentWords(selectedFirm) : { main: firm ? firm.name : 'No firm yet', tail: '', amber: !firm }
+  /** The shown firm's people (`legal_firm_recipients.firm_id`); rows from before the column count for every firm. */
+  const firmRecipients = useMemo(() => (legal?.recipients ?? []).filter((r) => !r.firm_id || !firm || r.firm_id === firm.id), [legal?.recipients, firm])
   const { packet, loading, failed, reload } = useLegalPacketData(selected, users, open && selected != null, holdOverrides, fee)
 
   if (!open) return null
@@ -547,10 +581,11 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const w = packet?.worth ?? null
   const requestedDays = daysAgo(matter?.review_requested_at, todayYmd)
   const requesterName = matter?.review_requested_by ? (users.find((u) => u.id === matter.review_requested_by)?.name ?? 'the office') : null
-  const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '', legal?.recipients ?? [])
-  const firmPaused = Boolean(legal?.firmPaused)
+  const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '', firmRecipients)
+  // The shown firm's own pause (`paused_at` rides on the row); the hook's flag still answers for the oldest firm.
+  const firmPaused = Boolean((firm as { paused_at?: string | null } | null)?.paused_at) || (firm?.id === legal?.firm?.id && Boolean(legal?.firmPaused))
   // v2.4662 (punch list #85 item 26): people whose emails have stopped going through.
-  const notReaching = (legal?.recipients ?? []).filter((r) => r.send_failed_since && !r.paused_at).length
+  const notReaching = firmRecipients.filter((r) => r.send_failed_since && !r.paused_at).length
   const setFirmPaused = async (paused: boolean) => { await run(paused ? 'Pause' : 'Resume', () => legalRpc('legal_firm_set_paused', { p_firm_id: firm?.id, p_paused: paused })) }
   const removeRecipient = async (id: string, name: string) => { await run('Remove', () => legalRpc('legal_firm_recipient_remove', { p_recipient_id: id })); showToast(`${name} removed from the firm's list.`, 'info') }
 
@@ -582,7 +617,15 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       {matter?.pulled_at ? pill(`Pulled back ${calendarYmdInAppTzFromIso(matter.pulled_at)}${matter.pulled_reason ? ` · ${matter.pulled_reason}` : ''}`, 'neutral') : null}
       {matter?.review_requested_at ? pill(`${requesterName} asked for a dev${requestedDays != null ? ` · ${requestedDays}d ago` : ''}`, 'blue') : null}
       {canMarkReady ? (
-        <button type="button" onClick={() => setSheet({ kind: 'ready', handling: firm?.handling_name ?? '', note: '', floor: '', floorUnit: 'pct' })} disabled={busy} style={btnPrimary}>⚖ Mark attorney ready…</button>
+        releaseHold ? (
+          // v2.5792: no firm for this account's county — the release waits, and the line says what fixes it.
+          <>
+            <button type="button" disabled title={releaseHold} style={{ ...btnPrimary, opacity: 0.5, cursor: 'default' }} data-legal-release-held>⚖ Mark attorney ready…</button>
+            <span data-legal-release-hold style={{ fontSize: '0.76rem', color: '#9a6700' }}>{releaseHold}</span>
+          </>
+        ) : (
+          <button type="button" onClick={() => setSheet({ kind: 'ready', handling: firm?.handling_name ?? '', note: '', floor: '', floorUnit: 'pct' })} disabled={busy} style={btnPrimary}>⚖ Mark attorney ready…</button>
+        )
       ) : canEditReview ? (
         matter?.review_requested_at ? (
           <button type="button" onClick={() => void withdrawAsk()} disabled={busy} style={btn}>Withdraw the request</button>
@@ -619,15 +662,39 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             </div>
             {stored ? (
               <div data-legal-firm-group style={FIRM_GROUP}>
-                <button type="button" className="legalDeskSeg" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_SEG : FIRM_SEG_NONE}>
+                {/* v2.5792: the first segment is this account's firm and the county that picked it (`firmSegmentWords`); amber when
+                    the county is unknown, uncovered, or no firm stands — its door is then the one that fixes it. */}
+                <button
+                  type="button"
+                  className="legalDeskSeg"
+                  onClick={() => {
+                    if (!seg.amber) { setFirmOpen(true); return }
+                    if (selectedFirm?.kind === 'unknown') { openEditCustomer(); return }
+                    if (canEditFirm) setFirmsOpen(true)
+                    else setFirmOpen(true)
+                  }}
+                  data-legal-firm-door={firm ? 'firm' : 'none'}
+                  data-legal-firm-kind={selectedFirm?.kind ?? ''}
+                  aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : seg.amber && selectedFirm && selectedFirm.kind !== 'no_firms' ? `${seg.main}. ${releaseHold ?? ''}`.trim() : 'Set up the collections law firm'}
+                  title={firm ? `${venueLine ?? 'The firm'}: its details, its fee model and our particulars for filing` : releaseHold ?? 'No collections law firm is set up yet'}
+                  style={seg.amber ? FIRM_SEG_NONE : FIRM_SEG}
+                >
                   {firm ? (
                     <>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{firm.name}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.main}</span>
+                      {seg.tail ? <span data-legal-firm-county style={{ fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{seg.tail}</span> : null}
                       {legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#b0662f', display: 'inline-block', flex: 'none' }} /> : null}
                       <ChevronRight size={13} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }} />
                     </>
-                  ) : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
+                  ) : selectedFirm?.kind === 'unknown' ? `${seg.main}${canEditReview ? ' · Edit customer…' : ''}` : canEditFirm ? `${seg.main} · Firms…` : seg.main}
                 </button>
+                {selectedFirm?.kind === 'covered'
+                  ? selectedFirm.others.map((o) => (
+                      <button key={o.firm.id} type="button" className="legalDeskSeg" onClick={() => setFirmOverride(o.firm.id)} data-legal-firm-switch={o.firm.id} title={`${o.firm.name} covers ${countyWords(o.county.county)}, where ${o.county.jobLabels.join(', ')} ${o.county.jobLabels.length === 1 ? 'is' : 'are'} (${formatLegalMoney(o.county.balance)}). Release to them instead.`} style={SEG}>
+                        {switchWords(o)}
+                      </button>
+                    ))
+                  : null}
                 {firm && canEditReview ? (
                   <button type="button" className="legalDeskSeg" onClick={() => setEmailsOpen(true)} data-legal-firm-emails={firmPaused ? 'paused' : notReaching ? 'not-reaching' : 'ok'} aria-label={`Firm’s emails${firmPaused ? ', paused' : ''}${notReaching ? `, ${notReaching} not reaching` : ''}`} title="Who at the firm hears from us, by their own rules" style={{ ...SEG, ...(firmPaused ? SEG_RED : notReaching ? SEG_AMBER : {}) }}>
                     <Mail size={15} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: firmPaused || notReaching ? 'inherit' : 'var(--text-muted)' }} />
@@ -645,6 +712,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 ) : null}
               </div>
             ) : null}
+            {stored && canEditFirm ? (
+              <button type="button" onClick={() => setFirmsOpen(true)} data-legal-firms-door title="Add a firm and color the counties each one covers" style={{ ...btn, height: 30, borderRadius: 8, fontSize: '0.76rem', borderColor: 'var(--border-strong)' }}>Firms…</button>
+            ) : null}
             {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={FULL_SCREEN_BTN} /> : null}
             <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>
           </div>
@@ -652,9 +722,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
         {view === 'map' ? (
           <LegalDeskMapView
-            accounts={accounts}
-            givenUp={givenUpAccounts}
-            byPayerKey={legal?.byPayerKey ?? new Map()}
+            cases={mapCases.cases}
+            loading={mapCases.loading}
             firms={legal?.activeFirms ?? []}
             countiesByFirm={legal?.countiesByFirm ?? new Map()}
             onOpenCase={(key) => { setSelectedKey(key); setTab('account'); setView('accounts') }}
@@ -701,6 +770,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                     <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{selected.name}</div>
                     <div style={{ ...MUTED, fontSize: '0.8rem' }}>
                       {selected.jobs.map((j) => j.hcp_number || j.click_number).filter(Boolean).join(' · ')}{packet?.account.customerAddress ? ` · ${packet.account.customerAddress}` : ''}
+                      {venueLine && !selectedGivenUp ? <><br /><span data-legal-venue-line>{venueLine}</span></> : null}
                       {matter?.review_requested_at && !withFirm && !closed ? <><br /><span style={{ color: 'var(--text-blue-700)' }}>{requesterName} asked for a dev’s eyes{requestedDays != null ? ` ${requestedDays}d ago` : ''}{matter.review_request_note ? `: “${matter.review_request_note}”` : ''}</span></> : null}
                       {withFirm && matter?.note_to_firm ? <><br /><span style={MUTED}>Note to the firm: “{matter.note_to_firm}”</span></> : null}
                     </div>
@@ -789,8 +859,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Mark {selected.name} attorney-ready?</h3>
             {!firm ? (
               <p style={{ fontSize: '0.86rem', color: '#b42318', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                No firm is set up yet.
-                {stored ? <button type="button" onClick={() => { setSheet(null); setFirmOpen(true) }} style={btn}>{canEditFirm ? 'Set up the firm…' : 'See the firm…'}</button> : null}
+                {releaseHold ?? 'No firm is set up yet.'}
+                {stored ? <button type="button" onClick={() => { setSheet(null); if (canEditFirm) setFirmsOpen(true); else setFirmOpen(true) }} style={btn}>{canEditFirm ? 'Firms…' : 'See the firm…'}</button> : null}
               </p>
             ) : (
               <>
@@ -893,18 +963,19 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       ) : null}
 
       {firmOpen && stored ? (
-        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={legal?.recipients ?? []} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); setTab('account') }} zIndex={overlayZIndex + 14} />
+        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={firmRecipients} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); setTab('account') }} zIndex={overlayZIndex + 14} />
       ) : null}
+      {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={overlayZIndex + 14} /> : null}
       {emailsOpen && firm ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>✉ Who at {firm.name} hears from us</h3>
             <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 10px' }}>Managed by the firm on their portal’s Notifications page. The office keeps two overrides: pause everything, and remove a person. A new address is inert until they click their confirmation; every email carries a one-click stop.</p>
-            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them their link from Portal link, beside the firm’s name in the header: its email asks them to add their people.</p> : (
+            {firmRecipients.length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them their link from Portal link, beside the firm’s name in the header: its email asks them to add their people.</p> : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr><th style={TH}>Person</th><th style={TH}>Hears</th><th style={TH}>Scope</th><th style={TH}>Status</th><th style={TH}></th></tr></thead>
                 <tbody>
-                  {(legal?.recipients ?? []).map((r) => (
+                  {firmRecipients.map((r) => (
                     <tr key={r.id}>
                       <td style={TD}><b>{r.name}</b><div style={{ ...MUTED, fontSize: '0.76rem' }}>{r.email}{r.role ? ` · ${r.role}` : ''}</div>{r.send_failed_since && !r.paused_at ? <div data-legal-not-reaching style={{ color: '#b42318', fontSize: '0.76rem', marginTop: 2 }}>{legalNotReachingLine({ email: r.email, sinceYmd: calendarYmdInAppTzFromIso(r.send_failed_since), error: r.send_error, confirmed: Boolean(r.confirmed_at), mode: r.mode }, 'office')}</div> : null}</td>
                       <td style={TD}>{r.mode === 'digest' ? `${WEEKDAY_LABELS[r.digest_weekday] ?? 'Mon'} ${r.digest_time} digest` : 'right away'}</td>

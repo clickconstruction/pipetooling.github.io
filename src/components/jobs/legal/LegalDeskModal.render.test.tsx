@@ -191,13 +191,15 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     await renderDesk({ canMarkReady: true, canEditReview: true })
     expect(screen.getByRole('heading', { name: 'Legal Desk' })).toBeTruthy()
     const group = document.querySelector('[data-legal-firm-group]')!
-    expect([...group.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Barnes & Holt', 'Emails', 'Portal link'])
+    // v2.5792: the firm's segment carries the county that picked it — here the bridge's words, no county colored yet.
+    expect([...group.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Barnes & Holt· no counties colored yet', 'Emails', 'Portal link'])
     expect(group.firstElementChild).toBe(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
     expect(screen.getByRole('button', { name: 'Firm’s emails' }).dataset.legalFirmEmails).toBe('ok')
     const close = screen.getByRole('button', { name: 'Close' })
-    // v2.5780: the full screen toggle sits between the group and the ✕.
+    // v2.5780: the full screen toggle sits between the group and the ✕; v2.5792: a dev's Firms… door sits before the toggle.
     expect(close.previousElementSibling).toBe(screen.getByRole('button', { name: 'Full screen' }))
-    expect(close.previousElementSibling?.previousElementSibling).toBe(group)
+    expect(close.previousElementSibling?.previousElementSibling).toBe(screen.getByRole('button', { name: 'Firms…' }))
+    expect(close.previousElementSibling?.previousElementSibling?.previousElementSibling).toBe(group)
     expect(close.textContent).toBe('')
     cleanup()
     // Emails says so, in words, when emails to the firm are paused or an address bounces.
@@ -223,12 +225,14 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
   it('with no firm, the header and the release sheet both open the firm’s window (v2.4711)', async () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: null, firms: [] }} canMarkReady canEditReview />)
     await settle()
-    expect(screen.getByRole('button', { name: 'Set up the collections law firm' }).textContent).toBe('No firm yet · Set up the firm…')
-    fireEvent.click(screen.getByRole('button', { name: '⚖ Mark attorney ready…' }))
+    // v2.5792: for a dev the door is Firms… — the Settings block over the desk, where a firm is added and its counties colored.
+    expect(screen.getByRole('button', { name: 'Set up the collections law firm' }).textContent).toBe('No firm yet · Firms…')
+    // The release waits: no firm at all.
     expect(screen.getByText('No firm is set up yet.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Set up the firm…' }))
-    expect(screen.queryByRole('dialog', { name: 'Mark attorney-ready' })).toBeNull()
-    expect(screen.getByRole('dialog', { name: 'The collections law firm' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: '⚖ Mark attorney ready…' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Set up the collections law firm' }))
+    expect(screen.getByRole('dialog', { name: 'Collections law firms' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Firms…' })).toBeTruthy()
   })
 
   it('a given-up account sits under Given up on with a pill in place of Mark attorney ready (punch list #94, v2.4794)', async () => {

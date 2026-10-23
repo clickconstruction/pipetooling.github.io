@@ -73,7 +73,7 @@ The firm reads it as the first tab of its portal, and the printed packet opens w
 
 {{button:outline|Write it down…}} sits beside **Mark attorney ready**. It opens a panel under the header that asks **How much will we accept?** for the whole account. A slider, a % box and a $ box move together. The panel shows the split across the account's open bills. For each bill it shows what we forgive and what the bill still owes after. A note of what was agreed is required. The button says exactly what it will do, such as **Write down $811.22 across 2 bills**. Each bill is written down one at a time. A bill the write-down refuses is listed with the reason, and the rest still go. The matter closes as {{chip:gray|Written down}}. The row leaves Collections when the bill clears.
 
-{{button:dark|⚖ Mark attorney ready…}} is the release, and only a dev sees it. The sheet says what goes: jobs, balance, theory, exhibits, and how many entries are held back. It names the handling person at the firm and who hears about it. It takes a note for the firm. It warns when red gaps are still open. You can mark anyway, and the packet's cover sheet says so. {{button:outline|Preview what the firm sees ↗}} opens their page for this account before anything is released. That page has all five tabs and the exhibits, with held entries left out and your note in place. You confirm, and the account moves to **With the firm**. The row wears a {{chip:yellow|⚖ new}} chip and each job's Activity records the release. **Pull back** returns it to review. Only a dev sees it. The firm's fees and steps stay on the record.
+{{button:dark|⚖ Mark attorney ready…}} is the release, and only a dev sees it. It releases to the firm named at the top of the desk. The sheet says what goes: jobs, balance, theory, exhibits, and how many entries are held back. It names the handling person at the firm and who hears about it. It takes a note for the firm. It warns when red gaps are still open. You can mark anyway, and the packet's cover sheet says so. {{button:outline|Preview what the firm sees ↗}} opens their page for this account before anything is released. That page has all five tabs and the exhibits, with held entries left out and your note in place. You confirm, and the account moves to **With the firm**. The row wears a {{chip:yellow|⚖ new}} chip and each job's Activity records the release. **Pull back** returns it to review. Only a dev sees it. The firm's fees and steps stay on the record.
 
 ## Curate what the firm sees
 
@@ -89,7 +89,15 @@ Office staff can move a job to Collections but cannot release it. {{button:outli
 
 ## The firm
 
-Settings → Jobs & billing → **Collections law firm** holds the firm's details. Only a dev sees it. The Legal desk opens the same details when you press the firm's name in its header. Everyone on the desk can read them there. It holds the firm's name, the handling person, a contact email and phone, and the fee model behind "Click keeps". The fee model is the contingency % and the filing cost. The contingency % is the firm's share of what is recovered. The contact email is not a subscription. The firm's own people and their email rules come from the portal's Notifications page. Nobody is emailed until they are on that list and confirmed.
+Each account belongs to the firm that covers its county. The firm's name at the top of the desk is this account's firm. The county that picked it sits beside the name, such as **Austin Legal, Travis County**. The county comes from the job's property record. With no record, it comes from where the job's address sits on the map. The line under the account's address says where the county came from.
+
+An amber segment means the desk cannot pick a firm. **No firm covers Williamson County** means nobody covers that county yet. **County unknown** means no job names a county. **Mark attorney ready** waits until that is fixed. The desk never guesses a firm. While no county is colored yet, the one firm takes every account, and the segment says *no counties colored yet*.
+
+Jobs in two firms' counties: the county with the largest open balance decides. A **⇄** segment switches the release to the other firm. An account already with a firm keeps that firm, whatever the map says today.
+
+Press the firm's name to read its details. It holds the firm's name, the handling person, and a contact email and phone. It also holds the fee model behind **What's left for us?**. The fee model is the contingency % and the filing cost. The contingency % is the firm's share of what is recovered. The contact email is not a subscription. The firm's own people and their email rules come from the portal's Notifications page. Nobody is emailed until they are on that list and confirmed.
+
+A dev presses {{button:outline|Firms…}} at the top right. It adds a firm and colors the counties it covers without leaving the desk. The same block lives on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
 
 ## When the firm acts
 

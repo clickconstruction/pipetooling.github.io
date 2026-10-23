@@ -1,8 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { assignmentsFromCountiesByFirm, countiesLine, firmHues, firmLegend, NO_FIRM_HUE } from '../../../lib/legal/firmCounties'
-import { legendCounts, lensSummaryWords, STAND_COLOR, STAND_WORDS, uncoveredCounties, uncoveredWords, type LegalMapCase, type LegalMapStandOrNone, type MapAccount } from '../../../lib/legal/firmMap'
-import type { LegalFirmRow, LegalMatterRow } from '../../../lib/legal/legalMatters'
-import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
+import { legendCounts, lensSummaryWords, STAND_COLOR, STAND_WORDS, uncoveredCounties, uncoveredWords, type LegalMapCase, type LegalMapStandOrNone } from '../../../lib/legal/firmMap'
+import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
 import LegalFirmCountyMap from '../../settings/LegalFirmCountyMap'
 import LegalCountyContentsCard from '../../settings/LegalCountyContentsCard'
 
@@ -12,16 +11,16 @@ import LegalCountyContentsCard from '../../settings/LegalCountyContentsCard'
  * geocode sized by its balance and colored by where it stands, the legend **Who covers what** with
  * each firm's counties, cases and dollars, and a flag over the map for cases in a county no firm
  * covers. Tap a county to list its cases on the card; tap a dot or a case to open the desk on it.
- * The drawing is the Settings picker's component in `lens` mode, the cases `useLegalMapCases`
- * over the desk's own accounts — one placement rule for the picker, the lens and the portal.
+ * The drawing is the Settings picker's component in `lens` mode, the cases the desk's own
+ * (`useLegalMapCases` in `LegalDeskModal`, which the venue rule reads too since v2.5792) — one
+ * placement rule for the picker, the lens, the firm segment and the portal.
  */
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const STANDS: LegalMapStandOrNone[] = ['eyes', 'firm', 'gave', 'none']
 
-export default function LegalDeskMapView({ accounts, givenUp, byPayerKey, firms, countiesByFirm, onOpenCase }: {
-  accounts: ReadonlyArray<MapAccount>
-  givenUp: ReadonlyArray<MapAccount>
-  byPayerKey: ReadonlyMap<string, Pick<LegalMatterRow, 'stage' | 'closed_at' | 'firm_id' | 'released_at'>>
+export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm, onOpenCase }: {
+  cases: ReadonlyArray<LegalMapCase>
+  loading: boolean
   /** The active firms, as `useLegalMatters.activeFirms`. */
   firms: ReadonlyArray<LegalFirmRow>
   countiesByFirm: ReadonlyMap<string, ReadonlyArray<string>>
@@ -34,7 +33,6 @@ export default function LegalDeskMapView({ accounts, givenUp, byPayerKey, firms,
   const assignments = useMemo(() => assignmentsFromCountiesByFirm(countiesByFirm), [countiesByFirm])
   const hues = useMemo(() => firmHues(firms), [firms])
   const legend = useMemo(() => firmLegend(firms, assignments), [firms, assignments])
-  const { cases, loading } = useLegalMapCases({ accounts, givenUp, byPayerKey, firmNames }, true)
   const counts = useMemo(() => legendCounts(cases, assignments, firms), [cases, assignments, firms])
   const offCounties = useMemo(() => uncoveredCounties(cases, assignments), [cases, assignments])
   const flag = uncoveredWords(cases, assignments)

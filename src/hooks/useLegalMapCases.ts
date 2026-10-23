@@ -25,9 +25,13 @@ export type LegalMapCasesInput = {
  * from the shared cache, the property record's county when it has one, else the county the
  * point falls in. Pure shaping in `legal/firmMap.ts`; this hook only gathers. Since v2.5784 the
  * desk's Map and the Settings picker (`useLegalFirmMapCases`) share it, so the two never place a
- * case differently. Reads nothing until `enabled`.
+ * case differently. Reads nothing until `enabled`. Since v2.5792 (PR 2) every job is placed, not
+ * only each account's first: `countyByJobId` is the venue rule's input (the record's county, else
+ * the point's), read by `firmForAccount`.
  */
-export function useLegalMapCases(input: LegalMapCasesInput, enabled: boolean): { cases: LegalMapCase[]; loading: boolean; counties: CountyFeatureCollection | null } {
+export type JobCounty = { county: string; from: 'record' | 'point' }
+
+export function useLegalMapCases(input: LegalMapCasesInput, enabled: boolean): { cases: LegalMapCase[]; loading: boolean; counties: CountyFeatureCollection | null; countyByJobId: Map<string, JobCounty> } {
   const { accounts, givenUp, byPayerKey, firmNames } = input
   const [counties, setCounties] = useState<CountyFeatureCollection | null>(null)
   const [recordCounty, setRecordCounty] = useState<Map<string, string | null>>(() => new Map())
@@ -48,9 +52,15 @@ export function useLegalMapCases(input: LegalMapCasesInput, enabled: boolean): {
 
   const addresses = useMemo<AddressToGeocode[]>(() => {
     const out: AddressToGeocode[] = []
+    const seen = new Set<string>()
     for (const acc of [...accounts, ...givenUp]) {
-      const display = (acc.jobs[0]?.job_address ?? '').trim()
-      if (display) out.push({ key: normalizeAddressForGeocodeKey(display), display })
+      for (const j of acc.jobs) {
+        const display = (j.job_address ?? '').trim()
+        const key = display ? normalizeAddressForGeocodeKey(display) : ''
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        out.push({ key, display })
+      }
     }
     return out
   }, [accounts, givenUp])
@@ -58,10 +68,7 @@ export function useLegalMapCases(input: LegalMapCasesInput, enabled: boolean): {
 
   const recordIds = useMemo(() => {
     const ids = new Set<string>()
-    for (const acc of [...accounts, ...givenUp]) {
-      const id = acc.jobs[0]?.customer_address_id
-      if (id) ids.add(id)
-    }
+    for (const acc of [...accounts, ...givenUp]) for (const j of acc.jobs) if (j.customer_address_id) ids.add(j.customer_address_id)
     return [...ids].sort().join('\n')
   }, [accounts, givenUp])
   useEffect(() => {
@@ -83,5 +90,24 @@ export function useLegalMapCases(input: LegalMapCasesInput, enabled: boolean): {
     return shapeMapCases({ accounts, givenUp, byPayerKey, firmNames, coords, recordCounty, countyOf })
   }, [enabled, accounts, givenUp, byPayerKey, firmNames, coords, recordCounty, counties])
 
-  return { cases, loading: enabled && (resolving || !counties), counties }
+  const countyByJobId = useMemo(() => {
+    const out = new Map<string, JobCounty>()
+    if (!enabled) return out
+    for (const acc of [...accounts, ...givenUp]) {
+      for (const j of acc.jobs) {
+        const record = j.customer_address_id ? (recordCounty.get(j.customer_address_id) ?? '').trim() : ''
+        if (record) {
+          out.set(j.id, { county: record, from: 'record' })
+          continue
+        }
+        const address = (j.job_address ?? '').trim()
+        const pt = address ? coords.get(normalizeAddressForGeocodeKey(address)) ?? null : null
+        const point = pt && counties ? countyAt(counties, pt.lng, pt.lat) : null
+        if (point) out.set(j.id, { county: point, from: 'point' })
+      }
+    }
+    return out
+  }, [enabled, accounts, givenUp, recordCounty, coords, counties])
+
+  return { cases, loading: enabled && (resolving || !counties), counties, countyByJobId }
 }

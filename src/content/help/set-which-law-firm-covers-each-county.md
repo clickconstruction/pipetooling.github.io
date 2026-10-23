@@ -58,4 +58,4 @@ Each firm's card lists its counties in words, for a quick read without the map.
 
 ## What comes next
 
-Today the Legal desk still releases every account to the oldest firm. Soon it will read the account's county and pick the firm from this map. The desk's **Map** view already shows the same counties with every case. Read [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails) for each firm's people.
+The Legal desk reads each account's county and picks the firm from this map. An account in a gray county reads *No firm covers* that county. The desk cannot release it until you color the county. While no county is colored at all, the one firm takes every account. The desk's **Map** view shows the same counties with every case. A dev can open this block over the desk with its **Firms…** button. Read [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails) for each firm's people.
