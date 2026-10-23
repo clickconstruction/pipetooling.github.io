@@ -600,6 +600,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   return <JobsListCacheContext.Provider value={value}>{children}</JobsListCacheContext.Provider>
 }
 
+/** The cache when a provider is above, else null: for a hook a surface mounts both inside the app and in a window without the provider (v2.5758). */
+export function useOptionalJobsListCache(): JobsListCacheContextValue | null {
+  return useContext(JobsListCacheContext)
+}
+
 export function useJobsListCache(): JobsListCacheContextValue {
   const ctx = useContext(JobsListCacheContext)
   if (!ctx) {
