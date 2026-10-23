@@ -23,6 +23,8 @@ export type LegalFirmRow = {
   contingency_pct: number
   filing_cost: number
   active: boolean
+  /** When the row was made; the county map's hues go by it, oldest first (v2.5756). */
+  created_at?: string
   /** The firm's answers to Start here (v2.4821, `_shared/legalFirmIntake.ts`); absent before the migration. */
   intake?: unknown
   intake_sent_at?: string | null
