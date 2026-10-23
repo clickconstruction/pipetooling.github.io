@@ -1339,6 +1339,7 @@ function QuickfillPage() {
                 openSectionNow('people-hours-new')
                 document.getElementById('quickfill-people-hours-new')?.scrollIntoView({ behavior: 'smooth' })
               }}
+              onMarkUpToDate={() => markSectionUpToDate('needs-you')}
             />
           </QuickfillSectionWrapper>
         )

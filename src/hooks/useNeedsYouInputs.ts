@@ -365,6 +365,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       lienWaiversToSignRows: lienSignature.lanes.toSign,
       refetchLienSignatureLanes: lienSignature.refetch,
       reloadTodaysSends: todaysSends.reload,
+      reloadLostBids: lostBids.reload,
       reloadTestReports: testReportsNudge.reload,
       contractNudge,
       gcReviewStatus,
