@@ -2,7 +2,7 @@
 name: "Quickfill views — the same page five ways: the whole page, Focus, the Roller, the Board, the Table"
 number: 147
 group: gated
-status: options and a mock-up, 2026-10-23; nothing built; waiting on the owner's pick
+status: the owner's pick 2026-10-23, Focus then the Roller; PR 1 Focus built the same day (v2.5778); PR 2 the Roller next
 summary: >
   Quickfill is one long page of stations, 28 of them on the dev's page today and 20,999 px tall
   at 1,024 px wide, about 27 screens of scrolling. On a phone it is already a round: a list of
@@ -14,9 +14,9 @@ summary: >
   (every item across groups in one sortable table). The pick is Focus and the Roller. Focus is a
   fold rule the page can carry today; the Roller is the phone's own screens let loose on the
   desktop with the Board as its index. The Table needs a row adapter per station and is parked.
-next: The owner reads the mock-up and picks. Then PR 1 (Focus) and PR 2 (the switch, the Roller, the Board as its index).
+next: PR 2, the Roller with the Board as its index.
 size: S for Focus; M for the switch, the Roller and the Board together; L for the Table, a train of adapters
-blocker: The owner's pick, and one call on whether Focus is a view or the page's own rule.
+blocker: none
 ver: proposed
 opinion: build Focus and the Roller — Focus halves the scrolling for free, the Roller is mostly built already (the phone round), and the Board rides inside it as the index; hold the Table until a station asks for it by name
 mockup: to-dos/quickfill-views/mockup.html
