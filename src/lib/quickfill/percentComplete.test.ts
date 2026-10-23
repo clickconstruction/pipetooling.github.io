@@ -10,7 +10,10 @@ import {
   percentCompleteList,
   percentCompleteNoteBody,
   percentDismissedWords,
+  percentMove,
   percentSavedWords,
+  percentStops,
+  snapPercentToStops,
   snoozeHolds,
   snoozeUntilIso,
   tickedWords,
@@ -224,6 +227,76 @@ describe('percentCompleteCard and percentCompleteList', () => {
     expect(spent.cards.length).toBe(2)
     expect(spent.snoozedCount).toBe(0)
     expect(percentCompleteList([fine], new Map(), NOW).line).toBe(PERCENT_COMPLETE_ALL_AGREE_LINE)
+  })
+})
+
+describe('percentStops and percentMove (v2.5805, the slider)', () => {
+  const j879 = input(stageJob({ id: '879', pct: 0, prices: [16620, 16620, 8310], paidStages: 1 }), '879')
+  const j892 = input(stageJob({ id: '892', pct: 30, prices: [14154, 14155, 9436], paidStages: 2 }), '892')
+
+  it('one stop per stage end, ticked stages with their check, in bar order', () => {
+    expect(percentStops({ view: j879.view, paidShare: 40 }).map((s) => s.words)).toEqual(['Rough ✓ 40%', 'Top Out 80%', 'Trim 100%'])
+    expect(percentStops({ view: j892.view, paidShare: 75 }).map((s) => s.words)).toEqual(['Rough ✓ 37%', 'Top Out ✓ 75%', 'Trim 100%'])
+  })
+
+  it('the paid share is a stop of its own only when it is not a stage end', () => {
+    const between = percentStops({ view: j879.view, paidShare: 57 })
+    expect(between.map((s) => s.words)).toEqual(['Rough ✓ 40%', 'Paid 57%', 'Top Out 80%', 'Trim 100%'])
+    expect(between[1]).toMatchObject({ kind: 'paid', label: 'Paid', pct: 57 })
+    expect(percentStops({ view: j879.view, paidShare: 0 }).map((s) => s.pct)).toEqual([40, 80, 100])
+    expect(percentStops({ view: j879.view, paidShare: null }).map((s) => s.pct)).toEqual([40, 80, 100])
+  })
+
+  it('a Deposit stage is no stop, and the stages after it run on the same share the ticks use', () => {
+    const d = input(stageJob({ id: 'd', pct: 0, prices: [5000, 10000, 5000], paidStages: 1, names: ['50% deposit', 'Rough In', 'Trim Set'] }), 'd')
+    const f = percentCompleteFacts(d)
+    expect(percentStops({ view: d.view, paidShare: f.paidShare }).map((s) => s.words)).toEqual(['Rough 50%', 'Trim 75%'])
+  })
+
+  it('a job with no stages has only the paid share, and no bid has nothing', () => {
+    const lines = { ...stageJob({ id: 'l', pct: 60, prices: [3200, 0, 0], paidStages: 1 }), fixtures: [{ id: 'l-f1', name: 'Water heater', count: 1, line_unit_price: 3200, sequence_order: 0, invoice_id: 'l-inv1', stage_kind: 'any', progress_pct: null, shared_with_gc: false }] }
+    const li = input(lines, 'l')
+    expect(li.view.mode).not.toBe('stages')
+    expect(percentStops({ view: li.view, paidShare: 100 }).map((s) => s.words)).toEqual(['Paid 100%'])
+    const none = input({ ...stageJob({ id: 'n', pct: 20, prices: [0, 0, 0], paidStages: 0 }), revenue: null, fixtures: [] }, 'n')
+    expect(percentStops({ view: none.view, paidShare: null })).toEqual([])
+  })
+
+  it("a stage's share is the bar's own, so a ticked stage's share is its block's end even when the bid differs from the stage prices' sum", () => {
+    // 892 with a bid $3,000 under its stage prices: the bar still splits by the prices, and so does the suggestion.
+    const discounted = input({ ...stageJob({ id: 'x', pct: 30, prices: [14154, 14155, 9436], paidStages: 2 }), revenue: 34745 }, 'x')
+    const f = percentCompleteFacts(discounted)
+    expect(f.ticked.map((t) => Math.round(t.sharePct * 10) / 10)).toEqual([37.5, 37.5])
+    expect(f.tickedShare).toBe(75)
+    expect(percentStops({ view: discounted.view, paidShare: f.paidShare }).map((s) => s.pct)).toEqual([37, 75, 81, 100])
+  })
+
+  it('the card carries its stops, and the suggestion is one of them', () => {
+    const c = percentCompleteCard(j879)!
+    expect(c.stops.map((s) => s.pct)).toEqual([40, 80, 100])
+    expect(c.stops.some((s) => s.pct === c.suggestedPct)).toBe(true)
+    const c2 = percentCompleteCard(j892)!
+    expect(c2.stops.some((s) => s.pct === c2.suggestedPct)).toBe(true)
+  })
+
+  it('a knob let go within two points of a stop lands on it, the nearest one when two are close', () => {
+    const stops = [40, 57, 80, 100]
+    expect(snapPercentToStops(38, stops)).toBe(40)
+    expect(snapPercentToStops(42, stops)).toBe(40)
+    expect(snapPercentToStops(43, stops)).toBe(43)
+    expect(snapPercentToStops(59, stops)).toBe(57)
+    expect(snapPercentToStops(98, stops)).toBe(100)
+    expect(snapPercentToStops(70, stops)).toBe(70)
+    expect(snapPercentToStops(41, [40, 42])).toBe(40)
+    expect(snapPercentToStops(50, [])).toBe(50)
+    expect(snapPercentToStops(45, stops, 5)).toBe(40)
+  })
+
+  it('reads the move: up, down, no change, and from no % at all', () => {
+    expect(percentMove(0, 57)).toEqual({ from: '0%', to: '57%', delta: '▲ 57', tone: 'up', same: false })
+    expect(percentMove(75, 60)).toEqual({ from: '75%', to: '60%', delta: '▼ 15', tone: 'down', same: false })
+    expect(percentMove(40, 40)).toEqual({ from: '40%', to: '40%', delta: null, tone: 'none', same: true })
+    expect(percentMove(null, 0)).toEqual({ from: 'No %', to: '0%', delta: null, tone: 'up', same: false })
   })
 })
 

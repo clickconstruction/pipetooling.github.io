@@ -107,6 +107,26 @@ export function tickLeftPct(segments: ReadonlyArray<Pick<ProgressPaymentSegment,
   return Math.min(100, width)
 }
 
+/**
+ * The inverse of `tickLeftPct` (v2.5805, Quickfill's Percent complete slider): a place on the
+ * drawn bar, 0–100 of its width, → the job-level % that lands there. Walks the drawn widths and
+ * reads the same fraction of that block's money share, so a drag over a block floored wider
+ * than its share moves the % slowly there, exactly as the tick moves slowly across it.
+ */
+export function pctFromTickLeft(segments: ReadonlyArray<Pick<ProgressPaymentSegment, 'widthPct' | 'sharePct'>>, leftPct: number): number {
+  if (segments.length === 0) return 0
+  const x = Math.max(0, Math.min(100, leftPct))
+  if (x >= 100) return 100
+  let share = 0
+  let width = 0
+  for (const s of segments) {
+    if (s.widthPct > 0 && width + s.widthPct >= x - EPS) return Math.max(0, Math.min(100, share + ((x - width) / s.widthPct) * s.sharePct))
+    share += s.sharePct
+    width += s.widthPct
+  }
+  return Math.min(100, share)
+}
+
 export function buildJobMoneyBar(view: ProgressPaymentView, opts: { pctComplete: number | null }): JobMoneyBar {
   if (view.mode === 'nobid' || view.segments.length === 0) {
     return { blocks: [], tick: null, names: null, date: dateOf(view, opts.pctComplete) }

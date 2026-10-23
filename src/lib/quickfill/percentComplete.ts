@@ -36,7 +36,6 @@
  * one whose facts changed last. Pure; the hook builds the Pipeline models and
  * reads the snoozes.
  */
-import type { PipelineStageBar } from '../jobs/pipelineStageBar'
 import { stageShortLabel } from '../jobs/pipelineStageBar'
 import type { ProgressPaymentView } from '../jobs/progressPaymentCell'
 import type { StagesMoneyBarModel } from '../stagesMoneyBar'
@@ -102,6 +101,20 @@ export type PercentCompleteCard = {
   newestPaidOn: string | null
   /** The row's view, so the card draws the stage bar exactly as the Pipeline does. */
   view: ProgressPaymentView
+  /** The numbers one press away on the card's slider (v2.5805): each stage's end, the paid share. */
+  stops: PercentStop[]
+}
+
+export type PercentStopKind = 'stage' | 'paid'
+
+/** A stop on the card's slider: the end of a stage, or the paid share when it is not one. */
+export type PercentStop = {
+  pct: number
+  kind: PercentStopKind
+  /** "Rough ✓" (a ticked stage) · "Top Out" · "Paid". */
+  label: string
+  /** The chip: "Rough ✓ 40%". */
+  words: string
 }
 
 const isDeposit = (name: string | null | undefined): boolean => stageShortLabel(name ?? '') === 'Deposit'
@@ -125,21 +138,33 @@ export function percentCompleteFacts(input: { pct: number | null; money: StagesM
     for (const seg of input.view.segments) if (isDeposit(seg.name)) depositPaid += (seg.sharePct / 100) * (seg.money.paidFrac ?? 0) * 100
     paidShare = clampPct(input.money.paidFrac * 100 - depositPaid)
   }
-  const ticked: PercentTick[] = tickedStages(input.view.stageBar, input.money.hasBar ? input.money.total : 0)
+  const ticked: PercentTick[] = tickedStages(input.view)
   const tickedShare = clampPct(ticked.reduce((s, t) => s + t.sharePct, 0))
   return { pct, paidShare, ticked, tickedShare }
 }
 
 /**
- * The bar's done segments, Deposit left out. A stage's share is its price over the whole
- * bid when the bid is known (a plain line beside the stages, a change order, keeps the
- * ticked stages honest); the bar's own share of the stage money otherwise.
+ * A stage's share is the bar's own (v2.5805): the row's view segment at the same index, the
+ * share the Pipeline's tick walks (`tickLeftPct`), so a ticked stage's share puts the tick
+ * exactly at the end of its block. Before v2.5805 it was the stage's price over the bid: the
+ * same number when the bid equals the stage prices' sum, and on a discounted bid or a job with
+ * a plain line beside its stages a number that landed the suggestion short of or past the
+ * stage's block. The stage bar's own share is the fallback.
  */
-function tickedStages(bar: PipelineStageBar | null, bidTotal: number): PercentTick[] {
+function stageShare(view: ProgressPaymentView, i: number, fallback: number): number {
+  const seg = view.segments[i]
+  return seg && seg.sharePct > 0 ? seg.sharePct : fallback
+}
+
+/** The bar's done segments, Deposit left out, each with the bar's own share. */
+function tickedStages(view: ProgressPaymentView): PercentTick[] {
+  const bar = view.stageBar
   if (!bar) return []
-  return bar.segments
-    .filter((s) => s.state === 'done' && !isDeposit(s.name))
-    .map((s) => ({ number: s.number, name: s.name, short: s.short, sharePct: bidTotal > 0 ? (Math.max(0, s.amount) / bidTotal) * 100 : s.sharePct }))
+  const out: PercentTick[] = []
+  bar.segments.forEach((s, i) => {
+    if (s.state === 'done' && !isDeposit(s.name)) out.push({ number: s.number, name: s.name, short: s.short, sharePct: stageShare(view, i, s.sharePct) })
+  })
+  return out
 }
 
 /** "Rough" / "Rough and Top Out" / "Ground, Rough and Top Out" / "4 stages". */
@@ -149,6 +174,60 @@ export function tickedWords(ticked: ReadonlyArray<PercentTick>): string {
   if (names.length > 3) return `${names.length} stages`
   if (names.length === 1) return names[0]!
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * The slider's stops (v2.5805, punch list #154): the end of every stage, Deposit left out, on
+ * the bar's own share (the same the ticks use, so each stop sits exactly at its block's end),
+ * each a running total rounded as the % box would hold it; then the
+ * paid share, when it is not already a stage's end. Sorted along the bar. A lines job has no
+ * stages, so its only stop is the paid share. The card's suggestion is always one of them.
+ */
+export function percentStops(input: { view: ProgressPaymentView; paidShare: number | null }): PercentStop[] {
+  const stops: PercentStop[] = []
+  let cum = 0
+  ;(input.view.stageBar?.segments ?? []).forEach((s, i) => {
+    if (isDeposit(s.name)) return
+    cum += stageShare(input.view, i, s.sharePct)
+    const pct = clampPct(cum)
+    if (stops.some((x) => x.pct === pct)) return
+    const label = `${s.short}${s.state === 'done' ? ' ✓' : ''}`
+    stops.push({ pct, kind: 'stage', label, words: `${label} ${pct}%` })
+  })
+  if (input.paidShare != null && input.paidShare > 0 && !stops.some((x) => x.pct === input.paidShare)) {
+    stops.push({ pct: input.paidShare, kind: 'paid', label: 'Paid', words: `Paid ${input.paidShare}%` })
+  }
+  return stops.sort((a, b) => a.pct - b.pct)
+}
+
+/** A knob let go this close to a stop lands on it. */
+export const PERCENT_SNAP_POINTS = 2
+
+/**
+ * Where a knob lands when it is let go (v2.5805): the nearest stop when one is within
+ * `within` points, else the number itself. Only on release, never during a drag or on a key
+ * press, so the knob never fights the hand and the arrow keys still step by one past a stop.
+ */
+export function snapPercentToStops(pct: number, stops: ReadonlyArray<number>, within: number = PERCENT_SNAP_POINTS): number {
+  let best: number | null = null
+  for (const stop of stops) {
+    const d = Math.abs(stop - pct)
+    if (d <= within && (best == null || d < Math.abs(best - pct))) best = stop
+  }
+  return best ?? pct
+}
+
+/**
+ * The line that reads the move before Save writes it (v2.5805): "0% → 57%" with "▲ 57", or
+ * "40% · no change" when the knob sits where the job already is. A job with no % yet reads
+ * "No % → 40%", and every number is a move for it.
+ */
+export function percentMove(pct: number | null, draft: number): { from: string; to: string; delta: string | null; tone: 'up' | 'down' | 'none'; same: boolean } {
+  const to = `${draft}%`
+  if (pct == null) return { from: 'No %', to, delta: null, tone: 'up', same: false }
+  const d = draft - pct
+  if (d === 0) return { from: `${pct}%`, to, delta: null, tone: 'none', same: true }
+  return { from: `${pct}%`, to, delta: d > 0 ? `▲ ${d}` : `▼ ${-d}`, tone: d > 0 ? 'up' : 'down', same: false }
 }
 
 export type PercentCase = {
@@ -211,6 +290,7 @@ export function percentCompleteCard(job: PercentCompleteJobInput): PercentComple
     suggestedWords: c.suggestedWords,
     newestPaidOn: job.newestPaidOn,
     view: job.view,
+    stops: percentStops({ view: job.view, paidShare: facts.paidShare }),
   }
 }
 
