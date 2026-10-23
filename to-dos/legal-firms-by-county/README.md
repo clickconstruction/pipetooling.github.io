@@ -2,7 +2,7 @@
 name: "Legal firms by county — one collections firm per county, the desk picks the firm from the venue, a county map shows who covers what and where the cases are"
 number: 144
 group: ready
-status: PR 1 built 2026-10-23 (v2.5756: `legal_firm_counties`, the Settings picker, `useLegalMatters.countiesByFirm`), PR 1b (v2.5758: zoom and pan, today's cases as dots, the contents card) and PR 3 (v2.5784: the desk's Map); PR 2 waits on the header mock-up, PR 4 open
+status: PR 1 built 2026-10-23 (v2.5756: `legal_firm_counties`, the Settings picker, `useLegalMatters.countiesByFirm`), PR 1b (v2.5758: zoom and pan, today's cases as dots, the contents card) PR 3 (v2.5784: the desk's Map) and PR 2 (v2.5792: the firm by venue, Firms…); PR 4 open
 summary: >
   Today the Legal Desk knows one collections law firm: the one active row of `legal_firms`, and
   every release goes to it. The owner is engaging a second firm — one for San Antonio, one for
@@ -133,4 +133,8 @@ modals have, and for the header to expose the map and the way to add firms; v2.5
 (`header-mockup.html` beside this file) goes to the owner before PR 2 is built. **PR 3 shipped as v2.5784** (built
 ahead of PR 2, since the lens was settled in the mock-up): Legal Desk → **Accounts · Map**, `LegalDeskMapView.tsx` over
 the picker's map in `lens` mode and `useLegalMapCases` (shared with the picker), Who covers what, the uncovered flag, the
-county card with *Open on the desk ›*. PR 2 waits on the owner's reaction to the header mock-up.
+county card with *Open on the desk ›*. **PR 2 shipped as v2.5792**: `src/lib/legal/firmForAccount.ts` (the venue
+rule, the two-county switch, the bridge while no county is colored and one firm stands), the header's firm segment with
+its county and the venue line, Mark attorney ready held with the words when no firm covers the county, each account's own
+fee model, and **Firms…** (`LegalFirmsWindow.tsx`, the Settings block over the desk). The owner did not answer the mock-up's
+three questions, so its kept choices stand. PR 4 (the portal's Who covers what) is what remains.
