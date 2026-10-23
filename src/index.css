@@ -2221,6 +2221,66 @@ body.my-time-boundary-dragging {
   }
 }
 
+/* Quickfill → Percent complete (v2.5805, punch list #154): the card's bar as a slider. The
+   layer is a 44 px band over the Pipeline's 18 px bar row (13 px above it, 13 below) for a
+   finger; the knob is a 2 px stem the bar's height with a round head on it, at the number
+   about to be saved. The bar's own dark tick stays where the job is today. */
+.qfPctSlider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -13px;
+  height: 44px;
+  cursor: ew-resize;
+  touch-action: pan-y;
+  outline: none;
+  border-radius: 6px;
+}
+.qfPctSlider[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+.qfPctKnob {
+  position: absolute;
+  top: 13px;
+  width: 2px;
+  height: 18px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #2563eb;
+  pointer-events: none;
+}
+.qfPctKnob::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #2563eb;
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+  transform: translate(-50%, -50%);
+  transition: width 80ms, height 80ms;
+}
+.qfPctSlider.is-dragging .qfPctKnob::before {
+  width: 20px;
+  height: 20px;
+}
+.qfPctSlider:focus-visible .qfPctKnob::before {
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px #2563eb;
+}
+@media (pointer: coarse) {
+  .qfPctKnob::before {
+    width: 24px;
+    height: 24px;
+  }
+  .qfPctSlider.is-dragging .qfPctKnob::before {
+    width: 28px;
+    height: 28px;
+  }
+}
+
 /* PO Builder (Materials → assemblies-po): two fluid columns on wide screens,
    stacked with Drafts first on narrow ones. The columns are minmax(0,1fr) so
    the selected-PO items table can never force the page into sideways scroll —

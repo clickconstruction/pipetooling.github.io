@@ -1,18 +1,18 @@
 ---
 name: "Quickfill Percent complete: a slider to set the % done"
 number: 154
-group: ready
-status: proposed 2026-10-23 · the build follows as PR 2 the same day
+group: close
+status: built 2026-10-23 as v2.5805 · left: the owner's look at it live
 summary: >
   Each card on Quickfill's Percent complete station holds one number box, pre-filled with the
   number the facts suggest. Any other number is arithmetic and typing. The pick: the card's own
   stage bar becomes the slider. A blue knob rides the bar at the number about to be saved, one
   chip per stage end and one for the paid share sit under it as stops, the box stays for an
   exact number, and one line reads the move before Save writes it. Nothing new on the server.
-next: PR 2, the build. Then the owner's look at it live on a real card.
+next: The owner's look at it live on a real card, then delete the folder (the v2.5805 fragment links the mock-up).
 size: S
 blocker: none
-ver: proposed
+ver: v2.5805
 opinion: build B — the bar is the slider, the stage ends are its stops, the box stays; A draws a second bar, C cuts out the middle
 ---
 
@@ -153,4 +153,4 @@ knob grows to a thumb.
 
 ## Where it stands
 
-Proposed 2026-10-23. PR 2 follows the same day.
+Proposed and built 2026-10-23 as v2.5805 (PR 2), the pick taken as recommended. Checked live as the dev on real cards at desktop and phone widths; nothing saved. Left: the owner's look, then delete the folder.

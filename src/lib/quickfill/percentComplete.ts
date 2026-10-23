@@ -102,6 +102,20 @@ export type PercentCompleteCard = {
   newestPaidOn: string | null
   /** The row's view, so the card draws the stage bar exactly as the Pipeline does. */
   view: ProgressPaymentView
+  /** The numbers one press away on the card's slider (v2.5805): each stage's end, the paid share. */
+  stops: PercentStop[]
+}
+
+export type PercentStopKind = 'stage' | 'paid'
+
+/** A stop on the card's slider: the end of a stage, or the paid share when it is not one. */
+export type PercentStop = {
+  pct: number
+  kind: PercentStopKind
+  /** "Rough ✓" (a ticked stage) · "Top Out" · "Paid". */
+  label: string
+  /** The chip: "Rough ✓ 40%". */
+  words: string
 }
 
 const isDeposit = (name: string | null | undefined): boolean => stageShortLabel(name ?? '') === 'Deposit'
@@ -149,6 +163,44 @@ export function tickedWords(ticked: ReadonlyArray<PercentTick>): string {
   if (names.length > 3) return `${names.length} stages`
   if (names.length === 1) return names[0]!
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * The slider's stops (v2.5805, punch list #154): the end of every stage, Deposit left out, on
+ * the same share the ticks use (a stage's price over the bid when the bid is known, else its
+ * share of the stage money), each a running total rounded as the % box would hold it; then the
+ * paid share, when it is not already a stage's end. Sorted along the bar. A lines job has no
+ * stages, so its only stop is the paid share. The card's suggestion is always one of them.
+ */
+export function percentStops(input: { view: ProgressPaymentView; money: StagesMoneyBarModel; paidShare: number | null }): PercentStop[] {
+  const bidTotal = input.money.hasBar ? input.money.total : 0
+  const stops: PercentStop[] = []
+  let cum = 0
+  for (const s of input.view.stageBar?.segments ?? []) {
+    if (isDeposit(s.name)) continue
+    cum += bidTotal > 0 ? (Math.max(0, s.amount) / bidTotal) * 100 : s.sharePct
+    const pct = clampPct(cum)
+    if (stops.some((x) => x.pct === pct)) continue
+    const label = `${s.short}${s.state === 'done' ? ' ✓' : ''}`
+    stops.push({ pct, kind: 'stage', label, words: `${label} ${pct}%` })
+  }
+  if (input.paidShare != null && input.paidShare > 0 && !stops.some((x) => x.pct === input.paidShare)) {
+    stops.push({ pct: input.paidShare, kind: 'paid', label: 'Paid', words: `Paid ${input.paidShare}%` })
+  }
+  return stops.sort((a, b) => a.pct - b.pct)
+}
+
+/**
+ * The line that reads the move before Save writes it (v2.5805): "0% → 57%" with "▲ 57", or
+ * "40% · no change" when the knob sits where the job already is. A job with no % yet reads
+ * "No % → 40%", and every number is a move for it.
+ */
+export function percentMove(pct: number | null, draft: number): { from: string; to: string; delta: string | null; tone: 'up' | 'down' | 'none'; same: boolean } {
+  const to = `${draft}%`
+  if (pct == null) return { from: 'No %', to, delta: null, tone: 'up', same: false }
+  const d = draft - pct
+  if (d === 0) return { from: `${pct}%`, to, delta: null, tone: 'none', same: true }
+  return { from: `${pct}%`, to, delta: d > 0 ? `▲ ${d}` : `▼ ${-d}`, tone: d > 0 ? 'up' : 'down', same: false }
 }
 
 export type PercentCase = {
@@ -211,6 +263,7 @@ export function percentCompleteCard(job: PercentCompleteJobInput): PercentComple
     suggestedWords: c.suggestedWords,
     newestPaidOn: job.newestPaidOn,
     view: job.view,
+    stops: percentStops({ view: job.view, money: job.money, paidShare: facts.paidShare }),
   }
 }
 

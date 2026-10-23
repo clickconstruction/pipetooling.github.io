@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billMarkFor, blockMoneyWords, buildJobMoneyBar, tickLeftPct } from './jobMoneyBar'
+import { billMarkFor, blockMoneyWords, buildJobMoneyBar, pctFromTickLeft, tickLeftPct } from './jobMoneyBar'
 import { crewPositionsFromRpc, type JobCrewPositionRpcRow } from './jobCrewPosition'
 import { progressPaymentForJob } from './progressPaymentForJob'
 
@@ -36,6 +36,30 @@ describe('tickLeftPct', () => {
     expect(tickLeftPct(segs, 0)).toBe(0)
     expect(tickLeftPct(segs, 100)).toBe(100)
     expect(tickLeftPct([], 40)).toBe(0)
+  })
+})
+
+describe('pctFromTickLeft', () => {
+  // 742 again: the salt line is floored wider than its share, so the % moves slowly across it.
+  const segs = [
+    { sharePct: 21.58, widthPct: 20.2 },
+    { sharePct: 43.45, widthPct: 40.4 },
+    { sharePct: 2.23, widthPct: 9.1 },
+    { sharePct: 32.74, widthPct: 30.3 },
+  ]
+
+  it('is the inverse of tickLeftPct on every block', () => {
+    for (const pct of [0, 10, 21.58, 40, 66, 68, 75, 99, 100]) expect(pctFromTickLeft(segs, tickLeftPct(segs, pct))).toBeCloseTo(pct, 6)
+    for (const left of [0, 5, 20.2, 33, 60.6, 65, 69.7, 80, 100]) expect(tickLeftPct(segs, pctFromTickLeft(segs, left))).toBeCloseTo(left, 6)
+  })
+
+  it('reads the same fraction of the block the pointer is over, and holds the ends', () => {
+    // Half-way across the floored salt block (width 60.6 → 69.7) is half its 2.23 share past 65.03.
+    expect(pctFromTickLeft(segs, 60.6 + 9.1 / 2)).toBeCloseTo(65.03 + 2.23 / 2, 2)
+    expect(pctFromTickLeft(segs, -5)).toBe(0)
+    expect(pctFromTickLeft(segs, 100)).toBe(100)
+    expect(pctFromTickLeft(segs, 140)).toBe(100)
+    expect(pctFromTickLeft([], 40)).toBe(0)
   })
 })
 
