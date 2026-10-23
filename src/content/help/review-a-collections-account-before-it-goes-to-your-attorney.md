@@ -10,7 +10,7 @@ You fix what an attorney asks for first. The **⚖ Legal** desk is where you do 
 
 ## Open the desk
 
-On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}}. On a computer the button sits at the header's right, just before **Lien desk**. Billed Awaiting Payment carries Accounts Receivable on its own header. You press it to open the desk on every Collections account, largest net first. The desk also opens from a link: `/jobs?tab=stages&legal=1`. You use `legal=<payer key>` for one account.
+On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}}. On a computer the button sits at the header's right, just before **Lien desk**. The stage bar at the top has two more doors on a computer. The scales sit beside the Lien desk's orange gavel, at the bar's right end. The ☰ **Section tools** menu at the bar's left lists **Legal desk** under **Collections**. Each door carries a count when the firm has sent something you have not acknowledged yet. Billed Awaiting Payment carries Accounts Receivable on its own header. You press it to open the desk on every Collections account, largest net first. The desk also opens from a link: `/jobs?tab=stages&legal=1`. You use `legal=<payer key>` for one account.
 
 An **account is the payer**. The payer is the GC, the general contractor, when one pays. Otherwise it is the customer. The account spans every Collections job that payer owes on. Two jobs for the same customer are one account. That is because a petition, the paper that starts a lawsuit, names one defendant.
 

@@ -48,7 +48,7 @@ You confirm, and the account moves to **With the firm** on the desk's rail. The 
 
 ## 6. Send the firm their link
 
-{{button:outline|🌐 Firm's link}} on the desk header creates one private link, with no sign-in. You press {{button:dark|Copy link}} and send it however you like. The firm keeps the same link for every matter you ever release. **Rotate** replaces it. **Turn off** is the kill switch. Details: [share your attorney their portal](/help/share-your-attorney-their-portal).
+{{button:outline|Portal link}} beside the firm's name on the desk header creates one private link, with no sign-in. You press {{button:dark|Copy link}} and send it however you like. The firm keeps the same link for every matter you ever release. **Rotate** replaces it. **Turn off** is the kill switch. Details: [share your attorney their portal](/help/share-your-attorney-their-portal).
 
 On the portal's **Notifications** page, the firm adds its own people and gives each one rule. The rule is right away or a weekly digest, and every matter or only theirs. A new address gets nothing until its owner clicks the confirmation. Every email carries a one-click stop. The office sees the same list under {{button:outline|✉ Firm's emails}}. The office list has two overrides: remove a person, and pause everything. Details: [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails).
 

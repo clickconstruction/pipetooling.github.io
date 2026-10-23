@@ -4564,7 +4564,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .stagesStageSegTail > .stagesStageSeg {
   flex: 0 1 auto;
 }
-.stagesLienDeskShortcut {
+/* The stage bar's desk shortcuts (v2.4520 the Lien desk's gavel; v2.5750 the Legal desk's scales before it). */
+.stagesDeskShortcut {
   position: relative;
   flex: none;
   display: inline-flex;
@@ -4576,17 +4577,22 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--surface);
-  color: #ff6600;
   cursor: pointer;
 }
-.stagesLienDeskShortcut:hover {
+.stagesDeskShortcut[data-desk='lien'] {
+  color: #ff6600;
+}
+.stagesDeskShortcut[data-desk='legal'] {
+  color: var(--text-700);
+}
+.stagesDeskShortcut:hover {
   background: var(--bg-subtle);
 }
-.stagesLienDeskShortcut:focus-visible {
+.stagesDeskShortcut:focus-visible {
   outline: 2px solid var(--text-link);
   outline-offset: 1px;
 }
-.stagesLienDeskShortcutBadge {
+.stagesDeskShortcutBadge {
   position: absolute;
   top: -0.45rem;
   right: -0.55rem;
@@ -4601,6 +4607,16 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   line-height: 1.4;
   text-align: center;
   pointer-events: none;
+}
+/* The Legal desk's header (v2.5750): the firm group's segments and the quiet ✕ — an overlay on hover, since each carries its own background inline. */
+.legalDeskSeg:hover,
+.legalDeskClose:hover {
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--text-base) 6%, transparent);
+}
+.legalDeskSeg:focus-visible,
+.legalDeskClose:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: -2px;
 }
 .stagesSectionBand {
   padding: 0.5rem 0.75rem;
