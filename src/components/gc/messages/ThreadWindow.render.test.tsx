@@ -71,7 +71,7 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     const { win } = open('c-greg')
     expect(within(win).getByRole('heading', { name: 'Greg Paulk' })).toBeTruthy()
     expect(win.textContent).toContain('Trade partner: Hillside Excavation')
-    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:2105550113')
+    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:+12105550113')
     // v2.5542: the call link and ⋯ wear the header's control class (no border, one height) in place of their own borders.
     expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).className).toBe('thread-head-control')
     expect(within(win).getByRole('button', { name: 'More' }).className).toBe('thread-head-control')

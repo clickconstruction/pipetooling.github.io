@@ -35,8 +35,9 @@ import {
   type ComposeCompany,
   type ReplyKind,
 } from '../../../../lib/messages/compose'
-import { CALL_ASIDE, CALL_WORDS, callDayWords, dialHref, type CallLogDraft } from '../../../../lib/messages/callLog'
-import { lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
+import { CALL_ASIDE, CALL_WORDS, callDayWords, type CallLogDraft } from '../../../../lib/messages/callLog'
+import { boxForReply, lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
+import { CallButton } from '../../../messages/CallButton'
 import { jobRefOf } from '../../../../lib/messages/jobKeys'
 import { defaultEstimatePaper, defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
 import { ESTIMATE_LINK_MAKING, estimateLinkNote, supabaseEstimateLinkIo, type EstimateLinkIo } from '../../../../lib/messages/estimateLinkIo'
@@ -619,9 +620,16 @@ export function ReplyBox({
       )}
 
       {shown === 'call' && to.number && (
-        <a data-reply-call-dial href={dialHref(to.number)} style={{ justifySelf: 'start', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-green-700)', textDecoration: 'none' }}>
-          ☎ {CALL_WORDS.dial} {to.number}
-        </a>
+        <CallButton
+          number={to.number}
+          name={to.name}
+          box={boxForReply(wroteTo, contact)}
+          verb={CALL_WORDS.dial}
+          glyph="☎ "
+          words={(_, plain) => `${plain} ${to.number}`}
+          style={{ justifySelf: 'start', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-green-700)', textDecoration: 'none' }}
+          testId="reply-call-dial"
+        />
       )}
 
       {slashOpen && slashWord && (

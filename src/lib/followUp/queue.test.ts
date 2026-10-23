@@ -81,7 +81,7 @@ describe('followUpQueue on the prototype’s Friday', () => {
     expect(acts).toEqual({
       priya: ['Reply', 'No reply needed', 'Remind me Monday'],
       unk1: ['Who is this?', 'No reply needed', 'Remind me Monday'],
-      elena: ['Reply', 'Call back in Quo', 'No reply needed', 'Remind me Monday'],
+      elena: ['Reply', 'Call back', 'No reply needed', 'Remind me Monday'],
       greg: ['Reply', 'No reply needed', 'Remind me Monday'],
     })
     expect(queue.needsReply.find((r) => r.contactId === 'greg')!.offers.map((o) => o.label)).toEqual([

@@ -5,7 +5,8 @@ import { useToastContext } from '../../../contexts/ToastContext'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { useMeasuredWidth } from '../../../hooks/useMeasuredWidth'
 import { contactById, firstName, initials, isOptedOut, kindWord, unnamedWords, type Contact } from '../../../lib/contacts/kernel'
-import { lastWroteTo } from '../../../lib/messages/boxes'
+import { boxForReply, lastWroteTo } from '../../../lib/messages/boxes'
+import { CallButton } from '../../messages/CallButton'
 import type { MessagesView } from '../../../lib/messages/messagesIo'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { stampSentence } from '../../../lib/messages/stamps'
@@ -277,14 +278,16 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   {/* ☎, ⋯ and the who-has-it pill wear `.thread-head-control` (v2.5542): no border, one 28px height, a quiet hover. */}
                   <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative', flex: 'none' }}>
                     {phones[0] ? (
-                      <a
-                        href={`tel:${phones[0].value.replace(/[^\d+]/g, '')}`}
-                        aria-label={`Call ${phones[0].value}`}
-                        title="Calls their first number from this device. Calls on the company number come with Quo."
+                      <CallButton
+                        number={phones[0].value}
+                        name={contact.name}
+                        box={boxForReply(lastWroteTo(allLines), contact)}
+                        glyph="☎"
+                        words={() => null}
+                        ariaLabel={(plain) => `${plain} ${phones[0].value}`}
+                        title={(plain) => `${plain} ${phones[0].value}, their first number.`}
                         className="thread-head-control"
-                      >
-                        ☎
-                      </a>
+                      />
                     ) : (
                       <span aria-label="No number to call" title="No number to call" className="thread-head-control" style={{ opacity: 0.4, cursor: 'default' }}>
                         ☎
@@ -369,10 +372,15 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   (phones.length > 0 || emails.length > 0) && (
                     <div data-thread-reach style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
                       {phones.map((ch) => (
-                        <a key={ch.id} href={`tel:${ch.value.replace(/[^\d+]/g, '')}`} style={{ color: 'var(--text-blue-700)' }}>
-                          {ch.value}
-                          {ch.optedOutAt ? ' (sent STOP)' : ''}
-                        </a>
+                        <CallButton
+                          key={ch.id}
+                          number={ch.value}
+                          name={contact.name}
+                          box={boxForReply(lastWroteTo(allLines), contact)}
+                          words={() => `${ch.value}${ch.optedOutAt ? ' (sent STOP)' : ''}`}
+                          title={(plain) => `${plain} ${ch.value}`}
+                          style={{ color: 'var(--text-blue-700)' }}
+                        />
                       ))}
                       {emails.map((ch) => (
                         <a key={ch.id} href={`mailto:${ch.value}`} style={{ color: 'var(--text-blue-700)' }}>

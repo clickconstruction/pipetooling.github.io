@@ -87,7 +87,7 @@ describe('ReplyBox: the Call kind (punch list #140 PR 7)', () => {
     expect(kinds).toEqual(['Text', 'Email', 'Note', 'Call'])
     fireEvent.click(within(el).getByRole('radio', { name: 'Call' }))
     expect(el.querySelector('textarea')!.getAttribute('data-reply-look')).toBe('call')
-    const dial = el.querySelector('[data-reply-call-dial]') as HTMLAnchorElement
+    const dial = el.querySelector('[data-testid="reply-call-dial"]') as HTMLAnchorElement
     expect(dial.getAttribute('href')).toMatch(/^tel:\+?\d+$/)
     expect(within(el).getByText('they gave a day · their move clears the row')).toBeTruthy()
     expect(within(el).getByText(CALL_WORDS.hint)).toBeTruthy()

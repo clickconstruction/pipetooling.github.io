@@ -21,11 +21,11 @@ describe('waitingOnThem (v2.5704, punch list #139)', () => {
       ['Kim Coe', 6, 'Their move · 6 d'],
       ['Dana Whitfield', 2, 'Their move · 2 d'],
     ])
-    expect(rows[0]).toMatchObject({ contactId: 'c2', words: 'Kim, the water heater is on the truck for Tuesday.', when: 'Wed, Oct 14', tel: 'tel:+18305550121' })
+    expect(rows[0]).toMatchObject({ contactId: 'c2', words: 'Kim, the water heater is on the truck for Tuesday.', when: 'Wed, Oct 14', number: '(830) 555-0121' })
   })
   it('a pill narrows by kind; a customer’s own thread reads the customer’s name; no number means no call', () => {
     const lines = [line({ id: 'd1', name: null, customerName: 'Dana Whitfield', number: null }), line({ id: 'g1', contactId: 'c9', name: 'Greg Paulk', kind: 'trade', atMs: at('2026-10-10T12:00:00Z') })]
-    expect(waitingOnThem(lines, 'customer', NOW).map((r) => [r.name, r.tel])).toEqual([['Dana Whitfield', null]])
+    expect(waitingOnThem(lines, 'customer', NOW).map((r) => [r.name, r.number])).toEqual([['Dana Whitfield', null]])
     expect(waitingOnThem(lines, 'trade', NOW).map((r) => r.name)).toEqual(['Greg Paulk'])
     expect(waitingOnThem([], 'all', NOW)).toEqual([])
   })

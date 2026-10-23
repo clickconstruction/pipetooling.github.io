@@ -151,12 +151,12 @@ describe('voicemailNeedsReply', () => {
     expect(voicemailNeedsReply({ channel: 'voicemail', direction: 'team' })).toBe(false)
   })
 
-  it('puts Dana on Needs a reply with Call back in Quo', () => {
+  it('puts Dana on Needs a reply with Call back', () => {
     const contact: QueueContact = { id: 'dana', kind: 'customer', name: 'Dana Whitfield', state: 'waiting' }
     const m = dana()
     const line: QueueMessage = { id: m.id, contactId: m.contactId, channel: m.channel, direction: m.direction, at: m.at, body: voicemailLine(m).words }
     const [row] = needsReply([contact], [line], [], '2026-10-06')
     expect(row).toMatchObject({ contactId: 'dana', landOnId: 'vm-dana-1006', callBack: true })
-    expect(row!.acts).toContain('Call back in Quo')
+    expect(row!.acts).toContain('Call back')
   })
 })

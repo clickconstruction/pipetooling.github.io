@@ -8,7 +8,6 @@
  * `waitingOnThemIo.ts`, the section `components/messages/WaitingOnThem.tsx`.
  */
 import type { ContactKind } from '../contacts/kernel'
-import { telHrefFor } from '../phoneContact'
 import { clockDay } from '../tellCustomer/tellCustomer'
 import { inPill, type KindPill } from './kindPills'
 import { deliveryMark, type DeliveryMark, type MessageChannel, type QuoDeliveryWord } from './thread'
@@ -45,7 +44,9 @@ export interface WaitingRow {
   words: string
   /** The day our last word went: "Mon, Oct 19". */
   when: string
-  tel: string | null
+  /** The number our line went to, for the call; null for none. */
+  number: string | null
+  kind: ContactKind | null
   atMs: number
   /** Our last text did not reach them (#140 PR 4): the row says so and offers the call and the email in the nudge's place. */
   mark: DeliveryMark | null
@@ -74,7 +75,8 @@ export function waitingOnThem(lines: readonly WaitLine[], pill: KindPill, now: D
       chip: `Their move · ${days} d`,
       words: firstLine.length > WORDS_MAX ? `${firstLine.slice(0, WORDS_MAX).trimEnd()}…` : firstLine,
       when: clockDay(l.atMs),
-      tel: l.number?.trim() ? telHrefFor(l.number) : null,
+      number: l.number?.trim() || null,
+      kind: l.kind ?? null,
       atMs: l.atMs,
       mark: l.channel === 'text' ? deliveryMark({ direction: 'out', channel: 'text', delivery: l.delivery ?? null }) : null,
     })
