@@ -4691,6 +4691,43 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
   background: var(--bg-subtle) !important;
   outline: none;
 }
+/* Messages' jump strip (v2.5799, punch list #151 PR 1): the stage bar's classes over the page's lanes, so the
+   two bars read the same; on a phone the segments read as one wrapping line of name and count, the shape the
+   queues fold already draws. A lane's section (`.messagesLane`) lands just under the pinned bar. */
+.messagesJumpStrip {
+  margin-bottom: 0;
+}
+.messagesJumpStrip.isLine .stagesStageSegs {
+  flex-wrap: wrap;
+  gap: 0 0.15rem;
+  padding: 0.1rem 0.25rem;
+}
+.messagesJumpStrip.isLine .stagesStageArrow,
+.messagesJumpStrip.isLine .stagesStageSegDot {
+  display: none;
+}
+.messagesJumpStrip.isLine .stagesStageSeg {
+  flex: 0 1 auto;
+  flex-direction: row;
+  gap: 0.3rem;
+  padding: 0.2rem 0.35rem;
+  border-bottom-width: 2px;
+}
+.messagesJumpStrip.isLine .stagesStageSegName,
+.messagesJumpStrip.isLine .stagesStageSegMeta {
+  font-size: 0.8rem;
+}
+.messagesJumpStrip.isLine .stagesStageSegMeta {
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.messagesJumpStrip.isLine .stagesStageSeg.isEmpty .stagesStageSegMeta {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.messagesLane {
+  scroll-margin-top: var(--messages-jump-offset, 0px);
+}
 /* ── Pipeline Working header: the schedule pills + next-first sort (v2.3788) ── */
 .stagesWhenPills {
   display: inline-flex;

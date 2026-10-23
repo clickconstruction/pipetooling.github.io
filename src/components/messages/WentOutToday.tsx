@@ -19,6 +19,8 @@ export interface WentOutTodayProps {
   onFilter?: (filter: WentOutFilter) => void
   io?: (now?: Date) => Promise<WentOutLine[]>
   now?: () => number
+  /** Hears the heading's count once the lines are read (and 0 on a failed read), for the page's jump strip. */
+  onCount?: (count: number) => void
 }
 
 const answer: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.85rem', color: 'var(--text-muted)', fontSize: '0.9rem' }
@@ -85,7 +87,7 @@ function Row({ r, onOpenThread }: { r: WentOutRow; onOpenThread: (contactId: str
   )
 }
 
-export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter, io = loadWentOut, now = Date.now }: WentOutTodayProps) {
+export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter, io = loadWentOut, now = Date.now, onCount }: WentOutTodayProps) {
   const [lines, setLines] = useState<WentOutLine[] | null | undefined>(undefined)
   const [own, setOwn] = useState<WentOutFilter>('both')
   const filter = filterGiven ?? own
@@ -105,8 +107,12 @@ export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter
 
   const days = wentOutDays(lines ?? [], pill, new Date(now()), filter)
   const total = days.reduce((n, d) => n + d.rows.length, 0)
+  const count = lines === undefined ? null : total
+  useEffect(() => {
+    if (count !== null) onCount?.(count)
+  }, [count, onCount])
   return (
-    <section id="went-out" aria-label="Went out" data-testid="went-out-today">
+    <section id="went-out" className="messagesLane" aria-label="Went out" data-testid="went-out-today">
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>{WENT_OUT_WORDS.title(total)}</h3>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{WENT_OUT_WORDS.note}</span>

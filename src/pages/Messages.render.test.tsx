@@ -391,3 +391,29 @@ describe('/messages: Answer all (punch list #140 PR 6)', () => {
     expect(await within(desk).findByText('Their record could not be read. Answer them from their thread.')).toBeTruthy()
   })
 })
+
+describe('/messages: the jump strip over the lanes (punch list #151 PR 1)', () => {
+  it('lists the lanes with the counts their headings show, lands a press on the lane, and hides while searching', async () => {
+    at('/messages')
+    const lanes = await screen.findAllByTestId('jump-lane')
+    expect(lanes.map((b) => b.dataset.lane)).toEqual(['new', 'needsReply', 'weOwe', 'waiting', 'wentOut'])
+    // Each segment's count is its heading's own: the strip reads nothing of its own.
+    await waitFor(() => {
+      for (const lane of screen.getAllByTestId('jump-lane')) {
+        const label = lane.querySelector('.stagesStageSegName')!.textContent
+        const count = lane.querySelector('.stagesStageSegMeta')!.textContent
+        expect(count).not.toBe('…')
+        expect(screen.getByRole('heading', { name: `${label} (${count})` })).toBeTruthy()
+      }
+    })
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    fireEvent.click(screen.getByLabelText(/^Jump to Went out/))
+    await waitFor(() => expect(scroll).toHaveBeenCalled())
+    expect(scroll.mock.instances[0]).toBe(document.getElementById('went-out'))
+    expect(document.getElementById('went-out')?.className).toBe('messagesLane')
+    expect(document.getElementById('new-lane')?.className).toBe('messagesLane')
+    scroll.mockRestore()
+    fireEvent.change(screen.getByTestId('search-lines'), { target: { value: 'pond' } })
+    await waitFor(() => expect(screen.queryByTestId('jump-lane')).toBeNull())
+  })
+})
