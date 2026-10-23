@@ -1,8 +1,8 @@
 ---
 name: "Messages, worked like a desk — the loop switched fully on, Answer all one person at a time with a Mine lens, and a last-7-days strip whose every number is a door"
 number: 140
-group: ready
-status: BUILT — nine PRs filed 2026-10-21 (1, 7, 8 merged first; 2–6 queued in order on main; 9 last); the live test (BUILD_PLAN § 3) is what is left
+group: close
+status: DONE — nine PRs merged 2026-10-21; the live test (BUILD_PLAN § 3) walked 2026-10-23 through the walk kit with the owner's presses, every leg green, the kit cleaned up
 summary: >
   With #139's six additions Messages is a complete record and a complete inbox, and the next
   gain is not another lane. Three levers: close the loop (an Office hours card, and a card on
@@ -14,7 +14,7 @@ summary: >
   RPC, Book a visit and Start an estimate on a lead's thread); and a last-7-days strip at the
   top (answered within an hour, longest wait now, texts not delivered, estimates sent → opened
   → accepted), every number opening its rows.
-next: the live test (BUILD_PLAN § 3) once PR 9 is on main — the ZZ customer is the team inbox and the owner's cell; set up and read, the owner presses Send; then clear the session cards in .claude/sessions/active/ and move this file to done
+next: nothing on the train; clear the session cards in .claude/sessions/active/ and move this file to done. The owner's two asks from the walk shipped on their own: Preview on the Tell the customer sheet (v2.5794, #6060) and the receipt's script door (v2.5796, #6063)
 size: XL as a train of nine (S M M M L L M+migration M S); the switches themselves are the owner's presses, not code
 blocker: none — the queue; each PR arms as the one below merges
 ver: v2.5709 · 5710 · 5711 · 5712 · 5713 · 5714 · 5715 · 5716 · 5717 (punch list #140; #139's PRs 11–16 landed the same day beneath it)
@@ -243,7 +243,9 @@ contact).
 | 7 | Log a call (+ migration `20261021010000_log_call`, applied on prod 2026-10-21; types PR #5965 merged) | v2.5710 | #5958 | merged 2026-10-21 |
 | 8 | A lead's doors | v2.5711 | #5959 | merged 2026-10-21 |
 | 9 | One front door; the guides | v2.5717 | #5966 | merged 2026-10-21 |
-| — | Live test (BUILD_PLAN § 3) | | | under way 2026-10-21: the ZZ customer is the existing **Robert Test** (the owner's cell and his own address; a second contact on his cell would split the thread). The text loop is proven: the owner's text from the thread went ✓ delivered and his reply from his cell landed in New within two minutes. The email leg waits on v2.5722 (#5977): the reader left out mail from any staff address, the owner's included. Every press goes in the owner's own browser: the Claude app's browser pane is signed in as the sample assistant, which cannot text |
+| — | Live test (BUILD_PLAN § 3) | | | **done 2026-10-23** through the walk kit (`npm run walk -- --owner-presses --keep`, once the two bids@ test channels were removed, `WALK_KIT.md` § Before the first walk). The owner pressed Send and Send both on ZZ Walk Messages Desk's estimate #171; the email, the 👀 open, the email reply through the team inbox (lever 1, the leg the 2026-10-21 half-walk on Robert Test left unproven), the text reply, STOP and START all landed within a minute each. Then from the owner's own Chrome: Take it (Mine read 1 while ZZ sat in Needs a reply), Answer all (one text, ✓ delivered; the end card said so), Log a call (the day Thursday Oct 29 kept as their word; the header read *Their move · until Thu Oct 29 · their word*) and, after the kit's own lines were backdated three days so Waiting on them listed it, Nudge (the plain check-in, since the kit is on no step, ✓ delivered). `--cleanup-only` removed every row: the customer, the contact and its two channels, 15 lines, the estimate and its event, the sent copy, the promise and the kit row. The walk's own paper cuts are in `WALK_KIT.md` § Found on the first walks |
+| — | Follow-up from the walk: **Preview** on the Tell the customer sheet, the email and the text as the customer sees them, over the sheet | v2.5794 | #6060 | armed 2026-10-23 |
+| — | Follow-up from the walk: the receipt says whose call script it is, **Change the script in Settings** lands on the step with its Call script open, a white phone glyph on Call | v2.5796 | #6063 | merged 2026-10-23 |
 | — | Follow-up: **Reminders the app offers** card on Phone and texts (the owner's ask on the switch-on: the Offers setting with the other Messages switches; the switch card's door lands on it) | v2.5720 | #5970 | merged 2026-10-21 |
 
 Keep this table true after each PR (version, PR number, armed / merged / live). The session that
