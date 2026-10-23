@@ -315,7 +315,7 @@ Per the playbook: modals opened from 2+ tabs (or living in app contexts) stay pa
 | [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) (358) | sheets, payments, stage, move/remove/restore | Subs, Crew P&L, Billing, Job Summary, burn | — |
 | [`useRoleGate`](../src/hooks/useRoleGate.ts) (66) + `lib/roleGate.ts` | bounce toast + landing | URL router, `?stagesMoney=` | render test + kernel test |
 | [`utils/teamLabor.ts`](../src/utils/teamLabor.ts) `loadTeamLaborData` (imported as `fetchTeamLaborRows`) | team labor aggregation | `loadTeamLaborData` (556–563) → Crew P&L, Billing, Job Summary, burn | `teamLabor.test.ts` |
-| `lib/jobsDocuments/` (`subLaborSheet`, `jobSummaryCostBreakdown`, `printWindow`) | print HTML | Subs, Job Summary | builders tested; `printWindow` not |
+| `lib/jobsDocuments/` (`subLaborSheet`, `jobSummaryCostBreakdown`, `jobCostsPacket`, `printWindow`) | print HTML | Subs, Job Summary, the job window's Costs tab (v2.5749) | builders tested; `printWindow` not |
 | [`lib/jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts) (816) | board lists, StageRows, AR targets | Pipeline, AR page | tested |
 | [`lib/jobsStagesSerializedPipeline.ts`](../src/lib/jobsStagesSerializedPipeline.ts) | mutation queue | mutation hook, `JobsStagesTab` | — |
 | Page-read kernels: `jobsListLoadGate`, `stagesSectionPrefs`, `stagesMoneyMoveLink`, `weeklyMoneyReportLink`, `moneyStoryDoor`, `jobSummaryBurn`, `jobSummaryPercentComplete`, `ledgerDisplayPrefixes`, `jobDetailModalRole`, `subLaborOutstanding`, `jobs/subLaborCost`, `customerArchive`, `fetchMercuryRelationsByTxIds` | pure | this page | all tested |
