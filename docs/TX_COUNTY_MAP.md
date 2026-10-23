@@ -23,5 +23,7 @@ curl -sSLO https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_county_20m.
 ## How the app reads it
 
 - `src/lib/legal/txCountyMap.ts` (pure, unit-tested) projects the features to SVG paths with a plate-carrée projection scaled by the cosine of the state's middle latitude, enough for a picker at this size, and gives each county a label point.
-- `src/lib/legal/txCountyMapIo.ts` fetches the file once per page and caches the projected shapes.
+- `src/lib/legal/txCountyMapIo.ts` fetches the file once per page (`loadTxCounties`) and caches the projected shapes (`loadTxCountyMap`); the map's `project(lon, lat)` places a case's dot in the same units.
+- `src/lib/legal/countyAt.ts` answers which county a longitude and latitude fall in (ray casting over the outer rings), so a case's venue follows its job's geocode when the property record names no county.
+- `src/lib/legal/countyMapView.ts` is the view box math for zoom and pan.
 - County names in `legal_firm_counties.county` are these `NAME` values, matched case-insensitively against `customer_addresses.county` and `src/lib/txCountyLookup.ts`, which spell them the same way.

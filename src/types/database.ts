@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       address_geocodes: {
@@ -20275,6 +20250,48 @@ export type Database = {
           },
         ]
       }
+      legal_firm_counties: {
+        Row: {
+          county: string
+          firm_id: string
+          id: string
+          set_by: string | null
+          since: string
+          until: string | null
+        }
+        Insert: {
+          county: string
+          firm_id: string
+          id?: string
+          set_by?: string | null
+          since?: string
+          until?: string | null
+        }
+        Update: {
+          county?: string
+          firm_id?: string
+          id?: string
+          set_by?: string | null
+          since?: string
+          until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_firm_counties_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_firm_counties_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_firm_recipients: {
         Row: {
           added_by: string | null
@@ -27195,6 +27212,38 @@ export type Database = {
           },
         ]
       }
+      quickfill_item_snoozes: {
+        Row: {
+          created_at: string
+          item_key: string
+          kind: string
+          snoozed_by: string | null
+          until: string
+        }
+        Insert: {
+          created_at?: string
+          item_key: string
+          kind: string
+          snoozed_by?: string | null
+          until: string
+        }
+        Update: {
+          created_at?: string
+          item_key?: string
+          kind?: string
+          snoozed_by?: string | null
+          until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_item_snoozes_snoozed_by_fkey"
+            columns: ["snoozed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickfill_office_arriving_daily_checks: {
         Row: {
           checked_at: string
@@ -30867,7 +30916,7 @@ export type Database = {
           {
             foreignKeyName: "twin_shadow_runs_reference_bid_id_fkey"
             columns: ["reference_bid_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "bids"
             referencedColumns: ["id"]
           },
@@ -37382,6 +37431,8 @@ export type Database = {
           heartbeat_stage: string
           heartbeat_state: string
           holds_open_shell: boolean
+          idle_at: string
+          idle_progress: Json
           idle_rounds_today: number
           key_created_at: string
           key_label: string
@@ -38427,9 +38478,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       estimate_status: [

@@ -3348,8 +3348,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 if (!legalInBar && !lienDeskEligible) return null
                 return (
                   <>
-                    {legalInBar ? <StagesLegalDeskShortcut count={legalDeskCount} onOpen={() => setLegalDesk({ payerKey: null })} /> : null}
                     {lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} onOpen={() => setLienDesk({ jobId: null })} /> : null}
+                    {legalInBar ? <StagesLegalDeskShortcut count={legalDeskCount} onOpen={() => setLegalDesk({ payerKey: null })} /> : null}
                   </>
                 )
               })()}
