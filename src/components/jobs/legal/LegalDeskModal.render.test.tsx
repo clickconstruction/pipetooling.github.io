@@ -124,6 +124,7 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     firmPaused: false,
     activeFirms: [firm],
     countiesByFirm: new Map(),
+    readState: 'ok' as const,
     reload: async () => {},
   }
   const renderDesk = async (extra: { canMarkReady?: boolean; canEditReview?: boolean }) => {
@@ -194,7 +195,9 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(group.firstElementChild).toBe(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
     expect(screen.getByRole('button', { name: 'Firm’s emails' }).dataset.legalFirmEmails).toBe('ok')
     const close = screen.getByRole('button', { name: 'Close' })
-    expect(close.previousElementSibling).toBe(group)
+    // v2.5780: the full screen toggle sits between the group and the ✕.
+    expect(close.previousElementSibling).toBe(screen.getByRole('button', { name: 'Full screen' }))
+    expect(close.previousElementSibling?.previousElementSibling).toBe(group)
     expect(close.textContent).toBe('')
     cleanup()
     // Emails says so, in words, when emails to the firm are paused or an address bounces.
@@ -246,5 +249,37 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     await settle()
     expect(screen.queryByText('Given up on — not for the firm')).toBeNull()
     expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
+  })
+
+  it('the full screen button beside the ✕ fills the screen, names the other state and remembers the choice (v2.5780)', async () => {
+    window.localStorage.removeItem('modal_full_screen_legal-desk')
+    await renderDesk({ canEditReview: true })
+    const panel = () => document.querySelector('[data-legal-desk-panel]') as HTMLElement
+    expect(panel().dataset.legalDeskPanel).toBe('window')
+    const toggle = screen.getByRole('button', { name: 'Full screen' })
+    // The toggle sits just before the ✕ in the header's control row.
+    expect(toggle.nextElementSibling?.getAttribute('aria-label')).toBe('Close')
+    fireEvent.click(toggle)
+    expect(panel().dataset.legalDeskPanel).toBe('full')
+    expect(panel().style.borderRadius).toMatch(/^0(px)?$/)
+    expect(window.localStorage.getItem('modal_full_screen_legal-desk')).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to a window' }))
+    expect(panel().dataset.legalDeskPanel).toBe('window')
+    expect(window.localStorage.getItem('modal_full_screen_legal-desk')).toBeNull()
+  })
+
+  it('a read of the legal tables that failed says so and offers Retry; a missing table keeps the old line (v2.5780)', async () => {
+    const reload = vi.fn(async () => {})
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, available: false, readState: 'failed', reload }} canMarkReady canEditReview />)
+    await settle()
+    expect(screen.getByText(/Could not read the legal tables/)).toBeTruthy()
+    expect(screen.queryByText('Read-only until the legal tables are applied.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(reload).toHaveBeenCalledTimes(1)
+    cleanup()
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, available: false, readState: 'missing', reload }} canMarkReady canEditReview />)
+    await settle()
+    expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 })
