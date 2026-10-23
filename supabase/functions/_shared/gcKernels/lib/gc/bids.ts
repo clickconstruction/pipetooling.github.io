@@ -56,7 +56,18 @@ export function quoteRanOut(bid: SubBid, today: string): boolean {
 export function uncostedLines(pkg: TradePackage, invite: Invite): ScopeItem[] {
   const bid = invite.bid
   if (!bid) return []
-  return pkg.scope.filter((item) => bid.includes[item.id] !== 'yes' && !((bid.plugs[item.id] ?? 0) > 0))
+  const lines = pkg.scope.filter((item) => bid.includes[item.id] !== 'yes' && !((bid.plugs[item.id] ?? 0) > 0))
+  // What their quote wrote it leaves out, with no cost to cover it yet, is the same hole (v2.5779: a
+  // carried quote with an uncovered exclusion read as a real number, and the card said Send our bid).
+  const exclusions = uncoveredExclusions(pkg, bid).map((e) => ({ id: `${EXCLUSION_ITEM_ID}${e.name}`, label: e.name }))
+  return [...lines, ...exclusions]
+}
+
+/** The id prefix of an uncosted exclusion in `uncostedLines`, so the words can count it as one. */
+export const EXCLUSION_ITEM_ID = 'exclusion:'
+
+function isExclusionItem(item: ScopeItem): boolean {
+  return item.id.startsWith(EXCLUSION_ITEM_ID)
 }
 
 /**
@@ -85,7 +96,11 @@ export function proposalUncostedWords(project: GcProject): string {
 export function uncostedWords(items: ScopeItem[]): string {
   if (items.length === 0) return ''
   const names = listWords(items.map((i) => i.label.toLowerCase()))
-  return items.length === 1 ? `1 line has no cost yet: ${names}.` : `${items.length} lines have no cost yet: ${names}.`
+  const lines = items.filter((i) => !isExclusionItem(i)).length
+  const exclusions = items.length - lines
+  const count = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`
+  const what = lines > 0 && exclusions > 0 ? `${count(lines, 'line')} and ${count(exclusions, 'exclusion')}` : lines > 0 ? count(lines, 'line') : count(exclusions, 'exclusion')
+  return `${what} ${items.length === 1 ? 'has' : 'have'} no cost yet: ${names}.`
 }
 
 /** A bid is stale when a plan set newer than its basis changed this package's scope. */
