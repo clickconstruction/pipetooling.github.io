@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band
 order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
@@ -36,7 +36,11 @@ The card goes on its own once all eight are on. The switches themselves are set 
 
 ## The bar at the top
 
-One bar sits at the top of the page. It stays there while you scroll. It holds the title, {{button:outline|All kinds}}, **Mine** and **Everyone**, the search glass, the lanes with their counts and {{button:outline|7 days}}.
+One bar sits at the top of the page. It stays there while you scroll. It holds the title, {{button:outline|All kinds}}, **Mine** and **Everyone** and the search glass. Beside them sit the lanes with their counts, {{button:outline|7 days}} and {{button:outline|?}}.
+
+Press {{button:outline|?}} to read what each lane holds. A card opens under the bar with one line per lane. Press {{button:outline|Close}} to put it away.
+
+Each lane's heading is a band in the lane's color. The count sits in a pill beside the name.
 
 On a phone the bar is two short lines, and the lanes sit under them on their own line.
 

@@ -11,6 +11,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { waitingOnThem, WAITING_WORDS, type WaitLine } from '../../lib/messages/waitingOnThem'
 import { loadWaitingOnThem } from '../../lib/messages/waitingOnThemIo'
 import type { KindPill } from '../../lib/messages/kindPills'
+import { JUMP_LANE_COLOR, JUMP_LANE_LABEL } from '../../lib/messages/jumpStrip'
 import type { OpenThreadMore } from '../gc/messages/useThreadWindow'
 
 export interface WaitingOnThemProps {
@@ -50,9 +51,14 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
   }, [count, onCount])
   return (
     <section id="waiting-on-them" className="messagesLane" aria-label="Waiting on them" data-testid="waiting-on-them">
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{WAITING_WORDS.title(rows.length)}</h3>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{WAITING_WORDS.note}</span>
+      {/* The band (v2.5802, punch list #151 PR 3): the lane's color, the count in a pill; the sentence sits behind the bar's ?. */}
+      <div className="stagesSectionBand messagesLaneBand" style={{ '--stage-color': JUMP_LANE_COLOR.waiting } as CSSProperties} data-testid="lane-band">
+        <h3 className="stagesBandTitle" aria-label={WAITING_WORDS.title(rows.length)}>
+          {JUMP_LANE_LABEL.waiting}{' '}
+          <span className="stagesBandCount" aria-hidden>
+            {rows.length}
+          </span>
+        </h3>
       </div>
       <div style={{ display: 'grid', gap: '0.5rem' }}>
         {lines === undefined ? null : lines === null ? (

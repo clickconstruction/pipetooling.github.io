@@ -6,8 +6,9 @@
  * A row opens the person's thread as cut 1's window over the page (`?thread=<contact id>&at=<message id>`), with
  * the job and record openers of `useMessagesHost`. The *New* lane and the header's badge are R7's. The top of the page
  * (v2.5801, punch list #151 PR 2, option C of the header mock-ups) is one bar: `components/messages/MessagesTopBar` with
- * the kind picker, Show, the search glass, the jump strip (v2.5799, PR 1, the Pipeline's stage bar over the lanes) and
- * 7 days, which opens The last 7 days under the bar.
+ * the kind picker, Show, the search glass, the jump strip (v2.5799, PR 1, the Pipeline's stage bar over the lanes),
+ * 7 days, which opens The last 7 days under the bar, and the ? (v2.5802, PR 3) that says what each lane holds, the
+ * lanes' headings being bands with no sentence under them.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
@@ -17,6 +18,7 @@ import { WaitingOnThem } from '../components/messages/WaitingOnThem'
 import { WeekStrip } from '../components/messages/WeekStrip'
 import { WentOutToday } from '../components/messages/WentOutToday'
 import { MessagesTopBar } from '../components/messages/MessagesTopBar'
+import { LaneLegend } from '../components/messages/LaneLegend'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useMessagesHost } from '../components/gc/messages/useMessagesHost'
 import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
@@ -108,6 +110,8 @@ export default function Messages() {
     setWeekOpen(open)
     keepWeekOpen(open)
   }
+  // What each lane holds (v2.5802, punch list #151 PR 3): the card behind the bar's ?, since the headings are bands.
+  const [legendOpen, setLegendOpen] = useState(false)
   const [lensCount, setLensCount] = useState<{ mine: number; everyone: number } | null>(null)
   const meId = user?.id ?? ''
   const narrow = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['narrow']>>((queue, contacts) => queueForShow(queueForPill(queue, contacts, pill), contacts, lens, meId), [pill, lens, meId])
@@ -174,7 +178,9 @@ export default function Messages() {
         onWeek={openWeek}
         strip={!searching && onFollowUp ? { counts: jumpCounts, onJump: jump } : undefined}
         phone={phone}
+        legend={{ open: legendOpen, onToggle: setLegendOpen }}
       />
+      {legendOpen && !searching && <LaneLegend onClose={() => setLegendOpen(false)} />}
       {lens === 'mine' && !searching && (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="show-note">
           {SHOW_WORDS.notNarrowed}
@@ -270,6 +276,7 @@ export default function Messages() {
             narrow={narrow}
             onCount={setQueueCount}
             onQueue={onQueue}
+            laneLook="bands"
             answerAll={{ on: answering, onChange: setAnswering, thread: { view: host.view, nowIso: host.nowIso, searchJobs: host.writes.searchJobs } }}
           />
         </div>

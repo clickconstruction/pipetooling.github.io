@@ -4771,6 +4771,20 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
 .messagesTopPicker {
   position: relative;
 }
+/* The lanes' headings as bands (v2.5802, punch list #151 PR 3): the Pipeline's section band with the count in its
+   pill, the lane's color on the left, and no sentence under it (the sentences sit behind the bar's ?). */
+.messagesLaneBand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+  border-radius: 0 8px 8px 0;
+}
+.messagesLaneBand .stagesBandTitle {
+  margin: 0;
+  font-size: 1rem;
+}
 .messagesTopMenu {
   position: absolute;
   top: calc(100% + 4px);
