@@ -1,29 +1,30 @@
 ---
-name: "Subs: the path off the page onto the bench, and who to call first"
+name: "Subs: the board by trade, built for the moment a set of plans lands"
 number: 153
 group: gated
-status: proposed 2026-10-23, three options drawn over the live lane; waits on the owner's pick
+status: proposed 2026-10-23; the owner picked B the same day and asked for it refined around the moment a set of plans lands; the refined drawing waits on his yes
 summary: >
   Prospects → Subs holds 104 trade companies found on 2026-10-23, one card at a time on the deck
   and a table on the Prospect List sorted by how long since a touch. Nothing on the page says how
   a company moves off it onto the list we call when a job needs their trade (Trade partners, the
   bench), the only door is Add to the bench ✓ on the one card the deck shows, the row does not
-  show the trade, and nothing ranks who answers or who we want first. Three options, each drawn
-  in mockup.html: A puts Hiring's stage strip over the lane (To call → Called → Talked → On the
-  bench → Quoted, with the sentence of what moves a company right), groups the list by trade
-  under the bench's own line and gives every row its press; B is Hiring's board, one column a
-  trade, ranked by drag; C adds, on top of A, the record in the bench's words (answers · hit or
-  miss · often silent · new to us) from the calls, the callbacks and the thread, a three-step
-  priority the office sets, and the deck's order By priority.
-next: the owner picks from mockup.html; then PR 1 for A (no migration), PR 2 for C (one column, prospects.priority), B only on his word
-size: A S · B M to L · C M
-blocker: the owner's pick
+  show the trade, and nothing ranks who answers or who we want first. Three options were drawn
+  and the owner picked B, the board by trade, for the moment of use: a set of plans lands, the
+  office knows which trades it needs, and wants the right subs of each trade on the phone at once.
+  The refined B starts from that moment: pick the project and its trades' columns come forward,
+  worst first; Call the top 3 on a column runs the deck through the best three in order, with a
+  callback and a text offer when one does not answer; a yes lands on the bench and is asked on
+  the job in one press. A's stage strip, sentence and press per card and C's record and priority
+  (the rank's reason and the column's default order, a drag pinning a card over it) are folded in.
+next: the owner says yes to the refined drawing in mockup.html, or changes a call; then PR 1 (A's cut, no migration), PR 2 the board and the run, PR 3 the migration with the drag and the priority, PR 4 the ask on landing
+size: M to L over four PRs · PR 1 S · PR 2 M · PR 3 M · PR 4 S
+blocker: the owner's yes to the refined B
 ver: proposed
-opinion: build A now and C next; hold B, since the calls make the judgment a drag would, and the deck, not a board, is the machine that places them
+opinion: build B as refined, in his words (we look for specific kinds of subs at a time, and when plans land we need that trade's subs at once); ship A's cut first inside it so the path is in sight while the columns and the drag come behind
 mockup: to-dos/subs-bench-board/mockup.html
 ---
 
-# Subs: the path off the page onto the bench, and who to call first (#153)
+# Subs: the board by trade, built for the moment a set of plans lands (#153)
 
 ## The ask
 
@@ -50,6 +51,18 @@ Drive · Integrity on a rated card.
 "Subscribed to us" reads as the companies on this lane: nothing signs a sub up on its own today.
 Every one of the 104 went in through New Prospect (phase 2 of punch list #148, the Central Texas
 list, source *Web research 2026-10-23*), and the only other writer of a sub is the same window.
+
+**His pick, the same day**, on the first drawing (A the strip and the list by trade, B Hiring's
+board, C the record and the priority, the recommendation then A and C):
+
+> I like all the features of A and C, but B makes the most sense for me, just because we are
+> looking for specific kinds of subs at any given time. And often we will get a set of plans and
+> then have the need to contact that particular sub as swiftly as we can. Would you be able to
+> help me? Refine B.
+
+So the shape is B, one column a trade, and the reason is the moment of use: plans land, the office
+knows which trades the job needs, and it wants the right subs of each trade on the phone at once.
+The refined B below starts from that moment and folds A and C into it.
 
 ## Today
 
@@ -87,6 +100,14 @@ Read live on the dev server against prod as the dev, 2026-10-23, read-only.
   `converted_gc_company_id`, the comment *Added to the bench: ‹name› (/gc?view=partners)*), the
   timer event, the lock release, both caches, the advance. The handler reads `currentProspect`, so a
   list row cannot press it today.
+- **What the app knows about a set of plans**: a GC project's trades are its trade packages
+  (`gc_trade_packages`: `trade`, `ours`, `project_id`), made by New project from the scope book;
+  the open asks and their quotes are `gc_invites` and `gc_quotes` on a package; the Subs lane
+  already reads all of it for the panel (`loadGcProjects` → `tradeBenches` → `gcBenchInput`). The
+  ask itself is one write, `askGcCompanies(packageId, companyIds, byName, on, send)` →
+  `gc_invite_companies` (`src/lib/gc/gcIo.ts`), the one Trade partners' Ask window makes; the
+  invitation email goes out through `gc-trade-email` when a dev sends it, else the ask carries a
+  note that a dev sends it. A Trades-mode bid carries no divisions the app knows.
 - **Hiring's shape** (`TeamProspectsTab.tsx`): the strip is a 57 px row of 88 px boxes with arrows;
   a role column is 300 px; a card is handle · #rank · name · gear, the chips, one fact a line, the
   three presses, the link chips, the read-only bars; the rank is `team_prospects.rank_order` scoped
@@ -95,183 +116,209 @@ Read live on the dev server against prod as the dev, 2026-10-23, read-only.
 
 ## Options
 
-`mockup.html` draws Today, A, B and C over made-up companies (Ridgeway Concrete, Bluff Creek
-Concrete, Hill Country Fire Protection, Kendall Concrete, the caller Marisol, the project Oak Run
-Clinic), the lane's shape a week on: To call 96 · Called 5 · Talked 3 · On the bench 2 · Quoted 1,
-with Can't reach 2 · Not a fit 1 folded.
+`mockup.html` opens on the moment of use, then Today, then the whole board, then A and C as they
+fold in, a side by side and the decisions. Every company, person and number is made up (Ridgeway
+Concrete, Hill Country Fire Protection, Alamo Sprinkler Co, Kendall Concrete, the callers Marisol
+and Grace, the project Oak Run Clinic), the lane's shape a week on: To call 96 · Called 5 · Talked
+3 · On the bench 2 · Quoted 1, with Can't reach 2 · Not a fit 1 folded.
 
-### A · The path in sight (S, no migration)
+### B, refined · the board by trade, built for the moment a set of plans lands (the pick)
 
-Hiring's strip over the Subs lane, on the Prospect List and over Follow Up's panel both: **To call →
-Called → Talked → On the bench → Quoted**, each with its count, the last two doors to Trade partners
-at the trade (↗). Under it one sentence, in plain words: *A company moves right as the calls land.
-Answered moves them to Talked. Add to the bench ✓ puts them on Trade partners. That is the list we
-call when a job needs their trade.* The Prospect List groups by **trade**, in the panel's order
-(short of quotes first, then short on the bench, then the book's), each group headed by the panel's
-own bench line (*Oak Run Clinic · 1 of 2 quotes · due Oct 30 · 1 on the bench, wants 2 more · 6 to
-call here*, with **Ask the bench →** or **Add a sub**). The columns become Company (with the city) ·
-Phone · Last call (*answered Wed · "will quote, send the plans"*, *no answer Tue, Thu*, *never
-called*) · Stage (a chip: to call · called · talked) · the press: **Call now →** on a company never
-called or not yet reached, **Add to the bench ✓** on one we talked to, with *Call again →* beside it.
-A sub naming two trades sits under the one the panel ranks worst and wears *also: Sitework*. The
-exits fold under the list, *▸ Can't reach 2 · Not a fit 1*, as Hiring folds Passed. On a phone the
-strip is two short rows and the rows are the cards the list already draws.
+**The moment.** The board opens on **For**: a GC project at bidding, listed from the projects the
+lane already reads, or trades ticked by hand. Picking *Oak Run Clinic* lights its four columns (its
+packages we do not self-perform), worst first (nobody on the bench, then short of quotes, then
+thin), and folds the other eleven behind *11 trades folded · Press to show all*. Each lit column's
+head carries the project's ask (*0 of 2 quotes · due Oct 30, in 7 days*) and the bench's line
+(*nobody on the bench · wants 3*, or *1 on the bench, everyone asked*), with **Ask the bench →**
+beside it when a bench company is not asked yet.
 
-- **The data already holds** every count: the three left stages from the lane's rows and their
-  call comments (`calledProspectIds` and `prospectLastCallMap` come from the scan the list already
-  makes; Talked needs one more set, *ever answered*, from the same scan), the two right stages from
-  the bench the page already reads for the panel (`gcBench.benches`, each partner's `bids` of
-  `invited`). The trade groups are `gcNeeds`' rows in its order. Nothing new to store.
-- **Call now →** is unchanged: it opens the deck on that card and takes the calling lock. **Add to
-  the bench ✓** on a row opens the same `ProspectBenchModal`, filled from the row by
-  `benchDraftFromProspect`; `handleBenchSave` takes the prospect as an argument instead of reading
-  `currentProspect`. The deck itself is unchanged under the strip.
-- **Activity**: the week report's *converted* column reads *to the bench* on Subs
-  (`PROSPECT_KIND_WORDS.sub.landed`), so a week reads *Marisol · 31 calls · 9 answered · 2 to the
-  bench*. A company's move reads on its row as the comment the press already files.
-- **Two lists, one company**: the row leaves this page the moment it lands on the bench (the
-  landed section stays as the record). The bench's company line gains one line under the name
-  until the first ask replaces it: *from Prospects · Marisol, Thu Oct 29 · answered 1 of 2 calls*,
-  read from `prospects` by `converted_gc_company_id`.
+**Call the top 3 →**, one press a column, opens Follow Up as a **run**: the column's three best
+cards, in the column's order, the project named in the head and in the call script, the deck's own
+lock, clock, outcomes and callbacks. The run is a slice of the queue fixed at the press (the three
+ids on the link), so nothing reshuffles under the caller; the rail shows *The run · 2 of 3* with
+the whole queue behind it. **Call now →** on one card is a run of one.
 
-Is this the best we can do? It answers the owner's first sentence with nothing new to store and
-57 px of chrome: the path is in sight, the list we call is one press away and named, and every row
-has the press the top card had. It does not rank who answers; that is C.
+**When one does not answer**: Didn't Answer files the call as today, sets a callback for 3 pm today
+on that company (the deck's Set callback, so the Calendar shows it and the card reads *callback set
+Fri 3 pm*), offers a one-press text (*Click Plumbing here, we have a set of plans for a fire
+sprinkler scope, call us back*) only when they said we may text (the `textRefusal` rule of v2.5606:
+a company not asked reads *Ask first* and nothing goes), and moves to the next card. After the
+last card the deck shows the run's receipt (*1 will quote and is asked · 2 to call back at 3 pm*)
+and **Back to the board →**.
 
-### B · The board by trade (M to L, a migration)
+**To the bench, and asked.** Answered and a yes is **To the bench ✓**: Add a company filled from
+the card, as today, with one tick when a project is picked: *Ask them to quote Oak Run Clinic · Fire
+sprinkler now*, which writes the ask on the job's package through `askGcCompanies`, the ask Trade
+partners makes. The card leaves the board as it lands; the bench's line under the name reads *from
+Prospects · Marisol, Thu Oct 29 · answered 1 of 2 calls* until the first quote replaces it, so a
+company is on one list at a time and *new to us* is not blank on a company we talked to.
 
-Hiring's board under Subs, a fourth sub-tab or the list's place on this lane. One 300 px column per
-trade the bench needs, in the panel's order, the column's head carrying the bench's need (*Oak Run
-Clinic · 1 of 2 quotes · due Oct 30 · 1 on the bench, wants 2 more*) and *4 never called*. Cards
-ranked by drag, *#1* is who we call first, the top never-called card wears *call next*, a company
-doing two trades wears *also in: Sitework*. One fact a line (phone, website, *via Web research*,
-*Answered Wed · "will quote"*). The presses are the deck's outcomes in Hiring's places: **Didn't
-answer · Answered**, then **To the bench ✓ · Pass**. + Add a sub at the foot. Fifteen columns scroll
-sideways; a phone scrolls them one at a time as Hiring does.
+**The board with nothing picked** is Hiring's: one column a trade the bench buys out, in the
+panel's order, the strip over it (**To call → Called → Talked → On the bench → Quoted**, the last
+two doors to Trade partners), the sentence of what moves a company right, each column's head with
+its need and **Call the top 3 →**, the exits folded under. A card is handle · #rank · name · gear;
+the chips say why it sits there (*★ Call first · answers · pinned by Grace*, *call next*, *also in:
+Sitework*, *often silent · later*); one fact a line (the phone and city, the last call and its
+note, a callback set); the presses **Call now →** (the deck), **To the bench ✓** and **Pass**. The
+call is never logged on the board: the deck has the lock and the clock, so two callers never dial
+one company and the minutes count.
 
-- **Needs a column**: the rank. A sub is one row and may name two trades, so the rank is per trade:
-  a new table `prospect_trade_ranks` (prospect_id, trade, rank_order, dense 1..n per trade), its
-  migration with `SET lock_timeout` and the three fence calls, `teamProspectRanking.ts`' math reused.
-- **Call now** stays on the list; the board's presses file the deck's own comments
-  (`didnt_answer`, `answered`, the bench comment), so Activity counts the calls. Nothing on the board
-  takes the calling lock or runs the clock, so *14m on calls* stays the deck's, and two people can
-  press the same card a minute apart. The deck gains a fourth order, *By rank*.
-- **Activity**: calls from the board count; minutes do not; a drag bumps `updated_at` and would
-  show under *Updated* unless the rank write leaves it alone.
+**The rank** (C folded in). A column's default order is the office's priority (*Call first*, then
+Normal, *Later* last), then the record in the bench's words (*answers · hit or miss · new to us ·
+often silent*, `answerRecord`'s thresholds over the lane's call log, a callback they asked for, a
+text or an email back on the thread Messages ties to the prospect, and `ok_to_text`), then never
+called before called, then coldest. A drag pins a card by hand (an amber edge, *pinned*), and
+pinned cards hold their place over the flow, as Hiring's #1 does. The priority is set on the card
+or the deck (Call first · Normal · Later, with who and when); the record is computed on load and
+never stored.
 
-Is this the best we can do? Hiring ranks ten people a role by hand because each hire is a judgment
-of a person. Here it is seven companies a trade and the judgment is *do they answer, will they
-quote*, which the calls themselves say (C). The deck is the calling machine: the lock so two callers
-never dial the same company, the clock, the callbacks, the script. A board beside it is a second
-view of one queue, and a caller working 104 numbers does not drag cards. The board's two real gains,
-the trade in view and a press on every row, A gives the list without a table or a drag. So B is
-drawn for the owner's eye and held.
+- **Needs a column**: the trade is on every prospect already (`prospects.trades`, the bench's
+  spelling, v2.5559). New: `prospect_trade_ranks` (prospect_id, trade, rank_order; null flows, set
+  is pinned; one row a company a trade, since a sub can name two trades and sit in two columns)
+  and `prospects.priority` (smallint: 1 Call first, null Normal, 3 Later). One migration with
+  `SET lock_timeout` and the three fence calls on the new table; the types regen.
+- **Call now and the deck**: Call now on the Prospect List keeps opening the deck on that card; on
+  a board card it is a run of one. The deck gains the run (`?run=<ids>`, the head, the rail, the
+  receipt, Didn't Answer's callback and text offer in a run) and the order **By rank** (the column's
+  order). The outcome presses, the lock, the clock and Activity's counts are unchanged, so the week
+  still reads *Marisol · 31 calls · 9 answered · 2 to the bench* (*converted* reads *to the bench*
+  on Subs, A's word).
+- **The hand-off**: `handleBenchSave` takes the prospect as an argument; the window gains the ask
+  tick when a project is picked and calls `askGcCompanies` on the package after `addGcCompany`;
+  the Board lane's door (`gc_office_team()`) covers both writes.
+- **Honest costs**: a migration; fifteen columns scrolling sideways when nothing is picked (a phone
+  shows one at a time, as Hiring does); two places to see one queue and one place to log a call;
+  the invitation email still goes out as asks do today; the board is a new component beside
+  `TeamProspectsTab.tsx`'s, not a reuse of it (its card and column are bound to `team_prospects`).
 
-### C · Who answers, who first (M, one column)
+Is this the best we can do? It starts from the owner's moment and ends with the sub asked on the
+job, four presses from the plans landing (pick the job, Call the top 3, Answered, To the bench ✓
+and ask). It stores the two things only a person knows (the pin and the priority) and computes the
+rest, so the board and the bench never disagree on who answers. It keeps one place for the call
+(the deck), so the lock, the clock and Activity stay whole. Cut: a text to every unreached company
+at once (one press a company, after the call, is the texting rule), a run across trades (one trade
+a run keeps the script right), and Hiring's three bars (a company's record is one line).
 
-On top of A, two more things a row and the card say.
+### A · folded into B, and PR 1's shape
 
-**Answers** is the record, in the bench's own words so a company reads the same on both pages:
-*answers* (three of four or better), *hit or miss*, *often silent* (under two of five), *new to us*
-(under two calls), with the facts under the chip: *2 of 2 calls · replied by text Wed*, *1 of 2
-calls · asked us to call back Fri*, *0 of 3 calls · no text back*, and the day of the last touch.
-The facts come from what the app already keeps: the lane's call log (`prospect_comments`
-`didnt_answer` / `answered` with their days), a callback they asked for (`prospect_callbacks`), a
-text or an email back on the thread Messages ties to the prospect (`messages` where the contact's
-`prospect_id` is the row and `direction` is in), and `ok_to_text`. Computed on load by one pure
-kernel (`subRecord.ts`, the thresholds `answerRecord`'s), never stored, so it can never go stale.
+A's pieces live on the board: the strip with its counts, the sentence of what moves a company, the
+last two stages as doors to Trade partners, a press on every card, the exits folded, Activity's
+word, the bench's *from Prospects* line. A is also what ships first inside B's plan: the Prospect
+List grouped by trade in the panel's order under the bench's line, the **For** picker lighting the
+project's trades first, **Call for ‹trade› →** on each group, **Add to the bench ✓** on a row we
+talked to, no migration. The office has the path and the trades in sight while the columns, the
+run and the drag come in the PRs after.
 
-**Priority** is the office's word, three steps on a chip: **Call first · Normal · Later**, pressed on
-the card's utility row or on the list row, with who set it and when. One column,
-`prospects.priority` (smallint, null = Normal). *Later* sinks a row to the foot of its trade and off
-the deck's first pass; it never hides a company. The old 🔥 warmth (hand-set in Edit prospect,
-climbing by one on every Answered, 238 of 268 customer rows at 0 when the list regrouped in v2.2453)
-is a second hand-set number beside it and should retire on Subs with this.
+### C · folded into B
 
-**By priority** is the deck's fourth order: Call first, then the biggest gap on the bench, then who
-answers, then never called, then coldest. By need folds the priority in as its first key. The card's
-head wears the record chip beside the name and the facts under the trade.
-
-- **Call now** and the outcome presses are unchanged. **Activity** gains nothing per user; the
-  record is per company. On Trade partners the company's line reads its record under the name until
-  the first ask writes the bench's own (*answers · on the phone · never asked*), so the bench's *new
-  to us* is not blank on a company we talked to four times.
-- Nothing here is money, and nothing here is a teammate's figure: the record is a company's answers
-  and the priority is the office's word on a company.
-
-Is this the best we can do? It answers the owner's second sentence with one column and words the
-bench already uses. It stores the one thing only a person knows (who we want first) and computes
-the rest, so the two never disagree. Cut: three bars like Hiring's (Ability · Drive · Integrity are
-a person's; a company's record is one line), a score, and a hand rank by drag (B).
+C's record and priority are the rank's reason on every card and the column's default order, as
+above; the deck's order **By priority** became **By rank** (the column's order, pins included).
+The old 🔥 warmth (hand-set in Edit prospect, climbing by one on every Answered, 238 of 268 customer
+rows at 0 when the list regrouped in v2.2453) is a second hand-set number beside the priority and
+retires on Subs with it.
 
 ### Rejected
 
 - **A stage called Signed up.** Nothing signs a sub up on its own; the first stage is To call.
-- **A kind filter or a sort instead of the strip.** The owner's complaint is that the path is not
-  in sight; a strip with counts says it, a sort does not.
+- **Logging the call on the board.** Didn't answer · Answered on a card with no lock and no clock
+  lets two callers dial one company a minute apart and loses the minutes; the deck does it.
+- **A run across trades.** The script names the project and the trade; one trade a run keeps it
+  right. The office presses Call the top 3 on the next column when the run is done.
+- **Reading a Trades-mode bid's divisions.** The app has none; a GC project's packages are the
+  trades a set of plans needs.
 - **Pushing the stages onto Trade partners.** The bench has its own words (asked, looking, quote
-  in, passed) and its own assistant; the strip's last two boxes are doors to it, not a copy.
+  in, passed); the strip's last two boxes are doors to it, not a copy.
 
 ## Decisions for the owner
 
-1. **The stage names.** Drawn: To call · Called · Talked · On the bench · Quoted. The last could read
-   *Working with us* and count awards instead of quotes.
-2. **Where the strip sits.** Drawn on the Prospect List and over Follow Up's panel both. The list
-   alone saves Follow Up 57 px.
-3. **The list's groups.** Drawn by trade, in the panel's order, each group headed by the bench's
-   line. The other way is by stage, Hiring's, with the trade as a chip on the row.
-4. **Priority's steps.** Drawn as three words, Call first · Normal · Later. One star on or off is
-   simpler and loses *Later*.
-5. **The old 🔥 warmth.** With C it retires on Subs, or on every lane.
-6. **A way back.** No screen takes a company off the bench today. A company declined on Trade
-   partners could get *Send back to Prospects*, the door a lost GC project already has
-   (`cardHead.ts` `prospects`), so the two lists never hold one company by accident.
-7. **B at all.** Drawn and held. Say the word if the drag is wanted; it is one PR after A and C,
-   with its migration.
+1. **The For picker.** Drawn: the GC projects at bidding, whose trades are their packages; or trades
+   ticked by hand.
+2. **Call the top N.** Drawn as three. It could follow the ask: the quotes still wanted plus one.
+3. **When one does not answer.** Drawn: the call is filed, a callback is set for 3 pm today, the
+   run moves on, and a one-press text is offered only when they said we may text. The hour and the
+   text's words are yours.
+4. **The ask on landing.** Drawn: To the bench ✓ during a run ticks *Ask them to quote this job
+   now*. The invitation email goes out as asks do today (a dev sends it, or the ask carries the
+   note).
+5. **Where a call is logged.** Drawn: only on the deck (Call now → on a card is a run of one). The
+   other way is Didn't answer · Answered on the card too, with no lock and no clock.
+6. **The rank.** Drawn: the column's default order is Call first, then the record, then never
+   called, then coldest, and a drag pins a card over it. The other way is Hiring's, every card
+   hand-ranked from day one.
+7. **Priority's steps and 🔥 warmth.** Drawn: Call first · Normal · Later, and warmth retires on
+   Subs.
+8. **Where the Board sits.** Drawn as a sub-tab beside Follow Up (Follow Up · Board · Prospect List
+   · Activity), the Prospect List kept. The other way is the Board in the list's place on Subs.
+9. **PR 1 first.** Drawn: A's cut ships first, no migration; the columns, the run, the drag and the
+   ask tick follow.
 
 ## Where it plugs in
 
-- **A** · `src/lib/prospects/subsStages.ts` (new, pure): the five stages from the lane's rows, the
-  called and answered sets and the bench's partners; the groups by trade over `gcNeeds`' rows; the
-  strip's words and the sentence; the row's press. `src/pages/Prospects.tsx`: the chips row becomes
-  the strip (`activeTab === 'prospect-list'`, and over the panel on Follow Up for `kind === 'sub'`),
-  the list's sections by trade for subs (`prospectListGrouping.ts` keeps the customer deck's
-  buckets), the row's **Add to the bench ✓** through `ProspectBenchModal` with `handleBenchSave`
-  taking the prospect, the exits folded. `prospectWeekReport.ts` / the Activity tab: the landed word
-  by kind. `GcTradePartners.tsx` `PartnerLine`: the *from Prospects* line, read by
-  `converted_gc_company_id` (one `prospects` read on the GC page, under the lane's own policy).
-  Guide: *find subs for the bench* § The path to the bench (new), *work the prospect calling queue*
-  one clause. Docs: the Prospects map's kind note, the Glossary's Prospects entry, APP_DIRECTORY's
-  Subs line.
-- **B** · migration `prospect_trade_ranks` (+ `docs/migrations/`), `src/components/prospects/SubsBoard.tsx`
-  over `teamProspectRanking.ts`' kernels and dnd-kit (already in the bundle), a `?tab=board` key on
-  Subs, the deck's `by_rank` order, ACCESS_CONTROL for the table.
-- **C** · migration `prospects.priority` (+ `docs/migrations/`), `src/lib/prospects/subRecord.ts`
-  (new, pure: the record and its words from the comments, the callbacks, the thread's inbound lines
-  and `ok_to_text`; the thresholds `answerRecord`'s), the list's two columns, the card's chip and
-  picker, `callingOrder.ts` `by_priority` and By need's first key, `PROSPECT_COLUMNS` + the types
-  regen, `PartnerLine`'s record line, the guide's § Who answers, who first.
+- **PR 1, A's cut** · `src/lib/prospects/subsStages.ts` (new, pure): the five stages from the
+  lane's rows, the called and answered sets and the bench's partners; the groups by trade over
+  `gcNeeds`' rows, the project's trades first when one is picked; the strip's words and the
+  sentence; the row's press. `src/pages/Prospects.tsx`: the chips row becomes the strip on the
+  Prospect List and over Follow Up's panel for `kind === 'sub'`; the list's sections by trade for
+  subs (`prospectListGrouping.ts` keeps the customer deck's buckets); the **For** picker over the
+  projects `loadGcProjects` already reads; the row's **Add to the bench ✓** through
+  `ProspectBenchModal` with `handleBenchSave` taking the prospect; the exits folded.
+  `prospectWeekReport.ts` / the Activity tab: the landed word by kind. `GcTradePartners.tsx`
+  `PartnerLine`: the *from Prospects* line, read by `converted_gc_company_id` (one `prospects` read
+  on the GC page, under the lane's own policy). Guide: *find subs for the bench* § The path to the
+  bench (new); *work the prospect calling queue* one clause. Docs: the Prospects map's kind note,
+  the Glossary's Prospects entry, APP_DIRECTORY's Subs line.
+- **PR 2, the board and the run** · `src/lib/prospects/subsBoard.ts` (new, pure): the columns from
+  `gcNeeds`' rows and the project's packages, each column's order (pins, priority, the record,
+  never called, coldest), the top N, *call next* and *also in*, the column's head words;
+  `src/lib/prospects/subRecord.ts` (new, pure): the record and its facts from the comments, the
+  callbacks, the thread's inbound lines and `ok_to_text`, the thresholds `answerRecord`'s;
+  `src/lib/prospects/callRun.ts` (new, pure): the run from the link, the next card, the callback
+  hour, the text's words through `textRefusal`, the receipt. `src/components/prospects/SubsBoard.tsx`
+  (new): the column, the card, the picker, the fold; dnd-kit for the drag in PR 3. `Prospects.tsx`:
+  the `?tab=board` key on Subs, the run on Follow Up (`?run=`, the head, the rail, the receipt,
+  Didn't Answer's callback through the deck's `prospect_callbacks` write and the text offer through
+  `quo-send`), the order **By rank**, the script naming the project. Guide: § Call the top three
+  when plans land.
+- **PR 3, the migration** · `supabase/migrations/<next>_prospect_trade_ranks.sql`:
+  `prospect_trade_ranks` (prospect_id, trade, rank_order, unique on prospect and trade, the three
+  fence calls) and `prospects.priority`; `docs/migrations/`; the types regen; `PROSPECT_COLUMNS` +
+  `priority`; the drag over `teamProspectRanking.ts`' dense-rank math; the picker on the card and
+  the deck; ACCESS_CONTROL. The deploy sequence: the client first, then `db push`.
+- **PR 4, the ask on landing** · `ProspectBenchModal` gains the tick when the run names a package;
+  `handleBenchSave` calls `askGcCompanies(packageId, [companyId], byName, today, send)` after
+  `addGcCompany`; the receipt reads *asked on ‹project›*; the guide's hand-off words.
 
-## The plan, once the pick is in
+## The plan, once the yes is in
 
-1. **PR 1 · A** (S): the kernel with tests, the strip, the list by trade, the row's press, the exits,
-   Activity's word, the bench's line, the guide, the docs. No migration.
-2. **PR 2 · C** (M): the migration, the record kernel with tests, the columns, the picker, the order,
-   the bench's record line, the guide. The migration-PR deploy sequence (`db push`, types regen).
-3. **B** only on the owner's word, after 1 and 2.
+1. **PR 1 · A's cut** (S, no migration): the strip, the list by trade, the picker, the press per row,
+   the exits, Activity's word, the bench's line, the guide, the docs.
+2. **PR 2 · the board and the run** (M, no migration): the columns with the record and the default
+   order, Call the top 3 as a run on the deck, the callback and the text offer, the receipt, By
+   rank; the drag and the priority picker drawn but inert until PR 3.
+3. **PR 3 · the migration** (M): the ranks table and the priority column, the drag, the picker; the
+   migration-PR deploy sequence (`db push`, types regen).
+4. **PR 4 · the ask on landing** (S): the tick and the ask write.
+
+Each PR: kernels and tests first, a render smoke on the words that moved, a release note, a
+fragment, the Prospects map and the page map amended.
 
 ## How to verify
 
-Local preview, `/dev-login?as=1&to=/prospects?kind=subs%26tab=prospect-list`, with ZZ rows (the ZZ
-rule hides them from the office): a ZZ sub on Concrete never called, one with a Didn't Answer, one
-with an Answered, one added to the bench (then deleted from `gc_companies` by hand, since no screen
-removes a company). The strip should read the four across To call · Called · Talked · On the bench,
-the groups in the panel's order with the bench's line, the press by stage, the exits folded. Press
-**Add to the bench ✓** on the Talked row: Add a company opens filled from the row; cancel. Press
-**On the bench**: Trade partners opens at Concrete. Activity's week line reads *to the bench*. With
-C: the Answered row reads *answers · 1 of 1 calls*, Call first lifts it to the top of By priority,
-Later sinks it. Then delete the ZZ rows.
+Local preview, `/dev-login?as=1&to=/prospects?kind=subs%26tab=board`, with ZZ rows (the ZZ rule
+hides them from the office): three ZZ subs on Fire sprinkler never called, one on Concrete with an
+Answered, one with a Didn't Answer. Pick the test bidding project in **For**: its trades' columns
+light, Fire sprinkler first (*nobody on the bench*), the rest fold. Press **Call the top 3 →** on
+Fire sprinkler: Follow Up opens as a run, the head names the project, the rail reads *1 of 3*;
+press **Didn't Answer**: the card reads *callback set 3 pm*, the Calendar shows it, the text press
+reads *Ask first*, the run is on *2 of 3*; press **Answered**, then **To the bench ✓** with the ask
+tick: Add a company opens filled, the ask lands on the package (Trade partners reads *asked*), the
+card is off the board, the bench's line reads *from Prospects*. Finish the run: the receipt and
+**Back to the board →**. Drag the Concrete #2 over #1: it reads *pinned*, and By rank on the deck
+follows. Set *Later* on a card: it sinks to the foot. Then delete the ZZ rows, the test company
+from `gc_companies` by hand (no screen removes one) and its ask.
 
 ## Where it stands
 
-Proposed 2026-10-23. Nothing built. The owner picks.
+Proposed 2026-10-23 as three options; the owner picked B the same day and asked for it refined
+around the moment a set of plans lands. The refined B is drawn (the moment first, the run, the
+whole board, A and C folded in). Nothing built; the build waits on his yes to the refined drawing.
