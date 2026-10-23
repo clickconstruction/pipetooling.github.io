@@ -40,9 +40,18 @@ describe('RobotRing', () => {
     const sealed = render(<RobotRing state={{ kind: 'sealed', title: '', lockedAt: null, twinBidNumber: null }} progress={buildRobotProgress(row({ locked_at: '2026-10-21T19:58:00Z' }), NOW)} />).container.querySelector('[data-ring-fill]')!
     expect(sealed.getAttribute('data-ring-fill')).toBe('100')
   })
-  it('a grade or an off state draws the glyph alone', () => {
-    const { container } = render(<RobotRing state={{ kind: 'off', reason: 'opt-out', title: '' }} />)
+  it('a grade or a division-off state draws the glyph alone', () => {
+    const { container } = render(<RobotRing state={{ kind: 'off', reason: 'division', title: '' }} />)
     expect(container.querySelector('[data-ring-fill]')).toBeNull()
     expect(container.querySelector('svg')).not.toBeNull()
+    expect(container.querySelector('[data-testid="robot-left-mark"]')).toBeNull()
+  })
+  it('a bid left to a person (v2.5751) draws the left-to-you mark at the ring\'s size, no glyph and no fill', () => {
+    const { container } = render(<RobotRing state={{ kind: 'off', reason: 'opt-out', title: '' }} size={26} />)
+    const mark = container.querySelector('[data-testid="robot-left-mark"]')!
+    expect(mark.textContent).toBe('you')
+    expect((mark as HTMLElement).style.width).toBe('26px')
+    expect(container.querySelector('[data-ring-fill]')).toBeNull()
+    expect(container.querySelector('svg')).toBeNull()
   })
 })

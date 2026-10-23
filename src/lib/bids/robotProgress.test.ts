@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { buildRobotProgress, insideFraction, ringFillForState, robotProgressByBid, usualRunWords, type RobotProgressRow } from './robotProgress'
+import { buildRobotProgress, insideFraction, progressBidIds, ringFillForState, ringProgressFor, robotProgressByBid, usualRunWords, type RobotProgressRow } from './robotProgress'
 
 const NOW = Date.parse('2026-10-21T19:38:00Z') // 2:38 PM Central
 const T = (hhmm: string) => `2026-10-21T${hhmm}:00Z`
@@ -94,6 +94,18 @@ describe('buildRobotProgress', () => {
     expect(p.sentence).toBe('Set aside.')
   })
 
+  it('live (v2.5751): a heartbeat within ten minutes on an open, unlocked shell; the key\'s own call does not count', () => {
+    expect(buildRobotProgress(row(), NOW).live).toBe(true)
+    // The heartbeat is the robot's word on THIS bid; the key may have called from another one.
+    expect(buildRobotProgress(row({ heartbeat_at: T('19:20'), key_last_seen_at: T('19:37') }), NOW).live).toBe(false)
+    expect(buildRobotProgress(row({ heartbeat_at: null, key_last_seen_at: T('19:37') }), NOW).live).toBe(false)
+    // Exactly ten minutes is still live; a second over is not.
+    expect(buildRobotProgress(row({ heartbeat_at: T('19:28') }), NOW).live).toBe(true)
+    expect(buildRobotProgress(row({ heartbeat_at: '2026-10-21T19:27:59Z' }), NOW).live).toBe(false)
+    expect(buildRobotProgress(row({ locked_at: T('19:37') }), NOW).live).toBe(false)
+    expect(buildRobotProgress(row({ run_status: 'void' }), NOW).live).toBe(false)
+  })
+
   it('blocked reads what it waits on', () => {
     const p = buildRobotProgress(row({ heartbeat_state: 'blocked', heartbeat_progress: { step: 'reading', waiting_on: 'you: the plans' } }), NOW)
     expect(p.words).toBe('Waiting on you: the plans.')
@@ -143,5 +155,37 @@ describe('ringFillForState and robotProgressByBid', () => {
     const m = robotProgressByBid([row(), row({ claimed_at: T('10:00'), heartbeat_progress: null })], NOW)
     expect(m.size).toBe(1)
     expect(m.get('human-1')!.done).toBe(2)
+  })
+})
+
+describe('ringProgressFor and progressBidIds (v2.5751: a sent bid\'s live run)', () => {
+  const live = buildRobotProgress(row(), NOW)
+  const stale = buildRobotProgress(row({ heartbeat_at: T('18:00'), key_last_seen_at: T('18:00') }), NOW)
+  const sealed = buildRobotProgress(row({ locked_at: T('19:30') }), NOW)
+  const voided = buildRobotProgress(row({ run_status: 'void' }), NOW)
+
+  it('an unsent bid shows its row whatever it says', () => {
+    for (const p of [live, stale, sealed, voided]) expect(ringProgressFor(p, { bid_date_sent: null })).toBe(p)
+    expect(ringProgressFor(null, { bid_date_sent: null })).toBeNull()
+  })
+
+  it('a sent bid shows the ring only while a robot is live on it', () => {
+    const sent = { bid_date_sent: '2026-10-20' }
+    expect(ringProgressFor(live, sent)).toBe(live)
+    expect(ringProgressFor(stale, sent)).toBeNull()
+    expect(ringProgressFor(sealed, sent)).toBeNull()
+    expect(ringProgressFor(voided, sent)).toBeNull()
+    expect(ringProgressFor(null, sent)).toBeNull()
+  })
+
+  it('robot_progress is asked about every undecided bid with a run, sent or not, and no decided one', () => {
+    const bids = [
+      { id: 'unsent-run', outcome: null, bid_date_sent: null, run: true },
+      { id: 'unsent-none', outcome: null, bid_date_sent: null, run: false },
+      { id: 'sent-run', outcome: null, bid_date_sent: '2026-10-20', run: true },
+      { id: 'sent-none', outcome: null, bid_date_sent: '2026-10-20', run: false },
+      { id: 'won-run', outcome: 'won', bid_date_sent: '2026-10-01', run: true },
+    ]
+    expect(progressBidIds(bids, (b) => b.run)).toEqual(['unsent-run', 'sent-run'])
   })
 })

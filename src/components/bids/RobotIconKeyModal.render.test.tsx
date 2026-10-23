@@ -26,4 +26,15 @@ describe('RobotIconKeyModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('v2.5751: the left-to-you mark has its own row with the way back, apart from the division row; the sent bid\'s ring is named', () => {
+    render(<RobotIconKeyModal onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog', { name: 'What the robot icon means' })
+    expect(dialog.querySelectorAll('[data-testid="robot-left-mark"]').length).toBe(1)
+    expect(screen.getByText('Left to you')).toBeTruthy()
+    expect(screen.getByText(/Click to let the robot back in\./)).toBeTruthy()
+    expect(screen.getByText('Not this division')).toBeTruthy()
+    expect(screen.queryByText('Not this bid')).toBeNull()
+    expect(screen.getByText(/A sent bid wears the ring only while a robot is working on it/)).toBeTruthy()
+  })
 })

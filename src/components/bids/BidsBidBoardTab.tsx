@@ -21,7 +21,8 @@ import { shouldShowEmptyBidValueAlert } from '../../lib/bidBoardEmptyBidValueAle
 import { robotRowState, type RobotRowInput } from '../../lib/bids/robotRowState'
 import { RobotGlyph } from './RobotGlyph'
 import { RobotRing } from './RobotRing'
-import type { RobotProgress } from '../../lib/bids/robotProgress'
+import { ringProgressFor, type RobotProgress } from '../../lib/bids/robotProgress'
+import { robotLeftToYou } from '../../lib/bids/robotLeftToYou'
 import { RobotIconKeyModal } from './RobotIconKeyModal'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
@@ -142,6 +143,8 @@ type BidsBidBoardTabProps = {
     onOpenGrade: (bid: BidWithBuilder) => void
     /** v2.5732: the robot's progress on this bid, for the ring and the tooltip; null when none or not loaded. */
     progressFor?: (bidId: string) => RobotProgress | null
+    /** v2.5751: the left-to-you mark's tap — the sheet with Let the robot back in. */
+    onOpenLeft?: (bid: BidWithBuilder) => void
   }
 }
 
@@ -679,11 +682,15 @@ export function BidsBidBoardTab({
           : (state.kind === 'scored' || (state.kind === 'working' && !!bid.bid_date_sent)) && twin
             ? () => robotReadiness.onOpenTwinBid(twin, bid)
             : state.kind === 'off'
-              ? null
+              // v2.5751: a bid left to a person wears the mark, and its tap opens the way back.
+              ? robotLeftToYou(state) && robotReadiness.onOpenLeft
+                ? () => robotReadiness.onOpenLeft!(bid)
+                : null
               : () => robotReadiness.onOpenStatus(bid)
     // v2.5732 (punch list #142): the ring round the icon fills one segment per step, and the
-    // tooltip says the step in words, from the same kernel as the sheet's bar.
-    const progress = robotReadiness.progressFor?.(bid.id) ?? null
+    // tooltip says the step in words, from the same kernel as the sheet's bar. v2.5751: a sent
+    // bid gets the ring too, but only while a robot is live on it (a coverage shadow after send).
+    const progress = ringProgressFor(robotReadiness.progressFor?.(bid.id) ?? null, bid)
     const live = state.kind === 'queued' || state.kind === 'working' || state.kind === 'sealed'
     const title = progress && live ? progress.sentence : state.title
     return (

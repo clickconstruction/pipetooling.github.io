@@ -27,7 +27,7 @@ import { diffTakeoffs, diffWaterfall, type DiffWaterfall } from '../../lib/bids/
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
 import { ROBOT_ICON_PATH, ROBOT_STATE_COLOR } from './RobotGlyph'
 import { RobotRing } from './RobotRing'
-import type { RobotProgress } from '../../lib/bids/robotProgress'
+import { ringProgressFor, type RobotProgress } from '../../lib/bids/robotProgress'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 
 // twin_run_scores / bid_audits predate the generated types (BidsAuditsTab pattern).
@@ -310,7 +310,8 @@ export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, hi
   const renderRun = (row: RobotMirrorRow<BidWithBuilder>, run: RobotMirrorRun, lead: boolean, repeatSub = false) => {
     const status = mirrorStatusLabel(run)
     // v2.5732: the same ring and words as the Bid Board icon, while the robot is on the bid.
-    const progress = lead && progressFor && (run.status === 'working' || run.status === 'queued' || run.status === 'sealed') ? progressFor(row.bid.id) : null
+    // v2.5751: a sent bid's row only while a robot is live on it, as on the icon.
+    const progress = lead && progressFor && (run.status === 'working' || run.status === 'queued' || run.status === 'sealed') ? ringProgressFor(progressFor(row.bid.id), row.bid) : null
     const ringState: RobotRowState = run.status === 'sealed' ? { kind: 'sealed', title: '', lockedAt: null, twinBidNumber: null } : run.status === 'queued' ? { kind: 'queued', title: '' } : { kind: 'working', title: '', twinBidNumber: null }
     const chip = mirrorAuditChip(run)
     const shell = run.shellBidId ? shellById.get(run.shellBidId) : undefined

@@ -2,15 +2,18 @@ import type { CSSProperties } from 'react'
 import type { RobotRowState } from '../../lib/bids/robotRowState'
 import { ringFillForState, type RobotProgress, type RobotProgressTone } from '../../lib/bids/robotProgress'
 import { HEARTBEAT_STEPS } from '../../../supabase/functions/_shared/twinHeartbeat'
+import { robotLeftToYou } from '../../lib/bids/robotLeftToYou'
 import { RobotGlyph, ROBOT_STATE_COLOR } from './RobotGlyph'
+import { RobotLeftMark } from './RobotLeftMark'
 
 /**
  * The ring round the robot icon (Robot rounds PR 2, punch list #142, decision 3b): seven
  * segments, one per step, filled as the robot's own stamps land; the segment it is on fills by
  * the sheets it has read. The fill is a percent of steps, never of minutes. Drawn with two CSS
  * conic gradients and no SVG per row; the glyph the row already had sits inside. States with no
- * run (off, none, a grade) draw the glyph alone. Purely presentational: the caller's button
- * carries the tooltip and the label.
+ * run (off, none, a grade) draw the glyph alone; a bid left to a person (v2.5751) draws the
+ * left-to-you mark in the ring's place. Purely presentational: the caller's button carries the
+ * tooltip and the label.
  */
 const TONE_COLOR: Record<RobotProgressTone, string> = {
   blue: ROBOT_STATE_COLOR.robot,
@@ -23,6 +26,7 @@ const GAP_DEG = 2.5
 const SEG_DEG = 360 / HEARTBEAT_STEPS.length
 
 export function RobotRing({ state, progress, size = 28 }: { state: RobotRowState; progress?: RobotProgress | null; size?: number }) {
+  if (robotLeftToYou(state)) return <RobotLeftMark size={size} />
   const fill = progress ? { fraction: progress.fraction, tone: progress.tone } : ringFillForState(state.kind)
   if (!fill) return <RobotGlyph state={state} size={Math.round(size * 0.64)} />
   const pct = Math.round(Math.max(0, Math.min(1, fill.fraction)) * 1000) / 10

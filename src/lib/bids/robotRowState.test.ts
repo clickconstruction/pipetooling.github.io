@@ -119,6 +119,8 @@ describe('robotRowState', () => {
   it('is off for an opted-out bid and for a non-plumbing division', () => {
     const off = robotRowState(input({ bid: bid({ robot_opt_out: true }) }))
     expect(off.kind === 'off' && off.reason).toBe('opt-out')
+    // v2.5751: the card wears the left-to-you mark, and its tooltip says there is a way back.
+    expect(off.title).toMatch(/^Left to you\. Robots leave .+ alone\. Tap to let the robot back in\.$/)
     const elec = robotRowState(input({ serviceTypeName: 'Electrical' }))
     expect(elec.kind === 'off' && elec.reason).toBe('division')
     expect(elec.title).toMatch(/electrical/)
