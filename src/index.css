@@ -4728,6 +4728,62 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
 .messagesLane {
   scroll-margin-top: var(--messages-jump-offset, 0px);
 }
+/* Messages' one-row header (v2.5801, punch list #151 PR 2): the title, the kind picker, Show, the search glass, the
+   jump strip and 7 days in one bar that stays pinned on a desktop; on a phone the controls scroll away
+   (`isControls`) and the strip sticks on its own. The picker's menu drops under its button. */
+.messagesTopBar {
+  position: sticky;
+  top: 0;
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.3rem 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.messagesTopBar.isControls {
+  position: static;
+}
+.messagesTopTitle {
+  margin: 0 0.15rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.messagesTopBar .messagesJumpStrip {
+  position: static;
+  flex: 1 1 460px;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.messagesTopBar .stagesStageArrow,
+.messagesTopBar .stagesStageSegDot {
+  display: none;
+}
+.messagesTopBar .stagesStageSeg {
+  flex: 1 1 auto;
+  padding: 0.35rem 0.35rem 0.25rem;
+}
+.messagesTopPicker {
+  position: relative;
+}
+.messagesTopMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 240px;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--text-strong) 14%, transparent);
+}
 /* ── Pipeline Working header: the schedule pills + next-first sort (v2.3788) ── */
 .stagesWhenPills {
   display: inline-flex;

@@ -2,7 +2,7 @@
 name: "Messages: a tighter top, with a jump strip like the Pipeline's"
 number: 151
 group: ready
-status: the owner picked C on 2026-10-23; PR 1 (v2.5799, the strip under today's header) built; PR 2 (the one-row header, the search glass, the week behind 7 days) and PR 3 (the lanes' sentences behind one ?, the bands) next
+status: the owner picked C on 2026-10-23; PR 1 (v2.5799 #6072, the strip) and PR 2 (v2.5801, the one-row header) built; PR 3 (the lanes' sentences behind one ?, the bands) next
 summary: >
   The top of /messages is five rows of chrome before the first person: the title, the kind
   chips, Show, the search box and the week's four cards, then each lane's heading with a
@@ -13,7 +13,7 @@ summary: >
   counts, pinned while the page scrolls, lit on the lane you are in, a press scrolling to the
   lane): A adds the strip and folds the week's cards to one line; B puts the title, the chips and
   the week on three short rows over the strip; C is one bar that holds everything.
-next: PR 2, the one-row header on src/pages/Messages.tsx (the title in the bar, the kind picker, Mine · Everyone, the search glass, the strip in the row, 7 days opening the week's cards and kept per browser); then PR 3
+next: PR 3, the lanes' sentences behind one ? on the bar and the lane headings as bands with the count in a pill (FollowUpSections' Section, WaitingOnThem's and WentOutToday's headings)
 size: A S · B M · C M
 blocker: none
 ver: proposed
@@ -195,5 +195,5 @@ and the strip wraps to two lines at most. For a lane at zero the segment stays i
 |---|---|---|---|
 | Proposal and mock-up | — | #6070 | merged 2026-10-23; the owner picked C the same day |
 | PR 1 · the strip under today's header (`MessagesJumpStrip.tsx` over `lib/messages/jumpStrip.ts`, ids on the lanes, `onCount` on Waiting on them and Went out) | v2.5799 | | built 2026-10-23 |
-| PR 2 · the one-row header: the title in the bar, the kind picker, Mine · Everyone, the search glass, the week behind 7 days kept per browser | | | next |
-| PR 3 · the lanes' sentences behind one ? on the bar, the lane headings as bands with the count in a pill | | | after PR 2 |
+| PR 2 · the one-row header: the title in the bar, the kind picker, Mine · Everyone, the search glass, the week behind 7 days kept per browser (`MessagesTopBar.tsx` over `lib/messages/topBar.ts`) | v2.5801 | | built 2026-10-23 |
+| PR 3 · the lanes' sentences behind one ? on the bar, the lane headings as bands with the count in a pill | | | next |
