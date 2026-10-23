@@ -58,6 +58,10 @@ const line = (id: string, contactId: string, direction: string, patch: Partial<F
 const tile = (key: string, num: string, name: string): JobTile => ({ key, kind: 'pipeline', num, name, day: { words: 'working', tone: '' } })
 
 const KEVIN = person('kevin', 'unknown', '(210) 555-0188')
+// An address nobody has named, with the From line's name, on bids@ (the owner's ask of 2026-10-23).
+const DALE = person('dale', 'unknown', 'Dale Ferris', { channels: [{ id: 'ch-dale', kind: 'email', value: 'dale@ridgeway.example', optedOutAt: null }] })
+// A number nobody has named whose line gives no name.
+const NOBODY = person('nobody', 'unknown', '(512) 555-0142', { channels: [{ id: 'ch-nobody', kind: 'phone', value: '(512) 555-0142', optedOutAt: null }] })
 const DANA = person('dana', 'customer', 'Dana Whitfield', { jobIds: ['pipeline:j1312', 'pipeline:j1298'], defaultJobId: 'pipeline:j1312' })
 const GREG = person('greg', 'trade', 'Greg Paulk', { company: 'Hillside Excavation' })
 
@@ -81,6 +85,22 @@ const ROWS: Record<string, NewLaneCardRows> = {
   greg: {
     contact: { state: 'waiting', snoozed_until: null, has_user_id: null },
     lines: [line('m-greg', 'greg', 'in', { at: '2026-10-13T12:55:00Z', channel: 'email', subject: 'Pad on Monday', body: 'Who do we check in with on site?', mailbox: 'bids' })],
+    tiles: {},
+    active: new Set(),
+    seats: { customer: 'u-rosa', trade: 'u-robert', arch: null },
+    team: [ROBERT, ROSA],
+  },
+  dale: {
+    contact: { state: 'waiting', snoozed_until: null, has_user_id: null },
+    lines: [line('m-dale', 'dale', 'in', { at: '2026-10-22T16:02:00Z', channel: 'email', subject: 'Invitation to Bid: Lakeline shell', body: 'Please see the attached Invitation to Bid. Bids are due the 30th.', mailbox: 'bids' })],
+    tiles: {},
+    active: new Set(),
+    seats: { customer: 'u-rosa', trade: 'u-robert', arch: null },
+    team: [ROBERT, ROSA],
+  },
+  nobody: {
+    contact: { state: 'waiting', snoozed_until: null, has_user_id: null },
+    lines: [line('m-nobody', 'nobody', 'in', { body: 'Can you quote the concrete?', mailbox: 'team' })],
     tiles: {},
     active: new Set(),
     seats: { customer: 'u-rosa', trade: 'u-robert', arch: null },
@@ -221,6 +241,26 @@ describe('the sort card above the thread', () => {
   })
 })
 
+describe('the head asks about the sender (the owner\u2019s pattern, 2026-10-23)', () => {
+  it('an email: the name, then the address; the line under it names nothing the head says', async () => {
+    renderSlot(DALE, fakeIo({ loadKnown: vi.fn(async () => ({})) }))
+    const who = within(await screen.findByRole('region', { name: 'Sort: Who is this?' }))
+    const head = who.getByRole('heading', { name: 'Who is Dale Ferris, dale@ridgeway.example?' })
+    expect(head.style.overflowWrap).toBe('anywhere')
+    expect(who.getByText('An address nobody has named came in on bids@. A general contractor is a customer, so the customers we know come first.')).toBeTruthy()
+    expect(who.queryByRole('heading', { name: 'Who is this?' })).toBeNull()
+  })
+
+  it('a number: the name the line gives, then the number with dashes; the number alone when the line gives none', async () => {
+    renderSlot({ ...KEVIN, channels: [{ id: 'ch-kevin', kind: 'phone', value: '(210) 555-0188', optedOutAt: null }] })
+    expect(await screen.findByRole('heading', { name: 'Who is Kevin Alvarez, 210-555-0188?' })).toBeTruthy()
+    cleanup()
+    renderSlot(NOBODY, fakeIo({ loadKnown: vi.fn(async () => ({})) }))
+    expect(await screen.findByRole('heading', { name: 'Who is 512-555-0142?' })).toBeTruthy()
+    expect(screen.getByText('A number nobody has named came in on the team number. Someone asking for work is a lead until they book.')).toBeTruthy()
+  })
+})
+
 describe('One of our own team (v2.5546)', () => {
   it('opens the roster in the card, filters it by name, and a pick names the number as that person', async () => {
     const io = fakeIo({
@@ -240,6 +280,7 @@ describe('One of our own team (v2.5546)', () => {
     fireEvent.click(team)
 
     const ours = card('Which of ours?')
+    expect(ours.getByRole('heading', { name: 'Which of ours?' })).toBeTruthy()
     expect(ours.getByText('The number goes on their People record. Next time the app knows them without asking.')).toBeTruthy()
     expect(within(ours.getByRole('group', { name: 'Our team' })).getAllByRole('button').map((b) => b.textContent)).toEqual([
       'Marcus BellMaster technician · no number on file',

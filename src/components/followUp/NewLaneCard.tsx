@@ -1,6 +1,7 @@
 /**
  * Messages, residential R7 (PR 3): the sort card above a thread, for a person waiting in Follow up's New lane (the
- * customer Messages prototype v0.8, screen 7, mockup A's `sortCardHtml`). Its head says which sort, its first line why,
+ * customer Messages prototype v0.8, screen 7, mockup A's `sortCardHtml`). Its head says which sort (for *Who is this?*,
+ * who it asks about: *Who is Dale Ferris, dale@ridgeway.example?*, `whoHead`, the owner's pattern), its first line why,
  * then its presses: *Who is this?*'s guesses in the box's order, since v2.5795 under **A customer we know** (each with
  * why) and **A new customer** (a field with the sender's name and one press that makes them), *Which job?*'s jobs with
  * the default picked, or *Who has it?*'s people with the rule's pick first. A guess that needs a record made first
@@ -9,12 +10,15 @@
  * press per person that names the number as them. This draws; `useNewLaneThreadSlots.tsx` reads and writes.
  */
 import { useState, type ReactNode } from 'react'
-import { teamGuess, type HasChoice, type JobChoice, type NewLaneRow, type RosterChoice, type WhoGuess } from '../../lib/followUp/newLane'
+import type { ChannelKind } from '../../lib/contacts/kernel'
+import { teamGuess, whoHead, type HasChoice, type JobChoice, type NewLaneRow, type RosterChoice, type WhoGuess } from '../../lib/followUp/newLane'
 import { guessWait } from '../../lib/followUp/newLaneRows'
 import { Btn, input } from '../gc/gcUi'
 
 export interface NewLaneCardProps {
   row: NewLaneRow
+  /** The contact's channels: the address or the number behind a name, for *Who is this?*'s head. */
+  channels?: ReadonlyArray<{ kind: ChannelKind; value: string }>
   /** *Who is this?*'s guesses; null while the records they may be are read. */
   guesses?: readonly WhoGuess[] | null
   /** The roster for *One of our own team*, as `rosterChoices` lists it. */
@@ -102,7 +106,7 @@ function WhoBody({ guesses, busy, onName, onSomeoneElse, onTeam }: { guesses: re
   return <div style={{ display: 'grid', gap: '0.35rem' }}>{nodes}</div>
 }
 
-export function NewLaneCard({ row, guesses, roster = [], jobs = [], people = [], busy = false, onName, onSomeoneElse, onTie, onHand }: NewLaneCardProps) {
+export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], people = [], busy = false, onName, onSomeoneElse, onTie, onHand }: NewLaneCardProps) {
   // The default starts picked. The caller keys the card by its line, so a new line starts from its own default.
   const [picked, setPicked] = useState<string | null>(() => jobs.find((j) => j.isDefault)?.id ?? jobs[0]?.id ?? null)
   const pickedJob = jobs.find((j) => j.id === picked) ?? null
@@ -110,11 +114,14 @@ export function NewLaneCard({ row, guesses, roster = [], jobs = [], people = [],
   const [teamOpen, setTeamOpen] = useState(false)
   const [teamWords, setTeamWords] = useState('')
 
+  // The region keeps the sort's head (*Sort: Who is this?*); the title asks about the sender by name and address or number.
   let head = row.head
+  let title = row.sort === 'who' ? whoHead({ who: row.who, body: row.body, channel: row.channel, channels }).words : row.head
   let why: ReactNode = row.why
   let body: ReactNode = null
   if (row.sort === 'who' && teamOpen) {
     head = 'Which of ours?'
+    title = head
     why = 'The number goes on their People record. Next time the app knows them without asking.'
     const shown = rosterMatching(roster, teamWords)
     body = (
@@ -191,7 +198,8 @@ export function NewLaneCard({ row, guesses, roster = [], jobs = [], people = [],
       data-new-lane-team={row.sort === 'who' && teamOpen ? 'open' : undefined}
       style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.6rem 0.75rem', display: 'grid', gap: '0.45rem' }}
     >
-      <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{head}</h3>
+      {/* `overflowWrap: anywhere`: at phone width a long address goes to its own line, and breaks inside only when it still does not fit. */}
+      <h3 style={{ margin: 0, fontSize: '0.95rem', overflowWrap: 'anywhere' }}>{title}</h3>
       <div style={{ fontSize: '0.85rem', color: 'var(--text-600)' }}>{why}</div>
       {body}
     </section>

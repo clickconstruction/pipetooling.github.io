@@ -103,6 +103,7 @@ describe('ThreadWindow: the New lane’s sort card (R7)', () => {
     rerender(ui())
     await act(async () => {})
     await waitFor(() => expect(cards()).toHaveLength(1))
-    expect(screen.getAllByRole('heading', { name: 'Who is this?' })).toHaveLength(1)
+    // The head asks about the sender (2026-10-23): the number, since the line gives no name.
+    expect(screen.getAllByRole('heading', { name: 'Who is 830-555-0199?' })).toHaveLength(1)
   })
 })

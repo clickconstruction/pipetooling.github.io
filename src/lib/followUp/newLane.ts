@@ -29,7 +29,7 @@ export type NewSort = 'who' | 'job' | 'has'
 /** The box a line came in on: the team line and inbox, or bids@ and its number (R6's `messages.mailbox`). */
 export type Mailbox = 'team' | 'bids'
 
-/** Each sort's head, the row's press and the sort card's title. */
+/** Each sort's head: the row's press and the sort card's region. The *Who is this?* card's own title is `whoHead`. */
 export const SORT_HEADS: Readonly<Record<NewSort, string>> = { who: 'Who is this?', job: 'Which job?', has: 'Who has it?' }
 
 /** The lane when nothing is waiting to be sorted. */
@@ -326,6 +326,40 @@ export function senderFacts(row: { who: string; body: string; channels?: Readonl
   const who = row.who.trim()
   const whoIsAName = who !== '' && !who.includes('@') && !normalizeChannel('phone', who)
   return { address, number, name: nameInText(row.body) ?? (whoIsAName ? who : null), domain: companyDomain(address) }
+}
+
+/** A number for a sentence: ten digits as 512-555-0142, since parentheses inside a sentence fail plain words. Anything else as it came. */
+export function numberWords(raw: string): string {
+  const ten = normalizeChannel('phone', raw)
+  return ten.length === 10 ? `${ten.slice(0, 3)}-${ten.slice(3, 6)}-${ten.slice(6)}` : raw.trim()
+}
+
+/** The *Who is this?* card's head: who the question asks about (the owner's pattern, 2026-10-23). */
+export interface WhoHead {
+  /** The name we have for them, `senderFacts`' rule: the line's "this is …", else the From line's. '' when neither. */
+  name: string
+  /** The address, or the number as 512-555-0142. The channel the line came on first. '' when neither is known. */
+  reach: string
+  /** The question: "Who is Dale Ferris, dale@ridgeway.example?", "Who is 512-555-0142?". `SORT_HEADS.who` when nothing is known. */
+  words: string
+}
+
+/**
+ * The card's head for a sender nobody has named: the name first, then the address or the number after a comma, the
+ * owner's pattern. A text from a number whose line says "this is Kevin Alvarez" reads *Who is Kevin Alvarez,
+ * 210-555-0188?*; an email with a From line reads *Who is Dale Ferris, dale@ridgeway.example?*; a bare number reads
+ * *Who is 512-555-0142?*. The row's pill and the thread header's button keep the short words, since the name sits
+ * beside them. Pure; the sentence under it (`whoWhy`) names nothing the head says.
+ */
+export function whoHead(row: { who: string; body: string; channel?: MessageChannel; channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }): WhoHead {
+  const name = senderFacts(row).name ?? ''
+  const email = row.channels?.find((ch) => ch.kind === 'email')?.value ?? row.who
+  const phone = row.channels?.find((ch) => ch.kind === 'phone')?.value ?? row.who
+  const address = normalizeChannel('email', email) ? email.trim() : ''
+  const number = normalizeChannel('phone', phone) ? numberWords(phone) : ''
+  const reach = row.channel && PHONE_CHANNELS.has(row.channel) ? number || address : address || number
+  const words = name && reach ? `Who is ${name}, ${reach}?` : name || reach ? `Who is ${name || reach}?` : SORT_HEADS.who
+  return { name, reach, words }
 }
 
 const NOT_NAMES = new Set([
