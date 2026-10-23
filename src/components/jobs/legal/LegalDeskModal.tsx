@@ -50,7 +50,8 @@ import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
-import { settlementFloorDollars, settlementFloorOf, settlementFloorWords, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
+import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
+import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
@@ -1206,27 +1207,54 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   )
 }
 
-/** #85 item 20: the office's floor for this matter — dollars or a percent of the balance, or none. */
+/**
+ * Settlement authority (v2.5759): one line with the floor as a chip; a tap opens the panel under it, Save writes and
+ * folds it away, Cancel or Escape folds it with nothing written. The slider, the % box and the $ box move together
+ * (`settlementFloorControl.ts`); the box typed in last decides what is saved.
+ */
 function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalSettlementFloor | null; balance: number; busy: boolean; onSave: (amount: number | null, pct: number | null) => Promise<void> }) {
-  const [value, setValue] = useState(floor ? String(floor.amount ?? floor.pct ?? '') : '')
-  const [unit, setUnit] = useState<'pct' | 'usd'>(floor?.amount != null ? 'usd' : 'pct')
-  const n = Number(value)
-  const valid = Number.isFinite(n) && n > 0 && (unit === 'usd' || n <= 100)
-  const preview = valid ? settlementFloorDollars(unit === 'usd' ? { amount: n, pct: null } : { amount: null, pct: n }, balance) : null
-  const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
+  const [open, setOpen] = useState(false)
+  const [ctl, setCtl] = useState<FloorControl>(() => floorControlStart(floor, balance))
+  const start = () => { setCtl(floorControlStart(floor, balance)); setOpen(true) }
+  const valid = floorControlValid(ctl)
+  const save = async () => { const plan = floorControlSave(ctl); await onSave(plan.amount, plan.pct); setOpen(false) }
+  const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: open ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }
+  const box: CSSProperties = { font: 'inherit', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', textAlign: 'right' }
+  const boxOn: CSSProperties = { ...box, borderColor: '#2563eb' }
   return (
     <div data-legal-settlement-floor-editor>
       <SectionTitle>Settlement authority</SectionTitle>
-      <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 6px' }}>{settlementFloorWords(floor, balance).replace('You may', 'The firm may').replace('you may', 'the firm may')}</p>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
         <span>The firm may settle at</span>
-        <input type="number" min={0} step="0.01" value={value} onChange={(e) => setValue(e.target.value)} aria-label="Settlement floor" style={{ ...input, width: 100 }} />
-        <select value={unit} onChange={(e) => setUnit(e.target.value === 'usd' ? 'usd' : 'pct')} aria-label="Floor in" style={input}><option value="pct">% of the balance</option><option value="usd">dollars</option></select>
-        <span>or above.</span>
-        <button type="button" disabled={busy || !valid} onClick={() => void onSave(unit === 'usd' ? n : null, unit === 'usd' ? null : n)} style={btnPrimary}>Save floor</button>
-        {floor ? <button type="button" disabled={busy} onClick={() => { setValue(''); void onSave(null, null) }} style={btn}>No floor</button> : null}
-        {preview != null && unit === 'pct' ? <span style={MUTED}>Today that is {formatLegalMoney(preview)}.</span> : null}
+        <button type="button" onClick={() => (open ? setOpen(false) : start())} aria-expanded={open} aria-label={`Settlement floor: ${floorChipWords(floor, formatLegalMoney)}. Change it`} style={chip} data-legal-floor-chip>
+          {floorChipWords(floor, formatLegalMoney)}
+          <ChevronRight size={13} aria-hidden style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }} />
+        </button>
+        <span style={MUTED}>{floorTodayWords(floor, balance, formatLegalMoney)}</span>
       </div>
+      {open ? (
+        <div
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
+          style={{ margin: '8px 0 0', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)', maxWidth: 520 }}
+          data-legal-floor-panel
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6, fontSize: '0.84rem' }}>
+            <input type="text" inputMode="numeric" value={ctl.pctText} onChange={(e) => setCtl(floorControlTypePct(ctl, e.target.value, balance))} placeholder="0" aria-label="Settlement floor, percent of the balance" style={{ ...(ctl.unit === 'pct' ? boxOn : box), width: 52 }} />
+            <span style={{ fontWeight: 600 }}>%</span>
+            <span style={MUTED}>or</span>
+            <span style={{ fontWeight: 600 }}>$</span>
+            <input type="text" inputMode="decimal" value={ctl.usdText} onChange={(e) => setCtl(floorControlTypeUsd(ctl, e.target.value, balance))} placeholder="0.00" aria-label="Settlement floor in dollars" style={{ ...(ctl.unit === 'usd' ? boxOn : box), width: 110 }} />
+            <span style={MUTED}>of {formatLegalMoney(balance)}</span>
+          </div>
+          <input type="range" min={0} max={100} step={1} value={ctl.pct} onChange={(e) => setCtl(floorControlFromPct(Number(e.target.value), balance))} aria-label="Settlement floor slider" autoFocus style={{ width: '100%', accentColor: '#2563eb' }} />
+          <div style={{ ...MUTED, display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem' }}><span>Any amount</span><span>50%</span><span>The full balance</span></div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+            <button type="button" disabled={busy || !valid} onClick={() => void save()} style={btnPrimary}>Save</button>
+            <button type="button" disabled={busy} onClick={() => setOpen(false)} style={btn}>Cancel</button>
+            <span style={{ ...MUTED, fontSize: '0.74rem' }} data-legal-floor-saves>{floorControlSavesWords(ctl, formatLegalMoney)}</span>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
