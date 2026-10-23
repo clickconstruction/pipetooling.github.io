@@ -205,7 +205,7 @@ export function buildDesktopSetupCommandFromCode(opts: SetupCodeCommandOpts): st
     '  fs.writeFileSync(p, JSON.stringify(cfg, null, 2))',
     "  say(name + ' connected for ' + body.twin_email + '. The key went straight into Claude Desktop\\'s config — it was never shown.')",
     // v2.4231: twin-setup says where its kickoff is pasted — the bid robot's in a Code session, the pricer's in a chat.
-    "  const where = body.kickoff_for === 'rounds' ? 'open the Code tab, start a NEW session and paste it. It makes the Robot rounds routine and runs the first round.' : body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'",
+    "  const where = body.kickoff_for === 'rounds' ? 'open the Code tab, start a NEW session, set the mode at the bottom left to the one that asks, and paste it. It makes the Robot rounds routine and runs the first round.' : body.kickoff_for === 'code' ? 'open the Code tab, start a NEW session and paste it.' : 'start a NEW INCOGNITO chat there and paste it.'",
     "  let kept = ''",
     "  if (body.kickoff) { spawnSync('pbcopy', { input: body.kickoff }); const f = path.join(os.homedir(), process.env.KICKOFF_FILE); try { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, body.kickoff); kept = ' A copy is at ' + f + '.' } catch {} }",
     "  if (underClaudeCode) {",

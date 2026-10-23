@@ -245,7 +245,7 @@ describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', (
       expect(readFileSync(b.clip, 'utf8')).toBe('THE ROUNDS KICKOFF')
       expect(readFileSync(join(b.home, 'Library/Application Support/ClickTooling/last-kickoff.md'), 'utf8')).toBe('THE ROUNDS KICKOFF')
       expect(r.out).toContain('twin-mcp connected for twin@example.com.')
-      expect(r.out).toContain('Claude is reopening. The kickoff is on your clipboard: open the Code tab, start a NEW session and paste it. It makes the Robot rounds routine and runs the first round. A copy is at ')
+      expect(r.out).toContain('Claude is reopening. The kickoff is on your clipboard: open the Code tab, start a NEW session, set the mode at the bottom left to the one that asks, and paste it. It makes the Robot rounds routine and runs the first round. A copy is at ')
       expect(r.calls).toContain('open -Ra Claude')
       expect(r.calls).toContain('open -a Claude')
     } finally { d.server.close() }
@@ -259,7 +259,7 @@ describe('the command’s Node half, against a stand-in twin-setup (v2.5742)', (
       expect(r.code).toBe(0)
       expect(configOf(b).mcpServers['twin-mcp'].env.TWIN_TOKEN).toBe('tok_never_shown_9f8e7d')
       expect(readFileSync(b.clip, 'utf8')).toBe('THE ROUNDS KICKOFF')
-      expect(r.out).toContain('Done here. Now quit Claude with Cmd+Q and open it again, so the connector loads. Then open the Code tab, start a NEW session and paste it.')
+      expect(r.out).toContain('Done here. Now quit Claude with Cmd+Q and open it again, so the connector loads. Then open the Code tab, start a NEW session, set the mode at the bottom left to the one that asks, and paste it.')
       expect(r.out).toContain('The kickoff is on your clipboard. A copy is at ')
       expect(r.calls).not.toContain('open -a Claude')
       expect(r.calls.some((c) => c.startsWith('osascript'))).toBe(false)
