@@ -18,9 +18,10 @@ An **account is the payer**. The payer is the GC, the general contractor, when o
 
 The rail on the left lists accounts by **what Click would keep** if every dollar landed. That is the balance less the firm's share and a filing cost. Under the account name:
 
-- **Theory** is what an attorney could plead today. It reads {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}}, or {{chip:red|None yet}}. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid. The desk shows Sworn account when three things are true. The customer received the bill. A report or clock session with GPS places a crew on the property. And no dispute is on record. A lien is a legal claim on the property for unpaid work.
-- **Click keeps** is the balance after the firm's cut and costs, with a verdict. The verdict is worth it, marginal or not worth it.
-- **Against pursuing** lists facts on record that argue for writing it down instead. Writing it down means lowering a bill to an amount we agree to accept. Examples are a "no money" note, a dispute, broken promises, or a payer that is a name only.
+- **Can we sue?** answers first. It reads *Yes*, *Yes, on 2 of 3 jobs*, *Only on the lien* or *Not yet*. The line under it says why. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid. The desk says yes on a sworn account when three things are true. The customer received the bill. A report or clock session with GPS places a crew on the property. And no dispute is on record. A lien is a legal claim on the property for unpaid work.
+- **How much?** is what they owe. The line under it says how many jobs and how old the oldest bill is.
+- **What's left for us?** is the balance after the firm's cut and the filing cost, with a verdict. The verdict is worth it, marginal or not worth it. The line under it says the firm's share and the cost.
+- **What could go wrong?** names what hurts the case, in plain words. Examples are a note that they cannot pay, a dispute, broken promises, or a payer that is a name only. Writing it down means lowering a bill to an amount we agree to accept. With nothing to sue on it says *No case yet*.
 
 Then comes **Before this goes to an attorney**. {{chip:red|fix}} items are what an attorney asks for first. Those are no agreement and no sworn-account basis, no way to reach the payer, or no address. {{chip:yellow|note}} items are worth knowing. Those are no demand letter, a lien window still open, or an incomplete property record. They also include no field evidence, or never asked when they'd pay. A demand letter is the formal ask for payment. Most lines have a button that opens the surface that owns the record. That may be Contract desk, the job's Lien window, Edit customer, Edit job or Call mode. The desk refreshes when you come back.
 
@@ -31,7 +32,7 @@ The same tabs the firm will see:
 - **Narrative** is your account of the matter, in your own words. The firm reads it first. It is described below.
 - **Account** shows who owes, contacts, the jobs, and every invoice and payment in date order. A running balance ends on the balance owed. Each job's property record follows. The property record is the job's own site, not the payer's address.
 - **Paper** shows agreements per job with the sworn-account column, *Where each job stands*, demand letters and *The paper that went out*. *Where each job stands* shows each job's notice and affidavit dates, drawn from its approved hours, its filings and the property kind. *The paper that went out* lists each notice, affidavit and release. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays.
-- **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm sees this tab as **Record of contact**.
+- **Record of contact** is one timeline of everything said, ours and theirs. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm's portal uses the same name.
 - **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links. It also holds the **Documents for the firm**, described below.
 - **Fees & steps** shows what the office did, in order. It shows the exhibits the packet would carry, lettered A onward. Exhibits are the records the packet offers as proof, one lettered group for each kind.
 
@@ -62,7 +63,7 @@ The firm reads it as the first tab of its portal, and the printed packet opens w
 
 ## Curate what the firm sees
 
-On **Their word**, every entry goes to counsel. Records can be shown in court either way, so your own lawyer should not be surprised by them.
+On **Record of contact**, every entry goes to counsel. Records can be shown in court either way, so your own lawyer should not be surprised by them.
 
 To keep one entry from the firm, press {{button:outline|Hold back…}} on its row. Type why, then press {{button:dark|Hold back}}. The button stays off until you type a reason. The reason shows under the entry, for the office only.
 
