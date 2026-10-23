@@ -3,8 +3,9 @@
  * the people who went quiet after our send, longest quiet first, each row with the nudge and the call. Since punch
  * list #140 PR 4 Nudge opens the thread with the reminder written and the send window open (`?nudge=text`), and a last
  * text Quo could not deliver draws the row red with **☎ Call them** and **Send it as an email** (`?nudge=email`) in its
- * place. Rows and words in `lib/messages/waitingOnThem.ts`; the read in `waitingOnThemIo.ts`; drawn like the sections
- * around it.
+ * place. Since v2.5790 the *Their move · N d* chip sits at the right over Nudge and Call, so the name and our last words
+ * read on their own. Rows and words in `lib/messages/waitingOnThem.ts`; the read in `waitingOnThemIo.ts`; drawn like
+ * the sections around it.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { waitingOnThem, WAITING_WORDS, type WaitLine } from '../../lib/messages/waitingOnThem'
@@ -62,9 +63,6 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
                   <button type="button" onClick={() => onOpenThread(r.contactId)} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', cursor: 'pointer' }} data-testid="waiting-name">
                     {r.name}
                   </button>
-                  <span style={chip} data-testid="waiting-chip">
-                    {r.chip}
-                  </span>
                   {r.mark?.bad ? (
                     <span style={chipBad} title={r.mark.title} data-testid="waiting-mark">
                       {r.mark.words}
@@ -75,30 +73,35 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
                   Us · {r.words} · {r.when}
                 </span>
               </span>
-              <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', whiteSpace: 'nowrap', flexWrap: 'wrap' }}>
-                {r.mark?.bad ? (
-                  <>
-                    {r.tel ? (
-                      <a href={r.tel} style={call} data-testid="waiting-call">
-                        ☎ {WAITING_WORDS.callThem}
-                      </a>
-                    ) : null}
-                    <button type="button" onClick={() => onOpenThread(r.contactId, { nudge: 'email' })} title={WAITING_WORDS.asEmailTip} style={nudge} data-testid="waiting-email">
-                      {WAITING_WORDS.asEmail}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" onClick={() => onOpenThread(r.contactId, { nudge: 'text' })} title={WAITING_WORDS.nudgeTip} style={nudge} data-testid="waiting-nudge">
-                      {WAITING_WORDS.nudge}
-                    </button>
-                    {r.tel ? (
-                      <a href={r.tel} style={call} data-testid="waiting-call">
-                        ☎ {WAITING_WORDS.call}
-                      </a>
-                    ) : null}
-                  </>
-                )}
+              <span style={{ display: 'grid', gap: '0.3rem', justifyItems: 'end' }}>
+                <span style={chip} data-testid="waiting-chip">
+                  {r.chip}
+                </span>
+                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', whiteSpace: 'nowrap', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {r.mark?.bad ? (
+                    <>
+                      {r.tel ? (
+                        <a href={r.tel} style={call} data-testid="waiting-call">
+                          ☎ {WAITING_WORDS.callThem}
+                        </a>
+                      ) : null}
+                      <button type="button" onClick={() => onOpenThread(r.contactId, { nudge: 'email' })} title={WAITING_WORDS.asEmailTip} style={nudge} data-testid="waiting-email">
+                        {WAITING_WORDS.asEmail}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => onOpenThread(r.contactId, { nudge: 'text' })} title={WAITING_WORDS.nudgeTip} style={nudge} data-testid="waiting-nudge">
+                        {WAITING_WORDS.nudge}
+                      </button>
+                      {r.tel ? (
+                        <a href={r.tel} style={call} data-testid="waiting-call">
+                          ☎ {WAITING_WORDS.call}
+                        </a>
+                      ) : null}
+                    </>
+                  )}
+                </span>
               </span>
             </div>
           ))

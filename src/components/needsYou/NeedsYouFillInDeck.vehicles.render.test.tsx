@@ -67,7 +67,7 @@ function harness() {
           bump((n) => n + 1)
         }}
         onExit={() => {}}
-        io={{ lostBids, vehicles: io }}
+        io={{ lostBids, vehicles: io, jobAccounts: { fetchGaps: async () => [], fetchJobs: async () => [], save: async () => { throw new Error('not here') }, undo: async () => {} } }}
       />
     )
   }
