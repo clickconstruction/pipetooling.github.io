@@ -2,7 +2,7 @@
 name: "Legal firms by county — one collections firm per county, the desk picks the firm from the venue, a county map shows who covers what and where the cases are"
 number: 144
 group: ready
-status: PR 1 built 2026-10-23 (v2.5756: `legal_firm_counties`, the Settings picker, `useLegalMatters.countiesByFirm`); PRs 2–4 open
+status: PR 1 built 2026-10-23 (v2.5756: `legal_firm_counties`, the Settings picker, `useLegalMatters.countiesByFirm`) and PR 1b (v2.5758: zoom and pan, today's cases as dots, the contents card); PRs 2–4 open
 summary: >
   Today the Legal Desk knows one collections law firm: the one active row of `legal_firms`, and
   every release goes to it. The owner is engaging a second firm — one for San Antonio, one for
@@ -124,4 +124,7 @@ Settings → **Collections law firms** with the county picker in the mock-up's s
 to color, a held county asks before it moves, Save counties / Undo changes), the county file
 `public/geo/tx-counties.json` (`docs/TX_COUNTY_MAP.md`), the kernels `legal/firmCounties.ts` and
 `legal/txCountyMap.ts`, and `useLegalMatters.activeFirms` / `countiesByFirm`, which nothing reads yet.
-PR 2 is next.
+**PR 1b shipped as v2.5758**: the settled mock-up's four additions, zoom and pan (`legal/countyMapView.ts`),
+today's cases as faint dots placed by `legal/firmMap.ts` (built once for PR 3's lens: stands, the county
+card, `legendCounts`, `uncoveredWords`) with `legal/countyAt.ts` for point-in-county, and the contents
+card under the firm cards. PR 2 is next.

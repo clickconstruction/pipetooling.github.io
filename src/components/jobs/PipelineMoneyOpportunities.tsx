@@ -148,7 +148,7 @@ function OpportunityChip({ label, fact, tone = 'plain', title, onClick, testId }
  * The card shell (v2.3822): line one — the glyph, the claim (with an optional muted tail and badge) and the door
  * as a link at the right; line two — `children` (a why line or a chip row). Two lines is the height.
  */
-function OpportunityCard({ glyph, claim, muted, badge, tone, door, hover, children, testId }: { glyph: string; claim: ReactNode; muted?: ReactNode; badge?: number | null; tone: CardTone; door?: { label: string; onClick: () => void; title?: string } | null; hover?: string; children?: ReactNode; testId?: string }) {
+function OpportunityCard({ glyph, claim, muted, badge, tone, door, hover, figure, caption, children, testId }: { glyph: string; claim: ReactNode; muted?: ReactNode; badge?: number | null; tone: CardTone; figure?: string; caption?: ReactNode; door?: { label: string; onClick: () => void; title?: string } | null; hover?: string; children?: ReactNode; testId?: string }) {
   return (
     <div
       data-testid={testId}
@@ -168,11 +168,19 @@ function OpportunityCard({ glyph, claim, muted, badge, tone, door, hover, childr
           </button>
         ) : null}
       </span>
+      {figure ? (
+        // v2.5766: the figure is a line of its own, large and alone, with the why as its caption — the claim no longer carries it after a dash.
+        <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0, flexWrap: 'wrap' }}>
+          <span style={figureStyle}>{figure}</span>
+          {caption ? <span style={whyStyle}>{caption}</span> : null}
+        </span>
+      ) : null}
       {children}
     </div>
   )
 }
 
+const figureStyle: CSSProperties = { fontSize: '0.98rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const whyStyle: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)' }
 const chipRowStyle: CSSProperties = { display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }
 
@@ -253,9 +261,11 @@ export function PipelineMoneyOpportunities({
               badge={m.badgeCount}
               tone={m.key === 'chase-90' ? 'red' : 'plain'}
               door={{ label: `${m.actionLabel} →`, onClick: moveAction[m.key] }}
+              figure={m.figure}
+              caption={m.figure ? m.why : undefined}
               testId={`pipeline-move-${m.key}`}
             >
-              {m.why ? <span style={whyStyle}>{m.why}</span> : null}
+              {m.why && !m.figure ? <span style={whyStyle}>{m.why}</span> : null}
             </OpportunityCard>
           ))}
           {/* Lien notices due (v2.3799, punch list #34): the Lien desk's count and dollars,
@@ -325,51 +335,48 @@ export function PipelineMoneyOpportunities({
           {/* The week's GC statements, two stages: bills to check, then statements checked and ready.
               Both count every GC over the line — the office sends them, whoever the account man is. */}
           {roundHeld && onCertifyRound ? (
-            <OpportunityCard glyph="🔏" claim={heldRoundHeadline(roundHeld.count, formatUsdNoCents(roundHeld.total))} tone="amber" door={{ label: 'Check in GC Review →', onClick: onCertifyRound }} testId="pipeline-round-held-card">
+            <OpportunityCard glyph="🔏" claim={heldRoundHeadline(roundHeld.count)} figure={formatUsdNoCents(roundHeld.total)} caption="check each GC’s bills and its statement is ready to send · nothing goes out unchecked" tone="amber" door={{ label: 'Check in GC Review →', onClick: onCertifyRound }} testId="pipeline-round-held-card">
               {/* B6 / J20-F7: held.count is GCs, not rounds — and the verb agrees. */}
-              <span style={whyStyle}>check each GC’s bills and its statement is ready to send — nothing goes out unchecked</span>
             </OpportunityCard>
           ) : null}
           {roundReady && onStartRound ? (
-            <OpportunityCard glyph="📬" claim={`Statements to send — ${roundReady.count} GC${roundReady.count === 1 ? '' : 's'}, ${formatUsdNoCents(roundReady.total)}`} tone="blue" door={{ label: 'Open the list →', onClick: onStartRound }} testId="pipeline-round-ready-card">
-              <span style={whyStyle}>
-                checked and ready · grouped by the account man to ask
-                {roundReady.late ? ` · ${roundReady.late} broke a promise` : ''}
-              </span>
-            </OpportunityCard>
+            <OpportunityCard glyph="📬" claim="Statements to send" figure={formatUsdNoCents(roundReady.total)} caption={`${roundReady.count} GC${roundReady.count === 1 ? '' : 's'} checked and ready · grouped by the account man to ask${roundReady.late ? ` · ${roundReady.late} broke a promise` : ''}`} tone="blue" door={{ label: 'Open the list →', onClick: onStartRound }} testId="pipeline-round-ready-card" />
           ) : null}
           {/* Payment chase card (v2.2025): who owes us a phone call about
               money. Office-only (the parent passes null otherwise); hidden
               when nobody owes a call and nothing is waiting. Compact anatomy
               (v2.2059, owner request): claim — why — door; the badge carries
               the count, only non-zero tiers speak. */}
-          {chase && onStartChase ? (
-            <OpportunityCard
-              glyph="📞"
-              claim={<span style={{ color: chase.dueCustomers > 0 ? 'inherit' : 'var(--text-muted)' }}>{chase.dueCustomers > 0 ? `Ask when they'll pay — ${formatUsdNoCents(chase.dueDollars)}` : 'Payment follow-up · everyone asked'}</span>}
-              badge={chase.dueCustomers > 0 ? chase.dueCustomers : null}
-              tone={chase.dueCustomers > 0 ? 'red' : 'plain'}
-              door={{ label: 'Start call mode →', onClick: onStartChase }}
-              testId="pipeline-chase-card"
-            >
-              {(() => {
-                const why = [
-                  chase.askCount > 0 ? `${chase.askCount} customer${chase.askCount === 1 ? '' : 's'} past expected, never asked` : null,
-                  chase.brokenCount > 0 ? `${chase.brokenCount} broken promise${chase.brokenCount === 1 ? '' : 's'}` : null,
-                  chase.waitingCount > 0 ? `${chase.waitingCount} waiting` : null,
-                  chase.disputeCount > 0 ? `${chase.disputeCount} dispute${chase.disputeCount === 1 ? '' : 's'}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
-                return why ? <span style={whyStyle}>{why}</span> : null
-              })()}
-            </OpportunityCard>
-          ) : null}
+          {chase && onStartChase ? (() => {
+            const why = [
+              chase.askCount > 0 ? `${chase.askCount} customer${chase.askCount === 1 ? '' : 's'} past expected, never asked` : null,
+              chase.brokenCount > 0 ? `${chase.brokenCount} broken promise${chase.brokenCount === 1 ? '' : 's'}` : null,
+              chase.waitingCount > 0 ? `${chase.waitingCount} waiting` : null,
+              chase.disputeCount > 0 ? `${chase.disputeCount} dispute${chase.disputeCount === 1 ? '' : 's'}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+            const due = chase.dueCustomers > 0
+            return (
+              <OpportunityCard
+                glyph="📞"
+                claim={<span style={{ color: due ? 'inherit' : 'var(--text-muted)' }}>{due ? "Ask when they'll pay" : 'Payment follow-up · everyone asked'}</span>}
+                badge={due ? chase.dueCustomers : null}
+                tone={due ? 'red' : 'plain'}
+                door={{ label: 'Start call mode →', onClick: onStartChase }}
+                figure={due ? formatUsdNoCents(chase.dueDollars) : undefined}
+                caption={due && why ? why : undefined}
+                testId="pipeline-chase-card"
+              >
+                {!due && why ? <span style={whyStyle}>{why}</span> : null}
+              </OpportunityCard>
+            )
+          })() : null}
           {/* Fix-ups joined the grid as a card (v2.1977; was a footer strip,
               v2.1961) — amber-edged, chips inside, gone when the data is
               clean. Each chip keeps its own action, so no card door. */}
           {fixups.length > 0 && (
-            <OpportunityCard glyph="🔎" claim="Fix-ups — missing data blocks billing" tone="amber" hover="Each chip opens its fix-it list — this card disappears when the data is clean" testId="pipeline-fixups-card">
+            <OpportunityCard glyph="🔎" claim="Fix-ups" muted="missing data blocks billing" tone="amber" hover="Each chip opens its fix-it list — this card disappears when the data is clean" testId="pipeline-fixups-card">
               <span style={chipRowStyle}>
                 {fixups.map((f) => (
                   <OpportunityChip key={f.key} label={f.label} tone={f.tone === 'red' ? 'red' : 'amber'} title={f.title} onClick={() => onFixup(f.key)} testId="pipeline-fixup-chip" />

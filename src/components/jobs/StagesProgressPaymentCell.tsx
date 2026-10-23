@@ -140,6 +140,10 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
                     e.currentTarget.blur()
                   }
                 }}
+                // v2.5765: a scroll over a focused number box steps its value in every browser.
+                // The wheel drops focus instead, so the page scrolls and the % stays what was typed
+                // (the blur commits only a changed value — the mutation skips an unchanged one).
+                onWheel={(e) => e.currentTarget.blur()}
                 disabled={!!pctSaving}
                 placeholder=""
                 aria-label="Percent complete"

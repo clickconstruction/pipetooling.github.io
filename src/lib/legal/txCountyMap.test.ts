@@ -26,6 +26,7 @@ describe('projectCounties', () => {
     const map = projectCounties(FC, 200)
     expect(map.width).toBe(200)
     expect(map.height).toBe(200)
+    expect(map.project(-99, 0.5)).toEqual([100, 50])
     const west = map.shapes.find((s) => s.name === 'West')!
     expect(west.d).toBe('M0,0L100,0L100,100L0,100L0,0Z')
     expect(west.cx).toBe(50)
@@ -42,6 +43,6 @@ describe('projectCounties', () => {
     expect(islands.cy).toBe(150)
   })
   it('is empty for no features', () => {
-    expect(projectCounties({ type: 'FeatureCollection', features: [] })).toEqual({ shapes: [], width: 600, height: 0 })
+    expect(projectCounties({ type: 'FeatureCollection', features: [] })).toMatchObject({ shapes: [], width: 600, height: 0 })
   })
 })

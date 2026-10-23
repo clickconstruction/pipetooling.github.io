@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { stageSpanShort, type StagePlan, type StagePlanRow } from '../../lib/jobs/stagePlan'
 import { StageKindBadge } from './StageKindControls'
+import EyeIcon from '../icons/EyeIcon'
 
 type JobFormStagesGroupProps = {
   plan: StagePlan
@@ -22,15 +23,6 @@ type JobFormStagesGroupProps = {
   defaultOpen?: boolean
 }
 
-function EyeIcon({ on }: { on: boolean }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" fill={on ? 'currentColor' : 'none'} />
-      {!on ? <path d="M4 4l16 16" /> : null}
-    </svg>
-  )
-}
 
 /** The chip at the right of a row: where the work stands, in a few words. */
 function standing(r: StagePlanRow): { text: string; tone: 'green' | 'blue' | 'plain' | 'muted' } {
@@ -86,7 +78,7 @@ export function JobFormStagesGroup({ plan, gcName, sharesWithGc, onToggleShared,
           onClick={() => onToggleShared(r.fixtureId, !r.sharedWithGc)}
           style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 24, borderRadius: 999, border: `1px solid ${r.sharedWithGc ? 'var(--border-strong)' : 'var(--border)'}`, background: r.sharedWithGc ? 'var(--bg-200)' : 'transparent', color: r.sharedWithGc ? 'var(--text-700)' : 'var(--text-faint)', cursor: 'pointer', flexShrink: 0 }}
         >
-          <EyeIcon on={r.sharedWithGc} />
+          <EyeIcon variant={r.sharedWithGc ? 'open' : 'crossed'} />
         </button>
       </div>
     )

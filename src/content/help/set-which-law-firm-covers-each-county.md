@@ -2,7 +2,7 @@
 title: set which law firm covers each county
 category: Billing & Money
 roles: dev
-keywords: legal, attorney, law firm, collections, county, counties, venue, territory, map, texas, settings, jobs and billing, who covers
+keywords: legal, attorney, law firm, collections, county, counties, venue, territory, map, texas, settings, jobs and billing, who covers, zoom, cases, dots
 ---
 You color counties on a Texas map so each collections law firm covers its own area. A collections suit is filed in the county where the customer is. So the firm for an account is the firm that covers that county.
 
@@ -20,6 +20,24 @@ Open **Settings**, then **Jobs & billing**, then **Collections law firms**. Only
 :::
 
 {{button:outline|Undo changes}} puts the map back the way it was saved.
+
+## Move around the map
+
+The map opens on Central Texas. Press {{button:outline|All of Texas}} to see the whole state. Press {{button:outline|Central Texas}} to come back.
+
+Scroll on the map to zoom where the pointer is. Pinch on a phone. Press {{button:outline|+}} or {{button:outline|−}} to step in or out. Drag the map to move it. A drag never colors a county.
+
+County names show once you zoom in close enough. A colored county keeps its name longer.
+
+## See where today's cases sit
+
+Each small dot is one Collections account at its job's address. The dot's color says where the account stands. Amber needs a dev's eyes. Green is with the firm. Gray is given up on. Red sits in a county no firm covers yet.
+
+The card under the firm cards lists what is in the county under your pointer. Move the pointer to a county and the card shows that county's cases, each with its balance. Click a dot to hold that case on the card while you keep coloring. Click another dot to hold that one instead. A dot click never colors a county.
+
+Each case on the card has an **Open on the desk** link. The link opens the Legal desk on that account.
+
+The dots are for reference while you color. The desk's own Map works the cases.
 
 ## When another firm already holds the county
 
