@@ -42,6 +42,10 @@ export type JobChargeEvent = {
   dateKey: string | null
   amount: number
   label: string
+  /** The person (team labor) or the sub (sub labor) behind the event, so a print can group by them (v2.5749). */
+  who?: string
+  /** The hours behind a team labor event (v2.5749). */
+  hours?: number
 }
 
 /**
@@ -210,6 +214,8 @@ export function buildJobChargeEvents(input: JobChargeEventsInput): JobChargeEven
         dateKey: d.workDate ? d.workDate.slice(0, 10) : null,
         amount: d.cost,
         label: `${person.personName} — team labor (${roundHoursLabel(d.hours)})`,
+        who: person.personName,
+        hours: d.hours,
       })
     }
   }
@@ -219,6 +225,7 @@ export function buildJobChargeEvents(input: JobChargeEventsInput): JobChargeEven
       dateKey: s.dateKey,
       amount: s.amount,
       label: `${s.assignedToName || 'Sub'} — sub labor`,
+      who: s.assignedToName || 'Sub',
     })
   }
   for (const m of input.mercury) {

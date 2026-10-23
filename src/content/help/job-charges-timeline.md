@@ -35,7 +35,7 @@ Under the tiles, one strip says where this job stands with the labor book:
 
 ## The chart, and the detail behind the toggle
 
-One chart. It draws **cost to date** against **value earned**. Value earned is % done × price, stepping at each report. The price is a faint line. The bid figure is a dashed line, only when one exists. The forecast at today's pace is drawn too. {{button:gray|Show the timeline · daily spend ▾}} reveals the 14-day daily spend and the burn rate and work-left rows. It also opens the full Cost Timeline described below.
+One chart. It draws **cost to date** against **value earned**. Value earned is % done × price, stepping at each report. The price is a faint line. The bid figure is a dashed line, only when one exists. The forecast at today's pace is drawn too. {{button:gray|Show the timeline · daily spend ▾}} reveals the 14-day daily spend and the burn rate and work-left rows. It also opens the full Cost Timeline described below. {{button:gray|Print}} on the tab's first line prints the whole tab as four Letter pages. The pages hold the verdict, the chart, where the money went, the pace and one row per day.
 
 ## Burn: are we spending faster than we are finishing?
 

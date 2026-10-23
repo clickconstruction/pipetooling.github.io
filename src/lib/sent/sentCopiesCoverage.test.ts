@@ -43,6 +43,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'components/jobs/JobSummaryCostCellDrilldownModal.tsx': 'our own cost report',
   'components/jobs/JobsWeeklyMoneyModal.tsx': 'our own money report',
   'components/jobs/JobsWeeklyMovementModal.tsx': 'our own movement report',
+  'components/jobs/JobCostsTabCharts.tsx': 'our own cost report, the Costs tab on paper: it holds wages and margin',
   'components/pay/PayStubViewModal.tsx': 'a pay stub: pay stays with payroll, never in a list the whole office reads',
   'lib/peopleDocuments/buildPayStubHtml.ts': 'a pay stub: pay stays with payroll, never in a list the whole office reads',
   'components/people/teamSummary/TeamSummaryDrilldownModal.tsx': 'our own team report',

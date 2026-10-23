@@ -57,6 +57,7 @@ import { exhibitDetails, exhibitsSummaryWords } from '../../../lib/legal/exhibit
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { ModalFullScreenButton, useModalFullScreen } from '../../ModalFullScreenToggle'
+import LegalDeskMapView from './LegalDeskMapView'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
@@ -140,6 +141,10 @@ const FIRM_GROUP: CSSProperties = { display: 'inline-flex', alignItems: 'stretch
 const SEG: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', border: 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '0.76rem', fontWeight: 500, lineHeight: 1, whiteSpace: 'nowrap', cursor: 'pointer' }
 const FIRM_SEG: CSSProperties = { ...SEG, borderLeft: 'none', fontWeight: 600, maxWidth: 220, minWidth: 0 }
 const FIRM_SEG_NONE: CSSProperties = { ...FIRM_SEG, maxWidth: 'none', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+/** The desk's two views (v2.5784, punch list #144 PR 3): Accounts, the rail and the account; Map, every case on the county map. One group, the same chrome as the firm's. */
+const VIEW_SEG: CSSProperties = { ...SEG, borderLeft: 'none' }
+const VIEW_SEG_ON: CSSProperties = { ...VIEW_SEG, background: 'var(--bg-muted)', color: 'var(--text)', fontWeight: 600 }
+type DeskView = 'accounts' | 'map'
 const SEG_RED: CSSProperties = { color: '#b42318' }
 const SEG_AMBER: CSSProperties = { color: '#9a6700' }
 /** The quiet ✕ the Lien desk's title bar wears: no box, so the firm group is the row's one box. */
@@ -264,6 +269,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   )
   const [selectedKey, setSelectedKey] = useState<LegalPayerKey | null>(null)
   const [tab, setTab] = useState<Tab>('account')
+  /** Accounts or Map (v2.5784). */
+  const [view, setView] = useState<DeskView>('accounts')
   const [gapsOpen, setGapsOpen] = useState(true)
   /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
   const [writeDownOpen, setWriteDownOpen] = useState(false)
@@ -606,6 +613,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             </div>
           </div>
           <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0 }}>
+            <div role="group" aria-label="View" data-legal-view-group style={FIRM_GROUP}>
+              <button type="button" className="legalDeskSeg" onClick={() => setView('accounts')} aria-pressed={view === 'accounts'} data-legal-view="accounts" style={view === 'accounts' ? VIEW_SEG_ON : VIEW_SEG}>Accounts</button>
+              <button type="button" className="legalDeskSeg" onClick={() => setView('map')} aria-pressed={view === 'map'} data-legal-view="map" title="Every Collections account on the county map, with the firm that covers each county" style={{ ...(view === 'map' ? VIEW_SEG_ON : VIEW_SEG), borderLeft: '1px solid var(--border)' }}>Map</button>
+            </div>
             {stored ? (
               <div data-legal-firm-group style={FIRM_GROUP}>
                 <button type="button" className="legalDeskSeg" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_SEG : FIRM_SEG_NONE}>
@@ -639,6 +650,16 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           </div>
         </div>
 
+        {view === 'map' ? (
+          <LegalDeskMapView
+            accounts={accounts}
+            givenUp={givenUpAccounts}
+            byPayerKey={legal?.byPayerKey ?? new Map()}
+            firms={legal?.activeFirms ?? []}
+            countiesByFirm={legal?.countiesByFirm ?? new Map()}
+            onOpenCase={(key) => { setSelectedKey(key); setTab('account'); setView('accounts') }}
+          />
+        ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 300px) 1fr', minHeight: 0 }}>
           <div style={{ borderRight: '1px solid var(--border)', overflowY: 'auto', padding: 10 }}>
             <div style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 6px 2px' }}>
@@ -757,6 +778,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* The sheets below sit inside the desk's backdrop, outside its panel: each backdrop stops its

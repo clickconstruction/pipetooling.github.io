@@ -28,6 +28,9 @@ const btn: CSSProperties = {
  * One section as a screen (punch list #30, PR 3): ‹ · the name · n of N, the section's
  * banner question, the section's own body, and at the thumb Skip · Looked · N open · next.
  * Note-first sections keep their own mark button inside the body; the bar only moves on.
+ * On a desk (punch list #147, v2.5787, `wide`) the same screen is the Roller: no ‹ (the
+ * strip's Groups button is the way out), the strip under the name, ← Previous and Next → in
+ * the bar beside Skip and Looked.
  */
 export function QuickfillRoundScreen({
   label,
@@ -42,6 +45,9 @@ export function QuickfillRoundScreen({
   onSkip,
   onLooked,
   onHistory,
+  onPrev,
+  strip,
+  wide = false,
   children,
 }: {
   label: string
@@ -57,22 +63,31 @@ export function QuickfillRoundScreen({
   onSkip: () => void
   onLooked: () => void
   onHistory: () => void
+  /** The Roller's ← Previous; null at the top of the deck (the button is drawn disabled). */
+  onPrev?: (() => void) | null
+  /** The Roller's strip: the dots, the words, the switch and Groups. */
+  strip?: ReactNode
+  /** The desk layout: no ‹, the strip, Previous and Next in the bar. */
+  wide?: boolean
   children: ReactNode
 }) {
   const nextLabel = position && position.index < position.total ? 'next →' : 'done ✓'
   return (
     <div className="quickfillRoundScreen">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-        <button type="button" onClick={onBack} aria-label="Back to the list" style={{ ...btn, padding: '0.4rem 0.7rem', fontSize: '1.1rem', lineHeight: 1 }}>
-          ‹
-        </button>
-        <h2 style={{ margin: 0, flex: 1, minWidth: 0, fontSize: '1.0625rem', fontWeight: 700, color: 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</h2>
-        {position ? (
+        {wide ? null : (
+          <button type="button" onClick={onBack} aria-label="Back to the list" style={{ ...btn, padding: '0.4rem 0.7rem', fontSize: '1.1rem', lineHeight: 1 }}>
+            ‹
+          </button>
+        )}
+        <h2 style={{ margin: 0, flex: 1, minWidth: 0, fontSize: wide ? '1.375rem' : '1.0625rem', fontWeight: 700, color: 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</h2>
+        {position && !wide ? (
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {position.index} of {position.total}
           </span>
         ) : null}
       </div>
+      {strip}
       {question ? (
         <div style={{ fontSize: '0.875rem', color: 'var(--text)', background: 'var(--bg-subtle)', borderLeft: '3px solid var(--text-link)', padding: '0.45rem 0.6rem', borderRadius: 4, marginBottom: '0.5rem' }}>{question}</div>
       ) : null}
@@ -85,7 +100,12 @@ export function QuickfillRoundScreen({
         ) : null}
       </div>
       <div>{children}</div>
-      <div style={bar}>
+      <div style={{ ...bar, ...(wide ? { gridTemplateColumns: 'auto auto 1fr auto' } : {}) }}>
+        {wide ? (
+          <button type="button" onClick={onPrev ?? undefined} disabled={!onPrev} style={{ ...btn, opacity: onPrev ? 1 : 0.5 }}>
+            ← Previous
+          </button>
+        ) : null}
         <button type="button" onClick={onSkip} style={btn}>
           Skip
         </button>
@@ -98,6 +118,11 @@ export function QuickfillRoundScreen({
             {marking ? 'Marking…' : `Looked${liveCount != null ? ` · ${liveCount} open` : ''} · ${nextLabel}`}
           </button>
         )}
+        {wide ? (
+          <button type="button" onClick={onSkip} style={btn}>
+            {nextLabel === 'done ✓' ? 'Done ✓' : 'Next →'}
+          </button>
+        ) : null}
       </div>
     </div>
   )

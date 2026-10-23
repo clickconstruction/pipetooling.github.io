@@ -219,7 +219,9 @@ describe('FollowUpPanel', () => {
     expect((rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Call back in Quo' }) as HTMLButtonElement).disabled).toBe(true)
     // The number nobody has named waits in New, first, and not in Needs a reply.
     expect(screen.getByRole('heading', { name: 'New (1)' })).toBeTruthy()
-    expect(rowIn('New', 'unk1').getByRole('button', { name: 'Who is this?' })).toBeTruthy()
+    // One control on the row (v2.5793): the question beside the name, nothing repeating it under the words.
+    expect(rowIn('New', 'unk1').getAllByRole('button', { name: 'Who is this?' })).toHaveLength(1)
+    expect(rowIn('New', 'unk1').getByRole('button', { name: 'Who is this?' }).getAttribute('data-new-lane-press')).toBe('who')
 
     const needsYou = within(screen.getByRole('region', { name: 'Needs you' }))
     expect(needsYou.getByText('Call Elena about the gate code.')).toBeTruthy()

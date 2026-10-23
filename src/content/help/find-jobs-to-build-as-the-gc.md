@@ -33,7 +33,7 @@ The queue has a third order on Jobs to GC, **Soonest bid**. It puts the lead who
 You type Hill Country Developers, A developer, PlanHub. Then a job: retail shell on FM 1431, 12,000 sq ft, bids due Nov 3. The row reads "Nov 3 · bids due · 19 days".
 :::
 
-The strip over the deck, **GC work in flight**, counts the Project Board: Bidding, Buying out, Building and Lost.
+The strip over the deck, **GC work in flight**, counts the Project Board: Bidding, Buying out, Building and Lost. Under the counts, **Bidding now** names each project out for a bid with its due day. Press a name to open its card. **On this deck** says how many leads here carry a job with a bid day. With no lead yet it says so.
 
 ## Make the call
 

@@ -4,6 +4,7 @@ import { penPageFileProblem, penPagePath, penWitnessHowWithPage } from './lienPe
 import { validateReportSignatureDataUrlForSubmit } from '../reportSignatureField'
 import { trimSignatureInk } from '../signatureInkTrim'
 import { supabase } from '../supabase'
+import { isMissingRpcError } from '../customers/customersListBundle'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 
 /**
@@ -164,4 +165,75 @@ export async function recordLienPenSignature(args: RecordLienPenSignatureArgs): 
     /* the desk's Signed by pen, as recorded group tells him too */
   }
   return { ok: true, signedAtIso, how, pagePath }
+}
+
+/**
+ * The leader's signing code (v2.5788, punch list #150): a 4-to-6-digit code he sets himself under
+ * Settings → Your account and types on any screen to put his name on a notice. The database holds only
+ * a salted hash and checks it inside `sign_lien_desk_item_with_code` (migration 20261023150000); the
+ * office never sees the code. Five wrong codes lock it for fifteen minutes. The answer says why a
+ * press did not sign, in words the desk shows as they are.
+ */
+export type LienSignCodeStatus = { set: boolean; setAtIso: string | null; lastUsedAtIso: string | null; lockedUntilIso: string | null }
+
+/** Whether a leader has a code and whether it is locked; `null` when the database side is not live yet. */
+export async function lienSignCodeStatus(userId: string): Promise<LienSignCodeStatus | null> {
+  const { data, error } = await supabase.rpc('lien_sign_code_status' as never, { p_user_id: userId } as never)
+  if (error) {
+    if (isMissingRpcError(error.message)) return null
+    throw new Error(error.message)
+  }
+  const d = (data ?? {}) as { set?: boolean; set_at?: string | null; last_used_at?: string | null; locked_until?: string | null }
+  return { set: Boolean(d.set), setAtIso: d.set_at ?? null, lastUsedAtIso: d.last_used_at ?? null, lockedUntilIso: d.locked_until ?? null }
+}
+
+/** A code is 4 to 6 digits, nothing else. */
+export const LIEN_SIGN_CODE_RE = /^[0-9]{4,6}$/
+
+/** Why a typed code is not yet a code: the sentence the card shows under the field, or null when it is one. */
+export function lienSignCodeProblem(code: string, confirm?: string): string | null {
+  if (!LIEN_SIGN_CODE_RE.test(code)) return code.length === 0 ? null : code.length < 4 ? 'Four to six digits.' : code.length > 6 ? 'Six digits at most.' : 'Digits only.'
+  if (confirm !== undefined && confirm !== code) return confirm.length === 0 ? null : 'The two codes differ.'
+  return null
+}
+
+/** Sets or changes the signed-in leader's own code (the database refuses anyone who is not a master or dev). */
+export async function setLienSignCode(code: string): Promise<void> {
+  const { error } = await supabase.rpc('set_lien_sign_code' as never, { p_code: code } as never)
+  if (error) throw new Error(error.message)
+}
+
+/** Removes the signed-in leader's own code; the desk then offers his hand or his phone instead. */
+export async function clearLienSignCode(): Promise<void> {
+  const { error } = await supabase.rpc('clear_lien_sign_code' as never, {} as never)
+  if (error) throw new Error(error.message)
+}
+
+export type SignLienDeskItemWithCodeArgs = {
+  itemId: string
+  /** The row's `fields` as saved; its hash binds the mark to this draft, as the press does. */
+  fields: unknown
+  /** The job's master, whose code it is. */
+  signerUserId: string
+  code: string
+  /** Approve in the same write (the desk's Sign and approve ▸); false for a sign-only press on a notice already approved on his word. */
+  approve: boolean
+}
+
+export type SignLienDeskItemWithCodeResult =
+  | { ok: true; signedAtIso: string; printedName: string }
+  | { ok: false; reason: 'format' | 'none' | 'wrong' | 'locked' | 'not_live' | 'error'; message: string; triesLeft: number | null; lockedUntilIso: string | null }
+
+/** Signs (and approves) a notice with the leader's code on this screen: one RPC, the database checks the code and writes the row. */
+export async function signLienDeskItemWithCode(args: SignLienDeskItemWithCodeArgs): Promise<SignLienDeskItemWithCodeResult> {
+  const fieldsHash = lienFieldsHash(JSON.parse(JSON.stringify(args.fields ?? null)))
+  const { data, error } = await supabase.rpc('sign_lien_desk_item_with_code' as never, { p_item_id: args.itemId, p_signer_id: args.signerUserId, p_code: args.code, p_fields_hash: fieldsHash, p_approve: args.approve } as never)
+  if (error) {
+    if (isMissingRpcError(error.message)) return { ok: false, reason: 'not_live', message: 'Signing by code is not switched on yet — the database side ships with the next migration push.', triesLeft: null, lockedUntilIso: null }
+    return { ok: false, reason: 'error', message: error.message, triesLeft: null, lockedUntilIso: null }
+  }
+  const d = (data ?? {}) as { ok?: boolean; signed_at?: string; printed_name?: string; reason?: string; message?: string; tries_left?: number; locked_until?: string | null }
+  if (d.ok) return { ok: true, signedAtIso: d.signed_at ?? new Date().toISOString(), printedName: d.printed_name ?? '' }
+  const reason = d.reason === 'format' || d.reason === 'none' || d.reason === 'wrong' || d.reason === 'locked' ? d.reason : 'error'
+  return { ok: false, reason, message: d.message ?? 'The code did not sign it.', triesLeft: typeof d.tries_left === 'number' ? d.tries_left : null, lockedUntilIso: d.locked_until ?? null }
 }

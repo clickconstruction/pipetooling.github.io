@@ -282,4 +282,30 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
+
+  it('Map beside Accounts in the header shows every case on the county map with the legend and the flag; Accounts brings the rail back (v2.5784, punch list #144 PR 3)', async () => {
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502), collectionsJob('job-b', '718', 1480)]} {...baseProps} legal={{ ...legal, countiesByFirm: new Map([[firm.id, ['Bexar', 'Comal']]]) }} canMarkReady canEditReview />)
+    await settle()
+    const group = document.querySelector('[data-legal-view-group]')!
+    expect([...group.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Accounts', 'Map'])
+    expect(screen.getByRole('button', { name: 'Accounts' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }))
+    await settle()
+    expect(document.querySelector('[data-legal-map-view]')).toBeTruthy()
+    // The rail and the account give way to the map.
+    expect(screen.queryByRole('tab', { name: 'Account' })).toBeNull()
+    // The legend: the firm with its counties, then the uncovered row — the smoke's account has no geocode, so it is off the map and uncovered.
+    const legendRow = document.querySelector('[data-legal-map-legend-row="firm-1"]')!
+    expect(legendRow.textContent).toContain('Barnes & Holt')
+    expect(legendRow.textContent).toContain('2 counties · Bexar, Comal')
+    expect(legendRow.textContent).toContain('0 cases')
+    expect(document.querySelector('[data-legal-map-legend-row="none"]')!.textContent).toContain('1 case')
+    expect(document.querySelector('[data-legal-map-flag]')!.textContent).toMatch(/1 case in a county no firm covers · The Learning Experience \(off the map\)/)
+    expect(document.querySelector('[data-legal-map-summary]')!.textContent).toBe('1 account · 2 jobs · $8,982.00 open')
+    expect(document.querySelector('[data-legal-county-card]')!.textContent).toContain('Tap a county to see the cases in it.')
+    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }))
+    await settle()
+    expect(screen.getByRole('tab', { name: 'Account' })).toBeTruthy()
+    expect(document.querySelector('[data-legal-map-view]')).toBeNull()
+  })
 })

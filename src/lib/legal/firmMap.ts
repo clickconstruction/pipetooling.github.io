@@ -33,6 +33,8 @@ export type LegalMapCase = {
   jobCount: number
   viaGc: boolean
   stand: LegalMapStand
+  /** The firm the matter is with (`legal_matters.firm_id`) while `stand` is `firm`; null otherwise (v2.5784: the legend counts it for that firm). */
+  firmId: string | null
   /** `needs a dev's eyes` · `with Snell since 10/06` · `given up on` */
   note: string
   lat: number | null
@@ -112,6 +114,7 @@ export function shapeMapCases(input: ShapeMapCasesInput): LegalMapCase[] {
       jobCount: acc.jobs.length,
       viaGc: acc.viaGc,
       stand,
+      firmId: stand === 'firm' ? matter?.firm_id ?? null : null,
       note: caseNote(stand, firmName, matter?.released_at),
       lat: pt?.lat ?? null,
       lng: pt?.lng ?? null,
@@ -180,13 +183,17 @@ export function countyCardFacts(county: string, cases: ReadonlyArray<LegalMapCas
 
 export type LegendCount = { firmId: string | null; name: string; count: number; dollars: number; moneyWords: string }
 
-/** Who covers what, with each firm's cases and dollars; `No firm covers it` last (the lens's legend, PR 3). */
+/**
+ * Who covers what, with each firm's cases and dollars; `No firm covers it` last (the lens's legend, PR 3). A case
+ * with a firm counts for that firm whatever the counties say today (v2.5784); the rest count for the firm of
+ * their county; a firm no longer active counts as none.
+ */
 export function legendCounts(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, firms: ReadonlyArray<{ id: string; name: string }>): LegendCount[] {
   const by = new Map<string | null, { count: number; dollars: number }>()
   for (const f of firms) by.set(f.id, { count: 0, dollars: 0 })
   by.set(null, { count: 0, dollars: 0 })
   for (const c of cases) {
-    const firmId = c.county ? assignments.get(c.county) ?? null : null
+    const firmId = c.firmId ?? (c.county ? assignments.get(c.county) ?? null : null)
     const slot = by.get(firmId) ?? by.get(null)!
     slot.count += 1
     slot.dollars += c.balance
@@ -197,10 +204,25 @@ export function legendCounts(cases: ReadonlyArray<LegalMapCase>, assignments: Co
   })
 }
 
+/** The counties of the cases no firm covers, sorted, once each (the legend's last row, v2.5784). */
+export function uncoveredCounties(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments): string[] {
+  const out = new Set<string>()
+  for (const c of cases) if (effectiveStand(c, assignments) === 'none' && c.county) out.add(c.county)
+  return [...out].sort()
+}
+
+/** Over the lens: `8 accounts · 10 jobs · $26,462.01 open`, or `Nothing is in Collections.` */
+export function lensSummaryWords(cases: ReadonlyArray<LegalMapCase>): string {
+  if (cases.length === 0) return 'Nothing is in Collections.'
+  const jobs = cases.reduce((s, c) => s + c.jobCount, 0)
+  const open = cases.reduce((s, c) => s + c.balance, 0)
+  return `${cases.length} ${cases.length === 1 ? 'account' : 'accounts'} · ${jobs} ${jobs === 1 ? 'job' : 'jobs'} · ${money(open)} open`
+}
+
 /** The flag above the lens: `2 cases in a county no firm covers · Burd & Assoc. (Williamson) · …`, or null. */
 export function uncoveredWords(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments): string | null {
   const off = cases.filter((c) => effectiveStand(c, assignments) === 'none')
   if (off.length === 0) return null
   const names = off.map((c) => `${c.name} (${c.county ?? 'off the map'})`).join(' · ')
-  return `${off.length} ${off.length === 1 ? 'case' : 'cases'} in a county no firm covers · ${names}. Pick a firm for the county on Settings, or the desk cannot release ${off.length === 1 ? 'it' : 'them'}.`
+  return `${off.length} ${off.length === 1 ? 'case' : 'cases'} in a county no firm covers · ${names}. Color the county for a firm, or the desk cannot release ${off.length === 1 ? 'it' : 'them'}.`
 }
