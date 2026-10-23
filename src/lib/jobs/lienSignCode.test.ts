@@ -83,7 +83,7 @@ describe('signLienDeskItemWithCode — one RPC, the database checks the code', (
     rpc.answer = { set: true, set_at: '2026-10-23T18:00:00Z', last_used_at: null, locked_until: null }
     expect(await lienSignCodeStatus('u-malachi')).toEqual({ set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null })
     await setLienSignCode('2468')
-    expect(rpc.calls.at(-1)).toEqual({ fn: 'set_lien_sign_code', args: { p_code: '2468' } })
+    expect(rpc.calls[rpc.calls.length - 1]).toEqual({ fn: 'set_lien_sign_code', args: { p_code: '2468' } })
   })
 })
 
