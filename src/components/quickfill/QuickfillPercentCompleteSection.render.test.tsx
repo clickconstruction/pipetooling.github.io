@@ -168,7 +168,34 @@ describe('QuickfillPercentCompleteSection', () => {
     fireEvent(knob, new window.MouseEvent('pointerup', { bubbles: true, cancelable: true, clientX: 460 }))
     fireEvent(knob, new window.MouseEvent('pointermove', { bubbles: true, cancelable: true, clientX: 100 }))
     expect(knob.getAttribute('aria-valuenow')).toBe('90')
-    expect(screen.getByRole('button', { name: 'Save 90%' })).toBeTruthy()
+    // Save with the slid value.
+    fireEvent.click(screen.getByRole('button', { name: 'Save 90%' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect((onSave.mock.calls[0] as unknown[])[1]).toBe(90)
+    expect((await screen.findByTestId('percent-complete-saved')).textContent).toContain('879 set to 90%. Was 0%.')
+  })
+
+  it('a knob let go near a stage mark snaps to it; the arrow keys step past it by one', async () => {
+    renderWithProviders(<QuickfillPercentCompleteSection list={list} loading={false} snoozeAvailable onSave={onSave} onUndoSave={noop} onDismiss={onDismiss} onUndoDismiss={noop} />)
+    await settle()
+    const knob = screen.getByRole('slider', { name: '% done knob for 879 · Hunter Homes, lot 12' })
+    Object.defineProperty(knob, 'getBoundingClientRect', { value: () => ({ left: 100, width: 400, top: 0, height: 44, right: 500, bottom: 44, x: 100, y: 0, toJSON: () => ({}) }) })
+    // The marks sit at the stops: Rough 40 · Top Out 80 · Trim 100.
+    expect(Array.from(knob.querySelectorAll('[data-percent-mark]')).map((m) => m.getAttribute('data-percent-mark'))).toEqual(['40', '80', '100'])
+    // 38% along the bar, let go: lands on Rough's end at 40, and its chip reads pressed.
+    fireEvent(knob, new window.MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 252 }))
+    expect(knob.getAttribute('aria-valuenow')).toBe('38')
+    fireEvent(knob, new window.MouseEvent('pointerup', { bubbles: true, cancelable: true, clientX: 252 }))
+    expect(knob.getAttribute('aria-valuenow')).toBe('40')
+    expect(screen.getByRole('button', { name: 'Rough ✓ 40%' }).getAttribute('aria-pressed')).toBe('true')
+    // Three points off is left alone.
+    fireEvent(knob, new window.MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 272 }))
+    fireEvent(knob, new window.MouseEvent('pointerup', { bubbles: true, cancelable: true, clientX: 272 }))
+    expect(knob.getAttribute('aria-valuenow')).toBe('43')
+    // The keyboard never snaps.
+    fireEvent.keyDown(knob, { key: 'ArrowLeft' })
+    fireEvent.keyDown(knob, { key: 'ArrowLeft' })
+    expect(knob.getAttribute('aria-valuenow')).toBe('41')
   })
 
   it('says all agree when there is nothing to fix', async () => {

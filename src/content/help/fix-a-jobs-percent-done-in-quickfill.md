@@ -36,7 +36,7 @@ The knob starts on the number the facts suggest. The line under the sentence say
 
 You have three ways to move the number.
 
-- Drag the blue knob along the bar. You can also tap anywhere on the bar to jump there. The box follows.
+- Drag the blue knob along the bar. You can also tap anywhere on the bar to jump there. The box follows. Let go near a small mark under the bar and the knob lands on that stage's end.
 - Press a stage chip under the bar, like {{chip:gray|Top Out 75%}}. The knob jumps to the end of that stage. The paid share has a chip too when it is not a stage end.
 - Type a number in the box. The knob follows.
 

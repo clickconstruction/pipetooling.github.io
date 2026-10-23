@@ -175,7 +175,7 @@ export function QuickfillPercentCompleteSection({
           </Link>
           <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--bg-amber-tint, var(--bg-subtle))', color: 'var(--text-amber-800)' }}>{KIND_WORDS[card.kind]}</span>
         </div>
-        <QuickfillPercentBarSlider view={card.view} pct={card.pct} draft={draft} onDraft={(n) => setDraft(card, n)} label={`% done knob for ${card.label}`} disabled={busy} />
+        <QuickfillPercentBarSlider view={card.view} pct={card.pct} draft={draft} onDraft={(n) => setDraft(card, n)} label={`% done knob for ${card.label}`} stops={card.stops.map((s) => s.pct)} disabled={busy} />
         <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
           <span>
             <strong>{card.pct == null ? 'No %' : `${card.pct}%`}</strong> done

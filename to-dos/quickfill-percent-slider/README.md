@@ -109,12 +109,18 @@ Four things it gets right, two it leaves out, one quirk it inherits.
 4. **Nothing new on the server.** The save is the same activity note and the same column as
    today; the dismissals are unchanged.
 5. **Left out, on purpose:** a note box beside the slider (the move line is the note the save
-   writes, as today); snapping the knob to a stage end as it passes (a knob that jumps fights the
-   hand; the chips are the snap).
+   writes, as today); snapping the knob to a stage end as it passes (a knob that jumps mid-drag
+   fights the hand). The snap is on release only: let go within two points of a stop and the knob
+   lands on it; the chips reach any stop in one press.
 6. **Inherited from the tick:** on a job with a paid Deposit stage the suggested number leaves
    the deposit out (a deposit is not work, v2.5764), so the knob at the suggestion sits a little
    short of the stage block's end, exactly where the Pipeline's own tick sits for that number
    today. Not changed here; it is the Pipeline's rule.
+7. **Fixed on the way:** v2.5764 divided a stage's price by the bid, which differs from the
+   bar's own share on a discounted bid or a job with a plain line beside its stages, and there
+   the suggestion sat short of or past the stage's block. The build puts the ticked share and
+   the stops on the bar's own segment share, the one the tick walks, so every stop and the
+   suggestion sit exactly at a block's end. On the live cards checked the two agreed.
 
 ## Where it plugs in
 
@@ -130,7 +136,11 @@ Four things it gets right, two it leaves out, one quirk it inherits.
 - The stops: a new `percentStops` in
   [`percentComplete.ts`](../../src/lib/quickfill/percentComplete.ts) over the stage bar's
   segments (Deposit left out, the same share the ticks use), the paid share folded in when it
-  is not a stage end; stored on the card as `stops`.
+  is not a stage end; stored on the card as `stops`. Each is a stub under the bar, and
+  `snapPercentToStops` lands a released knob on one within two points.
+- The app's other sliders (the Legal desk's settlement floor, the write-down panel) are inline
+  native ranges, not a shared component; a native range maps its track linearly and cannot sit on
+  the floored stage bar, so the knob is drawn by hand on the same box-and-slider pattern.
 - The write: unchanged, [`percentCompleteWrite.ts`](../../src/lib/quickfill/percentCompleteWrite.ts).
 - The words: the guide *fix a job's percent done in Quickfill* and the station's intro line.
 

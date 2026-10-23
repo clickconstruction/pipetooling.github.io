@@ -2,6 +2,7 @@ import { useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointer
 import { StagesStageBar } from '../jobs/StagesStageBar'
 import { pctFromTickLeft, tickLeftPct } from '../../lib/jobs/jobMoneyBar'
 import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
+import { snapPercentToStops } from '../../lib/quickfill/percentComplete'
 
 /**
  * The Percent complete card's bar as a slider (v2.5805, punch list #154). The bar is the
@@ -11,7 +12,12 @@ import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
  * by ten, Home and End to the ends). The place on the bar for a percent is `tickLeftPct`, the
  * Pipeline's; a pointer's place becomes a percent through its inverse, `pctFromTickLeft`, so
  * the knob and the tick always agree on where a number sits. The layer is a 44 px band over
- * the bar for a finger; `touch-action: pan-y` leaves the page's scroll alone.
+ * the bar for a finger; `touch-action: pan-y` leaves the page's scroll alone, and a wheel over
+ * it scrolls the page (nothing here is a focused number input, the v2.5765 lesson).
+ *
+ * The stops (each stage's end, the paid share) are small marks under the bar; a knob let go
+ * within two points of one lands on it (`snapPercentToStops`), on release only, so a drag
+ * never fights the hand and the arrow keys still step by one past a stop.
  *
  * A job the view cannot draw a bar for (no bid, no lines) gets the bar alone and no knob; the
  * card's box still sets the number.
@@ -22,6 +28,7 @@ export function QuickfillPercentBarSlider({
   draft,
   onDraft,
   label,
+  stops,
   disabled = false,
 }: {
   view: ProgressPaymentView
@@ -32,9 +39,13 @@ export function QuickfillPercentBarSlider({
   onDraft: (pct: number) => void
   /** The knob's accessible name. */
   label: string
+  /** The stops' percents: a mark under the bar at each, and the knob snaps to one on release. */
+  stops?: ReadonlyArray<number>
   disabled?: boolean
 }) {
   const layerRef = useRef<HTMLDivElement>(null)
+  // The last number the pointer set, so the release snaps from where the hand was, not a stale prop.
+  const lastPointerPctRef = useRef<number | null>(null)
   const [dragging, setDragging] = useState(false)
   const slidable = view.mode !== 'nobid' && view.segments.length > 0
 
@@ -55,14 +66,25 @@ export function QuickfillPercentBarSlider({
       /* jsdom and old engines: the drag still works while the pointer stays over the layer */
     }
     setDragging(true)
-    onDraft(pctAt(e.clientX))
+    const at = pctAt(e.clientX)
+    lastPointerPctRef.current = at
+    onDraft(at)
     e.currentTarget.focus({ preventScroll: true })
   }
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!dragging || disabled) return
-    onDraft(pctAt(e.clientX))
+    const at = pctAt(e.clientX)
+    lastPointerPctRef.current = at
+    onDraft(at)
   }
-  const endDrag = () => setDragging(false)
+  const endDrag = () => {
+    if (!dragging) return
+    setDragging(false)
+    const at = lastPointerPctRef.current ?? draft
+    lastPointerPctRef.current = null
+    const landed = stops && stops.length > 0 ? snapPercentToStops(at, stops) : at
+    if (landed !== at) onDraft(landed)
+  }
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return
@@ -103,6 +125,9 @@ export function QuickfillPercentBarSlider({
           onPointerCancel={endDrag}
           onKeyDown={onKeyDown}
         >
+          {(stops ?? []).map((stop) => (
+            <span key={stop} aria-hidden data-percent-mark={stop} className="qfPctMark" style={{ left: `clamp(1px, ${tickLeftPct(view.segments, stop)}%, calc(100% - 1px))` }} />
+          ))}
           <span aria-hidden data-percent-knob className="qfPctKnob" style={{ left: `clamp(1px, ${left}%, calc(100% - 1px))` }} />
         </div>
       ) : null}
