@@ -5,7 +5,7 @@ import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import { fillInRowKey, type FillInRowBase } from './fillIn'
 
 /**
- * The contract kind (v2.5777, punch list #145, PR 5): the rows behind the Needs you line
+ * The contract kind (v2.5777, punch list #146, PR 5): the rows behind the Needs you line
  * *N contracts have been out for signature a week*, one row per sent agreement the nudge's own
  * rule counts as stale (`summarizeContractNudge`: sent, unsigned, `CONTRACT_STALE_DAYS` or
  * more). The answers are the Contract window's own doors: resend the signing email, text the

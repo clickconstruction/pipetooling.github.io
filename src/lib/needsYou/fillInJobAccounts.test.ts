@@ -16,7 +16,7 @@ const gap = (p: Partial<JobAccountGapSource> = {}): JobAccountGapSource => ({
 })
 const JOBS = [{ id: 'j-1', hcp_number: '650', click_number: null, job_name: 'Maple Street remodel', job_address: '12 Maple St' }]
 
-describe('fillInJobAccounts · the rows (punch list #145)', () => {
+describe('fillInJobAccounts · the rows (punch list #146)', () => {
   it('one row per job and house, biggest unpaid first, titled by the ledger number and the house', () => {
     const rows = jobAccountFillInRows([gap(), gap({ job_id: 'j-2', house_name: 'Moore Supply', supply_house_id: 'h-2', unpaid_total: 900, allocated_total: 900, invoice_count: 1 })], JOBS)
     expect(rows.map((r) => r.key)).toEqual(['job-account:j-2:h-2', 'job-account:j-1:h-1'])

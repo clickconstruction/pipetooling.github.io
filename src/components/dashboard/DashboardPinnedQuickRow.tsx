@@ -287,7 +287,7 @@ export function DashboardPinnedQuickRow({
   const navigate = useNavigate()
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
 
-  // Every Needs You source, read once for this host (v2.5771, punch list #145): the gates live in
+  // Every Needs You source, read once for this host (v2.5771, punch list #146): the gates live in
   // `needsYouSourceGates`, the hooks in `useNeedsYouInputs`, the doors in `needsYouDoor` — shared
   // with Quickfill's station, so the two hosts cannot drift.
   const needsYou = useNeedsYouInputs({ authUserId, role, host: 'dashboard', enabled: !hideBanners, dispatchAged })

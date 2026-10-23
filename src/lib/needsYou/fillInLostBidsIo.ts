@@ -4,7 +4,7 @@ import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../bids/update
 import type { LostBidSource, LostBidWrites } from './fillInLostBids'
 
 /**
- * The lost-bid kind's reads and writes (v2.5774, punch list #145). The read is the Needs you
+ * The lost-bid kind's reads and writes (v2.5774, punch list #146). The read is the Needs you
  * line's own query with the names joined; the writes are the Why we lost lens's patch and the
  * call session's contact-log insert. Undo puts the bid back as it was and removes the entry.
  */

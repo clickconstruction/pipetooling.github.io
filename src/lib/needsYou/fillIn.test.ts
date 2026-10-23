@@ -16,7 +16,7 @@ import { NEEDS_YOU_RANK } from '../dashboardNeedsYou'
 
 const row = (key: string, kind: FillInRowBase['kind']): FillInRowBase => ({ key, kind, severity: 'gray', title: key, knows: [], doorHref: '/x', doorLabel: 'Open' })
 
-describe('fillIn · the deck’s shell (punch list #145)', () => {
+describe('fillIn · the deck’s shell (punch list #146)', () => {
   it('every kind names a line the rank table knows, and the built kinds open from their line', () => {
     for (const kind of Object.keys(FILL_IN_KIND_ITEM) as Array<keyof typeof FILL_IN_KIND_ITEM>) {
       expect(NEEDS_YOU_RANK[FILL_IN_KIND_ITEM[kind]]).toBeTypeOf('number')

@@ -10,7 +10,7 @@ import { smsHref } from '../gc/followUpSheet'
 import type { ContractJobSource, ContractRowSource, ContractWrites } from './fillInContracts'
 
 /**
- * The contract kind's reads and writes (v2.5777, punch list #145): the three reads the Needs
+ * The contract kind's reads and writes (v2.5777, punch list #146): the three reads the Needs
  * you line's own hook makes (live jobs, live contracts, e-signed estimates) and the floor; the
  * writes are the Contract window's doors — `send-job-contract` in email mode for a resend, the
  * link the row carries (or a fresh one) handed to the phone's messages for a text, and

@@ -4,7 +4,7 @@ import type { JobSupplyHouseAccountRow } from '../materials/jobSupplyHouseAccoun
 import type { JobAccountGapSource, JobAccountJobLabel, JobAccountWrites } from './fillInJobAccounts'
 
 /**
- * The job-account kind's reads and writes (v2.5776, punch list #145): the gaps from the
+ * The job-account kind's reads and writes (v2.5776, punch list #146): the gaps from the
  * evidence rule's own RPC, the job names from the ledger; the save is the Mark opened sheet's
  * upsert on (job_id, supply_house_id), plus the house roster's flag on the job's invoices at
  * that house when opened. Undo puts back the row that was there (a counter's ask, say) or

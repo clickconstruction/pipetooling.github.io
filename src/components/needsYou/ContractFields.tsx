@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { CONTRACT_CHOICES, contractChoiceAvailable, type ContractDecision, type ContractFillInRow } from '../../lib/needsYou/fillInContracts'
 
 /**
- * The contract kind's fields on the Fill them in deck (v2.5777, punch list #145): one of
+ * The contract kind's fields on the Fill them in deck (v2.5777, punch list #146): one of
  * three doors, then only what that door needs — a resend takes a line to add, a text needs
  * nothing, paper takes the signer, the day, a link or a file. A door the row cannot take
  * (no email, no mobile) is drawn dead with the reason.
