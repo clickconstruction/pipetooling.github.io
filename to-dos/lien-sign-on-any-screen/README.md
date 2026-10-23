@@ -1,8 +1,8 @@
 ---
 name: "Lien desk: a dev's Approve opens a sign block that signs with the dev's name over the master's line — hold the mark to the job's master and give the dev's screen a door"
 number: 150
-group: gated
-status: building 2026-10-23, the owner chose C with a code he sets himself; PR 1 (v2.5788, #6054) the code in Settings, PR 2 (v2.5791, claude/lien-sign-code-desk) the desk field
+group: residual
+status: shipped 2026-10-23 as v2.5788 (the code in Settings, the table, the RPCs, the guard rule; migration pushed) and v2.5791 (the master's line and code field on anyone's screen); notify-lien-approval and dev-mcp deployed
 summary: >
   When a dev presses Approve on the Lien desk, the notice opens with the signature block in typed
   mode: the cursive reads the signed-in dev's name (Robert) while the line under it reads the
@@ -13,10 +13,10 @@ summary: >
   rule and fixes the screen (draw mode by default, in the master's name, on the dev's screen);
   B gives the master his own door (Ask Malachi to sign, by text and push, he signs on his phone);
   C lets him type on any screen with a second proof, the record the guard was written to refuse.
-next: PR 1 (the code table, the RPCs, the guard rule, Settings → Your account → Your signing code), then PR 2 (the desk block takes his code on any screen, tells him each use, his confirm or disown)
+next: residuals — the run window's amber card and the office's Ready footer still offer his hand and the pen record only (no code field there); the desk's piles still call every leader *you* on another master's jobs
 size: S (A) + M (B); C would be L with a guard migration
 blocker: none
-ver: proposed
+ver: v2.5788, v2.5791
 opinion: A then B. A typed name on someone else's device is the office placing his name unless he proves it is him, and if he has his phone to prove it he has his phone to sign on. Fix the screen so it never shows the wrong name, and send him the notice instead of the laptop.
 ---
 
