@@ -8,7 +8,7 @@ covers:
   - src/pages/Jobs.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-17
+last_updated: 2026-10-23
 ---
 
 ## Overview
@@ -365,7 +365,7 @@ Behavior-preserving decomposition only — note these, don't "clean them up" mid
 14. **The serialized pipeline is module-level state** — it must survive re-renders and be shared by the hook and `JobsStagesTab`; any engine move keeps it module-level.
 15. **~~Duplicated team-labor loader~~ Resolved (v2.1625):** the page imports `utils/teamLabor`'s `loadTeamLaborData` as `fetchTeamLaborRows` and its `TeamLaborRow` type.
 16. **Ready-to-Bill double checkbox vs ham one-click** — inside `JobsStagesTab` (`readyForBillingChecked1/2`, `sendBackInvoiceStripeExplainerAfterFailure`). Preserve exactly.
-17. **Two % complete commit paths** — `updateJobPctComplete` (bare write) and `commitStagesPctWithNote` (thread note first), sharing `pctCompleteSavingId` in the mutation hook.
+17. **Two % complete commit paths** — `updateJobPctComplete` (bare write) and `commitStagesPctWithNote` (thread note first), sharing `pctCompleteSavingId` in the mutation hook. Since v2.5765 a wheel over the Pipeline's focused `% done` box (`StagesProgressPaymentCell.tsx`) blurs it, so the page scrolls, the number stays as typed and the blur commits only a changed value; Edit Job's box does the same since v2.5768 ([JOB_FORM_MODAL_ARCHITECTURE.md](./JOB_FORM_MODAL_ARCHITECTURE.md)).
 18. **The burn card arms once and stays armed** (163–168): after 2.5 s on Pipeline for dev / master / controller, the Job Summary cost loads (parts ledger, sheets, team labor, report-% for open jobs, budget footings) run on the Pipeline and keep running on every later tab for the session. Intended ("the loads are the same caches Job Summary reads"); keep the 2.5 s delay and the stickiness.
 19. **Sub-labor cost joins on the sheet's link (fixed v2.3838)** — `jobSummaryData` and `subLaborJobIds` (Billing's needs-attention flag, was `laborJobHcps`) group sheets by `job_ledger_id` via `subLaborSheetsByJobId` (`lib/jobs/subLaborByJobId.ts`, tested). They joined on the sheet's `job_number` text, so a click-number-only job, a renumbered job or a hand-linked sheet added $0 and two jobs sharing a number shared its cost. The `?editLabor=` fallback (1190) is id-first and stays.
 20. **Unused handle methods:** `JobsStagesTabHandle.openLienDesk` has no caller; `JobsSubLaborFormModalHandle.openWithBillingPrefill` has had none since v2.1623 (only its render test). Remove in a cleanup PR, not mid-move.

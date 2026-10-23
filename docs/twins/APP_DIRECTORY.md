@@ -284,7 +284,7 @@ Roster with Contact / Account / Pay lenses (`?tab=users&lens=`), + Hire, the Per
 Roles: dev, master, assistant (no wages), controller (wages too), estimator (limited).
 
 ### /customers — Customers · /customers/:id — Customer Hub
-All customers/builders; the Hub is one customer's money strip, jobs, bids, contacts.
+All customers/builders, each row's second line where the money stands and how fast they pay (*pays in ~30d*, office roles, v2.5767); the Hub is one customer's money strip, jobs, bids, contacts.
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
 
 ### /prospects — Prospects
@@ -318,7 +318,7 @@ Contract library (Documents/Packets), quick-send. Roles: staff + estimator, prim
 Project containers linking jobs/bids; workflow boards. Roles: staff; super assigned-only.
 
 ### /quickfill · /moneyfill — Data-repair queues
-Quickfill: guided fix-missing-data recipes (staff); its Percent complete station (`/quickfill#percent-complete`, help `/help?g=fix-a-jobs-percent-done-in-quickfill`) lists the open jobs whose ticked stages or paid money disagree with the % done, to fix in place or dismiss for a week. Moneyfill: dev + controller only.
+Quickfill: guided fix-missing-data recipes (staff); its Percent complete station (`/quickfill#percent-complete`, help `/help?g=fix-a-jobs-percent-done-in-quickfill`) lists the open jobs whose ticked stages or paid money disagree with the % done, to fix in place or dismiss for a week (built v2.5764; not drawn since v2.5774 dropped its page lines on 2026-10-23); its Needs you station carries every office line the Dashboard's card shows with the same buttons (v2.5771) and a **Fill them in** deck that clears lost bids with no reason one at a time (v2.5774). Moneyfill: dev + controller only.
 
 ### /bridge — The Bridge
 The owner's one page for where the company stands: contribution per week, the five stages with the weakest link lit, the week's call, the cash forecast from the bank, the people tables; `?view=monday` is the Monday sheet. Roles: dev only (every other role is redirected to `/dashboard`).
@@ -333,7 +333,7 @@ fold brings it back with **Restore**, v2.5741; guide `run-the-robots-from-claude
 sits under the Sample accounts card (v2.5738).
 
 ### Header (any page)
-Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count for the office team (`/messages`), Task dispatch/add,
+Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
