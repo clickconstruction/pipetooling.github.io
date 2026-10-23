@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quickfill Percent complete: a slider to set the % done</title>
+<style>
+  /* Punch list #154. Light only, like every to-do mock-up. Every job, name and amount here is made up:
+     1203 Ridgeway Builders lot 7, 1188 Cedar Bend building C, 1177 Dana Whitfield's water heater. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --blue-chip: #bfdbfe; --blue-800: #1e40af; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --track: #e5e7eb; --surface: #fff; --page: #f7f8fa; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .grid.wide { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+  @media (max-width: 760px) { .grid.wide { grid-template-columns: 1fr; } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .bar { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .desk { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+  .desk .bar { font-size: 11px; color: var(--muted); display: flex; gap: 6px; padding: 0 2px 8px; }
+  .desk .bar i { width: 10px; height: 10px; border-radius: 999px; background: var(--line); display: inline-block; }
+  table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-size: 12px; }
+  table.side td.y { background: var(--green-tint); }
+  table.side td.n { background: var(--red-tint); }
+  table.side td.m { background: var(--amber-tint); }
+
+  /* The station, as QuickfillPercentCompleteSection.tsx draws it */
+  .station h3 { font-size: 15px; margin: 0 0 6px; }
+  .station .intro { font-size: 13px; color: var(--ink-2); margin: 0 0 8px; line-height: 1.5; }
+  .station .count { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: flex-start; }
+  .card .facts { flex: 1 1 260px; min-width: 0; display: grid; gap: 7px; }
+  .card .acts { flex: 0 1 auto; display: grid; gap: 6px; min-width: 150px; }
+  .card .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card .head a { font-size: 16px; font-weight: 600; color: var(--blue-ink); text-decoration: none; }
+  .kind { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--amber-tint); color: var(--amber-ink); }
+  .nums { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .nums b.g { color: #15803d; }
+  .sentence { font-size: 14px; color: var(--ink); }
+  .hint { font-size: 12px; color: var(--muted); }
+  .pctbox { width: 56px; padding: 5px 6px; font: inherit; font-size: 16px; font-weight: 600; text-align: right; border: 1px solid #9ca3af; border-radius: 6px; background: var(--surface); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .lbl { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink-2); }
+  .btn { font: inherit; border-radius: 6px; font-weight: 600; font-size: 13px; padding: 6px 12px; border: 1px solid #9ca3af; background: var(--surface); color: var(--ink-2); white-space: nowrap; cursor: pointer; }
+  .btn.save { background: #3b82f6; border-color: #3b82f6; color: #fff; font-size: 14px; padding: 7px 13px; }
+  .btn.save[disabled] { background: var(--line-2); border-color: var(--line-2); color: var(--muted); cursor: not-allowed; }
+  .boxed { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
+  .boxed.g { outline-color: var(--green); }
+
+  /* The Pipeline row's bar, as StagesStageBar.tsx draws it */
+  .sbar { position: relative; padding: 3px 0; min-width: 0; }
+  .sbar .blocks { display: flex; gap: 2px; height: 12px; }
+  .sbar .block { flex: 1 1 0; min-width: 6px; height: 12px; border-radius: 3px; overflow: hidden; display: flex; background: var(--track); }
+  .sbar .block span { display: block; height: 100%; background: var(--green); }
+  .sbar .tick { position: absolute; top: 0; height: 18px; width: 3px; border-radius: 2px; background: var(--ink); pointer-events: none; }
+  .names { display: flex; gap: 2px; font-size: 10.5px; line-height: 1.2; color: var(--muted); }
+  .names span { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .names span.live { font-weight: 700; color: var(--ink); }
+
+  /* A: a slider under the box, the Pipeline's Set % complete panel */
+  .a-slider { width: 100%; accent-color: #3b82f6; margin: 0; }
+  .a-marks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+
+  /* B: the bar is the slider */
+  .slide { position: relative; }
+  .slide .layer { position: absolute; left: 0; right: 0; top: -13px; height: 44px; cursor: ew-resize; touch-action: none; outline: none; border-radius: 6px; }
+  .slide .layer:focus-visible { box-shadow: 0 0 0 2px var(--blue-chip); }
+  .slide .knob { position: absolute; top: 3px; width: 2px; height: 18px; background: var(--blue); border-radius: 1px; pointer-events: none; transform: translateX(-1px); }
+  .slide .knob::before { content: ""; position: absolute; left: 50%; top: -9px; width: 16px; height: 16px; border-radius: 999px; background: var(--blue); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(15,23,42,.35); transform: translateX(-50%); }
+  .slide.dragging .knob::before { width: 20px; height: 20px; top: -11px; }
+  .stops { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .stop { font: inherit; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid #9ca3af; background: var(--surface); color: var(--ink-2); cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .stop[aria-pressed="true"] { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-ink); }
+  .move { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .move b.up { color: #15803d; }
+  .move b.down { color: var(--amber-ink); }
+  .row2 { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row2 .sp { flex: 1 1 auto; }
+  @media (pointer: coarse) { .slide .knob::before { width: 24px; height: 24px; top: -13px; } }
+  .done { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border: 1px solid #86efac; border-radius: 8px; background: var(--green-tint); font-size: 13px; color: var(--green-ink); }
+  .done .sp { flex: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #154 · Quickfill → Percent complete</p>
+  <h1>A slider to set the % done: the card's own bar is the slider, and its stages are the stops</h1>
+  <p>Today each card holds one number box, pre-filled with what the facts suggest. An assistant who knows the crew is half-way through Top Out has to work the number out and type it. Three ways to give the card a slider are drawn below with made-up jobs. The pick is <b>B</b>: drag the knob along the bar the card already draws, or press a stage's end, or type. The pages here work: drag, press, type.</p>
+</header>
+
+<h2><span class="num">0</span>Today, as the station draws a card</h2>
+<p class="lede">The box is the only way in. Fine for the suggested number, slow for any other one.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · 1,000 wide</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#percent-complete</div>
+      <div class="station">
+        <h3>Percent complete <span style="font-weight:400;color:var(--muted)">· 2</span></h3>
+        <p class="intro">One card per open job whose ticked stages or paid money disagree with its % done. The box holds the number the facts suggest. Fix the number and press Save, or press Dismiss for one week. The office shares the list.</p>
+        <p class="count">2 open jobs where the stages or the money disagree with the % done.</p>
+        <div class="card" data-today="1203"></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Measured today:</b> one box, one Save, one Dismiss. Any number other than the suggested one is typed.</p>
+  </div>
+  <div>
+    <div class="cap">What the assistant actually knows</div>
+    <div class="fit" style="background:var(--surface)">
+      <p class="note" style="margin:0"><b>The suggestion is a floor.</b> Rough ticked says the job is at least 40% done. The crew report says they are two days into Top Out, so the honest number is somewhere between 40 and 75. On today's card that is mental arithmetic: 40 plus about half of 35.</p>
+      <p class="note"><b>The bar already holds the answer.</b> The stage blocks are sized by price. A knob dragged to the middle of Top Out reads 57. Nobody needs the arithmetic.</p>
+      <p class="note"><b>Two numbers the assistant jumps to most:</b> the end of a stage, and the paid share. Both are on the card already, as a tick and a figure. They should be one press.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">A</span>A slider under the box, the Pipeline's own panel</h2>
+<p class="lede">The Job activity panel on the Pipeline has a <i>Set % complete</i> slider under its number box: a plain 0 to 100 range with 0 · 25 · 50 · 75 · 100 under it. Copy it onto the card.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · 1,000 wide</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#percent-complete</div>
+      <div class="station"><div class="card" data-a="1203"></div></div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> yes, forty lines. <b>Is this the best we can do:</b> no. The card now draws two bars, one with the facts and one for the answer, and the eye walks between them. The slider's 25 · 50 · 75 marks mean nothing on this job; its stages end at 40 and 75.</p>
+  </div>
+  <div>
+    <div class="cap">Phone · 375</div>
+    <div class="fit"><div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+      <div class="station"><div class="card" data-a="1203"></div></div>
+    </div></div>
+    <p class="verdict">The card grows by two lines. Two bars on a phone is one too many.</p>
+  </div>
+</div>
+
+<h2><span class="num pick">B</span>The bar is the slider, the stages are its stops <span style="font-size:13px;font-weight:500;color:var(--green-ink)">· the pick</span></h2>
+<p class="lede">The dark tick stays where the job is today. A blue knob rides the same bar at the number you are about to save; drag it, or tap anywhere on the bar. Under the bar, one chip per stage end and one for the paid share when it is not a stage end, pressed when the knob sits on it. The box stays for an exact number. One line reads the move: <i>0% → 57% ▲ 57</i>. The button says exactly what it will do.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap green">Desk · 1,000 wide <span class="r">drag the knob · press a stop · type</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#percent-complete</div>
+      <div class="station">
+        <h3>Percent complete <span style="font-weight:400;color:var(--muted)">· 3</span></h3>
+        <p class="intro">One card per open job whose ticked stages or paid money disagree with its % done. The knob on the bar holds the number the facts suggest. Drag it, press a stage, or type a number, then press Save. Or press Dismiss for one week. The office shares the list.</p>
+        <p class="count">3 open jobs where the stages or the money disagree with the % done.</p>
+        <div class="card" data-b="1203"></div>
+        <div class="card" data-b="1188"></div>
+        <div class="card" data-b="1177"></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> the bar is already on the card; the knob is one absolutely placed element and a pointer handler, the stops are a kernel function over the ticks the card already holds. <b>Is this the best we can do:</b> see the list under the table.</p>
+  </div>
+  <div>
+    <div class="cap green">Phone · 375 <span class="r">the knob grows to a thumb</span></div>
+    <div class="fit"><div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+      <div class="station">
+        <h3>Percent complete <span style="font-weight:400;color:var(--muted)">· 3</span></h3>
+        <p class="count">3 open jobs where the stages or the money disagree with the % done.</p>
+        <div class="card" data-b="1203"></div>
+        <div class="done"><span class="sp"><b>1188 · Cedar Bend, building C</b> · 1188 set to 70%. Was 30%.</span><button class="btn" style="padding:3px 9px;font-size:12px">Undo</button></div>
+      </div>
+    </div></div>
+    <p class="verdict">The bar is 300 px wide here, so one point is 3 px: coarse under a thumb, which is why the stops and the box stay. The action row wraps to two lines.</p>
+  </div>
+</div>
+
+<h2><span class="num">C</span>Stops only: press a stage's end, no dragging</h2>
+<p class="lede">The chips of B without the knob. Every real answer is a stage end or the paid share, the thinking goes, so why drag.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · 1,000 wide</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#percent-complete</div>
+      <div class="station"><div class="card" data-c="1203"></div></div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> the most. <b>Is this the best we can do:</b> no. The honest number for a job two days into Top Out is between two chips, and the only way to it is the box again. C is B with its middle cut out.</p>
+  </div>
+  <div>
+    <div class="cap">Where C falls short</div>
+    <div class="fit" style="background:var(--surface)">
+      <p class="note" style="margin:0"><b>Behind the stages is the common case.</b> Job 1188 says 30% with Rough and Top Out ticked. The crew is into Trim. The right number is 80 or so, and no chip says 80.</p>
+      <p class="note"><b>A chip cannot show where on the job the number lands.</b> The knob on the bar does, against the paid green and the stage names.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">=</span>Side by side</h2>
+<table class="side">
+  <tr><th></th><th>Today</th><th>A · a slider under the box</th><th>B · the bar is the slider</th><th>C · stops only</th></tr>
+  <tr><th>The suggested number</th><td class="y">one press</td><td class="y">one press</td><td class="y">one press, the knob starts there</td><td class="y">one press</td></tr>
+  <tr><th>A stage's end</th><td class="n">type it</td><td class="m">drag to it by eye</td><td class="y">one chip</td><td class="y">one chip</td></tr>
+  <tr><th>A number between stages</th><td class="n">arithmetic, then type</td><td class="m">drag, on a bar with no stages on it</td><td class="y">drag on the stage bar, read the number</td><td class="n">type it</td></tr>
+  <tr><th>Sees where the number lands</th><td class="n">no</td><td class="n">no, the two bars are apart</td><td class="y">yes, the knob sits over the stage and the green</td><td class="n">no</td></tr>
+  <tr><th>Lines added to the card</th><td>0</td><td>2</td><td>2 (the stops, the move line)</td><td>1</td></tr>
+  <tr><th>Code</th><td>0</td><td>a range input</td><td>a knob, a pointer handler, the inverse of the tick's map, a stops kernel</td><td>a stops kernel</td></tr>
+  <tr><th>Works with a keyboard</th><td class="y">type</td><td class="y">arrows on the range</td><td class="y">arrows on the knob, Home and End, the box</td><td class="y">the chips, the box</td></tr>
+</table>
+<p class="note"><b>Is B the best we can do?</b> Four things it gets right, two it leaves out. <b>Right:</b> the facts and the answer are one picture; the two numbers an assistant jumps to are one press; the move line and the button name the number before anything is written; nothing new is written on the server, the save is the same note and the same column. <b>Left out, on purpose:</b> a note box beside the slider, since the move line is the note the save writes, and snapping the knob to a stage end as it passes, since a knob that jumps fights the hand. The chips are the snap. <b>One quirk inherited from the tick:</b> on a job with a paid Deposit stage, the suggested number leaves the deposit out, so the knob at the suggestion sits a little short of the stage block's end, exactly where the Pipeline's own tick sits today for that number.</p>
+
+</div>
+<script>
+(function () {
+  // Made-up jobs. prices are the stage prices in order; paid is how many stages are paid; pct is what the job says today.
+  var JOBS = {
+    1203: { number: '1203', name: 'Ridgeway Builders, lot 7', kind: 'Paid, nothing done', pct: 0, stages: ['Rough In', 'Top Out', 'Trim Set'], prices: [16000, 14000, 10000], paid: 1, live: 1,
+            sentence: 'Rough is ticked and 40% is paid, but the job says 0% done.', from: "the ticked stages' share" },
+    1188: { number: '1188', name: 'Cedar Bend, building C', kind: 'Behind the stages', pct: 30, stages: ['Rough In', 'Top Out', 'Trim Set'], prices: [14000, 14000, 12000], paid: 2, live: 2,
+            sentence: 'Rough and Top Out are ticked and 70% is paid, but the job says 30% done.', from: "the ticked stages' share" },
+    1177: { number: '1177', name: 'Dana Whitfield, water heater', kind: 'Paid in full', pct: 60, stages: ['Water heater'], prices: [3200], paid: 1, live: -1, lines: true,
+            sentence: 'The bid is paid in full, but the job says 60% done.', from: 'paid in full' }
+  };
+  var SHORT = { 'Rough In': 'Rough', 'Top Out': 'Top Out', 'Trim Set': 'Trim Set', 'Water heater': 'Water heater' };
+
+  function facts(j) {
+    var total = j.prices.reduce(function (s, n) { return s + n; }, 0);
+    var shares = j.prices.map(function (p) { return p / total * 100; });
+    var ticked = [], cum = 0, stops = [], paidShare = 0;
+    for (var i = 0; i < j.stages.length; i++) {
+      cum += shares[i];
+      var isPaid = i < j.paid;
+      if (isPaid) { ticked.push(SHORT[j.stages[i]]); paidShare = cum; }
+      if (!j.lines) stops.push({ pct: Math.round(cum), label: SHORT[j.stages[i]] + (isPaid ? ' ✓' : '') });
+    }
+    paidShare = Math.round(paidShare);
+    if (!stops.some(function (s) { return s.pct === paidShare; }) && paidShare > 0) stops.push({ pct: paidShare, label: 'Paid' });
+    stops.sort(function (a, b) { return a.pct - b.pct; });
+    var tickedShare = Math.round(shares.slice(0, j.paid).reduce(function (s, n) { return s + n; }, 0));
+    var suggested = paidShare >= 100 ? 100 : (tickedShare > 0 ? tickedShare : paidShare);
+    return { shares: shares, ticked: ticked, paidShare: paidShare, stops: stops, suggested: suggested };
+  }
+
+  function barHtml(j, f) {
+    var blocks = j.stages.map(function (s, i) {
+      return '<div class="block" style="flex-grow:' + f.shares[i] + '"><span style="width:' + (i < j.paid ? 100 : 0) + '%"></span></div>';
+    }).join('');
+    var names = j.lines ? '' : '<div class="names">' + j.stages.map(function (s, i) {
+      return '<span class="' + (i === j.live ? 'live' : '') + '" style="flex-grow:' + f.shares[i] + '">' + (i + 1) + ' ' + SHORT[s] + (i < j.paid ? ' ✓' : '') + '</span>';
+    }).join('') + '</div>';
+    return '<div class="sbar"><div class="blocks">' + blocks + '</div><span class="tick" style="left:clamp(0px, calc(' + j.pct + '% - 1.5px), calc(100% - 3px))"></span></div>' + names;
+  }
+
+  function headHtml(j, f) {
+    return '<div class="head"><a href="#">' + j.number + ' · ' + j.name + '</a><span class="kind">' + j.kind + '</span></div>';
+  }
+  function numsHtml(j, f) {
+    return '<div class="nums"><span><b>' + j.pct + '%</b> done</span><span><b class="g">' + f.paidShare + '%</b> paid</span>' + (f.ticked.length ? '<span><b>' + f.ticked.join(' ✓ ') + ' ✓</b></span>' : '') + '</div>';
+  }
+
+  // 0 · Today
+  document.querySelectorAll('[data-today]').forEach(function (el) {
+    var j = JOBS[el.getAttribute('data-today')], f = facts(j);
+    el.innerHTML = '<div class="facts">' + headHtml(j, f) + barHtml(j, f) + numsHtml(j, f) + '<div class="sentence">' + j.sentence + '</div><div class="hint">Suggested ' + f.suggested + '%, ' + j.from + '. Change it if the crew says otherwise.</div></div>' +
+      '<div class="acts"><label class="lbl"><input class="pctbox boxed" value="' + f.suggested + '"> % done</label><button class="btn save">Save ' + f.suggested + '%</button><button class="btn">Dismiss for one week</button></div>';
+  });
+
+  // A · a slider under the box
+  document.querySelectorAll('[data-a]').forEach(function (el) {
+    var j = JOBS[el.getAttribute('data-a')], f = facts(j);
+    el.innerHTML = '<div class="facts">' + headHtml(j, f) + barHtml(j, f) + numsHtml(j, f) + '<div class="sentence">' + j.sentence + '</div><div class="hint">Suggested ' + f.suggested + '%, ' + j.from + '. Change it if the crew says otherwise.</div></div>' +
+      '<div class="acts" style="min-width:220px"><label class="lbl"><input class="pctbox" value="' + f.suggested + '"> % done</label><div class="boxed" style="padding:4px 2px"><input type="range" class="a-slider" min="0" max="100" value="' + f.suggested + '"><div class="a-marks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div><button class="btn save">Save ' + f.suggested + '%</button><button class="btn">Dismiss for one week</button></div>';
+    var box = el.querySelector('.pctbox'), range = el.querySelector('.a-slider'), save = el.querySelector('.save');
+    range.addEventListener('input', function () { box.value = range.value; save.textContent = 'Save ' + range.value + '%'; });
+    box.addEventListener('input', function () { var n = Math.max(0, Math.min(100, parseInt(box.value, 10) || 0)); range.value = n; save.textContent = 'Save ' + n + '%'; });
+  });
+
+  // C · stops only
+  document.querySelectorAll('[data-c]').forEach(function (el) {
+    var j = JOBS[el.getAttribute('data-c')], f = facts(j);
+    var chips = f.stops.map(function (s) { return '<button class="stop" data-pct="' + s.pct + '" aria-pressed="' + (s.pct === f.suggested) + '">' + s.label + ' ' + s.pct + '%</button>'; }).join('');
+    el.innerHTML = '<div class="facts">' + headHtml(j, f) + barHtml(j, f) + numsHtml(j, f) + '<div class="sentence">' + j.sentence + '</div><div class="hint">Suggested ' + f.suggested + '%, ' + j.from + '. Press a stage, or type.</div><div class="stops boxed">' + chips + '</div></div>' +
+      '<div class="acts"><label class="lbl"><input class="pctbox" value="' + f.suggested + '"> % done</label><button class="btn save">Save ' + f.suggested + '%</button><button class="btn">Dismiss for one week</button></div>';
+    var box = el.querySelector('.pctbox'), save = el.querySelector('.save');
+    el.querySelectorAll('.stop').forEach(function (b) { b.addEventListener('click', function () {
+      var n = +b.getAttribute('data-pct'); box.value = n; save.textContent = 'Save ' + n + '%';
+      el.querySelectorAll('.stop').forEach(function (x) { x.setAttribute('aria-pressed', String(+x.getAttribute('data-pct') === n)); });
+    }); });
+  });
+
+  // B · the bar is the slider
+  document.querySelectorAll('[data-b]').forEach(function (el) {
+    var j = JOBS[el.getAttribute('data-b')], f = facts(j);
+    var chips = f.stops.map(function (s) { return '<button class="stop" data-pct="' + s.pct + '">' + s.label + ' ' + s.pct + '%</button>'; }).join('');
+    el.innerHTML = '<div class="facts">' + headHtml(j, f) +
+      '<div class="slide">' + barHtml(j, f) + '<span class="knob"></span><div class="layer" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-label="% done for ' + j.number + ', drag or use the arrow keys" title="Drag to set the % done"></div></div>' +
+      numsHtml(j, f) + '<div class="sentence">' + j.sentence + '</div>' +
+      '<div class="hint">Suggested ' + f.suggested + '%, ' + j.from + '. Drag the knob, press a stage, or type.</div>' +
+      '<div class="row2 boxed g" style="padding:4px 4px"><div class="stops">' + chips + '</div><span class="sp"></span><span class="move"></span><label class="lbl"><input class="pctbox"> % done</label><button class="btn save"></button><button class="btn">Dismiss for one week</button></div>' +
+      '</div>';
+    var slide = el.querySelector('.slide'), layer = el.querySelector('.layer'), knob = el.querySelector('.knob'), box = el.querySelector('.pctbox'), save = el.querySelector('.save'), move = el.querySelector('.move');
+    var draft = f.suggested;
+    function render(fromBox) {
+      knob.style.left = 'clamp(1px, ' + draft + '%, calc(100% - 1px))';
+      layer.setAttribute('aria-valuenow', draft);
+      layer.setAttribute('aria-valuetext', draft + '% done');
+      if (!fromBox) box.value = draft;
+      var same = draft === j.pct;
+      save.textContent = same ? 'Save' : 'Save ' + draft + '%';
+      save.disabled = same;
+      var d = draft - j.pct;
+      move.innerHTML = same ? '<b>' + j.pct + '%</b> · no change' : j.pct + '% → <b>' + draft + '%</b> <b class="' + (d > 0 ? 'up' : 'down') + '">' + (d > 0 ? '▲ ' + d : '▼ ' + (-d)) + '</b>';
+      el.querySelectorAll('.stop').forEach(function (x) { x.setAttribute('aria-pressed', String(+x.getAttribute('data-pct') === draft)); });
+    }
+    function set(n, fromBox) { draft = Math.max(0, Math.min(100, Math.round(n))); render(fromBox); }
+    function fromX(clientX) { var r = layer.getBoundingClientRect(); return (clientX - r.left) / r.width * 100; }
+    var down = false;
+    layer.addEventListener('pointerdown', function (e) { down = true; slide.classList.add('dragging'); layer.setPointerCapture(e.pointerId); set(fromX(e.clientX)); layer.focus({ preventScroll: true }); e.preventDefault(); });
+    layer.addEventListener('pointermove', function (e) { if (down) set(fromX(e.clientX)); });
+    function up() { down = false; slide.classList.remove('dragging'); }
+    layer.addEventListener('pointerup', up); layer.addEventListener('pointercancel', up);
+    layer.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 10 : 1;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { set(draft + step); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { set(draft - step); e.preventDefault(); }
+      else if (e.key === 'PageUp') { set(draft + 10); e.preventDefault(); }
+      else if (e.key === 'PageDown') { set(draft - 10); e.preventDefault(); }
+      else if (e.key === 'Home') { set(0); e.preventDefault(); }
+      else if (e.key === 'End') { set(100); e.preventDefault(); }
+    });
+    el.querySelectorAll('.stop').forEach(function (b) { b.addEventListener('click', function () { set(+b.getAttribute('data-pct')); }); });
+    box.addEventListener('input', function () { var n = parseInt(box.value, 10); if (!isNaN(n)) set(n, true); });
+    box.addEventListener('blur', function () { render(); });
+    render();
+  });
+})();
+</script>
+</body>
+</html>
