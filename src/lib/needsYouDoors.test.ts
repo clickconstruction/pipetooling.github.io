@@ -5,7 +5,7 @@ import { needsYouDoor, needsYouSecondaryDoor, type NeedsYouDoorData } from './ne
 const base: NeedsYouDoorData = { role: 'assistant' }
 const keys = Object.keys(NEEDS_YOU_RANK) as Array<keyof typeof NEEDS_YOU_RANK>
 
-describe('needsYouDoor · one table for both hosts (punch list #145)', () => {
+describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
   it('answers for every key the rank table knows, on both hosts', () => {
     for (const key of keys) {
       for (const host of ['dashboard', 'quickfill'] as const) {

@@ -65,7 +65,7 @@ import { isNeedsYouOfficeRole, needsYouSourceGates, type NeedsYouHost } from '..
 import type { NeedsYouDoorData } from '../lib/needsYouDoors'
 
 /**
- * Every Needs You source, read once for either host (v2.5771, punch list #145).
+ * Every Needs You source, read once for either host (v2.5771, punch list #146).
  *
  * The Dashboard card and Quickfill's Needs you station call this hook with their `host`, and
  * `needsYouSourceGates` says which sources each host reads for the role — so the two cannot
@@ -123,7 +123,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const bulkHours = useBulkHoursNudge(on('bulkHours') ? authUserId : undefined)
   const claimDev = useClaimDevAttemptsNudge(on('claimDev') ? authUserId : undefined)
 
-  // Robot audits (v2.2573): the auditing roles. The blocked line (punch list #145) rides the same read but its own gate.
+  // Robot audits (v2.2573): the auditing roles. The blocked line (punch list #146) rides the same read but its own gate.
   const robotAuditsEnabled = on('robotAudits')
   const robotBlockedEnabled = on('robotBlocked')
   const { pending: robotAuditsPending, questions: robotQuestionsWaiting, plansAsks: robotBlocked } = useBidAuditsPendingCount(robotAuditsEnabled || robotBlockedEnabled)

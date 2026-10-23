@@ -48,7 +48,7 @@ export function DashboardNeedsYouCard({
   /** Dispatch for an item's secondary links (v2.2491) — keyed by item.secondary[].key. */
   onSecondary?: (item: NeedsYouItem, key: string) => void
   /**
-   * Fill them in (v2.5774, punch list #145): the third view, when the host has rows the deck can
+   * Fill them in (v2.5774, punch list #146): the third view, when the host has rows the deck can
    * fill. A line whose rows the deck handles gets **Fill them in** for its button and opens the
    * deck on its kind; the chip beside Cards and Walk the list opens it on the first row. A visit's
    * state, never a stored preference: the deck ends on Cards.

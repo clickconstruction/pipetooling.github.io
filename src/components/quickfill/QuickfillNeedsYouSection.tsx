@@ -11,7 +11,7 @@ import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
  * Quickfill's "Needs you" station (v2.2350): the SAME card the Dashboard
  * renders (Cards / Walk-the-list, per-user toggle, `needs-you` telemetry —
  * from_path distinguishes the surface), fed by the same hooks and the same
- * pure item builder. Since v2.5771 (punch list #145) the hooks and the doors
+ * pure item builder. Since v2.5771 (punch list #146) the hooks and the doors
  * are shared too — `useNeedsYouInputs` reads every source `needsYouSourceGates`
  * allows this host, and `useNeedsYouPress` takes each line where the Dashboard
  * takes it — so the station cannot fall behind the card again. What differs is
@@ -34,7 +34,7 @@ export function QuickfillNeedsYouSection({
   dispatchAged?: DispatchAgingSummary | null
   /** Expands + scrolls to this page's Dispatch inbox station. */
   onOpenDispatchInbox?: () => void
-  /** Expands + scrolls to this page's People Hours station, where the clock sessions are approved (punch list #145). */
+  /** Expands + scrolls to this page's People Hours station, where the clock sessions are approved (punch list #146). */
   onOpenPeopleHours?: () => void
   /** The station's Mark, offered at the end of the Fill them in deck (v2.5774). */
   onMarkUpToDate?: () => void
