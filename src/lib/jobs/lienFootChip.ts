@@ -34,7 +34,7 @@ export type LienFootChipItem = {
  * The chip's word on the signature (v2.5082): null = no word (the row does not carry the column yet), 'signed' with the day, or 'unsigned'.
  * The pen train: a pen record says so, names who wrote it down, and whether the leader has confirmed it.
  */
-export type LienFootChipSigned = { at: string; mode?: 'type' | 'draw' | 'pen'; recordedByName?: string | null; confirmedAt?: string | null } | 'unsigned' | null
+export type LienFootChipSigned = { at: string; mode?: 'type' | 'draw' | 'pen' | 'code'; recordedByName?: string | null; confirmedAt?: string | null } | 'unsigned' | null
 
 /** "Oct 7" from an instant (company calendar) or a day. */
 export function shortDay(iso: string | null | undefined): string {

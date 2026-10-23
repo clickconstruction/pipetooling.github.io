@@ -205,3 +205,24 @@ describe('a pen record awaiting the leader’s word (the pen train, PR 3)', () =
     expect(lienPenAwaitsConfirm(pen(), lienFieldsHash({ ...FIELDS, gcEmail: 'x' }))).toBe(false)
   })
 })
+
+describe('a signature by code (v2.5788): his own code on someone else’s screen', () => {
+  const code = (over: Partial<LienDeskSignatureColumns> = {}) => signed({ signer_signature_mode: 'code', signed_on_device_of: 'u-robert', ...over })
+  const opts = { jobNumber: '878', itemId: '4c2e91aa-0000-4000-8000-000000000000', fieldsHash: lienFieldsHash(FIELDS) }
+  it('reads as mode code, prints in cursive with the audit line naming the code and the screen, and carries his confirmation once he gives it', () => {
+    expect(lienSignatureModeOf('code')).toBe('code')
+    const sig = lienNoticeSignatureFromRow(code(), { ...opts, onDeviceName: 'Robert' })
+    expect(sig?.mode).toBe('code')
+    expect(sig?.pngDataUrl).toBeNull()
+    expect(sig?.onDeviceOf).toBe('Robert')
+    expect(sig?.signedWords).toBe('Signed October 9, 2026 at 2:14 PM CT')
+    expect(sig?.auditLine).toBe('Typed by Robert Douglas with his signing code in ClickTooling on October 9, 2026 at 2:14 PM CT, on Robert’s screen.')
+    const confirmed = lienNoticeSignatureFromRow(code({ signed_leader_confirmed_at: '2026-10-12T22:00:00Z' }), { ...opts, onDeviceName: 'Robert' })
+    expect(confirmed?.auditLine).toContain('Confirmed by Robert Douglas from his own sign-in on October 12, 2026.')
+    const hash = lienFieldsHash(FIELDS)
+    expect(lienChipSigned(code(), hash)).toEqual({ at: SIGNED_AT, mode: 'code', recordedBy: null, confirmedAt: null })
+    expect(lienPenAwaitsConfirm(code(), hash)).toBe(true)
+    expect(lienPenAwaitsConfirm(code({ signed_leader_confirmed_at: '2026-10-12T22:00:00Z' }), hash)).toBe(false)
+    expect(lienNoticeSignatureFromRow(code(), { ...opts, fieldsHash: lienFieldsHash({ ...FIELDS, gcEmail: 'x' }) })).toBeNull()
+  })
+})

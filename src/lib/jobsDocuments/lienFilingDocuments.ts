@@ -29,8 +29,8 @@ import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
  * sentence and the statute line in grey beneath. `lienNoticeSignature.ts` builds it from the row.
  */
 export type FilingSignature = {
-  /** `type` = his name in cursive from one press; `draw` = his ink; `pen` (the pen train) = he signed the paper as printed, so the frame prints no mark, only the record. */
-  mode: 'type' | 'draw' | 'pen'
+  /** `type` = his name in cursive from one press; `draw` = his ink; `pen` (the pen train) = he signed the paper as printed, so the frame prints no mark, only the record; `code` (v2.5788) = his name in cursive, placed with his signing code on someone else's screen. */
+  mode: 'type' | 'draw' | 'pen' | 'code'
   printedName: string
   pngDataUrl?: string | null
   /** "Signed October 9, 2026 at 2:14 PM CT". */
@@ -53,9 +53,9 @@ export function filingSignedStatuteLine(mode: FilingSignature['mode']): string {
 }
 /** The cursive face a pressed signature prints in; a print shell adds it when a page carries one. */
 export const FILING_SIGNATURE_FONT_LINK = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap">'
-/** True when a rendered page holds a pressed (typed) signature and so needs the cursive face loaded. */
+/** True when a rendered page holds a pressed (typed, or typed with his code) signature and so needs the cursive face loaded. */
 export function filingHtmlHasTypedSignature(html: string): boolean {
-  return html.includes('data-filing-signed-mode="type"')
+  return html.includes('data-filing-signed-mode="type"') || html.includes('data-filing-signed-mode="code"')
 }
 
 export type FilingDocBlock =
