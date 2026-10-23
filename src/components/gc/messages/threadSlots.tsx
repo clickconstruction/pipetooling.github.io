@@ -65,7 +65,7 @@ export interface ThreadSlots {
   lineBody?: (m: ThreadMessage, c: Contact) => ReactNode | null
   /** The message window's first button, given the words selected in its full text: cut 2's highlight slot. */
   messageWindowFirst?: (m: ThreadMessage, selection: string) => ReactNode
-  /** The window's right side, its full height: cut 4's flow panel, a rail that opens to a panel. */
+  /** The window's right side, its full height: cut 4's flow panel, a rail that opens to a panel; nothing while the sender is unnamed (v2.5797). */
   side?: (c: Contact) => ReactNode
   /**
    * What cut 2 knows about whose move it is (punch list #140 PR 7): what we owe them and a written promise's day, which
@@ -150,8 +150,10 @@ export function useThreadSlots(): ThreadSlots {
   // Cut 3: the reply box, one per person, so a draft never crosses to the next thread. It reads the open thread itself
   // (`useOpenThread`), under the window's provider; since #140 PR 4 the URL's nudge too (`NudgedReplyBox`).
   const replyBox: ThreadSlots = { box: (c) => <NudgedReplyBox key={`reply:${c.id}`} contact={c} /> }
-  // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
-  const flow: ThreadSlots = { side: (c) => <FlowTab key={`flow:${c.id}`} at={{ contactId: c.id }} side /> }
+  // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh. A sender nobody
+  // has named has no flow of their own, only the placeholder whose one step asks what the pill beside their name and
+  // the sort card already ask, so the rail waits until *Who is this?* names them (punch list #149 PR 3, v2.5797).
+  const flow: ThreadSlots = { side: (c) => (c.kind === 'unknown' ? null : <FlowTab key={`flow:${c.id}`} at={{ contactId: c.id }} side />) }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
   // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it.
