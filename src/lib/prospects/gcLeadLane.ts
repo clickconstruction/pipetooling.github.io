@@ -282,3 +282,47 @@ export const GC_WORK_LABELS: { key: keyof GcWorkCounts; label: string }[] = [
 ]
 
 export const SOONEST_BID_NOTE = 'Soonest bid: the lead whose job bids soonest first, then never called, then coldest.'
+
+/** A project bidding now (v2.5785, punch list #148, PR 2): what the strip names under the counts. */
+export interface BiddingLine {
+  id: string
+  name: string
+  bidDue: string | null
+  /** Whole days to the bid day; null without one. */
+  daysLeft: number | null
+}
+
+/**
+ * The projects out for a bid, soonest due first, no due day last: the ones the lane's leads feed. A
+ * lost one is over, and buying out or building is past bidding.
+ */
+export function gcBiddingLines(projects: readonly { id: string; name: string; stage: string; bidDue: string | null; lostOn: string | null }[], todayYmd: string): BiddingLine[] {
+  return projects
+    .filter((p) => !p.lostOn && (p.stage === 'bidding' || p.stage === 'pursuing'))
+    .map((p) => ({ id: p.id, name: p.name, bidDue: p.bidDue, daysLeft: p.bidDue ? daysUntil(p.bidDue, todayYmd) : null }))
+    .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999) || a.name.localeCompare(b.name))
+}
+
+/** The bid day's words on a bidding line: "due Oct 24, tomorrow", red inside a week or past. */
+export function biddingDueWords(line: Pick<BiddingLine, 'bidDue' | 'daysLeft'>): { text: string; tone: 'red' | 'quiet' } {
+  if (!line.bidDue || line.daysLeft === null) return { text: 'no due day set', tone: 'quiet' }
+  const day = shortDay(line.bidDue)
+  if (line.daysLeft < 0) return { text: `bids were due ${day}`, tone: 'red' }
+  if (line.daysLeft === 0) return { text: `due ${day}, today`, tone: 'red' }
+  if (line.daysLeft === 1) return { text: `due ${day}, tomorrow`, tone: 'red' }
+  return { text: `due ${day}, in ${line.daysLeft} days`, tone: line.daysLeft <= 7 ? 'red' : 'quiet' }
+}
+
+/** How many leads on the deck carry an open job with a bid day. */
+export function leadsWithOpenBid(deckIds: readonly string[], jobsByProspect: Readonly<Record<string, readonly Pick<ProspectJob, 'status' | 'bid_due'>[]>>): number {
+  return deckIds.filter((id) => soonestOpenBid(jobsByProspect[id] ?? []) !== null).length
+}
+
+/** The strip's deck line: who here carries a job with a bid day, or that the deck is empty. */
+export function deckBidWords(withBid: number, onDeck: number): string {
+  if (onDeck === 0) return 'nobody on the deck yet'
+  return `${withBid} of ${onDeck} ${onDeck === 1 ? 'lead carries' : 'leads carry'} a job with a bid day`
+}
+
+/** The strip's bidding line when no project is out for a bid. */
+export const NOTHING_BIDDING = 'no project is out for a bid'
