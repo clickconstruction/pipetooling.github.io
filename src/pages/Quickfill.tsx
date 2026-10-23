@@ -10,6 +10,9 @@ import { QuickfillRoundList } from '../components/quickfill/QuickfillRoundList'
 import { QuickfillRoundScreen } from '../components/quickfill/QuickfillRoundScreen'
 import { nextInRound, roundChipColors, roundQueue, roundRows, QUICKFILL_NOTE_FIRST_SECTIONS, QUICKFILL_PERSONAL_SECTIONS, type RoundEvent } from '../lib/quickfill/round'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
+import { QuickfillFocusContext } from '../components/quickfill/quickfillViewContext'
+import { QuickfillViewSwitch } from '../components/quickfill/QuickfillViewSwitch'
+import { focusBucket, focusGroups, focusHeading, focusHeadline, parseQuickfillViewRequest, readStoredQuickfillView, writeQuickfillView, type FocusBucket, type QuickfillView } from '../lib/quickfill/views'
 import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
 import { quickfillStationTelemetryTarget, resolveQuickfillStation, parseQuickfillStationRequest, quickfillStationHref } from '../lib/quickfill/stationDeepLink'
@@ -463,7 +466,7 @@ function QuickfillPage() {
     logDispatchRequestCall,
   } = useDispatchInbox()
   const jobFormModal = useJobFormModal()
-  const { getOutstandingCount } = useQuickfillSectionMetricsContext()
+  const { getOutstandingCount, metrics: sectionMetrics } = useQuickfillSectionMetricsContext()
   const unpricedFixturesCount = useUnpricedFixturesCount()
   const quickfillNoCustomerStages = useQuickfillStagesJobsWithoutCustomer()
   // Needs You (journey-map #40): open dispatch requests past the min age, from the inbox rows this page already holds.
@@ -957,6 +960,40 @@ function QuickfillPage() {
   // racing the settings fetch, applies once per URL, and polls briefly for the
   // element because section bodies mount after their eligibility hooks settle.
   const location = useLocation()
+
+  // The view (punch list #147, v2.5778): `?view=` on the URL for the visit, else the one this
+  // person chose last, else the whole page. Remembered per person on the device, the Needs
+  // you card's Cards / Walk precedent; the table comes with the Roller.
+  const [view, setView] = useState<QuickfillView>(() => parseQuickfillViewRequest(location.search) ?? readStoredQuickfillView(authUser?.id) ?? 'page')
+  const viewRequested = parseQuickfillViewRequest(location.search)
+  useEffect(() => {
+    if (viewRequested) setView(viewRequested)
+    else {
+      const stored = readStoredQuickfillView(authUser?.id)
+      if (stored) setView(stored)
+    }
+  }, [authUser?.id, viewRequested])
+  const chooseView = useCallback(
+    (next: QuickfillView) => {
+      setView(next)
+      writeQuickfillView(authUser?.id, next)
+    },
+    [authUser?.id],
+  )
+  const focusBucketOf = useCallback(
+    (sectionId: string): FocusBucket => {
+      const m = sectionMetrics[sectionId]
+      return focusBucket({
+        count: m?.count ?? null,
+        loading: m?.loading ?? false,
+        collapsed: isCollapsed(sectionId),
+        personal: QUICKFILL_PERSONAL_SECTIONS.has(sectionId),
+        forced: forceExpandedSections.has(sectionId),
+      })
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isCollapsed reads sectionMarks and the clock
+    [sectionMetrics, sectionMarks, forceExpandedSections],
+  )
   const stationRequestKey = `${location.hash}|${location.search}`
   const appliedStationKeyRef = useRef<string | null>(null)
   const stationPollTokenRef = useRef(0)
@@ -987,9 +1024,9 @@ function QuickfillPage() {
     tick()
   }, [layoutSettingsLoaded, stationRequestKey, location, sectionWouldRenderOnPage, authUser?.id, role, showToast, openSectionNow])
 
-  function quickfillSectionBlock(meta: QuickfillSectionMeta): ReactNode {
+  function quickfillSectionBlock(meta: QuickfillSectionMeta, opts?: { first?: boolean }): ReactNode {
     const { id, sectionId, label } = meta
-    const withTopDivider = firstVisibleSectionId !== null && firstVisibleSectionId !== sectionId
+    const withTopDivider = opts?.first != null ? !opts.first : firstVisibleSectionId !== null && firstVisibleSectionId !== sectionId
     const bannerText = effectiveQuickfillSectionBanner(sectionId, sectionBanners)
     switch (sectionId) {
       case 'warnings':
@@ -1855,7 +1892,13 @@ function QuickfillPage() {
       ) : narrowViewport ? null : (
         <>
       {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Quickfill sections" /> : null}
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <span />
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, textAlign: 'center' }}>Quickfill</h1>
+        <span style={{ justifySelf: 'end' }}>
+          <QuickfillViewSwitch view={view} onChange={chooseView} />
+        </span>
+      </div>
       {/* Jump grid (v2.2184): phones get a one-line strip you flick sideways (the
           dock's own pattern) plus a freshness summary — the wrapped grid was 18
           rows tall at 375px, a whole screen before the first section. Desktop
@@ -2037,9 +2080,38 @@ function QuickfillPage() {
           )}
         </p>
       )}
-      {searchedSections.map((meta) => (
-        <Fragment key={meta.sectionId}>{quickfillSectionBlock(meta)}</Fragment>
-      ))}
+      {/* Focus (punch list #147, v2.5778): the groups with work first and open, then each
+          folded run under its heading — at zero (with its ✓), marked today, the doors. One
+          flat keyed list under one provider, so a switch reorders the stations instead of
+          remounting them (a remount reloads every station and flashes its count). */}
+      <QuickfillFocusContext.Provider value={view === 'focus' ? focusBucketOf : null}>
+        {view === 'focus' && hasAnyVisibleSection
+          ? (() => {
+              const g = focusGroups(searchedSections, focusBucketOf)
+              const runs: Array<{ bucket: 'zero' | 'fresh' | 'door'; items: QuickfillSectionMeta[] }> = [
+                { bucket: 'zero', items: g.zero },
+                { bucket: 'fresh', items: g.fresh },
+                { bucket: 'door', items: g.door },
+              ]
+              const out: ReactNode[] = [
+                <p key="focus-headline" style={{ margin: '-0.75rem 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  {focusHeadline(g)}
+                </p>,
+                ...g.open.map((meta, i) => <Fragment key={meta.sectionId}>{quickfillSectionBlock(meta, { first: i === 0 })}</Fragment>),
+              ]
+              for (const r of runs) {
+                if (r.items.length === 0) continue
+                out.push(
+                  <p key={`focus-heading-${r.bucket}`} style={{ margin: '1.25rem 0 0.5rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                    {focusHeading(r.bucket, r.items.length)}
+                  </p>,
+                )
+                for (const meta of r.items) out.push(<Fragment key={meta.sectionId}>{quickfillSectionBlock(meta, { first: true })}</Fragment>)
+              }
+              return out
+            })()
+          : searchedSections.map((meta) => <Fragment key={meta.sectionId}>{quickfillSectionBlock(meta)}</Fragment>)}
+      </QuickfillFocusContext.Provider>
       {role === 'dev' && (
       <div style={{ marginTop: '2rem' }}>
         <button
@@ -2229,7 +2301,128 @@ function QuickfillSectionWrapper({
   // Inside a round screen (punch list #30, PR 3) the screen owns the title, the count and the
   // mark; the wrapper renders the body only. The id stays so the station deep link lands.
   const roundBodyOnly = useContext(QuickfillRoundScreenContext)
+  // Focus (punch list #147, v2.5778): where the page put this station; null on the whole page.
+  const focusFold = useContext(QuickfillFocusContext)?.(sectionId) ?? null
   if (roundBodyOnly) return <div id={id}>{children}</div>
+
+  // Focus: a station at zero, or a door with no mark, is one line — the marked strip's
+  // layout in grey, with its ✓ Mark (so a clean day still gets stamped) and Open now.
+  if (!narrow && !collapsed && (focusFold === 'zero' || focusFold === 'door')) {
+    return (
+      <div
+        id={id}
+        style={{
+          marginBottom: '0.6rem',
+          ...(withTopDivider ? { borderTop: '2px solid #94a3b8', paddingTop: '0.6rem' } : {}),
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            padding: '0.3rem 0.75rem',
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            fontSize: '0.8125rem',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <span aria-hidden>{focusFold === 'door' ? '›' : '○'}</span>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              color: 'var(--text-700)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {label}
+          </h2>
+          {focusFold === 'zero' && showOutstandingInHeader ? (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-600)', fontWeight: 600, whiteSpace: 'nowrap' }}>{outstandingLabel}</span>
+          ) : null}
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {focusFold === 'door' ? 'no mark' : `Last marked: ${formatHeaderLastMarked(mark?.marked_at ?? null)}`}
+          </span>
+          <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
+          <span style={{ flex: 1 }} />
+          {focusFold === 'zero' && showMarkHistoryButton ? (
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              title="Mark history"
+              aria-label={`Mark history for ${label}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.25rem',
+                borderRadius: 6,
+                border: '1px solid var(--border-strong)',
+                background: 'var(--bg-slate-tint)',
+                color: 'var(--text-slate-600)',
+                cursor: 'pointer',
+                lineHeight: 0,
+                flexShrink: 0,
+              }}
+            >
+              <QuickfillSectionHistoryIcon />
+            </button>
+          ) : null}
+          {focusFold === 'zero' && !omitDefaultMarkButton ? (
+            <button
+              type="button"
+              onClick={onMarkUpToDate}
+              title={`Mark ${label} up to date`}
+              aria-label={`Mark ${label} up to date`}
+              style={{
+                padding: '0.2rem 0.6rem',
+                borderRadius: 6,
+                background: BUTTON_BG[color],
+                border: `1px solid ${BUTTON_BORDER[color]}`,
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              ✓ Mark
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onOpenNow}
+            style={{
+              padding: '0.2rem 0.6rem',
+              borderRadius: 6,
+              background: 'var(--surface)',
+              border: '1px solid var(--border-strong)',
+              color: 'var(--text-700)',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              flexShrink: 0,
+            }}
+          >
+            Open now
+          </button>
+        </div>
+        {/* The body stays mounted, hidden: a station whose count reporter sits inside its body
+            would otherwise unmount it, lose its count, reopen, report 0, fold — and flicker
+            (see lib/quickfill/outstandingLabel.ts). It costs nothing the whole page does not
+            already pay, and Open now shows the body as it was. */}
+        <div style={{ display: 'none' }} aria-hidden="true">
+          {children}
+        </div>
+      </div>
+    )
+  }
 
   // Desktop: a marked-complete section shrinks to one slim strip (title + stamp +
   // controls) instead of the full header row plus banner. Narrow keeps the
