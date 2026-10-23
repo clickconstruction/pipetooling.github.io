@@ -1240,8 +1240,11 @@ button:focus-visible {
      stack pushed the 258px PAID/BILLED/UNBILLED rail past the screen edge. */
   .customers-projects-bids-links {
     flex: 1 1 100%;
-    justify-content: flex-start !important;
+    align-items: flex-start !important;
     margin-top: 0.35rem;
+  }
+  .customers-projects-bids-links > span {
+    justify-content: flex-start !important;
   }
 
   /* People Pay: cost matrix date headers on two lines (Mon / 2/16) */
