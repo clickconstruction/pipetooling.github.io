@@ -21,7 +21,7 @@ Card holders sort their own purchases to jobs in **Job Parts Tally → Transacti
 
 - **User Sort** is *who*: the person on each card charge. Rules can tag the person for you. A hand-set person is never overwritten. User Sort is also where **Link…** splits a charge to jobs.
 - **Drag Sort** is *what kind*: the accounting label, like fuel, supplies or insurance. Drag a transaction onto its label. Or press **Quick Sort** to label them one at a time.
-- **Accounting** holds the **rules** that suggest labels by counterparty, amount, description or bank category. A counterparty is who the money went to or came from. Accounting also holds the **Approvals** list, where suggestions wait for an OK. Approve one, press {{button:green|Approve all (12)}}, or leave the approving to the rules:
+- **Accounting** holds the **rules** that suggest labels by counterparty, amount, description or bank category. A counterparty is who the money went to or came from. Accounting also holds the **Approvals** list, where suggestions wait for an OK. Each card says the day the charge was made, like Tuesday, 3 days ago. Approve one, press {{button:green|Approve all (12)}}, or leave the approving to the rules:
 
 :::example The org-wide switch
 {{chip:gray|Rule matches approve themselves (org-wide · on)}} — every new rule match is approved the moment it is created, as the bank feed arrives or when someone clicks **Apply rules to transactions**. Off, matches wait in Approvals. One switch for the whole company; a dev or leader flips it. Two things always wait for a person even when it is on: an Internal Transfers suggestion on a transaction that already has job splits, and anything created before the switch was turned on.
