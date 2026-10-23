@@ -185,8 +185,8 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
     return `${countyWords(county)} · ${firmNames.get(holderOf(county) ?? '') ?? 'no firm yet'}${n ? ` · ${n} ${n === 1 ? 'case' : 'cases'}` : ''}`
   }
   const readout = hovered ? countyLine(hovered) : pickedFirmId ? 'Click a county to color it for the picked firm. Click it again to clear it.' : 'Pick a firm on the left, then click counties.'
-  const btn = { padding: '0.2rem 0.6rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.78rem', cursor: 'pointer' } as const
-  const btnOn = { ...btn, borderColor: 'var(--text)', fontWeight: 600 } as const
+  const btn = { padding: '0.2rem 0.6rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer' } as const
+  const btnOn = { ...btn, borderColor: 'var(--text-base)', fontWeight: 600 } as const
 
   return (
     <div data-legal-county-map>
@@ -232,7 +232,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                     data-county={s.name}
                     data-firm={holderOf(s.name) ?? ''}
                     fill={hue.fill}
-                    stroke={isHovered ? 'var(--text)' : 'var(--border-strong)'}
+                    stroke={isHovered ? 'var(--text-base)' : 'var(--border-strong)'}
                     strokeWidth={isHovered ? 1.6 : 0.6}
                     vectorEffect="non-scaling-stroke"
                     strokeLinejoin="round"
@@ -261,7 +261,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                 const colored = holderOf(s.name) !== null
                 if (!inView(vb, s.cx, s.cy) || !labelShows(vb, map.width, colored)) return null
                 return (
-                  <text key={`l-${s.fips}`} x={s.cx} y={s.cy} fontSize={labelFontSize(vb)} textAnchor="middle" dominantBaseline="middle" fontWeight={colored ? 600 : 500} fill={colored ? hueOf(s.name).ink : 'var(--text)'} data-county-label={s.name}>
+                  <text key={`l-${s.fips}`} x={s.cx} y={s.cy} fontSize={labelFontSize(vb)} textAnchor="middle" dominantBaseline="middle" fontWeight={colored ? 600 : 500} fill={colored ? hueOf(s.name).ink : 'var(--text-base)'} data-county-label={s.name}>
                     {s.name}
                   </text>
                 )
@@ -282,7 +282,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                     r={dotRadiusView(vb, pageW, dotRadiusPx(c.balance) * 0.75)}
                     fill={STAND_COLOR[stand]}
                     fillOpacity={held ? 1 : 0.8}
-                    stroke="var(--text)"
+                    stroke="var(--text-base)"
                     strokeOpacity={held ? 1 : 0.55}
                     strokeWidth={held ? 2 : 1}
                     vectorEffect="non-scaling-stroke"
