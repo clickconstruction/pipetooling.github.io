@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import {
   needsYouClickTarget,
@@ -6,11 +6,12 @@ import {
   writeNeedsYouMode,
   type NeedsYouItem,
   type NeedsYouMode,
-  type NeedsYouSeverity,
 } from '../../lib/dashboardNeedsYou'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYouHandled, type NeedsYouHandled } from '../../lib/dashboard/phoneOffice'
+import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
+import { FILL_IN_ACTION_LABEL, fillInKindOfItem, type FillInKind } from '../../lib/needsYou/fillIn'
 
 /**
  * The dashboard "Needs you" card (v2.2339, CX-audit Phase 3 — owner-approved
@@ -26,33 +27,10 @@ import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYo
  * on or skipped since the card mounted — a tap brings that card back.
  */
 
-const RAIL: Record<NeedsYouSeverity, string> = {
-  blue: '#3b82f6',
-  amber: '#f59e0b',
-  gray: 'var(--border-400)',
-  red: '#dc2626',
-}
-
-const ACTION_BG: Record<NeedsYouSeverity, string> = {
-  blue: '#1d4ed8',
-  amber: '#b45309',
-  gray: 'var(--bg-muted)',
-  red: '#dc2626',
-}
-
-const ACTION_FG: Record<NeedsYouSeverity, string> = {
-  blue: '#ffffff',
-  amber: '#ffffff',
-  gray: 'var(--text-700)',
-  red: '#ffffff',
-}
-
-const WALK_TINT: Record<NeedsYouSeverity, { background: string; border: string }> = {
-  blue: { background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)' },
-  amber: { background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)' },
-  gray: { background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)' },
-  red: { background: 'var(--bg-orange-tint)', border: '1px solid #fecaca' },
-}
+const RAIL = NEEDS_YOU_RAIL
+const ACTION_BG = NEEDS_YOU_ACTION_BG
+const ACTION_FG = NEEDS_YOU_ACTION_FG
+const WALK_TINT = NEEDS_YOU_WALK_TINT
 
 export function DashboardNeedsYouCard({
   userId,
@@ -60,6 +38,7 @@ export function DashboardNeedsYouCard({
   items,
   onAction,
   onSecondary,
+  fillIn,
 }: {
   userId: string | undefined
   role: UserRole | null
@@ -68,6 +47,13 @@ export function DashboardNeedsYouCard({
   onAction: (item: NeedsYouItem) => void
   /** Dispatch for an item's secondary links (v2.2491) — keyed by item.secondary[].key. */
   onSecondary?: (item: NeedsYouItem, key: string) => void
+  /**
+   * Fill them in (v2.5774, punch list #146): the third view, when the host has rows the deck can
+   * fill. A line whose rows the deck handles gets **Fill them in** for its button and opens the
+   * deck on its kind; the chip beside Cards and Walk the list opens it on the first row. A visit's
+   * state, never a stored preference: the deck ends on Cards.
+   */
+  fillIn?: { rowCount: number; render: (opts: { startKind: FillInKind | null; onExit: () => void }) => ReactNode }
 }) {
   const isPhone = useIsMobile()
   const [mode, setMode] = useState<NeedsYouMode>(() => needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
@@ -75,6 +61,10 @@ export function DashboardNeedsYouCard({
   const [skippedKeys, setSkippedKeys] = useState<string[]>([])
   const [revisitKey, setRevisitKey] = useState<string | null>(null)
   const [handled, setHandled] = useState<NeedsYouHandled[]>([])
+  const [fill, setFill] = useState<{ startKind: FillInKind | null } | null>(null)
+  const fillOn = fillIn != null && fillIn.rowCount > 0
+  const fillKindOf = (item: NeedsYouItem): FillInKind | null => (fillOn ? fillInKindOfItem(item.key) : null)
+  const actionLabelOf = (item: NeedsYouItem): string => (fillKindOf(item) ? FILL_IN_ACTION_LABEL : item.actionLabel)
 
   // Re-read the stored preference once the user id arrives (auth loads async).
   useEffect(() => {
@@ -84,15 +74,28 @@ export function DashboardNeedsYouCard({
   if (items.length === 0) return null
 
   const pickMode = (next: NeedsYouMode) => {
+    setFill(null)
     setMode(next)
     writeNeedsYouMode(userId, next)
     recordNavClick(userId, role, 'needs-you', `#mode-${next}`)
   }
 
   const act = (item: NeedsYouItem) => {
+    const kind = fillKindOf(item)
+    if (kind) {
+      // The deck, opened on this line's rows (v2.5774).
+      recordNavClick(userId, role, 'needs-you', `#fill-${item.key}`)
+      setFill({ startKind: kind })
+      return
+    }
     recordNavClick(userId, role, 'needs-you', needsYouClickTarget(item))
     setHandled((t) => pushNeedsYouHandled(t, item, 'acted'))
     onAction(item)
+  }
+
+  const openFill = () => {
+    recordNavClick(userId, role, 'needs-you', '#mode-fill')
+    setFill({ startKind: null })
   }
 
   const skip = (item: NeedsYouItem) => {
@@ -139,31 +142,28 @@ export function DashboardNeedsYouCard({
   const upNext = order.filter((it) => it.key !== current.key).slice(0, 2)
   const trail = needsYouTrailChips(handled, items)
 
-  const modeChip = (value: NeedsYouMode, label: string) => {
-    const active = mode === value
-    return (
-      <button
-        key={value}
-        type="button"
-        onClick={() => pickMode(value)}
-        aria-pressed={active}
-        aria-label={`${label} view`}
-        style={{
-          padding: '0.2rem 0.7rem',
-          fontSize: '0.75rem',
-          fontWeight: active ? 700 : 500,
-          border: active ? '1px solid var(--border-blue)' : '1px solid var(--border)',
-          borderRadius: 999,
-          background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
-          color: active ? 'var(--text-blue-700)' : 'var(--text-muted)',
-          cursor: 'pointer',
-        }}
-      >
-        {label}
-      </button>
-    )
-  }
-
+  const chip = (key: string, label: string, active: boolean, onClick: () => void) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={`${label} view`}
+      style={{
+        padding: '0.2rem 0.7rem',
+        fontSize: '0.75rem',
+        fontWeight: active ? 700 : 500,
+        border: active ? '1px solid var(--border-blue)' : '1px solid var(--border)',
+        borderRadius: 999,
+        background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+        color: active ? 'var(--text-blue-700)' : 'var(--text-muted)',
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
+  )
+  const modeChip = (value: NeedsYouMode, label: string) => chip(value, label, mode === value && !fill, () => pickMode(value))
   return (
     <section
       aria-label={`Needs you, ${items.length} item${items.length === 1 ? '' : 's'}`}
@@ -190,14 +190,16 @@ export function DashboardNeedsYouCard({
         >
           {items.length}
         </span>
-        {mode === 'walk' ? (
+        {mode === 'walk' && !fill ? (
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
             {currentIndex + 1} of {items.length}
           </span>
         ) : null}
       </div>
 
-      {mode === 'walk' ? (
+      {fill && fillIn ? (
+        fillIn.render({ startKind: fill.startKind, onExit: () => setFill(null) })
+      ) : mode === 'walk' ? (
         <>
           <div style={{ display: 'flex', gap: 4, marginBottom: '0.875rem' }} aria-hidden>
             {items.map((it, i) => (
@@ -244,7 +246,7 @@ export function DashboardNeedsYouCard({
                   cursor: 'pointer',
                 }}
               >
-                {current.actionLabel}
+                {actionLabelOf(current)}
               </button>
               {items.length > 1 ? (
                 <button
@@ -321,14 +323,14 @@ export function DashboardNeedsYouCard({
                   flexShrink: 0,
                 }}
               >
-                {it.actionLabel}
+                {actionLabelOf(it)}
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {mode === 'walk' && trail.length > 0 ? (
+      {mode === 'walk' && !fill && trail.length > 0 ? (
         <div data-needs-you-trail style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.4rem', margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>Handled this visit:</span>
           {trail.map((t) =>
@@ -358,6 +360,7 @@ export function DashboardNeedsYouCard({
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', paddingBottom: '0.25rem' }}>
         {modeChip('cards', 'Cards')}
         {modeChip('walk', 'Walk the list')}
+        {fillOn ? chip('fill', `Fill them in · ${fillIn!.rowCount} ${fillIn!.rowCount === 1 ? 'row' : 'rows'}`, fill != null, openFill) : null}
       </div>
     </section>
   )

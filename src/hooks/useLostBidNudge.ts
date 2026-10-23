@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { lostBidNudgeFromCounts, type LostBidNudge } from '../lib/dashboardLostBidNudge'
@@ -16,9 +16,11 @@ export const LOST_BID_NUDGE_SCOPE: BidSentScope = { kind: 'all' }
  * the card's number is the `/bids` lens number summed over every trade pill —
  * adopted bids excluded here as they are there.
  */
-export function useLostBidNudge(enabled: boolean): { nudge: LostBidNudge | null; loading: boolean } {
+export function useLostBidNudge(enabled: boolean): { nudge: LostBidNudge | null; loading: boolean; reload: () => void } {
   const [nudge, setNudge] = useState<LostBidNudge | null>(null)
   const [loading, setLoading] = useState(true)
+  /** v2.5774: the Fill them in deck re-reads the count after a save. */
+  const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
     if (!enabled) {
@@ -51,7 +53,8 @@ export function useLostBidNudge(enabled: boolean): { nudge: LostBidNudge | null;
     return () => {
       cancelled = true
     }
-  }, [enabled])
+  }, [enabled, nonce])
 
-  return { nudge, loading }
+  const reload = useCallback(() => setNonce((n) => n + 1), [])
+  return { nudge, loading, reload }
 }
