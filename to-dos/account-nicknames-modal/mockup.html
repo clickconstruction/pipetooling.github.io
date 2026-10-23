@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Account nicknames: the modal says what each account is</title>
+<style>
+  /* Punch list #155. Light only, like every to-do mock-up. Every account, id, counterparty and amount here is
+     made up: Ridgeway Builders, Hollis Supply, Gusto, the ids 8f49…, c093…, 049b…, 4d65…. Nothing is a live row. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --blue-800: #1e40af; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --amber-line: #fcd34d; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f7f8fa; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #d9dce2; padding: 18px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  /* the modal frame, as BankingAccountNicknamesModal.tsx draws it */
+  .modal { background: var(--surface); border-radius: 8px; padding: 16px 20px; max-width: 760px; margin: 0 auto; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .modal.narrow { max-width: 640px; }
+  .modal .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .modal h3 { margin: 0; font-size: 18px; font-weight: 600; }
+  .modal .desc { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .btn { border-radius: 4px; font-size: 13px; padding: 4px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; }
+  .btn.close { padding: 7px 14px; font-size: 14px; }
+  .btn.dim { color: var(--muted); }
+  .btn.door { border-color: var(--blue-ink); color: var(--blue-ink); font-weight: 600; }
+  .btn.tiny { font-size: 12px; padding: 2px 8px; }
+  code { font: 12px/1.4 var(--mono); }
+  input.nick { flex: 1 1 12rem; min-width: 140px; padding: 4px 8px; font-size: 14px; border: 1px solid #767676; border-radius: 3px; background: #fff; font-family: var(--font); }
+  input.nick::placeholder { color: #9ca3af; }
+  /* today's row */
+  .oldrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .oldrow code { min-width: 6.5rem; }
+  /* A: the facts row */
+  .arow { display: grid; grid-template-columns: 1fr; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--line-2); }
+  .arow .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .arow .facts { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  /* B: the card */
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; display: grid; gap: 6px; background: var(--surface); }
+  .card.unnamed { border-color: var(--amber-line); background: #fffbeb; }
+  .card .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .chip { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .chip.amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .chip.gray { background: var(--subtle); color: var(--ink-2); }
+  .mline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; }
+  .mline .k { color: var(--muted); min-width: 7.5rem; }
+  .mline b { font-weight: 600; }
+  .mline .quiet { color: var(--muted); }
+  .idline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; }
+  .idline code { word-break: break-all; color: var(--ink-2); }
+  .facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--ink-2); }
+  .facts b { color: var(--ink); font-weight: 600; }
+  .recent { margin: 2px 0 0; padding: 0; list-style: none; font-size: 12.5px; display: grid; gap: 2px; }
+  .recent li { display: grid; grid-template-columns: 6.5rem 1fr auto; gap: 10px; }
+  .recent .d { color: var(--muted); white-space: nowrap; }
+  .recent .amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .recent .amt.in { color: var(--green-ink); }
+  .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
+  .foot .sp { flex: 1; }
+  .empty { font-size: 13px; color: var(--muted); font-style: italic; }
+  /* a phone frame, 375 wide */
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .bar { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .phone .modal { padding: 12px 12px; box-shadow: none; }
+  .phone .recent li { grid-template-columns: 5.5rem 1fr auto; }
+  .boxed { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 6px; }
+  .boxed.r { outline-color: var(--red); }
+  table.cmp { border-collapse: collapse; width: 100%; max-width: 900px; font-size: 13px; margin-top: 8px; }
+  table.cmp th, table.cmp td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--line-2); }
+  table.cmp th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  @media (max-width: 640px) { .mline .k { min-width: 0; } .recent li { grid-template-columns: 5.5rem 1fr auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #155 · Banking → Mercury → Nicknames → Account nicknames · dev only</p>
+    <h1>Account nicknames: the modal says what each account is, so naming one takes no trip to Mercury</h1>
+    <p>Today a row is an eight-letter id and a box. The owner names an account by opening Mercury, reading that account's transactions and matching them by eye against the ledger. The app holds both halves of that match: the ledger's rows by account, and Mercury's own account list, which the Balance Sheet already reads. Two drawings, then the pick.</p>
+  </header>
+
+  <h2><span class="num">0</span> Today</h2>
+  <p class="lede">The whole row: the id cut to eight letters, Nickname, Save, Clear. Nothing says which account it is.</p>
+  <div class="fit" style="border-top:1px solid var(--line); border-radius:8px;">
+    <div class="modal narrow">
+      <div class="head"><h3>Account nicknames</h3><span class="btn close">Close</span></div>
+      <p class="desc">One label per Mercury account id (shared for all devs). Save with empty text to remove a label, or use Clear.</p>
+      <div class="oldrow"><code>049bd408…</code><input class="nick" value="Operating"><span class="btn">Save</span><span class="btn">Clear</span></div>
+      <div class="oldrow"><code>4d651a50…</code><input class="nick" value="Payroll"><span class="btn">Save</span><span class="btn">Clear</span></div>
+      <div class="oldrow boxed r"><code>8f49aca0…</code><input class="nick" placeholder="Nickname"><span class="btn">Save</span><span class="btn dim">Clear</span></div>
+      <div class="oldrow"><code>a21630f8…</code><input class="nick" value="Tax set-aside"><span class="btn">Save</span><span class="btn">Clear</span></div>
+      <div class="oldrow boxed r"><code>c093bb40…</code><input class="nick" placeholder="Nickname"><span class="btn">Save</span><span class="btn dim">Clear</span></div>
+      <div class="oldrow"><code>f4c77adc…</code><input class="nick" value="Receivables"><span class="btn">Save</span><span class="btn">Clear</span></div>
+    </div>
+  </div>
+  <p class="verdict"><b>Why it is hard.</b> The two boxed rows are the unnamed ones, and they sit in id order among the named. To name <code>8f49aca0…</code> he has to find which Mercury account has that id, and Mercury's screens never show the id. So he reads transactions on both sides and matches by eye.</p>
+
+  <h2><span class="num">A</span> The facts row: what the ledger knows, on every row</h2>
+  <p class="lede">Each row keeps its box and buttons and grows a second line: how many transactions, the first and last date, the money in and out, the counterparties that recur. The unnamed rows come first. The full id gets a Copy button so he can paste it into Mercury's search.</p>
+  <div class="fit" style="border-top:1px solid var(--line); border-radius:8px;">
+    <div class="modal">
+      <div class="head"><h3>Account nicknames</h3><span class="btn close">Close</span></div>
+      <p class="desc">One nickname per Mercury account, shared by every dev. The facts under each row come from the ledger's loaded transactions.</p>
+      <div class="arow">
+        <div class="top"><span class="chip amber">No nickname yet</span><code>8f49aca0-5c1e-4b2a-9d33-7e8f60a1b2c3</code><span class="btn tiny">Copy</span></div>
+        <div class="top"><input class="nick" placeholder="Nickname"><span class="btn">Save</span><span class="btn dim">Clear</span><span class="btn tiny door">Show in ledger</span></div>
+        <div class="facts"><span><b>58</b> transactions</span><span>Jun 2, 2026 to Oct 21, 2026</span><span>in <b>$0.00</b></span><span>out <b>$41,280.15</b></span><span>often: Hollis Supply ×22, Ferguson ×14, Shell ×9</span></div>
+      </div>
+      <div class="arow">
+        <div class="top"><span class="chip amber">No nickname yet</span><code>c093bb40-1a7d-4f09-8e52-b4c6d7e8f901</code><span class="btn tiny">Copy</span></div>
+        <div class="top"><input class="nick" placeholder="Nickname"><span class="btn">Save</span><span class="btn dim">Clear</span><span class="btn tiny door">Show in ledger</span></div>
+        <div class="facts"><span class="empty">No transactions yet in the ledger.</span></div>
+      </div>
+      <div class="arow">
+        <div class="top"><code>049bd408-77e2-4d1b-a6c5-2f3e4d5c6b7a</code><span class="btn tiny">Copy</span></div>
+        <div class="top"><input class="nick" value="Operating"><span class="btn">Save</span><span class="btn">Clear</span><span class="btn tiny door">Show in ledger</span></div>
+        <div class="facts"><span><b>312</b> transactions</span><span>Jan 5, 2026 to Oct 22, 2026</span><span>in <b>$421,900.10</b></span><span>out <b>$398,011.23</b></span><span>often: Ridgeway Builders ×41, Gusto ×30, Hollis Supply ×22</span></div>
+      </div>
+      <div class="arow">
+        <div class="top"><code>4d651a50-9b3c-4e8d-b1f2-0a9c8b7d6e5f</code><span class="btn tiny">Copy</span></div>
+        <div class="top"><input class="nick" value="Payroll"><span class="btn">Save</span><span class="btn">Clear</span><span class="btn tiny door">Show in ledger</span></div>
+        <div class="facts"><span><b>64</b> transactions</span><span>Jan 9, 2026 to Oct 16, 2026</span><span>in <b>$180,000.00</b></span><span>out <b>$176,402.88</b></span><span>often: Gusto ×44, Mercury transfer ×20</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="verdict"><b>Better, not enough.</b> The facts tell him which account spends at Hollis Supply, and Copy lets him search Mercury by id. But he is still matching by eye, now from inside the app, and Mercury's search does not take an account id. He would still open Mercury.</p>
+
+  <h2><span class="num pick">B</span> The card: Mercury's own name first, then the ledger's facts</h2>
+  <p class="lede">The Balance Sheet already reads Mercury's account list through <code>get-mercury-account-balances</code>, and that list carries each account's id, name and kind. So the modal reads it once when it opens and puts Mercury's name on the card, with a one-press <b>Use this name</b>. The ledger's facts sit under it for the check, and for an account Mercury no longer lists. Unnamed cards first, amber. The latest lines read like Mercury's own screen: date, counterparty, amount.</p>
+  <div class="fit" style="border-top:1px solid var(--line); border-radius:8px;">
+    <div class="modal">
+      <div class="head"><h3>Account nicknames</h3><span class="btn close">Close</span></div>
+      <p class="desc">One nickname per Mercury account, shared by every dev. Each card says what Mercury calls the account and what the ledger holds for it. Save with an empty box, or press Clear, to remove a nickname.</p>
+
+      <div class="card unnamed boxed">
+        <div class="top"><span class="chip amber">No nickname yet</span><input class="nick" placeholder="Nickname"><span class="btn">Save</span><span class="btn dim">Clear</span></div>
+        <div class="mline"><span class="k">Mercury calls it</span><b>Supply Cards</b><span class="quiet">Checking · balance $2,114.60</span><span class="btn tiny">Use this name</span></div>
+        <div class="idline"><span class="k" style="color:var(--muted);min-width:7.5rem">Id</span><code>8f49aca0-5c1e-4b2a-9d33-7e8f60a1b2c3</code><span class="btn tiny">Copy</span></div>
+        <div class="facts"><span><b>58</b> transactions</span><span>Jun 2, 2026 to Oct 21, 2026</span><span>in <b>$0.00</b></span><span>out <b>$41,280.15</b></span><span>often Hollis Supply ×22, Ferguson ×14, Shell ×9</span></div>
+        <ul class="recent">
+          <li><span class="d">Oct 21, 2026</span><span>Hollis Supply</span><span class="amt">−$612.40</span></li>
+          <li><span class="d">Oct 20, 2026</span><span>Shell</span><span class="amt">−$88.12</span></li>
+          <li><span class="d">Oct 17, 2026</span><span>Ferguson</span><span class="amt">−$1,940.00</span></li>
+          <li><span class="d">Oct 15, 2026</span><span>Hollis Supply</span><span class="amt">−$233.75</span></li>
+        </ul>
+        <div class="foot"><span class="sp"></span><span class="btn tiny door">Show in ledger</span></div>
+      </div>
+
+      <div class="card unnamed boxed">
+        <div class="top"><span class="chip amber">No nickname yet</span><input class="nick" placeholder="Nickname"><span class="btn">Save</span><span class="btn dim">Clear</span></div>
+        <div class="mline"><span class="k">Mercury calls it</span><span class="quiet">Not on Mercury's account list. A closed or archived account keeps its old transactions here.</span></div>
+        <div class="idline"><span class="k" style="color:var(--muted);min-width:7.5rem">Id</span><code>c093bb40-1a7d-4f09-8e52-b4c6d7e8f901</code><span class="btn tiny">Copy</span></div>
+        <div class="facts"><span><b>3</b> transactions</span><span>Feb 11, 2025 to Mar 2, 2025</span><span>in <b>$5,000.00</b></span><span>out <b>$5,000.00</b></span><span>often Mercury transfer ×3</span></div>
+        <ul class="recent">
+          <li><span class="d">Mar 2, 2025</span><span>Mercury transfer</span><span class="amt">−$5,000.00</span></li>
+          <li><span class="d">Feb 11, 2025</span><span>Mercury transfer</span><span class="amt in">+$5,000.00</span></li>
+        </ul>
+        <div class="foot"><span class="sp"></span><span class="btn tiny door">Show in ledger</span></div>
+      </div>
+
+      <div class="card">
+        <div class="top"><input class="nick" value="Operating"><span class="btn">Save</span><span class="btn">Clear</span></div>
+        <div class="mline"><span class="k">Mercury calls it</span><b>Ops Checking</b><span class="quiet">Checking · balance $38,402.17</span><span class="btn tiny">Use this name</span></div>
+        <div class="idline"><span class="k" style="color:var(--muted);min-width:7.5rem">Id</span><code>049bd408-77e2-4d1b-a6c5-2f3e4d5c6b7a</code><span class="btn tiny">Copy</span></div>
+        <div class="facts"><span><b>312</b> transactions</span><span>Jan 5, 2026 to Oct 22, 2026</span><span>in <b>$421,900.10</b></span><span>out <b>$398,011.23</b></span><span>often Ridgeway Builders ×41, Gusto ×30, Hollis Supply ×22</span></div>
+        <ul class="recent">
+          <li><span class="d">Oct 22, 2026</span><span>Ridgeway Builders</span><span class="amt in">+$12,400.00</span></li>
+          <li><span class="d">Oct 22, 2026</span><span>Gusto</span><span class="amt">−$9,812.55</span></li>
+          <li><span class="d">Oct 21, 2026</span><span>Hollis Supply</span><span class="amt">−$1,204.30</span></li>
+          <li><span class="d">Oct 20, 2026</span><span>Mercury transfer</span><span class="amt">−$5,000.00</span></li>
+        </ul>
+        <div class="foot"><span class="sp"></span><span class="btn tiny door">Show in ledger</span></div>
+      </div>
+
+      <div class="card">
+        <div class="top"><input class="nick" value="Tax set-aside"><span class="btn">Save</span><span class="btn">Clear</span></div>
+        <div class="mline"><span class="k">Mercury calls it</span><b>Taxes</b><span class="quiet">Savings · balance $21,000.00</span><span class="btn tiny">Use this name</span></div>
+        <div class="idline"><span class="k" style="color:var(--muted);min-width:7.5rem">Id</span><code>a21630f8-4c2d-4a1b-8e9f-6d5c4b3a2f10</code><span class="btn tiny">Copy</span></div>
+        <div class="facts"><span class="empty">No transactions yet in the ledger.</span></div>
+        <div class="foot"><span class="sp"></span><span class="btn tiny dim">Show in ledger</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="verdict"><b>The pick.</b> He reads the name Mercury gave the account, presses Use this name or types his own, and Saves. The ledger's facts are the proof under it, and the only guide for an account Mercury has closed. Nothing new is written anywhere: the nickname write is the same upsert and delete as today, and Mercury's list is the same read the Balance Sheet makes.</p>
+
+  <h2><span class="num">B</span> on a phone</h2>
+  <p class="lede">The card stacks. The nickname row wraps to its own line, the facts wrap, the latest lines keep their three columns.</p>
+  <div class="phone">
+    <div class="bar"><span>9:41</span><span>●●●</span></div>
+    <div class="modal">
+      <div class="head"><h3 style="font-size:16px">Account nicknames</h3><span class="btn close">Close</span></div>
+      <div class="card unnamed">
+        <div class="top"><span class="chip amber">No nickname yet</span></div>
+        <div class="top"><input class="nick" placeholder="Nickname" style="min-width:0"><span class="btn">Save</span><span class="btn dim">Clear</span></div>
+        <div class="mline"><span class="k">Mercury calls it</span><b>Supply Cards</b><span class="quiet">Checking · $2,114.60</span></div>
+        <div class="mline"><span class="btn tiny">Use this name</span></div>
+        <div class="idline"><code>8f49aca0-5c1e-4b2a-9d33-7e8f60a1b2c3</code><span class="btn tiny">Copy</span></div>
+        <div class="facts"><span><b>58</b> transactions</span><span>Jun 2 to Oct 21, 2026</span><span>in <b>$0.00</b></span><span>out <b>$41,280.15</b></span></div>
+        <div class="facts"><span>often Hollis Supply ×22, Ferguson ×14, Shell ×9</span></div>
+        <ul class="recent">
+          <li><span class="d">Oct 21</span><span>Hollis Supply</span><span class="amt">−$612.40</span></li>
+          <li><span class="d">Oct 20</span><span>Shell</span><span class="amt">−$88.12</span></li>
+          <li><span class="d">Oct 17</span><span>Ferguson</span><span class="amt">−$1,940.00</span></li>
+        </ul>
+        <div class="foot"><span class="sp"></span><span class="btn tiny door">Show in ledger</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">?</span> Is this the best we can do, are we being straightforward</h2>
+  <table class="cmp">
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td>Does he still open Mercury?</td><td>Only for an account Mercury no longer lists. For the rest, Mercury's name is on the card. Mercury does not search by account id, so Copy is for the dashboard's address bar and for a note, not a search box.</td></tr>
+    <tr><td>Why not fill every unnamed account with Mercury's name at once?</td><td>Because his nicknames are not Mercury's names. Operating is Ops Checking in Mercury. One press per account keeps the choice his and keeps the write path exactly as it is.</td></tr>
+    <tr><td>Why read Mercury from the modal and not store the names?</td><td>A table of Mercury account names would be one more thing to sync. The Balance Sheet already reads the list live on every open, and ten accounts is one small call.</td></tr>
+    <tr><td>Where do the counts come from?</td><td>From the rows the page already loaded. The Ledger and User Sort load every row, so the counts are the whole ledger. Opened from the Accounting tab, which loads only the unlabeled rows, the card says so and the count is read from the table instead.</td></tr>
+    <tr><td>What about the last four of the account number?</td><td>Mercury's own account names carry it, as <b>Mercury Checking ••8103</b>, so the card shows it with no change to the function.</td></tr>
+  </table>
+</div>
+</body>
+</html>

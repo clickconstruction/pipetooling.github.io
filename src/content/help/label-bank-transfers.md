@@ -62,7 +62,7 @@ User Sort — who spent it · Drag Sort — what kind · Accounting — rules & 
 - **Drag Sort** answers what kind of spend it is. That is the accounting label. **Accounting** is the rules and the approvals queue from the previous section.
 - **Card Review** and **Category Review** are read-only pivots of the same labels. Card Review's **Unassigned** row counts every transaction in the window, transfers and payouts included. That lasts until you set its {{chip:gray|Kind}} filter to **Card charges only**.
 - **Reconciliation** checks the books **against Mercury's bank statements**, one closed month at a time. It writes nothing and saves nothing. It is not the sync that pulls new bank transactions in every half hour. That sync runs by itself.
-- A dev may also see an amber line under the strip saying an account has no nickname. You click {{button:amber|Name accounts…}}. It opens the nickname list. Then the account stops showing as a raw ID in every account filter.
+- A dev may also see an amber line under the strip saying an account has no nickname. You click {{button:amber|Name accounts…}}. It opens one card per account, the unnamed first. Each card shows the name Mercury gives the account and what the ledger holds for it. Press {{button:outline|Use this name}} or type your own, then {{button:outline|Save}}. Then the account stops showing as a raw ID in every account filter.
 
 ## Undoing a label
 

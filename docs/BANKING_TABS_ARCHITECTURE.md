@@ -11,7 +11,7 @@ covers:
   - src/components/banking/BankingMercuryDragSortTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-10-23
 ---
 
 ## What this surface is
@@ -210,7 +210,7 @@ All were props-only (no parent closure), so the moves were verbatim cut/paste (~
 
 | Modal | Lines | Opened from | Key wiring |
 |---|---|---|---|
-| `BankingAccountNicknamesModal` (dev) | 2153–2165 | Nicknames menu (User Sort tools + Ledger toolbar); nudge's **Name accounts…** | `nicknameManageIds`, drafts + `persistNickname` / `clearNicknameRow` |
+| `BankingAccountNicknamesModal` (dev; since v2.5806 one card per account, the unnamed first: *Mercury calls it* name · kind · balance through `loadMercuryCash` (`get-mercury-account-balances`, the Balance Sheet's own read) with **Use this name**, the full id with **Copy**, the ledger's facts and newest lines from the kernel [`banking/accountFacts.ts`](../src/lib/banking/accountFacts.ts) over `rows`, **Show in ledger**) | 2153–2165 | Nicknames menu (User Sort tools + Ledger toolbar); nudge's **Name accounts…** | `nicknameManageIds`, `rows`, `nicknameFactsRowsComplete` (the master list loaded and not capped) + `nicknameExactCounts` (one `head` count per account when it is not), drafts + `persistNickname` / `clearNicknameRow`; the door sets `accountFilter` + `setMercurySubTab('ledger')` |
 | `BankingDebitCardsModal` (v2.2750) | 2167–2191 | Nicknames menu (both); `?cards=` door | `debitCardManageIds`, `nicknameByDebitCard`, `roleByDebitCard`, nickname CRUD, `onDirectoryChanged={loadDebitCardNicknames}`, `usersOptions`, `onLinksChanged` → `loadMercuryAllocations`, `onOpenRecentTransactions`, `highlightCardId`; its `onClose` also clears `recentTxDebitCardId` + `highlightDebitCardId` |
 | `BankingDebitCardRecentTxModal` | 2193–2199 | the Debit cards modal | `recentTxDebitCardId`, `rows`, `DEBIT_CARD_RECENT_TX_CAP = 50`; triggers raw-hydration effect 802–821 |
 | `MercuryBackfillModal` (dev) | 2201–2207 | Ledger Advanced menu | `onSubmit={handleBackfill}` |
@@ -356,7 +356,7 @@ No component in this map has a render test (`*.render.test.tsx`) and no e2e spec
 | Banking router + roles | `bankingAccess.test.ts` | `parseBankingView`, `mercuryTabFromParam` |
 | Banking data engine | `supabasePaging.test.ts` | the four loaders + dispatcher; `fetchMercuryTransactionRaws` has no test |
 | Banking relations | `fetchMercuryRelationsByTxIds.test.ts`, `mercuryRelationMaps.test.ts`, `bankingAttributionOptions.test.ts` | `loadMercuryAllocations`, the 1910–1919 patch closure |
-| Banking nicknames / cards | `banking/debitCards.test.ts`, `bankingAccountNicknameNudge.test.ts` | nickname CRUD |
+| Banking nicknames / cards | `banking/debitCards.test.ts`, `bankingAccountNicknameNudge.test.ts`, `banking/accountFacts.test.ts`, `BankingAccountNicknamesModal.render.test.tsx` | nickname CRUD, the per-account facts and the modal's cards |
 | Banking prefs | `bankingDragSortStorage.test.ts` | `bankingUserPrefs` (no test), dual-write effects |
 | Ledger / User Sort | `bankingMercurySearch.test.ts`, `bankingSortingCounts.test.ts`, `bankingSortingConfig.test.ts` | `sortMercuryRowsStable`; ⚠ `totalAmount` / `sortingTotalAmount` reduces (1123–1127) |
 | Accounting A — Approvals | `accountingApprovalGroups.test.ts`, `accountingLabelAutoApprove*.test.ts` | approve/reject cores, chunk loops; module fetchers 267–307 (called only by `loadPending`) |
