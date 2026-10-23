@@ -7,7 +7,7 @@ order: 13
 ---
 The Needs you card sits near the top of the Dashboard. It collects the things waiting on a decision from you.
 
-Those things are money received but not applied, and purchases with no job. They are approvals that have sat too long, and jobs quiet too long for their stage. They are paperwork gaps, and the Wednesday GC review while it is still owed. GC means the general contractor. The card's header shows a count. Each item carries one button. When nothing needs you, the card disappears entirely. **Quickfill** shows the same card, from the same numbers.
+Those things are money received but not applied, and purchases with no job. They are approvals that have sat too long, and jobs quiet too long for their stage. They are paperwork gaps, and the Wednesday GC review while it is still owed. GC means the general contractor. The card's header shows a count. Each item carries one button. When nothing needs you, the card disappears entirely. **Quickfill** shows the same card, from the same numbers, with the same buttons. On Quickfill the clock sessions line opens the People Hours station on that page.
 
 The list is ordered **worst first**. Red alerts sit on top. Money waiting to be applied comes next, then the weekly GC deadline. The work queues follow, with the biggest pile first. Hygiene items come last. Walk the list follows the same order. So walking from the top always tackles the worst thing next.
 

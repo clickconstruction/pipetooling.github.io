@@ -2,7 +2,7 @@
 name: "Needs you in Quickfill — the office-set lines the Dashboard has and Quickfill does not, and a fill-in deck for the ones an assistant clears with a few fields"
 number: 145
 group: gated
-status: findings 2026-10-23, nothing built; the owner reacts first
+status: the owner's yes 2026-10-23, all three calls as recommended; PR 1 (v2.5771, the shared gates, hook and door table) built the same day; PRs 2 to 5 next
 summary: >
   The Dashboard's Needs you card listed 30 lines today. Quickfill has carried the same card as its last
   station since v2.2350, drawn by the same builder, but the two hosts hand the builder different inputs:
@@ -16,9 +16,9 @@ summary: >
   is two moves. One, both hosts read their inputs from one hook, so the drift cannot recur. Two, the
   Quickfill station gains a fill-in deck: one row at a time, the fields for its kind, Save and next,
   Skip, a saved trail with Undo, a done count.
-next: The owner's three calls below; then PR 1 (the shared inputs hook) is an afternoon and needs no mock-up.
+next: PR 2, the deck shell with lost bids.
 size: M as a train of five (S the hook, S the deck shell with lost bids, S vehicles, S job accounts, S contracts); no migration, no edge function
-blocker: the owner's reaction; nothing technical
+blocker: none
 ver: proposed
 opinion: build PR 1 whatever else is decided — nine office lines are missing from the page the office works from, and the fix is a hook both hosts call; the deck is worth it for lost bids alone (60 rows, $5.9M unexplained) and the other three kinds ride the same shell
 mockup: to-dos/needs-you-in-quickfill/mockup.html
@@ -214,4 +214,8 @@ reason shows on the Why we lost lens and in the bid's contact log, Undo removes 
 
 ## Where it stands
 
-Findings only, 2026-10-23. Nothing built, no version claimed. The owner's three calls are above.
+2026-10-23: the owner said *I like it. Please build it.* The three calls are taken as recommended: the
+clock-sessions line expands the People Hours station, the deck is a third view on the station, lost
+bids first. PR 1 is v2.5771: `needsYouSources.ts` (the gates and the parity test), `useNeedsYouInputs`
+(one hook, both hosts), `needsYouDoors.ts` (one door table, exhaustive) and `useNeedsYouPress` (one press,
+the five windows). The Dashboard host lost ~500 lines and reads the same. PRs 2 to 5 follow.
