@@ -92,12 +92,12 @@ describe('contacted marks (v2.2813)', () => {
 
 describe('heldRoundHeadline (B6 / J20-F7)', () => {
   it('counts GCs, not rounds, and the verb agrees with the count', () => {
-    expect(heldRoundHeadline(1, '$12,700')).toBe('1 GC statement waits on sign-off — $12,700')
-    expect(heldRoundHeadline(5, '$154,166')).toBe('5 GC statements wait on sign-off — $154,166')
+    expect(heldRoundHeadline(1)).toBe('1 GC statement waits on sign-off')
+    expect(heldRoundHeadline(5)).toBe('5 GC statements wait on sign-off')
   })
   it('zero and fractional counts stay grammatical', () => {
-    expect(heldRoundHeadline(0, '$0')).toBe('0 GC statements wait on sign-off — $0')
-    expect(heldRoundHeadline(2.7, '$9')).toBe('2 GC statements wait on sign-off — $9')
+    expect(heldRoundHeadline(0)).toBe('0 GC statements wait on sign-off')
+    expect(heldRoundHeadline(2.7)).toBe('2 GC statements wait on sign-off')
   })
 })
 
