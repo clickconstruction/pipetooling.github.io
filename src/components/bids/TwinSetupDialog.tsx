@@ -255,7 +255,9 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
                   <span style={MUTED}>
                     {isPricer
                       ? 'The robot reads its brief, then prices every queued request, oldest first, and asks you where the plans decide.'
-                      : 'The robot reads its brief and works the shadow queue one bid at a time, pulling each plan set itself.'}
+                      : rounds
+                        ? 'If Claude says Auto mode refused the routine, switch the mode at the bottom left of its message box to the one that asks, then press Retry.'
+                        : 'The robot reads its brief and works the shadow queue one bid at a time, pulling each plan set itself.'}
                   </span>
                 </span>
               </div>

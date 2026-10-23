@@ -107,3 +107,53 @@ describe('helpGuideMarkdownToSafeHtml with illustrations', () => {
     expect(html).toContain('&lt;script&gt;')
   })
 })
+
+describe('guide blocks (v2.5747): cards, Try it, folds, steps and the ring', () => {
+  it('encodes each fence with its kind, and a close with the kind it closes, innermost first', () => {
+    const out = encodeHelpIllustrations(':::cards\n:::card The ring\nwords\n:::tryit\nHover.\n:::\n:::fold More\ndeeper\n:::\n:::\n:::')
+    expect(out).toContain('[[[help-block-open|cards,]]]')
+    expect(out).toContain('[[[help-block-open|card,The%20ring]]]')
+    expect(out).toContain('[[[help-block-open|tryit,]]]')
+    expect(out).toContain('[[[help-block-open|fold,More]]]')
+    const closes = [...out.matchAll(/\[\[\[help-block-close\|([a-z]+)\]\]\]/g)].map((m) => m[1])
+    expect(closes).toEqual(['tryit', 'fold', 'card', 'cards'])
+  })
+
+  it('leaves an unknown fence as text, and still closes an example panel the old way', () => {
+    const out = encodeHelpIllustrations(':::warning\nx\n:::\n:::example A\ny\n:::')
+    expect(out).toContain(':::warning')
+    expect(out).toContain('[[[help-panel-open|A]]]')
+    expect(out).toContain('[[[help-panel-close]]]')
+  })
+
+  it('renders the blocks as the app’s cards, a Try it eyebrow, a closed fold, numbered steps', () => {
+    const html = helpGuideMarkdownToSafeHtml(
+      ':::cards\n\n:::card The ring\n\nIt fills.\n\n:::tryit\n\nHover for the step.\n\n:::\n\n:::fold If you want the details\n\nDeeper <b>words</b>.\n\n:::\n\n:::\n\n:::\n\n:::steps\n\n1. Morning.\n2. Lunch.\n\n:::',
+    )
+    expect(html).toContain('<div class="help-cards">')
+    expect(html).toContain('<div class="help-card"><div class="help-card-title">The ring</div>')
+    expect(html).toContain('<div class="help-tryit"><span class="help-eyebrow">Try it</span>')
+    expect(html).toContain('<details class="help-fold"><summary>If you want the details</summary><div class="help-fold-body">')
+    expect(html).toContain('</div></details>')
+    // The list itself is the sanitizer's, which needs a DOM: helpGuideRing.test.ts proves the whole pipeline under jsdom.
+    expect(html).toContain('<div class="help-steps">')
+    expect(html).not.toContain('[[[help-')
+    expect(html).not.toContain('<p>[[[')
+  })
+
+  it('a fold with no words on the fence reads More', () => {
+    expect(helpGuideMarkdownToSafeHtml(':::fold\nx\n:::')).toContain('<summary>More</summary>')
+  })
+
+  it('draws the robot’s ring with seven segments, the step chips and the two presses', () => {
+    const html = helpGuideMarkdownToSafeHtml(':::ring\n:::')
+    expect(html).toContain('<div class="help-ring" data-at="0">')
+    expect((html.match(/class="help-ring-seg"/g) ?? []).length).toBe(7)
+    expect(html).toContain('<li data-step="0">Picked it up</li>')
+    expect(html).toContain('<li data-step="6">Questions for you</li>')
+    expect(html).toContain('<button type="button" data-help-ring="next">Next step</button>')
+    expect(html).toContain('<button type="button" data-help-ring="reset">Start over</button>')
+    expect(html).toContain('</ul></div></div>')
+  })
+})
+
