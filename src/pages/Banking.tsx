@@ -211,6 +211,8 @@ export default function Banking() {
   const [nicknameDrafts, setNicknameDrafts] = useState<Record<string, string>>({})
   const [savingNicknameId, setSavingNicknameId] = useState<string | null>(null)
   const [nicknamesModalOpen, setNicknamesModalOpen] = useState(false)
+  /** Exact per-account counts for the Account nicknames modal when the loaded rows are not the whole ledger (v2.5806). */
+  const [nicknameExactCounts, setNicknameExactCounts] = useState<Record<string, number> | null>(null)
   const [nicknameByDebitCard, setNicknameByDebitCard] = useState<Record<string, string>>({})
   const [savingDebitCardNicknameId, setSavingDebitCardNicknameId] = useState<string | null>(null)
   const [debitCardNicknamesModalOpen, setDebitCardNicknamesModalOpen] = useState(false)
@@ -1039,6 +1041,39 @@ export default function Banking() {
     const ids = new Set<string>([...accountOptions, ...Object.keys(nicknameByAccount)])
     return Array.from(ids).sort()
   }, [accountOptions, nicknameByAccount])
+
+  // The Account nicknames modal's facts come from `rows` (v2.5806, punch list #155). They are the
+  // whole ledger when the master list is loaded and not capped; the Accounting tab loads only the
+  // unlabeled rows (or a keyset page) and Card Review / Visuals load none, so there the modal says
+  // so and each account's exact count is read with one head count per account, no row fetch.
+  const nicknameFactsRowsComplete =
+    !rowsTruncated &&
+    bankingView.product === 'mercury' &&
+    bankingView.mercuryTab !== 'accounting' &&
+    bankingView.mercuryTab !== 'card_review' &&
+    bankingView.mercuryTab !== 'visuals'
+  useEffect(() => {
+    if (!nicknamesModalOpen || nicknameFactsRowsComplete || !isDevBanking) {
+      setNicknameExactCounts(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const next: Record<string, number> = {}
+      for (const id of nicknameManageIds) {
+        const { count, error } = await supabase
+          .from('mercury_transactions')
+          .select('id', { count: 'exact', head: true })
+          .eq('mercury_account_id', id)
+        if (cancelled) return
+        if (!error && typeof count === 'number') next[id] = count
+      }
+      if (!cancelled) setNicknameExactCounts(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [nicknamesModalOpen, nicknameFactsRowsComplete, isDevBanking, nicknameManageIds])
 
   const debitCardIdsFromRows = useMemo(() => {
     const set = new Set<string>()
@@ -2161,6 +2196,14 @@ export default function Banking() {
           savingNicknameId={savingNicknameId}
           onSave={(id) => void persistNickname(id)}
           onClear={(id) => void clearNicknameRow(id)}
+          rows={rows}
+          rowsComplete={nicknameFactsRowsComplete}
+          exactCountByAccount={nicknameExactCounts}
+          onShowInLedger={(id) => {
+            setNicknamesModalOpen(false)
+            setAccountFilter(id)
+            setMercurySubTab('ledger')
+          }}
         />
       ) : null}
 
