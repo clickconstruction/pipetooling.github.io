@@ -209,7 +209,7 @@ export function newLaneCount(rows: readonly NewLaneRow[]): number {
 export type GuessKind = 'customer' | 'lead' | 'trade' | 'supply_house' | 'candidate' | 'team' | 'someone_else'
 
 /** A record a guess points at. */
-export type GuessRecord = { table: 'customers'; id: string } | { table: 'gc_companies'; id: string } | { table: 'people'; id: string }
+export type GuessRecord = { table: 'customers'; id: string } | { table: 'customer_contact_persons'; id: string } | { table: 'gc_companies'; id: string } | { table: 'people'; id: string }
 
 /** One guess on the *Who is this?* card. */
 export interface WhoGuess {
@@ -364,8 +364,6 @@ export function nameInText(text: string): string | null {
   if (!m?.[1] || NOT_NAMES.has(m[1])) return null
   return m[2] && !NOT_NAMES.has(m[2]) ? `${m[1]} ${m[2]}` : m[1]
 }
-
-const nameWords = (s: string) => s.toLowerCase().split(/[^a-z']+/).filter(Boolean)
 
 const CANDIDATE: Omit<WhoGuess, 'name'> = {
   kind: 'candidate',
