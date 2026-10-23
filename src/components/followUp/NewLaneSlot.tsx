@@ -110,6 +110,7 @@ export function NewLaneSlot({
     <NewLaneCard
       key={`${row.messageId}:${jobs.map((j) => j.id).join(',')}`}
       row={row}
+      channels={channels}
       guesses={row.sort === 'who' ? (known ? whoGuesses({ ...row, channels }, row.mailbox, known) : null) : undefined}
       roster={rosterChoices(known?.roster ?? [])}
       jobs={jobs}

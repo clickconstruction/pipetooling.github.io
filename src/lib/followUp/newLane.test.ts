@@ -8,9 +8,11 @@ import {
   NEW_LANE_EMPTY,
   newLane,
   newLaneCount,
+  numberWords,
   SORT_HEADS,
   viaWords,
   whoGuesses,
+  whoHead,
   type HasPerson,
   type LaneJob,
   type NewLaneContact,
@@ -261,6 +263,54 @@ describe('whoGuesses', () => {
   })
 })
 
+describe('whoHead: who the card asks about (the owner\u2019s pattern, 2026-10-23)', () => {
+  const DALE = { who: 'Dale Ferris', body: 'Please see the attached Invitation to Bid for the Lakeline shell.', channel: 'email' as const, channels: [{ kind: 'email' as const, value: 'dale@ridgeway.example' }] }
+
+  it('an email: the From line\u2019s name, then the address', () => {
+    expect(whoHead(DALE)).toEqual({ name: 'Dale Ferris', reach: 'dale@ridgeway.example', words: 'Who is Dale Ferris, dale@ridgeway.example?' })
+  })
+
+  it('a number with no name: the number alone, with dashes', () => {
+    expect(whoHead({ who: '(512) 555-0142', body: 'Can you quote the concrete?', channel: 'text', channels: [{ kind: 'phone', value: '(512) 555-0142' }] })).toEqual({ name: '', reach: '512-555-0142', words: 'Who is 512-555-0142?' })
+  })
+
+  it('a number whose line gives a name: the name, then the number', () => {
+    expect(whoHead(row('kevin')).words).toBe('Who is Kevin Alvarez, 210-555-0188?')
+  })
+
+  it('the name the line gives wins over the From line\u2019s, as the guesses read it; the From line\u2019s stands when the line gives none', () => {
+    expect(whoHead({ ...DALE, body: 'Hi, this is Marta Ruiz with Ridgeway Builders. Can you bid the shell?' }).words).toBe('Who is Marta Ruiz, dale@ridgeway.example?')
+    expect(whoHead(row('bexar')).words).toBe('Who is estimating@bexarsteel.example?')
+    expect(whoHead({ who: 'Pat Former', body: '' }).words).toBe('Who is Pat Former?')
+  })
+
+  it('the channel the line came on goes first when the contact has both', () => {
+    const both = [
+      { kind: 'phone' as const, value: '(210) 555-0188' },
+      { kind: 'email' as const, value: 'kevin@example.com' },
+    ]
+    expect(whoHead({ who: 'Kevin Alvarez', body: '', channel: 'text', channels: both }).reach).toBe('210-555-0188')
+    expect(whoHead({ who: 'Kevin Alvarez', body: '', channel: 'email', channels: both }).reach).toBe('kevin@example.com')
+    expect(whoHead({ who: 'Kevin Alvarez', body: '', channels: both }).reach).toBe('kevin@example.com')
+  })
+
+  it('a long address stays one piece, and the question passes plain words; the card wraps it', () => {
+    const long = whoHead({ ...DALE, channels: [{ kind: 'email', value: 'estimating.department@bexar-steel-erectors-of-texas.example' }] })
+    expect(long.words).toBe('Who is Dale Ferris, estimating.department@bexar-steel-erectors-of-texas.example?')
+    expect(plainWordsFailures(long.words)).toEqual([])
+  })
+
+  it('nothing known reads the sort\u2019s own head', () => {
+    expect(whoHead({ who: '', body: '' }).words).toBe(SORT_HEADS.who)
+  })
+
+  it('numberWords: ten digits with dashes, anything else as it came', () => {
+    expect(numberWords('+1 (210) 555-0188')).toBe('210-555-0188')
+    expect(numberWords(' 555-0188 ')).toBe('555-0188')
+    expect(numberWords('')).toBe('')
+  })
+})
+
 describe('nameInText and companyDomain', () => {
   it('reads the name a line gives', () => {
     expect(nameInText('Hi this is Kevin Alvarez, can someone come look')).toBe('Kevin Alvarez')
@@ -309,6 +359,9 @@ describe('plain words', () => {
     const r = lane()
     const texts = [
       ...Object.values(SORT_HEADS),
+      ...r.filter((x) => x.sort === 'who').map((x) => whoHead(x).words),
+      whoHead({ who: 'Dale Ferris', body: '', channel: 'email', channels: [{ kind: 'email', value: 'dale@ridgeway.example' }] }).words,
+      whoHead({ who: '(512) 555-0142', body: '', channel: 'text', channels: [{ kind: 'phone', value: '(512) 555-0142' }] }).words,
       NEW_LANE_EMPTY,
       ...r.flatMap((x) => [x.why, x.via, x.when]),
       ...(['team', 'bids', null] as const).flatMap((box) =>
