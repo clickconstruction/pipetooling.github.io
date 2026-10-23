@@ -51,13 +51,14 @@ export function QuickfillNeedsYouSection({
   // The rows the Fill them in deck can clear (v2.5774): read under the lines' own gates.
   const fillIn = useFillInRows(role, Boolean(authUser?.id))
   // A save or an Undo on the deck re-reads the line the row sits behind, so the count follows.
-  const { reloadLostBids, reloadVehicleRecords } = needsYou.handles
+  const { reloadLostBids, reloadVehicleRecords, reloadJobAccountGaps } = needsYou.handles
   const reloadLine = useCallback(
     (row: FillInRow) => {
       if (row.kind === 'lost-bid') reloadLostBids()
       else if (row.kind === 'vehicle') reloadVehicleRecords()
+      else if (row.kind === 'job-account') reloadJobAccountGaps()
     },
-    [reloadLostBids, reloadVehicleRecords],
+    [reloadLostBids, reloadVehicleRecords, reloadJobAccountGaps],
   )
   const onRowSaved = useCallback(
     (row: FillInRow) => {
