@@ -110,7 +110,7 @@ describe('TwinSetupDialog', () => {
 })
 
 describe('the rounds tick (v2.5735, punch list #142)', () => {
-  it('the estimator target offers This Mac makes the rounds; ticked, the command carries ROUNDS="1" and the words say what the paste does', async () => {
+  it('the estimator target offers This Mac makes the rounds; ticked, the command carries ROUNDS="1" and the words say what the paste does (v2.5752: the agent, no routine)', async () => {
     state.bodies = []
     state.reply = { data: { ...(state.reply.data as Record<string, unknown>), twin_email: 'twin-estimator-1@twins.pipetooling.local', twin_kind: 'estimator' }, error: null }
     renderWithProviders(<TwinSetupDialog open onClose={() => {}} target={{ kind: 'estimator' }} />)
@@ -122,7 +122,9 @@ describe('the rounds tick (v2.5735, punch list #142)', () => {
     fireEvent.click(screen.getByText('Make my setup command'))
     await waitFor(() => expect(screen.getByText('Copy the command')).toBeTruthy())
     // The sentence is in the bold line and inside the command itself.
-    expect(screen.getAllByText(/It makes the Robot rounds routine and runs the first round\./).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/The Rounds card shows this Mac Alive within a minute\./).length).toBeGreaterThanOrEqual(1)
+    expect(document.body.textContent).toContain('Claude Code signs in if it has to, in a browser window that opens once. The command then installs the rounds and runs the first one.')
+    expect(document.body.textContent).not.toContain('Robot rounds routine')
     const pre = document.querySelector('pre')?.textContent ?? ''
     expect(pre).toContain('ROUNDS="1"')
     expect(pre).toContain('CONNECTOR_NAME="twin-mcp"')

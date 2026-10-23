@@ -27,7 +27,7 @@ function whenTitle(iso: string | null): string | undefined {
   return iso ? toDatetimeLocal(iso).replace('T', ' ') : undefined
 }
 
-export function TwinRoundsCard({ canStop = true, onCopyRoundsKickoff }: { canStop?: boolean; /** v2.5735: the empty state's door — copies the rounds kickoff. */ onCopyRoundsKickoff?: () => void }) {
+export function TwinRoundsCard({ canStop = true, onCopyRoundsKickoff }: { canStop?: boolean; /** v2.5735: the empty state's second door — copies one round for a Code session by hand (v2.5752: the rounds themselves come from Set up on this Mac). */ onCopyRoundsKickoff?: () => void }) {
   const { showToast } = useToastContext()
   const { agents, stopRounds } = useRobotAgents({ enabled: true, canStop })
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -53,8 +53,8 @@ export function TwinRoundsCard({ canStop = true, onCopyRoundsKickoff }: { canSto
       </p>
       {agents.length === 0 ? (
         <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-subtle)', fontSize: '0.84rem', display: 'flex', gap: '0.7rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="twin-rounds-empty">
-          <span style={{ flex: '1 1 18rem' }}>No robot has checked in yet. Copy the rounds kickoff and paste it into Claude Code on the Mac that will. Set up on this Mac first if that Mac has no key.</span>
-          {onCopyRoundsKickoff ? <button type="button" style={{ ...BTN, background: '#3b82f6', color: '#fff', border: 'none' }} onClick={onCopyRoundsKickoff}>Copy rounds kickoff</button> : null}
+          <span style={{ flex: '1 1 18rem' }}>No robot has checked in yet. On the Run the robots card below, press Set up on this Mac with This Mac makes the rounds ticked, and paste the command into Terminal on the Mac that stays on. Copy the round makes one round by hand in a Code session.</span>
+          {onCopyRoundsKickoff ? <button type="button" style={{ ...BTN, background: '#3b82f6', color: '#fff', border: 'none' }} onClick={onCopyRoundsKickoff}>Copy the round</button> : null}
         </div>
       ) : (
         agents.map((a, i) => {

@@ -69,13 +69,16 @@ The connector holds one key, and a key is one robot's seat. A second robot — t
 
 ## Rounds from a Mac that stays on
 
-A round is one pass over the robots' work from one Mac, every five minutes, all day. The robots check in, take one bid if one waits, do one submittal task, and leave. You start the rounds once, on the Mac that stays on. After that they run on their own while Claude is open.
+A round is one pass over the robots' work from one Mac, every five minutes, all day. The robots check in, take one bid if one waits, do one submittal task, and leave. You set the rounds up once, on the Mac that stays on. After that they run on their own. No Claude window has to be open, and nothing asks you a question.
 
-1. On that Mac, open System Settings. Set Energy so the Mac never sleeps. Add Claude to the login items. Sign in to Claude.
+1. On that Mac, open System Settings. Set Energy so the Mac never sleeps. Sign in to Claude.
 2. Open **Bids → 🤖 Robots → Console** and press {{button:purple|Set up on this Mac}}. Type whose Mac it is. Tick **This Mac makes the rounds**. Press {{button:purple|Make my setup command}}, then {{button:purple|Copy the command}}. Paste it into Terminal and press Return.
-3. Claude reopens with the rounds kickoff on your clipboard. Open the **Code** tab and start a new session. Before you paste, set the mode at the bottom left of the message box to the one that asks. Then paste. The session reads the three settings back and asks once to make the routine named Robot rounds. Allow it. It runs the first round. If Claude says the routine could not be made, look at the bottom left of the message box. Switch the mode from Auto to the one that asks before each action. Then press Retry creating it and allow it.
+3. The command gets Claude Code ready on that Mac. If it is not signed in yet, a browser window opens once. Sign in with the same Claude account. The command then installs the rounds and runs the first one.
+4. Open the Console again. The Rounds card above shows the Mac as Alive within a minute.
 
-A Mac that already has the key skips step 2. You press {{button:blue|Copy rounds kickoff}} on the *Run the robots* card and paste it into Claude Code there. The Rounds card above shows the Mac as Alive within a minute.
+The rounds run from a small file in your Library folder, whether Claude is open or not. The log is at Library → Logs → ClickTooling → rounds.log. A Mac set up before this change still has a routine named Robot rounds in Claude Code. Delete that routine there, or two rounds run at once.
+
+{{button:blue|Copy the round}} on the *Run the robots* card copies one round. You paste it into a new Code session to make one round by hand. To stop the rounds for a while, press {{button:gray|Stop the rounds}} on the Rounds card. To take the rounds off a Mac for good, paste this into Terminal on it: `launchctl bootout gui/$UID/com.clicktooling.robot-rounds`
 
 The round takes one bid at a time. A round that finds another round on a bid leaves after one call, so nothing runs twice. The pricing robot joins the rounds only when that Mac holds its own key too. You set that up with the pricer's {{button:purple|Set up on this Mac}} on the same card.
 
@@ -97,7 +100,7 @@ You press {{button:gray|Stop the rounds}} to make that Mac finish the bid in han
 
 You do not have to check the Console to know. Bids may want a shadow, or price matrices may be queued. A price matrix is a request for the robot to compare the supply houses' quotes on a bid. Then your Dashboard's **Needs you** card carries one line: {{chip:blue|Robots}} *Robots have work waiting · 4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours)*. The line names the first of each. It turns {{chip:yellow|amber}} only when something is stuck. That is a matrix the robot went quiet on for over an hour. Or it is a bid request older than a week. {{button:blue|Open the Console}} lands here. You snooze it for a day or dismiss it until the count rises. It disappears on its own when the robots are caught up.
 
-Two more lines come from the rounds. **The robots have not made a round since 2:05 PM** goes to the owner and devs. The Mac is asleep, or Claude is closed on it. You wake it and open Claude. The rounds start again on their own. You can snooze it for a day, or dismiss it until the next round. **The robot is blocked on b507** goes to whoever can fix the plans. You press {{button:blue|Open the needs sheet}}. You share the folder or attach the PDF. The robot reruns on the next round.
+Two more lines come from the rounds. **The robots have not made a round since 2:05 PM** goes to the owner and devs. The Mac is asleep, or its rounds were never set up. You wake it. The rounds start again on their own. If they stay quiet, press {{button:purple|Set up on this Mac}} with the rounds ticked. You can snooze it for a day, or dismiss it until the next round. **The robot is blocked on b507** goes to whoever can fix the plans. You press {{button:blue|Open the needs sheet}}. You share the folder or attach the PDF. The robot reruns on the next round.
 
 ## What it will not do
 
