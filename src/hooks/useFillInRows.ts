@@ -6,20 +6,23 @@ import { compareLostBidRows, lostBidFillInRows, type LostBidFillInRow } from '..
 import { lostBidFillInIo, type LostBidFillInIo } from '../lib/needsYou/fillInLostBidsIo'
 import { compareVehicleRows, vehicleFillInRows, type VehicleFillInRow } from '../lib/needsYou/fillInVehicles'
 import { vehicleFillInIo, type VehicleFillInIo } from '../lib/needsYou/fillInVehiclesIo'
+import { compareJobAccountRows, jobAccountFillInRows, type JobAccountFillInRow } from '../lib/needsYou/fillInJobAccounts'
+import { jobAccountFillInIo, type JobAccountFillInIo } from '../lib/needsYou/fillInJobAccountsIo'
 
 /** The rows the deck can fill, every kind built so far. */
-export type FillInRow = LostBidFillInRow | VehicleFillInRow
+export type FillInRow = LostBidFillInRow | VehicleFillInRow | JobAccountFillInRow
 
-export type FillInIo = { lostBids: LostBidFillInIo; vehicles: VehicleFillInIo }
+export type FillInIo = { lostBids: LostBidFillInIo; vehicles: VehicleFillInIo; jobAccounts: JobAccountFillInIo }
 
 /** One object for the default io, so the read effect does not re-run on every render. */
-const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo }
+const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo }
 
 /** Each kind's rows back in their own order after a restore. */
 function ordered(rows: readonly FillInRow[]): FillInRow[] {
   const lost = rows.filter((r): r is LostBidFillInRow => r.kind === 'lost-bid').sort(compareLostBidRows)
   const vehicles = rows.filter((r): r is VehicleFillInRow => r.kind === 'vehicle').sort(compareVehicleRows)
-  return fillInRowsOrdered<FillInRow>({ 'lost-bid': lost, vehicle: vehicles })
+  const jobAccounts = rows.filter((r): r is JobAccountFillInRow => r.kind === 'job-account').sort(compareJobAccountRows)
+  return fillInRowsOrdered<FillInRow>({ 'lost-bid': lost, vehicle: vehicles, 'job-account': jobAccounts })
 }
 
 /**
@@ -35,18 +38,20 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
   drop: (key: string) => void
   restore: (row: FillInRow) => void
 } {
-  const kindsOn: Record<Extract<FillInKind, 'lost-bid' | 'vehicle'>, boolean> = {
+  const kindsOn: Record<Extract<FillInKind, 'lost-bid' | 'vehicle' | 'job-account'>, boolean> = {
     'lost-bid': enabled && needsYouSourceEnabled('lostBids', role, 'quickfill'),
     vehicle: enabled && needsYouSourceEnabled('vehicleRecordGaps', role, 'quickfill'),
+    'job-account': enabled && needsYouSourceEnabled('jobAccountGaps', role, 'quickfill'),
   }
   const lostBidsOn = kindsOn['lost-bid']
   const vehiclesOn = kindsOn.vehicle
+  const jobAccountsOn = kindsOn['job-account']
   const [rows, setRows] = useState<FillInRow[]>([])
   const [loading, setLoading] = useState(false)
   const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
-    if (!lostBidsOn && !vehiclesOn) {
+    if (!lostBidsOn && !vehiclesOn && !jobAccountsOn) {
       setRows([])
       setLoading(false)
       return
@@ -55,18 +60,24 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
     setLoading(true)
     void (async () => {
       // Each kind fails soft on its own: a refused read leaves that kind empty and the others whole.
-      const [lostBids, vehicles] = await Promise.all([
+      const [lostBids, vehicles, jobAccounts] = await Promise.all([
         lostBidsOn ? io.lostBids.fetchSources().then(lostBidFillInRows).catch(() => [] as LostBidFillInRow[]) : Promise.resolve([] as LostBidFillInRow[]),
         vehiclesOn ? Promise.all([io.vehicles.fetchGaps(), io.vehicles.fetchPlans()]).then(([gaps, plans]) => vehicleFillInRows(gaps, plans)).catch(() => [] as VehicleFillInRow[]) : Promise.resolve([] as VehicleFillInRow[]),
+        jobAccountsOn
+          ? io.jobAccounts
+              .fetchGaps()
+              .then(async (gaps) => jobAccountFillInRows(gaps, await io.jobAccounts.fetchJobs([...new Set(gaps.map((g) => g.job_id))])))
+              .catch(() => [] as JobAccountFillInRow[])
+          : Promise.resolve([] as JobAccountFillInRow[]),
       ])
       if (cancelled) return
-      setRows(fillInRowsOrdered<FillInRow>({ 'lost-bid': lostBids, vehicle: vehicles }))
+      setRows(fillInRowsOrdered<FillInRow>({ 'lost-bid': lostBids, vehicle: vehicles, 'job-account': jobAccounts }))
       setLoading(false)
     })()
     return () => {
       cancelled = true
     }
-  }, [lostBidsOn, vehiclesOn, nonce, io])
+  }, [lostBidsOn, vehiclesOn, jobAccountsOn, nonce, io])
 
   const reload = useCallback(() => setNonce((n) => n + 1), [])
   const drop = useCallback((key: string) => setRows((prev) => prev.filter((r) => r.key !== key)), [])
