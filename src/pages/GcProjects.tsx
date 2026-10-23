@@ -12,7 +12,7 @@ import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContrac
 import { pageGate } from '../lib/roleGate'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
-import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
+import { GC_GAPS_GUIDE_SLUG, GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../components/SpotlightTour'
 import { useToastContext } from '../contexts/ToastContext'
@@ -2339,7 +2339,11 @@ export default function GcProjects() {
             })()}
             {gaps.length > 0 && (
               <div data-tour={tour('gc-gaps')} style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
-                {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}: {gaps.map((g) => `${g.trade} leaves out ${g.label} for ${g.by}`).join('. ')}.
+                {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}: {gaps.map((g) => `${g.trade} leaves out ${g.label} for ${g.by}`).join('. ')}.{' '}
+                {/* The line's one door (v2.5783): a project already made changes its scope only with a new set, and the guide says so. */}
+                <Link to={`/help?g=${GC_GAPS_GUIDE_SLUG}`} style={{ color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
+                  How to fill a gap →
+                </Link>
               </div>
             )}
             {/* The plans (to-do #108, shape D, PR 4): the newest set with its link and who can open it, and the job's Drive folder,
