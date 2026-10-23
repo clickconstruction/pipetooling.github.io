@@ -22,6 +22,8 @@ The sheet shows the job and the visit at the top. Under **What goes**, the text 
 1. Read the text in the orange box. The app fills it from the block: the day, the window and the tech.
 2. Change any word you want. A blank in braces holds the send until you fill it.
 3. Read **What happens**. It says the text goes from the company number and the answer comes to the office.
+
+Press **Preview** beside the text to see it as it lands on their phone. The sheet stays open under it.
 4. Press {{button:green|Send text to Dana}}.
 
 :::example The text as it goes

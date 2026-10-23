@@ -27,6 +27,8 @@ The **numbered guide** beside the document lists what the customer's copy needs.
 2. Read the text in the orange box. Change any word. Keep the word link in braces where you want the estimate's link.
 3. Press {{button:green|Send both to Dana}}. The email goes first. Then the text goes with the same link.
 
+Press **Preview** beside the email or the text to see it as Dana will. The sheet stays open under it. The link in the text preview is a sample. The real one fills in when the email goes.
+
 Press **Email only** to skip the text this time. Press **Skip** to send nothing.
 
 :::example The text as it goes
