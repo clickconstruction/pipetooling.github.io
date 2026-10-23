@@ -133,11 +133,16 @@ export function shadowHoldWords(reason: ShadowHoldReason, days: { lookbackDays?:
 }
 
 /**
- * The reasons a person expects to see on the Queue: a live bid with plans that the rounds still
- * pass over. A sent, decided or archived bid is not live; a robot copy is not ours; a bid with no
- * plans has its own door on the board; a bid with a robot on it is covered, not held.
+ * The reasons a person expects to see on the Queue: a live plumbing bid with plans that the rounds
+ * still pass over. A sent, decided or archived bid is not live; a robot copy is not ours; a bid
+ * with no plans or no service type has its own door on the board; another trade's bid is not the
+ * robots' work at all (v2.5755: the first live check-in on 2026-10-23 listed 20 old electrical
+ * bids while the Queue read Held · 0); a bid with a robot on it is covered, not held.
  */
-export const HELD_REASONS: ReadonlySet<ShadowHoldReason> = new Set<ShadowHoldReason>(['opted_out', 'no_service_type', 'not_plumbing', 'plans_unreadable', 'stale_due', 'too_old'])
+export const HELD_REASONS: ReadonlySet<ShadowHoldReason> = new Set<ShadowHoldReason>(['opted_out', 'plans_unreadable', 'stale_due', 'too_old'])
+
+/** How many held bids a round's check-in carries; the Queue page lists them all. */
+export const HELD_ON_CHECK_IN = 12
 
 export type ShadowHeld<B extends ShadowCandidateBid> = { bid: B; reason: ShadowHoldReason; words: string }
 

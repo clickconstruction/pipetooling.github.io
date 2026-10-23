@@ -11,7 +11,7 @@ import { backtestRunLabelOwner, isBacktestLockNote } from '../_shared/twinBackte
 import { referenceWhole, referenceWholeLabel } from '../_shared/referenceWhole.ts'
 import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices, questionTouchesSealedShadow, scrubMoney, type SealedShadow } from '../_shared/twinQuestionShape.ts'
 import { HEARTBEAT_STATES, HEARTBEAT_STEPS, normalizeHeartbeatProgress, type HeartbeatHeld, type HeartbeatProgress } from '../_shared/twinHeartbeat.ts'
-import { bidRef, buildShadowQueue, isShadowShellName, shadowHold, shellHold, shellHoldWords, type ShadowCandidateBid, type ShadowHoldReason, type ShadowQueue, type ShadowRunStatus } from '../_shared/shadowEligibility.ts'
+import { bidRef, buildShadowQueue, HELD_ON_CHECK_IN, isShadowShellName, shadowHold, shellHold, shellHoldWords, type ShadowCandidateBid, type ShadowHoldReason, type ShadowQueue, type ShadowRunStatus } from '../_shared/shadowEligibility.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
@@ -1018,7 +1018,8 @@ type ShadowBoardNow = {
 
 async function shadowBoardNow(admin: SupabaseClient, opts: { plumbingId: string; lookbackDays?: number }): Promise<ShadowBoardNow> {
   const empty: ShadowBoardNow = { queue: { requested: [], ready: [], held: [] }, holds: [] }
-  const { data: rows, error } = await admin.from('bids').select(SHADOW_RULE_COLS).is('bid_date_sent', null).not('project_name', 'ilike', 'ZZ %').limit(1000)
+  // v2.5755: a bid adopted into another bid's package leaves every list (v2.2133), the dispatcher's too.
+  const { data: rows, error } = await admin.from('bids').select(SHADOW_RULE_COLS).is('bid_date_sent', null).is('adopted_into_bid_id', null).not('project_name', 'ilike', 'ZZ %').limit(1000)
   if (error) return { ...empty, error: error.message }
   const { data: runs, error: runErr } = await admin.from('twin_shadow_runs').select('reference_bid_id, status')
   if (runErr) return { ...empty, error: runErr.message }
@@ -2042,7 +2043,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
             const board = await shadowBoardNow(admin, { plumbingId })
             if (!board.error) {
               const ready = board.queue.requested.length + board.queue.ready.length
-              const held = heldEntries(board.queue)
+              const held = heldEntries(board.queue).slice(0, HELD_ON_CHECK_IN)
               progress = { ...(progress ?? {}), ready, ...(held.length ? { held } : {}) }
               sawNothing = ready === 0
             }
@@ -3717,7 +3718,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.8.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.8.1' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

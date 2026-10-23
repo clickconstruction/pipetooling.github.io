@@ -42,7 +42,7 @@ describe('buildRobotQueue (one rule with the dispatcher, v2.5753)', () => {
       base({ id: 'f' }), // a paired shell with no run row reads as open
       base({ id: 'g', bid_date_sent: '2026-08-01' }), // sent
       base({ id: 'h', outcome: 'lost' }), // decided
-      base({ id: 'i', service_type_id: 'st-electrical' }), // held: not plumbing
+      base({ id: 'i', service_type_id: 'st-electrical' }), // another trade: neither ready nor held
       base({ id: 'j', created_at: '2026-09-01T00:00:00Z' }), // held: too old, nobody asked
       base({ id: 'k', robot_opt_out: true }), // held: left to a person
     ]
@@ -52,7 +52,6 @@ describe('buildRobotQueue (one rule with the dispatcher, v2.5753)', () => {
     // Held sorts like Ready: due date, then the oldest made first.
     expect(q.held.map((h) => [h.bid.id, h.reason])).toEqual([
       ['j', 'too_old'],
-      ['i', 'not_plumbing'],
       ['k', 'opted_out'],
     ])
   })
@@ -86,11 +85,9 @@ describe('buildRobotQueue (one rule with the dispatcher, v2.5753)', () => {
     expect(q.held.map((h) => [h.bid.id, h.reason])).toEqual([['old', 'stale_due']])
   })
 
-  it('a requested bid that lost its service type is held, not queued', () => {
+  it('a requested bid that lost its service type is not queued; the board’s own door says what is missing', () => {
     const q = buildRobotQueue([base({ id: 'z', robot_requested_at: '2026-08-31T00:00:00Z', service_type_id: null })], input())
-    expect(q.requested).toEqual([])
-    expect(q.ready).toEqual([])
-    expect(q.held.map((h) => h.reason)).toEqual(['no_service_type'])
+    expect(q).toEqual({ requested: [], ready: [], held: [] })
   })
 
   it('with the service types not loaded yet, the division is not checked', () => {

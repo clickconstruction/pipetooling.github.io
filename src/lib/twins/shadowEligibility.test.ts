@@ -106,8 +106,8 @@ describe('shadowHoldWords', () => {
     expect(shadowHoldWords('too_old')).toBe(`Made over ${SHADOW_LOOKBACK_DAYS} days ago and nobody asked.`)
     expect(shadowHoldWords('stale_due', { staleDueDays: 45 })).toBe('Its due date passed over 45 days ago.')
   })
-  it('the Held list carries what a person can act on, not sent or covered bids', () => {
-    expect([...HELD_REASONS].sort()).toEqual(['no_service_type', 'not_plumbing', 'opted_out', 'plans_unreadable', 'stale_due', 'too_old'])
+  it('the Held list carries live plumbing bids a person expects a robot on, not other trades, sent or covered bids (v2.5755)', () => {
+    expect([...HELD_REASONS].sort()).toEqual(['opted_out', 'plans_unreadable', 'stale_due', 'too_old'])
   })
 })
 
@@ -131,10 +131,8 @@ describe('buildShadowQueue', () => {
     )
     expect(q.requested.map((b) => b.id)).toEqual(['asked-early', 'asked-late'])
     expect(q.ready.map((b) => b.id)).toEqual(['sooner-due', 'later-due', 'no-due-older', 'no-due'])
-    expect(q.held.map((h) => [h.bid.id, h.reason])).toEqual([
-      ['old', 'too_old'],
-      ['elec', 'not_plumbing'],
-    ])
+    // Another trade's bid is not the robots' work: neither ready nor held.
+    expect(q.held.map((h) => [h.bid.id, h.reason])).toEqual([['old', 'too_old']])
     expect(q.held[0]!.words).toBe('Made over 30 days ago and nobody asked.')
   })
 
