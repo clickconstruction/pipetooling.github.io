@@ -73,7 +73,7 @@ A round is one pass over the robots' work from one Mac, every five minutes, all 
 
 1. On that Mac, open System Settings. Set Energy so the Mac never sleeps. Add Claude to the login items. Sign in to Claude.
 2. Open **Bids → 🤖 Robots → Console** and press {{button:purple|Set up on this Mac}}. Type whose Mac it is. Tick **This Mac makes the rounds**. Press {{button:purple|Make my setup command}}, then {{button:purple|Copy the command}}. Paste it into Terminal and press Return.
-3. Claude reopens with the rounds kickoff on your clipboard. Open the **Code** tab, start a new session and paste. The session reads the three settings back, makes the routine named Robot rounds, and runs the first round. If Claude says the routine could not be made, look at the bottom left of the message box. Switch the mode from Auto to the one that asks before each action. Then press Retry creating it and allow it.
+3. Claude reopens with the rounds kickoff on your clipboard. Open the **Code** tab and start a new session. Before you paste, set the mode at the bottom left of the message box to the one that asks. Then paste. The session reads the three settings back and asks once to make the routine named Robot rounds. Allow it. It runs the first round. If Claude says the routine could not be made, look at the bottom left of the message box. Switch the mode from Auto to the one that asks before each action. Then press Retry creating it and allow it.
 
 A Mac that already has the key skips step 2. You press {{button:blue|Copy rounds kickoff}} on the *Run the robots* card and paste it into Claude Code there. The Rounds card above shows the Mac as Alive within a minute.
 
