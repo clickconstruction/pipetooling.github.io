@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ownerShareApplies, ownerShareChipWords, ownerSharePropertyState, ownerShareScope, ownerShareState, ownerShareWrites, type OwnerShareInvoice, type OwnerShareJob } from './ownerBillShare'
+import { ownerShareApplies, ownerSharePropertyState, ownerShareScope, ownerShareState, ownerShareWrites, type OwnerShareInvoice, type OwnerShareJob } from './ownerBillShare'
 
 // 9703 Lenox Hl on 2026-09-25: Umar Khan is the customer, RMC- Dudley Mason the GC and the payer.
 const LENOX = 'addr-lenox'
@@ -21,7 +21,6 @@ describe('ownerShareState', () => {
   const j = job('j273')
   it('off today: no memory, no stamp — their portal reads $0', () => {
     expect(ownerShareState(j, [bill('i1', 'j273'), bill('i2', 'j273')])).toBe('off')
-    expect(ownerShareChipWords('off')).toBe('owner sees $0')
   })
   it('on: the memory and every open GC bill stamped for them', () => {
     expect(ownerShareState({ ...j, show_bills_to_other_party: true }, [bill('i1', 'j273', { shown_to_party: 'customer' })])).toBe('on')
