@@ -127,4 +127,7 @@ to color, a held county asks before it moves, Save counties / Undo changes), the
 **PR 1b shipped as v2.5758**: the settled mock-up's four additions, zoom and pan (`legal/countyMapView.ts`),
 today's cases as faint dots placed by `legal/firmMap.ts` (built once for PR 3's lens: stands, the county
 card, `legendCounts`, `uncoveredWords`) with `legal/countyAt.ts` for point-in-county, and the contents
-card under the firm cards. PR 2 is next.
+card under the firm cards. **The desk's header, 2026-10-23**: the owner asked for the full screen button the other
+modals have, and for the header to expose the map and the way to add firms; v2.5780 shipped the full screen toggle
+(with a retry for a failed read of the legal tables and the border longhands), and a mock-up of the firms flow
+(`header-mockup.html` beside this file) goes to the owner before PR 2 is built. PR 2 is next.

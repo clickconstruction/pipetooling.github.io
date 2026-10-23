@@ -2,7 +2,7 @@
 name: "Uncollectible stamp in dark mode — the word reads at 1.09:1 on its own panel; recolor the stamp for dark and leave light alone"
 number: 145
 group: close
-status: building claude/wonderful-colden-c4bc11 2026-10-23
+status: shipped v2.5769 (#6034) 2026-10-23; delete the folder once the owner has seen the stamp live in dark
 summary: >
   A Collections row the office gave up on wears a tilted red stamp: UNCOLLECTIBLE, the reason the
   office typed, the day and the dollars (punch list #94, v2.4792). The stamp was drawn for light —
@@ -12,7 +12,7 @@ summary: >
 next: ship A — one PR, the stamp's styles move from inline to four classes with a dark override; before/after screenshots to the owner
 size: S (one component, one stylesheet block, no kernel)
 blocker: none
-ver: proposed
+ver: v2.5769
 opinion: build A — the mark the office already knows, every line of it 4.5:1 or better in dark, light pixel-identical.
 ---
 

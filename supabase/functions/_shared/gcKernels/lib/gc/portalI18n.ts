@@ -110,6 +110,7 @@ const S = {
   leftOut: { en: 'It is left out', es: 'No está incluido' },
   alsoChangedIn: { en: 'Also changed in {sets}', es: 'También cambió en {sets}' },
   yourNumber: { en: 'Your quote', es: 'Su cotización' },
+  yourBidLeavesOut: { en: 'Your quote leaves out {list}.', es: 'Su cotización no incluye {list}.' },
   anythingKnow: { en: 'Anything we should know', es: 'Algo que debamos saber' },
   sendNew: { en: 'Send my new quote', es: 'Enviar mi nueva cotización' },
   sendBid: { en: 'Send my quote', es: 'Enviar mi cotización' },

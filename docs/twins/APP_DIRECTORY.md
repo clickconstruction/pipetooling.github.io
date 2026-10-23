@@ -54,7 +54,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - A course open to everyone on how a house's electrical system works, what is live and where plumbing work touches it, understanding and not doing → `/training/intro-electrical` (the **Available** row of the same Training card; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Owners, developers and architects with a job we could build as the GC → `/prospects?kind=gc-leads` (guide `find-jobs-to-build-as-the-gc`)
-- Trade companies to call for the bench, by what the bench needs → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
+- Trade companies to call for the bench, by what GC mode needs right now (every trade short of quotes, the bench, the scope book's trades) → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
 
@@ -103,6 +103,7 @@ number nobody named; the reply box under the lines sends a **Text**, an **Email*
 made, copied, remade or turned off, and whether they opened it (a dev's only, until the trade wave). Each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, saves the asks and, for a dev, emails each company its invitation.
 Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number.
+A **gap**, work no trade on the job covers, shows in red on the card (a known exclusion the trade it points to does not list) and as *+ ?* on every number (a quote's exclusion with no cost yet); the card's **How to fill a gap →** and the walk's Gaps stop open the guide (guide `fill-the-gaps-between-trades-on-a-gc-project`).
 **Our number** on a project's card (guide `set-our-number-and-send-our-bid`) adds our costs and fee to the trades for the money team; **We sent our bid**, **We won this** and **We lost this** sit on the project's head.
 **Papers** on a project's card (`?papers=<project>`, guide `see-every-paper-on-a-job-and-what-is-missing`) opens Papers on this job: a row per company on the job and a column per paper of its flow, a dot per paper, the counts as pills that filter, **Before bid day** on a job we are bidding, and **List** behind a tab.
 **Bid tabs** on a project's card (guide `share-a-bid-tab-with-the-trades`) share each trade's quotes, low to high, with the companies that quoted once our bid is in.
@@ -283,11 +284,11 @@ Roster with Contact / Account / Pay lenses (`?tab=users&lens=`), + Hire, the Per
 Roles: dev, master, assistant (no wages), controller (wages too), estimator (limited).
 
 ### /customers — Customers · /customers/:id — Customer Hub
-All customers/builders; the Hub is one customer's money strip, jobs, bids, contacts.
+All customers/builders, each row's second line where the money stands and how fast they pay (*pays in ~30d*, office roles, v2.5767); the Hub is one customer's money strip, jobs, bids, contacts.
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
 
 ### /prospects — Prospects
-The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what the bench needs, Add to the bench ✓ → Trade partners); plus the Hiring tab, per-user gated.
+The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what GC mode needs right now with a door from each need to the bench, the subs here or Add a sub, Add to the bench ✓ → Trade partners); plus the Hiring tab, per-user gated.
 Roles: staff; estimator only with `estimator_prospects_access`.
 
 ### /estimates — Estimates
@@ -317,7 +318,7 @@ Contract library (Documents/Packets), quick-send. Roles: staff + estimator, prim
 Project containers linking jobs/bids; workflow boards. Roles: staff; super assigned-only.
 
 ### /quickfill · /moneyfill — Data-repair queues
-Quickfill: guided fix-missing-data recipes (staff); its Percent complete station (`/quickfill#percent-complete`, help `/help?g=fix-a-jobs-percent-done-in-quickfill`) lists the open jobs whose ticked stages or paid money disagree with the % done, to fix in place or dismiss for a week (v2.5764; restored in v2.5789 after v2.5774's squash dropped its page lines on 2026-10-23). Moneyfill: dev + controller only.
+Quickfill: guided fix-missing-data recipes (staff); its Percent complete station (`/quickfill#percent-complete`, help `/help?g=fix-a-jobs-percent-done-in-quickfill`) lists the open jobs whose ticked stages or paid money disagree with the % done, to fix in place or dismiss for a week (v2.5764; restored in v2.5789 after v2.5774's squash dropped its page lines on 2026-10-23); its Needs you station carries every office line the Dashboard's card shows with the same buttons (v2.5771) and a **Fill them in** deck that clears lost bids with no reason one at a time (v2.5774). Moneyfill: dev + controller only.
 
 ### /bridge — The Bridge
 The owner's one page for where the company stands: contribution per week, the five stages with the weakest link lit, the week's call, the cash forecast from the bank, the people tables; `?view=monday` is the Monday sheet. Roles: dev only (every other role is redirected to `/dashboard`).
@@ -332,7 +333,7 @@ fold brings it back with **Restore**, v2.5741; guide `run-the-robots-from-claude
 sits under the Sample accounts card (v2.5738).
 
 ### Header (any page)
-Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count for the office team (`/messages`), Task dispatch/add,
+Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
