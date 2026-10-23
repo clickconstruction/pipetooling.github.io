@@ -284,8 +284,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                         box={boxForReply(lastWroteTo(allLines), contact)}
                         glyph="☎"
                         words={() => null}
-                        ariaLabel={(plain) => `${plain} ${phones[0].value}`}
-                        title={(plain) => `${plain} ${phones[0].value}, their first number.`}
+                        ariaLabel={(plain) => `${plain} ${phones[0]?.value ?? ''}`}
+                        title={(plain) => `${plain} ${phones[0]?.value ?? ''}, their first number.`}
                         className="thread-head-control"
                       />
                     ) : (
