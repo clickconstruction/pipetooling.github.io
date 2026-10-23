@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronRight, Link2, Mail, Scale, X } from 'lucide-react'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
@@ -125,9 +126,20 @@ const TH: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacin
 const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.84rem' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
-/** The firm's name in the header, as the door to its window (v2.4711); amber while no firm is set. */
-const FIRM_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, maxWidth: '100%', padding: '0 8px', border: '1px solid var(--border-blue)', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', font: 'inherit', fontSize: '0.76rem', fontWeight: 600, lineHeight: 1.6, cursor: 'pointer', textAlign: 'left', verticalAlign: 'baseline' }
-const FIRM_CHIP_NONE: CSSProperties = { ...FIRM_CHIP, border: '1px solid var(--border-amber-soft)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+/**
+ * The header's firm group (v2.5750, the owner's call; the firm's name was a blue chip inside the subtitle since v2.4711):
+ * one bordered row whose first segment is the firm's name, the door to its window, followed by its emails and its portal
+ * link — so the two doors read as the firm's without repeating the word. `SEG` is one segment; the first is amber while no
+ * firm is set. Hover and focus live in `index.css` (`.legalDeskSeg`, `.legalDeskClose`).
+ */
+const FIRM_GROUP: CSSProperties = { display: 'inline-flex', alignItems: 'stretch', height: 30, maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', overflow: 'hidden' }
+const SEG: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', border: 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '0.76rem', fontWeight: 500, lineHeight: 1, whiteSpace: 'nowrap', cursor: 'pointer' }
+const FIRM_SEG: CSSProperties = { ...SEG, borderLeft: 'none', fontWeight: 600, maxWidth: 220, minWidth: 0 }
+const FIRM_SEG_NONE: CSSProperties = { ...FIRM_SEG, maxWidth: 'none', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+const SEG_RED: CSSProperties = { color: '#b42318' }
+const SEG_AMBER: CSSProperties = { color: '#9a6700' }
+/** The quiet ✕ the Lien desk's title bar wears: no box, so the firm group is the row's one box. */
+const CLOSE_X: CSSProperties = { width: 30, height: 30, padding: 0, border: 'none', background: 'none', borderRadius: 6, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }
 const sheetInput: CSSProperties = { width: '100%', font: 'inherit', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', margin: '4px 0 8px' }
 
 type Tone = 'stop' | 'warn' | 'ok' | 'neutral' | 'legal' | 'blue'
@@ -563,24 +575,52 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
   return (
     <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
-      <div role="dialog" aria-modal="true" aria-label="Legal desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()}
         style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, width: '100%', maxWidth: 1160, height: 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-          <span aria-hidden style={{ fontSize: '1.1rem' }}>⚖</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>Legal · Collections accounts</div>
-            <div style={{ ...MUTED, fontSize: '0.78rem' }}>
-              Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down.{' '}
-              {stored ? (
-                <button type="button" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_CHIP : FIRM_CHIP_NONE}>
-                  {firm ? <>⚖ {firm.name} <span aria-hidden>✎</span>{legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#b0662f', display: 'inline-block' }} /> : null}</> : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
-                </button>
-              ) : null}
+        {/* The header (v2.5750, the owner's call): the scales and "Legal Desk"; the firm's three doors — the firm itself, its
+            emails, its portal link — as one group whose first segment is the firm's name (until then a blue chip inside the
+            sentence, beside two emoji boxes); the ✕ borderless, as the Lien desk's. Emails is one quiet word until emails to
+            the firm are paused or an address bounces, when the segment says so in red or amber. The group and the ✕ wrap
+            together under the title when the row is tight. */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 14px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: '1 1 260px', minWidth: 0 }}>
+            <Scale size={20} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', marginTop: 3, color: 'var(--text-700)' }} />
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.3 }}>Legal Desk</h2>
+              <div style={{ ...MUTED, fontSize: '0.78rem', lineHeight: 1.45 }}>Collections accounts, the way the firm would receive them. Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down.</div>
             </div>
           </div>
-          {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}{notReaching ? ` · ${notReaching} not reaching` : ''}</button> : null}
-          {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
-          <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, height: 30, width: 30, justifyContent: 'center', padding: 0 }}>✕</button>
+          <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0 }}>
+            {stored ? (
+              <div data-legal-firm-group style={FIRM_GROUP}>
+                <button type="button" className="legalDeskSeg" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_SEG : FIRM_SEG_NONE}>
+                  {firm ? (
+                    <>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{firm.name}</span>
+                      {legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#b0662f', display: 'inline-block', flex: 'none' }} /> : null}
+                      <ChevronRight size={13} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }} />
+                    </>
+                  ) : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
+                </button>
+                {firm && canEditReview ? (
+                  <button type="button" className="legalDeskSeg" onClick={() => setEmailsOpen(true)} data-legal-firm-emails={firmPaused ? 'paused' : notReaching ? 'not-reaching' : 'ok'} aria-label={`Firm’s emails${firmPaused ? ', paused' : ''}${notReaching ? `, ${notReaching} not reaching` : ''}`} title="Who at the firm hears from us, by their own rules" style={{ ...SEG, ...(firmPaused ? SEG_RED : notReaching ? SEG_AMBER : {}) }}>
+                    <Mail size={15} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: firmPaused || notReaching ? 'inherit' : 'var(--text-muted)' }} />
+                    Emails{firmPaused ? ' · paused' : ''}{notReaching ? ` · ${notReaching} not reaching` : ''}
+                  </button>
+                ) : null}
+                {firm && canEditReview ? (
+                  <LegalPortalLinkButton
+                    firmId={firm.id}
+                    firmName={firm.name}
+                    triggerClassName="legalDeskSeg"
+                    triggerStyle={SEG}
+                    triggerLabel={<><Link2 size={15} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }} />Portal link</>}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 300px) 1fr', minHeight: 0 }}>
@@ -825,7 +865,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>✉ Who at {firm.name} hears from us</h3>
             <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 10px' }}>Managed by the firm on their portal’s Notifications page. The office keeps two overrides: pause everything, and remove a person. A new address is inert until they click their confirmation; every email carries a one-click stop.</p>
-            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them their link from 🌐 Firm’s link: its email asks them to add their people.</p> : (
+            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet — nothing is emailed until the firm adds its people on the portal’s Notifications page. Send them their link from Portal link, beside the firm’s name in the header: its email asks them to add their people.</p> : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead><tr><th style={TH}>Person</th><th style={TH}>Hears</th><th style={TH}>Scope</th><th style={TH}>Status</th><th style={TH}></th></tr></thead>
                 <tbody>

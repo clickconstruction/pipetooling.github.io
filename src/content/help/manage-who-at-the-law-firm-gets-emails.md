@@ -32,7 +32,7 @@ People on **Each event** get one email per event within five minutes. When an em
 
 ## What the office sees and controls
 
-You press {{button:outline|✉ Firm's emails}} on the Legal desk header. It lists every person with their rule and status. The status is {{chip:green|confirmed}}, {{chip:yellow|not confirmed}}, {{chip:yellow|not reaching}} or {{chip:gray|stopped}}. *Not reaching* means our emails to that person stopped going through. A red line under the name says since when and what the mail service said. The line clears once an email gets through. The header button counts these people. The firm sees the same line on its portal. The office has two overrides:
+You press {{button:outline|Emails}} beside the firm's name on the Legal desk header. It lists every person with their rule and status. The status is {{chip:green|confirmed}}, {{chip:yellow|not confirmed}}, {{chip:yellow|not reaching}} or {{chip:gray|stopped}}. *Not reaching* means our emails to that person stopped going through. A red line under the name says since when and what the mail service said. The line clears once an email gets through. The header button counts these people. The firm sees the same line on its portal. The office has two overrides:
 
 - {{button:outline|Remove}} takes a person off the list.
 - {{button:outline|Pause all emails to the firm}} holds every email. Events queue and send when you resume. The portal keeps working meanwhile.
@@ -45,4 +45,4 @@ Until the firm adds its people on the portal, nobody is emailed — the matter s
 
 ## Wording
 
-There are four emails: the firm's link, account referred, the weekly digest, and the confirmation. The office sends the firm's link from {{button:outline|🌐 Firm's link}}. The account-referred email has a variant for each event above. All four are listed in the Outbound email catalog on Settings → Email templates. Their wording is fixed.
+There are four emails: the firm's link, account referred, the weekly digest, and the confirmation. The office sends the firm's link from {{button:outline|Portal link}} on the Legal desk header. The account-referred email has a variant for each event above. All four are listed in the Outbound email catalog on Settings → Email templates. Their wording is fixed.

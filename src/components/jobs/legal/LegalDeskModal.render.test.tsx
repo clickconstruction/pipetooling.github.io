@@ -130,7 +130,7 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     await settle()
     return onClose
   }
-  const desk = () => screen.queryByRole('dialog', { name: /^Legal desk/ })
+  const desk = () => screen.queryByRole('dialog', { name: /^Legal Desk/ })
 
   it('a click outside Ask a dev to review closes the sheet only', async () => {
     const onClose = await renderDesk({ canEditReview: true })
@@ -178,6 +178,26 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} onClose={vi.fn()} legal={{ ...legal, firm: read, firms: [read] }} canMarkReady canEditReview />)
     await settle()
     expect(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }).querySelector('[data-legal-firm-intake-new]')).toBeNull()
+  })
+
+  it('the header (v2.5750): the scales and “Legal Desk”; the firm’s doors in one group — its name, Emails, Portal link — then a quiet Close', async () => {
+    await renderDesk({ canMarkReady: true, canEditReview: true })
+    expect(screen.getByRole('heading', { name: 'Legal Desk' })).toBeTruthy()
+    const group = document.querySelector('[data-legal-firm-group]')!
+    expect([...group.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Barnes & Holt', 'Emails', 'Portal link'])
+    expect(group.firstElementChild).toBe(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
+    expect(screen.getByRole('button', { name: 'Firm’s emails' }).dataset.legalFirmEmails).toBe('ok')
+    const close = screen.getByRole('button', { name: 'Close' })
+    expect(close.previousElementSibling).toBe(group)
+    expect(close.textContent).toBe('')
+    cleanup()
+    // Emails says so, in words, when emails to the firm are paused or an address bounces.
+    const bounced = { id: 'r1', firm_id: 'firm-1', name: 'Dana Holt', email: 'dana@barnes.test', role: 'attorney', mode: 'now', scope: 'all', digest_weekday: 1, digest_time: '08:00', confirmed_at: '2026-09-01T00:00:00Z', paused_at: null, send_failed_since: '2026-10-01T00:00:00Z', send_error: '550' }
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firmPaused: true, recipients: [bounced] }} canMarkReady canEditReview />)
+    await settle()
+    const emails = screen.getByRole('button', { name: 'Firm’s emails, paused, 1 not reaching' })
+    expect(emails.textContent).toBe('Emails · paused · 1 not reaching')
+    expect(emails.dataset.legalFirmEmails).toBe('paused')
   })
 
   it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4711)', async () => {

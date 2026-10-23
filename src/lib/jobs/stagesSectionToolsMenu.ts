@@ -21,6 +21,10 @@
  *   foot of the menu the owner looked and did not find it; the desk reads the
  *   whole board (every billed job with money open), as the ⋯ Pipeline tools
  *   menu already lists it first.
+ * - Legal desk (v2.5750): the same office set, in a Collections group between
+ *   Billed and Paid in Full — the Collections header's ⚖ Legal button as a row,
+ *   disabled while that header reads 0, with the firm's acts awaiting the
+ *   office as its badge. Hidden, not disabled, for everyone else.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
 
@@ -39,9 +43,10 @@ export type StagesSectionToolKey =
   | 'paid-profit-chart'
   | 'paid-in-full-notifications'
   | 'lien-desk'
+  | 'legal-desk'
 
-/** The menu's icons by name. The three notification rows share the bell; the two charts share the bars. */
-export type StagesToolGlyph = 'gavel' | 'history' | 'route' | 'cash' | 'file-dollar' | 'bell' | 'building' | 'bank' | 'share' | 'chart-bar' | 'calendar-bars'
+/** The menu's icons by name. The three notification rows share the bell; the two charts share the bars; the Legal desk wears the scales (v2.5750). */
+export type StagesToolGlyph = 'gavel' | 'history' | 'route' | 'cash' | 'file-dollar' | 'bell' | 'building' | 'bank' | 'share' | 'chart-bar' | 'calendar-bars' | 'scales'
 
 export type StagesSectionToolItem = {
   key: StagesSectionToolKey
@@ -53,7 +58,7 @@ export type StagesSectionToolItem = {
    * that). A name, not a character: `StagesToolsMenuGlyph` draws it.
    */
   icon: StagesToolGlyph
-  /** Amber count bubble (Accounts Receivable unallocated bank transactions). */
+  /** Amber count bubble: Accounts Receivable's unallocated bank transactions, the Lien desk's notices to work, the Legal desk's acts from the firm awaiting the office. */
   badgeCount?: number
 }
 
@@ -77,6 +82,14 @@ export type StagesSectionToolsMenuInput = {
   recentViewOpen: boolean
   /** Lien desk (v2.3405): notices to draft + approve; null while loading. Office roles only. */
   lienDeskCount?: number | null
+  /**
+   * The Collections header's resolved count ("…" while its stats load, the same value the
+   * header shows): the Legal desk row's gate (v2.5750). The header's ⚖ Legal button disables
+   * on '0' and never on the rows, which Collections loads lazily on expand.
+   */
+  collectionsHeaderCount: string
+  /** Legal desk (v2.5750): the firm's acts awaiting the office; null while loading or before the migration. Office roles only. */
+  legalDeskCount?: number | null
 }
 
 export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput): StagesSectionToolsGroup[] {
@@ -232,6 +245,25 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
     })
   }
   groups.push({ section: 'Billed Awaiting Payment', items: billedItems })
+
+  // The Legal desk (v2.5750): the Collections header's ⚖ Legal button as a row, for the
+  // header's own set (`canManageCollections`, the office). Hidden for everyone else — the
+  // header draws them no button either.
+  if (canOpenAccountsReceivable) {
+    groups.push({
+      section: 'Collections',
+      items: [
+        {
+          key: 'legal-desk',
+          label: 'Legal desk',
+          title: 'Review every Collections account the way an attorney would receive it — before anything is released',
+          disabled: input.collectionsHeaderCount === '0',
+          icon: 'scales',
+          ...(typeof input.legalDeskCount === 'number' && input.legalDeskCount > 0 ? { badgeCount: input.legalDeskCount } : {}),
+        },
+      ],
+    })
+  }
 
   const paidItems: StagesSectionToolItem[] = []
   // Profit chart is wage-derived (dev/controller, like the billed aging chart).

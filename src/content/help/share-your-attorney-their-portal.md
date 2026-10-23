@@ -10,7 +10,7 @@ Each account opens as the same five-section packet the Legal desk shows. The por
 
 ## Create and send the links
 
-1. On **Jobs → Pipeline → Collections**, open {{button:outline|⚖ Legal}}. The header shows {{button:outline|🌐 Firm's link}} once a firm is set up. To set one up, press **Set up the firm…** in that header. Settings → Jobs & billing → Collections law firm holds the same details.
+1. On **Jobs → Pipeline → Collections**, open {{button:outline|⚖ Legal}}. The header shows {{button:outline|Portal link}} beside the firm's name once a firm is set up. To set one up, press **Set up the firm…** in that header. Settings → Jobs & billing → Collections law firm holds the same details.
 2. Pick the firm's address, then press {{button:blue|Create the firm's link}}. The address is a name part you type and three characters you roll with the dice, such as `my.clickplumbing.com/snell-law-f6a`. The whole address is the key, so keep it private. The address shows on the list any time. {{button:blue|Copy}} puts it on your clipboard. {{button:outline|Preview ↗}} opens what the firm sees, without counting as their visit.
 3. Under **One person's link**, type who the link is for, pick the address and press {{button:outline|Add a link}}. That person gets their own address. Turning it off leaves the firm's other links working. The firm's own link is the one in every email the firm gets.
 4. Press {{button:outline|Send…}} on a link to email it. Tick the firm's address on file or type one. You can add a line of your own. Press {{button:blue|Send the link}}. The email comes from the company and is signed by you. A reply comes back to you. Its first step asks the firm to add the people who should get our emails. The list then shows who it went to and when.

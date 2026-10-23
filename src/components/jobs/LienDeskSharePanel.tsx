@@ -177,7 +177,7 @@ export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
                   Copy the firm’s link ›
                 </button>
               ) : (
-                <span data-lien-share-firm-desk>To send the firm its link, use Send the link on the Legal desk’s Firm’s link card.</span>
+                <span data-lien-share-firm-desk>To send the firm its link, use Send the link on the Legal desk’s Portal link window.</span>
               )}
             </div>
           ) : null}

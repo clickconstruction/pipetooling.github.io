@@ -9,7 +9,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 
-const KEYS: StagesSectionToolKey[] = ['recently-added', 'weekly-movement', 'weekly-money', 'capable-to-bill', 'ready-to-bill-notifications', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-aging-chart', 'billed-payment-forecast', 'paid-notifications', 'paid-profit-chart', 'paid-in-full-notifications', 'lien-desk']
+const KEYS: StagesSectionToolKey[] = ['recently-added', 'weekly-movement', 'weekly-money', 'capable-to-bill', 'ready-to-bill-notifications', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-aging-chart', 'billed-payment-forecast', 'paid-notifications', 'paid-profit-chart', 'paid-in-full-notifications', 'lien-desk', 'legal-desk']
 
 function doors() {
   return Object.fromEntries(KEYS.map((k) => [k, vi.fn()])) as unknown as Record<StagesSectionToolKey, () => void>
@@ -23,6 +23,8 @@ const inputs = {
   capableToBillTotalFormatted: '12.3k',
   recentViewOpen: false,
   lienDeskCount: 2,
+  collectionsHeaderCount: '3',
+  legalDeskCount: null,
 }
 
 describe('JobsStagesSectionToolsMenu', () => {
@@ -39,6 +41,10 @@ describe('JobsStagesSectionToolsMenu', () => {
     expect(glyphOf(/^GC Review/).dataset.toolsGlyph).toBe('building')
     expect(glyphOf(/^Capable of Being Billed/).dataset.toolsGlyph).toBe('file-dollar')
     expect(glyphOf(/^Paid in Full notifications/).dataset.toolsGlyph).toBe('bell')
+    // The Legal desk's row (v2.5750): the scales, in the quiet color, under a Collections heading.
+    expect(glyphOf(/^Legal desk/).dataset.toolsGlyph).toBe('scales')
+    expect(glyphOf(/^Legal desk/).style.color).toBe('var(--text-muted)')
+    expect(screen.getByText('Collections')).toBeTruthy()
   })
 
   it('is closed until the trigger is pressed, then lists the kernel items for a dev', () => {
