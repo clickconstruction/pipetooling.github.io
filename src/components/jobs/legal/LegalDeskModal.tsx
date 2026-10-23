@@ -48,6 +48,8 @@ import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
+import LegalTimelinePanel, { type TimelinePlanActs } from './LegalTimelinePanel'
+import { buildLegalTimeline, planHoldKey, timelineDocumentsFromRows, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
 import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
@@ -87,9 +89,9 @@ import { useLegalPacketData } from './useLegalPacketData'
  * Opens from the ⚖ Legal button in the Collections header tier (mirrors the
  * Accounts Receivable button: modal in place, `?legal=<payer key>` deep link).
  */
-const TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
+const TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps', 'timeline'] as const
 type Tab = (typeof TABS)[number]
-const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps' }
+const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps', timeline: 'Timeline' }
 
 export type LegalDeskModalProps = {
   open: boolean
@@ -105,8 +107,8 @@ export type LegalDeskModalProps = {
   companyName: string
   /** `?legal=<payer key>` — which account to open on. */
   initialPayerKey?: LegalPayerKey | null
-  /** `&legalTab=fees` — which tab to open on (the office's Needs You card lands on the firm's acts). */
-  initialTab?: 'account' | 'paper' | 'their_word' | 'evidence' | 'fees_steps' | null
+  /** `&legalTab=fees` / `&legalTab=timeline` — which tab to open on (the office's Needs You card lands on the firm's acts). */
+  initialTab?: 'account' | 'paper' | 'their_word' | 'evidence' | 'fees_steps' | 'timeline' | null
   /** The stored side (PR 2): matters, the firm, entries. Absent in tests / before the migration. */
   legal?: LegalMattersData | null
   /** Only a dev marks attorney-ready and pulls back. */
@@ -520,6 +522,36 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (ok) showToast('Undone — it stays on the record, struck through, out of every total.', 'info')
     return Boolean(ok)
   }
+  /** The matter row an act hangs on (v2.5800): made first through the review save when the account has none yet. */
+  const ensureMatterId = async (): Promise<{ id: string | null; error: string | null }> => {
+    if (matter?.id) return { id: matter.id, error: null }
+    const made = await legalRpcData('legal_matter_save_review', { p_payer_key: selected?.key, p_customer_id: selected?.customerId, p_payer_name: selected?.name, p_job_ids: jobIds, p_held_overrides: null, p_request_review: null, p_review_note: null })
+    if (made.error) return { id: null, error: made.error }
+    const id = typeof made.data?.matter_id === 'string' ? made.data.matter_id : null
+    return id ? { id, error: null } : { id: null, error: 'The matter could not be made' }
+  }
+  /** The Timeline tab's planned steps (v2.5800): plan one, change one, say one happened. */
+  const planAdd = async (draft: LegalPlanDraft): Promise<boolean> => {
+    const ok = await run('Plan a step', async () => {
+      const m = await ensureMatterId()
+      if (m.error || !m.id) return m.error ?? 'The matter could not be made'
+      return legalRpc('legal_plan_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes })
+    })
+    if (ok) showToast('Planned — it is on the timeline.', 'success')
+    return Boolean(ok)
+  }
+  const planUpdate = async (entryId: string, draft: LegalPlanDraft): Promise<boolean> =>
+    Boolean(await run('Change the step', () => legalRpc('legal_plan_update', { p_entry_id: entryId, p_on: draft.on, p_body: draft.body, p_notes: draft.notes })))
+  const planMarkDone = async (entryId: string, doneOn: string, note: string): Promise<boolean> => {
+    const ok = await run('Mark done', () => legalRpc('legal_plan_mark_done', { p_entry_id: entryId, p_done_on: doneOn, p_note: note }))
+    if (ok) showToast('Marked done — it stays on the line, on the day it was done.', 'success')
+    return Boolean(ok)
+  }
+  const planActs: PlanActs = {
+    holds: holdOverrides,
+    holdReasons: heldReasonsOf(matter),
+    acts: stored && canEditReview ? { busy, add: planAdd, update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => i.kind === 'plan' && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined } : null,
+  }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {
     if (!matter) return
@@ -842,7 +874,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
-                    narrative={narrativeDesk} busy={busy} />
+                    narrative={narrativeDesk} busy={busy} planActs={planActs} />
                 ) : null}
               </>
             )}
@@ -912,7 +944,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}
@@ -1006,8 +1038,10 @@ type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: 
 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
 type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
+/** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
+type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
+function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -1021,6 +1055,12 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
 
   // The narrative for the firm (v2.4812), after the hooks above.
   if (tab === 'narrative') return narrative ? <LegalNarrativeEditor narrative={narrative} busy={busy} /> : null
+  if (tab === 'timeline') {
+    // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them.
+    const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
+    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office' })
+    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} />
+  }
   if (tab === 'account') {
     return (
       <div>
@@ -1185,7 +1225,8 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
   const userNameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
   const feeTotal = firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
-  const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && !isConversationEntry(e))
+  // Planned steps (v2.5800) live on the Timeline tab, so On the matter stays as it was.
+  const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && e.kind !== 'plan' && !isConversationEntry(e))
   const talk = conversationRows(entries)
   const waitingOn = (list: ReadonlyArray<LegalEntryRow>) => list.filter((e) => e.via_portal && !e.acknowledged_at).length
   const askInput: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }

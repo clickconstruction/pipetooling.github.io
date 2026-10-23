@@ -10,7 +10,7 @@ import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
-import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalPlanDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
 import { matterOpenBalance, SETTLEMENT_ASK_FLAVOR, settlementBelowFloor, settlementFloorDollars, settlementFloorOf } from '../_shared/legalSettlement.ts'
 import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
@@ -28,6 +28,9 @@ import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
  *                         the office (_shared/legalStages.ts firmStepDecision).
  *   question            — free text for the office
  *   payment_received    — money the firm received; the office applies it to the job
+ *   plan                — a step the firm plans on the matter's timeline (v2.5800): occurredOn is the day it is
+ *                         planned for (it may be ahead), note is what, notes the detail; meta.source = 'firm'.
+ *                         The office reads it on the desk's Timeline tab and may mark it done or change it.
  *   intake              — the firm's answers to Start here's questions (v2.4821): one write to the
  *                         firm's own row (legal_firms.intake, _sent_at, _sent_by), no matter, no entry
  *
@@ -90,7 +93,7 @@ serve(async (req) => {
     const kind = str(body.kind, 40)
     const matterId = str(body.matterId, 64)
     const RECIPIENT_KINDS = ['recipient_add', 'recipient_rules', 'recipient_stop', 'recipient_resume', 'recipient_resend']
-    if (![...RECIPIENT_KINDS, 'intake', 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
+    if (![...RECIPIENT_KINDS, 'intake', 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'plan', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     // The guess gate (v2.4756): wrong keys are counted by caller; ten in an hour and the caller is refused.
@@ -204,11 +207,11 @@ serve(async (req) => {
       return jsonResponse({ error: legalRateLimitMessage(m.payer_name, retryAt) }, 429)
     }
 
-    // #85 item 18 (c): the date the firm sets; today when it sends none.
+    // #85 item 18 (c): the date the firm sets; today when it sends none. A planned step (v2.5800) may sit ahead.
     const today = todayYmdInAppTz()
     const typedOn = str(body.occurredOn, 10)
-    if (typedOn) {
-      const problem = legalActDateProblem(typedOn, today)
+    if (typedOn || kind === 'plan') {
+      const problem = kind === 'plan' ? legalPlanDateProblem(typedOn, today) : legalActDateProblem(typedOn, today)
       if (problem) return jsonResponse({ error: problem }, 400)
     }
     const occurredOn = typedOn || today
@@ -317,6 +320,15 @@ serve(async (req) => {
       }
     } else if (kind === 'question') {
       if (!note) return jsonResponse({ error: 'Type your question.' }, 400)
+    } else if (kind === 'plan') {
+      // v2.5800: what is planned, the day it is planned for, and the detail; the same caps legal_plan_add holds.
+      if (!note) return jsonResponse({ error: 'Say what is planned.' }, 400)
+      if (note.length > 500) return jsonResponse({ error: 'Keep what is planned under 500 characters. The notes take the rest.' }, 400)
+      const planNotes = str(body.notes, 4000)
+      meta.notes = planNotes
+      meta.done_at = null
+      meta.done_by = null
+      meta.source = 'firm'
     } else if (kind === 'answer') {
       // #41 PR 3: the firm answers an ask the office wrote (a `question` entry with via_portal = false) — words,
       // or a sign-off (signedOff true / false) with an optional note. The ask must be this matter's and still open.

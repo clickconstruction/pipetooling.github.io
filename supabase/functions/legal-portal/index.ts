@@ -524,7 +524,8 @@ serve(async (req) => {
         clockSessions: sessions.filter((s) => jobIdSet.has(s.job_ledger_id as string)).map((s) => ({ jobId: s.job_ledger_id as string, workDate: s.work_date as string, clockedInAt: s.clocked_in_at as string, clockedOutAt: (s.clocked_out_at as string | null) ?? null, hasGps: s.clock_in_lat != null, approved: s.approved_at != null, disqualified: s.rejected_at != null || s.revoked_at != null })),
         // Job notes travel as a count per job (item 23): the packet draws how many, never a body or an author.
         threadNotes: notes.filter((n) => jobIdSet.has(n.job_id as string)).map((n) => ({ jobId: n.job_id as string, body: '', createdAt: n.created_at as string, authorName: null })),
-        entries: entries.filter((e) => e.matter_id === m.id),
+        // v2.5800: a planned step (kind plan) the office held back under held_overrides key plan:<id> stays home and counts.
+        entries: entries.filter((e) => e.matter_id === m.id).filter((e) => e.kind !== 'plan' || goes(`plan:${e.id as string}`)),
       })
     })
 

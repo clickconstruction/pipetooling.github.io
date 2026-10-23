@@ -1178,7 +1178,7 @@ export default function Jobs() {
       return
     }
     if (jobsListLoading) return
-    stagesTabRef.current?.openLegalDesk(legalParam === '1' || legalParam === 'true' ? null : legalParam, searchParams.get('legalTab') === 'fees' ? 'fees_steps' : null)
+    stagesTabRef.current?.openLegalDesk(legalParam === '1' || legalParam === 'true' ? null : legalParam, searchParams.get('legalTab') === 'fees' ? 'fees_steps' : searchParams.get('legalTab') === 'timeline' ? 'timeline' : null)
     strip()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [legalParam, authRole, activeTab, jobsListLoading, setSearchParams])

@@ -70,7 +70,9 @@ describe('legalFirmWords · punch list #85 item 3 · the firm reads its own word
     expect(firmEntryKindWords(entry('question', false, { flavor: 'signoff', jobLabel: '1042' }))).toBe('sign-off asked by the office, job 1042')
     expect(firmEntryKindWords(entry('answer', true, { askId: 'a', signedOff: true }))).toBe('your answer: signed off')
     expect(firmEntryKindWords(entry('answer', false))).toBe("the office's answer")
-    for (const k of ['fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'recovery_applied', 'note']) {
+    expect(firmEntryKindWords(entry('plan', true))).toBe('your planned step')
+    expect(firmEntryKindWords(entry('plan', false))).toBe('planned step by the office')
+    for (const k of ['fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'recovery_applied', 'note', 'plan']) {
       expect(firmEntryKindWords(entry(k, true))).not.toMatch(/_/)
       expect(firmEntryKindWords(entry(k, false))).not.toMatch(/_/)
     }
@@ -81,6 +83,8 @@ describe('legalFirmWords · punch list #85 item 3 · the firm reads its own word
     expect(firmEntryStatusWords(entry('fee', true, {}, '2026-10-05T12:00:00Z'))).toBe('seen by the office')
     expect(firmEntryStatusWords(entry('question', false))).toBe('waiting on you')
     expect(firmEntryStatusWords(entry('question', false, {}, '2026-10-05T12:00:00Z'))).toBe('withdrawn by the office')
+    expect(firmEntryStatusWords(entry('plan', true))).toBe('planned by you')
+    expect(firmEntryStatusWords(entry('plan', false))).toBe('planned by the office')
     expect(firmEntryStatusWords(entry('recovery_applied', false))).toBe('from the office')
   })
 

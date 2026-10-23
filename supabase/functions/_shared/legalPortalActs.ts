@@ -34,6 +34,18 @@ export function legalActDateProblem(occurredOn: string, todayYmd: string): strin
   return null
 }
 
+/**
+ * Why a day the firm planned a step for cannot be saved (v2.5800); null when it can. A planned step may sit in the
+ * future, unlike the firm's other acts, but not more than three years either way.
+ */
+export function legalPlanDateProblem(plannedOn: string, todayYmd: string): string | null {
+  if (!ymdValid(plannedOn)) return 'Pick the day it is planned for.'
+  const year = Number(todayYmd.slice(0, 4))
+  if (plannedOn < `${year - 3}${todayYmd.slice(4)}`) return 'That day is more than three years back. Ask the office to record it.'
+  if (plannedOn > `${year + 3}${todayYmd.slice(4)}`) return 'That day is more than three years ahead.'
+  return null
+}
+
 export function isLegalClientId(v: unknown): v is string {
   return typeof v === 'string' && UUID.test(v)
 }
@@ -73,6 +85,8 @@ export function firmVoidProblem(e: VoidableEntry): string | null {
   if (e.voided_at) return 'Already undone.'
   if (e.kind === 'fee' || e.kind === 'cost') return null
   if (e.kind === 'payment_received') return e.acknowledged_at ? 'The office already applied that payment. Ask them in the conversation.' : null
+  // v2.5800: the firm undoes a step it planned on the timeline.
+  if (e.kind === 'plan') return null
   if (e.kind === 'step') return 'Record the right step instead.'
   return 'That entry cannot be undone.'
 }
@@ -82,7 +96,7 @@ export function voidIsRetry(e: { voided_at: string | null; voided_via_portal?: b
   return Boolean(e.voided_at) && e.voided_via_portal === true && (e.void_reason ?? '').trim() === reason.trim()
 }
 
-/** The office undoes the fees, costs and notes it wrote (`legal_void_entry` holds the same rule). */
+/** The office undoes the fees, costs, notes and planned steps it wrote (`legal_void_entry` holds the same rule; planned steps since v2.5800). */
 export function officeCanVoid(e: VoidableEntry): boolean {
-  return !e.via_portal && !e.voided_at && (e.kind === 'fee' || e.kind === 'cost' || e.kind === 'note')
+  return !e.via_portal && !e.voided_at && (e.kind === 'fee' || e.kind === 'cost' || e.kind === 'note' || e.kind === 'plan')
 }

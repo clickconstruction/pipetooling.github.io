@@ -8,9 +8,9 @@ import { portalSmall } from '../../../lib/legal/legalPortalCards'
 
 /** Constants and styles shared by the firm's matter view (`LegalFirmMatterView.tsx`) and its callers — kept out of the component file so fast refresh stays whole. */
 
-export const FIRM_TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
+export const FIRM_TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps', 'timeline'] as const
 export type FirmTab = (typeof FIRM_TABS)[number]
-export const FIRM_TAB_LABELS: Record<FirmTab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps' }
+export const FIRM_TAB_LABELS: Record<FirmTab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps', timeline: 'Timeline' }
 
 /** The slice of a matter the view needs — the portal passes its payload matter, the desk builds one from the sheet. */
 export type FirmMatterLike = {

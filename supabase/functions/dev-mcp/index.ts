@@ -20,8 +20,8 @@ import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthRead
 // role check apply exactly as on the screen. The service role is used for three things
 // only: resolving the key, minting the session, writing the call log.
 //
-// Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0) are a SECOND path, not a loosening
-// of the first: seven verbs (_shared/devMcpWrites.ts) POST one of four hard-coded, dev-gated definer
+// Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0) are a SECOND path, not a loosening
+// of the first: nine verbs (_shared/devMcpWrites.ts) POST one of five hard-coded, dev-gated definer
 // RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table write, never through view_as.
@@ -29,7 +29,7 @@ import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthRead
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.5.0'
+const SERVER_VERSION = '0.6.0'
 
 const TOOLS: McpTool[] = [
   {
@@ -180,6 +180,16 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { narrative: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['narrative', 'plan_hash'] },
   },
   {
+    name: 'plan_matter_plan_item',
+    description: "Dry-run a planned step on a legal matter's timeline (v2.5800): what the office, the firm and the dev MCP plan next on a Collections account, read on the Legal desk's Timeline tab and the firm's portal. action add plans a step (matter_id, on, body, notes?); update changes one (entry_id, on?, body?, notes?); mark_done says it happened (entry_id, done_on? — today when left out — note?). Replies with the matter, the item before and after, whether the firm reads it now, and a plan_hash. Nothing is written. Marking done keeps the day it was planned for and stamps the day it was done.",
+    inputSchema: { type: 'object', properties: { item: { type: 'object', description: "{ action: 'add' | 'update' | 'mark_done', matter_id? (legal_matters.id — read_rows on legal_matters by payer_name), entry_id? (a kind 'plan' row of legal_matter_entries), on? (YYYY-MM-DD, the day it is planned for), body? (what), notes?, done_on? (YYYY-MM-DD), note? }" } }, required: ['item'] },
+  },
+  {
+    name: 'apply_matter_plan_item',
+    description: 'Write the planned step you planned: the same item plus the plan_hash from plan_matter_plan_item. Runs the dry run again first and writes only when it still matches — if someone changed the step since, plan again. Written as you through legal_plan_add / legal_plan_update / legal_plan_mark_done with source mcp; the office sees it on the Timeline tab at once and the firm on its next open.',
+    inputSchema: { type: 'object', properties: { item: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['item', 'plan_hash'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -196,7 +206,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are seven verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry and plan_matter_narrative → apply_matter_narrative — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nine verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative and plan_matter_plan_item → apply_matter_plan_item — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -475,7 +485,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'plan_hr_entry':
     case 'apply_hr_entry':
     case 'plan_matter_narrative':
-    case 'apply_matter_narrative': {
+    case 'apply_matter_narrative':
+    case 'plan_matter_plan_item':
+    case 'apply_matter_plan_item': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
       // refuses these before it gets here; this check is the belt to that suspender.
       if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { firmVoidProblem, isLegalClientId, isVoidedEntry, legalActDateProblem, legalRateLimitMessage, officeCanVoid, recordedByOf, voidIsRetry } from '../../../supabase/functions/_shared/legalPortalActs'
+import { firmVoidProblem, isLegalClientId, isVoidedEntry, legalActDateProblem, legalPlanDateProblem, legalRateLimitMessage, officeCanVoid, recordedByOf, voidIsRetry } from '../../../supabase/functions/_shared/legalPortalActs'
 import { buildFirmActivity, type LegalMatterRow } from './legalMatters'
 import { conversationRows, conversationWho, entryRecordedByWords } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
@@ -14,6 +14,13 @@ describe('the firm’s acts (#85 item 18)', () => {
     expect(legalActDateProblem('', '2026-10-05')).toBe('Pick a date.')
     expect(legalActDateProblem('2023-10-05', '2026-10-05')).toBeNull()
     expect(legalActDateProblem('2023-10-04', '2026-10-05')).toMatch(/three years/)
+  })
+  it('a planned step may sit ahead, up to three years either way (v2.5800)', () => {
+    expect(legalPlanDateProblem('2026-12-15', '2026-10-05')).toBeNull()
+    expect(legalPlanDateProblem('2029-10-05', '2026-10-05')).toBeNull()
+    expect(legalPlanDateProblem('2029-10-06', '2026-10-05')).toBe('That day is more than three years ahead.')
+    expect(legalPlanDateProblem('2023-10-04', '2026-10-05')).toMatch(/three years back/)
+    expect(legalPlanDateProblem('', '2026-10-05')).toBe('Pick the day it is planned for.')
   })
   it('knows a one-time key and names the matter when the hourly limit is hit', () => {
     expect(isLegalClientId('3f2b8c1e-9d4a-4b7e-8c21-5a6f0e9d1b2c')).toBe(true)
@@ -58,6 +65,8 @@ describe('undo with a reason (#85 item 18, PR 2)', () => {
     expect(firmVoidProblem(e({ via_portal: false }))).toMatch(/office’s/)
     expect(firmVoidProblem(e({ voided_at: '2026-10-05T00:00:00Z' }))).toBe('Already undone.')
     expect(officeCanVoid(e({ via_portal: false, kind: 'note' }))).toBe(true)
+    expect(officeCanVoid(e({ via_portal: false, kind: 'plan' }))).toBe(true)
+    expect(firmVoidProblem(e({ kind: 'plan' }))).toBeNull()
     expect(officeCanVoid(e({ via_portal: false, kind: 'recovery_applied' }))).toBe(false)
     expect(officeCanVoid(e({ via_portal: true }))).toBe(false)
     expect(isVoidedEntry({ voided_at: '2026-10-05T00:00:00Z' })).toBe(true)
@@ -69,6 +78,8 @@ describe('undo with a reason (#85 item 18, PR 2)', () => {
     expect(buildFirmActivity([{ ...row, voided_at: '2026-10-05T00:00:00Z' }], [m]).count).toBe(0)
     // The office's Acknowledge on a fee row stamps acknowledged_at, which takes it off the card too.
     expect(buildFirmActivity([{ ...row, acknowledged_at: '2026-10-05T00:00:00Z' }], [m]).count).toBe(0)
+    // v2.5800: a step the firm planned on the timeline is a plan, not an act waiting on the office.
+    expect(buildFirmActivity([{ ...row, kind: 'plan', amount: null, body: 'Mail the notice', meta: { notes: '', source: 'firm' } }], [m]).count).toBe(0)
   })
   it('a retried undo with the same reason is the same act; a different reason is not', () => {
     const done = { voided_at: '2026-10-05T00:00:00Z', voided_via_portal: true, void_reason: 'Entered twice' }
