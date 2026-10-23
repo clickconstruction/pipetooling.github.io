@@ -27,6 +27,8 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - One bid's full record (sends, answers, notes, links) → `/bids?tab=submission-followup` (pick the bid)
 - Estimator workload/performance pivot → `/bids?tab=estimators`
 - Create a bid → `/bids` → New Bid button
+- Search a bid's plans, ask the robot what they say and make an RFI of what they do not → the **Plans** button at the end of the bid tabs' row while a bid is picked (`&plans=1` on the Followup tab opens it; v2.5736, v2.5737; guide `search-the-plans-on-a-bid`)
+- Everything new for an estimator in two minutes: the robots' ring, the Plans button, the Dashboard's lines and Messages → `/help?g=use-the-robots-and-the-new-bid-tools-as-an-estimator`
 
 **Jobs / operations**
 - Job pipeline by stage (Waiting → Working → RTB → Billed → Collections) → `/jobs?tab=stages`
@@ -80,7 +82,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 ### /dashboard — Dashboard
 Landing page for every role: pinned pages, role-relevant cards (recent reports, my bids,
-Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for whoever wrote down a customer's word that they paid, *A customer said they paid, and nothing landed* a week on, v2.5650, opening the won bid for an estimator and the Pipeline for the office; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses; for the office team the **Customers** line, opening `/messages?kind=customer`, v2.5451; and on Job Mode's card **Message the customer** for primary and helpers, v2.5449, on since v2.5505, guide `message-a-customer-from-job-mode`; since v2.5573 the big **On my way** / **I'm here** press that clocks the drive and texts the customer, with the tech's bio the first time, v2.5590, guide `job-mode-clocking`; for the office team the **Today's sends** line, the texts the app prepared for a person to press, v2.5595, guide `work-todays-sends`). Start here to orient; do work elsewhere.
+Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941; for whoever wrote down a customer's word that they paid, *A customer said they paid, and nothing landed* a week on, v2.5650, opening the won bid for an estimator and the Pipeline for the office; for the leader the *Sign N lien notices before the run* line, v2.5087, landing on the Lien desk's Ready pile; for a dev or the controller the **Contracts** line, v2.5285, the clause changes waiting on their approval, whose **Review** opens the paper on Settings → Contracts and clauses; for the office team the **Customers** line, opening `/messages?kind=customer`, v2.5451; and on Job Mode's card **Message the customer** for primary and helpers, v2.5449, on since v2.5505, guide `message-a-customer-from-job-mode`; since v2.5573 the big **On my way** / **I'm here** press that clocks the drive and texts the customer, with the tech's bio the first time, v2.5590, guide `job-mode-clocking`; for the office team the **Today's sends** line, the texts the app prepared for a person to press, v2.5595, guide `work-todays-sends`; for the office team the **Job accounts** line, the current invoices a house would still move onto a job account, v2.5723, also on Quickfill, opening `/materials?tab=supply-houses&list=movable`; for the owner and devs *The robots have not made a round since …* and for the bid roles *The robot is blocked on bNNN*, v2.5734, opening the Console and the needs sheet; for the asker *The robot answered your question on bNNN*, v2.5737, opening the Plans panel). Start here to orient; do work elsewhere.
 Roles: all.
 
 ### /gc — GC projects
@@ -152,7 +154,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
 - `?tab=bid-board` — **Bid Board**: every HUMAN bid by status section (Not yet won or lost /
   Won / Lost / Started). Row shows value, due, estimator, last contact; multi-GC bids show a
   line per GC (sent date · waiting/won/lost pill). Key actions: set per-GC outcome, open
-  notes, update last contact, open Edit Bid (✎), jump to tool tabs (icons).
+  notes, update last contact, open Edit Bid (✎), jump to tool tabs (icons). The robot icon before the bid number
+  is a seven-step ring (v2.5732) whose tap opens the status sheet (*Read the run*, *Leave this one to me*); a bid left
+  to a person wears a dashed *you* mark whose sheet has *Let the robot back in*, and a sent bid wears the ring while a
+  robot works on it (v2.5751; guide `let-the-robots-shadow-a-bid`).
   Edit Bid's **Job** block on a won bid carries the **money line** for the job's people (the office, the job's account manager, the bid's estimator or account manager): the job's stage, what is still open on its bills, the customer's last word on paying, **Send the pay page** (a text or an email with the open bill's pay page filled in), the customer's speech bubble opening their door (Call · Text · Email · Open their thread), and **Write down their word** (a day they will pay by, or that they say they paid). Office roles open the job from the block; an estimator gets **Send to Dispatch** (v2.5659): a short draft of the job (name, address, GC, the figure it starts at, the trade, a wanted-by day, a note) that Dispatch's inbox opens as New Job, then *Sent to Dispatch … · waiting*, then the job's chip. Guide `see-where-a-job-you-bid-stands-on-money`.
 - `?tab=money` — **Money** (v2.5651): every won job with money open, past their word first, then no word, then waiting; each row the money line with its doors and a **Trail** of the money's story; **Only my bids** keeps the bids the person sold. The Dashboard's **Money on your bids** card opens it for estimators and primaries. Guide `see-where-a-job-you-bid-stands-on-money`.
 - `?tab=robot-board` — **🤖 Robot Board** (v2.2500; a mirror since v2.3222): the HUMAN
@@ -218,7 +223,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   Settings → Digital twins for keys, seats, rungs, the calibration standard), **Operator
   questions** (the `operator` lane of `twin_questions` — answer, promote to RFI, send to
   estimator, dismiss; the estimator lane stays on Audits → Standing rulings), and **Recent
-  runs** (`twin_runs`, newest first). Twins never see it.
+  runs** (`twin_runs`, newest first). Twins never see it. Since v2.5733 its first card is **Rounds**: each robot key
+  alive, quiet or asleep, when it checked in, what it holds and its last five finished things, with **Stop the rounds**
+  / **Start again**; since v2.5735 *Run the robots* holds **Copy rounds kickoff** (`kickoffs/rounds-operator.md`) to make
+  a Mac that stays on the rounds, its Claude Code session set to the mode that asks before the paste (v2.5754).
 - `?tab=builder-review` — per-customer review: section counts, estimating/job hours.
 - `?tab=call-queue` — **Followup, By builder**: call-mode queue grouped by builder; log
   calls, outcomes, next-followup promises.
@@ -258,7 +266,8 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
 - `?tab=reports` — field job reports (create/review); dispatch items (e.g. site-not-ready).
 - The job window, for the office team: **＋ Report** beside the Reports pill leaves a field report from the window (v2.5688, guide `reports`); **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens the customer's door over the window, as on the Pipeline's rows but with no Their record row, and its **Open their thread** goes to `/messages`. The box opens on the lines for the job's stage, and `{bill}` in a quick reply fills with the pay page of the job's newest Stripe bill; a slash typed in any reply box lists the quick replies by keyboard, and the words bill or estimate after it the customer's own bills and estimates, a pick putting in a line about that paper with its link (guide `reply-to-a-person-from-their-thread`).
 - `?tab=billing` — invoices, payments, billing flows per job.
-- `?tab=job-summary` — one job's charges-vs-payments timeline chart + % complete.
+- `?tab=job-summary` — one job's charges-vs-payments timeline chart + % complete. A search finds the job whatever the
+  chips and the HCP # floor say, and a line under the controls says which stepped aside (v2.5745).
 - `?tab=teams-summary` — Crew P&L (hours-weighted billing credit per crew).
 - `?tab=combined-labor` — team labor hours/costs across jobs.
 - `?tab=sub_sheet_ledger` — subcontractor sheets/payments.
@@ -317,7 +326,10 @@ The owner's one page for where the company stands: contribution per week, the fi
 Geocoded work map. Roles: dev, master, assistant, controller, estimator.
 
 ### /calendar — Calendar · /checklist — Checklist · /settings — Settings · /help — Help
-All roles. Settings holds profile, theme, release notes; dev/master see admin sections.
+All roles. Settings holds profile, theme, release notes; dev/master see admin sections. A dev retires a robot on
+`/settings?tab=settings-digital-twins` (**Archive** on its row revokes its keys and archives the account; the *N archived*
+fold brings it back with **Restore**, v2.5741; guide `run-the-robots-from-claude-desktop`), where the walk tester's line
+sits under the Sample accounts card (v2.5738).
 
 ### Header (any page)
 Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count for the office team (`/messages`), Task dispatch/add,
