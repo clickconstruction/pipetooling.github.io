@@ -2,7 +2,7 @@
 title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster
+keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid
 order: 119
 ---
 New messages that need sorting wait at the top of Follow up. Sort each one so the right person answers it on the right job.
@@ -29,18 +29,24 @@ Press the person's row in **New**, or the blue question beside their name. Their
 
 ## Who is this?
 
-The card lists who the sender may be. A text to the team number guesses a customer we know first, then a new lead. An email to bids@ guesses a trade partner first.
+The card lists who the sender may be. **A customer we know** comes first, on a text and on an email alike. Each customer says why they match. The reason is the address or number on their record, a bid or job that names them, or their name. The company's email address counts too.
 
-- Press a customer or a trade partner to name the number as them. The thread stays with them.
+- Press a customer to name the sender as them. The thread stays with them. A bid or job that names them takes the thread.
+- Press a trade partner the same way on an email to bids@.
 - Press the new lead to keep them as a lead until they book. Their thread then offers **Book a visit** and **Start an estimate**. Either makes them a customer, and their thread comes along.
 - Press **One of our own team** when the number is a teammate's. The card lists the roster. Press their name.
 - Press **Someone else** to find them yourself in **Who is this?**.
+
+**A new customer** is one press. The **Customer** box starts with the sender's name. Press **Make the customer** to add them and move the thread to them. Is the sender someone at a company? Type the company's name in the box instead. The company becomes the customer. The sender stays the person on the thread. An email to bids@ makes a commercial customer. A text to the team number makes a residential one.
+
+:::example A new customer from an email to bids@
+Customer: Ridgeway Builders &nbsp; {{button:outline|Make the customer}} &nbsp; Dale stays the person on the thread.
+:::
 
 Some choices wait for a record of their own. The card says where to make it.
 
 A teammate's number goes on their People record. Next time the app knows them without asking. Their thread sits under **Our team** on Messages.
 
-- A new customer waits until you add them on [Customers](/customers).
 - A new trade partner waits until you add the company under Trade partners in GC mode.
 - A supply house waits until you add it on Materials.
 

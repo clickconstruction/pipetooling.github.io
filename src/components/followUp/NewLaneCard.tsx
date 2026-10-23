@@ -1,8 +1,10 @@
 /**
  * Messages, residential R7 (PR 3): the sort card above a thread, for a person waiting in Follow up's New lane (the
  * customer Messages prototype v0.8, screen 7, mockup A's `sortCardHtml`). Its head says which sort, its first line why,
- * then its presses: *Who is this?*'s guesses in the box's order, *Which job?*'s jobs with the default picked, or *Who
- * has it?*'s people with the rule's pick first. A guess that needs a record made first waits, and says where to make it.
+ * then its presses: *Who is this?*'s guesses in the box's order, since v2.5795 under **A customer we know** (each with
+ * why) and **A new customer** (a field with the sender's name and one press that makes them), *Which job?*'s jobs with
+ * the default picked, or *Who has it?*'s people with the rule's pick first. A guess that needs a record made first
+ * waits, and says where to make it.
  * *One of our own team* (v2.5546) turns the card into *Which of ours?*: the roster, subs left out, a name filter and a
  * press per person that names the number as them. This draws; `useNewLaneThreadSlots.tsx` reads and writes.
  */
@@ -57,6 +59,49 @@ function rosterMatching(roster: readonly RosterChoice[], words: string): RosterC
   return q ? roster.filter((p) => p.name.toLowerCase().includes(q)) : [...roster]
 }
 
+function BlockHead({ children }: { children: ReactNode }) {
+  return <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{children}</div>
+}
+
+/**
+ * *Who is this?*'s guesses in the kernel's order, with its blocks (v2.5795): **A customer we know** over the customers
+ * matched with why, **A new customer** as a field that starts with the sender's name and the press that makes them,
+ * then **Or** over the rest. A guess that needs a record made first waits with where to make it.
+ */
+function WhoBody({ guesses, busy, onName, onSomeoneElse, onTeam }: { guesses: readonly WhoGuess[]; busy: boolean; onName: (g: WhoGuess) => void; onSomeoneElse: () => void; onTeam: () => void }) {
+  const makes = guesses.find((g) => g.makes)
+  // The field's words once typed; the sender's name until then.
+  const [typed, setTyped] = useState<string | null>(null)
+  const customerName = typed ?? makes?.makes?.customerName ?? ''
+  const firstKnown = guesses.findIndex((g) => g.kind === 'customer' && g.record)
+  const nodes: ReactNode[] = []
+  guesses.forEach((g, i) => {
+    if (i === firstKnown) nodes.push(<BlockHead key="known">A customer we know</BlockHead>)
+    if (g.makes) {
+      nodes.push(
+        <div key="new" data-new-customer style={{ display: 'grid', gap: '0.35rem' }}>
+          <BlockHead>A new customer</BlockHead>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem' }}>
+            <span>Customer</span>
+            <input value={customerName} onChange={(e) => setTyped(e.target.value)} placeholder="Their name, or the company" style={input} disabled={busy} />
+            <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{g.makes.hint}</small>
+          </label>
+          <Option label="Make the customer" words={g.words} onPress={() => onName({ ...g, makes: { ...g.makes!, customerName: customerName.trim() } })} disabled={busy || customerName.trim() === ''} />
+        </div>,
+      )
+      if (i < guesses.length - 1) nodes.push(<BlockHead key="or">Or</BlockHead>)
+      return
+    }
+    if (g.kind === 'someone_else') nodes.push(<Option key={i} label={g.label} words={g.words} onPress={onSomeoneElse} disabled={busy} />)
+    else if (g.kind === 'team' && !g.record) nodes.push(<Option key={i} label={g.label} words={g.words} onPress={onTeam} disabled={busy} />)
+    else {
+      const wait = guessWait(g)
+      nodes.push(<Option key={i} label={g.label} words={wait ?? g.words} onPress={() => onName(g)} disabled={busy || wait !== null} />)
+    }
+  })
+  return <div style={{ display: 'grid', gap: '0.35rem' }}>{nodes}</div>
+}
+
 export function NewLaneCard({ row, guesses, roster = [], jobs = [], people = [], busy = false, onName, onSomeoneElse, onTie, onHand }: NewLaneCardProps) {
   // The default starts picked. The caller keys the card by its line, so a new line starts from its own default.
   const [picked, setPicked] = useState<string | null>(() => jobs.find((j) => j.isDefault)?.id ?? jobs[0]?.id ?? null)
@@ -100,14 +145,7 @@ export function NewLaneCard({ row, guesses, roster = [], jobs = [], people = [],
     body = !guesses ? (
       <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading who it may be…</div>
     ) : (
-      <div style={{ display: 'grid', gap: '0.35rem' }}>
-        {guesses.map((g, i) => {
-          if (g.kind === 'someone_else') return <Option key={i} label={g.label} words={g.words} onPress={onSomeoneElse} disabled={busy} />
-          if (g.kind === 'team' && !g.record) return <Option key={i} label={g.label} words={g.words} onPress={() => setTeamOpen(true)} disabled={busy} />
-          const wait = guessWait(g)
-          return <Option key={i} label={g.label} words={wait ?? g.words} onPress={() => onName(g)} disabled={busy || wait !== null} />
-        })}
-      </div>
+      <WhoBody guesses={guesses} busy={busy} onName={onName} onSomeoneElse={onSomeoneElse} onTeam={() => setTeamOpen(true)} />
     )
   } else if (row.sort === 'job') {
     body = (

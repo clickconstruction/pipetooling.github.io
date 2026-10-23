@@ -90,7 +90,6 @@ export function hasPeople(team: readonly Teammate[]): HasPerson[] {
 
 /** Where to make the record a guess needs before it can name the number. */
 const WAIT_WORDS: Readonly<Partial<Record<GuessKind, string>>> = {
-  customer: 'Add them on Customers first. Then name the number here.',
   trade: 'Add the company under Trade partners in GC mode first. Then name the number here.',
   supply_house: 'Add the supply house on Materials first. Then name the number here.',
   candidate: 'Add them on Prospects under Team first. Then name the number here.',
@@ -98,16 +97,17 @@ const WAIT_WORDS: Readonly<Partial<Record<GuessKind, string>>> = {
 
 /**
  * Why a guess cannot name the number from one press, or null when it can. A guess with its record names them as it, a
- * lead needs no record, and *Someone else* opens *Who is this?*. A new customer, a new trade partner, a supply house and
- * a candidate need a record made first, until *Sort all* makes them.
+ * lead needs no record, *Someone else* opens *Who is this?*, and a new customer is made by the press itself (v2.5795).
+ * A new trade partner, a supply house and a candidate need a record made first, until *Sort all* makes them.
  */
-export function guessWait(guess: Pick<WhoGuess, 'kind' | 'record'>): string | null {
-  if (guess.record || guess.kind === 'lead' || guess.kind === 'someone_else') return null
+export function guessWait(guess: Pick<WhoGuess, 'kind' | 'record'> & Partial<Pick<WhoGuess, 'makes'>>): string | null {
+  if (guess.record || guess.kind === 'lead' || guess.kind === 'someone_else' || guess.makes) return null
   return WAIT_WORDS[guess.kind] ?? null
 }
 
 /** What a *Who is this?* press says once it lands. */
-export function namedWords(guess: Pick<WhoGuess, 'kind' | 'label' | 'name'>): string {
+export function namedWords(guess: Pick<WhoGuess, 'kind' | 'label' | 'name'> & Partial<Pick<WhoGuess, 'makes'>>): string {
+  if (guess.makes) return `${guess.makes.customerName.trim() || guess.name || 'They'} is a customer now. The thread moves to them.`
   if (guess.kind === 'lead') return `${guess.name ?? 'They'} ${guess.name ? 'is' : 'are'} a lead now. The thread stays with them.`
   if (guess.kind === 'team') return `${guess.label} is one of our own team now. The thread stays with them.`
   return `The number is ${guess.label} now. The thread stays with them.`

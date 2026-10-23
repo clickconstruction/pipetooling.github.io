@@ -2,7 +2,7 @@
 name: "Messages: one Who is this? on a New row, and a live way to link the sender to a customer"
 number: 149
 group: gated
-status: PR 1 shipped v2.5793 (one control on the row, the pick is A) · PR 2 (the card links them to a customer) waits on the owner's yes
+status: PR 1 shipped v2.5793 (one control on the row, the pick is A) · PR 2 built v2.5795 on the owner's yes of 2026-10-23 (A customer we know with why, A new customer as one live press) · delete this to-do once both are on main
 summary: >
   The New lane's row said Who is this? twice, a chip beside the name and a button under the
   subject, both opening the same card. PR 1 keeps one: the question as a small blue pill beside
@@ -13,13 +13,10 @@ summary: >
   company's domain, the name, the number), and A new customer becomes one live press that makes
   the customer and moves the thread to them with its history.
 next: >
-  The owner picks on PR 2 from the mock-up (§2). Then: the kernel (customerMatches in
-  followUp/newLane.ts, tests), the reads in newLaneCardIo.loadKnown (customers and
-  customer_contact_persons by email, domain and name; bids by gc_contact_email and name;
-  jobs_ledger by customer_email), the press that makes the customer (the lead doors' insert, then
-  name_contact), the card's field, the guide sort-new-messages, the map and the Glossary.
+  Both PRs on main, then delete this to-do; the release notes and the fragments carry the record,
+  the mock-up stays linked from v2.5793's fragment.
 size: PR 1 S · PR 2 M (one PR, or 2a matches and 2b the new customer)
-blocker: the owner's yes on PR 2
+blocker: none, the queue
 opinion: build — the card already asks the question; today it answers an Invitation to Bid with three dead ends, and the one live answer (Someone else) is a search the office has to drive.
 mockup: to-dos/messages-who-is-this/mockup.html
 ---
@@ -33,7 +30,7 @@ mockup: to-dos/messages-who-is-this/mockup.html
 ## The decision
 
 - **PR 1, one control (shipped v2.5793).** Three options drawn in `mockup.html` §1. **A** picked: the chip becomes the control, a small blue pill beside the name reading the sort's question with a › (*Who is this? ›*, *Which job? ›*, *Who has it? ›*), the button under the subject gone. The press reads exactly like the card it opens, the lane's three questions stay the lane's vocabulary, and the row itself still opens the thread. **B** (the chip stays as the state, a verb pill beside it: *Name them ›*) is the literal reading of the ask and the fallback. **C** (the verb alone, the question in the grey line) renames what the card, the guide and Sort all call *Who is this?*.
-- **PR 2, the card links them to a customer (waits on the owner).** Drawn in `mockup.html` §2. The press opens the thread as today, the sort card at the top and the email under it. The card's first block is **A customer we know**, each match with why, the strongest first; then **A new customer** as one live press with the sender's name in a field; then the rest as today.
+- **PR 2, the card links them to a customer (built v2.5795, the owner's yes of 2026-10-23).** Drawn in `mockup.html` §2. The press opens the thread as today, the sort card at the top and the email under it. The card's first block is **A customer we know**, each match with why, the strongest first; then **A new customer** as one live press with the sender's name in a field; then the rest as today.
 
 ## Where it plugs in
 
