@@ -103,6 +103,18 @@ describe('MessagesTopBar', () => {
     expect(screen.getAllByTestId('jump-lane').length).toBe(5)
   })
 
+  it('draws the ? at the bar’s end when the page has a card for it, and none otherwise (v2.5802)', () => {
+    const onToggle = vi.fn()
+    bar({ legend: { open: false, onToggle } })
+    const help = screen.getByRole('button', { name: 'What each lane holds' })
+    expect(help.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(help)
+    expect(onToggle).toHaveBeenCalledWith(true)
+    cleanup()
+    bar()
+    expect(screen.queryByRole('button', { name: 'What each lane holds' })).toBeNull()
+  })
+
   it('renders under the dark theme as it does in light', () => {
     document.documentElement.dataset.theme = 'dark'
     bar()

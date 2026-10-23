@@ -472,3 +472,25 @@ describe('/messages: one bar at the top (punch list #151 PR 2)', () => {
     expect(screen.getByRole('button', { name: '7 days' }).getAttribute('aria-expanded')).toBe('true')
   })
 })
+
+describe('/messages: the lanes’ sentences behind the ?, the headings as bands (punch list #151 PR 3)', () => {
+  it('keeps every lane’s sentence off the page until ? opens the card, and draws each heading as a band with its count', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    const newNote = 'What came in and still needs sorting. Its row opens the thread, with the sort at the top.'
+    expect(screen.queryByText(newNote)).toBeNull()
+    expect(screen.queryByText(/Our line is the last word/)).toBeNull()
+    expect(screen.queryByTestId('lane-legend')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What each lane holds' }))
+    const card = await screen.findByRole('region', { name: 'What each lane holds' })
+    expect(within(card).getByText(newNote)).toBeTruthy()
+    expect(within(card).getByText(/^Every text and email we sent in the last 7 days/)).toBeTruthy()
+    fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('lane-legend')).toBeNull()
+    expect(screen.getAllByTestId('lane-band').length).toBeGreaterThanOrEqual(4)
+    const heading = screen.getByRole('heading', { name: /^New \(\d+\)$/ })
+    expect(heading.querySelector('.stagesBandCount')?.textContent).toMatch(/^\d+$/)
+    expect(heading.closest('.messagesLaneBand')?.getAttribute('style')).toContain('--stage-color: #3b82f6')
+    expect(screen.getByRole('heading', { name: /^Went out \(\d+\)$/ }).closest('.messagesLaneBand')).toBeTruthy()
+  })
+})

@@ -12,6 +12,7 @@ import { KIND_PILLS, type KindPill } from '../../lib/messages/kindPills'
 import { SHOW_WORDS, type ShowLens } from '../../lib/messages/showLens'
 import type { JumpCounts, JumpLane } from '../../lib/messages/jumpStrip'
 import { pickerLabel, TOP_BAR_WORDS } from '../../lib/messages/topBar'
+import { LEGEND_WORDS } from '../../lib/messages/laneLegend'
 import { MessagesJumpStrip } from './MessagesJumpStrip'
 
 export interface MessagesTopBarProps {
@@ -28,6 +29,8 @@ export interface MessagesTopBarProps {
   strip?: { counts: JumpCounts; onJump: (lane: JumpLane) => void }
   /** The page's phone line: the controls scroll away and the strip sticks on its own. */
   phone: boolean
+  /** The ? at the bar's end (v2.5802): what each lane holds, as a card under the bar. Left out: no ?. */
+  legend?: { open: boolean; onToggle: (open: boolean) => void }
 }
 
 const pillStyle = (on: boolean): CSSProperties => ({
@@ -128,7 +131,7 @@ function KindPicker({ pill, onPick }: Pick<MessagesTopBarProps, 'pill' | 'onPick
   )
 }
 
-export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOpen, onSearch, weekOpen, onWeek, strip, phone }: MessagesTopBarProps) {
+export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOpen, onSearch, weekOpen, onWeek, strip, phone, legend }: MessagesTopBarProps) {
   const title = <h1 className="messagesTopTitle">{TOP_BAR_WORDS.title}</h1>
   const picker = <KindPicker pill={pill} onPick={onPick} />
   const show = (
@@ -156,6 +159,11 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
     </button>
   )
   const lanes = strip ? <MessagesJumpStrip counts={strip.counts} onJump={strip.onJump} /> : null
+  const help = legend ? (
+    <button type="button" aria-pressed={legend.open} aria-expanded={legend.open} aria-label={LEGEND_WORDS.label} title={legend.open ? LEGEND_WORDS.closeTip : LEGEND_WORDS.tip} onClick={() => legend.onToggle(!legend.open)} data-testid="lane-help" style={{ ...glassStyle(legend.open), fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700 }}>
+      {LEGEND_WORDS.button}
+    </button>
+  ) : null
 
   if (phone) {
     return (
@@ -166,6 +174,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
           {glass}
           {show}
           {week}
+          {help}
         </div>
         {lanes}
       </>
@@ -179,6 +188,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
       {glass}
       {lanes}
       {week}
+      {help}
     </div>
   )
 }

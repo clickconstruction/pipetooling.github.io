@@ -18,7 +18,7 @@ import { anotherDay, BACK_CLEARED_TOAST, hasToast, stateToast, type FollowUpQueu
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useFollowUpQueue } from '../../hooks/useFollowUpQueue'
 import { Card } from '../gc/gcUi'
-import { FollowUpSections, type FollowUpSectionActions } from './FollowUpSections'
+import { FollowUpSections, type FollowUpSectionActions, type LaneLook } from './FollowUpSections'
 import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
 import { useLeadDoors } from '../messages/useLeadDoors'
 import { SortAllDesk } from './SortAllDesk'
@@ -61,6 +61,8 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
   narrow?: (queue: FollowUpQueue<C, N>, contacts: readonly FollowUpContact[]) => FollowUpQueue<C, N>
   /** Hears the whole queue and its people each time it is read, before `narrow`: the Show lens's counts (punch list #140 PR 3). */
   onQueue?: (queue: FollowUpQueue<C, N>, contacts: readonly FollowUpContact[]) => void
+  /** The lanes' look (v2.5802): `/messages` draws bands and says the sentences behind its ?; GC projects print them under the headings. */
+  laneLook?: LaneLook
   /** Today and now, for a smoke; the app's clock otherwise. */
   todayYmd?: string
   nowIso?: string
@@ -85,7 +87,7 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
 }
 
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
-  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll, leadIo } = props
+  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll, leadIo, laneLook } = props
   const leadDoors = useLeadDoors(leadIo)
   const todayYmd = props.todayYmd ?? todayYmdInAppTz()
   const nowIso = props.nowIso ?? new Date().toISOString()
@@ -178,6 +180,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
           nowIso={nowIso}
           actions={actions}
           pressing={q.pressing}
+          laneLook={laneLook}
           {...(clauses ? { renderClauses: clauses.render } : {})}
           {...(nudges ? { renderNudges: nudges.render } : {})}
         />

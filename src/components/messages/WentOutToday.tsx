@@ -8,6 +8,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { wentOutDays, WENT_OUT_FILTERS, WENT_OUT_WORDS, type WentOutFilter, type WentOutLine, type WentOutRow } from '../../lib/messages/wentOut'
+import { JUMP_LANE_COLOR, JUMP_LANE_LABEL } from '../../lib/messages/jumpStrip'
 import { loadWentOut } from '../../lib/messages/wentOutIo'
 import type { KindPill } from '../../lib/messages/kindPills'
 
@@ -113,9 +114,14 @@ export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter
   }, [count, onCount])
   return (
     <section id="went-out" className="messagesLane" aria-label="Went out" data-testid="went-out-today">
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{WENT_OUT_WORDS.title(total)}</h3>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{WENT_OUT_WORDS.note}</span>
+      {/* The band (v2.5802, punch list #151 PR 3): the lane's color, the count in a pill; the sentence sits behind the bar's ?. */}
+      <div className="stagesSectionBand messagesLaneBand" style={{ '--stage-color': JUMP_LANE_COLOR.wentOut } as CSSProperties} data-testid="lane-band">
+        <h3 className="stagesBandTitle" aria-label={WENT_OUT_WORDS.title(total)}>
+          {JUMP_LANE_LABEL.wentOut}{' '}
+          <span className="stagesBandCount" aria-hidden>
+            {total}
+          </span>
+        </h3>
         <span role="group" aria-label={WENT_OUT_WORDS.filters} style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
           {WENT_OUT_FILTERS.map((f) => (
             <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)} style={filterBtn(filter === f.key)}>

@@ -16,6 +16,8 @@ import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
 import { canSortAll, SORT_ALL } from '../../lib/followUp/sortDesk'
 import { ANSWER_ALL, canAnswerAll } from '../../lib/followUp/answerDesk'
 import { needsYouCount, type BackRow, type FollowUpQueue, type NeedsReplyRow, type OwedRow, type PortalRow } from '../../lib/followUp/queue'
+import { LANE_NOTES } from '../../lib/followUp/laneNotes'
+import { JUMP_LANE_COLOR } from '../../lib/messages/jumpStrip'
 import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
 import { Btn, Card, Chip } from '../gc/gcUi'
@@ -61,14 +63,15 @@ export interface FollowUpSectionsProps<C, N extends { contactId: string }> {
   renderClauses?: (rows: readonly C[]) => ReactNode
   /** The nudges from the flow (`flows/nudges.ts`), drawn after We owe them. */
   renderNudges?: (rows: readonly N[]) => ReactNode
+  /**
+   * The lanes' look (v2.5802, punch list #151 PR 3): `plain` prints each lane's sentence under its heading, as GC
+   * projects' Follow up does; `bands` draws the heading as a band in the lane's color with the count in a pill and
+   * keeps the sentence off the page, since `/messages` says it behind its bar's ?.
+   */
+  laneLook?: LaneLook
 }
 
-/** What Needs you holds, said under its heading: the clause rows only once the page hands them in. */
-const NEEDS_YOU_NOTE = {
-  back: 'A note with a day comes back here that morning.',
-  portal: 'A portal row is a customer who wrote on their page.',
-  clause: 'A clause row waits on a controller or a dev.',
-}
+export type LaneLook = 'plain' | 'bands'
 
 const KIND_WORDS: Readonly<Record<string, string>> = { customer: 'customer', trade: 'trade partner', arch: 'architect', lead: 'lead', unknown: 'who is this?' }
 
@@ -86,7 +89,7 @@ const initials = (c: FollowUpContact) =>
 const clip = (s: string) => (s.length > 220 ? `${s.slice(0, 220).replace(/\s+\S*$/, '')}…` : s)
 
 export function FollowUpSections<C, N extends { contactId: string }>(props: FollowUpSectionsProps<C, N>) {
-  const { queue, contacts, renderClauses, renderNudges, actions } = props
+  const { queue, contacts, renderClauses, renderNudges, actions, laneLook: look = 'plain' } = props
   const byId = new Map(contacts.map((c) => [c.id, c]))
   const youCount = needsYouCount(queue)
   const back = queue.needsYou.filter((r): r is BackRow => r.kind === 'back')
@@ -96,8 +99,11 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
     <section aria-label="Follow up: who is waiting on us" style={{ display: 'grid', gap: '0.9rem' }}>
       <Section
         id="new-lane"
-        title={`New (${queue.newLane.length})`}
-        note="What came in and still needs sorting. Its row opens the thread, with the sort at the top."
+        name="New"
+        count={queue.newLane.length}
+        note={LANE_NOTES.new}
+        look={look}
+        color={JUMP_LANE_COLOR.new}
         action={
           actions.sortAll && canSortAll(queue.newLane.length) ? (
             <Btn kind="primary" onClick={actions.sortAll}>
@@ -113,7 +119,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         )}
       </Section>
       {youCount > 0 && (
-        <Section id="needs-you" title={`Needs you (${youCount})`} note={[NEEDS_YOU_NOTE.back, NEEDS_YOU_NOTE.portal, ...(renderClauses ? [NEEDS_YOU_NOTE.clause] : [])].join(' ')}>
+        <Section id="needs-you" name="Needs you" count={youCount} note={LANE_NOTES.needsYou(Boolean(renderClauses))} look={look} color={JUMP_LANE_COLOR.needsYou}>
           {back.map((r) => byId.get(r.contactId) && <BackRowView key={r.noteId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
           {queue.clauses.length > 0 && renderClauses?.(queue.clauses)}
           {portal.map((r, i) => byId.get(r.contactId) && <PortalRowView key={`${r.contactId}-${i}`} row={r} contact={byId.get(r.contactId)!} {...props} />)}
@@ -121,8 +127,11 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
       )}
       <Section
         id="needs-reply"
-        title={`Needs a reply (${queue.needsReply.length})`}
-        note="Texts, voicemails, missed calls and emails nobody has answered. The one waiting longest is first."
+        name="Needs a reply"
+        count={queue.needsReply.length}
+        note={LANE_NOTES.needsReply}
+        look={look}
+        color={JUMP_LANE_COLOR.needsReply}
         action={
           actions.answerAll && canAnswerAll(queue.needsReply.length) ? (
             <Btn kind="primary" onClick={actions.answerAll}>
@@ -137,7 +146,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
           queue.needsReply.map((r) => byId.get(r.contactId) && <ReplyRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
       </Section>
-      <Section id="we-owe-them" title={`We owe them (${queue.weOwe.length + queue.calls.length})`} note={`What we still have to do for someone, with its day. It stays our move until a note or a message marks it done. ${CALL_WORDS.lane}`}>
+      <Section id="we-owe-them" name="We owe them" count={queue.weOwe.length + queue.calls.length} note={LANE_NOTES.weOwe} look={look} color={JUMP_LANE_COLOR.weOwe}>
         {queue.weOwe.length === 0 && queue.calls.length === 0 ? (
           <Empty>Nothing we owe anyone.</Empty>
         ) : (
@@ -152,15 +161,33 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
   )
 }
 
-/** A lane. Its `id` is where `/messages`' jump strip lands (`lib/messages/jumpStrip.ts`), under the bar by `.messagesLane`'s margin. */
-function Section({ id, title, note, action, children }: { id: string; title: string; note: string; action?: ReactNode; children: ReactNode }) {
+/**
+ * A lane. Its `id` is where `/messages`' jump strip lands (`lib/messages/jumpStrip.ts`), under the bar by `.messagesLane`'s
+ * margin. `look` is the host's (v2.5802): `plain` prints the lane's sentence under its heading; `bands` draws the heading
+ * as the Pipeline's section band in the lane's color with the count in a pill and no sentence. The heading's name reads
+ * `Name (N)` either way.
+ */
+function Section({ id, name, count, note, look, color, action, children }: { id: string; name: string; count: number; note: string; look: LaneLook; color: string; action?: ReactNode; children: ReactNode }) {
+  const title = `${name} (${count})`
   return (
-    <section id={id} className="messagesLane" aria-label={title.replace(/ \(\d+\)$/, '')}>
-      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem' }}>{title}</h3>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{note}</span>
-        {action && <span style={{ marginLeft: 'auto' }}>{action}</span>}
-      </div>
+    <section id={id} className="messagesLane" aria-label={name}>
+      {look === 'bands' ? (
+        <div className="stagesSectionBand messagesLaneBand" style={{ '--stage-color': color } as CSSProperties} data-testid="lane-band">
+          <h3 className="stagesBandTitle" aria-label={title}>
+            {name}{' '}
+            <span className="stagesBandCount" aria-hidden>
+              {count}
+            </span>
+          </h3>
+          {action && <span style={{ marginLeft: 'auto' }}>{action}</span>}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem' }}>{title}</h3>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{note}</span>
+          {action && <span style={{ marginLeft: 'auto' }}>{action}</span>}
+        </div>
+      )}
       <div style={{ display: 'grid', gap: '0.5rem' }}>{children}</div>
     </section>
   )
