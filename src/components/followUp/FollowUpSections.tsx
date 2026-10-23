@@ -7,7 +7,7 @@
  * line. The queue and its words are the kernels' (`followUp/queue.ts`, `messages/owed.ts`, `messages/promises.ts`);
  * this draws them and hands each press to the page.
  */
-import { useState, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { callFirst, callTitle, CALL_WORDS, dayAfter, type CallTaskRow } from '../../lib/calls/callTasks'
 import { telHrefFor } from '../../lib/phoneContact'
 import { lineGcProject } from '../../lib/followUp/askArchitect'
@@ -293,6 +293,26 @@ function PortalRowView<C, N extends { contactId: string }>({ row, contact, ...pr
   )
 }
 
+/** The one press on a New row (v2.5793): the sort's question as a small blue pill beside the name, the same words as the card it opens. */
+const SORT_PRESS: CSSProperties = {
+  display: 'inline-block',
+  padding: '0.1rem 0.6rem',
+  borderRadius: 999,
+  background: '#2563eb',
+  color: 'white',
+  border: '1px solid #2563eb',
+  font: 'inherit',
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  lineHeight: 1.5,
+  whiteSpace: 'nowrap',
+  cursor: 'pointer',
+}
+
+/**
+ * A person who still needs sorting. One control, the sort's question beside the name (*Who is this? ›*), opens the
+ * thread at the sort card, as the row itself does; since v2.5793 nothing repeats it under the subject.
+ */
 function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: NewLaneRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
   const { actions } = props
   return (
@@ -300,17 +320,13 @@ function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props
       contact={contact}
       landOn={row.messageId}
       pill={
-        <Chip tone="blue" title={row.why}>
+        <button type="button" onClick={() => actions.openThread(contact.id, row.messageId)} title={row.why} style={SORT_PRESS} data-new-lane-press={row.sort}>
           {row.head}
-        </Chip>
+          <span aria-hidden> ›</span>
+        </button>
       }
       sub={[contact.kind === 'unknown' ? '' : companyOf(contact), row.via, row.when].filter(Boolean).join(' · ')}
       snippet={clip(row.words)}
-      acts={
-        <Btn kind="primary" onClick={() => actions.openThread(contact.id, row.messageId)}>
-          {row.head}
-        </Btn>
-      }
       props={props}
     />
   )
