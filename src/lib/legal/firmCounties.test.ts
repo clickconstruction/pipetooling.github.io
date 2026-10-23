@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assignmentsFromCountiesByFirm,
   changedWords,
   countiesByFirm,
   countiesLine,
@@ -139,5 +140,17 @@ describe('firmHues / firmLegend', () => {
       ['No firm yet', []],
     ])
     expect(countiesOf(new Map([['Comal', 'firm-a'], ['Bexar', 'firm-a']]), 'firm-a')).toEqual(['Bexar', 'Comal'])
+  })
+})
+
+describe('assignmentsFromCountiesByFirm (v2.5784)', () => {
+  it('turns the hook\'s firm → counties map back into county → firm', () => {
+    const by = new Map<string, string[]>([
+      ['firm-a', ['Bexar', 'Comal']],
+      ['firm-b', ['Travis']],
+      ['firm-c', []],
+    ])
+    expect([...assignmentsFromCountiesByFirm(by).entries()]).toEqual([['Bexar', 'firm-a'], ['Comal', 'firm-a'], ['Travis', 'firm-b']])
+    expect(assignmentsFromCountiesByFirm(new Map()).size).toBe(0)
   })
 })

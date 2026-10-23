@@ -37,7 +37,7 @@ The card under the firm cards lists what is in the county under your pointer. Mo
 
 Each case on the card has an **Open on the desk** link. The link opens the Legal desk on that account.
 
-The dots are for reference while you color. The desk's own Map works the cases.
+The dots are for reference while you color. The Legal desk's own **Map** view works the cases. Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney#see-every-case-on-the-map).
 
 ## When another firm already holds the county
 
@@ -58,4 +58,4 @@ Each firm's card lists its counties in words, for a quick read without the map.
 
 ## What comes next
 
-Today the Legal desk still releases every account to the oldest firm. Soon it will read the account's county and pick the firm from this map. Read [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails) for each firm's people.
+Today the Legal desk still releases every account to the oldest firm. Soon it will read the account's county and pick the firm from this map. The desk's **Map** view already shows the same counties with every case. Read [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails) for each firm's people.

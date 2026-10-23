@@ -46,6 +46,16 @@ Most section titles carry an ↗ door to where their data is edited.
 The Learning Experience has no signed contract on either job. With a sent Stripe invoice and 22 GPS clock sessions on the property, the desk reads {{chip:yellow|Sworn account}} and the contract gap is a note, not a stop. The day a dispute is logged in call mode, the theory drops to {{chip:red|None yet}} and the gap turns red — that is the desk telling you the dispute has to be answered before the account is worth referring.
 :::
 
+## See every case on the map
+
+The desk has two views, **Accounts** and **Map**. The switch sits at the top right, before the firm's name. Press {{button:outline|Map}} to see every Collections account on a Texas county map.
+
+Each county wears the color of the law firm that covers it. A gray county has no firm yet. Each dot is one account at its job's address. A bigger dot owes more. The dot's color says where the account stands. Amber needs a dev's eyes. Green is with the firm. Gray is given up on. Red sits in a county no firm covers. A red line over the map names those accounts.
+
+**Who covers what** lists each firm with its counties, its cases and what they owe. Tap a county to list its cases on the card under it. Tap a dot to pick one case out. Press **Open on the desk ›** on a case and the desk opens on that account under **Accounts**.
+
+Scroll on the map to zoom. Drag it to move. Press {{button:outline|Central Texas}} or {{button:outline|All of Texas}} to reset the view. A dev colors the counties on **Settings**, then **Jobs & billing**, then **Collections law firms**. Read [set which law firm covers each county](/help/set-which-law-firm-covers-each-county).
+
 ## Documents for the firm
 
 Documents can go on the matter. A billing report, a supplier invoice, a signed estimate or a saved email thread all fit. Open the **Evidence** tab. Drop the files on **Documents for the firm**, or press {{button:outline|Choose files}}. Each file needs a title and one line on what it shows. The line is what the firm reads beside the title, so say what the document proves. Press {{button:dark|Save}}. The desk takes PDFs, images, emails saved as .eml and plain text, up to 10 MB each.
