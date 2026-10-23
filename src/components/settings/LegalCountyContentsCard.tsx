@@ -6,9 +6,10 @@ import { countyCardFacts, type LegalMapCase } from '../../lib/legal/firmMap'
  * The contents card under the firm cards (punch list #144, PR 1b): what is in the county
  * under the pointer. Its firm, its cases with where each stands, its dollars, and a door to
  * the desk on each. A held case (a dot clicked on the map) is marked and the card stays on
- * its county until another dot is clicked. Nothing here colors a county.
+ * its county until another dot is clicked. Nothing here colors a county. On the Legal desk's
+ * Map (v2.5784, `onOpen`) the door is a press that opens the desk on the case, not a link away.
  */
-export default function LegalCountyContentsCard({ county, cases, assignments, firmNames, heldId, onHold }: {
+export default function LegalCountyContentsCard({ county, cases, assignments, firmNames, heldId, onHold, onOpen, lens = false }: {
   county: string | null
   cases: ReadonlyArray<LegalMapCase>
   assignments: CountyAssignments
@@ -16,6 +17,10 @@ export default function LegalCountyContentsCard({ county, cases, assignments, fi
   /** The held case's `id`. */
   heldId: string | null
   onHold: (c: LegalMapCase) => void
+  /** The desk's Map: open the desk on this case, in place of the link. */
+  onOpen?: (c: LegalMapCase) => void
+  /** The desk's Map: the empty card says tap, not color. */
+  lens?: boolean
 }) {
   const frame = { border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', background: 'var(--surface)', fontSize: '0.8rem' } as const
   const muted = { color: 'var(--text-muted)', fontSize: '0.74rem' } as const
@@ -23,7 +28,7 @@ export default function LegalCountyContentsCard({ county, cases, assignments, fi
     return (
       <div data-legal-county-card="" style={frame}>
         <h4 style={{ margin: '0 0 4px', fontSize: '0.84rem' }}>What is where</h4>
-        <div style={muted}>Hover a county to see the cases in it. Click a dot to hold one here while you color.</div>
+        <div style={muted}>{lens ? 'Tap a county to see the cases in it. Tap a case to open the desk on it.' : 'Hover a county to see the cases in it. Click a dot to hold one here while you color.'}</div>
       </div>
     )
   }
@@ -67,9 +72,15 @@ export default function LegalCountyContentsCard({ county, cases, assignments, fi
             <span style={{ textAlign: 'right', flexShrink: 0 }}>
               <b>{row.money}</b>
               <div style={muted}>
-                <Link to={`/jobs?tab=stages&legal=${encodeURIComponent(row.case.key)}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-muted)' }}>
-                  Open on the desk ↗
-                </Link>
+                {onOpen ? (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); onOpen(row.case) }} data-legal-map-open={row.case.key} style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer' }}>
+                    Open on the desk ›
+                  </button>
+                ) : (
+                  <Link to={`/jobs?tab=stages&legal=${encodeURIComponent(row.case.key)}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-muted)' }}>
+                    Open on the desk ↗
+                  </Link>
+                )}
               </div>
             </span>
           </div>

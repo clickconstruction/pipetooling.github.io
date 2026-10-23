@@ -36,6 +36,13 @@ export function savedAssignments(rows: ReadonlyArray<Pick<LegalFirmCountyRow, 'f
   return out
 }
 
+/** The county → firm map back from `countiesByFirm` (the desk reads the hook's shape; the map and the lens read assignments, v2.5784). */
+export function assignmentsFromCountiesByFirm(byFirm: ReadonlyMap<string, ReadonlyArray<string>>): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const [firmId, counties] of byFirm) for (const county of counties) out.set(county, firmId)
+  return out
+}
+
 /** Each active firm's counties, sorted; a firm with none gets an empty list. */
 export function countiesByFirm(rows: ReadonlyArray<Pick<LegalFirmCountyRow, 'firm_id' | 'county' | 'until'>>, firms: ReadonlyArray<FirmLike>): Map<string, string[]> {
   const active = firms.filter((f) => f.active)
