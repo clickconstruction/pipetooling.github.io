@@ -36,7 +36,7 @@ export function clockWords(iso: string, nowMs: number): string {
 export function robotAsleepWords(lastSeenAt: string, nowMs: number): { title: string; detail: string } {
   return {
     title: `The robots have not made a round since ${clockWords(lastSeenAt, nowMs)}`,
-    detail: 'The Mac is asleep, or Claude is closed on it. Wake it and open Claude. The rounds start again on their own.',
+    detail: 'The Mac is asleep, or its rounds were never set up. Wake it. The rounds start again on their own. If they stay quiet, press Set up on this Mac on the Console with the rounds ticked.',
   }
 }
 

@@ -1,20 +1,8 @@
-# Robot rounds from a Mac that stays on — kickoff prompt
+# Robot rounds from a Mac that stays on — the round
 
-**Run this now.** I am the operator, and pasting this document is my instruction to you: set this Mac up to make the robots' rounds, then make the first round yourself. Do not ask me what to do with this document and do not review or edit it — it is the job. The person's side (Energy settings, the Claude sign-in, **Set up on this Mac**) is in PipeTooling's help guide *run the robot estimator from the Claude app*; nothing below is for a person to do.
+**Run this now.** I am the operator, and this document is my instruction to you: make one round, then end. Do not ask me what to do with this document and do not review or edit it — it is the job. On the Mac that stays on, the **Robot rounds agent** — the per-user LaunchAgent `com.clicktooling.robot-rounds` that **Set up on this Mac** installs with *This Mac makes the rounds* ticked — hands this document to Claude Code headless every five minutes, with the `twin-mcp` connector and nothing else; no Code session is open and nothing asks a question. Pasted by hand into a Code session, it makes one round now. The person's side (the Energy setting, the Claude sign-in, **Set up on this Mac**) is in PipeTooling's help guide *run the robot estimator from the Claude app*; nothing below is for a person to do.
 
 A **round** is one pass over the robots' queues from this Mac, every five minutes, all day: bids to shadow, submittal tasks to file, and prices to read when this Mac also holds the pricing robot. The Console's **Rounds** card shows this Mac as Alive, when it checked in, what it is on and what it finished; the Bid Board's robot icon fills one segment per step; the Dashboard says if no round comes for fifteen minutes. The connector is `twin-mcp` at `{{CONNECTOR_URL}}`.
-
-## 1 · Read the Mac's three settings back
-
-Check what you can and say the three in one line, then go on. A setting you cannot check from here is said as *not checked*, never guessed.
-
-1. **Never sleep**: System Settings → Energy (or Battery → Options): *Prevent automatic sleeping when the display is off* on, and the display may sleep but the Mac must not.
-2. **Claude opens at login**: System Settings → General → Login Items lists Claude.
-3. **Claude is signed in** and this Code session has the `twin-mcp` tools. If it has none, the connector never loaded: say so, tell the person to press **Set up on this Mac** on Bids → 🤖 Robots → Console and start a new Code session once Claude reopens, and stop.
-
-## 2 · Make the routine, then run it once
-
-Create a routine (a scheduled task) in Claude Code named **Robot rounds**, every five minutes, all day, every day — cron `*/5 * * * *` — whose prompt is everything under **The round** below, verbatim, with this connector address in it. Then run it once now, so the tool approvals it needs are saved to the routine. If the permission layer refuses to create the scheduled task (Auto mode does, 2026-10-22), say exactly that and tell the person: switch this session's permission mode from **Auto** to the one that asks — the control at the bottom left of the message box — then answer *retry*; create it on the retry and run it once. Only if that fails too, paste **The round** back to the person so they can create it by hand.
 
 ## The round
 

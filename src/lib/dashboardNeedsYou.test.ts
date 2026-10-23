@@ -1377,7 +1377,7 @@ describe('robot-asleep and robot-blocked (v2.5734, punch list #142)', () => {
     const it1 = items.find((i) => i.key === 'robot-asleep')!
     expect(it1.severity).toBe('amber')
     expect(it1.title).toBe('The robots have not made a round since 2:05 PM')
-    expect(it1.detail).toBe('The Mac is asleep, or Claude is closed on it. Wake it and open Claude. The rounds start again on their own.')
+    expect(it1.detail).toBe('The Mac is asleep, or its rounds were never set up. Wake it. The rounds start again on their own. If they stay quiet, press Set up on this Mac on the Console with the rounds ticked.')
     expect(it1.actionLabel).toBe('Open the Console')
     expect(it1.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
   })

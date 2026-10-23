@@ -68,7 +68,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
   const desktopKickoff = useMemo(() => buildDesktopKickoff(desktopKickoffDoc, { connectorUrl }), [connectorUrl])
   // Price Matrix PR 3: the pricing robot's kickoff — same connector, its own seat and key.
   const pricingKickoff = useMemo(() => buildDesktopKickoff(pricingKickoffDoc, { connectorUrl }), [connectorUrl])
-  // Robot rounds PR 5 (v2.5735): the routine on a Mac that stays on — one paste makes it and runs the first round.
+  // Robot rounds PR 5 (v2.5735): the round text. Since v2.5752 the setup command installs it as a LaunchAgent; copied, it makes one round by hand in a Code session.
   const roundsKickoff = useMemo(() => buildDesktopKickoff(roundsKickoffDoc, { connectorUrl }), [connectorUrl])
 
   // Same rule as the Queue lens and the dispatcher (v2.5753), so the counts here, the rows there and
@@ -149,7 +149,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
       </p>
 
       {/* v2.5733 (punch list #142): the robots' status rows — alive, checked in, now, recently — and Stop the rounds. */}
-      <TwinRoundsCard onCopyRoundsKickoff={() => void copy(roundsKickoff, 'the rounds kickoff')} />
+      <TwinRoundsCard onCopyRoundsKickoff={() => void copy(roundsKickoff, 'the round')} />
 
       {/* Run the robots — Claude Code first (it reads the plans itself), a chat as the fallback. */}
       <div style={CARD}>
@@ -188,10 +188,10 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
               <span style={{ ...stepNo('↻'), background: 'var(--surface)' }}>↻</span>
               <span style={stepText}>
                 Make this Mac the rounds
-                <span style={stepSub}>One paste into Claude Code on the Mac that stays on. It makes the routine, every five minutes, and runs it once. The first lines list the Mac's three settings. Set that session's mode to the one that asks before pasting; if Auto mode refused the routine, switch and retry.</span>
+                <span style={stepSub}>Press Set up on this Mac above with This Mac makes the rounds ticked. One Terminal paste installs a round every five minutes, with no Claude session open and no question asked. Copy the round to make one round by hand in a Code session.</span>
               </span>
-              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(roundsKickoff, 'the rounds kickoff')} title="Copies the rounds kickoff for a Claude Code session on the Mac that stays on, with this project's connector filled in">
-                Copy rounds kickoff
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(roundsKickoff, 'the round')} title="Copies one round for a Claude Code session by hand, with this project's connector filled in. The rounds themselves are installed by Set up on this Mac.">
+                Copy the round
               </button>
             </div>
             <div style={stepRow}>
@@ -207,7 +207,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
             <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap' }}>
               {previewLink('setup', 'the setup command')}
               {previewLink('code', 'the Code kickoff')}
-              {previewLink('rounds', 'the rounds kickoff')}
+              {previewLink('rounds', 'the round')}
               {previewLink('handoff', 'the handoff prompt')}
             </div>
             {openPreview === 'setup' ? <pre style={PROMPT_PRE}>{setupCommand}</pre> : null}
