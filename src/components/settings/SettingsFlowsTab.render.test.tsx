@@ -110,6 +110,13 @@ const portalGroup = () => within(row('portal')).getByRole('radiogroup', { name: 
 const portalWay = (name: string) => within(portalGroup()).getByRole('radio', { name }) as HTMLButtonElement
 
 describe('SettingsFlowsTab', () => {
+  it('a door’s step (focusStep, the receipt’s Change the script in Settings) opens that step’s Call script and no other (v2.5796)', async () => {
+    renderWithProviders(<SettingsFlowsTab now={() => FLOW_FIXTURE_NOW} focusStep="compare" />)
+    await waitFor(() => expect(row('compare')).toBeTruthy())
+    expect((document.querySelector('[data-call-script="compare"]') as HTMLDetailsElement).open).toBe(true)
+    expect((document.querySelector('[data-call-script="portal"]') as HTMLDetailsElement).open).toBe(false)
+  })
+
   it('lays the trade partners’ flow out by lane, each step with what finishes it and whose move it is', async () => {
     await open()
     expect(screen.getByText(/One flow for each kind of person/)).toBeTruthy()

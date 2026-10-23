@@ -12,6 +12,7 @@ import {
   holdWords,
   lineFor,
   receiptScript,
+  scriptSettingsHref,
   sentLine,
   tellActs,
   tellFills,
@@ -105,6 +106,12 @@ describe('the receipt', () => {
       TELL_WORDS.callAsk('Dana'),
       TELL_WORDS.callLands('Dana'),
       TELL_WORDS.sentToast('Dana'),
+      TELL_WORDS.scriptSource(true, 'estimate'),
+      TELL_WORDS.scriptSource(false, 'estimate'),
+      TELL_WORDS.scriptSource(true, 'booked'),
+      TELL_WORDS.scriptSource(false, 'rescheduled'),
+      TELL_WORDS.scriptSource(false, 'working'),
+      TELL_WORDS.scriptDoor,
       receiptScript('booked', fills),
       DEFAULT_SCRIPTS.rescheduled.text.replace(/\{[a-z ]+\}/g, 'x'),
     ]
@@ -219,5 +226,14 @@ describe('the customer’s say and the office’s line (v2.5597)', () => {
       '{first}, {me} here with Click Plumbing. You are booked {day}, {window} at {address}. {tech} will text you.',
     )
     expect(unfillLine('Nothing of theirs here.', fills)).toBe('Nothing of theirs here.')
+  })
+})
+
+describe('the receipt’s script door (v2.5796)', () => {
+  it('names the step whose script the receipt reads, and lands on it in Settings → Flows', () => {
+    expect(TELL_WORDS.scriptSource(false, 'estimate')).toBe('The app’s own words, since the office has no Estimate script yet.')
+    expect(TELL_WORDS.scriptSource(true, 'rescheduled')).toBe('The office’s Booked script, filled for this job.')
+    expect(scriptSettingsHref('estimate')).toBe('/settings?tab=settings-flows&kind=residential&step=estimate')
+    expect(scriptSettingsHref('rescheduled')).toBe('/settings?tab=settings-flows&kind=residential&step=booked')
   })
 })

@@ -77,6 +77,8 @@ export interface FlowStepsTableProps {
   onPaperMade: (paper: SavedPaper) => void
   /** The reminders the app sends itself (cut 5), once read: none drawn until then. */
   appSends?: FlowAppSends
+  /** The step a door named (v2.5796, `?step=`): its row scrolled into view and its Call script open. */
+  focusStep?: string | null
 }
 
 export interface FlowAppSends {
@@ -135,6 +137,12 @@ function NameBox({ value, label, placeholder, onSave }: { value: string; label: 
 
 export function FlowStepsTable(p: FlowStepsTableProps) {
   const confirm = useConfirmDialog()
+  // A door's step (v2.5796): scroll its row into view once the draft is drawn.
+  useEffect(() => {
+    if (!p.focusStep || !/^[a-z0-9_]+$/i.test(p.focusStep)) return
+    const row = document.querySelector(`[data-step="${p.focusStep}"]`)
+    if (row && typeof (row as HTMLElement).scrollIntoView === 'function') (row as HTMLElement).scrollIntoView({ block: 'center' })
+  }, [p.focusStep, p.draft])
   const prompt = usePromptDialog()
   const [picking, setPicking] = useState<{ stepId: string; what: 'fact' | 'paper' } | null>(null)
   const [newPaperFor, setNewPaperFor] = useState<FlowStep | null>(null)
@@ -219,7 +227,7 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
 
   // The call the receipt suggests after this step's text (v2.5596): whether to suggest it, and the script in both languages.
   const callScript = (step: FlowStep) => (
-    <details data-call-script={step.id} style={{ marginTop: '0.35rem', maxWidth: 280, whiteSpace: 'normal' }}>
+    <details data-call-script={step.id} open={p.focusStep === step.id || undefined} style={{ marginTop: '0.35rem', maxWidth: 280, whiteSpace: 'normal' }}>
       <summary style={{ cursor: 'pointer', fontSize: '0.8rem' }}>Call script{step.callScript ? '' : ' · the app’s own'}</summary>
       <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.8rem', margin: '0.3rem 0' }}>
         <input type="checkbox" checked={step.suggestCall} onChange={(e) => go((d) => setSuggestCall(d, step.id, e.target.checked))} aria-label={`${step.name}: suggest a call after this goes`} />

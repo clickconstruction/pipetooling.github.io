@@ -76,6 +76,10 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     expect(screen.getByText('Call Dana to talk it through?')).toBeTruthy()
     expect(screen.getByTestId('tell-script').textContent).toContain('Hi Dana, this is Rosa with Click Plumbing.')
     expect((screen.getByTestId('tell-call') as HTMLAnchorElement).getAttribute('href')).toBe('tel:+18305550121')
+    expect(screen.getByTestId('tell-call').querySelector('svg')).toBeTruthy()
+    // Whose script it is, and the door to change it (v2.5796): the assistant edits flows.
+    expect(screen.getByTestId('tell-script-source').textContent).toBe('The app’s own words, since the office has no Booked script yet. Change the script in Settings ›')
+    expect((screen.getByTestId('tell-script-door') as HTMLAnchorElement).getAttribute('href')).toBe('/settings?tab=settings-flows&kind=residential&step=booked')
     expect(onSent).toHaveBeenCalledWith('msg-1')
     fireEvent.click(screen.getByTestId('tell-done'))
     expect(onClose).toHaveBeenCalled()
@@ -159,6 +163,7 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     fireEvent.click(screen.getByTestId('tell-primary'))
     await screen.findByTestId('tell-receipt')
     expect(screen.getByTestId('tell-script').textContent).toBe('Hey Dana, Rosa here. Good for Friday, October 23, 2026?')
+    expect(screen.getByTestId('tell-script-source').textContent).toContain('The office’s Booked script, filled for this job.')
     cleanup()
     const quiet = fakeIo({ loadCallScript: vi.fn(async () => ({ script: null, suggest: false })) })
     mount(quiet)

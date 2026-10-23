@@ -58,6 +58,8 @@ Until then the text sits on the Dashboard under Today's sends. You can change it
 
 After the send, the sheet shows what went and when. Under it, **Call Dana to talk it through?** with the words to say.
 
+Under the words, the sheet says whose script it is. Press **Change the script in Settings** to write the office's own, in English and Spanish.
+
 1. Read **What to say**. It names the day and the window.
 2. Press {{button:blue|Call}} to dial. On a desk, the number shows and Quo places the call.
 3. Press **Done** when you are finished.
