@@ -1006,6 +1006,31 @@ export default function GcProjects() {
     return () => window.clearTimeout(t)
   }, [loaded, focusId])
 
+  // `?view=partners&trade=<trade>` (v2.5782, `tradePartnersHref`): Prospects → Subs' Ask them → opens Trade
+  // partners at that trade's bench, the scroll Follow up's Who else? makes (`showTrade`). The bench cards mount
+  // on the board's rows, a beat after they are read, and later reads redraw the page under the scroll: look for
+  // the anchor up to two seconds, then hold it in view for a few beats more.
+  const tradeParam = params.get('trade')?.trim() ?? ''
+  const boardReady = boardRead !== null
+  useEffect(() => {
+    if (!boardReady || !tradeParam || devView !== 'partners') return
+    let tries = 0
+    let holds = 0
+    let t = 0
+    const look = () => {
+      const anchor = document.getElementById(benchAnchor(tradeParam))
+      if (!anchor) {
+        if (tries++ < 20) t = window.setTimeout(look, 100)
+        return
+      }
+      const top = anchor.getBoundingClientRect().top
+      if (top < 0 || top > 160) anchor.scrollIntoView({ block: 'start' })
+      if (holds++ < 5) t = window.setTimeout(look, 600)
+    }
+    t = window.setTimeout(look, 0)
+    return () => window.clearTimeout(t)
+  }, [boardReady, tradeParam, devView])
+
   // Change orders to the customer (Owner Billing's O3-ui): read beside the board for a dev, laid over
   // the board's projects (boardProjectFromView maps the rest), and opened at `changes=<projectId>`.
   const changesProjectId = params.get('changes')

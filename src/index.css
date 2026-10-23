@@ -1348,6 +1348,33 @@ button:focus-visible {
   }
 }
 
+/* Prospects → Subs, What GC mode needs (v2.5782): three columns on a desk, stacked on a phone */
+.gcNeedRow {
+  display: grid;
+  grid-template-columns: minmax(7rem, 9.5rem) minmax(0, 1fr) auto;
+  gap: 0.25rem 0.75rem;
+  align-items: start;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+}
+
+.gcNeedDoors {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .gcNeedRow {
+    grid-template-columns: 1fr;
+  }
+
+  .gcNeedDoors {
+    justify-content: flex-start;
+  }
+}
+
 /* Prospect List: desktop table, mobile cards */
 .prospectListWrapper {
   border: 1px solid var(--border);
