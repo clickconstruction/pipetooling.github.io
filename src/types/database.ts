@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       address_geocodes: {
@@ -31479,6 +31504,44 @@ export type Database = {
           },
         ]
       }
+      user_sign_codes: {
+        Row: {
+          code_hash: string
+          code_salt: string
+          failed_tries: number
+          last_used_at: string | null
+          locked_until: string | null
+          set_at: string
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          code_salt: string
+          failed_tries?: number
+          last_used_at?: string | null
+          locked_until?: string | null
+          set_at?: string
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          code_salt?: string
+          failed_tries?: number
+          last_used_at?: string | null
+          locked_until?: string | null
+          set_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sign_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_tag_org: {
         Row: {
           master_user_id: string
@@ -33284,6 +33347,7 @@ export type Database = {
         Returns: Json
       }
       clear_job_budget: { Args: { p_job_id: string }; Returns: undefined }
+      clear_lien_sign_code: { Args: never; Returns: undefined }
       clear_mercury_transaction_duplicate: {
         Args: { p_id: string }
         Returns: undefined
@@ -35492,6 +35556,7 @@ export type Database = {
         Returns: string
       }
       lien_retainage_deadline: { Args: { p_ended_on: string }; Returns: string }
+      lien_sign_code_status: { Args: { p_user_id: string }; Returns: Json }
       link_hazmat_fee_incident_to_invoice: {
         Args: { p_incident_id: string; p_invoice_id: string }
         Returns: Json
@@ -37717,6 +37782,7 @@ export type Database = {
         Args: { p_flagged: boolean; p_job_id: string; p_reason?: string }
         Returns: Json
       }
+      set_lien_sign_code: { Args: { p_code: string }; Returns: undefined }
       set_material_po_generator_stated_need: {
         Args: { p_id: string; p_notes: string }
         Returns: undefined
@@ -37825,6 +37891,16 @@ export type Database = {
       shadow_fmt_money: { Args: { v: number }; Returns: string }
       shadow_fmt_pct: { Args: { v: number }; Returns: string }
       share_estimate_link: { Args: { p_estimate_id: string }; Returns: string }
+      sign_lien_desk_item_with_code: {
+        Args: {
+          p_approve?: boolean
+          p_code: string
+          p_fields_hash: string
+          p_item_id: string
+          p_signer_id: string
+        }
+        Returns: Json
+      }
       signed_agreement_notify_recipients: {
         Args: { p_master_user_id: string }
         Returns: string[]
@@ -38478,6 +38554,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       estimate_status: [
