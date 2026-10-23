@@ -4,17 +4,19 @@
  * (`messages/kindPills.ts`), kept in the URL as `?kind=` so the Dashboard's Customers line lands filtered. Supply
  * houses and candidates are never on Follow up, so their pill shows the people list (cut 1's) for those two kinds.
  * A row opens the person's thread as cut 1's window over the page (`?thread=<contact id>&at=<message id>`), with
- * the job and record openers of `useMessagesHost`. The *New* lane and the header's badge are R7's. The jump strip over
- * the lanes (v2.5799, punch list #151 PR 1) is the Pipeline's stage bar on this page: `components/messages/MessagesJumpStrip`.
+ * the job and record openers of `useMessagesHost`. The *New* lane and the header's badge are R7's. The top of the page
+ * (v2.5801, punch list #151 PR 2, option C of the header mock-ups) is one bar: `components/messages/MessagesTopBar` with
+ * the kind picker, Show, the search glass, the jump strip (v2.5799, PR 1, the Pipeline's stage bar over the lanes) and
+ * 7 days, which opens The last 7 days under the bar.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
 import { GcMessages } from '../components/gc/GcMessages'
 import { WaitingOnThem } from '../components/messages/WaitingOnThem'
 import { WeekStrip } from '../components/messages/WeekStrip'
 import { WentOutToday } from '../components/messages/WentOutToday'
-import { MessagesJumpStrip } from '../components/messages/MessagesJumpStrip'
+import { MessagesTopBar } from '../components/messages/MessagesTopBar'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useMessagesHost } from '../components/gc/messages/useMessagesHost'
 import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
@@ -28,11 +30,12 @@ import { loadGcTeam, type GcTeamMember } from '../lib/gc/gcIo'
 import { followUpTeamOf } from '../lib/followUp/team'
 import { needsYouCount } from '../lib/followUp/queue'
 import { JUMP_LANE_ANCHOR, QUEUE_LANES, type JumpCounts, type JumpLane } from '../lib/messages/jumpStrip'
+import { keepWeekOpen, readWeekOpen } from '../lib/messages/topBar'
 import { EVERYONE_WORDS } from '../lib/messages/everyone'
 import { QUEUES_FOLD_WORDS } from '../lib/messages/queuesFold'
 import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
 import { useMatchMedia } from '../hooks/useMatchMedia'
-import { KIND_PILLS, peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
+import { peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
 import { keepLens, lensCounts, queueForShow, readLens, SHOW_WORDS, type ShowLens } from '../lib/messages/showLens'
 import { waitsFromQueue } from '../lib/messages/weekStrip'
 import type { WentOutFilter } from '../lib/messages/wentOut'
@@ -89,6 +92,22 @@ export default function Messages() {
   const pick = (next: KindPill) => setParams((prev) => withPill(prev, next), { replace: true })
   // Show: Mine · Everyone (punch list #140 PR 3): the lens over every lane, kept per browser; its counts from the whole queue.
   const [lens, setLens] = useState<ShowLens>(readLens)
+  // The one-row header (v2.5801, punch list #151 PR 2): the search box opens from the glass, or at once for a link with
+  // ?q=, and closing it clears the words; The last 7 days opens from 7 days and stays as you left it on this browser.
+  const [searchOpen, setSearchOpen] = useState(() => q.trim().length > 0)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const openSearch = (open: boolean) => {
+    setSearchOpen(open)
+    if (!open) setQ('')
+  }
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus()
+  }, [searchOpen])
+  const [weekOpen, setWeekOpen] = useState(readWeekOpen)
+  const openWeek = (open: boolean) => {
+    setWeekOpen(open)
+    keepWeekOpen(open)
+  }
   const [lensCount, setLensCount] = useState<{ mine: number; everyone: number } | null>(null)
   const meId = user?.id ?? ''
   const narrow = useCallback<NonNullable<Parameters<typeof FollowUpPanel>[0]['narrow']>>((queue, contacts) => queueForShow(queueForPill(queue, contacts, pill), contacts, lens, meId), [pill, lens, meId])
@@ -140,76 +159,35 @@ export default function Messages() {
 
   return (
     <div data-messages-page style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100, width: '100%', boxSizing: 'border-box', margin: '0 auto' }}>
-      <div style={{ display: 'grid', gap: '0.6rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Messages</h1>
-        <div role="group" aria-label="Which people to show" data-messages-pills style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-          {KIND_PILLS.map((p) => {
-            const on = pill === p.key
-            return (
-              <button
-                key={p.key}
-                type="button"
-                aria-pressed={on}
-                title={p.title}
-                onClick={() => pick(p.key)}
-                style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: 999,
-                  border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-                  background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                  color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
-                  fontWeight: on ? 600 : 400,
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                }}
-              >
-                {p.label}
-              </button>
-            )
-          })}
+      <MessagesTopBar
+        pill={pill}
+        onPick={pick}
+        lens={lens}
+        lensCount={lensCount}
+        onLens={(v) => {
+          setLens(v)
+          keepLens(v)
+        }}
+        searchOpen={searchOpen}
+        onSearch={openSearch}
+        weekOpen={weekOpen}
+        onWeek={openWeek}
+        strip={!searching && onFollowUp ? { counts: jumpCounts, onJump: jump } : undefined}
+        phone={phone}
+      />
+      {lens === 'mine' && !searching && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="show-note">
+          {SHOW_WORDS.notNarrowed}
         </div>
-        <div role="radiogroup" aria-label={SHOW_WORDS.label} data-messages-show style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{SHOW_WORDS.label}</span>
-          {(['mine', 'everyone'] as const).map((v) => {
-            const on = lens === v
-            const n = lensCount ? (v === 'mine' ? lensCount.mine : lensCount.everyone) : null
-            return (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                title={v === 'mine' ? SHOW_WORDS.mineTip : SHOW_WORDS.everyoneTip}
-                onClick={() => {
-                  setLens(v)
-                  keepLens(v)
-                }}
-                style={{
-                  padding: '0.2rem 0.7rem',
-                  borderRadius: 999,
-                  border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-                  background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                  color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
-                  fontWeight: on ? 600 : 400,
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                }}
-              >
-                {v === 'mine' ? SHOW_WORDS.mine : SHOW_WORDS.everyone}
-                {n !== null && ` · ${n}`}
-              </button>
-            )
-          })}
-          {lens === 'mine' && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{SHOW_WORDS.notNarrowed}</span>}
+      )}
+      {searchOpen && (
+        <div style={{ display: 'grid', gap: '0.35rem' }}>
+          <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={SEARCH_WORDS.label} placeholder={SEARCH_WORDS.placeholder} data-testid="search-lines" style={searchBox} />
+          {q.trim().length > 0 && !searching && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{SEARCH_WORDS.short}</span>}
         </div>
-        {/* Punch list #140 PR 2: the owner's and a dev's line to the switches still off, gone once all eight are on. */}
-        {isOwnerOrDev(role) && !searching && <SwitchOnCard />}
-      </div>
-
-      <div style={{ display: 'grid', gap: '0.35rem' }}>
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={SEARCH_WORDS.label} placeholder={SEARCH_WORDS.placeholder} data-testid="search-lines" style={searchBox} />
-        {q.trim().length > 0 && !searching && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{SEARCH_WORDS.short}</span>}
-      </div>
+      )}
+      {/* Punch list #140 PR 2: the owner's and a dev's line to the switches still off, gone once all eight are on. */}
+      {isOwnerOrDev(role) && !searching && <SwitchOnCard />}
 
       {searching && (
         <section aria-label="Lines that match" data-testid="search-hits">
@@ -250,7 +228,7 @@ export default function Messages() {
         </section>
       )}
 
-      {!searching && onFollowUp && (
+      {!searching && onFollowUp && weekOpen && (
         <WeekStrip
           pill={pill}
           waits={waits}
@@ -268,7 +246,6 @@ export default function Messages() {
         />
       )}
 
-      {!searching && onFollowUp && <MessagesJumpStrip counts={jumpCounts} onJump={jump} />}
 
       {!searching && onFollowUp && foldQueues && (
         <button

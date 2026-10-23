@@ -4,8 +4,9 @@
  * count its heading shows, pinned at the top while the page scrolls, the lane being read lit in its color, a press
  * scrolling to the lane through the page's `onJump` (which unfolds the queues on a phone first). On a phone the
  * segments read as one wrapping line of name and count (`isLine`), the shape the queues fold already draws. Sets
- * `--messages-jump-offset` on the document so a lane's section (`.messagesLane`) lands just under the bar. The rows,
- * the colors and the lit lane come from `lib/messages/jumpStrip.ts`.
+ * `--messages-jump-offset` on the document so a lane's section (`.messagesLane`) lands just under the bar. Inside the
+ * one-row header (v2.5801, `MessagesTopBar`, `[data-messages-pinned]`) it measures that bar instead of itself, since
+ * the bar is what stays pinned. The rows, the colors and the lit lane come from `lib/messages/jumpStrip.ts`.
  */
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -40,7 +41,8 @@ export function MessagesJumpStrip({ counts, onJump, anchorId = defaultAnchorId }
       raf = 0
       const bar = barRef.current
       if (!bar) return
-      const rect = bar.getBoundingClientRect()
+      const pinned = (bar.closest('[data-messages-pinned]') as HTMLElement | null) ?? bar
+      const rect = pinned.getBoundingClientRect()
       document.documentElement.style.setProperty('--messages-jump-offset', `${Math.round(rect.height) + LAND_GAP_PX}px`)
       const tops = (keys ? (keys.split(',') as JumpLane[]) : []).map((key) => ({
         key,

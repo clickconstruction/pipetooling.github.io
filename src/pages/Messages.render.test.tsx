@@ -138,7 +138,14 @@ function at(url: string) {
   )
 }
 
-const pill = (name: string) => within(screen.getByRole('group', { name: 'Which people to show' })).getByRole('button', { name })
+/** The kind picker's menu (v2.5801): opened on the first press, then a pill in it. */
+const menu = () => {
+  if (!screen.queryByRole('group', { name: 'Which people to show' })) fireEvent.click(screen.getByTestId('kind-picker'))
+  return within(screen.getByRole('group', { name: 'Which people to show' }))
+}
+const pill = (name: string) => menu().getByRole('button', { name })
+/** The search box (v2.5801): behind the glass until a press, or a link with ?q=. */
+const openSearch = () => fireEvent.click(screen.getByRole('button', { name: 'Open the search' }))
 const where = () => screen.getByTestId('where').textContent
 
 beforeEach(() => {
@@ -153,7 +160,7 @@ describe('/messages: Follow up with the kind pills', () => {
     at('/messages')
     expect(await screen.findByText(GREG)).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Messages' })).toBeTruthy()
-    const pills = within(screen.getByRole('group', { name: 'Which people to show' })).getAllByRole('button')
+    const pills = menu().getAllByRole('button')
     expect(pills.map((b) => b.textContent)).toEqual(['All', 'Customers', 'Trade partners', 'Architects', 'Leads', 'Subs', 'Our team', 'Supply houses and candidates'])
     expect(pill('All').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText(ELENA)).toBeTruthy()
@@ -222,6 +229,7 @@ describe('/messages: Follow up with the kind pills', () => {
     at('/messages')
     await screen.findByText(GREG)
     expect(loadMessagesView).not.toHaveBeenCalled()
+    openSearch()
     const box = screen.getByLabelText('Search every message') as HTMLInputElement
     fireEvent.change(box, { target: { value: 'd' } })
     expect(screen.getByText('Type two letters or more.')).toBeTruthy()
@@ -324,7 +332,7 @@ describe('/messages: the owner’s switch card (punch list #140 PR 2)', () => {
     cleanup()
     auth.role = 'assistant'
     at('/messages')
-    await screen.findByRole('group', { name: 'Which people to show' })
+    await screen.findByTestId('kind-picker')
     expect(screen.queryByRole('button', { name: /Finish switching Messages on/ })).toBeNull()
   })
 })
@@ -360,6 +368,8 @@ describe('/messages: the last 7 days (punch list #140 PR 5)', () => {
   it('sits with the lanes, its longest wait the queue’s first row, and hides while searching', async () => {
     at('/messages')
     await screen.findByText(GREG)
+    localStorage.removeItem('messages_week_open')
+    fireEvent.click(await screen.findByRole('button', { name: '7 days' }))
     const strip = await screen.findByTestId('week-strip')
     const tiles = await within(strip).findAllByTestId('strip-tile')
     expect(tiles.map((t) => t.getAttribute('data-key'))).toEqual(['answered', 'longest', 'notDelivered', 'estimates'])
@@ -371,6 +381,7 @@ describe('/messages: the last 7 days (punch list #140 PR 5)', () => {
     expect((tiles[1] as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(tiles[1]!)
     expect(where()).toBe('/messages?thread=c-held&at=m5')
+    openSearch()
     fireEvent.change(screen.getByTestId('search-lines'), { target: { value: 'pond' } })
     await waitFor(() => expect(screen.queryByTestId('week-strip')).toBeNull())
   })
@@ -413,7 +424,51 @@ describe('/messages: the jump strip over the lanes (punch list #151 PR 1)', () =
     expect(document.getElementById('went-out')?.className).toBe('messagesLane')
     expect(document.getElementById('new-lane')?.className).toBe('messagesLane')
     scroll.mockRestore()
+    openSearch()
     fireEvent.change(screen.getByTestId('search-lines'), { target: { value: 'pond' } })
     await waitFor(() => expect(screen.queryByTestId('jump-lane')).toBeNull())
+  })
+})
+
+describe('/messages: one bar at the top (punch list #151 PR 2)', () => {
+  // The browser keeps Show and the week: the Answer all case above leaves Mine on, so start each case on Everyone, closed.
+  beforeEach(() => {
+    localStorage.removeItem('messages_week_open')
+    localStorage.removeItem('messages_show_lens')
+  })
+
+  it('pins the title, the picker, Show, the glass, the strip and 7 days in one bar, and the picker keeps the pill in the URL', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    const pinned = document.querySelector('[data-messages-pinned]') as HTMLElement
+    expect(pinned).toBeTruthy()
+    expect(within(pinned).getByRole('heading', { name: 'Messages' })).toBeTruthy()
+    expect(within(pinned).getAllByTestId('jump-lane').length).toBeGreaterThanOrEqual(5)
+    expect(within(pinned).getByRole('radiogroup', { name: 'Show' })).toBeTruthy()
+    expect(screen.queryByTestId('search-lines')).toBeNull()
+    expect(screen.queryByTestId('week-strip')).toBeNull()
+    fireEvent.click(pill('Trade partners'))
+    await waitFor(() => expect(where()).toBe('/messages?kind=trade'))
+    expect(screen.getByTestId('kind-picker').textContent).toBe('Trade partners ▾')
+  })
+
+  it('the glass opens the box with focus and closing it clears the words; 7 days opens the week and the browser keeps it', async () => {
+    at('/messages')
+    await screen.findByText(GREG)
+    openSearch()
+    const box = screen.getByTestId('search-lines') as HTMLInputElement
+    expect(document.activeElement).toBe(box)
+    fireEvent.change(box, { target: { value: 'pond' } })
+    await waitFor(() => expect(where()).toBe('/messages?q=pond'))
+    fireEvent.click(screen.getByRole('button', { name: 'Close the search' }))
+    await waitFor(() => expect(where()).toBe('/messages'))
+    expect(screen.queryByTestId('search-lines')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '7 days' }))
+    expect(await screen.findByTestId('week-strip')).toBeTruthy()
+    expect(localStorage.getItem('messages_week_open')).toBe('open')
+    cleanup()
+    at('/messages')
+    expect(await screen.findByTestId('week-strip')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '7 days' }).getAttribute('aria-expanded')).toBe('true')
   })
 })
