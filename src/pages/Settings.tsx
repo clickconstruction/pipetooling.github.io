@@ -27,6 +27,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import SettingsTemplatesTab from '../components/settings/SettingsTemplatesTab'
 import DigitalTwinsPanel from '../components/settings/DigitalTwinsPanel'
 import DevMcpKeysCard from '../components/settings/DevMcpKeysCard'
+import LienSignCodeCard from '../components/settings/LienSignCodeCard'
 import SettingsPeopleTab from '../components/settings/SettingsPeopleTab'
 import SettingsDashboardTab from '../components/settings/SettingsDashboardTab'
 import SettingsCatalogsTab from '../components/settings/SettingsCatalogsTab'
@@ -1279,6 +1280,8 @@ export default function Settings() {
       )}
       {activeSettingsTab === 'settings-account' && authUser?.id && <SettingsMyEmailScheduleSection />}
       {/* v2.3643: a dev's own keys — about YOU, so it lives here, not with the robots' fleet admin. */}
+      {/* Your signing code (v2.5788): a master or dev's own code for the Lien desk, set here, typed on any screen. */}
+      {activeSettingsTab === 'settings-account' && (myRole === 'dev' || myRole === 'master_technician') && <LienSignCodeCard />}
       {activeSettingsTab === 'settings-account' && myRole === 'dev' && <DevMcpKeysCard />}
 
       <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title={settingsGroupTitle('settings-dashboard', 'Your dashboard')} description={settingsGroupHint('settings-dashboard')}>

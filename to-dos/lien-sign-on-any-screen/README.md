@@ -2,7 +2,7 @@
 name: "Lien desk: a dev's Approve opens a sign block that signs with the dev's name over the master's line — hold the mark to the job's master and give the dev's screen a door"
 number: 148
 group: gated
-status: proposed 2026-10-23, findings and mock-ups; nothing built
+status: building claude/nifty-jackson-b1dfaf 2026-10-23, the owner chose C with a code he sets himself; PR 1 the code in Settings, PR 2 the desk field
 summary: >
   When a dev presses Approve on the Lien desk, the notice opens with the signature block in typed
   mode: the cursive reads the signed-in dev's name (Robert) while the line under it reads the
@@ -13,14 +13,24 @@ summary: >
   rule and fixes the screen (draw mode by default, in the master's name, on the dev's screen);
   B gives the master his own door (Ask Malachi to sign, by text and push, he signs on his phone);
   C lets him type on any screen with a second proof, the record the guard was written to refuse.
-next: the owner picks; A ships first (client only, one PR), then B (one PR, an edge-function kind and a text); C is not recommended
+next: PR 1 (the code table, the RPCs, the guard rule, Settings → Your account → Your signing code), then PR 2 (the desk block takes his code on any screen, tells him each use, his confirm or disown)
 size: S (A) + M (B); C would be L with a guard migration
-blocker: the owner's pick
+blocker: none
 ver: proposed
 opinion: A then B. A typed name on someone else's device is the office placing his name unless he proves it is him, and if he has his phone to prove it he has his phone to sign on. Fix the screen so it never shows the wrong name, and send him the notice instead of the laptop.
 ---
 
 # Lien desk: sign on any screen? (#148)
+
+## The owner's answer (2026-10-23)
+
+"I like C, and I would like Malachi to be able to set that code in his settings and it should be
+4-6 digits. I don't think it should be a code sent to his phone. I think it should be a code he
+only knows that he sets himself in settings." So C, with the proof a code of his own rather than a
+text: set under Settings → Your account, hashed in the database, checked there, five wrong tries
+lock it, the record names whose screen, and his own sign-in may stand behind it or disown it as it
+does a pen record. The concern on record: a short code typed on another's screen can be watched or
+guessed, which the lock, the record and the disown door answer.
 
 ## The ask
 
