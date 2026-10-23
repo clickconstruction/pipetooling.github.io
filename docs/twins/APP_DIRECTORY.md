@@ -317,7 +317,7 @@ Contract library (Documents/Packets), quick-send. Roles: staff + estimator, prim
 Project containers linking jobs/bids; workflow boards. Roles: staff; super assigned-only.
 
 ### /quickfill · /moneyfill — Data-repair queues
-Quickfill: guided fix-missing-data recipes (staff). Moneyfill: dev + controller only.
+Quickfill: guided fix-missing-data recipes (staff); its Percent complete station (`/quickfill#percent-complete`, help `/help?g=fix-a-jobs-percent-done-in-quickfill`) lists the open jobs whose ticked stages or paid money disagree with the % done, to fix in place or dismiss for a week. Moneyfill: dev + controller only.
 
 ### /bridge — The Bridge
 The owner's one page for where the company stands: contribution per week, the five stages with the weakest link lit, the week's call, the cash forecast from the bank, the people tables; `?view=monday` is the Monday sheet. Roles: dev only (every other role is redirected to `/dashboard`).
