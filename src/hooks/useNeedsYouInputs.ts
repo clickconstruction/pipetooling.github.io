@@ -171,7 +171,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const supplyMoveWindowEnabled = on('supplyMoveWindow')
   const { moveWindow: supplyMoveWindow } = useSupplyMoveWindowNudge(supplyMoveWindowEnabled)
   const vehicleRecordGapsEnabled = on('vehicleRecordGaps')
-  const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
+  const { gaps: vehicleRecordGaps, reload: reloadVehicleRecords } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   const priceMatrixEnabled = on('priceMatrix')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
@@ -366,6 +366,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       refetchLienSignatureLanes: lienSignature.refetch,
       reloadTodaysSends: todaysSends.reload,
       reloadLostBids: lostBids.reload,
+      reloadVehicleRecords,
       reloadTestReports: testReportsNudge.reload,
       contractNudge,
       gcReviewStatus,

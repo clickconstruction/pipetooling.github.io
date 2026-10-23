@@ -50,20 +50,28 @@ export function QuickfillNeedsYouSection({
   const { items } = needsYou
   // The rows the Fill them in deck can clear (v2.5774): read under the lines' own gates.
   const fillIn = useFillInRows(role, Boolean(authUser?.id))
-  const reloadLostBids = needsYou.handles.reloadLostBids
+  // A save or an Undo on the deck re-reads the line the row sits behind, so the count follows.
+  const { reloadLostBids, reloadVehicleRecords } = needsYou.handles
+  const reloadLine = useCallback(
+    (row: FillInRow) => {
+      if (row.kind === 'lost-bid') reloadLostBids()
+      else if (row.kind === 'vehicle') reloadVehicleRecords()
+    },
+    [reloadLostBids, reloadVehicleRecords],
+  )
   const onRowSaved = useCallback(
     (row: FillInRow) => {
       fillIn.drop(row.key)
-      if (row.kind === 'lost-bid') reloadLostBids()
+      reloadLine(row)
     },
-    [fillIn, reloadLostBids],
+    [fillIn, reloadLine],
   )
   const onRowRestored = useCallback(
     (row: FillInRow) => {
       fillIn.restore(row)
-      if (row.kind === 'lost-bid') reloadLostBids()
+      reloadLine(row)
     },
-    [fillIn, reloadLostBids],
+    [fillIn, reloadLine],
   )
   const press = useNeedsYouPress({
     host: 'quickfill',
