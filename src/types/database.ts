@@ -27212,6 +27212,38 @@ export type Database = {
           },
         ]
       }
+      quickfill_item_snoozes: {
+        Row: {
+          created_at: string
+          item_key: string
+          kind: string
+          snoozed_by: string | null
+          until: string
+        }
+        Insert: {
+          created_at?: string
+          item_key: string
+          kind: string
+          snoozed_by?: string | null
+          until: string
+        }
+        Update: {
+          created_at?: string
+          item_key?: string
+          kind?: string
+          snoozed_by?: string | null
+          until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_item_snoozes_snoozed_by_fkey"
+            columns: ["snoozed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickfill_office_arriving_daily_checks: {
         Row: {
           checked_at: string

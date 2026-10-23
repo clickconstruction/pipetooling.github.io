@@ -457,6 +457,7 @@ export const CATALOG_TABLES: Record<string, CatalogTable> = {
   "quickfill_assistant_dailys_daily_checks": {"kind":"table","columns":{"checked_at":"string","checked_by":"string | null","item_id":"string","work_date":"string"}},
   "quickfill_difficult_people_daily_checks": {"kind":"table","columns":{"checked_at":"string","checked_by":"string | null","item_id":"string","work_date":"string"}},
   "quickfill_difficult_people_items": {"kind":"table","columns":{"action_text":"string","created_at":"string","created_by":"string | null","id":"string","person_id":"string","reason_text":"string"}},
+  "quickfill_item_snoozes": {"kind":"table","columns":{"created_at":"string","item_key":"string","kind":"string","snoozed_by":"string | null","until":"string"}},
   "quickfill_office_arriving_daily_checks": {"kind":"table","columns":{"checked_at":"string","checked_by":"string | null","item_id":"string","work_date":"string"}},
   "quickfill_section_mark_events": {"kind":"table","columns":{"id":"string","marked_at":"string","marked_by":"string | null","note_text":"string | null","outstanding_count":"number | null","section_id":"string"}},
   "quickfill_section_marks": {"kind":"table","columns":{"marked_at":"string","marked_by":"string | null","section_id":"string"}},
