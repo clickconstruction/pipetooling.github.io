@@ -12,7 +12,7 @@ export type FillInRow = LostBidFillInRow
 const DEFAULT_IO: { lostBids: LostBidFillInIo } = { lostBids: lostBidFillInIo }
 
 /**
- * The rows behind the Fill them in deck (v2.5774, punch list #145): each kind's rows read
+ * The rows behind the Fill them in deck (v2.5774, punch list #146): each kind's rows read
  * under the same gate as its Needs you line, ordered as the deck walks them. `drop` takes a
  * saved row off the list at once and `restore` puts it back on Undo, so the deck never waits
  * on a reload; `reload` re-reads every kind (the window's focus, a save elsewhere).

@@ -30,7 +30,7 @@ import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import type { FillInRow } from '../../hooks/useFillInRows'
 
 /**
- * Fill them in (v2.5774, punch list #145, PR 2): the deck over the rows behind the Needs you
+ * Fill them in (v2.5774, punch list #146, PR 2): the deck over the rows behind the Needs you
  * lines an assistant clears with a few fields. One row at a time, worst first: the row's
  * sentence, what the app already knows, the fields for its kind, **Save and next**, **Skip**,
  * the door to the record for what the fields do not cover. Saved rows collect in a trail
