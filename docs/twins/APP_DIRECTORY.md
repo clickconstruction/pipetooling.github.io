@@ -54,7 +54,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - A course open to everyone on how a house's electrical system works, what is live and where plumbing work touches it, understanding and not doing → `/training/intro-electrical` (the **Available** row of the same Training card; guide `take-a-training-course`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Owners, developers and architects with a job we could build as the GC → `/prospects?kind=gc-leads` (guide `find-jobs-to-build-as-the-gc`)
-- Trade companies to call for the bench, by what the bench needs → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
+- Trade companies to call for the bench, by what GC mode needs right now (every trade short of quotes, the bench, the scope book's trades) → `/prospects?kind=subs` (guide `find-subs-for-the-bench`)
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
 
@@ -287,7 +287,7 @@ All customers/builders; the Hub is one customer's money strip, jobs, bids, conta
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
 
 ### /prospects — Prospects
-The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what the bench needs, Add to the bench ✓ → Trade partners); plus the Hiring tab, per-user gated.
+The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what GC mode needs right now with a door from each need to the bench, the subs here or Add a sub, Add to the bench ✓ → Trade partners); plus the Hiring tab, per-user gated.
 Roles: staff; estimator only with `estimator_prospects_access`.
 
 ### /estimates — Estimates
