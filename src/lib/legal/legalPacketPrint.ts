@@ -6,6 +6,7 @@
  */
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { canWeSue, whatCouldGoWrong, whatsLeftForUs } from './deskQuestions'
+import { exhibitDetails } from './exhibitDetail'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
@@ -48,7 +49,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const propertyRows = a.properties.map((p) => row([esc(p.jobLabels.join(', ')), esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.gaps.length ? `missing ${esc(p.gaps.join(', '))}` : 'complete']))
   const stepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(s.kind), esc(s.text)]))
   const gapItems = packet.gaps.map((g) => `<li class="${g.severity}"><b>${esc(g.label)}</b> — ${esc(g.detail)}</li>`).join('')
-  const exhibitItems = packet.exhibits.map((x) => `<li><b>${x.letter}</b> ${esc(x.title)} <span class="muted">(${x.count})</span></li>`).join('')
+  const exhibitItems = exhibitDetails(packet).map((x) => `<li><b>${esc(x.section)}</b>${x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? '' : ` ${esc(x.title)}`} <span class="muted">(${x.count})</span></li>`).join('')
   const w = packet.worth
   const sue = canWeSue(packet)
   const left = whatsLeftForUs(packet)
@@ -90,8 +91,8 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
 </div>
 <h2>Before release · ${esc(packet.readiness.label)}</h2>
 ${packet.gaps.length ? `<ul>${gapItems}</ul>` : '<p class="muted">No gaps found.</p>'}
-<h2>Exhibits</h2>
-${packet.exhibits.length ? `<ul>${exhibitItems}</ul>` : '<p class="muted">Nothing to letter yet.</p>'}
+<h2>What goes to the firm</h2>
+${packet.exhibits.length ? `<ul>${exhibitItems}</ul>` : '<p class="muted">Nothing goes with the packet yet.</p>'}
 <h2>Account</h2>
 <h3>Who owes</h3>
 <p>${esc(a.payer.name)}${a.payer.viaGc ? ' (general contractor on the job)' : ''}${a.customerType ? ` · ${esc(a.customerType)}` : ''}${a.customerAddress ? ` · ${esc(a.customerAddress)}` : ''}<br>Emails: ${a.emails.length ? esc(a.emails.join(', ')) : '<span class="muted">none on file</span>'} · Phones: ${a.phones.length ? esc(a.phones.join(', ')) : '<span class="muted">none on file</span>'}</p>
