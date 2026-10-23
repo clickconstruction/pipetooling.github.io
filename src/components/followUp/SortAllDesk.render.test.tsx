@@ -158,6 +158,7 @@ function sortIo(): NewLaneCardIo {
   return {
     loadCard: vi.fn(async (contactId: string) => CARDS[contactId]!),
     loadKnown: vi.fn(async () => ({})),
+    makeCustomer: vi.fn(async () => 'x'),
     name: vi.fn(async (contactId: string) => contactId),
     tie: vi.fn(async () => undefined),
     takeIt: vi.fn(async () => undefined),

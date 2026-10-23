@@ -146,7 +146,7 @@ describe('newLane', () => {
       words: 'Boerne Retail Shell, steel',
       when: 'today at 8:12 AM',
       via: 'Email to bids@',
-      why: 'An address nobody has named came in on bids@. On bids@, trade partners come first.',
+      why: 'An address nobody has named came in on bids@. A general contractor is a customer, so the customers we know come first.',
     })
     expect(row('dana')).toMatchObject({
       when: 'yesterday',
@@ -216,9 +216,10 @@ describe('whoGuesses', () => {
     ])
   })
 
-  it('on bids@: the trade partner on the open ask, someone new there, then new, a supply house, a candidate, someone else', () => {
+  it('on bids@: a new customer (v2.5795), the trade partner on the open ask, someone new there, then new, a supply house, a candidate, someone else', () => {
     const g = whoGuesses(row('bexar'), 'bids', KNOWN)
     expect(g.map((x) => [x.kind, x.label])).toEqual([
+      ['customer', 'A new customer'],
       ['trade', 'Tom Riddle at Bexar Steel Erectors'],
       ['trade', 'Someone new at Bexar Steel Erectors'],
       ['trade', 'A new trade partner'],
@@ -227,11 +228,11 @@ describe('whoGuesses', () => {
       ['team', 'One of our own team'],
       ['someone_else', 'Someone else'],
     ])
-    expect(g[0]).toMatchObject({ record: { table: 'gc_companies', id: 'g-bexar' }, newPerson: false, words: 'The trade partner asked on Boerne. This address goes on their record.' })
+    expect(g[1]).toMatchObject({ record: { table: 'gc_companies', id: 'g-bexar' }, newPerson: false, words: 'The trade partner asked on Boerne. This address goes on their record.' })
   })
 
-  it('orders the guesses by the box, not by the sender', () => {
-    expect(whoGuesses(row('kevin'), 'bids', KNOWN).map((x) => x.kind)).toEqual(['trade', 'supply_house', 'candidate', 'team', 'someone_else'])
+  it('orders the guesses by the box, not by the sender, the customers we know first on both (v2.5795)', () => {
+    expect(whoGuesses(row('kevin'), 'bids', KNOWN).map((x) => x.kind)).toEqual(['customer', 'customer', 'trade', 'supply_house', 'candidate', 'team', 'someone_else'])
     expect(whoGuesses(row('bexar'), 'team', KNOWN).map((x) => x.label)).toEqual([
       'A new lead on Prospects',
       'A new customer',
@@ -249,14 +250,14 @@ describe('whoGuesses', () => {
         ...KNOWN.trades!,
       ],
     }
-    expect(whoGuesses(row('bexar'), 'bids', known).slice(0, 4).map((x) => x.label)).toEqual([
+    expect(whoGuesses(row('bexar'), 'bids', known).slice(1, 5).map((x) => x.label)).toEqual([
       'Tom Riddle at Bexar Steel Erectors',
       'Someone new at Bexar Steel Erectors',
       'Bexar Steel Supply',
       'Someone new at Bexar Steel Supply',
     ])
     const gmail = { ...row('bexar'), who: 'steelguy@gmail.com' }
-    expect(whoGuesses(gmail, 'bids', KNOWN)[0]?.label).toBe('A new trade partner')
+    expect(whoGuesses(gmail, 'bids', KNOWN)[1]?.label).toBe('A new trade partner')
   })
 })
 

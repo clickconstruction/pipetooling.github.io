@@ -4,8 +4,9 @@
  * v0.8, screen 7, mockup A: `SORT`, `needWord`, `sortCardHtml`) and `RESIDENTIAL_BUILD_PLAN.md` → R7.
  *
  * Three sorts, one row per person, the oldest waiting first:
- * - **Who is this?** A number or an address nobody has named. The guesses come in the box's order: the team line offers
- *   a customer we know, then a lead on Prospects, then a new customer; bids@ offers a trade partner whose domain matches
+ * - **Who is this?** A number or an address nobody has named. The guesses come in the box's order, both boxes opening
+ *   with the customers the sender may be and why (`customerLink.ts`, v2.5795): the team line then offers a lead on
+ *   Prospects, then a new customer as one live press; bids@ the new customer, then a trade partner whose domain matches
  *   one on an open ask, then a new trade partner, then a supply house. A candidate and someone else close both.
  * - **Which job?** Two or more active jobs, and their newest line sits on the default job because the default took it,
  *   not a person. A check, since the line is already on a job.
@@ -17,7 +18,8 @@
  * `name_contact` and `tie_message` and cut 2's `take_it`. `queue.ts` counts the lane on the badge later, through
  * `newLaneCount`.
  */
-import { firstName, normalizeChannel, type Contact, type ContactKind } from '../contacts/kernel'
+import { firstName, normalizeChannel, type ChannelKind, type Contact, type ContactKind } from '../contacts/kernel'
+import { customerMatches, newCustomerGuess, type KnownCustomer, type KnownPerson, type NamingJob, type NewCustomerMake } from './customerLink'
 import { HIRE_ROSTER_KINDS } from '../prospects/hireRosterKinds'
 import { snippetOf, whenWords, type MessageChannel, type ThreadMessage } from '../messages/thread'
 
@@ -118,7 +120,7 @@ export function viaWords(channel: MessageChannel, mailbox: Mailbox | null | unde
 function whoWhy(channel: MessageChannel, mailbox: Mailbox | null): string {
   const sender = channel === 'email' ? 'An address nobody has named' : 'A number nobody has named'
   const came = mailbox ? `${sender} came in on ${boxWords(mailbox, channel)}.` : `${sender} came in.`
-  if (mailbox === 'bids') return `${came} On bids@, trade partners come first.`
+  if (mailbox === 'bids') return `${came} A general contractor is a customer, so the customers we know come first.`
   return `${came} Someone asking for work is a lead until they book.`
 }
 
@@ -207,7 +209,7 @@ export function newLaneCount(rows: readonly NewLaneRow[]): number {
 export type GuessKind = 'customer' | 'lead' | 'trade' | 'supply_house' | 'candidate' | 'team' | 'someone_else'
 
 /** A record a guess points at. */
-export type GuessRecord = { table: 'customers'; id: string } | { table: 'gc_companies'; id: string } | { table: 'people'; id: string }
+export type GuessRecord = { table: 'customers'; id: string } | { table: 'customer_contact_persons'; id: string } | { table: 'gc_companies'; id: string } | { table: 'people'; id: string }
 
 /** One guess on the *Who is this?* card. */
 export interface WhoGuess {
@@ -222,12 +224,20 @@ export interface WhoGuess {
   newPerson: boolean
   /** The name the line gives them. Null when it gives none. */
   name: string | null
+  /** A bid or a job that names them (`customerLink.ts`): the press lands the thread on it. */
+  jobKey?: string | null
+  /** *A new customer* (v2.5795): the press makes the customer from this, then names the contact as them. */
+  makes?: NewCustomerMake
 }
 
 /** The people a guess can match, as the screen loads them. */
 export interface WhoKnown {
-  /** Customers, to match a number on file or a last name. */
-  customers?: ReadonlyArray<{ id: string; name: string; phones?: readonly string[] }>
+  /** Customers, to match an address or a number on file, a name, a last name or the company's domain (`customerLink.ts`). */
+  customers?: readonly KnownCustomer[]
+  /** The people at customers (`customer_contact_persons`), matched the same ways. */
+  people?: readonly KnownPerson[]
+  /** The bids and Pipeline jobs that name the sender's address, number or name, each with its customer. */
+  jobs?: readonly NamingJob[]
   /** Trade partners, with the addresses we have for them and the open ask they are on, by its name. */
   trades?: ReadonlyArray<{ id: string; company: string; contactName: string | null; emails: readonly string[]; openAsk: string | null }>
   /** The roster, subs left out and nobody archived, for *One of our own team* (v2.5546). */
@@ -292,6 +302,32 @@ export function companyDomain(address: string): string {
   return domain && !OPEN_MAIL.has(domain) ? domain : ''
 }
 
+/** What the card knows about the sender: the address and the number as given, the name, the company's own domain. */
+export interface SenderFacts {
+  /** The address, normalized. '' when they wrote from a number. */
+  address: string
+  /** The number as ten digits. '' when they wrote from an address. */
+  number: string
+  /** The name the line gives ("this is Kevin Alvarez"), else the name the contact carries (an email's From line). Null when neither. */
+  name: string | null
+  /** The company's own domain from the address; '' for an open mail service or a number. */
+  domain: string
+}
+
+/**
+ * The sender's facts from the row and the contact's channels. The row's `who` is the contact's name: a number, an
+ * address, or the name an email's From line gave, which is the name when the line gives none.
+ */
+export function senderFacts(row: { who: string; body: string; channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }): SenderFacts {
+  const email = row.channels?.find((ch) => ch.kind === 'email')?.value ?? row.who
+  const phone = row.channels?.find((ch) => ch.kind === 'phone')?.value ?? row.who
+  const address = normalizeChannel('email', email)
+  const number = normalizeChannel('phone', phone)
+  const who = row.who.trim()
+  const whoIsAName = who !== '' && !who.includes('@') && !normalizeChannel('phone', who)
+  return { address, number, name: nameInText(row.body) ?? (whoIsAName ? who : null), domain: companyDomain(address) }
+}
+
 const NOT_NAMES = new Set([
   'Monday',
   'Tuesday',
@@ -329,8 +365,6 @@ export function nameInText(text: string): string | null {
   return m[2] && !NOT_NAMES.has(m[2]) ? `${m[1]} ${m[2]}` : m[1]
 }
 
-const nameWords = (s: string) => s.toLowerCase().split(/[^a-z']+/).filter(Boolean)
-
 const CANDIDATE: Omit<WhoGuess, 'name'> = {
   kind: 'candidate',
   label: 'A candidate, to the hiring board',
@@ -356,40 +390,9 @@ const SOMEONE_ELSE: Omit<WhoGuess, 'name'> = {
   newPerson: false,
 }
 
-/** Customers with this number on file first, then those whose name holds the sender's last name. */
-function customerGuesses(row: Pick<NewLaneRow, 'who'>, name: string | null, known: WhoKnown): WhoGuess[] {
-  const customers = known.customers ?? []
-  const number = normalizeChannel('phone', row.who)
-  const byNumber = number ? customers.filter((c) => (c.phones ?? []).some((p) => normalizeChannel('phone', p) === number)) : []
-  const out: WhoGuess[] = byNumber.map((c) => ({
-    kind: 'customer',
-    label: c.name,
-    words: 'A customer with this number on file.',
-    record: { table: 'customers', id: c.id },
-    newPerson: false,
-    name,
-  }))
-  const last = name?.split(' ')[1]?.toLowerCase()
-  if (last && last.length >= 3) {
-    for (const c of customers) {
-      if (byNumber.includes(c) || !nameWords(c.name).includes(last)) continue
-      const same = name!.toLowerCase() === c.name.toLowerCase()
-      out.push({
-        kind: 'customer',
-        label: same ? c.name : `${name} at ${c.name}`,
-        words: (c.phones ?? []).length ? 'A customer with this last name.' : 'A customer with this last name and no cell on file.',
-        record: { table: 'customers', id: c.id },
-        newPerson: !same,
-        name,
-      })
-    }
-  }
-  return out
-}
-
 /** Trade partners whose own domain matches the sender's, those on an open ask first, each with a new person after it. */
-function tradeGuesses(row: Pick<NewLaneRow, 'who'>, name: string | null, known: WhoKnown): WhoGuess[] {
-  const domain = companyDomain(row.who)
+function tradeGuesses(sender: SenderFacts, known: WhoKnown): WhoGuess[] {
+  const { domain, name } = sender
   if (!domain) return []
   const matches = (known.trades ?? [])
     .filter((t) => t.emails.some((e) => companyDomain(e) === domain))
@@ -419,21 +422,28 @@ function tradeGuesses(row: Pick<NewLaneRow, 'who'>, name: string | null, known: 
 }
 
 /**
- * The guesses on *Who is this?*, in the box's order. The team line: a customer we know by number or last name, then a
- * new lead on Prospects, since someone texting for service is a lead until they book, then a new customer. bids@: a
- * trade partner whose domain matches, those on an open ask first, then a new trade partner, then a supply house. Both
- * end with a candidate and someone else. No box reads as the team line.
+ * The guesses on *Who is this?*, in the box's order. First, on both boxes, **A customer we know** (`customerLink.ts`,
+ * v2.5795): the customers the sender may be, each with why, since a general contractor writing to bids@ is a customer
+ * too. The team line then: a new lead on Prospects, since someone texting for service is a lead until they book, then
+ * **A new customer** as one live press. bids@: the new customer, then a trade partner whose domain matches, those on an
+ * open ask first, then a new trade partner, then a supply house. Both end with a candidate, one of our own team and
+ * someone else. No box reads as the team line. The contact's channels, when passed, give the address or the number
+ * behind a name.
  */
-export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'>, box: Mailbox | null, known: WhoKnown = {}): WhoGuess[] {
-  const name = nameInText(row.body)
+export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'> & { channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }, box: Mailbox | null, known: WhoKnown = {}): WhoGuess[] {
+  const sender = senderFacts(row)
+  const name = sender.name
   const end: WhoGuess[] = [
     { ...CANDIDATE, name },
     { ...TEAM, name },
     { ...SOMEONE_ELSE, name },
   ]
+  const customers = customerMatches(sender, known)
   if (box === 'bids') {
     return [
-      ...tradeGuesses(row, name, known),
+      ...customers,
+      newCustomerGuess(sender, box),
+      ...tradeGuesses(sender, known),
       {
         kind: 'trade',
         label: name ? `${name}, a new trade partner` : 'A new trade partner',
@@ -454,7 +464,7 @@ export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'>, box: Mailbox |
     ]
   }
   return [
-    ...customerGuesses(row, name, known),
+    ...customers,
     {
       kind: 'lead',
       label: name ? `${name}, a new lead on Prospects` : 'A new lead on Prospects',
@@ -463,14 +473,7 @@ export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'>, box: Mailbox |
       newPerson: false,
       name,
     },
-    {
-      kind: 'customer',
-      label: name ? `${name}, a new customer` : 'A new customer',
-      words: name ? 'Makes the customer and the contact from the name in the line.' : 'Makes the customer and the contact.',
-      record: null,
-      newPerson: false,
-      name,
-    },
+    newCustomerGuess(sender, box),
     ...end,
   ]
 }

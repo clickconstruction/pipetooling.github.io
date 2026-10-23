@@ -2,7 +2,8 @@
  * Messages, residential R7 (PR 3): the sort card for one person above their thread, as `useNewLaneThreadSlots.tsx` puts
  * it in the window's `aboveLines` slot. It reads that person once (`newLaneCardIo.ts`), asks the lane's own rule
  * whether they need sorting (`laneRowFor`), and runs each press: says what it did, reads the card again and asks the
- * window to read the thread again.
+ * window to read the thread again. *A new customer* (v2.5795) goes through `makeCustomer` with the contact's address and
+ * number, the sender's name and the box's kind.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
@@ -61,14 +62,17 @@ export function NewLaneSlot({
     [read, contact, now],
   )
 
-  // The records a guess may be, once a line, for *Who is this?*.
+  // The records a guess may be, once a line, for *Who is this?*; the contact's channels give the address or the number
+  // behind a name (v2.5795).
   const whoLine = row?.sort === 'who' ? row.messageId : null
   const whoFrom = row?.who ?? ''
   const whoSaid = row?.body ?? ''
+  const channelsKey = contact.channels.map((ch) => `${ch.kind}:${ch.value}`).join('|')
+  const channels = useMemo(() => channelsKey.split('|').filter(Boolean).map((s) => ({ kind: s.slice(0, s.indexOf(':')) as 'phone' | 'email', value: s.slice(s.indexOf(':') + 1) })), [channelsKey])
   useEffect(() => {
     if (!whoLine) return
     let live = true
-    io.loadKnown({ who: whoFrom, body: whoSaid })
+    io.loadKnown({ who: whoFrom, body: whoSaid, channels })
       .then((k) => {
         if (live) setKnown(k)
       })
@@ -78,7 +82,7 @@ export function NewLaneSlot({
     return () => {
       live = false
     }
-  }, [io, whoLine, whoFrom, whoSaid])
+  }, [io, whoLine, whoFrom, whoSaid, channels])
 
   if (!row || !read) return null
 
@@ -106,14 +110,28 @@ export function NewLaneSlot({
     <NewLaneCard
       key={`${row.messageId}:${jobs.map((j) => j.id).join(',')}`}
       row={row}
-      guesses={row.sort === 'who' ? (known ? whoGuesses(row, row.mailbox, known) : null) : undefined}
+      guesses={row.sort === 'who' ? (known ? whoGuesses({ ...row, channels }, row.mailbox, known) : null) : undefined}
       roster={rosterChoices(known?.roster ?? [])}
       jobs={jobs}
       people={row.sort === 'has' ? hasTargets(row, read.team, pick) : []}
       busy={busy}
       onName={(g: WhoGuess) =>
         void run(
-          () => io.name(contact.id, g),
+          () =>
+            g.makes
+              ? io.makeCustomer(
+                  contact.id,
+                  {
+                    customerName: g.makes.customerName,
+                    personName: g.name,
+                    email: channels.find((ch) => ch.kind === 'email')?.value ?? null,
+                    phone: channels.find((ch) => ch.kind === 'phone')?.value ?? null,
+                    customerType: g.makes.customerType,
+                  },
+                  { userId: me.id },
+                  calendarYmdInAppTzFromIso(now),
+                )
+              : io.name(contact.id, g),
           namedWords(g),
           (holder) => {
             if (typeof holder === 'string' && holder !== contact.id) acts.showContact(holder)
