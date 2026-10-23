@@ -1,8 +1,8 @@
 ---
 name: "Prospects → Subs opens on what GC mode needs: every trade short of quotes or short on the bench, with the project, the due day, who is on the bench and who is here to call; Jobs to GC names the projects bidding"
 number: 148
-group: gated
-status: phase 1 shipped 2026-10-23; phase 2 list presented, awaiting the owner
+group: close
+status: phase 1 shipped and phase 2 added 2026-10-23; one company held by the double check
 summary: >
   The Subs lane of Prospects is a blank canvas today: prod has no sub prospect, so the deck says
   "Nobody on Subs yet", and the strip over it reads one chip, "Concrete · 2 more · 0 to call",
@@ -13,9 +13,9 @@ summary: >
   then the prospects here, then Add a sub. Jobs to GC gets the same honesty: the projects bidding
   by name and due day, and how many leads on the deck carry a job with a bid day. Phase 2 (after
   the owner's go) researches Central Texas companies per trade and presents a list to add.
-next: phase 1 shipped (v2.5782, v2.5785); the phase 2 list is in this folder, waiting on the owner's yes before any company is added through the app
-size: S left (adding the approved companies through Add a sub, one by one or by a script the owner has seen)
-blocker: the owner's yes on the list
+next: the owner decides on Campbell Millwork (held: same number as Campbell Painting, Save anyway adds it as a second branch); then retire this to-do
+size: XS left (one press, then delete the folder)
+blocker: none
 ver: proposed
 opinion: build the panel — it is the Trade partners need line, read from the caller's side, with the scope book's trades filling the canvas until a project asks
 ---
@@ -133,3 +133,7 @@ on the bench is asked). Jobs to GC reads *Bidding now: GC test bidding project, 
 How it was made: five web-research passes, one per three trades, each asked for established commercial subcontractors that bid to GCs, each phone read off the company's own site (or its own locations page); a company with no confirmable phone was dropped, not guessed. Licence numbers appear only where a site or registry showed one (TECL, TACLA, SCR, one irrigator). The `already` column names anything already on the bench, in Prospects or a customer: one hit, M.C. Ethridge (a Customers-lane prospect).
 
 Read before calling: two Austin rows are branches of San Antonio companies (Northstar Fire Protection, FSG), Central Texas Concretes lists an Alabama area code, Ericstad's website is a placeholder (its row cites the Blue Book), and Campbell Painting and Campbell Millwork share one number. Nothing on this list has been written to prod. On the owner's yes the companies go in through the Subs lane's **Add a sub** (source *Web research 2026-10-23*), never a raw insert.
+
+### Added (2026-10-23, on the owner's yes)
+
+103 of the 105 went in through the app's own New Prospect window as **A sub** (a headless Playwright run of the window, one company at a time: company, office phone, city, website, licence where known, the trade, source *Web research 2026-10-23*). Not added: M.C. Ethridge (already a Customers-lane prospect) and **Campbell Millwork**, which the window's double check held because it shares Campbell Painting's number; it needs the owner's **Save anyway** if wanted as a second branch. Read back on prod: 103 rows of kind `sub`, seven a trade, six on Sitework and Millwork. The panel now reads *7 to call here* on Concrete and a count on every chip.
