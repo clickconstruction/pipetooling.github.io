@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Call through Quo: the Call buttons open the Quo app on the company number</title>
+<style>
+  /* Punch list #152. Light only, like every to-do mock-up. Every person, company and number here is made up:
+     Rosa Delgado in the office, Dana Whitfield the customer at (512) 555-0187, Ridgeway Builders at (512) 555-0190,
+     the company number (512) 555-0144. The Quo screens are drawn plainly, not as Quo draws them. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --blue-chip: #bfdbfe; --blue-800: #1e40af; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f7f8fa; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  /* a phone frame, 375 wide, and a desk frame */
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .bar { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .desk { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+  .desk .bar { font-size: 11px; color: var(--muted); display: flex; gap: 6px; padding: 0 2px 8px; }
+  .desk .bar i { width: 10px; height: 10px; border-radius: 999px; background: var(--line); display: inline-block; }
+  /* a Follow up row, as FollowUpSections.tsx and WaitingOnThem.tsx draw it */
+  .lane { font-weight: 700; font-size: 15px; margin: 0 0 4px; }
+  .lane small { font-weight: 400; color: var(--muted); font-size: 12.5px; margin-left: 6px; }
+  .row { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; display: grid; gap: 6px; margin-bottom: 8px; }
+  .row .head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .avatar { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--subtle); font-weight: 700; font-size: 12px; color: var(--ink-2); }
+  .who { display: grid; flex: 1; min-width: 160px; }
+  .who .name { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .who b { font-size: 15px; }
+  .who .sub { font-size: 12.5px; color: var(--muted); }
+  .chip { display: inline-block; padding: 1px 9px; border-radius: 999px; background: var(--blue-chip); color: var(--blue-800); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .chip.amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .chip.outline { background: var(--surface); border: 1px solid var(--amber); color: var(--amber-ink); }
+  .has { margin-left: auto; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .btn { border-radius: 6px; font-weight: 600; font-size: 12.5px; padding: 5px 11px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; }
+  .btn.call { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; border-radius: 8px; }
+  .btn.wait { background: var(--blue-ink); border-color: var(--blue-ink); color: #fff; font-weight: 700; border-radius: 999px; }
+  .btn.nudge { color: var(--blue-ink); border-color: var(--blue-ink); border-radius: 999px; font-weight: 700; }
+  .quiet { font-size: 12px; color: var(--muted); }
+  .boxed { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
+  .boxed.g { outline-color: var(--green); }
+  .arrow { text-align: center; color: var(--muted); font-size: 22px; margin: 8px 0; }
+  /* the phone's own dialer sheet, and the Quo screen, both drawn plainly */
+  .sheet { background: var(--surface); border-radius: 14px; padding: 14px; text-align: center; border: 1px solid var(--line); }
+  .sheet .big { font-size: 17px; font-weight: 700; }
+  .sheet .small { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .sheet .two { display: flex; gap: 8px; margin-top: 12px; }
+  .sheet .two span { flex: 1; padding: 8px; border-radius: 8px; font-weight: 600; background: var(--subtle); }
+  .sheet .two span.go { background: var(--green); color: #fff; }
+  .quo { background: #111827; color: #fff; border-radius: 14px; padding: 18px 14px; text-align: center; }
+  .quo .tag { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #9ca3af; }
+  .quo .big { font-size: 20px; font-weight: 700; margin-top: 6px; }
+  .quo .small { font-size: 12.5px; color: #d1d5db; margin-top: 4px; }
+  .quo .from { display: inline-block; margin-top: 10px; padding: 3px 10px; border-radius: 999px; background: #1f2937; color: #e5e7eb; font-size: 12px; }
+  .quo .end { display: inline-grid; place-items: center; width: 54px; height: 54px; border-radius: 999px; background: var(--red); margin-top: 16px; font-size: 22px; }
+  /* the thread, as ThreadWindow.tsx draws a line */
+  .thread { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .thread .th { padding: 10px 14px 8px; border-bottom: 1px solid var(--line-2); display: flex; gap: 8px; align-items: center; }
+  .thread .th b { font-size: 16px; flex: 1; }
+  .thread .th .ctl { font-size: 15px; color: var(--ink-2); }
+  .line { padding: 10px 14px; border-bottom: 1px solid var(--line-2); display: grid; gap: 3px; }
+  .line .who { font-size: 12px; color: var(--muted); display: block; }
+  .line .body { font-size: 13.5px; }
+  .line .body.us { background: var(--subtle); border-radius: 10px; padding: 8px 10px; }
+  .line .body.them { background: #fff7ed; border-radius: 10px; padding: 8px 10px; }
+  .line .extra { font-size: 12px; color: var(--blue-ink); display: flex; gap: 10px; }
+  .line .gray { font-size: 12px; color: var(--muted); font-style: italic; }
+  /* a Settings card */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
+  .card h3 { margin: 0; font-size: 15px; }
+  .card p { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .opt { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; }
+  .opt i { display: inline-block; width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--line); margin-top: 2px; flex: none; }
+  .opt i.on { border-color: var(--blue); background: radial-gradient(circle, var(--blue) 45%, #fff 50%); }
+  .opt small { display: block; color: var(--muted); font-size: 12px; }
+  .steps { font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--line-2); padding-top: 8px; display: grid; gap: 4px; }
+  .steps b { color: var(--ink); }
+  /* the desk popup */
+  .popup { position: relative; margin: 14px auto 0; width: 300px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: 0 14px 34px rgba(15,23,42,.22); text-align: center; }
+  .popup .big { font-weight: 700; font-size: 14px; }
+  .popup .small { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .popup .two { display: flex; gap: 8px; margin-top: 12px; }
+  .popup .two span { flex: 1; padding: 6px; border-radius: 7px; font-size: 13px; font-weight: 600; background: var(--subtle); }
+  .popup .two span.go { background: var(--blue); color: #fff; }
+  .no { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 14px 16px; color: var(--ink-2); font-size: 13px; max-width: 100ch; }
+  .no b { color: var(--ink); }
+  table.side { border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #152 · Messages · a proposal, nothing built</p>
+  <h1>Call through Quo: the Call buttons open the Quo app on the company number</h1>
+  <p>Today every Call on Messages is a plain phone link. On a phone it dials from the person's own number and Quo never sees the call. Quo has a link that opens its phone app on a number and dials from the company number. For a desk, Quo's one way is a setting the person makes once. Quo's API cannot place a call for a person. This page draws the recommended option: Quo on phones where the person has a seat, the plain dialer where there is none, a switch per phone, and the thread getting the call from Quo on its own.</p>
+</header>
+
+<h2><span class="num">0</span> Today</h2>
+<p class="lede">The We owe them row's green Call and the Waiting on them row's blue Call are both <code>tel:</code> links. The phone's own dialer opens. The call goes out from Rosa's personal number. Quo never sees it, so the row waits for Rosa to press I called.</p>
+<div class="grid">
+  <div>
+    <div class="cap">A phone · We owe them · today</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>9:41</span><span>Messages</span></div>
+        <p class="lane">We owe them <small>(1)</small></p>
+        <div class="row">
+          <div class="head"><span class="avatar">DW</span><div class="who"><div class="name"><b>Dana Whitfield</b> <span class="chip amber">call · today</span></div><div class="sub">Call Dana about the estimate · added by Rosa 1 d</div></div></div>
+          <div class="acts"><span class="btn call boxed">📞 Call</span><span class="btn">I called</span><span class="btn">Tomorrow</span><span class="btn">Skip</span></div>
+        </div>
+        <div class="arrow">↓ the press</div>
+        <div class="sheet">
+          <div class="big">Call (512) 555-0187?</div>
+          <div class="small">From Rosa's own number</div>
+          <div class="two"><span>Cancel</span><span class="go">Call</span></div>
+        </div>
+        <p class="quiet" style="margin: 10px 4px 0">Dana sees Rosa's personal number. The thread gets no line. The task stays open until Rosa presses I called.</p>
+      </div>
+    </div>
+    <p class="verdict"><b>The gap the owner named.</b> The company number is not on the call, and nothing of it reaches the thread.</p>
+  </div>
+  <div>
+    <div class="cap">A phone · Waiting on them · today</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>9:41</span><span>Messages</span></div>
+        <p class="lane">Waiting on them <small>(2)</small></p>
+        <div class="row">
+          <div class="head"><div class="who"><div class="name"><b>Ridgeway Builders</b></div><div class="sub">Us · Hi Marcus, this is Rosa with Click Plumbing. Your estimate for … · Tue, Oct 20</div></div><span class="chip outline">Their move · 3 d</span></div>
+          <div class="acts" style="justify-content: flex-end"><span class="btn nudge">Nudge</span><span class="btn wait boxed">☎ Call</span></div>
+        </div>
+        <div class="row">
+          <div class="head"><div class="who"><div class="name"><b>Dana Whitfield</b></div><div class="sub">Us · Dana, this is Rosa with Click Plumbing. Your estimate is ready, $6,250.00 … · Tue, Oct 20</div></div><span class="chip outline">Their move · 3 d</span></div>
+          <div class="acts" style="justify-content: flex-end"><span class="btn nudge">Nudge</span><span class="btn wait boxed">☎ Call</span></div>
+        </div>
+        <p class="quiet" style="margin: 6px 4px 0">The same link. The same personal number.</p>
+      </div>
+    </div>
+    <p class="verdict"><b>Six places draw a Call today</b>: these two rows, the thread's ☎, the reply box's dial line, the Pipeline's customer door and the Tell the customer receipt. All six change together.</p>
+  </div>
+</div>
+
+<h2><span class="num pick">1</span> The pick: on a phone, Call in Quo</h2>
+<p class="lede">Rosa has a seat on the Company phone seats card. Her phone has the Quo app. The button reads <b>Call in Quo</b>, so it says what it does. The press opens Quo on Dana's number and dials from the company number, the one Dana's texts come from. The call is Quo's, so the thread gets it on its own.</p>
+<div class="grid">
+  <div>
+    <div class="cap green">A phone · the press</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>9:41</span><span>Messages</span></div>
+        <p class="lane">We owe them <small>(1)</small></p>
+        <div class="row">
+          <div class="head"><span class="avatar">DW</span><div class="who"><div class="name"><b>Dana Whitfield</b> <span class="chip amber">call · today</span></div><div class="sub">Call Dana about the estimate · added by Rosa 1 d</div></div></div>
+          <div class="acts"><span class="btn call boxed g">📞 Call in Quo</span><span class="btn">I called</span><span class="btn">Tomorrow</span><span class="btn">Skip</span></div>
+          <div class="quiet">Dials from the company number. Quo logs the call here.</div>
+        </div>
+        <p class="lane" style="margin-top: 12px">Waiting on them <small>(1)</small></p>
+        <div class="row">
+          <div class="head"><div class="who"><div class="name"><b>Ridgeway Builders</b></div><div class="sub">Us · Hi Marcus, this is Rosa with Click Plumbing … · Tue, Oct 20</div></div><span class="chip outline">Their move · 3 d</span></div>
+          <div class="acts" style="justify-content: flex-end"><span class="btn nudge">Nudge</span><span class="btn wait boxed g">☎ Call in Quo</span></div>
+        </div>
+        <div class="arrow">↓ the press</div>
+        <div class="quo">
+          <div class="tag">The Quo app opens</div>
+          <div class="big">Dana Whitfield</div>
+          <div class="small">(512) 555-0187 · calling…</div>
+          <div class="from">from Click Plumbing · (512) 555-0144</div>
+          <div><span class="end">📞</span></div>
+        </div>
+        <p class="quiet" style="margin: 10px 4px 0">The link: <code>openphone://dial?number=%2B15125550187&amp;from=%2B15125550144&amp;action=call</code>. Quo's own page gives it. It works in Quo's phone apps only.</p>
+      </div>
+    </div>
+    <p class="verdict"><b>One press.</b> Dana sees the company number. Rosa talks in Quo. Nothing is typed, nothing is copied.</p>
+  </div>
+  <div>
+    <div class="cap green">The thread, a minute after the call ends</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>9:48</span><span>Messages</span></div>
+        <div class="thread">
+          <div class="th"><b>Dana Whitfield</b><span class="ctl">☎</span><span class="ctl">⋯</span></div>
+          <div class="line"><span class="who">Rosa · from the company number · Tue, Oct 20</span><div class="body us">Dana, this is Rosa with Click Plumbing. Your estimate is ready, $6,250.00. Open it here: …</div></div>
+          <div class="line"><span class="who">Rosa called · 3:40 · from the company number · today 9:44 AM</span><div class="body us">Dana will read the estimate tonight and call back Thursday with a yes or a no. She asked whether the water heater can go in the garage.<br>Next: send the garage option.</div><div class="extra"><span>▶ Recording</span><span>Transcript</span></div></div>
+          <div class="line"><span class="gray">The call closed Rosa's task: Call Dana about the estimate.</span></div>
+          <div class="line"><span class="who">Write down their word</span><div class="quiet">They gave a day · Thursday · <span style="color: var(--blue-ink)">Save it ›</span></div></div>
+        </div>
+        <p class="quiet" style="margin: 10px 4px 0">The line, the recording, the summary and the task's close are what <code>quo-webhook</code> does today for any Quo call. Nothing new on the server. The day they gave is still Rosa's to write, as now.</p>
+      </div>
+    </div>
+    <p class="verdict"><b>What changes for the office.</b> I called becomes the fallback for a call made off Quo. The task closes itself on an answered call. Needs a reply clears, and Waiting on them starts counting from the call.</p>
+  </div>
+</div>
+
+<h2><span class="num pick">2</span> On a desk: the same Call, and a one-time setting</h2>
+<p class="lede">Quo has no link for a desk. Its way is to make Quo the computer's default for calls, once. After that the plain Call link opens the Quo desktop app with the number filled. The app does nothing new on a desk but say the steps.</p>
+<div class="grid">
+  <div>
+    <div class="cap blue">A Mac · We owe them · after the setting</div>
+    <div class="fit">
+      <div class="desk">
+        <div class="bar"><i></i><i></i><i></i><span style="margin-left: 8px">app · Messages</span></div>
+        <p class="lane">We owe them <small>(1)</small></p>
+        <div class="row">
+          <div class="head"><span class="avatar">DW</span><div class="who"><div class="name"><b>Dana Whitfield</b> <span class="chip amber">call · today</span></div><div class="sub">Call Dana about the estimate · added by Rosa 1 d</div></div><span class="has">Rosa has it</span></div>
+          <div class="acts"><span class="btn call boxed g">📞 Call</span><span class="btn">I called</span><span class="btn">Tomorrow</span><span class="btn">Skip</span></div>
+        </div>
+        <div class="popup">
+          <div class="big">Dial (512) 555-0187 with Quo?</div>
+          <div class="small">The Mac asks this on each press, once Quo is the default for calls.</div>
+          <div class="two"><span>Cancel</span><span class="go">Call</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>The button reads Call</b>, not Call in Quo: the page cannot know what the computer will open. The tooltip says <i>Quo takes this call once it is your Mac's default for calls. Settings → Your account says how.</i></p>
+  </div>
+  <div>
+    <div class="cap blue">Settings → Your account · the one new card</div>
+    <div class="fit">
+      <div class="card">
+        <h3>Calls from this phone</h3>
+        <p>You have the seat <b>Rosa Delgado</b> on the company number. A Call press on this phone can go through the Quo app.</p>
+        <div class="opt"><i class="on"></i><div><b>Through Quo</b><small>Call opens the Quo app and dials from the company number. The call lands in the thread with its recording.</small></div></div>
+        <div class="opt"><i></i><div><b>This phone's own dialer</b><small>Call opens the phone's dialer. The call goes from your own number and the thread does not see it.</small></div></div>
+        <div class="steps">
+          <b>On a desk</b>
+          <span>Quo takes a Call press once it is the computer's default for calls. The Quo desktop app must be installed.</span>
+          <span><b>Mac:</b> open FaceTime, then Settings, then choose Quo under Default for calls.</span>
+          <span><b>Windows:</b> open Settings, then Default apps, then Choose default apps by protocol, then set TEL to Quo.</span>
+        </div>
+      </div>
+      <p class="quiet" style="margin: 10px 2px 0">Kept per phone, in the browser, the way Show Mine · Everyone is. Default: Through Quo for a seat holder. No migration.</p>
+    </div>
+    <p class="verdict"><b>One card, three jobs.</b> The switch for the phone, the desk steps, and the reason in plain words. A person without a seat sees only the desk steps.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span> No seat: the row as today</h2>
+<p class="lede">A teammate with no seat on the Company phone seats card has no Quo to open. The buttons read Call and open the phone's own dialer, as today. The office can give them a seat on the card later, and the buttons change on their own.</p>
+<div class="grid">
+  <div>
+    <div class="cap">A phone · no seat</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>9:41</span><span>Messages</span></div>
+        <p class="lane">We owe them <small>(1)</small></p>
+        <div class="row">
+          <div class="head"><span class="avatar">DW</span><div class="who"><div class="name"><b>Dana Whitfield</b> <span class="chip amber">call · today</span></div><div class="sub">Call Dana about the estimate · added by Rosa 1 d</div></div></div>
+          <div class="acts"><span class="btn call">📞 Call</span><span class="btn">I called</span><span class="btn">Tomorrow</span><span class="btn">Skip</span></div>
+          <div class="quiet">Opens this phone's dialer. Press I called after.</div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>Nothing is taken away.</b> The quiet line says what the press does, so nobody wonders why their row has no Quo.</p>
+  </div>
+  <div>
+    <div class="cap red">Not drawn: the app asks Quo to place the call</div>
+    <div class="fit">
+      <div class="no">
+        <b>Quo's API has no door for this.</b> It reads calls and tells us about them through webhooks. It cannot ring Rosa's seat and then Dana. The one call Quo's API can start is Sona's, its AI agent, at 50 automation credits a call. That is the robot calling, not Rosa.<br><br>
+        If Quo adds a door, it is one edge function on the shape of <code>quo-send</code>, and the press works the same on every device. Until then there is nothing to build, and the to-do says so instead of drawing it.
+      </div>
+      <table class="side">
+        <tr><th></th><th>The link on phones, the desk setting</th><th>The API</th></tr>
+        <tr><td>iPhone or Android with Quo</td><td>Quo dials from the company number</td><td>not possible</td></tr>
+        <tr><td>A phone without Quo</td><td>the phone's dialer, as today</td><td>not possible</td></tr>
+        <tr><td>A Mac or PC with Quo</td><td>Quo, after the one-time setting</td><td>not possible</td></tr>
+        <tr><td>The call in the thread</td><td>yes, through the webhook, as today</td><td>would</td></tr>
+        <tr><td>Size</td><td>S, one PR, no migration</td><td>nothing to build</td></tr>
+      </table>
+    </div>
+    <p class="verdict"><b>Straightforward.</b> The API option is the one that sounds best and it does not exist. The page says so.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span> The five decisions</h2>
+<p class="lede">Each with the recommended answer first.</p>
+<table class="side">
+  <tr><th>Decision</th><th>Recommended</th><th>The other way</th></tr>
+  <tr><td>Dial at once, or open Quo with the number filled?</td><td>Dial at once. The button says Call in Quo and the row's Call is a deliberate press.</td><td>One more press inside Quo.</td></tr>
+  <tr><td>Where the switch lives</td><td>Per phone, in the browser, on Settings → Your account. No migration.</td><td>Per person, a column beside My way, one migration. It would not know which phone has the app.</td></tr>
+  <tr><td>Default for a seat holder</td><td>Through Quo from the first press.</td><td>Off until each person turns it on.</td></tr>
+  <tr><td>The caller ID</td><td>The number the thread texts from, so the customer sees the number they know.</td><td>Always the company number.</td></tr>
+  <tr><td>The button's words</td><td>Call in Quo when it will, Call when it is the phone's dialer.</td><td>Call everywhere, Quo in the tooltip.</td></tr>
+</table>
+<p class="note"><b>To try on a real phone before the PR merges:</b> whether Safari asks <i>Open in Quo?</i> on each press, whether the company number comes up with no question, what a phone without Quo shows, and that the thread's line names the right person and the right number. On a ZZ test contact, dialing one of our own numbers. Never a real customer.</p>
+
+</div>
+</body>
+</html>
