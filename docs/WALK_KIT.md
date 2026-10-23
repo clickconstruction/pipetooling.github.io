@@ -2,7 +2,7 @@
 
 > One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself. Punch list #142 (v2.5724 to v2.5739). The decisions behind it were made in `to-dos/walk-kit/` and are kept here once that folder is gone.
 
-last_updated: 2026-10-22
+last_updated: 2026-10-23
 
 ## What it is
 
@@ -54,8 +54,8 @@ The report is printed and written to `tmp/walk/<stamp>.json` (ignored by git): o
 
 ## Before the first walk
 
-- **bids@ off every other record.** `walk_setup` refuses while any contact but the kit's carries the kit's address or number, or the side that sends to it (the team box's address and number, the app's sender). On 2026-10-21 two test records carried bids@; the owner retypes each record's email in the app, and a session deletes the two leftover `contact_channels` rows through the Supabase connector (the query is below).
-- **Quo between two of its own numbers.** The one unknown the first run answers: whether Quo delivers a text from the bids number to the company number. If step 5 times out with no inbound line, run the walk again with `--fallback-phone`.
+- **bids@ off every other record.** `walk_setup` refuses while any contact but the kit's carries the kit's address or number, or the side that sends to it (the team box's address and number, the app's sender). On 2026-10-21 two test records carried bids@; the owner retypes each record's email in the app, and a session deletes the two leftover `contact_channels` rows through the Supabase connector (the query is below). Done 2026-10-23: the two empty channel rows went over the pooler with the owner's word and `walk_setup` passed; the GC test company's `email` column still reads bids@, so a save of that record could re-make a channel.
+- **Quo between two of its own numbers.** The one unknown the first run answers: whether Quo delivers a text from the bids number to the company number. If step 5 times out with no inbound line, run the walk again with `--fallback-phone`. Answered 2026-10-23: it does; the reply from the bids number landed on the kit's thread in one second.
 
 ## The walk with the owner's presses
 
@@ -121,6 +121,17 @@ With `query_logs`, over the run's window: `quo-webhook`'s and `gmail-sync`'s lin
 | The kit's rows | `walk_setup`, `walk_cleanup` (`docs/migrations/20261022045047_walk_kit.md`); the bed `npm run test:pg:walk-kit` |
 | The tester's flag | `docs/migrations/20261022044606_users_is_walk_tester.md`, `ACCESS_CONTROL.md` § The walk tester |
 | Quiet to people | `src/lib/messages/notifyPlan.ts`, `src/lib/followUp/assignSeats.ts`, `src/lib/flows/nudgeRunInputs.ts` |
+
+## Found on the first walks (2026-10-23)
+
+The first green run went on the owner's presses (`--owner-presses --keep`), then the owner's own Chrome walked Take it, Answer all, Log a call and Nudge on the kit's thread before `--cleanup-only` removed every row. Four paper cuts in the driver, none in the app:
+
+1. **The keys.** `scripts/walk/run.ts` reads the main checkout's `.env.local` alone and needs all three keys there, while that checkout kept `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`; the two lines were copied into `.env.local` by hand. The driver should read `.env` and lay `.env.local` over it.
+2. **A failed fetch ends the run.** A transient `TypeError: fetch failed` inside a wait (polling the estimate for the owner's press) aborted the whole run with exit 1 instead of being retried on the next poll, with the kit kept.
+3. **A press before the restart is not seen.** After that abort, the owner's sends went before the walk was restarted; `Send the estimate text` then held for three minutes looking for a text newer than the run's start, and the text reply read *no estimate text to mark*. The wait could accept a text line newer than the kit's `madeAt`.
+4. **One seed per run.** Each restart seeds another *older text of ours* on a kept kit; the seed should be one per kit.
+
+Also seen: a kit whose newest line is theirs sits in New or Needs a reply, never in Waiting on them, so Nudge cannot be walked without backdating the kit's own lines (three days, by SQL with the owner's word); and in auto mode the Claude app's classifier refuses that prod write, so Ask mode or the owner's own SQL editor is the door.
 
 ## Not carried
 
