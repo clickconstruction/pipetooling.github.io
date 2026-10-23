@@ -1,9 +1,9 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { usualExcludes } from './plans'
-import { GC_NEW_HERE_STEPS, gcNewHereTarget } from './tour'
+import { GC_GAPS_GUIDE_SLUG, GC_NEW_HERE_STEPS, gcNewHereTarget } from './tour'
 
 /** The page, its windows and the card head's kernel (v2.5544: the head's doors and their anchors are named in `cardHead.ts`), as source: every anchor and every label a stop names must be in it. */
 const ROOT = join(__dirname, '..', '..')
@@ -43,6 +43,15 @@ describe('New here? on the GC projects page', () => {
     expect(gaps!.example!.parts.filter((p) => p.means).map((p) => p.means)).toEqual(['leaves it out', 'the work', 'it is left to'])
     // The missing line no longer explains red words a second time: the example does.
     expect(gaps!.missingBody).toBe('This project has none.')
+  })
+
+  it('v2.5783 · the Gaps stop links its own guide, which exists, and names both kinds of gap', () => {
+    const gaps = GC_NEW_HERE_STEPS.find((s) => s.anchor === 'gc-gaps')!
+    expect(gaps.guide).toEqual({ href: `/help?g=${GC_GAPS_GUIDE_SLUG}`, label: 'Read how to fill a gap →' })
+    expect(existsSync(join(ROOT, 'content', 'help', `${GC_GAPS_GUIDE_SLUG}.md`))).toBe(true)
+    expect(gaps.example?.after).toContain('Compare quotes')
+    // The card's red line opens the same guide.
+    expect(SOURCE).toContain('GC_GAPS_GUIDE_SLUG')
   })
 
   it('finds every anchor on the page, so moving a button keeps its name', () => {

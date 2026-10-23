@@ -103,4 +103,17 @@ describe('SpotlightTour', () => {
     expect(screen.getByRole('dialog', { name: 'First stop' })).toBeTruthy()
     expect(screen.queryByTestId('tour-example')).toBeNull()
   })
+
+  it('v2.5783 · a stop with a guide of its own draws the link under the body, and pressing it closes the walk', () => {
+    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    Element.prototype.scrollIntoView = () => {}
+    const onClose = vi.fn()
+    const shown = { anchor: 'tour-gone', title: 'Gaps', body: 'The card says it in red.', missingBody: 'None here.', guide: { href: '/help?g=fill-the-gaps', label: 'Read how to fill a gap →' } }
+    renderWithProviders(<SpotlightTour steps={[shown, ...steps]} onClose={onClose} />)
+    const link = screen.getByRole('link', { name: 'Read how to fill a gap →' })
+    expect(screen.getByTestId('tour-guide').contains(link)).toBe(true)
+    expect(link.getAttribute('href')).toBe('/help?g=fill-the-gaps')
+    fireEvent.click(link)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

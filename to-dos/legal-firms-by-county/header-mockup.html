@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal Desk header, with firms</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* The Legal Desk's header once there are several firms (punch list #144, PR 2 and 3): the firm the account belongs to and why, the Map view, the Firms… door. Static, opens from disk; the same look as mockup.html (the picker and the lens). */
+  :root {
+    --bg: #F4F5F3; --surface: #FFFFFF; --subtle: #EEF0EC; --ink: #171A17; --muted: #5F665F; --line: #D9DDD6; --line-strong: #B8BFB5;
+    --accent: #1F5F8B; --accent-bg: #E3EEF6; --good: #1E6B3A; --good-bg: #DDEFE3; --warn: #8A5A0C; --warn-bg: #F7EBD0; --bad: #9B2C2C; --bad-bg: #F6DEDE;
+    --firm-a: #1F5F8B; --firm-a-bg: #CFE1EF; --firm-b: #7A3E8F; --firm-b-bg: #E6D6EE; --none-bg: #F6F6F3;
+    --display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent-bg: #1B2E3C; --good-bg: #1B3324; --warn-bg: #3A2C12; --bad-bg: #3B1E1E; --firm-a-bg: #1E3A4F; --firm-b-bg: #3A2744; --none-bg: #1F231F; --firm-a: #7FB3D9; --firm-b: #C79BD8; --warn: #E2B45A; --bad: #E58C8C; --good: #7CC69A; } }
+  :root[data-theme="dark"] { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent-bg: #1B2E3C; --good-bg: #1B3324; --warn-bg: #3A2C12; --bad-bg: #3B1E1E; --firm-a-bg: #1E3A4F; --firm-b-bg: #3A2744; --none-bg: #1F231F; --firm-a: #7FB3D9; --firm-b: #C79BD8; --warn: #E2B45A; --bad: #E58C8C; --good: #7CC69A; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--body); padding: 0 20px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-family: var(--display); font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 38ch; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-family: var(--display); font-size: 19px; margin: 40px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  h2 .rank { font-family: var(--mono); font-size: 12px; color: var(--muted); font-weight: 500; }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); font-weight: 600; }
+  blockquote { margin: 12px 0 0; padding: 8px 14px; border-left: 3px solid var(--line-strong); color: var(--ink); max-width: 84ch; font-style: italic; }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--warn); border-radius: 8px; padding: 10px 14px; margin: 14px 0 0; max-width: 84ch; }
+  .note b { display: block; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+  ol, ul { max-width: 84ch; padding-left: 20px; margin: 10px 0 0; }
+  li { margin-bottom: 8px; }
+  .frame { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; margin: 12px 0 0; font-size: 12.5px; line-height: 1.45; }
+  .frame .chrome { background: var(--subtle); border-bottom: 1px solid var(--line); padding: 7px 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .frame .chrome i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); display: inline-block; }
+  .lbl { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+
+  /* the desk's header */
+  .hdr { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .hdr .ttl { display: flex; gap: 10px; align-items: flex-start; flex: 1 1 260px; min-width: 0; }
+  .hdr h3 { margin: 0; font-size: 17px; font-family: var(--display); }
+  .hdr .sub { color: var(--muted); font-size: 12px; }
+  .ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .seg { display: inline-flex; align-items: stretch; height: 30px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .seg > span, .seg > button { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: none; border-left: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+  .seg > :first-child { border-left: none; }
+  .seg .on { background: var(--subtle); font-weight: 600; }
+  .seg .firm { font-weight: 600; }
+  .seg .amber { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+  .seg .quiet { color: var(--muted); font-weight: 500; }
+  .seg .sw { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  .ico { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); border-radius: 6px; font-size: 15px; }
+  .ico.boxed { border: 1px solid var(--line-strong); color: var(--ink); background: var(--surface); }
+  .body { display: grid; grid-template-columns: 240px 1fr; min-height: 220px; }
+  .rail { border-right: 1px solid var(--line); padding: 10px; }
+  .rail .acct { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; margin-bottom: 6px; font-size: 12px; }
+  .rail .acct.on { background: var(--subtle); border-color: var(--line-strong); }
+  .rail .acct b { display: flex; justify-content: space-between; }
+  .rail .acct .m { color: var(--muted); font-size: 11px; }
+  .main { padding: 14px 18px; }
+  .main .nm { font-size: 16px; font-weight: 700; }
+  .main .addr { color: var(--muted); font-size: 12px; }
+  .main .addr .venue { color: var(--ink); }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+  .chip.a { background: var(--firm-a-bg); color: var(--firm-a); } .chip.b { background: var(--firm-b-bg); color: var(--firm-b); } .chip.warn { background: var(--warn-bg); color: var(--warn); } .chip.good { background: var(--good-bg); color: var(--good); }
+  .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+  .btn.pri { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+  .card { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .card .q { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .card .a { font-weight: 600; font-size: 13.5px; }
+  .card .w { color: var(--muted); font-size: 11.5px; }
+  /* the states table */
+  .states { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
+  .state { display: grid; grid-template-columns: 150px minmax(300px, 1fr) 1fr; gap: 14px; align-items: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  .state .k { font-weight: 600; }
+  .state .why { color: var(--muted); font-size: 12px; }
+  @media (max-width: 900px) { .state { grid-template-columns: 1fr; } .cards { grid-template-columns: 1fr 1fr; } .body { grid-template-columns: 1fr; } }
+  /* the firms window */
+  .win { margin: 14px 16px 18px; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.18); background: var(--surface); overflow: hidden; }
+  .win .whdr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .win .whdr h4 { margin: 0; font-size: 14px; font-family: var(--display); flex: 1; }
+  .win .wbody { display: grid; grid-template-columns: 260px 1fr; gap: 14px; padding: 14px; }
+  .fcard { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; }
+  .fcard.on { border-color: var(--ink); box-shadow: inset 3px 0 0 var(--fc); }
+  .fcard .n { font-weight: 600; display: flex; gap: 8px; align-items: center; }
+  .fcard .sw { width: 11px; height: 11px; border-radius: 3px; background: var(--fc); display: inline-block; }
+  .fcard .m { color: var(--muted); font-size: 11.5px; }
+  .mapbox { border: 1px solid var(--line); border-radius: 8px; background: var(--none-bg); min-height: 220px; position: relative; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
+  .mapbox .blob { position: absolute; border-radius: 40% 60% 55% 45%; opacity: .9; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 8px 0 0; font-size: 11.5px; }
+  .legend .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; vertical-align: -2px; margin-right: 5px; border: 1px solid var(--line-strong); }
+  .side { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
+  .side h4 { margin: 0 0 6px; font-size: 12px; font-family: var(--display); }
+  .side .row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .side .row:last-child { border-bottom: none; }
+  .side .m { color: var(--muted); font-size: 11px; }
+  .flag { background: var(--bad-bg); color: var(--bad); border-radius: 6px; padding: 6px 10px; font-size: 11.5px; margin: 0 0 10px; }
+  .two { display: grid; grid-template-columns: 1fr 280px; gap: 14px; align-items: start; }
+  @media (max-width: 820px) { .two, .win .wbody { grid-template-columns: 1fr; } }
+  .alt { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+  .alt .box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
+  .alt .box b { display: block; margin-bottom: 4px; }
+  .alt .box.pick { border-color: var(--ink); }
+  .alt .m { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #144 · PR 2 and PR 3 · the desk's header · mock-up 2026-10-23</p>
+      <h1>The Legal Desk header with several firms: which firm this account belongs to and why, a Map, and the door to add firms</h1>
+    </div>
+    <div class="stamp">counties are live (v2.5756, v2.5758)<br>full screen shipped (v2.5780)<br>nothing here is built yet</div>
+  </header>
+
+  <p class="lede" style="margin-top:14px">The owner, 2026-10-23, with a screenshot of the desk:</p>
+  <blockquote>On legal desk we recently added a map but I don't think we well updated how to onboard firms, and we used to have a button in the top right hand corner. Can you help me add a full screen button to this modal like other modals have, and help me re-develop this flow and expose useful buttons to the user like a map where they can see all the jobs and add more firms?</blockquote>
+  <p class="lede" style="margin-top:12px">Today the header's firm group assumes one firm: it shows the oldest active firm, whatever county the account is in, and every release goes to it. With counties colored on Settings, the header should say <b>which firm this account belongs to, and why</b>, keep that firm's Emails and Portal link, and carry two doors the owner asked for: <b>Map</b> (every case on the county map) and <b>Firms…</b> (add a firm, color its counties). The full screen button is in (v2.5780).</p>
+
+  <h2><span class="rank">Frame 1</span> The header, on The Learning Experience</h2>
+  <p class="lede">Left to right in the control row: the <b>Accounts · Map</b> switch (the desk's two views, like the Lien desk's Do now · Calendar · All filings), the <b>firm group</b> whose first segment now reads the firm <i>and the county that picked it</i>, then <b>Firms…</b> (a dev's door), then ⤢ and ✕. Under the account's address the venue says where the county came from.</p>
+  <div class="frame">
+    <div class="chrome"><i></i><i></i><i></i>&nbsp; clicktooling.com/jobs?tab=stages&amp;legal=1 · Legal Desk</div>
+    <div class="hdr">
+      <div class="ttl"><span style="font-size:18px">⚖</span><div><h3>Legal Desk</h3><div class="sub">Collections accounts, the way the firm would receive them. Two exits: attorney-ready (a dev) or write it down.</div></div></div>
+      <div class="ctl">
+        <span class="seg" title="The desk's two views"><button class="on" data-view="accounts">Accounts</button><button data-view="map">Map</button></span>
+        <span class="seg"><button class="firm" title="Austin Legal covers Travis County, and this account's property record is in Travis County. Press for the firm's details and fee model."><span class="sw" style="background:var(--firm-b)"></span>Austin Legal, PLLC <span class="quiet">· Travis County</span> ›</button><button class="quiet">✉ Emails</button><button class="quiet">🔗 Portal link</button></span>
+        <button class="btn" title="Add a firm, color the counties each one covers (a dev)">Firms…</button>
+        <span class="ico">⤢</span><span class="ico">✕</span>
+      </div>
+    </div>
+    <div class="body" id="accounts-view">
+      <div class="rail">
+        <div class="lbl" style="margin-bottom:6px">Needs a dev's eyes · 3</div>
+        <div class="acct on"><b>The Learning Expe… <span>$15,781.82</span></b><div class="m">3 jobs · 3 no contract · Travis <span class="chip b">Austin</span></div></div>
+        <div class="acct"><b>Burd &amp; Assoc. <span>$2,028.04</span></b><div class="m">1 job · 1 no contract · Williamson <span class="chip warn">no firm</span></div></div>
+        <div class="acct"><b>RMC- Dudley Mason <span>$1,712.50</span></b><div class="m">1 job · GC pays · Bexar <span class="chip a">Snell</span></div></div>
+      </div>
+      <div class="main">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><div class="nm">The Learning Experience</div><div class="addr">718 · 717 · 707 · 15054 State Hwy 71, Bee Cave, TX 78738<br><span class="venue">Venue · Travis County</span>, from the property record · Austin Legal covers it</div></div>
+          <div style="text-align:right"><div style="font-size:18px;font-weight:700">$15,781.82</div><div class="addr">balance · oldest 193d</div></div>
+        </div>
+        <div class="acts"><span class="chip warn">1 thing an attorney will ask for first</span> <button class="btn">⎙ Print packet</button><span style="flex:1"></span><button class="btn pri">⚖ Mark attorney ready…</button><button class="btn">Write it down…</button></div>
+        <div class="cards">
+          <div class="card"><div class="q">Can we sue?</div><div class="a">Yes, on 2 of 3 jobs</div><div class="w">As a sworn account. Job 717 still needs a signed agreement or field proof.</div></div>
+          <div class="card"><div class="q">How much?</div><div class="a">$15,781.82</div><div class="w">Owed on 3 jobs. The oldest bill is 193 days old.</div></div>
+          <div class="card"><div class="q">What's left for us?</div><div class="a">$10,934.55 <span class="chip good">worth it</span></div><div class="w">Austin Legal takes 30%, or $4,734.55, and filing costs $112.72.</div></div>
+          <div class="card"><div class="q">What could go wrong?</div><div class="a">Nothing we know of</div><div class="w">No dispute, no broken promise and no note saying they cannot pay.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="body" id="map-view" style="display:none;grid-template-columns:1fr">
+      <div class="main">
+        <div class="flag"><b>1 case in a county no firm covers</b> · Burd &amp; Assoc. (Williamson). Press Firms… to color it, or the desk cannot release it.</div>
+        <div class="two">
+          <div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="lbl" style="margin-right:auto">8 accounts · 10 jobs · $26,462.01 open · scroll to zoom, drag to pan</span><button class="btn">Central Texas</button><button class="btn">All of Texas</button></div>
+            <div class="mapbox">
+              <span class="blob" style="left:38%;top:18%;width:120px;height:90px;background:var(--firm-b-bg)"></span>
+              <span class="blob" style="left:22%;top:52%;width:150px;height:100px;background:var(--firm-a-bg)"></span>
+              <span style="position:absolute;left:46%;top:30%;width:12px;height:12px;border-radius:50%;background:var(--good);border:1px solid var(--ink)"></span>
+              <span style="position:absolute;left:55%;top:14%;width:8px;height:8px;border-radius:50%;background:var(--bad);border:1px solid var(--ink)"></span>
+              <span style="position:absolute;left:30%;top:66%;width:9px;height:9px;border-radius:50%;background:var(--warn);border:1px solid var(--ink)"></span>
+              <span style="position:absolute;left:36%;top:72%;width:8px;height:8px;border-radius:50%;background:#8A8F8A;border:1px solid var(--ink)"></span>
+              <span style="position:relative;max-width:40ch">the county map from Settings, drawn once (<code>LegalFirmCountyMap</code>), counties by firm, a dot per case sized by its balance — the settled mock-up's frame 2</span>
+            </div>
+            <div class="legend"><span><span class="sw" style="background:var(--warn)"></span>Needs a dev's eyes</span><span><span class="sw" style="background:var(--good)"></span>With the firm</span><span><span class="sw" style="background:#8A8F8A"></span>Given up on</span><span><span class="sw" style="background:var(--bad)"></span>No firm covers it</span></div>
+          </div>
+          <div>
+            <div class="side" style="margin-bottom:10px"><h4>Who covers what</h4>
+              <div class="row"><span><span class="sw" style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--firm-a-bg);border:1px solid var(--firm-a);margin-right:6px;vertical-align:-1px"></span>Snell Law Firm, PLLC<div class="m">Bexar, Comal, Guadalupe</div></span><span style="text-align:right"><b>5 cases</b><div class="m">$8,400.15</div></span></div>
+              <div class="row"><span><span class="sw" style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--firm-b-bg);border:1px solid var(--firm-b);margin-right:6px;vertical-align:-1px"></span>Austin Legal, PLLC<div class="m">Travis, Hays</div></span><span style="text-align:right"><b>2 cases</b><div class="m">$16,033.82</div></span></div>
+              <div class="row"><span>No firm covers it<div class="m">Williamson</div></span><span style="text-align:right"><b>1 case</b><div class="m">$2,028.04</div></span></div>
+            </div>
+            <div class="side"><h4>Travis County <span class="m">· Austin Legal · 2 cases · $16,033.82 open</span></h4>
+              <div class="row"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--good);margin-right:6px"></span>The Learning Experience<div class="m">718 · 717 · 707 · with Austin Legal since 10/06</div></span><span>$15,781.82</span></div>
+              <div class="row"><span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--warn);margin-right:6px"></span>Bruce Hall<div class="m">needs a dev's eyes</div></span><span>$252.00</span></div>
+              <div class="m" style="margin-top:6px">Tap a county to list its cases; tap a case and the desk opens on it under Accounts.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="lede" style="margin-top:8px">Press <b>Map</b> in the frame to see the second view. Map replaces the rail and the account, as the Lien desk's Calendar replaces Do now; the header stays, and the firm group reads the firm of whichever account was last open.</p>
+
+  <h2><span class="rank">Frame 2</span> The firm segment, in each state it can be in</h2>
+  <p class="lede">The kernel <code>firmForAccount</code> reads the account's venue county (<b>the property record</b>, else the <b>county the job address suggests</b>, else none), and the firm that covers it. The segment is the answer, in one line; the reason is in its tooltip and in the venue line under the account's address.</p>
+  <div class="states">
+    <div class="state"><div class="k">Covered</div><span class="seg"><button class="firm"><span class="sw" style="background:var(--firm-b)"></span>Austin Legal, PLLC <span class="quiet">· Travis County</span> ›</button><button class="quiet">✉ Emails</button><button class="quiet">🔗 Portal link</button></span><div class="why">The property record names Travis County; Austin Legal covers it. Mark attorney ready releases to Austin Legal. <i>What's left for us?</i> uses Austin Legal's fee model.</div></div>
+    <div class="state"><div class="k">Covered, by the address</div><span class="seg"><button class="firm"><span class="sw" style="background:var(--firm-b)"></span>Austin Legal, PLLC <span class="quiet">· Travis County, by the address</span> ›</button><button class="quiet">✉ Emails</button><button class="quiet">🔗 Portal link</button></span><div class="why">No property record yet. The job is in Bee Cave, which is in Travis County. The venue line says <i>from the job address</i>, and the gap list already asks for the property record.</div></div>
+    <div class="state"><div class="k">No firm covers it</div><span class="seg"><button class="amber">No firm covers Williamson County · Firms…</button></span><div class="why">The county is known and nobody covers it. The segment is amber and opens Firms…; Mark attorney ready is off with the same words. No default firm, ever (the owner's call, 2026-10-22).</div></div>
+    <div class="state"><div class="k">County unknown</div><span class="seg"><button class="amber">County unknown · Edit customer…</button></span><div class="why">No property record and a city the lookup does not know. The door is the property record, where the county is typed.</div></div>
+    <div class="state"><div class="k">Two counties, two firms</div><span class="seg"><button class="firm"><span class="sw" style="background:var(--firm-b)"></span>Austin Legal, PLLC <span class="quiet">· Travis County</span> ›</button><button class="quiet">⇄ Snell instead</button><button class="quiet">✉ Emails</button><button class="quiet">🔗 Portal link</button></span><div class="why">Jobs in two counties with different firms. The firm of the county holding the largest open bill is picked (Travis, $15,781.82 over Comal, $2,000). <b>⇄ Snell instead</b> switches for this release; the venue line says both counties and which bill decided.</div></div>
+    <div class="state"><div class="k">Already with a firm</div><span class="seg"><button class="firm"><span class="sw" style="background:var(--firm-a)"></span>Snell Law Firm, PLLC <span class="quiet">· with them since 10/06</span> ›</button><button class="quiet">✉ Emails</button><button class="quiet">🔗 Portal link</button></span><div class="why">A released matter stays with the firm it went to, whatever the counties say today (<code>legal_matters.firm_id</code>). Changing a county affects new releases only.</div></div>
+    <div class="state"><div class="k">No firm at all</div><span class="seg"><button class="amber">No firm yet · Firms…</button></span><div class="why">As today: the amber first segment, now opening Firms… instead of the one firm's window.</div></div>
+  </div>
+
+  <h2><span class="rank">Frame 3</span> Firms… — the window over the desk (a dev)</h2>
+  <p class="lede">The Settings block the owner knows (<code>LegalFirmSettingsBlock</code>: a card per firm, <b>Add a firm</b>, the county map, Save counties) in a window over the desk, so a dev can add the Austin firm and color Travis without leaving the account, and the amber segment turns into the firm's name the moment the counties save. A line at the foot still opens the block on Settings. Everyone else sees no Firms… button; the firm's name opens its read-only window as today.</p>
+  <div class="frame">
+    <div class="chrome"><i></i><i></i><i></i>&nbsp; Legal Desk · Firms…</div>
+    <div class="win">
+      <div class="whdr"><h4>⚖ Collections law firms</h4><span class="lbl">who the desk releases accounts to, by county</span><span class="ico">✕</span></div>
+      <div class="wbody">
+        <div>
+          <div class="fcard" style="--fc:var(--firm-a)"><div class="n"><span class="sw"></span>Snell Law Firm, PLLC</div><div class="m">Dana Snell · 33% · $350 filing</div><div class="m">Bexar, Comal, Guadalupe</div></div>
+          <div class="fcard on" style="--fc:var(--firm-b)"><div class="n"><span class="sw"></span>Austin Legal, PLLC</div><div class="m">… · 30% · $112.72 filing</div><div class="m">Travis, Hays</div></div>
+          <button class="btn">Add a firm</button>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button class="btn pri">Save counties</button><button class="btn">Undo changes</button><span class="m" style="color:var(--muted);font-size:11.5px">2 counties changed</span></div>
+          <div class="m" style="color:var(--muted);font-size:11.5px;margin-top:8px">Changing a county affects new releases only. A matter stays with the firm it went to.</div>
+        </div>
+        <div>
+          <div class="mapbox" style="min-height:200px"><span class="blob" style="left:40%;top:16%;width:120px;height:90px;background:var(--firm-b-bg)"></span><span class="blob" style="left:22%;top:50%;width:150px;height:100px;background:var(--firm-a-bg)"></span><span style="position:relative;max-width:40ch">the same picker as Settings → Jobs &amp; billing → Collections law firms (v2.5756, v2.5758), mounted here</span></div>
+          <div class="legend"><span><span class="sw" style="background:var(--firm-a-bg)"></span>Snell Law Firm, PLLC</span><span><span class="sw" style="background:var(--firm-b-bg)"></span>Austin Legal, PLLC</span><span style="margin-left:auto;color:var(--muted)">Open on Settings ↗</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="rank">Is this the best we can do?</span></h2>
+  <div class="alt">
+    <div class="box pick"><b>The venue picks the firm; a person only switches when two firms both have a claim</b><div class="m">Kept. A dropdown of firms in the header (considered) invites sending Austin's case to San Antonio by habit. The switch exists only on a two-county account, and the release names the firm it goes to.</div></div>
+    <div class="box pick"><b>Map is a view, not a window</b><div class="m">Kept. The map needs the room the rail and the account use, and it is the same desk: tap a case there and you are back under Accounts on it. A floating map window (considered) would hide the account it points at.</div></div>
+    <div class="box pick"><b>Firms… is a window over the desk, with a line to Settings</b><div class="m">Kept, pending the owner. A plain link to Settings (considered) leaves the desk, and the dev comes back to find the account; the window keeps the account under it. The alternative is one line of code if the owner prefers Settings.</div></div>
+    <div class="box"><b>Cut: a fifth question card, "Who takes it?"</b><div class="m">The header already names the firm and the venue line says why. The four questions are about the case, not the desk.</div></div>
+    <div class="box"><b>Cut: the county on every rail row</b><div class="m">Shown in Frame 1 as a trial (the county and a firm chip). It helps a dev scan, but it is a fourth line on a tight row; the Map shows the same thing better. Kept out unless the owner likes it.</div></div>
+    <div class="box"><b>Cut: moving a live matter from here</b><div class="m">A deliberate press with a note, on the firm's window, as the README decided. Not a header act.</div></div>
+  </div>
+
+  <h2><span class="rank">Open for the owner</span></h2>
+  <ol>
+    <li><b>Firms…</b>: the window over the desk (Frame 3), or a link to Settings → Jobs &amp; billing?</li>
+    <li>The rail's county and firm chip (Frame 1, left): keep, or leave the rail as it is?</li>
+    <li>The two-county switch reads <b>⇄ Snell instead</b> in the firm group. Fine, or a line under the account instead?</li>
+  </ol>
+  <p class="lede" style="margin-top:14px">Build order after the owner's yes: <b>PR 2</b> — <code>src/lib/legal/firmForAccount.ts</code> with tests, the firm segment's states, the venue line, Firms…, the release to the shown firm, the fee model per firm. <b>PR 3</b> — the Accounts · Map switch and the Map view over <code>firmMap.ts</code> and the shared county map. PR 4 (the portal's Who covers what) is unchanged.</p>
+</div>
+<script>
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-view]').forEach((x) => x.classList.toggle('on', x === b))
+    const map = b.dataset.view === 'map'
+    document.getElementById('accounts-view').style.display = map ? 'none' : ''
+    document.getElementById('map-view').style.display = map ? '' : 'none'
+  }))
+</script>
+</body>
+</html>

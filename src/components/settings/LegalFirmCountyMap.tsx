@@ -185,7 +185,8 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
     return `${countyWords(county)} · ${firmNames.get(holderOf(county) ?? '') ?? 'no firm yet'}${n ? ` · ${n} ${n === 1 ? 'case' : 'cases'}` : ''}`
   }
   const readout = hovered ? countyLine(hovered) : pickedFirmId ? 'Click a county to color it for the picked firm. Click it again to clear it.' : 'Pick a firm on the left, then click counties.'
-  const btn = { padding: '0.2rem 0.6rem', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer' } as const
+  // Longhands: the view buttons flip between `btn` and `btnOn`, and React warns on a `border` shorthand under a `borderColor` (v2.5780).
+  const btn = { padding: '0.2rem 0.6rem', borderRadius: 4, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer' } as const
   const btnOn = { ...btn, borderColor: 'var(--text-base)', fontWeight: 600 } as const
 
   return (

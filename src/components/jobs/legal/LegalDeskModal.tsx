@@ -56,6 +56,8 @@ import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 import { exhibitDetails, exhibitsSummaryWords } from '../../../lib/legal/exhibitDetail'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
+import { ModalFullScreenButton, useModalFullScreen } from '../../ModalFullScreenToggle'
+import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
@@ -125,7 +127,8 @@ const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const NUM: CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
 const TH: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, padding: '6px 8px', borderBottom: '1px solid var(--border)' }
 const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.84rem' }
-const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
+// Border longhands (v2.5780): a button at one spot in the header's row flips between `btn` and `btnPrimary` as the account changes, and React warns on a shorthand under a `borderColor`.
+const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
 /**
  * The header's firm group (v2.5750, the owner's call; the firm's name was a blue chip inside the subtitle since v2.4711):
@@ -141,6 +144,8 @@ const SEG_RED: CSSProperties = { color: '#b42318' }
 const SEG_AMBER: CSSProperties = { color: '#9a6700' }
 /** The quiet ✕ the Lien desk's title bar wears: no box, so the firm group is the row's one box. */
 const CLOSE_X: CSSProperties = { width: 30, height: 30, padding: 0, border: 'none', background: 'none', borderRadius: 6, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }
+/** The full-screen toggle beside it (v2.5780), as quiet as the ✕ and the Lien desk's; the shared button keeps its pressed tint. */
+const FULL_SCREEN_BTN: CSSProperties = { width: 30, height: 30, minHeight: 0, padding: 0, border: 'none', borderRadius: 6, color: 'var(--text-muted)' }
 const sheetInput: CSSProperties = { width: '100%', font: 'inherit', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', margin: '4px 0 8px' }
 
 type Tone = 'stop' | 'warn' | 'ok' | 'neutral' | 'legal' | 'blue'
@@ -243,6 +248,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
+  // v2.5780: the desk fills the screen the way the Lien desk and Put a GC on notice do, remembered per browser (`modalFullScreen.ts`).
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('legal-desk')
   const todayYmd = todayYmdInAppTz()
   const firm = legal?.firm ?? null
   const fee = useMemo(() => feeModelOf(firm), [firm])
@@ -544,7 +551,15 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const headerActs: ReactNode = selectedGivenUp ? (
     pill('Given up on — not for the firm', 'neutral')
   ) : !stored ? (
-    <span style={{ ...MUTED, fontSize: '0.76rem' }}>Read-only until the legal tables are applied.</span>
+    legal?.readState === 'failed' ? (
+      // v2.5780: a read that did not go through says so and offers the way back; it is not the migration missing.
+      <span data-legal-read-failed style={{ fontSize: '0.76rem', color: '#9a6700', display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        {LEGAL_READ_FAILED_WORDS} ·
+        <button type="button" onClick={() => void legal.reload()} disabled={legal.loading} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>{legal.loading ? 'Reading…' : 'Retry'}</button>
+      </span>
+    ) : (
+      <span style={{ ...MUTED, fontSize: '0.76rem' }}>{LEGAL_READ_MISSING_WORDS}</span>
+    )
   ) : withFirm ? (
     <>
       {awaitsClose
@@ -573,9 +588,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   )
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
-      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, width: '100%', maxWidth: 1160, height: 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 var(--app-bottom-chrome, 0px)' : 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Full screen (v2.5780): the panel is the whole screen between the app's top and bottom chrome, square-cornered, as the Lien desk's. */}
+      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()} data-legal-desk-panel={fullScreen ? 'full' : 'window'}
+        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: fullScreen ? 0 : 10, width: '100%', maxWidth: fullScreen ? 'none' : 1160, height: fullScreen ? '100%' : 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
         {/* The header (v2.5750, the owner's call): the scales and "Legal Desk"; the firm's three doors — the firm itself, its
             emails, its portal link — as one group whose first segment is the firm's name (until then a blue chip inside the
             sentence, beside two emoji boxes); the ✕ borderless, as the Lien desk's. Emails is one quiet word until emails to
@@ -618,6 +634,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 ) : null}
               </div>
             ) : null}
+            {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={FULL_SCREEN_BTN} /> : null}
             <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>
           </div>
         </div>
@@ -703,7 +720,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
                 {packet && packet.gaps.length > 0 ? (
                   <div style={{ margin: '12px 0 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)' }}>
-                    <button type="button" onClick={() => setGapsOpen((o) => !o)} aria-expanded={gapsOpen} style={{ ...btn, border: 'none', background: 'none', width: '100%', justifyContent: 'flex-start', height: 34, padding: '0 12px', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <button type="button" onClick={() => setGapsOpen((o) => !o)} aria-expanded={gapsOpen} style={{ ...btn, borderStyle: 'none', background: 'none', width: '100%', justifyContent: 'flex-start', height: 34, padding: '0 12px', fontSize: '0.82rem', fontWeight: 600 }}>
                       <span aria-hidden>{gapsOpen ? '▼' : '▶'}</span> Before this goes to an attorney · {packet.readiness.stops} to fix{packet.readiness.warns ? ` · ${packet.readiness.warns} to know about` : ''}
                     </button>
                     {gapsOpen ? (
@@ -1222,7 +1239,8 @@ function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalS
   const valid = floorControlValid(ctl)
   const save = async () => { const plan = floorControlSave(ctl); await onSave(plan.amount, plan.pct); setOpen(false) }
   const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: open ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }
-  const box: CSSProperties = { font: 'inherit', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', textAlign: 'right' }
+  // Longhands, not the `border` shorthand with a `borderColor` over it: the box flips between the two styles and React warns on the mix (v2.5780).
+  const box: CSSProperties = { font: 'inherit', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', textAlign: 'right' }
   const boxOn: CSSProperties = { ...box, borderColor: '#2563eb' }
   return (
     <div data-legal-settlement-floor-editor>

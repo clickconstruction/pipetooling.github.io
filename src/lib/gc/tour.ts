@@ -10,6 +10,9 @@ import type { SpotlightTourStep } from '../../components/SpotlightTour'
  * carries them. `tour.test.ts` reads the page's source and fails when an anchor or a label a stop
  * names is gone. The words follow `src/lib/plainWords.ts`.
  */
+/** The guide the Gaps stop and the card's red gap line open (v2.5783). `tour.test.ts` checks the file exists. */
+export const GC_GAPS_GUIDE_SLUG = 'fill-the-gaps-between-trades-on-a-gc-project'
+
 export const GC_NEW_HERE_STEPS: SpotlightTourStep[] = [
   {
     anchor: 'gc-mode-switch',
@@ -68,9 +71,11 @@ export const GC_NEW_HERE_STEPS: SpotlightTourStep[] = [
         { words: 'for' },
         { words: 'HVAC.', means: 'it is left to' },
       ],
-      after: "HVAC's scope does not list gas piping yet. Settle it before our bid goes out.",
+      after: "HVAC's scope does not list gas piping yet. Settle it before our bid goes out. A quote can leave work out too. Compare quotes lists each one with a box for our cost to cover it.",
     },
     missingBody: 'This project has none.',
+    // The stop's own guide (v2.5783): the walk of both kinds of gap, from the owner's gaps walk of 2026-10-23.
+    guide: { href: `/help?g=${GC_GAPS_GUIDE_SLUG}`, label: 'Read how to fill a gap →' },
   },
   {
     // The stop names only the control inside its hole (v2.5554, the owner's words of 2026-10-15): the

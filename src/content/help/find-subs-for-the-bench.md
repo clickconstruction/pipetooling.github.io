@@ -41,9 +41,25 @@ The company lands on **GC projects → Trade partners** under each of its trades
 
 Tick **We have worked with them before** only when we have. A company we know skips the vetting step on the bench.
 
-## Where the bench needs help
+## What GC mode needs
 
-The bench wants three companies in every trade. The strip over the deck is **The bench needs**. It reads each trade with how many more it wants and how many subs wait. Press a trade to call for it alone. Press **All subs** to widen the queue again.
+The panel over the deck is **What GC mode needs right now**. It reads one row a trade, worst first.
+
+- **Short of quotes**: a project asked for quotes and fewer than two came in. The row names the project, the quotes in and the due day. Press the project to open its card.
+- **On the bench**: trades a company does. The row says how many do it, how many answer, and how many more the bench wants. The bench wants three a trade.
+- **Nobody does these yet**: the scope book's trades with no company. Each one is a chip.
+
+Every row ends with how many subs wait here to call. Three doors follow, in order:
+
+1. Press {{button:blue|Ask them →}} when a bench company is not asked yet. It opens Trade partners at that trade. Ask them there.
+2. Press {{button:outline|Call for Concrete}} when subs wait here. The deck shows that trade alone. Press **All subs** to widen the queue again.
+3. Press {{button:outline|Add a sub}} when nobody is left to call. New Prospect opens as a sub with the trade filled in.
+
+The blue door is the best next press. A chip under **Nobody does these yet** opens Add a sub on that trade.
+
+:::example A lane with one ask out
+The row reads Concrete, then the project, 1 of 2 quotes, due Oct 24, tomorrow. Under it: 1 on the bench, everyone asked, 0 to call here. Add a sub is blue. Fourteen chips sit under the row, Sitework to Electrical.
+:::
 
 The queue has a third order on Subs, **By need**. It puts the trade with the biggest gap first, then never called, then coldest.
 
