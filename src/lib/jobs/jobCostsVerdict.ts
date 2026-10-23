@@ -213,3 +213,10 @@ export function baselineReadWords(b: CostsBaseline, pctDone: number | null): str
   const verdict = b.read === 'over' ? 'the book was light here' : b.read === 'under' ? 'the book was heavy here' : 'on the book'
   return `${share}${at} · ${verdict}`
 }
+
+/** The kept baseline's line under the strip: "Baseline kept Sep 12 on billing · per $1k"; '' with none kept. */
+export function baselineKeptWords(k: { kept_at: string; kept_on: string | null; grade: string | null } | null | undefined): string {
+  if (!k) return ''
+  const day = new Date(k.kept_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `Baseline kept ${day}${k.kept_on === 'billed' ? ' on billing' : ''} · ${k.grade === 'fixture' ? 'by fixture' : 'per $1k'}`
+}
