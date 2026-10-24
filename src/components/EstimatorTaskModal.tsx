@@ -46,7 +46,7 @@ export default function EstimatorTaskModal() {
 
   useEffect(() => {
     if (!modal?.isEstimatorModalOpen) return
-    setTitle('')
+    setTitle(modal.estimatorPreset?.titleSeed ?? '')
     setLinks([])
     setLocationLat(null)
     setLocationLng(null)
@@ -58,7 +58,7 @@ export default function EstimatorTaskModal() {
     setSending(false)
     const t = setTimeout(() => titleInputRef.current?.focus(), 50)
     return () => clearTimeout(t)
-  }, [modal?.isEstimatorModalOpen])
+  }, [modal?.isEstimatorModalOpen, modal?.estimatorPreset])
 
   useEffect(() => {
     if (!modal?.isEstimatorModalOpen) return
@@ -199,6 +199,7 @@ export default function EstimatorTaskModal() {
         setSending(false)
         return
       }
+      m.estimatorPreset?.onCreated?.(id)
 
       const { error: fnErr } = await supabase.functions.invoke('notify-estimator-request', {
         body: { estimator_request_id: id },

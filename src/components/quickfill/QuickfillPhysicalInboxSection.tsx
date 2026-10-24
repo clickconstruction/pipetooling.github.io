@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -6,230 +6,271 @@ import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import { useEstimatorTaskModal } from '../../contexts/EstimatorTaskModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { supabaseOfficeInboxIo, useOfficeInboxPapers, type OfficeInboxIo, type PressExtra } from '../../hooks/useOfficeInboxPapers'
+import {
+  deckRows,
+  FILE_PLACE_SUGGESTIONS,
+  normalizePaperTitle,
+  outcomeWords,
+  PHYSICAL_INBOX_SECTION_ID,
+  undecidedSummary,
+  undecidedWords,
+  type DeckRow,
+  type InboxPaper,
+  type InboxPaperOutcome,
+  type PaperPress,
+} from '../../lib/quickfill/physicalInbox'
 
-const NOTE_MAX_CHARS = 10_000
+/**
+ * Quickfill → Physical inbox as a clarify deck (punch list #158, v2.5818): the tray on the
+ * assistant's desk in GTD's shape. A paper that takes two minutes is done and never typed.
+ * Anything else is typed once with the day it came, and leaves the deck on one press:
+ * Done · Trash · File it (where) · Task (the header's Task window with the title filled in)
+ * · Ask (dispatch or estimating, the request window the same way). The station's count is
+ * the undecided paper, oldest first with its age; the wrapper's Mark snapshots it. A press
+ * leaves a line with Undo for the visit. The folds (Waiting for, Someday) and Comes back
+ * follow in their own releases.
+ */
 
-type MarkPalette = { bg: string; border: string }
+type DecidedLine = { paper: InboxPaper; outcome: InboxPaperOutcome; detail: string | null }
 
-type QuickfillPhysicalInboxSectionProps = {
-  markButtonPalette: MarkPalette
-  onConfirmMark: (trimmedNote: string) => void
-}
+const introStyle: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-slate-600)', margin: '0 0 0.6rem', lineHeight: 1.45 }
+const lineStyle: CSSProperties = { fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-700)', margin: '0.5rem 0 0.4rem', fontVariantNumeric: 'tabular-nums' }
+const cardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.55rem 0.8rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', minWidth: 0 }
+const pressStyle = (busy: boolean, tone: 'plain' | 'blue' | 'sky' | 'violet' = 'plain'): CSSProperties => ({
+  font: 'inherit',
+  fontSize: '0.78125rem',
+  fontWeight: 600,
+  padding: '4px 10px',
+  borderRadius: 6,
+  border: `1px solid ${tone === 'plain' ? 'var(--border-strong)' : tone === 'blue' ? '#3b82f6' : tone === 'sky' ? '#0ea5e9' : '#7c3aed'}`,
+  background: tone === 'plain' ? 'var(--surface)' : tone === 'blue' ? '#3b82f6' : tone === 'sky' ? '#0ea5e9' : '#7c3aed',
+  color: tone === 'plain' ? 'var(--text-700)' : '#fff',
+  cursor: busy ? 'not-allowed' : 'pointer',
+  opacity: busy ? 0.6 : 1,
+  whiteSpace: 'nowrap',
+})
+const ageStyle = (state: DeckRow['ageState']): CSSProperties => ({
+  fontSize: '0.72rem',
+  fontWeight: 600,
+  padding: '1px 8px',
+  borderRadius: 999,
+  whiteSpace: 'nowrap',
+  fontVariantNumeric: 'tabular-nums',
+  background: state === 'red' ? 'var(--bg-red-tint)' : state === 'amber' ? 'var(--bg-amber-tint)' : 'var(--bg-200)',
+  color: state === 'red' ? 'var(--text-red-700)' : state === 'amber' ? 'var(--text-amber-800)' : 'var(--text-700)',
+})
+const inputStyle: CSSProperties = { flex: '1 1 14rem', minWidth: 0, font: 'inherit', fontSize: '1rem', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)' }
 
-const hintStyle: CSSProperties = {
-  fontSize: '0.875rem',
-  color: 'var(--text-slate-600)',
-  margin: '0 0 0.75rem',
-  lineHeight: 1.45,
-}
-
-const actionButtonBase: CSSProperties = {
-  height: 'calc(1rem + 1.25em)',
-  boxSizing: 'border-box',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 4,
-  cursor: 'pointer',
-  border: 'none',
-  padding: '0.5rem 0.5rem',
-  color: 'white',
-}
-
-export function QuickfillPhysicalInboxSection({ markButtonPalette, onConfirmMark }: QuickfillPhysicalInboxSectionProps) {
-  const { role } = useAuth()
+export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, todayYmd }: { io?: OfficeInboxIo; todayYmd?: string }) {
+  const { role, user } = useAuth()
   const { showToast } = useToastContext()
   const checklistAddModal = useChecklistAddModal()
   const dispatchTaskModal = useDispatchTaskModal()
   const estimatorTaskModal = useEstimatorTaskModal()
-  const [inboxNote, setInboxNote] = useState('')
+  const today = todayYmd ?? todayYmdInAppTz()
+  const { papers, loading, error, reload, add, press, backOnDeck } = useOfficeInboxPapers(io, user?.id ?? null)
 
-  const showDispatchEstimator =
-    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'
-  const showTask =
-    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary' || role === 'estimator'
+  const [draft, setDraft] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [openForm, setOpenForm] = useState<{ id: string; kind: 'file' | 'ask' } | null>(null)
+  const [filePlace, setFilePlace] = useState('')
+  const [decided, setDecided] = useState<DecidedLine[]>([])
 
-  const itemsNotedCount = useMemo(() => {
-    return inboxNote.split(/\r?\n/).filter((line) => line.trim().length > 0).length
-  }, [inboxNote])
+  const showDispatchEstimator = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'
+  const showTask = showDispatchEstimator || role === 'primary'
 
-  useReportQuickfillSectionMetric('physical-inbox', itemsNotedCount, false)
+  const rows = useMemo(() => deckRows(papers, today), [papers, today])
+  const summary = useMemo(() => undecidedSummary(papers, today), [papers, today])
+  // No count while the read is in flight or has failed: an unknown pile is not an empty one.
+  useReportQuickfillSectionMetric(PHYSICAL_INBOX_SECTION_ID, loading || error ? null : summary.count, loading)
 
-  function handleMarkComplete() {
-    const trimmed = inboxNote.trim()
-    if (!trimmed) {
-      showToast('List what is still in your physical inbox before marking complete.', 'warning')
+  async function addPaper() {
+    const title = normalizePaperTitle(draft)
+    if (!title) {
+      showToast('Type the paper first. A two-minute paper is done, not typed.', 'warning')
       return
     }
-    const capped = trimmed.length > NOTE_MAX_CHARS ? trimmed.slice(0, NOTE_MAX_CHARS) : trimmed
-    onConfirmMark(capped)
-    setInboxNote('')
+    setAdding(true)
+    try {
+      await add(title, today)
+      setDraft('')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not add the paper'), 'error')
+    } finally {
+      setAdding(false)
+    }
   }
 
-  const promptsId = 'quickfill-physical-inbox-prompts'
-  const showActionButtons = showDispatchEstimator || showTask
+  function onDraftKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      void addPaper()
+    }
+  }
 
-  const promptsBlock = (
-    <div
-      id={promptsId}
-      style={
-        showActionButtons
-          ? { flex: '1 1 200px', minWidth: '12rem', maxWidth: '32rem', margin: 0 }
-          : { marginBottom: '0.75rem' }
-      }
-    >
-      <p style={showActionButtons ? { ...hintStyle, marginBottom: 0 } : hintStyle}>
-        {`Is my physical inbox clear? - For items that can't be quickly cleared, have you added a task? Use these buttons, same as the header.`}
-      </p>
+  async function decide(paper: InboxPaper, what: PaperPress, detail: string | null, extra?: PressExtra) {
+    if (busyId) return
+    setBusyId(paper.id)
+    try {
+      const next = await press(paper, what, detail, extra)
+      setOpenForm(null)
+      setFilePlace('')
+      setDecided((prev) => [{ paper: next, outcome: what, detail: next.outcome_detail }, ...prev.filter((d) => d.paper.id !== paper.id)])
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the press'), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function undo(line: DecidedLine) {
+    if (busyId) return
+    setBusyId(line.paper.id)
+    try {
+      await backOnDeck(line.paper)
+      setDecided((prev) => prev.filter((d) => d.paper.id !== line.paper.id))
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not undo'), 'error')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  function openTask(paper: InboxPaper) {
+    if (!checklistAddModal) {
+      showToast('The Task window is not open on this page.', 'warning')
+      return
+    }
+    checklistAddModal.openAddModal({
+      preset: { title: paper.title, links: [] },
+      onSaved: (createdItemId) => void decide(paper, 'task', null, { checklist_item_id: createdItemId ?? null }),
+    })
+  }
+
+  function askDispatch(paper: InboxPaper) {
+    if (!dispatchTaskModal) return
+    dispatchTaskModal.openDispatchModal({ titleSeed: paper.title, onCreated: (id) => void decide(paper, 'request', 'dispatch', { dispatch_request_id: id }) })
+  }
+
+  function askEstimating(paper: InboxPaper) {
+    if (!estimatorTaskModal) return
+    estimatorTaskModal.openEstimatorModal({ titleSeed: paper.title, onCreated: (id) => void decide(paper, 'request', 'estimating', { estimator_request_id: id }) })
+  }
+
+  const toggleForm = (id: string, kind: 'file' | 'ask') => {
+    setOpenForm((cur) => (cur && cur.id === id && cur.kind === kind ? null : { id, kind }))
+    setFilePlace('')
+  }
+
+  const paperCard = (row: DeckRow) => {
+    const { paper } = row
+    const busy = busyId === paper.id
+    const form = openForm && openForm.id === paper.id ? openForm.kind : null
+    const fileLabel = `Where was ${paper.title} filed?`
+    return (
+      <div key={paper.id} data-testid="physical-inbox-paper" data-age-state={row.ageState} style={cardStyle}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.95rem', fontWeight: 600, flex: '1 1 14rem', minWidth: 0, overflowWrap: 'anywhere' }}>{paper.title}</span>
+          <span style={ageStyle(row.ageState)} title={`Came ${paper.came_on}`}>
+            {row.ageWords}
+          </span>
+          {paper.created_by_name ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{paper.created_by_name}</span> : null}
+        </div>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }} role="group" aria-label={`What happens to ${paper.title}`}>
+          <button type="button" disabled={busy} style={pressStyle(busy)} onClick={() => void decide(paper, 'done', null)}>
+            Done
+          </button>
+          <button type="button" disabled={busy} style={pressStyle(busy)} onClick={() => void decide(paper, 'trash', null)}>
+            Trash
+          </button>
+          <button type="button" disabled={busy} style={pressStyle(busy)} aria-expanded={form === 'file'} onClick={() => toggleForm(paper.id, 'file')}>
+            File it ▾
+          </button>
+          {showTask ? (
+            <button type="button" disabled={busy} style={pressStyle(busy, 'blue')} onClick={() => openTask(paper)}>
+              Task
+            </button>
+          ) : null}
+          {showDispatchEstimator ? (
+            <button type="button" disabled={busy} style={pressStyle(busy)} aria-expanded={form === 'ask'} onClick={() => toggleForm(paper.id, 'ask')}>
+              Ask ▾
+            </button>
+          ) : null}
+        </div>
+        {form === 'file' ? (
+          <div data-testid="physical-inbox-file-form" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.4rem 0.5rem', borderRadius: 6, background: 'var(--bg-page)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', width: '100%' }}>Where?</span>
+            {FILE_PLACE_SUGGESTIONS.map((place) => (
+              <button key={place} type="button" disabled={busy} style={pressStyle(busy)} onClick={() => void decide(paper, 'filed', place)}>
+                {place}
+              </button>
+            ))}
+            <input type="text" aria-label={fileLabel} value={filePlace} onChange={(e) => setFilePlace(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void decide(paper, 'filed', filePlace) } }} placeholder="Somewhere else…" style={{ ...inputStyle, flex: '1 1 10rem', fontSize: '0.875rem', padding: '0.3rem 0.5rem' }} />
+            <button type="button" disabled={busy || !filePlace.trim()} style={pressStyle(busy || !filePlace.trim(), 'blue')} onClick={() => void decide(paper, 'filed', filePlace)}>
+              Filed
+            </button>
+          </div>
+        ) : null}
+        {form === 'ask' ? (
+          <div data-testid="physical-inbox-ask-form" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.4rem 0.5rem', borderRadius: 6, background: 'var(--bg-page)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Whom?</span>
+            <button type="button" disabled={busy} style={pressStyle(busy, 'sky')} onClick={() => askDispatch(paper)}>
+              Ask dispatch
+            </button>
+            <button type="button" disabled={busy} style={pressStyle(busy, 'violet')} onClick={() => askEstimating(paper)}>
+              Ask estimating
+            </button>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  const decidedLine = (line: DecidedLine) => (
+    <div key={`decided:${line.paper.id}`} data-testid="physical-inbox-decided" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.45rem 0.8rem', border: '1px solid var(--border-green)', borderRadius: 8, background: 'var(--bg-green-tint)', fontSize: '0.85rem', color: 'var(--text-green-800)' }}>
+      <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+        <b>{outcomeWords(line.outcome, line.detail)}</b> · {line.paper.title}
+      </span>
+      <button type="button" disabled={busyId === line.paper.id} style={pressStyle(busyId === line.paper.id)} onClick={() => void undo(line)}>
+        Undo
+      </button>
     </div>
   )
 
   return (
-    <section
-      style={{
-        borderRadius: 8,
-        padding: '1rem 1.25rem',
-        background: 'var(--bg-page)',
-      }}
-    >
-      {showActionButtons ? (
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'flex-start',
-            gap: '0.75rem',
-            marginBottom: '0.75rem',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              alignItems: 'center',
-              flexShrink: 0,
-            }}
-          >
-            {showDispatchEstimator && (
-              <button
-                type="button"
-                onClick={() => dispatchTaskModal?.openDispatchModal()}
-                title="Task Dispatch"
-                aria-label="Task Dispatch"
-                style={{ ...actionButtonBase, background: '#0ea5e9' }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 640 640"
-                  width="1.25em"
-                  height="1.25em"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M280 128C266.7 128 256 138.7 256 152C256 165.3 266.7 176 280 176L296 176L296 209.3C188.8 220.7 104.2 307.7 96.6 416L543.5 416C535.8 307.7 451.2 220.7 344 209.3L344 176L360 176C373.3 176 384 165.3 384 152C384 138.7 373.3 128 360 128L280 128zM88 464C74.7 464 64 474.7 64 488C64 501.3 74.7 512 88 512L552 512C565.3 512 576 501.3 576 488C576 474.7 565.3 464 552 464L88 464z" />
-                </svg>
-              </button>
-            )}
-            {showDispatchEstimator && (
-              <button
-                type="button"
-                onClick={() => estimatorTaskModal?.openEstimatorModal()}
-                title="Estimator Inbox"
-                aria-label="Estimator Inbox"
-                style={{ ...actionButtonBase, background: '#7c3aed' }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 640 640"
-                  width="1.25em"
-                  height="1.25em"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M468 64C487.2 64 505.6 71.6 519.1 85.2L554.8 120.9C568.4 134.4 576 152.8 576 172C576 191.2 568.4 209.6 554.8 223.1L509.9 268L372 130.1L416.9 85.2C430.4 71.6 448.8 64 468 64zM122.9 379.1L338.1 164L476 301.9L260.9 517.1C250.2 527.8 236.8 535.6 222.2 539.7L94.4 575.1C86.1 577.4 77.1 575.1 71 568.9C64.9 562.7 62.5 553.8 64.8 545.5L100.4 417.8C104.5 403.2 112.2 389.9 123 379.1zM289.4 144.8L144.8 289.4L75.7 220.3C60.1 204.7 60.1 179.4 75.7 163.7L163.7 75.7C179.3 60.1 204.6 60.1 220.3 75.7L226.2 81.6L169.9 137.9C162.1 145.7 162.1 158.4 169.9 166.2C177.7 174 190.4 174 198.2 166.2L254.5 109.9L289.4 144.8zM495.2 350.6L530.1 385.5L473.8 441.8C466 449.6 466 462.3 473.8 470.1C481.6 477.9 494.3 477.9 502.1 470.1L558.4 413.8L564.3 419.7C579.9 435.3 579.9 460.6 564.3 476.3L476.3 564.3C460.7 579.9 435.4 579.9 419.7 564.3L350.6 495.2L495.2 350.6z" />
-                </svg>
-              </button>
-            )}
-            {showTask && (
-              <button
-                type="button"
-                onClick={() => checklistAddModal?.openAddModal()}
-                title="Task"
-                aria-label="Task"
-                style={{ ...actionButtonBase, background: '#3b82f6', fontWeight: 500 }}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 640 640"
-                  width="1.25em"
-                  height="1.25em"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
-                </svg>
-              </button>
-            )}
-          </div>
-          {promptsBlock}
-        </div>
-      ) : (
-        promptsBlock
-      )}
-      <div
-        style={{
-          margin: '0 0 0.35rem',
-          fontSize: '0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '0.35rem',
-        }}
-      >
-        <label
-          htmlFor="quickfill-physical-inbox-textarea"
-          style={{ fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer', margin: 0 }}
-        >
-          Still in physical inbox
-        </label>
-      </div>
-      <textarea
-        id="quickfill-physical-inbox-textarea"
-        value={inboxNote}
-        onChange={(e) => setInboxNote(e.target.value)}
-        aria-describedby={promptsId}
-        rows={6}
-        style={{
-          width: '100%',
-          maxWidth: '100%',
-          boxSizing: 'border-box',
-          padding: '0.65rem',
-          borderRadius: 6,
-          border: '1px solid var(--border-strong)',
-          fontSize: '0.875rem',
-          fontFamily: 'inherit',
-          resize: 'vertical',
-          minHeight: '6rem',
-        }}
-      />
-      <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
-        <button
-          type="button"
-          onClick={handleMarkComplete}
-          style={{
-            padding: '0.5rem 0.75rem',
-            borderRadius: 6,
-            background: markButtonPalette.bg,
-            border: `1px solid ${markButtonPalette.border}`,
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-          }}
-        >
-          Mark Physical inbox up to date!
+    <section style={{ borderRadius: 8, padding: '1rem 1.25rem', background: 'var(--bg-page)' }}>
+      <p style={introStyle}>A paper that takes two minutes is done, not typed. Type the rest once, with the day it came, and press what happens to it. The count is the paper nobody has decided on.</p>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input type="text" aria-label="A paper for the deck" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onDraftKey} placeholder="A paper that will take more than two minutes…" maxLength={200} style={inputStyle} disabled={adding} />
+        <button type="button" disabled={adding} style={pressStyle(adding, 'plain')} onClick={() => void addPaper()}>
+          {adding ? 'Adding…' : 'Add'}
         </button>
       </div>
+      {error ? (
+        <p data-testid="physical-inbox-error" style={{ ...lineStyle, color: 'var(--text-red-700)' }}>
+          Could not read the papers · {error}{' '}
+          <button type="button" style={pressStyle(false)} onClick={() => void reload()}>
+            Retry
+          </button>
+        </p>
+      ) : loading ? (
+        <p data-testid="physical-inbox-line" style={{ ...lineStyle, color: 'var(--text-muted)' }}>Reading the deck…</p>
+      ) : (
+        <p data-testid="physical-inbox-line" style={{ ...lineStyle, color: summary.count === 0 ? 'var(--text-green-800)' : 'var(--text-700)' }}>
+          {undecidedWords(summary)}
+          {summary.count === 0 ? ' · The tray is clear.' : ''}
+        </p>
+      )}
+      {!loading && !error ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          {decided.map(decidedLine)}
+          {rows.map(paperCard)}
+        </div>
+      ) : null}
     </section>
   )
 }
