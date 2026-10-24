@@ -1,0 +1,132 @@
+/**
+ * Quickfill's Email station (punch list #159, v2.5814): the pure part of one sweep of a counted box's label by
+ * `gmail-count`. Gmail hands the sweep the label's threads (`threads.list` by label id, newest first, a page of 100,
+ * at most `SWEEP_PAGE_CAP` pages) and, for a thread the table does not hold yet, the thread's messages in metadata
+ * form (`threads.get`, `format=metadata`: ids, dates and the headers From, Subject, Date; Google refuses the words
+ * under the metadata scope). This file says which threads to fetch, which are gone, what one thread's row holds, and
+ * what the day's row of the trend holds. Pure: the function passes Gmail's answers and the table's rows in.
+ */
+import { calendarYmdInAppTzFromIso, ymdDaysBetween } from '../../utils/dateUtils'
+import { parseAddress } from './gmailMessage'
+
+/** The most pages of threads one sweep lists per label: beyond it the count stays exact and the list says so. */
+export const SWEEP_PAGE_CAP = 3
+export const SWEEP_PAGE_SIZE = 100
+
+/** A thread as `threads.get` with `format=metadata` returns it: the messages' ids, dates and the headers asked for. */
+export interface GmailThreadMeta {
+  id: string
+  messages?: {
+    id: string
+    /** When Gmail took it, in milliseconds since 1970, as a string. */
+    internalDate?: string
+    payload?: { headers?: { name: string; value: string }[] }
+  }[]
+}
+
+/** What the table keeps of one thread: when it arrived, its last activity, who wrote first, the subject. Never words. */
+export interface ThreadSeen {
+  gmailThreadId: string
+  arrivedAt: string | null
+  lastAt: string | null
+  fromName: string | null
+  fromAddress: string | null
+  subject: string
+}
+
+const isoOf = (ms: string | undefined): string | null => {
+  const n = Number(ms)
+  return Number.isFinite(n) && n > 0 ? new Date(n).toISOString() : null
+}
+
+const header = (m: NonNullable<GmailThreadMeta['messages']>[number], name: string): string =>
+  m.payload?.headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value?.trim() ?? ''
+
+/**
+ * One thread's row: the first message (by Gmail's date) says when it arrived, who wrote and what about; the last says
+ * its latest activity. A thread with no messages, or none dated, arrived at no time.
+ */
+export function threadSeen(t: GmailThreadMeta): ThreadSeen {
+  const dated = (t.messages ?? []).map((m) => ({ m, ms: Number(m.internalDate) })).filter((x) => Number.isFinite(x.ms) && x.ms > 0).sort((a, b) => a.ms - b.ms)
+  const first = dated[0]?.m ?? t.messages?.[0]
+  const last = dated[dated.length - 1]?.m
+  const from = first ? parseAddress(header(first, 'From')) : null
+  return {
+    gmailThreadId: t.id,
+    arrivedAt: first ? isoOf(first.internalDate) : null,
+    lastAt: last ? isoOf(last.internalDate) : null,
+    fromName: from?.name ?? null,
+    fromAddress: from?.address ?? null,
+    subject: first ? header(first, 'Subject').slice(0, 500) : '',
+  }
+}
+
+/** A thread the table already holds, open or gone. */
+export interface KnownThread {
+  gmailThreadId: string
+  gone: boolean
+}
+
+/** What one sweep does with a label's threads. */
+export interface SweepPlan {
+  /** Threads to read whole: the ones the table does not hold open (new ones, and ones that came back). */
+  fetch: string[]
+  /** Open threads the table holds that the label no longer lists: cleared. Empty when the listing was cut short. */
+  gone: string[]
+  /** Threads the table holds open that are still there: their last-seen moves, nothing else. */
+  still: string[]
+}
+
+/**
+ * Which threads to fetch, which are gone and which are still there. A thread is gone only when the listing was
+ * complete: a label cut short at the page cap says nothing about the threads past it.
+ */
+export function planSweep(listed: readonly string[], known: readonly KnownThread[], complete: boolean): SweepPlan {
+  const open = new Set(known.filter((k) => !k.gone).map((k) => k.gmailThreadId))
+  const listedSet = new Set(listed)
+  const fetch: string[] = []
+  const still: string[] = []
+  for (const id of listedSet) (open.has(id) ? still : fetch).push(id)
+  const gone = complete ? [...open].filter((id) => !listedSet.has(id)) : []
+  return { fetch, gone, still }
+}
+
+/** Whole civil days (the app's calendar) from when a thread arrived to now; null with no arrival. */
+export function ageDays(arrivedIso: string | null | undefined, nowIso: string): number | null {
+  if (!arrivedIso) return null
+  const a = calendarYmdInAppTzFromIso(arrivedIso)
+  const b = calendarYmdInAppTzFromIso(nowIso)
+  const d = ymdDaysBetween(a, b)
+  return d == null ? null : Math.max(0, d)
+}
+
+/** A thread row as the trend reads it. */
+export interface TrendThread {
+  arrivedAt: string | null
+  firstSeenAt: string
+  goneAt: string | null
+}
+
+/** One day's row of the trend for a label: how many sat, the oldest's age, what came and what cleared that day. */
+export interface DayRow {
+  count: number
+  oldestDays: number | null
+  newCount: number
+  clearedCount: number
+}
+
+/**
+ * The day's row: the open threads at `nowIso` (the sweep's time), the oldest among them, the threads first seen that
+ * civil day, and the ones marked gone that day.
+ */
+export function dayRow(threads: readonly TrendThread[], nowIso: string): DayRow {
+  const day = calendarYmdInAppTzFromIso(nowIso)
+  const open = threads.filter((t) => !t.goneAt)
+  const ages = open.map((t) => ageDays(t.arrivedAt, nowIso)).filter((d): d is number => d != null)
+  return {
+    count: open.length,
+    oldestDays: ages.length ? Math.max(...ages) : null,
+    newCount: threads.filter((t) => calendarYmdInAppTzFromIso(t.firstSeenAt) === day).length,
+    clearedCount: threads.filter((t) => t.goneAt && calendarYmdInAppTzFromIso(t.goneAt) === day).length,
+  }
+}

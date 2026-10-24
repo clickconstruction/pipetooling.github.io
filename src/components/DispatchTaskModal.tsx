@@ -202,6 +202,7 @@ export default function DispatchTaskModal() {
         return
       }
       notifyDispatchRequestsChanged()
+      m.dispatchPreset?.onCreated?.(id)
 
       const { error: fnErr } = await supabase.functions.invoke('notify-dispatch-request', {
         body: { dispatch_request_id: id },

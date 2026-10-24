@@ -2,7 +2,12 @@ import { createContext, useContext, useState, useCallback } from 'react'
 import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
 
 /** Optional pre-fill when opening the dispatch modal from a specific job/bid (e.g. the Stages bell). */
-export type DispatchTaskPreset = { reference?: UnifiedSearchResult | null; titleSeed?: string } | null
+export type DispatchTaskPreset = {
+  reference?: UnifiedSearchResult | null
+  titleSeed?: string
+  /** Called once the request row exists, with its id (v2.5818, the Physical inbox deck's Ask press). */
+  onCreated?: (dispatchRequestId: string) => void
+} | null
 
 type DispatchTaskModalContextValue = {
   openDispatchModal: (preset?: DispatchTaskPreset) => void
