@@ -74,6 +74,7 @@ export const FLOW_NAMES: Readonly<Record<Exclude<FlowKind, 'unknown'>, string>> 
   trade: 'Trade partner',
   arch: 'Architect',
   sub: 'Sub',
+  candidate: 'Candidate',
 }
 
 /** The flows a line can be on, in the editor's order: a customer's residential flow before the GC customer's. */

@@ -132,13 +132,13 @@ SELECT f.id, s.step_key, s.lane, s.position, s.name, s.name_es, s.phase, s.who, 
   s.nudge_send, s.nudge_day_fact, s.usual, s.owed_words
 FROM public.flows f
 JOIN (VALUES
-      ('reached', 'once', 0, 'Reached out', 'Contactado', 'setup', 'us', ARRAY['sub_reached'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL, NULL, NULL, NULL, 1, 'a call'),
-      ('qualifications', 'once', 1, 'Qualifications', 'Cualificaciones', 'setup', 'us', ARRAY['qualifications_noted'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL, NULL, NULL, NULL, 2, 'their qualifications'),
-      ('w9', 'once', 2, 'W-9 in', 'W-9 recibido', 'setup', 'them', ARRAY['w9_signed'], 'and', ARRAY['w9'], NULL, NULL, false, false, false, NULL, NULL, NULL, NULL, NULL, NULL, 5, NULL),
-      ('coi', 'once', 3, 'Insurance in', 'Seguro recibido', 'setup', 'them', ARRAY['coi_current'], 'and', ARRAY['coi'], NULL, NULL, false, false, false, NULL, NULL, NULL, NULL, NULL, NULL, 5, NULL),
-      ('agreement', 'once', 4, 'Agreement signed', 'Acuerdo firmado', 'setup', 'them', ARRAY['sub_agreement'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL, NULL, NULL, NULL, 5, NULL),
-      ('first', 'once', 5, 'First job done', 'Primer trabajo terminado', 'building', 'both', ARRAY['sub_first_done'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL, NULL, NULL, NULL, 14, NULL),
-      ('kept', 'once', 6, 'Kept or let go', 'Seguimos o no', 'building', 'us', ARRAY['sub_kept', 'sub_let_go'], 'or', '{}'::text[], NULL, NULL, true, false, false, NULL, NULL, NULL, NULL, NULL, NULL, 30, NULL)
+      ('reached', 'once', 0, 'Reached out', 'Contactado', 'setup', 'us', ARRAY['sub_reached'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL::integer, NULL, NULL, NULL, 1, 'a call'),
+      ('qualifications', 'once', 1, 'Qualifications', 'Cualificaciones', 'setup', 'us', ARRAY['qualifications_noted'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL::integer, NULL, NULL, NULL, 2, 'their qualifications'),
+      ('w9', 'once', 2, 'W-9 in', 'W-9 recibido', 'setup', 'them', ARRAY['w9_signed'], 'and', ARRAY['w9'], NULL, NULL, false, false, false, NULL, NULL, NULL::integer, NULL, NULL, NULL, 5, NULL),
+      ('coi', 'once', 3, 'Insurance in', 'Seguro recibido', 'setup', 'them', ARRAY['coi_current'], 'and', ARRAY['coi'], NULL, NULL, false, false, false, NULL, NULL, NULL::integer, NULL, NULL, NULL, 5, NULL),
+      ('agreement', 'once', 4, 'Agreement signed', 'Acuerdo firmado', 'setup', 'them', ARRAY['sub_agreement'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL::integer, NULL, NULL, NULL, 5, NULL),
+      ('first', 'once', 5, 'First job done', 'Primer trabajo terminado', 'building', 'both', ARRAY['sub_first_done'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, NULL::integer, NULL, NULL, NULL, 14, NULL),
+      ('kept', 'once', 6, 'Kept or let go', 'Seguimos o no', 'building', 'us', ARRAY['sub_kept', 'sub_let_go'], 'or', '{}'::text[], NULL, NULL, true, false, false, NULL, NULL, NULL::integer, NULL, NULL, NULL, 30, NULL)
 ) AS s(step_key, lane, position, name, name_es, phase, who, facts, join_word, papers, loop_words, loop_ends,
   fork, aside, skip_one_job, later_en, later_es, nudge_days, nudge_how, nudge_send, nudge_day_fact, usual, owed_words)
   ON f.kind = 'sub'
@@ -150,6 +150,3 @@ COMMENT ON FUNCTION public.flows_seed() IS
 REVOKE EXECUTE ON FUNCTION public.flows_seed() FROM PUBLIC, anon, authenticated;
 
 SELECT public.flows_seed();
-pdfjs-assets: copied wasm, cmaps, standard_fonts into dist/pdfjs/
-todo-mockups: copied 103 mock-up page(s) under dist/to-dos
-help-share-pages: wrote 436 share pages under dist/g/ with 436 cards

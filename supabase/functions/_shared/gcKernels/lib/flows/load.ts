@@ -18,6 +18,9 @@ import type { CompanyPaperRow } from '../gc/companyPapers.ts'
 import type { FactId, FactMark, FlowKind } from './facts.ts'
 import { docFactId } from './facts.ts'
 import type { FactStamp, FlowStamps, JobStamps, LaneStamps, OffFlow, RoundStamp, StepSkip, StepWait } from './state.ts'
+import type { Qualifications } from '../hiring/tradeScale.ts'
+import type { CandidateRow } from './candidateLoad.ts'
+import type { SubPersonRows } from './subOnboardingLoad.ts'
 
 // ---------- the rows, as the query layer selects them ----------
 

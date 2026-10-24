@@ -16,6 +16,9 @@ import type { CompanyPaperRow } from '../gc/companyPapers'
 import type { FactId, FactMark, FlowKind } from './facts'
 import { docFactId } from './facts'
 import type { FactStamp, FlowStamps, JobStamps, LaneStamps, OffFlow, RoundStamp, StepSkip, StepWait } from './state'
+import type { Qualifications } from '../hiring/tradeScale'
+import type { CandidateRow } from './candidateLoad'
+import type { SubPersonRows } from './subOnboardingLoad'
 
 // ---------- the rows, as the query layer selects them ----------
 
